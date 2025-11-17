@@ -39,7 +39,6 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Forms\Set;
 use App\Models\Professor;
 
-
 class AlunoService
 {
     public function __construct(
@@ -914,6 +913,19 @@ class AlunoService
     private function acoesTabela(): array
     {
         return [
+            Action::make('ver_detalhes')
+                ->label('Ver detalhes')
+                ->icon('heroicon-m-eye')
+                ->color('warning')
+                ->modal()          // habilita modal
+                ->slideOver()      // modal lateral
+                ->modalCancelAction(false)
+                ->modalSubmitAction(false)
+                ->modalHeading(fn(Aluno $record) => "Detalhes de {$record->nome}")
+                ->modalContent(fn(Aluno $record) => view(
+                    'components.alunos.detalhes-modal',
+                    ['aluno' => $record]
+                )),
             EditAction::make(),
             DeleteAction::make()
         ];
@@ -927,16 +939,6 @@ class AlunoService
             FilamentExportBulkAction::make('exportar_xlsx')
                 ->label('Exportar XLSX')
                 ->defaultFormat('xlsx')
-                ->formatStates([
-                    'dificuldade_aprendizagem' => fn($record) => $record->dificuldade_aprendizagem ? 'Sim' : 'Não',
-                    'frequenta_srm'          => fn($record) => $record->frequenta_srm ? 'Sim' : 'Não',
-                    'encaminhado_para_sme'   => fn($record) => $record->encaminhado_para_sme ? 'Sim' : 'Não',
-                ])
-                ->directDownload(),
-            FilamentExportBulkAction::make('exportar_pdf')
-                ->label('Exportar PDF')
-                ->defaultFormat('pdf')
-                ->color('danger')
                 ->formatStates([
                     'dificuldade_aprendizagem' => fn($record) => $record->dificuldade_aprendizagem ? 'Sim' : 'Não',
                     'frequenta_srm'          => fn($record) => $record->frequenta_srm ? 'Sim' : 'Não',
