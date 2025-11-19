@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\RelatorioController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use Illuminate\Support\Collection;
@@ -28,4 +29,14 @@ Route::prefix('admin')
         Route::get('/laudos/{alunoLaudo}/download', [LaudoArquivoController::class, 'download'])
             ->name('laudos.download')
             ->middleware('can:download,alunoLaudo'); // se não puder → 403
+
+        Route::get('/relatorios/ficha', [RelatorioController::class, 'ficha'])
+            ->name('relatorios.ficha');
+
+        Route::get('/relatorios/bulk-list', [RelatorioController::class, 'bulkList'])
+            ->name('relatorios.bulkList');
+
+
+        Route::get('/relatorios/bulk-ficha', [RelatorioController::class, 'bulkFicha'])
+            ->name('relatorios.bulkFicha');
     });

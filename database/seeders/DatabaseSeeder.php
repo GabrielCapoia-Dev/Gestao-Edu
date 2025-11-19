@@ -64,6 +64,7 @@ class DatabaseSeeder extends Seeder
             'Baixar Laudos de Aluno',
             'Anexar Laudos de Aluno',
             'Excluir Laudos de Aluno',
+            'Exportar Relatório de Alunos',
         ];
 
         $permissionsSecretario = [

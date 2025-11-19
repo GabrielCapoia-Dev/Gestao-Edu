@@ -9,9 +9,7 @@ $laudosPivot = $aluno->laudosPivot()->with('laudo')->get();
     {{-- Cabeçalho com informações principais --}}
     <div class="bg-gradient-to-r from-primary-50 to-primary-100 dark:from-primary-900/20 dark:to-primary-800/20 rounded-lg p-4 border border-primary-200 dark:border-primary-700">
         <div class="flex items-center gap-3 mb-3">
-            <div class="flex-shrink-0 w-12 h-12 bg-primary-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                {{ strtoupper(substr($aluno->nome, 0, 1)) }}
-            </div>
+
             <div>
                 <h3 class="font-bold text-lg text-gray-900 dark:text-white">{{ $aluno->nome }}</h3>
                 <p class="text-xs text-gray-600 dark:text-gray-400">CGM: <span class="font-mono font-semibold">{{ $aluno->cgm }}</span></p>
@@ -330,15 +328,36 @@ $laudosPivot = $aluno->laudosPivot()->with('laudo')->get();
                 <div class="grid grid-cols-3 gap-2 mb-2">
                     <div>
                         <p class="text-xs text-gray-600 dark:text-gray-400">Vezes Retido</p>
-                        <p class="font-bold text-danger-600 dark:text-danger-400">{{ $retencao->vezes_retido }}x</p>
+                        <p class="font-bold text-danger-600 dark:text-danger-400">{{ $retencao->vezes_retido }}</p>
                     </div>
                     <div>
                         <p class="text-xs text-gray-600 dark:text-gray-400">Série</p>
                         <p class="font-semibold text-gray-900 dark:text-white">{{ $retencao->serie->nome ?? '-' }}</p>
                     </div>
                     <div>
-                        <p class="text-xs text-gray-600 dark:text-gray-400">Ano</p>
-                        <p class="font-semibold text-gray-900 dark:text-white">{{ $retencao->ano_retido }}</p>
+                        <p class="text-xs text-gray-600 dark:text-gray-400">Ano(s)</p>
+                        @php
+                        $anos = $retencao->ano_retido;
+
+                        // Se vier como JSON string por algum motivo, tenta decodificar
+                        if (is_string($anos)) {
+                        $decoded = json_decode($anos, true);
+                        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                        $anos = $decoded;
+                        }
+                        }
+
+                        // Se for array, junta bonitinho
+                        if (is_array($anos)) {
+                        $anosTexto = implode(', ', array_filter($anos, fn ($v) => filled($v)));
+                        } else {
+                        $anosTexto = $anos; // string simples ou null
+                        }
+                        @endphp
+
+                        <p class="font-semibold text-gray-900 dark:text-white">
+                            {{ $anosTexto ?: '-' }}
+                        </p>
                     </div>
                 </div>
                 @if($retencao->motivo_retido)
