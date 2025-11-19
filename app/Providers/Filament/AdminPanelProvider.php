@@ -22,6 +22,7 @@ use App\Services\UserService;
 use Hasnayeen\Themes\ThemesPlugin;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\LaudoArquivoController;
+use Filament\Actions\Action as GlobalAction;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -35,9 +36,7 @@ class AdminPanelProvider extends PanelProvider
     public function panel(Panel $panel): Panel
     {
         return $panel
-            ->routes(function () {
-                
-            })
+            ->routes(function () {})
             ->default()
             ->id('admin')
             ->path('admin')

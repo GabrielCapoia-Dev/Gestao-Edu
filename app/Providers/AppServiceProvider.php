@@ -67,8 +67,20 @@ class AppServiceProvider extends ServiceProvider
         FilamentAsset::register([
             Css::make('leaflet-css', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'),
             Js::make('leaflet-js',  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'),
+            Css::make('professores-modal', asset('css/professores-modal.css')),
         ]);
+        Event::listen(ServingFilament::class, function () {
+            $user = Filament::auth()?->user() ?? Auth::user();
 
+            $isAdmin = app(UserService::class)->ehAdmin($user);
+
+            app(Themes::class)->register(
+                $isAdmin
+                    ? [\Hasnayeen\Themes\Themes\Sunset::class]
+                    : [\App\Filament\Themes\TemaSME::class, \Hasnayeen\Themes\Themes\Nord::class],
+                true
+            );
+        });
         Event::listen(ServingFilament::class, function () {
             $user = Filament::auth()?->user() ?? Auth::user();
 

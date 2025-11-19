@@ -1,0 +1,20 @@
+/* Deixa o fundo de TODOS os modais/slideOvers bem escuro e com pouco ou nenhum blur */
+
+.fi-modal-close-overlay {
+    /* Fundo quase preto e bem opaco */
+    background-color: rgba(8, 17, 36, 0.541); /* mais escuro ainda */
+
+
+    /* Se quiser tirar totalmente o blur: */
+    backdrop-filter: blur(10px) !important;
+
+    /* Se quiser um leve blur, troca por algo tipo:
+       backdrop-filter: blur(4px) !important;
+    */
+}
+
+/* Opcional: dar um destaque na própria janela do modal */
+.fi-modal-window {
+    border-radius: 0.75rem;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.45);
+}

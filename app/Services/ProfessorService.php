@@ -3,7 +3,11 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Models\Professor;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Form;
@@ -19,9 +23,6 @@ use Filament\Forms\Set;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
-use Filament\Tables\Filters\Filter;
-use Filament\Forms\Components\DatePicker;
-use Illuminate\Support\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Tables\Actions\Action;
 
@@ -43,8 +44,6 @@ class ProfessorService
         return [
             Grid::make(12)
                 ->schema([
-
-
                     TextInput::make('matricula')
                         ->label('Matricula')
                         ->columnSpan(2)
@@ -56,6 +55,7 @@ class ProfessorService
                         ])
                         ->unique(ignoreRecord: true)
                         ->maxLength(20),
+
                     TextInput::make('nome')
                         ->label('Nome:')
                         ->required()
@@ -66,19 +66,20 @@ class ProfessorService
                         ->validationMessages([
                             'regex' => 'Use apenas letras, sem caracteres especiais.',
                         ]),
+
                     TextInput::make('email')
                         ->columnSpan(5)
                         ->label('E-mail')
                         ->email(),
-
                 ]),
+
             Grid::make(6)
                 ->schema([
                     Select::make('id_escola')
                         ->label('Escola')
                         ->relationship('escola', 'nome')
                         ->required()
-                        ->columnSpan(2)
+                        ->columnSpan(3)
                         ->preload()
                         ->searchable()
                         ->default(fn() => Auth::user()?->id_escola)
@@ -89,26 +90,18 @@ class ProfessorService
                             if (! $user) {
                                 return false;
                             }
+
                             if (filled($user->id_escola)) {
                                 return true;
                             }
+
                             return false;
                         }),
-                    Select::make('especializacao')
-                        ->columnSpan(2)
-                        ->label('Especializacao')
-                        ->required()
-                        ->options([
-                            'Magisterio' => 'Magisterio',
-                            'Licenciatura' => 'Licenciatura',
-                            'Bacharelado' => 'Bacharelado',
-                            'Pos Graduacao' => 'Pos Graduacao',
-                            'Doutorado' => 'Doutorado',
-                            'Mestrado' => 'Mestrado',
-                        ]),
+
+
 
                     Select::make('turno')
-                        ->columnSpan(2)
+                        ->columnSpan(3)
                         ->required()
                         ->label('Turno')
                         ->options([
@@ -117,6 +110,7 @@ class ProfessorService
                             'Noite' => 'Noite',
                         ]),
                 ]),
+
             Grid::make(9)
                 ->schema([
                     Checkbox::make('professor_srm')
@@ -125,7 +119,9 @@ class ProfessorService
                         ->helperText('Esse é um professor de Sala de Recursos Multifuncionais?')
                         ->reactive()
                         ->afterStateUpdated(function (Set $set, ?bool $state) {
-                            if ($state) $set('profissional_apoio', false);
+                            if ($state) {
+                                $set('profissional_apoio', false);
+                            }
                         })
                         ->afterStateHydrated(function (Set $set, Get $get) {
                             if ($get('professor_srm') && $get('profissional_apoio')) {
@@ -140,7 +136,9 @@ class ProfessorService
                         ->label('É um profissional de Apoio?')
                         ->reactive()
                         ->afterStateUpdated(function (Set $set, ?bool $state) {
-                            if ($state) $set('professor_srm', false);
+                            if ($state) {
+                                $set('professor_srm', false);
+                            }
                         })
                         ->afterStateHydrated(function (Set $set, Get $get) {
                             if ($get('profissional_apoio') && $get('professor_srm')) {
@@ -150,15 +148,69 @@ class ProfessorService
                         ->required(fn(Get $get) => ! (bool) $get('professor_srm'))
                         ->rules(['prohibited_if:professor_srm,1']),
 
-                    Checkbox::make('especializacao_educacao_especial')
-                        ->columnSpan(3)
-                        ->label('Possui especialização em Educação Especial?')
+
                 ]),
 
+            Grid::make(12)
+                ->schema([
+                    Repeater::make('especializacoes')
+                        ->label('Especializações')
+                        ->relationship('especializacoes') // hasMany ProfessorEspecializacao
+                        ->defaultItems(1)
+                        ->columnSpan(12)
+                        ->collapsible()
+                        ->columns(12)
+                        ->schema([
 
+                            Grid::make(12)
+                                ->columnSpan(12)
+                                ->schema([
+                                    Select::make('tipo')
+                                        ->label('Tipo de especialização')
+                                        ->placeholder('Selecione')
+                                        ->required()
+                                        ->options([
+                                            'Magisterio'     => 'Magistério',
+                                            'Licenciatura'   => 'Licenciatura',
+                                            'Bacharelado'    => 'Bacharelado',
+                                            'Pos Graduacao'  => 'Pós-graduação',
+                                            'Mestrado'       => 'Mestrado',
+                                            'Doutorado'      => 'Doutorado',
+                                        ])
+                                        ->columnSpan(2),
+
+                                    Textarea::make('descricao_especializacao')
+                                        ->label('Descrição da especialização')
+                                        ->required()
+                                        ->autosize()
+                                        ->minLength(3)
+                                        ->maxLength(255)
+                                        ->columnSpan(5),
+
+                                    FileUpload::make('anexo_especializacao_path')
+                                        ->label('Documento (PDF)')
+                                        ->disk('public')
+                                        ->directory(fn(Get $get) => 'professor-especializacoes/' . ($get('../../matricula') ?? 'sem-matricula'))
+                                        ->openable(false)
+                                        ->previewable(false)
+                                        ->acceptedFileTypes(['application/pdf'])
+                                        ->columnSpan(5),
+
+                                ]),
+                            Grid::make(12)
+                                ->columnSpan(12)
+                                ->schema([
+                                    Checkbox::make('especializacao_educacao_especial')
+                                        ->columnSpan(6)
+                                        ->label('É de Educação Especial?'),
+
+
+                                ]),
+                        ])
+                        ->required(),
+                ])
         ];
     }
-
 
     public function configurarTabela(Table $table, ?User $user): Table
     {
@@ -222,21 +274,19 @@ class ProfessorService
                 ->toggleable()
                 ->tooltip('Clique para copiar'),
 
-            TextColumn::make('especializacao')
-                ->label('Especialização')
-                ->badge()
-                ->color(fn(string $state) => match ($state) {
-                    'Magisterio'     => 'gray',
-                    'Licenciatura'   => 'primary',
-                    'Bacharelado'    => 'info',
-                    'Pos Graduacao'  => 'success',
-                    'Mestrado'       => 'warning',
-                    'Doutorado'      => 'danger',
-                    default          => 'secondary',
+            TextColumn::make('especializacoes_nomes')
+                ->label('Especializações')
+                ->state(function (Professor $record) {
+                    $tipos = $record->especializacoes
+                        ->pluck('tipo')
+                        ->filter()
+                        ->unique()
+                        ->values()
+                        ->all();
+
+                    return empty($tipos) ? '-' : implode(', ', $tipos);
                 })
-                ->sortable()
-                ->alignCenter()
-                ->searchable()
+                ->wrap()
                 ->toggleable(),
 
             TextColumn::make('turno')
@@ -299,10 +349,26 @@ class ProfessorService
         ];
     }
 
-
     public function acoesTabela(?User $user): array
     {
         return [
+            Action::make('ver_detalhes')
+                ->label('Ver detalhes')
+                ->icon('heroicon-m-eye')
+                ->color('warning')
+                ->modal()
+                ->slideOver()
+                ->modalCancelAction(false)
+                ->modalSubmitAction(false)
+                ->modalHeading(fn(Professor $record) => "Detalhes de {$record->nome}")
+                ->modalContent(fn(Professor $record) => view(
+                    'components.professores.detalhes-modal',
+                    ['professor' => $record]
+                ))
+                ->extraModalWindowAttributes([
+                    'class' => 'professor-detalhes-modal-window',
+                ]),
+
             EditAction::make(),
             DeleteAction::make()
                 ->before(function (User $record, DeleteAction $action) use ($user) {
@@ -348,10 +414,24 @@ class ProfessorService
                     'Licenciatura'   => 'Licenciatura',
                     'Bacharelado'    => 'Bacharelado',
                     'Pos Graduacao'  => 'Pós-Graduação',
-                    'Doutorado'      => 'Doutorado',
                     'Mestrado'       => 'Mestrado',
+                    'Doutorado'      => 'Doutorado',
                 ])
-                ->indicator('Especialização'),
+                ->multiple()
+                ->searchable()
+                ->indicator('Especialização')
+                ->query(function (Builder $query, array $data): Builder {
+                    $values = (array) ($data['value'] ?? null);
+
+                    if (empty($values)) {
+                        return $query;
+                    }
+
+                    return $query->whereHas('especializacoes', function (Builder $q) use ($values) {
+                        $q->whereIn('tipo', $values);
+                    });
+                }),
+
 
             SelectFilter::make('turno')
                 ->label('Turno')
@@ -385,10 +465,8 @@ class ProfessorService
                     blank: fn(Builder $q) => $q
                 )
                 ->indicator('Apoio'),
-
         ];
     }
-
 
     public function forcarVinculoComEscola(array $data, ?User $auth): array
     {
