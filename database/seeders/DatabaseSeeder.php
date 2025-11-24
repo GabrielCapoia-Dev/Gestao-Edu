@@ -157,6 +157,12 @@ class DatabaseSeeder extends Seeder
          * Criar séries
          */
         $seriesList = [
+            'BERÇÁRIO',
+            '1ª Etapa',
+            '2ª Etapa',
+            'JARDIM',
+            'MATERNAL I',
+            'MATERNAL II',
             'Infantil 4',
             'Infantil 5',
             '1º Ano',
@@ -204,9 +210,10 @@ class DatabaseSeeder extends Seeder
 
         $this->call([
             EscolaSeeder::class,
-            TurmaSeeder::class,
-            ProfessorSeeder::class,
-            AlunoSeeder::class,
+            AlunoPlanilhaSeeder::class,
+            // TurmaSeeder::class,
+            // ProfessorSeeder::class,
+            // AlunoSeeder::class,
         ]);
     }
 
