@@ -6,8 +6,7 @@ use App\Filament\Clusters\AlunoCluster;
 use App\Filament\Clusters\AlunoCluster\Resources\SalaDeRecursosMultifuncionaisResource\Pages;
 use App\Models\Aluno;
 use App\Models\Professor;
-use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Resources\Resource;
 use AlperenErsoy\FilamentExport\Actions\FilamentExportBulkAction;
 use Filament\Tables;
@@ -124,7 +123,19 @@ class SalaDeRecursosMultifuncionaisResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: false),
             ])
             ->filters([
-                // se quiser depois dá pra por filtro por escola/turno/etc
+                SelectFilter::make('id_escola')
+                    ->label('Escola')
+                    ->relationship('turma.escola', 'nome')
+                    ->searchable()
+                    ->columnSpan(2)
+                    ->preload(),
+
+                SelectFilter::make('id_serie')
+                    ->label('Série')
+                    ->relationship('turma.serie', 'nome')
+                    ->searchable()
+                    ->columnSpan(2)
+                    ->preload(),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),

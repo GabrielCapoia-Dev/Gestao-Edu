@@ -7,13 +7,14 @@ use App\Filament\Clusters\AlunoCluster\Resources\CaeiResource\Pages;
 use App\Models\Aluno;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use AlperenErsoy\FilamentExport\Actions\FilamentExportBulkAction;
 use Filament\Pages\SubNavigationPosition;
 use Filament\Tables\Actions\Action;
 use Illuminate\Database\Eloquent\Builder;
+use Filament\Tables\Enums\FiltersLayout;
 
 class CaeiResource extends Resource
 {
@@ -46,6 +47,7 @@ class CaeiResource extends Resource
         ];
 
         return $table
+
             ->headerActions([
                 Action::make('total_listado')
                     ->label(fn($livewire) => 'Total: ' . number_format(
@@ -157,31 +159,55 @@ class CaeiResource extends Resource
                     })
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->filtersFormColumns(12)
             ->filters([
-                Tables\Filters\SelectFilter::make('encaminhado_para_caei')
+                SelectFilter::make('id_escola')
+                    ->label('Escola')
+                    ->relationship('turma.escola', 'nome')
+                    ->searchable()
+                    ->preload()
+                    ->columnSpan(4),
+
+                SelectFilter::make('id_serie')
+                    ->label('Série')
+                    ->relationship('turma.serie', 'nome')
+                    ->searchable()
+                    ->preload()
+                    ->columnSpan(4),
+
+                SelectFilter::make('encaminhado_para_caei')
                     ->label('Encaminhado CAEI')
                     ->options([
                         'Sim' => 'Sim',
                         'Nao' => 'Não',
-                    ]),
+                    ])
+                    ->columnSpan(4),
 
-                Tables\Filters\SelectFilter::make('avanco_caei')
+                SelectFilter::make('avanco_caei')
                     ->label('Avanço CAEI')
                     ->options([
                         'Sim' => 'Sim',
                         'Nao' => 'Não',
                         'Nao está em atendimento' => 'Não está em atendimento',
-                    ]),
-                Tables\Filters\SelectFilter::make('status_psicopedagogo')
+                    ])
+                    ->columnSpan(3),
+
+                SelectFilter::make('status_psicopedagogo')
                     ->label('Psicopedagogo')
-                    ->options($opts),
-                Tables\Filters\SelectFilter::make('status_psicologo')
+                    ->options($opts)
+                    ->columnSpan(3),
+
+                SelectFilter::make('status_psicologo')
                     ->label('Psicólogo')
-                    ->options($opts),
-                Tables\Filters\SelectFilter::make('status_fonoaudiologo')
+                    ->options($opts)
+                    ->columnSpan(3),
+
+                SelectFilter::make('status_fonoaudiologo')
                     ->label('Fonoaudiólogo')
-                    ->options($opts),
-            ])
+                    ->options($opts)
+                    ->columnSpan(3),
+            ], layout: FiltersLayout::AboveContent)
+
             ->actions([])
             ->bulkActions([
                 FilamentExportBulkAction::make('exportar_xlsx')

@@ -157,6 +157,7 @@ class AlunoService
                                                     'Manhã' => 'Manhã',
                                                     'Tarde' => 'Tarde',
                                                     'Noite' => 'Noite',
+                                                    'Integral' => 'Integral',
                                                 ])
                                                 ->native(false)
                                                 ->disabled()
