@@ -14,7 +14,9 @@ use AlperenErsoy\FilamentExport\Actions\FilamentExportBulkAction;
 use Filament\Pages\SubNavigationPosition;
 use Filament\Tables\Actions\Action;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 use Filament\Tables\Enums\FiltersLayout;
+use App\Services\AlunoService;
 
 class CaeiResource extends Resource
 {
@@ -29,6 +31,11 @@ class CaeiResource extends Resource
     protected static SubNavigationPosition $subNavigationPosition = SubNavigationPosition::Top;
     protected static ?string $cluster = AlunoCluster::class;
     protected static ?int $navigationSort = 3;
+
+    public static function alunoService(): AlunoService
+    {
+        return app(AlunoService::class);
+    }
 
     public static function form(Form $form): Form
     {
@@ -45,6 +52,9 @@ class CaeiResource extends Resource
             'Sim, Desligado',
             'Não',
         ];
+
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
 
         return $table
 
@@ -159,6 +169,9 @@ class CaeiResource extends Resource
                     })
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->modifyQueryUsing(function (Builder $query) use ($user) {
+                static::alunoService()->aplicarFiltroPorEscolaDoUsuario($query, $user);
+            })
             ->filtersFormColumns(12)
             ->filters([
                 SelectFilter::make('id_escola')
