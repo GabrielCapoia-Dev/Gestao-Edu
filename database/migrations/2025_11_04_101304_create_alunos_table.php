@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('id_turma')->constrained('turmas')->restrictOnDelete();
             $table->foreignId('id_professor')->nullable()->constrained('professores')->onDelete('cascade');
             $table->string('nome');
-            $table->string('cgm')->unique();
+            $table->string('cgm');
             $table->enum('sexo', ['Masculino', 'Feminino']);
             $table->date('data_nascimento');
 
@@ -52,7 +52,8 @@ return new class extends Migration
             ])->nullable();
 
             $table->enum('avanco_caei', ['Sim', 'Nao', 'Nao está em atendimento'])->nullable();
-
+            $table->unique(['cgm', 'id_turma']);
+            
             $table->timestamps();
         });
     }

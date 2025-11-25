@@ -72,13 +72,78 @@ class AlunoService
                                 ])
                                 ->unique(ignoreRecord: true)
                                 ->maxLength(20)
-                                ->columnSpan(3),
+                                ->columnSpan(3)
+                                ->reactive()
+                                ->afterStateUpdated(function ($state, Set $set, Get $get, ?string $operation) {
+                                    // Só aplica essa lógica no CREATE
+                                    if ($operation !== 'create') {
+                                        return;
+                                    }
+
+                                    $state = trim((string) $state);
+
+                                    // Se apagou o CGM → limpa tudo e "desliga" o formulário
+                                    if ($state === '') {
+                                        $set('nome', null);
+                                        $set('sexo', null);
+                                        $set('data_nascimento', null);
+                                        $set('id_escola', null);
+                                        $set('id_turma', null);
+                                        $set('turno_turma', null);
+
+                                        $set('frequenta_srm', false);
+                                        $set('dificuldade_aprendizagem', false);
+                                        $set('encaminhado_para_SME', false);
+
+                                        return;
+                                    }
+
+                                    // Procura aluno pelo CGM
+                                    $alunoBase = Aluno::with('turma')->where('cgm', $state)->first();
+
+                                    // Se não achou ninguém com esse CGM:
+                                    if (! $alunoBase) {
+                                        // limpa campos (fica pronto para cadastro manual)
+                                        $set('nome', null);
+                                        $set('sexo', null);
+                                        $set('data_nascimento', null);
+                                        $set('id_escola', null);
+                                        $set('id_turma', null);
+                                        $set('turno_turma', null);
+
+                                        $set('frequenta_srm', false);
+                                        $set('dificuldade_aprendizagem', false);
+                                        $set('encaminhado_para_SME', false);
+
+                                        return;
+                                    }
+
+                                    // Preenche com os dados do aluno já existente
+                                    $set('nome', $alunoBase->nome);
+                                    $set('sexo', $alunoBase->sexo);
+                                    $set('data_nascimento', $alunoBase->data_nascimento);
+
+                                    $set('frequenta_srm', (bool) $alunoBase->frequenta_srm);
+                                    $set('dificuldade_aprendizagem', (bool) $alunoBase->dificuldade_aprendizagem);
+                                    $set('encaminhado_para_SME', (bool) $alunoBase->encaminhado_para_sme);
+
+                                    if ($alunoBase->turma) {
+                                        $set('id_turma', $alunoBase->id_turma);
+                                        $set('id_escola', $alunoBase->turma->id_escola);
+                                        $set('turno_turma', $alunoBase->turma->turno);
+                                    }
+                                }),
 
                             TextInput::make('nome')
                                 ->label('Nome:')
                                 ->required()
                                 ->minLength(3)
                                 ->columnSpan(3)
+                                ->disabled(
+                                    fn(Get $get, ?string $operation) =>
+                                    $operation === 'create' && blank($get('cgm'))
+                                )
+
                                 ->maxLength(100)
                                 ->rule('regex:/^[\p{L}\p{N}]+(?: [\p{L}\p{N}]+)*$/u')
                                 ->validationMessages([
@@ -88,6 +153,11 @@ class AlunoService
                             Select::make('sexo')
                                 ->label('Sexo:')
                                 ->columnSpan(3)
+                                ->disabled(
+                                    fn(Get $get, ?string $operation) =>
+                                    $operation === 'create' && blank($get('cgm'))
+                                )
+
                                 ->placeholder('Selecione')
                                 ->required()
                                 ->options([
@@ -99,6 +169,11 @@ class AlunoService
                                 ->columnSpan(3)
                                 ->label('Data de Nascimento:')
                                 ->required()
+                                ->disabled(
+                                    fn(Get $get, ?string $operation) =>
+                                    $operation === 'create' && blank($get('cgm'))
+                                )
+
                                 ->maxDate(Carbon::today()->subYears(1))
                                 ->rule(fn() => 'before_or_equal:' . Carbon::today()->subYears(1)->toDateString())
                                 ->validationMessages([
@@ -122,7 +197,21 @@ class AlunoService
                                                     $set('id_escola', $this->escolaInicialParaForm($record, Auth::user()));
                                                 })
                                                 ->dehydrated(false)
-                                                ->disabled(fn() => $this->deveTravarCampoEscola(Auth::user()))
+                                                ->disabled(function (Get $get, ?string $operation) {
+                                                    // No EDIT mantém o comportamento antigo (apenas trava pela regra de perfil)
+                                                    if ($operation !== 'create') {
+                                                        return $this->deveTravarCampoEscola(Auth::user());
+                                                    }
+
+                                                    // No CREATE: se não tiver CGM, sempre desabilita
+                                                    if (blank($get('cgm'))) {
+                                                        return true;
+                                                    }
+
+                                                    // Depois que tiver CGM, aplica regra normal de travar escola pelo perfil
+                                                    return $this->deveTravarCampoEscola(Auth::user());
+                                                })
+
                                                 ->reactive()
                                                 ->afterStateUpdated(function ($state, Set $set) {
                                                     $set('id_turma', null);
@@ -130,6 +219,7 @@ class AlunoService
                                                     $set('id_professor', null);
                                                     $set('profissional_apoio', false);
                                                 }),
+
 
                                             Select::make('id_turma')
                                                 ->label('Turma')
@@ -139,10 +229,22 @@ class AlunoService
                                                 })
                                                 ->searchable()
                                                 ->required()
-                                                ->disabled(function (Get $get, $record) {
+                                                ->disabled(function (Get $get, $record, ?string $operation) {
+                                                    // No EDIT → comportamento antigo
+                                                    if ($operation !== 'create') {
+                                                        $idEscola = $get('id_escola') ?? $record?->turma?->id_escola;
+                                                        return $this->desabilitarSelectTurma($idEscola);
+                                                    }
+
+                                                    // No CREATE: sem CGM, trava
+                                                    if (blank($get('cgm'))) {
+                                                        return true;
+                                                    }
+
                                                     $idEscola = $get('id_escola') ?? $record?->turma?->id_escola;
                                                     return $this->desabilitarSelectTurma($idEscola);
                                                 })
+
                                                 ->reactive()
                                                 ->afterStateUpdated(function ($state, Set $set) {
                                                     $set('turno_turma', Turma::whereKey($state)->value('turno'));
@@ -247,14 +349,29 @@ class AlunoService
                                 ->schema([
                                     Checkbox::make('frequenta_srm')
                                         ->columnSpan(4)
+                                        ->disabled(
+                                            fn(Get $get, ?string $operation) =>
+                                            $operation === 'create' && blank($get('cgm'))
+                                        )
+
                                         ->label('Frequenta Sala de Recursos Multifuncionais?'),
 
                                     Checkbox::make('dificuldade_aprendizagem')
                                         ->columnSpan(4)
+                                        ->disabled(
+                                            fn(Get $get, ?string $operation) =>
+                                            $operation === 'create' && blank($get('cgm'))
+                                        )
+
                                         ->label('Apresenta dificuldade na aprendizagem?'),
 
                                     Checkbox::make('encaminhado_para_SME')
                                         ->columnSpan(4)
+                                        ->disabled(
+                                            fn(Get $get, ?string $operation) =>
+                                            $operation === 'create' && blank($get('cgm'))
+                                        )
+
                                         ->label('Encaminhado(a) para a Equipe Multiprofissional da SME?'),
                                 ]),
                         ])
@@ -573,17 +690,18 @@ class AlunoService
 
     public function aplicarFiltroPorEscolaDoUsuario(Builder $query, ?User $user): Builder
     {
-        if (! $user) {
-            return $query;
-        }
-        if ($this->userService->ehAdmin($user)) {
-            return $query;
-        }
-        if (! empty($user->id_escola)) {
-            return $query->whereHas('turma', function (Builder $turmaQuery) use ($user) {
+        if ($user && ! $this->userService->ehAdmin($user) && ! empty($user->id_escola)) {
+            $query->whereHas('turma', function (Builder $turmaQuery) use ($user) {
                 $turmaQuery->where('id_escola', $user->id_escola);
             });
         }
+
+        $query->where(function (Builder $q) {
+            $q->whereHas('laudos')
+                ->orWhereNotNull('id_professor')
+                ->orWhere('frequenta_srm', true);
+        });
+
         return $query;
     }
 
@@ -774,6 +892,7 @@ class AlunoService
     {
         return [
             SelectFilter::make('id_escola')
+                ->multiple()
                 ->label('Escola')
                 ->relationship('turma.escola', 'nome')
                 ->searchable()
@@ -781,6 +900,7 @@ class AlunoService
                 ->preload(),
 
             SelectFilter::make('id_serie')
+                ->multiple()
                 ->label('Série')
                 ->relationship('turma.serie', 'nome')
                 ->searchable()
@@ -878,12 +998,58 @@ class AlunoService
                     return "Até {$max} anos";
                 }),
             SelectFilter::make('laudos')
+                ->multiple()
                 ->label('Laudo')
                 ->relationship('laudos', 'nome')
                 ->columnSpan(2)
                 ->multiple()
                 ->searchable()
                 ->preload(),
+
+            SelectFilter::make('turno')
+                ->label('Turno')
+                ->options([
+                    'Manhã'    => 'Manhã',
+                    'Tarde'    => 'Tarde',
+                    'Noite'    => 'Noite',
+                    'Integral' => 'Integral',
+                ])
+                ->columnSpan(2)
+                ->query(function (Builder $query, array $data): Builder {
+                    $turno = $data['value'] ?? null;
+
+                    if (! $turno) {
+                        return $query;
+                    }
+
+                    return $query->whereHas('turma', function (Builder $turmaQuery) use ($turno) {
+                        $turmaQuery->where('turno', $turno);
+                    });
+                }),
+
+            SelectFilter::make('tipo_escola')
+                ->multiple()
+                ->label('Tipo Unidade')
+                ->options([
+                    'CMEI'   => 'CMEI',
+                    'ESCOLA' => 'ESCOLA',
+                ])
+                ->columnSpan(2)
+                ->query(function (Builder $query, array $data): Builder {
+                    $tipos = $data['values'] ?? [];
+
+                    if (empty($tipos)) {
+                        return $query;
+                    }
+
+                    return $query->whereHas('turma.escola', function (Builder $escolaQuery) use ($tipos) {
+                        $escolaQuery->where(function (Builder $q) use ($tipos) {
+                            foreach ($tipos as $tipo) {
+                                $q->orWhere('nome', 'like', $tipo . '%');
+                            }
+                        });
+                    });
+                }),
 
             TernaryFilter::make('tem_laudos')
                 ->label('Crianças com laudos')
@@ -908,8 +1074,6 @@ class AlunoService
                 ),
         ];
     }
-
-
 
     private function acoesTabela(): array
     {
