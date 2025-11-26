@@ -30,6 +30,7 @@ class AlunoResource extends Resource
     protected static ?string $navigationLabel = 'Alunos';
     protected static ?string $pluralModelLabel = 'Alunos';
     protected static ?string $modelLabel = 'Aluno';
+    protected static ?string $slug = 'alunos';
 
     public static function alunoService(): AlunoService
     {

@@ -175,19 +175,26 @@ class DatabaseSeeder extends Seeder
          * Criar séries
          */
         $laudoList = [
-            'TRANSTORNO DO DESENVOLVIMENTO INTELECTUAL',
-            'TRANSTORNO DO ESPECTRO AUTISTA',
-            'ALTAS HABILIDADES/SUPERDOTAÇÃO',
-            'TRANSTORNO DE DÉFICIT DE ATENÇÃO E HIPERATIVIDADE',
-            'TRANSTORNO OPOSITOR DESAFIADOR',
-            'DEFICIÊNCIA AUDITIVA',
-            'SURDEZ',
-            'SURDOCEGUEIRA',
-            'DEFICIÊNCIA FÍSICA',
-            'DEFICIÊNCIA VISUAL',
-            'BAIXA VISÃO',
-            'TRANSTORNOS MENTAIS/COMPORTAMENTAIS',
-            'ATRASO NO DESENVOLVIMENTO NEUROMOTOR',
+            'Deficiência Intelectual',
+            'Transtorno do Espectro Autista (TEA)',
+            'Deficiência Física/Motora',
+            'Deficiência Visual',
+            'Cegueira',
+            'Baixa Visão',
+            'Visão Monocular',
+            'Deficiência Auditiva',
+            'Surdez',
+            'Surdocegueira',
+            'Deficiência Múltipla',
+            'Altas Habilidades/Superdotação',
+            'Transtorno de Déficit de Atenção e Hiperatividade (TDAH)',
+            'Transtorno Opositor Desafiador (TOD)',
+            'Transtornos Específicos da Aprendizagem (Dislexia, Discalculia, Disgrafia, etc.)',
+            'Transtornos da Comunicação (linguagem, fala, fluência, etc.)',
+            'Transtornos Motores do Neurodesenvolvimento (dispraxia, coordenação motora, etc.)',
+            'Atraso Global do Desenvolvimento',
+            'Atraso no Desenvolvimento Neuropsicomotor',
+            'Transtornos Mentais e do Comportamento com impacto funcional significativo'
         ];
 
         foreach ($laudoList as $laudo) {

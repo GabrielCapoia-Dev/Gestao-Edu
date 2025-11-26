@@ -13,4 +13,5 @@ class AlunoCluster extends Cluster
     protected static ?string $pluralModelLabel = 'Alunos';
     protected static ?string $modelLabel = 'Aluno';
     protected static ?string $navigationGroup = 'Gerenciamento Escolar';
+    protected static ?string $slug = 'grupo-alunos';
 }
