@@ -16,6 +16,8 @@ class ManageProfessors extends ManageRecords
     {
         return [
             Actions\CreateAction::make()
+                ->slideOver()
+                ->closeModalByClickingAway(false)
                 ->mutateFormDataUsing(function (array $data): array {
                     return app(ProfessorService::class)
                         ->forcarVinculoComEscola($data, Auth::user());
