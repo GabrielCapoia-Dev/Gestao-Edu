@@ -15,9 +15,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('id_turma')->constrained('turmas')->restrictOnDelete();
             $table->foreignId('id_professor')->nullable()->constrained('professores')->onDelete('cascade');
-            $table->foreignId('id_laudo')->nullable()->constrained('laudos')->onDelete('cascade');
             $table->string('nome');
-            $table->string('cgm')->unique();
+            $table->string('cgm');
             $table->enum('sexo', ['Masculino', 'Feminino']);
             $table->date('data_nascimento');
 
@@ -25,19 +24,36 @@ return new class extends Migration
             $table->boolean('frequenta_srm')->default(false);
 
             $table->enum('encaminhado_para_sme', ['Sim', 'Nao']);
-            
-            $table->enum('ja_foi_retido' , ['Sim', 'Nao']);
+
+            $table->enum('ja_foi_retido', ['Sim', 'Nao']);
 
             $table->enum('encaminhado_para_caei', ['Sim', 'Nao']);
-            $table->enum('encaminhado_para_especialista', ['Sim', 'Nao']);
 
-            $table->enum('status_fonoaudiologo', ['Sim', 'Nao', 'Lista de Espera'])->nullable();
-            $table->enum('status_psicologo', ['Sim', 'Nao', 'Lista de Espera'])->nullable();
-            $table->enum('status_psicopedagogo', ['Sim', 'Nao', 'Lista de Espera'])->nullable();
+            $table->enum('status_fonoaudiologo', [
+                'Sim, Lista de Espera',
+                'Sim, Em Atendimento',
+                'Sim, Desistente',
+                'Sim, Desligado',
+                'Não',
+            ])->nullable();
+            $table->enum('status_psicologo', [
+                'Sim, Lista de Espera',
+                'Sim, Em Atendimento',
+                'Sim, Desistente',
+                'Sim, Desligado',
+                'Não',
+            ])->nullable();
+            $table->enum('status_psicopedagogo', [
+                'Sim, Lista de Espera',
+                'Sim, Em Atendimento',
+                'Sim, Desistente',
+                'Sim, Desligado',
+                'Não',
+            ])->nullable();
 
             $table->enum('avanco_caei', ['Sim', 'Nao', 'Nao está em atendimento'])->nullable();
-
-            $table->string('anexo_laudo_path')->nullable();
+            $table->unique(['cgm', 'id_turma']);
+            
             $table->timestamps();
         });
     }

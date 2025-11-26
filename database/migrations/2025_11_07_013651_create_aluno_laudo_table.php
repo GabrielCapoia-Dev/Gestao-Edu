@@ -1,6 +1,5 @@
 <?php
 
-
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -20,11 +19,10 @@ return new class extends Migration
                 ->constrained('laudos')
                 ->cascadeOnDelete();
 
+            $table->string('anexo_laudo_path')->nullable();
+
             $table->timestamps();
         });
-
-        // Se já existe id_laudo em alunos e você quiser migrar dados antigos:
-        // Schema::table('aluno_laudo', function (Blueprint $table) { ... });
     }
 
     public function down(): void

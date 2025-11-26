@@ -10,8 +10,10 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
+use AlperenErsoy\FilamentExport\Actions\FilamentExportBulkAction;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Pages\SubNavigationPosition;
+use Filament\Tables\Actions\Action;
 
 class RetencaoResource extends Resource
 {
@@ -25,6 +27,7 @@ class RetencaoResource extends Resource
     protected static ?string $navigationLabel = 'Retenções';
     protected static ?string $modelLabel = 'Retenção';
     protected static ?string $pluralModelLabel = 'Retenções';
+    protected static ?int $navigationSort = 4;
 
     public static function form(Form $form): Form
     {
@@ -35,12 +38,32 @@ class RetencaoResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->headerActions([
+                Action::make('total_listado')
+                    ->label(fn($livewire) => 'Total: ' . number_format(
+                        $livewire->getFilteredTableQuery()->count(),
+                        0,
+                        ',',
+                        '.'
+                    ))
+                    ->disabled()
+                    ->color('gray')
+                    ->icon('heroicon-m-list-bullet')
+                    ->button()
+                    ->extraAttributes([
+                        'class' => 'cursor-default text-xl font-semibold',
+                    ]),
+            ])
             ->columns([
                 // Identificação do aluno
                 TextColumn::make('aluno.cgm')
                     ->label('CGM')
                     ->sortable()
-                    ->searchable(),
+                    ->searchable()
+                    ->copyable()
+                    ->copyMessage('Copiado!')
+                    ->copyableState(fn($state) => $state)
+                    ->tooltip('Clique para copiar'),
 
                 TextColumn::make('aluno.nome')
                     ->label('Aluno')
@@ -122,7 +145,21 @@ class RetencaoResource extends Resource
                 // Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
-                // Se não quiser deletar em massa, deixa vazio mesmo.
+                FilamentExportBulkAction::make('exportar_xlsx')
+                    ->label('Exportar XLSX')
+                    ->defaultFormat('xlsx')
+                    ->formatStates([
+                        'tem_carteirinha' => fn($record) => $record->tem_carteirinha ? 'Sim' : 'Não',
+                    ])
+                    ->directDownload(),
+                FilamentExportBulkAction::make('exportar_pdf')
+                    ->label('Exportar PDF')
+                    ->defaultFormat('pdf')
+                    ->color('danger')
+                    ->formatStates([
+                        'tem_carteirinha' => fn($record) => $record->tem_carteirinha ? 'Sim' : 'Não',
+                    ])
+                    ->directDownload(),
             ]);
     }
 

@@ -60,6 +60,11 @@ class DatabaseSeeder extends Seeder
             'Criar Laudos',
             'Editar Laudos',
             'Excluir Laudos',
+            'Visualizar Laudos de Aluno',
+            'Baixar Laudos de Aluno',
+            'Anexar Laudos de Aluno',
+            'Excluir Laudos de Aluno',
+            'Exportar Relatório de Alunos',
         ];
 
         $permissionsSecretario = [
@@ -152,6 +157,12 @@ class DatabaseSeeder extends Seeder
          * Criar séries
          */
         $seriesList = [
+            'BERÇÁRIO',
+            '1ª Etapa',
+            '2ª Etapa',
+            'JARDIM',
+            'MATERNAL I',
+            'MATERNAL II',
             'Infantil 4',
             'Infantil 5',
             '1º Ano',
@@ -206,7 +217,10 @@ class DatabaseSeeder extends Seeder
 
         $this->call([
             EscolaSeeder::class,
-            TurmaSeeder::class,
+            AlunoPlanilhaSeeder::class,
+            // TurmaSeeder::class,
+            // ProfessorSeeder::class,
+            // AlunoSeeder::class,
         ]);
     }
 

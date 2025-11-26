@@ -139,6 +139,7 @@ class TurmaService
                     'Manhã' => 'Manhã',
                     'Tarde' => 'Tarde',
                     'Noite' => 'Noite',
+                    'Integral' => 'Integral',
                 ]),
         ];
     }

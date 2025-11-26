@@ -26,21 +26,45 @@ class EscolaSeeder extends Seeder
 
     public function run(): void
     {
+        // Lista atualizada que você mandou
+        $cmeis = [
+            'CMEI - Cecília Meireles',
+            'CMEI - Cora Coralina',
+            'CMEI - Graciliano Ramos',
+            'CMEI - Helena Kolody',
+            'CMEI - Ignácio Urbainski',
+            'CMEI - Jardim Birigui',
+            'CMEI - Madre Paulina',
+            'CMEI - Maria Arlete Alves dos Santos',
+            'CMEI - Maria Montessori',
+            'CMEI - Maria Yokohama Watanabe',
+            'CMEI - Nelly Gonçalves',
+            'CMEI - Rachel de Queiroz',
+            'CMEI - Ranice Benedito de Araujo Teixeira',
+            'CMEI - Rubem Alves',
+            'CMEI - São Cristóvão',
+            'CMEI - São Francisco de Assis',
+            'CMEI - São Paulo Apóstolo',
+            'CMEI - Tarsila do Amaral',
+            'CMEI - Vilmar Silveira',
+        ];
+
         $municipais = [
-            'ESCOLA - Dr Ângelo Moreira da Fonseca',
-            'ESCOLA - Dr Germano Norberto da Fonseca',
-            'ESCOLA - Carlos Gomes',
+            'ESCOLA - Analides de Oliveira Caruso',
+            'ESCOLA - Benjamin Constant',
             'ESCOLA - Cândido Portinari',
+            'ESCOLA - Carlos Gomes',
+            'ESCOLA - Dr. Ângelo Moreira da Fonseca',
+            'ESCOLA - Dr. Germano Norberto Rudner',
             'ESCOLA - Evangélica',
             'ESCOLA - Jardim União',
             'ESCOLA - Malba Tahan',
             'ESCOLA - Manuel Bandeira',
+            'ESCOLA - Maria Augusta Amaral Picelli',
             'ESCOLA - Ouro Branco',
             'ESCOLA - Padre José de Anchieta',
             'ESCOLA - Papa Pio XII',
             'ESCOLA - Paulo Freire',
-            'ESCOLA - Prof Analides de Oliveira Caruso',
-            'ESCOLA - Prof Maria Augusta Amaral Picelli',
             'ESCOLA - Rui Barbosa',
             'ESCOLA - São Cristóvão',
             'ESCOLA - São Francisco de Assis',
@@ -48,31 +72,7 @@ class EscolaSeeder extends Seeder
             'ESCOLA - Senador Souza Naves',
             'ESCOLA - Serra dos Dourados',
             'ESCOLA - Tempo Integral',
-            'ESCOLA - Vinícius de Morais',
-            'ESCOLA - Benjamin Constant',
-        ];
-
-        $cmeis = [
-            'CMEI - Cora Coralina',
-            'CMEI - Cecília Meireles',
-            'CMEI - Tarsila do Amaral',
-            'CMEI - Graciliano Ramos',
-            'CMEI - Helena Kolody',
-            'CMEI - Jardim Birigui',
-            'CMEI - Madre Paulina',
-            'CMEI - Maria Arlete Alves dos Santos',
-            'CMEI - Maria Montessori',
-            'CMEI - Ignácio Urbainski',
-            'CMEI - Prof Maria Yokohama Watanabe',
-            'CMEI - Nelly Gonçalves',
-            'CMEI - Rachel de Queiroz',
-            'CMEI - Ranice Benedito de Araújo Teixeira',
-            'CMEI - Rubem Alves',
-            'CMEI - São Cristóvão',
-            'CMEI - São Francisco de Assis',
-            'CMEI - São Paulo Apóstolo',
-            'CMEI - Vilmar Silveira',
-            'CEI - Anjo da Guarda',
+            'ESCOLA - Vinicius de Morais',
         ];
 
         // Mantemos um set em memória para garantir unicidade durante o seed
@@ -91,7 +91,7 @@ class EscolaSeeder extends Seeder
             $codigosUsados[$codigo] = true;
         }
 
-        // Cadastra CMEIs/CEIs (prefixo 'C')
+        // Cadastra CMEIs (prefixo 'C')
         foreach ($cmeis as $nome) {
             $codigo = $this->gerarCodigoUnico($nome, 'C', $codigosUsados);
 
@@ -118,23 +118,23 @@ class EscolaSeeder extends Seeder
         $codigo = $prefixo . ($iniciais[0] ?? '') . ($iniciais[1] ?? '');
         $codigo = Str::upper($codigo);
 
-        if (!isset($codigosUsados[$codigo]) && !Escola::where('codigo', $codigo)->exists()) {
+        if (! isset($codigosUsados[$codigo]) && ! Escola::where('codigo', $codigo)->exists()) {
             return $codigo;
         }
 
         // tenta acrescentar 3ª, 4ª, ... iniciais
         for ($i = 2; $i < count($iniciais); $i++) {
             $alt = $codigo . Str::upper($iniciais[$i]);
-            if (!isset($codigosUsados[$alt]) && !Escola::where('codigo', $alt)->exists()) {
+            if (! isset($codigosUsados[$alt]) && ! Escola::where('codigo', $alt)->exists()) {
                 return $alt;
             }
-            $codigo = $alt; // acumula (vira E + a + b + c, se precisar)
+            $codigo = $alt; // acumula (E + A + B + C, se precisar)
         }
 
         // fallback numérico se acabaram as iniciais
         for ($n = 2; $n <= 9; $n++) {
             $alt = $codigo . $n;
-            if (!isset($codigosUsados[$alt]) && !Escola::where('codigo', $alt)->exists()) {
+            if (! isset($codigosUsados[$alt]) && ! Escola::where('codigo', $alt)->exists()) {
                 return $alt;
             }
         }
@@ -165,7 +165,7 @@ class EscolaSeeder extends Seeder
         }
 
         // remove stopwords internas
-        $uteis = $tokens->filter(fn ($t) => !in_array($t, $this->stopwords, true))->values();
+        $uteis = $tokens->filter(fn ($t) => ! in_array($t, $this->stopwords, true))->values();
 
         // se ficar vazio (caso extremo), usa os tokens originais mesmo
         if ($uteis->isEmpty()) {
@@ -178,8 +178,12 @@ class EscolaSeeder extends Seeder
             if (preg_match('/[a-z]/i', $t, $m)) {
                 return mb_substr($t, 0, 1);
             }
+
             return '';
-        })->filter()->values()->all();
+        })
+            ->filter()
+            ->values()
+            ->all();
 
         return [$iniciais, $uteis->all()];
     }
