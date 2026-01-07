@@ -29,6 +29,22 @@ class UserService
     {
         return Gate::allows('admin-only', $user);
     }
+    public function podeVerLaudos(?User $user): bool
+    {
+        return $user->hasPermissionTo('Visualizar Laudos de Aluno');
+    }
+    public function podeAnexarLaudos(?User $user): bool
+    {
+        return $user->hasPermissionTo('Anexar Laudos de Aluno');
+    }
+    public function podeExcluirLaudos(?User $user): bool
+    {
+        return $user->hasPermissionTo('Excluir Laudos de Aluno');
+    }
+    public function podeBaixarLaudos(?User $user): bool
+    {
+        return $user->hasPermissionTo('Baixar Laudos de Aluno');
+    }
 
     /** Lista os usuários que não tem a role de Admin (whereDoesntHave retorna quem não tem a role) */
     public function listarUsuariosQuery(Builder $base, ?User $user): Builder

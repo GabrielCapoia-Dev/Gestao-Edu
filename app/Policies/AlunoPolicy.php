@@ -22,7 +22,6 @@ class AlunoPolicy
     public function view(User $user, Aluno $model): bool
     {
         return $user->hasPermissionTo('Listar Alunos');
-
     }
 
     /**
@@ -30,8 +29,7 @@ class AlunoPolicy
      */
     public function create(User $user): bool
     {
-        return $user->hasPermissionTo('Criar Alunos');
-        ;
+        return $user->hasPermissionTo('Criar Alunos');;
     }
 
     /**
@@ -50,19 +48,8 @@ class AlunoPolicy
         return $user->hasPermissionTo('Excluir Alunos');
     }
 
-    // /**
-    //  * Determine whether the user can restore the model.
-    //  */
-    // public function restore(User $user, Aluno $model): bool
-    // {
-    //     return false;
-    // }
-
-    // /**
-    //  * Determine whether the user can permanently delete the model.
-    //  */
-    // public function forceDelete(User $user, Aluno $model): bool
-    // {
-    //     return false;
-    // }
+    public function exportarRelatorio(User $user, Aluno $model): bool
+    {
+        return $user->hasPermissionTo('Exportar Relatório de Alunos');
+    }
 }

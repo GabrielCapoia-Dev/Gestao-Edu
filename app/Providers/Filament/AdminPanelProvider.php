@@ -20,13 +20,16 @@ use Filament\Http\Middleware\Authenticate;
 use App\Livewire\LoginPage;
 use App\Services\UserService;
 use Hasnayeen\Themes\ThemesPlugin;
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\LaudoArquivoController;
+use Filament\Actions\Action as GlobalAction;
 
 class AdminPanelProvider extends PanelProvider
 {
 
     public static function getAuthUser()
     {
-        
+
         return Auth::user();
     }
 
