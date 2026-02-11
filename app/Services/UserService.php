@@ -2,12 +2,13 @@
 
 namespace App\Services;
 
-use App\Models\User;
 use App\Models\Escola;
+use App\Models\User;
 use App\Models\IgnoredUser;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Select;
+use Filament\Forms;
 use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
 use Filament\Tables;
@@ -17,6 +18,14 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\Models\Permission;
+use Filament\Tables\Actions\BulkAction;
+use Filament\Forms\Get;
+use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Set;
+use Filament\Tables\Actions\Action;
+use Filament\Actions\StaticAction;
+
 
 class UserService
 {
@@ -222,6 +231,77 @@ class UserService
                     $this->desabilitarCampoRole(Auth::user(), $record, $context)
                 ),
 
+
+            Toggle::make('usar_permissoes_extras')
+                ->label('Permissões adicionais')
+                ->helperText('Ative para conceder permissões específicas além do nível de acesso.')
+                ->default(
+                    fn(?User $record) =>
+                    $record?->getDirectPermissions()->isNotEmpty()
+                )
+                ->disabled(fn() => ! $this->ehAdmin(Auth::user()))
+                ->live(),
+
+            Section::make('Permissões específicas')
+                ->collapsible()
+                ->description('Permissões herdadas do nível de acesso já vêm marcadas.')
+                ->visible(fn(Get $get) => $get('usar_permissoes_extras') === true)
+                ->schema(function (?User $record) {
+
+                    $user = Auth::user();
+                    if (! $user || ! $this->ehAdmin($user)) {
+                        return [];
+                    }
+
+                    $todasPermissoes = Permission::orderBy('name')->get();
+
+                    // Permissões da role
+                    $permissoesDaRole = $record?->roles
+                        ->flatMap(fn($role) => $role->permissions)
+                        ->pluck('name')
+                        ->toArray() ?? [];
+
+                    // Permissões diretas
+                    $permissoesDiretas = $record?->getDirectPermissions()
+                        ->pluck('name')
+                        ->toArray() ?? [];
+
+                    // Agrupa pelo prefixo (primeira palavra)
+                    $agrupadas = $todasPermissoes->groupBy(function ($perm) {
+                        return explode(' ', $perm->name)[0]; // Listar, Editar, Excluir…
+                    });
+
+                    $schema = [];
+
+                    foreach ($agrupadas as $grupo => $permissoes) {
+                        $schema[] =
+                            Forms\Components\CheckboxList::make("permissions_{$grupo}")
+                            ->label($grupo)
+                            ->options(
+                                $permissoes->pluck('name', 'name')->toArray()
+                            )
+                            ->columns(3)
+                            ->afterStateHydrated(function (callable $set) use (
+                                $grupo,
+                                $permissoes,
+                                $permissoesDaRole,
+                                $permissoesDiretas
+                            ) {
+                                $valoresMarcados = collect($permissoesDaRole)
+                                    ->merge($permissoesDiretas)
+                                    ->intersect($permissoes->pluck('name'))
+                                    ->values()
+                                    ->toArray();
+
+                                $set("permissions_{$grupo}", $valoresMarcados);
+                            })
+
+                            ->dehydrated(true);
+                    }
+
+                    return $schema;
+                }),
+
             Toggle::make('email_approved')
                 ->label('Verificação de acesso')
                 ->inline(false)
@@ -348,22 +428,30 @@ class UserService
                 ->label('Escola')
                 ->wrap()
                 ->sortable()
+                ->grow(false)
                 ->searchable(),
 
             Tables\Columns\TextColumn::make('name')
                 ->label('Nome de usuário')
                 ->wrap()
                 ->sortable()
+                ->grow(false)
                 ->searchable(),
 
             Tables\Columns\TextColumn::make('email')
                 ->label('E-mail')
                 ->wrap()
+                ->copyable()
+                ->alignCenter()
+                ->copyable()
+                ->grow(false)
                 ->searchable(),
 
             Tables\Columns\ToggleColumn::make('email_approved')
-                ->label('Verificação de Acesso')
+                ->label('Verificação')
                 ->sortable()
+                ->alignCenter()
+                ->grow(false)
                 ->disabled(
                     fn(User $record) =>
                     $this->desabilitarToggleAprovacaoEmail(Auth::user(), $record)
@@ -381,7 +469,7 @@ class UserService
 
             Tables\Columns\TextColumn::make('email_verified_at')
                 ->label('Verificado em')
-                ->since()
+                ->grow(false)
                 ->sortable()
                 ->toggleable(isToggledHiddenByDefault: true)
                 ->formatStateUsing(function ($state, User $record) {
@@ -393,19 +481,19 @@ class UserService
 
             Tables\Columns\TextColumn::make('role')
                 ->label('Nivel de acesso')
+                ->alignCenter()
+                ->grow(false)
                 ->sortable()
                 ->getStateUsing(fn(User $record) => $record->roles->first()?->name ?? '-')
                 ->toggleable(isToggledHiddenByDefault: false),
 
             Tables\Columns\TextColumn::make('created_at')
                 ->label('Criado em')
-                ->since()
                 ->sortable()
                 ->toggleable(isToggledHiddenByDefault: true),
 
             Tables\Columns\TextColumn::make('updated_at')
                 ->label('Atualizado em')
-                ->since()
                 ->sortable()
                 ->toggleable(isToggledHiddenByDefault: true),
         ];
@@ -414,6 +502,75 @@ class UserService
     protected function acoesTabela(?User $user): array
     {
         return [
+            Tables\Actions\Action::make('permissoes')
+                ->label('Permissões')
+                ->icon('heroicon-o-key')
+                ->color('warning')
+                ->slideOver()
+                ->visible(function (User $record) use ($user) {
+                    // Não mostrar se for o próprio usuário
+                    if ($record->id === $user->id) {
+                        return false;
+                    }
+
+                    // Não mostrar se o usuário alvo for Admin
+                    if ($record->hasRole('Admin')) {
+                        return false;
+                    }
+
+                    // Mostrar apenas se o usuário logado tiver permissão
+                    return $user->hasPermissionTo('Aplicar Permissoes');
+                })
+                ->modalSubmitAction(false)
+                ->closeModalByClickingAway(false)
+                ->closeModalByEscaping(false)
+                ->modalCloseButton(false)
+                ->modalCancelAction(fn(StaticAction $action) => $action->label('Fechar'))
+                ->modalHeading(fn(User $record) => "Permissões do usuário")
+                ->modalDescription(fn(User $record) => "{$record->name} • {$record->email}")
+                ->modalIcon('heroicon-o-key')
+                ->form(fn(User $record) => [
+                    Toggle::make('usar_permissoes_extras')
+                        ->visible(false)
+                        ->label('Usar permissões específicas')
+                        ->default($record->getDirectPermissions()->isNotEmpty())
+                        ->live(),
+
+                    Section::make('Permissões específicas')
+                        ->collapsible()
+                        ->visible(fn(Get $get) => $get('usar_permissoes_extras'))
+                        ->schema(fn(Get $get) => [
+                            TextInput::make('buscar_permissao')
+                                ->label('Pesquisar permissão')
+                                ->placeholder('Ex: listar, editar, excluir...')
+                                ->live(debounce: 30)
+                                ->extraInputAttributes([
+                                    'onkeydown' => 'if(event.key === "Enter" || event.keyCode === 13) event.preventDefault()'
+                                ])
+                                ->dehydrated(false),
+
+                            ...$this->checkboxesPermissoesAutoSave($record, $get, $user),
+                        ]),
+                ])
+                ->action(function (User $record, array $data) {
+                    if (empty($data['usar_permissoes_extras'])) {
+                        $record->syncPermissions([]);
+                        return;
+                    }
+
+                    $permissoesSelecionadas = collect($data)
+                        ->filter(fn($_, $key) => str_starts_with($key, 'permissions_'))
+                        ->flatten()
+                        ->unique()
+                        ->values()
+                        ->toArray();
+
+                    if (empty($permissoesSelecionadas)) {
+                        return;
+                    }
+                    $record->syncPermissions($permissoesSelecionadas);
+                }),
+
             Tables\Actions\EditAction::make(),
             Tables\Actions\DeleteAction::make()
                 ->before(function (User $record, Tables\Actions\DeleteAction $action) use ($user) {
@@ -435,6 +592,67 @@ class UserService
     protected function acoesEmMassa(?User $user): array
     {
         return [
+            Tables\Actions\BulkAction::make('permissoes_em_massa')
+                ->label('Editar permissões')
+                ->icon('heroicon-o-key')
+                ->color('warning')
+                ->slideOver()
+                ->visible(function () use ($user) {
+                    return $user->hasPermissionTo('Aplicar Permissoes');
+                })
+                ->closeModalByClickingAway(false)
+                ->closeModalByEscaping(false)
+                ->modalCloseButton(false)
+                ->modalCancelAction(fn(StaticAction $action) => $action->label('Fechar'))
+                ->modalHeading('Editar permissões em massa')
+                ->modalDescription('As permissões selecionadas serão aplicadas aos usuários escolhidos.')
+                ->modalIcon('heroicon-o-key')
+                ->form(fn() => [
+                    Toggle::make('substituir')
+                        ->label('Substituir permissões existentes')
+                        ->visible(false)
+                        ->default(true),
+
+                    Section::make('Permissões')
+                        ->collapsible()
+                        ->schema(fn(Get $get) => [
+                            TextInput::make('buscar_permissao')
+                                ->label('Pesquisar permissão')
+                                ->placeholder('Ex: listar, editar, excluir...')
+                                ->live(debounce: 100)
+                                ->extraInputAttributes([
+                                    'onkeydown' => 'if(event.key === "Enter" || event.keyCode === 13) event.preventDefault()'
+                                ])
+                                ->dehydrated(false),
+
+                            ...$this->checkboxesPermissoesEmMassa($get, $user),
+                        ]),
+                ])
+                ->action(function ($records, array $data) {
+                    $permissoesSelecionadas = collect($data)
+                        ->filter(fn($_, $key) => str_starts_with($key, 'permissions_'))
+                        ->flatten()
+                        ->unique()
+                        ->values()
+                        ->toArray();
+
+                    if (empty($permissoesSelecionadas)) {
+                        return;
+                    }
+
+                    foreach ($records as $user) {
+                        if ($user->hasRole('Admin')) {
+                            continue;
+                        }
+
+                        if ($data['substituir']) {
+                            $user->syncPermissions($permissoesSelecionadas);
+                        } else {
+                            $user->givePermissionTo($permissoesSelecionadas);
+                        }
+                    }
+                }),
+
             Tables\Actions\DeleteBulkAction::make()
                 ->before(function ($records, $action) use ($user) {
                     if (! $this->podeDeletarEmLote($user, $records)) {
@@ -443,5 +661,177 @@ class UserService
                 })
                 ->visible(fn() => $this->ehAdmin(Auth::user())),
         ];
+    }
+
+    protected function checkboxesPermissoesAutoSave(User $record, Get $get, User $userLogado): array
+    {
+        $busca = strtolower($get('buscar_permissao') ?? '');
+
+        // Pegar permissões do usuário logado
+        $permissoesDoUsuario = $userLogado->hasRole('Admin')
+            ? Permission::query()
+            : Permission::whereIn('name', $userLogado->getAllPermissions()->pluck('name'));
+
+        $todas = $permissoesDoUsuario
+            ->orderBy('name')
+            ->when(
+                $busca,
+                fn($q) => $q->whereRaw('LOWER(name) LIKE ?', ["%{$busca}%"])
+            )
+            // Remover "Aplicar Permissoes" se não for Admin
+            ->when(
+                !$userLogado->hasRole('Admin'),
+                fn($q) => $q->where('name', '!=', 'Aplicar Permissoes')
+            )
+            ->get();
+
+        $porGrupo = $todas->groupBy(fn($p) => explode(' ', $p->name)[0]);
+
+        $schema = [];
+
+        foreach ($porGrupo as $grupo => $permissoes) {
+            $schema[] = CheckboxList::make("permissions_{$grupo}")
+                ->label($grupo)
+                ->options($permissoes->pluck('name', 'name')->toArray())
+                ->columns(3)
+                ->default(
+                    $record->getAllPermissions()
+                        ->pluck('name')
+                        ->intersect($permissoes->pluck('name'))
+                        ->values()
+                        ->toArray()
+                )
+                ->live()
+                ->afterStateUpdated(function (?array $state) use ($record, $permissoes) {
+                    $atuais = $record->getDirectPermissions()->pluck('name');
+                    $novas = collect($state ?? []);
+                    $remover = $permissoes->pluck('name')->diff($novas);
+                    $adicionar = $novas->diff($atuais);
+
+                    if ($remover->isNotEmpty()) {
+                        $record->revokePermissionTo($remover->toArray());
+                    }
+
+                    if ($adicionar->isNotEmpty()) {
+                        $record->givePermissionTo($adicionar->toArray());
+                    }
+                });
+        }
+
+        return $schema;
+    }
+
+    protected function checkboxesPermissoesEmMassa(Get $get, User $userLogado): array
+    {
+        $busca = strtolower($get('buscar_permissao') ?? '');
+
+        // Pegar permissões do usuário logado
+        $permissoesDoUsuario = $userLogado->hasRole('Admin')
+            ? Permission::query()
+            : Permission::whereIn('name', $userLogado->getAllPermissions()->pluck('name'));
+
+        $todas = $permissoesDoUsuario
+            ->orderBy('name')
+            ->when(
+                $busca,
+                fn($q) => $q->whereRaw('LOWER(name) LIKE ?', ["%{$busca}%"])
+            )
+            // Remover "Aplicar Permissoes" se não for Admin
+            ->when(
+                !$userLogado->hasRole('Admin'),
+                fn($q) => $q->where('name', '!=', 'Aplicar Permissoes')
+            )
+            ->get();
+
+        $porGrupo = $todas->groupBy(fn($p) => explode(' ', $p->name)[0]);
+
+        $schema = [];
+
+        foreach ($porGrupo as $grupo => $permissoes) {
+            $schema[] = CheckboxList::make("permissions_{$grupo}")
+                ->label($grupo)
+                ->options($permissoes->pluck('name', 'name')->toArray())
+                ->columns(3);
+        }
+
+        return $schema;
+    }
+
+    /**
+     * Filtro genérico por escola (para Resources que não são Turma)
+     */
+    public function aplicarFiltroPorEscolaDoUsuario(Builder $query, ?User $user): Builder
+    {
+        if (!$user || $this->ehAdmin($user)) {
+            if (!$user || $this->ehAdmin($user)) {
+                return $query;
+            }
+
+            if ($user->ehProfessor()) {
+                $escolasIds = $user->professores->pluck('id_escola')->unique()->toArray();
+                return $query->whereIn('id_escola', $escolasIds);
+            }
+
+            if (!empty($user->id_escola)) {
+                return $query->where('id_escola', $user->id_escola);
+            }
+        }
+        return $query;
+    }
+
+    /**
+     * Filtro específico para Turmas - Professor só vê turmas onde leciona
+     */
+    public function aplicarFiltroTurmasDoUsuario(Builder $query, ?User $user): Builder
+    {
+        if (!$user || $this->ehAdmin($user)) {
+            return $query;
+        }
+
+        if ($user->ehProfessor()) {
+            $professoresIds = $user->professores->pluck('id')->toArray();
+
+            return $query->whereHas('componentes', function ($q) use ($professoresIds) {
+                $q->whereIn('turma_componente_professor.professor_id', $professoresIds);
+            });
+        }
+
+        // Secretário/usuário comum: vê todas as turmas da escola
+        if (!empty($user->id_escola)) {
+            return $query->where('id_escola', $user->id_escola);
+        }
+
+
+        return $query;
+    }
+
+    public function aplicarFiltroAlunosDaEscolaDoUsuario(
+        Builder $query,
+        ?User $user
+    ): Builder {
+        if (! $user || $this->ehAdmin($user)) {
+            return $query;
+        }
+
+        // Professor → alunos das turmas onde leciona
+        if ($user->ehProfessor()) {
+            $professoresIds = $user->professores->pluck('id')->toArray();
+
+            return $query->whereHas('turma.componentes', function ($q) use ($professoresIds) {
+                $q->whereIn(
+                    'turma_componente_professor.professor_id',
+                    $professoresIds
+                );
+            });
+        }
+
+        // Usuário comum → alunos da escola vinculada
+        if (! empty($user->id_escola)) {
+            return $query->whereHas('turma', function ($q) use ($user) {
+                $q->where('id_escola', $user->id_escola);
+            });
+        }
+
+        return $query;
     }
 }
