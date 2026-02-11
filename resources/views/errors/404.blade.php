@@ -274,7 +274,7 @@
                 <img src="{{ asset('images/logo-educação-especial.png') }}" alt="Educação Especial">
             </div>
             <div class="header-title">
-                <div class="system-name">Educação Especial Centralizada</div>
+                <div class="system-name">Educação Especial</div>
                 <div class="system-desc">Atendimento Especializado e Inclusivo</div>
             </div>
         </div>

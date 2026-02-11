@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema SRM - Sala de Recursos Multifuncionais</title>
+    <title>Sistema de Educação Especial | SRM - Umuarama</title>
+
     <style>
         * {
             margin: 0;
@@ -12,276 +14,546 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #f0f7ff 0%, #e6f2ff 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-
-        .container {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background: #ffffff;
-            border-radius: 24px;
-            box-shadow: 0 10px 40px rgba(7, 79, 155, 0.1);
-            max-width: 600px;
-            width: 100%;
-            padding: 60px 50px;
+            color: #1a1a1a;
+            overflow-x: hidden;
+        }
+
+        /* Header Hero Section */
+        .hero {
+            background: linear-gradient(135deg, #074F9B 0%, #0d5db8 50%, #1a6fd1 100%);
+            padding: 20px;
             text-align: center;
-            border: 1px solid rgba(7, 79, 155, 0.08);
-        }
-
-        .logo-wrapper {
-            margin-bottom: 35px;
-        }
-
-        .logo {
-            max-width: 120px;
-            width: 100%;
-            height: auto;
-            filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.08));
-        }
-
-        .badge {
-            display: inline-block;
-            background: linear-gradient(135deg, #074F9B 0%, #0a63c4 100%);
             color: white;
-            padding: 8px 24px;
-            border-radius: 50px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            margin-bottom: 20px;
-            text-transform: uppercase;
-            box-shadow: 0 4px 12px rgba(7, 79, 155, 0.2);
-        }
-
-        h1 {
-            color: #074F9B;
-            font-size: 2.5rem;
-            margin-bottom: 15px;
-            font-weight: 700;
-            line-height: 1.2;
-        }
-
-        .subtitle {
-            color: #0a63c4;
-            font-size: 1.3rem;
-            margin-bottom: 25px;
-            font-weight: 500;
-        }
-
-        .description {
-            color: #4a5568;
-            font-size: 1.05rem;
-            margin-bottom: 35px;
-            line-height: 1.8;
-            max-width: 500px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        .features {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 15px;
-            margin-bottom: 40px;
-            text-align: left;
-        }
-
-        .feature-item {
-            background: #f8fbff;
-            padding: 18px 20px;
-            border-radius: 12px;
-            border-left: 4px solid #074F9B;
-            transition: all 0.3s ease;
-        }
-
-        .feature-item:hover {
-            background: #f0f7ff;
-            transform: translateX(5px);
-        }
-
-        .feature-icon {
-            display: inline-block;
-            width: 24px;
-            height: 24px;
-            background: #074F9B;
-            border-radius: 50%;
-            margin-right: 12px;
-            vertical-align: middle;
             position: relative;
+            overflow: hidden;
         }
 
-        .feature-icon::after {
-            content: '✓';
-            color: white;
+        .hero::before {
+            content: '';
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 14px;
-            font-weight: bold;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="2" fill="rgba(255,255,255,0.1)"/></svg>');
+            opacity: 0.3;
         }
 
-        .feature-text {
-            display: inline-block;
-            vertical-align: middle;
-            color: #2d3748;
-            font-size: 0.95rem;
-            font-weight: 500;
-            max-width: calc(100% - 40px);
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 900px;
+            margin: auto;
         }
 
-        .btn-access {
+        .logo-container {
+            animation: fadeInDown 0.8s ease;
+        }
+
+        .logo-container img {
+            max-width: 360px;
+        }
+
+        .hero h1 {
+            font-size: 3.2rem;
+            font-weight: 800;
+            margin-bottom: 25px;
+            line-height: 1.2;
+            animation: fadeInUp 0.8s ease 0.2s both;
+        }
+
+        .hero p {
+            font-size: 1.3rem;
+            opacity: 0.95;
+            line-height: 1.6;
+            margin-bottom: 40px;
+            animation: fadeInUp 0.8s ease 0.4s both;
+        }
+
+        .cta-button {
             display: inline-block;
-            background: linear-gradient(135deg, #074F9B 0%, #0a63c4 100%);
-            color: white;
-            text-decoration: none;
-            padding: 18px 60px;
-            border-radius: 12px;
+            background: white;
+            color: #074F9B;
+            padding: 18px 50px;
+            border-radius: 50px;
+            font-weight: 700;
             font-size: 1.1rem;
-            font-weight: 600;
+            text-decoration: none;
             transition: all 0.3s ease;
-            box-shadow: 0 6px 20px rgba(7, 79, 155, 0.3);
-            border: none;
-            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            animation: fadeInUp 0.8s ease 0.6s both;
         }
 
-        .btn-access:hover {
-            background: linear-gradient(135deg, #063d7a 0%, #0851a0 100%);
-            box-shadow: 0 8px 25px rgba(7, 79, 155, 0.4);
-            transform: translateY(-2px);
+        .cta-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+            background: #f0f9ff;
         }
 
-        .btn-access:active {
-            transform: translateY(0);
-        }
-
-        .footer {
-            margin-top: 50px;
-            padding-top: 30px;
+        /* Stats Section */
+        .stats {
+            background: #f8fafc;
+            padding: 60px 20px;
             border-top: 1px solid #e2e8f0;
         }
 
-        .footer-text {
-            color: #718096;
-            font-size: 0.9rem;
-            font-weight: 500;
+        .stats-container {
+            max-width: 1100px;
+            margin: auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 40px;
+            text-align: center;
         }
 
-        .footer-subtext {
-            color: #a0aec0;
-            font-size: 0.85rem;
-            margin-top: 8px;
+        .stat-item h3 {
+            font-size: 2.5rem;
+            color: #074F9B;
+            font-weight: 800;
+            margin-bottom: 8px;
         }
 
-        @media (max-width: 768px) {
-            .container {
-                padding: 45px 35px;
+        .stat-item p {
+            color: #64748b;
+            font-size: 1rem;
+        }
+
+        /* Features Section */
+        .section {
+            padding: 90px 20px;
+            max-width: 1200px;
+            margin: auto;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 70px;
+        }
+
+        .section-header h2 {
+            font-size: 2.5rem;
+            color: #0f172a;
+            margin-bottom: 15px;
+            font-weight: 800;
+        }
+
+        .section-header p {
+            font-size: 1.1rem;
+            color: #64748b;
+            max-width: 600px;
+            margin: auto;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 35px;
+        }
+
+        .feature-card {
+            background: white;
+            padding: 40px 35px;
+            border-radius: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+            transition: all 0.3s ease;
+            border: 1px solid #e2e8f0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, #074F9B, #1a6fd1);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 35px rgba(7, 79, 155, 0.15);
+        }
+
+        .feature-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #074F9B, #1a6fd1);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 25px;
+            font-size: 1.8rem;
+        }
+
+        .feature-card h3 {
+            margin-bottom: 15px;
+            color: #0f172a;
+            font-size: 1.4rem;
+            font-weight: 700;
+        }
+
+        .feature-card p {
+            font-size: 1rem;
+            line-height: 1.7;
+            color: #475569;
+        }
+
+       /* Benefits Section */
+        .benefits {
+            padding: 60px 40px;
+            border-radius: 24px;
+            background: linear-gradient(135deg, #f8fafc 0%, #e0f2fe 100%);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        /* CTA Section */
+        .cta-section {
+            background: linear-gradient(-225deg, #f8fafc 0%, #e0f2fe 100%);
+            color: #074F9B;
+            text-align: center;
+            padding: 90px 20px;
+            position: relative;
+            overflow: hidden;
+            margin-top: 60px;
+        }
+
+        .cta-section::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 500px;
+            height: 500px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 50%;
+        }
+
+        .cta-content {
+            position: relative;
+            z-index: 1;
+            max-width: 700px;
+            margin: auto;
+        }
+
+        .cta-section h2 {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            font-weight: 800;
+        }
+
+        .cta-section p {
+            font-size: 1.2rem;
+            margin-bottom: 35px;
+            opacity: 0.95;
+        }
+
+        /* Footer */
+        footer {
+            padding: 50px 20px;
+            background: #074F9B;
+            color: #94a3b8;
+        }
+
+        .footer-container {
+            max-width: 1200px;
+            margin: auto;
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .footer-left {
+            text-align: left;
+        }
+
+        .footer-center {
+            text-align: center;
+        }
+
+        .footer-right {
+            text-align: right;
+        }
+
+        .footer-logo-img {
+            max-width: 200px;
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+        }
+
+        .footer-logo-img:hover {
+            opacity: 1;
+        }
+
+        footer p {
+            margin-bottom: 8px;
+        }
+
+        @media(max-width: 768px) {
+            .footer-container {
+                grid-template-columns: 1fr;
+                gap: 30px;
             }
 
-            h1 {
-                font-size: 2rem;
+            .footer-left,
+            .footer-right {
+                text-align: center;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
             }
 
-            .subtitle {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Responsive */
+        @media(max-width: 768px) {
+            .hero h1 {
+                font-size: 2.2rem;
+            }
+
+            .hero p {
                 font-size: 1.1rem;
             }
 
-            .description {
-                font-size: 1rem;
+            .section-header h2 {
+                font-size: 2rem;
             }
 
-            .btn-access {
-                padding: 16px 50px;
-                font-size: 1rem;
+            .cta-section h2 {
+                font-size: 2rem;
             }
 
-            .logo {
-                max-width: 100px;
-            }
-
-            .badge {
-                font-size: 0.8rem;
-                padding: 7px 20px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .container {
-                padding: 35px 25px;
-                border-radius: 20px;
-            }
-
-            h1 {
-                font-size: 1.7rem;
-            }
-
-            .subtitle {
-                font-size: 1rem;
-            }
-
-            .description {
-                font-size: 0.95rem;
-            }
-
-            .logo {
-                max-width: 90px;
-            }
-
-            .btn-access {
-                padding: 15px 40px;
-                width: 100%;
-            }
-
-            .feature-item {
-                padding: 15px 18px;
-            }
-
-            .feature-text {
-                font-size: 0.9rem;
+            .stat-item h3 {
+                font-size: 2rem;
             }
         }
     </style>
 </head>
+
 <body>
-    <div class="container">
-        <div class="logo-wrapper">
-            <img src="/images/brasao-umuarama.png" alt="Brasão Umuarama" class="logo">
-        </div>
-        
-        <div class="badge">SRM-Gestão</div>
-        <h1>Bem-vindo ao Sistema SRM</h1>
-        <p class="subtitle">Sala de Recursos Multifuncionais</p>
-        <p class="description">
-            Plataforma completa para gestão e acompanhamento pedagógico de estudantes atendidos pela educação especial, promovendo inclusão e desenvolvimento personalizado.
-        </p>
-        
-        <div class="features">
-            <div class="feature-item">
-                <span class="feature-icon"></span>
-                <span class="feature-text">Acompanhamento individualizado de estudantes</span>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <div class="logo-container">
+                <img src="/images/brasao-umuarama.png" alt="Brasão Município de Umuarama">
             </div>
-            <div class="feature-item">
-                <span class="feature-icon"></span>
-                <span class="feature-text">Registro e análise de dados pedagógicos</span>
+            <h1>Sistema de Educação Especial</h1>
+            <p>
+                Plataforma completa para gestão pedagógica das Salas de Recursos Multifuncionais,
+                garantindo acompanhamento individualizado e excelência no atendimento educacional especializado.
+            </p>
+            <a href="/admin/login" class="cta-button">Acessar o Sistema →</a>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="stats">
+        <div class="stats-container">
+            <div class="stat-item">
+                <h3>100%</h3>
+                <p>Digital</p>
             </div>
-            <div class="feature-item">
-                <span class="feature-icon"></span>
-                <span class="feature-text">Gestão integrada de recursos multifuncionais</span>
+            <div class="stat-item">
+                <h3>Seguro</h3>
+                <p>Dados Protegidos</p>
+            </div>
+            <div class="stat-item">
+                <h3>Integrado</h3>
+                <p>Sistema Único</p>
             </div>
         </div>
-        
-        <a href="/admin/login" class="btn-access">
-            Acessar o Sistema
-        </a>
-        
-        <div class="footer">
-            <div class="footer-text">Prefeitura Municipal de Umuarama</div>
-            <div class="footer-subtext">Secretaria de Educação</div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="section">
+        <div class="section-header">
+            <h2>Funcionalidades Principais</h2>
+            <p>Tudo que você precisa para uma gestão pedagógica eficiente e humanizada</p>
         </div>
-    </div>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">📋</div>
+                <h3>Acompanhamento Individual</h3>
+                <p>
+                    Registro completo do desenvolvimento dos estudantes com planos
+                    personalizados, metas definidas e histórico evolutivo detalhado.
+                </p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">🏫</div>
+                <h3>Gestão de Atendimento SRM</h3>
+                <p>
+                    Organização eficiente de turmas, horários, profissionais e recursos
+                    das Salas de Recursos Multifuncionais.
+                </p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <h3>Relatórios Gerenciais</h3>
+                <p>
+                    Indicadores pedagógicos estratégicos e relatórios personalizados
+                    para apoio à tomada de decisão da Secretaria de Educação.
+                </p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">✅</div>
+                <h3>Registro de Avaliações</h3>
+                <p>
+                    Controle completo de avaliações diagnósticas, planos de intervenção
+                    e acompanhamento contínuo de metas educacionais.
+                </p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">👥</div>
+                <h3>Perfis Personalizados</h3>
+                <p>
+                    Diferentes níveis de acesso para professores, coordenadores,
+                    gestores e equipe técnica da Secretaria.
+                </p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">🔔</div>
+                <h3>Notificações Inteligentes</h3>
+                <p>
+                    Alertas automáticos para prazos, avaliações pendentes e
+                    atualizações importantes no sistema.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Benefits Section -->
+    <section class="section benefits">
+        <div class="section-header">
+            <h2>Benefícios para sua Escola</h2>
+            <p>Transforme a gestão da educação especial com tecnologia e eficiência</p>
+        </div>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">🎯</div>
+                <h3>Centralização de Dados</h3>
+                <p>
+                    Todas as informações pedagógicas, documentos e históricos
+                    reunidos em um único sistema seguro e acessível.
+                </p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">🔍</div>
+                <h3>Transparência Total</h3>
+                <p>
+                    Histórico completo de atendimentos, intervenções e evolução
+                    dos estudantes com rastreabilidade total.
+                </p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">⚡</div>
+                <h3>Eficiência Administrativa</h3>
+                <p>
+                    Redução significativa de retrabalho, padronização de processos
+                    e otimização do tempo dos profissionais.
+                </p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">🔒</div>
+                <h3>Segurança e Privacidade</h3>
+                <p>
+                    Proteção de dados sensíveis conforme LGPD, com backups
+                    automáticos e controle de acesso rigoroso.
+                </p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">📱</div>
+                <h3>Acesso Responsivo</h3>
+                <p>
+                    Interface adaptável para computadores, tablets e smartphones,
+                    permitindo trabalho em qualquer lugar.
+                </p>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">💡</div>
+                <h3>Suporte Dedicado</h3>
+                <p>
+                    Equipe técnica disponível para treinamento, suporte e
+                    atualização contínua da plataforma.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <div class="cta-content">
+            <h2>Acesso Restrito aos Profissionais da Educação</h2>
+            <p>
+                Entre com suas credenciais para acessar o sistema completo de
+                gestão da educação especial de Umuarama.
+            </p>
+            <a href="/admin/login" class="cta-button">Fazer Login no Sistema</a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-container">
+            <div class="footer-left">
+                <img src="/images/brasao-umuarama.png" alt="Brasão Município de Umuarama" class="footer-logo-img">
+            </div>
+
+            <div class="footer-center">
+                <p style="font-weight: 600; color: #cbd5e1; font-size: 1.1rem;">Prefeitura Municipal de Umuarama</p>
+                <p>Secretaria Municipal de Educação</p>
+                <p style="margin-top: 20px; font-size: 0.9rem;">Sistema de Educação Especial © 2024</p>
+            </div>
+
+            <div class="footer-right">
+                <img src="/images/abrinq-logo.png" alt="Fundação Abrinq" class="footer-logo-img">
+            </div>
+        </div>
+    </footer>
+
 </body>
+
 </html>
