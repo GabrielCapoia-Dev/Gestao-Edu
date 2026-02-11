@@ -3,54 +3,62 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: laravel-app-srm-gestao
-    container_name: laravel-app-srm-gestao
-    restart: unless-stopped
+    image: laravel-app-educacao-especial
+    container_name: laravel-app-educacao-especial
     working_dir: /var/www
     ports:
-      - "8000:8000"
+      - "8020:8020"
     volumes:
       - .:/var/www
       - vendor:/var/www/vendor
       - node_modules:/var/www/node_modules
-    command: sh -lc "php artisan serve --host=0.0.0.0 --port=8000"
     depends_on:
       db:
         condition: service_healthy
     networks:
-      - laravel_srm-gestao
+      - laravel_educacao-especial
 
   db:
     image: mysql:8.0
-    container_name: laravel-db-srm-gestao
-    restart: unless-stopped
+    container_name: laravel-db-educacao-especial
     environment:
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: srm-gestao
+      MYSQL_DATABASE: educacao-especial
     volumes:
       - db_data:/var/lib/mysql
     ports:
-      - "3307:3306"
+      - "3309:3306"
     healthcheck:
       test: [ "CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-proot" ]
       interval: 5s
       timeout: 5s
       retries: 20
     networks:
-      - laravel_srm-gestao
+      - laravel_educacao-especial
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
-    container_name: laravel-phpmyadmin-srm-gestao
-    restart: unless-stopped
+    container_name: laravel-phpmyadmin-educacao-especial
+    environment:
+      PMA_HOST: db
+      PMA_USER: root
+      PMA_PASSWORD: root
     ports:
-      - "8081:80"
+      - "8085:80"
     depends_on:
       db:
         condition: service_healthy
     networks:
-      - laravel_srm-gestao
+      - laravel_educacao-especial
 
+  redis:
+    image: redis:7
+    container_name: laravel-redis-educacao-especial
+    ports:
+      - "6381:6379"
+    networks:
+      - laravel_educacao-especial
+      
 volumes:
   db_data:
   vendor:
@@ -58,5 +66,5 @@ volumes:
 
 
 networks:
-  laravel_srm-gestao:
+  laravel_educacao-especial:
     driver: bridge
