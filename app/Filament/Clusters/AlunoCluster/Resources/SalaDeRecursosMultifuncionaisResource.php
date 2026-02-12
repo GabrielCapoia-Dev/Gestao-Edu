@@ -13,7 +13,9 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Pages\SubNavigationPosition;
+use Illuminate\Support\Facades\Auth;
 use Filament\Tables\Actions\Action;
+use App\Services\AlunoService;
 
 class SalaDeRecursosMultifuncionaisResource extends Resource
 {
@@ -41,9 +43,17 @@ class SalaDeRecursosMultifuncionaisResource extends Resource
                 'turma.serie',
             ]);
     }
-
+    public static function alunoService(): AlunoService
+    {
+        return app(AlunoService::class);
+    }
     public static function table(Table $table): Table
     {
+
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+
         return $table
             ->headerActions([
                 Action::make('total_listado')
@@ -61,6 +71,9 @@ class SalaDeRecursosMultifuncionaisResource extends Resource
                         'class' => 'cursor-default text-xl font-semibold',
                     ]),
             ])
+            ->modifyQueryUsing(function (Builder $query) use ($user) {
+                static::alunoService()->aplicarFiltroPorEscolaDoUsuario($query, $user);
+            })
             ->columns([
 
                 Tables\Columns\TextColumn::make('turma.escola.nome')
@@ -127,6 +140,13 @@ class SalaDeRecursosMultifuncionaisResource extends Resource
                     ->label('Escola')
                     ->relationship('turma.escola', 'nome')
                     ->searchable()
+                    ->visible(
+                        function () {
+                            /** @var App\Models\User $user */
+                            $user = Auth::user();
+                            return $user->hasPermissionTo('Filtrar Alunos por Escola');
+                        }
+                    )
                     ->columnSpan(2)
                     ->preload(),
 

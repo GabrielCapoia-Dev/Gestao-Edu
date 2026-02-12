@@ -178,6 +178,11 @@ class CaeiResource extends Resource
                     ->label('Escola')
                     ->relationship('turma.escola', 'nome')
                     ->searchable()
+                    ->visible(function () {
+                        /** @var App\Models\User $user */
+                        $user = Auth::user();
+                        return $user->hasPermissionTo('Filtrar Alunos por Escola');
+                    })
                     ->preload()
                     ->columnSpan(4),
 
@@ -220,12 +225,16 @@ class CaeiResource extends Resource
                     ->options($opts)
                     ->columnSpan(3),
             ], layout: FiltersLayout::AboveContent)
-
             ->actions([])
             ->bulkActions([
                 FilamentExportBulkAction::make('exportar_xlsx')
                     ->label('Exportar XLSX')
                     ->defaultFormat('xlsx')
+                    ->visible(function () {
+                        /** @var App\Models\User $user */
+                        $user = Auth::user();
+                        return $user->hasPermissionTo('Exportar Alunos');
+                    })
                     ->formatStates([
                         'tem_carteirinha' => fn($record) => $record->tem_carteirinha ? 'Sim' : 'Não',
                     ])
@@ -234,6 +243,11 @@ class CaeiResource extends Resource
                     ->label('Exportar PDF')
                     ->defaultFormat('pdf')
                     ->color('danger')
+                    ->visible(function () {
+                        /** @var App\Models\User $user */
+                        $user = Auth::user();
+                        return $user->hasPermissionTo('Exportar Alunos');
+                    })
                     ->formatStates([
                         'tem_carteirinha' => fn($record) => $record->tem_carteirinha ? 'Sim' : 'Não',
                     ])
