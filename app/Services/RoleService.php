@@ -11,8 +11,6 @@ class RoleService
     {
         $roles = [
             'Admin',
-            'Secretario',
-            'Usuario'
         ];
 
         foreach ($roles as $role) {
@@ -32,8 +30,27 @@ class RoleService
 
         $roles = [
             'Admin',
-            'Secretario',
-            'Usuario'
+            'Secretário',
+        ];
+
+        foreach ($roles as $role) {
+            if ($record->name == $role) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function bloquearCampoEdit($record, $context): bool
+    {
+
+        if ($context == 'create') {
+            return false;
+        }
+
+        $roles = [
+            'Admin',
         ];
 
         foreach ($roles as $role) {
@@ -49,8 +66,7 @@ class RoleService
         
         $roles = [
             'Admin',
-            'Secretario',
-            'Usuario'
+            'Secretário',
         ];
 
         foreach ($roles as $role) {
@@ -64,7 +80,7 @@ class RoleService
 
     public function bloquearSelecaoBulkActions($record): bool
     {
-        $bloqueados = ['Admin', 'Secretario', 'Usuario'];
+        $bloqueados = ['Admin', 'Secretário'];
         return !in_array($record->name, $bloqueados);
     }
     

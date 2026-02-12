@@ -29,6 +29,17 @@ use Filament\Actions\StaticAction;
 
 class UserService
 {
+
+    protected $user;
+
+    public function __construct()
+    {
+        /** @var \App\Models\User */
+        $user = Auth::user();
+
+        $this->user = $user;
+    }
+
     /** 
      * Metodos Publicos 
      */
@@ -178,6 +189,7 @@ class UserService
                 ->disabled()
                 ->dehydrated()
                 ->numeric()
+                ->visible(false)
                 ->minValue(100),
 
             TextInput::make('name')
@@ -231,7 +243,18 @@ class UserService
                     $this->desabilitarCampoRole(Auth::user(), $record, $context)
                 ),
 
-
+            Toggle::make('email_approved')
+                ->label('Verificação de acesso')
+                ->inline(false)
+                ->onColor('success')
+                ->offColor('danger')
+                ->onIcon('heroicon-s-check')
+                ->offIcon('heroicon-s-x-mark')
+                ->default(true)
+                ->visible(
+                    fn(?User $record, string $context) =>
+                    $this->podeVerToggleAprovacaoEmail(Auth::user(), $record, $context)
+                ),
             Toggle::make('usar_permissoes_extras')
                 ->label('Permissões adicionais')
                 ->helperText('Ative para conceder permissões específicas além do nível de acesso.')
@@ -239,6 +262,10 @@ class UserService
                     fn(?User $record) =>
                     $record?->getDirectPermissions()->isNotEmpty()
                 )
+                ->onColor('warning')
+                ->offColor('info')
+                ->onIcon('heroicon-s-lock-open')
+                ->offIcon('heroicon-s-lock-closed')
                 ->disabled(fn() => ! $this->ehAdmin(Auth::user()))
                 ->live(),
 
@@ -302,18 +329,7 @@ class UserService
                     return $schema;
                 }),
 
-            Toggle::make('email_approved')
-                ->label('Verificação de acesso')
-                ->inline(false)
-                ->onColor('success')
-                ->offColor('danger')
-                ->onIcon('heroicon-s-check')
-                ->offIcon('heroicon-s-x-mark')
-                ->default(true)
-                ->visible(
-                    fn(?User $record, string $context) =>
-                    $this->podeVerToggleAprovacaoEmail(Auth::user(), $record, $context)
-                ),
+
 
             Section::make('Vínculo com Escola')
                 ->icon('heroicon-o-identification')
@@ -332,8 +348,7 @@ class UserService
                         ->dehydrated(true),
                 ])
                 ->visible(
-                    fn(?User $record, string $context) =>
-                    $this->podeVerSecaoEscola(Auth::user(), $record, $context)
+                    fn () => $this->user->hasPermissionTo('Editar Escola do Usuario')
                 ),
         ];
     }
@@ -349,16 +364,6 @@ class UserService
         }
 
         return [];
-    }
-
-    private function podeVerSecaoEscola(?User $user, ?User $record, string $context): bool
-    {
-        if ($context === 'create') return true;
-        if (! $record) return false;
-        if ($record->hasRole('Admin')) return false;
-        if ($user && $record->id === $user->id) return false;
-        if ($context === 'edit') return true;
-        return false;
     }
 
     /**
@@ -385,7 +390,6 @@ class UserService
         return false;
     }
 
-
     /**
      * Valor inicial do campo Escola:
      * - Edit: usa a escola do registro se houver; senão cai pro vínculo do usuário atual (se houver)
@@ -403,10 +407,6 @@ class UserService
 
         return $currentUser?->id_escola ?? null;
     }
-
-
-
-
 
     /** Configura a tabela completa (paginações, colunas, filtros, ações, ordenação). */
     public function configurarTabela(Table $table, ?User $user): Table
@@ -530,15 +530,8 @@ class UserService
                 ->modalDescription(fn(User $record) => "{$record->name} • {$record->email}")
                 ->modalIcon('heroicon-o-key')
                 ->form(fn(User $record) => [
-                    Toggle::make('usar_permissoes_extras')
-                        ->visible(false)
-                        ->label('Usar permissões específicas')
-                        ->default($record->getDirectPermissions()->isNotEmpty())
-                        ->live(),
-
                     Section::make('Permissões específicas')
                         ->collapsible()
-                        ->visible(fn(Get $get) => $get('usar_permissoes_extras'))
                         ->schema(fn(Get $get) => [
                             TextInput::make('buscar_permissao')
                                 ->label('Pesquisar permissão')
@@ -572,6 +565,7 @@ class UserService
                 }),
 
             Tables\Actions\EditAction::make(),
+            
             Tables\Actions\DeleteAction::make()
                 ->before(function (User $record, Tables\Actions\DeleteAction $action) use ($user) {
                     if (! $this->podeDeletar($user, $record)) {
