@@ -57,7 +57,9 @@ class CriarPermissoes extends Command
             'Filtrar Professores por Componente',
             'Filtrar Professores por Serie',
             'Filtrar Turmas por Escola',
-            'Filtrar Alunos da Escola',
+            'Filtrar Alunos por Escola',
+
+            'Visualizar Detalhes de Aluno',
         ];
 
         $this->info('Criando permissões...');

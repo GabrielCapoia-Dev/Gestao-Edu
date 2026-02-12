@@ -891,11 +891,45 @@ class AlunoService
     public function filtrosTabela(): array
     {
         return [
+            SelectFilter::make('tipo_escola')
+                ->multiple()
+                ->label('Tipo Unidade')
+                ->visible(function () {
+                    /** @var App\Models\User $user */
+                    $user = Auth::user();
+                    return $user->hasPermissionTo('Filtrar Alunos por Escola');
+                })
+                ->options([
+                    'CMEI'   => 'CMEI',
+                    'ESCOLA' => 'ESCOLA',
+                ])
+                ->columnSpan(2)
+                ->query(function (Builder $query, array $data): Builder {
+                    $tipos = $data['values'] ?? [];
+
+                    if (empty($tipos)) {
+                        return $query;
+                    }
+
+                    return $query->whereHas('turma.escola', function (Builder $escolaQuery) use ($tipos) {
+                        $escolaQuery->where(function (Builder $q) use ($tipos) {
+                            foreach ($tipos as $tipo) {
+                                $q->orWhere('nome', 'like', $tipo . '%');
+                            }
+                        });
+                    });
+                }),
+
             SelectFilter::make('id_escola')
                 ->multiple()
                 ->label('Escola')
                 ->relationship('turma.escola', 'nome')
                 ->searchable()
+                ->visible(function () {
+                    /** @var App\Models\User $user */
+                    $user = Auth::user();
+                    return $user->hasPermissionTo('Filtrar Alunos por Escola');
+                })
                 ->columnSpan(2)
                 ->preload(),
 
@@ -1003,6 +1037,11 @@ class AlunoService
                 ->relationship('laudos', 'nome')
                 ->columnSpan(2)
                 ->multiple()
+                ->visible(function () {
+                    /** @var App\Models\User $user */
+                    $user = Auth::user();
+                    return $user->hasPermissionTo('Visualizar Laudos de Aluno');
+                })
                 ->searchable()
                 ->preload(),
 
@@ -1027,34 +1066,15 @@ class AlunoService
                     });
                 }),
 
-            SelectFilter::make('tipo_escola')
-                ->multiple()
-                ->label('Tipo Unidade')
-                ->options([
-                    'CMEI'   => 'CMEI',
-                    'ESCOLA' => 'ESCOLA',
-                ])
-                ->columnSpan(2)
-                ->query(function (Builder $query, array $data): Builder {
-                    $tipos = $data['values'] ?? [];
-
-                    if (empty($tipos)) {
-                        return $query;
-                    }
-
-                    return $query->whereHas('turma.escola', function (Builder $escolaQuery) use ($tipos) {
-                        $escolaQuery->where(function (Builder $q) use ($tipos) {
-                            foreach ($tipos as $tipo) {
-                                $q->orWhere('nome', 'like', $tipo . '%');
-                            }
-                        });
-                    });
-                }),
-
             TernaryFilter::make('tem_laudos')
                 ->label('Crianças com laudos')
                 ->columnSpan(2)
                 ->boolean()
+                ->visible(function () {
+                    /** @var App\Models\User $user */
+                    $user = Auth::user();
+                    return $user->hasPermissionTo('Visualizar Laudos de Aluno');
+                })
                 ->trueLabel('Apenas com laudos')
                 ->falseLabel('Apenas sem laudos')
                 ->queries(
@@ -1084,6 +1104,11 @@ class AlunoService
                 ->color('warning')
                 ->modal()          // habilita modal
                 ->slideOver()      // modal lateral
+                ->visible(function () {
+                    /** @var App\Models\User $user */
+                    $user = Auth::user();
+                    return $user->hasPermissionTo('Visualizar Detalhes de Aluno');
+                })
                 ->modalCancelAction(false)
                 ->modalSubmitAction(false)
                 ->modalHeading(fn(Aluno $record) => "Detalhes de {$record->nome}")
@@ -1099,7 +1124,12 @@ class AlunoService
     public function acoesEmMassa(?User $user): array
     {
         return [
-            DeleteBulkAction::make(),
+            DeleteBulkAction::make()
+                ->visible(function () {
+                    /** @var App\Models\User $user */
+                    $user = Auth::user();
+                    return $user->hasPermissionTo('Excluir Alunos em Massa');
+                }),
 
             FilamentExportBulkAction::make('exportar_xlsx')
                 ->label('Exportar XLSX')
@@ -1109,7 +1139,12 @@ class AlunoService
                     'frequenta_srm'          => fn($record) => $record->frequenta_srm ? 'Sim' : 'Não',
                     'encaminhado_para_sme'   => fn($record) => $record->encaminhado_para_sme ? 'Sim' : 'Não',
                 ])
-                ->directDownload(),
+                ->directDownload()
+                ->visible(function () {
+                    /** @var App\Models\User $user */
+                    $user = Auth::user();
+                    return $user->hasPermissionTo('Exportar Alunos');
+                }),
         ];
     }
     public function desabilitarSelectTurma(?int $idEscola): bool
