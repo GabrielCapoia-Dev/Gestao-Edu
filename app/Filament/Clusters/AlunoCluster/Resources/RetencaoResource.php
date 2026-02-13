@@ -14,6 +14,8 @@ use AlperenErsoy\FilamentExport\Actions\FilamentExportBulkAction;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Pages\SubNavigationPosition;
 use Filament\Tables\Actions\Action;
+use App\Services\UserService;
+use Illuminate\Support\Facades\Auth;
 
 class RetencaoResource extends Resource
 {
@@ -28,6 +30,12 @@ class RetencaoResource extends Resource
     protected static ?string $modelLabel = 'Retenção';
     protected static ?string $pluralModelLabel = 'Retenções';
     protected static ?int $navigationSort = 4;
+
+    public static function canAccess(): bool
+    {
+        $user = new UserService;
+        return $user->podeListarRetencoes(Auth::user());
+    }
 
     public static function form(Form $form): Form
     {

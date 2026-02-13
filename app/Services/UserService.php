@@ -71,8 +71,14 @@ class UserService
 
         return $user->hasPermissionTo('Editar Especializações de Professores');
     }
-
-
+    public function podeVisualizarAlunos(?User $user): bool
+    {
+        return $user->hasPermissionTo('Listar Alunos');
+    }
+    public function podeListarRetencoes(?User $user): bool
+    {
+        return $user->hasPermissionTo('Listar Retenção');
+    }
 
 
 

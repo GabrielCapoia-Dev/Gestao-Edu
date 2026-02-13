@@ -45,11 +45,6 @@ class TurmaService
     public function colunasTabela(): array
     {
         return [
-            TextColumn::make('codigo')
-                ->label('Código')
-                ->searchable()
-                ->sortable(),
-
             TextColumn::make('serie.nome')
                 ->label('Série')
                 ->searchable(),
@@ -86,6 +81,7 @@ class TurmaService
             Action::make('viewAlunos')
                 ->label('Ver Alunos')
                 ->icon('heroicon-o-eye')
+                ->visible(fn()=> $this->userService->podeVisualizarAlunos(Auth::user()))
                 ->color('info')
                 ->url(fn($record) => AlunoResource::getUrl('index', [
                     'turma' => $record->id,
@@ -118,7 +114,7 @@ class TurmaService
                 ->multiple()
                 ->searchable()
                 ->preload()
-                ->relationship('serie', 'codigo'),
+                ->relationship('serie', 'nome'),
 
             SelectFilter::make('turno')
                 ->options([

@@ -22,6 +22,7 @@ class CriarPermissoes extends Command
             
             'Listar Alunos',
             'Listar Relatórios',
+            'Listar Retenção',
 
             'Criar Alunos',
 
