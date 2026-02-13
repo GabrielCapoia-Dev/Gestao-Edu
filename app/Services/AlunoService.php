@@ -662,7 +662,7 @@ class AlunoService
     {
         return $table
             ->modifyQueryUsing(function (Builder $query) use ($user) {
-                $this->aplicarFiltroPorEscolaDoUsuario($query, $user);
+                $this->userService->aplicarFiltroPorEscolaDoUsuario($query, $user);
             })
             ->columns($this->colunasTabela())
             ->actions($this->acoesTabela($user))
@@ -688,22 +688,7 @@ class AlunoService
             ]);
     }
 
-    public function aplicarFiltroPorEscolaDoUsuario(Builder $query, ?User $user): Builder
-    {
-        if ($user && ! $this->userService->ehAdmin($user) && ! empty($user->id_escola)) {
-            $query->whereHas('turma', function (Builder $turmaQuery) use ($user) {
-                $turmaQuery->where('id_escola', $user->id_escola);
-            });
-        }
 
-        $query->where(function (Builder $q) {
-            $q->whereHas('laudos')
-                ->orWhereNotNull('id_professor')
-                ->orWhere('frequenta_srm', true);
-        });
-
-        return $query;
-    }
 
 
     public function colunasTabela(): array

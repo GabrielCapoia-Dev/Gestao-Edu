@@ -235,9 +235,6 @@ class CaeiResource extends Resource
                         $user = Auth::user();
                         return $user->hasPermissionTo('Exportar Alunos');
                     })
-                    ->formatStates([
-                        'tem_carteirinha' => fn($record) => $record->tem_carteirinha ? 'Sim' : 'Não',
-                    ])
                     ->directDownload(),
                 FilamentExportBulkAction::make('exportar_pdf')
                     ->label('Exportar PDF')
@@ -248,9 +245,6 @@ class CaeiResource extends Resource
                         $user = Auth::user();
                         return $user->hasPermissionTo('Exportar Alunos');
                     })
-                    ->formatStates([
-                        'tem_carteirinha' => fn($record) => $record->tem_carteirinha ? 'Sim' : 'Não',
-                    ])
                     ->directDownload(),
             ]);
     }

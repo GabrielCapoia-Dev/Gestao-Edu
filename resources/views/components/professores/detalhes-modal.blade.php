@@ -108,6 +108,7 @@ $especializacoes = $professor->especializacoes()->get();
         </div>
     </div>
 
+    @can('Visualizar Especializações de Professores')
     {{-- Especializações --}}
     <div class="border-t pt-4">
         <h4
@@ -183,13 +184,24 @@ $especializacoes = $professor->especializacoes()->get();
                         <a
                             href="{{ $url }}"
                             target="_blank"
-                            class="inline-flex items-center gap-1.5 rounded-md bg-primary-50 dark:bg-primary-400/10 px-2.5 py-1 text-[11px] font-medium text-primary-700 dark:text-primary-300 hover:bg-primary-100 dark:hover:bg-primary-400/20 transition">
-                            <svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" fill="none"
-                                viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round"
-                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path stroke-linecap="round" stroke-linejoin="round"
-                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            class="inline-flex items-center gap-1.5 rounded-md
+                            bg-primary-100 dark:bg-primary-500/15
+                            border border-primary-200 dark:border-primary-500/30
+                            px-2.5 py-1 text-[11px] font-semibold
+                            text-primary-800 dark:text-primary-200
+                            hover:bg-primary-200 dark:hover:bg-primary-500/25
+                            hover:shadow-sm
+                            transition"
+                            style="
+                                    background-color: #dc2626;
+                                    color: #ffffff;
+                                "
+                            onmouseover="this.style.backgroundColor='#b91c1c'"
+                            onmouseout="this.style.backgroundColor='#dc2626'">
+
+                            <svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" />
+                                <path fill="white" d="M7 11h2a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H7v-6zm1 1v3h1v-3H8zm3-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-1v1h-1v-5zm1 1v2h1v-2h-1zm3-1h3v1h-2v1h2v1h-2v2h-1v-5z" />
                             </svg>
                             Visualizar PDF
                         </a>
@@ -203,6 +215,7 @@ $especializacoes = $professor->especializacoes()->get();
         </div>
         @endif
     </div>
+    @endcan
 
     {{-- Resumo --}}
     <div class="border-t pt-4 pb-2">

@@ -165,17 +165,11 @@ class SalaDeRecursosMultifuncionaisResource extends Resource
                 FilamentExportBulkAction::make('exportar_xlsx')
                     ->label('Exportar XLSX')
                     ->defaultFormat('xlsx')
-                    ->formatStates([
-                        'tem_carteirinha' => fn($record) => $record->tem_carteirinha ? 'Sim' : 'Não',
-                    ])
                     ->directDownload(),
                 FilamentExportBulkAction::make('exportar_pdf')
                     ->label('Exportar PDF')
                     ->defaultFormat('pdf')
                     ->color('danger')
-                    ->formatStates([
-                        'tem_carteirinha' => fn($record) => $record->tem_carteirinha ? 'Sim' : 'Não',
-                    ])
                     ->directDownload(),
             ]);
     }

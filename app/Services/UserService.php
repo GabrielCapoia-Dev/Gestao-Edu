@@ -44,7 +44,38 @@ class UserService
      * Metodos Publicos 
      */
 
-    /** Verifica com base na regra no GATE se o usuario é admin */
+    /** Verifica com base nas permissoes do usuario */
+
+    public function podeEditarMatriculaDoProfessor(?User $user, ?string $operation = null): bool
+    {
+        if ($operation === 'create') return true;
+        return $user->hasPermissionTo('Editar Matricula do Professor');
+    }
+    public function podeEditarEscolaDoProfessor(?User $user): bool
+    {
+        return $user->hasPermissionTo('Editar Escola do Professor');
+    }
+    public function podeEditarNomeDoProfessor(?User $user, ?string $operation = null): bool
+    {
+        if ($operation === 'create') return true;
+
+        return $user->hasPermissionTo('Editar Nome do Professor');
+    }
+    public function podeVisualizarEspecializacoesDeProfessores(?User $user): bool
+    {
+        return $user->hasPermissionTo('Visualizar Especializações de Professores');
+    }
+    public function podeEditarEspecializacoesDeProfessores(?User $user, ?string $operation = null): bool
+    {
+        if ($operation === 'create') return true;
+
+        return $user->hasPermissionTo('Editar Especializações de Professores');
+    }
+
+
+
+
+
     public function ehAdmin(?User $user = null): bool
     {
         return Gate::allows('admin-only', $user);
@@ -53,20 +84,65 @@ class UserService
     {
         return $user->hasPermissionTo('Visualizar Laudos de Aluno');
     }
+    public function podeVisualizarDetalhesProfessor(?User $user): bool
+    {
+        return $user->hasPermissionTo('Visualizar Detalhes de Professor');
+    }
+    public function podeVisualizarEspecializacoesProfessor(?User $user): bool
+    {
+        return $user->hasPermissionTo('Visualizar Especializações de Professores');
+    }
     public function podeAnexarLaudos(?User $user): bool
     {
         return $user->hasPermissionTo('Anexar Laudos de Aluno');
     }
+    public function podeExcluirProfessoresEmLote(?User $user): bool
+    {
+        return $user->hasPermissionTo('Excluir Professores em Massa');
+    }
     public function podeExcluirLaudos(?User $user): bool
     {
-        return $user->hasPermissionTo('Excluir Laudos de Aluno');
+        return $user->hasPermissionTo('Excluir Laudos');
+    }
+    public function podeExcluirLaudosEmLote(?User $user): bool
+    {
+        return $user->hasPermissionTo('Excluir Laudos em Massa');
     }
     public function podeBaixarLaudos(?User $user): bool
     {
         return $user->hasPermissionTo('Baixar Laudos de Aluno');
     }
+    public function podeFiltrarProfessoresPorEscola(?User $user): bool
+    {
+        return $user->hasPermissionTo('Filtrar Professores por Escola');
+    }
+    public function podeExportarProfessores(?User $user): bool
+    {
+        return $user->hasPermissionTo('Exportar Professores');
+    }
 
+
+
+
+
+    public function aplicarFiltroPorEscolaDoUsuario(Builder $query, ?User $user): Builder
+    {
+        if ($user && ! $this->ehAdmin($user) && ! empty($user->id_escola)) {
+            $query->whereHas('turma', function (Builder $turmaQuery) use ($user) {
+                $turmaQuery->where('id_escola', $user->id_escola);
+            });
+        }
+
+        $query->where(function (Builder $q) {
+            $q->whereHas('laudos')
+                ->orWhereNotNull('id_professor')
+                ->orWhere('frequenta_srm', true);
+        });
+
+        return $query;
+    }
     /** Lista os usuários que não tem a role de Admin (whereDoesntHave retorna quem não tem a role) */
+
     public function listarUsuariosQuery(Builder $base, ?User $user): Builder
     {
         if (! $this->ehAdmin($user)) {
@@ -810,27 +886,27 @@ class UserService
         return $schema;
     }
 
-    /**
-     * Filtro genérico por escola (para Resources que não são Turma)
-     */
-    public function aplicarFiltroPorEscolaDoUsuario(Builder $query, ?User $user): Builder
-    {
-        if (!$user || $this->ehAdmin($user)) {
-            if (!$user || $this->ehAdmin($user)) {
-                return $query;
-            }
+    // /**
+    //  * Filtro genérico por escola (para Resources que não são Turma)
+    //  */
+    // public function aplicarFiltroPorEscolaDoUsuario(Builder $query, ?User $user): Builder
+    // {
+    //     if (!$user || $this->ehAdmin($user)) {
+    //         if (!$user || $this->ehAdmin($user)) {
+    //             return $query;
+    //         }
 
-            if ($user->ehProfessor()) {
-                $escolasIds = $user->professores->pluck('id_escola')->unique()->toArray();
-                return $query->whereIn('id_escola', $escolasIds);
-            }
+    //         if ($user->ehProfessor()) {
+    //             $escolasIds = $user->professores->pluck('id_escola')->unique()->toArray();
+    //             return $query->whereIn('id_escola', $escolasIds);
+    //         }
 
-            if (!empty($user->id_escola)) {
-                return $query->where('id_escola', $user->id_escola);
-            }
-        }
-        return $query;
-    }
+    //         if (!empty($user->id_escola)) {
+    //             return $query->where('id_escola', $user->id_escola);
+    //         }
+    //     }
+    //     return $query;
+    // }
 
     /**
      * Filtro específico para Turmas - Professor só vê turmas onde leciona
@@ -885,6 +961,21 @@ class UserService
             });
         }
 
+        return $query;
+    }
+
+
+    public function aplicarFiltroPorEscolaDoUsuarioEmTurma(Builder $query, ?User $user): Builder
+    {
+        if (! $user) {
+            return $query;
+        }
+        if ($this->ehAdmin($user)) {
+            return $query;
+        }
+        if (! empty($user->id_escola)) {
+            return $query->where('id_escola', $user->id_escola);
+        }
         return $query;
     }
 }

@@ -65,6 +65,11 @@ class LaudoService
     {
         return [
             DeleteBulkAction::make()
+            ->visible(
+                function() use ($user) {
+                    return $this->userService->podeExcluirLaudosEmLote($user);
+                }
+            )
         ];
     }
 

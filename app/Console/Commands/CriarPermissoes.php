@@ -33,15 +33,17 @@ class CriarPermissoes extends Command
             'Editar Escola do Professor',
             'Editar Matricula do Professor',
             'Editar Nome do Professor',
-            'Editar Dados do Professor',
+            'Editar Especializações de Professores',
             'Editar Dados da Turma',
             'Editar Turma do Aluno',
             'Editar Status do Aluno',
             'Editar CGM do Aluno',
 
             'Excluir Alunos',
+            'Excluir Laudos',
 
             'Excluir Alunos em Massa',
+            'Excluir Laudos em Massa',
             'Excluir Turmas em Massa',
             'Excluir Professores em Massa',
 
@@ -60,6 +62,9 @@ class CriarPermissoes extends Command
             'Filtrar Alunos por Escola',
 
             'Visualizar Detalhes de Aluno',
+            'Visualizar Especializações de Professores',
+            'Visualizar Detalhes de Professor',
+
         ];
 
         $this->info('Criando permissões...');

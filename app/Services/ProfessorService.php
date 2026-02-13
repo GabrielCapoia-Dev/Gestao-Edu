@@ -18,6 +18,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\Select;
+use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Tables\Columns\IconColumn;
@@ -25,6 +26,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Tables\Actions\Action;
+use AlperenErsoy\FilamentExport\Actions\FilamentExportBulkAction;
 
 class ProfessorService
 {
@@ -53,6 +55,9 @@ class ProfessorService
                             'regex' => 'Apenas numeros',
                             'min' => 'A matricula deve ter no mínimo 3 dígitos.',
                         ])
+                        ->disabled(
+                            fn(string $operation) => ! $this->userService->podeEditarMatriculaDoProfessor(Auth::user(), $operation)
+                        )
                         ->unique(ignoreRecord: true)
                         ->maxLength(20),
 
@@ -62,6 +67,9 @@ class ProfessorService
                         ->columnSpan(5)
                         ->minLength(3)
                         ->maxLength(100)
+                        ->disabled(
+                            fn(string $operation) => ! $this->userService->podeEditarNomeDoProfessor(Auth::user(), $operation)
+                        )
                         ->rule('regex:/^[\p{L}\p{N}]+(?: [\p{L}\p{N}]+)*$/u')
                         ->validationMessages([
                             'regex' => 'Use apenas letras, sem caracteres especiais.',
@@ -152,10 +160,15 @@ class ProfessorService
                 ]),
 
             Grid::make(12)
+                ->visible(
+                    fn(string $operation) =>
+                    $this->userService->podeVisualizarEspecializacoesDeProfessores(Auth::user())
+                        && $this->userService->podeEditarEspecializacoesDeProfessores(Auth::user(), $operation)
+                )
                 ->schema([
                     Repeater::make('especializacoes')
                         ->label('Especializações')
-                        ->relationship('especializacoes') // hasMany ProfessorEspecializacao
+                        ->relationship('especializacoes')
                         ->defaultItems(1)
                         ->columnSpan(12)
                         ->collapsible()
@@ -202,7 +215,8 @@ class ProfessorService
                                 ->schema([
                                     Checkbox::make('especializacao_educacao_especial')
                                         ->columnSpan(6)
-                                        ->label('É de Educação Especial?'),
+                                        ->label('É de Educação Especial?')
+                                        ->helperText('Se essa especialização for de Educação Especial, marque essa opção.')
 
 
                                 ]),
@@ -215,6 +229,9 @@ class ProfessorService
     public function configurarTabela(Table $table, ?User $user): Table
     {
         return $table
+            ->modifyQueryUsing(function (Builder $query) use ($user) {
+                $this->userService->aplicarFiltroPorEscolaDoUsuarioEmTurma($query, $user);
+            })
             ->paginated([10, 25, 50, 100])
             ->columns($this->colunasTabela())
             ->actions($this->acoesTabela($user))
@@ -360,6 +377,9 @@ class ProfessorService
                 ->slideOver()
                 ->modalCancelAction(false)
                 ->modalSubmitAction(false)
+                ->visible(function () {
+                    return $this->userService->podeVisualizarDetalhesProfessor(Auth::user());
+                })
                 ->modalHeading(fn(Professor $record) => "Detalhes de {$record->nome}")
                 ->modalContent(fn(Professor $record) => view(
                     'components.professores.detalhes-modal',
@@ -376,24 +396,36 @@ class ProfessorService
                         $action->failure();
                         $action->halt();
                     }
-                })
-                ->visible(
-                    fn() =>
-                    $this->userService->ehAdmin(Auth::user())
-                ),
+                }),
         ];
     }
 
     public function acoesEmMassa(?User $user): array
     {
         return [
-            DeleteBulkAction::make()
-                ->before(function ($records, $action) use ($user) {
-                    if (! $this->userService->podeDeletarEmLote($user, $records)) {
-                        $action->halt();
-                    }
-                })
-                ->visible(fn() => $this->userService->ehAdmin(Auth::user())),
+            FilamentExportBulkAction::make('exportar_xlsx')
+                ->label('Exportar XLSX')
+                ->defaultFormat('xlsx')
+                ->visible(fn() => $this->userService->podeExportarProfessores($user))
+                ->directDownload(),
+            FilamentExportBulkAction::make('exportar_pdf')
+                ->label('Exportar PDF')
+                ->defaultFormat('pdf')
+                ->visible(fn() => $this->userService->podeExportarProfessores($user))
+                ->color('danger')
+                ->directDownload(),
+
+            BulkActionGroup::make([
+                DeleteBulkAction::make()
+                    ->before(function ($records, $action) use ($user) {
+                        if (! $this->userService->podeDeletarEmLote($user, $records)) {
+                            $action->halt();
+                        }
+                    })
+                    ->visible(fn() => $this->userService->podeExcluirProfessoresEmLote(Auth::user())),
+            ])
+                ->visible(fn() => $this->userService->podeExcluirProfessoresEmLote(Auth::user())),
+
         ];
     }
 
@@ -404,6 +436,8 @@ class ProfessorService
                 ->label('Escola')
                 ->relationship('escola', 'nome')
                 ->preload()
+                ->multiple()
+                ->visible(fn() => $this->userService->podeFiltrarProfessoresPorEscola(Auth::user()))
                 ->searchable()
                 ->indicator('Escola'),
 

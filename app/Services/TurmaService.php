@@ -30,7 +30,7 @@ class TurmaService
     {
         return $table
             ->modifyQueryUsing(function (Builder $query) use ($user) {
-                $this->aplicarFiltroPorEscolaDoUsuario($query, $user);
+                $this->userService->aplicarFiltroPorEscolaDoUsuarioEmTurma($query, $user);
             })
             ->paginated([10, 25, 50, 100])
             ->columns($this->colunasTabela())
@@ -39,20 +39,6 @@ class TurmaService
             ->filters($this->filtrosTabela())
             ->defaultSort('updated_at', 'desc')
             ->striped();
-    }
-
-    public function aplicarFiltroPorEscolaDoUsuario(Builder $query, ?User $user): Builder
-    {
-        if (! $user) {
-            return $query;
-        }
-        if ($this->userService->ehAdmin($user)) {
-            return $query;
-        }
-        if (! empty($user->id_escola)) {
-            return $query->where('id_escola', $user->id_escola);
-        }
-        return $query;
     }
 
 

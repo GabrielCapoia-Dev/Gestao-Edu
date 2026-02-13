@@ -18,6 +18,12 @@ class Professor extends Model
         'profissional_apoio',
     ];
 
+    protected $casts = [
+        'professor_srm' => 'boolean',
+        'profissional_apoio' => 'boolean',
+    ];
+
+
     public function alunos()
     {
         return $this->hasMany(Aluno::class);
