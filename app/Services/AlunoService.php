@@ -662,7 +662,12 @@ class AlunoService
     {
         return $table
             ->modifyQueryUsing(function (Builder $query) use ($user) {
+
                 $this->userService->aplicarFiltroPorEscolaDoUsuario($query, $user);
+
+                if ($turmaId = request()->get('turma')) {
+                    $query->where('id_turma', $turmaId);
+                }
             })
             ->columns($this->colunasTabela())
             ->actions($this->acoesTabela($user))

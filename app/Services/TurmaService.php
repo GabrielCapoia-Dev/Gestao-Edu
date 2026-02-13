@@ -30,7 +30,10 @@ class TurmaService
     {
         return $table
             ->modifyQueryUsing(function (Builder $query) use ($user) {
+
                 $this->userService->aplicarFiltroPorEscolaDoUsuarioEmTurma($query, $user);
+
+                $query->withCount('alunos');
             })
             ->paginated([10, 25, 50, 100])
             ->columns($this->colunasTabela())
@@ -45,31 +48,37 @@ class TurmaService
     public function colunasTabela(): array
     {
         return [
-            TextColumn::make('serie.nome')
-                ->label('Série')
-                ->searchable(),
             TextColumn::make('escola.nome')
                 ->label('Escola')
+                ->sortable()
+                ->searchable(),
+            TextColumn::make('serie.nome')
+                ->label('Série')
+                ->sortable()
                 ->searchable(),
             TextColumn::make('turma')
                 ->label('Turma')
+                ->sortable()
+                ->sortable()
                 ->searchable(),
             TextColumn::make('turno')
                 ->label('Turno')
+                ->sortable()
                 ->searchable(),
 
             TextColumn::make('alunos_count')
                 ->label('Qtd. Alunos')
-                ->counts('alunos')
                 ->sortable(),
 
             TextColumn::make('created_at')
                 ->label('Criado em')
                 ->dateTime()
+                ->sortable()
                 ->toggleable(isToggledHiddenByDefault: true),
 
             TextColumn::make('updated_at')
                 ->label('Atualizado em')
+                ->sortable()
                 ->dateTime()
                 ->toggleable(isToggledHiddenByDefault: true),
         ];
@@ -81,7 +90,7 @@ class TurmaService
             Action::make('viewAlunos')
                 ->label('Ver Alunos')
                 ->icon('heroicon-o-eye')
-                ->visible(fn()=> $this->userService->podeVisualizarAlunos(Auth::user()))
+                ->visible(fn() => $this->userService->podeVisualizarAlunos(Auth::user()))
                 ->color('info')
                 ->url(fn($record) => AlunoResource::getUrl('index', [
                     'turma' => $record->id,
@@ -98,7 +107,8 @@ class TurmaService
 
                         $action->cancel();
                     }
-                }),
+                })
+                ->visible(fn() => $this->userService->podeExcluirTurmas(Auth::user())),
         ];
     }
 

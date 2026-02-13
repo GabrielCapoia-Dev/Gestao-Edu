@@ -79,6 +79,10 @@ class UserService
     {
         return $user->hasPermissionTo('Listar Retenção');
     }
+    public function podeExcluirTurmas(?User $user): bool
+    {
+        return $user->hasPermissionTo('Excluir Turmas');
+    }
 
 
 
