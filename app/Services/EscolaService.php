@@ -70,9 +70,7 @@ class EscolaService
 
     private function acoesEmMassa(?User $user): array
     {
-        return [
-            DeleteBulkAction::make()
-        ];
+        return [];
     }
 
     // Configura o formulário completo (campos, ações, etc.)
@@ -90,7 +88,7 @@ class EscolaService
                 ->required()
                 ->maxLength(3)
                 ->minLength(3),
-                
+
             TextInput::make('nome')
                 ->label('Nome')
                 ->required()

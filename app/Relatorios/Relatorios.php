@@ -64,9 +64,8 @@ class Relatorios
         string $view,
         array $data,
         string $tipo = self::TIPO_FICHA,
-        ?string $fileName = null,
     ) {
-        return static::gerarRelatorio($view, $data, $tipo, $fileName);
+        return static::gerarRelatorio($view, $data, $tipo);
     }
 
     /**

@@ -23,6 +23,7 @@ use Hasnayeen\Themes\ThemesPlugin;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\LaudoArquivoController;
 use Filament\Actions\Action as GlobalAction;
+use Filament\Navigation\MenuItem;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -83,10 +84,15 @@ class AdminPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ])
+            ->userMenuItems([
+                // O logout já vem por padrão, mas você pode customizar
+                'logout' => MenuItem::make()
+                    ->label('Sair'),
+            ])
             ->plugins([
 
                 ThemesPlugin::make()
-                    ->canViewThemesPage(fn() => app(UserService::class)->ehAdmin($this->getAuthUser()) ?? false),
+                    ->canViewThemesPage(fn() => false),
 
                 ActivitylogPlugin::make()
                     ->label('Registro de Atividade')

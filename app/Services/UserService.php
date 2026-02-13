@@ -348,7 +348,7 @@ class UserService
                         ->dehydrated(true),
                 ])
                 ->visible(
-                    fn () => $this->user->hasPermissionTo('Editar Escola do Usuario')
+                    fn() => $this->user->hasPermissionTo('Editar Escola do Usuario')
                 ),
         ];
     }
@@ -507,6 +507,8 @@ class UserService
                 ->icon('heroicon-o-key')
                 ->color('warning')
                 ->slideOver()
+                ->modalSubmitActionLabel('Salvar')
+                ->modalSubmitAction(fn(StaticAction $action) => $action->color('primary'))
                 ->visible(function (User $record) use ($user) {
                     // Não mostrar se for o próprio usuário
                     if ($record->id === $user->id) {
@@ -521,51 +523,95 @@ class UserService
                     // Mostrar apenas se o usuário logado tiver permissão
                     return $user->hasPermissionTo('Aplicar Permissoes');
                 })
-                ->modalSubmitAction(false)
-                ->closeModalByClickingAway(false)
-                ->closeModalByEscaping(false)
-                ->modalCloseButton(false)
-                ->modalCancelAction(fn(StaticAction $action) => $action->label('Fechar'))
                 ->modalHeading(fn(User $record) => "Permissões do usuário")
                 ->modalDescription(fn(User $record) => "{$record->name} • {$record->email}")
                 ->modalIcon('heroicon-o-key')
-                ->form(fn(User $record) => [
-                    Section::make('Permissões específicas')
-                        ->collapsible()
-                        ->schema(fn(Get $get) => [
-                            TextInput::make('buscar_permissao')
-                                ->label('Pesquisar permissão')
-                                ->placeholder('Ex: listar, editar, excluir...')
-                                ->live(debounce: 30)
-                                ->extraInputAttributes([
-                                    'onkeydown' => 'if(event.key === "Enter" || event.keyCode === 13) event.preventDefault()'
-                                ])
-                                ->dehydrated(false),
+                ->form(function (User $record) use ($user) {
+                    return [
+                        TextInput::make('buscar_permissao')
+                            ->label('Pesquisar permissão')
+                            ->placeholder('Ex: listar, editar, excluir...')
+                            ->live(debounce: 30)
+                            ->extraInputAttributes([
+                                'onkeydown' => 'if(event.key === "Enter" || event.keyCode === 13) event.preventDefault()'
+                            ])
+                            ->dehydrated(false),
 
-                            ...$this->checkboxesPermissoesAutoSave($record, $get, $user),
-                        ]),
-                ])
+                        Forms\Components\Hidden::make('permissions_state')
+                            ->default(
+                                fn(User $record) =>
+                                $record->getDirectPermissions()->pluck('name')->toArray()
+                            )
+                            ->dehydrated(true),
+
+                        Forms\Components\Group::make()
+                            ->schema(function (Get $get) use ($record, $user) {
+                                return $this->checkboxesPermissoesComEstado($record, $get, $user);
+                            }),
+                    ];
+                })
                 ->action(function (User $record, array $data) {
-                    if (empty($data['usar_permissoes_extras'])) {
-                        $record->syncPermissions([]);
-                        return;
-                    }
-
-                    $permissoesSelecionadas = collect($data)
-                        ->filter(fn($_, $key) => str_starts_with($key, 'permissions_'))
-                        ->flatten()
+                    /*
+                |--------------------------------------------------------------------------
+                | 1. Consolidar permissões do permissions_state
+                |--------------------------------------------------------------------------
+                */
+                    $permissoesSelecionadas = collect($data['permissions_state'] ?? [])
                         ->unique()
-                        ->values()
-                        ->toArray();
+                        ->values();
 
-                    if (empty($permissoesSelecionadas)) {
-                        return;
+                    $permissoesAtuais = $record->getDirectPermissions()->pluck('name');
+
+                    $paraRemover = $permissoesAtuais->diff($permissoesSelecionadas);
+                    $paraAdicionar = $permissoesSelecionadas->diff($permissoesAtuais);
+
+                    /*
+                |--------------------------------------------------------------------------
+                | 2. Aplicar alterações
+                |--------------------------------------------------------------------------
+                */
+                    if ($paraRemover->isNotEmpty()) {
+                        $record->revokePermissionTo($paraRemover->toArray());
                     }
-                    $record->syncPermissions($permissoesSelecionadas);
+
+                    if ($paraAdicionar->isNotEmpty()) {
+                        $record->givePermissionTo($paraAdicionar->toArray());
+                    }
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | 3. Notificações
+                    |--------------------------------------------------------------------------
+                    */
+                    if ($paraRemover->isNotEmpty()) {
+                        \Filament\Notifications\Notification::make()
+                            ->title('Permissões removidas')
+                            ->body($paraRemover->map(fn($p) => "• {$p}")->implode('<br>')) // ✅ Usa <br> ao invés de \n
+                            ->danger()
+                            ->color('danger')
+                            ->icon('heroicon-s-x-mark')
+                            ->send();
+                    }
+
+                    if ($paraAdicionar->isNotEmpty()) {
+                        \Filament\Notifications\Notification::make()
+                            ->title('Permissões adicionadas')
+                            ->body($paraAdicionar->map(fn($p) => "• {$p}")->implode('<br>')) // ✅ Usa <br> ao invés de \n
+                            ->color('success')
+                            ->success()
+                            ->icon('heroicon-s-check')
+                            ->send();
+                    }
+                    if ($paraRemover->isEmpty() && $paraAdicionar->isEmpty()) {
+                        \Filament\Notifications\Notification::make()
+                            ->title('Nenhuma alteração foi realizada')
+                            ->info()
+                            ->send();
+                    }
                 }),
 
             Tables\Actions\EditAction::make(),
-            
+
             Tables\Actions\DeleteAction::make()
                 ->before(function (User $record, Tables\Actions\DeleteAction $action) use ($user) {
                     if (! $this->podeDeletar($user, $record)) {
@@ -657,7 +703,7 @@ class UserService
         ];
     }
 
-    protected function checkboxesPermissoesAutoSave(User $record, Get $get, User $userLogado): array
+    protected function checkboxesPermissoesComEstado(User $record, Get $get, User $userLogado): array
     {
         $busca = strtolower($get('buscar_permissao') ?? '');
 
@@ -684,32 +730,45 @@ class UserService
         $schema = [];
 
         foreach ($porGrupo as $grupo => $permissoes) {
+            // Filtrar permissões quando houver busca
+            $filtradas = $permissoes->when(
+                $busca,
+                fn($collection) => $collection->filter(
+                    fn($perm) => str_contains(strtolower($perm->name), $busca)
+                )
+            );
+
+            // 🔥 Se não tiver nenhuma permissão visível após filtro, pula o grupo
+            if ($filtradas->isEmpty()) {
+                continue;
+            }
+
             $schema[] = CheckboxList::make("permissions_{$grupo}")
                 ->label($grupo)
-                ->options($permissoes->pluck('name', 'name')->toArray())
+                ->options($filtradas->pluck('name', 'name')->toArray())
                 ->columns(3)
                 ->default(
-                    $record->getAllPermissions()
-                        ->pluck('name')
+                    fn(Get $get) =>
+                    collect($get('permissions_state') ?? [])
                         ->intersect($permissoes->pluck('name'))
                         ->values()
                         ->toArray()
                 )
                 ->live()
-                ->afterStateUpdated(function (?array $state) use ($record, $permissoes) {
-                    $atuais = $record->getDirectPermissions()->pluck('name');
-                    $novas = collect($state ?? []);
-                    $remover = $permissoes->pluck('name')->diff($novas);
-                    $adicionar = $novas->diff($atuais);
+                ->afterStateUpdated(function ($state, Get $get, callable $set) use ($permissoes) {
+                    $atual = collect($get('permissions_state') ?? []);
 
-                    if ($remover->isNotEmpty()) {
-                        $record->revokePermissionTo($remover->toArray());
-                    }
+                    // Remove permissões desse grupo
+                    $atual = $atual->diff($permissoes->pluck('name'));
 
-                    if ($adicionar->isNotEmpty()) {
-                        $record->givePermissionTo($adicionar->toArray());
-                    }
-                });
+                    // Adiciona as novas selecionadas
+                    $atual = $atual->merge($state ?? []);
+
+                    $set('permissions_state', $atual->unique()->values()->toArray());
+                })
+                ->extraAttributes([
+                    'class' => 'permissions-checkbox-list'
+                ]); // ✅ Adiciona classe CSS customizada
         }
 
         return $schema;

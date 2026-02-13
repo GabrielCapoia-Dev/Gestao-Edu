@@ -47,7 +47,7 @@
             <div class="badge">Em Desenvolvimento</div>
             <h2 class="title">Dashboard em Breve</h2>
             <p class="description">
-                Estamos preparando visualizações interativas e relatórios detalhados para você acompanhar os dados do SRM de forma intuitiva e eficiente.
+                Estamos preparando visualizações interativas e relatórios detalhados para você acompanhar os dados do sistema de forma intuitiva e eficiente.
             </p>
 
             <!-- Features do que está vindo -->
