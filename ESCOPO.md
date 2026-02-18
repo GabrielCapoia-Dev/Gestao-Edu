@@ -57,6 +57,8 @@ Estrutura de modelos necessárias:
                 de Satifeito ou Insatisfeito, e um campo de descrição.
 
             Pedidos finalizados podem ser reabertos caso o problema reapareça, impedindo assim a criação de um novo fluxo.
+
+            Criado o SETOR, que serve para filtrar a quais secretarias pertencem determinado status
     ],
     4 - Pedido = Descroções[
             Na criação, Necessário envio de fotos.
