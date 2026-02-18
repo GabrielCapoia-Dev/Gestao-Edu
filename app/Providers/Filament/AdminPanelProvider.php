@@ -34,8 +34,8 @@ class AdminPanelProvider extends PanelProvider
         return $panel
             ->routes(function () {})
             ->default()
-            ->id('especial')
-            ->path('especial')
+            ->id('admin')
+            ->path('admin')
             ->login(LoginPage::class)
             ->spa()
             ->colors([
