@@ -96,6 +96,7 @@ class EscolaService
                 ->label('Histórico')
                 ->icon('heroicon-o-clock')
                 ->slideOver()
+                ->modalWidth('7xl')
                 ->color('warning')
                 ->modalHeading('Histórico da Escola')
                 ->modalSubmitAction(false)

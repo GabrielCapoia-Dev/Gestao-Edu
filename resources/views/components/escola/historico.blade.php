@@ -7,29 +7,40 @@
                 <th class="p-2 text-left">Nome</th>
                 <th class="p-2 text-left">Email</th>
                 <th class="p-2 text-left">Telefone</th>
+                <th class="p-2 text-left">Logradouro</th>
+                <th class="p-2 text-left">CEP</th>
+                <th class="p-2 text-left">N°</th>
+                <th class="p-2 text-left">Bairro</th>
+                <th class="p-2 text-left">Complemento</th>
                 <th class="p-2 text-left">Cidade</th>
                 <th class="p-2 text-left">UF</th>
                 <th class="p-2 text-left">Status</th>
             </tr>
         </thead>
         <tbody>
-        @foreach($historico as $item)
+            @foreach($historico as $item)
             <tr class="border-t">
                 <td class="p-2">{{ $item->created_at->format('d/m/Y H:i') }}</td>
                 <td class="p-2">{{ $item->nome }}</td>
                 <td class="p-2">{{ $item->email }}</td>
                 <td class="p-2">{{ $item->telefone }}</td>
+                <td class="p-2">{{ $item->logradouro }}</td>
+                <td class="p-2">{{ $item->cep }}</td>
+                <td class="p-2">{{ $item->numero }}</td>
+                <td class="p-2">{{ $item->bairro }}</td>
+                <td class="p-2">{{ $item->complemento }}</td>
                 <td class="p-2">{{ $item->cidade }}</td>
                 <td class="p-2">{{ $item->estado }}</td>
+
                 <td class="p-2">
                     @if($item->ativo)
-                        <span class="text-green-600 font-semibold">Ativo</span>
+                    <span class="text-green-600 font-semibold">Ativo</span>
                     @else
-                        <span class="text-gray-500">Versão Antiga</span>
+                    <span class="text-gray-500">Versão Antiga</span>
                     @endif
                 </td>
             </tr>
-        @endforeach
+            @endforeach
         </tbody>
     </table>
 
