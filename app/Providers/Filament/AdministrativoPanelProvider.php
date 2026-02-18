@@ -27,12 +27,6 @@ use Filament\Navigation\MenuItem;
 
 class AdministrativoPanelProvider extends PanelProvider
 {
-    public static function getAuthUser()
-    {
-
-        return Auth::user();
-    }
-
     public function panel(Panel $panel): Panel
     {
         return $panel
@@ -58,16 +52,11 @@ class AdministrativoPanelProvider extends PanelProvider
             ])
             ->brandLogo(fn() => view('components.logo-administrativo'))
             ->sidebarCollapsibleOnDesktop()
-            ->discoverResources(in: app_path('Filament/Administrativo/Resources'), for: 'App\\Filament\\Administrativo\\Resources')
-            ->discoverPages(in: app_path('Filament/Administrativo/Pages'), for: 'App\\Filament\\Administrativo\\Pages')
-            ->resources([
-                \App\Filament\Resources\RoleResource::class,
-                \App\Filament\Resources\PermissionResource::class,
-                \App\Filament\Resources\UserResource::class,
-                \App\Filament\Resources\EscolaResource::class,
-            ])
+            ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
+            ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
+            ->discoverClusters(in: app_path('Filament/Clusters'), for: 'App\\Filament\\Clusters')
             ->pages([])
-            ->discoverWidgets(in: app_path('Filament/Administrativo/Widgets'), for: 'App\\Filament\\Administrativo\\Widgets')
+            ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([])
             ->middleware([
                 EncryptCookies::class,
@@ -101,7 +90,7 @@ class AdministrativoPanelProvider extends PanelProvider
                     ->pluralLabel('Registro de Atividades')
                     ->navigationGroup('Administrativo')
                     ->navigationSort(1)
-                    ->authorize(fn() => app(UserService::class)->ehAdmin($this->getAuthUser())),
+                    ->authorize(fn() => app(UserService::class)->ehAdmin(app(AdminPanelProvider::class)->getAuthUser())),
             ]);
     }
 }

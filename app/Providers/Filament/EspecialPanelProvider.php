@@ -25,20 +25,11 @@ use App\Http\Controllers\LaudoArquivoController;
 use Filament\Actions\Action as GlobalAction;
 use Filament\Navigation\MenuItem;
 
-class AdminPanelProvider extends PanelProvider
+class EspecialPanelProvider extends PanelProvider
 {
-
-    public static function getAuthUser()
-    {
-
-        return Auth::user();
-    }
-
     public function panel(Panel $panel): Panel
     {
         return $panel
-            ->routes(function () {})
-            ->default()
             ->id('especial')
             ->path('especial')
             ->login(LoginPage::class)
@@ -59,7 +50,7 @@ class AdminPanelProvider extends PanelProvider
                     950 => '#081124ff',
                 ],
             ])
-            ->brandLogo(fn() => view('components.logo-admin-do-sistema'))
+            ->brandLogo(fn() => view('components.logo-especial'))
             ->sidebarCollapsibleOnDesktop()
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
@@ -100,7 +91,7 @@ class AdminPanelProvider extends PanelProvider
                     ->pluralLabel('Registro de Atividades')
                     ->navigationGroup('Administrativo')
                     ->navigationSort(1)
-                    ->authorize(fn() => app(UserService::class)->ehAdmin($this->getAuthUser())),
+                    ->authorize(fn() => app(UserService::class)->ehAdmin(app(AdminPanelProvider::class)->getAuthUser())),
             ]);
     }
 }
