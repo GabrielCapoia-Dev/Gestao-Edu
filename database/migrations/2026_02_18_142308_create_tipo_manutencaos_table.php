@@ -14,16 +14,21 @@ return new class extends Migration
             $table->text('descricao')->nullable();
             $table->timestamps();
 
-            // Campos de histórico
+            // Histórico
             $table->boolean('ativo')->default(true);
+
             $table->foreignId('registro_anterior_id')
                 ->nullable()
                 ->constrained('tipo_manutencao')
                 ->nullOnDelete();
 
+            // Quem alterou
+            $table->string('alterado_por')->nullable();
+
             $table->index(['nome', 'ativo']);
         });
     }
+
 
     public function down(): void
     {

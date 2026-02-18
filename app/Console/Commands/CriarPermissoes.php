@@ -23,9 +23,10 @@ class CriarPermissoes extends Command
             'Listar Alunos',
             'Listar Relatórios',
             'Listar Retenção',
-            'Listar Tipos de Manutenção',
+            'Listar Tipo Manutenção',
 
             'Criar Alunos',
+            'Criar Tipo Manutenção',
 
             'Editar Alunos',
             'Editar Escola do Aluno',
@@ -41,11 +42,11 @@ class CriarPermissoes extends Command
             'Editar Turma do Aluno',
             'Editar Status do Aluno',
             'Editar CGM do Aluno',
-            'Editar Tipo de Manutenção',
+            'Editar Tipo Manutenção',
 
             'Excluir Alunos',
             'Excluir Laudos',
-            'Excluir Tipos de Manutenção',
+            'Excluir Tipo Manutenção',
 
             'Excluir Alunos em Massa',
             'Excluir Laudos em Massa',
