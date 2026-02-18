@@ -12,9 +12,13 @@ use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
+use Filament\Forms\Get;
+use Filament\Forms;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Fieldset;
 use Filament\Tables\Actions\Action;
+use Illuminate\Support\Facades\Http;
 use Filament\Forms\Components\ViewField;
 
 class EscolaService
@@ -22,6 +26,11 @@ class EscolaService
     public function __construct(
         protected UserService $userService,
     ) {}
+
+    public function podeEditarCodigoEscola(?User $user): bool
+    {
+        return $user?->hasPermissionTo('Editar Codigo da Escola');
+    }
 
     /** Configura a tabela completa (paginações, colunas, filtros, ações, ordenação). */
     public function configurarTabela(Table $table, ?User $user): Table
@@ -191,7 +200,15 @@ class EscolaService
                             ->label('Código')
                             ->required()
                             ->maxLength(3)
-                            ->minLength(3),
+                            ->minLength(3)
+                            ->disabled(function (Get $get, $record, ?string $operation) {
+                                // No EDIT
+                                if ($operation !== 'create') {
+                                    return false;
+                                }
+
+                                return !$this->podeEditarCodigoEscola(Auth::user());
+                            }),
 
                         TextInput::make('nome')
                             ->label('Nome')
@@ -206,43 +223,114 @@ class EscolaService
 
                         TextInput::make('telefone')
                             ->label('Telefone')
-                            ->tel()
-                            ->maxLength(20),
+                            ->required()
+                            ->mask('(99)99999-9999')
+                            ->rules(['regex:/^\(\d{2}\)\d{5}-\d{4}$/'])
+                            ->validationMessages([
+                                'regex' => 'O telefone deve estar no formato (99)99999-9999',
+                            ])
+                            ->maxLength(14),
                     ]),
                 ]),
-
             Section::make('Endereço')
                 ->schema([
-                    Grid::make(3)->schema([
+                    Grid::make(12)
+                        ->schema([
+                            TextInput::make('logradouro')
+                                ->label('Logradouro')
+                                ->maxLength(100)
+                                ->columnSpan(6)
+                                ->disabled(fn(Forms\Get $get) => blank($get('cep')))
+                                ->required()
+                                ->minLength(3)
+                                ->rule('regex:/^\p{L}+(?:\s\p{L}+)*$/u')
+                                ->validationMessages([
+                                    'regex' => 'Use apenas letras e um espaço simples entre palavras.',
+                                ]),
 
-                        TextInput::make('logradouro')
-                            ->label('Logradouro')
-                            ->maxLength(150),
+                            TextInput::make('numero')
+                                ->label('Número')
+                                ->columnSpan(3)
+                                ->maxLength(6)
+                                ->nullable()
+                                ->mask('999999'),
 
-                        TextInput::make('numero')
-                            ->label('Número')
-                            ->maxLength(20),
+                            TextInput::make('cep')
+                                ->label('CEP')
+                                ->columnSpan(3)
+                                ->mask('99999-999')
+                                ->rules(['regex:/^\d{5}-\d{3}$/'])
+                                ->validationMessages([
+                                    'regex' => 'O CEP deve estar no formato 00000-000',
+                                ])
+                                ->required()
+                                ->reactive()
+                                ->afterStateUpdated(function ($state, callable $set) {
+                                    $cep = preg_replace('/[^0-9]/', '', $state);
+                                    if (strlen($cep) !== 8) return;
 
-                        TextInput::make('bairro')
-                            ->label('Bairro')
-                            ->maxLength(100),
+                                    try {
+                                        $response = Http::timeout(5)->get("https://viacep.com.br/ws/{$cep}/json/");
+                                        if ($response->successful() && !$response->json('erro')) {
+                                            $data = $response->json();
+                                            $set('logradouro', $data['logradouro'] ?? '');
+                                            $set('bairro', $data['bairro'] ?? '');
+                                            $set('cidade', $data['localidade'] ?? '');
+                                            $set('estado', $data['uf'] ?? '');
+                                        }
+                                    } catch (\Exception $e) {
+                                    }
+                                }),
+                        ]),
 
-                        TextInput::make('cep')
-                            ->label('CEP')
-                            ->maxLength(9),
+                    Grid::make(12)
+                        ->schema([
+                            TextInput::make('bairro')
+                                ->label('Bairro')
+                                ->columnSpan(3)
+                                ->maxLength(100)
+                                ->minLength(2)
+                                ->rule('regex:/^\p{L}+(?:\s\p{L}+)*$/u')
+                                ->validationMessages([
+                                    'regex' => 'Use apenas letras e um espaço simples entre palavras.',
+                                ])
+                                ->required(),
 
-                        TextInput::make('cidade')
-                            ->label('Cidade')
-                            ->maxLength(100),
+                            TextInput::make('cidade')
+                                ->label('Cidade')
+                                ->maxLength(100)
+                                ->columnSpan(3)
+                                ->required()
+                                ->minLength(3)
+                                ->rule('regex:/^\p{L}+(?:\s\p{L}+)*$/u')
+                                ->validationMessages([
+                                    'regex' => 'Use apenas letras e um espaço simples entre palavras.',
+                                ]),
 
-                        TextInput::make('estado')
-                            ->label('Estado')
-                            ->maxLength(2),
+                            TextInput::make('estado')
+                                ->label('UF')
+                                ->maxLength(2)
+                                ->placeholder('PR, SP, RJ...')
+                                ->columnSpan(2)
+                                ->required()
+                                ->rule('regex:/^\p{L}+(?:\s\p{L}+)*$/u')
+                                ->validationMessages([
+                                    'regex' => 'Use apenas letras e um espaço simples entre palavras.',
+                                ]),
 
-                        TextInput::make('complemento')
-                            ->label('Complemento')
-                            ->columnSpanFull(),
-                    ]),
+                            TextInput::make('complemento')
+                                ->label('Complemento')
+                                ->maxLength(100)
+                                ->nullable()
+                                ->columnSpan(4)
+
+                                ->placeholder('Ex.: Próximo ao Supermercado')
+                                ->minLength(3)
+                                ->rule('regex:/^\p{L}+(?:\s\p{L}+)*$/u')
+                                ->validationMessages([
+                                    'regex' => 'Use apenas letras e um espaço simples entre palavras.',
+                                ]),
+                        ]),
                 ]),
         ];
     }

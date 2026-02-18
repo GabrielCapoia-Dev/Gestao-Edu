@@ -29,6 +29,7 @@ class CriarPermissoes extends Command
             'Editar Alunos',
             'Editar Escola do Aluno',
             'Editar Campos da Escola',
+            'Editar Codigo da Escola',
             'Editar Escola da Turma',
             'Editar Escola do Usuario',
             'Editar Escola do Professor',
