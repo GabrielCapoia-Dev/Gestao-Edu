@@ -24,6 +24,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\LaudoArquivoController;
 use Filament\Actions\Action as GlobalAction;
 use Filament\Navigation\MenuItem;
+use App\Models\User;
 
 class AdministrativoPanelProvider extends PanelProvider
 {
@@ -90,7 +91,7 @@ class AdministrativoPanelProvider extends PanelProvider
                     ->pluralLabel('Registro de Atividades')
                     ->navigationGroup('Administrativo')
                     ->navigationSort(1)
-                    ->authorize(fn() => app(UserService::class)->ehAdmin(app(AdminPanelProvider::class)->getAuthUser())),
+                    ->authorize(fn() => app(UserService::class)->ehAdmin(User::authUser())),
             ]);
     }
 }

@@ -24,15 +24,10 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\LaudoArquivoController;
 use Filament\Actions\Action as GlobalAction;
 use Filament\Navigation\MenuItem;
+use App\Models\User;
 
 class AdminPanelProvider extends PanelProvider
 {
-
-    public static function getAuthUser()
-    {
-
-        return Auth::user();
-    }
 
     public function panel(Panel $panel): Panel
     {
@@ -100,7 +95,7 @@ class AdminPanelProvider extends PanelProvider
                     ->pluralLabel('Registro de Atividades')
                     ->navigationGroup('Administrativo')
                     ->navigationSort(1)
-                    ->authorize(fn() => app(UserService::class)->ehAdmin($this->getAuthUser())),
+                    ->authorize(fn() => app(UserService::class)->ehAdmin(User::authUser())),
             ]);
     }
 }

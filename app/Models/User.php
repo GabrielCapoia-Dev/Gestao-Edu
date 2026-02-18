@@ -14,6 +14,7 @@ use Illuminate\Notifications\Notifiable;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Permission\Traits\HasRoles;
+use Illuminate\Support\Facades\Auth;
 
 class User extends Authenticatable implements FilamentUser
 {
@@ -103,7 +104,7 @@ class User extends Authenticatable implements FilamentUser
     {
         static::creating(function (User $user) {
             if (is_null($user->codigo)) {
-                $ultimoCodigo = User::max('codigo'); 
+                $ultimoCodigo = User::max('codigo');
 
                 if (empty($ultimoCodigo) || $ultimoCodigo < 100) {
                     $user->codigo = 100;
@@ -140,5 +141,12 @@ class User extends Authenticatable implements FilamentUser
     public function escola()
     {
         return $this->belongsTo(Escola::class, 'id_escola');
+    }
+
+
+    public static function scopeAuthUser()
+    {
+
+        return Auth::user();
     }
 }
