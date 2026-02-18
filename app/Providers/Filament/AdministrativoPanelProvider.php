@@ -25,9 +25,8 @@ use App\Http\Controllers\LaudoArquivoController;
 use Filament\Actions\Action as GlobalAction;
 use Filament\Navigation\MenuItem;
 
-class AdminPanelProvider extends PanelProvider
+class AdministrativoPanelProvider extends PanelProvider
 {
-
     public static function getAuthUser()
     {
 
@@ -37,12 +36,10 @@ class AdminPanelProvider extends PanelProvider
     public function panel(Panel $panel): Panel
     {
         return $panel
-            ->routes(function () {})
-            ->default()
-            ->id('especial')
-            ->path('especial')
-            ->login(LoginPage::class)
+            ->id('administrativo')
+            ->path('administrativo')
             ->spa()
+            ->login(LoginPage::class)
             ->colors([
                 'primary' => Color::Green,
                 'gray' => [
@@ -59,13 +56,16 @@ class AdminPanelProvider extends PanelProvider
                     950 => '#081124ff',
                 ],
             ])
-            ->brandLogo(fn() => view('components.logo-especial'))
+            ->brandLogo(fn() => view('components.logo-administrativo'))
             ->sidebarCollapsibleOnDesktop()
-            ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
-            ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
-            ->discoverClusters(in: app_path('Filament/Clusters'), for: 'App\\Filament\\Clusters')
+            ->discoverResources(in: app_path('Filament/Administrativo/Resources'), for: 'App\\Filament\\Administrativo\\Resources')
+            ->discoverPages(in: app_path('Filament/Administrativo/Pages'), for: 'App\\Filament\\Administrativo\\Pages')
+            ->resources([
+                \App\Filament\Resources\RoleResource::class,
+                \App\Filament\Resources\PermissionResource::class,
+            ])
             ->pages([])
-            ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
+            ->discoverWidgets(in: app_path('Filament/Administrativo/Widgets'), for: 'App\\Filament\\Administrativo\\Widgets')
             ->widgets([])
             ->middleware([
                 EncryptCookies::class,
@@ -86,7 +86,6 @@ class AdminPanelProvider extends PanelProvider
                 Authenticate::class,
             ])
             ->userMenuItems([
-                // O logout já vem por padrão, mas você pode customizar
                 'logout' => MenuItem::make()
                     ->label('Sair'),
             ])

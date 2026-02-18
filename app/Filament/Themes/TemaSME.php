@@ -9,6 +9,7 @@ use Filament\Support\Colors\Color;
 use Hasnayeen\Themes\Contracts\CanModifyPanelConfig;
 use Hasnayeen\Themes\Contracts\Theme;
 use Illuminate\Support\Facades\Auth;
+use Filament\Facades\Filament;
 
 class TemaSME extends Nord implements CanModifyPanelConfig, Theme
 {
@@ -29,7 +30,6 @@ class TemaSME extends Nord implements CanModifyPanelConfig, Theme
         if (!$isAdmin) {
             return [
                 TemaSME::class,
-                \Hasnayeen\Themes\Themes\Nord::class,
             ];
         }
         return \Hasnayeen\Themes\Themes\Sunset::class;
@@ -47,6 +47,18 @@ class TemaSME extends Nord implements CanModifyPanelConfig, Theme
 
     public function getThemeColor(): array
     {
+        $panel = Filament::getCurrentPanel()?->getId();
+        if ($panel === 'administrativo') {
+            return [
+                'primary' => MyColors::violet(),
+                'info' => Color::Sky,
+                'success' => Color::Emerald,
+                'warning' => Color::Amber,
+                'danger' => Color::Red,
+                'gray' => MyColors::darkGray(),
+            ];
+        }
+
         return [
             'primary' => MyColors::smeBlue(),
             'info' => Color::Sky,

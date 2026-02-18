@@ -77,19 +77,7 @@ class AppServiceProvider extends ServiceProvider
             app(Themes::class)->register(
                 $isAdmin
                     ? [\Hasnayeen\Themes\Themes\Sunset::class]
-                    : [\App\Filament\Themes\TemaSME::class, \Hasnayeen\Themes\Themes\Nord::class],
-                true
-            );
-        });
-        Event::listen(ServingFilament::class, function () {
-            $user = Filament::auth()?->user() ?? Auth::user();
-
-            $isAdmin = app(UserService::class)->ehAdmin($user);
-
-            app(Themes::class)->register(
-                $isAdmin
-                    ? [\Hasnayeen\Themes\Themes\Sunset::class]
-                    : [\App\Filament\Themes\TemaSME::class, \Hasnayeen\Themes\Themes\Nord::class],
+                    : [\App\Filament\Themes\TemaSME::class],
                 true
             );
         });
