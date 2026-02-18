@@ -63,6 +63,8 @@ class AdministrativoPanelProvider extends PanelProvider
             ->resources([
                 \App\Filament\Resources\RoleResource::class,
                 \App\Filament\Resources\PermissionResource::class,
+                \App\Filament\Resources\UserResource::class,
+                \App\Filament\Resources\EscolaResource::class,
             ])
             ->pages([])
             ->discoverWidgets(in: app_path('Filament/Administrativo/Widgets'), for: 'App\\Filament\\Administrativo\\Widgets')

@@ -8,6 +8,7 @@ use App\Services\EscolaService as Service;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 
 class EscolaResource extends Resource
@@ -23,6 +24,12 @@ class EscolaResource extends Resource
     protected static function service(): Service
     {
         return app(Service::class);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->where('ativo', true);
     }
 
     public static function form(Form $form): Form
