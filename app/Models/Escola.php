@@ -3,28 +3,67 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Escola extends Model
 {
-    protected $table = 'escolas';
-
     protected $fillable = [
         'codigo',
         'nome',
+        'email',
+        'telefone',
+        'logradouro',
+        'numero',
+        'bairro',
+        'cep',
+        'cidade',
+        'estado',
+        'complemento',
+        'ativo',
+        'registro_anterior_id',
     ];
 
-    public function users()
+    protected $casts = [
+        'ativo' => 'boolean',
+    ];
+
+    // ================= RELAÇÕES =================
+
+    public function registroAnterior(): BelongsTo
     {
-        return $this->hasMany(User::class, 'id_escola');
+        return $this->belongsTo(Escola::class, 'registro_anterior_id');
     }
 
-    public function turmas()
+    public function historicoPosteriores(): HasMany
     {
-        return $this->hasMany(Turma::class, 'id_escola');
+        return $this->hasMany(Escola::class, 'registro_anterior_id');
     }
 
-    public function professores()
+    // ================= SCOPES =================
+
+    public function scopeAtivas(Builder $query): Builder
     {
-        return $this->hasMany(Professor::class, 'id_escola');
+        return $query->where('ativo', true);
+    }
+
+    public function scopePorCodigo(Builder $query, string $codigo): Builder
+    {
+        return $query->where('codigo', $codigo);
+    }
+
+    // ================= MÉTODOS =================
+
+    public function getHistoricoCompleto()
+    {
+        return static::where('codigo', $this->codigo)
+            ->orderBy('created_at', 'desc')
+            ->get();
+    }
+
+    public function desativar(): void
+    {
+        $this->update(['ativo' => false]);
     }
 }
