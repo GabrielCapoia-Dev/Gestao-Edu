@@ -3,10 +3,10 @@
 namespace App\Filament\Resources\PedidoResource\Pages;
 
 use App\Filament\Resources\PedidoResource;
-use Filament\Actions;
-use Filament\Resources\Pages\ListRecords;
-use Filament\Resources\Components\Tab;
 use App\Models\TipoStatus;
+use Filament\Actions;
+use Filament\Resources\Components\Tab;
+use Filament\Resources\Pages\ListRecords;
 
 class ListPedidos extends ListRecords
 {
@@ -28,12 +28,21 @@ class ListPedidos extends ListRecords
             ->get();
 
         foreach ($statuses as $status) {
-            $tabs[$status->nome] = Tab::make()
-                ->label($status->nome)
+
+            $hex = substr(ltrim($status->cor, '#'), 0, 6);
+
+            $tabs[$status->nome] = Tab::make($status->nome)
                 ->modifyQueryUsing(
-                    fn($query) =>
-                    $query->where('tipo_status_id', $status->id)
-                );
+                    fn($query) => $query->where('tipo_status_id', $status->id)
+                )
+                ->extraAttributes([
+                    'style' => "
+                    --tab-color: #{$hex};
+                    background-color: #{$hex}15;
+                    border: 1px solid #{$hex}40;
+                    color: #{$hex};
+                ",
+                ]);
         }
 
         return $tabs;
