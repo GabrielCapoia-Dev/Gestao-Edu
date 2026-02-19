@@ -17,10 +17,8 @@ class TipoStatus extends Model
     protected $fillable = [
         'nome',
         'cor',
-
         'finaliza_pedido',
         'cancela_pedido',
-        'id_setor',
         'ativo',
         'registro_anterior_id',
     ];
@@ -31,29 +29,64 @@ class TipoStatus extends Model
         'ativo' => 'boolean',
     ];
 
+    /*
+    |--------------------------------------------------------------------------
+    | Activity Log
+    |--------------------------------------------------------------------------
+    */
+
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['nome', 'cor', 'finaliza_pedido', 'cancela_pedido', 'ativo']);
+            ->logOnly([
+                'nome',
+                'cor',
+                'finaliza_pedido',
+                'cancela_pedido',
+                'ativo',
+            ]);
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Relacionamentos
+    |--------------------------------------------------------------------------
+    */
+
+    public function setores()
+    {
+        return $this->belongsToMany(
+            Setor::class,
+            'setor_tipo_status',
+            'tipo_status_id',
+            'setor_id'
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Histórico
+    |--------------------------------------------------------------------------
+    */
 
     public function registroAnterior()
     {
-        return $this->belongsTo(TipoStatus::class, 'registro_anterior_id');
+        return $this->belongsTo(self::class, 'registro_anterior_id');
     }
 
     public function historico()
     {
-        return $this->hasMany(TipoStatus::class, 'registro_anterior_id');
+        return $this->hasMany(self::class, 'registro_anterior_id');
     }
 
-    // public function pedidos()
-    // {
-    //     return $this->hasMany(Pedido::class, 'tipo_status_id');
-    // }
+    /*
+    |--------------------------------------------------------------------------
+    | Scopes
+    |--------------------------------------------------------------------------
+    */
 
-    public function setor()
+    public function scopeAtivos($query)
     {
-        return $this->belongsTo(Setor::class, 'id_setor');
+        return $query->where('ativo', true);
     }
 }

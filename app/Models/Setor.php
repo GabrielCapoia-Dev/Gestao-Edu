@@ -23,46 +23,53 @@ class Setor extends Model
 
     protected static function booted()
     {
-        static::creating(function ($model) {
+        static::saving(function ($model) {
             if (Auth::check()) {
                 $model->alterado_por = Auth::user()->name;
             }
         });
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Relacionamentos
+    |--------------------------------------------------------------------------
+    */
+
+    public function tiposStatus()
+    {
+        return $this->belongsToMany(
+            TipoStatus::class,
+            'setor_tipo_status',
+            'setor_id',
+            'tipo_status_id'
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Histórico
+    |--------------------------------------------------------------------------
+    */
+
     public function registroAnterior()
     {
-        return $this->belongsTo(Setor::class, 'registro_anterior_id');
+        return $this->belongsTo(self::class, 'registro_anterior_id');
     }
 
     public function historico()
     {
-        return $this->hasMany(Setor::class, 'registro_anterior_id');
+        return $this->hasMany(self::class, 'registro_anterior_id');
     }
 
-    public function historicoCompleto()
+    /*
+    |--------------------------------------------------------------------------
+    | Scopes
+    |--------------------------------------------------------------------------
+    */
+
+    public function scopeAtivos($query)
     {
-        $raiz = $this;
-
-        while ($raiz->registro_anterior_id) {
-            $raiz = $raiz->registroAnterior;
-        }
-
-        $historico = collect();
-        $atual = $raiz;
-
-        while ($atual) {
-            $historico->push($atual);
-            $atual = self::where('registro_anterior_id', $atual->id)
-                ->orderByDesc('created_at')
-                ->first();
-        }
-
-        return $historico->sortByDesc('created_at');
-    }
-
-    public function tiposStatus()
-    {
-        return $this->hasMany(TipoStatus::class, 'id_setor');
+        return $query->where('ativo', true);
     }
 }
