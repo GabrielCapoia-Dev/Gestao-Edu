@@ -19,11 +19,12 @@ class CriarPermissoes extends Command
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         $permissoes = [
-            
+
             'Listar Alunos',
             'Listar Relatórios',
             'Listar Retenção',
             'Listar Tipo Manutenção',
+            'Listar Tipo Status',
 
             'Criar Alunos',
             'Criar Tipo Manutenção',
@@ -43,16 +44,20 @@ class CriarPermissoes extends Command
             'Editar Status do Aluno',
             'Editar CGM do Aluno',
             'Editar Tipo Manutenção',
+            'Editar Tipo Status',
 
             'Excluir Alunos',
             'Excluir Laudos',
             'Excluir Tipo Manutenção',
+            'Excluir Tipo Status',
 
             'Excluir Alunos em Massa',
             'Excluir Laudos em Massa',
             'Excluir Turmas em Massa',
             'Excluir Professores em Massa',
             'Excluir Tipos de Manutenção em Massa',
+            'Excluir Tipo Status em Massa',
+
 
             'Exportar Alunos',
             'Exportar Turmas',
@@ -77,9 +82,14 @@ class CriarPermissoes extends Command
         $this->info('Criando permissões...');
 
         foreach ($permissoes as $nome) {
-            Permission::firstOrCreate(['name' => $nome]);
-            $this->line("✔ Permissão: {$nome}");
+
+            $permission = Permission::firstOrCreate(['name' => $nome]);
+
+            if ($permission->wasRecentlyCreated) {
+                $this->line("✔ Criada: {$nome}");
+            }
         }
+
 
         $adminRole = Role::where('name', 'Admin')->first();
 
