@@ -25,11 +25,15 @@ class CriarPermissoes extends Command
             'Listar Retenção',
             'Listar Tipo Manutenção',
             'Listar Tipo Status',
+            'Listar Pedidos',
 
             'Criar Alunos',
             'Criar Tipo Manutenção',
+            'Criar Tipo Status',
+            'Criar Pedidos',
 
             'Editar Alunos',
+            'Editar Pedidos',
             'Editar Escola do Aluno',
             'Editar Campos da Escola',
             'Editar Codigo da Escola',
@@ -50,6 +54,7 @@ class CriarPermissoes extends Command
             'Excluir Laudos',
             'Excluir Tipo Manutenção',
             'Excluir Tipo Status',
+            'Excluir Pedidos',
 
             'Excluir Alunos em Massa',
             'Excluir Laudos em Massa',
@@ -57,6 +62,7 @@ class CriarPermissoes extends Command
             'Excluir Professores em Massa',
             'Excluir Tipos de Manutenção em Massa',
             'Excluir Tipo Status em Massa',
+            'Excluir Pedidos em Massa',
 
 
             'Exportar Alunos',
