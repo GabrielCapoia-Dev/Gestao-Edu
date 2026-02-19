@@ -15,6 +15,12 @@ use Filament\Tables\Table;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Enums\TipoArquivoPedido;
+use Filament\Tables\Enums\FiltersLayout;
+use Illuminate\Support\Facades\Storage;
+use Filament\Tables\Filters\Tabs;
+use Filament\Tables\Filters\Tabs\Tab;
+
 
 class PedidoService
 {
@@ -111,19 +117,40 @@ class PedidoService
             ->firstOrFail();
 
         $pedido = Pedido::create([
-            ...$data,
-            'solicitante_id' => $solicitante->id,
-            'escola_id' => $solicitante->id_escola,
-            'tipo_status_id' => $statusInicial->id,
-            'data_solicitacao' => now(),
+            'tipo_manutencao_id' => $data['tipo_manutencao_id'],
+            'descricao_pedido'   => $data['descricao_pedido'],
+            'nivel_prioridade'   => NivelEmergenciaPedido::INDEFINIDO,
+            'solicitante_id'     => $solicitante->id,
+            'escola_id'          => $solicitante->id_escola,
+            'tipo_status_id'     => $statusInicial->id,
+            'data_solicitacao'   => now(),
+            'ativo'              => true,
         ]);
 
+        // Salvar arquivos
+        if (!empty($data['arquivos'])) {
+            foreach ($data['arquivos'] as $path) {
+
+                $mime = Storage::mimeType("public/pedidos/{$path}");
+
+
+                $pedido->arquivos()->create([
+                    'usuario_id'    => $solicitante->id,
+                    'tipo_arquivo'  => TipoArquivoPedido::FOTOS_PROBLEMA,
+                    'caminho'       => $path,
+                    'nome_original' => basename($path),
+                    'mime_type'     => $mime,
+                ]);
+            }
+        }
+
+
         $this->registrarHistorico(
-            pedido: $pedido,
-            statusAnteriorId: null,
-            statusNovoId: $statusInicial->id,
-            usuario: $solicitante,
-            descricao: 'Pedido criado'
+            $pedido,
+            null,
+            $statusInicial->id,
+            $solicitante,
+            'Pedido criado'
         );
 
         return $pedido;
@@ -198,35 +225,45 @@ class PedidoService
     {
         return $form->schema([
 
-            Forms\Components\Section::make('Dados do Pedido')
+            Forms\Components\Section::make('Novo Pedido')
+                ->description('Informe o problema encontrado')
                 ->schema([
 
                     Forms\Components\Select::make('tipo_manutencao_id')
                         ->label('Tipo de Manutenção')
                         ->options(
                             TipoManutencao::where('ativo', true)
+                                ->orderBy('nome')
                                 ->pluck('nome', 'id')
                         )
                         ->required()
                         ->searchable()
                         ->preload(),
 
-                    Forms\Components\Select::make('nivel_prioridade')
-                        ->label('Prioridade')
-                        ->options(
-                            collect(NivelEmergenciaPedido::cases())
-                                ->mapWithKeys(fn($case) => [$case->value => $case->value])
-                        )
-                        ->required(),
-
                     Forms\Components\Textarea::make('descricao_pedido')
-                        ->label('Descrição')
+                        ->label('Descrição do Problema')
                         ->required()
-                        ->rows(5)
+                        ->rows(6)
+                        ->maxLength(2000)
+                        ->helperText('Descreva o problema com o máximo de detalhes possível')
+                        ->columnSpanFull(),
+
+                    Forms\Components\FileUpload::make('arquivos')
+                        ->label('Fotos do Problema')
+                        ->multiple()
+                        ->image()
+                        ->maxFiles(10)
+                        ->maxSize(5120) // 5MB por arquivo
+                        ->directory('pedidos')
+                        ->disk('public')
+                        ->storeFiles()
+                        ->visibility('public')
+                        ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                        ->helperText('Até 10 imagens (JPEG, PNG ou WEBP) - máximo 5MB cada')
                         ->columnSpanFull(),
 
                 ])
-                ->columns(2),
+                ->columns(1),
         ]);
     }
 
@@ -236,83 +273,214 @@ class PedidoService
     |--------------------------------------------------------------------------
     */
 
+    // Novo método público para o Resource::form() usar
     public function configurarFormularioGestao(Form $form): Form
     {
         return $form->schema([
 
-            Forms\Components\Section::make('Informações')
+            Forms\Components\Section::make('Informações do Pedido')
+                ->schema([
+                    Forms\Components\Placeholder::make('tipo_manutencao')
+                        ->label('Tipo de Manutenção')
+                        ->content(fn(Pedido $record) => $record->tipoManutencao?->nome ?? '—'),
+
+                    Forms\Components\Placeholder::make('status_atual')
+                        ->label('Status Atual')
+                        ->content(fn(Pedido $record) => $record->tipoStatus?->nome ?? '—'),
+
+                    Forms\Components\Placeholder::make('descricao_pedido')
+                        ->label('Descrição do Problema')
+                        ->content(fn(Pedido $record) => $record->descricao_pedido ?? '—')
+                        ->columnSpanFull(),
+                ])
+                ->columns(2),
+
+            Forms\Components\Section::make('Gestão do Pedido')
                 ->schema([
 
-                    Forms\Components\TextInput::make('numero_protocolo')
-                        ->disabled(),
-
-                    Forms\Components\Textarea::make('descricao_pedido')
-                        ->disabled()
-                        ->columnSpanFull(),
-
-                    Forms\Components\Select::make('tipo_status_id')
-                        ->label('Status')
-                        ->options(
-                            TipoStatus::where('ativo', true)
-                                ->pluck('nome', 'id')
+                    Forms\Components\Select::make('empresa_contratada_id')
+                        ->label('Empresa Responsável')
+                        ->relationship(
+                            name: 'empresaContratada',
+                            titleAttribute: 'nome',
+                            modifyQueryUsing: fn($query) => $query->where('ativo', true)
                         )
-                        ->required(),
+                        ->searchable()
+                        ->preload()
+                        ->nullable(),
 
-                    Forms\Components\Select::make('responsavel_id')
-                        ->relationship('responsavel', 'name')
-                        ->searchable(),
+                    Forms\Components\Select::make('nivel_prioridade')
+                        ->label('Nível de Prioridade')
+                        ->options([
+                            'Emergencial' => 'Emergencial',
+                            'Preventivo'  => 'Preventivo',
+                            'Corretivo'   => 'Corretivo',
+                        ])
+                        ->nullable()
+                        ->native(false),
 
-                    Forms\Components\DatePicker::make('data_prevista'),
+                    Forms\Components\Select::make('novo_status_id')
+                        ->label('Atualizar Status')
+                        ->options(function () {
+                            return TipoStatus::query()
+                                ->where('ativo', true)
+                                ->whereNotIn('nome', ['Em Aberto', 'Lido'])
+                                ->orderBy('nome')
+                                ->pluck('nome', 'id')
+                                ->toArray();
+                        })
+                        ->placeholder('Padrão: Lido')
+                        ->searchable()
+                        ->nullable(),
+
+                    Forms\Components\DatePicker::make('data_prevista')
+                        ->label('Data Prevista')
+                        ->nullable(),
+
+                    Forms\Components\DatePicker::make('data_entrega')
+                        ->label('Data de Entrega')
+                        ->nullable(),
 
                     Forms\Components\Textarea::make('descricao_alteracao')
-                        ->label('Observação da Alteração')
-                        ->rows(3)
-                        ->dehydrated(false)
+                        ->label('Descrição da Alteração')
+                        ->placeholder('Descreva o que foi feito ou observado...')
+                        ->rows(4)
+                        ->required()
+                        ->maxLength(2000)
                         ->columnSpanFull(),
-
                 ])
                 ->columns(2),
         ]);
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | TABELA
-    |--------------------------------------------------------------------------
-    */
 
+    /* |-------------------------------------------------------------------------- | TABELA |-------------------------------------------------------------------------- */
     public function configurarTabela(Table $table, ?User $user): Table
     {
         return $table
-            ->columns([
+            ->query($this->queryTabela($user))
+            ->columns($this->colunasTabela($user))
+            ->filters($this->filtrosTabela(), layout: FiltersLayout::AboveContent)
+            ->actions($this->acoesTabela($user))
+            ->bulkActions($this->acoesEmMassa($user))
+            ->defaultSort('created_at', 'desc');
+    }
+    protected function queryTabela(?User $user): Builder
+    {
+        $query = Pedido::query()->where('ativo', true);
+        if (!$user) {
+            return $query->whereRaw('1 = 0');
+        }
+        if ($user->hasRole('Admin')) {
+            return $this->ordenarPorStatus($query);
+        }
+        if ($user->id_escola) {
+            return $this->ordenarPorStatus($query->where('escola_id', $user->id_escola));
+        }
+        return $query->whereRaw('1 = 0');
+    }
 
-                Tables\Columns\TextColumn::make('numero_protocolo')
-                    ->label('Protocolo')
-                    ->searchable()
-                    ->sortable()
-                    ->weight('bold'),
+    protected function ordenarPorStatus(Builder $query): Builder
+    {
+        $statusEmAbertoId = TipoStatus::where('nome', 'Em Aberto')->value('id');
 
-                Tables\Columns\TextColumn::make('tipoManutencao.nome')
-                    ->label('Tipo')
-                    ->badge(),
+        return $query
+            ->orderByRaw("tipo_status_id = ? DESC", [$statusEmAbertoId])
+            ->orderBy('created_at', 'asc');
+    }
 
-                Tables\Columns\TextColumn::make('tipoStatus.nome')
-                    ->label('Status')
-                    ->badge(),
+    protected function filtrosTabela(): array
+    {
+        return [
+            Tables\Filters\SelectFilter::make('tipo_status_id')
+                ->label('Status')
+                ->relationship('tipoStatus', 'nome'),
 
-                Tables\Columns\TextColumn::make('nivel_prioridade')
-                    ->label('Prioridade')
-                    ->badge(),
 
-                Tables\Columns\TextColumn::make('descricao_pedido')
-                    ->limit(40)
-                    ->wrap(),
+            Tables\Filters\SelectFilter::make('tipo_manutencao_id')
+                ->label('Tipo')
+                ->relationship('tipoManutencao', 'nome'),
 
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime('d/m/Y H:i')
-                    ->sortable(),
-            ])
-            ->defaultSort('created_at', 'desc')
-            ->striped();
+            Tables\Filters\SelectFilter::make('nivel_prioridade')
+                ->label('Prioridade')
+                ->options(['Emergencial' => 'Emergencial', 'Preventivo' => 'Preventivo', 'Corretivo' => 'Corretivo',]),
+
+
+            Tables\Filters\Filter::make('apenas_em_aberto')
+                ->label('Somente em aberto')
+                ->query(fn($query) => $query
+                    ->whereHas('tipoStatus', fn($q) => $q
+                        ->where('finaliza_pedido', false)
+                        ->where('cancela_pedido', false))),
+        ];
+    }
+
+    protected function colunasTabela(?User $user): array
+    {
+        return [
+
+            Tables\Columns\TextColumn::make('numero_protocolo')
+                ->label('Protocolo')
+                ->searchable()
+                ->sortable()
+                ->weight('bold'),
+
+            Tables\Columns\TextColumn::make('tipoManutencao.nome')
+                ->label('Tipo')
+                ->badge()
+                ->sortable(),
+
+            Tables\Columns\TextColumn::make('tipoStatus.nome')
+                ->label('Status')
+                ->badge()
+                ->color(
+                    fn(Pedido $record) =>
+                    $record->tipoStatus?->finaliza_pedido ? 'success' : ($record->tipoStatus?->cancela_pedido ? 'danger' : 'warning')
+                ),
+
+            Tables\Columns\TextColumn::make('nivel_prioridade')
+                ->label('Prioridade')
+                ->badge()
+                ->color(fn($state) => match ($state) {
+                    'Emergencial' => 'danger',
+                    'Preventivo' => 'warning',
+                    'Corretivo' => 'info',
+                    default => 'gray'
+                }),
+
+            Tables\Columns\TextColumn::make('descricao_pedido')
+                ->label('Descrição')
+                ->limit(40)
+                ->wrap()
+                ->toggleable(),
+
+            Tables\Columns\TextColumn::make('created_at')
+                ->label('Criado em')
+                ->dateTime('d/m/Y H:i')
+                ->sortable(),
+        ];
+    }
+
+
+    protected function acoesTabela(?User $user): array
+    {
+        return  [
+            Tables\Actions\EditAction::make()
+                ->label('Gerenciar')
+                ->icon('heroicon-o-pencil-square')
+                ->color('warning'),
+        ];
+    }
+
+
+    protected function acoesEmMassa(?User $user): array
+    {
+        if (!$user?->hasPermissionTo('Editar Pedidos')) {
+            return [];
+        }
+
+        return [
+            Tables\Actions\DeleteBulkAction::make(),
+        ];
     }
 }

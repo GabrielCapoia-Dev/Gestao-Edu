@@ -5,7 +5,9 @@ Pontos principais abordados na reunião do dia 13/02
     1 - Criar um fluxo de nível de Emergência no nos pedidos (Emergencial, Preventivo, Corretivo) -> Opção de Criar novos
 
     2 - Medição/Aferição da obra com uma empresa terceirizada, talvez um status separado
-    "O PEDIDO Tem que ter um precisa ir la ver na tela de criar o status, e quando a es
+    "O PEDIDO Tem que ter um 'precisa ir la ver na tela de criar o status'
+
+        - Adicionar um campo no pedido que verifica se o serviço passou por medição/aferição
 
     3 - Confirmação da Escola que o pedido foi executado.
 

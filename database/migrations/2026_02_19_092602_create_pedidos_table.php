@@ -27,10 +27,11 @@ return new class extends Migration
                 ->constrained('tipo_status')
                 ->cascadeOnDelete();
 
-            $table->string('nivel_prioridade');
+            $table->string('nivel_prioridade')->nullable();
             $table->index('nivel_prioridade');
 
             $table->foreignId('escola_id')
+                ->nullable()
                 ->constrained('escolas')
                 ->cascadeOnDelete();
 
@@ -128,7 +129,6 @@ return new class extends Migration
             $table->string('caminho');
             $table->string('nome_original');
             $table->string('mime_type');
-            $table->unsignedBigInteger('tamanho');
 
             $table->text('descricao')->nullable();
 

@@ -7,6 +7,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
+use App\Models\Enums\TipoArquivoPedido;
+use App\Models\EmpresaContratada;
+
 
 class Pedido extends Model
 {
@@ -129,11 +132,24 @@ class Pedido extends Model
 
     public function historicos()
     {
-        return $this->hasMany(PedidoHistorico::class)->latest();
+        return $this->hasMany(PedidoHistorico::class)
+            ->with(['statusAnterior', 'statusNovo', 'usuario'])
+            ->orderByDesc('created_at');
     }
 
     public function arquivos()
     {
         return $this->hasMany(PedidoArquivo::class)->latest();
+    }
+
+    public function fotos()
+    {
+        return $this->hasMany(PedidoArquivo::class)
+            ->where('tipo_arquivo', TipoArquivoPedido::FOTOS_PROBLEMA);
+    }
+
+    public function empresaContratada()
+    {
+        return $this->belongsTo(EmpresaContratada::class, 'empresa_contratada_id');
     }
 }

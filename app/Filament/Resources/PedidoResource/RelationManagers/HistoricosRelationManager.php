@@ -2,8 +2,6 @@
 
 namespace App\Filament\Resources\PedidoResource\RelationManagers;
 
-use Filament\Forms;
-use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -11,44 +9,51 @@ use Filament\Tables\Table;
 class HistoricosRelationManager extends RelationManager
 {
     protected static string $relationship = 'historicos';
-    protected static ?string $title = 'Histórico';
-    protected static ?string $modelLabel = 'Registro';
-    protected static ?string $pluralModelLabel = 'Histórico';
 
-    public function form(Form $form): Form
-    {
-        return $form->schema([]);
-    }
+    protected static ?string $title = 'Histórico do Pedido';
+    protected static ?string $modelLabel = 'Registro';
+    protected static ?string $pluralModelLabel = 'Históricos';
 
     public function table(Table $table): Table
     {
+        $latestId = $this->getOwnerRecord()
+            ->historicos()
+            ->latest()
+            ->value('id');
+
         return $table
             ->columns([
+
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Data/Hora')
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
+                Tables\Columns\TextColumn::make('statusAnterior.nome')
+                    ->label('Status Anterior')
+                    ->badge()
+                    ->color('gray'),
 
-                Tables\Columns\TextColumn::make('tipoStatus.nome')
-                    ->label('Status')
-                    ->badge(),
+                Tables\Columns\TextColumn::make('statusNovo.nome')
+                    ->label('Novo Status')
+                    ->badge()
+                    ->color('primary'),
 
-                Tables\Columns\TextColumn::make('user.name')
+                Tables\Columns\TextColumn::make('usuario.name')
                     ->label('Responsável'),
 
-                Tables\Columns\TextColumn::make('observacao')
-                    ->label('Observação')
+                Tables\Columns\TextColumn::make('descricao_alteracao')
+                    ->label('Descrição Histórico')
                     ->limit(100)
                     ->wrap(),
 
-                Tables\Columns\IconColumn::make('notificacao_enviada')
-                    ->label('Notificado')
-                    ->boolean(),
             ])
+            ->recordClasses(
+                fn($record) => $record->id === $latestId ? 'highlight-latest' : null
+            )
             ->defaultSort('created_at', 'desc')
-            ->paginated([5, 10, 25])
-            ->striped();
+            ->paginated([5, 10, 25]);
     }
+
 
     public function isReadOnly(): bool
     {

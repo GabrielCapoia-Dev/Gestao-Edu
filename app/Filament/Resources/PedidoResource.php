@@ -34,9 +34,9 @@ class PedidoResource extends Resource
     public static function form(Form $form): Form
     {
         $service = app(Service::class);
-        $user = Auth::user();
+        $user    = Auth::user();
 
-        if ($service->podeGerenciarPedidos($user)) {
+        if ($form->getOperation() === 'edit' && $service->podeGerenciarPedidos($user)) {
             return $service->configurarFormularioGestao($form);
         }
 

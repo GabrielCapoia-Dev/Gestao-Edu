@@ -22,13 +22,11 @@ class PedidoArquivo extends Model
         'caminho', // Caminho no storage
         'nome_original', // Nome enviado
         'mime_type', // image/jpeg, application/pdf
-        'tamanho', // Em bytes
 
         'descricao', // Descrição opcional
     ];
 
     protected $casts = [
-        'tamanho' => 'integer',
         'tipo_arquivo' => TipoArquivoPedido::class,
     ];
 

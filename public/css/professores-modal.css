@@ -49,3 +49,22 @@
     background-color: rgb(29, 78, 216) !important;
     /* bg-blue-700 - um pouco mais escuro */
 }
+.highlight-latest td {
+    background-color: #e5eaf1ff !important;
+    border-top: 2px solid #074f9bff !important;
+    border-bottom: 2px solid #074f9bff !important;
+}
+
+.highlight-latest td:first-child {
+    border-left: 5px solid #074f9bff !important;
+}
+
+.dark .highlight-latest td {
+    background-color: #081124ff !important;
+    border-top: 2px solid #c7def8c7 !important;
+    border-bottom: 2px solid #c7def8c7 !important;
+}
+
+.dark .highlight-latest td:first-child {
+    border-left: 5px solid #c7def8c7 !important;
+}

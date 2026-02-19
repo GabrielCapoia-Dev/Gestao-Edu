@@ -7,6 +7,8 @@ use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Tables\Columns\Layout\Stack;
+use Illuminate\Support\Facades\Storage;
 
 class ArquivosRelationManager extends RelationManager
 {
@@ -35,31 +37,32 @@ class ArquivosRelationManager extends RelationManager
     {
         return $table
             ->columns([
-                Tables\Columns\ImageColumn::make('caminho')
-                    ->label('Foto')
-                    ->disk('public')
-                    ->height(80)
-                    ->width(80),
-
-                Tables\Columns\TextColumn::make('nome_original')
-                    ->label('Nome'),
-
-                Tables\Columns\TextColumn::make('descricao')
-                    ->label('Descrição')
-                    ->limit(50),
-
-                Tables\Columns\TextColumn::make('created_at')
-                    ->label('Adicionada em')
-                    ->dateTime('d/m/Y H:i'),
+                Stack::make([
+                    Tables\Columns\TextColumn::make('caminho')
+                        ->label('Foto')
+                        ->html()
+                        ->formatStateUsing(
+                            fn(string $state): string =>
+                            '<img 
+                            src="' . Storage::url($state) . '"
+                            style="
+                                width: 100%;
+                                height: auto;
+                                max-height: 400px;
+                                object-fit: contain;
+                                border-radius: 0.5rem;
+                                background: #f3f4f6;
+                            "
+                        />'
+                        ),
+                ]),
             ])
-            ->headerActions([
-                Tables\Actions\CreateAction::make(),
+            ->contentGrid([
+                'default' => 1,
+                'sm'      => 2,
+                'md'      => 3,
+                'xl'      => 4,
             ])
-            ->actions([
-                Tables\Actions\DeleteAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
-            ]);
+            ->paginated([12, 24, 48]);
     }
 }
