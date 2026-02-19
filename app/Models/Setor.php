@@ -60,4 +60,9 @@ class Setor extends Model
 
         return $historico->sortByDesc('created_at');
     }
+
+    public function tiposStatus()
+    {
+        return $this->hasMany(TipoStatus::class, 'id_setor');
+    }
 }
