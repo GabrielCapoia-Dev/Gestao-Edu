@@ -209,7 +209,7 @@
             color: #475569;
         }
 
-       /* Benefits Section */
+        /* Benefits Section */
         .benefits {
             padding: 60px 40px;
             border-radius: 24px;
@@ -359,6 +359,21 @@
                 font-size: 2rem;
             }
         }
+
+        .sistema-button {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #ffffff;
+            color: #074F9B;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: 600;
+            transition: background 0.3s ease;
+        }
+
+        .sistema-button:hover {
+            background: linear-gradient(100deg, #ffffff, #cccccc);
+        }
     </style>
 </head>
 
@@ -370,12 +385,14 @@
             <div class="logo-container">
                 <img src="/images/brasao-umuarama.png" alt="Brasão Município de Umuarama">
             </div>
-            <h1>Sistema de Educação Especial</h1>
+            <h1>Gestão Secretaria de Educação</h1>
             <p>
-                Plataforma completa para gestão pedagógica das Salas de Recursos Multifuncionais,
-                garantindo acompanhamento individualizado e excelência no atendimento educacional especializado.
+                Plataforma completa para gestão pedagógica, administrativa e logistica,
+                garantindo acompanhamento individualizado e excelência no atendimento especializado.
             </p>
-            <a href="/admin/login" class="cta-button">Acessar o Sistema →</a>
+            <a href="/administrativo/login" class="sistema-button">Administrativo</a>
+            <a href="/especial/login" class="sistema-button">Educação Especial</a>
+            <a href="/admin/login" class="sistema-button">Painel Admin</a>
         </div>
     </section>
 

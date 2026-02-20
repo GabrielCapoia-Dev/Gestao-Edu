@@ -20,7 +20,7 @@ use Filament\Tables\Enums\FiltersLayout;
 use Illuminate\Support\Facades\Storage;
 use Filament\Tables\Filters\Tabs;
 use Filament\Tables\Filters\Tabs\Tab;
-
+use Filament\Support\Colors\Color;
 
 class PedidoService
 {
@@ -398,9 +398,9 @@ class PedidoService
     protected function filtrosTabela(): array
     {
         return [
-            Tables\Filters\SelectFilter::make('tipo_status_id')
-                ->label('Status')
-                ->relationship('tipoStatus', 'nome'),
+            Tables\Filters\SelectFilter::make('escola_id')
+                ->label('Escola')
+                ->relationship('escola', 'nome'),
 
 
             Tables\Filters\SelectFilter::make('tipo_manutencao_id')
@@ -411,13 +411,6 @@ class PedidoService
                 ->label('Prioridade')
                 ->options(['Emergencial' => 'Emergencial', 'Preventivo' => 'Preventivo', 'Corretivo' => 'Corretivo',]),
 
-
-            Tables\Filters\Filter::make('apenas_em_aberto')
-                ->label('Somente em aberto')
-                ->query(fn($query) => $query
-                    ->whereHas('tipoStatus', fn($q) => $q
-                        ->where('finaliza_pedido', false)
-                        ->where('cancela_pedido', false))),
         ];
     }
 
@@ -433,26 +426,16 @@ class PedidoService
 
             Tables\Columns\TextColumn::make('tipoManutencao.nome')
                 ->label('Tipo')
-                ->badge()
                 ->sortable(),
 
             Tables\Columns\TextColumn::make('tipoStatus.nome')
                 ->label('Status')
                 ->badge()
-                ->color(
-                    fn(Pedido $record) =>
-                    $record->tipoStatus?->finaliza_pedido ? 'success' : ($record->tipoStatus?->cancela_pedido ? 'danger' : 'warning')
-                ),
+                ->color(fn(Pedido $record) => Color::hex($record->tipoStatus?->cor ?? '#6b7280')),
 
             Tables\Columns\TextColumn::make('nivel_prioridade')
                 ->label('Prioridade')
-                ->badge()
-                ->color(fn($state) => match ($state) {
-                    'Emergencial' => 'danger',
-                    'Preventivo' => 'warning',
-                    'Corretivo' => 'info',
-                    default => 'gray'
-                }),
+                ->sortable(),
 
             Tables\Columns\TextColumn::make('descricao_pedido')
                 ->label('Descrição')

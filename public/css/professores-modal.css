@@ -19,6 +19,7 @@
     border-radius: 0.75rem;
     box-shadow: 0 25px 50px rgba(0, 0, 0, 0.45);
 }
+
 /* Fundo azulado para os checkboxes de permissões (não marcados) */
 .permissions-checkbox-list label {
     background-color: rgba(59, 130, 246, 0.05);
@@ -49,6 +50,7 @@
     background-color: rgb(29, 78, 216) !important;
     /* bg-blue-700 - um pouco mais escuro */
 }
+
 .highlight-latest td {
     background-color: #e5eaf1ff !important;
     border-top: 2px solid #074f9bff !important;
@@ -67,4 +69,9 @@
 
 .dark .highlight-latest td:first-child {
     border-left: 5px solid #c7def8c7 !important;
+}
+
+.fi-tabs-item[style*="--tab-color"] span,
+.fi-tabs-item[style*="--tab-color"] {
+    color: var(--tab-color) !important;
 }
