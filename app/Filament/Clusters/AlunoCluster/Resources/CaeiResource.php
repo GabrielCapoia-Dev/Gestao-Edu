@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Filament\Tables\Enums\FiltersLayout;
 use App\Services\AlunoService;
+use App\Services\UserService;
 
 class CaeiResource extends Resource
 {
@@ -35,6 +36,10 @@ class CaeiResource extends Resource
     public static function alunoService(): AlunoService
     {
         return app(AlunoService::class);
+    }
+    public static function userService(): UserService
+    {
+        return app(UserService::class);
     }
 
     public static function form(Form $form): Form
@@ -170,7 +175,7 @@ class CaeiResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->modifyQueryUsing(function (Builder $query) use ($user) {
-                static::alunoService()->aplicarFiltroPorEscolaDoUsuario($query, $user);
+                static::userService()->aplicarFiltroPorEscolaDoUsuario($query, $user);
             })
             ->filtersFormColumns(12)
             ->filters([
