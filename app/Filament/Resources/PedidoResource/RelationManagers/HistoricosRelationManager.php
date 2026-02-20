@@ -28,11 +28,7 @@ class HistoricosRelationManager extends RelationManager
                     ->label('Data/Hora')
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('statusAnterior.nome')
-                    ->label('Status Anterior')
-                    ->badge()
-                    ->color('gray'),
-
+                    
                 Tables\Columns\TextColumn::make('statusNovo.nome')
                     ->label('Novo Status')
                     ->badge()

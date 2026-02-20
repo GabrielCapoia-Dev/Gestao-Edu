@@ -7,7 +7,6 @@ enum NivelEmergenciaPedido: string
     case EMERGENCIAL = 'emergencial';
     case PREVENTIVO = 'preventivo';
     case CORRETIVO = 'corretivo';
-
     case INDEFINIDO = 'indeterminado';
 
     public function label(): string

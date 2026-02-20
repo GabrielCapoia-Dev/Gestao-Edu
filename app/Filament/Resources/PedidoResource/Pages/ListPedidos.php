@@ -8,6 +8,8 @@ use App\Models\TipoStatus;
 use Filament\Actions;
 use Filament\Resources\Components\Tab;
 use Filament\Resources\Pages\ListRecords;
+use Illuminate\Support\HtmlString;
+
 
 class ListPedidos extends ListRecords
 {
@@ -24,15 +26,28 @@ class ListPedidos extends ListRecords
     {
         $tabs = [];
 
+        // =========================
+        // TAB TODOS (sem filtro)
+        // =========================
+        $tabs['todos'] = Tab::make('Todos')
+            ->badge(fn() => Pedido::where('ativo', true)->count())
+            ->extraAttributes([
+                'class' => 'tab-todos',
+            ]);
+
+        // =========================
+        // TABS POR STATUS
+        // =========================
         $statuses = TipoStatus::where('ativo', true)
-            ->orderByRaw("nome = 'Em Aberto' DESC") // força Em Aberto primeiro
+            ->orderByRaw("nome = 'Em Aberto' DESC")
             ->orderBy('nome')
             ->get();
 
         foreach ($statuses as $status) {
 
             $hex = substr(ltrim($status->cor, '#'), 0, 6);
-            $tabs[$status->nome] = Tab::make($status->nome)
+
+            $tabs[$status->id] = Tab::make($status->nome)
                 ->modifyQueryUsing(
                     fn($query) => $query->where('tipo_status_id', $status->id)
                 )
@@ -46,7 +61,6 @@ class ListPedidos extends ListRecords
                     --tab-color: #{$hex};
                     background-color: #{$hex}20;
                     border: 1px solid #{$hex}50;
-                    color: #{$hex} !important;
                 ",
                 ]);
         }
@@ -58,5 +72,48 @@ class ListPedidos extends ListRecords
     {
         return TipoStatus::where('nome', 'Em Aberto')
             ->value('id');
+    }
+
+    public function getTitle(): string|HtmlString
+    {
+        $activeTab = $this->activeTab;
+
+        if (!$activeTab || $activeTab === 'todos') {
+            $label = $activeTab === 'todos' ? 'Todos' : null;
+            return $label
+                ? new HtmlString(
+                    '<span style="
+                            display:inline-block;
+                            padding:2px 10px;
+                            border-radius:5px;
+                            font-weight:600;
+                            line-height:1.6;
+                            background-color:#e5e7eb;
+                            color:#374151;
+                            border:1px solid #d1d5db">' . $label . '</span>'
+                )
+                : 'Pedidos';
+        }
+
+        $status = TipoStatus::find($activeTab);
+
+        if (!$status) {
+            return 'Pedidos';
+        }
+
+        $hex = '#' . ltrim($status->cor, '#');
+
+        return new HtmlString(
+            '<span style="'
+                . "display:inline-block;"
+                . "padding:2px 10px;"
+                . "border-radius:5px;"
+                . "font-weight:600;"
+                . "line-height:1.6;"
+                . "background-color:{$hex}20;"
+                . "color:{$hex};"
+                . "border:1px solid {$hex}50;"
+                . '">' . e($status->nome) . '</span>'
+        );
     }
 }

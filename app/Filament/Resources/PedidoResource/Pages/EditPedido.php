@@ -28,15 +28,15 @@ class EditPedido extends EditRecord
         unset($data['novo_status_id']);
 
         $statusEmAbertoId = TipoStatus::where('nome', 'Em Aberto')->value('id');
-        $statusLidoId     = TipoStatus::where('nome', 'Lido')->value('id');
+        $statusEmAnaliseId     = TipoStatus::where('nome', 'Em Análise')->value('id');
 
         // 🔵 Se usuário escolheu manualmente → usa o escolhido
         if ($this->novoStatusId) {
             $data['tipo_status_id'] = $this->novoStatusId;
         }
-        // 🔵 Se NÃO escolheu e estava Em Aberto → vira Lido
+        // 🔵 Se NÃO escolheu e estava Em Aberto → vira Em Analise
         elseif ($this->statusAnteriorId === $statusEmAbertoId) {
-            $data['tipo_status_id'] = $statusLidoId;
+            $data['tipo_status_id'] = $statusEmAnaliseId;
         }
         // 🔵 Caso contrário → mantém o status atual
 

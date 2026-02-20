@@ -75,3 +75,10 @@
 .fi-tabs-item[style*="--tab-color"] {
     color: var(--tab-color) !important;
 }
+
+.tab-todos {
+    margin-right: 20px;
+    border: 1px solid #2563EB !important;
+    background-color: #2563EB20 !important;
+
+}

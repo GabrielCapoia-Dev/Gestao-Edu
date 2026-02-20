@@ -273,29 +273,24 @@ class PedidoService
     |--------------------------------------------------------------------------
     */
 
-    // Novo método público para o Resource::form() usar
+    // TODO: Adicionar campo de Setor para referenciar qual setor alterou o status
+    // TODO: Alterar a Section de Informações do Pedido, para listar mais detalhes
     public function configurarFormularioGestao(Form $form): Form
     {
         return $form->schema([
 
             Forms\Components\Section::make('Informações do Pedido')
                 ->schema([
-                    Forms\Components\Placeholder::make('tipo_manutencao')
-                        ->label('Tipo de Manutenção')
-                        ->content(fn(Pedido $record) => $record->tipoManutencao?->nome ?? '—'),
-
-                    Forms\Components\Placeholder::make('status_atual')
-                        ->label('Status Atual')
-                        ->content(fn(Pedido $record) => $record->tipoStatus?->nome ?? '—'),
-
-                    Forms\Components\Placeholder::make('descricao_pedido')
-                        ->label('Descrição do Problema')
-                        ->content(fn(Pedido $record) => $record->descricao_pedido ?? '—')
+                    Forms\Components\Placeholder::make('cabecalho')
+                        ->label(false)
+                        ->content(fn(Pedido $record) => view('components.pedido.pedido-cabecalho', ['record' => $record]))
                         ->columnSpanFull(),
                 ])
-                ->columns(2),
+                ->collapsible(),
+
 
             Forms\Components\Section::make('Gestão do Pedido')
+                ->collapsible()
                 ->schema([
 
                     Forms\Components\Select::make('empresa_contratada_id')
@@ -324,18 +319,18 @@ class PedidoService
                         ->options(function () {
                             return TipoStatus::query()
                                 ->where('ativo', true)
-                                ->whereNotIn('nome', ['Em Aberto', 'Lido'])
+                                ->whereNotIn('nome', ['Em Aberto', 'Em Análise'])
                                 ->orderBy('nome')
                                 ->pluck('nome', 'id')
                                 ->toArray();
                         })
-                        ->placeholder('Padrão: Lido')
+                        ->placeholder('Padrão: Em Análise')
                         ->searchable()
                         ->nullable(),
 
                     Forms\Components\DatePicker::make('data_prevista')
                         ->label('Data Prevista')
-                        ->nullable(),
+                        ->required(),
 
                     Forms\Components\DatePicker::make('data_entrega')
                         ->label('Data de Entrega')
@@ -414,6 +409,8 @@ class PedidoService
         ];
     }
 
+    // TODO: Ajustar visualização da coluna para mostrar a coluna de Status, junto com Setor e Descrição do Status, de maneira empilhada
+    // TODO: ADICIONAR COLUNA COM NOME DA ESCOLA
     protected function colunasTabela(?User $user): array
     {
         return [
@@ -435,6 +432,15 @@ class PedidoService
 
             Tables\Columns\TextColumn::make('nivel_prioridade')
                 ->label('Prioridade')
+                ->badge()
+                ->color(fn(Pedido $record) => Color::hex(
+                    match ($record->nivel_prioridade?->value) {
+                        'Emergencial' => '#ef4444',
+                        'Corretivo'   => '#f97316',
+                        'Preventivo'  => '#3b82f6',
+                        default       => '#2b2b2b',
+                    }
+                ))
                 ->sortable(),
 
             Tables\Columns\TextColumn::make('descricao_pedido')
