@@ -29,20 +29,6 @@ class TipoStatusService
                 ->required()
                 ->format('hex'),
 
-            Forms\Components\Select::make('setores')
-                ->label('Setores')
-                ->relationship(
-                    name: 'setores',
-                    titleAttribute: 'nome',
-                    modifyQueryUsing: fn($query) => $query->ativos()
-                )
-                ->multiple()
-                ->preload()
-                ->searchable()
-                ->required(),
-
-
-
             Forms\Components\Toggle::make('finaliza_pedido')
                 ->label('Finaliza o pedido?')
                 ->helperText('Marca o pedido como concluído')
@@ -88,13 +74,6 @@ class TipoStatusService
             Tables\Columns\ColorColumn::make('cor')
                 ->alignCenter()
                 ->label('Cor'),
-
-            Tables\Columns\TextColumn::make('setores.nome')
-                ->label('Setores')
-                ->badge()
-                ->searchable()
-                ->alignCenter()
-                ->separator(','),
 
 
             Tables\Columns\IconColumn::make('finaliza_pedido')

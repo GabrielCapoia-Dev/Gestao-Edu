@@ -274,7 +274,6 @@ class PedidoService
     */
 
     // TODO: Adicionar campo de Setor para referenciar qual setor alterou o status
-    // TODO: Alterar a Section de Informações do Pedido, para listar mais detalhes
     public function configurarFormularioGestao(Form $form): Form
     {
         return $form->schema([
@@ -331,6 +330,17 @@ class PedidoService
                     Forms\Components\DatePicker::make('data_prevista')
                         ->label('Data Prevista')
                         ->required(),
+
+                    Forms\Components\Select::make('setor_id')
+                        ->label('Setor')
+                        ->relationship(
+                            name: 'setor',
+                            titleAttribute: 'nome',
+                            modifyQueryUsing: fn($query) => $query->where('ativo', true)
+                        )
+                        ->searchable()
+                        ->preload()
+                        ->nullable(),
 
                     Forms\Components\DatePicker::make('data_entrega')
                         ->label('Data de Entrega')

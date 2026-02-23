@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
+use Illuminate\Support\Facades\Artisan;
 
 class DatabaseSeeder extends Seeder
 {
@@ -126,6 +127,12 @@ class DatabaseSeeder extends Seeder
         $adminUser->assignRole($adminRole);
         $secretarioUser->assignRole($secretarioRole);
 
+
+        // Executa command que cria permissões adicionais e vincula ao Admin
+        Artisan::call('permissoes:criar');
+
+        $this->command->info(Artisan::output());
+        
         /**
          * Criar domínios de email
          */
@@ -217,10 +224,17 @@ class DatabaseSeeder extends Seeder
 
         $this->call([
             EscolaSeeder::class,
-            AlunoPlanilhaSeeder::class,
+            UserPorEscolaSeeder::class,
+            // AlunoPlanilhaSeeder::class,
             // TurmaSeeder::class,
             // ProfessorSeeder::class,
             // AlunoSeeder::class,
+
+            SetorSeeder::class,
+            TipoStatusSeeder::class,
+            TipoManutencaoSeeder::class,
+            EmpresaContratadaSeeder::class,
+            PedidoSeeder::class,
         ]);
     }
 
