@@ -57,7 +57,6 @@ class PedidoSeeder extends Seeder
         // Busca cada status individualmente — evita problema de encoding com keyBy
         $sAberto      = TipoStatus::where('nome', 'Em Aberto')->first();
         $sAnalise     = TipoStatus::where('nome', 'Em Análise')->first();
-        $sEncaminhado = TipoStatus::where('nome', 'Encaminhado ao Setor')->first();
         $sConcluido   = TipoStatus::where('nome', 'Concluído')->first();
         $sCancelado   = TipoStatus::where('nome', 'Cancelado')->first();
 
@@ -82,16 +81,9 @@ class PedidoSeeder extends Seeder
                 $this->hist($p, null,          $sAberto,      $u, $s, 'Pedido criado.'),
                 $this->hist($p, $sAberto,      $sAnalise,     $u, $s, 'Encaminhado para análise técnica.'),
             ]],
-            ['status' => $sEncaminhado, 'historico' => fn($p, $u, $s) => [
-                $this->hist($p, null,          $sAberto,      $u, $s, 'Pedido criado.'),
-                $this->hist($p, $sAberto,      $sAnalise,     $u, $s, 'Analisado e aprovado.'),
-                $this->hist($p, $sAnalise,     $sEncaminhado, $u, $s, 'Encaminhado ao setor responsável.'),
-            ]],
             ['status' => $sConcluido,   'historico' => fn($p, $u, $s) => [
                 $this->hist($p, null,          $sAberto,      $u, $s, 'Pedido criado.'),
                 $this->hist($p, $sAberto,      $sAnalise,     $u, $s, 'Aprovado para execução.'),
-                $this->hist($p, $sAnalise,     $sEncaminhado, $u, $s, 'Encaminhado ao setor responsável.'),
-                $this->hist($p, $sEncaminhado, $sConcluido,   $u, $s, 'Serviço concluído e aprovado.'),
             ]],
             ['status' => $sCancelado,   'historico' => fn($p, $u, $s) => [
                 $this->hist($p, null,          $sAberto,      $u, $s, 'Pedido criado.'),

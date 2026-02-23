@@ -148,10 +148,10 @@ class DatabaseSeeder extends Seeder
         $administrativoRole->syncPermissions($permissionsAdministrativo);
 
         $administrativoUser = User::firstOrCreate(
-            ['email' => 'secretario@secretario.com'],
+            ['email' => 'administrativo@administrativo.com'],
             [
-                'codigo' => 101,
-                'name' => 'Secretário',
+                'codigo' => 102,
+                'name' => 'Administrativo',
                 'password' => Hash::make($password),
                 'email_verified_at' => now(),
                 'email_approved' => true
