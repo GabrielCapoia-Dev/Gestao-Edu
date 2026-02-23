@@ -26,6 +26,7 @@ class CriarPermissoes extends Command
             'Listar Tipo Manutenção',
             'Listar Tipo Status',
             'Listar Pedidos',
+            'Listar Todos os Pedidos',
 
             'Criar Alunos',
             'Criar Tipo Manutenção',

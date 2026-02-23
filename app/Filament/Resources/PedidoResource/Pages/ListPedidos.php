@@ -10,6 +10,7 @@ use Filament\Resources\Components\Tab;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Facades\Auth;
+use App\Services\PedidoService;
 
 class ListPedidos extends ListRecords
 {
@@ -26,11 +27,19 @@ class ListPedidos extends ListRecords
     {
         $tabs = [];
 
+        /** @var \App\Models\User */
+        $user = Auth::user();
+
+        $service = app(PedidoService::class);
+
+        // Query base respeitando permissão
+        $baseQuery = $service->queryTabela($user);
+
         // =========================
-        // TAB TODOS (sem filtro)
+        // TAB TODOS
         // =========================
         $tabs['todos'] = Tab::make('Todos')
-            ->badge(fn() => Pedido::where('ativo', true)->count())
+            ->badge(fn() => (clone $baseQuery)->count())
             ->extraAttributes([
                 'class' => 'tab-todos',
             ]);
@@ -43,12 +52,9 @@ class ListPedidos extends ListRecords
             ->orderBy('nome')
             ->get();
 
-        /** @var \App\Models\User */
-        $user = Auth::user();
-
         foreach ($statuses as $status) {
 
-            // Regra: esconder "Encaminhado ao Setor" se não tiver permissão
+            // Ocultar se não tiver permissão
             if (
                 $status->nome === 'Encaminhado ao Setor' &&
                 ! $user?->hasPermissionTo('Visualizar Status: Encaminhado ao Setor')
@@ -63,16 +69,16 @@ class ListPedidos extends ListRecords
                     fn($query) => $query->where('tipo_status_id', $status->id)
                 )
                 ->badge(
-                    fn() => Pedido::where('ativo', true)
+                    fn() => (clone $baseQuery)
                         ->where('tipo_status_id', $status->id)
                         ->count()
                 )
                 ->extraAttributes([
                     'style' => "
-                --tab-color: #{$hex};
-                background-color: #{$hex}20;
-                border: 1px solid #{$hex}50;
-            ",
+                    --tab-color: #{$hex};
+                    background-color: #{$hex}20;
+                    border: 1px solid #{$hex}50;
+                ",
                 ]);
         }
 

@@ -416,18 +416,29 @@ class PedidoService
             ->bulkActions($this->acoesEmMassa($user))
             ->defaultSort('created_at', 'desc');
     }
-    protected function queryTabela(?User $user): Builder
+    public function queryTabela(?User $user): Builder
     {
         $query = Pedido::query()->where('ativo', true);
-        if (!$user) {
+
+        if (! $user) {
             return $query->whereRaw('1 = 0');
         }
-        if ($user->hasRole('Admin')) {
+
+        // Admin OU permissão especial → vê tudo
+        if (
+            $user->hasRole('Admin') ||
+            $user->hasPermissionTo('Listar Todos os Pedidos')
+        ) {
             return $this->ordenarPorStatus($query);
         }
+
+        // Usuário comum → apenas pedidos da escola vinculada
         if ($user->id_escola) {
-            return $this->ordenarPorStatus($query->where('escola_id', $user->id_escola));
+            return $this->ordenarPorStatus(
+                $query->where('escola_id', $user->id_escola)
+            );
         }
+
         return $query->whereRaw('1 = 0');
     }
 
