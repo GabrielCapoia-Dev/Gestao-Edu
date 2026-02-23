@@ -433,12 +433,20 @@ class PedidoService
                 Tables\Columns\Layout\Stack::make([
                     Tables\Columns\TextColumn::make('numero_protocolo')
                         ->label('Protocolo')
+                        ->tooltip('Número do protocolo')
+                        ->extraAttributes([
+                            'class' => 'tooltip-hover-effect cursor-help'
+                        ])
                         ->searchable()
                         ->sortable()
                         ->weight('bold'),
 
                     Tables\Columns\TextColumn::make('tipoManutencao.nome')
                         ->label('Tipo')
+                        ->tooltip('Tipo de manutenção')
+                        ->extraAttributes([
+                            'class' => 'tooltip-hover-effect cursor-help'
+                        ])
                         ->sortable(),
 
                     Tables\Columns\TextColumn::make('tipoManutencao.descricao')
@@ -451,17 +459,33 @@ class PedidoService
                 Tables\Columns\Layout\Stack::make([
                     Tables\Columns\TextColumn::make('escola.nome')
                         ->label('Escola')
+                        ->tooltip('Escola que fez a solicitação')
+                        ->extraAttributes([
+                            'class' => 'tooltip-hover-effect cursor-help'
+                        ])
                         ->icon('heroicon-o-building-office-2')
+                        ->alignCenter()
                         ->sortable(),
 
                     Tables\Columns\TextColumn::make('solicitante.name')
                         ->label('Solicitante')
+
+                        ->tooltip('Quem fez a solicitação')
+                        ->extraAttributes([
+                            'class' => 'tooltip-hover-effect cursor-help'
+                        ])
                         ->icon('heroicon-o-user')
+                        ->alignCenter()
                         ->color('gray')
                         ->size('sm'),
 
                     Tables\Columns\TextColumn::make('responsavel.name')
                         ->label('Responsável')
+                        ->alignCenter()
+                        ->tooltip('Responsável atual')
+                        ->extraAttributes([
+                            'class' => 'tooltip-hover-effect cursor-help'
+                        ])
                         ->icon('heroicon-o-user-circle')
                         ->color('gray')
                         ->size('sm')
@@ -471,12 +495,14 @@ class PedidoService
                 // Bloco 3: Status + Prioridade + Setor + Empresa
                 Tables\Columns\Layout\Stack::make([
                     Tables\Columns\TextColumn::make('tipoStatus.nome')
+                        ->alignCenter()
                         ->label('Status')
                         ->badge()
                         ->color(fn(Pedido $record) => Color::hex($record->tipoStatus?->cor ?? '#6b7280')),
 
                     Tables\Columns\TextColumn::make('nivel_prioridade')
                         ->label('Prioridade')
+                        ->alignCenter()
                         ->badge()
                         ->color(fn(Pedido $record) => Color::hex(
                             match ($record->nivel_prioridade?->value) {
@@ -490,13 +516,23 @@ class PedidoService
 
                     Tables\Columns\TextColumn::make('setor.nome')
                         ->label('Setor')
+                        ->tooltip('Setor Responsável')
+                        ->alignCenter()
+                        ->extraAttributes([
+                            'class' => 'tooltip-hover-effect cursor-help'
+                        ])
                         ->icon('heroicon-o-building-storefront')
                         ->color('gray')
                         ->size('sm')
                         ->placeholder('Sem setor'),
 
                     Tables\Columns\TextColumn::make('empresaContratada.nome')
+                        ->alignCenter()
                         ->label('Empresa')
+                        ->tooltip('Empresa contratada')
+                        ->extraAttributes([
+                            'class' => 'tooltip-hover-effect cursor-help'
+                        ])
                         ->icon('heroicon-o-briefcase')
                         ->color('gray')
                         ->size('sm')
@@ -508,12 +544,22 @@ class PedidoService
                     Tables\Columns\TextColumn::make('data_solicitacao')
                         ->label('Solicitado em')
                         ->icon('heroicon-o-calendar')
+                        ->tooltip('Data de solicitação')
+                        ->extraAttributes([
+                            'class' => 'tooltip-hover-effect cursor-help'
+                        ])
                         ->date('d/m/Y')
+                        ->alignCenter()
                         ->sortable(),
 
                     Tables\Columns\TextColumn::make('data_prevista')
                         ->label('Previsto para')
+                        ->tooltip('Data prevista para entrega')
                         ->icon('heroicon-o-clock')
+                        ->extraAttributes([
+                            'class' => 'tooltip-hover-effect cursor-help'
+                        ])
+                        ->alignCenter()
                         ->date('d/m/Y')
                         ->color(function (Pedido $record) {
                             if (! $record->data_prevista) {
@@ -531,6 +577,7 @@ class PedidoService
                         ->label('Entregue em')
                         ->icon('heroicon-o-check-circle')
                         ->date('d/m/Y')
+                        ->alignCenter()
                         ->color('success')
                         ->size('sm')
                         ->placeholder('Não entregue'),
@@ -540,6 +587,7 @@ class PedidoService
                 Tables\Columns\TextColumn::make('descricao_pedido')
                     ->label('Descrição')
                     ->limit(60)
+                    ->alignCenter()
                     ->wrap()
                     ->color('gray')
                     ->size('sm')
