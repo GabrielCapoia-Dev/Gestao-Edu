@@ -62,6 +62,40 @@ class EditPedido extends EditRecord
 
         $status = TipoStatus::find($statusNovoId);
 
+        /*
+    |--------------------------------------------------------------------------
+    | REGRA: Encaminhado ao Setor
+    |--------------------------------------------------------------------------
+    */
+
+        if ($status?->nome === 'Encaminhado ao Setor') {
+
+            $statusEmAberto = TipoStatus::where('nome', 'Em Aberto')->first();
+
+            if ($statusEmAberto) {
+
+                $statusAnteriorInterno = $record->tipo_status_id;
+
+                $record->update([
+                    'tipo_status_id' => $statusEmAberto->id,
+                ]);
+
+                $service->registrarHistorico(
+                    $record,
+                    $statusAnteriorInterno,
+                    $statusEmAberto->id,
+                    $user,
+                    'Pedido reaberto automaticamente após encaminhamento ao setor.'
+                );
+            }
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Finalização normal
+    |--------------------------------------------------------------------------
+    */
+
         if ($status?->finaliza_pedido && !$record->data_entrega) {
             $record->update(['data_entrega' => now()]);
         }

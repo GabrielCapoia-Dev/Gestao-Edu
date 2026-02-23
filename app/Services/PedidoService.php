@@ -179,12 +179,7 @@ class PedidoService
             'responsavel_id' => $usuario->id,
         ]);
 
-        if ($novoStatus->finaliza_pedido) {
-            $pedido->update([
-                'data_entrega' => now(),
-            ]);
-        }
-
+        // Histórico da primeira alteração
         $this->registrarHistorico(
             pedido: $pedido,
             statusAnteriorId: $statusAnteriorId,
@@ -192,6 +187,46 @@ class PedidoService
             usuario: $usuario,
             descricao: $descricao
         );
+
+        /*
+    |--------------------------------------------------------------------------
+    | REGRA ESPECIAL: Encaminhado ao Setor
+    |--------------------------------------------------------------------------
+    */
+
+        if ($novoStatus->nome === 'Encaminhado ao Setor') {
+
+            $statusEmAberto = TipoStatus::where('nome', 'Em Aberto')->first();
+
+            if ($statusEmAberto) {
+
+                $statusAnteriorIdInterno = $pedido->tipo_status_id;
+
+                $pedido->update([
+                    'tipo_status_id' => $statusEmAberto->id,
+                ]);
+
+                $this->registrarHistorico(
+                    pedido: $pedido,
+                    statusAnteriorId: $statusAnteriorIdInterno,
+                    statusNovoId: $statusEmAberto->id,
+                    usuario: $usuario,
+                    descricao: 'Pedido encaminhado ao setor e reaberto automaticamente.'
+                );
+            }
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Finalização normal
+    |--------------------------------------------------------------------------
+    */
+
+        if ($novoStatus->finaliza_pedido) {
+            $pedido->update([
+                'data_entrega' => now(),
+            ]);
+        }
     }
 
     /*
