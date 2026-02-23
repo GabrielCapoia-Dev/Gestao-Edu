@@ -97,6 +97,7 @@ class DatabaseSeeder extends Seeder
         // Criação da rule Admin
         $adminRole = Role::firstOrCreate(['name' => 'Admin']);
         $secretarioRole = Role::firstOrCreate(['name' => 'Secretário']);
+        $administrativoRole = Role::firstOrCreate(['name' => 'Administrativo']);
 
         // Atribui todas as permissões à role Admin
         $adminRole->syncPermissions($permissionsList);
@@ -132,7 +133,33 @@ class DatabaseSeeder extends Seeder
         Artisan::call('permissoes:criar');
 
         $this->command->info(Artisan::output());
-        
+
+        $permissionsAdministrativo = [
+            'Listar Pedidos',
+            'Listar Tipo Manutenção',
+            'Listar Todos os Pedidos',
+            'Criar Tipo Manutenção',
+            'Editar Pedidos',
+            'Editar Tipo Manutenção',
+            'Excluir Tipo Manutenção',
+            'Excluir Tipos de Manutenção em Massa',
+        ];
+
+        $administrativoRole->syncPermissions($permissionsAdministrativo);
+
+        $administrativoUser = User::firstOrCreate(
+            ['email' => 'secretario@secretario.com'],
+            [
+                'codigo' => 101,
+                'name' => 'Secretário',
+                'password' => Hash::make($password),
+                'email_verified_at' => now(),
+                'email_approved' => true
+            ]
+        );
+
+        $administrativoUser->assignRole($administrativoRole);
+
         /**
          * Criar domínios de email
          */
