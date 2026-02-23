@@ -9,7 +9,7 @@ use Filament\Actions;
 use Filament\Resources\Components\Tab;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Support\HtmlString;
-
+use Illuminate\Support\Facades\Auth;
 
 class ListPedidos extends ListRecords
 {
@@ -43,7 +43,18 @@ class ListPedidos extends ListRecords
             ->orderBy('nome')
             ->get();
 
+        /** @var \App\Models\User */
+        $user = Auth::user();
+
         foreach ($statuses as $status) {
+
+            // Regra: esconder "Encaminhado ao Setor" se não tiver permissão
+            if (
+                $status->nome === 'Encaminhado ao Setor' &&
+                ! $user?->hasPermissionTo('Visualizar Status: Encaminhado ao Setor')
+            ) {
+                continue;
+            }
 
             $hex = substr(ltrim($status->cor, '#'), 0, 6);
 
@@ -58,10 +69,10 @@ class ListPedidos extends ListRecords
                 )
                 ->extraAttributes([
                     'style' => "
-                    --tab-color: #{$hex};
-                    background-color: #{$hex}20;
-                    border: 1px solid #{$hex}50;
-                ",
+                --tab-color: #{$hex};
+                background-color: #{$hex}20;
+                border: 1px solid #{$hex}50;
+            ",
                 ]);
         }
 
