@@ -15,6 +15,7 @@ use App\Models\Enums\NivelEmergenciaPedido;
 
 class PedidoSeeder extends Seeder
 {
+    private int $numeroDePedidos = 10;
     private array $descricoes = [
         'Tomada da sala %d não funciona.',
         'Vazamento na torneira do banheiro %d.',
@@ -54,12 +55,11 @@ class PedidoSeeder extends Seeder
     public function run(): void
     {
         // Busca cada status individualmente — evita problema de encoding com keyBy
-        $sAberto    = TipoStatus::where('nome', 'Em Aberto')->first();
-        $sAnalise   = TipoStatus::where('nome', 'Em Análise')->first();
-        $sExecucao  = TipoStatus::where('nome', 'Em Execução')->first();
-        $sAguard    = TipoStatus::where('nome', 'Aguardando Material')->first();
-        $sConcluido = TipoStatus::where('nome', 'Concluído')->first();
-        $sCancelado = TipoStatus::where('nome', 'Cancelado')->first();
+        $sAberto      = TipoStatus::where('nome', 'Em Aberto')->first();
+        $sAnalise     = TipoStatus::where('nome', 'Em Análise')->first();
+        $sEncaminhado = TipoStatus::where('nome', 'Encaminhado ao Setor')->first();
+        $sConcluido   = TipoStatus::where('nome', 'Concluído')->first();
+        $sCancelado   = TipoStatus::where('nome', 'Cancelado')->first();
 
         $tipos    = TipoManutencao::where('ativo', true)->pluck('id')->toArray();
         $setores  = Setor::where('ativo', true)->pluck('id')->toArray();
@@ -75,35 +75,31 @@ class PedidoSeeder extends Seeder
         ];
 
         $grupos = [
-            ['status' => $sAberto,    'historico' => fn($p, $u, $s) => [
-                $this->hist($p, null,      $sAberto,   $u, $s, 'Pedido criado.'),
+            ['status' => $sAberto,      'historico' => fn($p, $u, $s) => [
+                $this->hist($p, null,          $sAberto,      $u, $s, 'Pedido criado.'),
             ]],
-            ['status' => $sAnalise,   'historico' => fn($p, $u, $s) => [
-                $this->hist($p, null,      $sAberto,   $u, $s, 'Pedido criado.'),
-                $this->hist($p, $sAberto,  $sAnalise,  $u, $s, 'Encaminhado para análise técnica.'),
+            ['status' => $sAnalise,     'historico' => fn($p, $u, $s) => [
+                $this->hist($p, null,          $sAberto,      $u, $s, 'Pedido criado.'),
+                $this->hist($p, $sAberto,      $sAnalise,     $u, $s, 'Encaminhado para análise técnica.'),
             ]],
-            ['status' => $sExecucao,  'historico' => fn($p, $u, $s) => [
-                $this->hist($p, null,      $sAberto,   $u, $s, 'Pedido criado.'),
-                $this->hist($p, $sAberto,  $sAnalise,  $u, $s, 'Analisado e aprovado.'),
-                $this->hist($p, $sAnalise, $sExecucao, $u, $s, 'Serviço iniciado.'),
+            ['status' => $sEncaminhado, 'historico' => fn($p, $u, $s) => [
+                $this->hist($p, null,          $sAberto,      $u, $s, 'Pedido criado.'),
+                $this->hist($p, $sAberto,      $sAnalise,     $u, $s, 'Analisado e aprovado.'),
+                $this->hist($p, $sAnalise,     $sEncaminhado, $u, $s, 'Encaminhado ao setor responsável.'),
             ]],
-            ['status' => $sAguard,    'historico' => fn($p, $u, $s) => [
-                $this->hist($p, null,      $sAberto,   $u, $s, 'Pedido criado.'),
-                $this->hist($p, $sAberto,  $sAnalise,  $u, $s, 'Em análise.'),
-                $this->hist($p, $sAnalise, $sAguard,   $u, $s, 'Aguardando chegada de material.'),
+            ['status' => $sConcluido,   'historico' => fn($p, $u, $s) => [
+                $this->hist($p, null,          $sAberto,      $u, $s, 'Pedido criado.'),
+                $this->hist($p, $sAberto,      $sAnalise,     $u, $s, 'Aprovado para execução.'),
+                $this->hist($p, $sAnalise,     $sEncaminhado, $u, $s, 'Encaminhado ao setor responsável.'),
+                $this->hist($p, $sEncaminhado, $sConcluido,   $u, $s, 'Serviço concluído e aprovado.'),
             ]],
-            ['status' => $sConcluido, 'historico' => fn($p, $u, $s) => [
-                $this->hist($p, null,       $sAberto,    $u, $s, 'Pedido criado.'),
-                $this->hist($p, $sAberto,   $sAnalise,   $u, $s, 'Aprovado para execução.'),
-                $this->hist($p, $sAnalise,  $sExecucao,  $u, $s, 'Serviço iniciado.'),
-                $this->hist($p, $sExecucao, $sConcluido, $u, $s, 'Serviço concluído e aprovado.'),
-            ]],
-            ['status' => $sCancelado, 'historico' => fn($p, $u, $s) => [
-                $this->hist($p, null,      $sAberto,    $u, $s, 'Pedido criado.'),
-                $this->hist($p, $sAberto,  $sCancelado, $u, $s, 'Cancelado por duplicidade ou solicitação.'),
+            ['status' => $sCancelado,   'historico' => fn($p, $u, $s) => [
+                $this->hist($p, null,          $sAberto,      $u, $s, 'Pedido criado.'),
+                $this->hist($p, $sAberto,      $sCancelado,   $u, $s, 'Cancelado por duplicidade ou solicitação.'),
             ]],
         ];
 
+        
         foreach ($grupos as $grupo) {
             $statusAtual = $grupo['status'];
 
@@ -112,13 +108,14 @@ class PedidoSeeder extends Seeder
                 continue;
             }
 
-            for ($i = 1; $i <= 60; $i++) {
-                $userId  = $this->rand($users);
-                $setorId = $this->rand($setores);
+            for ($i = 1; $i <= $this->numeroDePedidos; $i++) {
+                $solicitanteId  = $this->rand($users);
+                $responsavelId  = $this->rand(array_values(array_filter($users, fn($id) => $id !== $solicitanteId)));
+                $setorId        = $this->rand($setores);
 
                 $diasAtras    = rand(1, 90);
                 $dataSolicit  = now()->subDays($diasAtras);
-                $dataPrevista = (clone $dataSolicit)->addDays(rand(3, 15));
+                $dataPrevista = (clone $dataSolicit)->addDays(rand(13, 25));
                 $dataEntrega  = $statusAtual->finaliza_pedido
                     ? (clone $dataPrevista)->addDays(rand(0, 5))
                     : null;
@@ -132,8 +129,8 @@ class PedidoSeeder extends Seeder
                     'tipo_status_id'        => $statusAtual->id,
                     'nivel_prioridade'      => $this->rand($prioridades),
                     'escola_id'             => $this->rand($escolas),
-                    'solicitante_id'        => $userId,
-                    'responsavel_id'        => $userId,
+                    'solicitante_id' => $solicitanteId,
+                    'responsavel_id' => $responsavelId,
                     'setor_id'              => $setorId,
                     'empresa_contratada_id' => $this->rand($empresas),
                     'data_solicitacao'      => $dataSolicit,
@@ -142,7 +139,7 @@ class PedidoSeeder extends Seeder
                     'ativo'                 => true,
                 ]);
 
-                foreach ($grupo['historico']($pedido, $userId, $setorId) as $h) {
+                foreach ($grupo['historico']($pedido, $solicitanteId, $setorId) as $h) {
                     PedidoHistorico::create($h);
                 }
             }

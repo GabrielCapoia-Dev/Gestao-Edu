@@ -10,7 +10,7 @@ class SetorSeeder extends Seeder
     public function run(): void
     {
         $setorBase = Setor::create([
-            'nome' => 'Manutenção Predial',
+            'nome' => 'Educação',
             'status' => 'Ativo',
             'alterado_por' => 'Seeder',
             'ativo' => true,
@@ -18,7 +18,7 @@ class SetorSeeder extends Seeder
 
         // Versão atualizada (histórico)
         Setor::create([
-            'nome' => 'Manutenção e Infraestrutura',
+            'nome' => 'Obras',
             'status' => 'Ativo',
             'alterado_por' => 'Seeder',
             'ativo' => true,
@@ -26,7 +26,7 @@ class SetorSeeder extends Seeder
         ]);
 
         Setor::create([
-            'nome' => 'Tecnologia',
+            'nome' => 'Serviços Publicos',
             'status' => 'Ativo',
             'alterado_por' => 'Seeder',
             'ativo' => true,

@@ -21,6 +21,9 @@ use Illuminate\Support\Facades\Storage;
 use Filament\Tables\Filters\Tabs;
 use Filament\Tables\Filters\Tabs\Tab;
 use Filament\Support\Colors\Color;
+use Filament\Tables\Columns\Layout\Stack;
+use Illuminate\Support\Carbon;
+
 
 class PedidoService
 {
@@ -305,11 +308,13 @@ class PedidoService
 
                     Forms\Components\Select::make('nivel_prioridade')
                         ->label('Nível de Prioridade')
-                        ->options([
-                            'Emergencial' => 'Emergencial',
-                            'Preventivo'  => 'Preventivo',
-                            'Corretivo'   => 'Corretivo',
-                        ])
+                        ->options(
+                            collect(NivelEmergenciaPedido::cases())
+                                ->mapWithKeys(fn($case) => [
+                                    $case->value => $case->label()
+                                ])
+                                ->toArray()
+                        )
                         ->nullable()
                         ->native(false),
 
@@ -419,61 +424,161 @@ class PedidoService
         ];
     }
 
-    // TODO: Ajustar visualização da coluna para mostrar a coluna de Status, junto com Setor e Descrição do Status, de maneira empilhada
-    // TODO: ADICIONAR COLUNA COM NOME DA ESCOLA
     protected function colunasTabela(?User $user): array
     {
         return [
+            Tables\Columns\Layout\Split::make([
 
-            Tables\Columns\TextColumn::make('numero_protocolo')
-                ->label('Protocolo')
-                ->searchable()
-                ->sortable()
-                ->weight('bold'),
+                // Bloco 1: Protocolo + Tipo de Manutenção
+                Tables\Columns\Layout\Stack::make([
+                    Tables\Columns\TextColumn::make('numero_protocolo')
+                        ->label('Protocolo')
+                        ->searchable()
+                        ->sortable()
+                        ->weight('bold'),
 
-            Tables\Columns\TextColumn::make('tipoManutencao.nome')
-                ->label('Tipo')
-                ->sortable(),
+                    Tables\Columns\TextColumn::make('tipoManutencao.nome')
+                        ->label('Tipo')
+                        ->sortable(),
 
-            Tables\Columns\TextColumn::make('tipoStatus.nome')
-                ->label('Status')
-                ->badge()
-                ->color(fn(Pedido $record) => Color::hex($record->tipoStatus?->cor ?? '#6b7280')),
+                    Tables\Columns\TextColumn::make('tipoManutencao.descricao')
+                        ->label('')
+                        ->color('gray')
+                        ->size('sm'),
+                ])->space(1),
 
-            Tables\Columns\TextColumn::make('nivel_prioridade')
-                ->label('Prioridade')
-                ->badge()
-                ->color(fn(Pedido $record) => Color::hex(
-                    match ($record->nivel_prioridade?->value) {
-                        'Emergencial' => '#ef4444',
-                        'Corretivo'   => '#f97316',
-                        'Preventivo'  => '#3b82f6',
-                        default       => '#2b2b2b',
-                    }
-                ))
-                ->sortable(),
+                // Bloco 2: Escola + Solicitante + Responsável
+                Tables\Columns\Layout\Stack::make([
+                    Tables\Columns\TextColumn::make('escola.nome')
+                        ->label('Escola')
+                        ->icon('heroicon-o-building-office-2')
+                        ->sortable(),
 
-            Tables\Columns\TextColumn::make('descricao_pedido')
-                ->label('Descrição')
-                ->limit(40)
-                ->wrap()
-                ->toggleable(),
+                    Tables\Columns\TextColumn::make('solicitante.name')
+                        ->label('Solicitante')
+                        ->icon('heroicon-o-user')
+                        ->color('gray')
+                        ->size('sm'),
 
-            Tables\Columns\TextColumn::make('created_at')
-                ->label('Criado em')
-                ->dateTime('d/m/Y H:i')
-                ->sortable(),
+                    Tables\Columns\TextColumn::make('responsavel.name')
+                        ->label('Responsável')
+                        ->icon('heroicon-o-user-circle')
+                        ->color('gray')
+                        ->size('sm')
+                        ->placeholder('Sem responsável'),
+                ])->space(1),
+
+                // Bloco 3: Status + Prioridade + Setor + Empresa
+                Tables\Columns\Layout\Stack::make([
+                    Tables\Columns\TextColumn::make('tipoStatus.nome')
+                        ->label('Status')
+                        ->badge()
+                        ->color(fn(Pedido $record) => Color::hex($record->tipoStatus?->cor ?? '#6b7280')),
+
+                    Tables\Columns\TextColumn::make('nivel_prioridade')
+                        ->label('Prioridade')
+                        ->badge()
+                        ->color(fn(Pedido $record) => Color::hex(
+                            match ($record->nivel_prioridade?->value) {
+                                'emergencial' => '#a10000',
+                                'corretivo'   => '#973f00',
+                                'preventivo'  => '#013891',
+                                default       => '#2b2b2b',
+                            }
+                        ))
+                        ->sortable(),
+
+                    Tables\Columns\TextColumn::make('setor.nome')
+                        ->label('Setor')
+                        ->icon('heroicon-o-building-storefront')
+                        ->color('gray')
+                        ->size('sm')
+                        ->placeholder('Sem setor'),
+
+                    Tables\Columns\TextColumn::make('empresaContratada.nome')
+                        ->label('Empresa')
+                        ->icon('heroicon-o-briefcase')
+                        ->color('gray')
+                        ->size('sm')
+                        ->placeholder('Sem empresa'),
+                ])->space(1),
+
+                // Bloco 4: Datas
+                Tables\Columns\Layout\Stack::make([
+                    Tables\Columns\TextColumn::make('data_solicitacao')
+                        ->label('Solicitado em')
+                        ->icon('heroicon-o-calendar')
+                        ->date('d/m/Y')
+                        ->sortable(),
+
+                    Tables\Columns\TextColumn::make('data_prevista')
+                        ->label('Previsto para')
+                        ->icon('heroicon-o-clock')
+                        ->date('d/m/Y')
+                        ->color(function (Pedido $record) {
+                            if (! $record->data_prevista) {
+                                return null;
+                            }
+
+                            return Carbon::parse($record->data_prevista)->isPast()
+                                ? Color::hex('#a10000') // vermelho
+                                : Color::hex('#facc15'); // amarelo
+                        })
+                        ->size('sm')
+                        ->placeholder('Sem previsão'),
+
+                    Tables\Columns\TextColumn::make('data_entrega')
+                        ->label('Entregue em')
+                        ->icon('heroicon-o-check-circle')
+                        ->date('d/m/Y')
+                        ->color('success')
+                        ->size('sm')
+                        ->placeholder('Não entregue'),
+                ])->space(1),
+
+                // Bloco 5: Descrição
+                Tables\Columns\TextColumn::make('descricao_pedido')
+                    ->label('Descrição')
+                    ->limit(60)
+                    ->wrap()
+                    ->color('gray')
+                    ->size('sm')
+                    ->toggleable(),
+
+            ]),
         ];
     }
 
 
     protected function acoesTabela(?User $user): array
     {
-        return  [
-            Tables\Actions\EditAction::make()
+        return [
+            Tables\Actions\Action::make('gerenciar')
                 ->label('Gerenciar')
                 ->icon('heroicon-o-pencil-square')
-                ->color('warning'),
+                ->color('warning')
+                ->action(function (Pedido $record) use ($user) {
+                    if (!$user) return;
+
+                    $statusEmAberto = TipoStatus::where('nome', 'Em Aberto')->first();
+                    $statusAnalise  = TipoStatus::where('nome', 'Em Análise')->first();
+
+                    if (
+                        $statusAnalise &&
+                        $statusEmAberto &&
+                        $record->tipo_status_id === $statusEmAberto->id
+                    ) {
+                        $this->alterarStatus(
+                            $record,
+                            $statusAnalise,
+                            $user,
+                            'Pedido assumido para análise por ' . $user->name . '.'
+                        );
+                    }
+
+                    redirect(route('filament.admin.resources.pedidos.edit', $record));
+                })
+                ->openUrlInNewTab(false),
         ];
     }
 

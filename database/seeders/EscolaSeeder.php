@@ -16,13 +16,20 @@ class EscolaSeeder extends Seeder
 
     /** Palavras a ignorar no início (prefixos e títulos) */
     private array $prefixos = [
-        'escola', 'municipal', 'cmei', 'cei',
-        'prof', 'profa', 'professor', 'professora',
-        'dr', 'dra',
+        'escola',
+        'municipal',
+        'cmei',
+        'cei',
+        'prof',
+        'profa',
+        'professor',
+        'professora',
+        'dr',
+        'dra',
     ];
 
     /** Stopwords (também ignoradas ao escolher palavras úteis) */
-    private array $stopwords = ['de','da','do','das','dos','e','dela','dele','delas','deles','a','o'];
+    private array $stopwords = ['de', 'da', 'do', 'das', 'dos', 'e', 'dela', 'dele', 'delas', 'deles', 'a', 'o'];
 
     public function run(): void
     {
@@ -75,17 +82,102 @@ class EscolaSeeder extends Seeder
             'ESCOLA - Vinicius de Morais',
         ];
 
+        $enderecos = [
+            [
+                'logradouro' => 'Avenida Paraná',
+                'numero' => '4521',
+                'bairro' => 'Centro',
+                'cep' => '87501-030',
+                'cidade' => 'Umuarama',
+                'estado' => 'PR',
+            ],
+            [
+                'logradouro' => 'Rua Desembargador Antônio Franco Ferreira da Costa',
+                'numero' => '3200',
+                'bairro' => 'Zona I',
+                'cep' => '87501-120',
+                'cidade' => 'Umuarama',
+                'estado' => 'PR',
+            ],
+            [
+                'logradouro' => 'Avenida Rio Branco',
+                'numero' => '2890',
+                'bairro' => 'Zona III',
+                'cep' => '87502-210',
+                'cidade' => 'Umuarama',
+                'estado' => 'PR',
+            ],
+            [
+                'logradouro' => 'Rua Arapongas',
+                'numero' => '1100',
+                'bairro' => 'Jardim Panorama',
+                'cep' => '87505-150',
+                'cidade' => 'Umuarama',
+                'estado' => 'PR',
+            ],
+            [
+                'logradouro' => 'Rua Bahia',
+                'numero' => '780',
+                'bairro' => 'Zona VII',
+                'cep' => '87503-040',
+                'cidade' => 'Umuarama',
+                'estado' => 'PR',
+            ],
+            [
+                'logradouro' => 'Rua Londrina',
+                'numero' => '1500',
+                'bairro' => 'Parque Industrial',
+                'cep' => '87507-020',
+                'cidade' => 'Umuarama',
+                'estado' => 'PR',
+            ],
+            [
+                'logradouro' => 'Avenida Presidente Castelo Branco',
+                'numero' => '2100',
+                'bairro' => 'Centro Cívico',
+                'cep' => '87504-000',
+                'cidade' => 'Umuarama',
+                'estado' => 'PR',
+            ],
+            [
+                'logradouro' => 'Rua Minas Gerais',
+                'numero' => '980',
+                'bairro' => 'Zona II',
+                'cep' => '87502-180',
+                'cidade' => 'Umuarama',
+                'estado' => 'PR',
+            ],
+        ];
+
+        $indexEndereco = 0;
+        $totalEnderecos = count($enderecos);
+
         // Mantemos um set em memória para garantir unicidade durante o seed
-        $codigosUsados = Escola::pluck('codigo')->filter()->map(fn ($c) => Str::upper($c))->all();
+        $codigosUsados = Escola::pluck('codigo')->filter()->map(fn($c) => Str::upper($c))->all();
         $codigosUsados = array_flip($codigosUsados); // chave = código, valor irrelevante
 
         // Cadastra municipais (prefixo 'E')
         foreach ($municipais as $nome) {
             $codigo = $this->gerarCodigoUnico($nome, 'E', $codigosUsados);
 
+            $endereco = $enderecos[$indexEndereco % $totalEnderecos];
+            $indexEndereco++;
+
             Escola::updateOrCreate(
                 ['nome' => $nome],
-                ['codigo' => $codigo]
+                [
+                    'codigo' => $codigo,
+                    'email' => Str::slug($codigo) . '@escola.pr.gov.br',
+                    'telefone' => '(44) 3621-' . rand(1000, 9999),
+                    'logradouro' => $endereco['logradouro'],
+                    'numero' => $endereco['numero'],
+                    'bairro' => $endereco['bairro'],
+                    'cep' => $endereco['cep'],
+                    'cidade' => $endereco['cidade'],
+                    'estado' => $endereco['estado'],
+                    'complemento' => null,
+                    'ativo' => true,
+                ]
             );
 
             $codigosUsados[$codigo] = true;
@@ -97,7 +189,19 @@ class EscolaSeeder extends Seeder
 
             Escola::updateOrCreate(
                 ['nome' => $nome],
-                ['codigo' => $codigo]
+                [
+                    'codigo' => $codigo,
+                    'email' => Str::slug($codigo) . '@escola.pr.gov.br',
+                    'telefone' => '(44) 3621-' . rand(1000, 9999),
+                    'logradouro' => $endereco['logradouro'],
+                    'numero' => $endereco['numero'],
+                    'bairro' => $endereco['bairro'],
+                    'cep' => $endereco['cep'],
+                    'cidade' => $endereco['cidade'],
+                    'estado' => $endereco['estado'],
+                    'complemento' => null,
+                    'ativo' => true,
+                ]
             );
 
             $codigosUsados[$codigo] = true;
@@ -156,8 +260,8 @@ class EscolaSeeder extends Seeder
         $semAcento = Str::ascii($clean);
 
         $tokens = collect(explode(' ', $semAcento))
-            ->map(fn ($t) => mb_strtolower(trim($t)))
-            ->filter(fn ($t) => $t !== '');
+            ->map(fn($t) => mb_strtolower(trim($t)))
+            ->filter(fn($t) => $t !== '');
 
         // remove prefixos do começo (enquanto existirem)
         while ($tokens->isNotEmpty() && in_array($tokens->first(), $this->prefixos, true)) {
@@ -165,7 +269,7 @@ class EscolaSeeder extends Seeder
         }
 
         // remove stopwords internas
-        $uteis = $tokens->filter(fn ($t) => ! in_array($t, $this->stopwords, true))->values();
+        $uteis = $tokens->filter(fn($t) => ! in_array($t, $this->stopwords, true))->values();
 
         // se ficar vazio (caso extremo), usa os tokens originais mesmo
         if ($uteis->isEmpty()) {

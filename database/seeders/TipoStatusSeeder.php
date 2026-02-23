@@ -26,7 +26,7 @@ class TipoStatusSeeder extends Seeder
         ]);
 
         TipoStatus::create([
-            'nome' => 'Aguardando Peças',
+            'nome' => 'Encaminhado ao Setor',
             'cor' => '#8b5cf6',
             'finaliza_pedido' => false,
             'cancela_pedido' => false,
