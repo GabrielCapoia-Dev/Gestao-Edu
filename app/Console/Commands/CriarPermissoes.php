@@ -49,6 +49,7 @@ class CriarPermissoes extends Command
             'Editar CGM do Aluno',
             'Editar Tipo Manutenção',
             'Editar Tipo Status',
+            'Editar Setor do Usuário',
 
             'Excluir Alunos',
             'Excluir Laudos',
@@ -82,6 +83,7 @@ class CriarPermissoes extends Command
             'Visualizar Detalhes de Aluno',
             'Visualizar Especializações de Professores',
             'Visualizar Detalhes de Professor',
+            'Visualizar Setor do Usuário',
 
         ];
 

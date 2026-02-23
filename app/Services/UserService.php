@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\IgnoredUser;
 use Filament\Forms;
 use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -83,7 +84,21 @@ class UserService
     {
         return $user->hasPermissionTo('Excluir Turmas');
     }
+    private function podeVisualizarSetor(?User $user): bool
+    {
+        return $user?->hasPermissionTo('Visualizar Setor do Usuário') ?? false;
+    }
 
+    private function podeEditarSetor(?User $user, string $context): bool
+    {
+        if (! $user) return false;
+
+        if ($context === 'create') {
+            return $user->hasPermissionTo('Editar Setor do Usuário');
+        }
+
+        return $user->hasPermissionTo('Editar Setor do Usuário');
+    }
 
 
     public function ehAdmin(?User $user = null): bool
@@ -319,6 +334,7 @@ class UserService
 
             Select::make('role')
                 ->label('Nivel de acesso')
+                ->helperText('Necessário para delimitar as acoes do usuario no sistema.')
                 ->relationship('roles', 'name', function (Builder $query) {
                     return $this->opcoesDeRoles($query, Auth::user());
                 })
@@ -331,7 +347,7 @@ class UserService
 
             Toggle::make('email_approved')
                 ->label('Verificação de acesso')
-                ->inline(false)
+                ->helperText('Ative para permittir o acesso ao sistema.')
                 ->onColor('success')
                 ->offColor('danger')
                 ->onIcon('heroicon-s-check')
@@ -415,27 +431,62 @@ class UserService
                     return $schema;
                 }),
 
-
-
-            Section::make('Vínculo com Escola')
-                ->icon('heroicon-o-identification')
-                ->description('Aqui mostra se o usuário esta vinculado a uma escola.')
+            Grid::make(2)
                 ->schema([
-                    Select::make('id_escola')
-                        ->label('Escola')
-                        ->options(fn() => $this->opcoesDeEscolasParaCampo(Auth::user()))
-                        ->searchable()
-                        ->preload()
-                        ->afterStateHydrated(function ($state, callable $set, ?User $record, string $operation) {
-                            $set('id_escola', $this->escolaInicialParaForm($record, Auth::user(), $operation));
-                        })
-                        ->default(fn(?User $record) => $this->escolaInicialParaForm($record, Auth::user(), 'create'))
-                        ->disabled(fn(string $operation) => $this->deveTravarCampoEscola(Auth::user(), $operation))
-                        ->dehydrated(true),
+
+
+                    Section::make('Vínculo com Escola')
+                        ->icon('heroicon-o-identification')
+                        ->description('Aqui mostra se o usuário esta vinculado a uma escola.')
+                        ->schema([
+                            Select::make('id_escola')
+                                ->label('Escola')
+                                ->options(fn() => $this->opcoesDeEscolasParaCampo(Auth::user()))
+                                ->searchable()
+                                ->preload()
+                                ->afterStateHydrated(function ($state, callable $set, ?User $record, string $operation) {
+                                    $set('id_escola', $this->escolaInicialParaForm($record, Auth::user(), $operation));
+                                })
+                                ->default(fn(?User $record) => $this->escolaInicialParaForm($record, Auth::user(), 'create'))
+                                ->disabled(fn(string $operation) => $this->deveTravarCampoEscola(Auth::user(), $operation))
+                                ->dehydrated(true),
+                        ])
+                        ->columnSpan(1)
+                        ->visible(
+                            fn() => $this->user->hasPermissionTo('Editar Escola do Usuario')
+                        ),
+                    Section::make('Vínculo com Setor')
+                        ->icon('heroicon-o-building-office')
+                        ->description('Aqui mostra se o usuário esta vinculado a um setor.')
+                        ->schema([
+                            Select::make('setor_id')
+                                ->label('Setor')
+                                ->relationship(
+                                    name: 'setor',
+                                    titleAttribute: 'nome',
+                                    modifyQueryUsing: fn($query) => $query->where('ativo', true)
+                                )
+                                ->searchable()
+                                ->preload()
+                                ->nullable()
+                                ->visible(
+                                    fn() => $this->podeVisualizarSetor(Auth::user())
+                                )
+                                ->disabled(
+                                    fn(string $context) => ! $this->podeEditarSetor(Auth::user(), $context)
+                                )
+                                ->dehydrated(
+                                    fn() => $this->podeEditarSetor(Auth::user(), 'edit')
+                                        || $this->podeEditarSetor(Auth::user(), 'create')
+                                ),
+                        ])
+                        ->columnSpan(1)
+                        ->visible(
+                            fn() => $this->user->hasPermissionTo('Editar Setor do Usuário')
+                        ),
                 ])
-                ->visible(
-                    fn() => $this->user->hasPermissionTo('Editar Escola do Usuario')
-                ),
+
+
         ];
     }
     /** Opções para o select de Escola conforme quem está acessando */
@@ -500,16 +551,25 @@ class UserService
         return $table
             ->paginated([10, 25, 50, 100])
             ->checkIfRecordIsSelectableUsing(fn(User $record) => $this->podeSelecionarRegistro($user, $record))
-            ->columns($this->colunasTabela())
+            ->columns($this->colunasTabela($user))
             ->actions($this->acoesTabela($user))
             ->bulkActions($this->acoesEmMassa($user))
             ->defaultSort('updated_at', 'desc')
             ->striped();
     }
 
-    protected function colunasTabela(): array
+    protected function colunasTabela(User $user): array
     {
         return [
+
+            Tables\Columns\TextColumn::make('setor.nome')
+                ->label('Setor')
+                ->sortable()
+                ->toggleable()
+                ->visible(
+                    fn() => $this->podeVisualizarSetor($user)
+                ),
+
             Tables\Columns\TextColumn::make('escola.nome')
                 ->label('Escola')
                 ->wrap()

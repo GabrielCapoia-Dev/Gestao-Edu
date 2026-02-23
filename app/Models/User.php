@@ -31,6 +31,7 @@ class User extends Authenticatable implements FilamentUser
      */
     protected $fillable = [
         'id_escola',
+        'setor_id',
         'name',
         'email',
         'email_approved',
@@ -143,7 +144,11 @@ class User extends Authenticatable implements FilamentUser
         return $this->belongsTo(Escola::class, 'id_escola');
     }
 
-
+    public function setor()
+    {
+        return $this->belongsTo(Setor::class);
+    }
+    
     public static function scopeAuthUser()
     {
 
