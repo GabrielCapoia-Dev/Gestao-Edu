@@ -18,6 +18,7 @@ class TipoStatusResource extends Resource
     protected static ?string $navigationGroup = 'Manutenção';
     protected static ?string $slug = 'tipo-status';
     protected static ?int $navigationSort = 3;
+    protected static bool $shouldRegisterNavigation = false;
 
     public static function form(Form $form): Form
     {

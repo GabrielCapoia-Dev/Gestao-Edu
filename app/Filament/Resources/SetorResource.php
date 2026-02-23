@@ -23,6 +23,7 @@ class SetorResource extends Resource
     protected static ?string $navigationGroup = 'Manutenção';
     protected static ?string $pluralModelLabel = 'Setores';
     protected static ?string $modelLabel = 'Setor';
+    protected static bool $shouldRegisterNavigation = false;
 
     protected static function service(): SetorService
     {
