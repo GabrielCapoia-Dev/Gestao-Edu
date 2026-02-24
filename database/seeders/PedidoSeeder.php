@@ -91,7 +91,7 @@ class PedidoSeeder extends Seeder
             ]],
         ];
 
-        
+
         foreach ($grupos as $grupo) {
             $statusAtual = $grupo['status'];
 
@@ -103,7 +103,31 @@ class PedidoSeeder extends Seeder
             for ($i = 1; $i <= $this->numeroDePedidos; $i++) {
                 $solicitanteId  = $this->rand($users);
                 $responsavelId  = $this->rand(array_values(array_filter($users, fn($id) => $id !== $solicitanteId)));
-                $setorId        = $this->rand($setores);
+                $setorEducacao = Setor::where('nome', 'Educação')->first();
+                $setorObras = Setor::where('nome', 'Obras')->first();
+                $setorServicos = Setor::where('nome', 'Serviços Publicos')->first();
+
+                // =========================
+                // REGRA DE SETOR POR STATUS
+                // =========================
+
+                if ($statusAtual->nome === 'Em Aberto') {
+
+                    // Apenas Educação
+                    $setorId = $setorEducacao->id;
+                } elseif ($statusAtual->nome === 'Encaminhado ao Setor') {
+
+                    // Apenas Obras
+                    $setorId = $setorObras->id;
+                } else {
+
+                    // Outros status podem variar
+                    $setorId = $this->rand([
+                        $setorEducacao->id,
+                        $setorObras->id,
+                        $setorServicos->id,
+                    ]);
+                }
 
                 $diasAtras    = rand(1, 90);
                 $dataSolicit  = now()->subDays($diasAtras);

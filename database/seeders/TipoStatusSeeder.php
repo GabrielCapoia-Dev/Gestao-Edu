@@ -36,8 +36,8 @@ class TipoStatusSeeder extends Seeder
             ],
 
             [
-                'nome' => 'Aguardando Resposta',
-                'cor' => '#0ea5e9',
+                'nome' => 'Em Andamento',
+                'cor' => '#e20ee9',
                 'finaliza_pedido' => false,
                 'cancela_pedido' => false,
                 'ativo' => true,
