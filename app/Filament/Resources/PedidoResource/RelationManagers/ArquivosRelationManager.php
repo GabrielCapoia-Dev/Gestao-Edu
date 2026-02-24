@@ -26,8 +26,8 @@ class ArquivosRelationManager extends RelationManager
                 ->label('Tipo do Arquivo')
                 ->options(
                     collect(TipoArquivoPedido::cases())
-                        ->reject(fn ($case) => $case === TipoArquivoPedido::FOTOS_PROBLEMA)
-                        ->mapWithKeys(fn ($case) => [
+                        ->reject(fn($case) => $case === TipoArquivoPedido::FOTOS_PROBLEMA)
+                        ->mapWithKeys(fn($case) => [
                             $case->value => $case->label(),
                         ])
                         ->toArray()
@@ -65,7 +65,10 @@ class ArquivosRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('nome_original')
                     ->label('Arquivo')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->url(fn($record) => route('pedidos.arquivos.download', $record))
+                    ->openUrlInNewTab(),
 
                 Tables\Columns\TextColumn::make('descricao')
                     ->label('Descrição')
@@ -80,14 +83,6 @@ class ArquivosRelationManager extends RelationManager
                     ->label('Enviado em')
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
-
-                Tables\Columns\TextColumn::make('caminho')
-                    ->label('Download')
-                    ->formatStateUsing(
-                        fn ($state) =>
-                        '<a href="' . Storage::url($state) . '" target="_blank" class="text-primary-600 underline">Abrir</a>'
-                    )
-                    ->html(),
 
             ])
             ->actions([

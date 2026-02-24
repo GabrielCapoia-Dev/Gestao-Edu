@@ -39,4 +39,11 @@ Route::prefix('admin')
 
         Route::get('/relatorios/bulk-ficha', [RelatorioController::class, 'bulkFicha'])
             ->name('relatorios.bulkFicha');
+
+        Route::get(
+            '/pedidos/arquivos/{pedidoArquivo}/download',
+            [\App\Http\Controllers\PedidoArquivoController::class, 'download']
+        )
+            ->name('pedidos.arquivos.download')
+            ->middleware('can:download,pedidoArquivo');
     });

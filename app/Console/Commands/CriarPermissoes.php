@@ -33,6 +33,8 @@ class CriarPermissoes extends Command
             'Criar Tipo Status',
             'Criar Pedidos',
 
+            'Baixar Arquivos Pedido',
+
             'Editar Alunos',
             'Editar Pedidos',
             'Editar Escola do Aluno',

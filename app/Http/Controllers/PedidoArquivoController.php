@@ -3,63 +3,51 @@
 namespace App\Http\Controllers;
 
 use App\Models\PedidoArquivo;
-use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Filesystem\FilesystemAdapter;
 
 class PedidoArquivoController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    protected function pedidosDisk(): FilesystemAdapter
     {
-        //
+        return Storage::disk('public');
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function download(PedidoArquivo $pedidoArquivo)
     {
-        //
+        $this->authorize('download', $pedidoArquivo);
+
+        $disk = $this->pedidosDisk();
+        $path = $pedidoArquivo->caminho;
+
+        if (blank($path) || ! is_string($path)) {
+            return abort(404);
+        }
+
+        if (! $disk->exists($path)) {
+            return abort(404);
+        }
+
+        $filename = $this->makeFilename($pedidoArquivo);
+
+        return $disk->download($path, $filename);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    protected function makeFilename(PedidoArquivo $arquivo): string
     {
-        //
-    }
+        $pedido = $arquivo->pedido;
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(PedidoArquivo $pedidoArquivo)
-    {
-        //
-    }
+        $protocolo = str($pedido->numero_protocolo)
+            ->replace('/', '-');
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(PedidoArquivo $pedidoArquivo)
-    {
-        //
-    }
+        $tipo = str($arquivo->tipo_arquivo->value)
+            ->ascii()
+            ->lower()
+            ->replaceMatches('/[^a-z0-9]+/', '-')
+            ->trim('-');
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, PedidoArquivo $pedidoArquivo)
-    {
-        //
-    }
+        $ext = pathinfo($arquivo->caminho, PATHINFO_EXTENSION);
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(PedidoArquivo $pedidoArquivo)
-    {
-        //
+        return "{$protocolo}-{$tipo}.{$ext}";
     }
 }

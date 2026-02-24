@@ -39,6 +39,8 @@ use App\Models\TipoManutencao;
 use App\Policies\TipoManutencaoPolicy;
 use App\Models\Pedido;
 use App\Policies\PedidoPolicy;
+use App\Models\PedidoArquivo;
+use App\Policies\PedidoArquivoPolicy;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -65,6 +67,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(AlunoLaudo::class, AlunoLaudoPolicy::class);
         Gate::policy(TipoManutencao::class, TipoManutencaoPolicy::class);
         Gate::policy(Pedido::class, PedidoPolicy::class);
+        Gate::policy(PedidoArquivo::class, PedidoArquivoPolicy::class);
 
         Gate::define('admin-only', function ($user) {
             return $user->hasRole('Admin');
