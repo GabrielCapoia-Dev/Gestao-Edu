@@ -23,6 +23,16 @@ class ListPedidos extends ListRecords
         ];
     }
 
+    protected function getDefaultTableSortColumn(): ?string
+    {
+        return 'created_at';
+    }
+
+    protected function getDefaultTableSortDirection(): ?string
+    {
+        return 'desc';
+    }
+
     public function getTabs(): array
     {
         $tabs = [];
@@ -47,17 +57,21 @@ class ListPedidos extends ListRecords
         // =========================
         // TABS POR STATUS
         // =========================
+        $prioridade = $user?->setor?->nome === 'Obras'
+            ? 'Encaminhado ao Setor'
+            : 'Em Aberto';
+
         $statuses = TipoStatus::where('ativo', true)
-            ->orderByRaw("nome = 'Em Aberto' DESC")
+            ->orderByRaw("nome = ? DESC", [$prioridade])
             ->orderBy('nome')
             ->get();
 
         foreach ($statuses as $status) {
 
-            // Ocultar se não tiver permissão
+            // 🔵 Se usuário for Obras → ocultar tab Em Aberto
             if (
-                $status->nome === 'Encaminhado ao Setor' &&
-                ! $user?->hasPermissionTo('Visualizar Status: Encaminhado ao Setor')
+                $user?->setor?->nome === 'Obras' &&
+                $status->nome === 'Em Aberto'
             ) {
                 continue;
             }
@@ -65,20 +79,43 @@ class ListPedidos extends ListRecords
             $hex = substr(ltrim($status->cor, '#'), 0, 6);
 
             $tabs[$status->id] = Tab::make($status->nome)
-                ->modifyQueryUsing(
-                    fn($query) => $query->where('tipo_status_id', $status->id)
-                )
-                ->badge(
-                    fn() => (clone $baseQuery)
-                        ->where('tipo_status_id', $status->id)
-                        ->count()
-                )
+
+                ->modifyQueryUsing(function ($query) use ($status, $user) {
+
+                    $query->where('tipo_status_id', $status->id);
+
+                    // Em Aberto continua filtrando por setor
+                    if (
+                        $status->nome === 'Em Aberto' &&
+                        filled($user?->setor_id)
+                    ) {
+                        $query->where('setor_id', $user->setor_id);
+                    }
+
+                    return $query;
+                })
+
+                ->badge(function () use ($baseQuery, $status, $user) {
+
+                    $query = (clone $baseQuery)
+                        ->where('tipo_status_id', $status->id);
+
+                    if (
+                        $status->nome === 'Em Aberto' &&
+                        filled($user?->setor_id)
+                    ) {
+                        $query->where('setor_id', $user->setor_id);
+                    }
+
+                    return $query->count();
+                })
+
                 ->extraAttributes([
                     'style' => "
-                    --tab-color: #{$hex};
-                    background-color: #{$hex}20;
-                    border: 1px solid #{$hex}50;
-                ",
+                --tab-color: #{$hex};
+                background-color: #{$hex}20;
+                border: 1px solid #{$hex}50;
+            ",
                 ]);
         }
 
@@ -87,6 +124,15 @@ class ListPedidos extends ListRecords
 
     public function getDefaultActiveTab(): ?string
     {
+        $user = Auth::user();
+
+        // Se usuário for Obras → default = Encaminhado ao Setor
+        if ($user?->setor?->nome === 'Obras') {
+            return TipoStatus::where('nome', 'Encaminhado ao Setor')
+                ->value('id');
+        }
+
+        // Caso contrário → Em Aberto
         return TipoStatus::where('nome', 'Em Aberto')
             ->value('id');
     }

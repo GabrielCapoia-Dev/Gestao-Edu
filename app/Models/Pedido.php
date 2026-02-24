@@ -9,7 +9,7 @@ use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 use App\Models\Enums\TipoArquivoPedido;
 use App\Models\EmpresaContratada;
-
+use Illuminate\Database\Eloquent\Builder;
 
 class Pedido extends Model
 {
@@ -54,6 +54,18 @@ class Pedido extends Model
 
     /*
     |--------------------------------------------------------------------------
+    | Scopes
+    |--------------------------------------------------------------------------
+    */
+
+    public function scopeNenhum(Builder $query): Builder
+    {
+        return $query->whereKey(-1);
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
     | Activity Log
     |--------------------------------------------------------------------------
     */
@@ -92,6 +104,12 @@ class Pedido extends Model
         $ultimo = self::whereYear('created_at', $ano)->count();
 
         return sprintf('%s/%05d', $ano, $ultimo + 1);
+    }
+
+    public function ultimoHistorico()
+    {
+        return $this->hasOne(PedidoHistorico::class)
+            ->latestOfMany('created_at');
     }
 
     /*

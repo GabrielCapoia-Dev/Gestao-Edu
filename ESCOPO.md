@@ -43,12 +43,12 @@ Estrutura de modelos necessárias:
             Dar Feedback,
             ...
     ],
-    2 - TipoManutencao = Descroções[
+    2 - TipoManutencao = Descrições[
             Gerenciar Tipos de Manutenções(CRUD com Nome e Descrição.)
             Vinculado ao pedido, pelo usuário da escola, durante a ação de criar pedido.
             Serve para filtragem na tela de pedidos, deve ser ovjetivo e simples, voltado ao adm do setor.
     ],
-    3 - TipoStatus = Descroções[
+    3 - TipoStatus = Descrições[
             Funcionalidade que dita o fluxo que um pedido segue no sistema(Em aberto, ativo, inativo, lido, etc...)
             Deve ter um campo boolean que determina se é um status especifico para o obras ou da educação
                 Se for um usuário da educação alterando um status então assume o fluxo da educação
@@ -62,7 +62,7 @@ Estrutura de modelos necessárias:
 
             Criado o SETOR, que serve para filtrar a quais secretarias pertencem determinado status
     ],
-    4 - Pedido = Descroções[
+    4 - Pedido = Descrições[
             Na criação, Necessário envio de fotos.
             Na criação, Deve ter uma descrição no pedido
             Na criação, Deve inserir o tipo de manutenção
@@ -74,7 +74,7 @@ Estrutura de modelos necessárias:
 
             
     ],
-    5 - Empresas = Descroções[
+    5 - Empresas = Descrições[
             Secretaria de obras cadastra empresas que prestam serviços
             Dados de Contato, numero do contrato, Nome da empresa
     ],

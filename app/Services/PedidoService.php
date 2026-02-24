@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Pedido;
 use App\Models\PedidoHistorico;
 use App\Models\TipoStatus;
+use App\Models\Setor;
 use App\Models\TipoManutencao;
 use App\Models\User;
 use App\Models\Enums\NivelEmergenciaPedido;
@@ -60,17 +61,33 @@ class PedidoService
             return null;
         }
 
-        $statusInicial = TipoStatus::where('ativo', true)
-            ->where('finaliza_pedido', false)
-            ->where('cancela_pedido', false)
-            ->first();
+        // =========================
+        // DEFINIÇÃO DO STATUS BASE
+        // =========================
 
-        if (!$statusInicial) {
+        if ($user?->setor?->nome === 'Obras') {
+
+            $statusBase = TipoStatus::where('ativo', true)
+                ->where('nome', 'Encaminhado ao Setor')
+                ->first();
+        } else {
+
+            $statusBase = TipoStatus::where('ativo', true)
+                ->where('finaliza_pedido', false)
+                ->where('cancela_pedido', false)
+                ->first();
+        }
+
+        if (!$statusBase) {
             return null;
         }
 
+        // =========================
+        // QUERY
+        // =========================
+
         $query = Pedido::where('ativo', true)
-            ->where('tipo_status_id', $statusInicial->id);
+            ->where('tipo_status_id', $statusBase->id);
 
         if (!$this->ehAdmin($user) && $user?->id_escola) {
             $query->where('escola_id', $user->id_escola);
@@ -119,6 +136,11 @@ class PedidoService
             ->where('cancela_pedido', false)
             ->firstOrFail();
 
+        // 🔵 Buscar setor Educação
+        $setorEducacao = Setor::where('nome', 'Educação')
+            ->where('ativo', true)
+            ->firstOrFail();
+
         $pedido = Pedido::create([
             'tipo_manutencao_id' => $data['tipo_manutencao_id'],
             'descricao_pedido'   => $data['descricao_pedido'],
@@ -126,6 +148,7 @@ class PedidoService
             'solicitante_id'     => $solicitante->id,
             'escola_id'          => $solicitante->id_escola,
             'tipo_status_id'     => $statusInicial->id,
+            'setor_id'           => $setorEducacao->id, // ✅ aqui
             'data_solicitacao'   => now(),
             'ativo'              => true,
         ]);
@@ -165,6 +188,7 @@ class PedidoService
     |--------------------------------------------------------------------------
     */
 
+
     public function alterarStatus(
         Pedido $pedido,
         TipoStatus $novoStatus,
@@ -194,27 +218,6 @@ class PedidoService
     |--------------------------------------------------------------------------
     */
 
-        if ($novoStatus->nome === 'Encaminhado ao Setor') {
-
-            $statusEmAberto = TipoStatus::where('nome', 'Em Aberto')->first();
-
-            if ($statusEmAberto) {
-
-                $statusAnteriorIdInterno = $pedido->tipo_status_id;
-
-                $pedido->update([
-                    'tipo_status_id' => $statusEmAberto->id,
-                ]);
-
-                $this->registrarHistorico(
-                    pedido: $pedido,
-                    statusAnteriorId: $statusAnteriorIdInterno,
-                    statusNovoId: $statusEmAberto->id,
-                    usuario: $usuario,
-                    descricao: 'Pedido encaminhado ao setor e reaberto automaticamente.'
-                );
-            }
-        }
 
         /*
     |--------------------------------------------------------------------------
@@ -311,7 +314,6 @@ class PedidoService
     |--------------------------------------------------------------------------
     */
 
-    // TODO: Adicionar campo de Setor para referenciar qual setor alterou o status
     public function configurarFormularioGestao(Form $form): Form
     {
         return $form->schema([
@@ -330,16 +332,55 @@ class PedidoService
                 ->collapsible()
                 ->schema([
 
-                    Forms\Components\Select::make('empresa_contratada_id')
-                        ->label('Empresa Responsável')
-                        ->relationship(
-                            name: 'empresaContratada',
-                            titleAttribute: 'nome',
-                            modifyQueryUsing: fn($query) => $query->where('ativo', true)
+                    Forms\Components\Select::make('novo_status_id')
+                        ->label('Atualizar Status')
+                        ->reactive()
+                        ->options(
+                            fn() =>
+                            TipoStatus::query()
+                                ->where('ativo', true)
+                                ->whereNotIn('nome', ['Em Aberto', 'Em Análise'])
+                                ->orderBy('nome')
+                                ->pluck('nome', 'id')
+                                ->toArray()
                         )
+                        ->afterStateUpdated(function ($state, callable $get, callable $set) {
+
+                            if (! $state) {
+                                return;
+                            }
+
+                            $status = TipoStatus::find($state);
+
+                            if (! $status) {
+                                return;
+                            }
+
+                            $setorId = $get('setor_id');
+
+                            $setor = $setorId
+                                ? \App\Models\Setor::find($setorId)
+                                : null;
+
+                            if (
+                                $status->nome === 'Encaminhado ao Setor' &&
+                                $setor?->nome !== 'Obras'
+                            ) {
+
+                                $set('novo_status_id', null);
+
+                                Notification::make()
+                                    ->title('Status inválido')
+                                    ->body('Para encaminhar ao setor, o setor selecionado deve ser Obras.')
+                                    ->danger()
+                                    ->send();
+                            }
+                        })
+                        ->helperText('Encaminhado ao Setor só pode ser usado quando o setor for Obras.')
+                        ->placeholder('Padrão: Em Análise')
                         ->searchable()
-                        ->preload()
                         ->nullable(),
+
 
                     Forms\Components\Select::make('nivel_prioridade')
                         ->label('Nível de Prioridade')
@@ -353,28 +394,60 @@ class PedidoService
                         ->nullable()
                         ->native(false),
 
-                    Forms\Components\Select::make('novo_status_id')
-                        ->label('Atualizar Status')
-                        ->options(function () {
-                            return TipoStatus::query()
-                                ->where('ativo', true)
-                                ->whereNotIn('nome', ['Em Aberto', 'Em Análise'])
-                                ->orderBy('nome')
-                                ->pluck('nome', 'id')
-                                ->toArray();
+                    Forms\Components\Select::make('setor_id')
+                        ->label('Setor')
+                        ->relationship(
+                            name: 'setor',
+                            titleAttribute: 'nome',
+                            modifyQueryUsing: fn($query) => $query->where('ativo', true)
+                        )
+                        ->reactive()
+                        ->afterStateUpdated(function ($state, callable $get, callable $set) {
+
+                            $statusId = $get('novo_status_id');
+
+                            if (! $statusId) {
+                                return;
+                            }
+
+                            $status = TipoStatus::find($statusId);
+
+                            if (! $status) {
+                                return;
+                            }
+
+                            $setor = $state
+                                ? \App\Models\Setor::find($state)
+                                : null;
+
+                            if (
+                                $status->nome === 'Encaminhado ao Setor' &&
+                                $setor?->nome !== 'Obras'
+                            ) {
+
+                                $set('novo_status_id', null);
+
+                                Notification::make()
+                                    ->title('Status removido')
+                                    ->body('Encaminhado ao Setor exige que o setor seja Obras.')
+                                    ->warning()
+                                    ->send();
+                            }
                         })
-                        ->placeholder('Padrão: Em Análise')
                         ->searchable()
+                        ->preload()
                         ->nullable(),
 
                     Forms\Components\DatePicker::make('data_prevista')
                         ->label('Data Prevista')
                         ->required(),
 
-                    Forms\Components\Select::make('setor_id')
-                        ->label('Setor')
+
+
+                    Forms\Components\Select::make('empresa_contratada_id')
+                        ->label('Empresa Responsável')
                         ->relationship(
-                            name: 'setor',
+                            name: 'empresaContratada',
                             titleAttribute: 'nome',
                             modifyQueryUsing: fn($query) => $query->where('ativo', true)
                         )
@@ -413,43 +486,44 @@ class PedidoService
             ->columns($this->colunasTabela($user))
             ->filters($this->filtrosTabela(), layout: FiltersLayout::AboveContent)
             ->actions($this->acoesTabela($user))
-            ->bulkActions($this->acoesEmMassa($user))
-            ->defaultSort('created_at', 'desc');
+            ->bulkActions($this->acoesEmMassa($user));
     }
+
+
     public function queryTabela(?User $user): Builder
     {
-        $query = Pedido::query()->where('ativo', true);
+        $query = Pedido::query()
+            ->with('ultimoHistorico')
+            ->where('ativo', true);
 
         if (! $user) {
-            return $query->whereRaw('1 = 0');
+            return $query->nenhum();
         }
 
-        // Admin OU permissão especial → vê tudo
         if (
             $user->hasRole('Admin') ||
             $user->hasPermissionTo('Listar Todos os Pedidos')
         ) {
-            return $this->ordenarPorStatus($query);
+            return $query; // ❌ NÃO ordenar aqui
         }
 
-        // Usuário comum → apenas pedidos da escola vinculada
         if ($user->id_escola) {
-            return $this->ordenarPorStatus(
-                $query->where('escola_id', $user->id_escola)
-            );
+            return $query->where('escola_id', $user->id_escola);
         }
 
-        return $query->whereRaw('1 = 0');
+        return $query->nenhum();
     }
 
-    protected function ordenarPorStatus(Builder $query): Builder
-    {
-        $statusEmAbertoId = TipoStatus::where('nome', 'Em Aberto')->value('id');
+    // protected function ordenarPorStatus(Builder $query): Builder
+    // {
+    //     $statusEmAbertoId = TipoStatus::where('nome', 'Em Aberto')->value('id');
 
-        return $query
-            ->orderByRaw("tipo_status_id = ? DESC", [$statusEmAbertoId])
-            ->orderBy('created_at', 'asc');
-    }
+    //     return $query
+    //         ->orderByRaw("tipo_status_id = ? DESC", [$statusEmAbertoId])
+    //         ->orderBy('created_at', 'asc');
+    // }
+
+
 
     protected function filtrosTabela(): array
     {
@@ -525,17 +599,7 @@ class PedidoService
                         ->color('gray')
                         ->size('sm'),
 
-                    Tables\Columns\TextColumn::make('responsavel.name')
-                        ->label('Responsável')
-                        ->alignCenter()
-                        ->tooltip('Responsável atual')
-                        ->extraAttributes([
-                            'class' => 'tooltip-hover-effect cursor-help'
-                        ])
-                        ->icon('heroicon-o-user-circle')
-                        ->color('gray')
-                        ->size('sm')
-                        ->placeholder('Sem responsável'),
+
                 ])->space(1),
 
                 // Bloco 3: Status + Prioridade + Setor + Empresa
@@ -544,7 +608,19 @@ class PedidoService
                         ->alignCenter()
                         ->label('Status')
                         ->badge()
-                        ->color(fn(Pedido $record) => Color::hex($record->tipoStatus?->cor ?? '#6b7280')),
+                        ->formatStateUsing(function (Pedido $record) {
+
+                            $status = $record->tipoStatus?->nome ?? 'Sem status';
+                            $setor  = $record->setor?->nome;
+
+                            return $setor
+                                ? "{$status} - {$setor}"
+                                : $status;
+                        })
+                        ->color(
+                            fn(Pedido $record) =>
+                            Color::hex($record->tipoStatus?->cor ?? '#6b7280')
+                        ),
 
                     Tables\Columns\TextColumn::make('nivel_prioridade')
                         ->label('Prioridade')
@@ -560,29 +636,29 @@ class PedidoService
                         ))
                         ->sortable(),
 
-                    Tables\Columns\TextColumn::make('setor.nome')
-                        ->label('Setor')
-                        ->tooltip('Setor Responsável')
+                    Tables\Columns\TextColumn::make('responsavel.name')
+                        ->label('Responsável')
                         ->alignCenter()
+                        ->tooltip('Responsável atual')
                         ->extraAttributes([
                             'class' => 'tooltip-hover-effect cursor-help'
                         ])
-                        ->icon('heroicon-o-building-storefront')
+                        ->icon('heroicon-o-user-circle')
                         ->color('gray')
                         ->size('sm')
-                        ->placeholder('Sem setor'),
+                        ->placeholder('Sem responsável'),
 
-                    Tables\Columns\TextColumn::make('empresaContratada.nome')
-                        ->alignCenter()
-                        ->label('Empresa')
-                        ->tooltip('Empresa contratada')
-                        ->extraAttributes([
-                            'class' => 'tooltip-hover-effect cursor-help'
-                        ])
-                        ->icon('heroicon-o-briefcase')
-                        ->color('gray')
-                        ->size('sm')
-                        ->placeholder('Sem empresa'),
+                    // Tables\Columns\TextColumn::make('empresaContratada.nome')
+                    //     ->alignCenter()
+                    //     ->label('Empresa')
+                    //     ->tooltip('Empresa contratada')
+                    //     ->extraAttributes([
+                    //         'class' => 'tooltip-hover-effect cursor-help'
+                    //     ])
+                    //     ->icon('heroicon-o-briefcase')
+                    //     ->color('gray')
+                    //     ->size('sm')
+                    //     ->placeholder('Sem empresa'),
                 ])->space(1),
 
                 // Bloco 4: Datas
@@ -629,39 +705,140 @@ class PedidoService
                         ->placeholder('Não entregue'),
                 ])->space(1),
 
-                // Bloco 5: Descrição
-                Tables\Columns\TextColumn::make('descricao_pedido')
-                    ->label('Descrição')
-                    ->limit(60)
-                    ->alignCenter()
-                    ->wrap()
-                    ->color('gray')
-                    ->size('sm')
-                    ->toggleable(),
+                Tables\Columns\Layout\Stack::make([
 
+                    Tables\Columns\TextColumn::make('descricao_pedido')
+                        ->label('Descrição')
+                        ->tooltip('Descrição do pedido')
+                        ->extraAttributes([
+                            'class' => 'tooltip-hover-effect cursor-help'
+                        ])
+                        ->limit(60)
+                        ->wrap()
+                        ->color('gray')
+                        ->size('sm'),
+
+                    Tables\Columns\TextColumn::make('ultimoHistorico.descricao_alteracao')
+                        ->label('Última Alteração')
+                        ->tooltip('Descrição da última alteração realizada')
+                        ->extraAttributes([
+                            'class' => 'tooltip-hover-effect cursor-help'
+                        ])
+                        ->limit(60)
+                        ->wrap()
+                        ->color('primary')
+                        ->size('sm')
+                        ->placeholder('Sem alterações'),
+
+                ])->space(1),
+
+                Tables\Columns\TextColumn::make('updated_at')
+                    ->label('Atualizado em')
+                    ->dateTime('d/m/Y H:i')
+                    ->sortable()
+                    ->description('Atualizado em:', position: 'above')
+                    ->alignEnd()
+                    ->tooltip('Data e hora da última atualização do pedido')
+                    ->extraAttributes([
+                        'class' => 'tooltip-hover-effect cursor-help'
+                    ])
+                    ->toggleable(isToggledHiddenByDefault: true),
             ]),
+
         ];
     }
-
 
     protected function acoesTabela(?User $user): array
     {
         return [
+
+            Tables\Actions\Action::make('historico')
+                ->label('Histórico')
+                ->icon('heroicon-o-clock')
+                ->color('info')
+                ->slideOver()
+                ->modalWidth('5xl')
+                ->modalSubmitAction(false)
+                ->modalCancelActionLabel('Fechar')
+                ->visible(fn(Pedido $record) => true)
+                ->modalContent(function (Pedido $record) {
+
+                    $historico = $record->historicos()
+                        ->with(['statusAnterior', 'statusNovo', 'usuario', 'setor'])
+                        ->orderByDesc('created_at')
+                        ->get();
+
+                    return view('components.pedido.historico', [
+                        'pedido' => $record,
+                        'historico' => $historico,
+                    ]);
+                }),
+
+
             Tables\Actions\Action::make('gerenciar')
                 ->label('Gerenciar')
                 ->icon('heroicon-o-pencil-square')
                 ->color('warning')
-                ->action(function (Pedido $record) use ($user) {
-                    if (!$user) return;
 
-                    $statusEmAberto = TipoStatus::where('nome', 'Em Aberto')->first();
-                    $statusAnalise  = TipoStatus::where('nome', 'Em Análise')->first();
+                ->visible(function (Pedido $record) use ($user) {
 
+                    if (! $user) {
+                        return false;
+                    }
+
+                    // Precisa ter permissão
+                    if (! $user->hasPermissionTo('Editar Pedidos')) {
+                        return false;
+                    }
+
+                    // Não permitir se finalizado ou cancelado
                     if (
-                        $statusAnalise &&
+                        $record->tipoStatus?->finaliza_pedido ||
+                        $record->tipoStatus?->cancela_pedido
+                    ) {
+                        return false;
+                    }
+
+                    // Se usuário NÃO tem setor → pode gerenciar tudo
+                    if (! $user->setor_id) {
+                        return true;
+                    }
+
+                    // Se tem setor → só gerencia pedidos do mesmo setor
+                    return $record->setor_id === $user->setor_id;
+                })
+
+                ->action(function (Pedido $record) use ($user) {
+
+                    $statusEmAberto      = TipoStatus::where('nome', 'Em Aberto')->first();
+                    $statusEncaminhado   = TipoStatus::where('nome', 'Encaminhado ao Setor')->first();
+                    $statusAnalise       = TipoStatus::where('nome', 'Em Análise')->first();
+
+                    if (! $statusAnalise) {
+                        redirect(route('filament.admin.resources.pedidos.edit', $record));
+                        return;
+                    }
+
+                    $podeIrParaAnalise = false;
+
+                    // 🔹 Caso 1: Em Aberto → qualquer setor pode assumir
+                    if (
                         $statusEmAberto &&
                         $record->tipo_status_id === $statusEmAberto->id
                     ) {
+                        $podeIrParaAnalise = true;
+                    }
+
+                    // 🔹 Caso 2: Encaminhado → somente Obras pode assumir
+                    if (
+                        $statusEncaminhado &&
+                        $record->tipo_status_id === $statusEncaminhado->id &&
+                        $user?->setor?->nome === 'Obras'
+                    ) {
+                        $podeIrParaAnalise = true;
+                    }
+
+                    if ($podeIrParaAnalise) {
                         $this->alterarStatus(
                             $record,
                             $statusAnalise,
@@ -676,15 +853,9 @@ class PedidoService
         ];
     }
 
-
     protected function acoesEmMassa(?User $user): array
     {
-        if (!$user?->hasPermissionTo('Editar Pedidos')) {
-            return [];
-        }
 
-        return [
-            Tables\Actions\DeleteBulkAction::make(),
-        ];
+        return [];
     }
 }
