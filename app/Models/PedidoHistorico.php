@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
+
 
 class PedidoHistorico extends Model
 {
@@ -20,6 +22,21 @@ class PedidoHistorico extends Model
 
         'descricao_alteracao', // Descrição detalhando o que aconteceu
     ];
+
+
+    public static function registrarAlteracaoArquivo(
+        Pedido $pedido,
+        string $descricao
+    ): self {
+        return self::create([
+            'pedido_id'          => $pedido->id,
+            'status_anterior_id' => null,
+            'status_novo_id'     => $pedido->tipo_status_id,
+            'usuario_id'         => Auth::id(),
+            'setor_id'           => $pedido->setor_id,
+            'descricao_alteracao' => $descricao,
+        ]);
+    }
 
     /*
     |--------------------------------------------------------------------------

@@ -9,6 +9,8 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Storage;
 use App\Models\Enums\TipoArquivoPedido;
+use App\Models\User;
+
 
 class ArquivosRelationManager extends RelationManager
 {
@@ -48,9 +50,9 @@ class ArquivosRelationManager extends RelationManager
                 ->label('Descrição')
                 ->maxLength(1000)
                 ->rows(2),
-
         ]);
     }
+
 
     public function table(Table $table): Table
     {
@@ -84,6 +86,10 @@ class ArquivosRelationManager extends RelationManager
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
 
+            ])
+            ->headerActions([
+                Tables\Actions\CreateAction::make()
+                    ->label('Enviar Arquivo'),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
