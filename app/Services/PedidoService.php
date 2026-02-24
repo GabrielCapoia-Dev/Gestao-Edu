@@ -638,8 +638,7 @@ class PedidoService
                                 'preventivo'  => '#013891',
                                 default       => '#2b2b2b',
                             }
-                        ))
-                        ->sortable(),
+                        )),
 
                     Tables\Columns\TextColumn::make('responsavel.name')
                         ->label('Responsável')
@@ -671,32 +670,72 @@ class PedidoService
                     Tables\Columns\TextColumn::make('data_prevista')
                         ->label('Previsto para')
                         ->tooltip('Data prevista para entrega')
-                        ->icon('heroicon-o-clock')
                         ->extraAttributes([
                             'class' => 'tooltip-hover-effect cursor-help'
                         ])
+                        ->icon('heroicon-o-clock')
+                        ->sortable()
                         ->alignCenter()
                         ->date('d/m/Y')
                         ->color(function (Pedido $record) {
+
                             if (! $record->data_prevista) {
                                 return null;
                             }
 
-                            return Carbon::parse($record->data_prevista)->isPast()
-                                ? Color::hex('#a10000') // vermelho
-                                : Color::hex('#facc15'); // amarelo
+                            $prevista = Carbon::parse($record->data_prevista);
+
+                            // 🔵 Se já foi Concoluido, regra muda
+                            if ($record->data_entrega) {
+
+                                $entrega = Carbon::parse($record->data_entrega);
+
+                                // Entregou atrasado
+                                if ($entrega->greaterThan($prevista)) {
+                                    return Color::hex('#a10000'); // vermelho
+                                }
+
+                                // Entregou no prazo ou antes
+                                return Color::hex('#10b981'); // verde
+                            }
+
+                            // 🔵 Ainda não Concoluido → regra normal
+
+                            if ($prevista->isPast()) {
+                                return Color::hex('#a10000'); // vermelho
+                            }
+
+                            $diasRestantes = now()->diffInDays($prevista, false);
+
+                            if ($diasRestantes <= 15) {
+                                return Color::hex('#facc15'); // amarelo
+                            }
+
+                            return null;
                         })
                         ->size('sm')
                         ->placeholder('Sem previsão'),
 
                     Tables\Columns\TextColumn::make('data_entrega')
-                        ->label('Entregue em')
+                        ->label('Concoluido em')
+                        ->tooltip('Data de conclusão')
+                        ->extraAttributes([
+                            'class' => 'tooltip-hover-effect cursor-help'
+                        ])
                         ->icon('heroicon-o-check-circle')
                         ->date('d/m/Y')
                         ->alignCenter()
-                        ->color('success')
+                        ->sortable()
+                        ->color(function (Pedido $record) {
+
+                            if (! $record->data_entrega) {
+                                return null;
+                            }
+
+                            return "success";
+                        })
                         ->size('sm')
-                        ->placeholder('Não entregue'),
+                        ->placeholder('Não Concoluido'),
                 ])->space(1),
 
                 Tables\Columns\Layout\Stack::make([
