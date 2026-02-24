@@ -514,33 +514,38 @@ class PedidoService
         return $query->nenhum();
     }
 
-    // protected function ordenarPorStatus(Builder $query): Builder
-    // {
-    //     $statusEmAbertoId = TipoStatus::where('nome', 'Em Aberto')->value('id');
-
-    //     return $query
-    //         ->orderByRaw("tipo_status_id = ? DESC", [$statusEmAbertoId])
-    //         ->orderBy('created_at', 'asc');
-    // }
-
-
-
-    protected function filtrosTabela(): array
+    public function filtrosTabela(): array
     {
         return [
-            Tables\Filters\SelectFilter::make('escola_id')
+
+            'tipo_status_id' => Tables\Filters\SelectFilter::make('tipo_status_id')
+                ->label('Status')
+                ->relationship(
+                    name: 'tipoStatus',
+                    titleAttribute: 'nome',
+                    modifyQueryUsing: fn($query) =>
+                    $query->where('ativo', true)->orderBy('nome')
+                )
+                ->searchable()
+                ->preload(),
+
+            'escola_id' => Tables\Filters\SelectFilter::make('escola_id')
                 ->label('Escola')
                 ->relationship('escola', 'nome'),
 
-
-            Tables\Filters\SelectFilter::make('tipo_manutencao_id')
+            'tipo_manutencao_id' => Tables\Filters\SelectFilter::make('tipo_manutencao_id')
                 ->label('Tipo')
                 ->relationship('tipoManutencao', 'nome'),
 
-            Tables\Filters\SelectFilter::make('nivel_prioridade')
+            'nivel_prioridade' => Tables\Filters\SelectFilter::make('nivel_prioridade')
                 ->label('Prioridade')
-                ->options(['Emergencial' => 'Emergencial', 'Preventivo' => 'Preventivo', 'Corretivo' => 'Corretivo',]),
-
+                ->options(
+                    collect(NivelEmergenciaPedido::cases())
+                        ->mapWithKeys(fn($case) => [
+                            $case->value => $case->label(),
+                        ])
+                        ->toArray()
+                ),
         ];
     }
 
@@ -648,17 +653,6 @@ class PedidoService
                         ->size('sm')
                         ->placeholder('Sem responsável'),
 
-                    // Tables\Columns\TextColumn::make('empresaContratada.nome')
-                    //     ->alignCenter()
-                    //     ->label('Empresa')
-                    //     ->tooltip('Empresa contratada')
-                    //     ->extraAttributes([
-                    //         'class' => 'tooltip-hover-effect cursor-help'
-                    //     ])
-                    //     ->icon('heroicon-o-briefcase')
-                    //     ->color('gray')
-                    //     ->size('sm')
-                    //     ->placeholder('Sem empresa'),
                 ])->space(1),
 
                 // Bloco 4: Datas
