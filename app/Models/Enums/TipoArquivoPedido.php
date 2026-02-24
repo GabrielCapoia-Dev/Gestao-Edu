@@ -7,7 +7,9 @@ enum TipoArquivoPedido: string
     case FOTOS_PROBLEMA = 'fotos_problema';
     case LAUDO = 'laudo';
     case ORCAMENTO = 'orcamento';
-    case FOTOS_CONCLUIDO = 'fotos_concluido';
+    case FOTOS_CONCLUSAO = 'fotos_conclusao';
+    case PRINTS = 'prints';
+    case OUTROS = 'outros';
 
     public function label(): string
     {
@@ -15,7 +17,9 @@ enum TipoArquivoPedido: string
             self::FOTOS_PROBLEMA => 'Fotos do Problema',
             self::LAUDO => 'Laudo',
             self::ORCAMENTO => 'Orçamento',
-            self::FOTOS_CONCLUIDO => 'Fotos Concluído',
+            self::FOTOS_CONCLUSAO => 'Fotos Conclusão',
+            self::PRINTS => 'Prints',
+            self::OUTROS => 'Outros',
         };
     }
 }

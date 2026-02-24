@@ -165,6 +165,11 @@ class Pedido extends Model
         return $this->hasMany(PedidoArquivo::class)
             ->where('tipo_arquivo', TipoArquivoPedido::FOTOS_PROBLEMA);
     }
+    public function arquivos_sem_fotos_problema()
+    {
+        return $this->hasMany(PedidoArquivo::class)
+            ->where('tipo_arquivo', '!=', TipoArquivoPedido::FOTOS_PROBLEMA);
+    }
 
     public function empresaContratada()
     {

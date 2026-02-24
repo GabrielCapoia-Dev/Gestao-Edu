@@ -157,16 +157,12 @@ class PedidoService
         if (!empty($data['arquivos'])) {
             foreach ($data['arquivos'] as $path) {
 
-                $mime = Storage::mimeType("public/pedidos/{$path}");
-
-
-                $pedido->arquivos()->create([
-                    'usuario_id'    => $solicitante->id,
-                    'tipo_arquivo'  => TipoArquivoPedido::FOTOS_PROBLEMA,
-                    'caminho'       => $path,
-                    'nome_original' => basename($path),
-                    'mime_type'     => $mime,
-                ]);
+                $this->salvarArquivoPedido(
+                    pedido: $pedido,
+                    path: $path,
+                    tipo: TipoArquivoPedido::FOTOS_PROBLEMA,
+                    usuarioId: $solicitante->id
+                );
             }
         }
 
@@ -305,6 +301,26 @@ class PedidoService
 
                 ])
                 ->columns(1),
+        ]);
+    }
+
+    private function salvarArquivoPedido(
+        Pedido $pedido,
+        string $path,
+        TipoArquivoPedido $tipo,
+        int $usuarioId,
+        ?string $descricao = null
+    ): void {
+
+        $mime = Storage::mimeType("public/{$path}");
+
+        $pedido->arquivos()->create([
+            'usuario_id'    => $usuarioId,
+            'tipo_arquivo'  => $tipo,
+            'caminho'       => $path,
+            'nome_original' => basename($path),
+            'mime_type'     => $mime,
+            'descricao'     => $descricao,
         ]);
     }
 
@@ -466,6 +482,83 @@ class PedidoService
                         ->required()
                         ->maxLength(2000)
                         ->columnSpanFull(),
+
+                    Forms\Components\Section::make('Arquivos do Pedido')
+                        ->collapsible()
+                        ->schema([
+
+                            Forms\Components\Repeater::make('arquivos')
+                                ->relationship()
+                                ->label('Arquivos')
+                                ->schema([
+
+                                    Forms\Components\Select::make('tipo_arquivo')
+                                        ->label('Tipo do Arquivo')
+                                        ->options(
+                                            collect(TipoArquivoPedido::cases())
+                                                ->reject(fn($case) => $case === TipoArquivoPedido::FOTOS_PROBLEMA)
+                                                ->mapWithKeys(fn($case) => [
+                                                    $case->value => $case->label(),
+                                                ])
+                                                ->toArray()
+                                        )
+                                        ->required()
+                                        ->native(false),
+
+                                    Forms\Components\Textarea::make('descricao')
+                                        ->label('Descrição do Arquivo')
+                                        ->rows(2)
+                                        ->maxLength(1000),
+
+                                    Forms\Components\FileUpload::make('caminho')
+                                        ->label('Arquivo')
+                                        ->disk('public')
+                                        ->directory('pedidos')
+                                        ->visibility('public')
+                                        ->storeFiles() // 🔥 obrigatório
+                                        ->preserveFilenames()
+                                        ->required()
+                                        ->columnSpanFull()
+                                        ->acceptedFileTypes([
+                                            'image/jpeg',
+                                            'image/png',
+                                            'image/webp',
+                                            'application/pdf'
+                                        ]),
+                                ])
+                                ->columns(2)
+                                ->addActionLabel('Adicionar Arquivo')
+                                ->defaultItems(0)
+                                ->mutateRelationshipDataBeforeCreateUsing(function (array $data): array {
+
+                                    $data['usuario_id'] = Auth::id();
+
+                                    if (! empty($data['caminho']) && is_string($data['caminho'])) {
+
+                                        $path = $data['caminho'];
+
+                                        $data['nome_original'] = basename($path);
+
+                                        $data['mime_type'] = Storage::mimeType("public/{$path}");
+                                    }
+
+                                    return $data;
+                                })
+                                ->mutateRelationshipDataBeforeSaveUsing(function (array $data): array {
+
+                                    if (! empty($data['caminho']) && is_string($data['caminho'])) {
+
+                                        $path = $data['caminho'];
+
+                                        $data['nome_original'] = basename($path);
+
+                                        $data['mime_type'] = Storage::mimeType("public/{$path}");
+                                    }
+
+                                    return $data;
+                                })
+                                ->columnSpanFull(),
+                        ])
                 ])
                 ->columns(2),
         ]);

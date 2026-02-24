@@ -7,29 +7,48 @@ use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Tables\Columns\Layout\Stack;
 use Illuminate\Support\Facades\Storage;
+use App\Models\Enums\TipoArquivoPedido;
 
 class ArquivosRelationManager extends RelationManager
 {
-    protected static string $relationship = 'fotos';
-    protected static ?string $title = 'Fotos';
-    protected static ?string $modelLabel = 'Foto';
-    protected static ?string $pluralModelLabel = 'Fotos';
+    protected static string $relationship = 'arquivos_sem_fotos_problema';
+
+    protected static ?string $title = 'Arquivos';
+    protected static ?string $modelLabel = 'Arquivo';
+    protected static ?string $pluralModelLabel = 'Arquivos';
 
     public function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\FileUpload::make('caminho')
-                ->label('Foto')
-                ->image()
-                ->required()
-                ->directory('pedidos/fotos')
-                ->maxSize(5120),
 
-            Forms\Components\TextInput::make('descricao')
+            Forms\Components\Select::make('tipo_arquivo')
+                ->label('Tipo do Arquivo')
+                ->options(
+                    collect(TipoArquivoPedido::cases())
+                        ->reject(fn ($case) => $case === TipoArquivoPedido::FOTOS_PROBLEMA)
+                        ->mapWithKeys(fn ($case) => [
+                            $case->value => $case->label(),
+                        ])
+                        ->toArray()
+                )
+                ->required()
+                ->native(false),
+
+            Forms\Components\FileUpload::make('caminho')
+                ->label('Arquivo')
+                ->disk('public')
+                ->directory('pedidos')
+                ->visibility('public')
+                ->storeFiles()
+                ->preserveFilenames()
+                ->required(),
+
+            Forms\Components\Textarea::make('descricao')
                 ->label('Descrição')
-                ->maxLength(255),
+                ->maxLength(1000)
+                ->rows(2),
+
         ]);
     }
 
@@ -37,32 +56,45 @@ class ArquivosRelationManager extends RelationManager
     {
         return $table
             ->columns([
-                Stack::make([
-                    Tables\Columns\TextColumn::make('caminho')
-                        ->label('Foto')
-                        ->html()
-                        ->formatStateUsing(
-                            fn(string $state): string =>
-                            '<img 
-                            src="' . Storage::url($state) . '"
-                            style="
-                                width: 100%;
-                                height: auto;
-                                max-height: 400px;
-                                object-fit: contain;
-                                border-radius: 0.5rem;
-                                background: #f3f4f6;
-                            "
-                        />'
-                        ),
-                ]),
+
+                Tables\Columns\TextColumn::make('tipo_arquivo')
+                    ->label('Tipo')
+                    ->badge()
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('nome_original')
+                    ->label('Arquivo')
+                    ->searchable()
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('descricao')
+                    ->label('Descrição')
+                    ->limit(50)
+                    ->wrap(),
+
+                Tables\Columns\TextColumn::make('usuario.name')
+                    ->label('Enviado por')
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('created_at')
+                    ->label('Enviado em')
+                    ->dateTime('d/m/Y H:i')
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('caminho')
+                    ->label('Download')
+                    ->formatStateUsing(
+                        fn ($state) =>
+                        '<a href="' . Storage::url($state) . '" target="_blank" class="text-primary-600 underline">Abrir</a>'
+                    )
+                    ->html(),
+
             ])
-            ->contentGrid([
-                'default' => 1,
-                'sm'      => 2,
-                'md'      => 3,
-                'xl'      => 4,
+            ->actions([
+                Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
             ])
-            ->paginated([12, 24, 48]);
+            ->defaultSort('created_at', 'desc')
+            ->paginated([10, 25, 50]);
     }
 }
