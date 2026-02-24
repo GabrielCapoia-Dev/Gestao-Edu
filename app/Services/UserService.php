@@ -686,7 +686,7 @@ class UserService
                         Forms\Components\Hidden::make('permissions_state')
                             ->default(
                                 fn(User $record) =>
-                                $record->getDirectPermissions()->pluck('name')->toArray()
+                                $record->getAllPermissions()->pluck('name')->toArray()
                             )
                             ->dehydrated(true),
 
