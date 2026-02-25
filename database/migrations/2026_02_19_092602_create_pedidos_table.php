@@ -27,6 +27,8 @@ return new class extends Migration
                 ->constrained('tipo_status')
                 ->cascadeOnDelete();
 
+            $table->string('nome_solicitante');
+
             $table->string('nivel_prioridade')->nullable();
             $table->index('nivel_prioridade');
 

@@ -144,6 +144,7 @@ class PedidoService
         $pedido = Pedido::create([
             'tipo_manutencao_id' => $data['tipo_manutencao_id'],
             'descricao_pedido'   => $data['descricao_pedido'],
+            'nome_solicitante'   => $data['nome_solicitante'],
             'nivel_prioridade'   => NivelEmergenciaPedido::INDEFINIDO,
             'solicitante_id'     => $solicitante->id,
             'escola_id'          => $solicitante->id_escola,
@@ -277,12 +278,20 @@ class PedidoService
                         ->searchable()
                         ->preload(),
 
+                    Forms\Components\TextInput::make('nome_solicitante')
+                        ->label('Nome de quem será o responsável pela solicitação')
+                        ->required()
+                        ->maxLength(150)
+                        ->helperText('Essa pessoa será o responsável pela solicitação em caso de duvidas')
+                        ->placeholder('Informe o nome do responsável pela solicitação')
+                        ->columnSpanFull(),
+
                     Forms\Components\Textarea::make('descricao_pedido')
                         ->label('Descrição do Problema')
                         ->required()
                         ->rows(6)
                         ->maxLength(2000)
-                        ->helperText('Descreva o problema com o máximo de detalhes possível')
+                        ->placeholder('Descreva o problema de forma detalhada, informando quando o problema começou, onde ocorreu, e caso saiba, informe qual foi o motivo')
                         ->columnSpanFull(),
 
                     Forms\Components\FileUpload::make('arquivos')
@@ -290,7 +299,7 @@ class PedidoService
                         ->multiple()
                         ->image()
                         ->maxFiles(10)
-                        ->maxSize(5120) // 5MB por arquivo
+                        ->maxSize(5120)
                         ->directory('pedidos')
                         ->disk('public')
                         ->storeFiles()
@@ -685,7 +694,7 @@ class PedidoService
                         ->alignCenter()
                         ->sortable(),
 
-                    Tables\Columns\TextColumn::make('solicitante.name')
+                    Tables\Columns\TextColumn::make('nome_solicitante')
                         ->label('Solicitante')
 
                         ->tooltip('Quem fez a solicitação')

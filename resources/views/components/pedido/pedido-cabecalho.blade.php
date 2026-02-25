@@ -145,7 +145,7 @@ $statusCor = '#' . ltrim($record->tipoStatus?->cor ?? '#9ca3af', '#');
         </div>
         <div class="margin-info">
             <span class="label-info">Solicitante:</span>
-            <span class="text-value-record">{{ $record->solicitante?->name ?? 'Não Informado' }}</span>
+            <span class="text-value-record">{{ $record->nome_solicitante ?? 'Não Informado' }}</span>
         </div>
         <div class="margin-info">
             <span class="label-info">E-mail:</span>

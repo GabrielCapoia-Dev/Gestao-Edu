@@ -23,6 +23,8 @@ class Pedido extends Model
         'numero_protocolo', // Gerado automaticamente
         'descricao_pedido', // Descrição do problema
 
+        'nome_solicitante', // Nome do solicitante do problema
+
         'tipo_manutencao_id', // Tipo de manutenção
         'tipo_status_id', // Status atual do workflow
 

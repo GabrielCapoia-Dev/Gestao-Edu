@@ -92,6 +92,8 @@ class PedidoSeeder extends Seeder
         ];
 
 
+
+
         foreach ($grupos as $grupo) {
             $statusAtual = $grupo['status'];
 
@@ -141,6 +143,7 @@ class PedidoSeeder extends Seeder
 
                 $pedido = Pedido::create([
                     'descricao_pedido'      => $descricao,
+                    'nome_solicitante' => fake()->name(),
                     'tipo_manutencao_id'    => $this->rand($tipos),
                     'tipo_status_id'        => $statusAtual->id,
                     'nivel_prioridade'      => $this->rand($prioridades),
