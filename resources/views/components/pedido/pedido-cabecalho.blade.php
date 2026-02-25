@@ -114,11 +114,19 @@ $statusCor = '#' . ltrim($record->tipoStatus?->cor ?? '#9ca3af', '#');
         </div>
     </div>
 
-    <div class="descricao-block">
-        <span class="label-info">Descrição</span>
-        <span class="text-value-record">{{ $record->descricao_pedido ?? 'Não Informado' }}</span>
-    </div>
+    <div class="descricao-block flex justify-between items-start gap-4">
+        <div>
+            <span class="label-info">Descrição</span>
+            <span class="text-value-record block">
+                {{ $record->descricao_pedido ?? 'Não Informado' }}
+            </span>
+        </div>
 
+        <div>
+            <x-pedido.ver-fotos :pedido="$record" />
+        </div>
+    </div>
+    
     <hr class="section-divider">
 
     <div class="flex flex-wrap gap-x-10 gap-y-2">
