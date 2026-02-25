@@ -35,6 +35,10 @@ $statusCor = '#' . ltrim($record->tipoStatus?->cor ?? '#9ca3af', '#');
         border: 1px solid color-mix(in srgb, var(--badge-color) 40%, #ffffff);
     }
 
+    .badge:hover {
+        background-color: color-mix(in srgb, var(--badge-color) 15%, #cccccc);
+    }
+
     .dark .badge {
         background-color: color-mix(in srgb, var(--badge-color) 25%, #111827);
         border-color: color-mix(in srgb, var(--badge-color) 60%, #111827);
@@ -112,21 +116,26 @@ $statusCor = '#' . ltrim($record->tipoStatus?->cor ?? '#9ca3af', '#');
                 {{ $tipo }}
             </span>
         </div>
+
+    </div>
+    <div class="flex flex-wrap gap-x-10 gap-y-2">
+
+        <div class="margin-info descricao-block flex justify-between items-start gap-4">
+            <div>
+                <span class="label-info">Descrição</span>
+                <span class="text-value-record block">
+                    {{ $record->descricao_pedido ?? 'Não Informado' }}
+                </span>
+            </div>
+
+
+        </div>
+        <div class="margin-info">
+            <span class="label-info">Fotos:</span>
+            <x-pedido.ver-fotos :pedido="$record" class="badge" style="--badge-color: {{ $prioridadeCor }}" />
+        </div>
     </div>
 
-    <div class="descricao-block flex justify-between items-start gap-4">
-        <div>
-            <span class="label-info">Descrição</span>
-            <span class="text-value-record block">
-                {{ $record->descricao_pedido ?? 'Não Informado' }}
-            </span>
-        </div>
-
-        <div>
-            <x-pedido.ver-fotos :pedido="$record" />
-        </div>
-    </div>
-    
     <hr class="section-divider">
 
     <div class="flex flex-wrap gap-x-10 gap-y-2">

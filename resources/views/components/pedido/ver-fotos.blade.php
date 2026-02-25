@@ -1,4 +1,10 @@
-@props(['pedido'])
+@props([
+'pedido',
+])
+
+@php
+$fotos = $pedido->fotos;
+@endphp
 
 @php
 $fotos = $pedido->fotos;
@@ -352,8 +358,8 @@ $id = 'modal-fotos-' . $pedido->id;
 
     <!-- BOTÃO -->
     <x-filament::button
+        {{ $attributes }}
         size="xs"
-        color="gray"
         type="button"
         x-on:click="$dispatch('open-modal', { id: '{{ $id }}' })">
         Ver Fotos ({{ $fotos->count() }})
