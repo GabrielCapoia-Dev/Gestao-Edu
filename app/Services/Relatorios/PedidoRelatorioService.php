@@ -44,11 +44,57 @@ class PedidoRelatorioService
 
         $dompdf = $pdf->getDomPDF();
         $dompdf->render();
-        
+
+
+        $canvas = $dompdf->getCanvas();
+        $fontMetrics = $dompdf->getFontMetrics();
+        $font = $fontMetrics->getFont('DejaVu Sans', 'normal');
+
+        $size = 8;
+        $text = "Página {PAGE_NUM} de {PAGE_COUNT}";
+
+        $width  = $canvas->get_width();
+        $height = $canvas->get_height();
+
+        /*
+|--------------------------------------------------------------------------
+| CONTROLE MANUAL
+|--------------------------------------------------------------------------
+| Ajuste esses valores até alinhar perfeito
+*/
+        $offsetLeft  = 45;   // move para direita (aumente)
+        $offsetRight = 0;   // move para esquerda (aumente)
+        $offsetY     = 20;  // distância da borda inferior
+
+        /*
+|--------------------------------------------------------------------------
+| Cálculo base
+|--------------------------------------------------------------------------
+*/
+        $textWidth = $fontMetrics->getTextWidth($text, $font, $size);
+
+        /* Centro matemático */
+        $centerX = ($width - $textWidth) / 2;
+
+        /* Aplica ajustes manuais */
+        $x = $centerX + $offsetLeft - $offsetRight;
+
+        /* Altura */
+        $fontHeight = $fontMetrics->getFontHeight($font, $size);
+        $y = $height - $offsetY - $fontHeight;
+
+        $canvas->page_text(
+            $x,
+            $y,
+            $text,
+            $font,
+            $size,
+            [0.42, 0.45, 0.50]
+        );
+
+
         $nomeArquivo = str_replace(['/', '\\'], '-', $pedido->numero_protocolo);
 
-        return response($dompdf->output(), 200)
-            ->header('Content-Type', 'application/pdf')
-            ->header('Content-Disposition', "inline; filename=Pedido-{$nomeArquivo}.pdf");
+        return $pdf->stream("Pedido-{$nomeArquivo}.pdf");
     }
 }
