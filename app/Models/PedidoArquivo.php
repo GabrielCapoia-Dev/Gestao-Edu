@@ -47,6 +47,21 @@ class PedidoArquivo extends Model
 
     protected static function booted()
     {
+        static::creating(function ($arquivo) {
+
+        $user = Auth::user();
+
+
+
+            if (! $arquivo->usuario_id) {
+                $arquivo->usuario_id = $user->id;
+            }
+
+            if ($arquivo->caminho) {
+                $arquivo->nome_original = basename($arquivo->caminho);
+                $arquivo->mime_type = Storage::mimeType("public/{$arquivo->caminho}");
+            }
+        });
         static::created(function ($arquivo) {
 
             PedidoHistorico::registrarAlteracaoArquivo(

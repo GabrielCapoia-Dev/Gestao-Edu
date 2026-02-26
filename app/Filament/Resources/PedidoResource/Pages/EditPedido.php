@@ -17,6 +17,16 @@ class EditPedido extends EditRecord
     private ?int $statusAnteriorId = null;
     private ?int $novoStatusId = null;
 
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\Action::make('download_pdf')
+                ->label('Baixar PDF')
+                ->icon('heroicon-o-arrow-down-tray')
+                ->url(fn() => route('pedidos.pdf', $this->record))
+                ->openUrlInNewTab(),
+        ];
+    }
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
@@ -68,11 +78,6 @@ class EditPedido extends EditRecord
     }
 
 
-
-    protected function getHeaderActions(): array
-    {
-        return [];
-    }
 
     protected function getRedirectUrl(): string
     {

@@ -19,7 +19,13 @@ class ViewPedido extends ViewRecord
 
     protected function getHeaderActions(): array
     {
-        return [];
+        return [
+            Actions\Action::make('download_pdf')
+                ->label('Baixar PDF')
+                ->icon('heroicon-o-arrow-down-tray')
+                ->url(fn() => route('pedidos.pdf', $this->record))
+                ->openUrlInNewTab(),
+        ];
     }
 
     public function infolist(Infolist $infolist): Infolist

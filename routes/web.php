@@ -7,6 +7,10 @@ use Illuminate\Support\Collection;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Str;
 use App\Http\Controllers\LaudoArquivoController;
+use App\Models\Pedido;
+use App\Services\Relatorios\PedidoRelatorioService;
+
+
 
 Route::get('/', function () {
     return view('home');
@@ -46,4 +50,8 @@ Route::prefix('admin')
         )
             ->name('pedidos.arquivos.download')
             ->middleware('can:download,pedidoArquivo');
+
+        Route::get('/pedidos/{pedido}/pdf', function (Pedido $pedido, PedidoRelatorioService $service) {
+            return $service->gerar($pedido);
+        })->name('pedidos.pdf');
     });

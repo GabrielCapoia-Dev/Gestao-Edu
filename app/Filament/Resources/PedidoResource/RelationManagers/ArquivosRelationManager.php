@@ -43,6 +43,7 @@ class ArquivosRelationManager extends RelationManager
                 ->directory('pedidos')
                 ->visibility('public')
                 ->storeFiles()
+                ->multiple(false)
                 ->preserveFilenames()
                 ->required(),
 
