@@ -19,6 +19,9 @@ $id = 'modal-notificacoes-' . uniqid();
         border: none;
     }
 
+    .notification-bell:hover {
+        background-color: #111827;
+    }
 
     .notification-bell:focus-visible {
         outline: 2px solid #3b82f6;
@@ -99,7 +102,7 @@ $id = 'modal-notificacoes-' . uniqid();
     <!-- MODAL FILAMENT -->
     <x-filament::modal
         :id="$id"
-        width="md">
+        width="4xl">
 
         <x-slot name="heading">
             Notificações
