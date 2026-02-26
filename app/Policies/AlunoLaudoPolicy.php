@@ -23,7 +23,7 @@ class AlunoLaudoPolicy
 
     public function download(User $user, AlunoLaudo $alunoLaudo): bool
     {
-        if (! $user->hasPermissionTo('Baixar Laudos de Aluno')) {
+        if (! $user->hasPermissionTo('Exportar Laudos de Aluno')) {
             return false;
         }
 

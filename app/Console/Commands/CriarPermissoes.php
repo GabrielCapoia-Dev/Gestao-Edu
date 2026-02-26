@@ -27,14 +27,16 @@ class CriarPermissoes extends Command
             'Listar Tipo Status',
             'Listar Pedidos',
             'Listar Todos os Pedidos',
+            'Listar Empresa Contratada',
 
+            'Criar Empresa Contratada',
             'Criar Alunos',
             'Criar Tipo Manutenção',
             'Criar Tipo Status',
             'Criar Pedidos',
 
-            'Baixar Arquivos Pedido',
 
+            'Editar Empresa Contratada',
             'Editar Alunos',
             'Editar Pedidos',
             'Editar Escola do Aluno',
@@ -54,12 +56,14 @@ class CriarPermissoes extends Command
             'Editar Tipo Status',
             'Editar Setor do Usuário',
 
+            'Excluir Empresa Contratada',
             'Excluir Alunos',
             'Excluir Laudos',
             'Excluir Tipo Manutenção',
             'Excluir Tipo Status',
             'Excluir Pedidos',
 
+            'Excluir Empresa Contratada em Massa',
             'Excluir Alunos em Massa',
             'Excluir Laudos em Massa',
             'Excluir Turmas em Massa',
@@ -74,6 +78,8 @@ class CriarPermissoes extends Command
             'Exportar Escolas',
             'Exportar Relatórios',
             'Exportar Professores',
+            'Exportar Arquivos Pedido',
+            'Exportar Laudos de Aluno',
 
             'Aplicar Permissoes',
 

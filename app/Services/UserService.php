@@ -135,7 +135,7 @@ class UserService
     }
     public function podeBaixarLaudos(?User $user): bool
     {
-        return $user->hasPermissionTo('Baixar Laudos de Aluno');
+        return $user->hasPermissionTo('Exportar Laudos de Aluno');
     }
     public function podeFiltrarProfessoresPorEscola(?User $user): bool
     {

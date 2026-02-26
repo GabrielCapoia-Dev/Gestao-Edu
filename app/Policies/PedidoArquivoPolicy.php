@@ -10,6 +10,6 @@ class PedidoArquivoPolicy
 {
     public function download(User $user, PedidoArquivo $arquivo): bool
     {
-        return $user->hasPermissionTo('Baixar Arquivos Pedido');
+        return $user->hasPermissionTo('Exportar Arquivos Pedido');
     }
 }
