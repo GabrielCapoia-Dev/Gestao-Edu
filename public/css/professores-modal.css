@@ -99,3 +99,82 @@
 .dark .tooltip-hover-effect:hover {
     background-color: rgba(203, 213, 225, 0.12);
 }
+
+
+
+.notification-bell {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background-color: #f7eedb;
+    color: #f3f4f6;
+    border-radius: 50%;
+    transition: background-color 0.2s ease;
+    cursor: pointer;
+    border: none;
+}
+
+.notification-bell:hover {
+    background-color: #111827;
+}
+
+.notification-bell:focus-visible {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+}
+
+.notification-badge {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    top: -8px;
+    right: -8px;
+    background-color: #ef4444;
+    color: #ffffff;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: bold;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.modal-notificacoes-container {
+    height: 500px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.modal-notificacoes-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.modal-notificacoes-container::-webkit-scrollbar-track {
+    background: #f3f4f6;
+    border-radius: 10px;
+}
+
+.dark .modal-notificacoes-container::-webkit-scrollbar-track {
+    background: #374151;
+}
+
+.modal-notificacoes-container::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 10px;
+}
+
+.dark .modal-notificacoes-container::-webkit-scrollbar-thumb {
+    background: #6b7280;
+}
+
+.modal-notificacoes-container::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af;
+}
+
+.card-notification {
+    padding: 5px;
+}

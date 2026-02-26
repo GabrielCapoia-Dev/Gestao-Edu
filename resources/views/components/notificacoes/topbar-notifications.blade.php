@@ -1,5 +1,7 @@
 @php
-$unread = 12;
+$user = auth()->user();
+$unread = $user->unreadNotifications()->count();
+$notifications = $user->notifications()->latest()->limit(50)->get();
 $id = 'modal-notificacoes-' . uniqid();
 @endphp
 
@@ -109,24 +111,42 @@ $id = 'modal-notificacoes-' . uniqid();
         </x-slot>
 
         <div class="modal-notificacoes-container space-y-3 pr-2 card-notification">
-            @forelse(range(1, 50) as $notification)
-            <div class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer">
+            @forelse($notifications as $notification)
+            @php
+            $data = $notification->data;
+            $isUnread = is_null($notification->read_at);
+            @endphp
+
+            <div
+                wire:click="markAsRead('{{ $notification->id }}')"
+                class="flex items-start gap-3 p-3 rounded-lg border transition-colors cursor-pointer
+        {{ $isUnread ? 'bg-gray-50 dark:bg-gray-900' : 'bg-white dark:bg-gray-800 opacity-70' }}">
+
+                @if($isUnread)
                 <div class="flex-shrink-0 w-2 h-2 mt-2 bg-blue-500 rounded-full"></div>
+                @endif
+
                 <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
-                        Notificação #{{ $notification }}
+                    <p class="text-sm font-medium">
+                        {{ $data['titulo'] ?? '' }}
                     </p>
-                    <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                        Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+
+                    <p class="text-sm mt-1">
+                        {{ $data['mensagem'] ?? '' }}
                     </p>
-                    <p class="text-xs text-gray-500 dark:text-gray-500 mt-2">
-                        Há 2 horas
+
+                    <p class="text-xs mt-2">
+                        {{ $notification->created_at->diffForHumans() }}
                     </p>
                 </div>
             </div>
+
             @empty
             <div class="flex flex-col items-center justify-center py-8 text-center">
-                <x-heroicon-o-bell class="w-12 h-12 text-gray-400 dark:text-gray-600 mb-2" />
+                <div style="width: 120px;">
+                    <x-heroicon-o-bell class="w-12 h-12 text-gray-400 dark:text-gray-600 mb-2" />
+
+                </div>
                 <p class="text-gray-600 dark:text-gray-400">Nenhuma notificação</p>
             </div>
             @endforelse

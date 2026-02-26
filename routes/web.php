@@ -9,14 +9,23 @@ use Illuminate\Support\Str;
 use App\Http\Controllers\LaudoArquivoController;
 use App\Models\Pedido;
 use App\Services\Relatorios\PedidoRelatorioService;
-
-
+use App\Models\User;
+use App\Notifications\SistemaNotification;
 
 Route::get('/', function () {
     return view('home');
 });
 
 Route::get('/test', function () {
+    $user = User::find(1);
+    $user->notify(
+        new SistemaNotification(
+            titulo: 'Novo Pedido',
+            mensagem: 'Um novo pedido foi criado.',
+            url: route('filament.admin.resources.pedidos.index')
+        )
+    );
+
     return view('test');
 });
 
@@ -55,3 +64,12 @@ Route::prefix('admin')
             return $service->gerar($pedido);
         })->name('pedidos.pdf');
     });
+
+Route::post('/notifications/{id}/read', function ($id) {
+    $user = User::find(1);
+
+    $user->unreadNotifications()
+        ->where('id', $id)
+        ->first()
+        ?->markAsRead();
+});

@@ -85,7 +85,7 @@ class AdminPanelProvider extends PanelProvider
 
             ->renderHook(
                 PanelsRenderHook::USER_MENU_BEFORE,
-                fn() => view('components.topbar-notifications')
+                fn() => Blade::render('@livewire("topbar-notifications")')
             )
             ->userMenuItems([
                 // O logout já vem por padrão, mas você pode customizar
