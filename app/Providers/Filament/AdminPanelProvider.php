@@ -25,6 +25,8 @@ use App\Http\Controllers\LaudoArquivoController;
 use Filament\Actions\Action as GlobalAction;
 use Filament\Navigation\MenuItem;
 use App\Models\User;
+use Filament\View\PanelsRenderHook;
+use Illuminate\Support\Facades\Blade;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -80,6 +82,11 @@ class AdminPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ])
+
+            ->renderHook(
+                PanelsRenderHook::USER_MENU_BEFORE,
+                fn() => view('components.topbar-notifications')
+            )
             ->userMenuItems([
                 // O logout já vem por padrão, mas você pode customizar
                 'logout' => MenuItem::make()
