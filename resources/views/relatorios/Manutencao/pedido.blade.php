@@ -41,7 +41,7 @@ $statusCor = '#' . ltrim($pedido->tipoStatus?->cor ?? '#9ca3af', '#');
         /* HEADER FIXO - aparece em todas as páginas */
         .header-fixed {
             position: fixed;
-            top: -130px;
+            top: -148px;
             left: 0;
             right: 0;
             height: 120px;
@@ -119,7 +119,6 @@ $statusCor = '#' . ltrim($pedido->tipoStatus?->cor ?? '#9ca3af', '#');
 
         /* CONTEÚDO PRINCIPAL */
         .content {
-            margin-top: 20px;
             page-break-inside: auto;
         }
 
@@ -307,7 +306,7 @@ $statusCor = '#' . ltrim($pedido->tipoStatus?->cor ?? '#9ca3af', '#');
 
             {{-- LINHA DESCRIÇÃO --}}
             <tr>
-                <td colspan="3" style="padding:12px;">
+                <td class="espaco-line" colspan="3">
                     <strong>Descrição:</strong>
                     <div class="descricao">
                         {{ $pedido->descricao_pedido ?? 'Não Informado' }}
@@ -333,7 +332,7 @@ $statusCor = '#' . ltrim($pedido->tipoStatus?->cor ?? '#9ca3af', '#');
 
             {{-- FOTOS DO PROBLEMA --}}
             @if($fotosProblema->isNotEmpty())
-                <div class="section-block">
+                <div class="section-block espaco-line">
                     <div class="section-title">
                         <strong>Fotos do Problema:</strong>
                     </div>
@@ -357,7 +356,7 @@ $statusCor = '#' . ltrim($pedido->tipoStatus?->cor ?? '#9ca3af', '#');
 
             {{-- FOTOS DE CONCLUSÃO --}}
             @if($fotosConclusao->isNotEmpty())
-                <div class="section-block">
+                <div class="section-block espaco-line">
                     <div class="section-title">
                         <strong>Fotos da Conclusão:</strong>
                     </div>
