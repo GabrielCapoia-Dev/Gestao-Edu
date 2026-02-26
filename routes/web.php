@@ -17,7 +17,12 @@ Route::get('/', function () {
 });
 
 Route::get('/test', function () {
+    return view('test');
+});
+
+Route::post('/test/notify', function () {
     $user = User::find(1);
+
     $user->notify(
         new SistemaNotification(
             titulo: 'Novo Pedido',
@@ -26,9 +31,8 @@ Route::get('/test', function () {
         )
     );
 
-    return view('test');
-});
-
+    return back()->with('success', 'Notificação enviada');
+})->name('test.notify');
 Route::get('/oauth/redirect/google', [GoogleAuthController::class, 'redirect'])->name('google.redirect');
 Route::get('/oauth/callback/google', [GoogleAuthController::class, 'callback'])->name('google.callback');
 

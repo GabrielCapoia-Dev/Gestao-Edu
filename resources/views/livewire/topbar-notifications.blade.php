@@ -86,6 +86,6 @@ $id = 'modal-notificacoes';
 
 <script>
     setInterval(() => {
-        Livewire.find('@this.id').call('loadNotifications');
-    }, 5000);
+        Livewire.dispatch('refresh-notifications');
+    }, 1000);
 </script>
