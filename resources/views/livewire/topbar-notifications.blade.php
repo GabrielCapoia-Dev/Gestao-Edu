@@ -93,7 +93,9 @@ $id = 'modal-notificacoes';
 
             @empty
             <div class="flex flex-col items-center justify-center py-8 text-center">
-                <x-heroicon-o-bell class="w-12 h-12 text-gray-400 dark:text-gray-600 mb-2" />
+                <div style="width: 120px;">
+                    <x-heroicon-o-bell class="w-12 h-12 text-gray-400 dark:text-gray-600 mb-2" />
+                </div>
                 <p class="text-gray-600 dark:text-gray-400">
                     Nenhuma notificação
                 </p>

@@ -94,6 +94,7 @@ class CriarPermissoes extends Command
             'Visualizar Detalhes de Professor',
             'Visualizar Setor do Usuário',
             'Visualizar Status: Encaminhado ao Setor',
+            'Visualizar Notificações',
 
         ];
 

@@ -85,7 +85,15 @@ class AdminPanelProvider extends PanelProvider
 
             ->renderHook(
                 PanelsRenderHook::USER_MENU_BEFORE,
-                fn() => Blade::render('@livewire("topbar-notifications")')
+                function () {
+                    $user = User::authUser();
+
+                    if ($user->hasPermissionTo('Visualizar Notificações')) {
+
+                        return Blade::render('@livewire("topbar-notifications")');
+                    }
+                    return '';
+                }
             )
             ->userMenuItems([
                 // O logout já vem por padrão, mas você pode customizar
