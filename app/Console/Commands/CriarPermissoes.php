@@ -95,6 +95,8 @@ class CriarPermissoes extends Command
             'Visualizar Setor do Usuário',
             'Visualizar Status: Encaminhado ao Setor',
             'Visualizar Notificações',
+            'Visualizar Histórico de Pedidos',
+            'Visualizar Arquivos de Pedidos',
 
         ];
 

@@ -10,6 +10,7 @@ use Filament\Resources\Resource;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use App\Models\User;
 
 class PedidoResource extends Resource
 {
@@ -50,10 +51,22 @@ class PedidoResource extends Resource
 
     public static function getRelations(): array
     {
-        return [
-            PedidoResource\RelationManagers\HistoricosRelationManager::class,
-            PedidoResource\RelationManagers\ArquivosRelationManager::class,
-        ];
+        /** @var User */
+        $user = Auth::user();
+
+        if ($user?->hasPermissionTo('Visualizar Histórico de Pedidos')) {
+            return [
+                PedidoResource\RelationManagers\HistoricosRelationManager::class,
+            ];
+        }
+
+        if ($user?->hasPermissionTo('Visualizar Arquivos de Pedidos')) {
+            return [
+                PedidoResource\RelationManagers\ArquivosRelationManager::class,
+            ];
+        }
+
+        return [];
     }
 
     public static function getPages(): array

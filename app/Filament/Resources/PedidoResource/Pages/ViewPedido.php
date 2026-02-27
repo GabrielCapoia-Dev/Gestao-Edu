@@ -12,6 +12,7 @@ use Filament\Infolists\Infolist;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
+use App\Models\User;
 
 class ViewPedido extends ViewRecord
 {
@@ -24,6 +25,7 @@ class ViewPedido extends ViewRecord
                 ->label('Baixar PDF')
                 ->icon('heroicon-o-arrow-down-tray')
                 ->url(fn() => route('pedidos.pdf', $this->record))
+                ->visible(fn() => User::authUser()->hasPermissionTo('Visualizar Arquivos de Pedidos'))
                 ->openUrlInNewTab(),
         ];
     }
@@ -40,79 +42,14 @@ class ViewPedido extends ViewRecord
             | IDENTIFICAÇÃO
             |--------------------------------------------------------------------------
             */
-                Infolists\Components\Section::make('Identificação')
-                    ->schema([
-                        Infolists\Components\TextEntry::make('numero_protocolo')
-                            ->label('Protocolo')
-                            ->weight('bold'),
 
-                        Infolists\Components\TextEntry::make('tipoStatus.nome')
-                            ->label('Status')
-                            ->badge(),
-
-                        Infolists\Components\TextEntry::make('nivel_prioridade')
-                            ->label('Prioridade')
-                            ->badge()
-                            ->color(fn($state) => match ($state?->value ?? $state) {
-                                'Emergencial' => 'danger',
-                                'Preventivo'  => 'warning',
-                                'Corretivo'   => 'info',
-                                default       => 'gray',
-                            }),
-
-                        Infolists\Components\TextEntry::make('data_solicitacao')
-                            ->label('Data da Solicitação')
-                            ->dateTime('d/m/Y H:i'),
+                Infolists\Components\ViewEntry::make('header')
+                    ->view('components.pedido.pedido-cabecalho')
+                    ->viewData([
+                        'record' => $this->record,
                     ])
-                    ->columns(4),
+                    ->columnSpanFull(),
 
-                /*
-            |--------------------------------------------------------------------------
-            | INFORMAÇÕES DO PEDIDO
-            |--------------------------------------------------------------------------
-            */
-                Infolists\Components\Section::make('Detalhes do Pedido')
-                    ->schema([
-                        Infolists\Components\TextEntry::make('tipoManutencao.nome')
-                            ->label('Tipo de Manutenção'),
-
-                        Infolists\Components\TextEntry::make('escola.nome')
-                            ->label('Escola'),
-
-                        Infolists\Components\TextEntry::make('solicitante.name')
-                            ->label('Solicitante'),
-
-                        Infolists\Components\TextEntry::make('descricao_pedido')
-                            ->label('Descrição')
-                            ->columnSpanFull()
-                            ->markdown(),
-                    ])
-                    ->columns(3),
-
-                /*
-            |--------------------------------------------------------------------------
-            | GESTÃO (Somente quem pode gerenciar)
-            |--------------------------------------------------------------------------
-            */
-                Infolists\Components\Section::make('Gestão')
-                    ->schema([
-                        Infolists\Components\TextEntry::make('responsavel.name')
-                            ->label('Responsável'),
-
-                        Infolists\Components\TextEntry::make('empresaContratada.nome')
-                            ->label('Empresa'),
-
-                        Infolists\Components\TextEntry::make('data_prevista')
-                            ->label('Data Prevista')
-                            ->date('d/m/Y'),
-
-                        Infolists\Components\TextEntry::make('data_entrega')
-                            ->label('Data de Entrega')
-                            ->date('d/m/Y'),
-                    ])
-                    ->columns(4)
-                    ->visible(fn() => app(PedidoService::class)
-                        ->podeGerenciarPedidos($user)),
 
             ]);
     }

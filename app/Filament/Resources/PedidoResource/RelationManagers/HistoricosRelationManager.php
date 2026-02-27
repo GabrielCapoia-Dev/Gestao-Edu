@@ -5,6 +5,7 @@ namespace App\Filament\Resources\PedidoResource\RelationManagers;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
+use App\Models\User;
 
 class HistoricosRelationManager extends RelationManager
 {

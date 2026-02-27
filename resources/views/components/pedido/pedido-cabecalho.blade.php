@@ -130,10 +130,15 @@ $statusCor = '#' . ltrim($record->tipoStatus?->cor ?? '#9ca3af', '#');
 
 
         </div>
+        @can('Visualizar Arquivos de Pedidos')
         <div class="margin-info">
             <span class="label-info">Fotos:</span>
-            <x-pedido.ver-fotos :pedido="$record" class="badge" style="--badge-color: {{ $prioridadeCor }}" />
+            <x-pedido.ver-fotos
+                :pedido="$record"
+                class="badge"
+                style="--badge-color: {{ $prioridadeCor }}" />
         </div>
+        @endcan
     </div>
 
     <hr class="section-divider">
