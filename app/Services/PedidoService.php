@@ -507,13 +507,11 @@ class PedidoService
     public function configurarTabela(Table $table, ?User $user): Table
     {
         return $table
-            ->query($this->queryTabela($user))
             ->columns($this->colunasTabela($user))
             ->filters($this->filtrosTabela(), layout: FiltersLayout::AboveContent)
             ->actions($this->acoesTabela($user))
             ->bulkActions($this->acoesEmMassa($user));
     }
-
 
     public function queryTabela(?User $user): Builder
     {
@@ -534,6 +532,34 @@ class PedidoService
 
         if ($user->id_escola) {
             return $query->where('escola_id', $user->id_escola);
+        }
+
+        return $query->nenhum();
+    }
+
+    public function queryTabTodos(?User $user): Builder
+    {
+        $query = Pedido::query()
+            ->with('ultimoHistorico')
+            ->where('ativo', true);
+
+        if (! $user) {
+            return $query->nenhum();
+        }
+
+        if (
+            $user->hasRole('Admin') ||
+            $user->hasPermissionTo('Listar Todos os Pedidos')
+        ) {
+            $query->orderByDesc('updated_at');
+            return $query;
+        }
+
+        if ($user->id_escola) {
+            $query->where('escola_id', $user->id_escola)
+                ->orderByDesc('updated_at');
+
+            return $query;
         }
 
         return $query->nenhum();
@@ -733,7 +759,7 @@ class PedidoService
                             $diasRestantes = now()->diffInDays($prevista, false);
 
                             if ($diasRestantes <= 15) {
-                                return Color::hex('#facc15'); // amarelo
+                                return Color::hex('#ff6600'); // amarelo
                             }
 
                             return null;

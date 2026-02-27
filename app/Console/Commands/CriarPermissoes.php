@@ -97,6 +97,7 @@ class CriarPermissoes extends Command
             'Visualizar Notificações',
             'Visualizar Histórico de Pedidos',
             'Visualizar Arquivos de Pedidos',
+            'Visualizar Pedidos por Status',
 
         ];
 

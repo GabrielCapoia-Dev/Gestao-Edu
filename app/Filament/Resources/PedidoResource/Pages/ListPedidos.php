@@ -11,6 +11,8 @@ use Filament\Resources\Pages\ListRecords;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Facades\Auth;
 use App\Services\PedidoService;
+use Illuminate\Database\Eloquent\Builder;
+use App\Models\User;
 
 class ListPedidos extends ListRecords
 {
@@ -19,7 +21,8 @@ class ListPedidos extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            Actions\CreateAction::make()
+                ->label('Novo Pedido'),
         ];
     }
 
@@ -35,10 +38,16 @@ class ListPedidos extends ListRecords
 
     public function getTabs(): array
     {
+
         $tabs = [];
 
         /** @var \App\Models\User */
         $user = Auth::user();
+
+        // 🚫 Se não tiver permissão → sem tabs
+        if (! $user?->hasPermissionTo('Visualizar Pedidos por Status')) {
+            return [];
+        }
 
         $service = app(PedidoService::class);
 
@@ -49,10 +58,11 @@ class ListPedidos extends ListRecords
         // TAB TODOS
         // =========================
         $tabs['todos'] = Tab::make('Todos')
-            ->badge(fn() => (clone $baseQuery)->count())
-            ->extraAttributes([
-                'class' => 'tab-todos',
-            ]);
+            ->modifyQueryUsing(function ($query) {
+                $query->reorder()->orderByDesc('updated_at');
+            })
+            ->badge(fn() => $service->queryTabTodos($user)->count());
+
 
         // =========================
         // TABS POR STATUS
@@ -139,6 +149,13 @@ class ListPedidos extends ListRecords
 
     public function getTitle(): string|HtmlString
     {
+        /** @var \App\Models\User */
+        $user = Auth::user();
+
+        if (! $user?->hasPermissionTo('Visualizar Pedidos por Status')) {
+            return 'Pedidos';
+        }
+
         $activeTab = $this->activeTab;
 
         if (!$activeTab || $activeTab === 'todos') {
@@ -178,5 +195,24 @@ class ListPedidos extends ListRecords
                 . "border:1px solid {$hex}50;"
                 . '">' . e($status->nome) . '</span>'
         );
+    }
+
+
+    protected function getTableQuery(): Builder
+    {
+        /** @var User|null $user */
+        $user = Auth::user();
+
+        $service = app(PedidoService::class);
+
+        if (! $user?->hasPermissionTo('Visualizar Pedidos por Status')) {
+            return $service->queryTabTodos($user);
+        }
+
+        if (request()->query('activeTab') === 'todos') {
+            return $service->queryTabTodos($user);
+        }
+
+        return $service->queryTabela($user);
     }
 }
