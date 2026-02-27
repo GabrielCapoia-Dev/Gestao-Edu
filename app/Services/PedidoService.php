@@ -364,7 +364,7 @@ class PedidoService
                             fn() =>
                             TipoStatus::query()
                                 ->where('ativo', true)
-                                ->whereNotIn('nome', ['Em Aberto', 'Em Análise'])
+                                ->whereNotIn('nome', ['Em Aberto', 'Em Análise', "Concluído"])
                                 ->orderBy('nome')
                                 ->pluck('nome', 'id')
                                 ->toArray()
