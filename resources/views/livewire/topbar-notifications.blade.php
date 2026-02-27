@@ -65,6 +65,26 @@ $id = 'modal-notificacoes';
                         {{ $data['mensagem'] ?? '' }}
                     </p>
 
+                    <a href="{{ $data['url'] ?? '' }}"
+                        target="_blank"
+                        style="
+                            display: inline-flex;
+                            align-items: center;
+                            gap: 0.25rem;
+                            font-size: 0.875rem;
+                            font-weight: 500;
+                            color: #2563eb;
+                            transition: color 0.2s ease;
+                            text-decoration: none;
+                            outline: none;
+                            cursor: pointer;
+                        "
+                        onmouseover="this.style.color = '#1d4ed8'; this.style.textDecoration = 'underline';"
+                        onmouseout="this.style.color = '#2563eb'; this.style.textDecoration = 'none';">
+                        {{ $data['label'] ?? 'Ver detalhes' }}
+                        <x-heroicon-o-arrow-top-right-on-square style="width: 14px; height: 14px;" />
+                    </a>
+
                     <p class="text-xs mt-2">
                         {{ \Carbon\Carbon::parse($notification->created_at)->diffForHumans() }}
                     </p>
