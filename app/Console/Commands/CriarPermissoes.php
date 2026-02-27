@@ -99,6 +99,8 @@ class CriarPermissoes extends Command
             'Visualizar Arquivos de Pedidos',
             'Visualizar Pedidos por Status',
 
+            'Avaliar Pedidos',
+
         ];
 
         $this->info('Criando permissões...');

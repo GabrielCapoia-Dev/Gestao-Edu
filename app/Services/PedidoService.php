@@ -24,7 +24,7 @@ use Filament\Tables\Filters\Tabs\Tab;
 use Filament\Support\Colors\Color;
 use Filament\Tables\Columns\Layout\Stack;
 use Illuminate\Support\Carbon;
-
+use App\Filament\Components\Forms\SliderRating;
 
 class PedidoService
 {
@@ -859,6 +859,108 @@ class PedidoService
                         'pedido' => $record,
                         'historico' => $historico,
                     ]);
+                }),
+
+            Tables\Actions\Action::make('finalizar')
+                ->label('Pedido Finalizado?')
+                ->icon('heroicon-o-check-badge')
+                ->color('success')
+                ->visible(function (Pedido $record) {
+
+                    $emManutencao = $record->tipoStatus?->nome === 'Em Manutenção' && ! $record->feedback;
+                    $semFeedback = ! $record->feedback;
+                    $podeAvaliar = User::authUser()->hasPermissionTo('Avaliar Pedidos');
+
+                    return $emManutencao && $semFeedback && $podeAvaliar;
+                })
+                ->requiresConfirmation()
+                ->modalHeading('Avaliar Pedido')
+                ->modalDescription('Quando você avaliar um pedido, ele será fechado e não podera ser alterado.')
+                ->modalSubmitActionLabel('Sim, avaliar agora')
+                ->modalCancelActionLabel('Cancelar')
+                ->modalWidth('5xl')
+                ->form([
+
+                    Forms\Components\Section::make('Avaliação do Serviço')
+                        ->schema([
+
+                            SliderRating::make('valor')
+                                ->label('Nota (0 a 10)')
+                                ->helperText('Deixe sua avaliação sobre o serviço com uma nota de 0 a 10')
+                                ->columnSpanFull()
+                                ->required(),
+
+                            Forms\Components\RichEditor::make('descricao')
+                                ->label('Descrição da Avaliação')
+                                ->maxLength(2000)
+                                ->toolbarButtons([
+                                    'bold',
+                                    'bulletList',
+                                    'h2',
+                                    'h3',
+                                    'orderedList',
+                                    'redo',
+                                    'undo',
+                                ])
+                                ->columnSpanFull(),
+
+                        ])
+                        ->columns(2),
+
+                    Forms\Components\Section::make('Fotos da Conclusão')
+                        ->schema([
+
+                            Forms\Components\FileUpload::make('fotos_conclusao')
+                                ->label('Adicionar Fotos')
+                                ->multiple()
+                                ->image()
+                                ->maxFiles(10)
+                                ->maxSize(5120)
+                                ->directory('pedidos/conclusao')
+                                ->disk('public')
+                                ->visibility('public')
+                                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                                ->columnSpanFull(),
+
+                        ]),
+                ])
+                ->action(function (Pedido $record, array $data) use ($user) {
+
+                    // 🔎 Buscar status Concluído explicitamente
+                    $statusConcluido = TipoStatus::where('ativo', true)
+                        ->where('nome', 'Concluído')
+                        ->firstOrFail();
+
+                    // 1️⃣ Criar feedback (1:1 garantido pelo unique)
+                    $record->feedback()->create([
+                        'valor'     => $data['valor'],
+                        'descricao' => $data['descricao'] ?? null,
+                    ]);
+
+                    // 2️⃣ Salvar fotos da conclusão
+                    if (! empty($data['fotos_conclusao'])) {
+
+                        foreach ($data['fotos_conclusao'] as $path) {
+
+                            $record->arquivos()->create([
+                                'tipo_arquivo' => TipoArquivoPedido::FOTOS_CONCLUSAO,
+                                'caminho'      => $path,
+                            ]);
+                        }
+                    }
+
+                    // 3️⃣ Alterar status para Concluído
+                    $this->alterarStatus(
+                        $record,
+                        $statusConcluido,
+                        $user,
+                        'Pedido finalizado e avaliado.'
+                    );
+
+                    Notification::make()
+                        ->title('Pedido concluído com sucesso')
+                        ->success()
+                        ->send();
                 }),
 
 

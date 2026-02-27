@@ -138,10 +138,31 @@ return new class extends Migration
 
             $table->index('pedido_id');
         });
+
+        /*
+        |--------------------------------------------------------------------------
+        | Tabela: feedback_pedidos
+        |--------------------------------------------------------------------------
+        */
+        Schema::create('feedback_pedidos', function (Blueprint $table) {
+            $table->id();
+
+            $table->foreignId('pedido_id')
+                ->constrained('pedidos')
+                ->cascadeOnDelete()
+                ->unique(); // 1:1
+
+            $table->unsignedTinyInteger('valor'); // 0–10
+            $table->text('descricao')->nullable();
+
+            $table->timestamps();
+
+        });
     }
 
     public function down(): void
     {
+        Schema::dropIfExists('feedback_pedidos');
         Schema::dropIfExists('pedido_arquivos');
         Schema::dropIfExists('pedido_historicos');
         Schema::dropIfExists('pedidos');

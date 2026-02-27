@@ -120,6 +120,11 @@ class Pedido extends Model
     |--------------------------------------------------------------------------
     */
 
+    public function feedback()
+    {
+        return $this->hasOne(FeedbackPedido::class);
+    }
+
     public function tipoManutencao()
     {
         return $this->belongsTo(TipoManutencao::class);
