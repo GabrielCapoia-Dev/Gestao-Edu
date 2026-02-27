@@ -6,6 +6,7 @@ use App\Filament\Resources\UserResource;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Auth;
+use Spatie\Permission\Models\Role;
 
 class EditUser extends EditRecord
 {
@@ -24,7 +25,7 @@ class EditUser extends EditRecord
         return [
             Actions\DeleteAction::make()
                 ->visible(function ($record) {
-                    if($record->hasRole('Admin')) {
+                    if ($record->hasRole('Admin')) {
                         return false;
                     }
                 })
@@ -37,6 +38,61 @@ class EditUser extends EditRecord
         ];
     }
 
+    protected function afterSave(): void
+    {
+        // ✅ Sincronizar apenas a role
+        if (!empty($this->data['role'])) {
+            $roleId = is_array($this->data['role'])
+                ? $this->data['role'][0]
+                : $this->data['role'];
+
+            $role = Role::find($roleId);
+
+            if ($role) {
+                $this->record->syncRoles([$role]);
+            }
+        }
+
+        // ✅ Processar permissões diretas (mesma lógica do table)
+        $permissoesSelecionadas = collect($this->data)
+            ->filter(fn($_, $key) => str_starts_with($key, 'permissions_'))
+            ->flatten()
+            ->unique()
+            ->values();
+
+        // Se toggle "usar_permissoes_extras" está desativado, remove todas as diretas
+        if (empty($this->data['usar_permissoes_extras'])) {
+            $this->record->syncPermissions([]);
+        } else {
+            // Permissões da role (nunca remove)
+            $permissoesDaRole = $this->record->roles
+                ->flatMap(fn($role) => $role->permissions)
+                ->pluck('name')
+                ->toArray();
+
+            // Permissões diretas atuais
+            $permissoesAtuais = $this->record->getDirectPermissions()->pluck('name');
+
+            // ✅ REMOVER: apenas diretas que foram desmarcadas
+            $paraRemover = $permissoesAtuais->diff($permissoesSelecionadas);
+
+            // ✅ ADICIONAR: permissões que não estão como diretas e não vêm da role
+            $paraAdicionar = $permissoesSelecionadas
+                ->diff($permissoesAtuais)
+                ->diff($permissoesDaRole);
+
+            if ($paraRemover->isNotEmpty()) {
+                $this->record->revokePermissionTo($paraRemover->toArray());
+            }
+
+            if ($paraAdicionar->isNotEmpty()) {
+                $this->record->givePermissionTo($paraAdicionar->toArray());
+            }
+        }
+
+        app(\Spatie\Permission\PermissionRegistrar::class)
+            ->forgetCachedPermissions();
+    }
 
     protected function getRedirectUrl(): string
     {
