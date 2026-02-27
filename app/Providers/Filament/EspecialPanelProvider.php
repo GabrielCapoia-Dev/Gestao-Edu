@@ -25,6 +25,7 @@ use App\Http\Controllers\LaudoArquivoController;
 use Filament\Actions\Action as GlobalAction;
 use Filament\Navigation\MenuItem;
 use App\Models\User;
+use Leandrocfe\FilamentApexCharts\FilamentApexChartsPlugin;
 
 class EspecialPanelProvider extends PanelProvider
 {
@@ -83,6 +84,8 @@ class EspecialPanelProvider extends PanelProvider
                     ->label('Sair'),
             ])
             ->plugins([
+
+                FilamentApexChartsPlugin::make(),
 
                 ThemesPlugin::make()
                     ->canViewThemesPage(fn() => false),

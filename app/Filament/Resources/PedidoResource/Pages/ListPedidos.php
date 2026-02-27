@@ -23,6 +23,13 @@ class ListPedidos extends ListRecords
         return [
             Actions\CreateAction::make()
                 ->label('Novo Pedido'),
+
+
+            Actions\Action::make('feedbacks')
+                ->label('Feedbacks')
+                ->icon('heroicon-o-star')
+                ->color('warning')
+                ->url(fn() => route('filament.admin.pages.feedback-pedidos'))
         ];
     }
 

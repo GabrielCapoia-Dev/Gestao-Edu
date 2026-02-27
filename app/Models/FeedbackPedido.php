@@ -42,9 +42,10 @@ class FeedbackPedido extends Model
     protected static function booted()
     {
         static::creating(function ($feedback) {
+
             $pedido = $feedback->pedido()->first();
 
-            if (! $pedido || ! $pedido->tipoStatus?->nome === 'Concluído') {
+            if (! $pedido || $pedido->tipoStatus?->nome !== 'Concluído') {
                 throw ValidationException::withMessages([
                     'pedido_id' => 'Somente pedidos concluídos podem ser avaliados.',
                 ]);

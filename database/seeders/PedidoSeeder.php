@@ -12,10 +12,12 @@ use App\Models\User;
 use App\Models\Escola;
 use App\Models\EmpresaContratada;
 use App\Models\Enums\NivelEmergenciaPedido;
+use App\Models\FeedbackPedido;
 
 class PedidoSeeder extends Seeder
 {
     private int $numeroDePedidos = 10;
+    private int $numeroPedidosConcluidosExtras = 1000;
     private array $descricoes = [
         'Tomada da sala %d não funciona.',
         'Vazamento na torneira do banheiro %d.',
@@ -161,10 +163,120 @@ class PedidoSeeder extends Seeder
                 foreach ($grupo['historico']($pedido, $solicitanteId, $setorId) as $h) {
                     PedidoHistorico::create($h);
                 }
+
+                // =========================
+                // Criar Feedback se Concluído
+                // =========================
+
+                if ($statusAtual->nome === 'Concluído') {
+
+                    FeedbackPedido::create([
+                        'pedido_id' => $pedido->id,
+                        'valor' => $this->gerarNotaRealista(),
+                        'descricao' => fake()->optional(0.8)->sentence(12),
+                    ]);
+                }
             }
 
             $this->command->info("✔ 60 pedidos criados — {$statusAtual->nome}");
         }
+
+        // =======================================================
+        // GERAR 1000 PEDIDOS CONCLUÍDOS COM DISTRIBUIÇÃO TEMPORAL
+        // =======================================================
+
+        if ($sConcluido) {
+
+            $this->command->info("Gerando {$this->numeroPedidosConcluidosExtras} pedidos concluídos para gráfico temporal...");
+
+            for ($i = 0; $i < $this->numeroPedidosConcluidosExtras; $i++) {
+
+                $solicitanteId = $this->rand($users);
+                $responsavelId = $this->rand(array_values(array_filter($users, fn($id) => $id !== $solicitanteId)));
+
+                $setorId = $this->rand($setores);
+
+                // 🔥 DISTRIBUIÇÃO TEMPORAL REALISTA (últimos 24 meses)
+                $dataSolicit = now()
+                    ->subMonths(rand(0, 24))
+                    ->subDays(rand(0, 30))
+                    ->setTime(rand(8, 18), rand(0, 59));
+
+                $dataPrevista = (clone $dataSolicit)->addDays(rand(7, 30));
+
+                // Pode entregar antes ou depois da previsão
+                $dataEntrega = (clone $dataPrevista)->addDays(rand(-5, 10));
+
+                $descricao = sprintf(
+                    $this->rand($this->descricoesConcluidas),
+                    rand(1, 50)
+                );
+
+                $pedido = Pedido::create([
+                    'descricao_pedido'      => $descricao,
+                    'nome_solicitante'      => fake()->name(),
+                    'tipo_manutencao_id'    => $this->rand($tipos),
+                    'tipo_status_id'        => $sConcluido->id,
+                    'nivel_prioridade'      => $this->rand($prioridades),
+                    'escola_id'             => $this->rand($escolas),
+                    'solicitante_id'        => $solicitanteId,
+                    'responsavel_id'        => $responsavelId,
+                    'setor_id'              => $setorId,
+                    'empresa_contratada_id' => $this->rand($empresas),
+                    'data_solicitacao'      => $dataSolicit,
+                    'data_prevista'         => $dataPrevista,
+                    'data_entrega'          => $dataEntrega,
+                    'ativo'                 => true,
+                    'created_at'            => $dataSolicit,
+                    'updated_at'            => $dataEntrega,
+                ]);
+
+                // Histórico coerente com timeline
+                PedidoHistorico::create([
+                    'pedido_id'           => $pedido->id,
+                    'status_anterior_id'  => null,
+                    'status_novo_id'      => $sAberto?->id,
+                    'usuario_id'          => $solicitanteId,
+                    'setor_id'            => $setorId,
+                    'descricao_alteracao' => 'Pedido criado.',
+                    'created_at'          => $dataSolicit,
+                    'updated_at'          => $dataSolicit,
+                ]);
+
+                PedidoHistorico::create([
+                    'pedido_id'           => $pedido->id,
+                    'status_anterior_id'  => $sAberto?->id,
+                    'status_novo_id'      => $sConcluido->id,
+                    'usuario_id'          => $responsavelId,
+                    'setor_id'            => $setorId,
+                    'descricao_alteracao' => 'Pedido concluído.',
+                    'created_at'          => $dataEntrega,
+                    'updated_at'          => $dataEntrega,
+                ]);
+
+                // Feedback sincronizado com data de entrega
+                FeedbackPedido::create([
+                    'pedido_id'  => $pedido->id,
+                    'valor'      => $this->gerarNotaRealista(),
+                    'descricao'  => fake()->optional(0.8)->sentence(12),
+                    'created_at' => $dataEntrega,
+                    'updated_at' => $dataEntrega,
+                ]);
+            }
+
+            $this->command->info("✔ {$this->numeroPedidosConcluidosExtras} pedidos concluídos extras criados.");
+        }
+    }
+
+    private function gerarNotaRealista(): int
+    {
+        $rand = rand(1, 100);
+
+        return match (true) {
+            $rand <= 10 => rand(0, 4),   // 10% ruim
+            $rand <= 30 => rand(5, 7),   // 20% médio
+            default => rand(8, 10),      // 70% bom
+        };
     }
 
     private function hist(

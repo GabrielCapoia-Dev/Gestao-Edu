@@ -93,20 +93,41 @@ class Pedido extends Model
     protected static function booted()
     {
         static::creating(function ($pedido) {
+
             if (empty($pedido->numero_protocolo)) {
-                $pedido->numero_protocolo = self::gerarProtocolo();
+
+                $ano = $pedido->created_at
+                    ? $pedido->created_at->year
+                    : now()->year;
+
+                $pedido->numero_protocolo = self::gerarProtocolo($ano);
             }
         });
     }
 
-    public static function gerarProtocolo(): string
+    // public static function gerarProtocolo(): string
+    // {
+    //     $ano = now()->year;
+
+    //     $ultimo = self::whereYear('created_at', $ano)->count();
+
+    //     return sprintf('%s/%05d', $ano, $ultimo + 1);
+    // }
+
+
+    public static function gerarProtocolo(?int $ano = null): string
     {
-        $ano = now()->year;
+        $ano = $ano ?? now()->year;
 
-        $ultimo = self::whereYear('created_at', $ano)->count();
+        $ultimoNumero = self::whereYear('created_at', $ano)
+            ->selectRaw("MAX(CAST(SUBSTRING_INDEX(numero_protocolo, '/', -1) AS UNSIGNED)) as max_num")
+            ->value('max_num');
 
-        return sprintf('%s/%05d', $ano, $ultimo + 1);
+        $proximo = ($ultimoNumero ?? 0) + 1;
+
+        return sprintf('%s/%05d', $ano, $proximo);
     }
+
 
     public function ultimoHistorico()
     {
