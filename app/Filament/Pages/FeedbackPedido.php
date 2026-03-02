@@ -9,6 +9,7 @@ use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Illuminate\Database\Eloquent\Builder;
 use App\Models\FeedbackPedido as FeedbackPedidoModel;
+use App\Models\User;
 
 class FeedbackPedido extends Page implements HasTable
 {
@@ -26,6 +27,12 @@ class FeedbackPedido extends Page implements HasTable
             \App\Filament\Widgets\FeedbackMediaMensalChart::class,
         ];
     }
+
+    public function canView(): bool
+    {
+        return User::authUser()->hasPermissionTo('Visualizar Feedback de Pedidos');
+    }
+
     public function table(Table $table): Table
     {
         return $table
@@ -46,14 +53,11 @@ class FeedbackPedido extends Page implements HasTable
                 Tables\Columns\TextColumn::make('valor')
                     ->label('Nota')
                     ->badge()
-                    ->color(
-                        fn($state) =>
-                        match (true) {
-                            $state >= 8 => 'success',
-                            $state >= 5 => 'warning',
-                            default => 'danger',
-                        }
-                    )
+                    ->color(fn($state) => match (true) {
+                        $state >= 4 => 'success',
+                        $state >= 3 => 'warning',
+                        default     => 'danger',
+                    })
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('descricao')
@@ -93,7 +97,7 @@ class FeedbackPedido extends Page implements HasTable
             return 0;
         }
 
-        $positivos = FeedbackPedidoModel::where('valor', '>=', 8)->count();
+        $positivos = FeedbackPedidoModel::where('valor', '>=', 4)->count();
 
         return round(($positivos / $total) * 100);
     }
