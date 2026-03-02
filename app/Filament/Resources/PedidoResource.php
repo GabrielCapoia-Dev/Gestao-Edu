@@ -51,22 +51,20 @@ class PedidoResource extends Resource
 
     public static function getRelations(): array
     {
-        /** @var User */
+        /** @var User $user */
         $user = Auth::user();
 
+        $relations = [];
+
         if ($user?->hasPermissionTo('Visualizar Histórico de Pedidos')) {
-            return [
-                PedidoResource\RelationManagers\HistoricosRelationManager::class,
-            ];
+            $relations[] = PedidoResource\RelationManagers\HistoricosRelationManager::class;
         }
 
         if ($user?->hasPermissionTo('Visualizar Arquivos de Pedidos')) {
-            return [
-                PedidoResource\RelationManagers\ArquivosRelationManager::class,
-            ];
+            $relations[] = PedidoResource\RelationManagers\ArquivosRelationManager::class;
         }
 
-        return [];
+        return $relations;
     }
 
     public static function getPages(): array
