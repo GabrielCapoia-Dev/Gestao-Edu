@@ -270,12 +270,12 @@ class PedidoSeeder extends Seeder
 
     private function gerarNotaRealista(): int
     {
-        $rand = rand(1, 100);
+        $rand = random_int(1, 100);
 
         return match (true) {
-            $rand <= 10 => rand(0, 4),   // 10% ruim
-            $rand <= 30 => rand(5, 7),   // 20% médio
-            default => rand(8, 10),      // 70% bom
+            $rand <= 10 => 1,              // 10% ruim
+            $rand <= 30 => random_int(2, 3), // 20% médio
+            default => random_int(4, 5),     // 70% bom
         };
     }
 
