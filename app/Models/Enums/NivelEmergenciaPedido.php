@@ -4,10 +4,10 @@ namespace App\Models\Enums;
 
 enum NivelEmergenciaPedido: string
 {
-    case EMERGENCIAL = 'emergencial';
-    case PREVENTIVO = 'preventivo';
-    case CORRETIVO = 'corretivo';
-    case INDEFINIDO = 'indeterminado';
+    case EMERGENCIAL = 'Emergencial';
+    case PREVENTIVO = 'Preventivo';
+    case CORRETIVO = 'Corretivo';
+    case INDEFINIDO = 'Indeterminado';
 
     public function label(): string
     {
