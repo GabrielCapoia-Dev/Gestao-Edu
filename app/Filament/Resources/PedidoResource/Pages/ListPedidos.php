@@ -28,6 +28,7 @@ class ListPedidos extends ListRecords
             Actions\Action::make('feedbacks')
                 ->label('Feedbacks')
                 ->icon('heroicon-o-star')
+                ->visible(fn() => User::authUser()->hasPermissionTo('Visualizar Feedback de Pedidos'))
                 ->color('warning')
                 ->url(fn() => route('filament.admin.pages.feedback-pedidos'))
         ];

@@ -1,18 +1,19 @@
-<div>
+<div
+    x-data="{ value: @js($getState()) }"
+    x-init="$watch('value', val => $wire.set('{{ $getStatePath() }}', val))">
     <input
         type="range"
         min="1"
         max="5"
         step="1"
         class="slider-rating"
-        {{ $applyStateBindingModifiers('wire:model') }}="{{ $getStatePath() }}"
-    >
+        x-model="value">
 
     <div class="slider-labels">
         <span class="label-left">1</span>
-        <span class="label-center">
-            {{ $getState() }}
-        </span>
+
+        <span class="label-center" x-text="value"></span>
+
         <span class="label-right">5</span>
     </div>
 </div>

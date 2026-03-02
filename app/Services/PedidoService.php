@@ -862,21 +862,19 @@ class PedidoService
                 }),
 
             Tables\Actions\Action::make('finalizar')
-                ->label('Pedido Finalizado?')
+                ->label('Avaliar Pedido')
                 ->icon('heroicon-o-check-badge')
                 ->color('success')
                 ->visible(function (Pedido $record) {
 
-                    $emManutencao = $record->tipoStatus?->nome === 'Em Manutenção' && ! $record->feedback;
-                    $semFeedback = ! $record->feedback;
-                    $podeAvaliar = User::authUser()->hasPermissionTo('Avaliar Pedidos');
+                    $emManutencao = $record->tipoStatus?->nome === 'Em Manutenção';
+                    $podeAvaliar  = User::authUser()->hasPermissionTo('Avaliar Pedidos');
 
-                    return $emManutencao && $semFeedback && $podeAvaliar;
+                    return $emManutencao && $podeAvaliar;
                 })
-                ->requiresConfirmation()
                 ->modalHeading('Avaliar Pedido')
-                ->modalDescription('Quando você avaliar um pedido, ele será fechado e não podera ser alterado.')
-                ->modalSubmitActionLabel('Sim, avaliar agora')
+                ->modalDescription('Ao avaliar o pedido, ele será concluído. Caso a nota seja 1, o pedido será reaberto automaticamente.')
+                ->modalSubmitActionLabel('Confirmar Avaliação')
                 ->modalCancelActionLabel('Cancelar')
                 ->modalWidth('5xl')
                 ->form([
@@ -885,23 +883,14 @@ class PedidoService
                         ->schema([
 
                             SliderRating::make('valor')
-                                ->label('Nota (0 a 10)')
-                                ->helperText('Deixe sua avaliação sobre o serviço com uma nota de 0 a 10')
-                                ->columnSpanFull()
-                                ->required(),
+                                ->label('Nota (1 a 5)')
+                                ->helperText('Avalie o serviço realizado')
+                                ->required()
+                                ->columnSpanFull(),
 
-                            Forms\Components\RichEditor::make('descricao')
+                            Forms\Components\Textarea::make('descricao')
                                 ->label('Descrição da Avaliação')
-                                ->maxLength(2000)
-                                ->toolbarButtons([
-                                    'bold',
-                                    'bulletList',
-                                    'h2',
-                                    'h3',
-                                    'orderedList',
-                                    'redo',
-                                    'undo',
-                                ])
+                                ->maxLength(1000)
                                 ->columnSpanFull(),
 
                         ])
@@ -926,22 +915,25 @@ class PedidoService
                 ])
                 ->action(function (Pedido $record, array $data) use ($user) {
 
-                    // 🔎 Buscar status Concluído explicitamente
+                    $nota = (int) $data['valor'];
+
                     $statusConcluido = TipoStatus::where('ativo', true)
                         ->where('nome', 'Concluído')
                         ->firstOrFail();
 
-                    // 1️⃣ Criar feedback (1:1 garantido pelo unique)
-                    $record->feedback()->create([
-                        'valor'     => $data['valor'],
+                    $statusReaberto = TipoStatus::where('ativo', true)
+                        ->where('nome', 'Reaberto')
+                        ->firstOrFail();
+
+                    // 🔹 1️⃣ Criar novo feedback (1:N)
+                    $record->feedbacks()->create([
+                        'valor'     => $nota,
                         'descricao' => $data['descricao'] ?? null,
                     ]);
 
-                    // 2️⃣ Salvar fotos da conclusão
+                    // 🔹 2️⃣ Salvar fotos
                     if (! empty($data['fotos_conclusao'])) {
-
                         foreach ($data['fotos_conclusao'] as $path) {
-
                             $record->arquivos()->create([
                                 'tipo_arquivo' => TipoArquivoPedido::FOTOS_CONCLUSAO,
                                 'caminho'      => $path,
@@ -949,16 +941,26 @@ class PedidoService
                         }
                     }
 
-                    // 3️⃣ Alterar status para Concluído
+                    // 🔹 3️⃣ Definir novo status
+                    $novoStatus = $nota === 1
+                        ? $statusReaberto
+                        : $statusConcluido;
+
                     $this->alterarStatus(
                         $record,
-                        $statusConcluido,
+                        $novoStatus,
                         $user,
-                        'Pedido finalizado e avaliado.'
+                        $nota === 1
+                            ? 'Pedido reaberto automaticamente após avaliação com nota 1.'
+                            : 'Pedido concluído e avaliado.'
                     );
 
                     Notification::make()
-                        ->title('Pedido concluído com sucesso')
+                        ->title(
+                            $nota === 1
+                                ? 'Pedido reaberto para nova execução.'
+                                : 'Pedido concluído com sucesso.'
+                        )
                         ->success()
                         ->send();
                 }),
