@@ -98,6 +98,7 @@ class CriarPermissoes extends Command
             'Visualizar Histórico de Pedidos',
             'Visualizar Arquivos de Pedidos',
             'Visualizar Pedidos por Status',
+            'Visualizar Painel Personalizado',
 
             'Avaliar Pedidos',
 

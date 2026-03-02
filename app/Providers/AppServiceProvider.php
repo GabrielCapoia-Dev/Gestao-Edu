@@ -78,13 +78,21 @@ class AppServiceProvider extends ServiceProvider
             Js::make('leaflet-js',  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'),
             Css::make('professores-modal', asset('css/professores-modal.css')),
         ]);
-        Event::listen(ServingFilament::class, function () {
-            $user = Filament::auth()?->user() ?? Auth::user();
 
-            $isAdmin = app(UserService::class)->ehAdmin($user);
+        Event::listen(ServingFilament::class, function () {
+            
+            /** @var \App\Models\User|null $user */
+            $user = Filament::getCurrentPanel()?->auth()?->user()
+                ?? Auth::user();
+
+            if (! $user) {
+                return;
+            }
+
+            $canViewPanel = $user->hasPermissionTo('Visualizar Painel Personalizado');
 
             app(Themes::class)->register(
-                $isAdmin
+                $canViewPanel
                     ? [\Hasnayeen\Themes\Themes\Sunset::class]
                     : [\App\Filament\Themes\TemaSME::class],
                 true

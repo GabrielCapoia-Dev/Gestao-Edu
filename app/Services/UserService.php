@@ -47,6 +47,10 @@ class UserService
 
     /** Verifica com base nas permissoes do usuario */
 
+    public function podeVisualizarPainelPersonalizado(?User $user): bool
+    {
+        return $user?->hasPermissionTo('Visualizar Painel Personalizado') ?? false;
+    }
     public function podeEditarMatriculaDoProfessor(?User $user, ?string $operation = null): bool
     {
         if ($operation === 'create') return true;
@@ -644,7 +648,6 @@ class UserService
                 ->label('Nivel de acesso')
                 ->alignCenter()
                 ->grow(false)
-                ->sortable()
                 ->getStateUsing(fn(User $record) => $record->roles->first()?->name ?? '-')
                 ->toggleable(isToggledHiddenByDefault: false),
 
