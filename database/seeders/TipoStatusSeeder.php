@@ -12,6 +12,14 @@ class TipoStatusSeeder extends Seeder
         $statuses = [
 
             [
+                'nome' => 'Reaberto',
+                'cor' => '#d40000',
+                'finaliza_pedido' => false,
+                'cancela_pedido' => false,
+                'ativo' => true,
+            ],
+
+            [
                 'nome' => 'Em Aberto',
                 'cor' => '#3b82f6',
                 'finaliza_pedido' => false,
@@ -69,7 +77,7 @@ class TipoStatusSeeder extends Seeder
 
             [
                 'nome' => 'Cancelado',
-                'cor' => '#ef4444',
+                'cor' => '#d40000',
                 'finaliza_pedido' => false,
                 'cancela_pedido' => true,
                 'ativo' => true,

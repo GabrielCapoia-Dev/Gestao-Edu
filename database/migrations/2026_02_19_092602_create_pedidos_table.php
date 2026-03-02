@@ -149,14 +149,14 @@ return new class extends Migration
 
             $table->foreignId('pedido_id')
                 ->constrained('pedidos')
-                ->cascadeOnDelete()
-                ->unique(); // 1:1
+                ->cascadeOnDelete(); 
 
-            $table->unsignedTinyInteger('valor'); // 0–10
+            $table->unsignedTinyInteger('valor'); // 1–5
             $table->text('descricao')->nullable();
 
             $table->timestamps();
 
+            $table->index('pedido_id');
         });
     }
 

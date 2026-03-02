@@ -12,7 +12,7 @@ class SliderRating extends Field
     {
         parent::setUp();
 
-        $this->default(5)
+        $this->default(3)
             ->dehydrated(true);
     }
 }

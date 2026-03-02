@@ -1,17 +1,19 @@
-<div class="slider-rating-wrapper" x-data="{ valor: @entangle($getStatePath()).defer }">
+<div>
     <input
         type="range"
-        id="valorSlider"
-        class="slider-rating"
-        min="0"
-        max="10"
+        min="1"
+        max="5"
         step="1"
-        x-model.number="valor"
-        @input="document.getElementById('valorDisplay').textContent = valor">
+        class="slider-rating"
+        {{ $applyStateBindingModifiers('wire:model') }}="{{ $getStatePath() }}"
+    >
+
     <div class="slider-labels">
-        <span class="label-left">0</span>
-        <span class="label-center" id="valorDisplay">{{ $getState() ?? 5 }}</span>
-        <span class="label-right">10</span>
+        <span class="label-left">1</span>
+        <span class="label-center">
+            {{ $getState() }}
+        </span>
+        <span class="label-right">5</span>
     </div>
 </div>
 
@@ -81,6 +83,7 @@
         min-width: 40px;
         text-align: center;
     }
+
     .dark .label-center,
     .dark .label-left,
     .dark .label-right {

@@ -38,18 +38,4 @@ class FeedbackPedido extends Model
     | Regra: só pode avaliar pedido concluído
     |--------------------------------------------------------------------------
     */
-
-    protected static function booted()
-    {
-        static::creating(function ($feedback) {
-
-            $pedido = $feedback->pedido()->first();
-
-            if (! $pedido || $pedido->tipoStatus?->nome !== 'Concluído') {
-                throw ValidationException::withMessages([
-                    'pedido_id' => 'Somente pedidos concluídos podem ser avaliados.',
-                ]);
-            }
-        });
-    }
 }

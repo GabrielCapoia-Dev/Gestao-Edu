@@ -141,9 +141,14 @@ class Pedido extends Model
     |--------------------------------------------------------------------------
     */
 
-    public function feedback()
+    public function feedbacks()
     {
-        return $this->hasOne(FeedbackPedido::class);
+        return $this->hasMany(FeedbackPedido::class);
+    }
+
+    public function ultimoFeedback()
+    {
+        return $this->hasOne(FeedbackPedido::class)->latestOfMany();
     }
 
     public function tipoManutencao()
