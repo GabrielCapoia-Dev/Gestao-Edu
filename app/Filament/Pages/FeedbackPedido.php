@@ -7,9 +7,10 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Concerns\InteractsWithTable;
-use Illuminate\Database\Eloquent\Builder;
 use App\Models\FeedbackPedido as FeedbackPedidoModel;
 use App\Models\User;
+use Filament\Forms;
+use Livewire\Attributes\Computed;
 
 class FeedbackPedido extends Page implements HasTable
 {
@@ -20,11 +21,14 @@ class FeedbackPedido extends Page implements HasTable
     protected static string $view = 'filament.pages.feedback-pedido';
     protected static ?string $navigationGroup = 'Manutenção';
 
+    // Estado de filtros que será observado pelo widget
+    public array $chartFilters = [];
+    
     protected function getFooterWidgets(): array
     {
         return [
-            \App\Filament\Widgets\FeedbackDistribuicaoChart::class,
             \App\Filament\Widgets\FeedbackMediaMensalChart::class,
+            \App\Filament\Widgets\FeedbackQuantidadePorNotaChart::class,
         ];
     }
 
@@ -69,35 +73,154 @@ class FeedbackPedido extends Page implements HasTable
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
             ])
+            ->filters([
+                Tables\Filters\SelectFilter::make('valor')
+                    ->label('Nota')
+                    ->options([
+                        '1' => '⭐ (1)',
+                        '2' => '⭐⭐ (2)',
+                        '3' => '⭐⭐⭐ (3)',
+                        '4' => '⭐⭐⭐⭐ (4)',
+                        '5' => '⭐⭐⭐⭐⭐ (5)',
+                    ])
+                    ->query(function ($query, array $data) {
+                        $this->updateChartFilters('valor', $data['value'] ?? null);
+                        return $query->when($data['value'] ?? null, fn($q) => $q->where('valor', $data['value']));
+                    }),
+
+                Tables\Filters\SelectFilter::make('pedido.nivel_prioridade')
+                    ->label('Nível de Prioridade')
+                    ->options([
+                        'baixa' => 'Baixa',
+                        'media' => 'Média',
+                        'alta' => 'Alta',
+                        'critica' => 'Crítica',
+                    ])
+                    ->query(function ($query, array $data) {
+                        $this->updateChartFilters('nivel_prioridade', $data['value'] ?? null);
+                        return $query->when($data['value'] ?? null, fn($q) => $q->whereHas('pedido', fn($subquery) => $subquery->where('nivel_prioridade', $data['value'])));
+                    }),
+
+                Tables\Filters\SelectFilter::make('pedido.tipo_manutencao_id')
+                    ->label('Tipo de Manutenção')
+                    ->options(
+                        \App\Models\TipoManutencao::pluck('nome', 'id')->toArray()
+                    )
+                    ->query(function ($query, array $data) {
+                        $this->updateChartFilters('tipo_manutencao_id', $data['value'] ?? null);
+                        return $query->when($data['value'] ?? null, fn($q) => $q->whereHas('pedido', fn($subquery) => $subquery->where('tipo_manutencao_id', $data['value'])));
+                    }),
+
+                Tables\Filters\SelectFilter::make('pedido.escola_id')
+                    ->label('Escola')
+                    ->options(
+                        \App\Models\Escola::pluck('nome', 'id')->toArray()
+                    )
+                    ->query(function ($query, array $data) {
+                        $this->updateChartFilters('escola_id', $data['value'] ?? null);
+                        return $query->when($data['value'] ?? null, fn($q) => $q->whereHas('pedido', fn($subquery) => $subquery->where('escola_id', $data['value'])));
+                    }),
+
+                Tables\Filters\SelectFilter::make('pedido.empresa_contratada_id')
+                    ->label('Empresa Contratada')
+                    ->options(
+                        \App\Models\EmpresaContratada::pluck('nome', 'id')->toArray()
+                    )
+                    ->query(function ($query, array $data) {
+                        $this->updateChartFilters('empresa_contratada_id', $data['value'] ?? null);
+                        return $query->when($data['value'] ?? null, fn($q) => $q->whereHas('pedido', fn($subquery) => $subquery->where('empresa_contratada_id', $data['value'])));
+                    }),
+
+                Tables\Filters\Filter::make('mes')
+                    ->label('Mês')
+                    ->form([
+                        Forms\Components\Select::make('mes')
+                            ->label('Mês')
+                            ->options([
+                                '01' => 'Janeiro',
+                                '02' => 'Fevereiro',
+                                '03' => 'Março',
+                                '04' => 'Abril',
+                                '05' => 'Maio',
+                                '06' => 'Junho',
+                                '07' => 'Julho',
+                                '08' => 'Agosto',
+                                '09' => 'Setembro',
+                                '10' => 'Outubro',
+                                '11' => 'Novembro',
+                                '12' => 'Dezembro',
+                            ])
+                            ->native(false),
+                    ])
+                    ->query(function ($query, array $data) {
+                        $this->updateChartFilters('mes', $data['mes'] ?? null);
+                        return $query->when($data['mes'] ?? null, fn($q) => $q->whereMonth('created_at', $data['mes']));
+                    }),
+
+                Tables\Filters\Filter::make('periodo')
+                    ->label('Período')
+                    ->form([
+                        Forms\Components\DatePicker::make('data_inicio')
+                            ->label('Data Início'),
+                        Forms\Components\DatePicker::make('data_fim')
+                            ->label('Data Fim'),
+                    ])
+                    ->query(function ($query, array $data) {
+                        $this->updateChartFilters('periodo', [
+                            'inicio' => $data['data_inicio'] ?? null,
+                            'fim' => $data['data_fim'] ?? null,
+                        ]);
+                        return $query
+                            ->when($data['data_inicio'] ?? null, fn($q) => $q->whereDate('created_at', '>=', $data['data_inicio']))
+                            ->when($data['data_fim'] ?? null, fn($q) => $q->whereDate('created_at', '<=', $data['data_fim']));
+                    }),
+            ])
             ->defaultSort('created_at', 'desc');
     }
 
-    // =========================
-    // MÉTRICAS
-    // =========================
-
-    public function getMediaGeral(): float
+    public function updateChartFilters(string $filterKey, mixed $value): void
     {
-        return round(
-            FeedbackPedidoModel::avg('valor') ?? 0,
-            2
-        );
+        // Disparar evento de loading
+        $this->dispatch('chart-loading-start');
+
+        if ($value === null) {
+            unset($this->chartFilters[$filterKey]);
+        } else {
+            $this->chartFilters[$filterKey] = $value;
+        }
+
+        $this->dispatch('update-chart-filters', filters: $this->chartFilters);
+
+        // Disparar evento de fim de loading
+        $this->dispatch('chart-loading-end');
     }
 
     public function getTotalAvaliacoes(): int
     {
-        return FeedbackPedidoModel::count();
+        return $this->getFilteredTableQuery()->count();
+    }
+
+    public function getMediaGeral(): float
+    {
+        return round(
+            $this->getFilteredTableQuery()->avg('valor') ?? 0,
+            2
+        );
     }
 
     public function getPercentualSatisfacao(): int
     {
-        $total = $this->getTotalAvaliacoes();
+        $query = $this->getFilteredTableQuery();
+
+        $total = (clone $query)->count();
 
         if ($total === 0) {
             return 0;
         }
 
-        $positivos = FeedbackPedidoModel::where('valor', '>=', 4)->count();
+        $positivos = (clone $query)
+            ->where('valor', '>=', 3)
+            ->count();
 
         return round(($positivos / $total) * 100);
     }

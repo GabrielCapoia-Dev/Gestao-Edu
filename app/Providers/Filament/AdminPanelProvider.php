@@ -25,7 +25,6 @@ use App\Http\Controllers\LaudoArquivoController;
 use Filament\Actions\Action as GlobalAction;
 use Filament\Navigation\MenuItem;
 use App\Models\User;
-use Leandrocfe\FilamentApexCharts\FilamentApexChartsPlugin;
 use Filament\View\PanelsRenderHook;
 use Illuminate\Support\Facades\Blade;
 
@@ -103,7 +102,6 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->plugins([
 
-                FilamentApexChartsPlugin::make(),
 
                 ThemesPlugin::make()
                     ->canViewThemesPage(fn() => false),

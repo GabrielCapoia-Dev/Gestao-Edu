@@ -41,6 +41,7 @@ use App\Models\Pedido;
 use App\Policies\PedidoPolicy;
 use App\Models\PedidoArquivo;
 use App\Policies\PedidoArquivoPolicy;
+use Illuminate\Support\Facades\Blade;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -68,7 +69,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(TipoManutencao::class, TipoManutencaoPolicy::class);
         Gate::policy(Pedido::class, PedidoPolicy::class);
         Gate::policy(PedidoArquivo::class, PedidoArquivoPolicy::class);
-
+        
         Gate::define('admin-only', function ($user) {
             return $user->hasRole('Admin');
         });
@@ -76,11 +77,17 @@ class AppServiceProvider extends ServiceProvider
         FilamentAsset::register([
             Css::make('leaflet-css', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'),
             Js::make('leaflet-js',  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'),
+
+            Js::make(
+                'chartjs-datalabels',
+                'https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2'
+            ),
+
             Css::make('professores-modal', asset('css/professores-modal.css')),
         ]);
 
         Event::listen(ServingFilament::class, function () {
-            
+
             /** @var \App\Models\User|null $user */
             $user = Filament::getCurrentPanel()?->auth()?->user()
                 ?? Auth::user();

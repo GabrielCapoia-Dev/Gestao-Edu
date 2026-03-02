@@ -6,9 +6,9 @@ use Filament\Widgets\ChartWidget;
 use App\Models\FeedbackPedido;
 use Livewire\Attributes\On;
 
-class FeedbackMediaMensalChart extends ChartWidget
+class FeedbackQuantidadePorNotaChart extends ChartWidget
 {
-    protected static ?string $heading = 'Quantidade Mensal de Pedidos Concluídos';
+    protected static ?string $heading = 'Quantidade de Avaliações por Nota';
     protected static bool $isLazy = false;
 
     public array $chartFilters = [];
@@ -34,7 +34,7 @@ class FeedbackMediaMensalChart extends ChartWidget
 
     protected function getType(): string
     {
-        return 'line';
+        return 'bar';
     }
 
     public function getData(): array
@@ -53,7 +53,7 @@ class FeedbackMediaMensalChart extends ChartWidget
 
         $query = FeedbackPedido::query();
 
-        // ===== FILTROS =====
+        // ===== Aplicação idêntica de filtros =====
 
         if ($valor = $this->chartFilters['valor'] ?? null) {
             $query->where('valor', $valor);
@@ -88,47 +88,37 @@ class FeedbackMediaMensalChart extends ChartWidget
             }
         }
 
-        // ===== AGREGAÇÃO ALTERADA =====
+        // ===== AGREGAÇÃO DIFERENTE =====
 
         $dados = $query
-            ->selectRaw("
-                DATE_FORMAT(created_at, '%Y-%m') as mes,
-                COUNT(*) as total
-            ")
-            ->groupBy('mes')
-            ->orderBy('mes')
-            ->pluck('total', 'mes');
+            ->selectRaw('valor, COUNT(*) as total')
+            ->groupBy('valor')
+            ->orderBy('valor')
+            ->pluck('total', 'valor');
 
-        if ($dados->isEmpty()) {
-            return [
-                'datasets' => [
-                    [
-                        'label' => 'Quantidade',
-                        'data' => [],
-                    ],
-                ],
-                'labels' => [],
-            ];
-        }
+        // Garante que sempre existam 1..5
+        $notas = [1, 2, 3, 4, 5];
+
+        $valores = collect($notas)->map(
+            fn($nota) => $dados[$nota] ?? 0
+        );
 
         return [
             'datasets' => [
                 [
                     'label' => 'Quantidade',
-                    'data' => $dados->toArray(),
-                    'borderColor' => 'rgb(59, 130, 246)',
-                    'backgroundColor' => '#074f9b60',
-                    'borderWidth' => 3,
-                    'fill' => true,
-                    'tension' => 0.4,
-                    'pointRadius' => 6,
-                    'pointBackgroundColor' => 'rgb(59, 130, 246)',
-                    'pointBorderColor' => '#fff',
-                    'pointBorderWidth' => 2,
-                    'pointHoverRadius' => 8,
+                    'data' => $valores->toArray(),
+                    'backgroundColor' => [
+                        '#ef4444',
+                        '#f97316',
+                        '#facc15',
+                        '#84cc16',
+                        '#22c55e',
+                    ],
+                    'borderRadius' => 8,
                 ],
             ],
-            'labels' => $dados->keys()->toArray(),
+            'labels' => $notas,
         ];
     }
 
@@ -141,11 +131,20 @@ class FeedbackMediaMensalChart extends ChartWidget
                 'mode' => 'index',
                 'intersect' => false,
             ],
+            'plugins' => [
+                'legend' => [
+                    'display' => false,
+                ],
+            ],
             'scales' => [
-                'x' => ['grid' => ['display' => false]],
+                'x' => [
+                    'grid' => ['display' => false],
+                ],
                 'y' => [
                     'beginAtZero' => true,
-                    // removido max 5
+                    'ticks' => [
+                        'precision' => 0,
+                    ],
                 ],
             ],
             'animation' => [

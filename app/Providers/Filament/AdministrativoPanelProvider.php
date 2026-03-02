@@ -21,7 +21,6 @@ use Filament\Http\Middleware\Authenticate;
 use App\Livewire\LoginPage;
 use App\Services\UserService;
 use Illuminate\Support\Facades\Route;
-use Leandrocfe\FilamentApexCharts\FilamentApexChartsPlugin;
 use App\Http\Controllers\LaudoArquivoController;
 use Filament\Actions\Action as GlobalAction;
 use Filament\Navigation\MenuItem;
@@ -83,8 +82,6 @@ class AdministrativoPanelProvider extends PanelProvider
                     ->label('Sair'),
             ])
             ->plugins([
-                
-                FilamentApexChartsPlugin::make(),
 
                 ThemesPlugin::make()
                     ->canViewThemesPage(fn() => false),

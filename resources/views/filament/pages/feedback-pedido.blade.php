@@ -18,7 +18,7 @@
         </x-filament::card>
 
         <x-filament::card>
-            <div class="text-sm text-gray-500">Satisfação (≥ 8)</div>
+            <div class="text-sm text-gray-500">Nivel de Satisfação</div>
             <div class="text-3xl font-bold mt-2">
                 {{ $this->getPercentualSatisfacao() }}%
             </div>
