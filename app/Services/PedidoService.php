@@ -684,9 +684,9 @@ class PedidoService
                         ->badge()
                         ->color(fn(Pedido $record) => Color::hex(
                             match ($record->nivel_prioridade?->value) {
-                                'emergencial' => '#a10000',
-                                'corretivo'   => '#973f00',
-                                'preventivo'  => '#013891',
+                                'Emergencial' => '#a10000',
+                                'Corretivo'   => '#973f00',
+                                'Preventivo'  => '#013891',
                                 default       => '#2b2b2b',
                             }
                         )),

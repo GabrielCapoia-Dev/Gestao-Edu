@@ -11,9 +11,9 @@ default => $pedido->nivel_prioridade?->value ?? 'Não Informado',
 };
 
 $prioridadeCor = match($pedido->nivel_prioridade?->value) {
-'emergencial' => '#ef4444',
-'corretivo' => '#f97316',
-'preventivo' => '#3b82f6',
+'Emergencial' => '#ef4444',
+'Corretivo' => '#f97316',
+'Preventivo' => '#3b82f6',
 default => '#6b7280',
 };
 
