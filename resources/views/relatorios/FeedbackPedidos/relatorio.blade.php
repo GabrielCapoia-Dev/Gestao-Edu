@@ -1,16 +1,17 @@
 @php
-    $cores = [
-        5 => '#10b981',
-        4 => '#3b82f6',
-        3 => '#f59e0b',
-        2 => '#ef4444',
-        1 => '#dc2626',
-    ];
+$cores = [
+5 => '#10b981',
+4 => '#3b82f6',
+3 => '#f59e0b',
+2 => '#ef4444',
+1 => '#dc2626',
+];
 @endphp
 
 <html>
+
 <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <style>
         body {
             font-family: DejaVu Sans, sans-serif;
@@ -131,7 +132,7 @@
             padding-right: 10px;
         }
 
-        .card + .card {
+        .card+.card {
             border-left: none;
         }
 
@@ -231,7 +232,7 @@
             vertical-align: top;
         }
 
-        .grafico-wrapper + .grafico-wrapper {
+        .grafico-wrapper+.grafico-wrapper {
             padding-left: 5px;
         }
 
@@ -332,6 +333,7 @@
         }
     </style>
 </head>
+
 <body>
 
     <!-- HEADER FIXO -->
@@ -374,131 +376,148 @@
 
         <!-- CARDS - MOSTRAR EM: geral, graficos -->
         @if(in_array($tipoRelatorio ?? 'geral', ['geral', 'graficos']))
-            <div class="cards-container">
-                <div class="card">
-                    <div class="card-label">Média Geral</div>
-                    <div class="card-value">
-                        {{ $mediaGeral }}
-                        <span class="card-unit">/ 5</span>
-                    </div>
-                </div>
-                <div class="card">
-                    <div class="card-label">Total de Avaliações</div>
-                    <div class="card-value">{{ $totalAvaliacoes }}</div>
-                </div>
-                <div class="card">
-                    <div class="card-label">Nível de Satisfação</div>
-                    <div class="card-value">
-                        {{ $percentualSatisfacao }}<span class="card-unit">%</span>
-                    </div>
+        <div class="cards-container">
+            <div class="card">
+                <div class="card-label">Média Geral</div>
+                <div class="card-value">
+                    {{ $mediaGeral }}
+                    <span class="card-unit">/ 5</span>
                 </div>
             </div>
+            <div class="card">
+                <div class="card-label">Total de Avaliações</div>
+                <div class="card-value">{{ $totalAvaliacoes }}</div>
+            </div>
+            <div class="card">
+                <div class="card-label">Nível de Satisfação</div>
+                <div class="card-value">
+                    {{ $percentualSatisfacao }}<span class="card-unit">%</span>
+                </div>
+            </div>
+        </div>
 
-            <div class="divider"></div>
+        <div class="divider"></div>
         @endif
 
         <!-- TABELA DE FEEDBACKS - MOSTRAR EM: geral, listagem APENAS (NÃO em graficos) -->
         @if(in_array($tipoRelatorio ?? 'geral', ['geral', 'listagem']))
-            <div class="section-title">Detalhes das Avaliações</div>
+        <div class="section-title">Detalhes das Avaliações</div>
 
-            @if($feedbacks->isEmpty())
-                <p style="text-align: center; color: #6b7280; padding: 20px 0;">
-                    Nenhuma avaliação registrada para os filtros selecionados.
-                </p>
-            @else
-                <table class="feedback-table">
-                    <thead>
-                        <tr>
-                            <th style="width: 12%;">Protocolo</th>
-                            <th style="width: 15%;">Escola</th>
-                            <th style="width: 12%;">Nota</th>
-                            <th style="width: 30%;">Descrição</th>
-                            <th style="width: 13%;">Data</th>
-                            <th style="width: 18%;">Tipo Manutenção</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($feedbacks as $feedback)
-                        <tr>
-                            <td><strong>{{ $feedback->pedido?->numero_protocolo ?? '-' }}</strong></td>
-                            <td>{{ $feedback->pedido?->escola?->nome ?? '-' }}</td>
-                            <td style="text-align: center;">
-                                <span class="badge" style="background: {{ $cores[$feedback->valor] ?? '#6b7280' }}">
-                                    {{ $feedback->valor }}/5
-                                </span>
-                            </td>
-                            <td class="text-truncate">{{ $feedback->descricao ?? '-' }}</td>
-                            <td>{{ $feedback->created_at?->format('d/m/Y H:i') ?? '-' }}</td>
-                            <td>{{ $feedback->pedido?->tipoManutencao?->nome ?? '-' }}</td>
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            @endif
+        @if($feedbacks->isEmpty())
+        <p style="text-align: center; color: #6b7280; padding: 20px 0;">
+            Nenhuma avaliação registrada para os filtros selecionados.
+        </p>
+        @else
+        <table class="feedback-table">
+            <thead>
+                <tr>
+                    <th style="width: 12%;">Protocolo</th>
+                    <th style="width: 15%;">Escola</th>
+                    <th style="width: 12%;">Nota</th>
+                    <th style="width: 30%;">Descrição</th>
+                    <th style="width: 13%;">Data</th>
+                    <th style="width: 18%;">Tipo Manutenção</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($feedbacks as $feedback)
+                <tr>
+                    <td><strong>{{ $feedback->pedido?->numero_protocolo ?? '-' }}</strong></td>
+                    <td>{{ $feedback->pedido?->escola?->nome ?? '-' }}</td>
+                    <td style="text-align: center;">
+                        <span class="badge" style="background: {{ $cores[$feedback->valor] ?? '#6b7280' }}">
+                            {{ $feedback->valor }}/5
+                        </span>
+                    </td>
+                    <td class="text-truncate">{{ $feedback->descricao ?? '-' }}</td>
+                    <td>{{ $feedback->created_at?->format('d/m/Y H:i') ?? '-' }}</td>
+                    <td>{{ $feedback->pedido?->tipoManutencao?->nome ?? '-' }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+        @endif
         @endif
 
         <!-- GRÁFICOS LADO A LADO - MOSTRAR EM: geral, graficos -->
         @if(in_array($tipoRelatorio ?? 'geral', ['geral', 'graficos']) && ($graficoMediaMensal || $graficoPorNota))
-            <div class="divider" style="margin-top: 20px;"></div>
-            <div class="section-title">Análise Visual</div>
+        <div class="divider" style="margin-top: 20px;"></div>
+        <div class="section-title">Análise Visual</div>
 
-            <div class="graficos-container">
-                @if($graficoMediaMensal)
-                    <div class="grafico-wrapper">
-                        <div class="grafico-titulo">Quantidade Mensal de Avaliações</div>
-                        <img src="{{ $graficoMediaMensal }}" alt="Gráfico Mensal">
-                    </div>
-                @endif
-
-                @if($graficoPorNota)
-                    <div class="grafico-wrapper">
-                        <div class="grafico-titulo">Distribuição por Nota</div>
-                        <img src="{{ $graficoPorNota }}" alt="Gráfico por Nota">
-                    </div>
-                @endif
+        <div class="graficos-container">
+            @if($graficoMediaMensal)
+            <div class="grafico-wrapper">
+                <div class="grafico-titulo">Quantidade Mensal de Avaliações</div>
+                <img src="{{ $graficoMediaMensal }}" alt="Gráfico Mensal">
             </div>
+            @endif
+
+            @if($graficoPorNota)
+            <div class="grafico-wrapper">
+                <div class="grafico-titulo">Distribuição por Nota</div>
+                <img src="{{ $graficoPorNota }}" alt="Gráfico por Nota">
+            </div>
+            @endif
+        </div>
         @endif
 
         <!-- MATRIZ DE AVALIAÇÕES - MOSTRAR EM: geral, graficos -->
         @if(in_array($tipoRelatorio ?? 'geral', ['geral', 'graficos']) && !empty($matrizesAgrupadas))
-            <div class="divider" style="margin-top: 20px;"></div>
-            <div class="section-title">Matriz de Avaliações por Mês</div>
+        <div class="divider" style="margin-top: 20px;"></div>
+        <div class="section-title">Matriz de Avaliações por Mês</div>
 
-            @foreach($matrizesAgrupadas as $ano => $meses)
-                <div class="ano-titulo">{{ $ano }}</div>
+        @foreach($matrizesAgrupadas as $ano => $meses)
+        <div class="ano-titulo">{{ $ano }}</div>
 
-                <table class="matriz-table">
-                    <thead>
-                        <tr>
-                            <th style="width: 10%; text-align: left;">Avaliação</th>
-                            @foreach($meses as $mes => $dados)
-                                <th style="width: {{ (90 / count($meses)) }}%;">{{ $mes }}</th>
-                            @endforeach
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @for($nota = 5; $nota >= 1; $nota--)
-                            <tr>
-                                <td class="nota-label nota-{{ $nota }}">
-                                    Nota {{ $nota }}
-                                </td>
-                                @foreach($meses as $mes => $dados)
-                                    <td class="nota-{{ $nota }}">
-                                        @if($dados[$nota] > 0)
-                                            <strong>{{ $dados[$nota] }}</strong>
-                                        @else
-                                            <span class="matrix-empty">—</span>
-                                        @endif
-                                    </td>
-                                @endforeach
-                            </tr>
-                        @endfor
-                    </tbody>
-                </table>
-            @endforeach
+        <table class="matriz-table">
+            <thead>
+                <tr>
+                    <th style="width: 10%; text-align: left;">Avaliação</th>
+                    @foreach($meses as $mes => $dados)
+                    <th style="width: {{ (90 / count($meses)) }}%;">{{ $mes }}</th>
+                    @endforeach
+                </tr>
+            </thead>
+            <tbody>
+                @for($nota = 5; $nota >= 1; $nota--)
+                <tr>
+                    <td class="nota-label nota-{{ $nota }}">
+                        Nota {{ $nota }}
+                    </td>
+                    @foreach($meses as $mes => $dados)
+                    <td class="nota-{{ $nota }}">
+                        @if($dados[$nota] > 0)
+                        <strong>{{ $dados[$nota] }}</strong>
+                        @else
+                        <span class="matrix-empty">—</span>
+                        @endif
+                    </td>
+                    @endforeach
+                </tr>
+
+                @endfor
+                <tr class="total-row">
+                    <td style="font-weight: bold;">
+                        Total
+                    </td>
+
+                    @foreach($meses as $mes => $dados)
+                    @php
+                    $totalMes = array_sum($dados);
+                    @endphp
+
+                    <td style="font-weight: bold;">
+                        {{ $totalMes > 0 ? $totalMes : '—' }}
+                    </td>
+                    @endforeach
+                </tr>
+            </tbody>
+        </table>
+        @endforeach
         @endif
 
     </div>
 
 </body>
+
 </html>

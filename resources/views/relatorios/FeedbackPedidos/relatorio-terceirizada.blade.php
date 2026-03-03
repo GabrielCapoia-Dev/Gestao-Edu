@@ -115,10 +115,17 @@ $cores = [
         }
 
         .cards-container {
-            display: table;
             width: 100%;
-            margin-bottom: 15px;
-            page-break-inside: avoid;
+            margin-bottom: 8px;
+            border-collapse: collapse;
+        }
+
+        .cards-container td {
+            padding: 6px 8px;
+            border: 1px solid #e5e7eb;
+            background: #f9fafb;
+            font-size: 10px;
+            vertical-align: top;
         }
 
         .card {
@@ -137,14 +144,13 @@ $cores = [
         }
 
         .card-label {
-            font-size: 10px;
+            font-size: 9px;
             color: #6b7280;
-            margin-bottom: 6px;
-            font-weight: normal;
+            margin-bottom: 2px;
         }
 
         .card-value {
-            font-size: 24px;
+            font-size: 11px;
             font-weight: bold;
             color: #1f2937;
         }
@@ -258,6 +264,10 @@ $cores = [
             padding-left: 10px;
             border-left: 3px solid #374151;
         }
+
+        .page-break {
+            page-break-before: always;
+        }
     </style>
 </head>
 
@@ -302,45 +312,128 @@ $cores = [
     <div class="content">
         <!-- MATRIZES POR EMPRESA TERCEIRIZADA -->
         @if(!empty($matrizesEmpresa))
-        @foreach($matrizesEmpresa as $nomeEmpresa => $empresaData)
+        @foreach($matrizesEmpresa as $empresaData)
 
-        <div class="empresa-titulo">
-            {{ $nomeEmpresa }}
-            — {{ $empresaData['percentual'] }}%
+        @php
+        $empresa = $empresaData['empresa'];
+        @endphp
+
+        <div class="{{ !$loop->first ? 'page-break' : '' }}">
+            <table class="cards-container">
+                <tr>
+                    <td style="width:70%;">
+                        <div class="card-label">Empresa</div>
+                        <div class="card-value">{{ $empresa->nome }}</div>
+                    </td>
+
+                    <td style="width:30%; text-align:center; color:#374151;">
+                        <div style="font-size:9px;">Percentual de Satisfação</div>
+                        <div style="font-size:20px; font-weight:bold;">
+                            {{ $empresaData['percentual'] }}%
+                        </div>
+                    </td>
+                </tr>
+            </table>
+
+            <table class="cards-container">
+                <tr>
+                    <td>
+                        <div class="card-label">CNPJ</div>
+                        <div class="card-value">{{ $empresa->cnpj }}</div>
+                    </td>
+                    <td>
+                        <div class="card-label">Contrato</div>
+                        <div class="card-value">{{ $empresa->numero_contrato ?? '—' }}</div>
+                    </td>
+                    <td>
+                        <div class="card-label">Representante</div>
+                        <div class="card-value">{{ $empresa->responsavel ?? '—' }}</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <div class="card-label">Telefone</div>
+                        <div class="card-value">{{ $empresa->telefone ?? '—' }}</div>
+                    </td>
+                    <td>
+                        <div class="card-label">E-mail</div>
+                        <div class="card-value">{{ $empresa->email ?? '—' }}</div>
+                    </td>
+                    <td>
+                        <div class="card-label">Cidade</div>
+                        <div class="card-value">
+                            {{ $empresa->cidade }}/{{ $empresa->estado }}
+                        </div>
+                    </td>
+                </tr>
+            </table>
+
+            <table class="cards-container">
+                <tr>
+                    <td>
+                        <div class="card-label">Endereço Completo</div>
+                        <div class="card-value">
+                            {{ $empresa->logradouro }}, {{ $empresa->numero }}
+                            {{ $empresa->complemento ? ' - '.$empresa->complemento : '' }} —
+                            {{ $empresa->bairro }} —
+                            CEP: {{ $empresa->cep }}
+                        </div>
+                    </td>
+                </tr>
+            </table>
+
+            <div class="divider"></div>
+            
+
+            @foreach($empresaData['anos'] as $ano => $meses)
+            <div class="ano-titulo">{{ $ano }}</div>
+
+            <table class="matriz-table">
+                <thead>
+                    <tr>
+                        <th style="width: 10%; text-align: left;">Avaliação</th>
+                        @foreach($meses as $mes => $dados)
+                        <th style="width: {{ (90 / count($meses)) }}%;">{{ $mes }}</th>
+                        @endforeach
+                    </tr>
+                </thead>
+                <tbody>
+                    @for($nota = 5; $nota >= 1; $nota--)
+                    <tr>
+                        <td class="nota-label nota-{{ $nota }}">
+                            Nota {{ $nota }}
+                        </td>
+                        @foreach($meses as $mes => $dados)
+                        <td class="nota-{{ $nota }}">
+                            @if($dados[$nota] > 0)
+                            <strong>{{ $dados[$nota] }}</strong>
+                            @else
+                            <span class="matrix-empty">—</span>
+                            @endif
+                        </td>
+                        @endforeach
+                    </tr>
+                    @endfor
+                    <tr class="total-row">
+                        <td style="font-weight: bold;">
+                            Total
+                        </td>
+
+                        @foreach($meses as $mes => $dados)
+                        @php
+                        $totalMes = array_sum($dados);
+                        @endphp
+
+                        <td style="font-weight: bold;">
+                            {{ $totalMes > 0 ? $totalMes : '—' }}
+                        </td>
+                        @endforeach
+                    </tr>
+                </tbody>
+            </table>
+            @endforeach
+
         </div>
-
-        @foreach($empresaData['anos'] as $ano => $meses)
-        <div class="ano-titulo">{{ $ano }}</div>
-
-        <table class="matriz-table">
-            <thead>
-                <tr>
-                    <th style="width: 10%; text-align: left;">Avaliação</th>
-                    @foreach($meses as $mes => $dados)
-                    <th style="width: {{ (90 / count($meses)) }}%;">{{ $mes }}</th>
-                    @endforeach
-                </tr>
-            </thead>
-            <tbody>
-                @for($nota = 5; $nota >= 1; $nota--)
-                <tr>
-                    <td class="nota-label nota-{{ $nota }}">
-                        Nota {{ $nota }}
-                    </td>
-                    @foreach($meses as $mes => $dados)
-                    <td class="nota-{{ $nota }}">
-                        @if($dados[$nota] > 0)
-                        <strong>{{ $dados[$nota] }}</strong>
-                        @else
-                        <span class="matrix-empty">—</span>
-                        @endif
-                    </td>
-                    @endforeach
-                </tr>
-                @endfor
-            </tbody>
-        </table>
-        @endforeach
         @endforeach
         @else
         <p style="text-align: center; color: #6b7280; padding: 20px 0;">

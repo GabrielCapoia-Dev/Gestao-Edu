@@ -325,35 +325,30 @@ class FeedbackPedidoExportController extends Controller
             '12' => 'Dezembro',
         ];
 
-        // Agrupar feedbacks por empresa
-        $porEmpresa = $feedbacks->groupBy(function ($feedback) {
-            return $feedback->pedido->empresaContratada->nome ?? 'Sem Empresa';
-        });
+        $porEmpresa = $feedbacks->groupBy(fn($f) => $f->pedido->empresaContratada->id ?? null);
 
-        foreach ($porEmpresa as $empresaNome => $feedbacksEmpresa) {
+        foreach ($porEmpresa as $empresaId => $feedbacksEmpresa) {
+
+            $empresa = \App\Models\EmpresaContratada::find($empresaId);
+
+            if (!$empresa) {
+                continue;
+            }
 
             $totalAvaliacoes = $feedbacksEmpresa->count();
-            $avaliacoesPositivas = $feedbacksEmpresa
-                ->where('valor', '>=', 3)
-                ->count();
+            $avaliacoesPositivas = $feedbacksEmpresa->where('valor', '>=', 3)->count();
 
-            // TOTAL DE PEDIDOS DA EMPRESA
-            $totalPedidos = \App\Models\Pedido::whereHas(
-                'empresaContratada',
-                fn($q) => $q->where('nome', $empresaNome)
-            )->count();
+            $totalPedidos = \App\Models\Pedido::where('empresa_contratada_id', $empresaId)->count();
 
             $percentual = $totalPedidos > 0
                 ? round(($avaliacoesPositivas / $totalPedidos) * 100, 2)
                 : 0;
 
-            // Inicializa estrutura
-            if (!isset($resultado[$empresaNome])) {
-                $resultado[$empresaNome] = [
-                    'percentual' => $percentual,
-                    'anos' => [],
-                ];
-            }
+            $resultado[$empresaId] = [
+                'empresa' => $empresa,
+                'percentual' => $percentual,
+                'anos' => [],
+            ];
 
             foreach ($feedbacksEmpresa as $feedback) {
 
@@ -361,21 +356,15 @@ class FeedbackPedidoExportController extends Controller
                 $mesNumero = $feedback->created_at->format('m');
                 $mesLabel = $mesesLabels[$mesNumero];
 
-                if (!isset($resultado[$empresaNome]['anos'][$ano])) {
-                    $resultado[$empresaNome]['anos'][$ano] = [];
-                }
+                $resultado[$empresaId]['anos'][$ano][$mesLabel] ??= [
+                    1 => 0,
+                    2 => 0,
+                    3 => 0,
+                    4 => 0,
+                    5 => 0,
+                ];
 
-                if (!isset($resultado[$empresaNome]['anos'][$ano][$mesLabel])) {
-                    $resultado[$empresaNome]['anos'][$ano][$mesLabel] = [
-                        1 => 0,
-                        2 => 0,
-                        3 => 0,
-                        4 => 0,
-                        5 => 0,
-                    ];
-                }
-
-                $resultado[$empresaNome]['anos'][$ano][$mesLabel][$feedback->valor]++;
+                $resultado[$empresaId]['anos'][$ano][$mesLabel][$feedback->valor]++;
             }
         }
 
