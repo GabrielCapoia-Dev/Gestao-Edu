@@ -103,6 +103,7 @@ class CriarPermissoes extends Command
             'Visualizar Notificação: Vencimento de Pedidos',
             'Visualizar Notificação: Pedidos Atrasados',
             'Visualizar Notificação: Pedidos Emergenciais',
+            'Visualizar Notificação: Pedido Reaberto',
 
             
             'Avaliar Pedidos',
