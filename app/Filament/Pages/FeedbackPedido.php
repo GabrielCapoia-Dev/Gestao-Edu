@@ -11,6 +11,7 @@ use App\Models\FeedbackPedido as FeedbackPedidoModel;
 use App\Models\User;
 use Filament\Forms;
 use Livewire\Attributes\Computed;
+use Filament\Actions;
 
 class FeedbackPedido extends Page implements HasTable
 {
@@ -23,7 +24,7 @@ class FeedbackPedido extends Page implements HasTable
 
     // Estado de filtros que será observado pelo widget
     public array $chartFilters = [];
-    
+
     protected function getFooterWidgets(): array
     {
         return [
@@ -223,5 +224,44 @@ class FeedbackPedido extends Page implements HasTable
             ->count();
 
         return round(($positivos / $total) * 100);
+    }
+
+
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Actions\Action::make('export_pdf')
+                ->label('Exportar PDF')
+                ->icon('heroicon-o-arrow-down-tray')
+                ->url(fn() => $this->gerarUrlExportacao())
+                ->openUrlInNewTab(),
+        ];
+    }
+
+    private function gerarUrlExportacao(): string
+    {
+        $params = [];
+
+        // Adicionar filtros à URL
+        if (!empty($this->chartFilters)) {
+            foreach ($this->chartFilters as $key => $value) {
+                if ($value !== null) {
+                    match ($key) {
+                        'valor' => $params['valor'] = $value,
+                        'nivel_prioridade' => $params['nivel_prioridade'] = $value,
+                        'tipo_manutencao_id' => $params['tipo_manutencao_id'] = $value,
+                        'escola_id' => $params['escola_id'] = $value,
+                        'empresa_contratada_id' => $params['empresa_contratada_id'] = $value,
+                        'mes' => $params['mes'] = $value,
+                        'periodo' => $params['data_inicio'] = $value['inicio'] ?? null,
+                        'periodo' => $params['data_fim'] = $value['fim'] ?? null,
+                        default => null,
+                    };
+                }
+            }
+        }
+
+        return route('feedback-pedidos.export-pdf', array_filter($params));
     }
 }
