@@ -31,6 +31,28 @@ $id = 'modal-notificacoes';
         @endif
     </button>
 
+    <style>
+        .btn-loading {
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid #d1d5db;
+            border-top: 2px solid #374151;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+
     <x-filament::modal :id="$id" width="4xl">
         <x-slot name="heading">
             Notificações
@@ -130,27 +152,38 @@ $id = 'modal-notificacoes';
 <script>
     function handleNotificationClick(event, id) {
 
-        event.preventDefault(); // impede navegação imediata
+        event.preventDefault();
 
-        const componentRoot = event.target.closest('[wire\\:id]');
-        if (!componentRoot) {
-            window.open(event.currentTarget.href, '_blank');
-            return;
-        }
+        const button = event.currentTarget;
+        const originalContent = button.innerHTML;
+
+        // 🔥 transforma em loading
+        button.classList.add('btn-loading');
+        button.innerHTML = '<div class="spinner"></div>';
+
+        const componentRoot = button.closest('[wire\\:id]');
+        if (!componentRoot) return;
 
         const component = Livewire.find(componentRoot.getAttribute('wire:id'));
-
-        if (!component) {
-            window.open(event.currentTarget.href, '_blank');
-            return;
-        }
+        if (!component) return;
 
         component.call('markAsRead', id).then(() => {
-            window.open(event.currentTarget.href, '_blank');
+
+            // 🔥 restaura botão
+            button.classList.remove('btn-loading');
+            button.innerHTML = originalContent;
+
+            // se for link, abre
+            if (button.tagName.toLowerCase() === 'a') {
+                window.open(button.href, '_blank');
+            }
+
+        }).catch(() => {
+
+            // restaura mesmo se der erro
+            button.classList.remove('btn-loading');
+            button.innerHTML = originalContent;
+
         });
     }
-
-    setInterval(() => {
-        Livewire.dispatch('refresh-notifications');
-    }, 10000);
 </script>
