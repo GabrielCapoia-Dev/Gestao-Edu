@@ -26,7 +26,8 @@ class TopbarNotifications extends Component
         $this->notifications = DB::table('notifications')
             ->where('notifiable_id', $user->id)
             ->where('notifiable_type', User::class)
-            ->orderBy('created_at', 'desc')
+            ->orderByRaw('read_at IS NOT NULL') // 🔥 não lidas primeiro
+            ->orderBy('created_at', 'desc')     // 🔥 mais recentes primeiro
             ->limit(50)
             ->get()
             ->map(function ($notification) {
@@ -45,11 +46,24 @@ class TopbarNotifications extends Component
     public function markAllAsRead(): void
     {
         $user = Auth::user();
-        
+
         DB::table('notifications')
             ->where('notifiable_id', $user->id)
             ->where('notifiable_type', User::class)
             ->whereNull('read_at')
+            ->update(['read_at' => now()]);
+
+        $this->loadNotifications();
+    }
+
+    public function markAsRead($notificationId): void
+    {
+        $user = Auth::user();
+
+        DB::table('notifications')
+            ->where('id', $notificationId)
+            ->where('notifiable_id', $user->id)
+            ->where('notifiable_type', User::class)
             ->update(['read_at' => now()]);
 
         $this->loadNotifications();

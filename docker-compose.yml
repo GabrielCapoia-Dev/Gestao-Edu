@@ -18,6 +18,21 @@ services:
     networks:
       - laravel_educacao-especial
 
+  scheduler:
+    image: laravel-app-educacao-especial
+    container_name: laravel-scheduler-educacao-especial
+    working_dir: /var/www
+    command: php artisan schedule:work
+    volumes:
+      - .:/var/www
+      - vendor:/var/www/vendor
+      - node_modules:/var/www/node_modules
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - laravel_educacao-especial
+
   db:
     image: mysql:8.0
     container_name: laravel-db-educacao-especial
@@ -58,7 +73,7 @@ services:
       - "6381:6379"
     networks:
       - laravel_educacao-especial
-      
+
 volumes:
   db_data:
   vendor:
