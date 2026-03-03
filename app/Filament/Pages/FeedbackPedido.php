@@ -46,6 +46,7 @@ class FeedbackPedido extends Page implements HasTable
                 FeedbackPedidoModel::query()
                     ->with(['pedido.escola', 'pedido.tipoManutencao'])
             )
+            ->paginated([10, 25, 50, 100])
             ->columns([
                 Tables\Columns\TextColumn::make('pedido.numero_protocolo')
                     ->label('Protocolo')
@@ -79,11 +80,11 @@ class FeedbackPedido extends Page implements HasTable
                 Tables\Filters\SelectFilter::make('valor')
                     ->label('Nota')
                     ->options([
-                        '1' => '⭐ (1)',
-                        '2' => '⭐⭐ (2)',
-                        '3' => '⭐⭐⭐ (3)',
-                        '4' => '⭐⭐⭐⭐ (4)',
-                        '5' => '⭐⭐⭐⭐⭐ (5)',
+                        '1' => '⭐',
+                        '2' => '⭐⭐',
+                        '3' => '⭐⭐⭐',
+                        '4' => '⭐⭐⭐⭐',
+                        '5' => '⭐⭐⭐⭐⭐',
                     ])
                     ->query(function ($query, array $data) {
                         $this->updateChartFilters('valor', $data['value'] ?? null);
