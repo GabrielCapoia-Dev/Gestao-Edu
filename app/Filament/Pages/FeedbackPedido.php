@@ -225,6 +225,11 @@ class FeedbackPedido extends Page implements HasTable
                 ->label('📈 Gráficos')
                 ->url(fn() => $this->gerarUrlExportacao('graficos'))
                 ->openUrlInNewTab(),
+
+            Actions\Action::make('export_terceirizada')
+                ->label('🏦 Terceirizada')
+                ->url(fn() => $this->gerarUrlExportacao('terceirizada'))
+                ->openUrlInNewTab(),
         ];
     }
 

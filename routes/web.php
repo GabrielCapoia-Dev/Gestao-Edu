@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\FeedbackPedidoExportController;
 use App\Http\Controllers\RelatorioController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\GoogleAuthController;
@@ -17,7 +18,6 @@ use App\Services\Relatorios\FeedbackPedidoRelatorioService;
 use App\Services\Relatorios\FeedbackGraficoService;
 use App\Services\Relatorios\ChartRenderService;
 use Illuminate\Support\Facades\Auth;
-use App\Http\Controllers\FeedbackPedidoExportController;
 
 Route::get('/', function () {
     return view('home');
@@ -100,4 +100,9 @@ Route::prefix('admin/feedback-pedidos')
         // Relatório de Gráficos (cards + gráficos + matriz)
         Route::get('/exportar-pdf/graficos', [FeedbackPedidoExportController::class, 'exportarGraficos'])
             ->name('feedback-pedidos.export-graficos');
+
+
+        // Relatório de Avaliação de Empresas Terceirizadas
+        Route::get('/exportar-pdf/terceirizada', [FeedbackPedidoExportController::class, 'exportarTerceirizada'])
+            ->name('feedback-pedidos.export-terceirizada');
     });

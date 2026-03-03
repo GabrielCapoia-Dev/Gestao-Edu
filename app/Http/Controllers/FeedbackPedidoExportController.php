@@ -36,6 +36,14 @@ class FeedbackPedidoExportController extends Controller
     }
 
     /**
+     * Exportar relatório de avaliação por empresa terceirizada
+     */
+    public function exportarTerceirizada(Request $request)
+    {
+        return $this->gerarPDF($request, 'terceirizada');
+    }
+
+    /**
      * Método principal que gera o PDF com flags para mostrar/esconder seções
      */
     private function gerarPDF(Request $request, string $tipo)
@@ -69,14 +77,14 @@ class FeedbackPedidoExportController extends Controller
             // Calcular métricas
             $total = $feedbacks->count();
             $mediaGeral = $total > 0 ? round($feedbacks->avg('valor'), 2) : 0;
-            $percentualSatisfacao = $total > 0 
-                ? round(($feedbacks->where('valor', '>=', 3)->count() / $total) * 100) 
+            $percentualSatisfacao = $total > 0
+                ? round(($feedbacks->where('valor', '>=', 3)->count() / $total) * 100)
                 : 0;
 
             // ===== GERAR GRÁFICOS =====
             $graficoMediaMensal = null;
             $graficoPorNota = null;
-            
+
             // Gerar gráficos apenas se não for listagem
             if ($tipo !== 'listagem') {
                 $graficoService = app(FeedbackGraficoService::class);
@@ -105,15 +113,23 @@ class FeedbackPedidoExportController extends Controller
 
             // ===== GERAR MATRIZ - TODOS OS ANOS COM TODOS OS MESES =====
             $matrizesAgrupadas = [];
-            
+
             // Gerar matriz se for geral OU graficos
             if (in_array($tipo, ['geral', 'graficos']) && !$feedbacks->isEmpty()) {
                 $matrizesAgrupadas = $this->gerarMatrizNotasPorMes($feedbacks);
             }
 
+            // ===== GERAR MATRIZ POR EMPRESA TERCEIRIZADA =====
+            $matrizesEmpresa = [];
+
+            // Gerar matriz por empresa se for terceirizada
+            if ($tipo === 'terceirizada' && !$feedbacks->isEmpty()) {
+                $matrizesEmpresa = $this->gerarMatrizPorEmpresaTerceirizada($feedbacks);
+            }
+
             // Gerar PDF
             $service = app(FeedbackPedidoRelatorioService::class);
-            
+
             return $service->gerarComGraficosEMatriz(
                 $mediaGeral,
                 $total,
@@ -123,9 +139,9 @@ class FeedbackPedidoExportController extends Controller
                 $graficoPorNota,
                 [],
                 $matrizesAgrupadas,
-                $tipo // Passar o tipo como parâmetro
+                $tipo, // Passar o tipo como parâmetro
+                $matrizesEmpresa
             );
-
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('Erro ao exportar PDF de Feedback', [
                 'erro' => $e->getMessage(),
@@ -256,7 +272,11 @@ class FeedbackPedidoExportController extends Controller
             if (!isset($porAno[$ano][$mesLabel])) {
                 $porAno[$ano][$mesLabel] = [
                     'mes_numero' => (int)$mesNum,
-                    1 => 0, 2 => 0, 3 => 0, 4 => 0, 5 => 0,
+                    1 => 0,
+                    2 => 0,
+                    3 => 0,
+                    4 => 0,
+                    5 => 0,
                 ];
             }
 
@@ -273,7 +293,7 @@ class FeedbackPedidoExportController extends Controller
             uasort($meses, function ($a, $b) {
                 return $a['mes_numero'] <=> $b['mes_numero'];
             });
-            
+
             // Remover o campo mes_numero após ordenação
             foreach ($meses as $mesLabel => &$dados) {
                 unset($dados['mes_numero']);
@@ -281,5 +301,84 @@ class FeedbackPedidoExportController extends Controller
         }
 
         return $porAno;
+    }
+
+    /**
+     * Gerar matriz agrupada por Empresa Terceirizada → Ano → Mês → Nota
+     */
+    private function gerarMatrizPorEmpresaTerceirizada($feedbacks): array
+    {
+        $resultado = [];
+
+        $mesesLabels = [
+            '01' => 'Janeiro',
+            '02' => 'Fevereiro',
+            '03' => 'Março',
+            '04' => 'Abril',
+            '05' => 'Maio',
+            '06' => 'Junho',
+            '07' => 'Julho',
+            '08' => 'Agosto',
+            '09' => 'Setembro',
+            '10' => 'Outubro',
+            '11' => 'Novembro',
+            '12' => 'Dezembro',
+        ];
+
+        // Agrupar feedbacks por empresa
+        $porEmpresa = $feedbacks->groupBy(function ($feedback) {
+            return $feedback->pedido->empresaContratada->nome ?? 'Sem Empresa';
+        });
+
+        foreach ($porEmpresa as $empresaNome => $feedbacksEmpresa) {
+
+            $totalAvaliacoes = $feedbacksEmpresa->count();
+            $avaliacoesPositivas = $feedbacksEmpresa
+                ->where('valor', '>=', 3)
+                ->count();
+
+            // TOTAL DE PEDIDOS DA EMPRESA
+            $totalPedidos = \App\Models\Pedido::whereHas(
+                'empresaContratada',
+                fn($q) => $q->where('nome', $empresaNome)
+            )->count();
+
+            $percentual = $totalPedidos > 0
+                ? round(($avaliacoesPositivas / $totalPedidos) * 100, 2)
+                : 0;
+
+            // Inicializa estrutura
+            if (!isset($resultado[$empresaNome])) {
+                $resultado[$empresaNome] = [
+                    'percentual' => $percentual,
+                    'anos' => [],
+                ];
+            }
+
+            foreach ($feedbacksEmpresa as $feedback) {
+
+                $ano = $feedback->created_at->format('Y');
+                $mesNumero = $feedback->created_at->format('m');
+                $mesLabel = $mesesLabels[$mesNumero];
+
+                if (!isset($resultado[$empresaNome]['anos'][$ano])) {
+                    $resultado[$empresaNome]['anos'][$ano] = [];
+                }
+
+                if (!isset($resultado[$empresaNome]['anos'][$ano][$mesLabel])) {
+                    $resultado[$empresaNome]['anos'][$ano][$mesLabel] = [
+                        1 => 0,
+                        2 => 0,
+                        3 => 0,
+                        4 => 0,
+                        5 => 0,
+                    ];
+                }
+
+                $resultado[$empresaNome]['anos'][$ano][$mesLabel][$feedback->valor]++;
+            }
+        }
+
+        return $resultado;
     }
 }

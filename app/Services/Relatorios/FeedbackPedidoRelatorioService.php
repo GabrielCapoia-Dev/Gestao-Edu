@@ -20,13 +20,19 @@ class FeedbackPedidoRelatorioService
         ?string $graficoPorNota = null,
         array $matrizNotasPorMes = [],
         array $matrizesAgrupadas = [],
-        string $tipo = 'geral'
+        string $tipo = 'geral',
+        array $matrizesEmpresa = []
     ) {
         ini_set('memory_limit', '512M');
 
         $usuario = Auth::user();
 
-        $pdf = Pdf::loadView('relatorios.FeedbackPedidos.relatorio', [
+        // Selecionar view baseado no tipo
+        $view = $tipo === 'terceirizada' 
+            ? 'relatorios.FeedbackPedidos.relatorio-terceirizada'
+            : 'relatorios.FeedbackPedidos.relatorio';
+
+        $pdf = Pdf::loadView($view, [
             'mediaGeral'            => $mediaGeral,
             'totalAvaliacoes'       => $totalAvaliacoes,
             'percentualSatisfacao'  => $percentualSatisfacao,
@@ -38,6 +44,7 @@ class FeedbackPedidoRelatorioService
             'matrizNotasPorMes'     => $matrizNotasPorMes,
             'matrizesAgrupadas'     => $matrizesAgrupadas,
             'tipoRelatorio'         => $tipo,
+            'matrizesEmpresa'       => $matrizesEmpresa,
         ]);
 
         $nomeArquivo = 'Feedback-Pedidos-' . now()->format('d-m-Y-His');
