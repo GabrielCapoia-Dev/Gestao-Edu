@@ -26,8 +26,8 @@ class TopbarNotifications extends Component
         $this->notifications = DB::table('notifications')
             ->where('notifiable_id', $user->id)
             ->where('notifiable_type', User::class)
-            ->orderByRaw('read_at IS NOT NULL') // 🔥 não lidas primeiro
-            ->orderBy('created_at', 'desc')     // 🔥 mais recentes primeiro
+            ->whereNull('read_at') // 🔥 SOMENTE NÃO LIDAS
+            ->orderBy('created_at', 'desc')
             ->limit(50)
             ->get()
             ->map(function ($notification) {

@@ -55,7 +55,34 @@ $id = 'modal-notificacoes';
 
     <x-filament::modal :id="$id" width="4xl">
         <x-slot name="heading">
-            Notificações
+            <div class="flex items-center justify-between w-full">
+
+                <div class="flex items-center gap-3">
+
+                    <span class="text-base font-semibold">
+                        Notificações
+                    </span>
+
+                    @if($unread > 0)
+                    <span
+                        class="inline-flex items-center justify-center min-w-[26px] h-[26px] px-2
+                           text-xs font-bold text-white
+                           bg-gradient-to-r from-red-500 to-pink-500
+                           rounded-full shadow-md
+                           animate-pulse">
+                        {{ $unread }}
+                    </span>
+                    @endif
+
+                </div>
+
+                @if($unread > 0)
+                <span class="text-xs text-gray-500 dark:text-gray-400">
+                    {{ $unread === 1 ? '1 não lida' : $unread . ' não lidas' }}
+                </span>
+                @endif
+
+            </div>
         </x-slot>
 
         <div class="modal-notificacoes-container space-y-3 pr-2 card-notification">
@@ -74,7 +101,7 @@ $id = 'modal-notificacoes';
                 @endif
 
                 <div class="flex-1 relative">
-                    <p class="text-sm font-medium">
+                    <p class="text-sm font-bold">
                         {{ $data['titulo'] ?? '' }}
                     </p>
 
