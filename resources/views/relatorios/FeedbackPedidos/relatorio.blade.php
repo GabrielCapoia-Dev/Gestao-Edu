@@ -1,25 +1,16 @@
 @php
-$cores = [
-5 => '#10b981', // Verde - Excelente
-4 => '#3b82f6', // Azul - Muito Bom
-3 => '#f59e0b', // Laranja - Bom
-2 => '#ef4444', // Vermelho - Ruim
-1 => '#dc2626', // Vermelho Escuro - Péssimo
-];
-
-$labels = [
-5 => '⭐⭐⭐⭐⭐ Excelente',
-4 => '⭐⭐⭐⭐ Muito Bom',
-3 => '⭐⭐⭐ Bom',
-2 => '⭐⭐ Ruim',
-1 => '⭐ Péssimo',
-];
+    $cores = [
+        5 => '#10b981',
+        4 => '#3b82f6',
+        3 => '#f59e0b',
+        2 => '#ef4444',
+        1 => '#dc2626',
+    ];
 @endphp
 
 <html>
-
 <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <style>
         body {
             font-family: DejaVu Sans, sans-serif;
@@ -29,13 +20,11 @@ $labels = [
             padding: 0;
         }
 
-        /* Ajuste das margens da página */
         @page {
             size: A4 portrait;
             margin: 150px 25px 80px 25px;
         }
 
-        /* HEADER FIXO */
         .header-fixed {
             position: fixed;
             top: -148px;
@@ -80,7 +69,6 @@ $labels = [
             font-weight: normal;
         }
 
-        /* FOOTER FIXO */
         .footer-fixed {
             position: fixed;
             bottom: -60px;
@@ -110,7 +98,6 @@ $labels = [
             text-align: right;
         }
 
-        /* CONTEÚDO */
         .content {
             page-break-inside: auto;
         }
@@ -126,7 +113,6 @@ $labels = [
             display: table;
         }
 
-        /* CARDS */
         .cards-container {
             display: table;
             width: 100%;
@@ -145,7 +131,7 @@ $labels = [
             padding-right: 10px;
         }
 
-        .card+.card {
+        .card + .card {
             border-left: none;
         }
 
@@ -168,7 +154,6 @@ $labels = [
             margin-left: 4px;
         }
 
-        /* TABELA */
         .feedback-table {
             width: 100%;
             border-collapse: collapse;
@@ -247,7 +232,7 @@ $labels = [
             vertical-align: top;
         }
 
-        .grafico-wrapper+.grafico-wrapper {
+        .grafico-wrapper + .grafico-wrapper {
             padding-left: 5px;
         }
 
@@ -264,9 +249,95 @@ $labels = [
             height: auto;
             display: block;
         }
+
+        /* TABELA MATRIZ - MELHORADA */
+        .matriz-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            font-size: 9px;
+            page-break-inside: avoid;
+        }
+
+        .matriz-table thead {
+            background: #374151;
+            color: white;
+        }
+
+        .matriz-table th {
+            border: 1px solid #4b5563;
+            padding: 4px 2px;
+            text-align: center;
+            font-weight: bold;
+            color: white;
+            font-size: 8px;
+            line-height: 1.1;
+            word-break: break-word;
+        }
+
+        .matriz-table td {
+            border: 1px solid #d1d5db;
+            padding: 4px 2px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 9px;
+        }
+
+        .matriz-table tbody tr {
+            page-break-inside: avoid;
+        }
+
+        /* Labels das notas */
+        .nota-label {
+            text-align: left;
+            font-weight: bold;
+            padding-left: 4px !important;
+            font-size: 8px;
+        }
+
+        /* Cores por nota */
+        .nota-1 {
+            background: #fee2e2;
+            color: #7f1d1d;
+        }
+
+        .nota-2 {
+            background: #fed7aa;
+            color: #7c2d12;
+        }
+
+        .nota-3 {
+            background: #fef3c7;
+            color: #78350f;
+        }
+
+        .nota-4 {
+            background: #bbf7d0;
+            color: #064e3b;
+        }
+
+        .nota-5 {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        /* Valor zero ou vazio */
+        .matrix-empty {
+            color: #9ca3af;
+            font-weight: normal;
+        }
+
+        /* Título de ano */
+        .ano-titulo {
+            font-weight: bold;
+            font-size: 11px;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            color: #1f2937;
+            page-break-inside: avoid;
+        }
     </style>
 </head>
-
 <body>
 
     <!-- HEADER FIXO -->
@@ -334,64 +405,102 @@ $labels = [
         <div class="section-title">Detalhes das Avaliações</div>
 
         @if($feedbacks->isEmpty())
-        <p style="text-align: center; color: #6b7280; padding: 20px 0;">
-            Nenhuma avaliação registrada para os filtros selecionados.
-        </p>
+            <p style="text-align: center; color: #6b7280; padding: 20px 0;">
+                Nenhuma avaliação registrada para os filtros selecionados.
+            </p>
         @else
-        <table class="feedback-table">
-            <thead>
-                <tr>
-                    <th style="width: 12%;">Protocolo</th>
-                    <th style="width: 15%;">Escola</th>
-                    <th style="width: 12%;">Nota</th>
-                    <th style="width: 30%;">Descrição</th>
-                    <th style="width: 13%;">Data</th>
-                    <th style="width: 18%;">Tipo Manutenção</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($feedbacks as $feedback)
-                <tr>
-                    <td><strong>{{ $feedback->pedido?->numero_protocolo ?? '-' }}</strong></td>
-                    <td>{{ $feedback->pedido?->escola?->nome ?? '-' }}</td>
-                    <td style="text-align: center;">
-                        <span class="badge" style="background: {{ $cores[$feedback->valor] ?? '#6b7280' }}">
-                            {{ $feedback->valor }}/5
-                        </span>
-                    </td>
-                    <td class="text-truncate">{{ $feedback->descricao ?? '-' }}</td>
-                    <td>{{ $feedback->created_at?->format('d/m/Y H:i') ?? '-' }}</td>
-                    <td>{{ $feedback->pedido?->tipoManutencao?->nome ?? '-' }}</td>
-                </tr>
-                @endforeach
-            </tbody>
-        </table>
+            <table class="feedback-table">
+                <thead>
+                    <tr>
+                        <th style="width: 12%;">Protocolo</th>
+                        <th style="width: 15%;">Escola</th>
+                        <th style="width: 12%;">Nota</th>
+                        <th style="width: 30%;">Descrição</th>
+                        <th style="width: 13%;">Data</th>
+                        <th style="width: 18%;">Tipo Manutenção</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($feedbacks as $feedback)
+                    <tr>
+                        <td><strong>{{ $feedback->pedido?->numero_protocolo ?? '-' }}</strong></td>
+                        <td>{{ $feedback->pedido?->escola?->nome ?? '-' }}</td>
+                        <td style="text-align: center;">
+                            <span class="badge" style="background: {{ $cores[$feedback->valor] ?? '#6b7280' }}">
+                                {{ $feedback->valor }}/5
+                            </span>
+                        </td>
+                        <td class="text-truncate">{{ $feedback->descricao ?? '-' }}</td>
+                        <td>{{ $feedback->created_at?->format('d/m/Y H:i') ?? '-' }}</td>
+                        <td>{{ $feedback->pedido?->tipoManutencao?->nome ?? '-' }}</td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
         @endif
 
         <!-- GRÁFICOS LADO A LADO (após tabela) -->
         @if($graficoMediaMensal || $graficoPorNota)
-        <div class="divider" style="margin-top: 20px;"></div>
-        <div class="section-title">Análise Visual</div>
+            <div class="divider" style="margin-top: 20px;"></div>
+            <div class="section-title">Análise Visual</div>
 
-        <div class="graficos-container">
-            @if($graficoMediaMensal)
-            <div class="grafico-wrapper">
-                <div class="grafico-titulo">Quantidade Mensal de Avaliações</div>
-                <img src="{{ $graficoMediaMensal }}" alt="Gráfico Mensal">
-            </div>
-            @endif
+            <div class="graficos-container">
+                @if($graficoMediaMensal)
+                    <div class="grafico-wrapper">
+                        <div class="grafico-titulo">Quantidade Mensal de Avaliações</div>
+                        <img src="{{ $graficoMediaMensal }}" alt="Gráfico Mensal">
+                    </div>
+                @endif
 
-            @if($graficoPorNota)
-            <div class="grafico-wrapper">
-                <div class="grafico-titulo">Distribuição por Nota</div>
-                <img src="{{ $graficoPorNota }}" alt="Gráfico por Nota">
+                @if($graficoPorNota)
+                    <div class="grafico-wrapper">
+                        <div class="grafico-titulo">Distribuição por Nota</div>
+                        <img src="{{ $graficoPorNota }}" alt="Gráfico por Nota">
+                    </div>
+                @endif
             </div>
-            @endif
-        </div>
+        @endif
+
+        <!-- MATRIZES DE NOTAS POR MÊS - TODOS OS ANOS COM TODOS OS MESES -->
+        @if(!empty($matrizesAgrupadas))
+            <div class="divider" style="margin-top: 20px;"></div>
+            <div class="section-title">Matriz de Avaliações por Mês</div>
+
+            @foreach($matrizesAgrupadas as $ano => $meses)
+                <div class="ano-titulo">{{ $ano }}</div>
+
+                <table class="matriz-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 10%; text-align: left;">Avaliação</th>
+                            @foreach($meses as $mes => $dados)
+                                <th style="width: {{ (90 / count($meses)) }}%;">{{ $mes }}</th>
+                            @endforeach
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for($nota = 5; $nota >= 1; $nota--)
+                            <tr>
+                                <td class="nota-label nota-{{ $nota }}">
+                                    Nota {{ $nota }}
+                                </td>
+                                @foreach($meses as $mes => $dados)
+                                    <td class="nota-{{ $nota }}">
+                                        @if($dados[$nota] > 0)
+                                            <strong>{{ $dados[$nota] }}</strong>
+                                        @else
+                                            <span class="matrix-empty">—</span>
+                                        @endif
+                                    </td>
+                                @endforeach
+                            </tr>
+                        @endfor
+                    </tbody>
+                </table>
+            @endforeach
         @endif
 
     </div>
 
 </body>
-
 </html>

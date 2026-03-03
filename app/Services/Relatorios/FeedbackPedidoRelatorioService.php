@@ -9,13 +9,17 @@ use Illuminate\Database\Eloquent\Collection;
 class FeedbackPedidoRelatorioService
 {
     /**
-     * Método original (sem gráficos)
+     * Método com gráficos e matrizes agrupadas por ano
      */
-    public function gerar(
+    public function gerarComGraficosEMatriz(
         float $mediaGeral,
         int $totalAvaliacoes,
         int $percentualSatisfacao,
-        Collection $feedbacks
+        Collection $feedbacks,
+        ?string $graficoMediaMensal = null,
+        ?string $graficoPorNota = null,
+        array $matrizNotasPorMes = [],
+        array $matrizesAgrupadas = []
     ) {
         ini_set('memory_limit', '512M');
 
@@ -28,8 +32,10 @@ class FeedbackPedidoRelatorioService
             'feedbacks'             => $feedbacks,
             'usuarioExportacao'     => $usuario,
             'dataExportacao'        => now(),
-            'graficoMediaMensal'    => null,
-            'graficoPorNota'        => null,
+            'graficoMediaMensal'    => $graficoMediaMensal,
+            'graficoPorNota'        => $graficoPorNota,
+            'matrizNotasPorMes'     => $matrizNotasPorMes,
+            'matrizesAgrupadas'     => $matrizesAgrupadas,
         ]);
 
         $nomeArquivo = 'Feedback-Pedidos-' . now()->format('d-m-Y-His');
@@ -38,7 +44,7 @@ class FeedbackPedidoRelatorioService
     }
 
     /**
-     * Método novo (com gráficos)
+     * Método com gráficos (sem matriz)
      */
     public function gerarComGraficos(
         float $mediaGeral,
@@ -61,6 +67,39 @@ class FeedbackPedidoRelatorioService
             'dataExportacao'        => now(),
             'graficoMediaMensal'    => $graficoMediaMensal,
             'graficoPorNota'        => $graficoPorNota,
+            'matrizNotasPorMes'     => [],
+            'matrizesAgrupadas'     => [],
+        ]);
+
+        $nomeArquivo = 'Feedback-Pedidos-' . now()->format('d-m-Y-His');
+
+        return $pdf->stream("{$nomeArquivo}.pdf");
+    }
+
+    /**
+     * Método original (sem gráficos)
+     */
+    public function gerar(
+        float $mediaGeral,
+        int $totalAvaliacoes,
+        int $percentualSatisfacao,
+        Collection $feedbacks
+    ) {
+        ini_set('memory_limit', '512M');
+
+        $usuario = Auth::user();
+
+        $pdf = Pdf::loadView('relatorios.FeedbackPedidos.relatorio', [
+            'mediaGeral'            => $mediaGeral,
+            'totalAvaliacoes'       => $totalAvaliacoes,
+            'percentualSatisfacao'  => $percentualSatisfacao,
+            'feedbacks'             => $feedbacks,
+            'usuarioExportacao'     => $usuario,
+            'dataExportacao'        => now(),
+            'graficoMediaMensal'    => null,
+            'graficoPorNota'        => null,
+            'matrizNotasPorMes'     => [],
+            'matrizesAgrupadas'     => [],
         ]);
 
         $nomeArquivo = 'Feedback-Pedidos-' . now()->format('d-m-Y-His');

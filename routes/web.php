@@ -12,9 +12,11 @@ use App\Models\Pedido;
 use App\Services\Relatorios\PedidoRelatorioService;
 use App\Models\User;
 use App\Notifications\SistemaNotification;
-use App\Services\Relatorios\FeedbackPedidoRelatorioService;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
+use App\Services\Relatorios\FeedbackPedidoRelatorioService;
+use App\Services\Relatorios\FeedbackGraficoService;
+use App\Services\Relatorios\ChartRenderService;
+use Illuminate\Support\Facades\Auth;
 
 Route::get('/', function () {
     return view('home');
@@ -82,9 +84,8 @@ Route::post('/notifications/{id}/read', function ($id) {
         ?->markAsRead();
 });
 
-
 Route::get('/admin/feedback-pedidos/exportar-pdf', function (Request $request) {
-    ini_set('memory_limit', '1024M');
+    ini_set('memory_limit', '512M');
 
     try {
         /** @var \App\Models\User */
@@ -162,13 +163,13 @@ Route::get('/admin/feedback-pedidos/exportar-pdf', function (Request $request) {
         // Calcular métricas
         $total = $feedbacks->count();
         $mediaGeral = $total > 0 ? round($feedbacks->avg('valor'), 2) : 0;
-        $percentualSatisfacao = $total > 0
-            ? round(($feedbacks->where('valor', '>=', 3)->count() / $total) * 100)
+        $percentualSatisfacao = $total > 0 
+            ? round(($feedbacks->where('valor', '>=', 3)->count() / $total) * 100) 
             : 0;
 
         // ===== GERAR GRÁFICOS =====
-        $graficoService = app(\App\Services\Relatorios\FeedbackGraficoService::class);
-        $chartRender = app(\App\Services\Relatorios\ChartRenderService::class);
+        $graficoService = app(FeedbackGraficoService::class);
+        $chartRender = app(ChartRenderService::class);
 
         // Dados dos gráficos
         $dadosMediaMensal = $graficoService->gerarDadosMediaMensal($filters);
@@ -178,11 +179,7 @@ Route::get('/admin/feedback-pedidos/exportar-pdf', function (Request $request) {
         $configMediaMensal = $graficoService->gerarChartConfig('media_mensal', $dadosMediaMensal);
         $configPorNota = $graficoService->gerarChartConfig('por_nota', $dadosPorNota);
 
-        // Renderizar gráficos (tenta API externa, se falhar usa local)
-        $graficoMediaMensal = null;
-        $graficoPorNota = null;
-
-        // Tentar renderizar via QuickChart (melhor visual)
+        // Renderizar gráficos
         $graficoMediaMensal = $chartRender->renderizarGrafico($configMediaMensal, 700, 350);
         $graficoPorNota = $chartRender->renderizarGrafico($configPorNota, 700, 350);
 
@@ -194,17 +191,87 @@ Route::get('/admin/feedback-pedidos/exportar-pdf', function (Request $request) {
             $graficoPorNota = $chartRender->renderizarGraficoLocal($configPorNota);
         }
 
+        // ===== GERAR MATRIZ - TODOS OS ANOS COM TODOS OS MESES DISPONÍVEIS =====
+        $matrizesAgrupadas = [];
+        
+        if (!$feedbacks->isEmpty()) {
+            $mesesLabels = [
+                '01' => 'Janeiro',
+                '02' => 'Fevereiro',
+                '03' => 'Março',
+                '04' => 'Abril',
+                '05' => 'Maio',
+                '06' => 'Junho',
+                '07' => 'Julho',
+                '08' => 'Agosto',
+                '09' => 'Setembro',
+                '10' => 'Outubro',
+                '11' => 'Novembro',
+                '12' => 'Dezembro',
+            ];
+
+            // Agrupar feedbacks por mês-ano
+            $feedbacksAgrupados = $feedbacks
+                ->groupBy(function ($item) {
+                    return $item->created_at->format('Y-m');
+                });
+
+            // Separar por ano
+            $porAno = [];
+            foreach ($feedbacksAgrupados as $mesChave => $registros) {
+                $ano = substr($mesChave, 0, 4);
+                $mesNum = substr($mesChave, 5, 2);
+                $mesLabel = $mesesLabels[$mesNum] . '/' . substr($mesChave, 2, 2);
+
+                if (!isset($porAno[$ano])) {
+                    $porAno[$ano] = [];
+                }
+
+                if (!isset($porAno[$ano][$mesLabel])) {
+                    $porAno[$ano][$mesLabel] = [
+                        'mes_numero' => (int)$mesNum,  // Adicionar número do mês para ordenação
+                        1 => 0, 2 => 0, 3 => 0, 4 => 0, 5 => 0,
+                    ];
+                }
+
+                foreach ($registros as $registro) {
+                    $porAno[$ano][$mesLabel][$registro->valor]++;
+                }
+            }
+
+            // Ordenar anos
+            ksort($porAno);
+
+            // Ordenar meses dentro de cada ano (por número do mês, não alfabeticamente)
+            foreach ($porAno as $ano => &$meses) {
+                uasort($meses, function ($a, $b) {
+                    return $a['mes_numero'] <=> $b['mes_numero'];
+                });
+                
+                // Remover o campo mes_numero após ordenação
+                foreach ($meses as $mesLabel => &$dados) {
+                    unset($dados['mes_numero']);
+                }
+            }
+
+            // Atribuir à variável de matriz
+            $matrizesAgrupadas = $porAno;
+        }
+
         // Gerar PDF
         $service = app(FeedbackPedidoRelatorioService::class);
-
-        return $service->gerarComGraficos(
+        
+        return $service->gerarComGraficosEMatriz(
             $mediaGeral,
             $total,
             $percentualSatisfacao,
             $feedbacks,
             $graficoMediaMensal,
-            $graficoPorNota
+            $graficoPorNota,
+            [],
+            $matrizesAgrupadas
         );
+
     } catch (\Throwable $e) {
         \Illuminate\Support\Facades\Log::error('Erro ao exportar PDF de Feedback', [
             'erro' => $e->getMessage(),
@@ -223,5 +290,6 @@ Route::get('/admin/feedback-pedidos/exportar-pdf', function (Request $request) {
 
         return abort(500, 'Erro ao gerar PDF');
     }
+
 })->middleware(['auth'])
-    ->name('feedback-pedidos.export-pdf');
+  ->name('feedback-pedidos.export-pdf');

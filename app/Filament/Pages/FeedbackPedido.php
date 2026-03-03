@@ -157,24 +157,6 @@ class FeedbackPedido extends Page implements HasTable
                         $this->updateChartFilters('mes', $data['mes'] ?? null);
                         return $query->when($data['mes'] ?? null, fn($q) => $q->whereMonth('created_at', $data['mes']));
                     }),
-
-                Tables\Filters\Filter::make('periodo')
-                    ->label('Período')
-                    ->form([
-                        Forms\Components\DatePicker::make('data_inicio')
-                            ->label('Data Início'),
-                        Forms\Components\DatePicker::make('data_fim')
-                            ->label('Data Fim'),
-                    ])
-                    ->query(function ($query, array $data) {
-                        $this->updateChartFilters('periodo', [
-                            'inicio' => $data['data_inicio'] ?? null,
-                            'fim' => $data['data_fim'] ?? null,
-                        ]);
-                        return $query
-                            ->when($data['data_inicio'] ?? null, fn($q) => $q->whereDate('created_at', '>=', $data['data_inicio']))
-                            ->when($data['data_fim'] ?? null, fn($q) => $q->whereDate('created_at', '<=', $data['data_fim']));
-                    }),
             ])
             ->defaultSort('created_at', 'desc');
     }
