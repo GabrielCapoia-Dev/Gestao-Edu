@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Collection;
 class FeedbackPedidoRelatorioService
 {
     /**
-     * Método com gráficos e matrizes agrupadas por ano
+     * Método com gráficos, matrizes e tipo de relatório
      */
     public function gerarComGraficosEMatriz(
         float $mediaGeral,
@@ -19,7 +19,8 @@ class FeedbackPedidoRelatorioService
         ?string $graficoMediaMensal = null,
         ?string $graficoPorNota = null,
         array $matrizNotasPorMes = [],
-        array $matrizesAgrupadas = []
+        array $matrizesAgrupadas = [],
+        string $tipo = 'geral'
     ) {
         ini_set('memory_limit', '512M');
 
@@ -36,6 +37,7 @@ class FeedbackPedidoRelatorioService
             'graficoPorNota'        => $graficoPorNota,
             'matrizNotasPorMes'     => $matrizNotasPorMes,
             'matrizesAgrupadas'     => $matrizesAgrupadas,
+            'tipoRelatorio'         => $tipo,
         ]);
 
         $nomeArquivo = 'Feedback-Pedidos-' . now()->format('d-m-Y-His');
@@ -69,6 +71,7 @@ class FeedbackPedidoRelatorioService
             'graficoPorNota'        => $graficoPorNota,
             'matrizNotasPorMes'     => [],
             'matrizesAgrupadas'     => [],
+            'tipoRelatorio'         => 'geral',
         ]);
 
         $nomeArquivo = 'Feedback-Pedidos-' . now()->format('d-m-Y-His');
@@ -100,6 +103,7 @@ class FeedbackPedidoRelatorioService
             'graficoPorNota'        => null,
             'matrizNotasPorMes'     => [],
             'matrizesAgrupadas'     => [],
+            'tipoRelatorio'         => 'geral',
         ]);
 
         $nomeArquivo = 'Feedback-Pedidos-' . now()->format('d-m-Y-His');

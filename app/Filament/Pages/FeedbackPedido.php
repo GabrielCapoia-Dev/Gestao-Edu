@@ -208,20 +208,27 @@ class FeedbackPedido extends Page implements HasTable
         return round(($positivos / $total) * 100);
     }
 
-
-
     protected function getHeaderActions(): array
     {
         return [
-            Actions\Action::make('export_pdf')
-                ->label('Exportar PDF')
-                ->icon('heroicon-o-arrow-down-tray')
-                ->url(fn() => $this->gerarUrlExportacao())
+            Actions\Action::make('export_geral')
+                ->label('📊 Relatório Geral')
+                ->url(fn() => $this->gerarUrlExportacao('geral'))
+                ->openUrlInNewTab(),
+
+            Actions\Action::make('export_listagem')
+                ->label('📋 Listagem')
+                ->url(fn() => $this->gerarUrlExportacao('listagem'))
+                ->openUrlInNewTab(),
+
+            Actions\Action::make('export_graficos')
+                ->label('📈 Gráficos')
+                ->url(fn() => $this->gerarUrlExportacao('graficos'))
                 ->openUrlInNewTab(),
         ];
     }
 
-    private function gerarUrlExportacao(): string
+    private function gerarUrlExportacao(string $tipo): string
     {
         $params = [];
 
@@ -244,6 +251,6 @@ class FeedbackPedido extends Page implements HasTable
             }
         }
 
-        return route('feedback-pedidos.export-pdf', array_filter($params));
+        return route('feedback-pedidos.export-' . $tipo, array_filter($params));
     }
 }

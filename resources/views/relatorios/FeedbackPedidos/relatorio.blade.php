@@ -214,7 +214,6 @@
             white-space: nowrap;
         }
 
-        /* GRÁFICOS LADO A LADO */
         .graficos-container {
             display: table;
             width: 100%;
@@ -250,7 +249,6 @@
             display: block;
         }
 
-        /* TABELA MATRIZ - MELHORADA */
         .matriz-table {
             width: 100%;
             border-collapse: collapse;
@@ -287,7 +285,6 @@
             page-break-inside: avoid;
         }
 
-        /* Labels das notas */
         .nota-label {
             text-align: left;
             font-weight: bold;
@@ -295,7 +292,6 @@
             font-size: 8px;
         }
 
-        /* Cores por nota */
         .nota-1 {
             background: #fee2e2;
             color: #7f1d1d;
@@ -321,13 +317,11 @@
             color: #065f46;
         }
 
-        /* Valor zero ou vazio */
         .matrix-empty {
             color: #9ca3af;
             font-weight: normal;
         }
 
-        /* Título de ano */
         .ano-titulo {
             font-weight: bold;
             font-size: 11px;
@@ -378,69 +372,73 @@
     <!-- CONTEÚDO PRINCIPAL -->
     <div class="content">
 
-        <!-- CARDS -->
-        <div class="cards-container">
-            <div class="card">
-                <div class="card-label">Média Geral</div>
-                <div class="card-value">
-                    {{ $mediaGeral }}
-                    <span class="card-unit">/ 5</span>
+        <!-- CARDS - MOSTRAR EM: geral, graficos -->
+        @if(in_array($tipoRelatorio ?? 'geral', ['geral', 'graficos']))
+            <div class="cards-container">
+                <div class="card">
+                    <div class="card-label">Média Geral</div>
+                    <div class="card-value">
+                        {{ $mediaGeral }}
+                        <span class="card-unit">/ 5</span>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-label">Total de Avaliações</div>
+                    <div class="card-value">{{ $totalAvaliacoes }}</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">Nível de Satisfação</div>
+                    <div class="card-value">
+                        {{ $percentualSatisfacao }}<span class="card-unit">%</span>
+                    </div>
                 </div>
             </div>
-            <div class="card">
-                <div class="card-label">Total de Avaliações</div>
-                <div class="card-value">{{ $totalAvaliacoes }}</div>
-            </div>
-            <div class="card">
-                <div class="card-label">Nível de Satisfação</div>
-                <div class="card-value">
-                    {{ $percentualSatisfacao }}<span class="card-unit">%</span>
-                </div>
-            </div>
-        </div>
 
-        <div class="divider"></div>
-
-        <!-- TABELA DE FEEDBACKS -->
-        <div class="section-title">Detalhes das Avaliações</div>
-
-        @if($feedbacks->isEmpty())
-            <p style="text-align: center; color: #6b7280; padding: 20px 0;">
-                Nenhuma avaliação registrada para os filtros selecionados.
-            </p>
-        @else
-            <table class="feedback-table">
-                <thead>
-                    <tr>
-                        <th style="width: 12%;">Protocolo</th>
-                        <th style="width: 15%;">Escola</th>
-                        <th style="width: 12%;">Nota</th>
-                        <th style="width: 30%;">Descrição</th>
-                        <th style="width: 13%;">Data</th>
-                        <th style="width: 18%;">Tipo Manutenção</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($feedbacks as $feedback)
-                    <tr>
-                        <td><strong>{{ $feedback->pedido?->numero_protocolo ?? '-' }}</strong></td>
-                        <td>{{ $feedback->pedido?->escola?->nome ?? '-' }}</td>
-                        <td style="text-align: center;">
-                            <span class="badge" style="background: {{ $cores[$feedback->valor] ?? '#6b7280' }}">
-                                {{ $feedback->valor }}/5
-                            </span>
-                        </td>
-                        <td class="text-truncate">{{ $feedback->descricao ?? '-' }}</td>
-                        <td>{{ $feedback->created_at?->format('d/m/Y H:i') ?? '-' }}</td>
-                        <td>{{ $feedback->pedido?->tipoManutencao?->nome ?? '-' }}</td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
+            <div class="divider"></div>
         @endif
 
-        <!-- GRÁFICOS LADO A LADO (após tabela) -->
-        @if($graficoMediaMensal || $graficoPorNota)
+        <!-- TABELA DE FEEDBACKS - MOSTRAR EM: geral, listagem APENAS (NÃO em graficos) -->
+        @if(in_array($tipoRelatorio ?? 'geral', ['geral', 'listagem']))
+            <div class="section-title">Detalhes das Avaliações</div>
+
+            @if($feedbacks->isEmpty())
+                <p style="text-align: center; color: #6b7280; padding: 20px 0;">
+                    Nenhuma avaliação registrada para os filtros selecionados.
+                </p>
+            @else
+                <table class="feedback-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 12%;">Protocolo</th>
+                            <th style="width: 15%;">Escola</th>
+                            <th style="width: 12%;">Nota</th>
+                            <th style="width: 30%;">Descrição</th>
+                            <th style="width: 13%;">Data</th>
+                            <th style="width: 18%;">Tipo Manutenção</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($feedbacks as $feedback)
+                        <tr>
+                            <td><strong>{{ $feedback->pedido?->numero_protocolo ?? '-' }}</strong></td>
+                            <td>{{ $feedback->pedido?->escola?->nome ?? '-' }}</td>
+                            <td style="text-align: center;">
+                                <span class="badge" style="background: {{ $cores[$feedback->valor] ?? '#6b7280' }}">
+                                    {{ $feedback->valor }}/5
+                                </span>
+                            </td>
+                            <td class="text-truncate">{{ $feedback->descricao ?? '-' }}</td>
+                            <td>{{ $feedback->created_at?->format('d/m/Y H:i') ?? '-' }}</td>
+                            <td>{{ $feedback->pedido?->tipoManutencao?->nome ?? '-' }}</td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            @endif
+        @endif
+
+        <!-- GRÁFICOS LADO A LADO - MOSTRAR EM: geral, graficos -->
+        @if(in_array($tipoRelatorio ?? 'geral', ['geral', 'graficos']) && ($graficoMediaMensal || $graficoPorNota))
             <div class="divider" style="margin-top: 20px;"></div>
             <div class="section-title">Análise Visual</div>
 
@@ -461,8 +459,8 @@
             </div>
         @endif
 
-        <!-- MATRIZES DE NOTAS POR MÊS - TODOS OS ANOS COM TODOS OS MESES -->
-        @if(!empty($matrizesAgrupadas))
+        <!-- MATRIZ DE AVALIAÇÕES - MOSTRAR EM: geral, graficos -->
+        @if(in_array($tipoRelatorio ?? 'geral', ['geral', 'graficos']) && !empty($matrizesAgrupadas))
             <div class="divider" style="margin-top: 20px;"></div>
             <div class="section-title">Matriz de Avaliações por Mês</div>
 
