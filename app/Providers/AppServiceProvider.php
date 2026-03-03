@@ -42,6 +42,7 @@ use App\Policies\PedidoPolicy;
 use App\Models\PedidoArquivo;
 use App\Policies\PedidoArquivoPolicy;
 use Illuminate\Support\Facades\Blade;
+use App\Observers\PedidoObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -69,6 +70,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(TipoManutencao::class, TipoManutencaoPolicy::class);
         Gate::policy(Pedido::class, PedidoPolicy::class);
         Gate::policy(PedidoArquivo::class, PedidoArquivoPolicy::class);
+        
+        Pedido::observe(PedidoObserver::class);
         
         Gate::define('admin-only', function ($user) {
             return $user->hasRole('Admin');

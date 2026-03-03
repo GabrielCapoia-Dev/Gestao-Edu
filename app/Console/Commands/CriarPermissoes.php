@@ -101,7 +101,10 @@ class CriarPermissoes extends Command
             'Visualizar Painel Personalizado',
             'Visualizar Feedback de Pedidos',
             'Visualizar Notificação: Vencimento de Pedidos',
+            'Visualizar Notificação: Pedidos Atrasados',
+            'Visualizar Notificação: Pedidos Emergenciais',
 
+            
             'Avaliar Pedidos',
 
         ];

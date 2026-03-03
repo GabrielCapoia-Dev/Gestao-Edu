@@ -40,7 +40,7 @@ class NotificarPedidosAtrasados extends Command
             return;
         }
 
-        $usuarios = User::permission('Visualizar Notificação: Vencimento de Pedidos')->get();
+        $usuarios = User::permission('Visualizar Notificação: Pedidos Atrasados')->get();
 
         foreach ($pedidosAtrasados as $pedido) {
 
