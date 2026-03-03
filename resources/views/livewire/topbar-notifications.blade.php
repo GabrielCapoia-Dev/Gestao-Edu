@@ -186,4 +186,8 @@ $id = 'modal-notificacoes';
 
         });
     }
+
+    setInterval(() => {
+        Livewire.dispatch('refresh-notifications');
+    }, 10000);
 </script>
