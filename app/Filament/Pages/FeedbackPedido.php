@@ -12,6 +12,7 @@ use App\Models\User;
 use Filament\Forms;
 use Livewire\Attributes\Computed;
 use Filament\Actions;
+use App\Models\Enums\NivelEmergenciaPedido;
 
 class FeedbackPedido extends Page implements HasTable
 {
@@ -91,15 +92,25 @@ class FeedbackPedido extends Page implements HasTable
 
                 Tables\Filters\SelectFilter::make('pedido.nivel_prioridade')
                     ->label('Nível de Prioridade')
-                    ->options([
-                        'baixa' => 'Baixa',
-                        'media' => 'Média',
-                        'alta' => 'Alta',
-                        'critica' => 'Crítica',
-                    ])
+                    ->options(
+                        collect(NivelEmergenciaPedido::cases())
+                            ->mapWithKeys(fn($case) => [
+                                $case->value => $case->label(),
+                            ])
+                            ->toArray()
+                    )
                     ->query(function ($query, array $data) {
-                        $this->updateChartFilters('nivel_prioridade', $data['value'] ?? null);
-                        return $query->when($data['value'] ?? null, fn($q) => $q->whereHas('pedido', fn($subquery) => $subquery->where('nivel_prioridade', $data['value'])));
+                        $value = $data['value'] ?? null;
+
+                        $this->updateChartFilters('nivel_prioridade', $value);
+
+                        return $query->when(
+                            $value,
+                            fn($q) => $q->whereHas(
+                                'pedido',
+                                fn($subquery) => $subquery->where('nivel_prioridade', $value)
+                            )
+                        );
                     }),
 
                 Tables\Filters\SelectFilter::make('pedido.tipo_manutencao_id')
