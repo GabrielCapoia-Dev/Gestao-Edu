@@ -213,7 +213,7 @@ $cores = [
         }
 
         .nota-1 {
-            background: #fee2e2;
+            background: #ffc9c9;
             color: #7f1d1d;
         }
 
@@ -228,13 +228,13 @@ $cores = [
         }
 
         .nota-4 {
-            background: #bbf7d0;
-            color: #064e3b;
+            background: #d1fae5;
+            color: #065f46;
         }
 
         .nota-5 {
-            background: #d1fae5;
-            color: #065f46;
+            background: #bbf7d0;
+            color: #064e3b;
         }
 
         .matrix-empty {
@@ -383,7 +383,11 @@ $cores = [
             </table>
 
             <div class="divider"></div>
-            
+
+
+            <div class="header-text">
+                <h2>Nivel de Satisfação dos Serviços Prestados</h2>
+            </div>
 
             @foreach($empresaData['anos'] as $ano => $meses)
             <div class="ano-titulo">{{ $ano }}</div>
@@ -391,8 +395,8 @@ $cores = [
             <table class="matriz-table">
                 <thead>
                     <tr>
-                        <th style="width: 10%; text-align: left;">Avaliação</th>
-                        @foreach($meses as $mes => $dados)
+                        <th style="width: 10%; text-align: center;">Avaliação</th>
+                        @foreach(array_reverse($meses, true) as $mes => $dados)
                         <th style="width: {{ (90 / count($meses)) }}%;">{{ $mes }}</th>
                         @endforeach
                     </tr>
@@ -403,7 +407,7 @@ $cores = [
                         <td class="nota-label nota-{{ $nota }}">
                             Nota {{ $nota }}
                         </td>
-                        @foreach($meses as $mes => $dados)
+                        @foreach(array_reverse($meses, true) as $mes => $dados)
                         <td class="nota-{{ $nota }}">
                             @if($dados[$nota] > 0)
                             <strong>{{ $dados[$nota] }}</strong>

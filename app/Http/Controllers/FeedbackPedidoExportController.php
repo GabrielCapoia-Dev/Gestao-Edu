@@ -356,15 +356,29 @@ class FeedbackPedidoExportController extends Controller
                 $mesNumero = $feedback->created_at->format('m');
                 $mesLabel = $mesesLabels[$mesNumero];
 
-                $resultado[$empresaId]['anos'][$ano][$mesLabel] ??= [
-                    1 => 0,
-                    2 => 0,
-                    3 => 0,
-                    4 => 0,
-                    5 => 0,
-                ];
+                if (!isset($resultado[$empresaId]['anos'][$ano][$mesLabel])) {
+                    $resultado[$empresaId]['anos'][$ano][$mesLabel] = [
+                        'mes_numero' => (int) $mesNumero,
+                        1 => 0,
+                        2 => 0,
+                        3 => 0,
+                        4 => 0,
+                        5 => 0,
+                    ];
+                }
 
                 $resultado[$empresaId]['anos'][$ano][$mesLabel][$feedback->valor]++;
+            }
+        }
+
+        foreach ($resultado[$empresaId]['anos'] as $ano => &$meses) {
+
+            uasort($meses, function ($a, $b) {
+                return $a['mes_numero'] <=> $b['mes_numero'];
+            });
+
+            foreach ($meses as &$dados) {
+                unset($dados['mes_numero']);
             }
         }
 
