@@ -131,10 +131,7 @@ class PedidoService
 
     public function criarPedido(array $data, User $solicitante): Pedido
     {
-        $statusInicial = TipoStatus::where('ativo', true)
-            ->where('finaliza_pedido', false)
-            ->where('cancela_pedido', false)
-            ->firstOrFail();
+        $statusInicial = TipoStatus::where('nome', 'Em Aberto')->firstOrFail();
 
         // 🔵 Buscar setor Educação
         $setorEducacao = Setor::where('nome', 'Educação')
@@ -155,8 +152,8 @@ class PedidoService
         ]);
 
         // Salvar arquivos
-        if (!empty($data['arquivos'])) {
-            foreach ($data['arquivos'] as $path) {
+        if (filled($data['arquivos'])) {
+            foreach (array_filter($data['arquivos']) as $path) {
 
                 $this->salvarArquivoPedido(
                     pedido: $pedido,
@@ -302,7 +299,6 @@ class PedidoService
                         ->maxSize(5120)
                         ->directory('pedidos')
                         ->disk('public')
-                        ->storeFiles()
                         ->visibility('public')
                         ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                         ->helperText('Até 10 imagens (JPEG, PNG ou WEBP) - máximo 5MB cada')
@@ -507,6 +503,7 @@ class PedidoService
     public function configurarTabela(Table $table, ?User $user): Table
     {
         return $table
+            ->paginated([10, 25, 50, 100])
             ->columns($this->colunasTabela($user))
             ->filters($this->filtrosTabela(), layout: FiltersLayout::AboveContent)
             ->actions($this->acoesTabela($user))
@@ -904,6 +901,7 @@ class PedidoService
                                 ->multiple()
                                 ->image()
                                 ->maxFiles(10)
+                                ->storeFileNamesIn('nome_original')
                                 ->maxSize(5120)
                                 ->directory('pedidos/conclusao')
                                 ->disk('public')
@@ -932,12 +930,17 @@ class PedidoService
                     ]);
 
                     // 🔹 2️⃣ Salvar fotos
-                    if (! empty($data['fotos_conclusao'])) {
+                    if (!empty($data['fotos_conclusao'])) {
+
                         foreach ($data['fotos_conclusao'] as $path) {
-                            $record->arquivos()->create([
-                                'tipo_arquivo' => TipoArquivoPedido::FOTOS_CONCLUSAO,
-                                'caminho'      => $path,
-                            ]);
+
+                            $this->salvarArquivoPedido(
+                                pedido: $record,
+                                path: $path,
+                                tipo: TipoArquivoPedido::FOTOS_CONCLUSAO,
+                                usuarioId: $user->id,
+                                descricao: 'Fotos da conclusão do serviço'
+                            );
                         }
                     }
 

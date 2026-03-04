@@ -3,8 +3,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: laravel-app-educacao-especial
-    container_name: laravel-app-educacao-especial
+    image: laravel-app-gestao-edu
+    container_name: laravel-app-gestao-edu
     working_dir: /var/www
     ports:
       - "8020:8020"
@@ -16,29 +16,27 @@ services:
       db:
         condition: service_healthy
     networks:
-      - laravel_educacao-especial
+      - laravel_gestao-edu
 
-  scheduler:
-    image: laravel-app-educacao-especial
-    container_name: laravel-scheduler-educacao-especial
+  cron:
+    image: laravel-app-gestao-edu
+    container_name: laravel-cron-gestao-edu
     working_dir: /var/www
-    command: php artisan schedule:work
+    entrypoint: []
+    command: sh -c "while true; do php artisan schedule:run; sleep 60; done"
     volumes:
       - .:/var/www
-      - vendor:/var/www/vendor
-      - node_modules:/var/www/node_modules
     depends_on:
       db:
         condition: service_healthy
     networks:
-      - laravel_educacao-especial
-
+      - laravel_gestao-edu
   db:
     image: mysql:8.0
-    container_name: laravel-db-educacao-especial
+    container_name: laravel-db-gestao-edu
     environment:
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: educacao-especial
+      MYSQL_DATABASE: gestao-edu
     volumes:
       - db_data:/var/lib/mysql
     ports:
@@ -49,11 +47,11 @@ services:
       timeout: 5s
       retries: 20
     networks:
-      - laravel_educacao-especial
+      - laravel_gestao-edu
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
-    container_name: laravel-phpmyadmin-educacao-especial
+    container_name: laravel-phpmyadmin-gestao-edu
     environment:
       PMA_HOST: db
       PMA_USER: root
@@ -64,15 +62,15 @@ services:
       db:
         condition: service_healthy
     networks:
-      - laravel_educacao-especial
+      - laravel_gestao-edu
 
   redis:
     image: redis:7
-    container_name: laravel-redis-educacao-especial
+    container_name: laravel-redis-gestao-edu
     ports:
       - "6381:6379"
     networks:
-      - laravel_educacao-especial
+      - laravel_gestao-edu
 
 volumes:
   db_data:
@@ -81,5 +79,5 @@ volumes:
 
 
 networks:
-  laravel_educacao-especial:
+  laravel_gestao-edu:
     driver: bridge

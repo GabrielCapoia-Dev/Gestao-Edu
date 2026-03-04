@@ -34,9 +34,9 @@ class FeedbackPedido extends Page implements HasTable
         ];
     }
 
-    public function canView(): bool
+    public static function canAccess(): bool
     {
-        return User::authUser()->hasPermissionTo('Visualizar Feedback de Pedidos');
+        return User::authUser()->hasPermissionTo('Visualizar Feedback de Pedidos') ?? false;
     }
 
     public function table(Table $table): Table

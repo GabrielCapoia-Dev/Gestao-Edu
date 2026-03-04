@@ -5,7 +5,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>403 — Acesso negado | Educação Especial Municipal</title>
+    <title>403 — Acesso negado | Sistema de Gestão Escolar</title>
     <style>
         * {
             margin: 0;
@@ -25,7 +25,7 @@
         .header {
             background: #074f9b;
             border-bottom: 3px solid #053d7a;
-            padding: 20px 40px;
+            padding: 5px 40px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -39,8 +39,7 @@
         }
 
         .logo {
-            width: 80px;
-            height: 80px;
+            width: 250px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -91,7 +90,7 @@
         .container {
             max-width: 1400px;
             margin: 0 auto;
-            padding: 60px 20px;
+            padding: 10px 50px;
             flex: 1;
             display: flex;
             align-items: center;
@@ -104,15 +103,186 @@
         }
 
         .error-icon {
-            font-size: 8rem;
+            font-size: 5rem;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-20px);
+            }
+        }
+
+        .error-code {
+            display: inline-block;
+            background: linear-gradient(135deg, #074f9b 0%, #053d7a 100%);
+            color: #ffffff;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(7, 79, 155, 0.2);
+        }
+
+        .error-title {
+            font-size: 3rem;
+            font-weight: 700;
+            color: #074f9b;
             margin-bottom: 20px;
-            animation: shake 2s ease-in-out infinite;
+            line-height: 1.2;
+        }
+
+        .error-subtitle {
+            font-size: 1.5rem;
+            color: #666666;
+            margin-bottom: 30px;
+        }
+
+        .error-text {
+            color: #666666;
+            font-size: 1.1rem;
+            line-height: 1.8;
+            margin-bottom: 40px;
+        }
+
+        .info-card {
+            background: linear-gradient(135deg, #f0f7ff 0%, #e8f0f8 100%);
+            border-radius: 12px;
+            padding: 30px;
+            border: 2px solid #d0e3f5;
+            margin-bottom: 40px;
+            text-align: left;
+        }
+
+        .info-card-title {
+            font-size: 1.2rem;
+            color: #074f9b;
+            font-weight: 600;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .info-card-text {
+            color: #666666;
+            line-height: 1.6;
+        }
+
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 40px;
+        }
+
+        .tag {
+            background: rgba(7, 79, 155, 0.1);
+            color: #074f9b;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: #074f9b;
+            color: #ffffff;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            background: #053d7a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(7, 79, 155, 0.3);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 2px solid #074f9b;
+            color: #074f9b;
+        }
+
+        .btn-secondary:hover {
+            background: #e8f0f8;
+        }
+
+        .footer {
+            background: #f0f7ff;
+            border-top: 2px solid #d0e3f5;
+            padding: 30px 40px;
+            text-align: center;
+            color: #666666;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 20px;
+                padding: 20px;
+            }
+
+            .error-icon {
+                font-size: 5rem;
+            }
+
+            .error-title {
+                font-size: 2rem;
+            }
+
+            .error-subtitle {
+                font-size: 1.2rem;
+            }
+
+            .actions {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
         }
 
         @keyframes shake {
-            0%, 100% { transform: rotate(0deg); }
-            25% { transform: rotate(-5deg); }
-            75% { transform: rotate(5deg); }
+
+            0%,
+            100% {
+                transform: rotate(0deg);
+            }
+
+            25% {
+                transform: rotate(-5deg);
+            }
+
+            75% {
+                transform: rotate(5deg);
+            }
         }
 
         .error-code {
@@ -296,24 +466,24 @@
     <header class="header">
         <div class="header-left">
             <div class="logo">
-                <img src="{{ asset('images/logo-educação-especial.png') }}" alt="Educação Especial">
+                <img src="{{ asset('images/brasao-umuarama.png') }}" alt="Brasão Município de Umuarama">
             </div>
             <div class="header-title">
-                <div class="system-name">Educação Especial</div>
-                <div class="system-desc">Atendimento Especializado e Inclusivo</div>
+                <div class="system-name">Gestão Escolar</div>
+                <div class="system-desc">Sistema Integrado Municipal</div>
             </div>
         </div>
         <div>
             @auth
-                <a href="/admin" class="login-btn">
-                    <span>🏠</span>
-                    Painel Administrativo
-                </a>
+            <a href="/admin" class="login-btn">
+                <span>🏠</span>
+                Painel Administrativo
+            </a>
             @else
-                <a href="/admin/login" class="login-btn">
-                    <span>🔐</span>
-                    Área Administrativa
-                </a>
+            <a href="/admin/login" class="login-btn">
+                <span>🔐</span>
+                Área Administrativa
+            </a>
             @endauth
         </div>
     </header>
@@ -322,14 +492,8 @@
         <div class="error-content">
             <div class="error-icon">🔒</div>
             <div class="error-code">⚠️ ERRO 403 - ACESSO NEGADO</div>
-            
-            <h1 class="error-title">Acesso Negado</h1>
+
             <p class="error-subtitle">Você não tem permissão para acessar esta área</p>
-            
-            <p class="error-text">
-                Infelizmente, você não possui as permissões necessárias para acessar esta página.
-                Esta é uma área restrita do Sistema de Educação Especial.
-            </p>
 
             <div class="alert-box">
                 <div class="alert-box-title">
@@ -355,32 +519,20 @@
                     <span>↩️</span> Voltar à página anterior
                 </button>
                 @auth
-                    <a href="/admin" class="btn">
-                        <span>🏠</span> Ir para o painel principal
-                    </a>
+                <a href="/admin" class="btn">
+                    <span>🏠</span> Ir para o painel principal
+                </a>
                 @else
-                    <a href="/admin/login" class="btn">
-                        <span>🔐</span> Fazer login no sistema
-                    </a>
+                <a href="/admin/login" class="btn">
+                    <span>🔐</span> Fazer login no sistema
+                </a>
                 @endauth
-            </div>
-
-            <div class="help-card">
-                <div class="help-card-title">
-                    <span>🆘</span>
-                    Precisa de ajuda?
-                </div>
-                <div class="help-card-text">
-                    Se você acredita que deveria ter acesso a esta área, entre em contato com o administrador do sistema.
-                    Informe qual página você tentou acessar e qual é sua função no sistema para que possamos revisar
-                    suas permissões adequadamente.
-                </div>
             </div>
         </div>
     </div>
 
     <footer class="footer">
-        <small>&copy; {{ date('Y') }} Prefeitura Municipal de Umuarama — Sistema de Educação Especial</small>
+        <small>&copy; {{ date('Y') }} Prefeitura Municipal de Umuarama — Sistema de Gestão Escolar</small>
     </footer>
 
     <script>

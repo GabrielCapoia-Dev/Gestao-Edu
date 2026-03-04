@@ -17,7 +17,9 @@ use App\Models\FeedbackPedido;
 class PedidoSeeder extends Seeder
 {
     private int $numeroDePedidos = 10;
+    private int $numeroPedidosEmManutencaoExtra = 1000;
     private int $numeroPedidosConcluidosExtras = 1000;
+
     private array $descricoes = [
         'Tomada da sala %d não funciona.',
         'Vazamento na torneira do banheiro %d.',
@@ -29,16 +31,6 @@ class PedidoSeeder extends Seeder
         'Interruptor da sala %d com defeito.',
         'Rachaduras na parede do bloco %d.',
         'Janela quebrada na sala %d.',
-        'Piso danificado na área %d.',
-        'Disjuntor do quadro %d desarmando constantemente.',
-        'Fossa do bloco %d transbordando.',
-        'Pintura descascando na sala %d.',
-        'Maçaneta da porta %d com defeito.',
-        'Banheiro %d com descarga quebrada.',
-        'Telha danificada no telhado setor %d.',
-        'Caixa d\'água do bloco %d com vazamento.',
-        'Grade da janela %d solta.',
-        'Fiação exposta na sala %d.',
     ];
 
     private array $descricoesConcluidas = [
@@ -56,11 +48,9 @@ class PedidoSeeder extends Seeder
 
     public function run(): void
     {
-        // Busca cada status individualmente — evita problema de encoding com keyBy
-        $sAberto      = TipoStatus::where('nome', 'Em Aberto')->first();
-        $sAnalise     = TipoStatus::where('nome', 'Em Análise')->first();
-        $sConcluido   = TipoStatus::where('nome', 'Concluído')->first();
-        $sCancelado   = TipoStatus::where('nome', 'Cancelado')->first();
+        $statuses = TipoStatus::where('ativo', true)->get();
+
+        $sEmManutencao = TipoStatus::where('nome', 'Em Manutenção')->first();
 
         $tipos    = TipoManutencao::where('ativo', true)->pluck('id')->toArray();
         $setores  = Setor::where('ativo', true)->pluck('id')->toArray();
@@ -75,83 +65,40 @@ class PedidoSeeder extends Seeder
             NivelEmergenciaPedido::PREVENTIVO,
         ];
 
-        $grupos = [
-            ['status' => $sAberto,      'historico' => fn($p, $u, $s) => [
-                $this->hist($p, null,          $sAberto,      $u, $s, 'Pedido criado.'),
-            ]],
-            ['status' => $sAnalise,     'historico' => fn($p, $u, $s) => [
-                $this->hist($p, null,          $sAberto,      $u, $s, 'Pedido criado.'),
-                $this->hist($p, $sAberto,      $sAnalise,     $u, $s, 'Encaminhado para análise técnica.'),
-            ]],
-            ['status' => $sConcluido,   'historico' => fn($p, $u, $s) => [
-                $this->hist($p, null,          $sAberto,      $u, $s, 'Pedido criado.'),
-                $this->hist($p, $sAberto,      $sAnalise,     $u, $s, 'Aprovado para execução.'),
-            ]],
-            ['status' => $sCancelado,   'historico' => fn($p, $u, $s) => [
-                $this->hist($p, null,          $sAberto,      $u, $s, 'Pedido criado.'),
-                $this->hist($p, $sAberto,      $sCancelado,   $u, $s, 'Cancelado por duplicidade ou solicitação.'),
-            ]],
-        ];
+        $sAberto = TipoStatus::where('nome', 'Em Aberto')->first();
 
-
-
-
-        foreach ($grupos as $grupo) {
-            $statusAtual = $grupo['status'];
-
-            if (!$statusAtual) {
-                $this->command->warn("Status não encontrado no banco. Pulando grupo.");
-                continue;
-            }
+        foreach ($statuses as $statusAtual) {
 
             for ($i = 1; $i <= $this->numeroDePedidos; $i++) {
-                $solicitanteId  = $this->rand($users);
-                $responsavelId  = $this->rand(array_values(array_filter($users, fn($id) => $id !== $solicitanteId)));
-                $setorEducacao = Setor::where('nome', 'Educação')->first();
-                $setorObras = Setor::where('nome', 'Obras')->first();
-                $setorServicos = Setor::where('nome', 'Serviços Publicos')->first();
 
-                // =========================
-                // REGRA DE SETOR POR STATUS
-                // =========================
+                $solicitanteId = $this->rand($users);
+                $responsavelId = $this->rand(array_values(array_filter($users, fn($id) => $id !== $solicitanteId)));
 
-                if ($statusAtual->nome === 'Em Aberto') {
-
-                    // Apenas Educação
-                    $setorId = $setorEducacao->id;
-                } elseif ($statusAtual->nome === 'Encaminhado ao Setor') {
-
-                    // Apenas Obras
-                    $setorId = $setorObras->id;
-                } else {
-
-                    // Outros status podem variar
-                    $setorId = $this->rand([
-                        $setorEducacao->id,
-                        $setorObras->id,
-                        $setorServicos->id,
-                    ]);
-                }
+                $setorId = $this->rand($setores);
 
                 $diasAtras    = rand(1, 90);
                 $dataSolicit  = now()->subDays($diasAtras);
                 $dataPrevista = (clone $dataSolicit)->addDays(rand(13, 25));
-                $dataEntrega  = $statusAtual->finaliza_pedido
+
+                $dataEntrega = $statusAtual->finaliza_pedido
                     ? (clone $dataPrevista)->addDays(rand(0, 5))
                     : null;
 
-                $descPool  = $statusAtual->finaliza_pedido ? $this->descricoesConcluidas : $this->descricoes;
+                $descPool = $statusAtual->finaliza_pedido
+                    ? $this->descricoesConcluidas
+                    : $this->descricoes;
+
                 $descricao = sprintf($this->rand($descPool), rand(1, 20));
 
                 $pedido = Pedido::create([
                     'descricao_pedido'      => $descricao,
-                    'nome_solicitante' => fake()->name(),
+                    'nome_solicitante'      => fake()->name(),
                     'tipo_manutencao_id'    => $this->rand($tipos),
                     'tipo_status_id'        => $statusAtual->id,
                     'nivel_prioridade'      => $this->rand($prioridades),
                     'escola_id'             => $this->rand($escolas),
-                    'solicitante_id' => $solicitanteId,
-                    'responsavel_id' => $responsavelId,
+                    'solicitante_id'        => $solicitanteId,
+                    'responsavel_id'        => $responsavelId,
                     'setor_id'              => $setorId,
                     'empresa_contratada_id' => $this->rand($empresas),
                     'data_solicitacao'      => $dataSolicit,
@@ -160,15 +107,32 @@ class PedidoSeeder extends Seeder
                     'ativo'                 => true,
                 ]);
 
-                foreach ($grupo['historico']($pedido, $solicitanteId, $setorId) as $h) {
-                    PedidoHistorico::create($h);
+                PedidoHistorico::create(
+                    $this->hist(
+                        $pedido,
+                        null,
+                        $sAberto,
+                        $solicitanteId,
+                        $setorId,
+                        'Pedido criado.'
+                    )
+                );
+
+                if ($statusAtual->id !== $sAberto?->id) {
+
+                    PedidoHistorico::create(
+                        $this->hist(
+                            $pedido,
+                            $sAberto,
+                            $statusAtual,
+                            $responsavelId,
+                            $setorId,
+                            "Alterado para {$statusAtual->nome}."
+                        )
+                    );
                 }
 
-                // =========================
-                // Criar Feedback se Concluído
-                // =========================
-
-                if ($statusAtual->nome === 'Concluído') {
+                if ($statusAtual->finaliza_pedido) {
 
                     FeedbackPedido::create([
                         'pedido_id' => $pedido->id,
@@ -178,16 +142,137 @@ class PedidoSeeder extends Seeder
                 }
             }
 
-            $this->command->info("✔ 60 pedidos criados — {$statusAtual->nome}");
+            $this->command->info("✔ {$this->numeroDePedidos} pedidos criados — {$statusAtual->nome}");
         }
 
-        // =======================================================
-        // GERAR 1000 PEDIDOS CONCLUÍDOS COM DISTRIBUIÇÃO TEMPORAL
-        // =======================================================
+        if ($sEmManutencao) {
+
+            $this->command->info("Gerando pedidos para status Em Manutenção garantindo 1 por escola...");
+
+            $totalCriados = 0;
+
+            // 1 pedido por escola
+            foreach ($escolas as $escolaId) {
+
+                $solicitanteId = $this->rand($users);
+                $responsavelId = $this->rand(array_values(array_filter($users, fn($id) => $id !== $solicitanteId)));
+
+                $setorId = $this->rand($setores);
+
+                $diasAtras    = rand(1, 90);
+                $dataSolicit  = now()->subDays($diasAtras);
+                $dataPrevista = (clone $dataSolicit)->addDays(rand(10, 20));
+
+                $descricao = sprintf($this->rand($this->descricoes), rand(1, 20));
+
+                $pedido = Pedido::create([
+                    'descricao_pedido'      => $descricao,
+                    'nome_solicitante'      => fake()->name(),
+                    'tipo_manutencao_id'    => $this->rand($tipos),
+                    'tipo_status_id'        => $sEmManutencao->id,
+                    'nivel_prioridade'      => $this->rand($prioridades),
+                    'escola_id'             => $escolaId,
+                    'solicitante_id'        => $solicitanteId,
+                    'responsavel_id'        => $responsavelId,
+                    'setor_id'              => $setorId,
+                    'empresa_contratada_id' => $this->rand($empresas),
+                    'data_solicitacao'      => $dataSolicit,
+                    'data_prevista'         => $dataPrevista,
+                    'data_entrega'          => null,
+                    'ativo'                 => true,
+                ]);
+
+                PedidoHistorico::create(
+                    $this->hist(
+                        $pedido,
+                        null,
+                        $sAberto,
+                        $solicitanteId,
+                        $setorId,
+                        'Pedido criado.'
+                    )
+                );
+
+                PedidoHistorico::create(
+                    $this->hist(
+                        $pedido,
+                        $sAberto,
+                        $sEmManutencao,
+                        $responsavelId,
+                        $setorId,
+                        'Pedido enviado para manutenção.'
+                    )
+                );
+
+                $totalCriados++;
+            }
+
+            // Completar até numeroDePedidos se necessário
+            while ($totalCriados < $this->numeroPedidosEmManutencaoExtra) {
+
+                $escolaId = $this->rand($escolas);
+
+                $solicitanteId = $this->rand($users);
+                $responsavelId = $this->rand(array_values(array_filter($users, fn($id) => $id !== $solicitanteId)));
+
+                $setorId = $this->rand($setores);
+
+                $diasAtras    = rand(1, 90);
+                $dataSolicit  = now()->subDays($diasAtras);
+                $dataPrevista = (clone $dataSolicit)->addDays(rand(10, 20));
+
+                $descricao = sprintf($this->rand($this->descricoes), rand(1, 20));
+
+                $pedido = Pedido::create([
+                    'descricao_pedido'      => $descricao,
+                    'nome_solicitante'      => fake()->name(),
+                    'tipo_manutencao_id'    => $this->rand($tipos),
+                    'tipo_status_id'        => $sEmManutencao->id,
+                    'nivel_prioridade'      => $this->rand($prioridades),
+                    'escola_id'             => $escolaId,
+                    'solicitante_id'        => $solicitanteId,
+                    'responsavel_id'        => $responsavelId,
+                    'setor_id'              => $setorId,
+                    'empresa_contratada_id' => $this->rand($empresas),
+                    'data_solicitacao'      => $dataSolicit,
+                    'data_prevista'         => $dataPrevista,
+                    'data_entrega'          => null,
+                    'ativo'                 => true,
+                ]);
+
+                PedidoHistorico::create(
+                    $this->hist(
+                        $pedido,
+                        null,
+                        $sAberto,
+                        $solicitanteId,
+                        $setorId,
+                        'Pedido criado.'
+                    )
+                );
+
+                PedidoHistorico::create(
+                    $this->hist(
+                        $pedido,
+                        $sAberto,
+                        $sEmManutencao,
+                        $responsavelId,
+                        $setorId,
+                        'Pedido enviado para manutenção.'
+                    )
+                );
+
+                $totalCriados++;
+            }
+
+            $this->command->info("✔ {$totalCriados} pedidos criados — Em Manutenção");
+        }
+
+        $sConcluido = TipoStatus::where('nome', 'Concluído')->first();
 
         if ($sConcluido) {
 
-            $this->command->info("Gerando {$this->numeroPedidosConcluidosExtras} pedidos concluídos para gráfico temporal...");
+            $this->command->info("Gerando {$this->numeroPedidosConcluidosExtras} pedidos concluídos extras...");
 
             for ($i = 0; $i < $this->numeroPedidosConcluidosExtras; $i++) {
 
@@ -196,16 +281,13 @@ class PedidoSeeder extends Seeder
 
                 $setorId = $this->rand($setores);
 
-                // 🔥 DISTRIBUIÇÃO TEMPORAL REALISTA (últimos 24 meses)
                 $dataSolicit = now()
                     ->subMonths(rand(0, 24))
                     ->subDays(rand(0, 30))
                     ->setTime(rand(8, 18), rand(0, 59));
 
                 $dataPrevista = (clone $dataSolicit)->addDays(rand(7, 30));
-
-                // Pode entregar antes ou depois da previsão
-                $dataEntrega = (clone $dataPrevista)->addDays(rand(-5, 10));
+                $dataEntrega  = (clone $dataPrevista)->addDays(rand(-5, 10));
 
                 $descricao = sprintf(
                     $this->rand($this->descricoesConcluidas),
@@ -231,34 +313,32 @@ class PedidoSeeder extends Seeder
                     'updated_at'            => $dataEntrega,
                 ]);
 
-                // Histórico coerente com timeline
                 PedidoHistorico::create([
-                    'pedido_id'           => $pedido->id,
-                    'status_anterior_id'  => null,
-                    'status_novo_id'      => $sAberto?->id,
-                    'usuario_id'          => $solicitanteId,
-                    'setor_id'            => $setorId,
+                    'pedido_id' => $pedido->id,
+                    'status_anterior_id' => null,
+                    'status_novo_id' => $sAberto?->id,
+                    'usuario_id' => $solicitanteId,
+                    'setor_id' => $setorId,
                     'descricao_alteracao' => 'Pedido criado.',
-                    'created_at'          => $dataSolicit,
-                    'updated_at'          => $dataSolicit,
+                    'created_at' => $dataSolicit,
+                    'updated_at' => $dataSolicit,
                 ]);
 
                 PedidoHistorico::create([
-                    'pedido_id'           => $pedido->id,
-                    'status_anterior_id'  => $sAberto?->id,
-                    'status_novo_id'      => $sConcluido->id,
-                    'usuario_id'          => $responsavelId,
-                    'setor_id'            => $setorId,
+                    'pedido_id' => $pedido->id,
+                    'status_anterior_id' => $sAberto?->id,
+                    'status_novo_id' => $sConcluido->id,
+                    'usuario_id' => $responsavelId,
+                    'setor_id' => $setorId,
                     'descricao_alteracao' => 'Pedido concluído.',
-                    'created_at'          => $dataEntrega,
-                    'updated_at'          => $dataEntrega,
+                    'created_at' => $dataEntrega,
+                    'updated_at' => $dataEntrega,
                 ]);
 
-                // Feedback sincronizado com data de entrega
                 FeedbackPedido::create([
-                    'pedido_id'  => $pedido->id,
-                    'valor'      => $this->gerarNotaRealista(),
-                    'descricao'  => fake()->optional(0.8)->sentence(12),
+                    'pedido_id' => $pedido->id,
+                    'valor' => $this->gerarNotaRealista(),
+                    'descricao' => fake()->optional(0.8)->sentence(12),
                     'created_at' => $dataEntrega,
                     'updated_at' => $dataEntrega,
                 ]);
@@ -273,26 +353,26 @@ class PedidoSeeder extends Seeder
         $rand = random_int(1, 100);
 
         return match (true) {
-            $rand <= 10 => 1,              // 10% ruim
-            $rand <= 30 => random_int(2, 3), // 20% médio
-            default => random_int(4, 5),     // 70% bom
+            $rand <= 10 => 1,
+            $rand <= 30 => random_int(2, 3),
+            default => random_int(4, 5),
         };
     }
 
     private function hist(
         Pedido $pedido,
         ?object $anterior,
-        ?object $novo,      // era object, agora ?object
+        ?object $novo,
         int $userId,
         int $setorId,
         string $descricao
     ): array {
         return [
-            'pedido_id'           => $pedido->id,
-            'status_anterior_id'  => $anterior?->id,
-            'status_novo_id'      => $novo?->id,
-            'usuario_id'          => $userId,
-            'setor_id'            => $setorId,
+            'pedido_id' => $pedido->id,
+            'status_anterior_id' => $anterior?->id,
+            'status_novo_id' => $novo?->id,
+            'usuario_id' => $userId,
+            'setor_id' => $setorId,
             'descricao_alteracao' => $descricao,
         ];
     }

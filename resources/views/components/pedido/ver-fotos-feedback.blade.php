@@ -1,11 +1,14 @@
 @props([
-'pedido' => null,
-'fotos' => null,
+'feedback',
 ])
 
 @php
-$fotos = $fotos ?? ($pedido?->fotos ?? collect());
-$id = 'modal-fotos-' . ($pedido?->id ?? uniqid());
+$fotos = $feedback->fotos;
+@endphp
+
+@php
+$fotos = $pedido->fotos;
+$id = 'modal-fotos-' . $pedido->id;
 @endphp
 
 <style>

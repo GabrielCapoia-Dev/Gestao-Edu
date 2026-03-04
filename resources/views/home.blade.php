@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Educação Especial | SRM - Umuarama</title>
+    <title>Sistema de Gestão Escolar | SigmaEdu - Umuarama</title>
 
     <style>
         * {
@@ -287,7 +287,7 @@
         }
 
         .footer-logo-img {
-            max-width: 200px;
+            max-width: 300px;
             opacity: 0.8;
             transition: opacity 0.3s ease;
         }
@@ -383,12 +383,12 @@
     <section class="hero">
         <div class="hero-content">
             <div class="logo-container">
-                <img src="/images/brasao-umuarama.png" alt="Brasão Município de Umuarama">
+                <img src="{{ asset('images/brasao-umuarama.png') }}" alt="Brasão Município de Umuarama">
             </div>
             <h1>Gestão Secretaria de Educação</h1>
             <p>
-                Plataforma completa para gestão pedagógica, administrativa e logistica,
-                garantindo acompanhamento individualizado e excelência no atendimento especializado.
+                Plataforma completa para gestão pedagógica, administrativa, logistica e de recursos humanos,
+                garantindo acompanhamento integrado e excelência na gestão escolar.
             </p>
             <a href="/administrativo/login" class="sistema-button">Administrativo</a>
             <a href="/especial/login" class="sistema-button">Educação Especial</a>
@@ -418,7 +418,7 @@
     <section class="section">
         <div class="section-header">
             <h2>Funcionalidades Principais</h2>
-            <p>Tudo que você precisa para uma gestão pedagógica eficiente e humanizada</p>
+            <p>Tudo que você precisa para uma gestão escolar eficiente e integrada</p>
         </div>
         <div class="features-grid">
             <div class="feature-card">
@@ -432,10 +432,10 @@
 
             <div class="feature-card">
                 <div class="feature-icon">🏫</div>
-                <h3>Gestão de Atendimento SRM</h3>
+                <h3>Gestão de Atendimento</h3>
                 <p>
                     Organização eficiente de turmas, horários, profissionais e recursos
-                    das Salas de Recursos Multifuncionais.
+                    de todos os setores da educação municipal.
                 </p>
             </div>
 
@@ -481,7 +481,7 @@
     <section class="section benefits">
         <div class="section-header">
             <h2>Benefícios para sua Escola</h2>
-            <p>Transforme a gestão da educação especial com tecnologia e eficiência</p>
+            <p>Transforme a gestão da educação com tecnologia e eficiência</p>
         </div>
         <div class="features-grid">
             <div class="feature-card">
@@ -546,7 +546,7 @@
             <h2>Acesso Restrito aos Profissionais da Educação</h2>
             <p>
                 Entre com suas credenciais para acessar o sistema completo de
-                gestão da educação especial de Umuarama.
+                gestão escolar integrada de Umuarama.
             </p>
             <a href="/admin/login" class="cta-button">Fazer Login no Sistema</a>
         </div>
@@ -562,7 +562,7 @@
             <div class="footer-center">
                 <p style="font-weight: 600; color: #cbd5e1; font-size: 1.1rem;">Prefeitura Municipal de Umuarama</p>
                 <p>Secretaria Municipal de Educação</p>
-                <p style="margin-top: 20px; font-size: 0.9rem;">Sistema de Educação Especial © 2024</p>
+                <p style="margin-top: 20px; font-size: 0.9rem;">Sistema de Gestão Escolar © 2026</p>
             </div>
 
             <div class="footer-right">

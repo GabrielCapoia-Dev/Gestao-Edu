@@ -1,4 +1,5 @@
 @php
+$feedback = $record->ultimoFeedback;
 $escola = $record->escola;
 $endereco = $escola
 ? "{$escola->logradouro}, {$escola->numero} - {$escola->bairro}, {$escola->cidade}/{$escola->estado} - CEP: {$escola->cep}"
@@ -118,6 +119,8 @@ $statusCor = '#' . ltrim($record->tipoStatus?->cor ?? '#9ca3af', '#');
         </div>
 
     </div>
+
+
     <div class="flex flex-wrap gap-x-10 gap-y-2">
 
         <div class="margin-info descricao-block flex justify-between items-start gap-4">
@@ -140,6 +143,56 @@ $statusCor = '#' . ltrim($record->tipoStatus?->cor ?? '#9ca3af', '#');
         </div>
         @endcan
     </div>
+
+    @if($feedback)
+
+    <hr class="section-divider">
+
+    <div class="space-y-2">
+
+        <div class="flex flex-wrap gap-x-10 gap-y-2">
+
+            <div class="margin-info descricao-block flex justify-between items-start gap-4">
+                <div class="margin-info">
+                    <span class="label-info">Avaliação do Serviço</span>
+
+                    <div class="flex items-center gap-1">
+                        @for ($i = 1; $i <= 5; $i++)
+                            @if ($i <=$feedback->valor)
+                            <x-heroicon-s-star class="w-4 h-4 text-yellow-400" style="color: #ff8018;" />
+                            @else
+                            <x-heroicon-s-star class="w-4 h-4 text-gray-300" style="color: #6b6b6b;" />
+                            @endif
+                            @endfor
+                    </div>
+                </div>
+
+                @if($feedback && $feedback->fotos?->count())
+
+                <div class="margin-info">
+                    <span class="label-info">Fotos da Avaliação:</span>
+
+                    <x-pedido.ver-fotos
+                        :fotos="$feedback->fotos"
+                        :pedido="$record"
+                        class="badge"
+                        style="--badge-color: {{ $statusCor }}" />
+                </div>
+
+                @endif
+            </div>
+        </div>
+
+        @if($feedback->descricao)
+        <div class="descricao-block">
+            {{ $feedback->descricao }}
+        </div>
+        @endif
+
+
+
+    </div>
+    @endif
 
     <hr class="section-divider">
 

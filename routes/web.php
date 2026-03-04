@@ -23,6 +23,18 @@ Route::get('/', function () {
     return view('home');
 });
 
+Route::get('/403', function () {
+    return view('errors.403');
+});
+
+Route::get('/404', function () {
+    return view('errors.404');
+});
+
+Route::get('/419', function () {
+    return view('errors.419');
+});
+
 Route::get('/test', function () {
     return view('test');
 });

@@ -64,14 +64,39 @@ $id = 'modal-notificacoes';
                     </span>
 
                     @if($unread > 0)
+
                     <span
                         class="inline-flex items-center justify-center min-w-[26px] h-[26px] px-2
-                           text-xs font-bold text-white
-                           bg-gradient-to-r from-red-500 to-pink-500
-                           rounded-full shadow-md
-                           animate-pulse">
+                            text-xs font-bold text-white
+                            bg-gradient-to-r from-red-500 to-pink-500
+                            rounded-full shadow-md
+                            animate-pulse">
                         {{ $unread }}
                     </span>
+
+                    <button
+                        type="button"
+                        onclick="handleMarkAllRead(event)"
+                        title="Marcar todas como lidas"
+                        style="
+                            display:inline-flex;
+                            align-items:center;
+                            justify-content:center;
+                            width:28px;
+                            height:28px;
+                            border-radius:50%;
+                            border:none;
+                            cursor:pointer;
+                            background:#e5e7eb;
+                            transition:background 0.2s;
+                        "
+                        onmouseover="this.style.background='#d1d5db'"
+                        onmouseout="this.style.background='#e5e7eb'">
+
+                        <x-heroicon-o-check-badge style="width:16px;height:16px;color:#374151;" />
+
+                    </button>
+
                     @endif
 
                 </div>
@@ -212,6 +237,35 @@ $id = 'modal-notificacoes';
             button.innerHTML = originalContent;
 
         });
+    }
+
+    function handleMarkAllRead(event) {
+
+        const button = event.currentTarget;
+        const originalContent = button.innerHTML;
+
+        button.classList.add('btn-loading');
+        button.innerHTML = '<div class="spinner"></div>';
+
+        const componentRoot = button.closest('[wire\\:id]');
+        if (!componentRoot) return;
+
+        const component = Livewire.find(componentRoot.getAttribute('wire:id'));
+        if (!component) return;
+
+        component.call('markAllAsRead')
+            .then(() => {
+
+                button.classList.remove('btn-loading');
+                button.innerHTML = originalContent;
+
+            })
+            .catch(() => {
+
+                button.classList.remove('btn-loading');
+                button.innerHTML = originalContent;
+
+            });
     }
 
     setInterval(() => {
