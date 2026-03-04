@@ -25,13 +25,6 @@ class PedidoObserver
      */
     public function updated(Pedido $pedido): void
     {
-    /*
-    |--------------------------------------------------------------------------
-    | PRIORIDADE EMERGENCIAL
-    |--------------------------------------------------------------------------
-    */
-        /** @var User */
-        $currentUser = Auth::user();
 
         if (
             $pedido->wasChanged('nivel_prioridade') &&
@@ -51,15 +44,12 @@ class PedidoObserver
             }
         }
 
-        /*
-    |--------------------------------------------------------------------------
-    | STATUS REABERTO
-    |--------------------------------------------------------------------------
-    */
 
         if ($pedido->wasChanged('tipo_status_id')) {
 
+            $statusAtual = $pedido->tipoStatus;
             $statusReaberto = TipoStatus::where('nome', 'Reaberto')->first();
+
 
             if (
                 $statusReaberto &&
@@ -68,8 +58,7 @@ class PedidoObserver
 
                 $usuarios = User::permission('Visualizar Notificação: Pedido Reaberto')->get();
 
-                /** @var User */
-                $solicitante = Auth::user();
+                $solicitante = $pedido->solicitante;
 
                 if ($solicitante) {
 
@@ -84,7 +73,7 @@ class PedidoObserver
 
                 foreach ($usuarios as $user) {
 
-                    if ($user->id === $solicitante->id) {
+                    if ($solicitante && $user->id === $solicitante->id) {
                         continue;
                     }
 
@@ -96,9 +85,26 @@ class PedidoObserver
                         )
                     );
                 }
+
+                return;
+            }
+
+            $solicitante = $pedido->solicitante;
+
+
+            if ($solicitante && $statusAtual) {
+
+                $solicitante->notify(
+                    new SistemaNotification(
+                        titulo: 'Atualização no Pedido',
+                        mensagem: "O status do seu pedido {$pedido->numero_protocolo} foi atualizado para \n\"{$statusAtual->nome}\".",
+                        url: route('filament.admin.resources.pedidos.view', $pedido),
+                    )
+                );
             }
         }
     }
+
     /**
      * Handle the Pedido "deleted" event.
      */
