@@ -17,12 +17,14 @@ $prioridadeCor = match($pedido->nivel_prioridade?->value) {
 default => '#6b7280',
 };
 
+$feedback = $pedido->ultimoFeedback;
 $statusCor = '#' . ltrim($pedido->tipoStatus?->cor ?? '#9ca3af', '#');
 @endphp
 
 <html>
+
 <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <style>
         body {
             font-family: DejaVu Sans, sans-serif;
@@ -202,6 +204,7 @@ $statusCor = '#' . ltrim($pedido->tipoStatus?->cor ?? '#9ca3af', '#');
         }
     </style>
 </head>
+
 <body>
 
     <!-- HEADER FIXO -->
@@ -313,73 +316,110 @@ $statusCor = '#' . ltrim($pedido->tipoStatus?->cor ?? '#9ca3af', '#');
                     </div>
                 </td>
             </tr>
+
+            {{-- LINHA FEEDBACK --}}
+            @if($feedback)
+            <tr>
+                <td class="espaco-line" colspan="3">
+
+                    <strong>Avaliação do Serviço:</strong>
+
+                    <div class="descricao">
+
+                        <div style="margin-bottom:6px;">
+                            <strong>Nota:</strong>
+
+                            <span style="font-size:14px;">
+                                @for ($i = 1; $i <= 5; $i++)
+                                    <span style="color: {{ $i <= $feedback->valor ? '#ff8018' : '#6b6b6b' }};">★</span>
+                            @endfor
+                            </span>
+                        </div>
+
+                        @if($feedback->descricao)
+                        <div>
+                            <strong>Comentário:</strong><br>
+                            {{ $feedback->descricao }}
+                        </div>
+                        @endif
+
+                    </div>
+
+                </td>
+            </tr>
+            @endif
         </table>
 
         @php
         $fotosProblema = $pedido->arquivos()
-            ->where('tipo_arquivo', 'fotos_problema')
-            ->get();
+        ->where('tipo_arquivo', 'fotos_problema')
+        ->get();
 
         $fotosConclusao = $pedido->arquivos()
-            ->where('tipo_arquivo', 'fotos_conclusao')
-            ->get();
+        ->where('tipo_arquivo', 'fotos_conclusao')
+        ->get();
 
         $temFotos = $fotosProblema->isNotEmpty() || $fotosConclusao->isNotEmpty();
+
+
         @endphp
 
         @if($temFotos)
-            <div class="divider"></div>
+        <div class="divider"></div>
 
-            {{-- FOTOS DO PROBLEMA --}}
-            @if($fotosProblema->isNotEmpty())
-                <div class="section-block espaco-line">
-                    <div class="section-title">
-                        <strong>Fotos do Problema:</strong>
-                    </div>
+        {{-- FOTOS DO PROBLEMA --}}
+        @if($fotosProblema->isNotEmpty())
+        <div class="section-block espaco-line">
+            <div class="section-title">
+                <strong>Fotos do Problema:</strong>
+            </div>
 
-                    <table class="photo-table">
-                        @foreach($fotosProblema->chunk(3) as $grupo)
-                        <tr>
-                            @foreach($grupo as $arquivo)
-                            <td>
-                                <img src="{{ public_path('storage/' . $arquivo->caminho) }}">
-                            </td>
-                            @endforeach
-                            @for($i = $grupo->count(); $i < 3; $i++)
-                                <td></td>
-                            @endfor
-                        </tr>
-                        @endforeach
-                    </table>
-                </div>
-            @endif
+            <table class="photo-table">
+                @foreach($fotosProblema->chunk(3) as $grupo)
+                <tr>
+                    @foreach($grupo as $arquivo)
+                    <td>
+                        <img src="{{ public_path('storage/' . $arquivo->caminho) }}">
+                    </td>
+                    @endforeach
+                    @for($i = $grupo->count(); $i < 3; $i++)
+                        <td>
+                        </td>
+                        @endfor
+                </tr>
+                @endforeach
+            </table>
+        </div>
+        @endif
 
-            {{-- FOTOS DE CONCLUSÃO --}}
-            @if($fotosConclusao->isNotEmpty())
-                <div class="section-block espaco-line">
-                    <div class="section-title">
-                        <strong>Fotos da Conclusão:</strong>
-                    </div>
+        {{-- FOTOS DE CONCLUSÃO --}}
+        @if($fotosConclusao->isNotEmpty())
+        <div class="section-block espaco-line">
+            <div class="section-title">
+                <strong>Fotos da Conclusão:</strong>
+            </div>
 
-                    <table class="photo-table">
-                        @foreach($fotosConclusao->chunk(3) as $grupo)
-                        <tr>
-                            @foreach($grupo as $arquivo)
-                            <td>
-                                <img src="{{ public_path('storage/' . $arquivo->caminho) }}">
-                            </td>
-                            @endforeach
-                            @for($i = $grupo->count(); $i < 3; $i++)
-                                <td></td>
-                            @endfor
-                        </tr>
-                        @endforeach
-                    </table>
-                </div>
-            @endif
+            <table class="photo-table">
+                @foreach($fotosConclusao->chunk(3) as $grupo)
+                <tr>
+                    @foreach($grupo as $arquivo)
+                    <td>
+                        <img src="{{ public_path('storage/' . $arquivo->caminho) }}">
+                    </td>
+                    @endforeach
+                    @for($i = $grupo->count(); $i < 3; $i++)
+                        <td>
+                        </td>
+                        @endfor
+                </tr>
+                @endforeach
+            </table>
+        </div>
+        @endif
         @endif
 
     </div> {{-- fim content --}}
 
 </body>
+
 </html>
