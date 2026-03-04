@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 class CreatePedido extends CreateRecord
 {
     protected static string $resource = PedidoResource::class;
+    protected static bool $canCreateAnother = false;
 
     protected function handleRecordCreation(array $data): \App\Models\Pedido
     {
