@@ -13,7 +13,7 @@ $id = 'modal-notificacoes';
             justify-content: center;
             width: 32px;
             height: 32px;
-            background-color: #111827;
+            background-color: #081124;
             color: #f3f4f6;
             border-radius: 50%;
             transition: background-color 0.2s ease;
