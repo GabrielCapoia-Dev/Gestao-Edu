@@ -137,7 +137,8 @@ $statusCor = '#' . ltrim($record->tipoStatus?->cor ?? '#9ca3af', '#');
         <div class="margin-info">
             <span class="label-info">Fotos:</span>
             <x-pedido.ver-fotos
-                :pedido="$record"
+                :fotos="$record->fotos"
+                title="Fotos do Pedido"
                 class="badge"
                 style="--badge-color: {{ $prioridadeCor }}" />
         </div>
@@ -174,7 +175,7 @@ $statusCor = '#' . ltrim($record->tipoStatus?->cor ?? '#9ca3af', '#');
 
                     <x-pedido.ver-fotos
                         :fotos="$feedback->fotos"
-                        :pedido="$record"
+                        title="Fotos da Avaliação"
                         class="badge"
                         style="--badge-color: {{ $statusCor }}" />
                 </div>
