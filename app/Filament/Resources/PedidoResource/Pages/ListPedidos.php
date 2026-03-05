@@ -19,11 +19,23 @@ class ListPedidos extends ListRecords
 {
     protected static string $resource = PedidoResource::class;
 
+    /**
+     * Listeners para atualizar badges quando filtros são aplicados/removidos
+     */
+    #[On('filament_tables::filter.applied')]
+    #[On('filament_tables::filter.removed')]
+    public function refreshBadges(): void
+    {
+        // Força recalcular os tabs quando filtro muda
+        $this->dispatch('refreshComponent');
+    }
+
     protected function getHeaderActions(): array
     {
         return [
             Actions\CreateAction::make()
                 ->label('Novo Pedido'),
+
 
             Actions\Action::make('feedbacks')
                 ->label('Feedbacks')
@@ -54,7 +66,9 @@ class ListPedidos extends ListRecords
         if (! $user?->hasPermissionTo('Visualizar Pedidos por Status')) {
             return [];
         }
-
+        
+        $tableQuery = $this->getTableQuery();
+        
         // =========================
         // TAB TODOS
         // =========================
@@ -62,8 +76,7 @@ class ListPedidos extends ListRecords
             ->modifyQueryUsing(function ($query) {
                 $query->reorder()->orderByDesc('updated_at');
             })
-            // ⭐ Badge dinâmico - usa a query filtrada do Filament
-            ->badge(fn() => $this->getFilteredTableQuery()->count());
+            ->badge(fn() => (clone $tableQuery)->count());
 
         // =========================
         // TABS POR STATUS
@@ -86,6 +99,24 @@ class ListPedidos extends ListRecords
                 continue;
             }
 
+            // 🔴 Contar com base na query com FILTROS
+            $query = (clone $tableQuery)
+                ->where('tipo_status_id', $status->id);
+
+            if (
+                $status->nome === 'Em Aberto' &&
+                filled($user?->setor_id)
+            ) {
+                $query->where('setor_id', $user->setor_id);
+            }
+
+            $count = $query->count();
+
+            // 🔴 PULAR TABS COM ZERO
+            if ($count === 0) {
+                continue;
+            }
+
             $hex = substr(ltrim($status->cor, '#'), 0, 6);
 
             $tabs[$status->id] = Tab::make($status->nome)
@@ -101,15 +132,9 @@ class ListPedidos extends ListRecords
 
                     return $query;
                 })
-                // ⭐ Badge dinâmico que sempre recalcula com filtros
-                ->badge(fn() => (clone $this->getFilteredTableQuery())
-                    ->where('tipo_status_id', $status->id)
-                    ->when(
-                        $status->nome === 'Em Aberto' && filled($user?->setor_id),
-                        fn($q) => $q->where('setor_id', $user->setor_id)
-                    )
-                    ->count()
-                )
+
+                ->badge($count)
+
                 ->extraAttributes([
                     'style' => "
                 --tab-color: #{$hex};
