@@ -13,10 +13,22 @@ use Illuminate\Support\Facades\Auth;
 use App\Services\PedidoService;
 use Illuminate\Database\Eloquent\Builder;
 use App\Models\User;
+use Livewire\Attributes\On;
 
 class ListPedidos extends ListRecords
 {
     protected static string $resource = PedidoResource::class;
+
+    /**
+     * Listeners para atualizar badges quando filtros são aplicados/removidos
+     */
+    #[On('filament_tables::filter.applied')]
+    #[On('filament_tables::filter.removed')]
+    public function refreshBadges(): void
+    {
+        // Força recalcular os tabs quando filtro muda
+        $this->dispatch('refreshComponent');
+    }
 
     protected function getHeaderActions(): array
     {
@@ -59,9 +71,9 @@ class ListPedidos extends ListRecords
 
         $service = app(PedidoService::class);
 
-        // Query base respeitando permissão
-        $baseQuery = $service->queryTabela($user);
-
+        // ⭐ IMPORTANTE: Pegar query COM FILTROS APLICADOS
+        $tableQuery = $this->getTableQuery();
+        
         // =========================
         // TAB TODOS
         // =========================
@@ -69,7 +81,7 @@ class ListPedidos extends ListRecords
             ->modifyQueryUsing(function ($query) {
                 $query->reorder()->orderByDesc('updated_at');
             })
-            ->badge(fn() => $service->queryTabTodos($user)->count());
+            ->badge(fn() => (clone $tableQuery)->count());
 
 
         // =========================
@@ -94,6 +106,24 @@ class ListPedidos extends ListRecords
                 continue;
             }
 
+            // 🔴 Contar com base na query com FILTROS
+            $query = (clone $tableQuery)
+                ->where('tipo_status_id', $status->id);
+
+            if (
+                $status->nome === 'Em Aberto' &&
+                filled($user?->setor_id)
+            ) {
+                $query->where('setor_id', $user->setor_id);
+            }
+
+            $count = $query->count();
+
+            // 🔴 PULAR TABS COM ZERO
+            if ($count === 0) {
+                continue;
+            }
+
             $hex = substr(ltrim($status->cor, '#'), 0, 6);
 
             $tabs[$status->id] = Tab::make($status->nome)
@@ -113,20 +143,7 @@ class ListPedidos extends ListRecords
                     return $query;
                 })
 
-                ->badge(function () use ($baseQuery, $status, $user) {
-
-                    $query = (clone $baseQuery)
-                        ->where('tipo_status_id', $status->id);
-
-                    if (
-                        $status->nome === 'Em Aberto' &&
-                        filled($user?->setor_id)
-                    ) {
-                        $query->where('setor_id', $user->setor_id);
-                    }
-
-                    return $query->count();
-                })
+                ->badge($count)
 
                 ->extraAttributes([
                     'style' => "
