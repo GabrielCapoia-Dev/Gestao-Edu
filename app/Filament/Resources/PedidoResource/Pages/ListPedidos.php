@@ -19,23 +19,11 @@ class ListPedidos extends ListRecords
 {
     protected static string $resource = PedidoResource::class;
 
-    /**
-     * Listeners para atualizar badges quando filtros são aplicados/removidos
-     */
-    #[On('filament_tables::filter.applied')]
-    #[On('filament_tables::filter.removed')]
-    public function refreshBadges(): void
-    {
-        // Força recalcular os tabs quando filtro muda
-        $this->dispatch('refreshComponent');
-    }
-
     protected function getHeaderActions(): array
     {
         return [
             Actions\CreateAction::make()
                 ->label('Novo Pedido'),
-
 
             Actions\Action::make('feedbacks')
                 ->label('Feedbacks')
@@ -58,22 +46,15 @@ class ListPedidos extends ListRecords
 
     public function getTabs(): array
     {
-
         $tabs = [];
 
         /** @var \App\Models\User */
         $user = Auth::user();
 
-        // 🚫 Se não tiver permissão → sem tabs
         if (! $user?->hasPermissionTo('Visualizar Pedidos por Status')) {
             return [];
         }
 
-        $service = app(PedidoService::class);
-
-        // ⭐ IMPORTANTE: Pegar query COM FILTROS APLICADOS
-        $tableQuery = $this->getTableQuery();
-        
         // =========================
         // TAB TODOS
         // =========================
@@ -81,8 +62,8 @@ class ListPedidos extends ListRecords
             ->modifyQueryUsing(function ($query) {
                 $query->reorder()->orderByDesc('updated_at');
             })
-            ->badge(fn() => (clone $tableQuery)->count());
-
+            // ⭐ Badge dinâmico - usa a query filtrada do Filament
+            ->badge(fn() => $this->getFilteredTableQuery()->count());
 
         // =========================
         // TABS POR STATUS
@@ -98,7 +79,6 @@ class ListPedidos extends ListRecords
 
         foreach ($statuses as $status) {
 
-            // 🔵 Se usuário for Obras → ocultar tab Em Aberto
             if (
                 $user?->setor?->nome === 'Obras' &&
                 $status->nome === 'Em Aberto'
@@ -106,33 +86,12 @@ class ListPedidos extends ListRecords
                 continue;
             }
 
-            // 🔴 Contar com base na query com FILTROS
-            $query = (clone $tableQuery)
-                ->where('tipo_status_id', $status->id);
-
-            if (
-                $status->nome === 'Em Aberto' &&
-                filled($user?->setor_id)
-            ) {
-                $query->where('setor_id', $user->setor_id);
-            }
-
-            $count = $query->count();
-
-            // 🔴 PULAR TABS COM ZERO
-            if ($count === 0) {
-                continue;
-            }
-
             $hex = substr(ltrim($status->cor, '#'), 0, 6);
 
             $tabs[$status->id] = Tab::make($status->nome)
-
                 ->modifyQueryUsing(function ($query) use ($status, $user) {
-
                     $query->where('tipo_status_id', $status->id);
 
-                    // Em Aberto continua filtrando por setor
                     if (
                         $status->nome === 'Em Aberto' &&
                         filled($user?->setor_id)
@@ -142,9 +101,15 @@ class ListPedidos extends ListRecords
 
                     return $query;
                 })
-
-                ->badge($count)
-
+                // ⭐ Badge dinâmico que sempre recalcula com filtros
+                ->badge(fn() => (clone $this->getFilteredTableQuery())
+                    ->where('tipo_status_id', $status->id)
+                    ->when(
+                        $status->nome === 'Em Aberto' && filled($user?->setor_id),
+                        fn($q) => $q->where('setor_id', $user->setor_id)
+                    )
+                    ->count()
+                )
                 ->extraAttributes([
                     'style' => "
                 --tab-color: #{$hex};
@@ -161,13 +126,11 @@ class ListPedidos extends ListRecords
     {
         $user = Auth::user();
 
-        // Se usuário for Obras → default = Encaminhado ao Setor
         if ($user?->setor?->nome === 'Obras') {
             return TipoStatus::where('nome', 'Encaminhado ao Setor')
                 ->value('id');
         }
 
-        // Caso contrário → Em Aberto
         return TipoStatus::where('nome', 'Em Aberto')
             ->value('id');
     }
@@ -221,7 +184,6 @@ class ListPedidos extends ListRecords
                 . '">' . e($status->nome) . '</span>'
         );
     }
-
 
     protected function getTableQuery(): Builder
     {
