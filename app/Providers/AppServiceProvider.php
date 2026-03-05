@@ -43,6 +43,8 @@ use App\Models\PedidoArquivo;
 use App\Policies\PedidoArquivoPolicy;
 use Illuminate\Support\Facades\Blade;
 use App\Observers\PedidoObserver;
+use Filament\View\PanelsRenderHook;
+use Filament\Support\Facades\FilamentView;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -70,9 +72,9 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(TipoManutencao::class, TipoManutencaoPolicy::class);
         Gate::policy(Pedido::class, PedidoPolicy::class);
         Gate::policy(PedidoArquivo::class, PedidoArquivoPolicy::class);
-        
+
         Pedido::observe(PedidoObserver::class);
-        
+
         Gate::define('admin-only', function ($user) {
             return $user->hasRole('Admin');
         });
@@ -88,6 +90,11 @@ class AppServiceProvider extends ServiceProvider
 
             Css::make('professores-modal', asset('css/professores-modal.css')),
         ]);
+
+        FilamentView::registerRenderHook(
+            PanelsRenderHook::BODY_END,
+            fn() => view('components.open-url-listener'),
+        );
 
         Event::listen(ServingFilament::class, function () {
 

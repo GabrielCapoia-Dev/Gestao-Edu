@@ -18,6 +18,8 @@ use App\Services\Relatorios\FeedbackPedidoRelatorioService;
 use App\Services\Relatorios\FeedbackGraficoService;
 use App\Services\Relatorios\ChartRenderService;
 use Illuminate\Support\Facades\Auth;
+use \App\Http\Controllers\PedidoRelatorioGeralController;
+
 
 Route::get('/', function () {
     return view('home');
@@ -53,6 +55,9 @@ Route::post('/test/notify', function () {
     return back()->with('success', 'Notificação enviada');
 })->name('test.notify');
 
+Route::get('/pedidos/relatorio-geral', [PedidoRelatorioGeralController::class, 'exportar'])
+    ->name('pedidos.relatorio-geral');
+
 
 Route::get('/oauth/redirect/google', [GoogleAuthController::class, 'redirect'])->name('google.redirect');
 Route::get('/oauth/callback/google', [GoogleAuthController::class, 'callback'])->name('google.callback');
@@ -78,17 +83,29 @@ Route::prefix('admin')
         Route::get('/relatorios/bulk-ficha', [RelatorioController::class, 'bulkFicha'])
             ->name('relatorios.bulkFicha');
 
+
+
+
+
+        Route::get('/pedidos/{pedido}/pdf', function (Pedido $pedido, PedidoRelatorioService $service) {
+            return $service->gerar($pedido);
+        })->name('pedidos.pdf');
+
         Route::get(
             '/pedidos/arquivos/{pedidoArquivo}/download',
             [\App\Http\Controllers\PedidoArquivoController::class, 'download']
         )
             ->name('pedidos.arquivos.download')
             ->middleware('can:download,pedidoArquivo');
-
-        Route::get('/pedidos/{pedido}/pdf', function (Pedido $pedido, PedidoRelatorioService $service) {
-            return $service->gerar($pedido);
-        })->name('pedidos.pdf');
     });
+
+
+
+
+
+
+
+
 
 Route::post('/notifications/{id}/read', function ($id) {
     $user = User::find(1);

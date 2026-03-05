@@ -36,7 +36,6 @@ class ListPedidos extends ListRecords
             Actions\CreateAction::make()
                 ->label('Novo Pedido'),
 
-
             Actions\Action::make('feedbacks')
                 ->label('Feedbacks')
                 ->icon('heroicon-o-star')
@@ -66,9 +65,9 @@ class ListPedidos extends ListRecords
         if (! $user?->hasPermissionTo('Visualizar Pedidos por Status')) {
             return [];
         }
-        
+
         $tableQuery = $this->getTableQuery();
-        
+
         // =========================
         // TAB TODOS
         // =========================

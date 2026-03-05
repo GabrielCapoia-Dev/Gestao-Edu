@@ -507,8 +507,104 @@ class PedidoService
             ->columns($this->colunasTabela($user))
             ->filters($this->filtrosTabela(), layout: FiltersLayout::AboveContent)
             ->actions($this->acoesTabela($user))
-            ->bulkActions($this->acoesEmMassa($user));
+            ->bulkActions($this->acoesEmMassa($user))
+            ->headerActions($this->acoesCabecalhoTabela($user));
     }
+
+    public function acoesCabecalhoTabela(?User $user): array
+    {
+        return [
+            Tables\Actions\Action::make('relatorio_geral')
+                ->label('Exportar Relatório')
+                ->icon('heroicon-o-document-chart-bar')
+                ->color(fn() => Color::hex('#00aeff'))
+
+                ->form([
+                    Forms\Components\Grid::make()
+                        ->columns(2)
+                        ->schema([
+
+                            Forms\Components\DatePicker::make('data_inicio')
+                                ->label('Data inicial')
+                                ->displayFormat('d/m/Y')
+                                ->native(false)
+                                ->maxDate(fn(Forms\Get $get) => $get('data_fim') ?: now()),
+
+                            Forms\Components\DatePicker::make('data_fim')
+                                ->label('Data final')
+                                ->displayFormat('d/m/Y')
+                                ->native(false)
+                                ->minDate(fn(Forms\Get $get) => $get('data_inicio'))
+                                ->maxDate(now()),
+
+                            Forms\Components\Select::make('escola_id')
+                                ->label('Escola')
+                                ->options(
+                                    \App\Models\Escola::query()
+                                        ->where('ativo', true)
+                                        ->orderBy('nome')
+                                        ->pluck('nome', 'id')
+                                )
+                                ->searchable()
+                                ->placeholder('Todas as escolas'),
+
+                            Forms\Components\Select::make('tipo_manutencao_id')
+                                ->label('Tipo de Manutenção')
+                                ->options(
+                                    TipoManutencao::query()
+                                        ->where('ativo', true)
+                                        ->orderBy('nome')
+                                        ->pluck('nome', 'id')
+                                )
+                                ->searchable()
+                                ->placeholder('Todos os tipos'),
+
+                            Forms\Components\Select::make('tipo_status_id')
+                                ->label('Status')
+                                ->options(
+                                    TipoStatus::query()
+                                        ->where('ativo', true)
+                                        ->orderBy('nome')
+                                        ->pluck('nome', 'id')
+                                )
+                                ->searchable()
+                                ->placeholder('Todos os status'),
+
+                            Forms\Components\Select::make('nivel_prioridade')
+                                ->label('Prioridade')
+                                ->options(
+                                    collect(NivelEmergenciaPedido::cases())
+                                        ->mapWithKeys(fn($case) => [$case->value => $case->label()])
+                                        ->toArray()
+                                )
+                                ->placeholder('Todas as prioridades'),
+                        ]),
+                ])
+
+                ->modalHeading('Exportar Relatório de Pedidos')
+                ->modalDescription('Configure os filtros e clique em Exportar para gerar o PDF.')
+                ->modalSubmitActionLabel('Exportar PDF')
+                ->modalIcon('heroicon-o-document-chart-bar')
+                ->modalWidth('2xl')
+
+                ->action(function (array $data) {
+
+                    $filtros = array_filter($data, fn($v) => $v !== null && $v !== '');
+
+                    foreach (['data_inicio', 'data_fim'] as $campo) {
+                        if (!empty($filtros[$campo])) {
+                            $filtros[$campo] = \Carbon\Carbon::parse($filtros[$campo])->format('Y-m-d');
+                        }
+                    }
+
+                    $url = route('pedidos.relatorio-geral', $filtros);
+
+                    return redirect()->away($url);
+                }),
+        ];
+    }
+
+
 
     public function queryTabela(?User $user): Builder
     {
