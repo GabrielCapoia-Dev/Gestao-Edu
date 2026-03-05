@@ -75,8 +75,14 @@ class ListPedidos extends ListRecords
             ->modifyQueryUsing(function ($query) {
                 $query->reorder()->orderByDesc('updated_at');
             })
-            ->badge(fn() => (clone $tableQuery)->count());
-
+            ->badge(fn() => (clone $tableQuery)->count())
+            ->extraAttributes([
+                'style' => "
+            --tab-color: #6b7280;
+            background-color: #e5e7eb;
+            border: 1px solid #d1d5db;
+        ",
+            ]);
         // =========================
         // TABS POR STATUS
         // =========================
@@ -84,10 +90,25 @@ class ListPedidos extends ListRecords
             ? 'Encaminhado ao Setor'
             : 'Em Aberto';
 
+        $ordemStatus = [
+            'Em Aberto',
+            'Reaberto',
+            'Em Análise',
+            'Encaminhado ao Setor',
+            'Enviado para Empresa',
+            'Em Andamento',
+            'Em Manutenção',
+            'Cancelado',
+            'Concluído',
+        ];
+
         $statuses = TipoStatus::where('ativo', true)
-            ->orderByRaw("nome = ? DESC", [$prioridade])
-            ->orderBy('nome')
-            ->get();
+            ->get()
+            ->sortBy(
+                fn($s) => array_search($s->nome, $ordemStatus) !== false
+                    ? array_search($s->nome, $ordemStatus)
+                    : 999
+            );
 
         foreach ($statuses as $status) {
 
@@ -151,14 +172,30 @@ class ListPedidos extends ListRecords
         $user = Auth::user();
 
         if ($user?->setor?->nome === 'Obras') {
-            return TipoStatus::where('nome', 'Encaminhado ao Setor')
-                ->value('id');
+            $id = TipoStatus::where('nome', 'Encaminhado ao Setor')->value('id');
+
+            $tem = Pedido::where('ativo', true)
+                ->where('tipo_status_id', $id)
+                ->exists();
+
+            return $tem ? (string) $id : 'todos';
         }
 
-        return TipoStatus::where('nome', 'Em Aberto')
-            ->value('id');
-    }
+        $id = TipoStatus::where('nome', 'Em Aberto')->value('id');
 
+        if (!$id) {
+            return 'todos';
+        }
+
+        $query = Pedido::where('ativo', true)
+            ->where('tipo_status_id', $id);
+
+        if (filled($user?->setor_id)) {
+            $query->where('setor_id', $user->setor_id);
+        }
+
+        return $query->exists() ? (string) $id : 'todos';
+    }
     public function getTitle(): string|HtmlString
     {
         /** @var \App\Models\User */
