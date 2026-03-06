@@ -216,15 +216,14 @@ class DatabaseSeeder extends Seeder
             Permission::firstOrCreate(['name' => $permissionName]);
         }
 
-        // Criação da rule Admin
-        $adminRole = Role::firstOrCreate(['name' => 'Admin']);
-        $secretarioRole = Role::firstOrCreate(['name' => 'Secretário']);
+        // Criação das roles
+        $adminRole          = Role::firstOrCreate(['name' => 'Admin']);
+        $secretarioRole     = Role::firstOrCreate(['name' => 'Secretário']);
         $administrativoRole = Role::firstOrCreate(['name' => 'Administrativo']);
 
         // Atribui todas as permissões à role Admin
         $adminRole->syncPermissions($permissionsList);
         $secretarioRole->syncPermissions($permissionsSecretario);
-
 
         $adminUser = User::firstOrCreate(
             ['email' => 'admin@admin.com'],
@@ -233,7 +232,7 @@ class DatabaseSeeder extends Seeder
                 'name' => 'Admin',
                 'password' => Hash::make($password),
                 'email_verified_at' => now(),
-                'email_approved' => true
+                'email_approved' => true,
             ]
         );
         $secretarioUser = User::firstOrCreate(
@@ -243,13 +242,12 @@ class DatabaseSeeder extends Seeder
                 'name' => 'Secretário',
                 'password' => Hash::make($password),
                 'email_verified_at' => now(),
-                'email_approved' => true
+                'email_approved' => true,
             ]
         );
 
-        $adminUser->assignRole($adminRole);
-        $secretarioUser->assignRole($secretarioRole);
-
+        $adminUser->syncRoles([$adminRole]);
+        $secretarioUser->syncRoles([$secretarioRole]);
 
         // Executa command que cria permissões adicionais e vincula ao Admin
         Artisan::call('permissoes:criar');
@@ -276,41 +274,30 @@ class DatabaseSeeder extends Seeder
                 'name' => 'Administrativo',
                 'password' => Hash::make($password),
                 'email_verified_at' => now(),
-                'email_approved' => true
+                'email_approved' => true,
             ]
         );
 
-        $administrativoUser->assignRole($administrativoRole);
+        $administrativoUser->syncRoles([$administrativoRole]);
 
         /**
-         * Criar domínios de email
+         * Domínios de email — usando firstOrCreate para evitar duplicata
          */
-
-        $emailPermissionsList = [
-            [
-                'gmail.com',
-                'edu.umuarama.pr.gov.br',
-                'umuarama.pr.gov.br',
-            ],
-            [
-                'Geral',
-                'Educação',
-                'Administrativo'
-            ]
+        $dominios = [
+            ['dominio' => 'gmail.com',                  'setor' => 'Geral'],
+            ['dominio' => 'edu.umuarama.pr.gov.br',     'setor' => 'Educação'],
+            ['dominio' => 'umuarama.pr.gov.br',         'setor' => 'Administrativo'],
         ];
 
-        foreach ($emailPermissionsList[0] as $index => $dominio) {
-            $setor = $emailPermissionsList[1][$index] ?? 'Geral';
-
-            DominioEmail::create([
-                'dominio_email' => $dominio,
-                'setor' => $setor,
-                'status' => 1,
-            ]);
+        foreach ($dominios as $item) {
+            DominioEmail::firstOrCreate(
+                ['dominio_email' => $item['dominio']],
+                ['setor' => $item['setor'], 'status' => 1]
+            );
         }
 
         /**
-         * Criar séries
+         * Séries
          */
         $seriesList = [
             'BERÇÁRIO',
@@ -331,7 +318,6 @@ class DatabaseSeeder extends Seeder
         foreach ($seriesList as $seriesName) {
             $codigo = $this->gerarCodigoSerie($seriesName);
 
-            // se já existe pelo nome, atualiza o código; senão, cria
             Serie::updateOrCreate(
                 ['nome' => $seriesName],
                 ['codigo' => $codigo]
@@ -339,7 +325,7 @@ class DatabaseSeeder extends Seeder
         }
 
         /**
-         * Criar séries
+         * Laudos
          */
         $laudoList = [
             'Deficiência Intelectual',
@@ -361,19 +347,16 @@ class DatabaseSeeder extends Seeder
             'Transtornos Motores do Neurodesenvolvimento (dispraxia, coordenação motora, etc.)',
             'Atraso Global do Desenvolvimento',
             'Atraso no Desenvolvimento Neuropsicomotor',
-            'Transtornos Mentais e do Comportamento com impacto funcional significativo'
+            'Transtornos Mentais e do Comportamento com impacto funcional significativo',
         ];
 
         foreach ($laudoList as $laudo) {
-
-            Laudo::updateOrCreate(
-                ['nome' => $laudo],
-            );
+            Laudo::firstOrCreate(['nome' => $laudo]);
         }
 
         $this->call([
             EscolaSeeder::class,
-            UserPorEscolaSeeder::class,
+            SecretarioUnidadesSeeder::class,
             // AlunoPlanilhaSeeder::class,
             // TurmaSeeder::class,
             // ProfessorSeeder::class,
@@ -382,24 +365,21 @@ class DatabaseSeeder extends Seeder
             SetorSeeder::class,
             TipoStatusSeeder::class,
             TipoManutencaoSeeder::class,
-            EmpresaContratadaSeeder::class,
-            PedidoSeeder::class,
+            // EmpresaContratadaSeeder::class,
+            // PedidoSeeder::class,
         ]);
     }
 
     private function gerarCodigoSerie(string $nome): ?string
     {
-        // Infantil 4/5 => SI4 / SI5
         if (preg_match('/^Infantil\s*(4|5)$/iu', $nome, $m)) {
             return 'SI' . $m[1];
         }
 
-        // 1º ao 5º Ano => S1A ... S5A
         if (preg_match('/^([1-5])º\s*Ano$/iu', $nome, $m)) {
             return 'S' . $m[1] . 'A';
         }
 
-        // fallback se aparecer algo fora do padrão
         return null;
     }
 }

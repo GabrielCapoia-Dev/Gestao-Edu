@@ -39,7 +39,7 @@ class EscolaSeeder extends Seeder
             'CMEI - Cora Coralina',
             'CMEI - Graciliano Ramos',
             'CMEI - Helena Kolody',
-            'CMEI - Ignácio Urbainski',
+            'CMEI - Professor Ignácio Urbainski',
             'CMEI - Jardim Birigui',
             'CMEI - Madre Paulina',
             'CMEI - Maria Arlete Alves dos Santos',
