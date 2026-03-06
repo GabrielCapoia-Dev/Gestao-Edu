@@ -13,8 +13,8 @@ services:
       - "${DOCKER_APP_PORT}:${APP_PORT}"
     volumes:
       - .:/var/www
-      - vendor:/var/www/vendor
-      - node_modules:/var/www/node_modules
+      - ./vendor:/var/www/vendor
+      - ./node_modules:/var/www/node_modules
     depends_on:
       db:
         condition: service_healthy
@@ -46,7 +46,7 @@ services:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${DB_DATABASE}
     volumes:
-      - db_data:/var/lib/mysql
+      - ./db_data:/var/lib/mysql
     ports:
       - "${DOCKER_DB_PORT}:3306"
     healthcheck:
@@ -74,19 +74,7 @@ services:
     networks:
       - laravel_gestao-edu
 
-  redis:
-    image: redis:7
-    container_name: laravel-redis-gestao-edu
-    ports:
-      - "${DOCKER_REDIS_PORT}:6379"
-    networks:
-      - laravel_gestao-edu
-
-volumes:
-  db_data:
-  vendor:
-  node_modules:
-
+volumes: {}
 
 networks:
   laravel_gestao-edu:
