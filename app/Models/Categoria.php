@@ -15,4 +15,9 @@ class Categoria extends Model
         'descricao',
     ];
 
+    public function items()
+    {
+        return $this->hasMany(Item::class);
+    }
+
 }
