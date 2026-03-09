@@ -177,6 +177,7 @@ body {
     <a href="#fluxo">Fluxo</a>
     <a href="#romaneio">Romaneio</a>
     <a href="#saldo">Saldo</a>
+    <a class="nav-brand" style="color: var(--accent2)" href="/exemplo">Exemplo</a>
   </div>
 </nav>
 

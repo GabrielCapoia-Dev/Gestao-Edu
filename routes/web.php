@@ -24,6 +24,9 @@ use \App\Http\Controllers\PedidoRelatorioGeralController;
 Route::get('/', function () {
     return view('home');
 });
+Route::get('/exemplo', function () {
+    return view('exemplo');
+});
 
 Route::get('/escopo', function () {
     return view('escopo-merenda');
