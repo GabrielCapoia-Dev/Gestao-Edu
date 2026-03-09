@@ -25,6 +25,10 @@ Route::get('/', function () {
     return view('home');
 });
 
+Route::get('/escopo', function () {
+    return view('escopo-merenda');
+});
+
 Route::get('/403', function () {
     return view('errors.403');
 });
