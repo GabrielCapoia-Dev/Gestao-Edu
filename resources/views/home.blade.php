@@ -1,772 +1,980 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestão Edu | Sistema de Gestão Escolar — Umuarama</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700;800&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
-    <style>
-        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestão Edu | Sistema de Gestão Escolar — Umuarama</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --ink:#04122B;
+  --ink2:#1A2E4A;
+  --mid:#3B5475;
+  --muted:#7393B3;
+  --pale:#B8CDE4;
+  --blue:#074F9B;
+  --blue2:#1162BB;
+  --sky:#3A8EE6;
+  --ice:#EBF3FF;
+  --ice2:#F4F8FF;
+  --gold:#F5A623;
+  --gold2:#FFB940;
+  --green:#10B981;
+  --red:#EF4444;
+  --white:#fff;
+  --border:rgba(7,79,155,0.12);
+}
+html{scroll-behavior:smooth;}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:#fff;color:var(--ink);overflow-x:hidden;}
+a{text-decoration:none;}
 
-        :root {
-            --blue-deep: #033A7A;
-            --blue-mid: #074F9B;
-            --blue-light: #1A6FD1;
-            --blue-pale: #EAF3FF;
-            --accent: #F5A623;
-            --text-dark: #0B1728;
-            --text-mid: #3A5068;
-            --text-light: #7A9BB5;
-            --white: #FFFFFF;
-            --surface: #F7FAFE;
-            --border: #D6E6F7;
-        }
+::-webkit-scrollbar{width:6px;}
+::-webkit-scrollbar-track{background:#f0f4f8;}
+::-webkit-scrollbar-thumb{background:var(--blue);border-radius:3px;}
 
-        html { scroll-behavior: smooth; }
+#cursor-glow{
+  position:fixed;width:400px;height:400px;
+  background:radial-gradient(circle,rgba(7,79,155,0.05) 0%,transparent 70%);
+  border-radius:50%;pointer-events:none;
+  transform:translate(-50%,-50%);z-index:0;mix-blend-mode:multiply;
+  transition:left 0.08s linear,top 0.08s linear;
+}
 
-        body {
-            font-family: 'DM Sans', sans-serif;
-            background: var(--white);
-            color: var(--text-dark);
-            overflow-x: hidden;
-        }
+/* NAV */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:999;
+  height:68px;padding:0 48px;
+  display:flex;align-items:center;justify-content:space-between;
+  background:rgba(4,18,43,0.97);
+  backdrop-filter:blur(16px);
+  border-bottom:1px solid rgba(255,255,255,0.06);
+  box-shadow:0 1px 0 rgba(255,255,255,0.04);
+}
+.nav-left{display:flex;align-items:center;gap:14px;}
+.nav-left img{height:60px;}
+.nav-wordmark{font-weight:800;font-size:1.1rem;color:#fff;letter-spacing:-0.01em;}
+.nav-wordmark span{color:var(--gold);}
+.nav-links{display:flex;gap:32px;list-style:none;}
+.nav-links a{color:rgba(255,255,255,0.6);font-size:0.88rem;font-weight:500;transition:color 0.2s;}
+.nav-links a:hover{color:#fff;}
+.nav-right{display:flex;gap:12px;align-items:center;}
+.btn-nav-ghost{color:rgba(255,255,255,0.75);font-size:0.88rem;font-weight:600;padding:8px 18px;border:1.5px solid rgba(255,255,255,0.2);border-radius:8px;transition:all 0.2s;}
+.btn-nav-ghost:hover{border-color:rgba(255,255,255,0.5);color:#fff;}
+.btn-nav-solid{background:var(--gold);color:var(--ink);padding:9px 22px;border-radius:8px;font-weight:700;font-size:0.88rem;transition:opacity 0.2s,transform 0.2s;box-shadow:0 2px 12px rgba(245,166,35,0.35);}
+.btn-nav-solid:hover{opacity:0.9;transform:translateY(-1px);}
 
-        h1, h2, h3, h4 { font-family: 'Sora', sans-serif; }
+/* HERO */
+.hero{
+  min-height:100vh;position:relative;
+  background:var(--ink);
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;padding:120px 24px 80px;
+}
+.hero-bg{
+  position:absolute;inset:0;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 0%,rgba(7,79,155,0.45) 0%,transparent 60%),
+    radial-gradient(ellipse 50% 50% at 80% 80%,rgba(17,98,187,0.2) 0%,transparent 60%),
+    radial-gradient(ellipse 40% 40% at 10% 90%,rgba(58,142,230,0.12) 0%,transparent 50%);
+}
+.hero-grid{
+  position:absolute;inset:0;
+  background-image:linear-gradient(rgba(255,255,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.03) 1px,transparent 1px);
+  background-size:72px 72px;
+  mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,black 40%,transparent 100%);
+}
+.orb{position:absolute;border-radius:50%;filter:blur(80px);animation:orbFloat 8s ease-in-out infinite;}
+.orb1{width:500px;height:500px;background:rgba(7,79,155,0.3);top:-100px;left:-100px;}
+.orb2{width:400px;height:400px;background:rgba(58,142,230,0.2);bottom:-80px;right:-80px;animation-delay:-4s;}
+.orb3{width:300px;height:300px;background:rgba(245,166,35,0.07);top:40%;left:60%;animation-delay:-2s;}
+@keyframes orbFloat{0%,100%{transform:translate(0,0);}33%{transform:translate(30px,-20px);}66%{transform:translate(-20px,30px);}}
 
-        /* ── NAV ── */
-        nav {
-            position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-            background: rgba(3, 58, 122, 0.97);
-            backdrop-filter: blur(12px);
-            border-bottom: 1px solid rgba(255,255,255,0.08);
-            padding: 0 40px;
-            height: 64px;
-            display: flex; align-items: center; justify-content: space-between;
-        }
-        .nav-brand { display: flex; align-items: center; gap: 12px; }
-        .nav-brand img { height: 36px; opacity: 0.95; }
-        .nav-title { font-family: 'Sora', sans-serif; color: #fff; font-size: 1rem; font-weight: 600; letter-spacing: 0.02em; }
-        .nav-links { display: flex; gap: 32px; list-style: none; }
-        .nav-links a { color: rgba(255,255,255,0.75); text-decoration: none; font-size: 0.9rem; transition: color 0.2s; }
-        .nav-links a:hover { color: #fff; }
-        .nav-cta {
-            background: var(--accent); color: var(--blue-deep);
-            padding: 8px 22px; border-radius: 6px;
-            font-family: 'Sora', sans-serif; font-weight: 700; font-size: 0.88rem;
-            text-decoration: none; transition: opacity 0.2s;
-        }
-        .nav-cta:hover { opacity: 0.88; }
+.particle{position:absolute;border-radius:50%;animation:particleDrift linear infinite;}
+@keyframes particleDrift{0%{opacity:0;transform:translateY(0) translateX(0);}10%{opacity:1;}90%{opacity:1;}100%{opacity:0;transform:translateY(-100vh) translateX(var(--dx,20px));}}
 
-        /* ── HERO ── */
-        .hero {
-            min-height: 100vh;
-            background: linear-gradient(160deg, var(--blue-deep) 0%, var(--blue-mid) 55%, #0d6abf 100%);
-            display: flex; align-items: center; justify-content: center;
-            text-align: center;
-            padding: 120px 24px 80px;
-            position: relative; overflow: hidden;
-        }
-        .hero-grid {
-            position: absolute; inset: 0;
-            background-image:
-                linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
-            background-size: 60px 60px;
-        }
-        .hero-glow {
-            position: absolute;
-            width: 700px; height: 700px;
-            background: radial-gradient(circle, rgba(26,111,209,0.35) 0%, transparent 70%);
-            top: 50%; left: 50%; transform: translate(-50%, -55%);
-            pointer-events: none;
-        }
-        .hero-content { position: relative; z-index: 2; max-width: 860px; }
-        .hero-badge {
-            display: inline-flex; align-items: center; gap: 8px;
-            background: rgba(255,255,255,0.1);
-            border: 1px solid rgba(255,255,255,0.2);
-            padding: 6px 16px; border-radius: 100px;
-            color: rgba(255,255,255,0.9); font-size: 0.82rem; font-family: 'Sora', sans-serif;
-            margin-bottom: 28px;
-            animation: fadeUp 0.7s ease both;
-        }
-        .hero-badge span { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; }
-        .hero h1 {
-            font-size: clamp(2.4rem, 5vw, 4rem);
-            font-weight: 800; color: #fff;
-            line-height: 1.15; margin-bottom: 24px;
-            animation: fadeUp 0.7s ease 0.1s both;
-        }
-        .hero h1 em { font-style: normal; color: var(--accent); }
-        .hero p {
-            font-size: clamp(1rem, 2vw, 1.2rem);
-            color: rgba(255,255,255,0.8); line-height: 1.7;
-            max-width: 640px; margin: 0 auto 40px;
-            animation: fadeUp 0.7s ease 0.2s both;
-        }
-        .hero-actions {
-            display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;
-            animation: fadeUp 0.7s ease 0.3s both;
-        }
-        .btn-primary {
-            background: var(--accent); color: var(--blue-deep);
-            padding: 14px 36px; border-radius: 8px;
-            font-family: 'Sora', sans-serif; font-weight: 700; font-size: 1rem;
-            text-decoration: none; transition: transform 0.2s, box-shadow 0.2s;
-            box-shadow: 0 4px 20px rgba(245,166,35,0.4);
-        }
-        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(245,166,35,0.5); }
-        .btn-ghost {
-            background: transparent; color: #fff;
-            padding: 14px 36px; border-radius: 8px;
-            font-family: 'Sora', sans-serif; font-weight: 600; font-size: 1rem;
-            text-decoration: none; border: 1.5px solid rgba(255,255,255,0.35);
-            transition: background 0.2s, border-color 0.2s;
-        }
-        .btn-ghost:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.6); }
-        .hero-scroll {
-            position: absolute; bottom: 36px; left: 50%; transform: translateX(-50%);
-            color: rgba(255,255,255,0.45); font-size: 0.8rem;
-            display: flex; flex-direction: column; align-items: center; gap: 8px;
-            animation: fadeUp 1s ease 0.8s both;
-        }
-        .scroll-arrow { width: 20px; height: 20px; border-right: 2px solid rgba(255,255,255,0.4); border-bottom: 2px solid rgba(255,255,255,0.4); transform: rotate(45deg); animation: bounce 1.6s infinite; }
+.hero-content{position:relative;z-index:2;max-width:900px;text-align:center;}
+.hero-pill{
+  display:inline-flex;align-items:center;gap:10px;
+  background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.14);
+  padding:6px 18px 6px 8px;border-radius:100px;margin-bottom:32px;
+  animation:fadeUp 0.6s ease both;
+}
+.hero-pill-dot{width:28px;height:28px;background:var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.8rem;}
+.hero-pill span{color:rgba(255,255,255,0.8);font-size:0.82rem;font-weight:500;}
+.hero h1{font-size:clamp(2.8rem,5.5vw,4.8rem);font-weight:800;color:#fff;line-height:1.1;letter-spacing:-0.03em;margin-bottom:28px;animation:fadeUp 0.6s ease 0.1s both;}
+.hero h1 .serif{font-family:'Instrument Serif',serif;font-style:italic;font-weight:400;color:var(--gold);}
+.hero-sub{font-size:clamp(1rem,2vw,1.2rem);color:rgba(255,255,255,0.65);line-height:1.75;max-width:640px;margin:0 auto 44px;animation:fadeUp 0.6s ease 0.2s both;}
+.hero-actions{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;animation:fadeUp 0.6s ease 0.3s both;margin-bottom:80px;}
+.btn-hero-primary{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--ink);padding:16px 40px;border-radius:10px;font-weight:800;font-size:1rem;box-shadow:0 8px 32px rgba(245,166,35,0.4);transition:transform 0.2s,box-shadow 0.2s;}
+.btn-hero-primary:hover{transform:translateY(-3px);box-shadow:0 12px 40px rgba(245,166,35,0.5);}
+.btn-hero-ghost{background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.9);padding:16px 36px;border-radius:10px;font-weight:600;font-size:1rem;border:1.5px solid rgba(255,255,255,0.15);transition:background 0.2s;}
+.btn-hero-ghost:hover{background:rgba(255,255,255,0.1);}
+.hero-stats{
+  animation:fadeUp 0.6s ease 0.4s both;
+  display:flex;justify-content:center;
+  background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);
+  border-radius:16px;max-width:700px;margin:0 auto;backdrop-filter:blur(12px);
+}
+.hero-stat{flex:1;min-width:140px;padding:24px 20px;text-align:center;border-right:1px solid rgba(255,255,255,0.07);}
+.hero-stat:last-child{border-right:none;}
+.hero-stat-num{font-family:'Instrument Serif',serif;font-size:2.2rem;color:var(--gold);display:block;margin-bottom:4px;}
+.hero-stat-lbl{color:rgba(255,255,255,0.5);font-size:0.8rem;}
+.hero-scroll{position:absolute;bottom:32px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:10px;animation:fadeUp 1s ease 1s both;}
+.scroll-line{width:1px;height:60px;background:linear-gradient(180deg,transparent,rgba(255,255,255,0.4),transparent);animation:scrollPulse 2s ease-in-out infinite;}
+@keyframes scrollPulse{0%,100%{opacity:0.3;}50%{opacity:1;}}
+.hero-scroll span{color:rgba(255,255,255,0.35);font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;}
 
-        /* ── STATS BAR ── */
-        .stats-bar {
-            background: var(--blue-deep);
-            padding: 40px 24px;
-        }
-        .stats-inner {
-            max-width: 900px; margin: auto;
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-            gap: 0; text-align: center;
-        }
-        .stat-item {
-            padding: 20px 24px;
-            border-right: 1px solid rgba(255,255,255,0.1);
-        }
-        .stat-item:last-child { border-right: none; }
-        .stat-item h3 { font-size: 2.2rem; font-weight: 800; color: var(--accent); font-family: 'Sora', sans-serif; }
-        .stat-item p { color: rgba(255,255,255,0.65); font-size: 0.88rem; margin-top: 4px; }
+/* BAND */
+.band{background:var(--blue);padding:0 24px;}
+.band-inner{max-width:1200px;margin:auto;display:flex;}
+.band-item{flex:1;padding:36px 28px;border-right:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;gap:16px;}
+.band-item:last-child{border-right:none;}
+.band-icon{width:44px;height:44px;background:rgba(255,255,255,0.12);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0;}
+.band-item h3{color:#fff;font-size:1rem;font-weight:700;margin-bottom:4px;}
+.band-item p{color:rgba(255,255,255,0.65);font-size:0.82rem;line-height:1.5;}
 
-        /* ── SECTION BASE ── */
-        .section { padding: 96px 24px; }
-        .section-header { text-align: center; margin-bottom: 64px; }
-        .section-label {
-            display: inline-block;
-            font-family: 'Sora', sans-serif; font-weight: 600; font-size: 0.75rem;
-            letter-spacing: 0.12em; text-transform: uppercase;
-            color: var(--blue-mid); margin-bottom: 12px;
-        }
-        .section-header h2 {
-            font-size: clamp(1.8rem, 3vw, 2.6rem); font-weight: 800;
-            color: var(--text-dark); line-height: 1.25; margin-bottom: 16px;
-        }
-        .section-header p { color: var(--text-mid); font-size: 1.05rem; max-width: 560px; margin: auto; line-height: 1.65; }
+/* SECTION */
+.section{padding:100px 24px;}
+.container{max-width:1160px;margin:auto;}
+.sec-eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:0.75rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--blue);margin-bottom:14px;}
+.sec-eyebrow::before{content:'';width:20px;height:2px;background:var(--blue);border-radius:1px;}
+.sec-title{font-size:clamp(1.9rem,3.5vw,2.8rem);font-weight:800;color:var(--ink);line-height:1.2;letter-spacing:-0.02em;margin-bottom:18px;}
+.sec-title .italic{font-family:'Instrument Serif',serif;font-weight:400;font-style:italic;color:var(--blue);}
+.sec-body{color:var(--mid);font-size:1.05rem;line-height:1.7;max-width:560px;}
 
-        /* ── PROBLEM SECTION ── */
-        .problem { background: var(--surface); }
-        .problem-grid {
-            max-width: 1000px; margin: auto;
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 24px;
-        }
-        .problem-card {
-            background: #fff; border: 1px solid var(--border);
-            border-radius: 16px; padding: 32px 28px;
-            position: relative; overflow: hidden;
-        }
-        .problem-card::before {
-            content: '';
-            position: absolute; top: 0; left: 0; width: 4px; height: 100%;
-            background: linear-gradient(180deg, #e74c3c, #e67e22);
-        }
-        .problem-icon { font-size: 1.8rem; margin-bottom: 16px; }
-        .problem-card h3 { font-size: 1.05rem; font-weight: 700; color: var(--text-dark); margin-bottom: 10px; }
-        .problem-card p { color: var(--text-mid); font-size: 0.93rem; line-height: 1.6; }
+/* PROBLEM */
+.problem{background:var(--ice2);}
+.problem-layout{display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:start;}
+.problem-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:28px 24px;display:flex;gap:18px;align-items:flex-start;transition:transform 0.25s,box-shadow 0.25s;position:relative;overflow:hidden;margin-bottom:20px;}
+.problem-card:last-child{margin-bottom:0;}
+.problem-card::after{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,#EF4444,#F97316);border-radius:3px 0 0 3px;}
+.problem-card:hover{transform:translateX(6px);box-shadow:0 8px 32px rgba(7,79,155,0.08);}
+.prob-icon{width:40px;height:40px;background:#FEF2F2;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;}
+.problem-card h3{font-size:0.95rem;font-weight:700;color:var(--ink);margin-bottom:6px;}
+.problem-card p{font-size:0.87rem;color:var(--mid);line-height:1.6;}
+.solution-tag{display:inline-flex;align-items:center;gap:6px;margin-top:10px;background:var(--ice);color:var(--blue);font-size:0.78rem;font-weight:600;padding:4px 10px;border-radius:100px;}
+.solution-tag::before{content:'✓';font-size:0.7rem;}
+.compare-box{margin-top:36px;padding:28px;background:#fff;border-radius:16px;border:1px solid var(--border);}
+.compare-title{font-size:0.78rem;font-weight:700;color:var(--mid);letter-spacing:0.05em;text-transform:uppercase;margin-bottom:18px;}
+.compare-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+.compare-row:last-child{margin-bottom:0;}
+.compare-cell-bad{background:#FEF2F2;border-radius:8px;padding:10px 12px;font-size:0.8rem;color:#991B1B;}
+.compare-cell-good{background:#F0FDF4;border-radius:8px;padding:10px 12px;font-size:0.8rem;color:#166534;}
 
-        /* ── MODULES ── */
-        .modules { background: var(--white); }
-        .modules-wrapper { max-width: 1160px; margin: auto; }
-        .module-block {
-            display: grid; grid-template-columns: 1fr 1fr;
-            gap: 64px; align-items: center;
-            padding: 72px 0;
-            border-bottom: 1px solid var(--border);
-        }
-        .module-block:last-child { border-bottom: none; }
-        .module-block.reverse { direction: rtl; }
-        .module-block.reverse > * { direction: ltr; }
+/* MODULES */
+.modules{background:#fff;}
+.modules-nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:64px;border-bottom:2px solid var(--ice);padding-bottom:0;}
+.modnav-btn{padding:12px 22px;border-radius:8px 8px 0 0;font-size:0.88rem;font-weight:600;color:var(--mid);background:none;border:none;cursor:pointer;transition:color 0.2s,background 0.2s;display:flex;align-items:center;gap:8px;position:relative;bottom:-2px;border-bottom:2px solid transparent;}
+.modnav-btn:hover{color:var(--blue);}
+.modnav-btn.active{color:var(--blue);border-bottom-color:var(--blue);background:var(--ice);}
+.modnav-icon{font-size:1.1rem;}
+.module-panel{display:none;}
+.module-panel.active{display:grid;grid-template-columns:1fr 1fr;gap:72px;align-items:start;}
 
-        .module-visual {
-            background: var(--blue-pale);
-            border-radius: 20px; overflow: hidden;
-            aspect-ratio: 4/3;
-            display: flex; flex-direction: column;
-            position: relative;
-        }
-        .module-visual-header {
-            background: var(--blue-mid);
-            padding: 12px 16px;
-            display: flex; align-items: center; gap: 8px;
-        }
-        .dot { width: 10px; height: 10px; border-radius: 50%; }
-        .dot.r { background: #ff5f57; }
-        .dot.y { background: #ffbd2e; }
-        .dot.g { background: #28c840; }
-        .module-visual-body { flex: 1; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
-        .ui-row {
-            background: rgba(7,79,155,0.08);
-            border-radius: 8px; height: 14px;
-        }
-        .ui-row.w30 { width: 30%; }
-        .ui-row.w60 { width: 60%; }
-        .ui-row.w80 { width: 80%; }
-        .ui-row.w100 { width: 100%; }
-        .ui-row.h30 { height: 30px; }
-        .ui-row.accent { background: rgba(7,79,155,0.18); }
-        .ui-card-row { display: flex; gap: 10px; }
-        .ui-card {
-            flex: 1; background: rgba(7,79,155,0.1);
-            border-radius: 8px; padding: 10px;
-            display: flex; flex-direction: column; gap: 6px;
-        }
-        .ui-card-num { font-family: 'Sora', sans-serif; font-weight: 800; color: var(--blue-mid); font-size: 1.3rem; }
-        .ui-card-lbl { font-size: 0.65rem; color: var(--text-mid); }
-        .ui-badge { display: inline-block; padding: 3px 8px; border-radius: 100px; font-size: 0.65rem; font-weight: 600; }
-        .ui-badge.green { background: #d1fae5; color: #065f46; }
-        .ui-badge.blue { background: #dbeafe; color: #1e40af; }
-        .ui-badge.yellow { background: #fef3c7; color: #92400e; }
-        .ui-table-row { display: flex; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(7,79,155,0.06); }
-        .ui-avatar { width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, var(--blue-mid), var(--blue-light)); flex-shrink: 0; }
+/* MOCKUP */
+.mockup-shell{background:var(--ink);border-radius:20px;overflow:hidden;box-shadow:0 24px 80px rgba(4,18,43,0.3),0 0 0 1px rgba(255,255,255,0.06);position:sticky;top:100px;}
+.mockup-topbar{background:rgba(255,255,255,0.05);border-bottom:1px solid rgba(255,255,255,0.06);padding:12px 16px;display:flex;align-items:center;gap:10px;}
+.mockup-dots{display:flex;gap:6px;}
+.d{width:10px;height:10px;border-radius:50%;}
+.d.r{background:#FF5F57;}.d.y{background:#FFBD2E;}.d.g{background:#28C840;}
+.mockup-title{flex:1;text-align:center;color:rgba(255,255,255,0.4);font-size:0.72rem;font-weight:600;letter-spacing:0.05em;}
+.mockup-body{padding:20px;display:flex;flex-direction:column;gap:14px;}
+.mck-layout{display:flex;gap:14px;min-height:300px;}
+.mck-sidebar{width:44px;background:rgba(255,255,255,0.04);border-radius:10px;padding:10px 6px;display:flex;flex-direction:column;gap:8px;align-items:center;}
+.mck-icon{width:28px;height:28px;border-radius:7px;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:0.9rem;}
+.mck-icon.act{background:var(--blue);}
+.mck-main{flex:1;display:flex;flex-direction:column;gap:10px;}
+.mck-hrow{display:flex;justify-content:space-between;align-items:center;}
+.mck-t{color:rgba(255,255,255,0.85);font-size:0.8rem;font-weight:700;}
+.mck-badge{padding:3px 10px;border-radius:100px;font-size:0.65rem;font-weight:700;}
+.mck-badge.g{background:rgba(16,185,129,0.2);color:#34D399;}
+.mck-badge.b{background:rgba(58,142,230,0.2);color:#7EC8FF;}
+.mck-badge.y{background:rgba(245,166,35,0.2);color:#FFD070;}
+.mck-badge.r{background:rgba(239,68,68,0.18);color:#F87171;}
+.mck-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.mck-card{background:rgba(255,255,255,0.05);border-radius:10px;padding:12px 10px;border:1px solid rgba(255,255,255,0.05);}
+.mck-val{color:#fff;font-size:1.3rem;font-weight:800;margin-bottom:2px;}
+.mck-lbl{color:rgba(255,255,255,0.4);font-size:0.62rem;}
+.mck-row{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.04);}
+.mck-row:last-child{border-bottom:none;}
+.mck-av{width:26px;height:26px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,var(--blue),var(--sky));display:flex;align-items:center;justify-content:center;font-size:0.6rem;color:#fff;font-weight:700;}
+.mck-line{height:8px;border-radius:4px;background:rgba(255,255,255,0.1);}
+.mck-prog{background:rgba(255,255,255,0.05);border-radius:8px;padding:10px 12px;}
+.mck-prog-lbl{display:flex;justify-content:space-between;margin-bottom:6px;}
+.mck-prog-lbl span{color:rgba(255,255,255,0.5);font-size:0.65rem;}
+.mck-prog-lbl strong{color:rgba(255,255,255,0.85);font-size:0.65rem;}
+.mck-bar{height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;}
+.mck-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--blue),var(--sky));}
+.mck-fill.gold{background:linear-gradient(90deg,var(--gold),var(--gold2));}
+.mck-fill.green{background:linear-gradient(90deg,#059669,#34D399);}
+.mck-tbl{background:rgba(255,255,255,0.03);border-radius:10px;overflow:hidden;}
+.mck-bars{display:flex;align-items:flex-end;gap:6px;height:60px;padding:0 4px;}
+.mck-bc{flex:1;border-radius:4px 4px 0 0;background:rgba(7,79,155,0.4);}
+.mck-bc.hi{background:linear-gradient(180deg,var(--sky),var(--blue));}
+.mck-map{background:rgba(255,255,255,0.04);border-radius:10px;height:90px;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;}
+.mck-map-line{position:absolute;height:2px;background:linear-gradient(90deg,var(--gold),var(--sky));border-radius:1px;opacity:0.6;}
+.mck-map-dot{position:absolute;width:10px;height:10px;border-radius:50%;border:2px solid var(--gold);background:rgba(245,166,35,0.3);animation:mapPulse 2s ease-in-out infinite;}
+@keyframes mapPulse{0%,100%{box-shadow:0 0 0 0 rgba(245,166,35,0.4);}50%{box-shadow:0 0 0 8px rgba(245,166,35,0);}}
 
-        .module-text {}
-        .module-number {
-            font-family: 'Sora', sans-serif; font-size: 0.75rem; font-weight: 700;
-            letter-spacing: 0.12em; text-transform: uppercase;
-            color: var(--blue-light); margin-bottom: 12px;
-        }
-        .module-icon-wrap {
-            width: 56px; height: 56px; border-radius: 14px;
-            background: var(--blue-pale); display: flex; align-items: center; justify-content: center;
-            font-size: 1.8rem; margin-bottom: 20px;
-        }
-        .module-text h2 {
-            font-size: clamp(1.5rem, 2.5vw, 2rem); font-weight: 800;
-            color: var(--text-dark); margin-bottom: 16px; line-height: 1.25;
-        }
-        .module-text p { color: var(--text-mid); line-height: 1.7; margin-bottom: 24px; font-size: 1rem; }
-        .feature-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
-        .feature-list li {
-            display: flex; align-items: flex-start; gap: 10px;
-            color: var(--text-mid); font-size: 0.93rem;
-        }
-        .feature-list li::before {
-            content: '✓';
-            flex-shrink: 0;
-            width: 20px; height: 20px; border-radius: 50%;
-            background: var(--blue-pale); color: var(--blue-mid);
-            font-size: 0.75rem; font-weight: 700;
-            display: flex; align-items: center; justify-content: center;
-            margin-top: 1px;
-        }
+/* MODULE INFO */
+.mod-tag{display:inline-flex;align-items:center;gap:8px;background:var(--ice);color:var(--blue);font-size:0.75rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:6px 14px;border-radius:100px;margin-bottom:20px;}
+.mod-icon-big{width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,var(--blue),var(--sky));display:flex;align-items:center;justify-content:center;font-size:2rem;margin-bottom:22px;box-shadow:0 8px 24px rgba(7,79,155,0.3);}
+.module-info h2{font-size:clamp(1.6rem,2.5vw,2.2rem);font-weight:800;color:var(--ink);margin-bottom:16px;letter-spacing:-0.02em;line-height:1.2;}
+.module-info>p{color:var(--mid);line-height:1.75;margin-bottom:32px;font-size:1rem;}
+.feat-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:32px;}
+.feat-item{background:var(--ice2);border:1px solid var(--ice);border-radius:12px;padding:16px 14px;transition:border-color 0.2s,transform 0.2s;}
+.feat-item:hover{border-color:var(--pale);transform:translateY(-2px);}
+.feat-item-icon{font-size:1.2rem;margin-bottom:8px;}
+.feat-item h4{font-size:0.85rem;font-weight:700;color:var(--ink);margin-bottom:4px;}
+.feat-item p{font-size:0.78rem;color:var(--mid);line-height:1.5;}
+.mod-cta-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;}
+.btn-blue{background:var(--blue);color:#fff;padding:12px 28px;border-radius:10px;font-weight:700;font-size:0.9rem;transition:background 0.2s,transform 0.2s;box-shadow:0 4px 16px rgba(7,79,155,0.3);}
+.btn-blue:hover{background:var(--blue2);transform:translateY(-2px);}
+.btn-txt{color:var(--blue);font-size:0.88rem;font-weight:600;opacity:0.8;transition:opacity 0.2s;}
+.btn-txt:hover{opacity:1;}
 
-        /* ── HOW IT WORKS ── */
-        .how { background: var(--surface); }
-        .steps { max-width: 860px; margin: auto; display: flex; flex-direction: column; gap: 0; }
-        .step {
-            display: grid; grid-template-columns: 64px 1fr;
-            gap: 28px; padding: 40px 0;
-            border-bottom: 1px solid var(--border);
-        }
-        .step:last-child { border-bottom: none; }
-        .step-num {
-            width: 48px; height: 48px; border-radius: 50%;
-            background: var(--blue-mid); color: #fff;
-            font-family: 'Sora', sans-serif; font-weight: 800; font-size: 1.1rem;
-            display: flex; align-items: center; justify-content: center;
-            flex-shrink: 0;
-        }
-        .step-text h3 { font-size: 1.15rem; font-weight: 700; color: var(--text-dark); margin-bottom: 8px; }
-        .step-text p { color: var(--text-mid); line-height: 1.65; font-size: 0.95rem; }
+/* WORKFLOW */
+.workflow{background:var(--ink);position:relative;overflow:hidden;}
+.workflow::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(7,79,155,0.3) 0%,transparent 60%);}
+.wf-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px);background-size:60px 60px;}
+.wf-header{text-align:center;margin-bottom:72px;position:relative;z-index:1;}
+.wf-header .sec-eyebrow{color:var(--sky);}
+.wf-header .sec-eyebrow::before{background:var(--sky);}
+.wf-header .sec-title{color:#fff;}
+.wf-header .sec-body{color:rgba(255,255,255,0.6);margin:auto;}
+.wf-steps{display:grid;grid-template-columns:repeat(5,1fr);gap:0;position:relative;z-index:1;}
+.wf-steps::before{content:'';position:absolute;top:40px;left:10%;right:10%;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),rgba(255,255,255,0.15),rgba(255,255,255,0.15),transparent);}
+.wf-step{text-align:center;padding:0 16px;}
+.wf-num-wrap{width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;position:relative;transition:border-color 0.3s,background 0.3s;}
+.wf-step:hover .wf-num-wrap{border-color:var(--gold);background:rgba(245,166,35,0.08);}
+.wf-num{font-family:'Instrument Serif',serif;font-size:1.8rem;color:rgba(255,255,255,0.3);transition:color 0.3s;}
+.wf-step:hover .wf-num{color:var(--gold);}
+.wf-step-ico{position:absolute;top:-6px;right:-6px;width:28px;height:28px;background:var(--blue);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.8rem;border:2px solid var(--ink);}
+.wf-step h3{color:#fff;font-size:0.92rem;font-weight:700;margin-bottom:8px;}
+.wf-step p{color:rgba(255,255,255,0.5);font-size:0.8rem;line-height:1.6;}
 
-        /* ── CTA FINAL ── */
-        .cta-final {
-            background: linear-gradient(135deg, var(--blue-deep) 0%, var(--blue-mid) 100%);
-            padding: 100px 24px; text-align: center; position: relative; overflow: hidden;
-        }
-        .cta-final::before {
-            content: '';
-            position: absolute; inset: 0;
-            background-image:
-                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-            background-size: 48px 48px;
-        }
-        .cta-final-content { position: relative; z-index: 1; max-width: 680px; margin: auto; }
-        .cta-final h2 {
-            font-size: clamp(1.8rem, 3vw, 2.6rem); font-weight: 800;
-            color: #fff; margin-bottom: 20px;
-        }
-        .cta-final p { color: rgba(255,255,255,0.78); font-size: 1.05rem; line-height: 1.7; margin-bottom: 36px; }
+/* BENEFITS */
+.benefits{background:var(--ice2);}
+.benefits-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;}
+.benefit-card{background:#fff;border:1px solid var(--border);border-radius:20px;padding:36px 28px;transition:transform 0.25s,box-shadow 0.25s,border-color 0.25s;position:relative;overflow:hidden;}
+.benefit-card::before{content:'';position:absolute;top:-60px;right:-60px;width:150px;height:150px;border-radius:50%;background:var(--ice);transition:transform 0.4s;}
+.benefit-card:hover{transform:translateY(-8px);box-shadow:0 20px 60px rgba(7,79,155,0.1);border-color:var(--pale);}
+.benefit-card:hover::before{transform:scale(1.5);}
+.benefit-icon{width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,var(--blue),var(--sky));display:flex;align-items:center;justify-content:center;font-size:1.5rem;margin-bottom:20px;position:relative;box-shadow:0 6px 20px rgba(7,79,155,0.25);}
+.benefit-card h3{font-size:1.05rem;font-weight:700;color:var(--ink);margin-bottom:10px;}
+.benefit-card p{font-size:0.88rem;color:var(--mid);line-height:1.65;}
+.benefit-card.feat{background:linear-gradient(135deg,var(--blue),var(--blue2));border-color:transparent;}
+.benefit-card.feat::before{background:rgba(255,255,255,0.05);}
+.benefit-card.feat h3{color:#fff;}
+.benefit-card.feat p{color:rgba(255,255,255,0.7);}
+.benefit-card.feat .benefit-icon{background:rgba(255,255,255,0.15);box-shadow:none;}
 
-        /* ── FOOTER ── */
-        footer {
-            background: #021e42;
-            padding: 56px 24px 36px;
-        }
-        .footer-inner {
-            max-width: 1100px; margin: auto;
-            display: grid; grid-template-columns: 1.5fr 1fr 1fr;
-            gap: 48px; padding-bottom: 40px;
-            border-bottom: 1px solid rgba(255,255,255,0.08);
-        }
-        .footer-brand img { height: 48px; opacity: 0.85; margin-bottom: 16px; display: block; }
-        .footer-brand p { color: rgba(255,255,255,0.5); font-size: 0.88rem; line-height: 1.65; }
-        .footer-col h4 { color: rgba(255,255,255,0.9); font-family: 'Sora', sans-serif; font-size: 0.9rem; font-weight: 700; margin-bottom: 16px; }
-        .footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
-        .footer-col ul li a { color: rgba(255,255,255,0.5); text-decoration: none; font-size: 0.88rem; transition: color 0.2s; }
-        .footer-col ul li a:hover { color: rgba(255,255,255,0.9); }
-        .footer-bottom {
-            max-width: 1100px; margin: 28px auto 0;
-            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;
-        }
-        .footer-bottom p { color: rgba(255,255,255,0.35); font-size: 0.82rem; }
-        .footer-logos { display: flex; align-items: center; gap: 24px; }
-        .footer-logos img { height: 36px; opacity: 0.5; transition: opacity 0.2s; }
-        .footer-logos img:hover { opacity: 0.8; }
+/* INTEGRATION */
+.integration{background:#fff;}
+.int-spokes{position:relative;height:280px;display:flex;align-items:center;justify-content:center;max-width:700px;margin:0 auto 56px;}
+.int-center{width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--sky));display:flex;align-items:center;justify-content:center;font-size:1.8rem;box-shadow:0 0 0 14px rgba(7,79,155,0.07),0 0 0 28px rgba(7,79,155,0.04);animation:breathe 3s ease-in-out infinite;}
+@keyframes breathe{0%,100%{box-shadow:0 0 0 14px rgba(7,79,155,0.07),0 0 0 28px rgba(7,79,155,0.04);}50%{box-shadow:0 0 0 22px rgba(7,79,155,0.05),0 0 0 44px rgba(7,79,155,0.02);}}
+.int-spoke{position:absolute;width:110px;background:rgba(7,79,155,0.08);border:1px solid var(--border);border-radius:14px;padding:12px 10px;text-align:center;transition:transform 0.25s,box-shadow 0.25s,background 0.25s;}
+.int-spoke:hover{background:var(--ice);box-shadow:0 8px 24px rgba(7,79,155,0.1);}
+.int-spoke-icon{font-size:1.3rem;margin-bottom:5px;}
+.int-spoke-lbl{font-size:0.7rem;font-weight:700;color:var(--blue);}
+.int-spoke.s1{transform:translateY(-105px);}
+.int-spoke.s2{transform:translate(125px,-55px);}
+.int-spoke.s3{transform:translate(125px,55px);}
+.int-spoke.s4{transform:translateY(105px);}
+.int-spoke.s5{transform:translate(-125px,55px);}
+.int-spoke.s1:hover{transform:translateY(-105px) scale(1.08);}
+.int-spoke.s2:hover{transform:translate(125px,-55px) scale(1.08);}
+.int-spoke.s3:hover{transform:translate(125px,55px) scale(1.08);}
+.int-spoke.s4:hover{transform:translateY(105px) scale(1.08);}
+.int-spoke.s5:hover{transform:translate(-125px,55px) scale(1.08);}
+.int-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;}
+.int-point{text-align:center;padding:28px 20px;background:var(--ice2);border:1px solid var(--border);border-radius:16px;}
+.int-point-icon{font-size:1.6rem;margin-bottom:12px;}
+.int-point h3{font-size:0.95rem;font-weight:700;color:var(--ink);margin-bottom:8px;}
+.int-point p{font-size:0.83rem;color:var(--mid);line-height:1.6;}
 
-        /* ── ANIMATIONS ── */
-        @keyframes fadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes bounce { 0%, 100% { transform: rotate(45deg) translateY(0); } 50% { transform: rotate(45deg) translateY(6px); } }
+/* SECURITY */
+.security{background:var(--ink);position:relative;overflow:hidden;}
+.security::before{content:'';position:absolute;width:600px;height:600px;background:radial-gradient(circle,rgba(7,79,155,0.3),transparent 70%);top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;}
+.security-grid{display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:center;position:relative;z-index:1;}
+.sec-left .sec-eyebrow{color:var(--sky);}
+.sec-left .sec-eyebrow::before{background:var(--sky);}
+.sec-left .sec-title{color:#fff;}
+.sec-left .sec-body{color:rgba(255,255,255,0.6);}
+.sec-list{margin-top:36px;display:flex;flex-direction:column;gap:16px;}
+.sec-item{display:flex;gap:14px;align-items:flex-start;padding:20px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:14px;transition:border-color 0.2s;}
+.sec-item:hover{border-color:rgba(58,142,230,0.3);}
+.sec-ico{width:36px;height:36px;background:rgba(7,79,155,0.3);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;}
+.sec-item h4{color:#fff;font-size:0.9rem;font-weight:700;margin-bottom:4px;}
+.sec-item p{color:rgba(255,255,255,0.5);font-size:0.82rem;line-height:1.6;}
+.shield-box{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:24px;padding:40px;text-align:center;}
+.shield-ico{font-size:5rem;display:block;margin-bottom:24px;animation:shieldPulse 3s ease-in-out infinite;}
+@keyframes shieldPulse{0%,100%{filter:drop-shadow(0 0 0 rgba(58,142,230,0));}50%{filter:drop-shadow(0 0 20px rgba(58,142,230,0.5));}}
+.shield-box h3{color:#fff;font-size:1.3rem;font-weight:800;margin-bottom:12px;}
+.shield-box p{color:rgba(255,255,255,0.5);font-size:0.88rem;line-height:1.7;margin-bottom:28px;}
+.shield-tags{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;}
+.shield-tag{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.7);font-size:0.75rem;font-weight:600;padding:6px 14px;border-radius:100px;}
 
-        .reveal { opacity: 0; transform: translateY(32px); transition: opacity 0.65s ease, transform 0.65s ease; }
-        .reveal.visible { opacity: 1; transform: translateY(0); }
+/* QUOTE */
+.quote-section{background:var(--ice2);text-align:center;padding:80px 24px;}
+.quote-inner{max-width:720px;margin:auto;}
+.quote-mark{font-family:'Instrument Serif',serif;font-size:6rem;line-height:0.8;color:var(--pale);margin-bottom:8px;}
+blockquote{font-family:'Instrument Serif',serif;font-size:clamp(1.3rem,2.5vw,1.8rem);color:var(--ink);line-height:1.5;font-style:italic;margin-bottom:28px;}
+.quote-author{color:var(--mid);font-size:0.88rem;font-weight:600;}
+.quote-author strong{color:var(--blue);}
 
-        /* ── RESPONSIVE ── */
-        @media(max-width: 900px) {
-            .module-block { grid-template-columns: 1fr; gap: 36px; }
-            .module-block.reverse { direction: ltr; }
-            .footer-inner { grid-template-columns: 1fr 1fr; }
-            nav .nav-links { display: none; }
-        }
-        @media(max-width: 600px) {
-            .footer-inner { grid-template-columns: 1fr; }
-            .stat-item { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.1); padding: 20px 0; }
-            .stat-item:last-child { border-bottom: none; }
-            .footer-bottom { justify-content: center; text-align: center; }
-        }
-    </style>
+/* CTA FINAL */
+.cta-final{background:linear-gradient(135deg,var(--ink) 0%,var(--blue) 60%,var(--sky) 100%);padding:120px 24px;text-align:center;position:relative;overflow:hidden;}
+.cta-final::before{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.03) 1px,transparent 1px);background-size:60px 60px;}
+.cta-orb{position:absolute;width:600px;height:600px;background:radial-gradient(circle,rgba(255,255,255,0.06),transparent 70%);border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;}
+.cta-inner{position:relative;z-index:1;max-width:700px;margin:auto;}
+.cta-inner h2{font-size:clamp(2rem,4vw,3.2rem);font-weight:800;color:#fff;line-height:1.15;letter-spacing:-0.02em;margin-bottom:20px;}
+.cta-inner h2 .italic{font-family:'Instrument Serif',serif;font-weight:400;font-style:italic;}
+.cta-inner p{color:rgba(255,255,255,0.7);font-size:1.05rem;line-height:1.7;margin-bottom:40px;}
+.cta-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:44px;}
+.cta-card{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:16px;padding:20px 16px;transition:background 0.2s;}
+.cta-card:hover{background:rgba(255,255,255,0.12);}
+.cta-card-icon{font-size:1.6rem;margin-bottom:8px;}
+.cta-card h4{color:#fff;font-size:0.85rem;font-weight:700;margin-bottom:4px;}
+.cta-card p{color:rgba(255,255,255,0.55);font-size:0.78rem;}
+.btn-cta{background:#fff;color:var(--blue);padding:16px 44px;border-radius:10px;font-weight:800;font-size:1rem;box-shadow:0 8px 32px rgba(0,0,0,0.2);transition:transform 0.2s,box-shadow 0.2s;display:inline-block;}
+.btn-cta:hover{transform:translateY(-3px);box-shadow:0 12px 40px rgba(0,0,0,0.3);}
+
+/* FOOTER */
+footer{background:#020D1F;padding:64px 24px 32px;}
+.footer-top{max-width:1160px;margin:auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:48px;padding-bottom:48px;border-bottom:1px solid rgba(255,255,255,0.06);}
+.footer-brand img{height:44px;opacity:0.8;margin-bottom:16px;display:block;}
+.footer-brand p{color:rgba(255,255,255,0.4);font-size:0.85rem;line-height:1.7;margin-bottom:20px;}
+.footer-contact p{color:rgba(255,255,255,0.4);font-size:0.82rem;margin-bottom:5px;}
+.footer-contact p strong{color:rgba(255,255,255,0.7);}
+.footer-col-ttl{color:rgba(255,255,255,0.75);font-size:0.82rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:20px;}
+.footer-links{list-style:none;display:flex;flex-direction:column;gap:10px;}
+.footer-links a{color:rgba(255,255,255,0.4);font-size:0.85rem;transition:color 0.2s;}
+.footer-links a:hover{color:rgba(255,255,255,0.85);}
+.footer-bottom{max-width:1160px;margin:32px auto 0;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;}
+.footer-bottom p{color:rgba(255,255,255,0.25);font-size:0.8rem;}
+.footer-logos{display:flex;align-items:center;gap:20px;}
+.footer-logos img{height:90px;opacity:0.9;transition:opacity 0.2s;}
+
+/* ANIMATIONS */
+@keyframes fadeUp{from{opacity:0;transform:translateY(28px);}to{opacity:1;transform:translateY(0);}}
+.reveal{opacity:0;transform:translateY(36px);transition:opacity 0.7s ease,transform 0.7s ease;}
+.reveal.visible{opacity:1;transform:translateY(0);}
+.d1{transition-delay:0.1s;}.d2{transition-delay:0.2s;}.d3{transition-delay:0.3s;}.d4{transition-delay:0.4s;}
+
+/* RESPONSIVE */
+@media(max-width:960px){
+  nav{padding:0 20px;}
+  .nav-links{display:none;}
+  .module-panel.active{grid-template-columns:1fr;}
+  .mockup-shell{position:static;}
+  .problem-layout{grid-template-columns:1fr;}
+  .wf-steps{grid-template-columns:1fr 1fr;}
+  .wf-steps::before{display:none;}
+  .benefits-grid{grid-template-columns:1fr 1fr;}
+  .security-grid{grid-template-columns:1fr;}
+  .cta-cards{grid-template-columns:1fr 1fr;}
+  .footer-top{grid-template-columns:1fr 1fr;}
+  .int-grid{grid-template-columns:1fr 1fr;}
+  .band-inner{flex-direction:column;}
+  .band-item{border-right:none;border-bottom:1px solid rgba(255,255,255,0.1);}
+}
+@media(max-width:640px){
+  .hero h1{font-size:2.2rem;}
+  .hero-stats{flex-direction:column;}
+  .hero-stat{border-right:none;border-bottom:1px solid rgba(255,255,255,0.07);}
+  .feat-grid{grid-template-columns:1fr;}
+  .benefits-grid{grid-template-columns:1fr;}
+  .wf-steps{grid-template-columns:1fr;}
+  .cta-cards{grid-template-columns:1fr;}
+  .footer-top{grid-template-columns:1fr;}
+  .int-grid{grid-template-columns:1fr;}
+  .int-spokes{display:none;}
+  .footer-bottom{justify-content:center;text-align:center;}
+}
+</style>
 </head>
 <body>
 
+<div id="cursor-glow"></div>
+
 <!-- NAV -->
 <nav>
-    <div class="nav-brand">
-        <img src="/images/brasao-umuarama.png" alt="Brasão de Umuarama">
-        <span class="nav-title">Gestão Edu</span>
-    </div>
-    <ul class="nav-links">
-        <li><a href="#modulos">Módulos</a></li>
-        <li><a href="#como-funciona">Como Funciona</a></li>
-        <li><a href="#problemas">Desafios</a></li>
-    </ul>
-    <a href="/login" class="nav-cta">Acessar o Sistema</a>
+  <div class="nav-left">
+    <img src="/images/brasao-umuarama.png" alt="Brasão de Umuarama">
+    <span class="nav-wordmark">Gestão<span>Edu</span></span>
+  </div>
+  <ul class="nav-links">
+    <li><a href="#problemas">Diagnóstico</a></li>
+    <li><a href="#modulos">Módulos</a></li>
+    <li><a href="#integracao">Integração</a></li>
+    <li><a href="#seguranca">Segurança</a></li>
+    <li><a href="#como-funciona">Implantação</a></li>
+  </ul>
+  <div class="nav-right">
+    <a href="#modulos" class="btn-nav-ghost">Saiba mais</a>
+    <a href="/admin/login" class="btn-nav-solid">Acessar o Sistema</a>
+  </div>
 </nav>
 
 <!-- HERO -->
 <section class="hero">
-    <div class="hero-grid"></div>
-    <div class="hero-glow"></div>
-    <div class="hero-content">
-        <div class="hero-badge"><span></span> Prefeitura Municipal de Umuarama</div>
-        <h1>A gestão da educação municipal, <em>totalmente integrada</em></h1>
-        <p>
-            Gestão Edu centraliza pedagogia, transporte, alimentação, patrimônio e recursos humanos
-            em uma única plataforma. Menos papel, mais decisão.
-        </p>
-        <div class="hero-actions">
-            <a href="/login" class="btn-primary">Acessar o Sistema</a>
-            <a href="#modulos" class="btn-ghost">Conhecer os módulos</a>
-        </div>
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="orb orb1"></div>
+  <div class="orb orb2"></div>
+  <div class="orb orb3"></div>
+  <div id="particles"></div>
+
+  <div class="hero-content">
+    <div class="hero-pill">
+      <div class="hero-pill-dot">🏛️</div>
+      <span>Prefeitura Municipal de Umuarama · Secretaria de Educação</span>
     </div>
-    <div class="hero-scroll">
-        <span>Role para explorar</span>
-        <div class="scroll-arrow"></div>
+    <h1>Gestão educacional<br><span class="serif">inteligente e integrada</span><br>em um só lugar</h1>
+    <p class="hero-sub">O Gestão Edu centraliza pedagogia, transporte, alimentação, patrimônio e recursos humanos numa única plataforma — eliminando retrabalho e dando à secretaria visibilidade real sobre toda a rede municipal.</p>
+    <div class="hero-actions">
+      <a href="/admin/login" class="btn-hero-primary">Acessar o Sistema →</a>
+      <a href="#modulos" class="btn-hero-ghost">Explorar os módulos</a>
     </div>
+    <div class="hero-stats">
+      <div class="hero-stat"><span class="hero-stat-num">5</span><span class="hero-stat-lbl">Módulos Integrados</span></div>
+      <div class="hero-stat"><span class="hero-stat-num">100%</span><span class="hero-stat-lbl">Baseado em Nuvem</span></div>
+      <div class="hero-stat"><span class="hero-stat-num">LGPD</span><span class="hero-stat-lbl">Conformidade</span></div>
+      <div class="hero-stat"><span class="hero-stat-num">24/7</span><span class="hero-stat-lbl">Disponibilidade</span></div>
+    </div>
+  </div>
+
+  <div class="hero-scroll">
+    <span>Rolar para explorar</span>
+    <div class="scroll-line"></div>
+  </div>
 </section>
 
-<!-- STATS BAR -->
-<div class="stats-bar">
-    <div class="stats-inner">
-        <div class="stat-item"><h3>5</h3><p>Módulos Integrados</p></div>
-        <div class="stat-item"><h3>100%</h3><p>Baseado em Nuvem</p></div>
-        <div class="stat-item"><h3>LGPD</h3><p>Dados Protegidos</p></div>
-        <div class="stat-item"><h3>24/7</h3><p>Disponibilidade</p></div>
-    </div>
+<!-- BAND -->
+<div class="band">
+  <div class="band-inner">
+    <div class="band-item"><div class="band-icon">🎯</div><div><h3>Dados em tempo real</h3><p>Visibilidade sobre a rede a qualquer momento, de qualquer dispositivo.</p></div></div>
+    <div class="band-item"><div class="band-icon">🔗</div><div><h3>Integração entre setores</h3><p>Pedagogia, RH, transporte e alimentação falam a mesma língua.</p></div></div>
+    <div class="band-item"><div class="band-icon">📊</div><div><h3>Relatórios automáticos</h3><p>Indicadores gerados automaticamente, sem consolidação manual.</p></div></div>
+    <div class="band-item"><div class="band-icon">🔒</div><div><h3>Segurança e LGPD</h3><p>Criptografia, backups automáticos e controle de acesso rigoroso.</p></div></div>
+  </div>
 </div>
 
 <!-- PROBLEMAS -->
 <section id="problemas" class="section problem">
-    <div class="section-header reveal">
-        <span class="section-label">O Diagnóstico</span>
-        <h2>Os desafios de uma gestão fragmentada</h2>
-        <p>Sem um sistema integrado, cada setor opera com sua própria lógica — gerando retrabalho, perda de informação e decisões baseadas em dados incompletos.</p>
+  <div class="container">
+    <div class="problem-layout">
+      <div class="reveal">
+        <div class="sec-eyebrow">O Diagnóstico</div>
+        <h2 class="sec-title">Uma secretaria que gerencia centenas de vidas <span class="italic">merece ferramentas à altura</span></h2>
+        <p class="sec-body">Sem um sistema integrado, cada setor opera com sua própria lógica — gerando ilhas de informação, retrabalho constante e decisões baseadas em dados desatualizados.</p>
+        <div class="compare-box">
+          <div class="compare-title">Antes × Depois do Gestão Edu</div>
+          <div class="compare-row"><div class="compare-cell-bad">❌ Dados em planilhas isoladas</div><div class="compare-cell-good">✅ Base única centralizada</div></div>
+          <div class="compare-row"><div class="compare-cell-bad">❌ Relatórios manuais e demorados</div><div class="compare-cell-good">✅ Relatórios automáticos em tempo real</div></div>
+          <div class="compare-row"><div class="compare-cell-bad">❌ Setores sem comunicação</div><div class="compare-cell-good">✅ Integração total entre módulos</div></div>
+          <div class="compare-row"><div class="compare-cell-bad">❌ Decisões sem embasamento</div><div class="compare-cell-good">✅ Indicadores para gestão estratégica</div></div>
+          <div class="compare-row"><div class="compare-cell-bad">❌ Prestação de contas manual</div><div class="compare-cell-good">✅ Relatórios prontos para auditoria</div></div>
+        </div>
+      </div>
+      <div>
+        <div class="problem-card reveal">
+          <div class="prob-icon">📂</div>
+          <div><h3>Dados fragmentados em planilhas e papel</h3><p>Informações de alunos, funcionários e patrimônio dispersas em arquivos Excel e pastas físicas — sem rastreabilidade nem histórico confiável.</p><div class="solution-tag">Gestão Edu unifica tudo em uma base central</div></div>
+        </div>
+        <div class="problem-card reveal d1">
+          <div class="prob-icon">⏳</div>
+          <div><h3>Processos manuais que consomem tempo estratégico</h3><p>Emissão de declarações, cálculo de estoque, controle de férias — feitos à mão, consumindo horas que poderiam ser usadas em gestão e planejamento.</p><div class="solution-tag">Automação de processos e documentos repetitivos</div></div>
+        </div>
+        <div class="problem-card reveal d2">
+          <div class="prob-icon">🔗</div>
+          <div><h3>Setores que não se comunicam entre si</h3><p>Transporte não sabe quais alunos estão ativos. Alimentação não sabe a frequência da semana. Cada área opera em silo, gerando inconsistências.</p><div class="solution-tag">Dados compartilhados entre todos os módulos</div></div>
+        </div>
+        <div class="problem-card reveal d3">
+          <div class="prob-icon">📉</div>
+          <div><h3>Prestação de contas lenta e sujeita a erros</h3><p>Consolidar dados de diversas fontes para relatórios e auditorias exige horas de trabalho manual com alto risco de inconsistências.</p><div class="solution-tag">Relatórios automáticos para órgãos fiscalizadores</div></div>
+        </div>
+      </div>
     </div>
-    <div class="problem-grid">
-        <div class="problem-card reveal">
-            <div class="problem-icon">📂</div>
-            <h3>Dados espalhados em planilhas e papel</h3>
-            <p>Informações de alunos, funcionários e patrimônio dispersas em arquivos Excel, pastas físicas e e-mails sem rastreabilidade.</p>
-        </div>
-        <div class="problem-card reveal">
-            <div class="problem-icon">⏳</div>
-            <h3>Processos manuais e lentos</h3>
-            <p>Emissão de declarações, controle de férias e elaboração de cardápios feitos à mão consomem horas que poderiam ser usadas na gestão.</p>
-        </div>
-        <div class="problem-card reveal">
-            <div class="problem-icon">🔗</div>
-            <h3>Setores que não se comunicam</h3>
-            <p>Transporte não sabe quais alunos estão matriculados. Alimentação não sabe quantas crianças haverá na semana. Cada área opera isolada.</p>
-        </div>
-        <div class="problem-card reveal">
-            <div class="problem-icon">📉</div>
-            <h3>Decisões sem embasamento de dados</h3>
-            <p>Sem relatórios consolidados em tempo real, gestores tomam decisões baseadas em estimativas — e não em fatos precisos.</p>
-        </div>
-    </div>
+  </div>
 </section>
 
 <!-- MÓDULOS -->
 <section id="modulos" class="section modules">
-    <div class="section-header reveal">
-        <span class="section-label">Funcionalidades</span>
-        <h2>Cinco módulos. Uma visão completa.</h2>
-        <p>Cada módulo resolve um domínio específico da secretaria, e todos compartilham a mesma base de dados — garantindo consistência e integração real.</p>
+  <div class="container">
+    <div style="text-align:center;margin-bottom:48px;" class="reveal">
+      <div class="sec-eyebrow">Funcionalidades</div>
+      <h2 class="sec-title">Cinco módulos. <span class="italic">Uma visão completa.</span></h2>
+      <p class="sec-body" style="margin:0 auto;">Cada módulo resolve um domínio específico e compartilha a mesma base de dados — garantindo consistência e integração real entre todas as áreas.</p>
     </div>
 
-    <div class="modules-wrapper">
-
-        <!-- PEDAGÓGICO -->
-        <div class="module-block reveal">
-            <div class="module-visual">
-                <div class="module-visual-header">
-                    <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
-                    <span style="color:rgba(255,255,255,0.6);font-size:0.75rem;margin-left:8px;font-family:'Sora',sans-serif;">Módulo Pedagógico</span>
-                </div>
-                <div class="module-visual-body">
-                    <div class="ui-card-row">
-                        <div class="ui-card"><div class="ui-card-num">1.243</div><div class="ui-card-lbl">Alunos Ativos</div></div>
-                        <div class="ui-card"><div class="ui-card-num">87%</div><div class="ui-card-lbl">Frequência Média</div></div>
-                        <div class="ui-card"><div class="ui-card-num">42</div><div class="ui-card-lbl">Turmas</div></div>
-                    </div>
-                    <div class="ui-row w100 h30 accent" style="border-radius:8px;"></div>
-                    <div style="display:flex;flex-direction:column;gap:6px;">
-                        <div class="ui-table-row"><div class="ui-avatar"></div><div class="ui-row w60" style="flex:1;height:10px;"></div><div class="ui-badge green">Presente</div></div>
-                        <div class="ui-table-row"><div class="ui-avatar"></div><div class="ui-row w60" style="flex:1;height:10px;"></div><div class="ui-badge yellow">Falta</div></div>
-                        <div class="ui-table-row"><div class="ui-avatar"></div><div class="ui-row w60" style="flex:1;height:10px;"></div><div class="ui-badge green">Presente</div></div>
-                        <div class="ui-table-row"><div class="ui-avatar"></div><div class="ui-row w60" style="flex:1;height:10px;"></div><div class="ui-badge blue">Avaliação</div></div>
-                    </div>
-                </div>
-            </div>
-            <div class="module-text">
-                <div class="module-number">Módulo 01</div>
-                <div class="module-icon-wrap">📋</div>
-                <h2>Pedagógico</h2>
-                <p>Gestão completa do ciclo escolar — da matrícula ao histórico acadêmico — com visibilidade em tempo real para professores, coordenadores e a secretaria.</p>
-                <ul class="feature-list">
-                    <li>Gestão de turmas, matrículas e transferências</li>
-                    <li>Controle de frequência diária por aluno e turma</li>
-                    <li>Registro e acompanhamento de provas e avaliações diagnósticas</li>
-                    <li>Planos de intervenção pedagógica individualizados</li>
-                    <li>Relatórios de desempenho e histórico evolutivo</li>
-                    <li>Alertas automáticos para baixa frequência e rendimento</li>
-                </ul>
-            </div>
-        </div>
-
-        <!-- TRANSPORTE -->
-        <div class="module-block reverse reveal">
-            <div class="module-visual">
-                <div class="module-visual-header">
-                    <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
-                    <span style="color:rgba(255,255,255,0.6);font-size:0.75rem;margin-left:8px;font-family:'Sora',sans-serif;">Módulo Transporte</span>
-                </div>
-                <div class="module-visual-body">
-                    <div class="ui-card-row">
-                        <div class="ui-card"><div class="ui-card-num">18</div><div class="ui-card-lbl">Rotas Ativas</div></div>
-                        <div class="ui-card"><div class="ui-card-num">412</div><div class="ui-card-lbl">Alunos</div></div>
-                    </div>
-                    <div style="background:rgba(7,79,155,0.08);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px;">
-                        <div style="display:flex;justify-content:space-between;align-items:center;">
-                            <span style="font-size:0.7rem;color:var(--text-mid);font-weight:600;">ROTA 04 — Zona Rural Norte</span>
-                            <div class="ui-badge green">Em rota</div>
-                        </div>
-                        <div class="ui-row w100" style="height:8px;background:rgba(7,79,155,0.12);border-radius:4px;overflow:hidden;">
-                            <div style="width:65%;height:100%;background:linear-gradient(90deg,var(--blue-mid),var(--blue-light));border-radius:4px;"></div>
-                        </div>
-                        <div style="display:flex;justify-content:space-between;">
-                            <span style="font-size:0.65rem;color:var(--text-light);">32/38 alunos embarcados</span>
-                            <span style="font-size:0.65rem;color:var(--text-light);">Prev. chegada: 07h42</span>
-                        </div>
-                    </div>
-                    <div class="ui-row w100 h30 accent" style="border-radius:8px;"></div>
-                    <div style="display:flex;gap:8px;">
-                        <div style="flex:1;background:rgba(7,79,155,0.06);border-radius:8px;padding:10px;font-size:0.68rem;color:var(--text-mid);">🪪 Emissão de Carteirinha</div>
-                        <div style="flex:1;background:rgba(7,79,155,0.06);border-radius:8px;padding:10px;font-size:0.68rem;color:var(--text-mid);">📋 Critérios de Elegibilidade</div>
-                    </div>
-                </div>
-            </div>
-            <div class="module-text">
-                <div class="module-number">Módulo 02</div>
-                <div class="module-icon-wrap">🚌</div>
-                <h2>Transporte Escolar</h2>
-                <p>Controle preciso das rotas, veículos e elegibilidade — eliminando o uso irregular do transporte e otimizando a logística de toda a rede municipal.</p>
-                <ul class="feature-list">
-                    <li>Cadastro e gestão de rotas com horários e pontos de parada</li>
-                    <li>Controle de elegibilidade por distância e zona de residência</li>
-                    <li>Emissão digital de carteirinhas de transporte</li>
-                    <li>Monitoramento de ocupação por rota e veículo</li>
-                    <li>Histórico de uso por aluno</li>
-                    <li>Alertas de lotação e irregularidades</li>
-                </ul>
-            </div>
-        </div>
-
-        <!-- ALIMENTAÇÃO -->
-        <div class="module-block reveal">
-            <div class="module-visual">
-                <div class="module-visual-header">
-                    <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
-                    <span style="color:rgba(255,255,255,0.6);font-size:0.75rem;margin-left:8px;font-family:'Sora',sans-serif;">Módulo Alimentação</span>
-                </div>
-                <div class="module-visual-body">
-                    <div class="ui-card-row">
-                        <div class="ui-card"><div class="ui-card-num">5</div><div class="ui-card-lbl">Dias de Cardápio</div></div>
-                        <div class="ui-card"><div class="ui-card-num">847</div><div class="ui-card-lbl">Porções Hoje</div></div>
-                    </div>
-                    <div style="background:rgba(7,79,155,0.06);border-radius:10px;padding:12px;">
-                        <div style="font-size:0.7rem;font-weight:600;color:var(--blue-mid);margin-bottom:8px;">ESTOQUE — COBERTURA ESTIMADA</div>
-                        <div style="display:flex;flex-direction:column;gap:6px;">
-                            <div style="display:flex;justify-content:space-between;align-items:center;">
-                                <span style="font-size:0.68rem;color:var(--text-mid);">Arroz Integral (50kg)</span>
-                                <div class="ui-badge green">18 dias</div>
-                            </div>
-                            <div style="display:flex;justify-content:space-between;align-items:center;">
-                                <span style="font-size:0.68rem;color:var(--text-mid);">Feijão Preto (30kg)</span>
-                                <div class="ui-badge yellow">6 dias</div>
-                            </div>
-                            <div style="display:flex;justify-content:space-between;align-items:center;">
-                                <span style="font-size:0.68rem;color:var(--text-mid);">Frango (25kg)</span>
-                                <div class="ui-badge green">12 dias</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div style="background:rgba(7,79,155,0.06);border-radius:10px;padding:10px;font-size:0.68rem;color:var(--text-mid);">
-                        🥦 Macronutrientes: Proteínas 28g · Carboidratos 64g · Gorduras 12g
-                    </div>
-                </div>
-            </div>
-            <div class="module-text">
-                <div class="module-number">Módulo 03</div>
-                <div class="module-icon-wrap">🍽️</div>
-                <h2>Alimentação Escolar</h2>
-                <p>Do planejamento nutricional ao controle de estoque — o sistema calcula automaticamente a cobertura do estoque com base no cardápio e no número de alunos previstos.</p>
-                <ul class="feature-list">
-                    <li>Elaboração semanal e mensal de cardápios</li>
-                    <li>Controle de estoque de insumos com entradas e saídas</li>
-                    <li>Cálculo automático de cobertura do estoque pelo cardápio</li>
-                    <li>Monitoramento de macronutrientes por refeição</li>
-                    <li>Alertas de insumos abaixo do estoque mínimo</li>
-                    <li>Relatórios nutricionais para auditoria e prestação de contas</li>
-                </ul>
-            </div>
-        </div>
-
-        <!-- ADMINISTRATIVO -->
-        <div class="module-block reverse reveal">
-            <div class="module-visual">
-                <div class="module-visual-header">
-                    <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
-                    <span style="color:rgba(255,255,255,0.6);font-size:0.75rem;margin-left:8px;font-family:'Sora',sans-serif;">Módulo Administrativo</span>
-                </div>
-                <div class="module-visual-body">
-                    <div class="ui-card-row">
-                        <div class="ui-card"><div class="ui-card-num">34</div><div class="ui-card-lbl">Unidades</div></div>
-                        <div class="ui-card"><div class="ui-card-num">7</div><div class="ui-card-lbl">Manutenções</div></div>
-                    </div>
-                    <div style="background:rgba(7,79,155,0.06);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:6px;">
-                        <div style="font-size:0.7rem;font-weight:600;color:var(--blue-mid);margin-bottom:4px;">ORDENS DE SERVIÇO</div>
-                        <div class="ui-table-row"><div class="ui-row w60" style="flex:1;height:10px;"></div><div class="ui-badge yellow">Aguardando</div></div>
-                        <div class="ui-table-row"><div class="ui-row w60" style="flex:1;height:10px;"></div><div class="ui-badge blue">Em execução</div></div>
-                        <div class="ui-table-row"><div class="ui-row w60" style="flex:1;height:10px;"></div><div class="ui-badge green">Concluído</div></div>
-                    </div>
-                    <div class="ui-row w100" style="height:10px;"></div>
-                    <div class="ui-row w80" style="height:10px;"></div>
-                </div>
-            </div>
-            <div class="module-text">
-                <div class="module-number">Módulo 04</div>
-                <div class="module-icon-wrap">🏫</div>
-                <h2>Administrativo e Patrimônio</h2>
-                <p>Gestão centralizada das unidades escolares — do pedido de manutenção ao balanço patrimonial, com rastreabilidade completa de todos os bens e movimentações.</p>
-                <ul class="feature-list">
-                    <li>Cadastro e controle de bens patrimoniais por unidade</li>
-                    <li>Pedidos e acompanhamento de ordens de manutenção</li>
-                    <li>Registro de entradas e saídas de materiais e equipamentos</li>
-                    <li>Balanço patrimonial consolidado por escola e rede</li>
-                    <li>Controle de contratos e fornecedores</li>
-                    <li>Relatórios para prestação de contas e auditoria</li>
-                </ul>
-            </div>
-        </div>
-
-        <!-- RH -->
-        <div class="module-block reveal">
-            <div class="module-visual">
-                <div class="module-visual-header">
-                    <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
-                    <span style="color:rgba(255,255,255,0.6);font-size:0.75rem;margin-left:8px;font-family:'Sora',sans-serif;">Módulo Recursos Humanos</span>
-                </div>
-                <div class="module-visual-body">
-                    <div class="ui-card-row">
-                        <div class="ui-card"><div class="ui-card-num">318</div><div class="ui-card-lbl">Funcionários</div></div>
-                        <div class="ui-card"><div class="ui-card-num">12</div><div class="ui-card-lbl">Em férias</div></div>
-                    </div>
-                    <div style="background:rgba(7,79,155,0.06);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px;">
-                        <div style="font-size:0.7rem;font-weight:600;color:var(--blue-mid);">PENDÊNCIAS DO MÊS</div>
-                        <div style="display:flex;justify-content:space-between;align-items:center;">
-                            <span style="font-size:0.68rem;color:var(--text-mid);">Atestados para validar</span>
-                            <span style="font-family:'Sora',sans-serif;font-weight:700;color:var(--blue-mid);font-size:0.9rem;">4</span>
-                        </div>
-                        <div style="display:flex;justify-content:space-between;align-items:center;">
-                            <span style="font-size:0.68rem;color:var(--text-mid);">Férias vencendo em 30 dias</span>
-                            <span style="font-family:'Sora',sans-serif;font-weight:700;color:#92400e;font-size:0.9rem;">7</span>
-                        </div>
-                        <div style="display:flex;justify-content:space-between;align-items:center;">
-                            <span style="font-size:0.68rem;color:var(--text-mid);">Décl. de horas emitidas</span>
-                            <span style="font-family:'Sora',sans-serif;font-weight:700;color:#065f46;font-size:0.9rem;">23</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="module-text">
-                <div class="module-number">Módulo 05</div>
-                <div class="module-icon-wrap">👥</div>
-                <h2>Recursos Humanos</h2>
-                <p>Controle completo do ciclo de vida do servidor — dos atestados às férias, do controle de ponto às declarações — integrado à lotação e movimentação de pessoal.</p>
-                <ul class="feature-list">
-                    <li>Gestão de lotação: local de trabalho de cada servidor</li>
-                    <li>Emissão e controle de atestados médicos</li>
-                    <li>Planejamento e controle de férias e licença-prêmio</li>
-                    <li>Emissão de declarações de horas trabalhadas</li>
-                    <li>Controle de ponto com registros e relatórios</li>
-                    <li>Alertas de vencimentos: férias, licenças e contratos</li>
-                </ul>
-            </div>
-        </div>
-
+    <div class="modules-nav">
+      <button class="modnav-btn active" onclick="switchMod('pedagogico',this)"><span class="modnav-icon">📋</span> Pedagógico</button>
+      <button class="modnav-btn" onclick="switchMod('transporte',this)"><span class="modnav-icon">🚌</span> Transporte</button>
+      <button class="modnav-btn" onclick="switchMod('alimentacao',this)"><span class="modnav-icon">🍽️</span> Alimentação</button>
+      <button class="modnav-btn" onclick="switchMod('administrativo',this)"><span class="modnav-icon">🏫</span> Administrativo</button>
+      <button class="modnav-btn" onclick="switchMod('rh',this)"><span class="modnav-icon">👥</span> Recursos Humanos</button>
     </div>
+
+    <!-- PEDAGÓGICO -->
+    <div id="mod-pedagogico" class="module-panel active">
+      <div class="mockup-shell">
+        <div class="mockup-topbar"><div class="mockup-dots"><div class="d r"></div><div class="d y"></div><div class="d g"></div></div><div class="mockup-title">Gestão Edu · Módulo Pedagógico</div></div>
+        <div class="mockup-body">
+          <div class="mck-layout">
+            <div class="mck-sidebar"><div class="mck-icon act">📋</div><div class="mck-icon">👥</div><div class="mck-icon">📊</div><div class="mck-icon">✅</div><div class="mck-icon">📅</div></div>
+            <div class="mck-main">
+              <div class="mck-hrow"><span class="mck-t">Turma 4º Ano B — 2026</span><span class="mck-badge g">Ativo</span></div>
+              <div class="mck-cards">
+                <div class="mck-card"><div class="mck-val">28</div><div class="mck-lbl">Alunos</div></div>
+                <div class="mck-card"><div class="mck-val">92%</div><div class="mck-lbl">Frequência</div></div>
+                <div class="mck-card"><div class="mck-val">7.4</div><div class="mck-lbl">Média geral</div></div>
+              </div>
+              <div class="mck-prog"><div class="mck-prog-lbl"><span>Conteúdo programático</span><strong>68% concluído</strong></div><div class="mck-bar"><div class="mck-fill" style="width:68%"></div></div></div>
+              <div class="mck-tbl">
+                <div class="mck-row"><div class="mck-av">AL</div><div class="mck-line" style="flex:1"></div><div class="mck-badge g">Presente</div><div style="color:rgba(255,255,255,0.4);font-size:0.63rem;margin-left:6px;">8.2</div></div>
+                <div class="mck-row"><div class="mck-av">BM</div><div class="mck-line" style="flex:1"></div><div class="mck-badge y">Falta</div><div style="color:rgba(255,255,255,0.4);font-size:0.63rem;margin-left:6px;">6.1</div></div>
+                <div class="mck-row"><div class="mck-av">CF</div><div class="mck-line" style="flex:1"></div><div class="mck-badge g">Presente</div><div style="color:rgba(255,255,255,0.4);font-size:0.63rem;margin-left:6px;">9.0</div></div>
+                <div class="mck-row"><div class="mck-av">DL</div><div class="mck-line" style="flex:1"></div><div class="mck-badge r">Intervenção</div><div style="color:rgba(255,255,255,0.4);font-size:0.63rem;margin-left:6px;">4.3</div></div>
+              </div>
+              <div style="display:flex;gap:8px;">
+                <div class="mck-bars"><div class="mck-bc" style="height:40%"></div><div class="mck-bc" style="height:65%"></div><div class="mck-bc hi" style="height:80%"></div><div class="mck-bc" style="height:55%"></div><div class="mck-bc hi" style="height:90%"></div><div class="mck-bc" style="height:70%"></div></div>
+                <div style="flex:1;background:rgba(255,255,255,0.04);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:6px;">
+                  <div style="font-size:0.63rem;color:rgba(255,255,255,0.4);font-weight:600;">PRÓXIMAS PROVAS</div>
+                  <div style="font-size:0.7rem;color:rgba(255,255,255,0.7);">📝 Mat. — 15 Jun</div>
+                  <div style="font-size:0.7rem;color:rgba(255,255,255,0.7);">📝 Port. — 18 Jun</div>
+                  <div style="font-size:0.7rem;color:rgba(255,255,255,0.7);">📝 Ciênc. — 22 Jun</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="module-info">
+        <div class="mod-tag">Módulo 01 — Pedagógico</div>
+        <div class="mod-icon-big">📋</div>
+        <h2>Gestão Pedagógica Completa</h2>
+        <p>Acompanhe a vida escolar de cada aluno em tempo real — da matrícula ao histórico acadêmico. Professores, coordenadores e a secretaria têm visibilidade integrada sobre frequência, desempenho, intervenções e o cumprimento do currículo em toda a rede.</p>
+        <div class="feat-grid">
+          <div class="feat-item"><div class="feat-item-icon">🏫</div><h4>Turmas e matrículas</h4><p>Gestão de matrículas, transferências, reclassificações e histórico escolar completo.</p></div>
+          <div class="feat-item"><div class="feat-item-icon">✅</div><h4>Frequência diária</h4><p>Registro por turma com alertas automáticos para baixa frequência e risco de reprovação.</p></div>
+          <div class="feat-item"><div class="feat-item-icon">📝</div><h4>Avaliações e notas</h4><p>Provas, diagnósticos, recuperação e cálculo automático de médias por disciplina.</p></div>
+          <div class="feat-item"><div class="feat-item-icon">🎯</div><h4>Planos de intervenção</h4><p>Identificação de alunos em risco e registro de intervenções pedagógicas individualizadas.</p></div>
+          <div class="feat-item"><div class="feat-item-icon">📊</div><h4>Relatórios de desempenho</h4><p>Indicadores por aluno, turma, escola e rede para tomada de decisão fundamentada.</p></div>
+          <div class="feat-item"><div class="feat-item-icon">🗓️</div><h4>Calendário escolar</h4><p>Planejamento integrado com eventos, avaliações e datas para toda a rede municipal.</p></div>
+        </div>
+        <div class="mod-cta-row"><a href="/admin/login" class="btn-blue">Acessar o módulo</a><a href="#como-funciona" class="btn-txt">Como funciona a implantação →</a></div>
+      </div>
+    </div>
+
+    <!-- TRANSPORTE -->
+    <div id="mod-transporte" class="module-panel">
+      <div class="mockup-shell">
+        <div class="mockup-topbar"><div class="mockup-dots"><div class="d r"></div><div class="d y"></div><div class="d g"></div></div><div class="mockup-title">Gestão Edu · Módulo Transporte</div></div>
+        <div class="mockup-body">
+          <div class="mck-layout">
+            <div class="mck-sidebar"><div class="mck-icon act">🚌</div><div class="mck-icon">🗺️</div><div class="mck-icon">👥</div><div class="mck-icon">🪪</div></div>
+            <div class="mck-main">
+              <div class="mck-hrow"><span class="mck-t">Rotas — Turno Manhã</span><span class="mck-badge g">18 ativas</span></div>
+              <div class="mck-cards">
+                <div class="mck-card"><div class="mck-val">412</div><div class="mck-lbl">Alunos elegíveis</div></div>
+                <div class="mck-card"><div class="mck-val">18</div><div class="mck-lbl">Rotas</div></div>
+                <div class="mck-card"><div class="mck-val">96%</div><div class="mck-lbl">Ocupação</div></div>
+              </div>
+              <div class="mck-map">
+                <div class="mck-map-line" style="width:70%;top:40%;left:15%;transform:rotate(-8deg);"></div>
+                <div class="mck-map-line" style="width:50%;top:55%;left:30%;transform:rotate(5deg);"></div>
+                <div class="mck-map-dot" style="top:35%;left:20%;"></div>
+                <div class="mck-map-dot" style="top:50%;left:55%;animation-delay:0.5s;"></div>
+                <div class="mck-map-dot" style="top:60%;left:75%;animation-delay:1s;"></div>
+                <div style="position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(255,255,255,0.015) 0px,rgba(255,255,255,0.015) 1px,transparent 1px,transparent 18px),repeating-linear-gradient(90deg,rgba(255,255,255,0.015) 0px,rgba(255,255,255,0.015) 1px,transparent 1px,transparent 18px);"></div>
+                <div style="position:absolute;top:8px;left:10px;font-size:0.62rem;color:rgba(255,255,255,0.35);font-weight:600;">MAPA DE ROTAS</div>
+              </div>
+              <div class="mck-tbl">
+                <div class="mck-row"><div style="width:8px;height:8px;border-radius:50%;background:#34D399;flex-shrink:0;"></div><div class="mck-line" style="flex:1"></div><div style="color:rgba(255,255,255,0.4);font-size:0.63rem;">32/38</div><div class="mck-badge g">Em rota</div></div>
+                <div class="mck-row"><div style="width:8px;height:8px;border-radius:50%;background:#FBBF24;flex-shrink:0;"></div><div class="mck-line" style="flex:1"></div><div style="color:rgba(255,255,255,0.4);font-size:0.63rem;">24/30</div><div class="mck-badge y">Aguardando</div></div>
+                <div class="mck-row"><div style="width:8px;height:8px;border-radius:50%;background:#60A5FA;flex-shrink:0;"></div><div class="mck-line" style="flex:1"></div><div style="color:rgba(255,255,255,0.4);font-size:0.63rem;">28/28</div><div class="mck-badge b">Concluído</div></div>
+              </div>
+              <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:0.7rem;color:rgba(255,255,255,0.6);">🪪 Nova carteirinha: João P. Silva</span>
+                <div class="mck-badge b">Emitir</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="module-info">
+        <div class="mod-tag">Módulo 02 — Transporte</div>
+        <div class="mod-icon-big">🚌</div>
+        <h2>Transporte Escolar Inteligente</h2>
+        <p>Controle total das rotas, veículos e elegibilidade — eliminando o uso irregular do transporte, otimizando a logística e garantindo que cada aluno com direito ao serviço seja atendido com segurança e rastreabilidade.</p>
+        <div class="feat-grid">
+          <div class="feat-item"><div class="feat-item-icon">🗺️</div><h4>Gestão de rotas</h4><p>Cadastro de rotas com paradas, horários, distâncias e veículos designados a cada trecho.</p></div>
+          <div class="feat-item"><div class="feat-item-icon">✅</div><h4>Controle de elegibilidade</h4><p>Critérios automáticos por distância e zona rural para definir o direito ao transporte gratuito.</p></div>
+          <div class="feat-item"><div class="feat-item-icon">🪪</div><h4>Emissão de carteirinhas</h4><p>Geração digital de carteirinhas com foto, dados do aluno e QR code para validação.</p></div>
+          <div class="feat-item"><div class="feat-item-icon">📊</div><h4>Ocupação por rota</h4><p>Monitoramento de lotação por veículo para redistribuição e otimização da frota.</p></div>
+          <div class="feat-item"><div class="feat-item-icon">📋</div><h4>Histórico de uso</h4><p>Registro de embarques por aluno, com histórico auditável para prestação de contas.</p></div>
+          <div class="feat-item"><div class="feat-item-icon">🔔</div><h4>Alertas e irregularidades</h4><p>Detecção de alunos usando o transporte sem elegibilidade ou fora da rota designada.</p></div>
+        </div>
+        <div class="mod-cta-row"><a href="/admin/login" class="btn-blue">Acessar o módulo</a><a href="#como-funciona" class="btn-txt">Como funciona a implantação →</a></div>
+      </div>
+    </div>
+
+    <!-- ALIMENTAÇÃO -->
+    <div id="mod-alimentacao" class="module-panel">
+      <div class="mockup-shell">
+        <div class="mockup-topbar"><div class="mockup-dots"><div class="d r"></div><div class="d y"></div><div class="d g"></div></div><div class="mockup-title">Gestão Edu · Alimentação Escolar</div></div>
+        <div class="mockup-body">
+          <div class="mck-layout">
+            <div class="mck-sidebar"><div class="mck-icon act">🍽️</div><div class="mck-icon">📦</div><div class="mck-icon">🥗</div><div class="mck-icon">📊</div></div>
+            <div class="mck-main">
+              <div class="mck-hrow"><span class="mck-t">Semana 23 — Jun 2026</span><span class="mck-badge b">847 porções/dia</span></div>
+              <div class="mck-cards">
+                <div class="mck-card"><div class="mck-val">5</div><div class="mck-lbl">Dias planejados</div></div>
+                <div class="mck-card"><div class="mck-val">3</div><div class="mck-lbl">Alertas</div></div>
+                <div class="mck-card"><div class="mck-val">98%</div><div class="mck-lbl">Meta nutricional</div></div>
+              </div>
+              <div style="background:rgba(255,255,255,0.04);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px;">
+                <div style="font-size:0.63rem;font-weight:700;color:rgba(255,255,255,0.4);margin-bottom:4px;letter-spacing:0.05em;">COBERTURA DO ESTOQUE</div>
+                <div><div class="mck-prog-lbl"><span>Arroz integral (50kg)</span><strong style="color:#34D399;">18 dias</strong></div><div class="mck-bar"><div class="mck-fill green" style="width:85%"></div></div></div>
+                <div><div class="mck-prog-lbl"><span>Feijão preto (12kg)</span><strong style="color:#FBBF24;">4 dias ⚠️</strong></div><div class="mck-bar"><div class="mck-fill gold" style="width:22%"></div></div></div>
+                <div><div class="mck-prog-lbl"><span>Frango congelado (25kg)</span><strong style="color:#34D399;">12 dias</strong></div><div class="mck-bar"><div class="mck-fill" style="width:60%"></div></div></div>
+              </div>
+              <div style="background:rgba(255,255,255,0.04);border-radius:10px;padding:12px;">
+                <div style="font-size:0.63rem;font-weight:700;color:rgba(255,255,255,0.4);margin-bottom:8px;">MACRONUTRIENTES / PORÇÃO</div>
+                <div style="display:flex;gap:16px;">
+                  <div style="text-align:center;"><div style="color:#fff;font-size:1rem;font-weight:800;">28g</div><div style="font-size:0.6rem;color:rgba(255,255,255,0.4);">Proteínas</div></div>
+                  <div style="text-align:center;"><div style="color:#fff;font-size:1rem;font-weight:800;">64g</div><div style="font-size:0.6rem;color:rgba(255,255,255,0.4);">Carboidratos</div></div>
+                  <div style="text-align:center;"><div style="color:#fff;font-size:1rem;font-weight:800;">12g</div><div style="font-size:0.6rem;color:rgba(255,255,255,0.4);">Gorduras</div></div>
+                  <div style="text-align:center;"><div style="color:#fff;font-size:1rem;font-weight:800;">480</div><div style="font-size:0.6rem;color:rgba(255,255,255,0.4);">Kcal</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="module-info">
+        <div class="mod-tag">Módulo 03 — Alimentação</div>
+        <div class="mod-icon-big">🍽️</div>
+        <h2>Alimentação Escolar Nutritiva</h2>
+        <p>Do planejamento nutricional ao controle de estoque — o sistema calcula automaticamente por quantos dias o estoque atual sustenta o cardápio planejado, com base no número real de alunos atendidos por escola e turno.</p>
+        <div class="feat-grid">
+          <div class="feat-item"><div class="feat-item-icon">🥗</div><h4>Elaboração de cardápios</h4><p>Planejamento semanal e mensal de cardápios por escola, turno e faixa etária.</p></div>
+          <div class="feat-item"><div class="feat-item-icon">📦</div><h4>Controle de estoque</h4><p>Entradas, saídas e saldo por insumo com alertas de estoque mínimo configuráveis.</p></div>
+          <div class="feat-item"><div class="feat-item-icon">🧮</div><h4>Cobertura automática</h4><p>Cálculo automático de quantos dias o estoque sustenta o cardápio e a demanda da rede.</p></div>
+          <div class="feat-item"><div class="feat-item-icon">🥦</div><h4>Controle nutricional</h4><p>Monitoramento de macronutrientes e calorias com adequação às diretrizes do PNAE.</p></div>
+          <div class="feat-item"><div class="feat-item-icon">📊</div><h4>Relatórios para FNDE</h4><p>Relatórios nutricionais automáticos para o FNDE, Conselho de Alimentação Escolar e auditorias.</p></div>
+          <div class="feat-item"><div class="feat-item-icon">🔔</div><h4>Alertas de abastecimento</h4><p>Notificações quando insumos atingem o nível mínimo por escola ou rede.</p></div>
+        </div>
+        <div class="mod-cta-row"><a href="/admin/login" class="btn-blue">Acessar o módulo</a><a href="#como-funciona" class="btn-txt">Como funciona a implantação →</a></div>
+      </div>
+    </div>
+
+    <!-- ADMINISTRATIVO -->
+    <div id="mod-administrativo" class="module-panel">
+      <div class="mockup-shell">
+        <div class="mockup-topbar"><div class="mockup-dots"><div class="d r"></div><div class="d y"></div><div class="d g"></div></div><div class="mockup-title">Gestão Edu · Módulo Administrativo</div></div>
+        <div class="mockup-body">
+          <div class="mck-layout">
+            <div class="mck-sidebar"><div class="mck-icon act">🏫</div><div class="mck-icon">🔧</div><div class="mck-icon">📦</div><div class="mck-icon">📊</div></div>
+            <div class="mck-main">
+              <div class="mck-hrow"><span class="mck-t">Patrimônio e Manutenção</span><span class="mck-badge b">34 unidades</span></div>
+              <div class="mck-cards">
+                <div class="mck-card"><div class="mck-val">2.847</div><div class="mck-lbl">Itens patrimoniais</div></div>
+                <div class="mck-card"><div class="mck-val">7</div><div class="mck-lbl">OS abertas</div></div>
+                <div class="mck-card"><div class="mck-val">R$1.2M</div><div class="mck-lbl">Patrimônio</div></div>
+              </div>
+              <div style="background:rgba(255,255,255,0.04);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:6px;">
+                <div style="font-size:0.63rem;font-weight:700;color:rgba(255,255,255,0.4);margin-bottom:4px;">ORDENS DE SERVIÇO</div>
+                <div class="mck-row"><div style="font-size:0.7rem;color:rgba(255,255,255,0.7);flex:1;">E.M. Monteiro Lobato — Telhado</div><div class="mck-badge y">Aguardando</div></div>
+                <div class="mck-row"><div style="font-size:0.7rem;color:rgba(255,255,255,0.7);flex:1;">E.M. Castro Alves — Elétrica</div><div class="mck-badge b">Em execução</div></div>
+                <div class="mck-row"><div style="font-size:0.7rem;color:rgba(255,255,255,0.7);flex:1;">CMEI Girassol — Pintura</div><div class="mck-badge g">Concluído</div></div>
+              </div>
+              <div style="background:rgba(255,255,255,0.04);border-radius:10px;padding:12px;">
+                <div style="font-size:0.63rem;font-weight:700;color:rgba(255,255,255,0.4);margin-bottom:8px;">MOVIMENTAÇÃO PATRIMONIAL</div>
+                <div class="mck-bars"><div class="mck-bc" style="height:60%"></div><div class="mck-bc hi" style="height:85%"></div><div class="mck-bc" style="height:40%"></div><div class="mck-bc" style="height:70%"></div><div class="mck-bc hi" style="height:95%"></div><div class="mck-bc" style="height:55%"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="module-info">
+        <div class="mod-tag">Módulo 04 — Administrativo</div>
+        <div class="mod-icon-big">🏫</div>
+        <h2>Gestão Administrativa e Patrimonial</h2>
+        <p>Controle total das unidades escolares — do pedido de manutenção ao balanço patrimonial, com rastreabilidade completa de todos os bens e movimentações de cada escola da rede municipal.</p>
+        <div class="feat-grid">
+          <div class="feat-item"><div class="feat-item-icon">🏷️</div><h4>Inventário patrimonial</h4><p>Cadastro de bens por unidade com tombamento, valor, estado de conservação e localização.</p></div>
+          <div class="feat-item"><div class="feat-item-icon">🔧</div><h4>Ordens de manutenção</h4><p>Abertura, acompanhamento e encerramento de OS com histórico por unidade escolar.</p></div>
+          <div class="feat-item"><div class="feat-item-icon">📦</div><h4>Controle de materiais</h4><p>Registro de entradas e saídas de materiais e equipamentos entre unidades.</p></div>
+          <div class="feat-item"><div class="feat-item-icon">💰</div><h4>Balanço patrimonial</h4><p>Consolidação automática do patrimônio por escola e rede, com depreciação e atualização.</p></div>
+          <div class="feat-item"><div class="feat-item-icon">📄</div><h4>Contratos e fornecedores</h4><p>Gestão de contratos de serviços com alertas de vencimento e histórico por fornecedor.</p></div>
+          <div class="feat-item"><div class="feat-item-icon">📊</div><h4>Relatórios para TCE</h4><p>Documentação completa para prestação de contas ao Tribunal de Contas e órgãos fiscalizadores.</p></div>
+        </div>
+        <div class="mod-cta-row"><a href="/admin/login" class="btn-blue">Acessar o módulo</a><a href="#como-funciona" class="btn-txt">Como funciona a implantação →</a></div>
+      </div>
+    </div>
+
+    <!-- RH -->
+    <div id="mod-rh" class="module-panel">
+      <div class="mockup-shell">
+        <div class="mockup-topbar"><div class="mockup-dots"><div class="d r"></div><div class="d y"></div><div class="d g"></div></div><div class="mockup-title">Gestão Edu · Recursos Humanos</div></div>
+        <div class="mockup-body">
+          <div class="mck-layout">
+            <div class="mck-sidebar"><div class="mck-icon act">👥</div><div class="mck-icon">📅</div><div class="mck-icon">🕐</div><div class="mck-icon">📄</div></div>
+            <div class="mck-main">
+              <div class="mck-hrow"><span class="mck-t">Painel RH — Jun 2026</span><span class="mck-badge g">318 servidores</span></div>
+              <div class="mck-cards">
+                <div class="mck-card"><div class="mck-val">318</div><div class="mck-lbl">Servidores</div></div>
+                <div class="mck-card"><div class="mck-val">12</div><div class="mck-lbl">Em férias</div></div>
+                <div class="mck-card"><div class="mck-val">4</div><div class="mck-lbl">Atestados</div></div>
+              </div>
+              <div style="background:rgba(255,255,255,0.04);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px;">
+                <div style="font-size:0.63rem;font-weight:700;color:rgba(255,255,255,0.4);">PENDÊNCIAS DO MÊS</div>
+                <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:0.73rem;color:rgba(255,255,255,0.7);">🏖️ Férias vencendo em 30 dias</span><span class="mck-badge y">7</span></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:0.73rem;color:rgba(255,255,255,0.7);">📋 Atestados para validar</span><span class="mck-badge b">4</span></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:0.73rem;color:rgba(255,255,255,0.7);">🏆 Licença-prêmio disponível</span><span class="mck-badge g">23</span></div>
+              </div>
+              <div class="mck-tbl">
+                <div class="mck-row"><div class="mck-av">MS</div><div style="flex:1;font-size:0.68rem;color:rgba(255,255,255,0.7);">Maria S. · Prof. Mat. · E.M. Lobato</div><div class="mck-badge b">Lotado</div></div>
+                <div class="mck-row"><div class="mck-av">JP</div><div style="flex:1;font-size:0.68rem;color:rgba(255,255,255,0.7);">João P. · Coord. · Secretaria</div><div class="mck-badge y">Férias</div></div>
+                <div class="mck-row"><div class="mck-av">AF</div><div style="flex:1;font-size:0.68rem;color:rgba(255,255,255,0.7);">Ana F. · Aux. Ed. · CMEI Girassol</div><div class="mck-badge g">Ativo</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="module-info">
+        <div class="mod-tag">Módulo 05 — Recursos Humanos</div>
+        <div class="mod-icon-big">👥</div>
+        <h2>Gestão de Pessoas da Educação</h2>
+        <p>Controle completo do ciclo de vida do servidor — dos atestados às férias, do controle de ponto às declarações — com visibilidade total sobre lotação e movimentação de pessoal em toda a rede.</p>
+        <div class="feat-grid">
+          <div class="feat-item"><div class="feat-item-icon">📍</div><h4>Controle de lotação</h4><p>Registro atualizado do local de trabalho de cada servidor com histórico de movimentações.</p></div>
+          <div class="feat-item"><div class="feat-item-icon">📋</div><h4>Gestão de atestados</h4><p>Emissão, recebimento e controle de atestados médicos com integração ao controle de ponto.</p></div>
+          <div class="feat-item"><div class="feat-item-icon">🏖️</div><h4>Férias e licença-prêmio</h4><p>Planejamento, controle e alertas de vencimento de férias e licenças de toda a equipe.</p></div>
+          <div class="feat-item"><div class="feat-item-icon">🕐</div><h4>Controle de ponto</h4><p>Registro de frequência com relatórios de horas por servidor, turno e unidade escolar.</p></div>
+          <div class="feat-item"><div class="feat-item-icon">📄</div><h4>Declarações automáticas</h4><p>Geração automática de declarações de horas, vínculos e função com assinatura digital.</p></div>
+          <div class="feat-item"><div class="feat-item-icon">🔔</div><h4>Alertas de gestão</h4><p>Notificações para férias vencendo, atestados pendentes e contratos temporários a renovar.</p></div>
+        </div>
+        <div class="mod-cta-row"><a href="/admin/login" class="btn-blue">Acessar o módulo</a><a href="#como-funciona" class="btn-txt">Como funciona a implantação →</a></div>
+      </div>
+    </div>
+  </div>
 </section>
 
 <!-- COMO FUNCIONA -->
-<section id="como-funciona" class="section how">
-    <div class="section-header reveal">
-        <span class="section-label">Processo</span>
-        <h2>Como o sistema funciona na prática</h2>
-        <p>Implementação estruturada para garantir adoção rápida e resultados reais desde as primeiras semanas.</p>
+<section id="como-funciona" class="section workflow">
+  <div class="wf-grid"></div>
+  <div class="container">
+    <div class="wf-header">
+      <div class="sec-eyebrow">Implantação</div>
+      <h2 class="sec-title">Como o Gestão Edu é <span class="italic">implantado na prática</span></h2>
+      <p class="sec-body">Um processo estruturado para garantir adoção rápida e resultados reais desde as primeiras semanas de uso.</p>
     </div>
-    <div class="steps">
-        <div class="step reveal">
-            <div class="step-num">01</div>
-            <div class="step-text">
-                <h3>Implantação e migração de dados</h3>
-                <p>A equipe técnica realiza a importação dos dados existentes — planilhas, sistemas legados ou registros físicos — garantindo que o histórico da secretaria não seja perdido na transição.</p>
-            </div>
-        </div>
-        <div class="step reveal">
-            <div class="step-num">02</div>
-            <div class="step-text">
-                <h3>Configuração dos perfis de acesso</h3>
-                <p>Cada usuário recebe permissões de acordo com sua função: professor, coordenador pedagógico, nutricionista, gestor de RH ou secretário municipal. Ninguém acessa o que não é de sua responsabilidade.</p>
-            </div>
-        </div>
-        <div class="step reveal">
-            <div class="step-num">03</div>
-            <div class="step-text">
-                <h3>Treinamento das equipes</h3>
-                <p>Capacitação presencial e por vídeos por módulo, com material de apoio disponível na plataforma. O treinamento é adaptado ao perfil técnico de cada grupo de usuários.</p>
-            </div>
-        </div>
-        <div class="step reveal">
-            <div class="step-num">04</div>
-            <div class="step-text">
-                <h3>Operação com suporte ativo</h3>
-                <p>Nos primeiros meses, a equipe técnica acompanha de perto a utilização do sistema, corrigindo fluxos e ajustando configurações conforme a realidade de cada escola e setor.</p>
-            </div>
-        </div>
-        <div class="step reveal">
-            <div class="step-num">05</div>
-            <div class="step-text">
-                <h3>Relatórios e tomada de decisão</h3>
-                <p>Com os dados consolidados, a secretaria passa a ter visibilidade real sobre toda a rede — e os gestores conseguem identificar gargalos, planejar melhorias e prestar contas com precisão.</p>
-            </div>
-        </div>
+    <div class="wf-steps">
+      <div class="wf-step reveal"><div class="wf-num-wrap"><span class="wf-num">01</span><div class="wf-step-ico">📂</div></div><h3>Migração de dados</h3><p>Importação do histórico existente — planilhas, sistemas legados ou registros físicos — nenhum dado é perdido na transição.</p></div>
+      <div class="wf-step reveal d1"><div class="wf-num-wrap"><span class="wf-num">02</span><div class="wf-step-ico">🔑</div></div><h3>Configuração de perfis</h3><p>Cada usuário recebe acesso de acordo com sua função: professor, coordenador, nutricionista, gestor de RH ou secretário.</p></div>
+      <div class="wf-step reveal d2"><div class="wf-num-wrap"><span class="wf-num">03</span><div class="wf-step-ico">🎓</div></div><h3>Treinamento das equipes</h3><p>Capacitação presencial por módulo, com material de apoio na plataforma e vídeos de consulta rápida para cada perfil.</p></div>
+      <div class="wf-step reveal d3"><div class="wf-num-wrap"><span class="wf-num">04</span><div class="wf-step-ico">🛠️</div></div><h3>Operação assistida</h3><p>Acompanhamento técnico nos primeiros meses para ajustar fluxos, resolver dúvidas e garantir adoção completa.</p></div>
+      <div class="wf-step reveal d4"><div class="wf-num-wrap"><span class="wf-num">05</span><div class="wf-step-ico">📊</div></div><h3>Gestão estratégica</h3><p>Com dados consolidados, a secretaria passa a tomar decisões baseadas em dados reais e prestar contas com precisão.</p></div>
     </div>
+  </div>
+</section>
+
+<!-- BENEFÍCIOS -->
+<section class="section benefits">
+  <div class="container">
+    <div style="text-align:center;margin-bottom:56px;" class="reveal">
+      <div class="sec-eyebrow">Por que o Gestão Edu</div>
+      <h2 class="sec-title">Benefícios que toda a rede sente</h2>
+    </div>
+    <div class="benefits-grid">
+      <div class="benefit-card reveal"><div class="benefit-icon">🎯</div><h3>Centralização de Dados</h3><p>Todas as informações — pedagógicas, patrimoniais, de pessoal e de alimentação — reunidas em uma única base confiável e acessível.</p></div>
+      <div class="benefit-card feat reveal d1"><div class="benefit-icon">🔗</div><h3>Integração Real entre Setores</h3><p>O RH sabe quais professores estão de atestado. A alimentação conhece a frequência prevista. O transporte vê os alunos matriculados. Tudo conectado.</p></div>
+      <div class="benefit-card reveal d2"><div class="benefit-icon">⚡</div><h3>Eficiência Administrativa</h3><p>Redução de retrabalho, padronização de processos e automação de tarefas repetitivas que consomem horas da equipe diariamente.</p></div>
+      <div class="benefit-card reveal d1"><div class="benefit-icon">🔍</div><h3>Transparência Total</h3><p>Histórico auditável de todas as ações — quem fez o quê, quando e em qual unidade — para prestação de contas sem margem para erros.</p></div>
+      <div class="benefit-card reveal d2"><div class="benefit-icon">📱</div><h3>Acesso Responsivo</h3><p>Interface adaptada para computadores, tablets e smartphones — gestores, diretores e professores acessam de qualquer lugar.</p></div>
+      <div class="benefit-card reveal d3"><div class="benefit-icon">📊</div><h3>Decisões Baseadas em Dados</h3><p>Indicadores consolidados em tempo real para que a secretaria passe de uma gestão reativa para uma gestão verdadeiramente estratégica.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- INTEGRAÇÃO -->
+<section id="integracao" class="section integration">
+  <div class="container">
+    <div style="text-align:center;margin-bottom:64px;" class="reveal">
+      <div class="sec-eyebrow">Integração</div>
+      <h2 class="sec-title">Um ecossistema, <span class="italic">não uma coleção de ferramentas</span></h2>
+      <p class="sec-body" style="margin:0 auto;">Os cinco módulos compartilham a mesma base de dados. A matrícula alimenta o transporte. A frequência alimenta a alimentação. O RH alimenta tudo. Essa é a diferença de um sistema realmente integrado.</p>
+    </div>
+    <div class="int-spokes reveal">
+      <div class="int-center">🏛️</div>
+      <div class="int-spoke s1"><div class="int-spoke-icon">📋</div><div class="int-spoke-lbl">Pedagógico</div></div>
+      <div class="int-spoke s2"><div class="int-spoke-icon">🚌</div><div class="int-spoke-lbl">Transporte</div></div>
+      <div class="int-spoke s3"><div class="int-spoke-icon">🍽️</div><div class="int-spoke-lbl">Alimentação</div></div>
+      <div class="int-spoke s4"><div class="int-spoke-icon">🏫</div><div class="int-spoke-lbl">Administrativo</div></div>
+      <div class="int-spoke s5"><div class="int-spoke-icon">👥</div><div class="int-spoke-lbl">R. Humanos</div></div>
+    </div>
+    <div class="int-grid">
+      <div class="int-point reveal"><div class="int-point-icon">🔄</div><h3>Dados compartilhados</h3><p>Aluno matriculado no módulo pedagógico já aparece automaticamente no transporte e na alimentação.</p></div>
+      <div class="int-point reveal d1"><div class="int-point-icon">📊</div><h3>Relatórios consolidados</h3><p>Visão gerencial da secretaria com dados de todos os módulos em uma única tela de indicadores.</p></div>
+      <div class="int-point reveal d2"><div class="int-point-icon">🔔</div><h3>Alertas cruzados</h3><p>Queda de frequência no pedagógico gera alerta no RH. Sistema que pensa junto com o gestor.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- SEGURANÇA -->
+<section id="seguranca" class="section security">
+  <div class="container security-grid">
+    <div class="sec-left reveal">
+      <div class="sec-eyebrow">Segurança e Privacidade</div>
+      <h2 class="sec-title">Dados públicos exigem <span class="italic">proteção de nível profissional</span></h2>
+      <p class="sec-body">O Gestão Edu foi projetado com a LGPD como princípio de design — protegendo as informações de alunos, funcionários e a própria secretaria com rigor técnico e conformidade legal.</p>
+      <div class="sec-list">
+        <div class="sec-item"><div class="sec-ico">🔒</div><div><h4>Criptografia em trânsito e em repouso</h4><p>Comunicações protegidas por TLS 1.3 e dados armazenados cifrados — impossibilitando acesso não autorizado mesmo em caso de vazamento de infraestrutura.</p></div></div>
+        <div class="sec-item"><div class="sec-ico">👤</div><div><h4>Controle de acesso por perfil (RBAC)</h4><p>Cada usuário vê apenas o que sua função permite. Um professor não acessa dados de RH; um motorista não vê notas de alunos.</p></div></div>
+        <div class="sec-item"><div class="sec-ico">🗄️</div><div><h4>Backups automáticos e recuperação garantida</h4><p>Cópias automáticas diárias com retenção de 30 dias. Recuperação de dados em caso de incidentes sem perda de histórico.</p></div></div>
+        <div class="sec-item"><div class="sec-ico">📋</div><div><h4>Log de auditoria imutável</h4><p>Registro completo de toda ação no sistema — quem, o quê, quando e de qual dispositivo — para fins de auditoria e conformidade legal.</p></div></div>
+      </div>
+    </div>
+    <div class="reveal d2">
+      <div class="shield-box">
+        <span class="shield-ico">🛡️</span>
+        <h3>Conformidade com a LGPD</h3>
+        <p>Controle de consentimento, minimização de dados e direito ao esquecimento incorporados na arquitetura — não adicionados depois como correção.</p>
+        <div class="shield-tags">
+          <div class="shield-tag">🔒 TLS 1.3</div>
+          <div class="shield-tag">🛡️ LGPD</div>
+          <div class="shield-tag">🗄️ Backup Diário</div>
+          <div class="shield-tag">📋 Auditoria</div>
+          <div class="shield-tag">👤 RBAC</div>
+          <div class="shield-tag">☁️ Cloud</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- QUOTE -->
+<section class="quote-section">
+  <div class="quote-inner reveal">
+    <div class="quote-mark">"</div>
+    <blockquote>Uma secretaria de educação eficiente não se constrói com mais papel — constrói-se com informação certa, na hora certa, para quem precisa tomar a decisão.</blockquote>
+    <div class="quote-author">Princípio da <strong>Gestão Pública Orientada por Dados</strong></div>
+  </div>
 </section>
 
 <!-- CTA FINAL -->
 <section class="cta-final">
-    <div class="cta-final-content">
-        <h2>Acesso exclusivo para profissionais da educação municipal</h2>
-        <p>Entre com suas credenciais institucionais para acessar o painel completo do Gestão Edu.</p>
-        <a href="/login" class="btn-primary">Acessar o Sistema</a>
+  <div class="cta-orb"></div>
+  <div class="cta-inner">
+    <h2>Pronto para transformar a gestão da <span class="italic">educação de Umuarama?</span></h2>
+    <p>Entre com suas credenciais institucionais e acesse o painel completo da Secretaria Municipal de Educação.</p>
+    <div class="cta-cards">
+      <div class="cta-card"><div class="cta-card-icon">📋</div><h4>Gestão Pedagógica</h4><p>Alunos, turmas, notas e frequência</p></div>
+      <div class="cta-card"><div class="cta-card-icon">🚌</div><h4>Transporte e Alimentação</h4><p>Rotas, cardápios e estoque integrados</p></div>
+      <div class="cta-card"><div class="cta-card-icon">👥</div><h4>RH e Patrimônio</h4><p>Servidores, bens e manutenções</p></div>
     </div>
+    <a href="/admin/login" class="btn-cta">Acessar o Sistema →</a>
+  </div>
 </section>
 
 <!-- FOOTER -->
 <footer>
-    <div class="footer-inner">
-        <div class="footer-brand">
-            <img src="/images/brasao-umuarama.png" alt="Brasão de Umuarama">
-            <p>Sistema de Gestão Escolar da Secretaria Municipal de Educação de Umuarama. Desenvolvido para centralizar, integrar e modernizar a gestão da educação pública municipal.</p>
-        </div>
-        <div class="footer-col">
-            <h4>Módulos</h4>
-            <ul>
-                <li><a href="#modulos">Pedagógico</a></li>
-                <li><a href="#modulos">Transporte Escolar</a></li>
-                <li><a href="#modulos">Alimentação Escolar</a></li>
-                <li><a href="#modulos">Administrativo</a></li>
-                <li><a href="#modulos">Recursos Humanos</a></li>
-            </ul>
-        </div>
-        <div class="footer-col">
-            <h4>Secretaria</h4>
-            <ul>
-                <li><a href="#">Prefeitura de Umuarama</a></li>
-                <li><a href="#">Secretaria de Educação</a></li>
-                <li><a href="/login">Acessar o Sistema</a></li>
-            </ul>
-        </div>
+  <div class="footer-top">
+    <div class="footer-brand">
+      <img src="/images/brasao-umuarama.png" alt="Brasão de Umuarama">
+      <p>Sistema de Gestão Escolar da Secretaria Municipal de Educação de Umuarama — desenvolvido para centralizar, integrar e modernizar a gestão da educação pública municipal.</p>
+      <div class="footer-contact">
+        <p><strong>Secretaria Municipal de Educação</strong></p>
+        <p>Prefeitura Municipal de Umuarama — PR</p>
+      </div>
     </div>
-    <div class="footer-bottom">
-        <p>© 2026 · Prefeitura Municipal de Umuarama · Secretaria Municipal de Educação</p>
-        <div class="footer-logos">
-            <img src="/images/brasao-umuarama.png" alt="Umuarama">
-            <img src="/images/abrinq-logo.png" alt="Fundação Abrinq">
-        </div>
+    <div>
+      <div class="footer-col-ttl">Módulos</div>
+      <ul class="footer-links">
+        <li><a href="#modulos">Módulo Pedagógico</a></li>
+        <li><a href="#modulos">Transporte Escolar</a></li>
+        <li><a href="#modulos">Alimentação Escolar</a></li>
+        <li><a href="#modulos">Administrativo</a></li>
+        <li><a href="#modulos">Recursos Humanos</a></li>
+      </ul>
     </div>
+    <div>
+      <div class="footer-col-ttl">Navegação</div>
+      <ul class="footer-links">
+        <li><a href="#problemas">Diagnóstico</a></li>
+        <li><a href="#integracao">Integração</a></li>
+        <li><a href="#seguranca">Segurança</a></li>
+        <li><a href="#como-funciona">Implantação</a></li>
+        <li><a href="/admin/login">Acessar o Sistema</a></li>
+      </ul>
+    </div>
+    <div>
+      <div class="footer-col-ttl">Conformidade</div>
+      <ul class="footer-links">
+        <li><a href="#">Política de Privacidade</a></li>
+        <li><a href="#">Termos de Uso</a></li>
+        <li><a href="#">LGPD</a></li>
+        <li><a href="#">Suporte Técnico</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p>© 2026 · Prefeitura Municipal de Umuarama · Secretaria Municipal de Educação · Gestão Edu</p>
+    <div class="footer-logos">
+      <img src="/images/brasao-umuarama.png" alt="Umuarama">
+      <img src="/images/abrinq-logo.png" alt="Fundação Abrinq">
+    </div>
+  </div>
 </footer>
 
 <script>
-    // Reveal on scroll
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); } });
-    }, { threshold: 0.12 });
-    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+// Cursor glow
+const glow = document.getElementById('cursor-glow');
+document.addEventListener('mousemove', e => { glow.style.left = e.clientX+'px'; glow.style.top = e.clientY+'px'; });
+
+// Reveal on scroll
+const obs = new IntersectionObserver(entries => { entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('visible'); }); }, { threshold: 0.1 });
+document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+
+// Module tabs
+function switchMod(id, btn) {
+  document.querySelectorAll('.module-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.modnav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('mod-'+id).classList.add('active');
+  btn.classList.add('active');
+}
+
+// Particles
+const pc = document.getElementById('particles');
+for(let i=0;i<30;i++){
+  const p=document.createElement('div');
+  p.className='particle';
+  p.style.cssText=`left:${Math.random()*100}%;top:${100+Math.random()*100}%;--dx:${(Math.random()-.5)*60}px;animation-duration:${6+Math.random()*10}s;animation-delay:${Math.random()*10}s;opacity:${0.2+Math.random()*0.4};width:${1+Math.random()*2}px;height:${1+Math.random()*2}px;background:rgba(255,255,255,0.5);`;
+  pc.appendChild(p);
+}
+
+// Counter animation
+setTimeout(()=>{
+  document.querySelectorAll('.hero-stat-num').forEach(el=>{
+    const text=el.textContent;
+    const num=parseFloat(text.replace(/[^0-9.]/g,''));
+    if(isNaN(num)) return;
+    const suffix=text.replace(/[0-9.]/g,'');
+    let start=0; const step=num/40;
+    const t=setInterval(()=>{
+      start+=step;
+      if(start>=num){el.textContent=text;clearInterval(t);return;}
+      el.textContent=(Number.isInteger(num)?Math.floor(start):start.toFixed(1))+suffix;
+    },40);
+  });
+},800);
 </script>
 </body>
 </html>

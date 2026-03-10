@@ -21,10 +21,12 @@ use App\Services\UserService;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\LaudoArquivoController;
 use Filament\Actions\Action as GlobalAction;
-use Filament\Navigation\MenuItem;
 use App\Models\User;
 use Filament\View\PanelsRenderHook;
 use Illuminate\Support\Facades\Blade;
+use Caresome\FilamentAuthDesigner\AuthDesignerPlugin;
+use Caresome\FilamentAuthDesigner\Data\AuthPageConfig;
+use Caresome\FilamentAuthDesigner\Enums\MediaPosition;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -33,7 +35,7 @@ class AdminPanelProvider extends PanelProvider
     {
         return $panel
             ->id('admin')
-            ->path('')
+            ->path('admin')
             ->login()
             ->profile()
             ->spa()
@@ -88,12 +90,16 @@ class AdminPanelProvider extends PanelProvider
                     return '';
                 }
             )
-            ->userMenuItems([
-                // O logout já vem por padrão, mas você pode customizar
-                'logout' => MenuItem::make()
-                    ->label('Sair'),
-            ])
             ->plugins([
+                AuthDesignerPlugin::make()
+                    ->login(
+                        fn(AuthPageConfig $config) => $config
+                            ->media(asset('images/background.jpg'))
+                            ->mediaPosition(MediaPosition::Left)
+                            ->mediaSize('70%')
+                            ->themeToggle()
+
+                    )
             ]);
     }
 }
