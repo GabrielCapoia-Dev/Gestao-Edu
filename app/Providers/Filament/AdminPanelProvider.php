@@ -33,12 +33,12 @@ class AdminPanelProvider extends PanelProvider
     {
         return $panel
             ->id('admin')
-            ->path('admin')
+            ->path('')
             ->login()
             ->profile()
             ->spa()
             ->colors([
-                'primary' => Color::Green,
+                'primary' => Color::Sky,
                 'gray' => [
                     50 => '#e5eaf1ff',
                     100 => '#c7def8c7',
