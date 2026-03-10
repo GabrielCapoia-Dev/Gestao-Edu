@@ -30,27 +30,27 @@ class ViewPedido extends ViewRecord
         ];
     }
 
-    public function infolist(Infolist $infolist): Infolist
-    {
-        $user = Auth::user();
+    // public function infolist(Infolist $infolist): Infolist
+    // {
+    //     $user = Auth::user();
 
-        return $infolist
-            ->schema([
+    //     return $infolist
+    //         ->schema([
 
-                /*
-            |--------------------------------------------------------------------------
-            | IDENTIFICAÇÃO
-            |--------------------------------------------------------------------------
-            */
+    //             /*
+    //         |--------------------------------------------------------------------------
+    //         | IDENTIFICAÇÃO
+    //         |--------------------------------------------------------------------------
+    //         */
 
-                Infolists\Components\ViewEntry::make('header')
-                    ->view('components.pedido.pedido-cabecalho')
-                    ->viewData([
-                        'record' => $this->record,
-                    ])
-                    ->columnSpanFull(),
+    //             Infolists\Components\ViewEntry::make('header')
+    //                 ->view('components.pedido.pedido-cabecalho')
+    //                 ->viewData([
+    //                     'record' => $this->record,
+    //                 ])
+    //                 ->columnSpanFull(),
 
 
-            ]);
-    }
+    //         ]);
+    // }
 }

@@ -12,18 +12,18 @@ use Filament\Tables\Table;
 class TipoStatusResource extends Resource
 {
     protected static ?string $model = TipoStatus::class;
-    protected static ?string $navigationIcon = 'heroicon-o-tag';
+    // protected static ?string $navigationGroup = 'Manutenção';
+    // protected static ?string $navigationIcon = 'heroicon-o-tag';
     protected static ?string $modelLabel = 'Status';
     protected static ?string $pluralModelLabel = 'Status';
-    protected static ?string $navigationGroup = 'Manutenção';
     protected static ?string $slug = 'tipo-status';
     protected static ?int $navigationSort = 3;
     protected static bool $shouldRegisterNavigation = false;
 
-    public static function form(Form $form): Form
-    {
-        return app(Service::class)->configurarFormulario($form);
-    }
+    // public static function form(Form $form): Form
+    // {
+    //     return app(Service::class)->configurarFormulario($form);
+    // }
 
     public static function table(Table $table): Table
     {

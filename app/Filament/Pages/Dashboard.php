@@ -1,25 +1,25 @@
 <?php
 
-namespace App\Filament\Pages;
+// namespace App\Filament\Pages;
 
-use App\Services\UserService;
-use Filament\Pages\Page;
-use Illuminate\Support\Facades\Auth;
+// use App\Services\UserService;
+// use Filament\Pages\Page;
+// use Illuminate\Support\Facades\Auth;
 
-class Dashboard extends Page
-{
-    protected static ?string $navigationIcon = 'heroicon-o-document-text';
+// class Dashboard extends Page
+// {
+//     // protected static ?string $navigationIcon = 'heroicon-o-document-text';
 
-    protected static string $view = 'filament.pages.dashboard';
+//     protected static string $view = 'filament.pages.dashboard';
 
-    public static function userService(): UserService
-    {
-        return app(UserService::class);
-    }
+//     public static function userService(): UserService
+//     {
+//         return app(UserService::class);
+//     }
 
-    public static function canAccess(): bool
-    {
+//     public static function canAccess(): bool
+//     {
 
-        return static::userService()->ehAdmin(Auth::user());
-    }
-}
+//         return static::userService()->ehAdmin(Auth::user());
+//     }
+// }

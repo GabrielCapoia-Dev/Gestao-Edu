@@ -8,7 +8,7 @@ use Livewire\Attributes\On;
 
 class FeedbackQuantidadePorNotaChart extends ChartWidget
 {
-    protected static ?string $heading = 'Quantidade de Avaliações por Nota';
+    protected ?string $heading = 'Quantidade de Avaliações por Nota';
     protected static bool $isLazy = false;
 
     public array $chartFilters = [];

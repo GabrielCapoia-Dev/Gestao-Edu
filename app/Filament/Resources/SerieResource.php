@@ -14,7 +14,8 @@ class SerieResource extends Resource
 {
     protected static ?string $model = Serie::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-list';
+    // protected static ?string $navigationIcon = 'heroicon-o-clipboard-document-list';
+    // protected static ?string $navigationGroup = 'Gerenciamento Escolar';
 
     protected static ?string $navigationLabel = 'Series';
 
@@ -22,17 +23,16 @@ class SerieResource extends Resource
 
     protected static ?string $modelLabel = 'Serie';
 
-    protected static ?string $navigationGroup = 'Gerenciamento Escolar';
 
     public static function service(): Service
     {
         return app(Service::class);
     }
 
-    public static function form(Form $form): Form
-    {
-        return static::service()->configurarFormulario($form);
-    }
+    // public static function form(Form $form): Form
+    // {
+    //     return static::service()->configurarFormulario($form);
+    // }
 
     public static function table(Table $table): Table
     {

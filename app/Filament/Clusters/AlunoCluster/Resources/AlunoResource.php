@@ -14,7 +14,7 @@ use Filament\Tables\Table;
 use App\Services\AlunoService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Builder;
-use Filament\Pages\SubNavigationPosition;
+use Filament\Pages\Enums\SubNavigationPosition;
 
 
 class AlunoResource extends Resource
@@ -24,9 +24,9 @@ class AlunoResource extends Resource
 
     protected static ?string $cluster = AlunoCluster::class;
 
-    protected static SubNavigationPosition $subNavigationPosition = SubNavigationPosition::Top;
+    protected static ?SubNavigationPosition $subNavigationPosition = SubNavigationPosition::Top;
 
-    protected static ?string $navigationIcon = 'heroicon-o-academic-cap';
+    // protected static ?string $navigationIcon = 'heroicon-o-academic-cap';
     protected static ?string $navigationLabel = 'Alunos';
     protected static ?string $pluralModelLabel = 'Alunos';
     protected static ?string $modelLabel = 'Aluno';
@@ -37,10 +37,10 @@ class AlunoResource extends Resource
         return app(AlunoService::class);
     }
 
-    public static function form(Form $form): Form
-    {
-        return static::alunoService()->configurarFormulario($form, Auth::user());
-    }
+    // public static function form(Form $form): Form
+    // {
+    //     return static::alunoService()->configurarFormulario($form, Auth::user());
+    // }
 
     public static function table(Table $table): Table
     {

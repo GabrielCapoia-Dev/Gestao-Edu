@@ -31,7 +31,6 @@ use Filament\Events\ServingFilament;
 use Filament\Facades\Filament;
 use Illuminate\Support\Facades\Event;
 use App\Services\UserService;
-use Hasnayeen\Themes\Themes;
 use Illuminate\Support\Facades\Auth;
 use App\Models\AlunoLaudo;
 use App\Policies\AlunoLaudoPolicy;
@@ -95,25 +94,5 @@ class AppServiceProvider extends ServiceProvider
             PanelsRenderHook::BODY_END,
             fn() => view('components.open-url-listener'),
         );
-
-        Event::listen(ServingFilament::class, function () {
-
-            /** @var \App\Models\User|null $user */
-            $user = Filament::getCurrentPanel()?->auth()?->user()
-                ?? Auth::user();
-
-            if (! $user) {
-                return;
-            }
-
-            $canViewPanel = $user->hasPermissionTo('Visualizar Painel Personalizado');
-
-            app(Themes::class)->register(
-                $canViewPanel
-                    ? [\Hasnayeen\Themes\Themes\Sunset::class]
-                    : [\App\Filament\Themes\TemaSME::class],
-                true
-            );
-        });
     }
 }

@@ -19,8 +19,8 @@ class SetorResource extends Resource
 {
     protected static ?string $model = Setor::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-building-office';
-    protected static ?string $navigationGroup = 'Manutenção';
+    // protected static ?string $navigationIcon = 'heroicon-o-building-office';
+    // protected static ?string $navigationGroup = 'Manutenção';
     protected static ?string $pluralModelLabel = 'Setores';
     protected static ?string $modelLabel = 'Setor';
     protected static bool $shouldRegisterNavigation = false;
@@ -36,10 +36,10 @@ class SetorResource extends Resource
             ->where('ativo', true);
     }
 
-    public static function form(Form $form): Form
-    {
-        return static::service()->configurarFormulario($form);
-    }
+    // public static function form(Form $form): Form
+    // {
+    //     return static::service()->configurarFormulario($form);
+    // }
 
     public static function table(Table $table): Table
     {

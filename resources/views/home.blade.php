@@ -390,9 +390,7 @@
                 Plataforma completa para gestão pedagógica, administrativa, logistica e de recursos humanos,
                 garantindo acompanhamento integrado e excelência na gestão escolar.
             </p>
-            <a href="/administrativo/login" class="sistema-button">Administrativo</a>
-            <a href="/especial/login" class="sistema-button">Educação Especial</a>
-            <a href="/admin/login" class="sistema-button">Painel Admin</a>
+            <a href="/admin/login" class="cta-button">Acessar o Sistema</a>
         </div>
     </section>
 
@@ -548,7 +546,7 @@
                 Entre com suas credenciais para acessar o sistema completo de
                 gestão escolar integrada de Umuarama.
             </p>
-            <a href="/admin/login" class="cta-button">Fazer Login no Sistema</a>
+            <a href="/admin/login" class="cta-button">Acessar o Sistema</a>
         </div>
     </section>
 

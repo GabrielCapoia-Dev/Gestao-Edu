@@ -26,7 +26,6 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Tables\Actions\Action;
-use AlperenErsoy\FilamentExport\Actions\FilamentExportBulkAction;
 
 class ProfessorService
 {
@@ -403,17 +402,6 @@ class ProfessorService
     public function acoesEmMassa(?User $user): array
     {
         return [
-            FilamentExportBulkAction::make('exportar_xlsx')
-                ->label('Exportar XLSX')
-                ->defaultFormat('xlsx')
-                ->visible(fn() => $this->userService->podeExportarProfessores($user))
-                ->directDownload(),
-            FilamentExportBulkAction::make('exportar_pdf')
-                ->label('Exportar PDF')
-                ->defaultFormat('pdf')
-                ->visible(fn() => $this->userService->podeExportarProfessores($user))
-                ->color('danger')
-                ->directDownload(),
 
             BulkActionGroup::make([
                 DeleteBulkAction::make()

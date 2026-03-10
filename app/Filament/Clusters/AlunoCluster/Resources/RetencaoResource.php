@@ -10,9 +10,8 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
-use AlperenErsoy\FilamentExport\Actions\FilamentExportBulkAction;
 use Illuminate\Database\Eloquent\Builder;
-use Filament\Pages\SubNavigationPosition;
+use Filament\Pages\Enums\SubNavigationPosition;
 use Filament\Tables\Actions\Action;
 use App\Services\UserService;
 use Illuminate\Support\Facades\Auth;
@@ -23,9 +22,9 @@ class RetencaoResource extends Resource
 
     protected static ?string $cluster = AlunoCluster::class;
 
-    protected static SubNavigationPosition $subNavigationPosition = SubNavigationPosition::Top;
+    protected static ?SubNavigationPosition $subNavigationPosition = SubNavigationPosition::Top;
 
-    protected static ?string $navigationIcon = 'heroicon-o-arrow-path-rounded-square';
+    // protected static ?string $navigationIcon = 'heroicon-o-arrow-path-rounded-square';
     protected static ?string $navigationLabel = 'Retenções';
     protected static ?string $modelLabel = 'Retenção';
     protected static ?string $pluralModelLabel = 'Retenções';
@@ -37,31 +36,31 @@ class RetencaoResource extends Resource
         return $user->podeListarRetencoes(Auth::user());
     }
 
-    public static function form(Form $form): Form
-    {
-        // Se quiser deixar somente leitura, mantém vazio e tira create/edit das pages.
-        return $form->schema([]);
-    }
+    // public static function form(Form $form): Form
+    // {
+    //     // Se quiser deixar somente leitura, mantém vazio e tira create/edit das pages.
+    //     return $form->schema([]);
+    // }
 
     public static function table(Table $table): Table
     {
         return $table
-            ->headerActions([
-                Action::make('total_listado')
-                    ->label(fn($livewire) => 'Total: ' . number_format(
-                        $livewire->getFilteredTableQuery()->count(),
-                        0,
-                        ',',
-                        '.'
-                    ))
-                    ->disabled()
-                    ->color('gray')
-                    ->icon('heroicon-m-list-bullet')
-                    ->button()
-                    ->extraAttributes([
-                        'class' => 'cursor-default text-xl font-semibold',
-                    ]),
-            ])
+            // ->headerActions([
+            //     Action::make('total_listado')
+            //         ->label(fn($livewire) => 'Total: ' . number_format(
+            //             $livewire->getFilteredTableQuery()->count(),
+            //             0,
+            //             ',',
+            //             '.'
+            //         ))
+            //         ->disabled()
+            //         ->color('gray')
+            //         ->icon('heroicon-m-list-bullet')
+            //         ->button()
+            //         ->extraAttributes([
+            //             'class' => 'cursor-default text-xl font-semibold',
+            //         ]),
+            // ])
             ->columns([
                 // Identificação do aluno
                 TextColumn::make('aluno.cgm')
@@ -153,15 +152,7 @@ class RetencaoResource extends Resource
                 // Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
-                FilamentExportBulkAction::make('exportar_xlsx')
-                    ->label('Exportar XLSX')
-                    ->defaultFormat('xlsx')
-                    ->directDownload(),
-                FilamentExportBulkAction::make('exportar_pdf')
-                    ->label('Exportar PDF')
-                    ->defaultFormat('pdf')
-                    ->color('danger')
-                    ->directDownload(),
+
             ]);
     }
 

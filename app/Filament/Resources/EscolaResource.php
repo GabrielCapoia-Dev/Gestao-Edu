@@ -15,9 +15,9 @@ class EscolaResource extends Resource
 {
     protected static ?string $model = Escola::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-building-library';
+    // protected static ?string $navigationGroup = "Gerenciamento Escolar";
+    // protected static ?string $navigationIcon = 'heroicon-o-building-library';
     public static ?string $modelLabel = 'Escola';
-    protected static ?string $navigationGroup = "Gerenciamento Escolar";
     public static ?string $pluralModelLabel = 'Escolas';
     public static ?string $slug = 'escolas';
 
@@ -32,10 +32,10 @@ class EscolaResource extends Resource
             ->where('ativo', true);
     }
 
-    public static function form(Form $form): Form
-    {
-        return static::service()->configurarFormulario($form);
-    }
+    // public static function form(Form $form): Form
+    // {
+    //     return static::service()->configurarFormulario($form);
+    // }
 
 
     public static function table(Table $table): Table

@@ -8,11 +8,10 @@ use App\Models\Aluno;
 use App\Models\Professor;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Resources\Resource;
-use AlperenErsoy\FilamentExport\Actions\FilamentExportBulkAction;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Filament\Pages\SubNavigationPosition;
+use Filament\Pages\Enums\SubNavigationPosition;
 use Illuminate\Support\Facades\Auth;
 use Filament\Tables\Actions\Action;
 use App\Services\AlunoService;
@@ -20,9 +19,9 @@ use App\Services\AlunoService;
 class SalaDeRecursosMultifuncionaisResource extends Resource
 {
     protected static ?string $model = Aluno::class;
-    protected static SubNavigationPosition $subNavigationPosition = SubNavigationPosition::Top;
+    protected static ?SubNavigationPosition $subNavigationPosition = SubNavigationPosition::Top;
 
-    protected static ?string $navigationIcon = 'heroicon-o-squares-plus';
+    // protected static ?string $navigationIcon = 'heroicon-o-squares-plus';
     protected static ?string $navigationLabel = 'SRM';
     protected static ?string $modelLabel = 'Sala de Recurso Multifuncional';
     protected static ?string $pluralModelLabel = 'Sala de Recursos Multifuncionais';
@@ -55,25 +54,25 @@ class SalaDeRecursosMultifuncionaisResource extends Resource
 
 
         return $table
-            ->headerActions([
-                Action::make('total_listado')
-                    ->label(fn($livewire) => 'Total: ' . number_format(
-                        $livewire->getFilteredTableQuery()->count(),
-                        0,
-                        ',',
-                        '.'
-                    ))
-                    ->disabled()
-                    ->color('gray')
-                    ->icon('heroicon-m-list-bullet')
-                    ->button()
-                    ->extraAttributes([
-                        'class' => 'cursor-default text-xl font-semibold',
-                    ]),
-            ])
-            ->modifyQueryUsing(function (Builder $query) use ($user) {
-                static::alunoService()->aplicarFiltroPorEscolaDoUsuario($query, $user);
-            })
+            // ->headerActions([
+            //     Action::make('total_listado')
+            //         ->label(fn($livewire) => 'Total: ' . number_format(
+            //             $livewire->getFilteredTableQuery()->count(),
+            //             0,
+            //             ',',
+            //             '.'
+            //         ))
+            //         ->disabled()
+            //         ->color('gray')
+            //         ->icon('heroicon-m-list-bullet')
+            //         ->button()
+            //         ->extraAttributes([
+            //             'class' => 'cursor-default text-xl font-semibold',
+            //         ]),
+            // ])
+            // ->modifyQueryUsing(function (Builder $query) use ($user) {
+            //     static::alunoService()->aplicarFiltroPorEscolaDoUsuario($query, $user);
+            // })
             ->columns([
 
                 Tables\Columns\TextColumn::make('turma.escola.nome')
@@ -162,15 +161,6 @@ class SalaDeRecursosMultifuncionaisResource extends Resource
                 Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
-                FilamentExportBulkAction::make('exportar_xlsx')
-                    ->label('Exportar XLSX')
-                    ->defaultFormat('xlsx')
-                    ->directDownload(),
-                FilamentExportBulkAction::make('exportar_pdf')
-                    ->label('Exportar PDF')
-                    ->defaultFormat('pdf')
-                    ->color('danger')
-                    ->directDownload(),
             ]);
     }
 

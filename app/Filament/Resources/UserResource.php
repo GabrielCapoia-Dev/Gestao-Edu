@@ -14,9 +14,9 @@ use Illuminate\Support\Facades\Auth;
 class UserResource extends Resource
 {
     protected static ?string $model = User::class;
-    protected static ?string $navigationIcon = 'heroicon-o-users';
+    // protected static ?string $navigationIcon = 'heroicon-o-users';
+    // protected static ?string $navigationGroup = "Acesso";
     public static ?string $modelLabel = 'Usuário';
-    protected static ?string $navigationGroup = "Acesso";
     public static ?string $pluralModelLabel = 'Usuários';
     public static ?string $slug = 'usuarios';
 
@@ -31,10 +31,10 @@ class UserResource extends Resource
     }
 
     /** FORM delega à service */
-    public static function form(Form $form): Form
-    {
-        return app(Service::class)->configurarFormulario($form);
-    }
+    // public static function form(Form $form): Form
+    // {
+    //     return app(Service::class)->configurarFormulario($form);
+    // }
 
     /** TABLE delega à service */
     public static function table(Table $table): Table

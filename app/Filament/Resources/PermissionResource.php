@@ -30,34 +30,34 @@ class PermissionResource extends Resource
 
     protected static ?string $model = Permission::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-key';
+    // protected static ?string $navigationIcon = 'heroicon-o-key';
+    // public static ?string $navigationGroup = 'Administrativo';
 
     public static ?string $modelLabel = 'Permissão de execução';
 
     public static ?string $pluralModelLabel = 'Permissões de execução';
 
-    public static ?string $navigationGroup = 'Administrativo';
 
     public static ?string $slug = 'permissoes';
 
     public static ?int $navigationSort = 2;
 
 
-    public static function form(Form $form): Form
-    {
-        return $form
-            ->schema([
-                Forms\Components\TextInput::make('name')
-                    ->label('Permissão de execução')
-                    ->required()
-                    ->unique(ignoreRecord: true),
-                Forms\Components\Select::make('role')
-                    ->label('Nivel de acesso')
-                    ->multiple()
-                    ->relationship('roles', 'name')
-                    ->preload(),
-            ]);
-    }
+    // public static function form(Form $form): Form
+    // {
+    //     return $form
+    //         ->schema([
+    //             Forms\Components\TextInput::make('name')
+    //                 ->label('Permissão de execução')
+    //                 ->required()
+    //                 ->unique(ignoreRecord: true),
+    //             Forms\Components\Select::make('role')
+    //                 ->label('Nivel de acesso')
+    //                 ->multiple()
+    //                 ->relationship('roles', 'name')
+    //                 ->preload(),
+    //         ]);
+    // }
 
     public static function table(Table $table): Table
     {

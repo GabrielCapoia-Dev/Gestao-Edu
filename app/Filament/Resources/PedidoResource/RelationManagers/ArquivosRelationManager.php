@@ -20,39 +20,39 @@ class ArquivosRelationManager extends RelationManager
     protected static ?string $modelLabel = 'Arquivo';
     protected static ?string $pluralModelLabel = 'Arquivos';
 
-    public function form(Form $form): Form
-    {
-        return $form->schema([
+    // public function form(Form $form): Form
+    // {
+    //     return $form->schema([
 
-            Forms\Components\Select::make('tipo_arquivo')
-                ->label('Tipo do Arquivo')
-                ->options(
-                    collect(TipoArquivoPedido::cases())
-                        ->reject(fn($case) => $case === TipoArquivoPedido::FOTOS_PROBLEMA)
-                        ->mapWithKeys(fn($case) => [
-                            $case->value => $case->label(),
-                        ])
-                        ->toArray()
-                )
-                ->required()
-                ->native(false),
+    //         Forms\Components\Select::make('tipo_arquivo')
+    //             ->label('Tipo do Arquivo')
+    //             ->options(
+    //                 collect(TipoArquivoPedido::cases())
+    //                     ->reject(fn($case) => $case === TipoArquivoPedido::FOTOS_PROBLEMA)
+    //                     ->mapWithKeys(fn($case) => [
+    //                         $case->value => $case->label(),
+    //                     ])
+    //                     ->toArray()
+    //             )
+    //             ->required()
+    //             ->native(false),
 
-            Forms\Components\FileUpload::make('caminho')
-                ->label('Arquivo')
-                ->disk('public')
-                ->directory('pedidos')
-                ->visibility('public')
-                ->storeFiles()
-                ->multiple(false)
-                ->preserveFilenames()
-                ->required(),
+    //         Forms\Components\FileUpload::make('caminho')
+    //             ->label('Arquivo')
+    //             ->disk('public')
+    //             ->directory('pedidos')
+    //             ->visibility('public')
+    //             ->storeFiles()
+    //             ->multiple(false)
+    //             ->preserveFilenames()
+    //             ->required(),
 
-            Forms\Components\Textarea::make('descricao')
-                ->label('Descrição')
-                ->maxLength(1000)
-                ->rows(2),
-        ]);
-    }
+    //         Forms\Components\Textarea::make('descricao')
+    //             ->label('Descrição')
+    //             ->maxLength(1000)
+    //             ->rows(2),
+    //     ]);
+    // }
 
 
     public function table(Table $table): Table
@@ -88,14 +88,14 @@ class ArquivosRelationManager extends RelationManager
                     ->sortable(),
 
             ])
-            ->headerActions([
-                Tables\Actions\CreateAction::make()
-                    ->label('Enviar Arquivo'),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
-            ])
+            // ->headerActions([
+            //     Tables\Actions\CreateAction::make()
+            //         ->label('Enviar Arquivo'),
+            // ])
+            // ->actions([
+            //     Tables\Actions\EditAction::make(),
+            //     Tables\Actions\DeleteAction::make(),
+            // ])
             ->defaultSort('created_at', 'desc')
             ->paginated([10, 25, 50]);
     }

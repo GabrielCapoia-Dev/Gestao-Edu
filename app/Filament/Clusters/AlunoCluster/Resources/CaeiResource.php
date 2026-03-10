@@ -10,8 +10,7 @@ use Filament\Resources\Resource;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
-use AlperenErsoy\FilamentExport\Actions\FilamentExportBulkAction;
-use Filament\Pages\SubNavigationPosition;
+use Filament\Pages\Enums\SubNavigationPosition;
 use Filament\Tables\Actions\Action;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
@@ -23,13 +22,13 @@ class CaeiResource extends Resource
 {
     protected static ?string $model = Aluno::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-book-open';
+    // protected static ?string $navigationIcon = 'heroicon-o-book-open';
     protected static ?string $navigationLabel = 'CAEI';
     protected static ?string $pluralModelLabel = 'CAEI';
     protected static ?string $modelLabel = 'CAEI';
     protected static ?string $slug = 'caei';
 
-    protected static SubNavigationPosition $subNavigationPosition = SubNavigationPosition::Top;
+    protected static ?SubNavigationPosition $subNavigationPosition = SubNavigationPosition::Top;
     protected static ?string $cluster = AlunoCluster::class;
     protected static ?int $navigationSort = 3;
 
@@ -42,11 +41,11 @@ class CaeiResource extends Resource
         return app(UserService::class);
     }
 
-    public static function form(Form $form): Form
-    {
-        // Se o CAEI não edita diretamente por aqui, deixa sem schema.
-        return $form->schema([]);
-    }
+    // public static function form(Form $form): Form
+    // {
+    //     // Se o CAEI não edita diretamente por aqui, deixa sem schema.
+    //     return $form->schema([]);
+    // }
 
     public static function table(Table $table): Table
     {
@@ -63,22 +62,22 @@ class CaeiResource extends Resource
 
         return $table
 
-            ->headerActions([
-                Action::make('total_listado')
-                    ->label(fn($livewire) => 'Total: ' . number_format(
-                        $livewire->getFilteredTableQuery()->count(),
-                        0,
-                        ',',
-                        '.'
-                    ))
-                    ->disabled()
-                    ->color('gray')
-                    ->icon('heroicon-m-list-bullet')
-                    ->button()
-                    ->extraAttributes([
-                        'class' => 'cursor-default text-xl font-semibold',
-                    ]),
-            ])
+            // ->headerActions([
+            //     Action::make('total_listado')
+            //         ->label(fn($livewire) => 'Total: ' . number_format(
+            //             $livewire->getFilteredTableQuery()->count(),
+            //             0,
+            //             ',',
+            //             '.'
+            //         ))
+            //         ->disabled()
+            //         ->color('gray')
+            //         ->icon('heroicon-m-list-bullet')
+            //         ->button()
+            //         ->extraAttributes([
+            //             'class' => 'cursor-default text-xl font-semibold',
+            //         ]),
+            // ])
             ->columns([
                 TextColumn::make('turma.escola.nome')
                     ->label('Escola')
@@ -232,25 +231,7 @@ class CaeiResource extends Resource
             ], layout: FiltersLayout::AboveContent)
             ->actions([])
             ->bulkActions([
-                FilamentExportBulkAction::make('exportar_xlsx')
-                    ->label('Exportar XLSX')
-                    ->defaultFormat('xlsx')
-                    ->visible(function () {
-                        /** @var App\Models\User $user */
-                        $user = Auth::user();
-                        return $user->hasPermissionTo('Exportar Alunos');
-                    })
-                    ->directDownload(),
-                FilamentExportBulkAction::make('exportar_pdf')
-                    ->label('Exportar PDF')
-                    ->defaultFormat('pdf')
-                    ->color('danger')
-                    ->visible(function () {
-                        /** @var App\Models\User $user */
-                        $user = Auth::user();
-                        return $user->hasPermissionTo('Exportar Alunos');
-                    })
-                    ->directDownload(),
+
             ]);
     }
 

@@ -4,14 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Spatie\Activitylog\LogOptions;
-use Spatie\Activitylog\Traits\LogsActivity;
 use Illuminate\Support\Facades\Auth;
 
 class TipoManutencao extends Model
 {
     use HasFactory;
-    use LogsActivity;
 
     protected $table = 'tipo_manutencao';
 
@@ -45,11 +42,6 @@ class TipoManutencao extends Model
         }
 
         return $historico->sortByDesc('created_at');
-    }
-    public function getActivitylogOptions(): LogOptions
-    {
-        return LogOptions::defaults()
-            ->logOnly(['nome', 'descricao', 'ativo', 'alterado_por']);
     }
     protected static function booted()
     {

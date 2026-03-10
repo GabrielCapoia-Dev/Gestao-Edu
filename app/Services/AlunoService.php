@@ -3,7 +3,6 @@
 namespace App\Services;
 
 
-use AlperenErsoy\FilamentExport\Actions\FilamentExportBulkAction;
 use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Actions\EditAction;
@@ -1119,21 +1118,6 @@ class AlunoService
                     /** @var App\Models\User $user */
                     $user = Auth::user();
                     return $user->hasPermissionTo('Excluir Alunos em Massa');
-                }),
-
-            FilamentExportBulkAction::make('exportar_xlsx')
-                ->label('Exportar XLSX')
-                ->defaultFormat('xlsx')
-                ->formatStates([
-                    'dificuldade_aprendizagem' => fn($record) => $record->dificuldade_aprendizagem ? 'Sim' : 'Não',
-                    'frequenta_srm'          => fn($record) => $record->frequenta_srm ? 'Sim' : 'Não',
-                    'encaminhado_para_sme'   => fn($record) => $record->encaminhado_para_sme ? 'Sim' : 'Não',
-                ])
-                ->directDownload()
-                ->visible(function () {
-                    /** @var App\Models\User $user */
-                    $user = Auth::user();
-                    return $user->hasPermissionTo('Exportar Alunos');
                 }),
         ];
     }

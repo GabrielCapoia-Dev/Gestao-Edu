@@ -11,8 +11,6 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Notifications\Notifiable;
-use Spatie\Activitylog\LogOptions;
-use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Permission\Traits\HasRoles;
 use Illuminate\Support\Facades\Auth;
 
@@ -22,7 +20,6 @@ class User extends Authenticatable implements FilamentUser
     use HasFactory;
     use Notifiable;
     use HasRoles;
-    use LogsActivity;
 
     /**
      * The attributes that are mass assignable.
@@ -57,12 +54,6 @@ class User extends Authenticatable implements FilamentUser
             'password' => 'hashed',
             'google_token_expires_in' => 'datetime',
         ];
-    }
-
-    public function getActivitylogOptions(): LogOptions
-    {
-        return LogOptions::defaults()
-            ->logOnly(['id_escola', 'name', 'email', 'email_verified_at', 'email_approved']);
     }
 
     public function canAccessPanel(Panel $panel, ?bool $register = false): bool

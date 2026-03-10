@@ -15,8 +15,6 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
-use Hasnayeen\Themes\ThemesPlugin;
-use Rmsramos\Activitylog\ActivitylogPlugin;
 use Filament\Http\Middleware\Authenticate;
 use App\Livewire\LoginPage;
 use App\Services\UserService;
@@ -34,11 +32,10 @@ class AdminPanelProvider extends PanelProvider
     public function panel(Panel $panel): Panel
     {
         return $panel
-            ->routes(function () {})
-            ->default()
             ->id('admin')
             ->path('admin')
-            ->login(LoginPage::class)
+            ->login()
+            ->profile()
             ->spa()
             ->colors([
                 'primary' => Color::Green,
@@ -58,11 +55,11 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->brandLogo(fn() => view('components.logo-admin-do-sistema'))
             ->sidebarCollapsibleOnDesktop()
-            ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
-            ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
-            ->discoverClusters(in: app_path('Filament/Clusters'), for: 'App\\Filament\\Clusters')
+            ->discoverResources(in: app_path('Filament/Admin/Resources'), for: 'App\\Filament\\Admin\\Resources')
+            ->discoverPages(in: app_path('Filament/Admin/Pages'), for: 'App\\Filament\\Admin\\Pages')
+            ->discoverClusters(in: app_path('Filament/Admin/Clusters'), for: 'App\\Filament\\Admin\\Clusters')
             ->pages([])
-            ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
+            ->discoverWidgets(in: app_path('Filament/Admin/Widgets'), for: 'App\\Filament\\Admin\\Widgets')
             ->widgets([])
             ->middleware([
                 EncryptCookies::class,
@@ -74,10 +71,6 @@ class AdminPanelProvider extends PanelProvider
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
-                \Hasnayeen\Themes\Http\Middleware\SetTheme::class
-            ])
-            ->tenantMiddleware([
-                \Hasnayeen\Themes\Http\Middleware\SetTheme::class
             ])
             ->authMiddleware([
                 Authenticate::class,
@@ -101,17 +94,6 @@ class AdminPanelProvider extends PanelProvider
                     ->label('Sair'),
             ])
             ->plugins([
-
-
-                ThemesPlugin::make()
-                    ->canViewThemesPage(fn() => false),
-
-                ActivitylogPlugin::make()
-                    ->label('Registro de Atividade')
-                    ->pluralLabel('Registro de Atividades')
-                    ->navigationGroup('Administrativo')
-                    ->navigationSort(1)
-                    ->authorize(fn() => app(UserService::class)->ehAdmin(User::authUser())),
             ]);
     }
 }

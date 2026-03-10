@@ -20,9 +20,9 @@ class DominioEmailResource extends Resource
 {
     protected static ?string $model = DominioEmail::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-envelope';
+    // protected static ?string $navigationIcon = 'heroicon-o-envelope';
+    // protected static ?string $navigationGroup = "Acesso";
 
-    protected static ?string $navigationGroup = "Acesso";
 
     public static ?string $label = 'Dominio Permitido';
 
@@ -44,37 +44,37 @@ class DominioEmailResource extends Resource
         return 'Quantidade de dominios permitidos';
     }
 
-    public static function form(Form $form): Form
-    {
-        return $form
-            ->schema([
-                TextInput::make('dominio_email')
-                    ->label('Dominio Permitido')
-                    ->required()
-                    ->unique(ignoreRecord: true)
-                    ->rule('regex:/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/')
-                    ->helperText('Digite o dominio sem o @, exemplo: dominio.com.br')
-                    ->placeholder('dominio.com.br'),
+    // public static function form(Form $form): Form
+    // {
+    //     return $form
+    //         ->schema([
+    //             TextInput::make('dominio_email')
+    //                 ->label('Dominio Permitido')
+    //                 ->required()
+    //                 ->unique(ignoreRecord: true)
+    //                 ->rule('regex:/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/')
+    //                 ->helperText('Digite o dominio sem o @, exemplo: dominio.com.br')
+    //                 ->placeholder('dominio.com.br'),
 
-                TextInput::make('nome')
-                    ->label('Nome:')
-                    ->required()
-                    ->minLength(3)
-                    ->maxLength(100)
-                    ->rule('regex:/^\p{L}+(?:\s\p{L}+)*$/u')
-                    ->validationMessages([
-                        'regex' => 'Use apenas letras, sem caracteres especiais.',
-                    ]),
+    //             TextInput::make('nome')
+    //                 ->label('Nome:')
+    //                 ->required()
+    //                 ->minLength(3)
+    //                 ->maxLength(100)
+    //                 ->rule('regex:/^\p{L}+(?:\s\p{L}+)*$/u')
+    //                 ->validationMessages([
+    //                     'regex' => 'Use apenas letras, sem caracteres especiais.',
+    //                 ]),
 
-                Toggle::make('status')
-                    ->label('Status')
-                    ->onColor('success')
-                    ->offColor('danger')
-                    ->onIcon('heroicon-s-check')
-                    ->offIcon('heroicon-s-x-mark')
-                    ->default(false),
-            ]);
-    }
+    //             Toggle::make('status')
+    //                 ->label('Status')
+    //                 ->onColor('success')
+    //                 ->offColor('danger')
+    //                 ->onIcon('heroicon-s-check')
+    //                 ->offIcon('heroicon-s-x-mark')
+    //                 ->default(false),
+    //         ]);
+    // }
 
     public static function table(Table $table): Table
     {
@@ -99,25 +99,26 @@ class DominioEmailResource extends Resource
             ])
             ->filters([
                 //
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make()
-                        ->visible(function () {
-                            /** @var \App\Models\User|null $user */
-                            $user = Auth::user();
-                            if (!$user) {
-                                return false;
-                            }
-                            return $user->hasRole('Admin');
-                        }),
-                ]),
-
             ]);
+        // ->actions([
+        //     Tables\Actions\EditAction::make(),
+        //     Tables\Actions\DeleteAction::make(),
+        // ])
+        // ->bulkActions([
+        //     Tables\Actions\BulkActionGroup::make([
+        //         Tables\Actions\DeleteBulkAction::make()
+        //             ->visible(function () {
+        //                 /** @var \App\Models\User|null $user */
+        //                 $user = Auth::user();
+        //                 if (!$user) {
+        //                     return false;
+        //                 }
+        //                 return $user->hasRole('Admin');
+        //             }),
+        //     ]),
+
+        // ])
+
     }
 
     public static function getPages(): array

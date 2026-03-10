@@ -19,9 +19,9 @@ class LaudoResource extends Resource
 {
     protected static ?string $model = Laudo::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-document-plus';
+    // protected static ?string $navigationGroup = "Gerenciamento Escolar";
+    // protected static ?string $navigationIcon = 'heroicon-o-document-plus';
     public static ?string $modelLabel = 'Laudo';
-    protected static ?string $navigationGroup = "Gerenciamento Escolar";
     public static ?string $pluralModelLabel = 'Laudos';
     public static ?string $slug = 'laudos';
 
@@ -30,10 +30,10 @@ class LaudoResource extends Resource
         return app(LaudoService::class);
     }
 
-    public static function form(Form $form): Form
-    {
-        return static::laudoService()->configurarFormulario($form);
-    }
+    // public static function form(Form $form): Form
+    // {
+    //     return static::laudoService()->configurarFormulario($form);
+    // }
 
     public static function table(Table $table): Table
     {

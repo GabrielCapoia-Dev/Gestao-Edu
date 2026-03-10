@@ -14,23 +14,23 @@ class ProfessorResource extends Resource
 {
     protected static ?string $model = Professor::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-user-group';
+    // protected static ?string $navigationIcon = 'heroicon-o-user-group';
+    // protected static ?string $navigationGroup = 'Gerenciamento Escolar';
     protected static ?string $navigationLabel = 'Professores';
     protected static ?string $pluralModelLabel = 'Professores';
     protected static ?string $modelLabel = 'Professor';
     protected static ?string $slug = 'professores';
 
-    protected static ?string $navigationGroup = 'Gerenciamento Escolar';
 
     public static function professorService(): ProfessorService
     {
         return app(ProfessorService::class);
     }
 
-    public static function form(Form $form): Form
-    {
-        return static::professorService()->configurarFormulario($form, Auth::user());
-    }
+    // public static function form(Form $form): Form
+    // {
+    //     return static::professorService()->configurarFormulario($form, Auth::user());
+    // }
 
     public static function table(Table $table): Table
     {

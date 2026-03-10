@@ -20,22 +20,22 @@ class TurmaResource extends Resource
 {
     protected static ?string $model = Turma::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-squares-plus';
+    // protected static ?string $navigationGroup = 'Gerenciamento Escolar';
+    // protected static ?string $navigationIcon = 'heroicon-o-squares-plus';
     protected static ?string $navigationLabel = 'Turmas';
     protected static ?string $pluralModelLabel = 'Turmas';
     protected static ?string $modelLabel = 'Turma';
 
-    protected static ?string $navigationGroup = 'Gerenciamento Escolar';
 
     public static function turmaService(): TurmaService
     {
         return app(TurmaService::class);
     }
 
-    public static function form(Form $form): Form
-    {
-        return static::turmaService()->configurarFormulario($form, Auth::user());
-    }
+    // public static function form(Form $form): Form
+    // {
+    //     return static::turmaService()->configurarFormulario($form, Auth::user());
+    // }
 
     public static function table(Table $table): Table
     {

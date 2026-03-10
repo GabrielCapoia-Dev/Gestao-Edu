@@ -5,8 +5,6 @@ namespace App\Models;
 use App\Models\Enums\NivelEmergenciaPedido;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Spatie\Activitylog\LogOptions;
-use Spatie\Activitylog\Traits\LogsActivity;
 use App\Models\Enums\TipoArquivoPedido;
 use App\Models\EmpresaContratada;
 use Illuminate\Database\Eloquent\Builder;
@@ -14,7 +12,6 @@ use Illuminate\Database\Eloquent\Builder;
 class Pedido extends Model
 {
     use HasFactory;
-    use LogsActivity;
 
     protected $table = 'pedidos';
 
@@ -63,25 +60,6 @@ class Pedido extends Model
     public function scopeNenhum(Builder $query): Builder
     {
         return $query->whereKey(-1);
-    }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Activity Log
-    |--------------------------------------------------------------------------
-    */
-
-    public function getActivitylogOptions(): LogOptions
-    {
-        return LogOptions::defaults()
-            ->logOnly([
-                'tipo_status_id',
-                'responsavel_id',
-                'data_prevista',
-                'data_entrega',
-                'ativo',
-            ]);
     }
 
     /*
