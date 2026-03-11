@@ -42,7 +42,19 @@ class AdminPanelProvider extends PanelProvider
             ->profile()
             ->spa()
             ->colors([
-                'primary' => Color::Sky,
+                'primary' => [
+                    50  => '#e8f1fb',
+                    100 => '#d0e3f7',
+                    200 => '#a2c7ef',
+                    300 => '#73abe7',
+                    400 => '#458fdf',
+                    500 => '#1a6bc7',
+                    600 => '#074f9b',   // ← cor principal
+                    700 => '#053d78',
+                    800 => '#042c56',
+                    900 => '#021b34',
+                    950 => '#010e1a',
+                ],
                 'gray' => [
                     50 => '#e5eaf1ff',
                     100 => '#c7def8c7',
@@ -103,6 +115,11 @@ class AdminPanelProvider extends PanelProvider
                             ->mediaSize('70%')
                             ->themeToggle()
 
+                    )
+                    ->profile(
+                        fn($config) => $config
+                            ->media(asset('images/background.png'))
+                            ->mediaPosition(MediaPosition::Cover)
                     )
             ]);
     }

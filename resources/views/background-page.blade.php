@@ -14,6 +14,35 @@
             box-sizing: border-box;
         }
 
+        /* Garante que o form do Filament fica acima do background */
+        .fi-auth-form-container,
+        .fi-simple-page,
+        .fi-simple-page-content,
+        .fi-sc-form,
+        .fi-btn,
+        .fi-fo-field,
+        .fi-fo-field-label,
+        .fi-input {
+            position: relative !important;
+            z-index: 50 !important;
+        }
+
+        /* Corrige texto dos botões que some */
+        .fi-btn span {
+            display: inline !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+            color: inherit !important;
+        }
+
+        /* Corrige labels */
+        .fi-fo-field-label,
+        .fi-fo-field-label-content {
+            display: block !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+
         /* Inputs mais grossos */
         .fi-input {
             padding: 0.875rem 1rem !important;
@@ -33,7 +62,7 @@
             font-weight: 600 !important;
         }
 
-        
+
 
         /* ── NAVY GRADIENT BASE ── */
         .bg-base {
