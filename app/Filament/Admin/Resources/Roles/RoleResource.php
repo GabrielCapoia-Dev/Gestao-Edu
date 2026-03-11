@@ -7,28 +7,19 @@ use Filament\Actions;
 use Filament\Forms\Components;
 use Filament\Schemas\Schema;
 use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Group;
-
 use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Columns\TextColumn;
-use App\Filament\Resources\RoleResource\Pages;
-use App\Filament\Resources\RoleResource\RelationManagers;
 use App\Models\Role;
 use Filament\Forms;
-use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use App\Services\RoleService;
 use App\Services\UserService;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Spatie\Permission\Models\Permission;
 use Filament\Schemas\Components\Utilities\Get;
-use App\Filament\Resources\RoleResource\Pages\ManageRoles;
+use App\Filament\Admin\Resources\Roles\Pages\ManageRoles;
 
 class RoleResource extends Resource
 {
