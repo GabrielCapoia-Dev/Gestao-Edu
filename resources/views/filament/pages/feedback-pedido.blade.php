@@ -1,7 +1,7 @@
 <x-filament-panels::page>
 
     {{-- CARDS --}}
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 1.5rem;">
 
         <x-filament::card>
             <div class="text-sm text-gray-500">Média Geral</div>
@@ -18,7 +18,7 @@
         </x-filament::card>
 
         <x-filament::card>
-            <div class="text-sm text-gray-500">Nivel de Satisfação</div>
+            <div class="text-sm text-gray-500">Nível de Satisfação</div>
             <div class="text-3xl font-bold mt-2">
                 {{ $this->getPercentualSatisfacao() }}%
             </div>
