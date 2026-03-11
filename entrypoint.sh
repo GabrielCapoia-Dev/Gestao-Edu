@@ -15,4 +15,11 @@ php artisan migrate --force --seed
 
 php artisan storage:link --force 2>/dev/null || true
 
+# ── Cache do Laravel (impacto enorme no tempo de boot de cada request) ─────
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+php artisan event:cache
+php artisan filament:cache-components
+
 php artisan serve --host=0.0.0.0 --port=${APP_PORT}
