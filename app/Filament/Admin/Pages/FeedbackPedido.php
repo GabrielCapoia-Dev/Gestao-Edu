@@ -13,6 +13,9 @@ use Filament\Forms;
 use Livewire\Attributes\Computed;
 use Filament\Actions;
 use App\Models\Enums\NivelEmergenciaPedido;
+use BackedEnum;
+use Filament\Support\Icons\Heroicon;
+
 
 class FeedbackPedido extends Page implements HasTable
 {
@@ -22,6 +25,7 @@ class FeedbackPedido extends Page implements HasTable
     // protected static ?string $navigationIcon = 'heroicon-o-star';
     protected static ?string $slug = 'feedback-pedidos';
     protected string $view = 'filament.pages.feedback-pedido';
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedStar;
 
 
     
