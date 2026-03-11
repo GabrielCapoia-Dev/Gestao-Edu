@@ -25,7 +25,7 @@ class FeedbackPedido extends Page implements HasTable
     // protected static ?string $navigationIcon = 'heroicon-o-star';
     protected static ?string $slug = 'feedback-pedidos';
     protected string $view = 'filament.pages.feedback-pedido';
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedStar;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::Star;
 
 
     
