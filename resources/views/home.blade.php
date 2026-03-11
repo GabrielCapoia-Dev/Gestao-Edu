@@ -98,14 +98,14 @@ nav{
 .hero-pill{
   display:inline-flex;align-items:center;gap:10px;
   background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.14);
-  padding:6px 18px 6px 8px;border-radius:100px;margin-bottom:32px;
+  padding:6px 18px 6px 8px;border-radius:100px;margin-bottom:5px;
   animation:fadeUp 0.6s ease both;
 }
 .hero-pill-dot{width:28px;height:28px;background:var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.8rem;}
 .hero-pill span{color:rgba(255,255,255,0.8);font-size:0.82rem;font-weight:500;}
 .hero h1{font-size:clamp(2.8rem,5.5vw,4.8rem);font-weight:800;color:#fff;line-height:1.1;letter-spacing:-0.03em;margin-bottom:28px;animation:fadeUp 0.6s ease 0.1s both;}
 .hero h1 .serif{font-family:'Instrument Serif',serif;font-style:italic;font-weight:400;color:var(--gold);}
-.hero-sub{font-size:clamp(1rem,2vw,1.2rem);color:rgba(255,255,255,0.65);line-height:1.75;max-width:640px;margin:0 auto 44px;animation:fadeUp 0.6s ease 0.2s both;}
+.hero-sub{font-size:clamp(1rem,2vw,1.2rem);color:rgba(255,255,255,0.65);line-height:1.75;max-width:640px;margin:0 auto 22px;animation:fadeUp 0.6s ease 0.2s both;}
 .hero-actions{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;animation:fadeUp 0.6s ease 0.3s both;margin-bottom:80px;}
 .btn-hero-primary{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--ink);padding:16px 40px;border-radius:10px;font-weight:800;font-size:1rem;box-shadow:0 8px 32px rgba(245,166,35,0.4);transition:transform 0.2s,box-shadow 0.2s;}
 .btn-hero-primary:hover{transform:translateY(-3px);box-shadow:0 12px 40px rgba(245,166,35,0.5);}

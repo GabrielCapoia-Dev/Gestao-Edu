@@ -27,6 +27,8 @@ use Illuminate\Support\Facades\Blade;
 use Caresome\FilamentAuthDesigner\AuthDesignerPlugin;
 use Caresome\FilamentAuthDesigner\Data\AuthPageConfig;
 use Caresome\FilamentAuthDesigner\Enums\MediaPosition;
+use Caresome\FilamentAuthDesigner\View\AuthDesignerRenderHook;
+
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -94,8 +96,10 @@ class AdminPanelProvider extends PanelProvider
                 AuthDesignerPlugin::make()
                     ->login(
                         fn(AuthPageConfig $config) => $config
-                            ->media(asset('images/background.jpg'))
+                            ->media(asset('images/background.png'))
                             ->mediaPosition(MediaPosition::Left)
+                            ->renderHook(AuthDesignerRenderHook::MediaOverlay, fn() => view('background-page'))
+                            ->usingPage(LoginPage::class)
                             ->mediaSize('70%')
                             ->themeToggle()
 

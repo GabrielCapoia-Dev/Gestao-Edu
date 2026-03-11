@@ -24,6 +24,9 @@ use \App\Http\Controllers\PedidoRelatorioGeralController;
 Route::get('/', function () {
     return view('home');
 });
+Route::get('/background', function () {
+    return view('background-page');
+});
 Route::get('/exemplo', function () {
     return view('exemplo');
 });
