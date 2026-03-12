@@ -32,6 +32,8 @@ class SerieResource extends Resource
     protected static ?string $slug = 'series';
 
     protected static string|UnitEnum|null $navigationGroup = 'Pedagógico';
+    protected static ?string $navigationParentItem = 'Turmas';
+
 
 
     public static function service(): Service

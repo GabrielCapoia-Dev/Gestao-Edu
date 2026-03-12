@@ -3,21 +3,32 @@
 namespace App\Services;
 
 use App\Filament\Clusters\AlunoCluster\Resources\AlunoResource;
+use Filament\Notifications\Notification;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Forms\Form;
+use Filament\Tables\Table;
+use Filament\Tables\Columns\TextColumn;
+use Illuminate\Support\Facades\Auth;
+use App\Models\Escola;
+use App\Models\IgnoredUser;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Gate;
+use Spatie\Permission\Models\Permission;
 use App\Models\User;
+use App\Services\UserService;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Form;
-use Filament\Notifications\Notification;
-use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\DeleteAction;
-use Filament\Tables\Actions\DeleteBulkAction;
-use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Table;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Database\Eloquent\Builder;
-
+use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password as PasswordRule;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\Action;
 
 class TurmaService
 {
@@ -37,8 +48,8 @@ class TurmaService
             })
             ->paginated([10, 25, 50, 100])
             ->columns($this->colunasTabela())
-            ->actions($this->acoesTabela($user))
-            ->bulkActions($this->acoesEmMassa($user))
+            ->recordActions($this->acoesTabela($user))
+            ->toolbarActions($this->acoesEmMassa($user))
             ->filters($this->filtrosTabela())
             ->defaultSort('updated_at', 'desc')
             ->striped();
@@ -158,72 +169,68 @@ class TurmaService
         ];
     }
 
-    public function configurarFormulario(Form $form, ?User $user): Form
-    {
-        return $form
-            ->schema($this->schemaFormulario());
-    }
 
-    public function schemaFormulario(): array
+    public static function configurarFormulario(Schema $schema): Schema
     {
-        return [
-            Select::make('id_escola')
-                ->label('Escola')
-                ->relationship('escola', 'nome')
-                ->required()
-                ->preload()
-                ->searchable()
-                ->default(fn() => Auth::user()?->id_escola)
-                ->dehydrated(true)
-                ->disabled(function () {
-                    $user = Auth::user();
+        return $schema
+            ->components([
+                Select::make('id_escola')
+                    ->label('Escola')
+                    ->relationship('escola', 'nome')
+                    ->required()
+                    ->preload()
+                    ->searchable()
+                    ->default(fn() => Auth::user()?->id_escola)
+                    ->dehydrated(true)
+                    ->disabled(function () {
+                        $user = Auth::user();
 
-                    if (! $user) {
+                        if (! $user) {
+                            return false;
+                        }
+                        if (filled($user->id_escola)) {
+                            return true;
+                        }
                         return false;
-                    }
-                    if (filled($user->id_escola)) {
-                        return true;
-                    }
-                    return false;
-                }),
+                    }),
 
-            Select::make('id_serie')
-                ->label('Série')
-                ->relationship('serie', 'nome')
-                ->required()
-                ->preload()
-                ->searchable(),
+                Select::make('id_serie')
+                    ->label('Série')
+                    ->relationship('serie', 'nome')
+                    ->required()
+                    ->preload()
+                    ->searchable(),
 
-            TextInput::make('turma')
-                ->label('Turma')
-                ->required()
-                ->maxLength(1)
-                ->live(onBlur: false)
-                ->afterStateUpdated(function ($state, callable $set) {
-                    $filtrado = strtoupper(preg_replace('/[^A-Za-z]/', '', $state ?? ''));
-                    $set('turma', $filtrado);
-                })
-                ->dehydrateStateUsing(fn($state) => strtoupper($state ?? ''))
-                ->rule(
-                    fn($get, $record) =>
-                    "unique:turmas,turma," . ($record?->id ?? 'NULL') . ",id,id_escola,{$get('id_escola')},id_serie,{$get('id_serie')},turno,{$get('turno')}"
-                )
-                ->validationMessages([
-                    'unique' => 'Ja existe essa turma na escola selecionada.',
-                ])
-                ->placeholder('Ex.: A')
-                ->helperText('Digite apenas uma letra (A–Z).'),
+                TextInput::make('turma')
+                    ->label('Turma')
+                    ->required()
+                    ->maxLength(1)
+                    ->live(onBlur: false)
+                    ->afterStateUpdated(function ($state, callable $set) {
+                        $filtrado = strtoupper(preg_replace('/[^A-Za-z]/', '', $state ?? ''));
+                        $set('turma', $filtrado);
+                    })
+                    ->dehydrateStateUsing(fn($state) => strtoupper($state ?? ''))
+                    ->rule(
+                        fn($get, $record) =>
+                        "unique:turmas,turma," . ($record?->id ?? 'NULL') . ",id,id_escola,{$get('id_escola')},id_serie,{$get('id_serie')},turno,{$get('turno')}"
+                    )
+                    ->validationMessages([
+                        'unique' => 'Ja existe essa turma na escola selecionada.',
+                    ])
+                    ->placeholder('Ex.: A')
+                    ->helperText('Digite apenas uma letra (A–Z).'),
 
-            Select::make('turno')
-                ->label('Turno')
-                ->options([
-                    'Manhã' => 'Manhã',
-                    'Tarde' => 'Tarde',
-                    'Noite' => 'Noite',
-                    'Integral' => 'Integral',
-                ])
-                ->required(),
-        ];
+                Select::make('turno')
+                    ->label('Turno')
+                    ->options([
+                        'Manhã' => 'Manhã',
+                        'Tarde' => 'Tarde',
+                        'Noite' => 'Noite',
+                        'Integral' => 'Integral',
+                    ])
+                    ->required(),
+            ]);
     }
 
     public function aplicarCodigo(array $data): array

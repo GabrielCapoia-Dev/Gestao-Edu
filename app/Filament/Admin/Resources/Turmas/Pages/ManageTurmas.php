@@ -1,19 +1,20 @@
 <?php
 
-namespace App\Filament\Resources\TurmaResource\Pages;
+namespace App\Filament\Admin\Resources\Turmas\Pages;
 
-use App\Filament\Resources\SerieResource;
-use App\Filament\Resources\TurmaResource;
+use App\Filament\Admin\Resources\Turmas\TurmaResource;
+use Filament\Actions\CreateAction;
+use Filament\Resources\Pages\ManageRecords;
+use App\Filament\Admin\Resources\Series\SerieResource;
 use App\Models\Serie;
 use App\Services\TurmaService;
 use Filament\Actions;
-use Filament\Resources\Pages\ManageRecords;
 use Illuminate\Support\Facades\Auth;
+use Filament\Schemas\Schema;
 
 class ManageTurmas extends ManageRecords
 {
     protected static string $resource = TurmaResource::class;
-
     protected TurmaService $turmaService;
 
     protected function getHeaderActions(): array
@@ -33,19 +34,18 @@ class ManageTurmas extends ManageRecords
                     return false;
                 })
                 ->modalHeading('Criar Série')
-                ->form(
-                    fn() => SerieResource::service()
-                        ->configurarFormulario($this->makeForm())
+                ->schema(
+                    fn() => SerieResource::form(Schema::make())
                         ->getComponents()
                 )
                 ->createAnother(false)
-                ->color('info')
+                ->color('primary')
                 ->successNotificationTitle('Série criada!'),
 
             Actions\CreateAction::make()
                 ->label('Nova Turma')
                 ->icon('heroicon-o-users')
-                ->mutateFormDataUsing(function (array $data): array {
+                ->mutateDataUsing(function (array $data): array {
                     /** @var \App\Services\TurmaService $service */
                     $service = app(TurmaService::class);
 
