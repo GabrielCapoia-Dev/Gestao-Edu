@@ -21,12 +21,11 @@ class FeedbackPedido extends Page implements HasTable
 {
     use InteractsWithTable;
 
-    // protected static ?string $navigationGroup = 'Manutenção';
-    // protected static ?string $navigationIcon = 'heroicon-o-star';
     protected static ?string $slug = 'feedback-pedidos';
     protected string $view = 'filament.pages.feedback-pedido';
     protected static string|BackedEnum|null $navigationIcon = Heroicon::Star;
 
+    public static ?string $navigationLabel = 'Feedback de Pedidos';
 
     
     public array $chartFilters = [];

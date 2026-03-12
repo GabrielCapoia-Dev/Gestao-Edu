@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Auth;
 use Spatie\Permission\Models\Permission;
 use Filament\Schemas\Components\Utilities\Get;
 use App\Filament\Admin\Resources\Roles\Pages\ManageRoles;
+use UnitEnum;
 
 class RoleResource extends Resource
 {
@@ -27,7 +28,15 @@ class RoleResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ShieldCheck;
 
+    protected static ?string $navigationParentItem = 'Usuários';
+
     public static ?string $modelLabel = 'Nivel de acesso';
+
+    public static ?string $label = 'Niveis de acesso';
+    protected static string | UnitEnum | null $navigationGroup = 'Acesso';
+
+    public static ?string $pluralLabel = 'Niveis de acesso';
+    public static ?string $navigationLabel = 'Niveis de acesso';
 
     public static ?string $pluralModelLabel = 'Niveis de acesso';
 
@@ -264,10 +273,10 @@ class RoleResource extends Resource
                         $alteracoes = [];
 
                         /*
-            |--------------------------------------------------------------------------
-            | 1. Verificar alteração de nome
-            |--------------------------------------------------------------------------
-            */
+                      |--------------------------------------------------------------------------
+                      | 1. Verificar alteração de nome
+                      |--------------------------------------------------------------------------
+                      */
                         $novoNome = $data['name'] ?? $record->name;
                         if ($record->name !== $novoNome) {
                             $alteracoes[] = "Nome alterado de '{$record->name}' para '{$novoNome}'";
@@ -275,10 +284,10 @@ class RoleResource extends Resource
                         }
 
                         /*
-            |--------------------------------------------------------------------------
-            | 2. Consolidar permissões enviadas
-            |--------------------------------------------------------------------------
-            */
+                     |--------------------------------------------------------------------------
+                     | 2. Consolidar permissões enviadas
+                     |--------------------------------------------------------------------------
+                     */
                         $permissoesSelecionadas = collect($data ?? [])
                             ->filter(fn($_, $key) => str_starts_with($key, 'permissions_'))
                             ->flatten()
@@ -291,10 +300,10 @@ class RoleResource extends Resource
                         $paraAdicionar = $permissoesSelecionadas->diff($permissoesAtuais);
 
                         /*
-            |--------------------------------------------------------------------------
-            | 3. Aplicar alterações
-            |--------------------------------------------------------------------------
-            */
+                     |--------------------------------------------------------------------------
+                     | 3. Aplicar alterações
+                     |--------------------------------------------------------------------------
+                     */
                         if ($paraRemover->isNotEmpty()) {
                             $record->revokePermissionTo($paraRemover->toArray());
                             $alteracoes[] = 'Permissões removidas: ' . $paraRemover->implode(', ');
@@ -306,10 +315,10 @@ class RoleResource extends Resource
                         }
 
                         /*
-            |--------------------------------------------------------------------------
-            | 4. Notificação
-            |--------------------------------------------------------------------------
-            */
+                      |--------------------------------------------------------------------------
+                      | 4. Notificação
+                      |--------------------------------------------------------------------------
+                      */
                         if ($paraRemover->isNotEmpty()) {
                             \Filament\Notifications\Notification::make()
                                 ->title('Permissões removidas')
