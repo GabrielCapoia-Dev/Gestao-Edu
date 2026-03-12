@@ -2,15 +2,30 @@
 
 namespace App\Services;
 
-use App\Models\User;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
-use Filament\Tables\Actions\DeleteAction;
-use Filament\Tables\Actions\DeleteBulkAction;
-use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Filament\Tables\Columns\TextColumn;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Escola;
+use App\Models\IgnoredUser;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Gate;
+use Spatie\Permission\Models\Permission;
+use App\Models\User;
+use App\Services\UserService;
+use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password as PasswordRule;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\DeleteAction;
+
 
 class SerieService
 {
@@ -90,31 +105,4 @@ class SerieService
         ];
     }
 
-    // Configura o formulário completo (campos, ações, etc.)
-    public function configurarFormulario(Form $form): Form
-    {
-        return $form->schema($this->schemaFormulario());
-    }
-
-    protected function schemaFormulario(): array
-    {
-        return [
-
-            TextInput::make('codigo')
-                ->label('Código')
-                ->required()
-                ->maxLength(3)
-                ->minLength(3),
-
-            TextInput::make('nome')
-                ->label('Nome:')
-                ->required()
-                ->minLength(3)
-                ->maxLength(100)
-                ->rule('regex:/^[\p{L}\p{N}]+(?: [\p{L}\p{N}]+)*$/u')
-                ->validationMessages([
-                    'regex' => 'Use apenas letras, sem caracteres especiais.',
-                ]),
-        ];
-    }
 }

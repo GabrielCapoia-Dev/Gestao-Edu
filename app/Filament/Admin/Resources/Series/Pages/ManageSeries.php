@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Filament\Resources\SerieResource\Pages;
+namespace App\Filament\Admin\Resources\Series\Pages;
 
-use App\Filament\Resources\SerieResource;
-use Filament\Actions;
+use App\Filament\Admin\Resources\Series\SerieResource;
+use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ManageRecords;
 
 class ManageSeries extends ManageRecords
@@ -13,7 +13,7 @@ class ManageSeries extends ManageRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            CreateAction::make(),
         ];
     }
 }
