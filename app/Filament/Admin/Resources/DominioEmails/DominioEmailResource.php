@@ -85,7 +85,7 @@ class DominioEmailResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->paginated([10, 25, 50, 100])
+            ->paginated([5, 10, 25, 50, 100])
             ->columns([
                 TextColumn::make('dominio_email')
                     ->label('Email Dominio')

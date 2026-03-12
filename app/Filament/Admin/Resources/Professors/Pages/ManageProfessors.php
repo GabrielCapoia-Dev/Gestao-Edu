@@ -1,12 +1,13 @@
 <?php
 
-namespace App\Filament\Resources\ProfessorResource\Pages;
+namespace App\Filament\Admin\Resources\Professors\Pages;
 
-use App\Filament\Resources\ProfessorResource;
-use App\Services\ProfessorService;
-use Filament\Actions;
+use App\Filament\Admin\Resources\Professors\ProfessorResource;
+use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ManageRecords;
+use App\Services\ProfessorService;
 use Illuminate\Support\Facades\Auth;
+
 
 class ManageProfessors extends ManageRecords
 {
@@ -15,10 +16,10 @@ class ManageProfessors extends ManageRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make()
+            CreateAction::make()
                 ->slideOver()
                 ->closeModalByClickingAway(false)
-                ->mutateFormDataUsing(function (array $data): array {
+                ->mutateDataUsing(function (array $data): array {
                     return app(ProfessorService::class)
                         ->forcarVinculoComEscola($data, Auth::user());
                 }),

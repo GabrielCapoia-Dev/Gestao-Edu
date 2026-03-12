@@ -87,7 +87,7 @@ class AppServiceProvider extends ServiceProvider
                 'https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2'
             ),
 
-            Css::make('professores-modal', asset('css/professores-modal.css')),
+            Css::make('geral', asset('css/geral.css')),
         ]);
 
         FilamentView::registerRenderHook(

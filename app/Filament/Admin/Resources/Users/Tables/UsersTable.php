@@ -27,7 +27,7 @@ class UsersTable
 
         return $table
             ->modifyQueryUsing(fn(Builder $query) => $service->listarUsuariosQuery($query, $user))
-            ->paginated([10, 25, 50, 100])
+            ->paginated([5, 10, 25, 50, 100])
             ->checkIfRecordIsSelectableUsing(fn(User $record) => $service->podeSelecionarRegistro($user, $record))
             ->columns(self::columns($service, $user))
             ->recordActions(self::recordActions($service, $user))

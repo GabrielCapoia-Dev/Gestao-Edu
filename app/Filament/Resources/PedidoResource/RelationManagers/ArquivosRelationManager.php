@@ -97,6 +97,6 @@ class ArquivosRelationManager extends RelationManager
             //     Tables\Actions\DeleteAction::make(),
             // ])
             ->defaultSort('created_at', 'desc')
-            ->paginated([10, 25, 50]);
+            ->paginated([5, 10, 25, 50]);
     }
 }

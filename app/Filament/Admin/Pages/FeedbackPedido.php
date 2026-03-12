@@ -50,7 +50,7 @@ class FeedbackPedido extends Page implements HasTable
                 FeedbackPedidoModel::query()
                     ->with(['pedido.escola', 'pedido.tipoManutencao'])
             )
-            ->paginated([10, 25, 50, 100])
+            ->paginated([5, 10, 25, 50, 100])
             ->columns([
                 Tables\Columns\TextColumn::make('pedido.numero_protocolo')
                     ->label('Protocolo')

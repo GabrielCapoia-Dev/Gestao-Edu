@@ -26,7 +26,7 @@ class SetorService
     public function configurarTabela(Table $table, ?User $user): Table
     {
         return $table
-            ->paginated([10, 25, 50, 100])
+            ->paginated([5, 10, 25, 50, 100])
             ->columns($this->colunasTabela())
             ->actions($this->acoesTabela())
             ->bulkActions($this->acoesEmMassa())

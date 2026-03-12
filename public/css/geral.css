@@ -178,3 +178,134 @@
 .card-notification {
     padding: 5px;
 }
+
+.fi-sidebar-nav {
+    background-color: #ffffff;
+    box-shadow: 0 2px 8px #0000007a;
+}
+
+.dark .fi-sidebar-nav {
+    background-color: #0c172ebd;
+    box-shadow: 0 2px 8px #0000007a;
+}
+
+.fi-topbar {
+    background-color: #ffffff;
+    box-shadow: 0 2px 8px #0000007a;
+}
+
+.dark .fi-topbar {
+    background-color: #0c172ebd;
+    box-shadow: 0 2px 8px #0000007a;
+}
+
+.fi-ta {
+    border-radius: 0.75rem;
+    box-shadow: 2px 4px 20px #272727e7;
+    overflow: hidden;
+}
+
+.dark .fi-ta {
+    box-shadow: 2px 4px 20px #000000;
+    overflow: hidden;
+}
+
+.fi-ac-btn-action {
+    box-shadow: 2px 4px 20px #000000;
+    overflow: hidden;
+}
+
+.fi-header-heading {
+    padding: 0 0.5rem;
+    border-radius: 0.2rem;
+    background-color: #ffffff;
+
+    box-shadow: 2px 4px 20px #000000;
+    overflow: hidden;
+}
+
+.dark .fi-header-heading {
+    padding: 0 0.5rem;
+    background-color: #0c172ebd;
+    box-shadow: 2px 4px 20px #000000;
+    overflow: hidden;
+}
+
+.fi-main-ctn {
+    background-image: url('/images/fundo_coiso_Prancheta_1_Prancheta_1_zcbyxl.svg');
+}
+
+.dark .fi-main-ctn {
+    background-image: none;
+}
+
+.fi-breadcrumbs {
+    padding: 0 0.5rem;
+    border-radius: 0.2rem;
+    background-color: #ffffff;
+
+    box-shadow: 2px 4px 20px #000000;
+    overflow: hidden;
+}
+
+.dark .fi-breadcrumbs {
+    padding: 0 0.5rem;
+    background-color: #ffffff;
+
+    box-shadow: 2px 4px 20px #000000;
+    overflow: hidden;
+}
+
+
+/* Fixar coluna de ações */
+.fi-ta-table th.fi-ta-actions-header-cell,
+.fi-ta-table td:last-child {
+    position: sticky;
+    right: 0;
+    z-index: 10;
+    background-color: white;
+}
+
+/* Dark mode */
+.dark .fi-ta-table th.fi-ta-actions-header-cell,
+.dark .fi-ta-table td:last-child {
+    background-color: #081124;
+    /* gray-900 */
+}
+
+/* Linhas zebradas no dark */
+.fi-ta-table tr.fi-striped td:last-child {
+    background-color: rgb(249 250 251);
+    /* gray-50 */
+}
+
+.dark .fi-ta-table tr.fi-striped td:last-child {
+    background-color: #151D2F;
+}
+
+/* Label "Ações" no header */
+.fi-ta-actions-header-cell::after {
+    content: 'Ações';
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Borda vertical separadora */
+.fi-ta-table th.fi-ta-actions-header-cell,
+.fi-ta-table td:last-child {
+    border-left: 1px solid rgb(55 65 81); /* gray-700 para dark */
+}
+
+/* Light mode */
+.fi-ta-table td:last-child,
+.fi-ta-table th.fi-ta-actions-header-cell {
+    border-left: 1px solid rgb(229 231 235); /* gray-200 */
+}
+
+/* Dark mode */
+.dark .fi-ta-table td:last-child,
+.dark .fi-ta-table th.fi-ta-actions-header-cell {
+    border-left: 1px solid rgb(55 65 81); /* gray-700 */
+}

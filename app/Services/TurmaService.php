@@ -5,26 +5,16 @@ namespace App\Services;
 use App\Filament\Clusters\AlunoCluster\Resources\AlunoResource;
 use Filament\Notifications\Notification;
 use Filament\Tables\Filters\SelectFilter;
-use Filament\Forms\Form;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Support\Facades\Auth;
-use App\Models\Escola;
-use App\Models\IgnoredUser;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Gate;
-use Spatie\Permission\Models\Permission;
 use App\Models\User;
 use App\Services\UserService;
-use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
-use Filament\Schemas\Components;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules\Password as PasswordRule;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\DeleteAction;
@@ -46,7 +36,7 @@ class TurmaService
 
                 $query->withCount('alunos');
             })
-            ->paginated([10, 25, 50, 100])
+            ->paginated([5, 10, 25, 50, 100])
             ->columns($this->colunasTabela())
             ->recordActions($this->acoesTabela($user))
             ->toolbarActions($this->acoesEmMassa($user))
