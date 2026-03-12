@@ -5,21 +5,17 @@ namespace App\Services;
 use App\Models\User;
 use App\Models\Escola;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Form;
-use Filament\Tables\Actions\DeleteAction;
-use Filament\Tables\Actions\DeleteBulkAction;
-use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
-use Filament\Forms\Get;
-use Filament\Forms;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Grid;
-use Filament\Forms\Components\Fieldset;
-use Filament\Tables\Actions\Action;
 use Illuminate\Support\Facades\Http;
-use Filament\Forms\Components\ViewField;
+use Filament\Schemas\Schema;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\Action;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Grid;
+use Filament\Tables\Columns\TextColumn;
 
 class EscolaService
 {
@@ -38,8 +34,8 @@ class EscolaService
         return $table
             ->paginated([10, 25, 50, 100])
             ->columns($this->colunasTabela())
-            ->actions($this->acoesTabela($user))
-            ->bulkActions($this->acoesEmMassa($user))
+            ->recordActions($this->acoesTabela($user))
+            ->groupedBulkActions($this->acoesEmMassa($user))
             ->defaultSort('updated_at', 'desc')
             ->striped();
     }
@@ -183,15 +179,10 @@ class EscolaService
         return [];
     }
 
-    // Configura o formulário completo (campos, ações, etc.)
-    public function configurarFormulario(Form $form): Form
+    public static function configurarFormulario(Schema $schema): Schema
     {
-        return $form->schema($this->schemaFormulario());
-    }
-
-    protected function schemaFormulario(): array
-    {
-        return [
+        return $schema
+            ->components([
 
             Section::make('Dados Gerais')
                 ->schema([
@@ -208,7 +199,7 @@ class EscolaService
                                     return false;
                                 }
 
-                                return !$this->podeEditarCodigoEscola(Auth::user());
+                                return !self::podeEditarCodigoEscola(Auth::user());
                             }),
 
                         TextInput::make('nome')
@@ -241,7 +232,7 @@ class EscolaService
                                 ->label('Logradouro')
                                 ->maxLength(100)
                                 ->columnSpan(6)
-                                ->disabled(fn(Forms\Get $get) => blank($get('cep')))
+                                ->disabled(fn(Get $get) => blank($get('cep')))
                                 ->required()
                                 ->minLength(3)
                                 ->rule('regex:/^\p{L}+(?:\s\p{L}+)*$/u')
@@ -333,9 +324,8 @@ class EscolaService
                                 ]),
                         ]),
                 ]),
-        ];
+        ]);
     }
-
 
     /** Opções de escolas conforme perfil: Admin vê todas; secretário só a sua. */
     public function opcoesDeEscolasParaUsuario(?User $user): array

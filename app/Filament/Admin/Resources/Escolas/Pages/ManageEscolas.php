@@ -1,10 +1,9 @@
 <?php
 
-namespace App\Filament\Resources\EscolaResource\Pages;
+namespace App\Filament\Admin\Resources\Escolas\Pages;
 
-use App\Filament\Resources\EscolaResource;
-use App\Models\Escola;
-use Filament\Actions;
+use App\Filament\Admin\Resources\Escolas\EscolaResource;
+use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ManageRecords;
 
 class ManageEscolas extends ManageRecords
@@ -14,8 +13,8 @@ class ManageEscolas extends ManageRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make()
-                ->mutateFormDataUsing(function (array $data): array {
+            CreateAction::make()
+                ->mutateDataUsing(function (array $data): array {
                     $data['ativo'] = true;
                     return $data;
                 }),

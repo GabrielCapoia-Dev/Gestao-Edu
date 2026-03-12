@@ -1,25 +1,39 @@
 <?php
 
-namespace App\Filament\Resources;
+namespace App\Filament\Admin\Resources\Escolas;
 
+use App\Filament\Admin\Resources\Escolas\Pages\ManageEscolas;
+use BackedEnum;
+
+use Filament\Forms\Components\TextInput;
+use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\TextColumn;
 use App\Filament\Resources\EscolaResource\Pages;
 use App\Models\Escola;
 use App\Services\EscolaService as Service;
 use Filament\Forms\Form;
-use Filament\Resources\Resource;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use UnitEnum;
+
 
 class EscolaResource extends Resource
 {
     protected static ?string $model = Escola::class;
 
-    // protected static ?string $navigationGroup = "Gerenciamento Escolar";
-    // protected static ?string $navigationIcon = 'heroicon-o-building-library';
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::BuildingLibrary;
+
+    protected static ?string $recordTitleAttribute = 'nome';
+
     public static ?string $modelLabel = 'Escola';
     public static ?string $pluralModelLabel = 'Escolas';
     public static ?string $slug = 'escolas';
+
+    protected static string|UnitEnum|null $navigationGroup = 'Pedagógico';
+
 
     protected static function service(): Service
     {
@@ -32,11 +46,11 @@ class EscolaResource extends Resource
             ->where('ativo', true);
     }
 
-    // public static function form(Form $form): Form
-    // {
-    //     return static::service()->configurarFormulario($form);
-    // }
 
+    public static function form(Schema $schema): Schema
+    {
+        return static::service()->configurarFormulario($schema);
+    }
 
     public static function table(Table $table): Table
     {
@@ -46,7 +60,19 @@ class EscolaResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ManageEscolas::route('/'),
+            'index' => ManageEscolas::route('/'),
         ];
     }
+
+
+
+
+    // public static function form(Form $form): Form
+    // {
+    //     return static::service()->configurarFormulario($form);
+    // }
+
+
+
+
 }

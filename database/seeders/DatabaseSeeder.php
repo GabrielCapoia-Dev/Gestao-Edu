@@ -316,7 +316,13 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($seriesList as $seriesName) {
+
             $codigo = $this->gerarCodigoSerie($seriesName);
+
+            // se codigo existir, ignora
+            if ($codigo && Serie::where('codigo', $codigo)->exists()) {
+                continue;
+            }
 
             Serie::updateOrCreate(
                 ['nome' => $seriesName],
