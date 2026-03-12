@@ -256,56 +256,52 @@
     overflow: hidden;
 }
 
+/* .fixar-coluna {
 
-/* Fixar coluna de ações */
-.fi-ta-table th.fi-ta-actions-header-cell,
-.fi-ta-table td:last-child {
-    position: sticky;
-    right: 0;
-    z-index: 10;
-    background-color: white;
-}
+    .fi-ta-table th.fi-ta-actions-header-cell,
+    .fi-ta-table td:last-child {
+        position: sticky;
+        right: 0;
+        z-index: 10;
+        background-color: white;
+    }
 
-/* Dark mode */
-.dark .fi-ta-table th.fi-ta-actions-header-cell,
-.dark .fi-ta-table td:last-child {
-    background-color: #081124;
-    /* gray-900 */
-}
+    .dark .fi-ta-table th.fi-ta-actions-header-cell,
+    .dark .fi-ta-table td:last-child {
+        background-color: #081124;
+    }
 
-/* Linhas zebradas no dark */
-.fi-ta-table tr.fi-striped td:last-child {
-    background-color: rgb(249 250 251);
-    /* gray-50 */
-}
+    .fi-ta-table tr.fi-striped td:last-child {
+        background-color: rgb(249 250 251);
+    }
 
-.dark .fi-ta-table tr.fi-striped td:last-child {
-    background-color: #151D2F;
-}
+    .dark .fi-ta-table tr.fi-striped td:last-child {
+        background-color: #151D2F;
+    }
 
-/* Label "Ações" no header */
-.fi-ta-actions-header-cell::after {
-    content: 'Ações';
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
 
-/* Borda vertical separadora */
-.fi-ta-table th.fi-ta-actions-header-cell,
-.fi-ta-table td:last-child {
-    border-left: 1px solid rgb(55 65 81); /* gray-700 para dark */
-}
+    .fi-ta-actions-header-cell::after {
+        content: 'Ações';
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
 
-/* Light mode */
-.fi-ta-table td:last-child,
-.fi-ta-table th.fi-ta-actions-header-cell {
-    border-left: 1px solid rgb(229 231 235); /* gray-200 */
-}
+    }
 
-/* Dark mode */
-.dark .fi-ta-table td:last-child,
-.dark .fi-ta-table th.fi-ta-actions-header-cell {
-    border-left: 1px solid rgb(55 65 81); /* gray-700 */
+    .fi-ta-table th.fi-ta-actions-header-cell,
+    .fi-ta-table td:last-child {
+        border-left: 1px solid rgb(55 65 81);
+    }
+
+    .fi-ta-table td:last-child,
+    .fi-ta-table th.fi-ta-actions-header-cell {
+        border-left: 1px solid rgb(229 231 235);
+    }
+
+    .dark .fi-ta-table td:last-child,
+    .dark .fi-ta-table th.fi-ta-actions-header-cell {
+        border-left: 1px solid rgb(55 65 81);
+    }
 }
+*/
