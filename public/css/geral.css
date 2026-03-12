@@ -202,6 +202,7 @@
 .fi-ta {
     border-radius: 0.75rem;
     box-shadow: 2px 4px 20px #272727e7;
+    background-image: url('/images/fundo_completo.svg');
     overflow: hidden;
 }
 
@@ -231,11 +232,12 @@
     overflow: hidden;
 }
 
-.fi-main-ctn {
+/* .fi-main-ctn {
     background-image: url('/images/fundo_completo.svg');
-}
+} */
 
 .dark .fi-main-ctn {
+    background-color: #0b1731;
     background-image: none;
 }
 
@@ -249,11 +251,12 @@
 }
 
 .dark .fi-breadcrumbs {
-    padding: 0 0.5rem;
-    background-color: #ffffff;
+    background-color: #0c172ebd;
 
-    box-shadow: 2px 4px 20px #000000;
-    overflow: hidden;
+}
+
+.fi-width-7xl {
+    max-width: 90% !important;
 }
 
 /* .fixar-coluna {

@@ -2,39 +2,33 @@
 
 namespace App\Services;
 
-use App\Models\User;
+
 use App\Models\TipoManutencao;
-use Filament\Forms\Form;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Grid;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Actions\DeleteAction;
-use Filament\Tables\Actions\DeleteBulkAction;
-use Filament\Tables\Actions\Action;
 use Illuminate\Support\Facades\Auth;
+use App\Models\User;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Textarea;
+use Filament\Schemas\Schema;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\Action;
+
 
 class TipoManutencaoService
 {
 
     /**
-     * Regras Básicas de Permissões para Tipo de Manutenção
-     */
-
-
-
-
-
-    /**
      *  Regras para formulários de tipo de manutenção
      */
-    public function configurarFormulario(Form $form): Form
+    public function configurarFormulario(Schema $schema): Schema
     {
-        return $form->schema($this->schemaFormulario());
+        return $schema->components($this->schemaFormulario());
     }
 
 
@@ -68,8 +62,8 @@ class TipoManutencaoService
         return $table
             ->paginated([5, 10, 25, 50, 100])
             ->columns($this->colunasTabela())
-            ->actions($this->acoesTabela($user))
-            ->bulkActions($this->acoesEmMassa($user))
+            ->recordActions($this->acoesTabela($user))
+            ->toolbarActions($this->acoesEmMassa($user))
             ->defaultSort('updated_at', 'desc')
             ->striped();
     }
@@ -101,13 +95,6 @@ class TipoManutencaoService
                 ->toggleable(isToggledHiddenByDefault: true),
         ];
     }
-
-
-    /**
-     * Regras para filtros de tipo de manutenção
-     * 
-     */
-
 
     /**
      * Regras para ações de tipo de manutenção
@@ -185,9 +172,4 @@ class TipoManutencaoService
             DeleteBulkAction::make(),
         ];
     }
-
-    /**
-     * Regras para relações de tipo de manutenção
-     * 
-     */
 }

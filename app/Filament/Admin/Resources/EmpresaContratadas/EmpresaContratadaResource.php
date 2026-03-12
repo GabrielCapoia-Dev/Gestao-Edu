@@ -40,12 +40,7 @@ class EmpresaContratadaResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $schema
-            ->components([
-                TextInput::make('nome')
-                    ->required()
-                    ->maxLength(255),
-            ]);
+        return app(Service::class)->configurarFormulario($schema);
     }
 
     public static function table(Table $table): Table
