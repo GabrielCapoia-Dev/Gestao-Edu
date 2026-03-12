@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Filament\Resources\DominioEmailResource\Pages;
+namespace App\Filament\Admin\Resources\DominioEmails\Pages;
 
-use App\Filament\Resources\DominioEmailResource;
-use Filament\Actions;
+use App\Filament\Admin\Resources\DominioEmails\DominioEmailResource;
+use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ManageRecords;
 
 class ManageDominioEmails extends ManageRecords
@@ -13,7 +13,7 @@ class ManageDominioEmails extends ManageRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            CreateAction::make(),
         ];
     }
 }
