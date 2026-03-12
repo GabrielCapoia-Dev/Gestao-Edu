@@ -4,18 +4,28 @@ namespace App\Services;
 
 use App\Models\EmpresaContratada;
 use Filament\Forms\Form;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Grid;
+use Filament\Tables\Columns\IconColumn;
+use App\Filament\Clusters\AlunoCluster\Resources\AlunoResource;
+use Filament\Notifications\Notification;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Actions\DeleteAction;
-use Filament\Tables\Actions\DeleteBulkAction;
-use Filament\Tables\Actions\Action;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\Eloquent\Builder;
+use App\Models\User;
+use App\Services\UserService;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Schema;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\Action;
+
 
 class EmpresaContratadaService
 {
@@ -25,9 +35,9 @@ class EmpresaContratadaService
     |--------------------------------------------------------------------------
     */
 
-    public function configurarFormulario(Form $form): Form
+    public function configurarFormulario(Schema $schema): Schema
     {
-        return $form->schema($this->schemaFormulario());
+        return $schema->components($this->schemaFormulario());
     }
 
     protected function schemaFormulario(): array
@@ -103,8 +113,8 @@ class EmpresaContratadaService
         return $table
             ->query(EmpresaContratada::query()->where('ativo', true))
             ->columns($this->colunasTabela())
-            ->actions($this->acoesTabela())
-            ->bulkActions($this->acoesEmMassa())
+            ->recordActions($this->acoesTabela())
+            ->toolbarActions($this->acoesEmMassa())
             ->defaultSort('updated_at', 'desc')
             ->striped();
     }

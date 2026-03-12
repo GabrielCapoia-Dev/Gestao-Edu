@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Filament\Resources\EmpresaContratadaResource\Pages;
+namespace App\Filament\Admin\Resources\EmpresaContratadas\Pages;
 
-use App\Filament\Resources\EmpresaContratadaResource;
-use Filament\Actions;
+use App\Filament\Admin\Resources\EmpresaContratadas\EmpresaContratadaResource;
+use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ManageRecords;
 
 class ManageEmpresaContratadas extends ManageRecords
@@ -13,7 +13,7 @@ class ManageEmpresaContratadas extends ManageRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            CreateAction::make(),
         ];
     }
 }
