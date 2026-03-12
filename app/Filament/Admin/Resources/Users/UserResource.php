@@ -32,16 +32,6 @@ class UserResource extends Resource
     protected static string | UnitEnum | null $navigationGroup = 'Acesso';
     protected static ?string $recordTitleAttribute = 'name';
 
-    public static function getNavigationBadge(): ?string
-    {
-        return app(Service::class)->badgeNavegacaoParaNovosUsuarios(Auth::user());
-    }
-
-    public static function getNavigationBadgeTooltip(): ?string
-    {
-        return 'Novos Usuários';
-    }
-
 
     /** Mantém sua sincronização antes da query base */
     protected function getTableQuery()

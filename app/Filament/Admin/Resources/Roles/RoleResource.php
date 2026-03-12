@@ -44,22 +44,6 @@ class RoleResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'name';
 
-    public static function getNavigationBadge(): ?string
-    {
-        $value = (string) static::getModel()::count();
-
-        if ($value > 0) {
-            return $value;
-        }
-        return null;
-    }
-
-    public static function getNavigationBadgeTooltip(): ?string
-    {
-        return 'Quantidade de niveis de acesso cadastrados';
-    }
-
-
 
     public static function form(Schema $schema): Schema
     {
