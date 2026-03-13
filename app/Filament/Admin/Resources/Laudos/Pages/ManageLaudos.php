@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Filament\Resources\LaudoResource\Pages;
+namespace App\Filament\Admin\Resources\Laudos\Pages;
 
-use App\Filament\Resources\LaudoResource;
-use Filament\Actions;
+use App\Filament\Admin\Resources\Laudos\LaudoResource;
+use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ManageRecords;
 
 class ManageLaudos extends ManageRecords
@@ -13,7 +13,7 @@ class ManageLaudos extends ManageRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            CreateAction::make(),
         ];
     }
 }

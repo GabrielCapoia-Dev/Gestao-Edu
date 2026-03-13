@@ -33,11 +33,11 @@ class TipoManutencaoResource extends Resource
     protected static ?string $pluralModelLabel = 'Tipos de Manutenções';
     protected static ?string $modelLabel = 'Tipo de Manutenção';
     protected static ?string $model = TipoManutencao::class;
-
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::WrenchScrewdriver;
     protected static string|UnitEnum|null $navigationGroup = 'Manutenção';
-
     protected static ?string $recordTitleAttribute = 'nome';
+
+    
 
     public static function form(Schema $schema): Schema
     {

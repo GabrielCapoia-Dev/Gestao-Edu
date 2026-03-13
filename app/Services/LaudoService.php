@@ -2,15 +2,30 @@
 
 namespace App\Services;
 
-use App\Models\User;
-use Filament\Forms\Components\TextInput;
+
 use Filament\Forms\Form;
-use Filament\Tables\Actions\DeleteAction;
-use Filament\Tables\Actions\DeleteBulkAction;
-use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Filament\Tables\Columns\TextColumn;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Escola;
+use App\Models\IgnoredUser;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Gate;
+use Spatie\Permission\Models\Permission;
+use App\Models\User;
+use App\Services\UserService;
+use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password as PasswordRule;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\DeleteAction;
 
 class LaudoService
 {
@@ -22,12 +37,11 @@ class LaudoService
         return $table
             ->paginated([5, 10, 25, 50, 100])
             ->columns($this->colunasTabela())
-            ->actions($this->acoesTabela($user))
-            ->bulkActions($this->acoesEmMassa($user))
+            ->recordActions($this->acoesTabela($user))
+            ->toolbarActions($this->acoesEmMassa($user))
             ->defaultSort('updated_at', 'desc')
             ->striped();
     }
-
 
     private function colunasTabela(): array
     {
@@ -73,10 +87,9 @@ class LaudoService
         ];
     }
 
-    // Configura o formulário completo (campos, ações, etc.)
-    public function configurarFormulario(Form $form): Form
+    public function configurarFormulario(Schema $schema): Schema
     {
-        return $form->schema($this->schemaFormulario());
+        return $schema->components($this->schemaFormulario());
     }
 
     protected function schemaFormulario(): array
