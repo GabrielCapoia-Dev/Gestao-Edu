@@ -1,4 +1,5 @@
 @php
+//resources\views\components\pedido\pedido-cabecalho.blade.php
 $feedback = $record->ultimoFeedback;
 $escola = $record->escola;
 $endereco = $escola

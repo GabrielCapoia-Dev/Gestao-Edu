@@ -9,7 +9,7 @@ use Filament\Schemas\Schema;
 use App\Models\Pedido;
 use App\Models\Setor;
 use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Fieldset;
+use Filament\Schemas\Components\View;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\DatePicker;
@@ -23,12 +23,13 @@ class PedidoGestaoForm
 
                 Section::make('Informações do Pedido')
                     ->schema([
-                        Fieldset::make('cabecalho')
-                            ->label(false)
-                            ->content(fn(Pedido $record) => view('components.pedido.pedido-cabecalho', ['record' => $record]))
-                            ->columnSpanFull(),
+                        View::make('components.pedido.pedido-cabecalho')
+                            ->viewData(fn($record) => [
+                                'record' => $record
+                            ])
+                            ->columnSpanFull()
                     ])
-                    ->collapsible(),
+                    ->columnSpanFull(),
 
                 Section::make('Gestão do Pedido')
                     ->collapsible()

@@ -1,4 +1,5 @@
 @php
+// resources\views\components\professores\detalhes-modal.blade.php
 /** @var \App\Models\Professor $professor */
 $especializacoes = $professor->especializacoes()->get();
 @endphp

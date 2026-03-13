@@ -8,6 +8,12 @@ RUN apt-get update && apt-get install -y \
     intl pdo pdo_mysql zip mbstring exif pcntl bcmath gd opcache \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# ── Node.js 22 ─────────────────────────────────────────────────────────────
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y nodejs \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+
 # ── OPcache ────────────────────────────────────────────────────────────────
 RUN echo "opcache.enable=1"                    >> /usr/local/etc/php/conf.d/opcache.ini \
     && echo "opcache.memory_consumption=256"      >> /usr/local/etc/php/conf.d/opcache.ini \

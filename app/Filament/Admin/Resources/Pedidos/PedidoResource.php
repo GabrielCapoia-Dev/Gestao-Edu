@@ -8,6 +8,7 @@ use App\Filament\Admin\Resources\Pedidos\Pages\ListPedidos;
 use App\Filament\Admin\Resources\Pedidos\RelationManagers\ArquivosRelationManager;
 use App\Filament\Admin\Resources\Pedidos\RelationManagers\HistoricosRelationManager;
 use App\Filament\Admin\Resources\Pedidos\Schemas\PedidoCriacaoForm;
+use App\Filament\Admin\Resources\Pedidos\Schemas\PedidoGestaoForm;
 use App\Filament\Admin\Resources\Pedidos\Tables\PedidosTable;
 use App\Models\Pedido;
 use BackedEnum;
@@ -38,6 +39,12 @@ class PedidoResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
+        $service = app(Service::class);
+        $user    = Auth::user();
+
+        if ($schema->getOperation() === 'edit' && $service->podeGerenciarPedidos($user)) {
+            return PedidoGestaoForm::configure($schema);
+        }
         return PedidoCriacaoForm::configure($schema);
     }
 
