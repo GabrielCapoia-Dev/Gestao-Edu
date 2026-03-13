@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Components\Forms;
+namespace App\Filament\Admin\Components;
 
 use Filament\Forms\Components\Field;
 

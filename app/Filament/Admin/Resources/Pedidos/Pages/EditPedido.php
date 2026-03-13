@@ -1,13 +1,15 @@
 <?php
 
-namespace App\Filament\Resources\PedidoResource\Pages;
+namespace App\Filament\Admin\Resources\Pedidos\Pages;
 
-use App\Filament\Resources\PedidoResource;
+use App\Filament\Admin\Resources\Pedidos\PedidoResource;
+use Filament\Actions\DeleteAction;
+use Filament\Resources\Pages\EditRecord;
 use App\Models\TipoStatus;
 use App\Services\PedidoService;
 use Filament\Actions;
-use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Auth;
+
 
 class EditPedido extends EditRecord
 {

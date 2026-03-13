@@ -1,11 +1,10 @@
 <?php
 
-namespace App\Filament\Resources\PedidoResource\RelationManagers;
+namespace App\Filament\Admin\Resources\Pedidos\RelationManagers;
 
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
-use App\Models\User;
 
 class HistoricosRelationManager extends RelationManager
 {
@@ -56,7 +55,6 @@ class HistoricosRelationManager extends RelationManager
             ->defaultSort('created_at', 'desc')
             ->paginated([5, 10, 25]);
     }
-
 
     public function isReadOnly(): bool
     {

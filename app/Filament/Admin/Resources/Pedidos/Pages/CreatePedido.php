@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Filament\Resources\PedidoResource\Pages;
+namespace App\Filament\Admin\Resources\Pedidos\Pages;
 
-use App\Filament\Resources\PedidoResource;
-use App\Services\PedidoService;
+use App\Filament\Admin\Resources\Pedidos\PedidoResource;
 use Filament\Resources\Pages\CreateRecord;
+use App\Services\PedidoService;
 use Illuminate\Support\Facades\Auth;
 
 class CreatePedido extends CreateRecord

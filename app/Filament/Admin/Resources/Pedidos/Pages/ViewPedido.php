@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Filament\Resources\PedidoResource\Pages;
+namespace App\Filament\Admin\Resources\Pedidos\Pages;
 
-use App\Filament\Resources\PedidoResource;
+use App\Filament\Admin\Resources\Pedidos\PedidoResource;
 use App\Models\TipoStatus;
 use App\Services\PedidoService;
 use Filament\Actions;

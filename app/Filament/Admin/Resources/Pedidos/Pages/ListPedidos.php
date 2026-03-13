@@ -1,13 +1,14 @@
 <?php
 
-namespace App\Filament\Resources\PedidoResource\Pages;
+namespace App\Filament\Admin\Resources\Pedidos\Pages;
 
-use App\Filament\Resources\PedidoResource;
+use App\Filament\Admin\Resources\Pedidos\PedidoResource;
+use Filament\Actions\CreateAction;
+use Filament\Resources\Pages\ListRecords;
 use App\Models\Pedido;
 use App\Models\TipoStatus;
 use Filament\Actions;
-use Filament\Resources\Components\Tab;
-use Filament\Resources\Pages\ListRecords;
+use Filament\Schemas\Components\Tabs;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Facades\Auth;
 use App\Services\PedidoService;
@@ -71,7 +72,7 @@ class ListPedidos extends ListRecords
         // =========================
         // TAB TODOS
         // =========================
-        $tabs['todos'] = Tab::make('Todos')
+        $tabs['todos'] = Tabs::make('Todos')
             ->modifyQueryUsing(function ($query) {
                 $query->reorder()->orderByDesc('updated_at');
             })
@@ -139,7 +140,7 @@ class ListPedidos extends ListRecords
 
             $hex = substr(ltrim($status->cor, '#'), 0, 6);
 
-            $tabs[$status->id] = Tab::make($status->nome)
+            $tabs[$status->id] = Tabs::make($status->nome)
                 ->modifyQueryUsing(function ($query) use ($status, $user) {
                     $query->where('tipo_status_id', $status->id);
 
