@@ -8,7 +8,7 @@ use Filament\Resources\Pages\ListRecords;
 use App\Models\Pedido;
 use App\Models\TipoStatus;
 use Filament\Actions;
-use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Tabs\Tab;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Facades\Auth;
 use App\Services\PedidoService;
@@ -40,7 +40,7 @@ class ListPedidos extends ListRecords
             Actions\Action::make('feedbacks')
                 ->label('Feedbacks')
                 ->icon('heroicon-o-star')
-                ->visible(fn() => User::authUser()->hasPermissionTo('Visualizar Feedback de Pedidos'))
+                ->visible(fn() => User::hasPermissionTo('Visualizar Feedback de Pedidos'))
                 ->color('warning')
                 ->url(fn() => route('filament.admin.pages.feedback-pedidos'))
         ];
@@ -72,7 +72,7 @@ class ListPedidos extends ListRecords
         // =========================
         // TAB TODOS
         // =========================
-        $tabs['todos'] = Tabs::make('Todos')
+        $tabs['todos'] = Tab::make('Todos')
             ->modifyQueryUsing(function ($query) {
                 $query->reorder()->orderByDesc('updated_at');
             })
@@ -90,6 +90,7 @@ class ListPedidos extends ListRecords
         $prioridade = $user?->setor?->nome === 'Obras'
             ? 'Encaminhado ao Setor'
             : 'Em Aberto';
+            
 
         $ordemStatus = [
             'Em Aberto',
@@ -140,7 +141,7 @@ class ListPedidos extends ListRecords
 
             $hex = substr(ltrim($status->cor, '#'), 0, 6);
 
-            $tabs[$status->id] = Tabs::make($status->nome)
+            $tabs[$status->id] = Tab::make($status->nome)
                 ->modifyQueryUsing(function ($query) use ($status, $user) {
                     $query->where('tipo_status_id', $status->id);
 

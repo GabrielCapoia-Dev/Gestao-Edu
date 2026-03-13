@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Filament\Clusters\AlunoCluster\Resources\AlunoResource\Pages;
+namespace App\Filament\Admin\Clusters\Aluno\Resources\Alunos\Pages;
 
-use App\Filament\Clusters\AlunoCluster\Resources\AlunoResource;
-use Filament\Actions;
+
+use App\Filament\Admin\Clusters\Aluno\Resources\Alunos\AlunoResource;
 use Filament\Resources\Pages\EditRecord;
 
 class EditAluno extends EditRecord
