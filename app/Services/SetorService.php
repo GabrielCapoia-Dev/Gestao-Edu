@@ -5,17 +5,31 @@ namespace App\Services;
 use App\Models\User;
 use App\Models\Setor;
 use Filament\Forms\Form;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Grid;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Actions\DeleteAction;
-use Filament\Tables\Actions\DeleteBulkAction;
-use Filament\Tables\Actions\Action;
+use Illuminate\Support\Facades\Auth;
+use App\Models\Escola;
+use App\Models\IgnoredUser;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Gate;
+use Spatie\Permission\Models\Permission;
+use App\Services\UserService;
+use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Schema;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password as PasswordRule;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\Action;
 
 class SetorService
 {
@@ -28,8 +42,8 @@ class SetorService
         return $table
             ->paginated([5, 10, 25, 50, 100])
             ->columns($this->colunasTabela())
-            ->actions($this->acoesTabela())
-            ->bulkActions($this->acoesEmMassa())
+            ->recordActions($this->acoesTabela())
+            ->toolbarActions($this->acoesEmMassa())
             ->defaultSort('updated_at', 'desc')
             ->striped();
     }
@@ -122,9 +136,9 @@ class SetorService
      * FORM
      * ========================= */
 
-    public function configurarFormulario(Form $form): Form
+    public function configurarFormulario(Schema $schema): Schema
     {
-        return $form->schema([
+        return $schema->components([
             Section::make('Dados Gerais')
                 ->schema([
                     Grid::make(2)->schema([
