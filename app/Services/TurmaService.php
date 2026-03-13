@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Filament\Clusters\AlunoCluster\Resources\AlunoResource;
+use App\Filament\Admin\Clusters\Aluno\Resources\Alunos\AlunoResource;
 use Filament\Notifications\Notification;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -34,7 +34,12 @@ class TurmaService
 
                 $this->userService->aplicarFiltroPorEscolaDoUsuarioEmTurma($query, $user);
 
-                $query->withCount('alunos');
+                $query
+                    ->with([
+                        'escola:id,nome',
+                        'serie:id,nome'
+                    ])
+                    ->withCount('alunos');
             })
             ->paginated([5, 10, 25, 50, 100])
             ->columns($this->colunasTabela())
@@ -124,7 +129,6 @@ class TurmaService
                 ->label('Série')
                 ->multiple()
                 ->searchable()
-                ->preload()
                 ->relationship('serie', 'nome'),
 
             SelectFilter::make('turno')
@@ -168,7 +172,6 @@ class TurmaService
                     ->label('Escola')
                     ->relationship('escola', 'nome')
                     ->required()
-                    ->preload()
                     ->searchable()
                     ->default(fn() => Auth::user()?->id_escola)
                     ->dehydrated(true)
@@ -188,7 +191,6 @@ class TurmaService
                     ->label('Série')
                     ->relationship('serie', 'nome')
                     ->required()
-                    ->preload()
                     ->searchable(),
 
                 TextInput::make('turma')
