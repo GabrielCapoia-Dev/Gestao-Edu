@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Filament\Resources\SetorResource\Pages;
+namespace App\Filament\Admin\Resources\Setors\Pages;
 
-use App\Filament\Resources\SetorResource;
-use Filament\Actions;
+use App\Filament\Admin\Resources\Setors\SetorResource;
+use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ManageRecords;
 
 class ManageSetors extends ManageRecords
@@ -13,7 +13,7 @@ class ManageSetors extends ManageRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            CreateAction::make(),
         ];
     }
 }
