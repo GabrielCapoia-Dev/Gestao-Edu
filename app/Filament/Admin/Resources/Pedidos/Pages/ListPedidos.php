@@ -33,6 +33,8 @@ class ListPedidos extends ListRecords
 
     protected function getHeaderActions(): array
     {
+        /** @var \App\Models\User */
+        $user = Auth::user();
         return [
             Actions\CreateAction::make()
                 ->label('Novo Pedido'),
@@ -40,7 +42,7 @@ class ListPedidos extends ListRecords
             Actions\Action::make('feedbacks')
                 ->label('Feedbacks')
                 ->icon('heroicon-o-star')
-                ->visible(fn() => User::hasPermissionTo('Visualizar Feedback de Pedidos'))
+                ->visible(fn() => $user->hasPermissionTo('Visualizar Feedback de Pedidos'))
                 ->color('warning')
                 ->url(fn() => route('filament.admin.pages.feedback-pedidos'))
         ];

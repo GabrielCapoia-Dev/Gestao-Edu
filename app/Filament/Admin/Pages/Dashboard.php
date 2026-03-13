@@ -15,17 +15,23 @@ class Dashboard extends Page
 
     protected string $view = 'filament.pages.dashboard';
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::ChartBar;
+    public function getTitle(): string
+    {
+        return '';
+    }
+
+    public function getHeading(): string
+    {
+        return '';
+    }
+    
+    protected static ?string $navigationLabel = 'Inicio';
+
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::Home;
 
 
     public static function userService(): UserService
     {
         return app(UserService::class);
-    }
-
-    public static function canAccess(): bool
-    {
-
-        return static::userService()->ehAdmin(Auth::user());
     }
 }

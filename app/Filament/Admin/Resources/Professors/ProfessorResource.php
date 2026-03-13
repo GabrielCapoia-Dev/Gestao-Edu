@@ -25,6 +25,7 @@ class ProfessorResource extends Resource
     protected static ?string $pluralModelLabel = 'Professores';
     protected static ?string $modelLabel = 'Professor';
     protected static ?string $slug = 'professores';
+    protected static bool $shouldRegisterNavigation = false;
 
     public static function getGloballySearchableAttributes(): array
     {

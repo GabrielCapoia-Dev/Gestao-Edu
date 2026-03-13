@@ -22,7 +22,7 @@ class AlunoResource extends Resource
     protected static ?string $model = Aluno::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
-
+    protected static bool $shouldRegisterNavigation = false;
     protected static ?string $cluster = AlunoCluster::class;
 
     protected static ?SubNavigationPosition $subNavigationPosition = SubNavigationPosition::Top;

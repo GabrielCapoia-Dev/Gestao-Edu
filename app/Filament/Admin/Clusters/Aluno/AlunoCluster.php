@@ -10,9 +10,10 @@ use Filament\Support\Icons\Heroicon;
 class AlunoCluster extends Cluster
 {
     protected static string|BackedEnum|null $navigationIcon = Heroicon::AcademicCap;
-    protected static string|UnitEnum|null $navigationGroup = 'gerenciamento-escolar';
+    protected static string|UnitEnum|null $navigationGroup = 'Gerenciamento Escolar';
     protected static ?string $navigationLabel = 'Alunos';
     protected static ?string $pluralModelLabel = 'Alunos';
     protected static ?string $modelLabel = 'Aluno';
     protected static ?string $slug = 'grupo-alunos';
+    protected static bool $shouldRegisterNavigation = false;
 }

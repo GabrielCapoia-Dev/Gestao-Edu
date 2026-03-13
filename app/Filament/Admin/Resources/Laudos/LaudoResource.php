@@ -22,6 +22,7 @@ class LaudoResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = Heroicon::DocumentPlus;
     protected static string|UnitEnum|null $navigationGroup = 'Gerenciamento Escolar';
     protected static ?string $recordTitleAttribute = 'nome';
+    protected static bool $shouldRegisterNavigation = false;
 
 
     public static function laudoService(): LaudoService

@@ -78,8 +78,6 @@ class AlunosTable
 
     public static function columns(?User $user = null): array
     {
-        $userService = app(UserService::class);
-
         return [
             TextColumn::make('turma.escola.nome')
                 ->label('Escola')
@@ -250,7 +248,7 @@ class AlunosTable
             SelectFilter::make('tipo_escola')
                 ->multiple()
                 ->label('Tipo Unidade')
-                ->visible(fn() => User::pode('Filtrar Alunos por Escola'))
+                ->visible(fn() => $user->hasPermissionTo('Filtrar Alunos por Escola'))
                 ->options(['CMEI' => 'CMEI', 'ESCOLA' => 'ESCOLA'])
                 ->columnSpan(2)
                 ->query(function (Builder $query, array $data): Builder {
@@ -271,7 +269,7 @@ class AlunosTable
                 ->label('Escola')
                 ->relationship('turma.escola', 'nome')
                 ->searchable()
-                ->visible(fn() => User::pode('Filtrar Alunos por Escola'))
+                ->visible(fn() => $user->hasPermissionTo('Filtrar Alunos por Escola'))
                 ->columnSpan(2)
                 ->preload(),
 
@@ -345,7 +343,7 @@ class AlunosTable
                 ->label('Laudo')
                 ->relationship('laudos', 'nome')
                 ->columnSpan(2)
-                ->visible(fn() => User::pode('Visualizar Laudos de Aluno'))
+                ->visible(fn() => $user->hasPermissionTo('Visualizar Laudos de Aluno'))
                 ->searchable()
                 ->preload(),
 
@@ -368,7 +366,7 @@ class AlunosTable
                 ->label('Crianças com laudos')
                 ->columnSpan(2)
                 ->boolean()
-                ->visible(fn() => User::pode('Visualizar Laudos de Aluno'))
+                ->visible(fn() => $user->hasPermissionTo('Visualizar Laudos de Aluno'))
                 ->trueLabel('Apenas com laudos')
                 ->falseLabel('Apenas sem laudos')
                 ->queries(
@@ -404,7 +402,7 @@ class AlunosTable
                 ->color('warning')
                 ->modal()
                 ->slideOver()
-                ->visible(fn() => User::pode('Visualizar Detalhes de Aluno'))
+                ->visible(fn() => $user->hasPermissionTo('Visualizar Detalhes de Aluno'))
                 ->modalCancelAction(false)
                 ->modalSubmitAction(false)
                 ->modalHeading(fn(Aluno $record) => "Detalhes de {$record->nome}")
@@ -428,7 +426,7 @@ class AlunosTable
     {
         return [
             DeleteBulkAction::make()
-                ->visible(fn() => User::pode('Excluir Alunos em Massa')),
+                ->visible(fn() => $user->hasPermissionTo('Excluir Alunos em Massa')),
         ];
     }
 }

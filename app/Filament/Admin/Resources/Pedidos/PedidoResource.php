@@ -7,7 +7,7 @@ use App\Filament\Admin\Resources\Pedidos\Pages\EditPedido;
 use App\Filament\Admin\Resources\Pedidos\Pages\ListPedidos;
 use App\Filament\Admin\Resources\Pedidos\RelationManagers\ArquivosRelationManager;
 use App\Filament\Admin\Resources\Pedidos\RelationManagers\HistoricosRelationManager;
-use App\Filament\Admin\Resources\Pedidos\Schemas\PedidoForm;
+use App\Filament\Admin\Resources\Pedidos\Schemas\PedidoCriacaoForm;
 use App\Filament\Admin\Resources\Pedidos\Tables\PedidosTable;
 use App\Models\Pedido;
 use BackedEnum;
@@ -38,7 +38,7 @@ class PedidoResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return PedidoForm::configure($schema);
+        return PedidoCriacaoForm::configure($schema);
     }
 
     public static function table(Table $table): Table

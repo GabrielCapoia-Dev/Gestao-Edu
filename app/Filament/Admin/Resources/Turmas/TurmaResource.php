@@ -39,6 +39,7 @@ class TurmaResource extends Resource
     protected static ?string $navigationLabel = 'Turmas';
     protected static ?string $pluralModelLabel = 'Turmas';
     protected static ?string $modelLabel = 'Turma';
+    protected static bool $shouldRegisterNavigation = false;
 
     protected static string|UnitEnum|null $navigationGroup = 'Pedagógico';
 
