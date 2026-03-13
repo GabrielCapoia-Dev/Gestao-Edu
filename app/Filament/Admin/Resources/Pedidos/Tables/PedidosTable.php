@@ -34,7 +34,7 @@ class PedidosTable
             ->columns(static::columns($user))
             ->filters(static::filters(), layout: FiltersLayout::AboveContent)
             ->recordActions(static::actions($user, $service))
-            ->tableActions(static::bulkActions($user))
+            ->toolbarActions(static::bulkActions($user))
             ->headerActions(static::headerActions($user));
     }
 
