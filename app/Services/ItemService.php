@@ -1,0 +1,115 @@
+<?php
+
+namespace App\Services;
+
+use Filament\Tables\Table;
+use Filament\Tables\Columns\TextColumn;
+use Illuminate\Support\Facades\Auth;
+use App\Models\User;
+use App\Services\UserService;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\TextArea;
+use Filament\Schemas\Schema;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\DeleteAction;
+use App\Models\Enums\UnidadeMedida;
+
+
+class ItemService
+{
+
+    public function __construct(
+        protected UserService $userService
+    ) {}
+
+    public function configurarTabela(Table $table, ?User $user): Table
+    {
+        return $table
+            ->paginated([5, 10, 25, 50, 100])
+            ->columns($this->colunasTabela())
+            ->recordActions($this->acoesTabela($user))
+            ->toolbarActions($this->acoesEmMassa($user))
+            ->filters($this->filtrosTabela())
+            ->defaultSort('updated_at', 'desc')
+            ->striped();
+    }
+
+
+    public function colunasTabela(): array
+    {
+        return [
+            TextColumn::make('nome')
+                ->label('Nome')
+                ->sortable()
+                ->searchable(),
+            TextColumn::make('descricao')
+                ->label('Descrição')
+                ->sortable()
+                ->searchable(),
+            TextColumn::make('unidade_medida')
+                ->label('Unidade de Medida')
+                ->sortable(),
+
+            TextColumn::make('created_at')
+                ->label('Criado em')
+                ->dateTime()
+                ->sortable()
+                ->toggleable(isToggledHiddenByDefault: true),
+
+            TextColumn::make('updated_at')
+                ->label('Atualizado em')
+                ->sortable()
+                ->dateTime()
+                ->toggleable(isToggledHiddenByDefault: true),
+        ];
+    }
+
+    public function acoesTabela(?User $user): array
+    {
+        return [
+            EditAction::make(),
+            DeleteAction::make()
+                ->visible(fn() => $this->userService->podeExcluirItens(Auth::user())),
+        ];
+    }
+
+    private function filtrosTabela(): array
+    {
+        return [];
+    }
+
+
+    private function acoesEmMassa(?User $user): array
+    {
+        return [
+            DeleteBulkAction::make()
+                ->visible(fn() => $this->userService->podeExcluirItensEmMassa(Auth::user())),
+        ];
+    }
+
+
+    public static function configurarFormulario(Schema $schema): Schema
+    {
+        return $schema
+            ->components([
+                TextInput::make('nome')
+                    ->label('Nome')
+                    ->helperText('Digite o nome do Item')
+                    ->required(),
+
+                TextArea::make('descricao')
+                    ->label('Descrição')
+                    ->required(),
+
+                Select::make('unidade_medida')
+                    ->label('Unidade de Medida')
+                    ->options([
+                        collect(UnidadeMedida::cases())
+                            ->mapWithKeys(fn($case) => [$case->value => $case->label()])
+                            ->toArray()
+                    ])
+            ]);
+    }
+}

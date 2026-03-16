@@ -31,6 +31,14 @@ class UserService
     {
         return $user?->hasPermissionTo('Visualizar Painel Personalizado') ?? false;
     }
+    public function podeExcluirItens(?User $user): bool
+    {
+        return $user?->hasPermissionTo('Excluir Itens') ?? false;
+    }
+    public function podeExcluirItensEmMassa(?User $user): bool
+    {
+        return $user?->hasPermissionTo('Excluir Itens em Massa') ?? false;
+    }
 
     public function podeEditarMatriculaDoProfessor(?User $user, ?string $operation = null): bool
     {
