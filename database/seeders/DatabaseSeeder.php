@@ -296,77 +296,77 @@ class DatabaseSeeder extends Seeder
             );
         }
 
-        /**
-         * Séries
-         */
-        $seriesList = [
-            'BERÇÁRIO',
-            '1ª Etapa',
-            '2ª Etapa',
-            'JARDIM',
-            'MATERNAL I',
-            'MATERNAL II',
-            'Infantil 4',
-            'Infantil 5',
-            '1º Ano',
-            '2º Ano',
-            '3º Ano',
-            '4º Ano',
-            '5º Ano',
-        ];
+        // /**
+        //  * Séries
+        //  */
+        // $seriesList = [
+        //     'BERÇÁRIO',
+        //     '1ª Etapa',
+        //     '2ª Etapa',
+        //     'JARDIM',
+        //     'MATERNAL I',
+        //     'MATERNAL II',
+        //     'Infantil 4',
+        //     'Infantil 5',
+        //     '1º Ano',
+        //     '2º Ano',
+        //     '3º Ano',
+        //     '4º Ano',
+        //     '5º Ano',
+        // ];
 
-        foreach ($seriesList as $seriesName) {
+        // foreach ($seriesList as $seriesName) {
 
-            $codigo = $this->gerarCodigoSerie($seriesName);
+        //     $codigo = $this->gerarCodigoSerie($seriesName);
 
-            // se codigo existir, ignora
-            if ($codigo && Serie::where('codigo', $codigo)->exists()) {
-                continue;
-            }
+        //     // se codigo existir, ignora
+        //     if ($codigo && Serie::where('codigo', $codigo)->exists()) {
+        //         continue;
+        //     }
 
-            Serie::updateOrCreate(
-                ['nome' => $seriesName],
-                ['codigo' => $codigo]
-            );
-        }
+        //     Serie::updateOrCreate(
+        //         ['nome' => $seriesName],
+        //         ['codigo' => $codigo]
+        //     );
+        // }
 
-        /**
-         * Laudos
-         */
-        $laudoList = [
-            'Deficiência Intelectual',
-            'Transtorno do Espectro Autista (TEA)',
-            'Deficiência Física/Motora',
-            'Deficiência Visual',
-            'Cegueira',
-            'Baixa Visão',
-            'Visão Monocular',
-            'Deficiência Auditiva',
-            'Surdez',
-            'Surdocegueira',
-            'Deficiência Múltipla',
-            'Altas Habilidades/Superdotação',
-            'Transtorno de Déficit de Atenção e Hiperatividade (TDAH)',
-            'Transtorno Opositor Desafiador (TOD)',
-            'Transtornos Específicos da Aprendizagem (Dislexia, Discalculia, Disgrafia, etc.)',
-            'Transtornos da Comunicação (linguagem, fala, fluência, etc.)',
-            'Transtornos Motores do Neurodesenvolvimento (dispraxia, coordenação motora, etc.)',
-            'Atraso Global do Desenvolvimento',
-            'Atraso no Desenvolvimento Neuropsicomotor',
-            'Transtornos Mentais e do Comportamento com impacto funcional significativo',
-        ];
+        // /**
+        //  * Laudos
+        //  */
+        // $laudoList = [
+        //     'Deficiência Intelectual',
+        //     'Transtorno do Espectro Autista (TEA)',
+        //     'Deficiência Física/Motora',
+        //     'Deficiência Visual',
+        //     'Cegueira',
+        //     'Baixa Visão',
+        //     'Visão Monocular',
+        //     'Deficiência Auditiva',
+        //     'Surdez',
+        //     'Surdocegueira',
+        //     'Deficiência Múltipla',
+        //     'Altas Habilidades/Superdotação',
+        //     'Transtorno de Déficit de Atenção e Hiperatividade (TDAH)',
+        //     'Transtorno Opositor Desafiador (TOD)',
+        //     'Transtornos Específicos da Aprendizagem (Dislexia, Discalculia, Disgrafia, etc.)',
+        //     'Transtornos da Comunicação (linguagem, fala, fluência, etc.)',
+        //     'Transtornos Motores do Neurodesenvolvimento (dispraxia, coordenação motora, etc.)',
+        //     'Atraso Global do Desenvolvimento',
+        //     'Atraso no Desenvolvimento Neuropsicomotor',
+        //     'Transtornos Mentais e do Comportamento com impacto funcional significativo',
+        // ];
 
-        foreach ($laudoList as $laudo) {
-            Laudo::firstOrCreate(['nome' => $laudo]);
-        }
+        // foreach ($laudoList as $laudo) {
+        //     Laudo::firstOrCreate(['nome' => $laudo]);
+        // }
 
         $this->call([
             EscolaSeeder::class,
             SecretarioUnidadesSeeder::class,
-            AlunoPlanilhaSeeder::class,
-            TurmaSeeder::class,
-            ProfessorSeeder::class,
-            AlunoSeeder::class,
+            // AlunoPlanilhaSeeder::class,
+            // TurmaSeeder::class,
+            // ProfessorSeeder::class,
+            // AlunoSeeder::class,
 
             SetorSeeder::class,
             TipoStatusSeeder::class,

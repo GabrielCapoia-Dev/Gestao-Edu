@@ -33,6 +33,7 @@ class PedidoGestaoForm
 
                 Section::make('Gestão do Pedido')
                     ->collapsible()
+                    ->columnSpanFull()
                     ->schema([
 
                         Select::make('novo_status_id')
