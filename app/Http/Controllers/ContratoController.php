@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Itens;
+use App\Models\Contrato;
 use Illuminate\Http\Request;
 
-class ItensController extends Controller
+class ContratoController extends Controller
 {
     /**
      * Display a listing of the resource.
@@ -34,7 +34,7 @@ class ItensController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Itens $itens)
+    public function show(Contrato $contrato)
     {
         //
     }
@@ -42,7 +42,7 @@ class ItensController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(Itens $itens)
+    public function edit(Contrato $contrato)
     {
         //
     }
@@ -50,7 +50,7 @@ class ItensController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Itens $itens)
+    public function update(Request $request, Contrato $contrato)
     {
         //
     }
@@ -58,7 +58,7 @@ class ItensController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Itens $itens)
+    public function destroy(Contrato $contrato)
     {
         //
     }

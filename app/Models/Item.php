@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Enums\UnidadeMedida;
 
-class Itens extends Model
+class Item extends Model
 {
     //
     protected $table = 'itens';
@@ -22,4 +22,11 @@ class Itens extends Model
         'descricao' => 'string',
         'unidade_medida' => UnidadeMedida::class,
     ];
+
+public function contratos()
+{
+    return $this->belongsToMany(Contrato::class, 'contrato_item')
+                ->withPivot('quantidade')
+                ->withTimestamps();
+}
 }

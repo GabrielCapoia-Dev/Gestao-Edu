@@ -62,6 +62,11 @@ class EmpresaContratada extends Model
         return $this->hasMany(Pedido::class, 'empresa_contratada_id');
     }
 
+    public function contratos()
+    {
+        return $this->hasMany(Contrato::class, 'id_empresa_contratada');
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Histórico (caso mantenha versionamento)
