@@ -45,6 +45,7 @@ class EmpresaContratadaService
         return [
 
             Section::make('Dados da Empresa')
+                ->columnSpanFull()
                 ->schema([
                     Grid::make(2)->schema([
 
@@ -75,13 +76,11 @@ class EmpresaContratadaService
                             ->tel()
                             ->maxLength(20),
 
-                        TextInput::make('numero_contrato')
-                            ->label('Nº Contrato')
-                            ->maxLength(255),
                     ]),
                 ]),
 
             Section::make('Endereço')
+                ->columnSpanFull()
                 ->schema([
                     Grid::make(3)->schema([
                         TextInput::make('cep')->maxLength(10),
@@ -183,7 +182,6 @@ class EmpresaContratadaService
                         'email',
                         'responsavel',
                         'telefone',
-                        'numero_contrato',
                         'cep',
                         'logradouro',
                         'numero',

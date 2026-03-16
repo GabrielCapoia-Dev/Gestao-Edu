@@ -16,7 +16,6 @@ class EmpresaContratada extends Model
         'email', // Email corporativo
         'responsavel', // Nome do responsável pelo contrato
         'telefone', // Telefone principal
-        'numero_contrato', // Número do contrato ativo
 
         // Endereço
         'cep',

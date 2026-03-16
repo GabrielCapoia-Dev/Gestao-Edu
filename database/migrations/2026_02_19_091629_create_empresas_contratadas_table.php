@@ -19,7 +19,6 @@ return new class extends Migration
             $table->string('email')->nullable();
             $table->string('responsavel')->nullable();
             $table->string('telefone')->nullable();
-            $table->string('numero_contrato')->nullable();
 
             $table->string('cep')->nullable();
             $table->string('logradouro')->nullable();

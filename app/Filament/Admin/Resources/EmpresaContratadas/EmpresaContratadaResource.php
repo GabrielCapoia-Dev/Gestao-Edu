@@ -24,7 +24,6 @@ class EmpresaContratadaResource extends Resource
 {
     protected static ?string $model = EmpresaContratada::class;
     protected static string|BackedEnum|null $navigationIcon = Heroicon::BuildingOffice;
-    protected static string|UnitEnum|null $navigationGroup = 'Manutenção';
     protected static ?string $recordTitleAttribute = 'nome';
     protected static ?string $modelLabel = 'Empresa Contratada';
     protected static ?string $pluralModelLabel = 'Empresas Contratadas';
@@ -34,7 +33,7 @@ class EmpresaContratadaResource extends Resource
 
     public static function getGloballySearchableAttributes(): array
     {
-        return ['nome', 'cnpj', 'email', 'numero_contrato', 'responsavel'];
+        return ['nome', 'cnpj', 'email', 'responsavel'];
     }
 
 
