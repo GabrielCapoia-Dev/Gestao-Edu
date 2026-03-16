@@ -11,14 +11,21 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use App\Services\ItemService;
 use Illuminate\Support\Facades\Auth;
+use UnitEnum;
 
 class ItemResource extends Resource
 {
     protected static ?string $model = Item::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = 'fluentui-food-apple-24';
 
     protected static ?string $recordTitleAttribute = 'nome';
+
+    protected static string|UnitEnum|null $navigationGroup = 'Alimentação Escolar';
+    protected static ?string $navigationLabel = 'Itens';
+    protected static ?string $pluralLabel = 'Itens';
+    public static ?string $modelLabel = 'Item';
+    protected static ?string $slug = 'itens';
 
     public static function service(): ItemService
     {

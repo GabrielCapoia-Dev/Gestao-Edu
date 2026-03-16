@@ -19,7 +19,8 @@ class CriarPermissoes extends Command
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         $permissoes = [
-
+            'Excluir Itens em Massa',
+            'Excluir Itens'
         ];
 
         $this->info('Criando permissões...');

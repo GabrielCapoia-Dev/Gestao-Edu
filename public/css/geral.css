@@ -226,6 +226,12 @@
     overflow: hidden;
 }
 
+.fi-fo-repeater-item {
+    border: 2px solid #ccc;
+    border-radius: 0.5rem;
+    box-shadow: 1px 2px 5px #ccc;
+}
+
 .dark .fi-header-heading {
     padding: 0 0.5rem;
     background-color: #0c172ebd;

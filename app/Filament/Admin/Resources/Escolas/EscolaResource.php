@@ -4,16 +4,11 @@ namespace App\Filament\Admin\Resources\Escolas;
 
 use App\Filament\Admin\Resources\Escolas\Pages\ManageEscolas;
 use BackedEnum;
-
-use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Columns\TextColumn;
-use App\Filament\Resources\EscolaResource\Pages;
 use App\Models\Escola;
 use App\Services\EscolaService as Service;
-use Filament\Forms\Form;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;

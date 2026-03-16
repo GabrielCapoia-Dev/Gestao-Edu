@@ -448,10 +448,6 @@ footer{background:#020D1F;padding:64px 24px 32px;}
     </div>
   </div>
 
-  <div class="hero-scroll">
-    <span>Rolar para explorar</span>
-    <div class="scroll-line"></div>
-  </div>
 </section>
 
 <!-- BAND -->
