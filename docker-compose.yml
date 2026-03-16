@@ -14,7 +14,6 @@ services:
     volumes:
       - .:/var/www
       - ./vendor:/var/www/vendor
-      - ./node_modules:/var/www/node_modules
     depends_on:
       db:
         condition: service_healthy
