@@ -11,12 +11,20 @@ class ContratoItem extends Pivot
     protected $fillable = [
         'contrato_id',
         'item_id',
-        'quantidade',
+        'quantidade_total',
         'quantidade_utilizada',
+        'preco_unitario',
     ];
 
     protected $casts = [
-        'quantidade'           => 'decimal:3',
+        'quantidade_total'     => 'decimal:3',
         'quantidade_utilizada' => 'decimal:3',
+        'preco_unitario'       => 'decimal:2',
+        'preco_total'          => 'decimal:2',
     ];
+
+    public function aditivos()
+    {
+        return $this->hasMany(ContratoItemAditivo::class, 'contrato_item_id');
+    }
 }

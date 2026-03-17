@@ -2,75 +2,96 @@
 
 namespace App\Filament\Admin\Resources\Contratos\RelationManagers;
 
-use App\Models\Enums\UnidadeMedida;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\AttachAction;
-use Filament\Actions\DetachBulkAction;
-use Filament\Forms\Components\TextInput;
+use App\Models\Item;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Schemas\Schema;
-use Filament\Tables\Columns\TextColumn;
+use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Actions\CreateAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\DeleteAction;
+use Filament\Schemas\Schema;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 
 class ItensRelationManager extends RelationManager
 {
     protected static string $relationship = 'itens';
 
     protected static ?string $title = 'Itens do Contrato';
+    protected static ?string $modelLabel = 'Item';
+    protected static ?string $pluralModelLabel = 'Itens';
 
     public function form(Schema $schema): Schema
     {
         return $schema
             ->components([
-                TextInput::make('quantidade')
-                    ->label('Quantidade')
+                Select::make('item_id')
+                    ->label('Item')
+                    ->options(Item::where('ativo', true)->pluck('nome', 'id'))
+                    ->searchable()
+                    ->required()
+                    ->native(false)
+                    ->columnSpanFull(),
+
+                TextInput::make('quantidade_total')
+                    ->label('Quantidade Total')
                     ->numeric()
                     ->minValue(0.001)
-                    ->required(),
-            ]);
+                    ->required()
+                    ->columnSpan(1),
+
+                TextInput::make('preco_unitario')
+                    ->label('Preço Unitário')
+                    ->numeric()
+                    ->prefix('R$')
+                    ->minValue(0.01)
+                    ->required()
+                    ->columnSpan(1),
+            ])
+            ->columns(2);
     }
 
     public function table(Table $table): Table
     {
         return $table
             ->columns([
-                TextColumn::make('nome')
+                Tables\Columns\TextColumn::make('nome')
                     ->label('Item')
                     ->searchable()
                     ->sortable(),
 
-                TextColumn::make('unidade_medida')
-                    ->label('Unidade')
-                    ->formatStateUsing(fn ($state) => $state instanceof UnidadeMedida ? $state->label() : $state),
+                Tables\Columns\TextColumn::make('pivot.quantidade_total')
+                    ->label('Qtd. Total')
+                    ->sortable(),
 
-                TextColumn::make('pivot.quantidade')
-                    ->label('Quantidade')
-                    ->numeric(decimalPlaces: 3),
+                Tables\Columns\TextColumn::make('pivot.quantidade_utilizada')
+                    ->label('Qtd. Utilizada')
+                    ->sortable(),
 
-                TextColumn::make('pivot.quantidade_utilizada')
-                    ->label('Utilizada')
-                    ->numeric(decimalPlaces: 3),
+                Tables\Columns\TextColumn::make('pivot.preco_unitario')
+                    ->label('Preço Unitário')
+                    ->money('BRL')
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('pivot.preco_total')
+                    ->label('Preço Total')
+                    ->money('BRL')
+                    ->sortable(),
             ])
             ->headerActions([
-                AttachAction::make()
-                    ->preloadRecordSelect()
-                    ->schema(fn (AttachAction $action) => [
-                        $action->getRecordSelect(),
-                        TextInput::make('quantidade')
-                            ->label('Quantidade')
-                            ->numeric()
-                            ->minValue(0.001)
-                            ->required(),
-                    ]),
+                CreateAction::make()
+                    ->label('Adicionar Item'),
             ])
             ->recordActions([
-                \Filament\Actions\DetachAction::make(),
+                EditAction::make(),
+                DeleteAction::make(),
             ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DetachBulkAction::make(),
-                ]),
-            ]);
+            ->defaultSort('nome')
+            ->paginated([5, 10, 25]);
+    }
+
+    public function isReadOnly(): bool
+    {
+        return false;
     }
 }

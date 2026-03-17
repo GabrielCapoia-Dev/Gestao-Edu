@@ -57,35 +57,6 @@ class ContratoForm
                             ->default(true)
                             ->columnSpanFull(),
                     ]),
-
-                Section::make('Itens do Contrato')
-                    ->columnSpanFull()
-                    ->schema([
-                        Repeater::make('itens')
-                            ->label('')
-                            ->relationship('itens')
-                            ->schema([
-                                Select::make('item_id')
-                                    ->label('Item')
-                                    ->options(Item::where('ativo', true)->pluck('nome', 'id'))
-                                    ->searchable()
-                                    ->required()
-                                    ->distinct()
-                                    ->columnSpan(2),
-
-                                TextInput::make('quantidade')
-                                    ->label('Quantidade')
-                                    ->numeric()
-                                    ->minValue(0.001)
-                                    ->required()
-                                    ->columnSpan(1),
-                            ])
-                            ->columns(3)
-                            ->addActionLabel('Adicionar Item')
-                            ->mutateRelationshipDataBeforeCreateUsing(function (array $data): array {
-                                return $data;
-                            }),
-                    ]),
             ]);
     }
 }
