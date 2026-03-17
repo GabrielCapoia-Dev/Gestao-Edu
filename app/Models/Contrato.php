@@ -42,6 +42,7 @@ class Contrato extends Model
     public function itens()
     {
         return $this->belongsToMany(Item::class, 'contrato_item')
+            ->using(ContratoItem::class)
             ->withPivot('quantidade', 'quantidade_utilizada')
             ->withTimestamps();
     }

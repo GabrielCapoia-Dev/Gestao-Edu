@@ -23,10 +23,11 @@ class Item extends Model
         'unidade_medida' => UnidadeMedida::class,
     ];
 
-public function contratos()
-{
-    return $this->belongsToMany(Contrato::class, 'contrato_item')
-                ->withPivot('quantidade')
-                ->withTimestamps();
-}
+    public function contratos()
+    {
+        return $this->belongsToMany(Contrato::class, 'contrato_item')
+            ->using(ContratoItem::class)
+            ->withPivot('quantidade')
+            ->withTimestamps();
+    }
 }
