@@ -48,7 +48,9 @@ class LoginPage extends BaseLogin
             // Botão de login com Google
             Actions\Action::make('googleLogin')
                 ->label('Entrar com Google')
-                ->url(route('google.redirect'))
+                ->action(function () {
+                    return redirect(route('google.redirect'));
+                })
                 ->color('gray')
                 ->extraAttributes([
                     'class' => 'inline-flex items-center justify-center gap-2 w-full px-4 py-2 mt-2 rounded-md border 
