@@ -5,6 +5,14 @@ namespace App\Filament\Admin\Resources\Pedidos\RelationManagers;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Actions\CreateAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\DeleteAction;
+use Filament\Schemas\Schema;
+use App\Models\Enums\TipoArquivoPedido;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\FileUpload;
 
 class ArquivosRelationManager extends RelationManager
 {
@@ -13,6 +21,45 @@ class ArquivosRelationManager extends RelationManager
     protected static ?string $title = 'Arquivos';
     protected static ?string $modelLabel = 'Arquivo';
     protected static ?string $pluralModelLabel = 'Arquivos';
+
+    public function form(Schema $schema): Schema
+    {
+        return $schema
+            ->components([
+
+                Select::make('tipo_arquivo')
+                    ->label('Tipo do Arquivo')
+                    ->options(
+                        collect(TipoArquivoPedido::cases())
+                            ->reject(fn($case) => $case === TipoArquivoPedido::FOTOS_PROBLEMA)
+                            ->mapWithKeys(fn($case) => [
+                                $case->value => $case->label(),
+                            ])
+                            ->toArray()
+                    )
+                    ->required()
+                    ->columnSpanFull()
+                    ->native(false),
+
+                FileUpload::make('caminho')
+                    ->label('Arquivo')
+                    ->disk('public')
+                    ->directory('pedidos')
+                    ->visibility('public')
+                    ->storeFiles()
+                    ->multiple(false)
+                    ->columnSpanFull()
+                    ->preserveFilenames()
+                    ->required(),
+
+                Textarea::make('descricao')
+                    ->label('Descrição')
+                    ->maxLength(1000)
+                    ->columnSpanFull()
+                    ->rows(2),
+            ]);
+    }
+
 
     public function table(Table $table): Table
     {
@@ -47,12 +94,21 @@ class ArquivosRelationManager extends RelationManager
                     ->sortable(),
 
             ])
+            ->headerActions([
+                CreateAction::make()
+                    ->label('Enviar Arquivo'),
+            ])
+            ->recordActions([
+                EditAction::make(),
+                DeleteAction::make(),
+
+            ])
             ->defaultSort('created_at', 'desc')
             ->paginated([5, 10, 25, 50]);
     }
 
     public function isReadOnly(): bool
     {
-        return true;
+        return false;
     }
 }
