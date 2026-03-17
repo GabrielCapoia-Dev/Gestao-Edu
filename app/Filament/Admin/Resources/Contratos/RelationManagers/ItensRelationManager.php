@@ -55,7 +55,7 @@ class ItensRelationManager extends RelationManager
             ->headerActions([
                 AttachAction::make()
                     ->preloadRecordSelect()
-                    ->form(fn (AttachAction $action) => [
+                    ->schema(fn (AttachAction $action) => [
                         $action->getRecordSelect(),
                         TextInput::make('quantidade')
                             ->label('Quantidade')
