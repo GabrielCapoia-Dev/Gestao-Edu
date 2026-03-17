@@ -300,7 +300,6 @@ class PedidoService
                         ->directory('pedidos')
                         ->disk('public')
                         ->visibility('public')
-                        ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                         ->helperText('Até 10 imagens (JPEG, PNG ou WEBP) - máximo 5MB cada')
                         ->columnSpanFull(),
 
@@ -1002,7 +1001,6 @@ class PedidoService
                                 ->directory('pedidos/conclusao')
                                 ->disk('public')
                                 ->visibility('public')
-                                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                                 ->columnSpanFull(),
 
                         ]),
