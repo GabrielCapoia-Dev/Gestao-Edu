@@ -343,23 +343,23 @@ $id = 'modal-notificacoes';
 </div>
 
 <script>
+    function getNotifComponent() {
+        return Object.values(window.Livewire.all()).find(c =>
+            c.name === 'topbar-notifications' || c.__livewire?.name === 'topbar-notifications'
+        ) ?? null;
+    }
+
     function handleNotificationClick(event, id) {
         event.preventDefault();
         const button = event.currentTarget;
         const originalContent = button.innerHTML;
         button.classList.add('btn-loading');
         button.innerHTML = '<div class="spinner"></div>';
-        const componentRoot = button.closest('[wire\\:id]');
-        if (!componentRoot) return;
-        const component = Livewire.find(componentRoot.getAttribute('wire:id'));
+
+        const component = getNotifComponent();
         if (!component) return;
-        component.call('markAsRead', id).then(() => {
-            button.classList.remove('btn-loading');
-            button.innerHTML = originalContent;
-            if (button.tagName.toLowerCase() === 'a') {
-                window.open(button.href, '_blank');
-            }
-        }).catch(() => {
+
+        component.call('markAsRead', id).finally(() => {
             button.classList.remove('btn-loading');
             button.innerHTML = originalContent;
         });
@@ -370,19 +370,15 @@ $id = 'modal-notificacoes';
         const originalContent = button.innerHTML;
         button.classList.add('btn-loading');
         button.innerHTML = '<div class="spinner"></div>';
-        const componentRoot = button.closest('[wire\\:id]');
-        if (!componentRoot) return;
-        const component = Livewire.find(componentRoot.getAttribute('wire:id'));
+
+        const component = getNotifComponent();
         if (!component) return;
-        component.call('markAllAsRead').then(() => {
-            button.classList.remove('btn-loading');
-            button.innerHTML = originalContent;
-        }).catch(() => {
+
+        component.call('markAllAsRead').finally(() => {
             button.classList.remove('btn-loading');
             button.innerHTML = originalContent;
         });
     }
-
     setInterval(() => {
         Livewire.dispatch('refresh-notifications');
     }, 10000);
