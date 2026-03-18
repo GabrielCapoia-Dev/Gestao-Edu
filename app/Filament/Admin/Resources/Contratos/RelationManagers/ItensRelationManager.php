@@ -94,18 +94,15 @@ class ItensRelationManager extends RelationManager
                             ->label('Quantidade Total')
                             ->numeric()
                             ->minValue(0.001)
-                            ->required()
-                            ->columnSpan(1),
+                            ->required(),
 
                         TextInput::make('preco_unitario')
                             ->label('Preço Unitário')
                             ->numeric()
                             ->prefix('R$')
                             ->minValue(0.01)
-                            ->required()
-                            ->columnSpan(1),
+                            ->required(),
                     ])
-                    ->columns(2)
                     ->action(function (array $data, $record) {
                         // $record = Contrato
                         $record->itens()->attach($data['item_id'], [
