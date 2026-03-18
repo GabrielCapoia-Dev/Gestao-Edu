@@ -18,7 +18,6 @@ class TopbarNotifications extends Component
         $this->loadNotifications();
     }
 
-    #[\Livewire\Attributes\On('refresh-notifications')]
     public function loadNotifications(): void
     {
         $user = Auth::user();
