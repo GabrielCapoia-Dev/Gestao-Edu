@@ -12,6 +12,7 @@ use Filament\Actions\DeleteAction;
 use Filament\Schemas\Schema;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Tables\Columns\Layout\Grid;
 
 class ItensRelationManager extends RelationManager
 {
@@ -90,18 +91,22 @@ class ItensRelationManager extends RelationManager
                             ->native(false)
                             ->columnSpanFull(),
 
-                        TextInput::make('quantidade_total')
-                            ->label('Quantidade Total')
-                            ->numeric()
-                            ->minValue(0.001)
-                            ->required(),
+                        Grid::make(2)->schema([
+                            TextInput::make('quantidade_total')
+                                ->label('Quantidade Total')
+                                ->numeric()
+                                ->minValue(0.001)
+                                ->required()
+                                ->columnSpan(1),
 
-                        TextInput::make('preco_unitario')
-                            ->label('Preço Unitário')
-                            ->numeric()
-                            ->prefix('R$')
-                            ->minValue(0.01)
-                            ->required(),
+                            TextInput::make('preco_unitario')
+                                ->label('Preço Unitário')
+                                ->numeric()
+                                ->prefix('R$')
+                                ->minValue(0.01)
+                                ->required()
+                                ->columnSpan(1),
+                        ])
                     ])
                     ->action(function (array $data, $record) {
                         // $record = Contrato
