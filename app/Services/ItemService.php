@@ -99,17 +99,22 @@ class ItemService
                     ->helperText('Digite o nome do Item')
                     ->required(),
 
-                Textarea::make('descricao')
-                    ->label('Descrição')
-                    ->required(),
-
                 Select::make('unidade_medida')
                     ->label('Unidade de Medida')
+                    ->required()
                     ->options([
                         collect(UnidadeMedida::cases())
                             ->mapWithKeys(fn($case) => [$case->value => $case->label()])
                             ->toArray()
-                    ])
+                    ]),
+
+                Textarea::make('descricao')
+                    ->label('Descrição')
+                    ->helperText('Digite a descrição do Item')
+                    ->maxLength(100)
+                    ->columnSpanFull(),
+
+
             ]);
     }
 }
