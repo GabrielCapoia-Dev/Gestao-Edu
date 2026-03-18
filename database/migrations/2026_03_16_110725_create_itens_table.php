@@ -27,8 +27,8 @@ return new class extends Migration
             $table->foreignId('item_id')
                 ->constrained('itens')
                 ->cascadeOnDelete();
-                
-            $table->string('tipo')->default('compra')->after('item_id');
+
+            $table->string('tipo')->default('compra');
             $table->decimal('quantidade_total', 10, 3);
             $table->decimal('quantidade_utilizada', 10, 3)->default(0);
             $table->decimal('preco_unitario', 10, 2);
