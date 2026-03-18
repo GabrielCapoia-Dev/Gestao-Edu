@@ -38,25 +38,10 @@ return new class extends Migration
             $table->unique(['contrato_id', 'item_id']);
         });
 
-        Schema::create('contrato_item_aditivos', function (Blueprint $table) {
-            $table->id();
-
-            $table->foreignId('contrato_item_id')
-                ->constrained('contrato_item')
-                ->cascadeOnDelete();
-
-            $table->decimal('quantidade', 10, 3);
-            $table->decimal('preco_unitario', 10, 2);
-            $table->decimal('preco_total', 10, 2)->storedAs('quantidade * preco_unitario');
-            $table->text('justificativa')->nullable();
-
-            $table->timestamps();
-        });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('contrato_item_aditivos');
         Schema::dropIfExists('contrato_item');
         Schema::dropIfExists('itens');
     }

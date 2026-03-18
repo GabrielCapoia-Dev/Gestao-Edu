@@ -119,14 +119,6 @@ class ItensRelationManager extends RelationManager
                     }),
             ])
             ->recordActions([
-                EditAction::make()
-                    ->action(function ($record, array $data) {
-                        $record->pivot->update([
-                            'quantidade_total' => $data['quantidade_total'],
-                            'preco_unitario' => $data['preco_unitario'],
-                            'preco_total' => $data['quantidade_total'] * $data['preco_unitario'],
-                        ]);
-                    }),
                 DeleteAction::make(),
             ])
             ->defaultSort('nome')
