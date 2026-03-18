@@ -15,11 +15,11 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\DeleteAction;
 use App\Models\Enums\UnidadeMedida;
+use App\Models\Enums\TipoItem;
 
 
 class ItemService
 {
-
     public function __construct(
         protected UserService $userService
     ) {}
@@ -36,7 +36,6 @@ class ItemService
             ->striped();
     }
 
-
     public function colunasTabela(): array
     {
         return [
@@ -44,13 +43,22 @@ class ItemService
                 ->label('Nome')
                 ->sortable()
                 ->searchable(),
-            TextColumn::make('descricao')
-                ->label('Descrição')
-                ->sortable()
-                ->searchable(),
+
+            TextColumn::make('tipo_item')
+                ->label('Tipo')
+                ->badge()
+                ->formatStateUsing(fn($state) => $state instanceof TipoItem ? $state->label() : TipoItem::tryFrom($state)?->label() ?? $state)
+                ->sortable(),
+
             TextColumn::make('unidade_medida')
                 ->label('Unidade de Medida')
                 ->sortable(),
+
+            TextColumn::make('descricao')
+                ->label('Descrição')
+                ->sortable()
+                ->searchable()
+                ->toggleable(isToggledHiddenByDefault: true),
 
             TextColumn::make('created_at')
                 ->label('Criado em')
@@ -80,7 +88,6 @@ class ItemService
         return [];
     }
 
-
     private function acoesEmMassa(?User $user): array
     {
         return [
@@ -88,7 +95,6 @@ class ItemService
                 ->visible(fn() => $this->userService->podeExcluirItensEmMassa(Auth::user())),
         ];
     }
-
 
     public static function configurarFormulario(Schema $schema): Schema
     {
@@ -99,22 +105,31 @@ class ItemService
                     ->helperText('Digite o nome do Item')
                     ->required(),
 
+                Select::make('tipo_item')
+                    ->label('Tipo do Item')
+                    ->required()
+                    ->native(false)
+                    ->options(
+                        collect(TipoItem::cases())
+                            ->mapWithKeys(fn($case) => [$case->value => $case->label()])
+                            ->toArray()
+                    ),
+
                 Select::make('unidade_medida')
                     ->label('Unidade de Medida')
                     ->required()
-                    ->options([
+                    ->native(false)
+                    ->options(
                         collect(UnidadeMedida::cases())
                             ->mapWithKeys(fn($case) => [$case->value => $case->label()])
                             ->toArray()
-                    ]),
+                    ),
 
                 Textarea::make('descricao')
                     ->label('Descrição')
                     ->helperText('Digite a descrição do Item')
                     ->maxLength(100)
                     ->columnSpanFull(),
-
-
             ]);
     }
 }

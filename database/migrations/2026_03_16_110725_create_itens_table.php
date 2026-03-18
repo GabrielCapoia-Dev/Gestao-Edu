@@ -12,6 +12,7 @@ return new class extends Migration
             $table->id();
             $table->string('nome');
             $table->text('descricao')->nullable();
+            $table->string('tipo_item');
             $table->string('unidade_medida');
             $table->boolean('ativo')->default(true);
             $table->timestamps();
