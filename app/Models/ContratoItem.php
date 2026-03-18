@@ -22,9 +22,4 @@ class ContratoItem extends Pivot
         'preco_unitario'       => 'decimal:2',
         'preco_total'          => 'decimal:2',
     ];
-
-    public function aditivos()
-    {
-        return $this->hasMany(ContratoItemAditivo::class, 'contrato_item_id');
-    }
 }
