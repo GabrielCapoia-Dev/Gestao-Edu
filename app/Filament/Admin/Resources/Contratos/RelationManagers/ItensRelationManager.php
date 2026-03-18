@@ -28,8 +28,8 @@ class ItensRelationManager extends RelationManager
                 Select::make('item_id')
                     ->label('Item')
                     ->options(Item::where('ativo', true)->pluck('nome', 'id'))
-                    ->required()
                     ->searchable()
+                    ->required()
                     ->native(false)
                     ->columnSpanFull(),
 
