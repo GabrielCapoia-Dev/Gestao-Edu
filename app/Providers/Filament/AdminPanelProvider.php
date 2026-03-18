@@ -98,8 +98,7 @@ class AdminPanelProvider extends PanelProvider
                     $user = User::authUser();
 
                     if ($user->hasPermissionTo('Visualizar Notificações')) {
-
-                        return Blade::render('@livewire("topbar-notifications")');
+                        return view('livewire.topbar-notifications-hook');
                     }
                     return '';
                 }
