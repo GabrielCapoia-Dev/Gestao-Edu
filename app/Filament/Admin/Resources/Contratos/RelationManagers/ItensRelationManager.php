@@ -109,9 +109,8 @@ class ItensRelationManager extends RelationManager
                                 ->columnSpan(1),
                         ])
                     ])
-                    ->action(function (array $data, $record) {
-                        // $record = Contrato
-                        $record->itens()->attach($data['item_id'], [
+                    ->action(function (array $data) {
+                        $this->ownerRecord->itens()->attach($data['item_id'], [
                             'quantidade_total' => $data['quantidade_total'],
                             'quantidade_utilizada' => 0,
                             'preco_unitario' => $data['preco_unitario'],
