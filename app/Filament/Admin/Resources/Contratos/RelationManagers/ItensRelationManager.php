@@ -67,12 +67,19 @@ class ItensRelationManager extends RelationManager
 
                 TextColumn::make('pivot.tipo')
                     ->label('Tipo')
-                    ->badge(fn() => [
-                        'primary' => 'compra',
-                        'success' => 'aditivo',
-                        'warning' => 'reequilibrio',
-                    ])
-                    ->formatStateUsing(fn($state) => TipoItemContrato::from($state)->label()),
+                    ->badge()
+                    ->color(fn($state) => match ($state instanceof TipoItemContrato ? $state : TipoItemContrato::tryFrom($state)) {
+                        TipoItemContrato::Compra       => 'primary',
+                        TipoItemContrato::Aditivo      => 'success',
+                        TipoItemContrato::Reequilibrio => 'warning',
+                        default                        => 'gray',
+                    })
+                    ->formatStateUsing(function ($state) {
+                        if ($state instanceof TipoItemContrato) {
+                            return $state->label();
+                        }
+                        return TipoItemContrato::tryFrom($state)?->label() ?? $state;
+                    }),
 
                 TextColumn::make('pivot.quantidade_total')
                     ->label('Qtd. Total')
