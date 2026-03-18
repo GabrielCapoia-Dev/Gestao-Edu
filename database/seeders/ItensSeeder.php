@@ -686,12 +686,7 @@ class ItensSeeder extends Seeder
             ['nome' => 'Pupunha, cozida', 'tipo_item' => 'semente_oleaginosa', 'unidade_medida' => 'kg'],
             ['nome' => 'Noz, crua', 'tipo_item' => 'semente_oleaginosa', 'unidade_medida' => 'kg'],
             ['nome' => 'as análises estão sendo reavaliadas', 'tipo_item' => 'semente_oleaginosa', 'unidade_medida' => 'kg'],
-            ['nome' => 'Valores em branco nesta tabela: análises não solicitadas', 'tipo_item' => 'semente_oleaginosa', 'unidade_medida' => 'kg'],
             ['nome' => 'Teores alcoólicos (g/100g): ¹ Cana, aguardente: 31,1 e ² Cerveja, pilsen: 3,6.', 'tipo_item' => 'semente_oleaginosa', 'unidade_medida' => 'kg'],
-            ['nome' => 'Abreviações: g: grama; mg: micrograma; kcal: kilocaloria; kJ: kilojoule; mg:miligrama; NA: não aplicável; Tr: traço. Adotou-se traço nas seguintes situações: a)valores de nutrientes arredondados para números que caiam entre 0 e 0,5; b) valores de nutrientes arredondados para números com uma casa decimal que caiam entre 0 e 0,05; c) valores de nutrientes arredondados para números com duas casas decimais que caiam entre 0 e 0,005 e; d) valores abaixo dos limites de quantificação (29).', 'tipo_item' => 'semente_oleaginosa', 'unidade_medida' => 'kg'],
-            ['nome' => 'Limites de Quantificação: a) composição centesimal: 0,1g/100g; b) colesterol: 1mg/100g; c) Cu, Fe, Mn, e Zn: 0,001mg/100g; d) Ca, Na: 0,04mg/100g; e) K e P: 0,001mg/100g; f) Mg 0,015mg/100g; g) tiamina, riboflavina e piridoxina: 0,03mg/100g; h) niacina e vitamina C: 1mg/100g; i) retinol em produtos cárneos e outros: 3μg/100g e; j) retinol em lácteos: 20μg/100g.', 'tipo_item' => 'semente_oleaginosa', 'unidade_medida' => 'kg'],
-            ['nome' => 'Valores correspondentes à somatória do resultado analítico do retinol mais o valor calculado com base no teor de carotenóides segundo o livro Fontes brasileiras de carotenóides: tabela brasileira de composição de carotenóides em alimentos.', 'tipo_item' => 'semente_oleaginosa', 'unidade_medida' => 'kg'],
-            ['nome' => 'Valores retirados do livro Fontes brasileiras de carotenóides: tabela brasileira de composição de carotenóides em alimentos.', 'tipo_item' => 'semente_oleaginosa', 'unidade_medida' => 'kg'],
         ];
 
         foreach ($itens as $item) {
