@@ -81,15 +81,8 @@ $id = 'modal-notificacoes';
     }
 
     @keyframes notif-pulse {
-
-        0%,
-        100% {
-            opacity: 1;
-        }
-
-        50% {
-            opacity: 0.6;
-        }
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.6; }
     }
 
     .notif-mark-all-btn {
@@ -243,13 +236,11 @@ $id = 'modal-notificacoes';
     }
 
     @keyframes spin {
-        to {
-            transform: rotate(360deg);
-        }
+        to { transform: rotate(360deg); }
     }
 </style>
 
-<div class="notif-wrapper">
+<div class="notif-wrapper" wire:poll.10s="loadNotifications">
 
     <button
         type="button"
@@ -259,9 +250,9 @@ $id = 'modal-notificacoes';
         <x-heroicon-o-bell style="width: 20px; height: 20px;" />
 
         @if($unread > 0)
-        <span class="notification-badge">
-            {{ $unread > 99 ? '99+' : $unread }}
-        </span>
+            <span class="notification-badge">
+                {{ $unread > 99 ? '99+' : $unread }}
+            </span>
         @endif
     </button>
 
@@ -272,22 +263,29 @@ $id = 'modal-notificacoes';
                     <span class="notif-title">Notificações</span>
 
                     @if($unread > 0)
-                    <span class="notif-count-badge">{{ $unread }}</span>
+                        <span class="notif-count-badge">{{ $unread }}</span>
 
-                    <button
-                        type="button"
-                        class="notif-mark-all-btn"
-                        onclick="handleMarkAllRead(event)"
-                        title="Marcar todas como lidas">
-                        <x-heroicon-o-check-badge style="width:16px;height:16px;color:#374151;" />
-                    </button>
+                        {{-- Botão: marcar TODAS como lidas --}}
+                        <button
+                            type="button"
+                            class="notif-mark-all-btn"
+                            wire:click="markAllAsRead"
+                            wire:loading.class="btn-loading"
+                            title="Marcar todas como lidas">
+                            <span wire:loading.remove wire:target="markAllAsRead">
+                                <x-heroicon-o-check-badge style="width:16px;height:16px;color:#374151;" />
+                            </span>
+                            <span wire:loading wire:target="markAllAsRead">
+                                <div class="spinner"></div>
+                            </span>
+                        </button>
                     @endif
                 </div>
 
                 @if($unread > 0)
-                <span class="notif-unread-label">
-                    {{ $unread === 1 ? '1 não lida' : $unread . ' não lidas' }}
-                </span>
+                    <span class="notif-unread-label">
+                        {{ $unread === 1 ? '1 não lida' : $unread . ' não lidas' }}
+                    </span>
                 @endif
             </div>
         </x-slot>
@@ -295,87 +293,56 @@ $id = 'modal-notificacoes';
         <div class="notif-list">
 
             @forelse($notifications as $notification)
-            @php
-            $data = json_decode($notification->data, true) ?? $notification->data;
-            $isUnread = is_null($notification->read_at);
-            @endphp
+                @php
+                    $data = json_decode($notification->data, true) ?? $notification->data;
+                    $isUnread = is_null($notification->read_at);
+                @endphp
 
-            <div class="notif-item {{ $isUnread ? 'unread' : 'read' }}">
-
-                @if($isUnread)
-                <div class="notif-dot"></div>
-                @endif
-
-                <div class="notif-body">
-                    <p class="notif-body-title">{{ $data['titulo'] ?? '' }}</p>
-                    <p class="notif-body-msg">{{ $data['mensagem'] ?? '' }}</p>
-
-                    <a href="{{ $data['url'] ?? '' }}" target="_blank" class="notif-link">
-                        {{ $data['label'] ?? 'Ver detalhes' }}
-                        <x-heroicon-o-arrow-top-right-on-square style="width:14px;height:14px;" />
-                    </a>
+                <div wire:key="notif-{{ $notification->id }}" class="notif-item {{ $isUnread ? 'unread' : 'read' }}">
 
                     @if($isUnread)
-                    <button
-                        type="button"
-                        class="notif-check-btn"
-                        onclick="handleNotificationClick(event, '{{ $notification->id }}')"
-                        title="Marcar como lida">
-                        <x-heroicon-o-check style="width:16px;height:16px;color:#374151;" />
-                    </button>
+                        <div class="notif-dot"></div>
                     @endif
 
-                    <p class="notif-time">
-                        {{ \Carbon\Carbon::parse($notification->created_at)->diffForHumans() }}
-                    </p>
+                    <div class="notif-body">
+                        <p class="notif-body-title">{{ $data['titulo'] ?? '' }}</p>
+                        <p class="notif-body-msg">{{ $data['mensagem'] ?? '' }}</p>
+
+                        <a href="{{ $data['url'] ?? '' }}" target="_blank" class="notif-link">
+                            {{ $data['label'] ?? 'Ver detalhes' }}
+                            <x-heroicon-o-arrow-top-right-on-square style="width:14px;height:14px;" />
+                        </a>
+
+                        @if($isUnread)
+                            {{-- Botão: marcar INDIVIDUAL como lida --}}
+                            <button
+                                type="button"
+                                class="notif-check-btn"
+                                wire:click="markAsRead('{{ $notification->id }}')"
+                                wire:loading.class="btn-loading"
+                                title="Marcar como lida">
+                                <span wire:loading.remove wire:target="markAsRead('{{ $notification->id }}')">
+                                    <x-heroicon-o-check style="width:16px;height:16px;color:#374151;" />
+                                </span>
+                                <span wire:loading wire:target="markAsRead('{{ $notification->id }}')">
+                                    <div class="spinner"></div>
+                                </span>
+                            </button>
+                        @endif
+
+                        <p class="notif-time">
+                            {{ \Carbon\Carbon::parse($notification->created_at)->diffForHumans() }}
+                        </p>
+                    </div>
                 </div>
-            </div>
 
             @empty
-            <div class="notif-empty">
-                <x-heroicon-o-bell />
-                <p>Nenhuma notificação</p>
-            </div>
+                <div class="notif-empty">
+                    <x-heroicon-o-bell />
+                    <p>Nenhuma notificação</p>
+                </div>
             @endforelse
 
         </div>
     </x-filament::modal>
 </div>
-
-<script>
-    function handleNotificationClick(event, id) {
-        event.preventDefault();
-        const button = event.currentTarget;
-        const originalContent = button.innerHTML;
-        button.classList.add('btn-loading');
-        button.innerHTML = '<div class="spinner"></div>';
-
-        Livewire.dispatch('mark-notification-read', {
-            id: id
-        });
-
-        // Restaura botão após curto delay (o componente vai re-render)
-        setTimeout(() => {
-            button.classList.remove('btn-loading');
-            button.innerHTML = originalContent;
-        }, 600);
-    }
-
-    function handleMarkAllRead(event) {
-        const button = event.currentTarget;
-        const originalContent = button.innerHTML;
-        button.classList.add('btn-loading');
-        button.innerHTML = '<div class="spinner"></div>';
-
-        Livewire.dispatch('mark-all-notifications-read');
-
-        setTimeout(() => {
-            button.classList.remove('btn-loading');
-            button.innerHTML = originalContent;
-        }, 600);
-    }
-
-    setInterval(() => {
-        Livewire.dispatch('refresh-notifications');
-    }, 10000);
-</script>
