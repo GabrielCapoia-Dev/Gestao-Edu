@@ -12,7 +12,8 @@ use Filament\Actions\DeleteAction;
 use Filament\Schemas\Schema;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Tables\Columns\Layout\Grid;
+use Filament\Schemas\Components\Grid;
+
 
 class ItensRelationManager extends RelationManager
 {
