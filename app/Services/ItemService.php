@@ -9,7 +9,7 @@ use App\Models\User;
 use App\Services\UserService;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\TextArea;
+use Filament\Forms\Components\Textarea;
 use Filament\Schemas\Schema;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -99,7 +99,7 @@ class ItemService
                     ->helperText('Digite o nome do Item')
                     ->required(),
 
-                TextArea::make('descricao')
+                Textarea::make('descricao')
                     ->label('Descrição')
                     ->required(),
 
