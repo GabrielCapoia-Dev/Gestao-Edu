@@ -85,21 +85,25 @@ class ItensRelationManager extends RelationManager
                         Select::make('item_id')
                             ->label('Item')
                             ->options(Item::where('ativo', true)->pluck('nome', 'id'))
-                            ->required()
                             ->searchable()
-                            ->native(false),
+                            ->required()
+                            ->native(false)
+                            ->columnSpanFull(),
 
                         TextInput::make('quantidade_total')
                             ->label('Quantidade Total')
                             ->numeric()
                             ->minValue(0.001)
-                            ->required(),
+                            ->required()
+                            ->columnSpan(1),
 
                         TextInput::make('preco_unitario')
                             ->label('Preço Unitário')
                             ->numeric()
+                            ->prefix('R$')
                             ->minValue(0.01)
-                            ->required(),
+                            ->required()
+                            ->columnSpan(1),
                     ])
                     ->action(function (array $data, $record) {
                         // $record = Contrato
