@@ -28,8 +28,8 @@ class ItensRelationManager extends RelationManager
                 Select::make('item_id')
                     ->label('Item')
                     ->options(Item::where('ativo', true)->pluck('nome', 'id'))
-                    ->searchable()
                     ->required()
+                    ->searchable()
                     ->native(false)
                     ->columnSpanFull(),
 
@@ -57,8 +57,8 @@ class ItensRelationManager extends RelationManager
             ->columns([
                 Tables\Columns\TextColumn::make('nome')
                     ->label('Item')
-                    ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->searchable(),
 
                 Tables\Columns\TextColumn::make('pivot.quantidade_total')
                     ->label('Qtd. Total')
@@ -80,10 +80,46 @@ class ItensRelationManager extends RelationManager
             ])
             ->headerActions([
                 CreateAction::make()
-                    ->label('Adicionar Item'),
+                    ->label('Adicionar Item')
+                    ->schema([
+                        Select::make('item_id')
+                            ->label('Item')
+                            ->options(Item::where('ativo', true)->pluck('nome', 'id'))
+                            ->required()
+                            ->searchable()
+                            ->native(false),
+
+                        TextInput::make('quantidade_total')
+                            ->label('Quantidade Total')
+                            ->numeric()
+                            ->minValue(0.001)
+                            ->required(),
+
+                        TextInput::make('preco_unitario')
+                            ->label('Preço Unitário')
+                            ->numeric()
+                            ->minValue(0.01)
+                            ->required(),
+                    ])
+                    ->action(function (array $data, $record) {
+                        // $record = Contrato
+                        $record->itens()->attach($data['item_id'], [
+                            'quantidade_total' => $data['quantidade_total'],
+                            'quantidade_utilizada' => 0,
+                            'preco_unitario' => $data['preco_unitario'],
+                            'preco_total' => $data['quantidade_total'] * $data['preco_unitario'],
+                        ]);
+                    }),
             ])
             ->recordActions([
-                EditAction::make(),
+                EditAction::make()
+                    ->action(function ($record, array $data) {
+                        $record->pivot->update([
+                            'quantidade_total' => $data['quantidade_total'],
+                            'preco_unitario' => $data['preco_unitario'],
+                            'preco_total' => $data['quantidade_total'] * $data['preco_unitario'],
+                        ]);
+                    }),
                 DeleteAction::make(),
             ])
             ->defaultSort('nome')
