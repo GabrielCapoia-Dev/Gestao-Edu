@@ -12,6 +12,9 @@ use Filament\Actions\DeleteAction;
 use Filament\Schemas\Schema;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Tables\Columns\TextColumn;
+use App\Models\Enums\TipoItemContrato;
+use Dom\Text;
 use Filament\Schemas\Components\Grid;
 
 
@@ -57,66 +60,55 @@ class ItensRelationManager extends RelationManager
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('nome')
+                TextColumn::make('nome')
                     ->label('Item')
                     ->sortable()
                     ->searchable(),
 
-                Tables\Columns\TextColumn::make('pivot.quantidade_total')
+                TextColumn::make('pivot.tipo')
+                    ->label('Tipo')
+                    ->badge(fn() => [
+                        'primary' => 'compra',
+                        'success' => 'aditivo',
+                        'warning' => 'reequilibrio',
+                    ])
+                    ->formatStateUsing(fn($state) => TipoItemContrato::from($state)->label()),
+
+                TextColumn::make('pivot.quantidade_total')
                     ->label('Qtd. Total')
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('pivot.quantidade_utilizada')
+                TextColumn::make('pivot.quantidade_utilizada')
                     ->label('Qtd. Utilizada')
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('pivot.preco_unitario')
+                TextColumn::make('pivot.preco_unitario')
                     ->label('Preço Unitário')
                     ->money('BRL')
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('pivot.preco_total')
+                TextColumn::make('pivot.preco_total')
                     ->label('Preço Total')
                     ->money('BRL')
                     ->sortable(),
             ])
             ->headerActions([
-                CreateAction::make()
+                CreateAction::make('compra')
                     ->label('Adicionar Item')
                     ->schema(fn() => [
-                        Select::make('item_id')
-                            ->label('Item')
-                            ->options(Item::where('ativo', true)->pluck('nome', 'id'))
-                            ->searchable()
-                            ->required()
-                            ->native(false)
-                            ->columnSpanFull(),
-
-                        Grid::make(2)->schema([
-                            TextInput::make('quantidade_total')
-                                ->label('Quantidade Total')
-                                ->numeric()
-                                ->minValue(0.001)
-                                ->required()
-                                ->columnSpan(1),
-
-                            TextInput::make('preco_unitario')
-                                ->label('Preço Unitário')
-                                ->numeric()
-                                ->prefix('R$')
-                                ->minValue(0.01)
-                                ->required()
-                                ->columnSpan(1),
-                        ])
+                        $this->itemSelectCompra(),
+                        Grid::make(2)->schema($this->quantidadePrecoSchema()),
                     ])
-                    ->action(function (array $data) {
-                        $this->ownerRecord->itens()->attach($data['item_id'], [
-                            'quantidade_total' => $data['quantidade_total'],
-                            'quantidade_utilizada' => 0,
-                            'preco_unitario' => $data['preco_unitario'],
-                            'preco_total' => $data['quantidade_total'] * $data['preco_unitario'],
-                        ]);
-                    }),
+                    ->action(fn(array $data) => $this->attachItem($data, 'compra')),
+
+                CreateAction::make('aditivo')
+                    ->label('Aditivo')
+                    ->color('success')
+                    ->schema(fn() => [
+                        $this->itemSelectAditivo(),
+                        Grid::make(2)->schema($this->quantidadePrecoSchema()),
+                    ])
+                    ->action(fn(array $data) => $this->attachItem($data, 'aditivo')),
             ])
             ->recordActions([
                 DeleteAction::make(),
@@ -124,6 +116,61 @@ class ItensRelationManager extends RelationManager
             ->defaultSort('nome')
             ->paginated([5, 10, 25]);
     }
+    private function attachItem(array $data, string $tipo): void
+    {
+        $this->ownerRecord->itens()->attach($data['item_id'], [
+            'tipo'                => $tipo,
+            'quantidade_total'    => $data['quantidade_total'],
+            'quantidade_utilizada' => 0,
+            'preco_unitario'      => $data['preco_unitario'],
+        ]);
+    }
+
+    private function itemSelectCompra(): Select
+    {
+        return Select::make('item_id')
+            ->label('Item')
+            ->options(Item::where('ativo', true)->pluck('nome', 'id'))
+            ->searchable()
+            ->required()
+            ->native(false)
+            ->columnSpanFull();
+    }
+
+    private function itemSelectAditivo(): Select
+    {
+        return Select::make('item_id')
+            ->label('Item (somente itens já existentes no contrato)')
+            ->options(function () {
+                $ids = $this->ownerRecord->itens()->pluck('itens.id');
+                return Item::whereIn('id', $ids)->pluck('nome', 'id');
+            })
+            ->searchable()
+            ->required()
+            ->native(false)
+            ->columnSpanFull();
+    }
+
+    private function quantidadePrecoSchema(): array
+    {
+        return [
+            TextInput::make('quantidade_total')
+                ->label('Quantidade Total')
+                ->numeric()
+                ->minValue(0.001)
+                ->required()
+                ->columnSpan(1),
+
+            TextInput::make('preco_unitario')
+                ->label('Preço Unitário')
+                ->numeric()
+                ->prefix('R$')
+                ->minValue(0.01)
+                ->required()
+                ->columnSpan(1),
+        ];
+    }
+
 
     public function isReadOnly(): bool
     {

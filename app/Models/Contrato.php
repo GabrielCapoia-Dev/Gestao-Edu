@@ -43,7 +43,7 @@ class Contrato extends Model
     {
         return $this->belongsToMany(Item::class, 'contrato_item')
             ->using(ContratoItem::class)
-            ->withPivot('quantidade_total', 'quantidade_utilizada', 'preco_unitario', 'preco_total')
+            ->withPivot('quantidade_total', 'quantidade_utilizada', 'preco_unitario', 'preco_total', 'tipo')
             ->withTimestamps();
     }
 }
