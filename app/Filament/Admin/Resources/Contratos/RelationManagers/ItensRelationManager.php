@@ -81,8 +81,7 @@ class ItensRelationManager extends RelationManager
             ->headerActions([
                 CreateAction::make()
                     ->label('Adicionar Item')
-                    ->columns(2)
-                    ->schema([
+                    ->schema(fn() => [
                         Select::make('item_id')
                             ->label('Item')
                             ->options(Item::where('ativo', true)->pluck('nome', 'id'))
@@ -106,6 +105,7 @@ class ItensRelationManager extends RelationManager
                             ->required()
                             ->columnSpan(1),
                     ])
+                    ->columns(2)
                     ->action(function (array $data, $record) {
                         // $record = Contrato
                         $record->itens()->attach($data['item_id'], [
