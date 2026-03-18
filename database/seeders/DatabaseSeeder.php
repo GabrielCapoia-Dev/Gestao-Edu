@@ -373,6 +373,8 @@ class DatabaseSeeder extends Seeder
             TipoManutencaoSeeder::class,
             EmpresaContratadaSeeder::class,
             PedidoSeeder::class,
+
+            ItensSeeder::class,
         ]);
     }
 
