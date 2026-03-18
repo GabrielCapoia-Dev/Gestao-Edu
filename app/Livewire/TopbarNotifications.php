@@ -19,6 +19,11 @@ class TopbarNotifications extends Component
     }
 
     #[\Livewire\Attributes\On('refresh-notifications')]
+    public function onRefreshNotifications(): void
+    {
+        $this->loadNotifications();
+    }
+    
     public function loadNotifications(): void
     {
         $user = Auth::user();
@@ -56,7 +61,7 @@ class TopbarNotifications extends Component
 
         $this->loadNotifications();
     }
-    
+
     // #[\Livewire\Attributes\On('mark-notification-read')]
     public function markAsRead($id): void
     {
