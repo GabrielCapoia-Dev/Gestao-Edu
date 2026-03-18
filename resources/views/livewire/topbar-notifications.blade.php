@@ -343,12 +343,6 @@ $id = 'modal-notificacoes';
 </div>
 
 <script>
-    function getNotifComponent() {
-        return Object.values(window.Livewire.all()).find(c =>
-            c.name === 'topbar-notifications' || c.__livewire?.name === 'topbar-notifications'
-        ) ?? null;
-    }
-
     function handleNotificationClick(event, id) {
         event.preventDefault();
         const button = event.currentTarget;
@@ -356,13 +350,15 @@ $id = 'modal-notificacoes';
         button.classList.add('btn-loading');
         button.innerHTML = '<div class="spinner"></div>';
 
-        const component = getNotifComponent();
-        if (!component) return;
+        Livewire.dispatch('mark-notification-read', {
+            id: id
+        });
 
-        component.call('markAsRead', id).finally(() => {
+        // Restaura botão após curto delay (o componente vai re-render)
+        setTimeout(() => {
             button.classList.remove('btn-loading');
             button.innerHTML = originalContent;
-        });
+        }, 600);
     }
 
     function handleMarkAllRead(event) {
@@ -371,14 +367,14 @@ $id = 'modal-notificacoes';
         button.classList.add('btn-loading');
         button.innerHTML = '<div class="spinner"></div>';
 
-        const component = getNotifComponent();
-        if (!component) return;
+        Livewire.dispatch('mark-all-notifications-read');
 
-        component.call('markAllAsRead').finally(() => {
+        setTimeout(() => {
             button.classList.remove('btn-loading');
             button.innerHTML = originalContent;
-        });
+        }, 600);
     }
+
     setInterval(() => {
         Livewire.dispatch('refresh-notifications');
     }, 10000);

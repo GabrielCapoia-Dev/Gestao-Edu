@@ -43,6 +43,7 @@ class TopbarNotifications extends Component
             ->count();
     }
 
+    #[\Livewire\Attributes\On('mark-all-notifications-read')]
     public function markAllAsRead(): void
     {
         $user = Auth::user();
@@ -55,13 +56,14 @@ class TopbarNotifications extends Component
 
         $this->loadNotifications();
     }
-
-    public function markAsRead($notificationId): void
+    
+    #[\Livewire\Attributes\On('mark-notification-read')]
+    public function markAsRead($id): void
     {
         $user = Auth::user();
 
         DB::table('notifications')
-            ->where('id', $notificationId)
+            ->where('id', $id)
             ->where('notifiable_id', $user->id)
             ->where('notifiable_type', User::class)
             ->update(['read_at' => now()]);
