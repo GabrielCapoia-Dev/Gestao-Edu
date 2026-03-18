@@ -81,6 +81,7 @@ class ItensRelationManager extends RelationManager
             ->headerActions([
                 CreateAction::make()
                     ->label('Adicionar Item')
+                    ->columns(2)
                     ->schema([
                         Select::make('item_id')
                             ->label('Item')
