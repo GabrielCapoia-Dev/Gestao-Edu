@@ -83,7 +83,32 @@ class ItensRelationManager extends RelationManager
                     ->color('success')
                     ->schema([
                         $this->itemSelectAditivo(),
-                        Grid::make(2)->schema($this->quantidadePrecoSchema()),
+
+                        Grid::make(2)->schema([
+                            TextInput::make('quantidade_total')
+                                ->label('Quantidade Total')
+                                ->numeric()
+                                ->minValue(0.001)
+                                ->required(),
+
+                            TextInput::make('preco_unitario')
+                                ->label('Preço Unitário')
+                                ->numeric()
+                                ->prefix('R$')
+                                ->disabled() // 🔥 trava o campo
+                                ->dehydrated() // 🔥 ainda envia pro backend
+                                ->required()
+                                ->afterStateHydrated(function ($set, $get) {
+                                    $itemId = $get('item_id');
+
+                                    if (!$itemId) return;
+
+                                    $preco = $this->getPrecoCompra($itemId);
+
+                                    $set('preco_unitario', $preco);
+                                })
+                                ->reactive(), // 🔥 reage ao select
+                        ]),
                     ])
                     ->action(fn(array $data) => $this->attachItem($data, TipoItemContrato::Aditivo)),
             ])
@@ -96,6 +121,10 @@ class ItensRelationManager extends RelationManager
 
     private function attachItem(array $data, TipoItemContrato $tipo): void
     {
+        if ($tipo === TipoItemContrato::Aditivo) {
+            $data['preco_unitario'] = $this->getPrecoCompra($data['item_id']);
+        }
+
         $this->ownerRecord->contratoItens()->create([
             'item_id'              => $data['item_id'],
             'tipo'                 => $tipo,
@@ -131,10 +160,24 @@ class ItensRelationManager extends RelationManager
                     Item::whereIn('id', $ids)
                 );
             })
+            ->afterStateUpdated(function ($state, $set) {
+                $preco = $this->getPrecoCompra($state);
+                $set('preco_unitario', $preco);
+            })
+            ->reactive()
             ->searchable()
             ->required()
             ->native(false)
             ->columnSpanFull();
+    }
+
+    private function getPrecoCompra($itemId): ?float
+    {
+        return $this->ownerRecord
+            ->contratoItens()
+            ->where('item_id', $itemId)
+            ->where('tipo', TipoItemContrato::Compra)
+            ->value('preco_unitario');
     }
 
     private function getGroupedOptions($query)
