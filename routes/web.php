@@ -19,7 +19,7 @@ use App\Services\Relatorios\FeedbackGraficoService;
 use App\Services\Relatorios\ChartRenderService;
 use Illuminate\Support\Facades\Auth;
 use \App\Http\Controllers\PedidoRelatorioGeralController;
-
+use Illuminate\Support\Facades\DB;
 
 Route::get('/', function () {
     return view('home');
@@ -96,7 +96,7 @@ Route::prefix('admin')
 
         Route::post('/notifications/mark-all-read', function () {
             DB::table('notifications')
-                ->where('notifiable_id', auth()->id())
+                ->where('notifiable_id', Auth::id())
                 ->where('notifiable_type', User::class)
                 ->whereNull('read_at')
                 ->update(['read_at' => now()]);
@@ -107,7 +107,7 @@ Route::prefix('admin')
         Route::post('/notifications/{id}/mark-read', function ($id) {
             DB::table('notifications')
                 ->where('id', $id)
-                ->where('notifiable_id', auth()->id())
+                ->where('notifiable_id', Auth::id())
                 ->where('notifiable_type', User::class)
                 ->update(['read_at' => now()]);
 
