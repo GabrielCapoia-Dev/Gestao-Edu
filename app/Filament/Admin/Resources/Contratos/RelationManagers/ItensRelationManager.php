@@ -37,7 +37,6 @@ class ItensRelationManager extends RelationManager
     {
         return $table
             ->columns([
-                // 🔥 agora vem da relação
                 TextColumn::make('item.nome')
                     ->label('Item')
                     ->searchable(),
@@ -59,6 +58,17 @@ class ItensRelationManager extends RelationManager
                 TextColumn::make('quantidade_utilizada')
                     ->label('Qtd. Utilizada')
                     ->sortable(),
+
+                TextColumn::make('quantidade_reservada')
+                    ->label('Qtd. Reservada')
+                    ->sortable()
+                    ->color('warning'),
+
+                TextColumn::make('saldo_disponivel')
+                    ->label('Qtd. Restante')
+                    ->getStateUsing(fn($record) => $record->saldo_disponivel)
+                    ->color(fn($record) => $record->saldo_disponivel <= 0 ? 'danger' : 'success')
+                    ->sortable(false),
 
                 TextColumn::make('preco_unitario')
                     ->label('Preço Unitário')
@@ -96,8 +106,8 @@ class ItensRelationManager extends RelationManager
                                 ->label('Preço Unitário')
                                 ->numeric()
                                 ->prefix('R$')
-                                ->disabled() // 🔥 trava o campo
-                                ->dehydrated() // 🔥 ainda envia pro backend
+                                ->disabled()
+                                ->dehydrated()
                                 ->required()
                                 ->afterStateHydrated(function ($set, $get) {
                                     $itemId = $get('item_id');
@@ -108,7 +118,7 @@ class ItensRelationManager extends RelationManager
 
                                     $set('preco_unitario', $preco);
                                 })
-                                ->reactive(), // 🔥 reage ao select
+                                ->reactive(),
                         ]),
                     ])
                     ->action(fn(array $data) => $this->attachItem($data, TipoItemContrato::Aditivo)),
@@ -116,7 +126,7 @@ class ItensRelationManager extends RelationManager
             ->recordActions([
                 EditAction::make('reequilibrio')
                     ->label('Reequilíbrio')
-                    ->color('warning')        // laranja, igual ao badge do tipo
+                    ->color('warning')
                     ->icon('heroicon-o-scale')
                     ->schema([
                         // TODO: adicionar campos de reequilíbrio
