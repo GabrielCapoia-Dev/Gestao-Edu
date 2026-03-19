@@ -110,7 +110,7 @@
     {{-- ================================================================ --}}
     <div class="flex items-center justify-end gap-3">
         <a
-            href="{{ \App\Filament\Admin\Resources\PedidosMerenda\PedidoMerendaResource::getUrl('index') }}"
+            href="{{ \App\Filament\Admin\Resources\PedidosMerenda\PedidosMerendaResource::getUrl('index') }}"
             class="inline-flex items-center px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
         >
             Cancelar
