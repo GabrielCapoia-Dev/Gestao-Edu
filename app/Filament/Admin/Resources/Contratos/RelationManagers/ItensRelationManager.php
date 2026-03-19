@@ -4,24 +4,20 @@ namespace App\Filament\Admin\Resources\Contratos\RelationManagers;
 
 use App\Models\Item;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Actions\CreateAction;
-use Filament\Actions\EditAction;
 use Filament\Actions\DeleteAction;
 use Filament\Schemas\Schema;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Tables\Columns\TextColumn;
 use App\Models\Enums\TipoItemContrato;
-use Dom\Text;
 use Filament\Schemas\Components\Grid;
-
 
 class ItensRelationManager extends RelationManager
 {
-    // protected static string $relationship = 'itens';
     protected static string $relationship = 'contratoItens';
+
     protected static ?string $title = 'Itens do Contrato';
     protected static ?string $modelLabel = 'Item';
     protected static ?string $pluralModelLabel = 'Itens';
@@ -30,71 +26,45 @@ class ItensRelationManager extends RelationManager
     {
         return $schema
             ->components([
-                Select::make('item_id')
-                    ->label('Item')
-                    ->options(Item::where('ativo', true)->pluck('nome', 'id'))
-                    ->searchable()
-                    ->required()
-                    ->native(false)
-                    ->columnSpanFull(),
+                $this->itemSelectCompra(),
 
-                TextInput::make('quantidade_total')
-                    ->label('Quantidade Total')
-                    ->numeric()
-                    ->minValue(0.001)
-                    ->required()
-                    ->columnSpan(1),
-
-                TextInput::make('preco_unitario')
-                    ->label('Preço Unitário')
-                    ->numeric()
-                    ->prefix('R$')
-                    ->minValue(0.01)
-                    ->required()
-                    ->columnSpan(1),
-            ])
-            ->columns(2);
+                Grid::make(2)->schema($this->quantidadePrecoSchema()),
+            ]);
     }
 
     public function table(Table $table): Table
     {
         return $table
             ->columns([
-                TextColumn::make('nome')
+                // 🔥 agora vem da relação
+                TextColumn::make('item.nome')
                     ->label('Item')
-                    ->sortable()
                     ->searchable(),
 
                 TextColumn::make('tipo')
-                    ->label('Tipo')
                     ->badge()
-                    ->color(fn($state) => match ($state instanceof TipoItemContrato ? $state : TipoItemContrato::tryFrom($state)) {
+                    ->color(fn($state) => match ($state) {
                         TipoItemContrato::Compra       => 'primary',
                         TipoItemContrato::Aditivo      => 'success',
                         TipoItemContrato::Reequilibrio => 'warning',
                         default                        => 'gray',
                     })
-                    ->formatStateUsing(function ($state) {
-                        if ($state instanceof TipoItemContrato) {
-                            return $state->label();
-                        }
-                        return TipoItemContrato::tryFrom($state)?->label() ?? $state;
-                    }),
+                    ->formatStateUsing(fn($state) => $state?->label()),
 
-                TextColumn::make('pivot.quantidade_total')
+                TextColumn::make('quantidade_total')
                     ->label('Qtd. Total')
                     ->sortable(),
 
-                TextColumn::make('pivot.quantidade_utilizada')
+                TextColumn::make('quantidade_utilizada')
                     ->label('Qtd. Utilizada')
                     ->sortable(),
 
-                TextColumn::make('pivot.preco_unitario')
+                TextColumn::make('preco_unitario')
                     ->label('Preço Unitário')
                     ->money('BRL')
                     ->sortable(),
 
-                TextColumn::make('pivot.preco_total')
+                TextColumn::make('preco_total')
                     ->label('Preço Total')
                     ->money('BRL')
                     ->sortable(),
@@ -102,35 +72,36 @@ class ItensRelationManager extends RelationManager
             ->headerActions([
                 CreateAction::make('compra')
                     ->label('Adicionar Item')
-                    ->schema(fn() => [
+                    ->schema([
                         $this->itemSelectCompra(),
                         Grid::make(2)->schema($this->quantidadePrecoSchema()),
                     ])
-                    ->action(fn(array $data) => $this->attachItem($data, 'compra')),
+                    ->action(fn(array $data) => $this->attachItem($data, TipoItemContrato::Compra)),
 
                 CreateAction::make('aditivo')
                     ->label('Aditivo')
                     ->color('success')
-                    ->schema(fn() => [
+                    ->schema([
                         $this->itemSelectAditivo(),
                         Grid::make(2)->schema($this->quantidadePrecoSchema()),
                     ])
-                    ->action(fn(array $data) => $this->attachItem($data, 'aditivo')),
+                    ->action(fn(array $data) => $this->attachItem($data, TipoItemContrato::Aditivo)),
             ])
             ->recordActions([
                 DeleteAction::make(),
             ])
-            ->defaultSort('nome')
+            ->defaultSort('created_at', 'desc')
             ->paginated([5, 10, 25]);
     }
-    private function attachItem(array $data, string $tipo): void
+
+    private function attachItem(array $data, TipoItemContrato $tipo): void
     {
         $this->ownerRecord->contratoItens()->create([
-            'item_id'             => $data['item_id'],
-            'tipo'                => $tipo,
-            'quantidade_total'    => $data['quantidade_total'],
+            'item_id'              => $data['item_id'],
+            'tipo'                 => $tipo,
+            'quantidade_total'     => $data['quantidade_total'],
             'quantidade_utilizada' => 0,
-            'preco_unitario'      => $data['preco_unitario'],
+            'preco_unitario'       => $data['preco_unitario'],
         ]);
     }
 
@@ -152,7 +123,9 @@ class ItensRelationManager extends RelationManager
         return Select::make('item_id')
             ->label('Item (somente itens já existentes no contrato)')
             ->options(function () {
-                $ids = $this->ownerRecord->itens()->pluck('itens.id');
+                $ids = $this->ownerRecord
+                    ->contratoItens()
+                    ->pluck('item_id');
 
                 return $this->getGroupedOptions(
                     Item::whereIn('id', $ids)
@@ -168,7 +141,7 @@ class ItensRelationManager extends RelationManager
     {
         return $query
             ->get()
-            ->groupBy(fn($item) => $item->tipo_item->label()) // ou ->value
+            ->groupBy(fn($item) => $item->tipo_item->label())
             ->map(fn($group) => $group->mapWithKeys(fn($item) => [
                 $item->id => "{$item->nome} - {$item->unidade_medida->value}",
             ]))
@@ -182,19 +155,16 @@ class ItensRelationManager extends RelationManager
                 ->label('Quantidade Total')
                 ->numeric()
                 ->minValue(0.001)
-                ->required()
-                ->columnSpan(1),
+                ->required(),
 
             TextInput::make('preco_unitario')
                 ->label('Preço Unitário')
                 ->numeric()
                 ->prefix('R$')
                 ->minValue(0.01)
-                ->required()
-                ->columnSpan(1),
+                ->required(),
         ];
     }
-
 
     public function isReadOnly(): bool
     {
