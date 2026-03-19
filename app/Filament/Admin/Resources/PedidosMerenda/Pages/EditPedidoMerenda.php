@@ -1,14 +1,14 @@
 <?php
 
-namespace App\Filament\Admin\Resources\PedidoMerendas\Pages;
+namespace App\Filament\Admin\Resources\PedidosMerenda\Pages;
 
-use App\Filament\Admin\Resources\PedidoMerendas\PedidoMerendaResource;
+use App\Filament\Admin\Resources\PedidosMerenda\PedidosMerendaResource;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 
 class EditPedidoMerenda extends EditRecord
 {
-    protected static string $resource = PedidoMerendaResource::class;
+    protected static string $resource = PedidosMerendaResource::class;
 
     protected function getHeaderActions(): array
     {

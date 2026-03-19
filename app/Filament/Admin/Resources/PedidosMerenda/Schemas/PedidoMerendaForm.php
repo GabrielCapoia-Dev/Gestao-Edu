@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Admin\Resources\PedidoMerendas\Schemas;
+namespace App\Filament\Admin\Resources\PedidosMerenda\Schemas;
 
 use Filament\Schemas\Schema;
 
