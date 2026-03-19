@@ -26,22 +26,21 @@ return new class extends Migration
                 ->cascadeOnDelete();
 
             $table->foreignId('item_id')
-                ->constrained('itens') // ✅ correto
+                ->constrained('itens')
                 ->restrictOnDelete();
 
-            $table->string('tipo'); // enum no PHP já resolve
+            $table->string('tipo');
 
             $table->decimal('quantidade_total', 10, 3);
             $table->decimal('quantidade_utilizada', 10, 3)->default(0);
+            $table->decimal('quantidade_reservada', 10, 3)->default(0); // 🔥 reserva de pedidos aguardando
 
             $table->decimal('preco_unitario', 10, 2);
 
-            // 🔥 calculado no banco (correto)
             $table->decimal('preco_total', 10, 2)
                 ->storedAs('quantidade_total * preco_unitario');
 
             $table->timestamps();
-
         });
     }
 

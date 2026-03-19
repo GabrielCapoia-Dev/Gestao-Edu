@@ -15,6 +15,7 @@ class ContratoItem extends Model
         'tipo',
         'quantidade_total',
         'quantidade_utilizada',
+        'quantidade_reservada',
         'preco_unitario',
     ];
 
@@ -22,6 +23,7 @@ class ContratoItem extends Model
         'tipo'                 => TipoItemContrato::class,
         'quantidade_total'     => 'decimal:3',
         'quantidade_utilizada' => 'decimal:3',
+        'quantidade_reservada' => 'decimal:3',
         'preco_unitario'       => 'decimal:2',
         'preco_total'          => 'decimal:2',
     ];
@@ -30,8 +32,15 @@ class ContratoItem extends Model
     {
         static::creating(function ($model) {
             $model->quantidade_utilizada ??= 0;
+            $model->quantidade_reservada ??= 0;
         });
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Relacionamentos
+    |--------------------------------------------------------------------------
+    */
 
     public function contrato()
     {
@@ -43,7 +52,34 @@ class ContratoItem extends Model
         return $this->belongsTo(Item::class);
     }
 
-    // Opcional: label pronto pro Filament
+    public function pedidoMerendaItens()
+    {
+        return $this->hasMany(PedidoMerendaItem::class, 'contrato_item_id');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Accessors
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Saldo real disponível para novos pedidos.
+     * quantidade_total - quantidade_utilizada - quantidade_reservada
+     */
+    public function getSaldoDisponivelAttribute(): float
+    {
+        return (float) $this->quantidade_total
+            - (float) $this->quantidade_utilizada
+            - (float) $this->quantidade_reservada;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Labels
+    |--------------------------------------------------------------------------
+    */
+
     public function getNomeCompletoAttribute(): string
     {
         return "{$this->item->nome} - {$this->item->unidade_medida->value}";
