@@ -44,6 +44,9 @@ use Illuminate\Support\Facades\Blade;
 use App\Observers\PedidoObserver;
 use Filament\View\PanelsRenderHook;
 use Filament\Support\Facades\FilamentView;
+use Livewire\Livewire;
+use App\Livewire\TopbarNotifications;
+
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -94,5 +97,7 @@ class AppServiceProvider extends ServiceProvider
             PanelsRenderHook::BODY_END,
             fn() => view('components.open-url-listener'),
         );
+
+        Livewire::component('topbar-notifications', TopbarNotifications::class);
     }
 }
