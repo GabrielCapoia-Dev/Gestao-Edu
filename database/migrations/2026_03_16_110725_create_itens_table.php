@@ -42,8 +42,6 @@ return new class extends Migration
 
             $table->timestamps();
 
-            // 🔥 evita duplicar COMPRA do mesmo item
-            $table->unique(['contrato_id', 'item_id', 'tipo']);
         });
     }
 
