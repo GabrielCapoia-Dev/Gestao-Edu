@@ -174,6 +174,26 @@
     }
     .pm-alert-warn svg { width: 1rem; height: 1rem; flex-shrink: 0; }
 
+    /* section — replica o card padrão do Filament */
+    .pm-section {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: .75rem;
+        padding: 1.5rem;
+        margin-bottom: 1.25rem;
+        box-shadow: 0 1px 2px rgba(0,0,0,.04);
+    }
+    .pm-section-title {
+        font-size: .9375rem;
+        font-weight: 600;
+        color: #111827;
+        margin: 0 0 1.25rem;
+        padding-bottom: .875rem;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .dark .pm-section { background: #1e293b; border-color: #334155; }
+    .dark .pm-section-title { color: #f1f5f9; border-color: #334155; }
+
     /* dark mode — Filament aplica classe .dark no <html> */
     .dark .pm-header h2 { color: #f9fafb; }
     .dark .pm-header p  { color: #9ca3af; }
@@ -213,17 +233,21 @@
         <p>Monte a relação de itens antes de confirmar o pedido.</p>
     </div>
 
-    {{-- OBSERVAÇÕES --}}
-    <label class="pm-field-label">Observações <span>(opcional)</span></label>
-    <textarea
-        wire:model="observacoes"
-        rows="2"
-        class="pm-textarea"
-        placeholder="Informações adicionais sobre este pedido..."
-    ></textarea>
+    {{-- SECTION PRINCIPAL --}}
+    <div class="pm-section">
+        <div class="pm-section-title">Novo Pedido</div>
 
-    {{-- TABELA DE ITENS EM MEMÓRIA --}}
-    <div class="pm-card">
+        {{-- OBSERVAÇÕES --}}
+        <label class="pm-field-label">Observações <span>(opcional)</span></label>
+        <textarea
+            wire:model="observacoes"
+            rows="2"
+            class="pm-textarea"
+            placeholder="Informações adicionais sobre este pedido..."
+        ></textarea>
+
+        {{-- TABELA DE ITENS EM MEMÓRIA --}}
+        <div class="pm-card">
         <div class="pm-card-toolbar">
             <span class="pm-card-toolbar-title">
                 Itens do Pedido
@@ -275,7 +299,8 @@
                 </tbody>
             </table>
         @endif
-    </div>
+        </div>
+    </div>{{-- /.pm-section --}}
 
     {{-- BOTÕES DE AÇÃO --}}
     <div class="pm-actions">
