@@ -10,7 +10,7 @@
     .pm-textarea {
         width: 100%; border-radius: .5rem;
         border: 1px solid var(--gray-300, #d1d5db);
-        background: var(--gray-50, #fff);
+        background: #fff;
         color: var(--gray-900, #111827);
         font-size: .875rem; padding: .5rem .75rem;
         outline: none; resize: vertical;
