@@ -361,13 +361,13 @@ $id = 'modal-notificacoes';
         async function markAllAsRead(btn) {
             btn.disabled = true;
 
-            await fetch("{{ route('notifications.markAllRead ') }}", {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': csrfToken,
-                        'Accept': 'application/json',
-                    },
-                });
+            await fetch('/admin/notifications/mark-all-read', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                },
+            });
 
             // Atualiza o componente Livewire após marcar
             Livewire.dispatch('refresh-notifications');
@@ -376,7 +376,7 @@ $id = 'modal-notificacoes';
         async function markAsRead(btn, id) {
             btn.disabled = true;
 
-            await fetch(`/notifications/${id}/mark-read`, {
+            await fetch(`/admin/notifications/${id}/mark-read`, {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': csrfToken,
