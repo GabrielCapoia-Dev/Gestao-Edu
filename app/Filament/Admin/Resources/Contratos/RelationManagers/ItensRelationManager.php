@@ -137,25 +137,34 @@ class ItensRelationManager extends RelationManager
     {
         return Select::make('item_id')
             ->label('Item')
-            ->options(Item::where('ativo', true)->pluck('nome', 'id'))
-            ->searchable()
-            ->required()
-            ->native(false)
-            ->columnSpanFull();
+            ->options(
+                Item::query()
+                    ->where('ativo', true)
+                    ->get()
+                    ->groupBy(fn($item) => $item->tipo_item->value)
+                    ->map(fn($group) => $group->mapWithKeys(fn($item) => [
+                        $item->id => $item->nome_com_unidade,
+                    ]))
+                    ->toArray()
+            )
+            ->searchable();
     }
 
     private function itemSelectAditivo(): Select
     {
         return Select::make('item_id')
-            ->label('Item (somente itens já existentes no contrato)')
-            ->options(function () {
-                $ids = $this->ownerRecord->itens()->pluck('itens.id');
-                return Item::whereIn('id', $ids)->pluck('nome', 'id');
-            })
-            ->searchable()
-            ->required()
-            ->native(false)
-            ->columnSpanFull();
+            ->label('Item')
+            ->options(
+                Item::query()
+                    ->where('ativo', true)
+                    ->get()
+                    ->groupBy(fn($item) => $item->tipo_item->value)
+                    ->map(fn($group) => $group->mapWithKeys(fn($item) => [
+                        $item->id => $item->nome_com_unidade,
+                    ]))
+                    ->toArray()
+            )
+            ->searchable();
     }
 
     private function quantidadePrecoSchema(): array

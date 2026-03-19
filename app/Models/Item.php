@@ -22,7 +22,7 @@ class Item extends Model
         'nome'          => 'string',
         'descricao'     => 'string',
         'tipo_item'     => TipoItem::class,
-        'unidade_medida'=> UnidadeMedida::class,
+        'unidade_medida' => UnidadeMedida::class,
         'ativo'         => 'boolean',
     ];
 
@@ -32,5 +32,10 @@ class Item extends Model
             ->using(ContratoItem::class)
             ->withPivot('quantidade_total', 'quantidade_utilizada', 'preco_unitario', 'preco_total', 'tipo')
             ->withTimestamps();
+    }
+
+    public function getNomeComUnidadeAttribute(): string
+    {
+        return "{$this->nome} - {$this->unidade_medida->value}";
     }
 }
