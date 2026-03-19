@@ -7,6 +7,7 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Table;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
+use Filament\Actions\EditAction;
 use Filament\Schemas\Schema;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -113,6 +114,14 @@ class ItensRelationManager extends RelationManager
                     ->action(fn(array $data) => $this->attachItem($data, TipoItemContrato::Aditivo)),
             ])
             ->recordActions([
+                EditAction::make('reequilibrio')
+                    ->label('Reequilíbrio')
+                    ->color('warning')        // laranja, igual ao badge do tipo
+                    ->icon('heroicon-o-scale')
+                    ->schema([
+                        // TODO: adicionar campos de reequilíbrio
+                    ])
+                    ->action(fn(array $data, $record) => null),
                 DeleteAction::make(),
             ])
             ->defaultSort('created_at', 'desc')
