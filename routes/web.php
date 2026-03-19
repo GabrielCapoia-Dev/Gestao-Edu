@@ -94,7 +94,25 @@ Route::prefix('admin')
             ->name('relatorios.bulkFicha');
 
 
+        Route::post('/notifications/mark-all-read', function () {
+            DB::table('notifications')
+                ->where('notifiable_id', auth()->id())
+                ->where('notifiable_type', User::class)
+                ->whereNull('read_at')
+                ->update(['read_at' => now()]);
 
+            return response()->json(['ok' => true]);
+        })->name('notifications.markAllRead');
+
+        Route::post('/notifications/{id}/mark-read', function ($id) {
+            DB::table('notifications')
+                ->where('id', $id)
+                ->where('notifiable_id', auth()->id())
+                ->where('notifiable_type', User::class)
+                ->update(['read_at' => now()]);
+
+            return response()->json(['ok' => true]);
+        })->name('notifications.markRead');
 
 
         Route::get('/pedidos/{pedido}/pdf', function (Pedido $pedido, PedidoRelatorioService $service) {

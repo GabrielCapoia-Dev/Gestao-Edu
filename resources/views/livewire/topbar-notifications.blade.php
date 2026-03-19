@@ -278,7 +278,7 @@ $id = 'modal-notificacoes';
                     <button
                         type="button"
                         class="notif-mark-all-btn"
-                        wire:click="markAllAsRead"
+                        onclick="markAllAsRead(this)"
                         wire:loading.class="btn-loading"
                         title="Marcar todas como lidas">
                         <span wire:loading.remove wire:target="markAllAsRead">
@@ -327,7 +327,7 @@ $id = 'modal-notificacoes';
                     <button
                         type="button"
                         class="notif-check-btn"
-                        wire:click="markAsRead('{{ $notification->id }}')"
+                        onclick="markAsRead(this, '{{ $notification->id }}')"
                         wire:loading.class="btn-loading"
                         title="Marcar como lida">
                         <span wire:loading.remove wire:target="markAsRead('{{ $notification->id }}')">
@@ -354,4 +354,37 @@ $id = 'modal-notificacoes';
 
         </div>
     </x-filament::modal>
+
+    <script>
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+
+        async function markAllAsRead(btn) {
+            btn.disabled = true;
+
+            await fetch("{{ route('notifications.markAllRead ') }}", {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json',
+                    },
+                });
+
+            // Atualiza o componente Livewire após marcar
+            Livewire.dispatch('refresh-notifications');
+        }
+
+        async function markAsRead(btn, id) {
+            btn.disabled = true;
+
+            await fetch(`/notifications/${id}/mark-read`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                },
+            });
+
+            Livewire.dispatch('refresh-notifications');
+        }
+    </script>
 </div>

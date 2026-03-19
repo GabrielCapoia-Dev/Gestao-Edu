@@ -97,7 +97,5 @@ class AppServiceProvider extends ServiceProvider
             PanelsRenderHook::BODY_END,
             fn() => view('components.open-url-listener'),
         );
-
-        Livewire::component('topbar-notifications', TopbarNotifications::class);
     }
 }
