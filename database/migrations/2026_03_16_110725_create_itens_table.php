@@ -26,8 +26,8 @@ return new class extends Migration
                 ->cascadeOnDelete();
 
             $table->foreignId('item_id')
-                ->constrained()
-                ->restrictOnDelete(); // evita apagar item usado
+                ->constrained('itens') // ✅ correto
+                ->restrictOnDelete();
 
             $table->string('tipo'); // enum no PHP já resolve
 
