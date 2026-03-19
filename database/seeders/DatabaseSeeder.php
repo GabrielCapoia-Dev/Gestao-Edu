@@ -375,6 +375,7 @@ class DatabaseSeeder extends Seeder
             PedidoSeeder::class,
 
             ItensSeeder::class,
+            ContratoSeeder::class,
         ]);
     }
 
