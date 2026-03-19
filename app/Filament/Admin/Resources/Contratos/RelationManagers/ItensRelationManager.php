@@ -137,34 +137,41 @@ class ItensRelationManager extends RelationManager
     {
         return Select::make('item_id')
             ->label('Item')
-            ->options(
-                Item::query()
-                    ->where('ativo', true)
-                    ->get()
-                    ->groupBy(fn($item) => $item->tipo_item->value)
-                    ->map(fn($group) => $group->mapWithKeys(fn($item) => [
-                        $item->id => $item->nome_com_unidade,
-                    ]))
-                    ->toArray()
-            )
-            ->searchable();
+            ->options(fn() => $this->getGroupedOptions(
+                Item::where('ativo', true)
+            ))
+            ->searchable()
+            ->required()
+            ->native(false)
+            ->columnSpanFull();
     }
 
     private function itemSelectAditivo(): Select
     {
         return Select::make('item_id')
-            ->label('Item')
-            ->options(
-                Item::query()
-                    ->where('ativo', true)
-                    ->get()
-                    ->groupBy(fn($item) => $item->tipo_item->value)
-                    ->map(fn($group) => $group->mapWithKeys(fn($item) => [
-                        $item->id => $item->nome_com_unidade,
-                    ]))
-                    ->toArray()
-            )
-            ->searchable();
+            ->label('Item (somente itens já existentes no contrato)')
+            ->options(function () {
+                $ids = $this->ownerRecord->itens()->pluck('itens.id');
+
+                return $this->getGroupedOptions(
+                    Item::whereIn('id', $ids)
+                );
+            })
+            ->searchable()
+            ->required()
+            ->native(false)
+            ->columnSpanFull();
+    }
+
+    private function getGroupedOptions($query)
+    {
+        return $query
+            ->get()
+            ->groupBy(fn($item) => $item->tipo_item->label()) // ou ->value
+            ->map(fn($group) => $group->mapWithKeys(fn($item) => [
+                $item->id => "{$item->nome} - {$item->unidade_medida->value}",
+            ]))
+            ->toArray();
     }
 
     private function quantidadePrecoSchema(): array
