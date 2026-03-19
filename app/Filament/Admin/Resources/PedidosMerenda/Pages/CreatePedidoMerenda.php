@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\DB;
 class CreatePedidoMerenda extends Page
 {
     protected static string $resource = PedidosMerendaResource::class;
-    protected static string $view = 'filament.pages.create-pedido-merenda';
+    protected string $view = 'filament.pages.create-pedido-merenda';
 
     // -------------------------------------------------------------------------
     // Estado em memória — nada vai para o banco até confirmarPedido()
