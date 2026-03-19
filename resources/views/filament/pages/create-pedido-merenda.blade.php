@@ -174,25 +174,35 @@
     }
     .pm-alert-warn svg { width: 1rem; height: 1rem; flex-shrink: 0; }
 
-    /* dark mode básico */
-    @media (prefers-color-scheme: dark) {
-        .pm-header h2 { color: #f9fafb; }
-        .pm-textarea, .pm-select, .pm-qty-input { background: #1f2937; border-color: #374151; color: #f9fafb; }
-        .pm-card { background: #1f2937; border-color: #374151; }
-        .pm-card-toolbar { border-color: #374151; }
-        .pm-card-toolbar-title { color: #e5e7eb; }
-        .pm-table thead tr { background: #374151; color: #9ca3af; }
-        .pm-table tbody tr { border-color: #374151; }
-        .pm-table tbody tr:hover { background: #374151; }
-        .pm-table .td-item-nome, .pm-table .td-qty { color: #f9fafb; }
-        .pm-modal { background: #1f2937; }
-        .pm-modal-header { border-color: #374151; }
-        .pm-modal-header h3 { color: #f9fafb; }
-        .pm-modal-footer { border-color: #374151; }
-        .pm-contrato-row { background: #374151; border-color: #4b5563; }
-        .pm-contrato-empresa { color: #f9fafb; }
-        .pm-btn-outline { border-color: #374151; color: #d1d5db; }
-    }
+    /* dark mode — Filament aplica classe .dark no <html> */
+    .dark .pm-header h2 { color: #f9fafb; }
+    .dark .pm-header p  { color: #9ca3af; }
+    .dark .pm-field-label { color: #d1d5db; }
+    .dark .pm-field-hint { color: #6b7280; }
+    .dark .pm-textarea, .dark .pm-select, .dark .pm-qty-input { background: #1f2937; border-color: #374151; color: #f9fafb; }
+    .dark .pm-card { background: #1f2937; border-color: #374151; }
+    .dark .pm-card-toolbar { border-color: #374151; background: #1f2937; }
+    .dark .pm-card-toolbar-title { color: #e5e7eb; }
+    .dark .pm-table thead tr { background: #111827; color: #9ca3af; }
+    .dark .pm-table tbody tr { border-color: #374151; }
+    .dark .pm-table tbody tr:hover { background: #1f2937; }
+    .dark .pm-table .td-item-nome, .dark .pm-table .td-qty { color: #f9fafb; }
+    .dark .pm-table .td-secondary, .dark .pm-table .td-saldo { color: #9ca3af; }
+    .dark .pm-table .td-unit { color: #6b7280; }
+    .dark .pm-empty { color: #6b7280; }
+    .dark .pm-modal { background: #1f2937; }
+    .dark .pm-modal-header { border-color: #374151; }
+    .dark .pm-modal-header h3 { color: #f9fafb; }
+    .dark .pm-modal-footer { border-color: #374151; }
+    .dark .pm-modal-body { background: #1f2937; }
+    .dark .pm-contrato-row { background: #111827; border-color: #374151; }
+    .dark .pm-contrato-empresa { color: #f9fafb; }
+    .dark .pm-contrato-numero { color: #9ca3af; }
+    .dark .pm-contrato-numero span { color: #d1d5db; }
+    .dark .pm-saldo-label, .dark .pm-qty-label { color: #9ca3af; }
+    .dark .pm-btn-outline { border-color: #374151; color: #d1d5db; background: transparent; }
+    .dark .pm-btn-outline:hover { background: #374151; }
+    .dark .pm-overlay-bg { background: rgba(0,0,0,.65); }
 </style>
 
 <div class="pm-page">
