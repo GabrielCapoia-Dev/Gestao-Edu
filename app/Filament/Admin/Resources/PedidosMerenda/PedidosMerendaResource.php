@@ -16,12 +16,12 @@ use App\Filament\Admin\Resources\PedidosMerenda\Tables\PedidoMerendaTable;
 class PedidosMerendaResource extends Resource
 {
     protected static ?string $model = PedidoMerenda::class;
-    protected static ?string $modelLabel = 'Pedido de Merenda';
-    protected static ?string $pluralModelLabel = 'Pedidos de Merenda';
+    protected static ?string $modelLabel = 'Pedido';
+    protected static ?string $pluralModelLabel = 'Pedidos';
     protected static ?string $slug = 'pedidos-merenda';
     protected static ?int $navigationSort = 2;
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ShoppingCart;
-    protected static string|UnitEnum|null $navigationGroup = 'Merenda';
+    protected static string|UnitEnum|null $navigationGroup = 'Alimentação Escolar';
 
     public static function form(Schema $schema): Schema
     {
