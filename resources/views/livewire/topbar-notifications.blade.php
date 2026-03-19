@@ -279,12 +279,11 @@ $id = 'modal-notificacoes';
                         type="button"
                         class="notif-mark-all-btn"
                         onclick="markAllAsRead(this)"
-                        wire:loading.class="btn-loading"
                         title="Marcar todas como lidas">
-                        <span wire:loading.remove wire:target="markAllAsRead">
+                        <span class="btn-icon">
                             <x-heroicon-o-check-badge style="width:16px;height:16px;color:#374151;" />
                         </span>
-                        <span wire:loading wire:target="markAllAsRead">
+                        <span class="btn-spinner" style="display:none;">
                             <div class="spinner"></div>
                         </span>
                     </button>
@@ -328,12 +327,11 @@ $id = 'modal-notificacoes';
                         type="button"
                         class="notif-check-btn"
                         onclick="markAsRead(this, '{{ $notification->id }}')"
-                        wire:loading.class="btn-loading"
                         title="Marcar como lida">
-                        <span wire:loading.remove wire:target="markAsRead('{{ $notification->id }}')">
+                        <span class="btn-icon">
                             <x-heroicon-o-check style="width:16px;height:16px;color:#374151;" />
                         </span>
-                        <span wire:loading wire:target="markAsRead('{{ $notification->id }}')">
+                        <span class="btn-spinner" style="display:none;">
                             <div class="spinner"></div>
                         </span>
                     </button>
@@ -358,8 +356,14 @@ $id = 'modal-notificacoes';
     <script>
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
 
+        function setLoading(btn, loading) {
+            btn.disabled = loading;
+            btn.querySelector('.btn-icon').style.display = loading ? 'none' : '';
+            btn.querySelector('.btn-spinner').style.display = loading ? '' : 'none';
+        }
+
         async function markAllAsRead(btn) {
-            btn.disabled = true;
+            setLoading(btn, true);
 
             await fetch('/admin/notifications/mark-all-read', {
                 method: 'POST',
@@ -369,12 +373,12 @@ $id = 'modal-notificacoes';
                 },
             });
 
-            // Atualiza o componente Livewire após marcar
             Livewire.dispatch('refresh-notifications');
+            setLoading(btn, false);
         }
 
         async function markAsRead(btn, id) {
-            btn.disabled = true;
+            setLoading(btn, true);
 
             await fetch(`/admin/notifications/${id}/mark-read`, {
                 method: 'POST',
@@ -385,6 +389,7 @@ $id = 'modal-notificacoes';
             });
 
             Livewire.dispatch('refresh-notifications');
+            setLoading(btn, false);
         }
     </script>
 </div>
