@@ -39,11 +39,9 @@ class Contrato extends Model
         return $this->belongsTo(EmpresaContratada::class, 'id_empresa_contratada');
     }
 
-    public function itens()
+    // 🔥 RELAÇÃO PRINCIPAL
+    public function contratoItens()
     {
-        return $this->belongsToMany(Item::class, 'contrato_item')
-            ->using(ContratoItem::class)
-            ->withPivot('quantidade_total', 'quantidade_utilizada', 'preco_unitario', 'preco_total', 'tipo')
-            ->withTimestamps();
+        return $this->hasMany(ContratoItem::class);
     }
 }

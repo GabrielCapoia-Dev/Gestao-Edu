@@ -2,11 +2,10 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Relations\Pivot;
 use App\Models\Enums\TipoItemContrato;
+use Illuminate\Database\Eloquent\Model;
 
-
-class ContratoItem extends Pivot
+class ContratoItem extends Model
 {
     protected $table = 'contrato_item';
 
@@ -26,4 +25,27 @@ class ContratoItem extends Pivot
         'preco_unitario'       => 'decimal:2',
         'preco_total'          => 'decimal:2',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function ($model) {
+            $model->quantidade_utilizada ??= 0;
+        });
+    }
+
+    public function contrato()
+    {
+        return $this->belongsTo(Contrato::class);
+    }
+
+    public function item()
+    {
+        return $this->belongsTo(Item::class);
+    }
+
+    // Opcional: label pronto pro Filament
+    public function getNomeCompletoAttribute(): string
+    {
+        return "{$this->item->nome} - {$this->item->unidade_medida->value}";
+    }
 }

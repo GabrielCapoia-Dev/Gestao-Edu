@@ -20,8 +20,8 @@ use Filament\Schemas\Components\Grid;
 
 class ItensRelationManager extends RelationManager
 {
-    protected static string $relationship = 'itens';
-
+    // protected static string $relationship = 'itens';
+    protected static string $relationship = 'contratoItens';
     protected static ?string $title = 'Itens do Contrato';
     protected static ?string $modelLabel = 'Item';
     protected static ?string $pluralModelLabel = 'Itens';
@@ -65,7 +65,7 @@ class ItensRelationManager extends RelationManager
                     ->sortable()
                     ->searchable(),
 
-                TextColumn::make('pivot.tipo')
+                TextColumn::make('tipo')
                     ->label('Tipo')
                     ->badge()
                     ->color(fn($state) => match ($state instanceof TipoItemContrato ? $state : TipoItemContrato::tryFrom($state)) {
@@ -125,7 +125,8 @@ class ItensRelationManager extends RelationManager
     }
     private function attachItem(array $data, string $tipo): void
     {
-        $this->ownerRecord->itens()->attach($data['item_id'], [
+        $this->ownerRecord->contratoItens()->create([
+            'item_id'             => $data['item_id'],
             'tipo'                => $tipo,
             'quantidade_total'    => $data['quantidade_total'],
             'quantidade_utilizada' => 0,

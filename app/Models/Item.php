@@ -19,19 +19,17 @@ class Item extends Model
     ];
 
     protected $casts = [
-        'nome'          => 'string',
-        'descricao'     => 'string',
-        'tipo_item'     => TipoItem::class,
+        'nome'           => 'string',
+        'descricao'      => 'string',
+        'tipo_item'      => TipoItem::class,
         'unidade_medida' => UnidadeMedida::class,
-        'ativo'         => 'boolean',
+        'ativo'          => 'boolean',
     ];
 
-    public function contratos()
+    // 🔥 relação correta agora
+    public function contratoItens()
     {
-        return $this->belongsToMany(Contrato::class, 'contrato_item')
-            ->using(ContratoItem::class)
-            ->withPivot('quantidade_total', 'quantidade_utilizada', 'preco_unitario', 'preco_total', 'tipo')
-            ->withTimestamps();
+        return $this->hasMany(ContratoItem::class);
     }
 
     public function getNomeComUnidadeAttribute(): string

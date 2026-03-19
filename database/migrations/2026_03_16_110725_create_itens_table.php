@@ -22,20 +22,28 @@ return new class extends Migration
             $table->id();
 
             $table->foreignId('contrato_id')
-                ->constrained('contratos')
+                ->constrained()
                 ->cascadeOnDelete();
 
             $table->foreignId('item_id')
-                ->constrained('itens')
-                ->cascadeOnDelete();
+                ->constrained()
+                ->restrictOnDelete(); // evita apagar item usado
 
-            $table->string('tipo')->default('compra');
+            $table->string('tipo'); // enum no PHP já resolve
+
             $table->decimal('quantidade_total', 10, 3);
             $table->decimal('quantidade_utilizada', 10, 3)->default(0);
+
             $table->decimal('preco_unitario', 10, 2);
-            $table->decimal('preco_total', 10, 2)->storedAs('quantidade_total * preco_unitario');
+
+            // 🔥 calculado no banco (correto)
+            $table->decimal('preco_total', 10, 2)
+                ->storedAs('quantidade_total * preco_unitario');
 
             $table->timestamps();
+
+            // 🔥 evita duplicar COMPRA do mesmo item
+            $table->unique(['contrato_id', 'item_id', 'tipo']);
         });
     }
 
