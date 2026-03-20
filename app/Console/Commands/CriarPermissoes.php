@@ -20,7 +20,68 @@ class CriarPermissoes extends Command
 
         $permissoes = [
             'Excluir Itens em Massa',
-            'Excluir Itens'
+            'Excluir Itens',
+            'Visualizar Histórico dos Alunos',
+            'Visualizar Professores',
+
+            'Listar Alunos',
+            'Listar Relatórios',
+            'Listar Funções Administrativas',
+            'Listar Equipe Gestora',
+            'Listar Alternativas',
+            'Listar Tipos de Avaliações',
+
+            'Criar Alunos',
+            'Criar Alternativas',
+            'Criar Funções Administrativas',
+            'Criar Equipe Gestora',
+            'Criar Tipos de Avaliações',
+
+            'Editar Alunos',
+            'Editar Escola do Aluno',
+            'Editar Campos da Escola',
+            'Editar Escola da Turma',
+            'Editar Escola do Professor',
+            'Editar Matricula do Professor',
+            'Editar Nome do Professor',
+            'Editar Dados do Professor',
+            'Editar Dados da Turma',
+            'Editar Turma do Aluno',
+            'Editar Status do Aluno',
+            'Editar Equipe Gestora',
+            'Editar Funções Administrativas',
+            'Editar CGM do Aluno',
+            'Editar Alternativas',
+            'Editar Tipos de Avaliações',
+
+            'Excluir Alunos',
+            'Excluir Alternativas',
+            'Excluir Equipe Gestora',
+            'Excluir Funções Administrativas',
+            'Excluir Tipos de Avaliações',
+
+            'Excluir Alunos em Massa',
+            'Excluir Turmas em Massa',
+            'Excluir Alternativas em Massa',
+            'Excluir Equipe Gestora em Massa',
+            'Excluir Funções Administrativas em Massa',
+            'Excluir Tipos de Avaliações em Massa',
+            'Excluir Professores em Massa',
+
+            'Exportar Alunos',
+            'Exportar Turmas',
+            'Exportar Escolas',
+            'Exportar Relatórios',
+            'Exportar Professores',
+            'Exportar Componentes',
+
+            'Aplicar Permissoes',
+
+            'Filtrar Professores por Escola',
+            'Filtrar Professores por Componente',
+            'Filtrar Professores por Serie',
+            'Filtrar Turmas por Escola',
+            'Filtrar Alunos da Escola',
         ];
 
         $this->info('Criando permissões...');
