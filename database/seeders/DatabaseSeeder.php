@@ -296,39 +296,43 @@ class DatabaseSeeder extends Seeder
             );
         }
 
-        /**
-         * Séries
-         */
-        $seriesList = [
-            'BERÇÁRIO',
-            '1ª Etapa',
-            '2ª Etapa',
-            'Infantil 1',
-            'Infantil 2',
-            'Infantil 3',
-            'Infantil 4',
-            'Infantil 5',
-            '1º Ano',
-            '2º Ano',
-            '3º Ano',
-            '4º Ano',
-            '5º Ano',
-        ];
+        // 2. Criar Séries
+        $this->command->info('Criando séries...');
+        $series = Serie::factory(17)->create();
 
-        foreach ($seriesList as $seriesName) {
+        // /**
+        //  * Séries
+        //  */
+        // $seriesList = [
+        //     'BERÇÁRIO',
+        //     '1ª Etapa',
+        //     '2ª Etapa',
+        //     'JARDIM',
+        //     'MATERNAL I',
+        //     'MATERNAL II',
+        //     'Infantil 4',
+        //     'Infantil 5',
+        //     '1º Ano',
+        //     '2º Ano',
+        //     '3º Ano',
+        //     '4º Ano',
+        //     '5º Ano',
+        // ];
 
-            $codigo = $this->gerarCodigoSerie($seriesName);
+        // foreach ($seriesList as $seriesName) {
 
-            // se codigo existir, ignora
-            if ($codigo && Serie::where('codigo', $codigo)->exists()) {
-                continue;
-            }
+        //     $codigo = $this->gerarCodigoSerie($seriesName);
 
-            Serie::updateOrCreate(
-                ['nome' => $seriesName],
-                ['codigo' => $codigo]
-            );
-        }
+        //     // se codigo existir, ignora
+        //     if ($codigo && Serie::where('codigo', $codigo)->exists()) {
+        //         continue;
+        //     }
+
+        //     Serie::updateOrCreate(
+        //         ['nome' => $seriesName],
+        //         ['codigo' => $codigo]
+        //     );
+        // }
 
         // /**
         //  * Laudos
