@@ -386,7 +386,11 @@ class DatabaseSeeder extends Seeder
         $this->command->info('Criando séries...');
         $series = Serie::factory(11)->create();
 
+        // 3. Criar Componentes Curriculares
+        $this->command->info('Criando componentes curriculares...');
+        $this->call(ComponenteCurricularSeeder::class);
 
+    
         // 4. Criar Professores
         $this->command->info('Criando professores...');
         $professores = Professor::factory(30)->create();
@@ -394,6 +398,33 @@ class DatabaseSeeder extends Seeder
         // 5. Criar Turmas
         $this->command->info('Criando turmas...');
         $turmas = Turma::factory(20)->create();
+
+         // 6. Associar Professores aos Componentes das Turmas
+        $this->command->info('Associando professores aos componentes das turmas...');
+        foreach ($turmas as $turma) {
+            $componentes = $turma->serie->componentesCurriculares;
+            $professoresDaEscola = Professor::where('id_escola', $turma->id_escola)->get();
+
+            foreach ($componentes as $componente) {
+                // 80% de chance de ter professor, 20% de chance de ficar vago
+                $temProfessor = rand(1, 100) <= 80;
+
+                if ($temProfessor && $professoresDaEscola->isNotEmpty()) {
+                    $professorAleatorio = $professoresDaEscola->random();
+
+                    $turma->componentes()->attach($componente->id, [
+                        'professor_id' => $professorAleatorio->id,
+                        'tem_professor' => true,
+                    ]);
+                } else {
+                    // Componente sem professor
+                    $turma->componentes()->attach($componente->id, [
+                        'professor_id' => null,
+                        'tem_professor' => false,
+                    ]);
+                }
+            }
+        }
     }
 
     private function gerarCodigoSerie(string $nome): ?string
