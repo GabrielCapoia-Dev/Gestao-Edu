@@ -27,7 +27,8 @@ class FuncaoAdministrativaResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::BookmarkSquare;
     public static ?string $modelLabel = 'Função Administrativa';
-    protected static string|UnitEnum|null $navigationGroup = "Pedagógico";
+    protected static string|UnitEnum|null $navigationGroup = 'Pedagógico';
+
     public static ?string $pluralModelLabel = 'Funções Administrativas';
     public static ?string $slug = 'funcoes-administrativas';
 

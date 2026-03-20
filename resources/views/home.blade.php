@@ -415,7 +415,7 @@ footer{background:#020D1F;padding:64px 24px 32px;}
     <li><a href="#como-funciona">Implantação</a></li>
   </ul>
   <div class="nav-right">
-    <a href="#modulos" class="btn-nav-ghost">Saiba mais</a>
+    <a href="https://edu.umuarama.pr.gov.br/orientacoes2026/" class="btn-nav-ghost">Saiba mais</a>
     <a href="/admin/login" class="btn-nav-solid">Acessar o Sistema</a>
   </div>
 </nav>
