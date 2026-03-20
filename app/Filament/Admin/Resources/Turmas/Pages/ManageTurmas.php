@@ -43,17 +43,29 @@ class ManageTurmas extends ManageRecords
                 ->successNotificationTitle('Série criada!'),
 
             Actions\CreateAction::make()
-                ->label('Nova Turma')
-                ->icon('heroicon-o-users')
-                ->mutateDataUsing(function (array $data): array {
-                    /** @var \App\Services\TurmaService $service */
-                    $service = app(TurmaService::class);
+                ->using(function (array $data) {
 
-                    $data = $service->aplicarCodigo($data);
-                    $data = $service->forcarVinculoComEscola($data, Auth::user());
+                    $componentes = $data['componentes'] ?? [];
+                    unset($data['componentes']);
 
-                    return $data;
+                    $turma = static::getModel()::create($data);
+
+                    foreach ($componentes as $componente) {
+                        if (! isset($componente['componente_curricular_id'])) {
+                            continue;
+                        }
+
+                        $turma->componentes()->syncWithoutDetaching([
+                            $componente['componente_curricular_id'] => [
+                                'professor_id' => $componente['professor_id'] ?? null,
+                                'tem_professor' => ! empty($componente['professor_id']),
+                            ],
+                        ]);
+                    }
+
+                    return $turma;
                 }),
+
         ];
     }
 }

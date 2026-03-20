@@ -58,16 +58,4 @@ class EscolaResource extends Resource
             'index' => ManageEscolas::route('/'),
         ];
     }
-
-
-
-
-    // public static function form(Form $form): Form
-    // {
-    //     return static::service()->configurarFormulario($form);
-    // }
-
-
-
-
 }
