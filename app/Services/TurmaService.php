@@ -201,6 +201,8 @@ class TurmaService
         return $schema
             ->components([
                 Section::make('Dados da Turma')
+                    ->columnSpanFull()
+
                     ->schema([
                         Select::make('id_escola')
                             ->label('Escola')
@@ -284,7 +286,6 @@ class TurmaService
                         Hidden::make('codigo')
                             ->default(fn() => 'TUR' . str_pad(Turma::max('id') + 1, 3, '0', STR_PAD_LEFT)),
                     ])
-                    ->clumnSpanFull()
                     ->columns(2),
 
                 Section::make('Professores por Componente')
@@ -341,6 +342,8 @@ class TurmaService
                             ->reorderable(false)
                             ->columnSpanFull(),
                     ])
+                    ->columnSpanFull()
+
                     ->visible(fn(Get $get) => $get('id_serie') && $get('id_escola')),
 
             ]);
