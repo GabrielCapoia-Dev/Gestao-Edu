@@ -16,12 +16,12 @@ class SerieFactory extends Factory
             ['codigo' => 'SER003', 'nome' => 'Infantil 2'],
             ['codigo' => 'SER004', 'nome' => 'Infantil 3'],
             ['codigo' => 'SER005', 'nome' => 'Infantil 4'],
-            ['codigo' => 'SER005', 'nome' => 'Infantil 5'],
-            ['codigo' => 'SER006', 'nome' => '1º Ano'],
-            ['codigo' => 'SER007', 'nome' => '2º Ano'],
-            ['codigo' => 'SER008', 'nome' => '3º Ano'],
-            ['codigo' => 'SER009', 'nome' => '4º Ano'],
-            ['codigo' => 'SER010', 'nome' => '5º Ano'],
+            ['codigo' => 'SER006', 'nome' => 'Infantil 5'],
+            ['codigo' => 'SER007', 'nome' => '1º Ano'],
+            ['codigo' => 'SER008', 'nome' => '2º Ano'],
+            ['codigo' => 'SER009', 'nome' => '3º Ano'],
+            ['codigo' => 'SER010', 'nome' => '4º Ano'],
+            ['codigo' => 'SER011', 'nome' => '5º Ano'],
         ];
 
         return $series[self::$index++];
