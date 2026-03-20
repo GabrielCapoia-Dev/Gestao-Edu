@@ -4,6 +4,8 @@ namespace Database\Seeders;
 
 use App\Models\DominioEmail;
 use App\Models\Laudo;
+use App\Models\Professor;
+use App\Models\Turma;
 use App\Models\Serie;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -299,6 +301,15 @@ class DatabaseSeeder extends Seeder
         // 2. Criar Séries
         $this->command->info('Criando séries...');
         $series = Serie::factory(11)->create();
+
+
+        // 4. Criar Professores
+        $this->command->info('Criando professores...');
+        $professores = Professor::factory(30)->create();
+
+        // 5. Criar Turmas
+        $this->command->info('Criando turmas...');
+        $turmas = Turma::factory(20)->create();
 
         // /**
         //  * Séries
