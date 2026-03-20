@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\ComponenteCurriculars;
 use App\Filament\Admin\Resources\ComponenteCurriculars\Pages\ManageComponenteCurriculars;
 use App\Models\ComponenteCurricular;
 use BackedEnum;
+use UnitEnum;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -21,7 +22,11 @@ class ComponenteCurricularResource extends Resource
 {
     protected static ?string $model = ComponenteCurricular::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::BookmarkSquare;
+    public static ?string $modelLabel = 'Componente Curricular';
+    protected static string|UnitEnum|null $navigationGroup = "Pedagógico";
+    public static ?string $pluralModelLabel = 'Componentes Curriculares';
+    public static ?string $slug = 'componentes-curriculares';
 
     public static function form(Schema $schema): Schema
     {
