@@ -298,19 +298,6 @@ class DatabaseSeeder extends Seeder
             );
         }
 
-        // 2. Criar Séries
-        $this->command->info('Criando séries...');
-        $series = Serie::factory(11)->create();
-
-
-        // 4. Criar Professores
-        $this->command->info('Criando professores...');
-        $professores = Professor::factory(30)->create();
-
-        // 5. Criar Turmas
-        $this->command->info('Criando turmas...');
-        $turmas = Turma::factory(20)->create();
-
         // /**
         //  * Séries
         //  */
@@ -392,6 +379,21 @@ class DatabaseSeeder extends Seeder
             ItensSeeder::class,
             ContratoSeeder::class,
         ]);
+
+
+
+        // 2. Criar Séries
+        $this->command->info('Criando séries...');
+        $series = Serie::factory(11)->create();
+
+
+        // 4. Criar Professores
+        $this->command->info('Criando professores...');
+        $professores = Professor::factory(30)->create();
+
+        // 5. Criar Turmas
+        $this->command->info('Criando turmas...');
+        $turmas = Turma::factory(20)->create();
     }
 
     private function gerarCodigoSerie(string $nome): ?string
