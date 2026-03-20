@@ -44,6 +44,8 @@ use Filament\Actions\EditAction;
 use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
 use Filament\Actions\DeleteAction;
+use Filament\Infolists\Components\TextEntry;
+
 
 class FuncionarioAdministrativoResource extends Resource
 {
@@ -100,26 +102,26 @@ class FuncionarioAdministrativoResource extends Resource
                     ->columnSpanFull()
                     ->visible(fn(?Professor $record) => $record === null),
                 // Formulário de EDIÇÃO - mostra dados do professor (readonly)
-                // Section::make('Dados do Professor')
-                //     ->schema([
-                //         Placeholder::make('nome_display')
-                //             ->label('Nome')
-                //             ->content(fn(?Professor $record) => $record?->nome ?? '—'),
+                Section::make('Dados do Professor')
+                    ->schema([
+                        TextEntry::make('nome_display')
+                            ->label('Nome')
+                            ->content(fn(?Professor $record) => $record?->nome ?? '—'),
 
-                //         Placeholder::make('matricula_display')
-                //             ->label('Matrícula')
-                //             ->content(fn(?Professor $record) => $record?->matricula ?? '—'),
+                        TextEntry::make('matricula_display')
+                            ->label('Matrícula')
+                            ->content(fn(?Professor $record) => $record?->matricula ?? '—'),
 
-                //         Placeholder::make('escola_display')
-                //             ->label('Escola')
-                //             ->content(fn(?Professor $record) => $record?->escola?->nome ?? '—'),
+                        TextEntry::make('escola_display')
+                            ->label('Escola')
+                            ->content(fn(?Professor $record) => $record?->escola?->nome ?? '—'),
 
-                //         Placeholder::make('email_display')
-                //             ->label('E-mail')
-                //             ->content(fn(?Professor $record) => $record?->email ?? 'Não informado'),
-                //     ])
-                //     ->columns(2)
-                //     ->visible(fn(?Professor $record) => $record !== null),
+                        TextEntry::make('email_display')
+                            ->label('E-mail')
+                            ->content(fn(?Professor $record) => $record?->email ?? 'Não informado'),
+                    ])
+                    ->columns(2)
+                    ->visible(fn(?Professor $record) => $record !== null),
 
 
                 // Função Administrativa (comum para criar e editar)
