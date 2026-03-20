@@ -298,7 +298,7 @@ class DatabaseSeeder extends Seeder
 
         // 2. Criar Séries
         $this->command->info('Criando séries...');
-        $series = Serie::factory(17)->create();
+        $series = Serie::factory(11)->create();
 
         // /**
         //  * Séries
