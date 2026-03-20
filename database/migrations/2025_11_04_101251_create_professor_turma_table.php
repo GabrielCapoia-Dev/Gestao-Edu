@@ -11,11 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('series', function (Blueprint $table) {
+        Schema::create('professor_turma', function (Blueprint $table) {
             $table->id();
-            $table->string('codigo')->unique();
-            $table->string('nome')->unique();
+            $table->foreignId('professor_id')->constrained('professores')->cascadeOnDelete();
+            $table->foreignId('turma_id')->constrained('turmas')->cascadeOnDelete();
             $table->timestamps();
+            
+            // Evitar duplicação
+            $table->unique(['professor_id', 'turma_id']);
         });
     }
 
@@ -24,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('series');
+        Schema::dropIfExists('professor_turma');
     }
 };

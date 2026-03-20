@@ -39,8 +39,8 @@ class SerieService
         return $table
             ->paginated([5, 10, 25, 50, 100])
             ->columns($this->colunasTabela())
-            ->actions($this->acoesTabela($user))
-            ->bulkActions($this->acoesEmMassa($user))
+            ->recordActions($this->acoesTabela($user))
+            ->toolbarActions($this->acoesEmMassa($user))
             ->defaultSort('updated_at', 'desc')
             ->striped();
     }
@@ -50,25 +50,36 @@ class SerieService
         return [
             TextColumn::make('codigo')
                 ->label('Código')
-                ->wrap()
-                ->sortable()
-                ->searchable(),
-                
+                ->searchable()
+                ->sortable(),
+
             TextColumn::make('nome')
-                ->label('Nome da série')
+                ->label('Nome')
+                ->searchable()
+                ->sortable(),
+
+            TextColumn::make('componentesCurriculares.nome')
+                ->label('Componentes')
+                ->badge()
+                ->separator(',')
                 ->wrap()
-                ->sortable()
-                ->searchable(),
+                ->limit(10)
+                ->toggleable(isToggledHiddenByDefault: true),
+
+            TextColumn::make('turmas_count')
+                ->label('Qtd. Turmas')
+                ->counts('turmas')
+                ->sortable(),
 
             TextColumn::make('created_at')
-                ->label('Criado em')
-                ->since()
+                ->label('Criado')
+                ->dateTime('d/m/Y H:i')
                 ->sortable()
                 ->toggleable(isToggledHiddenByDefault: true),
 
             TextColumn::make('updated_at')
-                ->label('Atualizado em')
-                ->since()
+                ->label('Atualizado')
+                ->dateTime('d/m/Y H:i')
                 ->sortable()
                 ->toggleable(isToggledHiddenByDefault: true),
         ];
@@ -104,5 +115,4 @@ class SerieService
                 ->visible(fn() => $this->userService->ehAdmin(Auth::user())),
         ];
     }
-
 }

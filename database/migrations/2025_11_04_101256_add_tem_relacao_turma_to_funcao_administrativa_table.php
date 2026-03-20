@@ -11,11 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('series', function (Blueprint $table) {
-            $table->id();
-            $table->string('codigo')->unique();
-            $table->string('nome')->unique();
-            $table->timestamps();
+        Schema::table('funcao_administrativa', function (Blueprint $table) {
+            $table->boolean('tem_relacao_turma')->default(false);
         });
     }
 
@@ -24,6 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('series');
+        Schema::table('funcao_administrativa', function (Blueprint $table) {
+            $table->dropColumn('tem_relacao_turma');
+        });
     }
 };

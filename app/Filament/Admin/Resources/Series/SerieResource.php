@@ -6,7 +6,9 @@ use App\Filament\Admin\Resources\Series\Pages\ManageSeries;
 use App\Models\Serie;
 use BackedEnum;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Select;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
@@ -46,20 +48,35 @@ class SerieResource extends Resource
         return $schema
             ->components([
 
-                TextInput::make('codigo')
-                    ->label('Código')
-                    ->required()
-                    ->maxLength(3)
-                    ->minLength(3),
+                Section::make('Dados da Série')
+                    ->schema([
+                        TextInput::make('codigo')
+                            ->label('Código')
+                            ->required()
+                            ->maxLength(255)
+                            ->unique(ignoreRecord: true)
+                            ->placeholder('Ex: SER001'),
 
-                TextInput::make('nome')
-                    ->label('Nome:')
-                    ->required()
-                    ->minLength(3)
-                    ->maxLength(100)
-                    ->rule('regex:/^[\p{L}\p{N}]+(?: [\p{L}\p{N}]+)*$/u')
-                    ->validationMessages([
-                        'regex' => 'Use apenas letras, sem caracteres especiais.',
+                        TextInput::make('nome')
+                            ->label('Nome')
+                            ->required()
+                            ->maxLength(255)
+                            ->unique(ignoreRecord: true)
+                            ->placeholder('Ex: 1º Ano, 2º Ano, etc.'),
+                    ])
+                    ->columns(2),
+
+                Section::make('Componentes Curriculares')
+                    ->schema([
+                        Select::make('componentesCurriculares')
+                            ->label('Componentes')
+                            ->relationship('componentesCurriculares', 'nome')
+                            ->multiple()
+                            ->preload()
+                            ->searchable()
+                            ->placeholder('Selecione os componentes desta série')
+                            ->helperText('Ex: Português, Matemática, História...')
+                            ->columnSpanFull(),
                     ]),
             ]);
     }

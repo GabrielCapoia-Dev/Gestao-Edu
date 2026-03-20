@@ -13,15 +13,12 @@ return new class extends Migration
     {
         Schema::create('turmas', function (Blueprint $table) {
             $table->id();
-            $table->string('codigo')->nullable()->min(3)->max(3);
-            $table->foreignId('id_serie')->constrained('series')->restrictOnDelete();
-            $table->foreignId('id_escola')->constrained('escolas')->restrictOnDelete();
-            $table->string('turma')->max(1);
-            $table->enum('turno', ['Manhã', 'Tarde','Noite', 'Integral']);
-
+            $table->string('codigo')->unique();
+            $table->string('nome');
+            $table->enum('turno', ['manha', 'tarde', 'noite', 'integral']);
+            $table->foreignId('id_serie')->constrained('series')->cascadeOnDelete();
+            $table->foreignId('id_escola')->constrained('escolas')->cascadeOnDelete();
             $table->timestamps();
-            
-            $table->unique(['id_escola', 'id_serie', 'turno', 'turma'], 'turma_unica_por_contexto');
         });
     }
 
