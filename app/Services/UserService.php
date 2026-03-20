@@ -375,13 +375,6 @@ class UserService
                 $turmaQuery->where('id_escola', $user->id_escola);
             });
         }
-
-        $query->where(function (Builder $q) {
-            $q->whereHas('laudos')
-                ->orWhereNotNull('id_professor')
-                ->orWhere('frequenta_srm', true);
-        });
-
         return $query;
     }
 
