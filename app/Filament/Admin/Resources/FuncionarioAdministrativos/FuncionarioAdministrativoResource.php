@@ -106,19 +106,19 @@ class FuncionarioAdministrativoResource extends Resource
                     ->schema([
                         TextEntry::make('nome_display')
                             ->label('Nome')
-                            ->content(fn(?Professor $record) => $record?->nome ?? '—'),
+                            ->state(fn(?Professor $record) => $record?->nome ?? '—'),
 
                         TextEntry::make('matricula_display')
                             ->label('Matrícula')
-                            ->content(fn(?Professor $record) => $record?->matricula ?? '—'),
+                            ->state(fn(?Professor $record) => $record?->matricula ?? '—'),
 
                         TextEntry::make('escola_display')
                             ->label('Escola')
-                            ->content(fn(?Professor $record) => $record?->escola?->nome ?? '—'),
+                            ->state(fn(?Professor $record) => $record?->escola?->nome ?? '—'),
 
                         TextEntry::make('email_display')
                             ->label('E-mail')
-                            ->content(fn(?Professor $record) => $record?->email ?? 'Não informado'),
+                            ->state(fn(?Professor $record) => $record?->email ?? 'Não informado'),
                     ])
                     ->columns(2)
                     ->visible(fn(?Professor $record) => $record !== null),
