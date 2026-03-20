@@ -296,39 +296,39 @@ class DatabaseSeeder extends Seeder
             );
         }
 
-        // /**
-        //  * Séries
-        //  */
-        // $seriesList = [
-        //     'BERÇÁRIO',
-        //     '1ª Etapa',
-        //     '2ª Etapa',
-        //     'JARDIM',
-        //     'MATERNAL I',
-        //     'MATERNAL II',
-        //     'Infantil 4',
-        //     'Infantil 5',
-        //     '1º Ano',
-        //     '2º Ano',
-        //     '3º Ano',
-        //     '4º Ano',
-        //     '5º Ano',
-        // ];
+        /**
+         * Séries
+         */
+        $seriesList = [
+            'BERÇÁRIO',
+            '1ª Etapa',
+            '2ª Etapa',
+            'Infantil 1',
+            'Infantil 2',
+            'Infantil 3',
+            'Infantil 4',
+            'Infantil 5',
+            '1º Ano',
+            '2º Ano',
+            '3º Ano',
+            '4º Ano',
+            '5º Ano',
+        ];
 
-        // foreach ($seriesList as $seriesName) {
+        foreach ($seriesList as $seriesName) {
 
-        //     $codigo = $this->gerarCodigoSerie($seriesName);
+            $codigo = $this->gerarCodigoSerie($seriesName);
 
-        //     // se codigo existir, ignora
-        //     if ($codigo && Serie::where('codigo', $codigo)->exists()) {
-        //         continue;
-        //     }
+            // se codigo existir, ignora
+            if ($codigo && Serie::where('codigo', $codigo)->exists()) {
+                continue;
+            }
 
-        //     Serie::updateOrCreate(
-        //         ['nome' => $seriesName],
-        //         ['codigo' => $codigo]
-        //     );
-        // }
+            Serie::updateOrCreate(
+                ['nome' => $seriesName],
+                ['codigo' => $codigo]
+            );
+        }
 
         // /**
         //  * Laudos
