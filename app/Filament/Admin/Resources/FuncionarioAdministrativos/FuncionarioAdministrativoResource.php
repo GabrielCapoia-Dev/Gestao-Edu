@@ -97,6 +97,7 @@ class FuncionarioAdministrativoResource extends Resource
                             ->helperText('Apenas professores sem função administrativa são listados')
                             ->columnSpanFull(),
                     ])
+                    ->columnSpanFull()
                     ->visible(fn(?Professor $record) => $record === null),
                 // Formulário de EDIÇÃO - mostra dados do professor (readonly)
                 // Section::make('Dados do Professor')
@@ -248,6 +249,7 @@ class FuncionarioAdministrativoResource extends Resource
                             })
                             ->columnSpanFull(),
                     ])
+                    ->columnSpanFull()
                     ->columns(2),
 
                 // Campo oculto para armazenar id_escola (usado nas options de turmas)
