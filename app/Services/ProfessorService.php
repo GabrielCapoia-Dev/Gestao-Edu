@@ -96,6 +96,7 @@ class ProfessorService
                             })
                             ->placeholder('(00) 00000-0000'),
                     ])
+                    ->columnSpanFull()
                     ->columns(2),
             ]);
     }
