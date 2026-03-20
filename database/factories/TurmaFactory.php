@@ -17,7 +17,7 @@ class TurmaFactory extends Factory
             'nome' => fake()->randomElement(['A', 'B', 'C', 'D', 'E']),
             'turno' => fake()->randomElement(['manha', 'tarde', 'noite']),
             'id_serie' => Serie::inRandomOrder()->value('id') ?? Serie::factory(),
-            'id_escola' => Escola::inRandomOrder()->value('id') ?? Escola::factory(),
+            'id_escola' => Escola::inRandomOrder()->value('id'),
         ];
     }
 }

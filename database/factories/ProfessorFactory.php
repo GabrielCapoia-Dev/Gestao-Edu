@@ -12,7 +12,7 @@ class ProfessorFactory extends Factory
     {
         $nome = fake()->name();
         $slug = Str::slug($nome, '.');
-        $escolaId = Escola::inRandomOrder()->value('id') ?? Escola::factory();
+        $escolaId = Escola::inRandomOrder()->value('id');
 
         return [
             'id_escola' => $escolaId,
