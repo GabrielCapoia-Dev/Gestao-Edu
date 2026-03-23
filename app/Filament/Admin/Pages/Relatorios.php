@@ -34,7 +34,7 @@ class Relatorios extends Page implements HasTable
     protected static ?string $navigationLabel = 'Relatórios';
     protected static ?string $title = 'Relatório de Turmas';
     protected static string|UnitEnum|null $navigationGroup = 'Gestão Escolar';
-    protected static string $view = 'filament.pages.relatorios';
+    protected string $view = 'filament.pages.relatorios';
 
     public static function canAccess(): bool
     {
