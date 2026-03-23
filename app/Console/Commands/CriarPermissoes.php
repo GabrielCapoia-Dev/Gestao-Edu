@@ -23,6 +23,7 @@ class CriarPermissoes extends Command
             'Excluir Itens',
             'Visualizar Histórico dos Alunos',
             'Visualizar Professores',
+            'Visualizar Notificações',
 
             'Listar Alunos',
             'Listar Relatórios',
