@@ -319,6 +319,8 @@
 
 /* ── Lista de turmas do professor (modal de visualização) ── */
 
+
+
 .prof-turmas-list {
     display: flex;
     flex-direction: column;
@@ -332,29 +334,16 @@
     border-radius: 0.5rem;
 }
 
-.dark .prof-turma-card {
-    background-color: #1f2937;
-    border-color: #374151;
-}
-
 .prof-turma-title {
     font-weight: 600;
     color: #2563eb;
     margin-bottom: 0.25rem;
 }
 
-.dark .prof-turma-title {
-    color: #60a5fa;
-}
-
 .prof-turma-info {
     font-size: 0.875rem;
     color: #4b5563;
     margin-top: 0.125rem;
-}
-
-.dark .prof-turma-info {
-    color: #9ca3af;
 }
 
 .prof-turma-label {

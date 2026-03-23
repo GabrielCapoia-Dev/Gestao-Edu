@@ -240,9 +240,7 @@ class ProfessorService
                         ->schema([
                             \Filament\Infolists\Components\TextEntry::make('turmas_lista')
                                 ->label('')
-                                ->getStateUsing(function ($record) {
-                                    return $record->id; // Só precisa retornar algo para o formatStateUsing funcionar
-                                })
+                                ->getStateUsing(fn($record) => $record->id)
                                 ->formatStateUsing(function ($state, $record) {
                                     $turmas = \App\Models\Turma::whereHas('componentes', function ($query) use ($record) {
                                         $query->where('turma_componente_professor.professor_id', $record->id);
@@ -251,11 +249,12 @@ class ProfessorService
                                     }])->get();
 
                                     if ($turmas->isEmpty()) {
-                                        return 'Não leciona em nenhuma turma';
+                                        return new \Illuminate\Support\HtmlString(
+                                            '<p style="color:#6b7280;font-style:italic;">Não leciona em nenhuma turma.</p>'
+                                        );
                                     }
 
-                                    $html = '<div class="prof-turmas-list">';
-
+                                    $rows = '';
                                     foreach ($turmas as $turma) {
                                         $componentes = $turma->componentes->pluck('nome')->join(', ');
                                         $turno = match ($turma->turno) {
@@ -266,27 +265,49 @@ class ProfessorService
                                             default    => $turma->turno,
                                         };
 
-                                        $html .= '
-            <div class="prof-turma-card">
-                <div class="prof-turma-title">
-                    ' . e($turma->serie->nome) . ' - Turma ' . e($turma->nome) . '
-                </div>
-                <div class="prof-turma-info">
-                    <span class="prof-turma-label">Escola:</span> ' . e($turma->escola->nome) . '
-                </div>
-                <div class="prof-turma-info">
-                    <span class="prof-turma-label">Turno:</span> ' . e($turno) . '
-                </div>
-                <div class="prof-turma-info">
-                    <span class="prof-turma-label">Componentes:</span> ' . e($componentes) . '
-                </div>
-            </div>
-        ';
+                                        $rows .= '
+                        <tr style="border-bottom:1px solid #e5e7eb;">
+                            <td style="padding:0.6rem 0.75rem;font-weight:600;color:#1d4ed8;white-space:nowrap;">
+                                ' . e($turma->serie->nome) . ' — Turma ' . e($turma->nome) . '
+                            </td>
+                            <td style="padding:0.6rem 0.75rem;color:#374151;">
+                                ' . e($turma->escola->nome) . '
+                            </td>
+                            <td style="padding:0.6rem 0.75rem;color:#374151;white-space:nowrap;">
+                                ' . e($turno) . '
+                            </td>
+                            <td style="padding:0.6rem 0.75rem;color:#374151;">
+                                ' . e($componentes) . '
+                            </td>
+                        </tr>
+                    ';
                                     }
 
-                                    $html .= '</div>';
-
-                                    return new \Illuminate\Support\HtmlString($html);
+                                    return new \Illuminate\Support\HtmlString('
+                    <div style="overflow-x:auto;border-radius:0.5rem;border:1px solid #e5e7eb;">
+                        <table style="width:100%;border-collapse:collapse;font-size:0.875rem;">
+                            <thead>
+                                <tr style="background-color:#eff6ff;border-bottom:2px solid #bfdbfe;">
+                                    <th style="padding:0.6rem 0.75rem;text-align:left;font-weight:600;color:#1e40af;white-space:nowrap;">
+                                        Série / Turma
+                                    </th>
+                                    <th style="padding:0.6rem 0.75rem;text-align:left;font-weight:600;color:#1e40af;">
+                                        Escola
+                                    </th>
+                                    <th style="padding:0.6rem 0.75rem;text-align:left;font-weight:600;color:#1e40af;white-space:nowrap;">
+                                        Turno
+                                    </th>
+                                    <th style="padding:0.6rem 0.75rem;text-align:left;font-weight:600;color:#1e40af;">
+                                        Componentes
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody style="background-color:#ffffff;">
+                                ' . $rows . '
+                            </tbody>
+                        </table>
+                    </div>
+                ');
                                 })
                                 ->columnSpanFull(),
                         ]),
