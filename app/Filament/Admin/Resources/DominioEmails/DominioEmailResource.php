@@ -48,8 +48,6 @@ class DominioEmailResource extends Resource
 
     public static ?string $slug = 'dominio-emails';
 
-    protected static ?string $recordTitleAttribute = 'name';
-
     public static function form(Schema $schema): Schema
     {
         return $schema
