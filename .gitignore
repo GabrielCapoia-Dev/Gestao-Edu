@@ -23,3 +23,6 @@ yarn-error.log
 /.zed
 /db_data
 /public/vendor
+/public/js/filament
+/public/css/filament
+/public/fonts/filament
