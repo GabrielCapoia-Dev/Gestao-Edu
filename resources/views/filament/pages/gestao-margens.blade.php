@@ -202,7 +202,8 @@
             border-radius: var(--gm-radius);
             border: 1px solid #e5e7eb;
             background: #fff;
-            overflow: hidden;
+            overflow: visible;
+            /* era hidden — isso bloqueava o scroll das abas */
             margin-top: .5rem;
         }
 
@@ -222,7 +223,7 @@
             gap: 0;
         }
 
-        css.fi-page-content,
+        .fi-page-content,
         .fi-main {
             overflow: visible !important;
         }
@@ -276,6 +277,8 @@
         .gm-table-wrap {
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
+            border-radius: 0 0 var(--gm-radius) var(--gm-radius);
+            /* mantém arredondamento inferior */
         }
 
         .gm-table {
