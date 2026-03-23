@@ -1206,6 +1206,77 @@
         .dark .gm-th-sort-icon--desc .icon-down {
             color: var(--primary-400, #818cf8);
         }
+
+        /* ─── Navegação das abas com setas ─── */
+        .gm-tabs-nav {
+            position: relative;
+            display: flex;
+            align-items: stretch;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .dark .gm-tabs-nav {
+            border-bottom-color: #374151;
+        }
+
+        /* Remove a border-bottom do .gm-tabs para não duplicar */
+        .gm-tabs {
+            border-bottom: none !important;
+            padding: .75rem .25rem 0;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .gm-tabs-arrow {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 2rem;
+            border: none;
+            background: #fff;
+            color: #6b7280;
+            cursor: pointer;
+            transition: color var(--gm-trans), background var(--gm-trans);
+            z-index: 1;
+        }
+
+        .dark .gm-tabs-arrow {
+            background: #111827;
+            color: #9ca3af;
+        }
+
+        .gm-tabs-arrow:hover {
+            color: #111827;
+            background: #f3f4f6;
+        }
+
+        .dark .gm-tabs-arrow:hover {
+            color: #f9fafb;
+            background: #1f2937;
+        }
+
+        .gm-tabs-arrow svg {
+            width: .625rem;
+            height: .625rem;
+        }
+
+        /* Sombra suave indicando que há mais conteúdo */
+        .gm-tabs-arrow--left {
+            box-shadow: 4px 0 8px rgba(0, 0, 0, .06);
+        }
+
+        .gm-tabs-arrow--right {
+            box-shadow: -4px 0 8px rgba(0, 0, 0, .06);
+        }
+
+        .dark .gm-tabs-arrow--left {
+            box-shadow: 4px 0 8px rgba(0, 0, 0, .2);
+        }
+
+        .dark .gm-tabs-arrow--right {
+            box-shadow: -4px 0 8px rgba(0, 0, 0, .2);
+        }
     </style>
 
     {{-- ================================================================= --}}
@@ -1231,17 +1302,59 @@
     {{-- ================================================================= --}}
     <div class="gm-panel">
 
-        {{-- Abas --}}
-        <div class="gm-tabs" role="tablist">
-            @foreach ($this->abas as $aba)
+        {{-- Abas com navegação por setas --}}
+        <div class="gm-tabs-nav" x-data="{
+    canLeft: false,
+    canRight: false,
+    check() {
+        const el = this.$refs.tabs;
+        this.canLeft  = el.scrollLeft > 1;
+        this.canRight = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+    },
+    scroll(dir) {
+        const el   = this.$refs.tabs;
+        const item = el.querySelector('.gm-tab');
+        const step = item ? item.offsetWidth + 8 : 120;
+        el.scrollBy({ left: dir * step, behavior: 'smooth' });
+    }
+}" x-init="check(); $refs.tabs.addEventListener('scroll', () => check())">
+
             <button
-                wire:click="mudarAba('{{ $aba['value'] }}')"
-                class="gm-tab {{ $abaAtiva === $aba['value'] ? 'gm-tab--active' : '' }}"
-                role="tab"
-                aria-selected="{{ $abaAtiva === $aba['value'] ? 'true' : 'false' }}">
-                {{ $aba['label'] }}
+                class="gm-tabs-arrow gm-tabs-arrow--left"
+                x-show="canLeft"
+                x-transition.opacity
+                @click="scroll(-1)"
+                aria-label="Rolar abas para a esquerda"
+                type="button">
+                <svg viewBox="0 0 6 10" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 1L1 5l4 4" />
+                </svg>
             </button>
-            @endforeach
+
+            <div class="gm-tabs" role="tablist" x-ref="tabs">
+                @foreach ($this->abas as $aba)
+                <button
+                    wire:click="mudarAba('{{ $aba['value'] }}')"
+                    class="gm-tab {{ $abaAtiva === $aba['value'] ? 'gm-tab--active' : '' }}"
+                    role="tab"
+                    aria-selected="{{ $abaAtiva === $aba['value'] ? 'true' : 'false' }}">
+                    {{ $aba['label'] }}
+                </button>
+                @endforeach
+            </div>
+
+            <button
+                class="gm-tabs-arrow gm-tabs-arrow--right"
+                x-show="canRight"
+                x-transition.opacity
+                @click="scroll(1)"
+                aria-label="Rolar abas para a direita"
+                type="button">
+                <svg viewBox="0 0 6 10" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 1l4 4-4 4" />
+                </svg>
+            </button>
+
         </div>
 
         {{-- Tabela --}}
