@@ -247,7 +247,7 @@
             font-style: italic;
             font-weight: 400;
             font-size: 56px;
-            color: #C8820A;
+            color: #F5A623;
             letter-spacing: -0.02em;
             line-height: 1;
         }
