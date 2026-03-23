@@ -382,7 +382,10 @@ class DatabaseSeeder extends Seeder
 
         // 5. Criar Turmas
         $this->command->info('Criando turmas...');
-        $turmas = Turma::factory(20)->create();
+        if (Turma::count() === 0) {
+            Turma::factory(20)->create();
+        }
+        $turmas = Turma::all();
 
         // 6. Associar Professores aos Componentes das Turmas
         $this->command->info('Associando professores aos componentes das turmas...');
@@ -391,7 +394,7 @@ class DatabaseSeeder extends Seeder
             if ($turma->componentes()->exists()) {
                 continue;
             }
-            
+
             $componentes = $turma->serie->componentesCurriculares;
             $professoresDaEscola = Professor::where('id_escola', $turma->id_escola)->get();
 
