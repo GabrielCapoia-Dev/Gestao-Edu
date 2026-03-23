@@ -1,595 +1,435 @@
 <x-filament-panels::page>
-    <div class="coming-soon-container">
-        <div class="coming-soon-content">
-            <!-- Ícone animado -->
-            <div class="icon-wrapper">
-                <svg class="chart-icon" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <!-- Background circle -->
-                    <circle cx="60" cy="60" r="58" fill="#f0f7ff" stroke="#074F9B" stroke-width="2" />
 
-                    <!-- Grid lines -->
-                    <line x1="20" y1="85" x2="100" y2="85" stroke="#d1e3f5" stroke-width="1" opacity="0.5" />
-                    <line x1="20" y1="70" x2="100" y2="70" stroke="#d1e3f5" stroke-width="1" opacity="0.5" />
-                    <line x1="20" y1="55" x2="100" y2="55" stroke="#d1e3f5" stroke-width="1" opacity="0.5" />
-                    <line x1="20" y1="40" x2="100" y2="40" stroke="#d1e3f5" stroke-width="1" opacity="0.5" />
+    <div class="welcome-root">
 
-                    <!-- Bar 1 -->
-                    <rect class="bar bar-1" x="28" y="55" width="14" height="30" rx="2" fill="#074F9B" />
-                    <rect class="bar-glow bar-1" x="28" y="55" width="14" height="30" rx="2" fill="#074F9B" opacity="0.3" />
+        {{-- HERO --}}
+        <div class="hero">
+            <div class="hero-bg-grid"></div>
+            <div class="hero-bg-glow"></div>
 
-                    <!-- Bar 2 -->
-                    <rect class="bar bar-2" x="48" y="35" width="14" height="50" rx="2" fill="#0a63c4" />
-                    <rect class="bar-glow bar-2" x="48" y="35" width="14" height="50" rx="2" fill="#0a63c4" opacity="0.3" />
+            <div class="hero-inner">
+                <div class="hero-eyebrow">
+                    <span class="pulse-dot"></span>
+                    Sistema Ativo
+                </div>
 
-                    <!-- Bar 3 -->
-                    <rect class="bar bar-3" x="68" y="45" width="14" height="40" rx="2" fill="#074F9B" />
-                    <rect class="bar-glow bar-3" x="68" y="45" width="14" height="40" rx="2" fill="#074F9B" opacity="0.3" />
+                <h1 class="hero-title">
+                    Bem-vindo ao<br>
+                    <span class="hero-title-accent">Gestão Edu</span>
+                </h1>
 
-                    <!-- Bar 4 -->
-                    <rect class="bar bar-4" x="88" y="30" width="14" height="55" rx="2" fill="#0a63c4" />
-                    <rect class="bar-glow bar-4" x="88" y="30" width="14" height="55" rx="2" fill="#0a63c4" opacity="0.3" />
-
-                    <!-- Trend line -->
-                    <path class="trend-line" d="M 35 65 L 55 40 L 75 50 L 95 35" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-
-                    <!-- Trend dots -->
-                    <circle class="trend-dot dot-1" cx="35" cy="65" r="3" fill="#22c55e" />
-                    <circle class="trend-dot dot-2" cx="55" cy="40" r="3" fill="#22c55e" />
-                    <circle class="trend-dot dot-3" cx="75" cy="50" r="3" fill="#22c55e" />
-                    <circle class="trend-dot dot-4" cx="95" cy="35" r="3" fill="#22c55e" />
-
-                    <!-- Arrow up indicator -->
-                    <path class="arrow-up" d="M 105 25 L 110 30 L 105 30 L 105 38 L 103 38 L 103 30 L 98 30 Z" fill="#22c55e" />
-                </svg>
+                <p class="hero-subtitle">
+                    Central de gestão escolar. Acesse rapidamente os módulos do sistema abaixo.
+                </p>
             </div>
-
-            <!-- Conteúdo -->
-            <div class="badge">Em Desenvolvimento</div>
-            <h2 class="title">Dashboard em Breve</h2>
-            <p class="description">
-                Estamos preparando visualizações interativas e relatórios detalhados para você acompanhar os dados do sistema de forma intuitiva e eficiente.
-            </p>
-
-            <!-- Features do que está vindo -->
-            <div class="features-grid">
-                <div class="feature-card">
-                    <div class="feature-icon">📊</div>
-                    <h3>Relatórios Visuais</h3>
-                    <p>Gráficos e indicadores em tempo real</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">📈</div>
-                    <h3>Análises Detalhadas</h3>
-                    <p>Acompanhamento de evolução e métricas</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">🎯</div>
-                    <h3>Insights Personalizados</h3>
-                    <p>Dados segmentados por necessidade</p>
-                </div>
-            </div>
-
-            <!-- Status de desenvolvimento -->
-            <div class="progress-section">
-                <div class="progress-label">
-                    <span>Progresso do Desenvolvimento</span>
-                    <span class="progress-percentage">75%</span>
-                </div>
-                <div class="progress-bar">
-                    <div class="progress-fill"></div>
-                </div>
-            </div>
-
         </div>
+
+        {{-- NAVIGATION CARDS --}}
+        <div class="nav-section">
+            <p class="nav-label">Acesso Rápido</p>
+
+            <div class="nav-grid">
+
+                @can('Listar Pedidos')
+                <a href="{{ route('filament.admin.resources.pedidos.index') }}" class="nav-card nav-card--blue">
+                    <div class="nav-card-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M11.35 3.836c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m8.9-4.414c.376.023.75.05 1.124.08 1.131.094 1.976 1.057 1.976 2.192V16.5A2.25 2.25 0 0 1 18 18.75h-2.25m-7.5-10.5H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V18.75m-7.5-10.5h6.375c.621 0 1.125.504 1.125 1.125v9.375m-8.25-3 1.5 1.5 3-3.75" />
+                        </svg>
+                    </div>
+                    <div class="nav-card-body">
+                        <h3>Pedidos</h3>
+                        <p>Gerencie solicitações de manutenção</p>
+                    </div>
+                    <div class="nav-card-arrow">→</div>
+                </a>
+                @endcan
+
+                @can('Listar Escolas')
+                <a href="{{ route('filament.admin.resources.escolas.index') }}" class="nav-card nav-card--teal">
+                    <div class="nav-card-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Z" />
+                        </svg>
+                    </div>
+                    <div class="nav-card-body">
+                        <h3>Escolas</h3>
+                        <p>Cadastro de unidades escolares</p>
+                    </div>
+                    <div class="nav-card-arrow">→</div>
+                </a>
+                @endcan
+
+                @can('Visualizar Feedback de Pedidos')
+                <a href="{{ route('filament.admin.pages.feedback-pedidos') }}" class="nav-card nav-card--rose">
+                    <div class="nav-card-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" />
+                        </svg>
+                    </div>
+                    <div class="nav-card-body">
+                        <h3>Feedbacks</h3>
+                        <p>Avaliações dos pedidos concluídos</p>
+                    </div>
+                    <div class="nav-card-arrow">→</div>
+                </a>
+                @endcan
+
+                @can('Listar Usuários')
+                <a href="{{ route('filament.admin.resources.usuarios.index') }}" class="nav-card nav-card--slate">
+                    <div class="nav-card-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                        </svg>
+                    </div>
+                    <div class="nav-card-body">
+                        <h3>Usuários</h3>
+                        <p>Controle de acesso e permissões</p>
+                    </div>
+                    <div class="nav-card-arrow">→</div>
+                </a>
+                @endcan
+
+                @can('Listar Empresa Contratada')
+                <a href="{{ route('filament.admin.resources.empresas-contratadas.index') }}" class="nav-card nav-card--orange">
+                    <div class="nav-card-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 0 0 .75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 0 0-3.413-.387m4.5 8.006c-.194.165-.42.295-.673.38A23.978 23.978 0 0 1 12 15.75c-2.648 0-5.195-.429-7.577-1.22a2.016 2.016 0 0 1-.673-.38m0 0A2.18 2.18 0 0 1 3 12.489V8.706c0-1.081.768-2.015 1.837-2.175a48.111 48.111 0 0 1 3.413-.387m7.5 0V5.25A2.25 2.25 0 0 0 13.5 3h-3a2.25 2.25 0 0 0-2.25 2.25v.894m7.5 0a48.667 48.667 0 0 0-7.5 0M12 12.75h.008v.008H12v-.008Z" />
+                        </svg>
+                    </div>
+                    <div class="nav-card-body">
+                        <h3>Empresas</h3>
+                        <p>Empresas contratadas e parceiros</p>
+                    </div>
+                    <div class="nav-card-arrow">→</div>
+                </a>
+                @endcan
+
+                @can('Listar Níveis de Acesso')
+                <a href="{{ route('filament.admin.resources.niveis-de-acesso.index') }}" class="nav-card nav-card--purple">
+                    <div class="nav-card-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
+                        </svg>
+                    </div>
+                    <div class="nav-card-body">
+                        <h3>Níveis de Acesso</h3>
+                        <p>Roles e permissões do sistema</p>
+                    </div>
+                    <div class="nav-card-arrow">→</div>
+                </a>
+                @endcan
+
+                @can('Listar Dominios de Email')
+                <a href="{{ route('filament.admin.resources.dominio-emails.index') }}" class="nav-card nav-card--amber">
+                    <div class="nav-card-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+                        </svg>
+                    </div>
+                    <div class="nav-card-body">
+                        <h3>Domínios de E-mail</h3>
+                        <p>Domínios permitidos para acesso</p>
+                    </div>
+                    <div class="nav-card-arrow">→</div>
+                </a>
+                @endcan
+
+                {{-- ════════════════════════════════════════════════════
+                     EM DESENVOLVIMENTO — descomentar quando prontos
+                     ════════════════════════════════════════════════════ --}}
+
+                {{--
+                @can('Listar Alunos')
+                <a href="{{ route('filament.admin.grupo-alunos.resources.alunos.index') }}" class="nav-card nav-card--green">
+                    <div class="nav-card-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4.26 10.147a60.438 60.438 0 0 0-.491 6.347A48.62 48.62 0 0 1 12 20.904a48.62 48.62 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.636 50.636 0 0 0-2.658-.813A59.906 59.906 0 0 1 12 3.493a59.903 59.903 0 0 1 10.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0 1 12 13.489a50.702 50.702 0 0 1 3.741-3.342M6.75 15a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 0v-3.675A55.378 55.378 0 0 1 12 8.443m-7.007 11.55A5.981 5.981 0 0 0 6.75 15.75v-1.5" />
+                        </svg>
+                    </div>
+                    <div class="nav-card-body">
+                        <h3>Alunos</h3>
+                        <p>Cadastro e acompanhamento escolar</p>
+                    </div>
+                    <div class="nav-card-arrow">→</div>
+                </a>
+                @endcan
+
+                @can('Listar Turmas')
+                <a href="{{ route('filament.admin.resources.turmas.index') }}" class="nav-card nav-card--amber">
+                    <div class="nav-card-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z" />
+                        </svg>
+                    </div>
+                    <div class="nav-card-body">
+                        <h3>Turmas</h3>
+                        <p>Organização de turmas e séries</p>
+                    </div>
+                    <div class="nav-card-arrow">→</div>
+                </a>
+                @endcan
+
+                @can('Listar Professores')
+                <a href="{{ route('filament.admin.resources.professores.index') }}" class="nav-card nav-card--purple">
+                    <div class="nav-card-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
+                        </svg>
+                    </div>
+                    <div class="nav-card-body">
+                        <h3>Professores</h3>
+                        <p>Gestão do corpo docente</p>
+                    </div>
+                    <div class="nav-card-arrow">→</div>
+                </a>
+                @endcan
+                --}}
+
+            </div>
+        </div>
+
     </div>
 
     <style>
-        .coming-soon-container {
+        /* ─── RESET LOCAL ─────────────────────────────────────── */
+        .welcome-root *,
+        .welcome-root *::before,
+        .welcome-root *::after {
+            box-sizing: border-box;
+        }
+
+        .welcome-root {
+            font-family: 'Georgia', 'Times New Roman', serif;
+        }
+
+        /* ─── HERO ────────────────────────────────────────────── */
+        .hero {
             position: relative;
-            width: 100%;
-            height: calc(100vh - 200px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: linear-gradient(135deg, #f0f7ff 0%, #e6f2ff 100%);
-            border-radius: 0.75rem;
-            padding: 2rem 1.5rem;
             overflow: hidden;
+            border-radius: 1.25rem;
+            padding: 3.5rem 2.5rem 3rem;
+            margin-bottom: 2rem;
+            background: linear-gradient(135deg, #0c1e3e 0%, #0f2d5e 50%, #0a1f45 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
-        .dark .coming-soon-container {
-            background: linear-gradient(135deg, rgb(17 24 39) 0%, rgb(31 41 55) 100%);
+        .hero-bg-grid {
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            mask-image: radial-gradient(ellipse at center, black 40%, transparent 80%);
         }
 
-        .coming-soon-content {
-            max-width: 900px;
-            width: 100%;
-            text-align: center;
-            animation: fadeInUp 0.6s ease-out;
+        .hero-bg-glow {
+            position: absolute;
+            top: -80px;
+            right: -60px;
+            width: 400px;
+            height: 400px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(14, 99, 196, 0.25) 0%, transparent 70%);
+            pointer-events: none;
         }
 
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        .hero-inner {
+            position: relative;
+            z-index: 1;
+            max-width: 640px;
         }
 
-        /* Ícone animado */
-        .icon-wrapper {
-            margin-bottom: 1.5rem;
-            animation: float 3s ease-in-out infinite;
-            display: flex;
-            justify-content: center;
+        .hero-eyebrow {
+            display: inline-flex;
             align-items: center;
-        }
-
-        @keyframes float {
-
-            0%,
-            100% {
-                transform: translateY(0);
-            }
-
-            50% {
-                transform: translateY(-10px);
-            }
-        }
-
-        .chart-icon {
-            width: 120px;
-            height: 120px;
-            filter: drop-shadow(0 4px 12px rgba(7, 79, 155, 0.2));
-        }
-
-        .dark .chart-icon circle:first-child {
-            fill: rgb(31 41 55);
-            stroke: #60a5fa;
-        }
-
-        .dark .chart-icon line {
-            stroke: #374151;
-        }
-
-        .dark .chart-icon .bar {
-            fill: #3b82f6;
-        }
-
-        .dark .chart-icon .bar:nth-child(even) {
-            fill: #60a5fa;
-        }
-
-        /* Animação das barras crescendo */
-        .bar {
-            animation: growBar 1.5s ease-out forwards;
-            transform-origin: bottom;
-        }
-
-        .bar-1 {
-            animation-delay: 0.1s;
-        }
-
-        .bar-2 {
-            animation-delay: 0.2s;
-        }
-
-        .bar-3 {
-            animation-delay: 0.3s;
-        }
-
-        .bar-4 {
-            animation-delay: 0.4s;
-        }
-
-        @keyframes growBar {
-            from {
-                transform: scaleY(0);
-                opacity: 0;
-            }
-
-            to {
-                transform: scaleY(1);
-                opacity: 1;
-            }
-        }
-
-        /* Glow das barras */
-        .bar-glow {
-            animation: glowPulse 2s ease-in-out infinite;
-        }
-
-        .bar-glow.bar-1 {
-            animation-delay: 0.1s;
-        }
-
-        .bar-glow.bar-2 {
-            animation-delay: 0.3s;
-        }
-
-        .bar-glow.bar-3 {
-            animation-delay: 0.5s;
-        }
-
-        .bar-glow.bar-4 {
-            animation-delay: 0.7s;
-        }
-
-        @keyframes glowPulse {
-
-            0%,
-            100% {
-                opacity: 0.2;
-                transform: scale(1);
-            }
-
-            50% {
-                opacity: 0.4;
-                transform: scale(1.05);
-            }
-        }
-
-        /* Linha de tendência animada */
-        .trend-line {
-            stroke-dasharray: 200;
-            stroke-dashoffset: 200;
-            animation: drawLine 2s ease-out 0.5s forwards;
-        }
-
-        @keyframes drawLine {
-            to {
-                stroke-dashoffset: 0;
-            }
-        }
-
-        /* Pontos da linha de tendência */
-        .trend-dot {
-            animation: popDot 0.5s ease-out forwards;
-            transform-origin: center;
-            opacity: 0;
-        }
-
-        .dot-1 {
-            animation-delay: 0.7s;
-        }
-
-        .dot-2 {
-            animation-delay: 0.9s;
-        }
-
-        .dot-3 {
-            animation-delay: 1.1s;
-        }
-
-        .dot-4 {
-            animation-delay: 1.3s;
-        }
-
-        @keyframes popDot {
-            0% {
-                transform: scale(0);
-                opacity: 0;
-            }
-
-            50% {
-                transform: scale(1.2);
-            }
-
-            100% {
-                transform: scale(1);
-                opacity: 1;
-            }
-        }
-
-        /* Seta de crescimento */
-        .arrow-up {
-            animation: bounceArrow 1s ease-in-out 1.5s infinite;
-        }
-
-        @keyframes bounceArrow {
-
-            0%,
-            100% {
-                transform: translateY(0);
-            }
-
-            50% {
-                transform: translateY(-3px);
-            }
-        }
-
-        /* Badge */
-        .badge {
-            display: inline-block;
-            background: linear-gradient(135deg, #074F9B 0%, #0a63c4 100%);
-            color: white;
-            padding: 0.4rem 1.2rem;
-            border-radius: 50px;
-            font-size: 0.8rem;
+            gap: 0.5rem;
+            color: #86efac;
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
             font-weight: 600;
-            letter-spacing: 0.5px;
-            margin-bottom: 1rem;
+            letter-spacing: 0.12em;
             text-transform: uppercase;
-            box-shadow: 0 4px 12px rgba(7, 79, 155, 0.3);
-            animation: shimmer 2s ease-in-out infinite;
+            margin-bottom: 1.25rem;
         }
 
-        .dark .badge {
-            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+        .pulse-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #22c55e;
+            animation: pulse-green 2s ease-in-out infinite;
+            flex-shrink: 0;
         }
 
-        @keyframes shimmer {
-
-            0%,
-            100% {
-                box-shadow: 0 4px 12px rgba(7, 79, 155, 0.3);
-            }
-
-            50% {
-                box-shadow: 0 4px 20px rgba(7, 79, 155, 0.5);
-            }
+        @keyframes pulse-green {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); }
+            50%       { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
         }
 
-        /* Título e descrição */
-        .title {
-            font-size: 2rem;
+        .hero-title {
+            font-size: clamp(2rem, 5vw, 3rem);
             font-weight: 700;
-            color: #074F9B;
-            margin-bottom: 0.75rem;
-            line-height: 1.2;
+            color: #f0f6ff;
+            line-height: 1.15;
+            margin: 0 0 1rem;
+            letter-spacing: -0.02em;
         }
 
-        .dark .title {
-            color: #60a5fa;
+        .hero-title-accent {
+            background: linear-gradient(90deg, #60a5fa, #93c5fd, #bfdbfe);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
-        .description {
+        .hero-subtitle {
             font-size: 1rem;
-            color: #4b5563;
-            line-height: 1.6;
-            margin-bottom: 2rem;
-            max-width: 600px;
-            margin-left: auto;
-            margin-right: auto;
+            color: rgba(255, 255, 255, 0.55);
+            line-height: 1.65;
+            margin: 0;
+            font-family: system-ui, sans-serif;
+            font-weight: 400;
         }
 
-        .dark .description {
-            color: #d1d5db;
+        /* ─── NAV SECTION ─────────────────────────────────────── */
+        .nav-section {
+            animation: fadeUp 0.5s ease-out 0.15s both;
         }
 
-        /* Grid de features */
-        .features-grid {
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .nav-label {
+            font-family: 'Courier New', monospace;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: #6b7280;
+            margin: 0 0 1rem 0.25rem;
+        }
+
+        .dark .nav-label { color: #4b5563; }
+
+        .nav-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 0.875rem;
         }
 
-        .feature-card {
-            background: white;
-            padding: 1.5rem 1rem;
-            border-radius: 0.75rem;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-            transition: all 0.3s ease;
-            border: 2px solid transparent;
-        }
-
-        .dark .feature-card {
-            background: rgb(31 41 55);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        }
-
-        .feature-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 20px rgba(7, 79, 155, 0.15);
-            border-color: #074F9B;
-        }
-
-        .dark .feature-card:hover {
-            border-color: #3b82f6;
-            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.2);
-        }
-
-        .feature-icon {
-            font-size: 2rem;
-            margin-bottom: 0.75rem;
-        }
-
-        .feature-card h3 {
-            font-size: 1rem;
-            font-weight: 600;
-            color: #1f2937;
-            margin-bottom: 0.4rem;
-        }
-
-        .dark .feature-card h3 {
-            color: #f9fafb;
-        }
-
-        .feature-card p {
-            font-size: 0.85rem;
-            color: #6b7280;
-            line-height: 1.4;
-        }
-
-        .dark .feature-card p {
-            color: #9ca3af;
-        }
-
-        /* Seção de progresso */
-        .progress-section {
-            background: white;
-            padding: 1.25rem 1.5rem;
-            border-radius: 0.75rem;
-            margin-bottom: 0;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-        }
-
-        .dark .progress-section {
-            background: rgb(31 41 55);
-        }
-
-        .progress-label {
+        /* ─── NAV CARD ────────────────────────────────────────── */
+        .nav-card {
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            margin-bottom: 0.75rem;
-            font-size: 0.875rem;
-            font-weight: 600;
-            color: #374151;
-        }
-
-        .dark .progress-label {
-            color: #e5e7eb;
-        }
-
-        .progress-percentage {
-            color: #074F9B;
-            font-size: 1rem;
-        }
-
-        .dark .progress-percentage {
-            color: #60a5fa;
-        }
-
-        .progress-bar {
-            width: 100%;
-            height: 8px;
-            background: #e5e7eb;
-            border-radius: 50px;
-            overflow: hidden;
-        }
-
-        .dark .progress-bar {
-            background: rgb(55 65 81);
-        }
-
-        .progress-fill {
-            width: 75%;
-            height: 100%;
-            background: linear-gradient(90deg, #074F9B 0%, #0a63c4 100%);
-            border-radius: 50px;
-            animation: progressAnimation 2s ease-out;
-        }
-
-        .dark .progress-fill {
-            background: linear-gradient(90deg, #1e40af 0%, #3b82f6 100%);
-        }
-
-        @keyframes progressAnimation {
-            from {
-                width: 0;
-            }
-
-            to {
-                width: 75%;
-            }
-        }
-
-        /* Call to action */
-        .cta-section {
-            margin-top: 2rem;
-        }
-
-        .cta-text {
-            color: #6b7280;
-            font-size: 0.95rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .dark .cta-text {
-            color: #9ca3af;
-        }
-
-        .btn-primary {
-            display: inline-block;
-            background: linear-gradient(135deg, #074F9B 0%, #0a63c4 100%);
-            color: white;
+            gap: 1rem;
+            padding: 1.1rem 1.25rem;
+            border-radius: 0.875rem;
             text-decoration: none;
-            padding: 0.875rem 2.5rem;
-            border-radius: 0.75rem;
-            font-size: 1rem;
+            border: 1.5px solid transparent;
+            background: white;
+            transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07), 0 1px 2px rgba(0, 0, 0, 0.04);
+        }
+
+        .dark .nav-card {
+            background: rgb(17 24 39);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        .nav-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.1);
+        }
+
+        .nav-card-icon {
+            flex-shrink: 0;
+            width: 42px;
+            height: 42px;
+            border-radius: 0.625rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .nav-card-icon svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .nav-card-body {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .nav-card-body h3 {
+            font-family: system-ui, sans-serif;
+            font-size: 0.925rem;
             font-weight: 600;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 12px rgba(7, 79, 155, 0.3);
+            color: #111827;
+            margin: 0 0 0.2rem;
+            line-height: 1.3;
         }
 
-        .dark .btn-primary {
-            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+        .dark .nav-card-body h3 { color: #f3f4f6; }
+
+        .nav-card-body p {
+            font-family: system-ui, sans-serif;
+            font-size: 0.78rem;
+            color: #6b7280;
+            margin: 0;
+            line-height: 1.4;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
-        .btn-primary:hover {
-            background: linear-gradient(135deg, #063d7a 0%, #0851a0 100%);
-            box-shadow: 0 6px 16px rgba(7, 79, 155, 0.4);
-            transform: translateY(-2px);
+        .dark .nav-card-body p { color: #9ca3af; }
+
+        .nav-card-arrow {
+            font-size: 1rem;
+            opacity: 0;
+            transform: translateX(-4px);
+            transition: opacity 0.18s ease, transform 0.18s ease;
+            flex-shrink: 0;
         }
 
-        .dark .btn-primary:hover {
-            background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+        .nav-card:hover .nav-card-arrow {
+            opacity: 1;
+            transform: translateX(0);
         }
 
-        /* Responsividade */
-        @media (max-width: 768px) {
-            .coming-soon-container {
-                min-height: calc(100vh - 140px);
-                padding: 2rem 1rem;
-            }
+        /* ─── COLOR VARIANTS ──────────────────────────────────── */
+        .nav-card--blue   { --c: #2563eb; --ic: #dbeafe; }
+        .nav-card--green  { --c: #16a34a; --ic: #dcfce7; }
+        .nav-card--amber  { --c: #d97706; --ic: #fef3c7; }
+        .nav-card--purple { --c: #7c3aed; --ic: #ede9fe; }
+        .nav-card--teal   { --c: #0d9488; --ic: #ccfbf1; }
+        .nav-card--rose   { --c: #e11d48; --ic: #ffe4e6; }
+        .nav-card--slate  { --c: #475569; --ic: #e2e8f0; }
+        .nav-card--orange { --c: #ea580c; --ic: #fed7aa; }
 
-            .title {
-                font-size: 2rem;
-            }
+        .nav-card:hover   { border-color: var(--c); }
+        .nav-card-icon    { background: var(--ic); color: var(--c); }
+        .nav-card-arrow   { color: var(--c); }
 
-            .description {
-                font-size: 1rem;
-                margin-bottom: 2rem;
-            }
+        .dark .nav-card--blue   { --ic: rgba(37, 99, 235, 0.18); }
+        .dark .nav-card--green  { --ic: rgba(22, 163, 74, 0.18); }
+        .dark .nav-card--amber  { --ic: rgba(217, 119, 6, 0.18); }
+        .dark .nav-card--purple { --ic: rgba(124, 58, 237, 0.18); }
+        .dark .nav-card--teal   { --ic: rgba(13, 148, 136, 0.18); }
+        .dark .nav-card--rose   { --ic: rgba(225, 29, 72, 0.18); }
+        .dark .nav-card--slate  { --ic: rgba(71, 85, 105, 0.18); }
+        .dark .nav-card--orange { --ic: rgba(234, 88, 12, 0.18); }
 
-            .chart-icon {
-                width: 80px;
-                height: 80px;
-            }
-
-            .features-grid {
-                grid-template-columns: 1fr;
-                gap: 1rem;
-                margin-bottom: 2rem;
-            }
-
-            .feature-card {
-                padding: 1.5rem 1rem;
-            }
-
-            .progress-section {
-                padding: 1.25rem 1.5rem;
-            }
-
-            .btn-primary {
-                width: 100%;
-                padding: 1rem 2rem;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .title {
-                font-size: 1.75rem;
-            }
-
-            .badge {
-                font-size: 0.75rem;
-                padding: 0.4rem 1.2rem;
-            }
-
-            .feature-icon {
-                font-size: 2rem;
-            }
-
-            .feature-card h3 {
-                font-size: 1rem;
-            }
+        /* ─── RESPONSIVE ──────────────────────────────────────── */
+        @media (max-width: 640px) {
+            .hero { padding: 2.5rem 1.5rem 2rem; }
+            .nav-grid { grid-template-columns: 1fr; }
         }
     </style>
+
 </x-filament-panels::page>

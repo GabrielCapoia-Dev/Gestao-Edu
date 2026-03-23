@@ -13,23 +13,20 @@ return new class extends Migration
     {
         Schema::create('professores', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('id_escola')->constrained('escolas')->onDelete('cascade');
-            $table->string('matricula')->nullable()->unique();
+
+            $table->foreignId('id_escola')
+                ->constrained('escolas')
+                ->cascadeOnDelete();
+
+            $table->string('matricula');
             $table->string('nome');
             $table->string('email')->nullable();
-            $table->enum('especializacao', [
-                'Magisterio' => 'Magisterio',
-                'Licenciatura' => 'Licenciatura',
-                'Bacharelado' => 'Bacharelado',
-                'Pos Graduacao' => 'Pos Graduacao',
-                'Doutorado' => 'Doutorado',
-                'Mestrado' => 'Mestrado',
-            ])->nullable();
-            $table->enum('turno', ['Manhã', 'Tarde','Noite'])->nullable();
-            $table->boolean('professor_srm');
-            $table->boolean('profissional_apoio');
-            $table->boolean('especializacao_educacao_especial')->nullable();
+            $table->string('telefone')->nullable();
+
             $table->timestamps();
+
+            // 🔐 UNIQUE composta (regra principal)
+            $table->unique(['id_escola', 'matricula']);
         });
     }
 
@@ -38,6 +35,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('professores');
+        Schema::dropIfExists('professors');
     }
 };

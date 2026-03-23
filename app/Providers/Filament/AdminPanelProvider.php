@@ -15,18 +15,20 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
-use Hasnayeen\Themes\ThemesPlugin;
-use Rmsramos\Activitylog\ActivitylogPlugin;
 use Filament\Http\Middleware\Authenticate;
 use App\Livewire\LoginPage;
 use App\Services\UserService;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\LaudoArquivoController;
 use Filament\Actions\Action as GlobalAction;
-use Filament\Navigation\MenuItem;
 use App\Models\User;
 use Filament\View\PanelsRenderHook;
 use Illuminate\Support\Facades\Blade;
+use Caresome\FilamentAuthDesigner\AuthDesignerPlugin;
+use Caresome\FilamentAuthDesigner\Data\AuthPageConfig;
+use Caresome\FilamentAuthDesigner\Enums\MediaPosition;
+use Caresome\FilamentAuthDesigner\View\AuthDesignerRenderHook;
+
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -34,14 +36,26 @@ class AdminPanelProvider extends PanelProvider
     public function panel(Panel $panel): Panel
     {
         return $panel
-            ->routes(function () {})
-            ->default()
             ->id('admin')
             ->path('admin')
-            ->login(LoginPage::class)
+            ->login()
+            ->profile()
             ->spa()
+            ->darkMode(false)
             ->colors([
-                'primary' => Color::Green,
+                'primary' => [
+                    50  => '#e8f1fb',
+                    100 => '#d0e3f7',
+                    200 => '#a2c7ef',
+                    300 => '#73abe7',
+                    400 => '#458fdf',
+                    500 => '#1a6bc7',
+                    600 => '#074f9b',   // ← cor principal
+                    700 => '#053d78',
+                    800 => '#042c56',
+                    900 => '#021b34',
+                    950 => '#010e1a',
+                ],
                 'gray' => [
                     50 => '#e5eaf1ff',
                     100 => '#c7def8c7',
@@ -58,11 +72,11 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->brandLogo(fn() => view('components.logo-admin-do-sistema'))
             ->sidebarCollapsibleOnDesktop()
-            ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
-            ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
-            ->discoverClusters(in: app_path('Filament/Clusters'), for: 'App\\Filament\\Clusters')
+            ->discoverResources(in: app_path('Filament/Admin/Resources'), for: 'App\\Filament\\Admin\\Resources')
+            ->discoverPages(in: app_path('Filament/Admin/Pages'), for: 'App\\Filament\\Admin\\Pages')
+            ->discoverClusters(in: app_path('Filament/Admin/Clusters'), for: 'App\\Filament\\Admin\\Clusters')
             ->pages([])
-            ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
+            ->discoverWidgets(in: app_path('Filament/Admin/Widgets'), for: 'App\\Filament\\Admin\\Widgets')
             ->widgets([])
             ->middleware([
                 EncryptCookies::class,
@@ -74,10 +88,6 @@ class AdminPanelProvider extends PanelProvider
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
-                \Hasnayeen\Themes\Http\Middleware\SetTheme::class
-            ])
-            ->tenantMiddleware([
-                \Hasnayeen\Themes\Http\Middleware\SetTheme::class
             ])
             ->authMiddleware([
                 Authenticate::class,
@@ -89,29 +99,28 @@ class AdminPanelProvider extends PanelProvider
                     $user = User::authUser();
 
                     if ($user->hasPermissionTo('Visualizar Notificações')) {
-
-                        return Blade::render('@livewire("topbar-notifications")');
+                        return view('livewire.topbar-notifications-hook');
                     }
                     return '';
                 }
             )
-            ->userMenuItems([
-                // O logout já vem por padrão, mas você pode customizar
-                'logout' => MenuItem::make()
-                    ->label('Sair'),
-            ])
             ->plugins([
+                AuthDesignerPlugin::make()
+                    ->login(
+                        fn(AuthPageConfig $config) => $config
+                            ->media(asset('images/background.png'))
+                            ->mediaPosition(MediaPosition::Left)
+                            ->renderHook(AuthDesignerRenderHook::MediaOverlay, fn() => view('background-page'))
+                            ->usingPage(LoginPage::class)
+                            ->mediaSize('70%')
+                            ->themeToggle()
 
-
-                ThemesPlugin::make()
-                    ->canViewThemesPage(fn() => false),
-
-                ActivitylogPlugin::make()
-                    ->label('Registro de Atividade')
-                    ->pluralLabel('Registro de Atividades')
-                    ->navigationGroup('Administrativo')
-                    ->navigationSort(1)
-                    ->authorize(fn() => app(UserService::class)->ehAdmin(User::authUser())),
+                    )
+                    ->profile(
+                        fn($config) => $config
+                            ->media(asset('images/background.png'))
+                            ->mediaPosition(MediaPosition::Cover)
+                    )
             ]);
     }
 }

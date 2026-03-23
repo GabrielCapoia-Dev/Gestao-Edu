@@ -15,6 +15,8 @@ return new class extends Migration
             $table->id();
             $table->string('codigo')->nullable()->unique()->min(3)->max(3);
             $table->string('nome');
+            $table->string('email')->nullable()->after('nome');
+            $table->string('telefone')->nullable()->after('email');
             $table->timestamps();
         });
     }

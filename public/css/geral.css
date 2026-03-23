@@ -1,0 +1,351 @@
+/* Deixa o fundo de TODOS os modais/slideOvers bem escuro e com pouco ou nenhum blur */
+
+.fi-modal-close-overlay {
+    /* Fundo quase preto e bem opaco */
+    background-color: rgba(8, 17, 36, 0.541);
+    /* mais escuro ainda */
+
+
+    /* Se quiser tirar totalmente o blur: */
+    backdrop-filter: blur(10px) !important;
+
+    /* Se quiser um leve blur, troca por algo tipo:
+       backdrop-filter: blur(4px) !important;
+    */
+}
+
+/* Opcional: dar um destaque na própria janela do modal */
+.fi-modal-window {
+    border-radius: 0.75rem;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.45);
+}
+
+/* Fundo azulado para os checkboxes de permissões (não marcados) */
+.permissions-checkbox-list label {
+    background-color: rgba(59, 130, 246, 0.05);
+    padding: 0.5rem;
+    border-radius: 0.375rem;
+    transition: all 0.2s;
+}
+
+.permissions-checkbox-list label:hover {
+    background-color: rgba(59, 130, 246, 0.1);
+}
+
+/* ✅ VERSÃO MAIS ABRANGENTE - Checkbox marcado */
+.permissions-checkbox-list label:has(input[type="checkbox"]:checked) {
+    background-color: rgb(37, 99, 235) !important;
+    /* bg-blue-600 */
+    color: white !important;
+    font-weight: 600 !important;
+}
+
+.permissions-checkbox-list label:has(input[type="checkbox"]:checked) span {
+    color: white !important;
+    font-weight: 600 !important;
+}
+
+/* Opcional: remover hover quando marcado */
+.permissions-checkbox-list label:has(input[type="checkbox"]:checked):hover {
+    background-color: rgb(29, 78, 216) !important;
+    /* bg-blue-700 - um pouco mais escuro */
+}
+
+.highlight-latest td {
+    background-color: #e5eaf1ff !important;
+    border-top: 2px solid #074f9bff !important;
+    border-bottom: 2px solid #074f9bff !important;
+}
+
+.highlight-latest td:first-child {
+    border-left: 5px solid #074f9bff !important;
+}
+
+.dark .highlight-latest td {
+    background-color: #081124ff !important;
+    border-top: 2px solid #c7def8c7 !important;
+    border-bottom: 2px solid #c7def8c7 !important;
+}
+
+.dark .highlight-latest td:first-child {
+    border-left: 5px solid #c7def8c7 !important;
+}
+
+.fi-tabs-item[style*="--tab-color"] span,
+.fi-tabs-item[style*="--tab-color"] {
+    color: var(--tab-color) !important;
+}
+
+.tab-todos {
+    margin-right: 20px;
+    border: 1px solid #2563EB !important;
+    background-color: #2563EB20 !important;
+
+}
+
+/* Hover discreto estilo badge para colunas com tooltip */
+.tooltip-hover-effect {
+    display: inline-block;
+    padding: 0.15rem 0.4rem;
+    border-radius: 0.375rem;
+    transition: all 0.18s ease-in-out;
+}
+
+.tooltip-hover-effect:hover {
+    background-color: rgba(148, 163, 184, 0.15);
+    /* cinza neutro suave */
+}
+
+.dark .tooltip-hover-effect:hover {
+    background-color: rgba(203, 213, 225, 0.12);
+}
+
+
+
+.notification-bell {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background-color: #f7eedb;
+    color: #f3f4f6;
+    border-radius: 50%;
+    transition: background-color 0.2s ease;
+    cursor: pointer;
+    border: none;
+}
+
+.notification-bell:hover {
+    background-color: #111827;
+}
+
+.notification-bell:focus-visible {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+}
+
+.notification-badge {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    top: -8px;
+    right: -8px;
+    background-color: #ef4444;
+    color: #ffffff;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: bold;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.modal-notificacoes-container {
+    height: 500px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.modal-notificacoes-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.modal-notificacoes-container::-webkit-scrollbar-track {
+    background: #f3f4f6;
+    border-radius: 10px;
+}
+
+.dark .modal-notificacoes-container::-webkit-scrollbar-track {
+    background: #374151;
+}
+
+.modal-notificacoes-container::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 10px;
+}
+
+.dark .modal-notificacoes-container::-webkit-scrollbar-thumb {
+    background: #6b7280;
+}
+
+.modal-notificacoes-container::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af;
+}
+
+.card-notification {
+    padding: 5px;
+}
+
+.fi-sidebar-nav {
+    background-color: #ffffff;
+    box-shadow: 0 2px 8px #0000007a;
+}
+
+.dark .fi-sidebar-nav {
+    background-color: #0c172ebd;
+    box-shadow: 0 2px 8px #0000007a;
+}
+
+.fi-topbar {
+    background-color: #e7f2ff;
+    box-shadow: 0 2px 8px #0000007a;
+}
+
+.dark .fi-topbar {
+    background-color: #0c172ebd;
+    box-shadow: 0 2px 8px #0000007a;
+}
+
+.fi-ta {
+    border-radius: 0.75rem;
+    box-shadow: 2px 4px 20px #272727e7;
+    background-image: url('/images/fundo_completo.svg');
+    overflow: hidden;
+}
+
+.dark .fi-ta {
+    box-shadow: 2px 4px 20px #000000;
+    overflow: hidden;
+}
+
+
+.fi-ac-btn-action {
+    box-shadow: 2px 4px 20px #000000;
+    overflow: hidden;
+}
+
+.fi-header-heading {
+    padding: 0 0.5rem;
+    border-radius: 0.2rem;
+    background-color: #ffffff;
+
+    box-shadow: 2px 4px 20px #000000;
+    overflow: hidden;
+}
+
+.fi-fo-repeater-item {
+    border: 2px solid #ccc;
+    border-radius: 0.5rem;
+    box-shadow: 1px 2px 5px #ccc;
+}
+
+.dark .fi-header-heading {
+    padding: 0 0.5rem;
+    background-color: #0c172ebd;
+    box-shadow: 2px 4px 20px #000000;
+    overflow: hidden;
+}
+
+/* .fi-main-ctn {
+    background-image: url('/images/fundo_completo.svg');
+} */
+
+.dark .fi-main-ctn {
+    background-color: #0b1731;
+    background-image: none;
+}
+
+.fi-breadcrumbs {
+    padding: 0 0.5rem;
+    border-radius: 0.2rem;
+    background-color: #ffffff;
+
+    box-shadow: 2px 4px 20px #000000;
+    overflow: hidden;
+}
+
+.dark .fi-breadcrumbs {
+    background-color: #0c172ebd;
+
+}
+
+.fi-width-7xl {
+    max-width: 90% !important;
+}
+
+/* .fixar-coluna {
+
+    .fi-ta-table th.fi-ta-actions-header-cell,
+    .fi-ta-table td:last-child {
+        position: sticky;
+        right: 0;
+        z-index: 10;
+        background-color: white;
+    }
+
+    .dark .fi-ta-table th.fi-ta-actions-header-cell,
+    .dark .fi-ta-table td:last-child {
+        background-color: #081124;
+    }
+
+    .fi-ta-table tr.fi-striped td:last-child {
+        background-color: rgb(249 250 251);
+    }
+
+    .dark .fi-ta-table tr.fi-striped td:last-child {
+        background-color: #151D2F;
+    }
+
+
+    .fi-ta-actions-header-cell::after {
+        content: 'Ações';
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+
+    }
+
+    .fi-ta-table th.fi-ta-actions-header-cell,
+    .fi-ta-table td:last-child {
+        border-left: 1px solid rgb(55 65 81);
+    }
+
+    .fi-ta-table td:last-child,
+    .fi-ta-table th.fi-ta-actions-header-cell {
+        border-left: 1px solid rgb(229 231 235);
+    }
+
+    .dark .fi-ta-table td:last-child,
+    .dark .fi-ta-table th.fi-ta-actions-header-cell {
+        border-left: 1px solid rgb(55 65 81);
+    }
+}
+*/
+
+
+/* ── Lista de turmas do professor (modal de visualização) ── */
+
+
+
+.prof-turmas-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.prof-turma-card {
+    padding: 0.75rem;
+    background-color: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+}
+
+.prof-turma-title {
+    font-weight: 600;
+    color: #2563eb;
+    margin-bottom: 0.25rem;
+}
+
+.prof-turma-info {
+    font-size: 0.875rem;
+    color: #4b5563;
+    margin-top: 0.125rem;
+}
+
+.prof-turma-label {
+    font-weight: 500;
+}

@@ -342,10 +342,6 @@ $cores = [
                         <div class="card-value">{{ $empresa->cnpj }}</div>
                     </td>
                     <td>
-                        <div class="card-label">Contrato</div>
-                        <div class="card-value">{{ $empresa->numero_contrato ?? '—' }}</div>
-                    </td>
-                    <td>
                         <div class="card-label">Representante</div>
                         <div class="card-value">{{ $empresa->responsavel ?? '—' }}</div>
                     </td>

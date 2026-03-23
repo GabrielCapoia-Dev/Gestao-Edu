@@ -1,33 +1,78 @@
-<div class="space-y-4">
+<style>
+    .hist-status-wrapper {
+        overflow-x: auto;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+    }
 
-    <table class="w-full text-sm border rounded-lg overflow-hidden">
-        <thead class="bg-gray-100 dark:bg-gray-800">
+    .hist-status-table {
+        width: 100%;
+        font-size: 0.875rem;
+        border-collapse: collapse;
+    }
+
+    .hist-status-table thead {
+        background-color: #f3f4f6;
+    }
+
+    .hist-status-table th {
+        padding: 0.625rem 0.75rem;
+        text-align: left;
+        font-weight: 600;
+        color: #374151;
+        white-space: nowrap;
+    }
+
+    .hist-status-table td {
+        padding: 0.625rem 0.75rem;
+        color: #4b5563;
+    }
+
+    .hist-status-table tbody tr {
+        border-top: 1px solid #e5e7eb;
+    }
+
+    .hist-status-table tbody tr:hover {
+        background-color: #f9fafb;
+    }
+
+    .hist-status-ativo {
+        color: #16a34a;
+        font-weight: 600;
+    }
+
+    .hist-status-antigo {
+        color: #9ca3af;
+    }
+</style>
+
+<div class="hist-status-wrapper">
+    <table class="hist-status-table">
+        <thead>
             <tr>
-                <th class="p-2 text-left">Data</th>
-                <th class="p-2 text-left">Nome</th>
-                <th class="p-2 text-left">Descrição</th>
-                <th class="p-2 text-left">Alterado Por</th>
-                <th class="p-2 text-left">Status</th>
+                <th>Data</th>
+                <th>Nome</th>
+                <th>Descrição</th>
+                <th>Alterado Por</th>
+                <th>Status</th>
             </tr>
         </thead>
         <tbody>
             @foreach($historico as $item)
-            <tr class="border-t">
-                <td class="p-2">{{ $item->created_at->format('d/m/Y H:i') }}</td>
-                <td class="p-2">{{ $item->nome }}</td>
-                <td class="p-2">{{ $item->descricao }}</td>
-                <td class="p-2">{{ $item->alterado_por }}</td>
-
-                <td class="p-2">
+            <tr>
+                <td style="white-space: nowrap;">{{ $item->created_at->format('d/m/Y H:i') }}</td>
+                <td>{{ $item->nome }}</td>
+                <td>{{ $item->descricao }}</td>
+                <td>{{ $item->alterado_por }}</td>
+                <td>
                     @if($item->ativo)
-                    <span class="text-green-600 font-semibold">Ativo</span>
+                        <span class="hist-status-ativo">Ativo</span>
                     @else
-                    <span class="text-gray-500">Versão Antiga</span>
+                        <span class="hist-status-antigo">Versão Antiga</span>
                     @endif
                 </td>
             </tr>
             @endforeach
         </tbody>
     </table>
-
 </div>

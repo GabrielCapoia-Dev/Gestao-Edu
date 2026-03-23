@@ -13,20 +13,30 @@ class TopbarNotifications extends Component
     public $unread = 0;
     public $notifications = [];
 
-    public function mount()
+    public function mount(): void
     {
-        $this->loadNotifications();
+        $this->fetchNotifications();
+    }
+
+    public function refresh(): void  // <- wire:poll chama este
+    {
+        $this->fetchNotifications();
     }
 
     #[\Livewire\Attributes\On('refresh-notifications')]
-    public function loadNotifications(): void
+    public function onRefreshNotifications(): void
+    {
+        $this->fetchNotifications();
+    }
+
+    private function fetchNotifications(): void  // <- private, não exposto
     {
         $user = Auth::user();
 
         $this->notifications = DB::table('notifications')
             ->where('notifiable_id', $user->id)
             ->where('notifiable_type', User::class)
-            ->whereNull('read_at') // 🔥 SOMENTE NÃO LIDAS
+            ->whereNull('read_at')
             ->orderBy('created_at', 'desc')
             ->limit(50)
             ->get()
@@ -45,30 +55,25 @@ class TopbarNotifications extends Component
 
     public function markAllAsRead(): void
     {
-        $user = Auth::user();
-
         DB::table('notifications')
-            ->where('notifiable_id', $user->id)
+            ->where('notifiable_id', Auth::id())
             ->where('notifiable_type', User::class)
             ->whereNull('read_at')
             ->update(['read_at' => now()]);
 
-        $this->loadNotifications();
+        $this->fetchNotifications();
     }
 
-    public function markAsRead($notificationId): void
+    public function markAsRead($id): void
     {
-        $user = Auth::user();
-
         DB::table('notifications')
-            ->where('id', $notificationId)
-            ->where('notifiable_id', $user->id)
+            ->where('id', $id)
+            ->where('notifiable_id', Auth::id())
             ->where('notifiable_type', User::class)
             ->update(['read_at' => now()]);
 
-        $this->loadNotifications();
+        $this->fetchNotifications();
     }
-
     public function render()
     {
         return view('livewire.topbar-notifications');

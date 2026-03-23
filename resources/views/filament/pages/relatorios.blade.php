@@ -1,4 +1,3 @@
-{{-- resources/views/filament/pages/relatorios.blade.php --}}
 <x-filament-panels::page>
-    {{ $this->relatoriosInfolist }}
+    {{ $this->table }}
 </x-filament-panels::page>

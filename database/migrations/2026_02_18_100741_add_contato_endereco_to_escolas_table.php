@@ -11,8 +11,6 @@ return new class extends Migration
         Schema::table('escolas', function (Blueprint $table) {
 
             // Contato
-            $table->string('email')->nullable()->after('nome');
-            $table->string('telefone')->nullable()->after('email');
 
             // Endereço
             $table->string('logradouro')->nullable();

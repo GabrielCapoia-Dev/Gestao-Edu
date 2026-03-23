@@ -2,22 +2,31 @@
 
 namespace App\Services;
 
-use App\Filament\Clusters\AlunoCluster\Resources\AlunoResource;
-use App\Models\User;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Form;
+use App\Filament\Admin\Clusters\Aluno\Resources\Alunos\AlunoResource;
 use Filament\Notifications\Notification;
-use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\DeleteAction;
-use Filament\Tables\Actions\DeleteBulkAction;
-use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Filament\Tables\Columns\TextColumn;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Builder;
-
+use App\Models\User;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Grid;
+use App\Services\UserService;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Checkbox;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Hidden;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
+use Filament\Schemas\Schema;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\Action;
+use App\Models\Turma;
+use App\Models\Professor;
 
 class TurmaService
 {
@@ -33,12 +42,17 @@ class TurmaService
 
                 $this->userService->aplicarFiltroPorEscolaDoUsuarioEmTurma($query, $user);
 
-                $query->withCount('alunos');
+                $query
+                    ->with([
+                        'escola:id,nome',
+                        'serie:id,nome'
+                    ])
+                    ->withCount('alunos');
             })
-            ->paginated([10, 25, 50, 100])
+            ->paginated([5, 10, 25, 50, 100])
             ->columns($this->colunasTabela())
-            ->actions($this->acoesTabela($user))
-            ->bulkActions($this->acoesEmMassa($user))
+            ->recordActions($this->acoesTabela($user))
+            ->toolbarActions($this->acoesEmMassa($user))
             ->filters($this->filtrosTabela())
             ->defaultSort('updated_at', 'desc')
             ->striped();
@@ -50,36 +64,43 @@ class TurmaService
         return [
             TextColumn::make('escola.nome')
                 ->label('Escola')
+                ->searchable()
                 ->sortable()
-                ->searchable(),
+                ->wrap(),
+
             TextColumn::make('serie.nome')
                 ->label('Série')
-                ->sortable()
-                ->searchable(),
-            TextColumn::make('turma')
+                ->searchable()
+                ->sortable(),
+
+            TextColumn::make('nome')
                 ->label('Turma')
-                ->sortable()
-                ->sortable()
-                ->searchable(),
+                ->searchable()
+                ->sortable(),
+
             TextColumn::make('turno')
                 ->label('Turno')
-                ->sortable()
-                ->searchable(),
-
-            TextColumn::make('alunos_count')
-                ->label('Qtd. Alunos')
+                ->badge()
+                ->formatStateUsing(fn(string $state) => match ($state) {
+                    'manha' => 'Manhã',
+                    'tarde' => 'Tarde',
+                    'noite' => 'Noite',
+                    'integral' => 'Integral',
+                    default => ucfirst($state),
+                })
+                ->color(fn(string $state) => match ($state) {
+                    'manha' => 'info',
+                    'tarde' => 'warning',
+                    'noite' => 'gray',
+                    'integral' => 'success',
+                    default => 'secondary',
+                })
                 ->sortable(),
 
             TextColumn::make('created_at')
                 ->label('Criado em')
-                ->dateTime()
+                ->dateTime('d/m/Y H:i')
                 ->sortable()
-                ->toggleable(isToggledHiddenByDefault: true),
-
-            TextColumn::make('updated_at')
-                ->label('Atualizado em')
-                ->sortable()
-                ->dateTime()
                 ->toggleable(isToggledHiddenByDefault: true),
         ];
     }
@@ -114,24 +135,33 @@ class TurmaService
 
     private function filtrosTabela(): array
     {
-        return [
-            SelectFilter::make('id_escola')
-                ->label('Escola')
-                ->relationship('escola', 'nome'),
+        /** @var \App\Models\User */
+        $user = Auth::user();
 
+        return [
             SelectFilter::make('id_serie')
                 ->label('Série')
-                ->multiple()
+                ->relationship('serie', 'nome')
+                ->searchable()
+                ->preload(),
+
+            SelectFilter::make('id_escola')
+                ->label('Escola')
+                ->relationship('escola', 'nome')
                 ->searchable()
                 ->preload()
-                ->relationship('serie', 'nome'),
+                ->visible(function () use ($user) {
+
+                    return $user->hasPermissionTo('Filtrar Turmas por Escola');
+                }),
 
             SelectFilter::make('turno')
+                ->label('Turno')
                 ->options([
-                    'Manhã' => 'Manhã',
-                    'Tarde' => 'Tarde',
-                    'Noite' => 'Noite',
-                    'Integral' => 'Integral',
+                    'manha' => 'Manhã',
+                    'tarde' => 'Tarde',
+                    'noite' => 'Noite',
+                    'integral' => 'Integral',
                 ]),
         ];
     }
@@ -154,76 +184,169 @@ class TurmaService
                             $action->halt();
                         }
                     }
-                }),
-        ];
-    }
-
-    public function configurarFormulario(Form $form, ?User $user): Form
-    {
-        return $form
-            ->schema($this->schemaFormulario());
-    }
-
-    public function schemaFormulario(): array
-    {
-        return [
-            Select::make('id_escola')
-                ->label('Escola')
-                ->relationship('escola', 'nome')
-                ->required()
-                ->preload()
-                ->searchable()
-                ->default(fn() => Auth::user()?->id_escola)
-                ->dehydrated(true)
-                ->disabled(function () {
-                    $user = Auth::user();
-
-                    if (! $user) {
-                        return false;
-                    }
-                    if (filled($user->id_escola)) {
-                        return true;
-                    }
-                    return false;
-                }),
-
-            Select::make('id_serie')
-                ->label('Série')
-                ->relationship('serie', 'nome')
-                ->required()
-                ->preload()
-                ->searchable(),
-
-            TextInput::make('turma')
-                ->label('Turma')
-                ->required()
-                ->maxLength(1)
-                ->live(onBlur: false)
-                ->afterStateUpdated(function ($state, callable $set) {
-                    $filtrado = strtoupper(preg_replace('/[^A-Za-z]/', '', $state ?? ''));
-                    $set('turma', $filtrado);
                 })
-                ->dehydrateStateUsing(fn($state) => strtoupper($state ?? ''))
-                ->rule(
-                    fn($get, $record) =>
-                    "unique:turmas,turma," . ($record?->id ?? 'NULL') . ",id,id_escola,{$get('id_escola')},id_serie,{$get('id_serie')},turno,{$get('turno')}"
-                )
-                ->validationMessages([
-                    'unique' => 'Ja existe essa turma na escola selecionada.',
-                ])
-                ->placeholder('Ex.: A')
-                ->helperText('Digite apenas uma letra (A–Z).'),
+                ->requiresConfirmation()
+                ->visible(function ($records) use ($user) {
 
-            Select::make('turno')
-                ->label('Turno')
-                ->options([
-                    'Manhã' => 'Manhã',
-                    'Tarde' => 'Tarde',
-                    'Noite' => 'Noite',
-                    'Integral' => 'Integral',
-                ])
-                ->required(),
+                    return $user->hasPermissionTo('Excluir Turmas em Massa');
+                }),
         ];
+    }
+
+
+    public static function configurarFormulario(Schema $schema): Schema
+    {
+        /** @var \App\Models\User */
+        $user = Auth::user();
+        return $schema
+            ->components([
+                Section::make('Dados da Turma')
+                    ->columnSpanFull()
+
+                    ->schema([
+                        Select::make('id_escola')
+                            ->label('Escola')
+                            ->relationship('escola', 'nome')
+                            ->searchable()
+                            ->preload()
+                            ->required()
+                            ->live()
+                            ->placeholder('Selecione a escola')
+                            ->disabled(function ($context) use ($user) {
+                                return $context === 'edit' && ! $user->hasPermissionTo('Editar Escola da Turma');
+                            })
+                            ->columnSpanFull(),
+
+                        Select::make('id_serie')
+                            ->label('Série')
+                            ->relationship('serie', 'nome')
+                            ->searchable()
+                            ->preload()
+                            ->required()
+                            ->live()
+                            ->afterStateUpdated(function ($state, Set $set) {
+                                if (!$state) {
+                                    $set('componentes', []);
+                                    return;
+                                }
+
+                                $serie = \App\Models\Serie::with('componentesCurriculares')->find($state);
+                                if (!$serie) {
+                                    $set('componentes', []);
+                                    return;
+                                }
+
+                                $componentes = $serie->componentesCurriculares->map(function ($componente) {
+                                    return [
+                                        'componente_curricular_id' => $componente->id,
+                                        'componente_nome' => $componente->nome,
+                                        'professor_id' => null,
+                                    ];
+                                })->toArray();
+
+                                $set('componentes', $componentes);
+                            })
+                            ->placeholder('Selecione a série')
+                            ->disabled(
+                                function ($context) use ($user) {
+                                    return $context === 'edit' && ! $user->hasPermissionTo('Editar Dados da Turma');
+                                }
+                            )
+                            ->columnSpanFull(),
+
+                        TextInput::make('nome')
+                            ->label('Letra da Turma')
+                            ->required()
+                            ->maxLength(255)
+                            ->placeholder('Ex: A, B, C')
+                            ->hint('Apenas a letra/identificador da turma')
+                            ->disabled(
+                                function ($context) use ($user) {
+                                    return $context === 'edit' && ! $user->hasPermissionTo('Editar Dados da Turma');
+                                }
+                            ),
+
+                        Select::make('turno')
+                            ->label('Turno')
+                            ->options([
+                                'manha' => 'Manhã',
+                                'tarde' => 'Tarde',
+                                'noite' => 'Noite',
+                                'integral' => 'Integral',
+                            ])
+                            ->required()
+                            ->placeholder('Selecione o turno')
+                            ->disabled(
+                                function ($context) use ($user) {
+                                    return $context === 'edit' && ! $user->hasPermissionTo('Editar Dados da Turma');
+                                }
+                            ),
+
+
+                        Hidden::make('codigo')
+                            ->default(fn() => 'TUR' . str_pad(Turma::max('id') + 1, 3, '0', STR_PAD_LEFT)),
+                    ])
+                    ->columns(2),
+
+                Section::make('Professores por Componente')
+                    ->schema([
+                        // Placeholder::make('aviso')
+                        //     ->label('')
+                        //     ->content('Selecione a escola e a série para carregar os componentes curriculares')
+                        //     ->visible(fn(Get $get) => !$get('id_serie') || !$get('id_escola')),
+
+                        Repeater::make('componentes')
+                            ->label('')
+                            ->schema([
+                                Grid::make(3)
+                                    ->schema([
+                                        TextInput::make('componente_nome')
+                                            ->label('Componente Curricular')
+                                            ->disabled()
+                                            ->dehydrated(false),
+
+                                        Select::make('professor_id')
+                                            ->label('Professor')
+                                            ->options(function (Get $get) {
+                                                $escolaId = $get('../../id_escola');
+                                                if (!$escolaId) {
+                                                    return [];
+                                                }
+
+                                                // Exclui professores com função administrativa
+                                                return Professor::where('id_escola', $escolaId)
+                                                    ->whereNull('funcao_administrativa_id')
+                                                    ->pluck('nome', 'id')
+                                                    ->toArray();
+                                            })
+                                            ->searchable()
+                                            ->placeholder('Selecione o professor')
+                                            ->disabled(fn(Get $get) => $get('tem_professor'))
+                                            ->dehydrated(fn(Get $get) => !$get('tem_professor')),
+
+                                        Checkbox::make('tem_professor')
+                                            ->label('Não tem Professor?')
+                                            ->default(false)
+                                            ->live()
+                                            ->afterStateUpdated(function ($state, Set $set) {
+                                                if ($state) {
+                                                    $set('professor_id', null);
+                                                }
+                                            }),
+                                        Hidden::make('componente_curricular_id'),
+                                    ]),
+                            ])
+                            ->visible(fn(Get $get) => $get('id_serie') && $get('id_escola'))
+                            ->addable(false)
+                            ->deletable(false)
+                            ->reorderable(false)
+                            ->columnSpanFull(),
+                    ])
+                    ->columnSpanFull()
+
+                    ->visible(fn(Get $get) => $get('id_serie') && $get('id_escola')),
+
+            ]);
     }
 
     public function aplicarCodigo(array $data): array

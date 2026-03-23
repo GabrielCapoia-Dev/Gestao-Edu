@@ -16,7 +16,6 @@ class EmpresaContratada extends Model
         'email', // Email corporativo
         'responsavel', // Nome do responsável pelo contrato
         'telefone', // Telefone principal
-        'numero_contrato', // Número do contrato ativo
 
         // Endereço
         'cep',
@@ -61,6 +60,11 @@ class EmpresaContratada extends Model
     public function pedidos()
     {
         return $this->hasMany(Pedido::class, 'empresa_contratada_id');
+    }
+
+    public function contratos()
+    {
+        return $this->hasMany(Contrato::class, 'id_empresa_contratada');
     }
 
     /*

@@ -1,47 +1,97 @@
+<style>
+    .historico-table {
+        width: 100%;
+        font-size: 0.875rem;
+        border-collapse: collapse;
+        border-radius: 0.5rem;
+        overflow: hidden;
+    }
+
+    .historico-table thead {
+        background-color: #f3f4f6;
+    }
+
+    .historico-table th {
+        padding: 0.625rem 0.75rem;
+        text-align: left;
+        font-weight: 600;
+        color: #374151;
+        white-space: nowrap;
+    }
+
+    .historico-table td {
+        padding: 0.625rem 0.75rem;
+        color: #4b5563;
+        white-space: nowrap;
+    }
+
+    .historico-table tbody tr {
+        border-top: 1px solid #e5e7eb;
+    }
+
+    .historico-table tbody tr:hover {
+        background-color: #f9fafb;
+    }
+
+    .badge-ativo {
+        color: #16a34a;
+        font-weight: 600;
+    }
+
+    .badge-antigo {
+        color: #9ca3af;
+    }
+
+    .table-wrapper {
+        overflow-x: auto;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+    }
+</style>
+
 <div class="space-y-4">
-
-    <table class="w-full text-sm border rounded-lg overflow-hidden">
-        <thead class="bg-gray-100 dark:bg-gray-800">
-            <tr>
-                <th class="p-2 text-left">Data</th>
-                <th class="p-2 text-left">Nome</th>
-                <th class="p-2 text-left">Email</th>
-                <th class="p-2 text-left">Telefone</th>
-                <th class="p-2 text-left">Logradouro</th>
-                <th class="p-2 text-left">CEP</th>
-                <th class="p-2 text-left">N°</th>
-                <th class="p-2 text-left">Bairro</th>
-                <th class="p-2 text-left">Complemento</th>
-                <th class="p-2 text-left">Cidade</th>
-                <th class="p-2 text-left">UF</th>
-                <th class="p-2 text-left">Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($historico as $item)
-            <tr class="border-t">
-                <td class="p-2">{{ $item->created_at->format('d/m/Y H:i') }}</td>
-                <td class="p-2">{{ $item->nome }}</td>
-                <td class="p-2">{{ $item->email }}</td>
-                <td class="p-2">{{ $item->telefone }}</td>
-                <td class="p-2">{{ $item->logradouro }}</td>
-                <td class="p-2">{{ $item->cep }}</td>
-                <td class="p-2">{{ $item->numero }}</td>
-                <td class="p-2">{{ $item->bairro }}</td>
-                <td class="p-2">{{ $item->complemento }}</td>
-                <td class="p-2">{{ $item->cidade }}</td>
-                <td class="p-2">{{ $item->estado }}</td>
-
-                <td class="p-2">
-                    @if($item->ativo)
-                    <span class="text-green-600 font-semibold">Ativo</span>
-                    @else
-                    <span class="text-gray-500">Versão Antiga</span>
-                    @endif
-                </td>
-            </tr>
-            @endforeach
-        </tbody>
-    </table>
-
+    <div class="table-wrapper">
+        <table class="historico-table">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Nome</th>
+                    <th>Email</th>
+                    <th>Telefone</th>
+                    <th>Logradouro</th>
+                    <th>CEP</th>
+                    <th>N°</th>
+                    <th>Bairro</th>
+                    <th>Complemento</th>
+                    <th>Cidade</th>
+                    <th>UF</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($historico as $item)
+                <tr>
+                    <td>{{ $item->created_at->format('d/m/Y H:i') }}</td>
+                    <td>{{ $item->nome }}</td>
+                    <td>{{ $item->email }}</td>
+                    <td>{{ $item->telefone }}</td>
+                    <td>{{ $item->logradouro }}</td>
+                    <td>{{ $item->cep }}</td>
+                    <td>{{ $item->numero }}</td>
+                    <td>{{ $item->bairro }}</td>
+                    <td>{{ $item->complemento }}</td>
+                    <td>{{ $item->cidade }}</td>
+                    <td>{{ $item->estado }}</td>
+                    <td>
+                        @if($item->ativo)
+                            <span class="badge-ativo">Ativo</span>
+                        @else
+                            <span class="badge-antigo">Versão Antiga</span>
+                        @endif
+                    </td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
 </div>

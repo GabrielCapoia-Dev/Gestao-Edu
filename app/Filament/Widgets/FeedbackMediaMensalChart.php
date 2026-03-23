@@ -8,7 +8,7 @@ use Livewire\Attributes\On;
 
 class FeedbackMediaMensalChart extends ChartWidget
 {
-    protected static ?string $heading = 'Quantidade Mensal de Pedidos Concluídos';
+    protected ?string $heading = 'Quantidade Mensal de Pedidos Concluídos';
     protected static bool $isLazy = false;
 
     public array $chartFilters = [];

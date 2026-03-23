@@ -1,3 +1,4 @@
+<!-- resources\views\components\pedido\ver-fotos-feedback.blade.php -->
 @props([
 'feedback',
 ])

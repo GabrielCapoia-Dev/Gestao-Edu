@@ -2,32 +2,36 @@
 
 namespace App\Livewire;
 
-use Filament\Pages\Auth\Login as BaseLogin;
+use Caresome\FilamentAuthDesigner\Pages\Auth\Login as BaseLogin;
 use Filament\Forms;
 use Filament\Actions;
+use Filament\Schemas\Schema;
+
 
 class LoginPage extends BaseLogin
 {
 
 
-    // protected static string $layout = 'components.layouts.login-page';
+    protected static string $layout = 'components.layouts.login-page';
 
 
-    protected function getFormSchema(): array
+    public function form(Schema $schema): Schema
     {
-        return [
+        return $schema->components([
             Forms\Components\TextInput::make('email')
                 ->label('Email')
                 ->type('email')
                 ->required()
+                ->placeholder('exemplo@exemplo.com')
                 ->autocomplete('username'),
 
             Forms\Components\TextInput::make('password')
                 ->label('Senha')
                 ->password()
                 ->required()
+                ->placeholder('************')
                 ->autocomplete('current-password'),
-        ];
+        ]);
     }
 
 
@@ -35,15 +39,11 @@ class LoginPage extends BaseLogin
     {
         return [
             // Botão de login padrão (manual)
-            Actions\Action::make('login')
-                ->label('Logar')
+            Actions\Action::make('authenticate')  // troque 'login' por 'authenticate'
+                ->label('Entrar no Sistema')
                 ->color('primary')
-                ->extraAttributes([
-                    'class' => 'inline-flex items-center justify-center gap-2 w-full px-4 py-2 mt-2 rounded-md border 
-                               border-gray-300 hover:bg-gray-50 text-gray-700 text-sm shadow-sm 
-                               transition-all duration-150',
-                ])
-                ->submit('login'),
+                ->submit('authenticate'),
+
 
             // Botão de login com Google
             Actions\Action::make('googleLogin')

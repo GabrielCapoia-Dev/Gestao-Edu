@@ -31,7 +31,6 @@ use Filament\Events\ServingFilament;
 use Filament\Facades\Filament;
 use Illuminate\Support\Facades\Event;
 use App\Services\UserService;
-use Hasnayeen\Themes\Themes;
 use Illuminate\Support\Facades\Auth;
 use App\Models\AlunoLaudo;
 use App\Policies\AlunoLaudoPolicy;
@@ -45,6 +44,9 @@ use Illuminate\Support\Facades\Blade;
 use App\Observers\PedidoObserver;
 use Filament\View\PanelsRenderHook;
 use Filament\Support\Facades\FilamentView;
+use Livewire\Livewire;
+use App\Livewire\TopbarNotifications;
+use Illuminate\Support\Facades\URL;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -88,7 +90,7 @@ class AppServiceProvider extends ServiceProvider
                 'https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2'
             ),
 
-            Css::make('professores-modal', asset('css/professores-modal.css')),
+            Css::make('geral', asset('css/geral.css')),
         ]);
 
         FilamentView::registerRenderHook(
@@ -96,24 +98,7 @@ class AppServiceProvider extends ServiceProvider
             fn() => view('components.open-url-listener'),
         );
 
-        Event::listen(ServingFilament::class, function () {
+	URL::forceScheme('https');
 
-            /** @var \App\Models\User|null $user */
-            $user = Filament::getCurrentPanel()?->auth()?->user()
-                ?? Auth::user();
-
-            if (! $user) {
-                return;
-            }
-
-            $canViewPanel = $user->hasPermissionTo('Visualizar Painel Personalizado');
-
-            app(Themes::class)->register(
-                $canViewPanel
-                    ? [\Hasnayeen\Themes\Themes\Sunset::class]
-                    : [\App\Filament\Themes\TemaSME::class],
-                true
-            );
-        });
     }
 }

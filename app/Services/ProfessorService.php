@@ -2,31 +2,34 @@
 
 namespace App\Services;
 
-use App\Models\User;
 use App\Models\Professor;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\Grid;
 use Filament\Forms\Components\Checkbox;
-use Filament\Forms\Form;
-use Filament\Tables\Actions\DeleteAction;
-use Filament\Tables\Actions\DeleteBulkAction;
-use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Table;
-use Illuminate\Support\Facades\Auth;
-use Filament\Forms\Components\Select;
-use Filament\Tables\Actions\BulkActionGroup;
-use Filament\Forms\Get;
-use Filament\Forms\Set;
 use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
+use Filament\Tables\Columns\TextColumn;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Builder;
-use Filament\Tables\Actions\Action;
-use AlperenErsoy\FilamentExport\Actions\FilamentExportBulkAction;
+use App\Models\User;
+use App\Models\ComponenteCurricular;
+use App\Models\Serie;
+use App\Services\UserService;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
+use Filament\Schemas\Schema;
+use Filament\Schemas\Components\Section;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\Action;
+use Filament\Actions\ViewAction;
+
 
 class ProfessorService
 {
@@ -35,196 +38,69 @@ class ProfessorService
         protected AlunoService $alunoService
     ) {}
 
-    public function configurarFormulario(Form $form, ?User $user): Form
+
+    public function configurarFormulario(Schema $schema): Schema
     {
-        return $form
-            ->schema($this->schemaFormulario());
+        /** @var \App\Models\User */
+        $user = Auth::user();
+        return $schema
+            ->components([
+                Section::make('Dados do Professor')
+                    ->schema([
+                        Select::make('id_escola')
+                            ->label('Escola')
+                            ->relationship('escola', 'nome')
+                            ->searchable()
+                            ->preload()
+                            ->required()
+                            ->placeholder('Selecione a escola')
+                            ->disabled(function (?Professor $record) use ($user) {
+                                return $record !== null && !$user->hasPermissionTo('Editar Escola do Professor');
+                            })
+                            ->columnSpanFull(),
+
+                        TextInput::make('matricula')
+                            ->label('Matrícula')
+                            ->required()
+                            ->disabled(function (?Professor $record) use ($user) {
+                                return $record !== null && !$user->hasPermissionTo('Editar Matricula do Professor');
+                            })
+                            ->maxLength(255)
+                            ->placeholder('Ex: PROF001'),
+
+                        TextInput::make('nome')
+                            ->label('Nome Completo')
+                            ->required()
+                            ->disabled(function (?Professor $record) use ($user) {
+                                return $record !== null && !$user->hasPermissionTo('Editar Nome do Professor');
+                            })
+                            ->maxLength(255)
+                            ->placeholder('Ex: João da Silva'),
+
+                        TextInput::make('email')
+                            ->label('E-mail')
+                            ->email()
+                            ->maxLength(255)
+                            ->disabled(function (?Professor $record) use ($user) {
+                                return $record !== null && !$user->hasPermissionTo('Editar Dados do Professor');
+                            })
+                            ->placeholder('professor@exemplo.com'),
+
+                        TextInput::make('telefone')
+                            ->label('Telefone')
+                            ->tel()
+                            ->maxLength(255)
+                            ->mask('(99) 99999-9999')
+                            ->disabled(function (?Professor $record) use ($user) {
+                                return $record !== null && !$user->hasPermissionTo('Editar Dados do Professor');
+                            })
+                            ->placeholder('(00) 00000-0000'),
+                    ])
+                    ->columnSpanFull()
+                    ->columns(2),
+            ]);
     }
 
-    public function schemaFormulario(): array
-    {
-        return [
-            Grid::make(12)
-                ->schema([
-                    TextInput::make('matricula')
-                        ->label('Matricula')
-                        ->columnSpan(2)
-                        ->minLength(3)
-                        ->rules(['regex:/^\d+$/'])
-                        ->validationMessages([
-                            'regex' => 'Apenas numeros',
-                            'min' => 'A matricula deve ter no mínimo 3 dígitos.',
-                        ])
-                        ->disabled(
-                            fn(string $operation) => ! $this->userService->podeEditarMatriculaDoProfessor(Auth::user(), $operation)
-                        )
-                        ->unique(ignoreRecord: true)
-                        ->maxLength(20),
-
-                    TextInput::make('nome')
-                        ->label('Nome:')
-                        ->required()
-                        ->columnSpan(5)
-                        ->minLength(3)
-                        ->maxLength(100)
-                        ->disabled(
-                            fn(string $operation) => ! $this->userService->podeEditarNomeDoProfessor(Auth::user(), $operation)
-                        )
-                        ->rule('regex:/^[\p{L}\p{N}]+(?: [\p{L}\p{N}]+)*$/u')
-                        ->validationMessages([
-                            'regex' => 'Use apenas letras, sem caracteres especiais.',
-                        ]),
-
-                    TextInput::make('email')
-                        ->columnSpan(5)
-                        ->label('E-mail')
-                        ->email(),
-                ]),
-
-            Grid::make(6)
-                ->schema([
-                    Select::make('id_escola')
-                        ->label('Escola')
-                        ->relationship('escola', 'nome')
-                        ->required()
-                        ->columnSpan(3)
-                        ->preload()
-                        ->searchable()
-                        ->default(fn() => Auth::user()?->id_escola)
-                        ->dehydrated(true)
-                        ->disabled(function () {
-                            $user = Auth::user();
-
-                            if (! $user) {
-                                return false;
-                            }
-
-                            if (filled($user->id_escola)) {
-                                return true;
-                            }
-
-                            return false;
-                        }),
-
-
-
-                    Select::make('turno')
-                        ->columnSpan(3)
-                        ->required()
-                        ->label('Turno')
-                        ->options([
-                            'Manhã' => 'Manhã',
-                            'Tarde' => 'Tarde',
-                            'Noite' => 'Noite',
-                        ]),
-                ]),
-
-            Grid::make(9)
-                ->schema([
-                    Checkbox::make('professor_srm')
-                        ->columnSpan(3)
-                        ->label('É um professor da SRM?')
-                        ->helperText('Esse é um professor de Sala de Recursos Multifuncionais?')
-                        ->reactive()
-                        ->afterStateUpdated(function (Set $set, ?bool $state) {
-                            if ($state) {
-                                $set('profissional_apoio', false);
-                            }
-                        })
-                        ->afterStateHydrated(function (Set $set, Get $get) {
-                            if ($get('professor_srm') && $get('profissional_apoio')) {
-                                $set('profissional_apoio', false);
-                            }
-                        })
-                        ->required(fn(Get $get) => ! (bool) $get('profissional_apoio'))
-                        ->rules(['prohibited_if:profissional_apoio,1']),
-
-                    Checkbox::make('profissional_apoio')
-                        ->columnSpan(3)
-                        ->label('É um profissional de Apoio?')
-                        ->reactive()
-                        ->afterStateUpdated(function (Set $set, ?bool $state) {
-                            if ($state) {
-                                $set('professor_srm', false);
-                            }
-                        })
-                        ->afterStateHydrated(function (Set $set, Get $get) {
-                            if ($get('profissional_apoio') && $get('professor_srm')) {
-                                $set('professor_srm', false);
-                            }
-                        })
-                        ->required(fn(Get $get) => ! (bool) $get('professor_srm'))
-                        ->rules(['prohibited_if:professor_srm,1']),
-
-
-                ]),
-
-            Grid::make(12)
-                ->visible(
-                    fn(string $operation) =>
-                    $this->userService->podeVisualizarEspecializacoesDeProfessores(Auth::user())
-                        && $this->userService->podeEditarEspecializacoesDeProfessores(Auth::user(), $operation)
-                )
-                ->schema([
-                    Repeater::make('especializacoes')
-                        ->label('Especializações')
-                        ->relationship('especializacoes')
-                        ->defaultItems(1)
-                        ->columnSpan(12)
-                        ->collapsible()
-                        ->columns(12)
-                        ->schema([
-
-                            Grid::make(12)
-                                ->columnSpan(12)
-                                ->schema([
-                                    Select::make('tipo')
-                                        ->label('Tipo de especialização')
-                                        ->placeholder('Selecione')
-                                        ->required()
-                                        ->options([
-                                            'Magisterio'     => 'Magistério',
-                                            'Licenciatura'   => 'Licenciatura',
-                                            'Bacharelado'    => 'Bacharelado',
-                                            'Pos Graduacao'  => 'Pós-graduação',
-                                            'Mestrado'       => 'Mestrado',
-                                            'Doutorado'      => 'Doutorado',
-                                        ])
-                                        ->columnSpan(2),
-
-                                    Textarea::make('descricao_especializacao')
-                                        ->label('Descrição da especialização')
-                                        ->required()
-                                        ->autosize()
-                                        ->minLength(3)
-                                        ->maxLength(255)
-                                        ->columnSpan(5),
-
-                                    FileUpload::make('anexo_especializacao_path')
-                                        ->label('Documento (PDF)')
-                                        ->disk('public')
-                                        ->directory(fn(Get $get) => 'professor-especializacoes/' . ($get('../../matricula') ?? 'sem-matricula'))
-                                        ->openable(false)
-                                        ->previewable(false)
-                                        ->acceptedFileTypes(['application/pdf'])
-                                        ->columnSpan(5),
-
-                                ]),
-                            Grid::make(12)
-                                ->columnSpan(12)
-                                ->schema([
-                                    Checkbox::make('especializacao_educacao_especial')
-                                        ->columnSpan(6)
-                                        ->label('É de Educação Especial?')
-                                        ->helperText('Se essa especialização for de Educação Especial, marque essa opção.')
-
-
-                                ]),
-                        ])
-                        ->required(),
-                ])
-        ];
-    }
 
     public function configurarTabela(Table $table, ?User $user): Table
     {
@@ -232,29 +108,14 @@ class ProfessorService
             ->modifyQueryUsing(function (Builder $query) use ($user) {
                 $this->userService->aplicarFiltroPorEscolaDoUsuarioEmTurma($query, $user);
             })
-            ->paginated([10, 25, 50, 100])
+            ->paginated([5, 10, 25, 50, 100])
             ->columns($this->colunasTabela())
-            ->actions($this->acoesTabela($user))
-            ->bulkActions($this->acoesEmMassa($user))
+            ->recordActions($this->acoesTabela($user))
+            ->toolbarActions($this->acoesEmMassa($user))
             ->filters($this->filtrosTabela())
             ->defaultSort('updated_at', 'desc')
             ->striped()
-            ->headerActions([
-                Action::make('total_listado')
-                    ->label(fn($livewire) => 'Total: ' . number_format(
-                        $livewire->getFilteredTableQuery()->count(),
-                        0,
-                        ',',
-                        '.'
-                    ))
-                    ->disabled()
-                    ->color('gray')
-                    ->icon('heroicon-m-list-bullet')
-                    ->button()
-                    ->extraAttributes([
-                        'class' => 'cursor-default text-xl font-semibold',
-                    ]),
-            ]);
+            ->headerActions($this->acoesCabecalho());
     }
 
     public function colunasTabela(): array
@@ -262,132 +123,196 @@ class ProfessorService
         return [
             TextColumn::make('escola.nome')
                 ->label('Escola')
-                ->wrap()
                 ->sortable()
-                ->searchable(),
+                ->wrap(),
 
             TextColumn::make('matricula')
                 ->label('Matrícula')
+                ->searchable()
                 ->copyable()
-                ->copyMessage('Matrícula copiada!')
-                ->copyableState(fn($state) => $state)
-                ->tooltip('Clique para copiar'),
+                ->sortable(),
 
             TextColumn::make('nome')
                 ->label('Nome')
+                ->searchable()
                 ->sortable()
-                ->searchable(),
+                ->copyable()
+                ->wrap(),
 
             TextColumn::make('email')
                 ->label('E-mail')
-                ->icon('heroicon-o-envelope')
-                ->copyable()
-                ->copyMessage('E-mail copiado!')
-                ->copyableState(fn($state) => $state)
-                ->url(fn($record) => $record->email ? "mailto:{$record->email}" : null, shouldOpenInNewTab: false)
-                ->sortable()
-                ->wrap()
                 ->searchable()
-                ->toggleable()
-                ->tooltip('Clique para copiar'),
+                ->copyable()
+                ->sortable()
+                ->toggleable(isToggledHiddenByDefault: true),
 
-            TextColumn::make('especializacoes_nomes')
-                ->label('Especializações')
-                ->state(function (Professor $record) {
-                    $tipos = $record->especializacoes
-                        ->pluck('tipo')
-                        ->filter()
+            TextColumn::make('telefone')
+                ->label('Telefone')
+                ->searchable()
+                ->placeholder('Não informado')
+                ->toggleable(isToggledHiddenByDefault: true),
+
+            TextColumn::make('componentes')
+                ->label('Componentes')
+                ->getStateUsing(
+                    fn($record) =>
+                    $record->componentesPorTurma
+                        ->pluck('nome')
                         ->unique()
-                        ->values()
-                        ->all();
-
-                    return empty($tipos) ? '-' : implode(', ', $tipos);
-                })
-                ->wrap()
-                ->toggleable(),
-
-            TextColumn::make('turno')
-                ->label('Turno')
+                        ->sort()
+                        ->toArray()
+                )
                 ->badge()
-                ->color(fn(string $state) => match ($state) {
-                    'Manhã' => 'primary',
-                    'Tarde' => 'warning',
-                    'Noite' => 'gray',
-                    default => 'secondary',
-                })
-                ->alignCenter()
-                ->sortable()
-                ->searchable(),
+                ->color('info')
+                ->separator(',')
+                ->wrap()
+                ->toggleable(isToggledHiddenByDefault: true),
 
-            IconColumn::make('professor_srm')
-                ->label('Professor SRM')
-                ->boolean()
-                ->trueIcon('heroicon-m-check-circle')
-                ->falseIcon('heroicon-m-x-circle')
-                ->trueColor('success')
-                ->alignCenter()
+            TextColumn::make('turmas_count')
+                ->label('Qtd. Turmas')
+                ->counts('turmas')
                 ->sortable()
-                ->falseColor('danger')
-                ->toggleable(),
-
-            IconColumn::make('profissional_apoio')
-                ->label('Profissional de Apoio')
-                ->boolean()
                 ->alignCenter()
-                ->trueIcon('heroicon-m-check-circle')
-                ->falseIcon('heroicon-m-x-circle')
-                ->trueColor('success')
-                ->sortable()
-                ->falseColor('danger')
-                ->toggleable(),
-
-            IconColumn::make('especializacao_educacao_especial')
-                ->label('Educ. Especial?')
-                ->boolean()
-                ->alignCenter()
-                ->trueIcon('heroicon-m-check-circle')
-                ->falseIcon('heroicon-m-x-circle')
-                ->trueColor('success')
-                ->sortable()
-                ->falseColor('danger')
-                ->toggleable(),
+                ->badge()
+                ->color('success'),
 
             TextColumn::make('created_at')
                 ->label('Criado')
-                ->since()
+                ->dateTime('d/m/Y H:i')
                 ->sortable()
                 ->toggleable(isToggledHiddenByDefault: true),
 
             TextColumn::make('updated_at')
                 ->label('Atualizado')
-                ->since()
+                ->dateTime('d/m/Y H:i')
                 ->sortable()
                 ->toggleable(isToggledHiddenByDefault: true),
+        ];
+    }
+
+    public function acoesCabecalho(): array
+    {
+        return [
+            Action::make('total_listado')
+                ->label(fn($livewire) => 'Total: ' . number_format(
+                    $livewire->getFilteredTableQuery()->count(),
+                    0,
+                    ',',
+                    '.'
+                ))
+                ->disabled()
+                ->color('gray')
+                ->icon('heroicon-m-list-bullet')
+                ->button()
+                ->extraAttributes([
+                    'class' => 'cursor-default text-xl font-semibold',
+                ])
         ];
     }
 
     public function acoesTabela(?User $user): array
     {
         return [
-            Action::make('ver_detalhes')
-                ->label('Ver detalhes')
-                ->icon('heroicon-m-eye')
-                ->color('warning')
-                ->modal()
-                ->slideOver()
-                ->modalCancelAction(false)
-                ->modalSubmitAction(false)
-                ->visible(function () {
-                    return $this->userService->podeVisualizarDetalhesProfessor(Auth::user());
-                })
-                ->modalHeading(fn(Professor $record) => "Detalhes de {$record->nome}")
-                ->modalContent(fn(Professor $record) => view(
-                    'components.professores.detalhes-modal',
-                    ['professor' => $record]
-                ))
-                ->extraModalWindowAttributes([
-                    'class' => 'professor-detalhes-modal-window',
-                ]),
+            ViewAction::make()
+                ->modalHeading(fn($record) => "Detalhes - {$record->nome}")
+                ->modalWidth('4xl')
+                ->schema([
+                    Section::make('Informações do Professor')
+                        ->schema([
+                            \Filament\Infolists\Components\TextEntry::make('escola.nome')
+                                ->label('Escola'),
+                            \Filament\Infolists\Components\TextEntry::make('matricula')
+                                ->label('Matrícula')
+                                ->copyable(),
+                            \Filament\Infolists\Components\TextEntry::make('nome')
+                                ->label('Nome')
+                                ->copyable(),
+                            \Filament\Infolists\Components\TextEntry::make('email')
+                                ->label('E-mail')
+                                ->copyable(),
+                            \Filament\Infolists\Components\TextEntry::make('telefone')
+                                ->label('Telefone')
+                                ->placeholder('Não informado'),
+                        ])
+                        ->columns(3),
+
+
+                    \Filament\Infolists\Components\TextEntry::make('turmas_lista')
+                        ->label('Lista de Turmas')
+                        ->getStateUsing(fn($record) => $record->id)
+                        ->formatStateUsing(function ($state, $record) {
+                            $turmas = \App\Models\Turma::whereHas('componentes', function ($query) use ($record) {
+                                $query->where('turma_componente_professor.professor_id', $record->id);
+                            })->with(['serie', 'escola', 'componentes' => function ($query) use ($record) {
+                                $query->wherePivot('professor_id', $record->id);
+                            }])->get();
+
+                            if ($turmas->isEmpty()) {
+                                return new \Illuminate\Support\HtmlString(
+                                    '<p style="color:#6b7280;font-style:italic;">Não leciona em nenhuma turma.</p>'
+                                );
+                            }
+
+                            $rows = '';
+                            foreach ($turmas as $turma) {
+                                $componentes = $turma->componentes->pluck('nome')->join(', ');
+                                $turno = match ($turma->turno) {
+                                    'manha'    => 'Manhã',
+                                    'tarde'    => 'Tarde',
+                                    'noite'    => 'Noite',
+                                    'integral' => 'Integral',
+                                    default    => $turma->turno,
+                                };
+
+                                $rows .= '
+                        <tr style="border-bottom:1px solid #e5e7eb;">
+                            <td style="padding:0.6rem 0.75rem;font-weight:600;color:#1d4ed8;white-space:nowrap;">
+                                ' . e($turma->serie->nome) . ' — Turma ' . e($turma->nome) . '
+                            </td>
+                            <td style="padding:0.6rem 0.75rem;color:#374151;">
+                                ' . e($turma->escola->nome) . '
+                            </td>
+                            <td style="padding:0.6rem 0.75rem;color:#374151;white-space:nowrap;">
+                                ' . e($turno) . '
+                            </td>
+                            <td style="padding:0.6rem 0.75rem;color:#374151;">
+                                ' . e($componentes) . '
+                            </td>
+                        </tr>
+                    ';
+                            }
+
+                            return new \Illuminate\Support\HtmlString('
+                    <div style="overflow-x:auto;border-radius:0.5rem;border:1px solid #e5e7eb;">
+                        <table style="width:100%;border-collapse:collapse;font-size:0.875rem;">
+                            <thead>
+                                <tr style="background-color:#eff6ff;border-bottom:2px solid #bfdbfe;">
+                                    <th style="padding:0.6rem 0.75rem;text-align:left;font-weight:600;color:#1e40af;white-space:nowrap;">
+                                        Série / Turma
+                                    </th>
+                                    <th style="padding:0.6rem 0.75rem;text-align:left;font-weight:600;color:#1e40af;">
+                                        Escola
+                                    </th>
+                                    <th style="padding:0.6rem 0.75rem;text-align:left;font-weight:600;color:#1e40af;white-space:nowrap;">
+                                        Turno
+                                    </th>
+                                    <th style="padding:0.6rem 0.75rem;text-align:left;font-weight:600;color:#1e40af;">
+                                        Componentes
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody style="background-color:#ffffff;">
+                                ' . $rows . '
+                            </tbody>
+                        </table>
+                    </div>
+                ');
+                        })
+                        ->columnSpanFull(),
+                ])
+                ->visible(function () use ($user): bool {
+                    return $user->hasPermissionTo('Visualizar Professores');
+                }),
 
             EditAction::make(),
             DeleteAction::make()
@@ -403,102 +328,67 @@ class ProfessorService
     public function acoesEmMassa(?User $user): array
     {
         return [
-            FilamentExportBulkAction::make('exportar_xlsx')
-                ->label('Exportar XLSX')
-                ->defaultFormat('xlsx')
-                ->visible(fn() => $this->userService->podeExportarProfessores($user))
-                ->directDownload(),
-            FilamentExportBulkAction::make('exportar_pdf')
-                ->label('Exportar PDF')
-                ->defaultFormat('pdf')
-                ->visible(fn() => $this->userService->podeExportarProfessores($user))
-                ->color('danger')
-                ->directDownload(),
-
-            BulkActionGroup::make([
-                DeleteBulkAction::make()
-                    ->before(function ($records, $action) use ($user) {
-                        if (! $this->userService->podeDeletarEmLote($user, $records)) {
-                            $action->halt();
-                        }
-                    })
-                    ->visible(fn() => $this->userService->podeExcluirProfessoresEmLote(Auth::user())),
-            ])
+            DeleteBulkAction::make()
+                ->before(function ($records, $action) use ($user) {
+                    if (! $this->userService->podeDeletarEmLote($user, $records)) {
+                        $action->halt();
+                    }
+                })
                 ->visible(fn() => $this->userService->podeExcluirProfessoresEmLote(Auth::user())),
-
         ];
     }
 
     public function filtrosTabela(): array
     {
+        /** @var \App\Models\User */
+        $user = Auth::user();
         return [
             SelectFilter::make('id_escola')
                 ->label('Escola')
                 ->relationship('escola', 'nome')
+                ->searchable()
                 ->preload()
-                ->multiple()
-                ->visible(fn() => $this->userService->podeFiltrarProfessoresPorEscola(Auth::user()))
-                ->searchable()
-                ->indicator('Escola'),
+                ->visible(function () use ($user): bool {
+                    return $user->hasPermissionTo('Filtrar Professores por Escola');
+                }),
 
-            SelectFilter::make('especializacao')
-                ->label('Especialização')
-                ->options([
-                    'Magisterio'     => 'Magistério',
-                    'Licenciatura'   => 'Licenciatura',
-                    'Bacharelado'    => 'Bacharelado',
-                    'Pos Graduacao'  => 'Pós-Graduação',
-                    'Mestrado'       => 'Mestrado',
-                    'Doutorado'      => 'Doutorado',
-                ])
-                ->multiple()
+            SelectFilter::make('serie_id')
+                ->label('Série')
+                ->options(
+                    Serie::query()->pluck('nome', 'id')
+                )
                 ->searchable()
-                ->indicator('Especialização')
-                ->query(function (Builder $query, array $data): Builder {
-                    $values = (array) ($data['value'] ?? null);
-
-                    if (empty($values)) {
+                ->query(function ($query, array $data) {
+                    if (! $data['value']) {
                         return $query;
                     }
 
-                    return $query->whereHas('especializacoes', function (Builder $q) use ($values) {
-                        $q->whereIn('tipo', $values);
+                    return $query->whereHas('turmas', function ($q) use ($data) {
+                        $q->where('id_serie', $data['value']);
                     });
+                })
+                ->visible(function () use ($user): bool {
+                    return $user->hasPermissionTo('Filtrar Professores por Serie');
                 }),
 
-
-            SelectFilter::make('turno')
-                ->label('Turno')
-                ->options([
-                    'Manhã' => 'Manhã',
-                    'Tarde' => 'Tarde',
-                    'Noite' => 'Noite',
-                ])
-                ->indicator('Turno'),
-
-            TernaryFilter::make('professor_srm')
-                ->label('Professor SRM')
-                ->trueLabel('Somente SRM')
-                ->falseLabel('Sem SRM')
-                ->placeholder('Todos')
-                ->queries(
-                    true: fn(Builder $q) => $q->where('professor_srm', true),
-                    false: fn(Builder $q) => $q->where('professor_srm', false),
-                    blank: fn(Builder $q) => $q
+            SelectFilter::make('componente_curricular_id')
+                ->label('Componente')
+                ->options(
+                    ComponenteCurricular::query()->pluck('nome', 'id')
                 )
-                ->indicator('SRM'),
+                ->searchable()
+                ->query(function ($query, array $data) {
+                    if (! $data['value']) {
+                        return $query;
+                    }
 
-            TernaryFilter::make('profissional_apoio')
-                ->label('Profissional de Apoio')
-                ->trueLabel('Somente Apoio')
-                ->falseLabel('Sem Apoio')
-                ->placeholder('Todos')
-                ->queries(
-                    true: fn(Builder $q) => $q->where('profissional_apoio', true),
-                    false: fn(Builder $q) => $q->where('profissional_apoio', false),
-                    blank: fn(Builder $q) => $q
-                )
-                ->indicator('Apoio'),
+                    return $query->whereHas('componentesPorTurma', function ($q) use ($data) {
+                        $q->where('componente_curricular_id', $data['value']);
+                    });
+                })
+                ->visible(function () use ($user): bool {
+                    return $user->hasPermissionTo('Filtrar Professores por Componente');
+                }),
         ];
     }
 
