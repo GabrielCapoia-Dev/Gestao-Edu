@@ -236,36 +236,35 @@ class ProfessorService
                         ])
                         ->columns(3),
 
-                    Section::make('Turmas')
-                        ->schema([
-                            \Filament\Infolists\Components\TextEntry::make('turmas_lista')
-                                ->label('')
-                                ->getStateUsing(fn($record) => $record->id)
-                                ->formatStateUsing(function ($state, $record) {
-                                    $turmas = \App\Models\Turma::whereHas('componentes', function ($query) use ($record) {
-                                        $query->where('turma_componente_professor.professor_id', $record->id);
-                                    })->with(['serie', 'escola', 'componentes' => function ($query) use ($record) {
-                                        $query->wherePivot('professor_id', $record->id);
-                                    }])->get();
 
-                                    if ($turmas->isEmpty()) {
-                                        return new \Illuminate\Support\HtmlString(
-                                            '<p style="color:#6b7280;font-style:italic;">Não leciona em nenhuma turma.</p>'
-                                        );
-                                    }
+                    \Filament\Infolists\Components\TextEntry::make('turmas_lista')
+                        ->label('')
+                        ->getStateUsing(fn($record) => $record->id)
+                        ->formatStateUsing(function ($state, $record) {
+                            $turmas = \App\Models\Turma::whereHas('componentes', function ($query) use ($record) {
+                                $query->where('turma_componente_professor.professor_id', $record->id);
+                            })->with(['serie', 'escola', 'componentes' => function ($query) use ($record) {
+                                $query->wherePivot('professor_id', $record->id);
+                            }])->get();
 
-                                    $rows = '';
-                                    foreach ($turmas as $turma) {
-                                        $componentes = $turma->componentes->pluck('nome')->join(', ');
-                                        $turno = match ($turma->turno) {
-                                            'manha'    => 'Manhã',
-                                            'tarde'    => 'Tarde',
-                                            'noite'    => 'Noite',
-                                            'integral' => 'Integral',
-                                            default    => $turma->turno,
-                                        };
+                            if ($turmas->isEmpty()) {
+                                return new \Illuminate\Support\HtmlString(
+                                    '<p style="color:#6b7280;font-style:italic;">Não leciona em nenhuma turma.</p>'
+                                );
+                            }
 
-                                        $rows .= '
+                            $rows = '';
+                            foreach ($turmas as $turma) {
+                                $componentes = $turma->componentes->pluck('nome')->join(', ');
+                                $turno = match ($turma->turno) {
+                                    'manha'    => 'Manhã',
+                                    'tarde'    => 'Tarde',
+                                    'noite'    => 'Noite',
+                                    'integral' => 'Integral',
+                                    default    => $turma->turno,
+                                };
+
+                                $rows .= '
                         <tr style="border-bottom:1px solid #e5e7eb;">
                             <td style="padding:0.6rem 0.75rem;font-weight:600;color:#1d4ed8;white-space:nowrap;">
                                 ' . e($turma->serie->nome) . ' — Turma ' . e($turma->nome) . '
@@ -281,9 +280,9 @@ class ProfessorService
                             </td>
                         </tr>
                     ';
-                                    }
+                            }
 
-                                    return new \Illuminate\Support\HtmlString('
+                            return new \Illuminate\Support\HtmlString('
                     <div style="overflow-x:auto;border-radius:0.5rem;border:1px solid #e5e7eb;">
                         <table style="width:100%;border-collapse:collapse;font-size:0.875rem;">
                             <thead>
@@ -308,9 +307,8 @@ class ProfessorService
                         </table>
                     </div>
                 ');
-                                })
-                                ->columnSpanFull(),
-                        ]),
+                        })
+                        ->columnSpanFull(),
                 ])
                 ->visible(function () use ($user): bool {
                     return $user->hasPermissionTo('Visualizar Professores');
