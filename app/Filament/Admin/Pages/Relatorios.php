@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Pages;
+namespace App\Filament\Admin\Pages;
 
 use AlperenErsoy\FilamentExport\Actions\FilamentExportBulkAction;
 use App\Models\Escola;
