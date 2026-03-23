@@ -10,9 +10,10 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use App\Services\ProfessorService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use UnitEnum;
-
+use Illuminate\Database\Eloquent\Model;
 
 class ProfessorResource extends Resource
 {
@@ -29,15 +30,49 @@ class ProfessorResource extends Resource
 
     public static function getGloballySearchableAttributes(): array
     {
-        return ['nome', 'matricula', 'email'];
+        return ['nome', 'escola.nome', 'matricula', 'email'];
     }
 
+    public static function getGlobalSearchResultTitle(Model $record): string
+    {
+        /** @var Professor $record */
+        return "{$record->nome}";
+    }
+
+    public static function getGlobalSearchResultDetails(Model $record): array
+    {
+        /** @var Professor $record */
+
+        return [
+            'Escola' => $record->escola->nome,
+            'Matrícula' => $record->matricula,
+        ];
+    }
+
+    public static function canGloballySearch(): bool
+    {
+        /** @var \App\Models\User */
+        $user = Auth::user();
+        return $user->hasPermissionTo('Listar Professores');
+    }
 
     public static function professorService(): ProfessorService
     {
         return app(ProfessorService::class);
     }
 
+    public static function getGlobalSearchEloquentQuery(): Builder
+    {
+        return parent::getGlobalSearchEloquentQuery()
+            ->with(['escola']);
+    }
+
+    public static function getGlobalSearchResultUrl(Model $record): string
+    {
+        return static::getUrl('index', [
+            'tableSearch' => $record->nome,
+        ]);
+    }
 
     public static function form(Schema $schema): Schema
     {
