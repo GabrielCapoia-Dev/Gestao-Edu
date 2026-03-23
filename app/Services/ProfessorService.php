@@ -254,34 +254,34 @@ class ProfessorService
                                         return 'Não leciona em nenhuma turma';
                                     }
 
-                                    $html = '<div class="space-y-3">';
+                                    $html = '<div class="prof-turmas-list">';
 
                                     foreach ($turmas as $turma) {
                                         $componentes = $turma->componentes->pluck('nome')->join(', ');
                                         $turno = match ($turma->turno) {
-                                            'manha' => 'Manhã',
-                                            'tarde' => 'Tarde',
-                                            'noite' => 'Noite',
+                                            'manha'    => 'Manhã',
+                                            'tarde'    => 'Tarde',
+                                            'noite'    => 'Noite',
                                             'integral' => 'Integral',
-                                            default => $turma->turno,
+                                            default    => $turma->turno,
                                         };
 
                                         $html .= '
-                                <div class="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                                    <div class="font-semibold text-primary-600 dark:text-primary-400">
-                                        ' . e($turma->serie->nome) . ' - Turma ' . e($turma->nome) . '
-                                    </div>
-                                    <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                        <span class="font-medium">Escola:</span> ' . e($turma->escola->nome) . '
-                                    </div>
-                                    <div class="text-sm text-gray-600 dark:text-gray-400">
-                                        <span class="font-medium">Turno:</span> ' . e($turno) . '
-                                    </div>
-                                    <div class="text-sm text-gray-600 dark:text-gray-400">
-                                        <span class="font-medium">Componentes:</span> ' . e($componentes) . '
-                                    </div>
-                                </div>
-                            ';
+            <div class="prof-turma-card">
+                <div class="prof-turma-title">
+                    ' . e($turma->serie->nome) . ' - Turma ' . e($turma->nome) . '
+                </div>
+                <div class="prof-turma-info">
+                    <span class="prof-turma-label">Escola:</span> ' . e($turma->escola->nome) . '
+                </div>
+                <div class="prof-turma-info">
+                    <span class="prof-turma-label">Turno:</span> ' . e($turno) . '
+                </div>
+                <div class="prof-turma-info">
+                    <span class="prof-turma-label">Componentes:</span> ' . e($componentes) . '
+                </div>
+            </div>
+        ';
                                     }
 
                                     $html .= '</div>';
