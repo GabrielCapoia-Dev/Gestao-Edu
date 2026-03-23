@@ -98,7 +98,6 @@ class AppServiceProvider extends ServiceProvider
             fn() => view('components.open-url-listener'),
         );
 
-	URL::forceScheme('https');
-
+        URL::forceScheme('https');
     }
 }
