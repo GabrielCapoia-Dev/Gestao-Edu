@@ -238,7 +238,7 @@ class ProfessorService
 
 
                     \Filament\Infolists\Components\TextEntry::make('turmas_lista')
-                        ->label('')
+                        ->label('Lista de Turmas')
                         ->getStateUsing(fn($record) => $record->id)
                         ->formatStateUsing(function ($state, $record) {
                             $turmas = \App\Models\Turma::whereHas('componentes', function ($query) use ($record) {
