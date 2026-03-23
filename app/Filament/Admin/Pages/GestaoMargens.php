@@ -21,6 +21,24 @@ class GestaoMargens extends Page
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ChartBar;
     protected static string|UnitEnum|null $navigationGroup = 'Alimentação Escolar';
     protected static ?string $navigationParentItem = 'Contratos';
+
+    // Estado de ordenação
+    public string $sortCol = 'nome';
+    public string $sortDir = 'asc';
+
+
+    public function sortBy(string $coluna): void
+    {
+        if ($this->sortCol === $coluna) {
+            $this->sortDir = $this->sortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->sortCol = $coluna;
+            $this->sortDir = 'asc';
+        }
+    }
+
+
+
     // -------------------------------------------------------------------------
     // Estado da página
     // -------------------------------------------------------------------------
@@ -141,9 +159,26 @@ class GestaoMargens extends Page
             $itens = $itens->filter(fn($item) => $item['tipo_item'] === $this->abaAtiva);
         }
 
-        return $itens->sortBy('nome')->values();
-    }
+        $dir = $this->sortDir === 'asc';
 
+        return match ($this->sortCol) {
+            'nome'              => $dir ? $itens->sortBy('nome', SORT_NATURAL | SORT_FLAG_CASE)
+                : $itens->sortByDesc('nome', SORT_NATURAL | SORT_FLAG_CASE),
+            'total_contratado'  => $dir ? $itens->sortBy('total_contratado')
+                : $itens->sortByDesc('total_contratado'),
+            'total_utilizado'   => $dir ? $itens->sortBy('total_utilizado')
+                : $itens->sortByDesc('total_utilizado'),
+            'total_reservado'   => $dir ? $itens->sortBy('total_reservado')
+                : $itens->sortByDesc('total_reservado'),
+            'saldo_disponivel'  => $dir ? $itens->sortBy('saldo_disponivel')
+                : $itens->sortByDesc('saldo_disponivel'),
+            'percentual'        => $dir ? $itens->sortBy('percentual')
+                : $itens->sortByDesc('percentual'),
+            'qtd_contratos'     => $dir ? $itens->sortBy('qtd_contratos')
+                : $itens->sortByDesc('qtd_contratos'),
+            default             => $itens->sortBy('nome', SORT_NATURAL | SORT_FLAG_CASE),
+        };
+    }
     // -------------------------------------------------------------------------
     // Lógica central: agrupa contratos por item_id
     // -------------------------------------------------------------------------

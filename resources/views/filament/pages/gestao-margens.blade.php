@@ -222,6 +222,11 @@
             gap: 0;
         }
 
+        css.fi-page-content,
+        .fi-main {
+            overflow: visible !important;
+        }
+
         .gm-tabs::-webkit-scrollbar {
             display: none;
         }
@@ -1145,6 +1150,59 @@
             border-top-color: #374151;
             background: rgba(255, 255, 255, .03);
         }
+
+
+        /* ─── Cabeçalhos ordenáveis ─── */
+        .gm-th-sort {
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+        }
+
+        .gm-th-sort:hover {
+            color: #374151;
+        }
+
+        .dark .gm-th-sort:hover {
+            color: #d1d5db;
+        }
+
+        .gm-th-sort-icon {
+            display: inline-flex;
+            flex-direction: column;
+            vertical-align: middle;
+            margin-left: .25rem;
+            gap: 1px;
+            opacity: .35;
+            transition: opacity 150ms ease;
+        }
+
+        .gm-th-sort:hover .gm-th-sort-icon,
+        .gm-th-sort--active .gm-th-sort-icon {
+            opacity: 1;
+        }
+
+        .gm-th-sort-icon svg {
+            width: .625rem;
+            height: .625rem;
+            display: block;
+        }
+
+        .gm-th-sort-icon--asc .icon-up {
+            color: var(--primary-600, #4f46e5);
+        }
+
+        .gm-th-sort-icon--desc .icon-down {
+            color: var(--primary-600, #4f46e5);
+        }
+
+        .dark .gm-th-sort-icon--asc .icon-up {
+            color: var(--primary-400, #818cf8);
+        }
+
+        .dark .gm-th-sort-icon--desc .icon-down {
+            color: var(--primary-400, #818cf8);
+        }
     </style>
 
     {{-- ================================================================= --}}
@@ -1188,14 +1246,59 @@
             <table class="gm-table">
                 <thead>
                     <tr>
-                        <th>Item</th>
+                        {{-- helper: ícone de ordenação --}}
+                        @php
+                        function thIcon(string $col, string $active, string $dir): string {
+                        $isActive = $col === $active;
+                        $dirClass = $isActive ? 'gm-th-sort-icon--' . $dir : '';
+                        return '
+                        <span class="gm-th-sort-icon ' . $dirClass . '">
+                            <svg class="icon-up" viewBox="0 0 10 6" fill="currentColor">
+                                <path d="M5 0L10 6H0z" />
+                            </svg>
+                            <svg class="icon-down" viewBox="0 0 10 6" fill="currentColor">
+                                <path d="M5 6L0 0h10z" />
+                            </svg>
+                        </span>';
+                        }
+                        @endphp
+
+                        <th
+                            wire:click="sortBy('nome')"
+                            class="gm-th-sort {{ $sortCol === 'nome' ? 'gm-th-sort--active' : '' }}">
+                            Item{!! thIcon('nome', $sortCol, $sortDir) !!}
+                        </th>
                         <th class="gm-c-cat">Categoria</th>
-                        <th class="gm-c-tot r">Contratado</th>
-                        <th class="gm-c-tot r">Utilizado</th>
-                        <th class="gm-c-tot r">Reservado</th>
-                        <th class="r">Saldo</th>
-                        <th class="gm-c-bar">Margem</th>
-                        <th class="gm-c-contr c">Contr.</th>
+                        <th
+                            wire:click="sortBy('total_contratado')"
+                            class="gm-c-tot r gm-th-sort {{ $sortCol === 'total_contratado' ? 'gm-th-sort--active' : '' }}">
+                            Contratado{!! thIcon('total_contratado', $sortCol, $sortDir) !!}
+                        </th>
+                        <th
+                            wire:click="sortBy('total_utilizado')"
+                            class="gm-c-tot r gm-th-sort {{ $sortCol === 'total_utilizado' ? 'gm-th-sort--active' : '' }}">
+                            Utilizado{!! thIcon('total_utilizado', $sortCol, $sortDir) !!}
+                        </th>
+                        <th
+                            wire:click="sortBy('total_reservado')"
+                            class="gm-c-tot r gm-th-sort {{ $sortCol === 'total_reservado' ? 'gm-th-sort--active' : '' }}">
+                            Reservado{!! thIcon('total_reservado', $sortCol, $sortDir) !!}
+                        </th>
+                        <th
+                            wire:click="sortBy('saldo_disponivel')"
+                            class="r gm-th-sort {{ $sortCol === 'saldo_disponivel' ? 'gm-th-sort--active' : '' }}">
+                            Saldo{!! thIcon('saldo_disponivel', $sortCol, $sortDir) !!}
+                        </th>
+                        <th
+                            wire:click="sortBy('percentual')"
+                            class="gm-c-bar gm-th-sort {{ $sortCol === 'percentual' ? 'gm-th-sort--active' : '' }}">
+                            Margem{!! thIcon('percentual', $sortCol, $sortDir) !!}
+                        </th>
+                        <th
+                            wire:click="sortBy('qtd_contratos')"
+                            class="gm-c-contr c gm-th-sort {{ $sortCol === 'qtd_contratos' ? 'gm-th-sort--active' : '' }}">
+                            Contr.{!! thIcon('qtd_contratos', $sortCol, $sortDir) !!}
+                        </th>
                         <th></th>
                     </tr>
                 </thead>
