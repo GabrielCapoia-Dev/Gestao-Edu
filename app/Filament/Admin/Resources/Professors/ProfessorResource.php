@@ -67,13 +67,6 @@ class ProfessorResource extends Resource
             ->with(['escola']);
     }
 
-    public static function getGlobalSearchResultUrl(Model $record): string
-    {
-        return static::getUrl('index', [
-            'tableSearch' => $record->nome,
-        ]);
-    }
-
     public static function form(Schema $schema): Schema
     {
         return static::professorService()->configurarFormulario($schema);
