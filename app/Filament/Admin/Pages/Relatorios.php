@@ -310,18 +310,6 @@ class Relatorios extends Page implements HasTable
                             : $query
                     ),
             ])
-            ->bulkActions([
-                FilamentExportBulkAction::make('exportar')
-                    ->label('Exportar XLSX')
-                    ->defaultFormat('xlsx')
-                    ->directDownload()
-                    ->visible(function ($records) {
-                        /** @var \App\Models\User */
-                        $user = Auth::user();
-                        return $user->hasPermissionTo('Exportar Relatórios');
-                    })
-                    ->defaultPageOrientation('landscape'),
-            ])
             ->paginated([10, 25, 50, 100])
             ->defaultPaginationPageOption(25);
     }
