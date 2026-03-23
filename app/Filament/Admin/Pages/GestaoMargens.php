@@ -13,7 +13,7 @@ use Filament\Support\Icons\Heroicon;
 
 class GestaoMargens extends Page
 {
-    protected static string $view = 'filament.pages.gestao-margens';
+    protected string $view = 'filament.pages.gestao-margens';
 
     protected static ?string $title = 'Gestão de Margens';
     protected static ?string $slug  = 'gestao-margens';
