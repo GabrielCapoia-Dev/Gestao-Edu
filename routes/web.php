@@ -22,7 +22,7 @@ use \App\Http\Controllers\PedidoRelatorioGeralController;
 use Illuminate\Support\Facades\DB;
 
 Route::get('/', function () {
-    return view('home');
+    return redirect('/admin/login');
 });
 Route::get('/background', function () {
     return view('background-page');
