@@ -3,9 +3,9 @@
 namespace App\Policies;
 
 use App\Models\User;
-use App\Models\Pedido;
+use App\Models\PedidoMerenda;
 
-class PedidoPolicy
+class PedidoMerendaPolicy
 
 {
     /**
@@ -13,15 +13,15 @@ class PedidoPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasPermissionTo('Listar Pedidos');
+        return $user->hasPermissionTo('Listar Pedidos: Merenda');
     }
 
     /**
      * Determine whether the user can view the model.
      */
-    public function view(User $user, Pedido $model): bool
+    public function view(User $user, PedidoMerenda $model): bool
     {
-        return $user->hasPermissionTo('Listar Pedidos');
+        return $user->hasPermissionTo('Listar Pedidos: Merenda');
 
     }
 
@@ -30,30 +30,30 @@ class PedidoPolicy
      */
     public function create(User $user): bool
     {
-        return $user->hasPermissionTo('Criar Pedidos');
+        return $user->hasPermissionTo('Criar Pedidos: Merenda');
         ;
     }
 
     /**
      * Determine whether the user can update the model.
      */
-    public function update(User $user, Pedido $model): bool
+    public function update(User $user, PedidoMerenda $model): bool
     {
-        return $user->hasPermissionTo('Editar Pedidos');
+        return $user->hasPermissionTo('Editar Pedidos: Merenda');
     }
 
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(User $user, Pedido $model): bool
+    public function delete(User $user, PedidoMerenda $model): bool
     {
-        return $user->hasPermissionTo('Excluir Pedidos');
+        return $user->hasPermissionTo('Excluir Pedidos: Merenda');
     }
 
     // /**
     //  * Determine whether the user can restore the model.
     //  */
-    // public function restore(User $user, Pedido $model): bool
+    // public function restore(User $user, PedidoMerenda $model): bool
     // {
     //     return false;
     // }
@@ -61,7 +61,7 @@ class PedidoPolicy
     // /**
     //  * Determine whether the user can permanently delete the model.
     //  */
-    // public function forceDelete(User $user, Pedido $model): bool
+    // public function forceDelete(User $user, PedidoMerenda $model): bool
     // {
     //     return false;
     // }

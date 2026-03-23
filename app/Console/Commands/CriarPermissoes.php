@@ -60,6 +60,12 @@ class CriarPermissoes extends Command
             'Editar Contratos',
             'Editar Pedidos',
 
+            'Listar Pedidos: Merenda',
+            'Listar Pedidos: Merenda',
+            'Criar Pedidos: Merenda',
+            'Editar Pedidos: Merenda',
+            'Excluir Pedidos: Merenda',
+
             'Excluir Alunos',
             'Excluir Alternativas',
             'Excluir Equipe Gestora',
