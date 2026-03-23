@@ -56,8 +56,8 @@ class ContratoSeeder extends Seeder
                 $itensSorteados = collect($itens)->shuffle()->take($qtdItens);
 
                 foreach ($itensSorteados as $itemId) {
-                    $quantidadeTotal = round(rand(50, 500) + rand(0, 999) / 1000, 3);
-                    $precoUnitario   = round(rand(2, 50) + rand(0, 99) / 100, 2);
+                    $quantidadeTotal = rand(50, 500);
+                    $precoUnitario   = rand(2, 50);
 
                     ContratoItem::firstOrCreate(
                         [
