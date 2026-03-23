@@ -299,40 +299,6 @@ class DatabaseSeeder extends Seeder
         }
 
         // /**
-        //  * Séries
-        //  */
-        // $seriesList = [
-        //     'BERÇÁRIO',
-        //     '1ª Etapa',
-        //     '2ª Etapa',
-        //     'JARDIM',
-        //     'MATERNAL I',
-        //     'MATERNAL II',
-        //     'Infantil 4',
-        //     'Infantil 5',
-        //     '1º Ano',
-        //     '2º Ano',
-        //     '3º Ano',
-        //     '4º Ano',
-        //     '5º Ano',
-        // ];
-
-        // foreach ($seriesList as $seriesName) {
-
-        //     $codigo = $this->gerarCodigoSerie($seriesName);
-
-        //     // se codigo existir, ignora
-        //     if ($codigo && Serie::where('codigo', $codigo)->exists()) {
-        //         continue;
-        //     }
-
-        //     Serie::updateOrCreate(
-        //         ['nome' => $seriesName],
-        //         ['codigo' => $codigo]
-        //     );
-        // }
-
-        // /**
         //  * Laudos
         //  */
         // $laudoList = [
@@ -362,6 +328,7 @@ class DatabaseSeeder extends Seeder
         //     Laudo::firstOrCreate(['nome' => $laudo]);
         // }
 
+
         $this->call([
             EscolaSeeder::class,
             SecretarioUnidadesSeeder::class,
@@ -384,13 +351,31 @@ class DatabaseSeeder extends Seeder
 
         // 2. Criar Séries
         $this->command->info('Criando séries...');
-        $series = Serie::factory(11)->create();
+        $seriesList = [
+            ['codigo' => 'SER001', 'nome' => 'Berçário'],
+            ['codigo' => 'SER002', 'nome' => 'Infantil 1'],
+            ['codigo' => 'SER003', 'nome' => 'Infantil 2'],
+            ['codigo' => 'SER004', 'nome' => 'Infantil 3'],
+            ['codigo' => 'SER005', 'nome' => 'Infantil 4'],
+            ['codigo' => 'SER006', 'nome' => 'Infantil 5'],
+            ['codigo' => 'SER007', 'nome' => '1º Ano'],
+            ['codigo' => 'SER008', 'nome' => '2º Ano'],
+            ['codigo' => 'SER009', 'nome' => '3º Ano'],
+            ['codigo' => 'SER010', 'nome' => '4º Ano'],
+            ['codigo' => 'SER011', 'nome' => '5º Ano'],
+        ];
+
+        foreach ($seriesList as $serie) {
+            Serie::firstOrCreate(['codigo' => $serie['codigo']], ['nome' => $serie['nome']]);
+        }
+
+        $series = Serie::all();
 
         // 3. Criar Componentes Curriculares
         $this->command->info('Criando componentes curriculares...');
         $this->call(ComponenteCurricularSeeder::class);
 
-    
+
         // 4. Criar Professores
         $this->command->info('Criando professores...');
         $professores = Professor::factory(30)->create();
@@ -399,9 +384,14 @@ class DatabaseSeeder extends Seeder
         $this->command->info('Criando turmas...');
         $turmas = Turma::factory(20)->create();
 
-         // 6. Associar Professores aos Componentes das Turmas
+        // 6. Associar Professores aos Componentes das Turmas
         $this->command->info('Associando professores aos componentes das turmas...');
         foreach ($turmas as $turma) {
+
+            if ($turma->componentes()->exists()) {
+                continue;
+            }
+            
             $componentes = $turma->serie->componentesCurriculares;
             $professoresDaEscola = Professor::where('id_escola', $turma->id_escola)->get();
 

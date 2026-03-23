@@ -51,15 +51,15 @@ class ComponenteCurricularSeeder extends Seeder
         ])->get();
         // Base
 
-        $turmaBase = Serie::whereIn('nome', [
-            '1º Ano - Base',
-            '2º Ano - Base',
-            '3º Ano - Base',
-            '4º Ano - Base',
-            '5º Ano - Base',
+        $fundamentalSeries = Serie::whereIn('nome', [
+            '1º Ano',
+            '2º Ano',
+            '3º Ano',
+            '4º Ano',
+            '5º Ano',
         ])->get();
 
-        foreach ($turmaBase as $serie) {
+        foreach ($fundamentalSeries as $serie) {
             $serie->componentesCurriculares()->sync([
                 $componentes['acompanhamento_pedagogico_portugues']->id,
                 $componentes['acompanhamento_pedagogico_matematica']->id,
