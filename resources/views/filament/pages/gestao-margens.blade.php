@@ -1,718 +1,414 @@
 <x-filament-panels::page>
 
-<style>
-    /* ─── Variáveis ─────────────────────────────────────────── */
-    :root {
-        --gm-radius:    0.75rem;
-        --gm-radius-sm: 0.5rem;
-        --gm-trans:     150ms ease;
-        --gm-bar-h:     6px;
-    }
+    {{-- ================================================================= --}}
+    {{-- CARDS DO TOPO                                                      --}}
+    {{-- ================================================================= --}}
+    <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        @foreach ($this->cards as $card)
+            @php
+                $colorMap = [
+                    'blue'  => ['bg' => 'fi-color-primary',  'icon' => 'text-primary-500',  'value' => 'text-primary-600 dark:text-primary-400'],
+                    'amber' => ['bg' => 'fi-color-warning',  'icon' => 'text-warning-500',  'value' => 'text-warning-600 dark:text-warning-400'],
+                    'red'   => ['bg' => 'fi-color-danger',   'icon' => 'text-danger-500',   'value' => 'text-danger-600 dark:text-danger-400'],
+                    'green' => ['bg' => 'fi-color-success',  'icon' => 'text-success-500',  'value' => 'text-success-600 dark:text-success-400'],
+                ];
+                $cm = $colorMap[$card['cor']] ?? $colorMap['blue'];
+            @endphp
 
-    /* ─── Cards do topo ─────────────────────────────────────── */
-    .gm-cards {
-        display: grid;
-        gap: 1rem;
-        grid-template-columns: repeat(2, 1fr);
-    }
-    @media (min-width: 1024px) {
-        .gm-cards { grid-template-columns: repeat(4, 1fr); }
-    }
-
-    .gm-card {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        padding: 1.1rem 1.25rem;
-        border-radius: var(--gm-radius);
-        border: 1px solid var(--gm-card-ring);
-        background: var(--gm-card-bg);
-        transition: box-shadow var(--gm-trans);
-    }
-    .gm-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.07); }
-
-    .gm-card--blue  { --gm-card-bg:#eff6ff; --gm-card-ring:#bfdbfe; }
-    .gm-card--amber { --gm-card-bg:#fffbeb; --gm-card-ring:#fde68a; }
-    .gm-card--red   { --gm-card-bg:#fef2f2; --gm-card-ring:#fecaca; }
-    .gm-card--green { --gm-card-bg:#f0fdf4; --gm-card-ring:#bbf7d0; }
-
-    .dark .gm-card--blue  { --gm-card-bg:rgba(30,58,138,.25);  --gm-card-ring:rgba(37,99,235,.35); }
-    .dark .gm-card--amber { --gm-card-bg:rgba(120,53,15,.25);  --gm-card-ring:rgba(217,119,6,.35); }
-    .dark .gm-card--red   { --gm-card-bg:rgba(127,29,29,.25);  --gm-card-ring:rgba(220,38,38,.35); }
-    .dark .gm-card--green { --gm-card-bg:rgba(20,83,45,.25);   --gm-card-ring:rgba(22,163,74,.35); }
-
-    .gm-card__icon {
-        flex-shrink: 0;
-        display: flex; align-items: center; justify-content: center;
-        width: 2.75rem; height: 2.75rem;
-        border-radius: var(--gm-radius-sm);
-        background: rgba(255,255,255,.6);
-        border: 1px solid var(--gm-card-ring);
-    }
-    .dark .gm-card__icon { background: rgba(255,255,255,.08); }
-
-    .gm-card__icon--blue  svg { color:#2563eb; }
-    .gm-card__icon--amber svg { color:#d97706; }
-    .gm-card__icon--red   svg { color:#dc2626; }
-    .gm-card__icon--green svg { color:#16a34a; }
-    .dark .gm-card__icon--blue  svg { color:#93c5fd; }
-    .dark .gm-card__icon--amber svg { color:#fcd34d; }
-    .dark .gm-card__icon--red   svg { color:#fca5a5; }
-    .dark .gm-card__icon--green svg { color:#86efac; }
-
-    .gm-card__label {
-        font-size:.7rem; font-weight:500; letter-spacing:.04em;
-        text-transform:uppercase; color:#6b7280;
-        line-height:1; margin-bottom:.25rem;
-        white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-    }
-    .dark .gm-card__label { color:#9ca3af; }
-
-    .gm-card__value {
-        font-size:1.35rem; font-weight:700; line-height:1.1; word-break:break-all;
-    }
-    @media (max-width:420px) { .gm-card__value { font-size:1.1rem; } }
-
-    .gm-card--blue  .gm-card__value { color:#1d4ed8; }
-    .gm-card--amber .gm-card__value { color:#b45309; }
-    .gm-card--red   .gm-card__value { color:#b91c1c; }
-    .gm-card--green .gm-card__value { color:#15803d; }
-    .dark .gm-card--blue  .gm-card__value { color:#93c5fd; }
-    .dark .gm-card--amber .gm-card__value { color:#fcd34d; }
-    .dark .gm-card--red   .gm-card__value { color:#fca5a5; }
-    .dark .gm-card--green .gm-card__value { color:#86efac; }
-
-    .gm-card__sub { font-size:.7rem; color:#9ca3af; margin-top:.15rem; }
-    .dark .gm-card__sub { color:#6b7280; }
-
-    /* ─── Painel principal ──────────────────────────────────── */
-    .gm-panel {
-        border-radius: var(--gm-radius);
-        border: 1px solid #e5e7eb;
-        background: #fff;
-        overflow: hidden;
-        margin-top: .5rem;
-    }
-    .dark .gm-panel { border-color:#374151; background:#111827; }
-
-    /* ─── Abas ──────────────────────────────────────────────── */
-    .gm-tabs {
-        display: flex;
-        padding: .75rem 1rem 0;
-        border-bottom: 1px solid #e5e7eb;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
-        gap: 0;
-    }
-    .gm-tabs::-webkit-scrollbar { display:none; }
-    .dark .gm-tabs { border-bottom-color:#374151; }
-
-    .gm-tab {
-        flex-shrink: 0;
-        padding: .6rem 1rem;
-        font-size: .8125rem; font-weight: 500;
-        white-space: nowrap;
-        border: none; border-bottom: 2px solid transparent;
-        background: none; cursor: pointer; outline: none;
-        color: #6b7280;
-        transition: color var(--gm-trans), border-color var(--gm-trans);
-    }
-    .dark .gm-tab { color:#9ca3af; }
-    .gm-tab:hover { color:#374151; }
-    .dark .gm-tab:hover { color:#d1d5db; }
-    .gm-tab--active {
-        color: var(--primary-600,#4f46e5);
-        border-bottom-color: var(--primary-600,#4f46e5);
-    }
-    .dark .gm-tab--active {
-        color: var(--primary-400,#818cf8);
-        border-bottom-color: var(--primary-400,#818cf8);
-    }
-
-    /* ─── Tabela ─────────────────────────────────────────────── */
-    .gm-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-
-    .gm-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: .8125rem;
-        min-width: 480px;
-    }
-
-    .gm-table thead tr {
-        border-bottom: 1px solid #e5e7eb;
-        background: #f9fafb;
-    }
-    .dark .gm-table thead tr { border-bottom-color:#374151; background:rgba(255,255,255,.03); }
-
-    .gm-table th {
-        padding: .65rem 1rem;
-        text-align: left;
-        font-size: .68rem; font-weight: 600; letter-spacing: .06em;
-        text-transform: uppercase; color: #6b7280; white-space: nowrap;
-    }
-    .dark .gm-table th { color:#9ca3af; }
-    .gm-table th.r { text-align:right; }
-    .gm-table th.c { text-align:center; }
-
-    .gm-table tbody tr {
-        border-bottom: 1px solid #f3f4f6;
-        transition: background var(--gm-trans);
-    }
-    .dark .gm-table tbody tr { border-bottom-color:#1f2937; }
-    .gm-table tbody tr:last-child { border-bottom:none; }
-    .gm-table tbody tr:hover { background:#f9fafb; }
-    .dark .gm-table tbody tr:hover { background:rgba(255,255,255,.03); }
-
-    .gm-table td {
-        padding: .75rem 1rem;
-        vertical-align: middle;
-        color: #374151;
-    }
-    .dark .gm-table td { color:#d1d5db; }
-    .gm-table td.r { text-align:right; }
-    .gm-table td.c { text-align:center; }
-
-    /* colunas responsivas */
-    .gm-c-cat   { display:table-cell; }
-    .gm-c-tot   { display:table-cell; }
-    .gm-c-bar   { display:table-cell; }
-    .gm-c-contr { display:table-cell; }
-
-    @media (max-width:880px) { .gm-c-tot  { display:none; } }
-    @media (max-width:660px) { .gm-c-cat  { display:none; } .gm-c-contr { display:none; } }
-    @media (max-width:520px) { .gm-c-bar  { display:none; } }
-
-    .gm-item-nome    { font-weight:600; color:#111827; line-height:1.3; }
-    .dark .gm-item-nome { color:#f9fafb; }
-    .gm-item-un {
-        font-size:.68rem; letter-spacing:.06em; text-transform:uppercase;
-        color:#9ca3af; margin-top:.1rem;
-    }
-
-    .gm-saldo-ok  { font-weight:700; color:#111827; }
-    .gm-saldo-bad { font-weight:700; color:#dc2626; }
-    .dark .gm-saldo-ok  { color:#f9fafb; }
-    .dark .gm-saldo-bad { color:#f87171; }
-
-    /* barra inline */
-    .gm-bar {
-        display:flex; align-items:center; gap:.5rem;
-        min-width:100px;
-    }
-    .gm-bar-track {
-        flex:1; height:var(--gm-bar-h);
-        background:#e5e7eb; border-radius:9999px; overflow:hidden;
-    }
-    .dark .gm-bar-track { background:#374151; }
-    .gm-bar-fill {
-        height:100%; border-radius:9999px;
-        transition: width .4s ease;
-    }
-    .gm-f-normal  { background:#22c55e; }
-    .gm-f-baixo   { background:#f59e0b; }
-    .gm-f-critico { background:#ef4444; }
-    .gm-f-zerado  { background:#d1d5db; }
-    .dark .gm-f-zerado { background:#4b5563; }
-
-    .gm-bar-pct {
-        font-size:.7rem; font-weight:600; color:#6b7280;
-        width:2.5rem; text-align:right; white-space:nowrap;
-    }
-    .dark .gm-bar-pct { color:#9ca3af; }
-
-    /* badge nº contratos */
-    .gm-nbadge {
-        display:inline-flex; align-items:center; justify-content:center;
-        width:1.6rem; height:1.6rem;
-        border-radius:9999px;
-        background:#f3f4f6; font-size:.72rem; font-weight:700; color:#374151;
-    }
-    .dark .gm-nbadge { background:#1f2937; color:#d1d5db; }
-
-    /* botão ver */
-    .gm-btn-ver {
-        display:inline-flex; align-items:center; gap:.35rem;
-        padding:.35rem .75rem; border-radius:var(--gm-radius-sm);
-        font-size:.75rem; font-weight:500;
-        border:1px solid var(--primary-200,#c7d2fe);
-        background:var(--primary-50,#eef2ff);
-        color:var(--primary-700,#4338ca);
-        cursor:pointer; white-space:nowrap;
-        transition: background var(--gm-trans);
-    }
-    .dark .gm-btn-ver {
-        border-color:rgba(99,102,241,.4);
-        background:rgba(99,102,241,.12);
-        color:#a5b4fc;
-    }
-    .gm-btn-ver:hover { background:var(--primary-100,#e0e7ff); }
-    .dark .gm-btn-ver:hover { background:rgba(99,102,241,.22); }
-    .gm-btn-ver svg { width:.875rem; height:.875rem; }
-
-    /* empty */
-    .gm-empty {
-        padding:3.5rem 1rem; text-align:center; color:#9ca3af;
-    }
-    .gm-empty svg { width:2.5rem; height:2.5rem; margin:0 auto .75rem; opacity:.35; display:block; }
-    .gm-empty p { font-size:.875rem; }
-
-    /* ─── SlideOver ──────────────────────────────────────────── */
-    .gm-backdrop {
-        position:fixed; inset:0; z-index:40;
-        background:rgba(3,7,18,.6);
-        backdrop-filter: blur(2px);
-    }
-    .gm-so {
-        position:fixed; inset-y:0; right:0; z-index:50;
-        display:flex; flex-direction:column;
-        width:100%; max-width:42rem;
-        background:#fff;
-        box-shadow:-8px 0 40px rgba(0,0,0,.18);
-    }
-    .dark .gm-so { background:#111827; }
-    @media (max-width:480px) { .gm-so { max-width:100%; } }
-
-    /* header so */
-    .gm-so-hd {
-        display:flex; align-items:flex-start; justify-content:space-between;
-        gap:1rem; padding:1.25rem 1.5rem;
-        border-bottom:1px solid #e5e7eb; flex-shrink:0;
-    }
-    .dark .gm-so-hd { border-bottom-color:#374151; }
-
-    .gm-so-title {
-        font-size:.9375rem; font-weight:700; color:#111827;
-        line-height:1.3; word-break:break-word;
-    }
-    .dark .gm-so-title { color:#f9fafb; }
-    .gm-so-sub { font-size:.72rem; color:#9ca3af; margin-top:.25rem; }
-
-    .gm-so-close {
-        flex-shrink:0; padding:.35rem; border-radius:.375rem;
-        border:none; background:none; cursor:pointer; color:#6b7280;
-        transition:background var(--gm-trans), color var(--gm-trans);
-    }
-    .gm-so-close:hover { background:#f3f4f6; color:#111827; }
-    .dark .gm-so-close:hover { background:#1f2937; color:#f9fafb; }
-    .gm-so-close svg { width:1.1rem; height:1.1rem; }
-
-    /* resumo so */
-    .gm-so-resumo {
-        padding:1rem 1.5rem;
-        background:#f9fafb; border-bottom:1px solid #e5e7eb; flex-shrink:0;
-    }
-    .dark .gm-so-resumo { background:rgba(255,255,255,.03); border-bottom-color:#374151; }
-
-    .gm-so-resumo-title {
-        font-size:.68rem; font-weight:700; letter-spacing:.08em;
-        text-transform:uppercase; color:#6b7280; margin-bottom:.75rem;
-    }
-    .dark .gm-so-resumo-title { color:#9ca3af; }
-
-    .gm-so-grid {
-        display:grid; grid-template-columns:repeat(2,1fr); gap:.6rem .75rem;
-    }
-    @media (min-width:480px) {
-        .gm-so-grid { grid-template-columns:repeat(4,1fr); }
-    }
-
-    .gm-stat-label { font-size:.68rem; color:#9ca3af; line-height:1; margin-bottom:.2rem; }
-    .dark .gm-stat-label { color:#6b7280; }
-    .gm-stat-val   { font-size:.875rem; font-weight:700; color:#111827; }
-    .dark .gm-stat-val { color:#f9fafb; }
-    .gm-stat-val--res  { color:#d97706; }
-    .gm-stat-val--ok   { color:#15803d; }
-    .gm-stat-val--bad  { color:#dc2626; }
-    .dark .gm-stat-val--res { color:#fcd34d; }
-    .dark .gm-stat-val--ok  { color:#86efac; }
-    .dark .gm-stat-val--bad { color:#fca5a5; }
-
-    .gm-so-bar-row {
-        display:flex; align-items:center; gap:.75rem; margin-top:.75rem;
-    }
-    .gm-so-bar-track {
-        flex:1; height:8px; background:#e5e7eb; border-radius:9999px; overflow:hidden;
-    }
-    .dark .gm-so-bar-track { background:#374151; }
-    .gm-so-bar-fill { height:100%; border-radius:9999px; transition:width .5s ease; }
-
-    .gm-so-valor { font-size:.72rem; color:#6b7280; margin-top:.5rem; }
-    .dark .gm-so-valor { color:#9ca3af; }
-    .gm-so-valor strong { color:#374151; font-weight:600; }
-    .dark .gm-so-valor strong { color:#d1d5db; }
-
-    /* body so */
-    .gm-so-body {
-        flex:1; overflow-y:auto;
-        padding:1rem 1.5rem; display:flex; flex-direction:column; gap:.75rem;
-        -webkit-overflow-scrolling:touch;
-    }
-    .gm-so-sect-title {
-        font-size:.68rem; font-weight:700; letter-spacing:.08em;
-        text-transform:uppercase; color:#6b7280; flex-shrink:0;
-    }
-    .dark .gm-so-sect-title { color:#9ca3af; }
-
-    /* card contrato */
-    .gm-cc {
-        border-radius:var(--gm-radius);
-        border:1px solid #e5e7eb; background:#f9fafb; padding:1rem;
-    }
-    .dark .gm-cc { border-color:#374151; background:rgba(255,255,255,.03); }
-
-    .gm-cc-hd {
-        display:flex; align-items:flex-start; justify-content:space-between;
-        gap:.75rem; margin-bottom:.75rem;
-    }
-    .gm-cc-empresa {
-        font-size:.8125rem; font-weight:700; color:#111827;
-        line-height:1.3; word-break:break-word;
-    }
-    .dark .gm-cc-empresa { color:#f9fafb; }
-    .gm-cc-num { font-size:.7rem; color:#9ca3af; margin-top:.1rem; }
-
-    .gm-cc-badges {
-        display:flex; flex-direction:column; align-items:flex-end; gap:.3rem; flex-shrink:0;
-    }
-    .gm-badge {
-        display:inline-block; padding:.15rem .55rem;
-        border-radius:9999px; font-size:.68rem; font-weight:600;
-    }
-    .gm-badge--ok  { background:#dcfce7; color:#15803d; }
-    .gm-badge--bad { background:#fee2e2; color:#b91c1c; }
-    .dark .gm-badge--ok  { background:rgba(22,163,74,.2);  color:#86efac; }
-    .dark .gm-badge--bad { background:rgba(185,28,28,.2);  color:#fca5a5; }
-    .gm-cc-venc { font-size:.68rem; color:#9ca3af; }
-
-    .gm-cc-grid {
-        display:grid; grid-template-columns:1fr 1fr; gap:.4rem .75rem;
-        font-size:.75rem; margin-bottom:.75rem;
-    }
-    .gm-cc-lbl  { color:#9ca3af; }
-    .dark .gm-cc-lbl { color:#6b7280; }
-    .gm-cc-val  { font-weight:600; color:#374151; text-align:right; }
-    .dark .gm-cc-val { color:#d1d5db; }
-    .gm-cc-val--res { color:#d97706; }
-    .dark .gm-cc-val--res { color:#fcd34d; }
-
-    .gm-cc-ft {
-        display:flex; align-items:center; justify-content:space-between;
-        gap:.5rem; margin-top:.5rem;
-    }
-    .gm-cc-saldo-lbl { font-size:.72rem; color:#6b7280; }
-    .dark .gm-cc-saldo-lbl { color:#9ca3af; }
-    .gm-cc-saldo-val {
-        font-size:.9375rem; font-weight:800; letter-spacing:-.01em;
-    }
-    .gm-cc-vfin { font-size:.7rem; color:#6b7280; white-space:nowrap; }
-    .dark .gm-cc-vfin { color:#9ca3af; }
-    .gm-cc-vfin strong { color:#374151; font-weight:600; }
-    .dark .gm-cc-vfin strong { color:#d1d5db; }
-
-    /* footer so */
-    .gm-so-ft {
-        flex-shrink:0; padding:1rem 1.5rem;
-        border-top:1px solid #e5e7eb;
-    }
-    .dark .gm-so-ft { border-top-color:#374151; }
-
-    .gm-btn-fechar {
-        width:100%; display:flex; align-items:center; justify-content:center; gap:.5rem;
-        padding:.625rem 1rem; border-radius:var(--gm-radius-sm);
-        font-size:.8125rem; font-weight:500;
-        border:1px solid #d1d5db; background:#f9fafb; color:#374151;
-        cursor:pointer; transition:background var(--gm-trans);
-    }
-    .dark .gm-btn-fechar { border-color:#374151; background:#1f2937; color:#d1d5db; }
-    .gm-btn-fechar:hover { background:#f3f4f6; }
-    .dark .gm-btn-fechar:hover { background:#374151; }
-    .gm-btn-fechar svg { width:.875rem; height:.875rem; }
-
-    [x-cloak] { display:none !important; }
-</style>
-
-{{-- ================================================================= --}}
-{{-- CARDS DO TOPO                                                      --}}
-{{-- ================================================================= --}}
-<div class="gm-cards">
-    @foreach ($this->cards as $card)
-        <div class="gm-card gm-card--{{ $card['cor'] }}">
-            <div class="gm-card__icon gm-card__icon--{{ $card['cor'] }}">
-                <x-filament::icon :icon="$card['icone']" class="w-5 h-5" />
-            </div>
-            <div style="min-width:0">
-                <p class="gm-card__label">{{ $card['titulo'] }}</p>
-                <p class="gm-card__value">{{ $card['valor'] }}</p>
-                <p class="gm-card__sub">{{ $card['descricao'] }}</p>
-            </div>
-        </div>
-    @endforeach
-</div>
-
-{{-- ================================================================= --}}
-{{-- PAINEL: ABAS + TABELA                                             --}}
-{{-- ================================================================= --}}
-<div class="gm-panel">
-
-    {{-- Abas --}}
-    <div class="gm-tabs" role="tablist">
-        @foreach ($this->abas as $aba)
-            <button
-                wire:click="mudarAba('{{ $aba['value'] }}')"
-                class="gm-tab {{ $abaAtiva === $aba['value'] ? 'gm-tab--active' : '' }}"
-                role="tab"
-                aria-selected="{{ $abaAtiva === $aba['value'] ? 'true' : 'false' }}"
-            >
-                {{ $aba['label'] }}
-            </button>
+            <x-filament::section compact>
+                <div class="flex items-center gap-3">
+                    <div class="flex-shrink-0 rounded-lg bg-gray-100 dark:bg-white/5 p-2.5">
+                        <x-filament::icon
+                            :icon="$card['icone']"
+                            class="h-5 w-5 {{ $cm['icon'] }}"
+                        />
+                    </div>
+                    <div class="min-w-0">
+                        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 truncate">
+                            {{ $card['titulo'] }}
+                        </p>
+                        <p class="text-xl font-bold leading-tight {{ $cm['value'] }}">
+                            {{ $card['valor'] }}
+                        </p>
+                        <p class="text-xs text-gray-400 dark:text-gray-500">
+                            {{ $card['descricao'] }}
+                        </p>
+                    </div>
+                </div>
+            </x-filament::section>
         @endforeach
     </div>
 
-    {{-- Tabela --}}
-    <div class="gm-table-wrap">
-        <table class="gm-table">
-            <thead>
-                <tr>
-                    <th>Item</th>
-                    <th class="gm-c-cat">Categoria</th>
-                    <th class="gm-c-tot r">Contratado</th>
-                    <th class="gm-c-tot r">Utilizado</th>
-                    <th class="gm-c-tot r">Reservado</th>
-                    <th class="r">Saldo</th>
-                    <th class="gm-c-bar">Margem</th>
-                    <th class="gm-c-contr c">Contr.</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse ($this->itensFiltrados as $item)
-                    @php
-                        $fClass = match($item['status']) {
-                            'zerado'  => 'gm-f-zerado',
-                            'critico' => 'gm-f-critico',
-                            'baixo'   => 'gm-f-baixo',
-                            default   => 'gm-f-normal',
-                        };
-                        $sClass = $item['saldo_disponivel'] <= 0 ? 'gm-saldo-bad' : 'gm-saldo-ok';
-                    @endphp
-                    <tr>
-                        <td>
-                            <p class="gm-item-nome">{{ $item['nome'] }}</p>
-                            <p class="gm-item-un">{{ $item['unidade'] }}</p>
-                        </td>
-                        <td class="gm-c-cat" style="color:#6b7280;font-size:.75rem">
-                            {{ $item['tipo_label'] }}
-                        </td>
-                        <td class="gm-c-tot r" style="color:#6b7280">
-                            {{ number_format($item['total_contratado'], 3, ',', '.') }}
-                        </td>
-                        <td class="gm-c-tot r" style="color:#6b7280">
-                            {{ number_format($item['total_utilizado'], 3, ',', '.') }}
-                        </td>
-                        <td class="gm-c-tot r" style="color:#d97706">
-                            {{ number_format($item['total_reservado'], 3, ',', '.') }}
-                        </td>
-                        <td class="r">
-                            <span class="{{ $sClass }}">
-                                {{ number_format($item['saldo_disponivel'], 3, ',', '.') }}
-                            </span>
-                        </td>
-                        <td class="gm-c-bar">
-                            <div class="gm-bar">
-                                <div class="gm-bar-track">
-                                    <div class="gm-bar-fill {{ $fClass }}" style="width:{{ min($item['percentual'], 100) }}%"></div>
-                                </div>
-                                <span class="gm-bar-pct">{{ $item['percentual'] }}%</span>
-                            </div>
-                        </td>
-                        <td class="gm-c-contr c">
-                            <span class="gm-nbadge">{{ $item['qtd_contratos'] }}</span>
-                        </td>
-                        <td class="c">
-                            <button wire:click="abrirSlideOver({{ $item['item_id'] }})" class="gm-btn-ver">
-                                <x-filament::icon icon="heroicon-o-eye" />
-                                <span class="hidden sm:inline">Contratos</span>
-                            </button>
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="9">
-                            <div class="gm-empty">
-                                <x-filament::icon icon="heroicon-o-inbox" />
-                                <p>Nenhum item com saldo disponível nesta categoria.</p>
-                            </div>
-                        </td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
-</div>
+    {{-- ================================================================= --}}
+    {{-- PAINEL: ABAS + TABELA                                             --}}
+    {{-- ================================================================= --}}
+    <x-filament::section>
+        <x-slot name="heading">Margens por Item</x-slot>
+        <x-slot name="description">
+            Saldo disponível consolidado de todos os contratos ativos
+        </x-slot>
 
-{{-- ================================================================= --}}
-{{-- SLIDE-OVER                                                         --}}
-{{-- ================================================================= --}}
-@if ($slideOverAberto)
-
-    <div
-        x-data x-cloak x-show="true"
-        x-transition:enter="transition ease-out duration-200"
-        x-transition:enter-start="opacity-0"
-        x-transition:enter-end="opacity-100"
-        x-transition:leave="transition ease-in duration-150"
-        x-transition:leave-start="opacity-100"
-        x-transition:leave-end="opacity-0"
-        class="gm-backdrop"
-        wire:click="fecharSlideOver"
-    ></div>
-
-    <div
-        x-data x-cloak x-show="true"
-        x-transition:enter="transition ease-out duration-300"
-        x-transition:enter-start="translate-x-full"
-        x-transition:enter-end="translate-x-0"
-        x-transition:leave="transition ease-in duration-200"
-        x-transition:leave-start="translate-x-0"
-        x-transition:leave-end="translate-x-full"
-        class="gm-so"
-    >
-
-        {{-- Header --}}
-        <div class="gm-so-hd">
-            <div style="min-width:0">
-                <h2 class="gm-so-title">{{ $itemSelecionadoNome }}</h2>
-                <p class="gm-so-sub">
-                    Unidade: <strong style="text-transform:uppercase">{{ $itemSelecionadoUnidade }}</strong>
-                    &middot;
-                    {{ count($contratosDoItem) }} {{ count($contratosDoItem) === 1 ? 'contrato ativo' : 'contratos ativos' }}
-                </p>
-            </div>
-            <button class="gm-so-close" wire:click="fecharSlideOver" aria-label="Fechar">
-                <x-filament::icon icon="heroicon-o-x-mark" />
-            </button>
+        {{-- Abas --}}
+        <div class="border-b border-gray-200 dark:border-white/10 overflow-x-auto -mx-6 px-6 mb-4">
+            <nav class="flex gap-0 -mb-px" role="tablist">
+                @foreach ($this->abas as $aba)
+                    <button
+                        wire:click="mudarAba('{{ $aba['value'] }}')"
+                        role="tab"
+                        aria-selected="{{ $abaAtiva === $aba['value'] ? 'true' : 'false' }}"
+                        @class([
+                            'flex-shrink-0 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors duration-150 focus:outline-none',
+                            'border-primary-600 text-primary-600 dark:border-primary-400 dark:text-primary-400'
+                                => $abaAtiva === $aba['value'],
+                            'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-white/20'
+                                => $abaAtiva !== $aba['value'],
+                        ])
+                    >
+                        {{ $aba['label'] }}
+                    </button>
+                @endforeach
+            </nav>
         </div>
+
+        {{-- Tabela --}}
+        <div class="overflow-x-auto -mx-6">
+            <table class="w-full text-sm min-w-[540px]">
+                <thead>
+                    <tr class="border-b border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5">
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Item
+                        </th>
+                        <th class="hidden md:table-cell px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Categoria
+                        </th>
+                        <th class="hidden lg:table-cell px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Contratado
+                        </th>
+                        <th class="hidden lg:table-cell px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Utilizado
+                        </th>
+                        <th class="hidden lg:table-cell px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Reservado
+                        </th>
+                        <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Saldo
+                        </th>
+                        <th class="hidden sm:table-cell px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Margem
+                        </th>
+                        <th class="hidden md:table-cell px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Contr.
+                        </th>
+                        <th class="px-4 py-3"></th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 dark:divide-white/5">
+                    @forelse ($this->itensFiltrados as $item)
+                        @php
+                            $barColor = match($item['status']) {
+                                'zerado'  => 'bg-gray-300 dark:bg-gray-600',
+                                'critico' => 'bg-danger-500',
+                                'baixo'   => 'bg-warning-500',
+                                default   => 'bg-success-500',
+                            };
+                            $saldoColor = $item['saldo_disponivel'] <= 0
+                                ? 'text-danger-600 dark:text-danger-400'
+                                : 'text-gray-900 dark:text-white';
+                        @endphp
+                        <tr class="group hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors duration-100">
+
+                            {{-- Nome --}}
+                            <td class="px-6 py-3">
+                                <p class="font-medium text-gray-900 dark:text-white leading-snug">
+                                    {{ $item['nome'] }}
+                                </p>
+                                <p class="text-xs uppercase tracking-wider text-gray-400 dark:text-gray-500 mt-0.5">
+                                    {{ $item['unidade'] }}
+                                </p>
+                            </td>
+
+                            {{-- Categoria --}}
+                            <td class="hidden md:table-cell px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
+                                {{ $item['tipo_label'] }}
+                            </td>
+
+                            {{-- Contratado --}}
+                            <td class="hidden lg:table-cell px-4 py-3 text-right text-sm text-gray-500 dark:text-gray-400">
+                                {{ number_format($item['total_contratado'], 3, ',', '.') }}
+                            </td>
+
+                            {{-- Utilizado --}}
+                            <td class="hidden lg:table-cell px-4 py-3 text-right text-sm text-gray-500 dark:text-gray-400">
+                                {{ number_format($item['total_utilizado'], 3, ',', '.') }}
+                            </td>
+
+                            {{-- Reservado --}}
+                            <td class="hidden lg:table-cell px-4 py-3 text-right text-sm font-medium text-warning-600 dark:text-warning-400">
+                                {{ number_format($item['total_reservado'], 3, ',', '.') }}
+                            </td>
+
+                            {{-- Saldo --}}
+                            <td class="px-4 py-3 text-right text-sm font-bold {{ $saldoColor }}">
+                                {{ number_format($item['saldo_disponivel'], 3, ',', '.') }}
+                            </td>
+
+                            {{-- Barra --}}
+                            <td class="hidden sm:table-cell px-4 py-3">
+                                <div class="flex items-center gap-2 min-w-[100px]">
+                                    <div class="flex-1 h-1.5 rounded-full bg-gray-200 dark:bg-white/10 overflow-hidden">
+                                        <div
+                                            class="h-full rounded-full {{ $barColor }}"
+                                            style="width: {{ min($item['percentual'], 100) }}%"
+                                        ></div>
+                                    </div>
+                                    <span class="w-10 text-right text-xs font-medium text-gray-500 dark:text-gray-400">
+                                        {{ $item['percentual'] }}%
+                                    </span>
+                                </div>
+                            </td>
+
+                            {{-- Nº contratos --}}
+                            <td class="hidden md:table-cell px-4 py-3 text-center">
+                                <x-filament::badge color="gray" size="sm">
+                                    {{ $item['qtd_contratos'] }}
+                                </x-filament::badge>
+                            </td>
+
+                            {{-- Ação --}}
+                            <td class="px-4 py-3 text-right">
+                                <x-filament::button
+                                    size="sm"
+                                    color="gray"
+                                    icon="heroicon-o-eye"
+                                    wire:click="abrirSlideOver({{ $item['item_id'] }})"
+                                >
+                                    <span class="hidden sm:inline">Detalhes</span>
+                                </x-filament::button>
+                            </td>
+
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="9" class="px-6 py-16 text-center">
+                                <x-filament::icon
+                                    icon="heroicon-o-inbox"
+                                    class="mx-auto mb-3 h-10 w-10 text-gray-300 dark:text-gray-600"
+                                />
+                                <p class="text-sm text-gray-500 dark:text-gray-400">
+                                    Nenhum item com saldo disponível nesta categoria.
+                                </p>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </x-filament::section>
+
+    {{-- ================================================================= --}}
+    {{-- MODAL: Contratos do item selecionado                              --}}
+    {{-- ================================================================= --}}
+    <x-filament::modal
+        id="modal-contratos-item"
+        :close-by-clicking-away="true"
+        width="2xl"
+        wire:model="slideOverAberto"
+    >
+        <x-slot name="heading">
+            {{ $itemSelecionadoNome ?: 'Contratos do Item' }}
+        </x-slot>
+
+        <x-slot name="description">
+            @if($itemSelecionadoUnidade)
+                Unidade: <strong class="uppercase">{{ $itemSelecionadoUnidade }}</strong>
+                &middot;
+                {{ count($contratosDoItem) }} {{ count($contratosDoItem) === 1 ? 'contrato ativo' : 'contratos ativos' }}
+            @endif
+        </x-slot>
 
         {{-- Resumo consolidado --}}
-        @php
-            $tg  = collect($contratosDoItem)->sum('quantidade_total');
-            $ug  = collect($contratosDoItem)->sum('quantidade_utilizada');
-            $rg  = collect($contratosDoItem)->sum('quantidade_reservada');
-            $sg  = collect($contratosDoItem)->sum('saldo_disponivel');
-            $vg  = collect($contratosDoItem)->sum('valor_total_disponivel');
-            $pg  = $tg > 0 ? round(($sg / $tg) * 100, 1) : 0;
-            $bgc = $pg <= 0 ? 'gm-f-zerado' : ($pg <= 10 ? 'gm-f-critico' : ($pg <= 30 ? 'gm-f-baixo' : 'gm-f-normal'));
-            $sgc = $sg <= 0 ? 'gm-stat-val--bad' : 'gm-stat-val--ok';
-        @endphp
+        @if($slideOverAberto && count($contratosDoItem))
+            @php
+                $tg  = collect($contratosDoItem)->sum('quantidade_total');
+                $ug  = collect($contratosDoItem)->sum('quantidade_utilizada');
+                $rg  = collect($contratosDoItem)->sum('quantidade_reservada');
+                $sg  = collect($contratosDoItem)->sum('saldo_disponivel');
+                $vg  = collect($contratosDoItem)->sum('valor_total_disponivel');
+                $pg  = $tg > 0 ? round(($sg / $tg) * 100, 1) : 0;
+                $bgc = $pg <= 0 ? 'bg-gray-300 dark:bg-gray-600'
+                     : ($pg <= 10 ? 'bg-danger-500'
+                     : ($pg <= 30 ? 'bg-warning-500'
+                     : 'bg-success-500'));
+                $sgColor = $sg <= 0
+                    ? 'text-danger-600 dark:text-danger-400'
+                    : 'text-success-600 dark:text-success-400';
+            @endphp
 
-        <div class="gm-so-resumo">
-            <p class="gm-so-resumo-title">Resumo Consolidado</p>
-            <div class="gm-so-grid">
-                <div>
-                    <p class="gm-stat-label">Total Contratado</p>
-                    <p class="gm-stat-val">{{ number_format($tg, 3, ',', '.') }}</p>
+            {{-- Bloco de resumo --}}
+            <div class="rounded-xl bg-gray-50 dark:bg-white/5 ring-1 ring-gray-200 dark:ring-white/10 p-4 mb-4">
+                <p class="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-3">
+                    Resumo Consolidado
+                </p>
+                <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <div>
+                        <p class="text-xs text-gray-400 dark:text-gray-500 mb-0.5">Total Contratado</p>
+                        <p class="text-sm font-bold text-gray-900 dark:text-white">
+                            {{ number_format($tg, 3, ',', '.') }}
+                        </p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-400 dark:text-gray-500 mb-0.5">Utilizado</p>
+                        <p class="text-sm font-bold text-gray-900 dark:text-white">
+                            {{ number_format($ug, 3, ',', '.') }}
+                        </p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-400 dark:text-gray-500 mb-0.5">Reservado</p>
+                        <p class="text-sm font-bold text-warning-600 dark:text-warning-400">
+                            {{ number_format($rg, 3, ',', '.') }}
+                        </p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-400 dark:text-gray-500 mb-0.5">Saldo Disponível</p>
+                        <p class="text-sm font-bold {{ $sgColor }}">
+                            {{ number_format($sg, 3, ',', '.') }}
+                        </p>
+                    </div>
                 </div>
-                <div>
-                    <p class="gm-stat-label">Utilizado</p>
-                    <p class="gm-stat-val">{{ number_format($ug, 3, ',', '.') }}</p>
+
+                {{-- Barra geral --}}
+                <div class="mt-3 flex items-center gap-3">
+                    <div class="flex-1 h-2 rounded-full bg-gray-200 dark:bg-white/10 overflow-hidden">
+                        <div class="h-full rounded-full {{ $bgc }}" style="width: {{ min($pg, 100) }}%"></div>
+                    </div>
+                    <span class="w-10 text-right text-xs font-semibold text-gray-500 dark:text-gray-400">
+                        {{ $pg }}%
+                    </span>
                 </div>
-                <div>
-                    <p class="gm-stat-label">Reservado</p>
-                    <p class="gm-stat-val gm-stat-val--res">{{ number_format($rg, 3, ',', '.') }}</p>
-                </div>
-                <div>
-                    <p class="gm-stat-label">Saldo Disponível</p>
-                    <p class="gm-stat-val {{ $sgc }}">{{ number_format($sg, 3, ',', '.') }}</p>
-                </div>
+
+                <p class="mt-2 text-xs text-gray-400 dark:text-gray-500">
+                    Valor financeiro disponível:
+                    <span class="font-semibold text-gray-700 dark:text-gray-300">
+                        R$ {{ number_format($vg, 2, ',', '.') }}
+                    </span>
+                </p>
             </div>
-            <div class="gm-so-bar-row">
-                <div class="gm-so-bar-track">
-                    <div class="gm-so-bar-fill {{ $bgc }}" style="width:{{ min($pg, 100) }}%"></div>
-                </div>
-                <span class="gm-bar-pct">{{ $pg }}%</span>
-            </div>
-            <p class="gm-so-valor">
-                Valor financeiro disponível:
-                <strong>R$ {{ number_format($vg, 2, ',', '.') }}</strong>
+
+            {{-- Lista de contratos --}}
+            <p class="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-3">
+                Detalhes por Contrato
             </p>
-        </div>
 
-        {{-- Lista de contratos --}}
-        <div class="gm-so-body">
-            <p class="gm-so-sect-title">Detalhes por Contrato</p>
+            <div class="space-y-3 max-h-[55vh] overflow-y-auto pr-1">
+                @foreach ($contratosDoItem as $ct)
+                    @php
+                        $pct = $ct['percentual'];
+                        $fc  = $pct <= 0  ? 'bg-gray-300 dark:bg-gray-600'
+                             : ($pct <= 10 ? 'bg-danger-500'
+                             : ($pct <= 30 ? 'bg-warning-500'
+                             : 'bg-success-500'));
+                        $sc  = $ct['saldo_disponivel'] <= 0
+                            ? 'text-danger-600 dark:text-danger-400'
+                            : 'text-success-600 dark:text-success-400';
+                    @endphp
 
-            @forelse ($contratosDoItem as $ct)
-                @php
-                    $pct = $ct['percentual'];
-                    $fc  = $pct <= 0 ? 'gm-f-zerado' : ($pct <= 10 ? 'gm-f-critico' : ($pct <= 30 ? 'gm-f-baixo' : 'gm-f-normal'));
-                    $sc  = $ct['saldo_disponivel'] <= 0 ? 'gm-saldo-bad' : 'gm-saldo-ok';
-                @endphp
+                    <div class="rounded-xl ring-1 ring-gray-200 dark:ring-white/10 bg-white dark:bg-white/[0.03] p-4">
 
-                <div class="gm-cc">
-                    <div class="gm-cc-hd">
-                        <div style="min-width:0">
-                            <p class="gm-cc-empresa">{{ $ct['empresa'] }}</p>
-                            <p class="gm-cc-num">{{ $ct['numero_contrato'] }}</p>
+                        {{-- Header do card --}}
+                        <div class="flex items-start justify-between gap-3 mb-3">
+                            <div class="min-w-0">
+                                <p class="font-semibold text-sm text-gray-900 dark:text-white truncate">
+                                    {{ $ct['empresa'] }}
+                                </p>
+                                <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                                    {{ $ct['numero_contrato'] }}
+                                </p>
+                            </div>
+                            <div class="flex flex-col items-end gap-1.5 flex-shrink-0">
+                                <x-filament::badge
+                                    :color="$ct['vencido'] ? 'danger' : 'success'"
+                                    size="sm"
+                                >
+                                    {{ $ct['vencido'] ? 'Vencido' : 'Vigente' }}
+                                </x-filament::badge>
+                                <span class="text-xs text-gray-400 dark:text-gray-500">
+                                    Venc: {{ $ct['data_vencimento'] }}
+                                </span>
+                            </div>
                         </div>
-                        <div class="gm-cc-badges">
-                            <span class="gm-badge {{ $ct['vencido'] ? 'gm-badge--bad' : 'gm-badge--ok' }}">
-                                {{ $ct['vencido'] ? 'Vencido' : 'Vigente' }}
+
+                        {{-- Grade de quantidades --}}
+                        <div class="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs mb-3">
+                            <div class="flex justify-between gap-2">
+                                <span class="text-gray-400 dark:text-gray-500">Total contratado</span>
+                                <span class="font-semibold text-gray-700 dark:text-gray-300">
+                                    {{ number_format($ct['quantidade_total'], 3, ',', '.') }}
+                                </span>
+                            </div>
+                            <div class="flex justify-between gap-2">
+                                <span class="text-gray-400 dark:text-gray-500">Preço unitário</span>
+                                <span class="font-semibold text-gray-700 dark:text-gray-300">
+                                    R$ {{ number_format($ct['preco_unitario'], 2, ',', '.') }}
+                                </span>
+                            </div>
+                            <div class="flex justify-between gap-2">
+                                <span class="text-gray-400 dark:text-gray-500">Utilizado</span>
+                                <span class="font-semibold text-gray-700 dark:text-gray-300">
+                                    {{ number_format($ct['quantidade_utilizada'], 3, ',', '.') }}
+                                </span>
+                            </div>
+                            <div class="flex justify-between gap-2">
+                                <span class="text-gray-400 dark:text-gray-500">Reservado</span>
+                                <span class="font-semibold text-warning-600 dark:text-warning-400">
+                                    {{ number_format($ct['quantidade_reservada'], 3, ',', '.') }}
+                                </span>
+                            </div>
+                        </div>
+
+                        {{-- Barra de saldo --}}
+                        <div class="flex items-center gap-2 mb-2.5">
+                            <div class="flex-1 h-1.5 rounded-full bg-gray-200 dark:bg-white/10 overflow-hidden">
+                                <div class="h-full rounded-full {{ $fc }}" style="width: {{ min($pct, 100) }}%"></div>
+                            </div>
+                            <span class="w-10 text-right text-xs font-medium text-gray-400 dark:text-gray-500">
+                                {{ $pct }}%
                             </span>
-                            <span class="gm-cc-venc">Venc: {{ $ct['data_vencimento'] }}</span>
                         </div>
-                    </div>
 
-                    <div class="gm-cc-grid">
-                        <span class="gm-cc-lbl">Total contratado</span>
-                        <span class="gm-cc-val">{{ number_format($ct['quantidade_total'], 3, ',', '.') }}</span>
-
-                        <span class="gm-cc-lbl">Preço unitário</span>
-                        <span class="gm-cc-val">R$ {{ number_format($ct['preco_unitario'], 2, ',', '.') }}</span>
-
-                        <span class="gm-cc-lbl">Utilizado</span>
-                        <span class="gm-cc-val">{{ number_format($ct['quantidade_utilizada'], 3, ',', '.') }}</span>
-
-                        <span class="gm-cc-lbl">Reservado</span>
-                        <span class="gm-cc-val gm-cc-val--res">{{ number_format($ct['quantidade_reservada'], 3, ',', '.') }}</span>
-                    </div>
-
-                    <div class="gm-bar" style="margin-bottom:.6rem">
-                        <div class="gm-bar-track" style="height:7px">
-                            <div class="gm-bar-fill {{ $fc }}" style="width:{{ min($pct, 100) }}%"></div>
-                        </div>
-                        <span class="gm-bar-pct">{{ $pct }}%</span>
-                    </div>
-
-                    <div class="gm-cc-ft">
-                        <div>
-                            <span class="gm-cc-saldo-lbl">Saldo: </span>
-                            <span class="gm-cc-saldo-val {{ $sc }}">
-                                {{ number_format($ct['saldo_disponivel'], 3, ',', '.') }}
+                        {{-- Saldo + valor financeiro --}}
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <span class="text-xs text-gray-400 dark:text-gray-500">Saldo: </span>
+                                <span class="text-base font-extrabold {{ $sc }}">
+                                    {{ number_format($ct['saldo_disponivel'], 3, ',', '.') }}
+                                </span>
+                            </div>
+                            <span class="text-xs text-gray-400 dark:text-gray-500">
+                                Valor disp.:
+                                <span class="font-semibold text-gray-700 dark:text-gray-300">
+                                    R$ {{ number_format($ct['valor_total_disponivel'], 2, ',', '.') }}
+                                </span>
                             </span>
                         </div>
-                        <span class="gm-cc-vfin">
-                            Valor: <strong>R$ {{ number_format($ct['valor_total_disponivel'], 2, ',', '.') }}</strong>
-                        </span>
-                    </div>
-                </div>
-            @empty
-                <div class="gm-empty">
-                    <x-filament::icon icon="heroicon-o-inbox" />
-                    <p>Nenhum contrato ativo para este item.</p>
-                </div>
-            @endforelse
-        </div>
 
-        {{-- Footer --}}
-        <div class="gm-so-ft">
-            <button class="gm-btn-fechar" wire:click="fecharSlideOver">
-                <x-filament::icon icon="heroicon-o-x-mark" />
+                    </div>
+                @endforeach
+            </div>
+        @else
+            <div class="flex flex-col items-center justify-center py-12 text-gray-400 dark:text-gray-500">
+                <x-filament::icon icon="heroicon-o-inbox" class="mb-3 h-10 w-10 opacity-40" />
+                <p class="text-sm">Nenhum contrato ativo para este item.</p>
+            </div>
+        @endif
+
+        <x-slot name="footerActions">
+            <x-filament::button
+                color="gray"
+                wire:click="fecharSlideOver"
+            >
                 Fechar
-            </button>
-        </div>
-    </div>
-@endif
+            </x-filament::button>
+        </x-slot>
+    </x-filament::modal>
 
 </x-filament-panels::page>
