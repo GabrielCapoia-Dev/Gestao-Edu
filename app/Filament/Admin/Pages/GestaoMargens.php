@@ -16,11 +16,11 @@ class GestaoMargens extends Page
     protected string $view = 'filament.pages.gestao-margens';
 
     protected static ?string $title = 'Gestão de Margens';
-    protected static ?string $slug  = 'gestao-margens';
+    protected static ?string $slug = 'gestao-margens';
     protected static ?int $navigationSort = 3;
-    protected static string|BackedEnum|null $navigationIcon  = Heroicon::ChartBar;
-    protected static string|UnitEnum|null   $navigationGroup = 'Alimentação Escolar';
-
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::ChartBar;
+    protected static string|UnitEnum|null $navigationGroup = 'Alimentação Escolar';
+    protected static ?string $navigationParentItem = 'Contratos';
     // -------------------------------------------------------------------------
     // Estado da página
     // -------------------------------------------------------------------------
@@ -28,18 +28,15 @@ class GestaoMargens extends Page
     /** Aba (TipoItem value) ativa na tabela */
     public string $abaAtiva = 'todas';
 
-    /**
-     * Controla a visibilidade do modal via wire:model.
-     * Aberto/fechado também via dispatch 'open-modal' / 'close-modal'.
-     */
+    /** SlideOver aberto? */
     public bool $slideOverAberto = false;
 
-    /** item_id do item selecionado */
+    /** item_id do item selecionado para o slideOver */
     public ?int $itemSelecionadoId = null;
 
-    /** Dados populados ao abrir o modal */
-    public array  $contratosDoItem        = [];
-    public string $itemSelecionadoNome    = '';
+    /** Dados do slideOver */
+    public array $contratosDoItem = [];
+    public string $itemSelecionadoNome = '';
     public string $itemSelecionadoUnidade = '';
 
     // -------------------------------------------------------------------------
@@ -50,6 +47,7 @@ class GestaoMargens extends Page
     {
         $contratosAtivos = Contrato::where('ativo', true)->count();
 
+        // Valor financeiro total disponível (saldo_disponivel * preco_unitario)
         $todosContratoItens = ContratoItem::query()
             ->whereHas('contrato', fn($q) => $q->where('ativo', true))
             ->get();
@@ -58,17 +56,17 @@ class GestaoMargens extends Page
             fn($ci) => $ci->saldo_disponivel * (float) $ci->preco_unitario
         );
 
-        $itensMargem = $this->getItensMargem();
-
-        $itensCriticos = $itensMargem
+        // Itens com margem crítica: saldo disponível total <= 10% da quantidade total contratada
+        $itensCriticos = $this->getItensMargem()
             ->filter(function ($item) {
                 if ($item['total_contratado'] <= 0) return false;
-                $pct = ($item['saldo_disponivel'] / $item['total_contratado']) * 100;
-                return $pct <= 10 && $item['saldo_disponivel'] > 0;
+                $percentual = ($item['saldo_disponivel'] / $item['total_contratado']) * 100;
+                return $percentual <= 10 && $item['saldo_disponivel'] > 0;
             })
             ->count();
 
-        $itensZerados = $itensMargem
+        // Itens completamente zerados
+        $itensZerados = $this->getItensMargem()
             ->filter(fn($item) => $item['saldo_disponivel'] <= 0)
             ->count();
 
@@ -105,7 +103,7 @@ class GestaoMargens extends Page
     }
 
     // -------------------------------------------------------------------------
-    // Computed: Abas disponíveis (somente categorias com saldo > 0)
+    // Computed: Abas disponíveis (somente categorias com itens e saldo)
     // -------------------------------------------------------------------------
 
     public function getAbasProperty(): array
@@ -116,13 +114,14 @@ class GestaoMargens extends Page
             ->unique()
             ->values();
 
-        $abas = [['value' => 'todas', 'label' => 'Todos']];
+        $abas = [['value' => 'todas', 'label' => 'Todos', 'icone' => null]];
 
         foreach (TipoItem::cases() as $tipo) {
             if ($categorias->contains($tipo->value)) {
                 $abas[] = [
                     'value' => $tipo->value,
                     'label' => $tipo->label(),
+                    'icone' => null,
                 ];
             }
         }
@@ -131,7 +130,7 @@ class GestaoMargens extends Page
     }
 
     // -------------------------------------------------------------------------
-    // Computed: Itens filtrados pela aba ativa
+    // Computed: Itens da tabela filtrados pela aba ativa
     // -------------------------------------------------------------------------
 
     public function getItensFiltradosProperty(): \Illuminate\Support\Collection
@@ -146,7 +145,7 @@ class GestaoMargens extends Page
     }
 
     // -------------------------------------------------------------------------
-    // Lógica central: agrupamento por item_id
+    // Lógica central: agrupa contratos por item_id
     // -------------------------------------------------------------------------
 
     protected function getItensMargem(): \Illuminate\Support\Collection
@@ -159,13 +158,14 @@ class GestaoMargens extends Page
         return $contratoItens
             ->groupBy('item_id')
             ->map(function ($grupo) {
-                $item = $grupo->first()->item;
+                $primeiro = $grupo->first();
+                $item     = $primeiro->item;
 
-                $totalContratado = $grupo->sum(fn($ci) => (float) $ci->quantidade_total);
-                $totalUtilizado  = $grupo->sum(fn($ci) => (float) $ci->quantidade_utilizada);
-                $totalReservado  = $grupo->sum(fn($ci) => (float) $ci->quantidade_reservada);
-                $saldoDisponivel = $grupo->sum(fn($ci) => (float) $ci->saldo_disponivel);
-                $qtdContratos    = $grupo->count();
+                $totalContratado  = $grupo->sum(fn($ci) => (float) $ci->quantidade_total);
+                $totalUtilizado   = $grupo->sum(fn($ci) => (float) $ci->quantidade_utilizada);
+                $totalReservado   = $grupo->sum(fn($ci) => (float) $ci->quantidade_reservada);
+                $saldoDisponivel  = $grupo->sum(fn($ci) => (float) $ci->saldo_disponivel);
+                $qtdContratos     = $grupo->count();
 
                 $percentual = $totalContratado > 0
                     ? round(($saldoDisponivel / $totalContratado) * 100, 1)
@@ -191,14 +191,14 @@ class GestaoMargens extends Page
 
     protected function resolverStatus(float $percentual, float $saldo): string
     {
-        if ($saldo <= 0)       return 'zerado';
+        if ($saldo <= 0) return 'zerado';
         if ($percentual <= 10) return 'critico';
         if ($percentual <= 30) return 'baixo';
         return 'normal';
     }
 
     // -------------------------------------------------------------------------
-    // Ações
+    // Ações da tabela
     // -------------------------------------------------------------------------
 
     public function mudarAba(string $aba): void
@@ -209,10 +209,11 @@ class GestaoMargens extends Page
     public function abrirSlideOver(int $itemId): void
     {
         $item = Item::find($itemId);
+
         if (! $item) return;
 
-        $this->itemSelecionadoId      = $itemId;
-        $this->itemSelecionadoNome    = $item->nome;
+        $this->itemSelecionadoId     = $itemId;
+        $this->itemSelecionadoNome   = $item->nome;
         $this->itemSelecionadoUnidade = $item->unidade_medida->value;
 
         $this->contratosDoItem = ContratoItem::query()
@@ -222,20 +223,20 @@ class GestaoMargens extends Page
             ->get()
             ->map(function (ContratoItem $ci) {
                 return [
-                    'empresa'                => $ci->contrato->empresaContratada->nome,
-                    'numero_contrato'        => $ci->contrato->numero_contrato,
-                    'data_vencimento'        => $ci->contrato->data_vencimento?->format('d/m/Y') ?? 'Indeterminado',
-                    'quantidade_total'       => (float) $ci->quantidade_total,
-                    'quantidade_utilizada'   => (float) $ci->quantidade_utilizada,
-                    'quantidade_reservada'   => (float) $ci->quantidade_reservada,
-                    'saldo_disponivel'       => (float) $ci->saldo_disponivel,
-                    'preco_unitario'         => (float) $ci->preco_unitario,
+                    'empresa'          => $ci->contrato->empresaContratada->nome,
+                    'numero_contrato'  => $ci->contrato->numero_contrato,
+                    'data_vencimento'  => $ci->contrato->data_vencimento?->format('d/m/Y') ?? 'Indeterminado',
+                    'quantidade_total' => (float) $ci->quantidade_total,
+                    'quantidade_utilizada' => (float) $ci->quantidade_utilizada,
+                    'quantidade_reservada' => (float) $ci->quantidade_reservada,
+                    'saldo_disponivel' => (float) $ci->saldo_disponivel,
+                    'preco_unitario'   => (float) $ci->preco_unitario,
                     'valor_total_disponivel' => (float) $ci->saldo_disponivel * (float) $ci->preco_unitario,
-                    'percentual'             => $ci->quantidade_total > 0
+                    'percentual'       => $ci->quantidade_total > 0
                         ? round(($ci->saldo_disponivel / $ci->quantidade_total) * 100, 1)
                         : 0,
-                    'ativo'   => $ci->contrato->ativo,
-                    'vencido' => $ci->contrato->data_vencimento?->isPast() ?? false,
+                    'ativo'            => $ci->contrato->ativo,
+                    'vencido'          => $ci->contrato->data_vencimento?->isPast() ?? false,
                 ];
             })
             ->sortByDesc('saldo_disponivel')
@@ -243,22 +244,19 @@ class GestaoMargens extends Page
             ->toArray();
 
         $this->slideOverAberto = true;
-        $this->dispatch('open-modal', id: 'modal-contratos-item');
     }
 
     public function fecharSlideOver(): void
     {
-        $this->slideOverAberto        = false;
-        $this->itemSelecionadoId      = null;
-        $this->contratosDoItem        = [];
-        $this->itemSelecionadoNome    = '';
+        $this->slideOverAberto      = false;
+        $this->itemSelecionadoId    = null;
+        $this->contratosDoItem      = [];
+        $this->itemSelecionadoNome  = '';
         $this->itemSelecionadoUnidade = '';
-
-        $this->dispatch('close-modal', id: 'modal-contratos-item');
     }
 
     // -------------------------------------------------------------------------
-    // Header actions
+    // Header actions (vazio por ora, seguindo padrão do projeto)
     // -------------------------------------------------------------------------
 
     protected function getHeaderActions(): array
