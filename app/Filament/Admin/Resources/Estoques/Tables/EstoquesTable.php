@@ -14,6 +14,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\DB;
+use App\Models\Enums\TipoItem;
 
 class EstoqueTable
 {
@@ -84,12 +85,18 @@ class EstoqueTable
         return [
             SelectFilter::make('tipo_item')
                 ->label('Categoria')
-                ->relationship('item', 'tipo_item')
                 ->options(
-                    Item::all()->mapWithKeys(fn($item) => [
-                        $item->id => $item->tipo_item->value
+                    collect(TipoItem::cases())->mapWithKeys(fn($case) => [
+                        $case->value => $case->label(),
                     ])
-                ),
+                )
+                ->query(function ($query, $value) {
+                    $query->whereHas(
+                        'item',
+                        fn($q) =>
+                        $q->where('tipo_item', $value)
+                    );
+                }),
         ];
     }
 
