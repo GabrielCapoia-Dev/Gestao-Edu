@@ -36,15 +36,45 @@
             box-shadow: 0 4px 16px rgba(0, 0, 0, .07);
         }
 
-        .ge-card--blue  { --ge-card-bg: #eff6ff; --ge-card-ring: #bfdbfe; }
-        .ge-card--amber { --ge-card-bg: #fffbeb; --ge-card-ring: #fde68a; }
-        .ge-card--red   { --ge-card-bg: #fef2f2; --ge-card-ring: #fecaca; }
-        .ge-card--green { --ge-card-bg: #f0fdf4; --ge-card-ring: #bbf7d0; }
+        .ge-card--blue {
+            --ge-card-bg: #eff6ff;
+            --ge-card-ring: #bfdbfe;
+        }
 
-        .dark .ge-card--blue  { --ge-card-bg: rgba(30,58,138,.25);  --ge-card-ring: rgba(37,99,235,.35); }
-        .dark .ge-card--amber { --ge-card-bg: rgba(120,53,15,.25);  --ge-card-ring: rgba(217,119,6,.35); }
-        .dark .ge-card--red   { --ge-card-bg: rgba(127,29,29,.25);  --ge-card-ring: rgba(220,38,38,.35); }
-        .dark .ge-card--green { --ge-card-bg: rgba(20,83,45,.25);   --ge-card-ring: rgba(22,163,74,.35); }
+        .ge-card--amber {
+            --ge-card-bg: #fffbeb;
+            --ge-card-ring: #fde68a;
+        }
+
+        .ge-card--red {
+            --ge-card-bg: #fef2f2;
+            --ge-card-ring: #fecaca;
+        }
+
+        .ge-card--green {
+            --ge-card-bg: #f0fdf4;
+            --ge-card-ring: #bbf7d0;
+        }
+
+        .dark .ge-card--blue {
+            --ge-card-bg: rgba(30, 58, 138, .25);
+            --ge-card-ring: rgba(37, 99, 235, .35);
+        }
+
+        .dark .ge-card--amber {
+            --ge-card-bg: rgba(120, 53, 15, .25);
+            --ge-card-ring: rgba(217, 119, 6, .35);
+        }
+
+        .dark .ge-card--red {
+            --ge-card-bg: rgba(127, 29, 29, .25);
+            --ge-card-ring: rgba(220, 38, 38, .35);
+        }
+
+        .dark .ge-card--green {
+            --ge-card-bg: rgba(20, 83, 45, .25);
+            --ge-card-ring: rgba(22, 163, 74, .35);
+        }
 
         .ge-card__icon {
             flex-shrink: 0;
@@ -54,21 +84,45 @@
             width: 2.75rem;
             height: 2.75rem;
             border-radius: var(--ge-radius-sm);
-            background: rgba(255,255,255,.6);
+            background: rgba(255, 255, 255, .6);
             border: 1px solid var(--ge-card-ring);
         }
 
-        .dark .ge-card__icon { background: rgba(255,255,255,.08); }
+        .dark .ge-card__icon {
+            background: rgba(255, 255, 255, .08);
+        }
 
-        .ge-card__icon--blue svg  { color: #2563eb; }
-        .ge-card__icon--amber svg { color: #d97706; }
-        .ge-card__icon--red svg   { color: #dc2626; }
-        .ge-card__icon--green svg { color: #16a34a; }
+        .ge-card__icon--blue svg {
+            color: #2563eb;
+        }
 
-        .dark .ge-card__icon--blue svg  { color: #93c5fd; }
-        .dark .ge-card__icon--amber svg { color: #fcd34d; }
-        .dark .ge-card__icon--red svg   { color: #fca5a5; }
-        .dark .ge-card__icon--green svg { color: #86efac; }
+        .ge-card__icon--amber svg {
+            color: #d97706;
+        }
+
+        .ge-card__icon--red svg {
+            color: #dc2626;
+        }
+
+        .ge-card__icon--green svg {
+            color: #16a34a;
+        }
+
+        .dark .ge-card__icon--blue svg {
+            color: #93c5fd;
+        }
+
+        .dark .ge-card__icon--amber svg {
+            color: #fcd34d;
+        }
+
+        .dark .ge-card__icon--red svg {
+            color: #fca5a5;
+        }
+
+        .dark .ge-card__icon--green svg {
+            color: #86efac;
+        }
 
         .ge-card__label {
             font-size: .7rem;
@@ -80,7 +134,9 @@
             margin-bottom: .25rem;
         }
 
-        .dark .ge-card__label { color: #9ca3af; }
+        .dark .ge-card__label {
+            color: #9ca3af;
+        }
 
         .ge-card__value {
             font-size: 1.35rem;
@@ -88,15 +144,37 @@
             line-height: 1.1;
         }
 
-        .ge-card--blue .ge-card__value  { color: #1d4ed8; }
-        .ge-card--amber .ge-card__value { color: #b45309; }
-        .ge-card--red .ge-card__value   { color: #b91c1c; }
-        .ge-card--green .ge-card__value { color: #15803d; }
+        .ge-card--blue .ge-card__value {
+            color: #1d4ed8;
+        }
 
-        .dark .ge-card--blue .ge-card__value  { color: #93c5fd; }
-        .dark .ge-card--amber .ge-card__value { color: #fcd34d; }
-        .dark .ge-card--red .ge-card__value   { color: #fca5a5; }
-        .dark .ge-card--green .ge-card__value { color: #86efac; }
+        .ge-card--amber .ge-card__value {
+            color: #b45309;
+        }
+
+        .ge-card--red .ge-card__value {
+            color: #b91c1c;
+        }
+
+        .ge-card--green .ge-card__value {
+            color: #15803d;
+        }
+
+        .dark .ge-card--blue .ge-card__value {
+            color: #93c5fd;
+        }
+
+        .dark .ge-card--amber .ge-card__value {
+            color: #fcd34d;
+        }
+
+        .dark .ge-card--red .ge-card__value {
+            color: #fca5a5;
+        }
+
+        .dark .ge-card--green .ge-card__value {
+            color: #86efac;
+        }
 
         .ge-card__sub {
             font-size: .7rem;
@@ -104,10 +182,14 @@
             margin-top: .15rem;
         }
 
-        .dark .ge-card__sub { color: #6b7280; }
+        .dark .ge-card__sub {
+            color: #6b7280;
+        }
 
         /* ─── Barra de busca ─────────────────────────────────────── */
-        .ge-search-bar  { padding: .5rem .75rem; }
+        .ge-search-bar {
+            padding: .5rem .75rem;
+        }
 
         .ge-search-wrap {
             position: relative;
@@ -124,7 +206,9 @@
             pointer-events: none;
         }
 
-        .dark .ge-search-icon { color: #6b7280; }
+        .dark .ge-search-icon {
+            color: #6b7280;
+        }
 
         .ge-search-input {
             width: 100%;
@@ -140,7 +224,9 @@
             transition: border-color var(--ge-trans), box-shadow var(--ge-trans);
         }
 
-        .ge-search-input::placeholder { color: #9ca3af; }
+        .ge-search-input::placeholder {
+            color: #9ca3af;
+        }
 
         .ge-search-input:focus {
             border-color: var(--primary-500, #6366f1);
@@ -155,7 +241,7 @@
 
         .dark .ge-search-input:focus {
             border-color: var(--primary-400, #818cf8);
-            box-shadow: 0 0 0 3px rgba(129,140,248,.15);
+            box-shadow: 0 0 0 3px rgba(129, 140, 248, .15);
         }
 
         .ge-search-clear {
@@ -173,12 +259,25 @@
             cursor: pointer;
         }
 
-        .ge-search-clear svg { width: .75rem; height: .75rem; }
+        .ge-search-clear svg {
+            width: .75rem;
+            height: .75rem;
+        }
 
-        .ge-search-clear:hover { background: #d1d5db; color: #111827; }
+        .ge-search-clear:hover {
+            background: #d1d5db;
+            color: #111827;
+        }
 
-        .dark .ge-search-clear { background: #374151; color: #9ca3af; }
-        .dark .ge-search-clear:hover { background: #4b5563; color: #f9fafb; }
+        .dark .ge-search-clear {
+            background: #374151;
+            color: #9ca3af;
+        }
+
+        .dark .ge-search-clear:hover {
+            background: #4b5563;
+            color: #f9fafb;
+        }
 
         /* ─── Painel + abas ──────────────────────────────────────── */
         .ge-panel {
@@ -190,7 +289,10 @@
             margin-top: .5rem;
         }
 
-        .dark .ge-panel { border-color: #374151; background: #111827; }
+        .dark .ge-panel {
+            border-color: #374151;
+            background: #111827;
+        }
 
         .ge-tabs-nav {
             position: relative;
@@ -199,7 +301,9 @@
             border-bottom: 1px solid #e5e7eb;
         }
 
-        .dark .ge-tabs-nav { border-bottom-color: #374151; }
+        .dark .ge-tabs-nav {
+            border-bottom-color: #374151;
+        }
 
         .ge-tabs {
             display: flex;
@@ -212,7 +316,9 @@
             min-width: 0;
         }
 
-        .ge-tabs::-webkit-scrollbar { display: none; }
+        .ge-tabs::-webkit-scrollbar {
+            display: none;
+        }
 
         .ge-tab {
             flex-shrink: 0;
@@ -229,9 +335,17 @@
             transition: color var(--ge-trans), border-color var(--ge-trans);
         }
 
-        .dark .ge-tab { color: #9ca3af; }
-        .ge-tab:hover { color: #374151; }
-        .dark .ge-tab:hover { color: #d1d5db; }
+        .dark .ge-tab {
+            color: #9ca3af;
+        }
+
+        .ge-tab:hover {
+            color: #374151;
+        }
+
+        .dark .ge-tab:hover {
+            color: #d1d5db;
+        }
 
         .ge-tab--active {
             color: var(--primary-600, #4f46e5);
@@ -257,10 +371,25 @@
             z-index: 1;
         }
 
-        .dark .ge-tabs-arrow { background: #111827; color: #9ca3af; }
-        .ge-tabs-arrow:hover { color: #111827; background: #f3f4f6; }
-        .dark .ge-tabs-arrow:hover { color: #f9fafb; background: #1f2937; }
-        .ge-tabs-arrow svg { width: .625rem; height: .625rem; }
+        .dark .ge-tabs-arrow {
+            background: #111827;
+            color: #9ca3af;
+        }
+
+        .ge-tabs-arrow:hover {
+            color: #111827;
+            background: #f3f4f6;
+        }
+
+        .dark .ge-tabs-arrow:hover {
+            color: #f9fafb;
+            background: #1f2937;
+        }
+
+        .ge-tabs-arrow svg {
+            width: .625rem;
+            height: .625rem;
+        }
 
         /* ─── Tabela ─────────────────────────────────────────────── */
         .ge-table-wrap {
@@ -282,7 +411,7 @@
 
         .dark .ge-table thead tr {
             border-bottom-color: #374151;
-            background: rgba(255,255,255,.03);
+            background: rgba(255, 255, 255, .03);
         }
 
         .ge-table th {
@@ -296,19 +425,38 @@
             white-space: nowrap;
         }
 
-        .dark .ge-table th { color: #9ca3af; }
-        .ge-table th.r { text-align: right; }
-        .ge-table th.c { text-align: center; }
+        .dark .ge-table th {
+            color: #9ca3af;
+        }
+
+        .ge-table th.r {
+            text-align: right;
+        }
+
+        .ge-table th.c {
+            text-align: center;
+        }
 
         .ge-table tbody tr {
             border-bottom: 1px solid #f3f4f6;
             transition: background var(--ge-trans);
         }
 
-        .dark .ge-table tbody tr { border-bottom-color: #1f2937; }
-        .ge-table tbody tr:last-child { border-bottom: none; }
-        .ge-table tbody tr:hover { background: #f9fafb; }
-        .dark .ge-table tbody tr:hover { background: rgba(255,255,255,.03); }
+        .dark .ge-table tbody tr {
+            border-bottom-color: #1f2937;
+        }
+
+        .ge-table tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        .ge-table tbody tr:hover {
+            background: #f9fafb;
+        }
+
+        .dark .ge-table tbody tr:hover {
+            background: rgba(255, 255, 255, .03);
+        }
 
         .ge-table td {
             padding: .75rem 1rem;
@@ -316,12 +464,29 @@
             color: #374151;
         }
 
-        .dark .ge-table td { color: #d1d5db; }
-        .ge-table td.r { text-align: right; }
-        .ge-table td.c { text-align: center; }
+        .dark .ge-table td {
+            color: #d1d5db;
+        }
 
-        @media (max-width:660px) { .ge-c-cat { display: none; } }
-        @media (max-width:520px) { .ge-c-upd { display: none; } }
+        .ge-table td.r {
+            text-align: right;
+        }
+
+        .ge-table td.c {
+            text-align: center;
+        }
+
+        @media (max-width:660px) {
+            .ge-c-cat {
+                display: none;
+            }
+        }
+
+        @media (max-width:520px) {
+            .ge-c-upd {
+                display: none;
+            }
+        }
 
         .ge-item-nome {
             font-weight: 600;
@@ -329,7 +494,9 @@
             line-height: 1.3;
         }
 
-        .dark .ge-item-nome { color: #f9fafb; }
+        .dark .ge-item-nome {
+            color: #f9fafb;
+        }
 
         .ge-item-un {
             font-size: .68rem;
@@ -349,13 +516,35 @@
             font-weight: 700;
         }
 
-        .ge-qty--normal  { background: #dcfce7; color: #15803d; }
-        .ge-qty--critico { background: #fef9c3; color: #92400e; }
-        .ge-qty--zerado  { background: #fee2e2; color: #b91c1c; }
+        .ge-qty--normal {
+            background: #dcfce7;
+            color: #15803d;
+        }
 
-        .dark .ge-qty--normal  { background: rgba(22,163,74,.2);   color: #86efac; }
-        .dark .ge-qty--critico { background: rgba(245,158,11,.15); color: #fcd34d; }
-        .dark .ge-qty--zerado  { background: rgba(185,28,28,.2);   color: #fca5a5; }
+        .ge-qty--critico {
+            background: #fef9c3;
+            color: #92400e;
+        }
+
+        .ge-qty--zerado {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+
+        .dark .ge-qty--normal {
+            background: rgba(22, 163, 74, .2);
+            color: #86efac;
+        }
+
+        .dark .ge-qty--critico {
+            background: rgba(245, 158, 11, .15);
+            color: #fcd34d;
+        }
+
+        .dark .ge-qty--zerado {
+            background: rgba(185, 28, 28, .2);
+            color: #fca5a5;
+        }
 
         .ge-btn-ver {
             display: inline-flex;
@@ -374,14 +563,23 @@
         }
 
         .dark .ge-btn-ver {
-            border-color: rgba(99,102,241,.4);
-            background: rgba(99,102,241,.12);
+            border-color: rgba(99, 102, 241, .4);
+            background: rgba(99, 102, 241, .12);
             color: #a5b4fc;
         }
 
-        .ge-btn-ver:hover { background: var(--primary-100, #e0e7ff); }
-        .dark .ge-btn-ver:hover { background: rgba(99,102,241,.22); }
-        .ge-btn-ver svg { width: .875rem; height: .875rem; }
+        .ge-btn-ver:hover {
+            background: var(--primary-100, #e0e7ff);
+        }
+
+        .dark .ge-btn-ver:hover {
+            background: rgba(99, 102, 241, .22);
+        }
+
+        .ge-btn-ver svg {
+            width: .875rem;
+            height: .875rem;
+        }
 
         .ge-th-sort {
             cursor: pointer;
@@ -389,8 +587,13 @@
             white-space: nowrap;
         }
 
-        .ge-th-sort:hover { color: #374151; }
-        .dark .ge-th-sort:hover { color: #d1d5db; }
+        .ge-th-sort:hover {
+            color: #374151;
+        }
+
+        .dark .ge-th-sort:hover {
+            color: #d1d5db;
+        }
 
         .ge-th-sort-icon {
             display: inline-flex;
@@ -403,14 +606,31 @@
         }
 
         .ge-th-sort:hover .ge-th-sort-icon,
-        .ge-th-sort--active .ge-th-sort-icon { opacity: 1; }
+        .ge-th-sort--active .ge-th-sort-icon {
+            opacity: 1;
+        }
 
-        .ge-th-sort-icon svg { width: .625rem; height: .625rem; display: block; }
+        .ge-th-sort-icon svg {
+            width: .625rem;
+            height: .625rem;
+            display: block;
+        }
 
-        .ge-th-sort-icon--asc .icon-up    { color: var(--primary-600, #4f46e5); }
-        .ge-th-sort-icon--desc .icon-down { color: var(--primary-600, #4f46e5); }
-        .dark .ge-th-sort-icon--asc .icon-up    { color: var(--primary-400, #818cf8); }
-        .dark .ge-th-sort-icon--desc .icon-down { color: var(--primary-400, #818cf8); }
+        .ge-th-sort-icon--asc .icon-up {
+            color: var(--primary-600, #4f46e5);
+        }
+
+        .ge-th-sort-icon--desc .icon-down {
+            color: var(--primary-600, #4f46e5);
+        }
+
+        .dark .ge-th-sort-icon--asc .icon-up {
+            color: var(--primary-400, #818cf8);
+        }
+
+        .dark .ge-th-sort-icon--desc .icon-down {
+            color: var(--primary-400, #818cf8);
+        }
 
         .ge-empty {
             padding: 3.5rem 1rem;
@@ -418,8 +638,17 @@
             color: #9ca3af;
         }
 
-        .ge-empty svg { width: 2.5rem; height: 2.5rem; margin: 0 auto .75rem; opacity: .35; display: block; }
-        .ge-empty p   { font-size: .875rem; }
+        .ge-empty svg {
+            width: 2.5rem;
+            height: 2.5rem;
+            margin: 0 auto .75rem;
+            opacity: .35;
+            display: block;
+        }
+
+        .ge-empty p {
+            font-size: .875rem;
+        }
 
         /* ─── Paginação ──────────────────────────────────────────── */
         .ge-pagination {
@@ -436,7 +665,7 @@
 
         .dark .ge-pagination {
             border-color: #374151;
-            background: rgba(255,255,255,.02);
+            background: rgba(255, 255, 255, .02);
         }
 
         .ge-pag-info {
@@ -451,10 +680,17 @@
             color: #6b7280;
         }
 
-        .dark .ge-pag-text { color: #9ca3af; }
+        .dark .ge-pag-text {
+            color: #9ca3af;
+        }
 
-        .ge-pag-text strong { color: #374151; }
-        .dark .ge-pag-text strong { color: #d1d5db; }
+        .ge-pag-text strong {
+            color: #374151;
+        }
+
+        .dark .ge-pag-text strong {
+            color: #d1d5db;
+        }
 
         .ge-pag-sizes {
             display: flex;
@@ -468,7 +704,9 @@
             margin-right: .1rem;
         }
 
-        .dark .ge-pag-size-label { color: #9ca3af; }
+        .dark .ge-pag-size-label {
+            color: #9ca3af;
+        }
 
         .ge-pag-size-btn {
             padding: .2rem .55rem;
@@ -483,7 +721,10 @@
             font-family: inherit;
         }
 
-        .ge-pag-size-btn:hover { border-color: #9ca3af; color: #374151; }
+        .ge-pag-size-btn:hover {
+            border-color: #9ca3af;
+            color: #374151;
+        }
 
         .ge-pag-size-btn--active {
             border-color: var(--primary-400, #818cf8);
@@ -498,11 +739,14 @@
             color: #9ca3af;
         }
 
-        .dark .ge-pag-size-btn:hover { border-color: #6b7280; color: #d1d5db; }
+        .dark .ge-pag-size-btn:hover {
+            border-color: #6b7280;
+            color: #d1d5db;
+        }
 
         .dark .ge-pag-size-btn--active {
             border-color: var(--primary-400, #818cf8);
-            background: rgba(99,102,241,.15);
+            background: rgba(99, 102, 241, .15);
             color: #a5b4fc;
         }
 
@@ -548,7 +792,10 @@
             cursor: not-allowed;
         }
 
-        .ge-pag-btn svg { width: .6rem; height: .6rem; }
+        .ge-pag-btn svg {
+            width: .6rem;
+            height: .6rem;
+        }
 
         .ge-pag-ellipsis {
             font-size: .75rem;
@@ -578,7 +825,7 @@
             position: fixed;
             inset: 0;
             z-index: 40;
-            background: rgba(3,7,18,.6);
+            background: rgba(3, 7, 18, .6);
             backdrop-filter: blur(2px);
         }
 
@@ -603,14 +850,14 @@
             border-radius: var(--ge-radius);
             border: 1px solid #e5e7eb;
             background: #fff;
-            box-shadow: 0 20px 60px rgba(0,0,0,.18), 0 4px 16px rgba(0,0,0,.08);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, .18), 0 4px 16px rgba(0, 0, 0, .08);
             overflow: hidden;
         }
 
         .dark .ge-modal {
             border-color: #374151;
             background: #1f2937;
-            box-shadow: 0 20px 60px rgba(0,0,0,.5);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, .5);
         }
 
         .ge-modal-hd {
@@ -623,7 +870,9 @@
             flex-shrink: 0;
         }
 
-        .dark .ge-modal-hd { border-bottom-color: #374151; }
+        .dark .ge-modal-hd {
+            border-bottom-color: #374151;
+        }
 
         .ge-modal-title {
             font-size: .9375rem;
@@ -633,9 +882,15 @@
             word-break: break-word;
         }
 
-        .dark .ge-modal-title { color: #f9fafb; }
+        .dark .ge-modal-title {
+            color: #f9fafb;
+        }
 
-        .ge-modal-sub { font-size: .72rem; color: #9ca3af; margin-top: .25rem; }
+        .ge-modal-sub {
+            font-size: .72rem;
+            color: #9ca3af;
+            margin-top: .25rem;
+        }
 
         .ge-modal-close {
             flex-shrink: 0;
@@ -648,9 +903,20 @@
             transition: background var(--ge-trans), color var(--ge-trans);
         }
 
-        .ge-modal-close:hover { background: #f3f4f6; color: #111827; }
-        .dark .ge-modal-close:hover { background: #1f2937; color: #f9fafb; }
-        .ge-modal-close svg { width: 1.1rem; height: 1.1rem; }
+        .ge-modal-close:hover {
+            background: #f3f4f6;
+            color: #111827;
+        }
+
+        .dark .ge-modal-close:hover {
+            background: #1f2937;
+            color: #f9fafb;
+        }
+
+        .ge-modal-close svg {
+            width: 1.1rem;
+            height: 1.1rem;
+        }
 
         .ge-modal-resumo {
             padding: 1rem 1.5rem;
@@ -660,7 +926,7 @@
         }
 
         .dark .ge-modal-resumo {
-            background: rgba(255,255,255,.03);
+            background: rgba(255, 255, 255, .03);
             border-bottom-color: #374151;
         }
 
@@ -673,7 +939,9 @@
             margin-bottom: .75rem;
         }
 
-        .dark .ge-modal-resumo-title { color: #9ca3af; }
+        .dark .ge-modal-resumo-title {
+            color: #9ca3af;
+        }
 
         .ge-resumo-grid {
             display: grid;
@@ -681,14 +949,41 @@
             gap: .6rem .75rem;
         }
 
-        .ge-stat-label { font-size: .68rem; color: #9ca3af; margin-bottom: .2rem; }
-        .dark .ge-stat-label { color: #6b7280; }
-        .ge-stat-val { font-size: .875rem; font-weight: 700; color: #111827; }
-        .dark .ge-stat-val { color: #f9fafb; }
-        .ge-stat-val--entrada { color: #15803d; }
-        .ge-stat-val--saida   { color: #b91c1c; }
-        .dark .ge-stat-val--entrada { color: #86efac; }
-        .dark .ge-stat-val--saida   { color: #fca5a5; }
+        .ge-stat-label {
+            font-size: .68rem;
+            color: #9ca3af;
+            margin-bottom: .2rem;
+        }
+
+        .dark .ge-stat-label {
+            color: #6b7280;
+        }
+
+        .ge-stat-val {
+            font-size: .875rem;
+            font-weight: 700;
+            color: #111827;
+        }
+
+        .dark .ge-stat-val {
+            color: #f9fafb;
+        }
+
+        .ge-stat-val--entrada {
+            color: #15803d;
+        }
+
+        .ge-stat-val--saida {
+            color: #b91c1c;
+        }
+
+        .dark .ge-stat-val--entrada {
+            color: #86efac;
+        }
+
+        .dark .ge-stat-val--saida {
+            color: #fca5a5;
+        }
 
         .ge-modal-body {
             flex: 1;
@@ -710,7 +1005,9 @@
             margin-bottom: .25rem;
         }
 
-        .dark .ge-modal-sect-title { color: #9ca3af; }
+        .dark .ge-modal-sect-title {
+            color: #9ca3af;
+        }
 
         .ge-mov {
             display: flex;
@@ -723,9 +1020,18 @@
             transition: background var(--ge-trans);
         }
 
-        .dark .ge-mov { border-color: #374151; background: rgba(255,255,255,.03); }
-        .ge-mov:hover { background: #f3f4f6; }
-        .dark .ge-mov:hover { background: rgba(255,255,255,.06); }
+        .dark .ge-mov {
+            border-color: #374151;
+            background: rgba(255, 255, 255, .03);
+        }
+
+        .ge-mov:hover {
+            background: #f3f4f6;
+        }
+
+        .dark .ge-mov:hover {
+            background: rgba(255, 255, 255, .06);
+        }
 
         .ge-mov-icon {
             flex-shrink: 0;
@@ -738,13 +1044,35 @@
             margin-top: .1rem;
         }
 
-        .ge-mov-icon--entrada { background: #dcfce7; color: #15803d; }
-        .ge-mov-icon--saida   { background: #fee2e2; color: #b91c1c; }
-        .dark .ge-mov-icon--entrada { background: rgba(22,163,74,.2);  color: #86efac; }
-        .dark .ge-mov-icon--saida   { background: rgba(185,28,28,.2);  color: #fca5a5; }
-        .ge-mov-icon svg { width: .875rem; height: .875rem; }
+        .ge-mov-icon--entrada {
+            background: #dcfce7;
+            color: #15803d;
+        }
 
-        .ge-mov-info { flex: 1; min-width: 0; }
+        .ge-mov-icon--saida {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+
+        .dark .ge-mov-icon--entrada {
+            background: rgba(22, 163, 74, .2);
+            color: #86efac;
+        }
+
+        .dark .ge-mov-icon--saida {
+            background: rgba(185, 28, 28, .2);
+            color: #fca5a5;
+        }
+
+        .ge-mov-icon svg {
+            width: .875rem;
+            height: .875rem;
+        }
+
+        .ge-mov-info {
+            flex: 1;
+            min-width: 0;
+        }
 
         .ge-mov-top {
             display: flex;
@@ -753,19 +1081,53 @@
             gap: .5rem;
         }
 
-        .ge-mov-tipo { font-size: .8125rem; font-weight: 600; }
-        .ge-mov-tipo--entrada { color: #15803d; }
-        .ge-mov-tipo--saida   { color: #b91c1c; }
-        .dark .ge-mov-tipo--entrada { color: #86efac; }
-        .dark .ge-mov-tipo--saida   { color: #fca5a5; }
+        .ge-mov-tipo {
+            font-size: .8125rem;
+            font-weight: 600;
+        }
 
-        .ge-mov-qty { font-size: .875rem; font-weight: 800; color: #111827; }
-        .dark .ge-mov-qty { color: #f9fafb; }
+        .ge-mov-tipo--entrada {
+            color: #15803d;
+        }
 
-        .ge-mov-meta { font-size: .7rem; color: #9ca3af; margin-top: .15rem; }
+        .ge-mov-tipo--saida {
+            color: #b91c1c;
+        }
 
-        .ge-mov-obs { font-size: .72rem; color: #6b7280; margin-top: .2rem; font-style: italic; }
-        .dark .ge-mov-obs { color: #9ca3af; }
+        .dark .ge-mov-tipo--entrada {
+            color: #86efac;
+        }
+
+        .dark .ge-mov-tipo--saida {
+            color: #fca5a5;
+        }
+
+        .ge-mov-qty {
+            font-size: .875rem;
+            font-weight: 800;
+            color: #111827;
+        }
+
+        .dark .ge-mov-qty {
+            color: #f9fafb;
+        }
+
+        .ge-mov-meta {
+            font-size: .7rem;
+            color: #9ca3af;
+            margin-top: .15rem;
+        }
+
+        .ge-mov-obs {
+            font-size: .72rem;
+            color: #6b7280;
+            margin-top: .2rem;
+            font-style: italic;
+        }
+
+        .dark .ge-mov-obs {
+            color: #9ca3af;
+        }
 
         .ge-modal-ft {
             flex-shrink: 0;
@@ -773,7 +1135,9 @@
             border-top: 1px solid #e5e7eb;
         }
 
-        .dark .ge-modal-ft { border-top-color: #374151; }
+        .dark .ge-modal-ft {
+            border-top-color: #374151;
+        }
 
         .ge-btn-fechar {
             width: 100%;
@@ -792,13 +1156,42 @@
             transition: background var(--ge-trans);
         }
 
-        .dark .ge-btn-fechar { border-color: #374151; background: #1f2937; color: #d1d5db; }
-        .ge-btn-fechar:hover { background: #f3f4f6; }
-        .dark .ge-btn-fechar:hover { background: #374151; }
-        .ge-btn-fechar svg { width: .875rem; height: .875rem; }
+        .dark .ge-btn-fechar {
+            border-color: #374151;
+            background: #1f2937;
+            color: #d1d5db;
+        }
 
-        [x-cloak] { display: none !important; }
+        .ge-btn-fechar:hover {
+            background: #f3f4f6;
+        }
+
+        .dark .ge-btn-fechar:hover {
+            background: #374151;
+        }
+
+        .ge-btn-fechar svg {
+            width: .875rem;
+            height: .875rem;
+        }
+
+        [x-cloak] {
+            display: none !important;
+        }
     </style>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+        <h1 style="font-size:1.25rem;font-weight:600">Gestão de Estoque</h1>
+
+        <div style="display:flex;gap:.5rem">
+            <x-filament::button
+                tag="a"
+                :href="route('filament.admin.resources.pedido-merendas.create')"
+                icon="heroicon-o-plus">
+                Novo Pedido
+            </x-filament::button>
+        </div>
+    </div>
 
     {{-- ============================================================= --}}
     {{-- CARDS DO TOPO                                                  --}}
@@ -894,17 +1287,17 @@
                     <tr>
                         @php
                         function geThIcon(string $col, string $active, string $dir): string {
-                            $isActive = $col === $active;
-                            $dirClass = $isActive ? 'ge-th-sort-icon--' . $dir : '';
-                            return '
-                            <span class="ge-th-sort-icon ' . $dirClass . '">
-                                <svg class="icon-up" viewBox="0 0 10 6" fill="currentColor">
-                                    <path d="M5 0L10 6H0z" />
-                                </svg>
-                                <svg class="icon-down" viewBox="0 0 10 6" fill="currentColor">
-                                    <path d="M5 6L0 0h10z" />
-                                </svg>
-                            </span>';
+                        $isActive = $col === $active;
+                        $dirClass = $isActive ? 'ge-th-sort-icon--' . $dir : '';
+                        return '
+                        <span class="ge-th-sort-icon ' . $dirClass . '">
+                            <svg class="icon-up" viewBox="0 0 10 6" fill="currentColor">
+                                <path d="M5 0L10 6H0z" />
+                            </svg>
+                            <svg class="icon-down" viewBox="0 0 10 6" fill="currentColor">
+                                <path d="M5 6L0 0h10z" />
+                            </svg>
+                        </span>';
                         }
                         @endphp
 
@@ -927,9 +1320,9 @@
                     @forelse ($this->itensFiltrados as $item)
                     @php
                     $qtyClass = match($item['status']) {
-                        'zerado'  => 'ge-qty--zerado',
-                        'critico' => 'ge-qty--critico',
-                        default   => 'ge-qty--normal',
+                    'zerado' => 'ge-qty--zerado',
+                    'critico' => 'ge-qty--critico',
+                    default => 'ge-qty--normal',
                     };
                     @endphp
                     <tr>
@@ -1008,54 +1401,54 @@
                 type="button"
                 aria-label="Página anterior">
                 <svg viewBox="0 0 6 10" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M5 1L1 5l4 4"/>
+                    <path d="M5 1L1 5l4 4" />
                 </svg>
             </button>
 
             @php
-                $inicio = max(1, $pag['paginaAtual'] - 2);
-                $fim    = min($pag['totalPaginas'], $pag['paginaAtual'] + 2);
+            $inicio = max(1, $pag['paginaAtual'] - 2);
+            $fim = min($pag['totalPaginas'], $pag['paginaAtual'] + 2);
             @endphp
 
             {{-- Primeira página + reticências --}}
             @if ($inicio > 1)
-                <button wire:click="mudarPagina(1)" class="ge-pag-btn" type="button">1</button>
-                @if ($inicio > 2)
-                    <span class="ge-pag-ellipsis">…</span>
-                @endif
+            <button wire:click="mudarPagina(1)" class="ge-pag-btn" type="button">1</button>
+            @if ($inicio > 2)
+            <span class="ge-pag-ellipsis">…</span>
+            @endif
             @endif
 
             {{-- Páginas do intervalo --}}
             @for ($p = $inicio; $p <= $fim; $p++)
-            <button
+                <button
                 wire:click="mudarPagina({{ $p }})"
                 class="ge-pag-btn {{ $pag['paginaAtual'] == $p ? 'ge-pag-btn--active' : '' }}"
                 type="button">
                 {{ $p }}
-            </button>
-            @endfor
-
-            {{-- Reticências + última página --}}
-            @if ($fim < $pag['totalPaginas'])
-                @if ($fim < $pag['totalPaginas'] - 1)
-                    <span class="ge-pag-ellipsis">…</span>
-                @endif
-                <button wire:click="mudarPagina({{ $pag['totalPaginas'] }})" class="ge-pag-btn" type="button">
-                    {{ $pag['totalPaginas'] }}
                 </button>
-            @endif
+                @endfor
 
-            {{-- Próximo --}}
-            <button
-                wire:click="mudarPagina({{ $pag['paginaAtual'] + 1 }})"
-                class="ge-pag-btn"
-                {{ $pag['paginaAtual'] >= $pag['totalPaginas'] ? 'disabled' : '' }}
-                type="button"
-                aria-label="Próxima página">
-                <svg viewBox="0 0 6 10" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M1 1l4 4-4 4"/>
-                </svg>
-            </button>
+                {{-- Reticências + última página --}}
+                @if ($fim < $pag['totalPaginas'])
+                    @if ($fim < $pag['totalPaginas'] - 1)
+                    <span class="ge-pag-ellipsis">…</span>
+                    @endif
+                    <button wire:click="mudarPagina({{ $pag['totalPaginas'] }})" class="ge-pag-btn" type="button">
+                        {{ $pag['totalPaginas'] }}
+                    </button>
+                    @endif
+
+                    {{-- Próximo --}}
+                    <button
+                        wire:click="mudarPagina({{ $pag['paginaAtual'] + 1 }})"
+                        class="ge-pag-btn"
+                        {{ $pag['paginaAtual'] >= $pag['totalPaginas'] ? 'disabled' : '' }}
+                        type="button"
+                        aria-label="Próxima página">
+                        <svg viewBox="0 0 6 10" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M1 1l4 4-4 4" />
+                        </svg>
+                    </button>
 
         </div>
         @endif
@@ -1110,8 +1503,8 @@
             {{-- Resumo consolidado --}}
             @php
             $totalEntradas = collect($movimentacoes)->where('tipo', 'entrada')->sum('quantidade');
-            $totalSaidas   = collect($movimentacoes)->where('tipo', 'saida')->sum('quantidade');
-            $saldoAtual    = $totalEntradas - $totalSaidas;
+            $totalSaidas = collect($movimentacoes)->where('tipo', 'saida')->sum('quantidade');
+            $saldoAtual = $totalEntradas - $totalSaidas;
             @endphp
 
             <div class="ge-modal-resumo">
