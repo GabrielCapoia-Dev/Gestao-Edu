@@ -1277,6 +1277,100 @@
         .dark .gm-tabs-arrow--right {
             box-shadow: -4px 0 8px rgba(0, 0, 0, .2);
         }
+
+        /* ─── Barra de pesquisa ─────────────────────────────────── */
+        .gm-search-bar {
+            margin-bottom: .25rem;
+        }
+
+        .gm-search-wrap {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .gm-search-icon {
+            position: absolute;
+            left: .75rem;
+            width: 1rem;
+            height: 1rem;
+            color: #9ca3af;
+            pointer-events: none;
+        }
+
+        .dark .gm-search-icon {
+            color: #6b7280;
+        }
+
+        .gm-search-input {
+            width: 100%;
+            padding: .6rem 2.5rem .6rem 2.4rem;
+            border-radius: var(--gm-radius);
+            border: 1px solid #d1d5db;
+            background: #fff;
+            font-size: .875rem;
+            color: #111827;
+            outline: none;
+            transition: border-color var(--gm-trans), box-shadow var(--gm-trans);
+            font-family: inherit;
+            -webkit-appearance: none;
+        }
+
+        .gm-search-input::placeholder {
+            color: #9ca3af;
+        }
+
+        .gm-search-input:focus {
+            border-color: var(--primary-500, #6366f1);
+            box-shadow: 0 0 0 3px var(--primary-100, #e0e7ff);
+        }
+
+        .dark .gm-search-input {
+            background: #1f2937;
+            border-color: #374151;
+            color: #f9fafb;
+        }
+
+        .dark .gm-search-input:focus {
+            border-color: var(--primary-400, #818cf8);
+            box-shadow: 0 0 0 3px rgba(129, 140, 248, .15);
+        }
+
+        .gm-search-clear {
+            position: absolute;
+            right: .65rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 1.4rem;
+            height: 1.4rem;
+            border-radius: 9999px;
+            border: none;
+            background: #e5e7eb;
+            color: #6b7280;
+            cursor: pointer;
+            transition: background var(--gm-trans), color var(--gm-trans);
+        }
+
+        .gm-search-clear svg {
+            width: .75rem;
+            height: .75rem;
+        }
+
+        .gm-search-clear:hover {
+            background: #d1d5db;
+            color: #111827;
+        }
+
+        .dark .gm-search-clear {
+            background: #374151;
+            color: #9ca3af;
+        }
+
+        .dark .gm-search-clear:hover {
+            background: #4b5563;
+            color: #f9fafb;
+        }
     </style>
 
     {{-- ================================================================= --}}
@@ -1318,6 +1412,31 @@
         el.scrollBy({ left: dir * step, behavior: 'smooth' });
     }
 }" x-init="check(); $refs.tabs.addEventListener('scroll', () => check())">
+
+            {{-- Barra de pesquisa --}}
+            <div class="gm-search-bar">
+                <div class="gm-search-wrap">
+                    <svg class="gm-search-icon" xmlns="http://www.w3.org/2000/svg" fill="none"
+                        viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="m21 21-4.35-4.35m0 0A7.5 7.5 0 1 0 4.65 4.65a7.5 7.5 0 0 0 12 12Z" />
+                    </svg>
+                    <input
+                        type="search"
+                        wire:model.live.debounce.300ms="busca"
+                        placeholder="Buscar por nome do item ou empresa…"
+                        class="gm-search-input"
+                        autocomplete="off" />
+                    @if($busca)
+                    <button wire:click="$set('busca', '')" class="gm-search-clear" type="button" aria-label="Limpar busca">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                            stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                    @endif
+                </div>
+            </div>
 
             <button
                 class="gm-tabs-arrow gm-tabs-arrow--left"

@@ -21,6 +21,7 @@ class GestaoMargens extends Page
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ChartBar;
     protected static string|UnitEnum|null $navigationGroup = 'Alimentação Escolar';
     protected static ?string $navigationParentItem = 'Contratos';
+    public string $busca = '';
 
     // Estado de ordenação
     public string $sortCol = 'nome';
@@ -36,7 +37,6 @@ class GestaoMargens extends Page
             $this->sortDir = 'asc';
         }
     }
-
 
 
     // -------------------------------------------------------------------------
@@ -155,30 +155,50 @@ class GestaoMargens extends Page
     {
         $itens = $this->getItensMargem();
 
+        // ── Filtro de aba ──────────────────────────────────────────────
         if ($this->abaAtiva !== 'todas') {
             $itens = $itens->filter(fn($item) => $item['tipo_item'] === $this->abaAtiva);
         }
 
+        // ── Busca ──────────────────────────────────────────────────────
+        $termo = mb_strtolower(trim($this->busca));
+
+        if ($termo !== '') {
+            $itens = $itens->filter(function ($item) use ($termo) {
+                // nome do item
+                if (str_contains(mb_strtolower($item['nome']), $termo)) return true;
+
+                // nome de qualquer empresa vinculada
+                foreach ($item['empresas'] as $empresa) {
+                    if (str_contains($empresa, $termo)) return true;
+                }
+
+                return false;
+            });
+        }
+
+        // ── Ordenação (inalterada) ─────────────────────────────────────
         $dir = $this->sortDir === 'asc';
 
         return match ($this->sortCol) {
-            'nome'              => $dir ? $itens->sortBy('nome', SORT_NATURAL | SORT_FLAG_CASE)
+            'nome'             => $dir ? $itens->sortBy('nome', SORT_NATURAL | SORT_FLAG_CASE)
                 : $itens->sortByDesc('nome', SORT_NATURAL | SORT_FLAG_CASE),
-            'total_contratado'  => $dir ? $itens->sortBy('total_contratado')
+            'total_contratado' => $dir ? $itens->sortBy('total_contratado')
                 : $itens->sortByDesc('total_contratado'),
-            'total_utilizado'   => $dir ? $itens->sortBy('total_utilizado')
+            'total_utilizado'  => $dir ? $itens->sortBy('total_utilizado')
                 : $itens->sortByDesc('total_utilizado'),
-            'total_reservado'   => $dir ? $itens->sortBy('total_reservado')
+            'total_reservado'  => $dir ? $itens->sortBy('total_reservado')
                 : $itens->sortByDesc('total_reservado'),
-            'saldo_disponivel'  => $dir ? $itens->sortBy('saldo_disponivel')
+            'saldo_disponivel' => $dir ? $itens->sortBy('saldo_disponivel')
                 : $itens->sortByDesc('saldo_disponivel'),
-            'percentual'        => $dir ? $itens->sortBy('percentual')
+            'percentual'       => $dir ? $itens->sortBy('percentual')
                 : $itens->sortByDesc('percentual'),
-            'qtd_contratos'     => $dir ? $itens->sortBy('qtd_contratos')
+            'qtd_contratos'    => $dir ? $itens->sortBy('qtd_contratos')
                 : $itens->sortByDesc('qtd_contratos'),
-            default             => $itens->sortBy('nome', SORT_NATURAL | SORT_FLAG_CASE),
+            default            => $itens->sortBy('nome', SORT_NATURAL | SORT_FLAG_CASE),
         };
     }
+
     // -------------------------------------------------------------------------
     // Lógica central: agrupa contratos por item_id
     // -------------------------------------------------------------------------
@@ -186,9 +206,10 @@ class GestaoMargens extends Page
     protected function getItensMargem(): \Illuminate\Support\Collection
     {
         $contratoItens = ContratoItem::query()
-            ->with(['item', 'contrato'])
+            ->with(['item', 'contrato.empresaContratada']) // 👈 adicionar .empresaContratada
             ->whereHas('contrato', fn($q) => $q->where('ativo', true))
             ->get();
+
 
         return $contratoItens
             ->groupBy('item_id')
@@ -219,6 +240,11 @@ class GestaoMargens extends Page
                     'percentual'       => $percentual,
                     'qtd_contratos'    => $qtdContratos,
                     'status'           => $this->resolverStatus($percentual, $saldoDisponivel),
+                    'empresas'         => $grupo
+                        ->map(fn($ci) => mb_strtolower($ci->contrato->empresaContratada->nome ?? ''))
+                        ->filter()
+                        ->values()
+                        ->all(),
                 ];
             })
             ->values();
