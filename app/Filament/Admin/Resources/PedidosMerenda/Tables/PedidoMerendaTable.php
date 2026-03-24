@@ -11,6 +11,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Filament\Actions\ActionGroup;
 use Illuminate\Support\Facades\DB;
 
 class PedidoMerendaTable
@@ -139,44 +140,46 @@ class PedidoMerendaTable
                         'pedido'   => $record,
                     ]);
                 }),
+            ActionGroup::make([
 
-            // ── Marcar como Entregue ───────────────────────────────────────
-            Action::make('marcarEntregue')
-                ->label('')
-                ->icon('heroicon-o-check-circle')
-                ->color('success')
-                ->requiresConfirmation()
-                ->modalHeading('Confirmar entrega do pedido')
-                ->modalDescription(
-                    fn(PedidoMerenda $record) =>
+                // ── Marcar como Entregue ───────────────────────────────────────
+                Action::make('marcarEntregue')
+                    ->label('Entregue')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->modalHeading('Confirmar entrega do pedido')
+                    ->modalDescription(
+                        fn(PedidoMerenda $record) =>
                         "Confirma a entrega do Pedido #{$record->id}? " .
-                        "A quantidade reservada de cada item será movida para quantidade utilizada. " .
-                        "Esta ação não pode ser desfeita."
-                )
-                ->modalSubmitActionLabel('Confirmar entrega')
-                ->visible(fn(PedidoMerenda $record) => $record->status === StatusPedidoMerenda::Aguardando)
-                ->action(function (PedidoMerenda $record) {
-                    static::processarEntrega($record);
-                }),
+                            "A quantidade reservada de cada item será movida para quantidade utilizada. " .
+                            "Esta ação não pode ser desfeita."
+                    )
+                    ->modalSubmitActionLabel('Confirmar entrega')
+                    ->visible(fn(PedidoMerenda $record) => $record->status === StatusPedidoMerenda::Aguardando)
+                    ->action(function (PedidoMerenda $record) {
+                        static::processarEntrega($record);
+                    }),
 
-            // ── Cancelar Pedido ────────────────────────────────────────────
-            Action::make('cancelarPedido')
-                ->label('')
-                ->icon('heroicon-o-x-circle')
-                ->color('danger')
-                ->requiresConfirmation()
-                ->modalHeading('Cancelar pedido')
-                ->modalDescription(
-                    fn(PedidoMerenda $record) =>
+                // ── Cancelar Pedido ────────────────────────────────────────────
+                Action::make('cancelarPedido')
+                    ->label('Cancelado')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading('Cancelar pedido')
+                    ->modalDescription(
+                        fn(PedidoMerenda $record) =>
                         "Confirma o cancelamento do Pedido #{$record->id}? " .
-                        "Todo o saldo reservado será devolvido aos contratos. " .
-                        "Esta ação não pode ser desfeita."
-                )
-                ->modalSubmitActionLabel('Confirmar cancelamento')
-                ->visible(fn(PedidoMerenda $record) => $record->status === StatusPedidoMerenda::Aguardando)
-                ->action(function (PedidoMerenda $record) {
-                    static::processarCancelamento($record);
-                }),
+                            "Todo o saldo reservado será devolvido aos contratos. " .
+                            "Esta ação não pode ser desfeita."
+                    )
+                    ->modalSubmitActionLabel('Confirmar cancelamento')
+                    ->visible(fn(PedidoMerenda $record) => $record->status === StatusPedidoMerenda::Aguardando)
+                    ->action(function (PedidoMerenda $record) {
+                        static::processarCancelamento($record);
+                    }),
+            ])
         ];
     }
 
