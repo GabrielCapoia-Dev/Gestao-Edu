@@ -340,7 +340,7 @@ class DatabaseSeeder extends Seeder
             // SetorSeeder::class,
             // TipoStatusSeeder::class,
             // TipoManutencaoSeeder::class,
-            // EmpresaContratadaSeeder::class,
+            EmpresaContratadaSeeder::class,
             // PedidoSeeder::class,
 
             ItensSeeder::class,
