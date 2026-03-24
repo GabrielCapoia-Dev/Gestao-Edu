@@ -24,7 +24,7 @@ class GestaoEstoque extends Page
     public string $busca = '';
 
     // Paginação
-    public int $porPagina = 10;
+    public int $porPagina = 5;
     public int $paginaAtual = 1;
 
     // Ordenação
