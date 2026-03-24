@@ -51,6 +51,13 @@ class GestaoEstoque extends Page
         }
     }
 
+    public function getEstoqueSelecionadoProperty(): ?Estoque
+    {
+        if (!$this->estoqueSelecionadoId) return null;
+
+        return Estoque::find($this->estoqueSelecionadoId);
+    }
+
     // -------------------------------------------------------------------------
     // Computed: Cards do topo
     // -------------------------------------------------------------------------
