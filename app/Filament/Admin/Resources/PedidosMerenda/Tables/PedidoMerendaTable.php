@@ -2,13 +2,11 @@
 
 namespace App\Filament\Admin\Resources\PedidosMerenda\Tables;
 
-use App\Models\ContratoItem;
 use App\Models\Enums\StatusPedidoMerenda;
 use App\Models\PedidoMerenda;
 use App\Models\PedidoMerendaItem;
-use Filament\Actions\Action;
-use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Filament\Actions\Action;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\SelectFilter;
@@ -44,6 +42,7 @@ class PedidoMerendaTable
                 ->color(fn($state) => match ($state) {
                     StatusPedidoMerenda::Aguardando => 'warning',
                     StatusPedidoMerenda::Entregue   => 'success',
+                    StatusPedidoMerenda::Cancelado  => 'danger',
                     default                         => 'gray',
                 })
                 ->formatStateUsing(fn($state) => $state?->label()),
@@ -93,6 +92,7 @@ class PedidoMerendaTable
     public static function recordActions(): array
     {
         return [
+            // ── Ver / Editar Itens ─────────────────────────────────────────
             Action::make('verItens')
                 ->label('Itens')
                 ->icon('heroicon-o-list-bullet')
@@ -105,6 +105,7 @@ class PedidoMerendaTable
                 ->modalDescription(fn(PedidoMerenda $record) => match ($record->status) {
                     StatusPedidoMerenda::Aguardando => 'Você pode ajustar as quantidades dos itens abaixo.',
                     StatusPedidoMerenda::Entregue   => 'Este pedido já foi entregue. Somente visualização.',
+                    StatusPedidoMerenda::Cancelado  => 'Este pedido foi cancelado. Somente visualização.',
                     default                         => null,
                 })
                 ->modalContent(function (PedidoMerenda $record) {
@@ -125,7 +126,6 @@ class PedidoMerendaTable
                                 'empresa'          => $ci->contrato->empresaContratada->nome,
                                 'numero_contrato'  => $ci->contrato->numero_contrato,
                                 'saldo_atual'      => (float) $ci->saldo_disponivel,
-                                // saldo disponível se este pedido não existisse
                                 'saldo_com_pedido' => (float) $ci->saldo_disponivel + (float) $pedidoItem->quantidade_pedida,
                                 'quantidade'       => (float) $pedidoItem->quantidade_pedida,
                             ];
@@ -139,11 +139,113 @@ class PedidoMerendaTable
                         'pedido'   => $record,
                     ]);
                 }),
+
+            // ── Marcar como Entregue ───────────────────────────────────────
+            Action::make('marcarEntregue')
+                ->label('Marcar como Entregue')
+                ->icon('heroicon-o-check-circle')
+                ->color('success')
+                ->requiresConfirmation()
+                ->modalHeading('Confirmar entrega do pedido')
+                ->modalDescription(
+                    fn(PedidoMerenda $record) =>
+                        "Confirma a entrega do Pedido #{$record->id}? " .
+                        "A quantidade reservada de cada item será movida para quantidade utilizada. " .
+                        "Esta ação não pode ser desfeita."
+                )
+                ->modalSubmitActionLabel('Confirmar entrega')
+                ->visible(fn(PedidoMerenda $record) => $record->status === StatusPedidoMerenda::Aguardando)
+                ->action(function (PedidoMerenda $record) {
+                    static::processarEntrega($record);
+                }),
+
+            // ── Cancelar Pedido ────────────────────────────────────────────
+            Action::make('cancelarPedido')
+                ->label('Cancelar Pedido')
+                ->icon('heroicon-o-x-circle')
+                ->color('danger')
+                ->requiresConfirmation()
+                ->modalHeading('Cancelar pedido')
+                ->modalDescription(
+                    fn(PedidoMerenda $record) =>
+                        "Confirma o cancelamento do Pedido #{$record->id}? " .
+                        "Todo o saldo reservado será devolvido aos contratos. " .
+                        "Esta ação não pode ser desfeita."
+                )
+                ->modalSubmitActionLabel('Confirmar cancelamento')
+                ->visible(fn(PedidoMerenda $record) => $record->status === StatusPedidoMerenda::Aguardando)
+                ->action(function (PedidoMerenda $record) {
+                    static::processarCancelamento($record);
+                }),
         ];
     }
 
     // -------------------------------------------------------------------------
-    // Método estático chamado pelo Livewire do modal para salvar ajuste
+    // Processar Entrega
+    // -------------------------------------------------------------------------
+
+    public static function processarEntrega(PedidoMerenda $pedido): void
+    {
+        $itens = $pedido->itens()->with('contratoItem')->get();
+
+        DB::transaction(function () use ($pedido, $itens) {
+            foreach ($itens as $pedidoItem) {
+                $quantidade = (float) $pedidoItem->quantidade_pedida;
+
+                // Itens zerados (removidos) não movimentam saldo
+                if ($quantidade <= 0) {
+                    continue;
+                }
+
+                $ci = $pedidoItem->contratoItem;
+
+                // Move reserva → utilizado
+                $ci->decrement('quantidade_reservada', $quantidade);
+                $ci->increment('quantidade_utilizada', $quantidade);
+            }
+
+            $pedido->update(['status' => StatusPedidoMerenda::Entregue]);
+        });
+
+        Notification::make()
+            ->title("Pedido #{$pedido->id} marcado como entregue.")
+            ->success()
+            ->send();
+    }
+
+    // -------------------------------------------------------------------------
+    // Processar Cancelamento
+    // -------------------------------------------------------------------------
+
+    public static function processarCancelamento(PedidoMerenda $pedido): void
+    {
+        $itens = $pedido->itens()->with('contratoItem')->get();
+
+        DB::transaction(function () use ($pedido, $itens) {
+            foreach ($itens as $pedidoItem) {
+                $quantidade = (float) $pedidoItem->quantidade_pedida;
+
+                if ($quantidade <= 0) {
+                    continue;
+                }
+
+                $ci = $pedidoItem->contratoItem;
+
+                // Devolve reserva ao saldo disponível
+                $ci->decrement('quantidade_reservada', $quantidade);
+            }
+
+            $pedido->update(['status' => StatusPedidoMerenda::Cancelado]);
+        });
+
+        Notification::make()
+            ->title("Pedido #{$pedido->id} cancelado. Saldo devolvido aos contratos.")
+            ->warning()
+            ->send();
+    }
+
+    // -------------------------------------------------------------------------
+    // Salvar quantidade de item individual (chamado pelo Livewire do modal)
     // -------------------------------------------------------------------------
 
     public static function salvarQuantidade(int $pedidoItemId, float $novaQuantidade): void
@@ -151,7 +253,6 @@ class PedidoMerendaTable
         $pedidoItem = PedidoMerendaItem::with('contratoItem')->findOrFail($pedidoItemId);
         $quantidadeAnterior = (float) $pedidoItem->quantidade_pedida;
 
-        // Quantidade negativa não é permitida; zero = item removido (mantém registro)
         if ($novaQuantidade < 0) {
             Notification::make()->title('Quantidade inválida.')->danger()->send();
             return;
@@ -172,10 +273,6 @@ class PedidoMerendaTable
 
         DB::transaction(function () use ($pedidoItem, $ci, $novaQuantidade, $diferenca) {
             $pedidoItem->update(['quantidade_pedida' => $novaQuantidade]);
-
-            // Ajusta a reserva pela diferença:
-            //   positiva → aumentou o pedido, reserva sobe
-            //   negativa → diminuiu/zerou, reserva desce (saldo devolvido ao contrato)
             $ci->increment('quantidade_reservada', $diferenca);
         });
 
