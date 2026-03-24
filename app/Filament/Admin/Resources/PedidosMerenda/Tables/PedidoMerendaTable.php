@@ -189,29 +189,40 @@ class PedidoMerendaTable
 
     public static function processarEntrega(PedidoMerenda $pedido): void
     {
-        $itens = $pedido->itens()->with('contratoItem')->get();
+        $itens = $pedido->itens()->with('contratoItem.item')->get();
 
         DB::transaction(function () use ($pedido, $itens) {
             foreach ($itens as $pedidoItem) {
                 $quantidade = (float) $pedidoItem->quantidade_pedida;
 
-                // Itens zerados (removidos) não movimentam saldo
                 if ($quantidade <= 0) {
                     continue;
                 }
 
                 $ci = $pedidoItem->contratoItem;
 
-                // Move reserva → utilizado
+                // Move reserva → utilizado no contrato
                 $ci->decrement('quantidade_reservada', $quantidade);
                 $ci->increment('quantidade_utilizada', $quantidade);
+
+                // ── Adiciona ao estoque central ──────────────────────────
+                $estoque = \App\Models\Estoque::firstOrCreate(
+                    ['item_id' => $ci->item_id],
+                    ['quantidade' => 0]
+                );
+
+                $estoque->entrada(
+                    quantidade: $quantidade,
+                    pedidoMerendaId: $pedido->id,
+                    observacao: "Recebimento do pedido #{$pedido->id}",
+                );
             }
 
             $pedido->update(['status' => StatusPedidoMerenda::Entregue]);
         });
 
         Notification::make()
-            ->title("Pedido #{$pedido->id} marcado como entregue.")
+            ->title("Pedido #{$pedido->id} marcado como entregue. Estoque atualizado.")
             ->success()
             ->send();
     }
