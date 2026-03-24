@@ -25,6 +25,7 @@ class ItemResource extends Resource
     protected static ?string $pluralLabel = 'Itens';
     public static ?string $modelLabel = 'Item';
     protected static ?string $slug = 'itens';
+    protected static ?int $navigationSort = 2;
 
     public static function service(): ItemService
     {
