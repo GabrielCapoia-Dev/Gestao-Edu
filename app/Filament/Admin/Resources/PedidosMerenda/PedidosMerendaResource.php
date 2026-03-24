@@ -19,6 +19,7 @@ class PedidosMerendaResource extends Resource
     protected static ?string $modelLabel = 'Pedido';
     protected static ?string $pluralModelLabel = 'Pedidos';
     protected static ?string $slug = 'pedidos-merenda';
+    protected static ?string $navigationParentItem = 'Gestão de Estoque';
     protected static ?int $navigationSort = 2;
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ShoppingCart;
     protected static string|UnitEnum|null $navigationGroup = 'Alimentação Escolar';

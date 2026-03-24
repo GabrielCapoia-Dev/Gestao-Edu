@@ -18,10 +18,8 @@ class ItemResource extends Resource
     protected static ?string $model = Item::class;
 
     protected static string|BackedEnum|null $navigationIcon = 'fluentui-food-apple-24';
-    protected static ?string $navigationParentItem = 'Pedidos';
-
+    protected static ?string $navigationParentItem = 'Gestão de Estoque';
     protected static ?string $recordTitleAttribute = 'nome';
-
     protected static string|UnitEnum|null $navigationGroup = 'Alimentação Escolar';
     protected static ?string $navigationLabel = 'Itens';
     protected static ?string $pluralLabel = 'Itens';

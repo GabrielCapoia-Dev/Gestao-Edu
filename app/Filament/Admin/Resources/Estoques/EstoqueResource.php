@@ -17,6 +17,7 @@ class EstoqueResource extends Resource
     protected static ?string $navigationLabel = 'Estoque';
     protected static ?string $modelLabel = 'Estoque';
     protected static ?string $pluralModelLabel = 'Estoque';
+    protected static bool $shouldRegisterNavigation = false;
     protected static ?int $navigationSort = 4;
 
     public static function getPages(): array
