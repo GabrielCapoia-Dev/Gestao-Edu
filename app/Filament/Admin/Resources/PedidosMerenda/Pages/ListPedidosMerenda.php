@@ -13,9 +13,6 @@ class ListPedidosMerenda extends ListRecords
 {
     protected static string $resource = PedidosMerendaResource::class;
 
-    // protected string $view = 'filament.resources.pedidos-merenda.pedidos-merenda-list';
-
-
     protected function getHeaderActions(): array
     {
         return [
@@ -26,24 +23,20 @@ class ListPedidosMerenda extends ListRecords
 
     /**
      * Chamado pelo $wire.salvarQuantidade() no blade modal-itens.
-     * Ajusta quantidade_pedida e recalcula quantidade_reservada no contrato_item.
+     * Aceita 0 = item removido do pedido (mantém registro, devolve reserva).
      */
     public function salvarQuantidade(int $pedidoItemId, float $novaQuantidade): void
     {
         $pedidoItem = PedidoMerendaItem::with('contratoItem')->findOrFail($pedidoItemId);
         $quantidadeAnterior = (float) $pedidoItem->quantidade_pedida;
 
-        if ($novaQuantidade <= 0) {
-            Notification::make()
-                ->title('A quantidade deve ser maior que zero.')
-                ->danger()
-                ->send();
+        // Negativo nunca é válido; zero = remoção do item
+        if ($novaQuantidade < 0) {
+            Notification::make()->title('Quantidade inválida.')->danger()->send();
             return;
         }
 
         $ci = $pedidoItem->contratoItem;
-
-        // Saldo máximo permitido = saldo disponível atual + o que este item já reservou
         $saldoMaximo = (float) $ci->saldo_disponivel + $quantidadeAnterior;
 
         if ($novaQuantidade > $saldoMaximo) {
@@ -61,9 +54,10 @@ class ListPedidosMerenda extends ListRecords
             $ci->increment('quantidade_reservada', $diferenca);
         });
 
-        Notification::make()
-            ->title('Quantidade atualizada com sucesso.')
-            ->success()
-            ->send();
+        $mensagem = $novaQuantidade === 0.0
+            ? 'Item removido. Saldo devolvido ao contrato.'
+            : 'Quantidade atualizada com sucesso.';
+
+        Notification::make()->title($mensagem)->success()->send();
     }
 }
