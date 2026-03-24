@@ -10,7 +10,7 @@
     }
     .mi-table th, .mi-table td { padding: .65rem .875rem; text-align: left; vertical-align: middle; }
     .mi-table th.right, .mi-table td.right { text-align: right; }
-    .mi-table tbody tr { border-top: 1px solid var(--gray-100, #f3f4f6); }
+    .mi-table tbody tr { border-top: 1px solid var(--gray-100, #f3f4f6); transition: opacity .2s; }
     .mi-table tbody tr:hover { background: var(--gray-50, #f9fafb); }
 
     .mi-item-nome  { font-weight: 500; color: var(--gray-900, #111827); }
@@ -21,7 +21,6 @@
     .mi-saldo-disp { font-weight: 600; color: #16a34a; }
     .mi-saldo-diff-pos { font-size: .75rem; color: #16a34a; }
     .mi-saldo-diff-neg { font-size: .75rem; color: #dc2626; }
-    .mi-saldo-diff-zero { font-size: .75rem; color: var(--gray-400, #9ca3af); }
 
     /* qtd solicitada (label) */
     .mi-qty-label {
@@ -31,6 +30,16 @@
         color: var(--gray-700, #374151);
         font-size: .8125rem; font-weight: 600;
         white-space: nowrap;
+    }
+
+    /* item removido (qty = 0) */
+    .mi-row-removed td { opacity: .5; }
+    .mi-badge-removed {
+        display: inline-flex; align-items: center; gap: .25rem;
+        padding: .15rem .5rem; border-radius: 9999px;
+        background: #fee2e2; color: #991b1b;
+        font-size: .7rem; font-weight: 600; white-space: nowrap;
+        margin-left: .4rem; vertical-align: middle;
     }
 
     /* input inline de quantidade */
@@ -50,6 +59,9 @@
     .mi-qty-input:focus { border-color: var(--primary-500, #6366f1); box-shadow: 0 0 0 2px var(--primary-200, #c7d2fe); }
     .mi-qty-readonly { font-weight: 600; color: var(--gray-900, #111827); }
 
+    /* botões de ação */
+    .mi-actions { display: flex; align-items: center; gap: .35rem; }
+
     .mi-btn-save {
         display: inline-flex; align-items: center; gap: .25rem;
         padding: .25rem .6rem; border-radius: .375rem;
@@ -60,6 +72,29 @@
     }
     .mi-btn-save:hover:not(:disabled) { opacity: .85; }
     .mi-btn-save:disabled { opacity: .4; cursor: not-allowed; }
+
+    .mi-btn-remove {
+        display: inline-flex; align-items: center; gap: .2rem;
+        padding: .25rem .5rem; border-radius: .375rem;
+        background: transparent; color: #dc2626;
+        font-size: .75rem; font-weight: 500;
+        border: 1px solid #fca5a5; cursor: pointer; white-space: nowrap;
+        transition: background .15s;
+    }
+    .mi-btn-remove:hover:not(:disabled) { background: #fee2e2; }
+    .mi-btn-remove:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* botão restaurar */
+    .mi-btn-restore {
+        display: inline-flex; align-items: center; gap: .2rem;
+        padding: .25rem .55rem; border-radius: .375rem;
+        background: transparent; color: #16a34a;
+        font-size: .75rem; font-weight: 500;
+        border: 1px solid #86efac; cursor: pointer; white-space: nowrap;
+        transition: background .15s;
+    }
+    .mi-btn-restore:hover:not(:disabled) { background: #dcfce7; }
+    .mi-btn-restore:disabled { opacity: .4; cursor: not-allowed; }
 
     /* empty */
     .mi-empty {
@@ -87,6 +122,7 @@
     .dark .mi-qty-input { background: #0f172a; border-color: #334155; color: #f1f5f9; }
     .dark .mi-badge-readonly { background: #451a03; color: #fbbf24; }
     .dark .mi-qty-label { background: #1e293b; color: #94a3b8; }
+    .dark .mi-badge-removed { background: #450a0a; color: #fca5a5; }
 </style>
 
 @if($itens->isEmpty())
@@ -121,24 +157,31 @@
         </thead>
         <tbody>
             @foreach($itens as $entry)
-                {{--
-                    Alpine state:
-                      qty         → valor atual do input
-                      originalQty → última quantidade confirmada (atualiza após cada save)
-                                    usado para: habilitar botão e exibir diff no saldo
-                      saving      → flag de loading
-                --}}
-                <tr x-data="{
-                    qty: {{ $entry['quantidade'] }},
-                    originalQty: {{ $entry['quantidade'] }},
-                    saving: false,
-                    get diff() { return this.qty - this.originalQty },
-                    get saldoSeNaoExistisse() { return {{ $entry['saldo_com_pedido'] }} },
-                    get saldoAposEdicao() { return this.saldoSeNaoExistisse - this.qty }
-                }">
+                <tr
+                    x-data="{
+                        qty: {{ $entry['quantidade'] }},
+                        originalQty: {{ $entry['quantidade'] }},
+                        saving: false,
+                        get removed() { return this.originalQty === 0 },
+                        get diff() { return this.qty - this.originalQty },
+                        get saldoBase() { return {{ $entry['saldo_com_pedido'] }} },
+                        get saldoAposEdicao() { return this.saldoBase - this.qty },
+                        salvar(novaQty) {
+                            this.saving = true;
+                            $wire.salvarQuantidade({{ $entry['pedido_item_id'] }}, novaQty)
+                                .then(() => {
+                                    this.originalQty = novaQty;
+                                    this.qty = novaQty;
+                                })
+                                .finally(() => this.saving = false);
+                        }
+                    }"
+                    :class="{ 'mi-row-removed': removed }"
+                >
                     <td>
                         <span class="mi-item-nome">{{ $entry['item_nome'] }}</span>
                         <span class="mi-item-unit">({{ $entry['unidade'] }})</span>
+                        <span class="mi-badge-removed" x-show="removed">Removido</span>
                     </td>
 
                     <td>
@@ -146,11 +189,9 @@
                         <div class="mi-secondary">{{ $entry['numero_contrato'] }}</div>
                     </td>
 
-                    {{-- Saldo: mostra o disponível APÓS a quantidade atual do input --}}
                     <td class="right">
                         <div class="mi-saldo-disp" x-text="saldoAposEdicao.toLocaleString('pt-BR', {minimumFractionDigits:3, maximumFractionDigits:3})"></div>
                         @if($editavel)
-                            {{-- Diferença em relação ao original: quanto o saldo vai mudar --}}
                             <div
                                 x-show="diff !== 0"
                                 :class="diff > 0 ? 'mi-saldo-diff-neg' : 'mi-saldo-diff-pos'"
@@ -159,41 +200,74 @@
                         @endif
                     </td>
 
-                    {{-- Qtd. Solicitada: label com o valor salvo (originalQty) --}}
                     <td class="right">
-                        <span class="mi-qty-label" x-text="originalQty.toLocaleString('pt-BR', {minimumFractionDigits:3, maximumFractionDigits:3})"></span>
+                        <template x-if="!removed">
+                            <span class="mi-qty-label" x-text="originalQty.toLocaleString('pt-BR', {minimumFractionDigits:3, maximumFractionDigits:3})"></span>
+                        </template>
+                        <template x-if="removed">
+                            <span class="mi-qty-label" style="background:#fee2e2;color:#991b1b">—</span>
+                        </template>
                     </td>
 
                     @if($editavel)
                         <td class="right">
-                            <div class="mi-qty-wrap" style="justify-content:flex-end">
-                                <input
-                                    type="number"
-                                    step="0.001"
-                                    min="0.001"
-                                    max="{{ $entry['saldo_com_pedido'] }}"
-                                    x-model.number="qty"
-                                    class="mi-qty-input"
-                                />
-                            </div>
+                            <template x-if="!removed">
+                                <div class="mi-qty-wrap" style="justify-content:flex-end">
+                                    <input
+                                        type="number"
+                                        step="0.001"
+                                        min="0.001"
+                                        :max="saldoBase"
+                                        x-model.number="qty"
+                                        class="mi-qty-input"
+                                    />
+                                </div>
+                            </template>
                         </td>
 
                         <td>
-                            <button
-                                class="mi-btn-save"
-                                :disabled="saving || qty === originalQty || qty <= 0 || qty > saldoSeNaoExistisse"
-                                @click="
-                                    saving = true;
-                                    $wire.salvarQuantidade({{ $entry['pedido_item_id'] }}, qty)
-                                        .then(() => { originalQty = qty })
-                                        .finally(() => saving = false)
-                                "
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:.75rem;height:.75rem">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/>
-                                </svg>
-                                <span x-text="saving ? 'Salvando...' : 'Salvar'"></span>
-                            </button>
+                            <div class="mi-actions">
+                                <template x-if="!removed">
+                                    <button
+                                        class="mi-btn-save"
+                                        :disabled="saving || qty === originalQty || qty <= 0 || qty > saldoBase"
+                                        @click="salvar(qty)"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:.75rem;height:.75rem">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/>
+                                        </svg>
+                                        <span x-text="saving ? 'Salvando...' : 'Salvar'"></span>
+                                    </button>
+                                </template>
+
+                                <template x-if="!removed">
+                                    <button
+                                        class="mi-btn-remove"
+                                        :disabled="saving"
+                                        @click="confirm('Remover este item do pedido? O saldo será devolvido ao contrato.') && salvar(0)"
+                                        title="Remover item"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:.75rem;height:.75rem">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+                                        </svg>
+                                        Remover
+                                    </button>
+                                </template>
+
+                                <template x-if="removed">
+                                    <button
+                                        class="mi-btn-restore"
+                                        :disabled="saving"
+                                        @click="qty = 1"
+                                        title="Restaurar item"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:.75rem;height:.75rem">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"/>
+                                        </svg>
+                                        Restaurar
+                                    </button>
+                                </template>
+                            </div>
                         </td>
                     @endif
                 </tr>

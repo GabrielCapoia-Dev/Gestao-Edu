@@ -124,9 +124,8 @@ class PedidoMerendaTable
                                 'unidade'          => $ci->item->unidade_medida->value,
                                 'empresa'          => $ci->contrato->empresaContratada->nome,
                                 'numero_contrato'  => $ci->contrato->numero_contrato,
-                                // saldo atual no contrato + o que está reservado neste pedido
-                                // = saldo disponível se este pedido não existisse
                                 'saldo_atual'      => (float) $ci->saldo_disponivel,
+                                // saldo disponível se este pedido não existisse
                                 'saldo_com_pedido' => (float) $ci->saldo_disponivel + (float) $pedidoItem->quantidade_pedida,
                                 'quantidade'       => (float) $pedidoItem->quantidade_pedida,
                             ];
@@ -152,8 +151,9 @@ class PedidoMerendaTable
         $pedidoItem = PedidoMerendaItem::with('contratoItem')->findOrFail($pedidoItemId);
         $quantidadeAnterior = (float) $pedidoItem->quantidade_pedida;
 
-        if ($novaQuantidade <= 0) {
-            Notification::make()->title('A quantidade deve ser maior que zero.')->danger()->send();
+        // Quantidade negativa não é permitida; zero = item removido (mantém registro)
+        if ($novaQuantidade < 0) {
+            Notification::make()->title('Quantidade inválida.')->danger()->send();
             return;
         }
 
@@ -173,10 +173,16 @@ class PedidoMerendaTable
         DB::transaction(function () use ($pedidoItem, $ci, $novaQuantidade, $diferenca) {
             $pedidoItem->update(['quantidade_pedida' => $novaQuantidade]);
 
-            // Ajusta a reserva pela diferença (positiva = aumentou, negativa = diminuiu)
+            // Ajusta a reserva pela diferença:
+            //   positiva → aumentou o pedido, reserva sobe
+            //   negativa → diminuiu/zerou, reserva desce (saldo devolvido ao contrato)
             $ci->increment('quantidade_reservada', $diferenca);
         });
 
-        Notification::make()->title('Quantidade atualizada.')->success()->send();
+        $mensagem = $novaQuantidade === 0.0
+            ? 'Item removido do pedido. Saldo devolvido ao contrato.'
+            : 'Quantidade atualizada.';
+
+        Notification::make()->title($mensagem)->success()->send();
     }
 }
