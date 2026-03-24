@@ -13,7 +13,7 @@ class ListPedidosMerenda extends ListRecords
 {
     protected static string $resource = PedidosMerendaResource::class;
 
-    protected string $view = 'filament.resources.pedidos-merenda.pedidos-merenda-list';
+    // protected string $view = 'filament.resources.pedidos-merenda.pedidos-merenda-list';
 
 
     protected function getHeaderActions(): array
