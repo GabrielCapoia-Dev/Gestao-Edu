@@ -12,13 +12,8 @@ enum TipoItem: string
     case CarneSuina          = 'carne_suina';
     case Ave                 = 'ave';
     case Pescado             = 'pescado';
-    case Ovo                 = 'ovo';
     case Laticinios          = 'laticinios';
-    case OleoGordura         = 'oleo_gordura';
-    case AcucarDoce          = 'acucar_doce';
     case Bebida              = 'bebida';
-    case Condimento          = 'condimento';
-    case SementeOleaginosa   = 'semente_oleaginosa';
     case Industrializado     = 'industrializado';
 
     public function label(): string
@@ -32,13 +27,8 @@ enum TipoItem: string
             self::CarneSuina        => 'Carne Suína',
             self::Ave               => 'Ave',
             self::Pescado           => 'Pescado',
-            self::Ovo               => 'Ovo',
             self::Laticinios        => 'Laticínios',
-            self::OleoGordura       => 'Óleo e Gordura',
-            self::AcucarDoce        => 'Açúcar e Doce',
             self::Bebida            => 'Bebida',
-            self::Condimento        => 'Condimento e Tempero',
-            self::SementeOleaginosa => 'Semente e Oleaginosa',
             self::Industrializado   => 'Industrializado',
         };
     }
