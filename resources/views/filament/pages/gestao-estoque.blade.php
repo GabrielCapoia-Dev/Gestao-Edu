@@ -1342,10 +1342,6 @@
                 <p style="font-size:.68rem;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.2rem">Saídas</p>
                 <p style="font-size:.9375rem;font-weight:700;color:#b91c1c">- {{ number_format($totalSaidas, 3, ',', '.') }}</p>
             </div>
-            <div>
-                <p style="font-size:.68rem;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.2rem">Saldo Atual</p>
-                <p style="font-size:.9375rem;font-weight:700;color:#111827">{{ number_format($saldoAtual, 3, ',', '.') }}</p>
-            </div>
         </div>
 
         {{-- Lista de movimentações --}}
