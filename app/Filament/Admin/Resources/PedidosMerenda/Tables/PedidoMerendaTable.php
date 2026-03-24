@@ -142,7 +142,7 @@ class PedidoMerendaTable
 
             // ── Marcar como Entregue ───────────────────────────────────────
             Action::make('marcarEntregue')
-                ->label('Marcar como Entregue')
+                ->label('')
                 ->icon('heroicon-o-check-circle')
                 ->color('success')
                 ->requiresConfirmation()
@@ -161,7 +161,7 @@ class PedidoMerendaTable
 
             // ── Cancelar Pedido ────────────────────────────────────────────
             Action::make('cancelarPedido')
-                ->label('Cancelar Pedido')
+                ->label('')
                 ->icon('heroicon-o-x-circle')
                 ->color('danger')
                 ->requiresConfirmation()
