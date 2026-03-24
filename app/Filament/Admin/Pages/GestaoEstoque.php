@@ -23,6 +23,10 @@ class GestaoEstoque extends Page
 
     public string $busca = '';
 
+    // Paginação
+    public int $porPagina = 10;
+    public int $paginaAtual = 1;
+
     // Ordenação
     public string $sortCol = 'nome';
     public string $sortDir = 'asc';
@@ -38,6 +42,25 @@ class GestaoEstoque extends Page
     public array $movimentacoes = [];
 
     // -------------------------------------------------------------------------
+    // Hooks de reset de página
+    // -------------------------------------------------------------------------
+
+    public function updatedBusca(): void
+    {
+        $this->paginaAtual = 1;
+    }
+
+    public function updatedAbaAtiva(): void
+    {
+        $this->paginaAtual = 1;
+    }
+
+    public function updatedPorPagina(): void
+    {
+        $this->paginaAtual = 1;
+    }
+
+    // -------------------------------------------------------------------------
     // Ordenação
     // -------------------------------------------------------------------------
 
@@ -49,11 +72,13 @@ class GestaoEstoque extends Page
             $this->sortCol = $coluna;
             $this->sortDir = 'asc';
         }
+
+        $this->paginaAtual = 1;
     }
 
     public function getEstoqueSelecionadoProperty(): ?Estoque
     {
-        if (!$this->estoqueSelecionadoId) return null;
+        if (! $this->estoqueSelecionadoId) return null;
 
         return Estoque::find($this->estoqueSelecionadoId);
     }
@@ -66,9 +91,9 @@ class GestaoEstoque extends Page
     {
         $itens = $this->getItensEstoque();
 
-        $totalItens     = $itens->count();
-        $itensZerados   = $itens->filter(fn($i) => $i['quantidade'] <= 0)->count();
-        $itensCriticos  = $itens->filter(fn($i) => $i['quantidade'] > 0 && $i['quantidade'] <= 10)->count();
+        $totalItens         = $itens->count();
+        $itensZerados       = $itens->filter(fn($i) => $i['quantidade'] <= 0)->count();
+        $itensCriticos      = $itens->filter(fn($i) => $i['quantidade'] > 0 && $i['quantidade'] <= 10)->count();
         $totalMovimentacoes = EstoqueMovimentacao::count();
 
         return [
@@ -129,10 +154,10 @@ class GestaoEstoque extends Page
     }
 
     // -------------------------------------------------------------------------
-    // Computed: Itens filtrados
+    // Computed: base filtrada/ordenada (sem paginação)
     // -------------------------------------------------------------------------
 
-    public function getItensFiltradosProperty(): \Illuminate\Support\Collection
+    public function getItensFiltradosBaseProperty(): \Illuminate\Support\Collection
     {
         $itens = $this->getItensEstoque();
 
@@ -164,6 +189,36 @@ class GestaoEstoque extends Page
     }
 
     // -------------------------------------------------------------------------
+    // Computed: página atual
+    // -------------------------------------------------------------------------
+
+    public function getItensFiltradosProperty(): \Illuminate\Support\Collection
+    {
+        return $this->itensFiltradosBase
+            ->slice(($this->paginaAtual - 1) * $this->porPagina, $this->porPagina)
+            ->values();
+    }
+
+    // -------------------------------------------------------------------------
+    // Computed: metadados de paginação para a view
+    // -------------------------------------------------------------------------
+
+    public function getPaginacaoProperty(): array
+    {
+        $total        = $this->itensFiltradosBase->count();
+        $totalPaginas = $total > 0 ? (int) ceil($total / $this->porPagina) : 1;
+
+        return [
+            'total'        => $total,
+            'porPagina'    => $this->porPagina,
+            'paginaAtual'  => $this->paginaAtual,
+            'totalPaginas' => $totalPaginas,
+            'de'           => $total === 0 ? 0 : ($this->paginaAtual - 1) * $this->porPagina + 1,
+            'ate'          => min($this->paginaAtual * $this->porPagina, $total),
+        ];
+    }
+
+    // -------------------------------------------------------------------------
     // Lógica central: monta coleção de itens do estoque
     // -------------------------------------------------------------------------
 
@@ -176,15 +231,15 @@ class GestaoEstoque extends Page
                 $item = $estoque->item;
 
                 return [
-                    'estoque_id'  => $estoque->id,
-                    'item_id'     => $item->id,
-                    'nome'        => $item->nome,
-                    'unidade'     => strtoupper($item->unidade_medida->value),
-                    'tipo_item'   => $item->tipo_item->value,
-                    'tipo_label'  => $item->tipo_item->label(),
-                    'quantidade'  => (float) $estoque->quantidade,
-                    'status'      => $this->resolverStatus((float) $estoque->quantidade),
-                    'atualizado'  => $estoque->updated_at->format('d/m/Y H:i'),
+                    'estoque_id' => $estoque->id,
+                    'item_id'    => $item->id,
+                    'nome'       => $item->nome,
+                    'unidade'    => strtoupper($item->unidade_medida->value),
+                    'tipo_item'  => $item->tipo_item->value,
+                    'tipo_label' => $item->tipo_item->label(),
+                    'quantidade' => (float) $estoque->quantidade,
+                    'status'     => $this->resolverStatus((float) $estoque->quantidade),
+                    'atualizado' => $estoque->updated_at->format('d/m/Y H:i'),
                 ];
             })
             ->values();
@@ -203,7 +258,16 @@ class GestaoEstoque extends Page
 
     public function mudarAba(string $aba): void
     {
-        $this->abaAtiva = $aba;
+        $this->abaAtiva    = $aba;
+        $this->paginaAtual = 1;
+    }
+
+    public function mudarPagina(int $pagina): void
+    {
+        $total        = $this->itensFiltradosBase->count();
+        $totalPaginas = (int) ceil($total / $this->porPagina);
+
+        $this->paginaAtual = max(1, min($pagina, $totalPaginas));
     }
 
     public function abrirSlideOver(int $estoqueId): void
@@ -240,10 +304,10 @@ class GestaoEstoque extends Page
 
     public function fecharSlideOver(): void
     {
-        $this->slideOverAberto        = false;
-        $this->estoqueSelecionadoId   = null;
-        $this->movimentacoes    = [];
-        $this->itemSelecionadoNome    = '';
+        $this->slideOverAberto      = false;
+        $this->estoqueSelecionadoId = null;
+        $this->movimentacoes        = [];
+        $this->itemSelecionadoNome  = '';
         $this->itemSelecionadoUnidade = '';
     }
 
