@@ -35,7 +35,7 @@ class GestaoEstoque extends Page
     public ?int $estoqueSelecionadoId = null;
     public string $itemSelecionadoNome = '';
     public string $itemSelecionadoUnidade = '';
-    public array $movimentacoesDoItem = [];
+    public array $movimentacoes = [];
 
     // -------------------------------------------------------------------------
     // Ordenação
@@ -209,7 +209,7 @@ class GestaoEstoque extends Page
         $this->itemSelecionadoNome    = $estoque->item->nome;
         $this->itemSelecionadoUnidade = strtoupper($estoque->item->unidade_medida->value);
 
-        $this->movimentacoesDoItem = $estoque->movimentacoes()
+        $this->movimentacoes = $estoque->movimentacoes()
             ->with('pedidoMerenda')
             ->orderByDesc('created_at')
             ->limit(50)
@@ -235,7 +235,7 @@ class GestaoEstoque extends Page
     {
         $this->slideOverAberto        = false;
         $this->estoqueSelecionadoId   = null;
-        $this->movimentacoesDoItem    = [];
+        $this->movimentacoes    = [];
         $this->itemSelecionadoNome    = '';
         $this->itemSelecionadoUnidade = '';
     }

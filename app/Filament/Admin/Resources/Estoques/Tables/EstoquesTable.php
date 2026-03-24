@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\Estoques\Tables;
 
 use App\Models\Estoque;
+use App\Models\Item;
 use App\Models\EstoqueMovimentacao;
 use App\Models\Enums\TipoMovimentacao;
 use Filament\Notifications\Notification;
@@ -85,11 +86,9 @@ class EstoqueTable
                 ->label('Categoria')
                 ->relationship('item', 'tipo_item')
                 ->options(
-                    \App\Models\Enums\TipoItem::cases()
-                        ? collect(\App\Models\Enums\TipoItem::cases())
-                            ->mapWithKeys(fn($case) => [$case->value => $case->label()])
-                            ->toArray()
-                        : []
+                    Item::all()->mapWithKeys(fn($item) => [
+                        $item->id => $item->tipo_item->value
+                    ])
                 ),
         ];
     }
