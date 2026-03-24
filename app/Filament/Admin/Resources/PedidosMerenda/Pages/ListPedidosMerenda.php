@@ -13,6 +13,9 @@ class ListPedidosMerenda extends ListRecords
 {
     protected static string $resource = PedidosMerendaResource::class;
 
+    protected string $view = 'filament.pages.dashboard';
+
+
     protected function getHeaderActions(): array
     {
         return [
