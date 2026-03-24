@@ -1186,7 +1186,7 @@
         <div style="display:flex;gap:.5rem">
             <x-filament::button
                 tag="a"
-                :href="route('filament.admin.resources.pedido-merendas.create')"
+                :href="route('filament.admin.resources.pedidos-merenda.create')"
                 icon="heroicon-o-plus">
                 Novo Pedido
             </x-filament::button>
