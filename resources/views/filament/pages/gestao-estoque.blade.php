@@ -1226,7 +1226,7 @@
                     <p class="ge-modal-sub">
                         Unidade: <strong style="text-transform:uppercase">{{ $itemSelecionadoUnidade }}</strong>
                         &middot;
-                        {{ count($movimentacoesDoItem) }} {{ count($movimentacoesDoItem) === 1 ? 'movimentação' : 'movimentações' }} (últimas 50)
+                        {{ count($movimentacoes) }} {{ count($movimentacoes) === 1 ? 'movimentação' : 'movimentações' }} (últimas 50)
                     </p>
                 </div>
                 <button class="ge-modal-close" wire:click="fecharSlideOver" aria-label="Fechar">
@@ -1236,8 +1236,8 @@
 
             {{-- Resumo consolidado --}}
             @php
-            $totalEntradas = collect($movimentacoesDoItem)->where('tipo', 'entrada')->sum('quantidade');
-            $totalSaidas = collect($movimentacoesDoItem)->where('tipo', 'saida')->sum('quantidade');
+            $totalEntradas = collect($movimentacoes)->where('tipo', 'entrada')->sum('quantidade');
+            $totalSaidas = collect($movimentacoes)->where('tipo', 'saida')->sum('quantidade');
             $saldoAtual = $totalEntradas - $totalSaidas;
             @endphp
 
@@ -1263,7 +1263,7 @@
             <div class="ge-modal-body">
                 <p class="ge-modal-sect-title">Histórico de Movimentações</p>
 
-                @forelse ($movimentacoesDoItem as $mov)
+                @forelse ($movimentacoes as $mov)
                 <div class="ge-mov">
                     <div class="ge-mov-icon ge-mov-icon--{{ $mov['tipo'] }}">
                         @if($mov['tipo'] === 'entrada')
