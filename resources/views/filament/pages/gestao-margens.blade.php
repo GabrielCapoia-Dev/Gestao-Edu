@@ -1280,7 +1280,14 @@
 
         /* ─── Barra de pesquisa ─────────────────────────────────── */
         .gm-search-bar {
-            margin-bottom: .25rem;
+            flex: 1;
+            /* ocupa todo o espaço disponível no flex */
+            min-width: 0;
+            /* evita overflow em flex */
+            padding: .5rem .75rem;
+            /* espaço interno em relação às setas e bordas */
+            margin-bottom: 0;
+            /* remove o margin anterior */
         }
 
         .gm-search-wrap {
@@ -1394,6 +1401,32 @@
     {{-- ================================================================= --}}
     {{-- PAINEL: ABAS + TABELA                                             --}}
     {{-- ================================================================= --}}
+
+    {{-- Barra de pesquisa --}}
+    <div class="gm-search-bar">
+        <div class="gm-search-wrap">
+            <svg class="gm-search-icon" xmlns="http://www.w3.org/2000/svg" fill="none"
+                viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                    d="m21 21-4.35-4.35m0 0A7.5 7.5 0 1 0 4.65 4.65a7.5 7.5 0 0 0 12 12Z" />
+            </svg>
+            <input
+                type="search"
+                wire:model.live.debounce.300ms="busca"
+                placeholder="Buscar por nome do item ou empresa…"
+                class="gm-search-input"
+                autocomplete="off" />
+            @if($busca)
+            <button wire:click="$set('busca', '')" class="gm-search-clear" type="button" aria-label="Limpar busca">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                    stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+            </button>
+            @endif
+        </div>
+    </div>
+    
     <div class="gm-panel">
 
         {{-- Abas com navegação por setas --}}
@@ -1412,31 +1445,6 @@
         el.scrollBy({ left: dir * step, behavior: 'smooth' });
     }
 }" x-init="check(); $refs.tabs.addEventListener('scroll', () => check())">
-
-            {{-- Barra de pesquisa --}}
-            <div class="gm-search-bar">
-                <div class="gm-search-wrap">
-                    <svg class="gm-search-icon" xmlns="http://www.w3.org/2000/svg" fill="none"
-                        viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                            d="m21 21-4.35-4.35m0 0A7.5 7.5 0 1 0 4.65 4.65a7.5 7.5 0 0 0 12 12Z" />
-                    </svg>
-                    <input
-                        type="search"
-                        wire:model.live.debounce.300ms="busca"
-                        placeholder="Buscar por nome do item ou empresa…"
-                        class="gm-search-input"
-                        autocomplete="off" />
-                    @if($busca)
-                    <button wire:click="$set('busca', '')" class="gm-search-clear" type="button" aria-label="Limpar busca">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                            stroke-width="2" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                    @endif
-                </div>
-            </div>
 
             <button
                 class="gm-tabs-arrow gm-tabs-arrow--left"
