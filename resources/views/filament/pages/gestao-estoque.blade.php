@@ -1347,7 +1347,8 @@
         {{-- Lista de movimentações --}}
         @forelse ($movimentacoes as $mov)
         @php
-        $isEntrada = $mov['tipo']->value === 'entrada';
+        $dataTipo = is_object($mov['tipo']) ? $mov['tipo']->value : $mov['tipo'];
+        $isEntrada = $dataTipo === 'entrada';
         @endphp
         <div style="
         display: flex; align-items: flex-start; gap: .75rem;
