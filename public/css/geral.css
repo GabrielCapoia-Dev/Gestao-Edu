@@ -1,407 +1,26 @@
-/* ============================================================
-   VARIÁVEIS GLOBAIS DO TEMA
-   ============================================================ */
-:root {
-    --sidebar-bg:        #07183a;
-    --topbar-bg:         #ffffff;
-    --topbar-border:     1px solid #e2e8f0;
-    --nav-text:          #94a3b8;
-    --nav-text-hover:    #e2eaf4;
-    --nav-active-bg:     rgba(156, 199, 231, 0.13);
-    --nav-active-text:   #9cc7e7;
-    --nav-active-border: #9cc7e7;
-    --section-text:      #475569;
-    --accent:            #9cc7e7;
-    --accent-line:       #93c0e7;
-}
-
-
-/* ============================================================
-   SIDEBAR
-   ============================================================ */
-
-.fi-sidebar,
-.fi-sidebar-wrapper {
-    background-color: var(--sidebar-bg) !important;
-    border-right: none !important;
-}
-
-.fi-sidebar-header {
-    background-color: var(--sidebar-bg) !important;
-    border-bottom: none !important;
-    padding: 0 20px !important;
-    min-height: 68px;
-    position: relative;
-}
-
-.fi-sidebar-header::after {
-    content: "";
-    display: block;
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: rgba(147, 192, 231, 0.2);
-    pointer-events: none;
-}
-
-/* Grupos / seções de nav */
-.fi-sidebar-group-label {
-    font-size: 0.62rem !important;
-    font-weight: 700 !important;
-    letter-spacing: 0.14em !important;
-    color: var(--section-text) !important;
-    text-transform: uppercase !important;
-    padding: 16px 20px 4px !important;
-}
-
-/* Navegação — override do CSS antigo que deixava branco */
-.fi-sidebar-nav {
-    background-color: var(--sidebar-bg) !important;
-    box-shadow: none !important;
-}
-
-/* Item de nav — base */
-.fi-sidebar-item-button {
-    display: flex !important;
-    align-items: center !important;
-    gap: 10px !important;
-    height: 40px !important;
-    padding: 0 12px !important;
-    margin: 1px 8px !important;
-    border-radius: 7px !important;
-    color: var(--nav-text) !important;
-    font-size: 0.855rem !important;
-    font-weight: 400 !important;
-    text-decoration: none !important;
-    transition: background 0.14s ease, color 0.14s ease !important;
-    border-left: 2px solid transparent !important;
-}
-
-.fi-sidebar-item-button svg {
-    width: 18px !important;
-    height: 18px !important;
-    flex-shrink: 0 !important;
-    stroke-width: 1.6 !important;
-    color: inherit !important;
-}
-
-.fi-sidebar-item-button:hover {
-    background-color: rgba(156, 199, 231, 0.07) !important;
-    color: var(--nav-text-hover) !important;
-}
-
-/* Item ativo */
-.fi-sidebar-item-button[aria-current],
-.fi-sidebar-item-button.fi-active {
-    background-color: var(--nav-active-bg) !important;
-    color: var(--nav-active-text) !important;
-    font-weight: 500 !important;
-    border-left-color: var(--nav-active-border) !important;
-}
-
-.fi-sidebar-item-button[aria-current] svg {
-    color: var(--nav-active-text) !important;
-}
-
-/* Rodapé do sidebar */
-.fi-sidebar-footer {
-    background-color: var(--sidebar-bg) !important;
-    border-top: 1px solid rgba(148, 163, 184, 0.1) !important;
-    padding: 8px 10px !important;
-}
-
-.fi-sidebar-footer a,
-.fi-sidebar-footer button {
-    color: var(--nav-text) !important;
-    font-size: 0.82rem !important;
-    border-radius: 6px !important;
-    padding: 6px 8px !important;
-    transition: color 0.14s, background 0.14s !important;
-}
-
-.fi-sidebar-footer a:hover,
-.fi-sidebar-footer button:hover {
-    color: var(--nav-text-hover) !important;
-    background: rgba(156, 199, 231, 0.07) !important;
-}
-
-/* Scrollbar fina do sidebar */
-.fi-sidebar-wrapper::-webkit-scrollbar { width: 3px; }
-.fi-sidebar-wrapper::-webkit-scrollbar-track { background: transparent; }
-.fi-sidebar-wrapper::-webkit-scrollbar-thumb {
-    background: rgba(148, 163, 184, 0.15);
-    border-radius: 3px;
-}
-
-
-/* ============================================================
-   TOPBAR / HEADER
-   ============================================================ */
-
-/* Override do CSS antigo que deixava azul claro */
-.fi-topbar {
-    background-color: var(--topbar-bg) !important;
-    border-bottom: var(--topbar-border) !important;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06) !important;
-}
-
-.dark .fi-topbar {
-    background-color: #0c172e !important;
-    border-bottom: 1px solid rgba(147, 192, 231, 0.1) !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
-}
-
-.fi-topbar-nav {
-    padding: 0 16px !important;
-    gap: 12px !important;
-}
-
-/* Botão hambúrguer */
-.fi-topbar-open-sidebar-btn {
-    color: #64748b !important;
-    border-radius: 6px !important;
-    padding: 7px !important;
-    transition: background 0.14s, color 0.14s !important;
-}
-
-.fi-topbar-open-sidebar-btn:hover {
-    background: #f1f5f9 !important;
-    color: #1e293b !important;
-}
-
-/* Breadcrumb */
-.fi-breadcrumbs {
-    padding: 2px 8px !important;
-    border-radius: 6px !important;
-    background-color: transparent !important;
-    box-shadow: none !important;
-}
-
-.dark .fi-breadcrumbs {
-    background-color: transparent !important;
-}
-
-.fi-breadcrumbs a {
-    color: #64748b !important;
-    font-size: 0.82rem !important;
-    text-decoration: none !important;
-    transition: color 0.14s !important;
-}
-
-.fi-breadcrumbs a:hover { color: #1e293b !important; }
-
-.fi-breadcrumbs li:last-child span {
-    color: #1e293b !important;
-    font-weight: 500 !important;
-    font-size: 0.82rem !important;
-}
-
-.dark .fi-breadcrumbs a { color: #94a3b8 !important; }
-.dark .fi-breadcrumbs li:last-child span { color: #e2e8f0 !important; }
-
-/* Busca global */
-.fi-global-search-field {
-    background: #f8fafc !important;
-    border: 1px solid #e2e8f0 !important;
-    border-radius: 7px !important;
-    height: 34px !important;
-    font-size: 0.82rem !important;
-    color: #94a3b8 !important;
-    transition: border-color 0.15s, box-shadow 0.15s !important;
-    min-width: 180px !important;
-}
-
-.fi-global-search-field:focus {
-    border-color: var(--accent) !important;
-    box-shadow: 0 0 0 3px rgba(156, 199, 231, 0.18) !important;
-    outline: none !important;
-    color: #1e293b !important;
-}
-
-/* Ícones de ação */
-.fi-topbar .fi-icon-btn {
-    color: #64748b !important;
-    border-radius: 6px !important;
-    height: 36px !important;
-    width: 36px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    transition: background 0.14s, color 0.14s !important;
-}
-
-.fi-topbar .fi-icon-btn:hover {
-    background: #f1f5f9 !important;
-    color: #1e293b !important;
-}
-
-/* Avatar do usuário */
-.fi-user-avatar {
-    width: 32px !important;
-    height: 32px !important;
-    border-radius: 50% !important;
-    background-color: var(--accent) !important;
-    color: #07183a !important;
-    font-size: 0.7rem !important;
-    font-weight: 700 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.04em !important;
-    flex-shrink: 0 !important;
-}
-
-/* Heading da página (título do resource) */
-.fi-header-heading {
-    padding: 0 0.5rem;
-    border-radius: 0.2rem;
-    background-color: #ffffff;
-    box-shadow: 2px 4px 20px #000000;
-    overflow: hidden;
-}
-
-.dark .fi-header-heading {
-    padding: 0 0.5rem;
-    background-color: #0c172e;
-    box-shadow: 2px 4px 20px #000000;
-    overflow: hidden;
-}
-
-
-/* ============================================================
-   ÁREA DE CONTEÚDO PRINCIPAL
-   ============================================================ */
-
-.fi-main {
-    background-color: #f1f5f9 !important;
-}
-
-.dark .fi-main-ctn {
-    background-color: #0b1731;
-    background-image: none;
-}
-
-.fi-main-ctn {
-    padding: 24px !important;
-}
-
-
-/* ============================================================
-   TABELAS
-   ============================================================ */
-
-.fi-ta {
-    border-radius: 0.75rem;
-    box-shadow: 2px 4px 20px #272727e7;
-    background-image: url('/images/fundo_completo.svg');
-    overflow: hidden;
-}
-
-.dark .fi-ta {
-    box-shadow: 2px 4px 20px #000000;
-    overflow: hidden;
-}
-
-/* Linha destacada (latest) */
-.highlight-latest td {
-    background-color: #e5eaf1 !important;
-    border-top: 2px solid #074f9b !important;
-    border-bottom: 2px solid #074f9b !important;
-}
-
-.highlight-latest td:first-child {
-    border-left: 5px solid #074f9b !important;
-}
-
-.dark .highlight-latest td {
-    background-color: #081124 !important;
-    border-top: 2px solid #c7def8 !important;
-    border-bottom: 2px solid #c7def8 !important;
-}
-
-.dark .highlight-latest td:first-child {
-    border-left: 5px solid #c7def8 !important;
-}
-
-/* Largura máxima de modais amplos */
-.fi-width-7xl {
-    max-width: 90% !important;
-}
-
-
-/* ============================================================
-   MODAIS / SLIDE-OVERS
-   ============================================================ */
+/* Deixa o fundo de TODOS os modais/slideOvers bem escuro e com pouco ou nenhum blur */
 
 .fi-modal-close-overlay {
+    /* Fundo quase preto e bem opaco */
     background-color: rgba(8, 17, 36, 0.541);
+    /* mais escuro ainda */
+
+
+    /* Se quiser tirar totalmente o blur: */
     backdrop-filter: blur(10px) !important;
+
+    /* Se quiser um leve blur, troca por algo tipo:
+       backdrop-filter: blur(4px) !important;
+    */
 }
 
+/* Opcional: dar um destaque na própria janela do modal */
 .fi-modal-window {
     border-radius: 0.75rem;
     box-shadow: 0 25px 50px rgba(0, 0, 0, 0.45);
 }
 
-
-/* ============================================================
-   FORMULÁRIOS
-   ============================================================ */
-
-.fi-fo-repeater-item {
-    border: 2px solid #ccc;
-    border-radius: 0.5rem;
-    box-shadow: 1px 2px 5px #ccc;
-}
-
-/* Botões de ação */
-.fi-ac-btn-action {
-    box-shadow: 2px 4px 20px #000000;
-    overflow: hidden;
-}
-
-
-/* ============================================================
-   DROPDOWN / USER MENU
-   ============================================================ */
-
-.fi-dropdown-panel {
-    border: 1px solid #e2e8f0 !important;
-    border-radius: 10px !important;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.09) !important;
-    overflow: hidden !important;
-}
-
-.fi-dropdown-item {
-    font-size: 0.845rem !important;
-    color: #475569 !important;
-    padding: 8px 14px !important;
-    transition: background 0.12s !important;
-}
-
-.fi-dropdown-item:hover {
-    background: #f8fafc !important;
-    color: #1e293b !important;
-}
-
-
-/* ============================================================
-   BADGE DE NOTIFICAÇÃO
-   ============================================================ */
-
-.fi-badge {
-    background-color: #ef4444 !important;
-    border: 2px solid var(--topbar-bg) !important;
-}
-
-
-/* ============================================================
-   PERMISSÕES — CHECKBOX LIST
-   ============================================================ */
-
+/* Fundo azulado para os checkboxes de permissões (não marcados) */
 .permissions-checkbox-list label {
     background-color: rgba(59, 130, 246, 0.05);
     padding: 0.5rem;
@@ -413,8 +32,10 @@
     background-color: rgba(59, 130, 246, 0.1);
 }
 
+/* ✅ VERSÃO MAIS ABRANGENTE - Checkbox marcado */
 .permissions-checkbox-list label:has(input[type="checkbox"]:checked) {
     background-color: rgb(37, 99, 235) !important;
+    /* bg-blue-600 */
     color: white !important;
     font-weight: 600 !important;
 }
@@ -424,14 +45,31 @@
     font-weight: 600 !important;
 }
 
+/* Opcional: remover hover quando marcado */
 .permissions-checkbox-list label:has(input[type="checkbox"]:checked):hover {
     background-color: rgb(29, 78, 216) !important;
+    /* bg-blue-700 - um pouco mais escuro */
 }
 
+.highlight-latest td {
+    background-color: #e5eaf1ff !important;
+    border-top: 2px solid #074f9bff !important;
+    border-bottom: 2px solid #074f9bff !important;
+}
 
-/* ============================================================
-   TABS CUSTOMIZADAS
-   ============================================================ */
+.highlight-latest td:first-child {
+    border-left: 5px solid #074f9bff !important;
+}
+
+.dark .highlight-latest td {
+    background-color: #081124ff !important;
+    border-top: 2px solid #c7def8c7 !important;
+    border-bottom: 2px solid #c7def8c7 !important;
+}
+
+.dark .highlight-latest td:first-child {
+    border-left: 5px solid #c7def8c7 !important;
+}
 
 .fi-tabs-item[style*="--tab-color"] span,
 .fi-tabs-item[style*="--tab-color"] {
@@ -440,15 +78,12 @@
 
 .tab-todos {
     margin-right: 20px;
-    border: 1px solid #2563eb !important;
-    background-color: #2563eb20 !important;
+    border: 1px solid #2563EB !important;
+    background-color: #2563EB20 !important;
+
 }
 
-
-/* ============================================================
-   TOOLTIP — HOVER EFFECT
-   ============================================================ */
-
+/* Hover discreto estilo badge para colunas com tooltip */
 .tooltip-hover-effect {
     display: inline-block;
     padding: 0.15rem 0.4rem;
@@ -458,6 +93,7 @@
 
 .tooltip-hover-effect:hover {
     background-color: rgba(148, 163, 184, 0.15);
+    /* cinza neutro suave */
 }
 
 .dark .tooltip-hover-effect:hover {
@@ -465,9 +101,6 @@
 }
 
 
-/* ============================================================
-   NOTIFICAÇÕES — BELL + MODAL
-   ============================================================ */
 
 .notification-bell {
     position: relative;
@@ -484,7 +117,9 @@
     border: none;
 }
 
-.notification-bell:hover { background-color: #111827; }
+.notification-bell:hover {
+    background-color: #111827;
+}
 
 .notification-bell:focus-visible {
     outline: 2px solid #3b82f6;
@@ -514,7 +149,9 @@
     overflow-x: hidden;
 }
 
-.modal-notificacoes-container::-webkit-scrollbar { width: 6px; }
+.modal-notificacoes-container::-webkit-scrollbar {
+    width: 6px;
+}
 
 .modal-notificacoes-container::-webkit-scrollbar-track {
     background: #f3f4f6;
@@ -538,12 +175,151 @@
     background: #9ca3af;
 }
 
-.card-notification { padding: 5px; }
+.card-notification {
+    padding: 5px;
+}
+
+.fi-sidebar-nav {
+    background-color: #ffffff;
+    box-shadow: 0 2px 8px #0000007a;
+}
+
+.dark .fi-sidebar-nav {
+    background-color: #0c172ebd;
+    box-shadow: 0 2px 8px #0000007a;
+}
+
+.fi-topbar {
+    background-color: #e7f2ff;
+    box-shadow: 0 2px 8px #0000007a;
+}
+
+.dark .fi-topbar {
+    background-color: #0c172ebd;
+    box-shadow: 0 2px 8px #0000007a;
+}
+
+.fi-ta {
+    border-radius: 0.75rem;
+    box-shadow: 2px 4px 20px #272727e7;
+    background-image: url('/images/fundo_completo.svg');
+    overflow: hidden;
+}
+
+.dark .fi-ta {
+    box-shadow: 2px 4px 20px #000000;
+    overflow: hidden;
+}
 
 
-/* ============================================================
-   LISTA DE TURMAS (MODAL DE VISUALIZAÇÃO DO PROFESSOR)
-   ============================================================ */
+.fi-ac-btn-action {
+    box-shadow: 2px 4px 20px #000000;
+    overflow: hidden;
+}
+
+.fi-header-heading {
+    padding: 0 0.5rem;
+    border-radius: 0.2rem;
+    background-color: #ffffff;
+
+    box-shadow: 2px 4px 20px #000000;
+    overflow: hidden;
+}
+
+.fi-fo-repeater-item {
+    border: 2px solid #ccc;
+    border-radius: 0.5rem;
+    box-shadow: 1px 2px 5px #ccc;
+}
+
+.dark .fi-header-heading {
+    padding: 0 0.5rem;
+    background-color: #0c172ebd;
+    box-shadow: 2px 4px 20px #000000;
+    overflow: hidden;
+}
+
+/* .fi-main-ctn {
+    background-image: url('/images/fundo_completo.svg');
+} */
+
+.dark .fi-main-ctn {
+    background-color: #0b1731;
+    background-image: none;
+}
+
+.fi-breadcrumbs {
+    padding: 0 0.5rem;
+    border-radius: 0.2rem;
+    background-color: #ffffff;
+
+    box-shadow: 2px 4px 20px #000000;
+    overflow: hidden;
+}
+
+.dark .fi-breadcrumbs {
+    background-color: #0c172ebd;
+
+}
+
+.fi-width-7xl {
+    max-width: 90% !important;
+}
+
+/* .fixar-coluna {
+
+    .fi-ta-table th.fi-ta-actions-header-cell,
+    .fi-ta-table td:last-child {
+        position: sticky;
+        right: 0;
+        z-index: 10;
+        background-color: white;
+    }
+
+    .dark .fi-ta-table th.fi-ta-actions-header-cell,
+    .dark .fi-ta-table td:last-child {
+        background-color: #081124;
+    }
+
+    .fi-ta-table tr.fi-striped td:last-child {
+        background-color: rgb(249 250 251);
+    }
+
+    .dark .fi-ta-table tr.fi-striped td:last-child {
+        background-color: #151D2F;
+    }
+
+
+    .fi-ta-actions-header-cell::after {
+        content: 'Ações';
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+
+    }
+
+    .fi-ta-table th.fi-ta-actions-header-cell,
+    .fi-ta-table td:last-child {
+        border-left: 1px solid rgb(55 65 81);
+    }
+
+    .fi-ta-table td:last-child,
+    .fi-ta-table th.fi-ta-actions-header-cell {
+        border-left: 1px solid rgb(229 231 235);
+    }
+
+    .dark .fi-ta-table td:last-child,
+    .dark .fi-ta-table th.fi-ta-actions-header-cell {
+        border-left: 1px solid rgb(55 65 81);
+    }
+}
+*/
+
+
+/* ── Lista de turmas do professor (modal de visualização) ── */
+
+
 
 .prof-turmas-list {
     display: flex;
@@ -570,4 +346,6 @@
     margin-top: 0.125rem;
 }
 
-.prof-turma-label { font-weight: 500; }
+.prof-turma-label {
+    font-weight: 500;
+}
