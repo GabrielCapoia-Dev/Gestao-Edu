@@ -93,17 +93,38 @@ class AdminPanelProvider extends PanelProvider
                 Authenticate::class,
             ])
             ->renderHook(
-                PanelsRenderHook::TOPBAR_START,
-                fn(): string => Blade::render('<div class="meu-topbar-custom">...</div>')
+                PanelsRenderHook::HEAD_END,
+                fn(): string => Blade::render('
+        <style>
+            /* Muda a cor da topbar */
+            .fi-topbar {
+                background-color: #1e293b !important;
+                border-bottom: 2px solid #6366f1;
+            }
+
+            /* Estiliza o sidebar */
+            .fi-sidebar {
+                background-color: #0f172a !important;
+            }
+
+            /* Estiliza os nav items */
+            .fi-sidebar-nav .fi-sidebar-item-button {
+                border-radius: 8px;
+                margin: 2px 8px;
+            }
+
+            /* Item ativo */
+            .fi-sidebar-item-button[aria-current] {
+                background-color: #6366f1 !important;
+                color: white !important;
+            }
+        </style>
+    ')
             )
-            ->renderHook(
-                PanelsRenderHook::SIDEBAR_NAV_START,
-                fn(): string => view('filament.partials.sidebar-header')->render()
-            )
-            ->renderHook(
-                PanelsRenderHook::SIDEBAR_NAV_END,
-                fn(): string => view('filament.partials.sidebar-footer')->render()
-            )
+
+
+
+
             ->renderHook(
                 PanelsRenderHook::USER_MENU_BEFORE,
                 function () {
