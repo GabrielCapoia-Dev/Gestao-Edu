@@ -92,7 +92,18 @@ class AdminPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ])
-
+            ->renderHook(
+                PanelsRenderHook::TOPBAR_START,
+                fn(): string => Blade::render('<div class="meu-topbar-custom">...</div>')
+            )
+            ->renderHook(
+                PanelsRenderHook::SIDEBAR_NAV_START,
+                fn(): string => view('filament.partials.sidebar-header')->render()
+            )
+            ->renderHook(
+                PanelsRenderHook::SIDEBAR_NAV_END,
+                fn(): string => view('filament.partials.sidebar-footer')->render()
+            )
             ->renderHook(
                 PanelsRenderHook::USER_MENU_BEFORE,
                 function () {
