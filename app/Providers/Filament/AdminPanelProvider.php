@@ -146,7 +146,7 @@ class AdminPanelProvider extends PanelProvider
                         font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
                     ">Sistema</div>
 
-                    <a href="{{ route('filament.admin.resources.users.index') }}"
+                    <a href="#"
                        wire:navigate
                        class="fi-sidebar-item-button"
                        style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;color:rgba(255,255,255,.52);font-size:14px;font-weight:500;text-decoration:none;margin-bottom:2px;transition:background .2s,color .2s;">
