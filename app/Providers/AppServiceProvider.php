@@ -60,6 +60,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        URL::forceScheme('https');
+
+
         Gate::policy(User::class, UserPolicy::class);
         Gate::policy(Role::class, RolePolicy::class);
         Gate::policy(Permission::class, PermissionPolicy::class);
@@ -82,9 +85,6 @@ class AppServiceProvider extends ServiceProvider
         });
 
         FilamentAsset::register([
-            Css::make('leaflet-css', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'),
-            Js::make('leaflet-js',  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'),
-
             Js::make(
                 'chartjs-datalabels',
                 'https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2'
@@ -97,7 +97,5 @@ class AppServiceProvider extends ServiceProvider
             PanelsRenderHook::BODY_END,
             fn() => view('components.open-url-listener'),
         );
-
-        URL::forceScheme('https');
     }
 }
