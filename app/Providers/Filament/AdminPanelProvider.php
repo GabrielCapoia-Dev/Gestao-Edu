@@ -42,6 +42,7 @@ class AdminPanelProvider extends PanelProvider
             ->profile()
             ->spa()
             ->darkMode(false)
+
             ->colors([
                 'primary' => [
                     50  => '#e8f1fb',
@@ -50,34 +51,37 @@ class AdminPanelProvider extends PanelProvider
                     300 => '#73abe7',
                     400 => '#458fdf',
                     500 => '#1a6bc7',
-                    600 => '#074f9b',   // ← cor principal
+                    600 => '#074f9b',
                     700 => '#053d78',
                     800 => '#042c56',
                     900 => '#021b34',
                     950 => '#010e1a',
                 ],
                 'gray' => [
-                    50 => '#e5eaf1ff',
-                    100 => '#c7def8c7',
-                    200 => '#c0d4d4ff',
-                    300 => '#c7caccff',
-                    400 => '#a0a0a0ff',
-                    500 => '#929292ff',
-                    600 => '#074f9bff',
-                    700 => '#074f9b29',
-                    800 => '#151D2Fff',
-                    900 => '#081124ff',
-                    950 => '#081124ff',
+                    50  => '#e5eaf1',
+                    100 => '#c7def8',
+                    200 => '#c0d4d4',
+                    300 => '#c7cacc',
+                    400 => '#a0a0a0',
+                    500 => '#929292',
+                    600 => '#074f9b',
+                    700 => '#074f9b',
+                    800 => '#151D2F',
+                    900 => '#081124',
+                    950 => '#081124',
                 ],
             ])
+
             ->brandLogo(fn() => view('components.logo-admin-do-sistema'))
             ->sidebarCollapsibleOnDesktop()
+
             ->discoverResources(in: app_path('Filament/Admin/Resources'), for: 'App\\Filament\\Admin\\Resources')
             ->discoverPages(in: app_path('Filament/Admin/Pages'), for: 'App\\Filament\\Admin\\Pages')
             ->discoverClusters(in: app_path('Filament/Admin/Clusters'), for: 'App\\Filament\\Admin\\Clusters')
             ->pages([])
             ->discoverWidgets(in: app_path('Filament/Admin/Widgets'), for: 'App\\Filament\\Admin\\Widgets')
             ->widgets([])
+
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
@@ -92,39 +96,8 @@ class AdminPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ])
-            ->renderHook(
-                PanelsRenderHook::HEAD_END,
-                fn(): string => Blade::render('
-        <style>
-            /* Muda a cor da topbar */
-            .fi-topbar {
-                background-color: #1e293b !important;
-                border-bottom: 2px solid #6366f1;
-            }
 
-            /* Estiliza o sidebar */
-            .fi-sidebar {
-                background-color: #0f172a !important;
-            }
-
-            /* Estiliza os nav items */
-            .fi-sidebar-nav .fi-sidebar-item-button {
-                border-radius: 8px;
-                margin: 2px 8px;
-            }
-
-            /* Item ativo */
-            .fi-sidebar-item-button[aria-current] {
-                background-color: #6366f1 !important;
-                color: white !important;
-            }
-        </style>
-    ')
-            )
-
-
-
-
+            // Notificações na topbar (mantido do original)
             ->renderHook(
                 PanelsRenderHook::USER_MENU_BEFORE,
                 function () {
@@ -133,9 +106,11 @@ class AdminPanelProvider extends PanelProvider
                     if ($user->hasPermissionTo('Visualizar Notificações')) {
                         return view('livewire.topbar-notifications-hook');
                     }
+
                     return '';
                 }
             )
+
             ->plugins([
                 AuthDesignerPlugin::make()
                     ->login(
@@ -146,7 +121,6 @@ class AdminPanelProvider extends PanelProvider
                             ->usingPage(LoginPage::class)
                             ->mediaSize('70%')
                             ->themeToggle()
-
                     )
                     ->profile(
                         fn($config) => $config
