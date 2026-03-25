@@ -60,7 +60,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        URL::forceScheme('https');
 
 
         Gate::policy(User::class, UserPolicy::class);
@@ -90,12 +89,14 @@ class AppServiceProvider extends ServiceProvider
                 'https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2'
             ),
 
-            Css::make('geral', asset('css/geral.css')),
+            Css::make('geral', secure_asset('css/geral.css')),
         ]);
 
         FilamentView::registerRenderHook(
             PanelsRenderHook::BODY_END,
             fn() => view('components.open-url-listener'),
         );
+
+        URL::forceScheme('https');
     }
 }
