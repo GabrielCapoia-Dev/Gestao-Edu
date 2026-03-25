@@ -45,29 +45,29 @@ class AdminPanelProvider extends PanelProvider
 
             ->colors([
                 'primary' => [
-                    50  => '#e8f1fb',
-                    100 => '#d0e3f7',
+                    50  => '#eef6fc',
+                    100 => '#d8ecf7',
                     200 => '#a2c7ef',
                     300 => '#73abe7',
                     400 => '#458fdf',
                     500 => '#1a6bc7',
-                    600 => '#074f9b',
-                    700 => '#053d78',
-                    800 => '#042c56',
-                    900 => '#021b34',
-                    950 => '#010e1a',
+                    600 => '#17368d',
+                    700 => '#0f2261',
+                    800 => '#0a1a4a',
+                    900 => '#071232',
+                    950 => '#040b1e',
                 ],
                 'gray' => [
-                    50  => '#e5eaf1',
-                    100 => '#c7def8',
-                    200 => '#c0d4d4',
-                    300 => '#c7cacc',
-                    400 => '#a0a0a0',
-                    500 => '#929292',
-                    600 => '#074f9b',
-                    700 => '#074f9b',
-                    800 => '#151D2F',
-                    900 => '#081124',
+                    50  => '#f4f5f9',
+                    100 => '#e8ebf2',
+                    200 => '#d4d8e6',
+                    300 => '#b4bace',
+                    400 => '#9098b0',
+                    500 => '#6b7694',
+                    600 => '#47516e',
+                    700 => '#2d3756',
+                    800 => '#1a2340',
+                    900 => '#0f1729',
                     950 => '#081124',
                 ],
             ])
@@ -97,7 +97,108 @@ class AdminPanelProvider extends PanelProvider
                 Authenticate::class,
             ])
 
-            // Notificações na topbar (mantido do original)
+            // ----------------------------------------------------------------
+            // HOOK 1 — SIDEBAR_NAV_START
+            // Injeta o separador "Principal" antes dos primeiros itens de nav,
+            // replicando: <div class="section"><span>Principal</span></div>
+            //
+            // NOTA: os demais grupos (Conta, Sistema) são criados via
+            // ->navigationGroups() em cada Resource. Este hook só adiciona
+            // o separador do primeiro bloco quando não há grupo definido,
+            // ou serve como cabeçalho visual extra acima de todos os grupos.
+            // ----------------------------------------------------------------
+            ->renderHook(
+                PanelsRenderHook::SIDEBAR_NAV_START,
+                fn(): string => Blade::render(<<<'HTML'
+                    <div style="
+                        font-size: 10px;
+                        font-weight: 800;
+                        letter-spacing: 0.1em;
+                        color: rgba(255,255,255,0.25);
+                        text-transform: uppercase;
+                        padding: 16px 12px 8px;
+                        font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+                    ">Principal</div>
+                HTML)
+            )
+
+            // ----------------------------------------------------------------
+            // HOOK 2 — SIDEBAR_NAV_END
+            // Injeta o separador "Sistema" + links extras no final do nav,
+            // replicando:
+            //   <div class="section"><span>Sistema</span></div>
+            //   <a class="app-nav-link">Usuários</a>
+            //   <a class="app-nav-link">Design System</a>
+            //
+            // Os links usam as mesmas classes que o CSS do geral.css estiliza.
+            // Use wire:navigate para funcionar corretamente no modo SPA.
+            // ----------------------------------------------------------------
+            ->renderHook(
+                PanelsRenderHook::SIDEBAR_NAV_END,
+                fn(): string => Blade::render(<<<'HTML'
+                    <div style="
+                        font-size: 10px;
+                        font-weight: 800;
+                        letter-spacing: 0.1em;
+                        color: rgba(255,255,255,0.25);
+                        text-transform: uppercase;
+                        padding: 16px 12px 8px;
+                        font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+                    ">Sistema</div>
+
+                    <a href="{{ route('filament.admin.resources.users.index') }}"
+                       wire:navigate
+                       class="fi-sidebar-item-button"
+                       style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;color:rgba(255,255,255,.52);font-size:14px;font-weight:500;text-decoration:none;margin-bottom:2px;transition:background .2s,color .2s;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="flex-shrink:0;opacity:.85">
+                            <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                        </svg>
+                        <span>Usuários</span>
+                    </a>
+                HTML)
+            )
+
+            // ----------------------------------------------------------------
+            // HOOK 3 — SIDEBAR_FOOTER
+            // Injeta o rodapé com o link "Sair",
+            // replicando: .app-sidebar-foot a { ícone + "Sair" }
+            //
+            // O Filament já renderiza o menu do usuário no footer por padrão.
+            // Este hook adiciona o link de logout estilizado ABAIXO dele,
+            // caso queira um atalho rápido visível como no protótipo.
+            // Se preferir substituir completamente o footer padrão,
+            // use ->userMenuItems([]) no panel e mantenha apenas este hook.
+            // ----------------------------------------------------------------
+            ->renderHook(
+                PanelsRenderHook::SIDEBAR_FOOTER,
+                fn(): string => Blade::render(<<<'HTML'
+                    <div style="padding:8px;border-top:1px solid rgba(255,255,255,.06);">
+                        <form method="POST" action="{{ route('filament.admin.auth.logout') }}">
+                            @csrf
+                            <button type="submit" style="
+                                display:flex;align-items:center;gap:10px;
+                                font-size:12px;color:rgba(255,255,255,.4);
+                                text-decoration:none;padding:8px 12px;border-radius:8px;
+                                transition:color .2s,background .2s;
+                                background:transparent;border:none;cursor:pointer;
+                                width:100%;font-family:'Plus Jakarta Sans',system-ui,sans-serif;
+                            "
+                            onmouseover="this.style.color='#9cc7e7';this.style.background='rgba(255,255,255,.04)'"
+                            onmouseout="this.style.color='rgba(255,255,255,.4)';this.style.background='transparent'">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="flex-shrink:0">
+                                    <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                                </svg>
+                                <span>Sair</span>
+                            </button>
+                        </form>
+                    </div>
+                HTML)
+            )
+
+            // ----------------------------------------------------------------
+            // HOOK 4 — USER_MENU_BEFORE
+            // Notificações no canto da topbar (mantido do original)
+            // ----------------------------------------------------------------
             ->renderHook(
                 PanelsRenderHook::USER_MENU_BEFORE,
                 function () {
