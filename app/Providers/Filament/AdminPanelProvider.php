@@ -123,42 +123,6 @@ class AdminPanelProvider extends PanelProvider
             )
 
             // ----------------------------------------------------------------
-            // HOOK 2 — SIDEBAR_NAV_END
-            // Injeta o separador "Sistema" + links extras no final do nav,
-            // replicando:
-            //   <div class="section"><span>Sistema</span></div>
-            //   <a class="app-nav-link">Usuários</a>
-            //   <a class="app-nav-link">Design System</a>
-            //
-            // Os links usam as mesmas classes que o CSS do geral.css estiliza.
-            // Use wire:navigate para funcionar corretamente no modo SPA.
-            // ----------------------------------------------------------------
-            ->renderHook(
-                PanelsRenderHook::SIDEBAR_NAV_END,
-                fn(): string => Blade::render(<<<'HTML'
-                    <div style="
-                        font-size: 10px;
-                        font-weight: 800;
-                        letter-spacing: 0.1em;
-                        color: rgba(255,255,255,0.25);
-                        text-transform: uppercase;
-                        padding: 16px 12px 8px;
-                        font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
-                    ">Sistema</div>
-
-                    <a href="#"
-                       wire:navigate
-                       class="fi-sidebar-item-button"
-                       style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;color:rgba(255,255,255,.52);font-size:14px;font-weight:500;text-decoration:none;margin-bottom:2px;transition:background .2s,color .2s;">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="flex-shrink:0;opacity:.85">
-                            <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                        </svg>
-                        <span>Usuários</span>
-                    </a>
-                HTML)
-            )
-
-            // ----------------------------------------------------------------
             // HOOK 3 — SIDEBAR_FOOTER
             // Injeta o rodapé com o link "Sair",
             // replicando: .app-sidebar-foot a { ícone + "Sair" }
