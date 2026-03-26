@@ -241,6 +241,11 @@
     max-width: 90% !important;
 }
 
+.fi-ta-table thead {
+    background-color: #0F2261;
+    color: #FFF;
+}
+
 .prof-turmas-list {
     display: flex;
     flex-direction: column;
