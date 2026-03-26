@@ -36,21 +36,21 @@ class TipoManutencaoService
     {
         return [
             Section::make('Dados Gerais')
+                ->columnSpanFull()
                 ->schema([
                     Grid::make(2)
-                    ->columnSpanFull()
-                    ->schema([
+                        ->schema([
 
-                        TextInput::make('nome')
-                            ->label('Nome')
-                            ->required()
-                            ->minLength(3)
-                            ->maxLength(255),
+                            TextInput::make('nome')
+                                ->label('Nome')
+                                ->required()
+                                ->minLength(3)
+                                ->maxLength(255),
 
-                        Textarea::make('descricao')
-                            ->label('Descrição')
-                            ->columnSpanFull(),
-                    ]),
+                            Textarea::make('descricao')
+                                ->label('Descrição')
+                                ->columnSpanFull(),
+                        ]),
                 ]),
         ];
     }
