@@ -97,62 +97,31 @@ class AdminPanelProvider extends PanelProvider
                 Authenticate::class,
             ])
 
+            // ----------------------------------------------------------------
+            // HOOK 1 — SIDEBAR_NAV_START
+            // Injeta o separador "Principal" antes dos primeiros itens de nav,
+            // replicando: <div class="section"><span>Principal</span></div>
+            //
+            // NOTA: os demais grupos (Conta, Sistema) são criados via
+            // ->navigationGroups() em cada Resource. Este hook só adiciona
+            // o separador do primeiro bloco quando não há grupo definido,
+            // ou serve como cabeçalho visual extra acima de todos os grupos.
+            // ----------------------------------------------------------------
             ->renderHook(
-                PanelsRenderHook::PAGE_START,
+                PanelsRenderHook::SIDEBAR_NAV_START,
                 fn(): string => Blade::render(<<<'HTML'
-        <header style="
-            height: 64px;
-            background: #ffffff;
-            border-bottom: 1px solid #d4d8e6;
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            padding: 0 24px;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            flex-shrink: 0;
-            margin-bottom: 0;
-        ">
-            {{-- Botão hambúrguer --}}
-            <button
-                type="button"
-                x-data="{}"
-                x-on:click="$store.sidebar.isOpen ? $store.sidebar.close() : $store.sidebar.open()"
-                style="
-                    width:40px;height:40px;border:none;border-radius:8px;
-                    background:#f4f5f9;cursor:pointer;display:flex;
-                    align-items:center;justify-content:center;color:#47516e;
-                    transition:background .2s,color .2s;flex-shrink:0;
-                "
-                onmouseover="this.style.background='#eef6fc';this.style.color='#17368d'"
-                onmouseout="this.style.background='#f4f5f9';this.style.color='#47516e'"
-                aria-label="Abrir ou fechar menu"
-            >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M4 6h16M4 12h16M4 18h16"/>
-                </svg>
-            </button>
-            
-            {{-- Spacer --}}
-            <div style="flex:1"></div>
-
-            {{-- Search --}}
-            <div style="
-                display:flex;align-items:center;gap:10px;padding:8px 14px;
-                border-radius:9999px;background:#f4f5f9;border:1px solid #d4d8e6;
-                font-size:13px;color:#9098b0;max-width:280px;width:100%;
-            ">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-                </svg>
-                <span>Buscar…</span>
-                <span style="font-family:monospace;font-size:10px;padding:2px 6px;background:#d4d8e6;border-radius:4px;color:#47516e;margin-left:auto">Ctrl K</span>
-            </div>
-
-        </header>
-    HTML)
+                    <div style="
+                        font-size: 10px;
+                        font-weight: 800;
+                        letter-spacing: 0.1em;
+                        color: rgba(255,255,255,0.25);
+                        text-transform: uppercase;
+                        padding: 16px 12px 8px;
+                        font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+                    ">Principal</div>
+                HTML)
             )
+
             // ----------------------------------------------------------------
             // HOOK 3 — SIDEBAR_FOOTER
             // Injeta o rodapé com o link "Sair",
@@ -190,7 +159,10 @@ class AdminPanelProvider extends PanelProvider
                 HTML)
             )
 
-
+            // ----------------------------------------------------------------
+            // HOOK 4 — USER_MENU_BEFORE
+            // Notificações no canto da topbar (mantido do original)
+            // ----------------------------------------------------------------
             ->renderHook(
                 PanelsRenderHook::USER_MENU_BEFORE,
                 function () {

@@ -889,3 +889,18 @@ body:has(.fi-main-sidebar.fi-sidebar-open) .fi-topbar-ctn {
     padding-top: 0 !important;
     margin-top: 0 !important;
 }
+
+header {
+    height: 64px;
+    background: #ffffff;
+    border-bottom: 1px solid #d4d8e6;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 0 24px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    flex-shrink: 0;
+    margin-bottom: 0;
+}
