@@ -242,22 +242,14 @@
 }
 
 .fi-ta-table thead {
-    background-color: #0F2261;
+    background-color: #0F2261 !important;
 }
 
-.fi-ta-table thead th {
-    color: #FFF;
-}
-
+.fi-ta-table thead th,
 .fi-ta-table thead th span,
-.fi-ta-table thead th button,
-.fi-ta-table thead th a {
-    color: #FFF;
-}
-
 .fi-ta-table thead th svg {
-    color: #FFF;
-    fill: #FFF;
+    color: #FFF !important;
+    fill: #FFF !important;
 }
 
 .prof-turmas-list {
