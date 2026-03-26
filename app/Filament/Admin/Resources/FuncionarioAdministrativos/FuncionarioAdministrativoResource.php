@@ -384,7 +384,7 @@ class FuncionarioAdministrativoResource extends Resource
                         Section::make('Turmas Vinculadas')
                             ->schema([
                                 TextEntry::make('turmas_funcao_info')
-                                    ->label('')
+                                    ->label(' ')
                                     ->getStateUsing(function ($record) {
                                         $turmas = $record->turmasFuncao()->with('serie')->get();
 
