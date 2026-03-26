@@ -37,7 +37,9 @@ class TipoManutencaoService
         return [
             Section::make('Dados Gerais')
                 ->schema([
-                    Grid::make(2)->schema([
+                    Grid::make(2)
+                    ->columnSpanFull()
+                    ->schema([
 
                         TextInput::make('nome')
                             ->label('Nome')
