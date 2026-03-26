@@ -10,7 +10,6 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Actions\Action;
 use App\Models\FuncaoAdministrativa;
-use Filament\Schemas\Schema;
 
 class ManageFuncionarioAdministrativos extends ManageRecords
 {
@@ -18,18 +17,12 @@ class ManageFuncionarioAdministrativos extends ManageRecords
 
     protected function getHeaderActions(): array
     {
-
-        /** @var Schema */
-        $schema = Schema::class;
-
-
         return [
             CreateAction::make()
                 ->label('Vincular Função')
                 ->modalHeading('Vincular Função Administrativa')
                 ->modalSubmitActionLabel('Vincular')
                 ->visible(fn() => FuncaoAdministrativa::query()->exists())
-                ->schema(FuncionarioAdministrativoResource::form($schema)->getComponents())
                 ->using(function (array $data): Professor {
                     $professor = Professor::findOrFail($data['professor_id']);
 
@@ -43,10 +36,9 @@ class ManageFuncionarioAdministrativos extends ManageRecords
                     }
 
                     return $professor->fresh();
-                })
-                ->successNotificationTitle('Função vinculada com sucesso'),
+                }),
 
-
+                
             Action::make('criarFuncao')
                 ->label('Nova Função Administrativa')
                 ->icon('heroicon-o-plus')

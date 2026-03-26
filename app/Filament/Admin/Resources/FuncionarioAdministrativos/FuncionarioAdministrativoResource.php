@@ -222,11 +222,11 @@ class FuncionarioAdministrativoResource extends Resource
 
                         Select::make('turmasFuncao')
                             ->label('Turmas Vinculadas à Função')
-                            ->relationship('turmasFuncao', 'nome')
+                            // ->relationship('turmasFuncao', 'nome')  <-- REMOVA ISSO
                             ->multiple()
                             ->searchable()
                             ->preload()
-                            ->options(function (Get $get, ?Professor $record) {
+                            ->options(function (Get $get, ?EquipeGestora $record) {
                                 $idEscola = $record?->id_escola ?? $get('id_escola');
 
                                 if (!$idEscola) {
@@ -357,26 +357,26 @@ class FuncionarioAdministrativoResource extends Resource
                     ->schema([
                         Section::make('Informações do Funcionário')
                             ->schema([
-                                \Filament\Infolists\Components\TextEntry::make('escola.nome')
+                                TextEntry::make('escola.nome')
                                     ->label('Escola'),
-                                \Filament\Infolists\Components\TextEntry::make('matricula')
+                                TextEntry::make('matricula')
                                     ->label('Matrícula')
                                     ->copyable(),
-                                \Filament\Infolists\Components\TextEntry::make('nome')
+                                TextEntry::make('nome')
                                     ->label('Nome')
                                     ->copyable(),
-                                \Filament\Infolists\Components\TextEntry::make('funcaoAdministrativa.nome')
+                                TextEntry::make('funcaoAdministrativa.nome')
                                     ->label('Função')
                                     ->badge()
                                     ->color('warning'),
-                                \Filament\Infolists\Components\TextEntry::make('portaria')
+                                TextEntry::make('portaria')
                                     ->label('Portaria')
                                     ->placeholder('Não informada'),
-                                \Filament\Infolists\Components\TextEntry::make('email')
+                                TextEntry::make('email')
                                     ->label('E-mail')
                                     ->copyable()
                                     ->placeholder('Não informado'),
-                                \Filament\Infolists\Components\TextEntry::make('telefone')
+                                TextEntry::make('telefone')
                                     ->label('Telefone')
                                     ->placeholder('Não informado'),
                             ])
@@ -384,7 +384,7 @@ class FuncionarioAdministrativoResource extends Resource
 
                         Section::make('Turmas Vinculadas')
                             ->schema([
-                                \Filament\Infolists\Components\TextEntry::make('turmas_funcao_info')
+                                TextEntry::make('turmas_funcao_info')
                                     ->label('')
                                     ->getStateUsing(function ($record) {
                                         $turmas = $record->turmasFuncao()->with('serie')->get();
@@ -409,7 +409,26 @@ class FuncionarioAdministrativoResource extends Resource
                             ->visible(fn($record) => $record->funcaoAdministrativa?->tem_relacao_turma),
                     ]),
 
-                EditAction::make(),
+                EditAction::make()
+                    ->using(function (EquipeGestora $record, array $data): EquipeGestora {
+                        $portaria = null;
+                        if (!empty($data['portaria_numero']) && !empty($data['portaria_ano'])) {
+                            $portaria = "{$data['portaria_numero']}/{$data['portaria_ano']}";
+                        }
+
+                        $record->update([
+                            'funcao_administrativa_id' => $data['funcao_administrativa_id'],
+                            'portaria' => $portaria,
+                        ]);
+
+                        if (isset($data['turmasFuncao']) && is_array($data['turmasFuncao'])) {
+                            $record->turmasFuncao()->sync($data['turmasFuncao']);
+                        } else {
+                            $record->turmasFuncao()->detach();
+                        }
+
+                        return $record->fresh();
+                    }),
 
                 // Action para remover função administrativa (volta a ser professor)
                 Action::make('remover_funcao')
