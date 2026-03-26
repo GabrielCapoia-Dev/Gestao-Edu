@@ -201,19 +201,19 @@
 
 .fi-ta {
     border-radius: 0.75rem;
-    box-shadow: 2px 4px 20px #272727e7;
+    box-shadow: 4px 6px 16px rgba(39, 39, 39, 0.55);
     background-image: url('/images/fundo_completo.svg');
     overflow: hidden;
 }
 
 .dark .fi-ta {
-    box-shadow: 2px 4px 20px #000000;
+    box-shadow: 4px 6px 16px rgba(0, 0, 0, 0.75);
     overflow: hidden;
 }
 
 
 .fi-ac-btn-action {
-    box-shadow: 2px 4px 20px #000000;
+    box-shadow: 3px 4px 10px rgba(0, 0, 0, 0.45);
     overflow: hidden;
 }
 
@@ -221,8 +221,7 @@
     padding: 0 0.5rem;
     border-radius: 0.2rem;
     background-color: #ffffff;
-
-    box-shadow: 2px 4px 20px #000000;
+    box-shadow: 3px 4px 12px rgba(0, 0, 0, 0.45);
     overflow: hidden;
 }
 
@@ -235,7 +234,7 @@
 .dark .fi-header-heading {
     padding: 0 0.5rem;
     background-color: #0c172ebd;
-    box-shadow: 2px 4px 20px #000000;
+    box-shadow: 3px 4px 12px rgba(0, 0, 0, 0.75);
     overflow: hidden;
 }
 
@@ -252,74 +251,18 @@
     padding: 0 0.5rem;
     border-radius: 0.2rem;
     background-color: #ffffff;
-
-    box-shadow: 2px 4px 20px #000000;
+    box-shadow: 3px 4px 12px rgba(0, 0, 0, 0.45);
     overflow: hidden;
 }
 
 .dark .fi-breadcrumbs {
     background-color: #0c172ebd;
-
+    box-shadow: 3px 4px 12px rgba(0, 0, 0, 0.75);
 }
 
 .fi-width-7xl {
     max-width: 90% !important;
 }
-
-/* .fixar-coluna {
-
-    .fi-ta-table th.fi-ta-actions-header-cell,
-    .fi-ta-table td:last-child {
-        position: sticky;
-        right: 0;
-        z-index: 10;
-        background-color: white;
-    }
-
-    .dark .fi-ta-table th.fi-ta-actions-header-cell,
-    .dark .fi-ta-table td:last-child {
-        background-color: #081124;
-    }
-
-    .fi-ta-table tr.fi-striped td:last-child {
-        background-color: rgb(249 250 251);
-    }
-
-    .dark .fi-ta-table tr.fi-striped td:last-child {
-        background-color: #151D2F;
-    }
-
-
-    .fi-ta-actions-header-cell::after {
-        content: 'Ações';
-        font-size: 0.75rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-
-    }
-
-    .fi-ta-table th.fi-ta-actions-header-cell,
-    .fi-ta-table td:last-child {
-        border-left: 1px solid rgb(55 65 81);
-    }
-
-    .fi-ta-table td:last-child,
-    .fi-ta-table th.fi-ta-actions-header-cell {
-        border-left: 1px solid rgb(229 231 235);
-    }
-
-    .dark .fi-ta-table td:last-child,
-    .dark .fi-ta-table th.fi-ta-actions-header-cell {
-        border-left: 1px solid rgb(55 65 81);
-    }
-}
-*/
-
-
-/* ── Lista de turmas do professor (modal de visualização) ── */
-
-
 
 .prof-turmas-list {
     display: flex;
