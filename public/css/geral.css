@@ -201,6 +201,10 @@
     overflow: hidden;
 }
 
+.gestao-edu {
+    color: #FFF;
+}
+
 .dark .fi-ta {
     box-shadow: 4px 6px 16px rgba(0, 0, 0, 0.75);
     overflow: hidden;
