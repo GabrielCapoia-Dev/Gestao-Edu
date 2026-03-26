@@ -201,15 +201,49 @@ body,
     align-items: center !important;
 }
 
-/* ---- Botões hambúrguer ---- */
-/* No Filament com sidebarCollapsibleOnDesktop, os botões open/close-collapse
-   ficam dentro do <aside> da sidebar (no header dela).
-   Reposicionamos para que fiquem visualmente alinhados à topbar. */
+/* ---- Sidebar header: logo + botão de collapse ---- */
 .fi-sidebar-header {
-    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    padding: 0 12px 0 20px !important;
+    min-height: 64px !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+    background: transparent !important;
 }
 
-/* Botões dentro da topbar (mobile) */
+/* ---- Botões de collapse (ficam no header escuro da sidebar) ---- */
+/* Estilizados para parecerem parte da topbar branca via posição fixa */
+.fi-topbar-open-collapse-sidebar-btn,
+.fi-topbar-close-collapse-sidebar-btn {
+    /* Arranca o botão do fluxo da sidebar e o prega na topbar */
+    position: fixed !important;
+    top: 12px !important;
+    left: 12px !important;
+    z-index: 60 !important;
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 8px !important;
+    background: #f4f5f9 !important;
+    color: #47516e !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border: none !important;
+    transition: background 0.2s, color 0.2s !important;
+    cursor: pointer !important;
+    flex-shrink: 0 !important;
+    box-shadow: none !important;
+}
+
+.fi-topbar-open-collapse-sidebar-btn:hover,
+.fi-topbar-close-collapse-sidebar-btn:hover {
+    background: #eef6fc !important;
+    color: var(--primary) !important;
+}
+
+/* ---- Botões mobile (ficam na topbar, só aparecem em telas pequenas) ---- */
 .fi-topbar-open-sidebar-btn,
 .fi-topbar-close-sidebar-btn {
     width: 40px !important;
@@ -226,51 +260,13 @@ body,
     flex-shrink: 0 !important;
 }
 
-/* Botões dentro da sidebar (desktop collapse) */
-.fi-topbar-open-collapse-sidebar-btn,
-.fi-topbar-close-collapse-sidebar-btn {
-    width: 36px !important;
-    height: 36px !important;
-    border-radius: 8px !important;
-    background: rgba(255, 255, 255, 0.06) !important;
-    color: rgba(255, 255, 255, 0.5) !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    border: none !important;
-    transition: background 0.2s, color 0.2s !important;
-    cursor: pointer !important;
-    flex-shrink: 0 !important;
-}
-
 .fi-topbar-open-sidebar-btn:hover,
 .fi-topbar-close-sidebar-btn:hover {
     background: #eef6fc !important;
     color: var(--primary) !important;
 }
 
-.fi-topbar-open-collapse-sidebar-btn:hover,
-.fi-topbar-close-collapse-sidebar-btn:hover {
-    background: rgba(156, 199, 231, 0.14) !important;
-    color: #9cc7e7 !important;
-}
-
-/* Sidebar header: logo + botão de collapse lado a lado */
-.fi-sidebar-header {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    gap: 8px !important;
-    padding: 0 12px 0 20px !important;
-    min-height: 64px !important;
-}
-
-/* Quando sidebar está colapsada, centraliza o conteúdo */
-.fi-sidebar-nav .fi-sidebar-item-button span:not(.fi-sidebar-item-badge) {
-    transition: opacity 0.2s, width 0.2s !important;
-}
-
-/* Garante que os botões mobile não apareçam no desktop e vice-versa */
+/* Desktop: esconde botões mobile da topbar; collapse fica fixo */
 @media (min-width: 1024px) {
     .fi-topbar-open-sidebar-btn,
     .fi-topbar-close-sidebar-btn {
@@ -280,8 +276,13 @@ body,
     .fi-topbar-close-collapse-sidebar-btn {
         display: flex !important;
     }
+    /* Empurra o conteúdo da topbar para não ficar atrás do botão fixo */
+    .fi-topbar-nav {
+        padding-left: 64px !important;
+    }
 }
 
+/* Mobile: mostra botões da topbar; esconde os de collapse */
 @media (max-width: 1023px) {
     .fi-topbar-open-sidebar-btn,
     .fi-topbar-close-sidebar-btn {
