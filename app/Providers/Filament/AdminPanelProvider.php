@@ -41,7 +41,6 @@ class AdminPanelProvider extends PanelProvider
             ->login()
             ->profile()
             ->spa()
-            ->topbar(false)
             ->darkMode(false)
             ->colors([
                 'primary' => [
