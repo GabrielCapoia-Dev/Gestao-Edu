@@ -37,7 +37,7 @@ class ManageFuncionarioAdministrativos extends ManageRecords
 
                     return $professor->fresh();
                 }),
-                
+
             Action::make('criarFuncao')
                 ->label('Nova Função Administrativa')
                 ->icon('heroicon-o-plus')
@@ -56,6 +56,14 @@ class ManageFuncionarioAdministrativos extends ManageRecords
                 })
                 ->successNotificationTitle('Função criada com sucesso'),
 
+            Action::make('gerenciarFuncoes')
+                ->label('Gerenciar Funções')
+                ->icon('heroicon-o-bookmark-square')
+                ->modalHeading('Funções Administrativas')
+                ->modalSubmitAction(false)
+                ->modalCancelActionLabel('Fechar')
+                ->modalWidth('3xl')
+                ->modalContent(view('livewire.funcao-administrativa-manager')),
         ];
     }
 }
