@@ -190,12 +190,7 @@
 }
 
 .fi-topbar {
-    background-color: #e7f2ff;
-    box-shadow: 0 2px 8px #0000007a;
-}
-
-.dark .fi-topbar {
-    background-color: #0c172ebd;
+    background-color: #0F2261;
     box-shadow: 0 2px 8px #0000007a;
 }
 
