@@ -42,7 +42,7 @@ class AdminPanelProvider extends PanelProvider
             ->profile()
             ->spa()
             ->darkMode(false)
-
+            ->topbar(false)
             ->colors([
                 'primary' => [
                     50  => '#eef6fc',
