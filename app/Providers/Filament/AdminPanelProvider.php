@@ -164,7 +164,7 @@ class AdminPanelProvider extends PanelProvider
             // Notificações no canto da topbar (mantido do original)
             // ----------------------------------------------------------------
             ->renderHook(
-                PanelsRenderHook::USER_MENU_BEFORE,
+                PanelsRenderHook::BODY_END,
                 function () {
                     $user = User::authUser();
 
