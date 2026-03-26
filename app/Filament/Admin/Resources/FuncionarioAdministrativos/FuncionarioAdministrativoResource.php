@@ -186,8 +186,7 @@ class FuncionarioAdministrativoResource extends Resource
                                 }
 
                                 return "{$numero}/{$ano}";
-                            })
-                            ->required(),
+                            }),
 
                         Checkbox::make('selecionar_todas_turmas')
                             ->label('Unidade com apenas um(a) coordenador(a)')
