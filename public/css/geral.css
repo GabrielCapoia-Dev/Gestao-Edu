@@ -232,6 +232,10 @@
     background-image: none;
 }
 
+.fi-header-heading {
+    color: #0F2261;
+}
+
 
 .fi-width-7xl {
     max-width: 90% !important;
