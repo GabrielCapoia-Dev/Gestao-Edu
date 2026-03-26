@@ -241,16 +241,6 @@
     max-width: 90% !important;
 }
 
-.fi-ta-table thead {
-    background-color: #0F2261 !important;
-}
-
-.fi-ta-table thead th,
-.fi-ta-table thead th span,
-.fi-ta-table thead th svg {
-    color: #FFF !important;
-    fill: #FFF !important;
-}
 
 .prof-turmas-list {
     display: flex;
