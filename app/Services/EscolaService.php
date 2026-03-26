@@ -185,6 +185,7 @@ class EscolaService
             ->components([
 
                 Section::make('Dados Gerais')
+                    ->columnSpanFull()
                     ->schema([
                         Grid::make(2)->schema([
 
@@ -225,6 +226,7 @@ class EscolaService
                         ]),
                     ]),
                 Section::make('Endereço')
+                    ->columnSpanFull()
                     ->schema([
                         Grid::make(12)
                             ->schema([
