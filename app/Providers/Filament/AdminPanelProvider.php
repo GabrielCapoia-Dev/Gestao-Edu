@@ -41,7 +41,6 @@ class AdminPanelProvider extends PanelProvider
             ->login()
             ->profile()
             ->spa()
-            ->topbarLivewireComponent(TopBar::class)
             ->darkMode(false)
             ->colors([
                 'primary' => [
