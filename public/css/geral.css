@@ -228,16 +228,6 @@ body,
     color: var(--primary) !important;
 }
 
-/* Remove o display:none que o Filament injeta nos botões de hambúrguer */
-@media (min-width: 1024px) {
-    .fi-topbar-open-sidebar-btn,
-    .fi-topbar-close-sidebar-btn,
-    .fi-topbar-open-collapse-sidebar-btn,
-    .fi-topbar-close-collapse-sidebar-btn {
-        display: flex !important;
-    }
-}
-
 /* ---- Breadcrumb ---- */
 .fi-breadcrumbs {
     background: transparent !important;
