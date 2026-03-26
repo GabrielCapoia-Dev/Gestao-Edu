@@ -850,3 +850,42 @@ body,
     cursor: pointer !important;
     padding: 0 !important;
 }
+
+/* ============================================================
+   TOPBAR — reposicionar para dentro do main (alinhado à sidebar)
+   ============================================================ */
+
+/* Topbar fica fixo, mas começa após a sidebar */
+.fi-topbar-ctn {
+    position: fixed !important;
+    top: 0 !important;
+    left: var(--sidebar-width) !important;
+    right: 0 !important;
+    z-index: 50 !important;
+    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Sidebar recolhida no desktop */
+.fi-body-has-sidebar-collapsible-on-desktop .fi-topbar-ctn {
+    left: var(--collapsed-sidebar-width) !important;
+}
+
+/* Sidebar aberta (classe no aside, não no body) — usa Alpine store */
+/* O Filament adiciona fi-sidebar-open no aside quando aberta */
+/* No desktop collapsible, a sidebar começa recolhida */
+/* Quando aberta, volta para sidebar-width */
+.fi-main-sidebar.fi-sidebar-open~* .fi-topbar-ctn,
+body:has(.fi-main-sidebar.fi-sidebar-open) .fi-topbar-ctn {
+    left: var(--sidebar-width) !important;
+}
+
+/* Padding no conteúdo para compensar o topbar fixo */
+.fi-main-ctn {
+    padding-top: 64px !important;
+}
+
+/* Remove o espaço padrão que o Filament reserva para o topbar no layout */
+.fi-layout {
+    padding-top: 0 !important;
+    margin-top: 0 !important;
+}
