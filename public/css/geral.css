@@ -108,6 +108,10 @@ body,
     opacity: 1 !important;
 }
 
+.fi-sidebar-item-btn:hover{
+    background-color: #144B86;
+}
+
 .fi-sidebar-item-button[aria-current],
 .fi-sidebar-item-button[aria-current="page"],
 .fi-sidebar-item-button.fi-active {
