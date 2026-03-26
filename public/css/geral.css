@@ -201,11 +201,17 @@ body,
     align-items: center !important;
 }
 
-/* ---- Botões hambúrguer — todos os estados visíveis ---- */
+/* ---- Botões hambúrguer ---- */
+/* No Filament com sidebarCollapsibleOnDesktop, os botões open/close-collapse
+   ficam dentro do <aside> da sidebar (no header dela).
+   Reposicionamos para que fiquem visualmente alinhados à topbar. */
+.fi-sidebar-header {
+    position: relative !important;
+}
+
+/* Botões dentro da topbar (mobile) */
 .fi-topbar-open-sidebar-btn,
-.fi-topbar-close-sidebar-btn,
-.fi-topbar-open-collapse-sidebar-btn,
-.fi-topbar-close-collapse-sidebar-btn {
+.fi-topbar-close-sidebar-btn {
     width: 40px !important;
     height: 40px !important;
     border-radius: 8px !important;
@@ -220,21 +226,70 @@ body,
     flex-shrink: 0 !important;
 }
 
+/* Botões dentro da sidebar (desktop collapse) */
+.fi-topbar-open-collapse-sidebar-btn,
+.fi-topbar-close-collapse-sidebar-btn {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 8px !important;
+    background: rgba(255, 255, 255, 0.06) !important;
+    color: rgba(255, 255, 255, 0.5) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border: none !important;
+    transition: background 0.2s, color 0.2s !important;
+    cursor: pointer !important;
+    flex-shrink: 0 !important;
+}
+
 .fi-topbar-open-sidebar-btn:hover,
-.fi-topbar-close-sidebar-btn:hover,
-.fi-topbar-open-collapse-sidebar-btn:hover,
-.fi-topbar-close-collapse-sidebar-btn:hover {
+.fi-topbar-close-sidebar-btn:hover {
     background: #eef6fc !important;
     color: var(--primary) !important;
 }
 
-/* Remove o display:none que o Filament injeta nos botões de hambúrguer */
+.fi-topbar-open-collapse-sidebar-btn:hover,
+.fi-topbar-close-collapse-sidebar-btn:hover {
+    background: rgba(156, 199, 231, 0.14) !important;
+    color: #9cc7e7 !important;
+}
+
+/* Sidebar header: logo + botão de collapse lado a lado */
+.fi-sidebar-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    padding: 0 12px 0 20px !important;
+    min-height: 64px !important;
+}
+
+/* Quando sidebar está colapsada, centraliza o conteúdo */
+.fi-sidebar-nav .fi-sidebar-item-button span:not(.fi-sidebar-item-badge) {
+    transition: opacity 0.2s, width 0.2s !important;
+}
+
+/* Garante que os botões mobile não apareçam no desktop e vice-versa */
 @media (min-width: 1024px) {
     .fi-topbar-open-sidebar-btn,
-    .fi-topbar-close-sidebar-btn,
+    .fi-topbar-close-sidebar-btn {
+        display: none !important;
+    }
     .fi-topbar-open-collapse-sidebar-btn,
     .fi-topbar-close-collapse-sidebar-btn {
         display: flex !important;
+    }
+}
+
+@media (max-width: 1023px) {
+    .fi-topbar-open-sidebar-btn,
+    .fi-topbar-close-sidebar-btn {
+        display: flex !important;
+    }
+    .fi-topbar-open-collapse-sidebar-btn,
+    .fi-topbar-close-collapse-sidebar-btn {
+        display: none !important;
     }
 }
 
