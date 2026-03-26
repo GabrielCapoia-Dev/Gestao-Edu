@@ -24,6 +24,7 @@ class ManageFuncionarioAdministrativos extends ManageRecords
                 ->modalSubmitActionLabel('Vincular')
                 ->visible(fn() => FuncaoAdministrativa::query()->exists())
                 ->using(function (array $data): Professor {
+                    dd($data);
                     $professor = Professor::findOrFail($data['professor_id']);
 
                     $professor->update([
@@ -37,7 +38,6 @@ class ManageFuncionarioAdministrativos extends ManageRecords
 
                     return $professor->fresh();
                 }),
-
                 
             Action::make('criarFuncao')
                 ->label('Nova Função Administrativa')

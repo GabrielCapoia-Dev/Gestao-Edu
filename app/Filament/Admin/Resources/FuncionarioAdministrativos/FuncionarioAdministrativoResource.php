@@ -409,26 +409,7 @@ class FuncionarioAdministrativoResource extends Resource
                             ->visible(fn($record) => $record->funcaoAdministrativa?->tem_relacao_turma),
                     ]),
 
-                EditAction::make()
-                    ->using(function (EquipeGestora $record, array $data): EquipeGestora {
-                        $portaria = null;
-                        if (!empty($data['portaria_numero']) && !empty($data['portaria_ano'])) {
-                            $portaria = "{$data['portaria_numero']}/{$data['portaria_ano']}";
-                        }
-
-                        $record->update([
-                            'funcao_administrativa_id' => $data['funcao_administrativa_id'],
-                            'portaria' => $portaria,
-                        ]);
-
-                        if (isset($data['turmasFuncao']) && is_array($data['turmasFuncao'])) {
-                            $record->turmasFuncao()->sync($data['turmasFuncao']);
-                        } else {
-                            $record->turmasFuncao()->detach();
-                        }
-
-                        return $record->fresh();
-                    }),
+                EditAction::make(),
 
                 // Action para remover função administrativa (volta a ser professor)
                 Action::make('remover_funcao')
