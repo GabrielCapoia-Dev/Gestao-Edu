@@ -28,7 +28,7 @@ use Caresome\FilamentAuthDesigner\AuthDesignerPlugin;
 use Caresome\FilamentAuthDesigner\Data\AuthPageConfig;
 use Caresome\FilamentAuthDesigner\Enums\MediaPosition;
 use Caresome\FilamentAuthDesigner\View\AuthDesignerRenderHook;
-
+use App\Livewire\TopBar;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -41,7 +41,7 @@ class AdminPanelProvider extends PanelProvider
             ->login()
             ->profile()
             ->spa()
-            ->topbarLivewireComponent(\App\Livewire\Topbar::class)
+            ->topbarLivewireComponent(TopBar::class)
             ->darkMode(false)
             ->colors([
                 'primary' => [
