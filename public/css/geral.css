@@ -216,26 +216,12 @@
     overflow: hidden;
 }
 
-.fi-header-heading {
-    padding: 0 0.5rem;
-    border-radius: 0.2rem;
-    background-color: #ffffff;
-    box-shadow: 3px 4px 12px rgba(0, 0, 0, 0.45);
-    overflow: hidden;
-}
-
 .fi-fo-repeater-item {
     border: 2px solid #ccc;
     border-radius: 0.5rem;
     box-shadow: 1px 2px 5px #ccc;
 }
 
-.dark .fi-header-heading {
-    padding: 0 0.5rem;
-    background-color: #0c172ebd;
-    box-shadow: 3px 4px 12px rgba(0, 0, 0, 0.75);
-    overflow: hidden;
-}
 
 /* .fi-main-ctn {
     background-image: url('/images/fundo_completo.svg');
@@ -246,18 +232,6 @@
     background-image: none;
 }
 
-.fi-breadcrumbs {
-    padding: 0 0.5rem;
-    border-radius: 0.2rem;
-    background-color: #ffffff;
-    box-shadow: 3px 4px 12px rgba(0, 0, 0, 0.45);
-    overflow: hidden;
-}
-
-.dark .fi-breadcrumbs {
-    background-color: #0c172ebd;
-    box-shadow: 3px 4px 12px rgba(0, 0, 0, 0.75);
-}
 
 .fi-width-7xl {
     max-width: 90% !important;
