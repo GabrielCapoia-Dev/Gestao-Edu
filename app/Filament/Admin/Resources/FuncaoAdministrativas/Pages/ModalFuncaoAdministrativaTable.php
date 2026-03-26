@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire;
+namespace App\Filament\Admin\Resources\FuncaoAdministrativas\Pages;
 
 use App\Models\FuncaoAdministrativa;
 use Filament\Actions\Action;
@@ -59,6 +59,6 @@ class ModalFuncaoAdministrativaTable extends Component implements HasTable, HasF
 
     public function render()
     {
-        return view('livewire.funcao-administrativa-manager');
+        return view('filament.components.table.funcao-administrativa-manager');
     }
 }

@@ -63,7 +63,7 @@ class ManageFuncionarioAdministrativos extends ManageRecords
                 ->modalSubmitAction(false)
                 ->modalCancelActionLabel('Fechar')
                 ->modalWidth('3xl')
-                ->modalContent(view('livewire.funcao-administrativa-manager')),
+                ->modalContent(view('filament.components.table.funcao-administrativa-manager')),
         ];
     }
 }
