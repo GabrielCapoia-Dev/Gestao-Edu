@@ -38,15 +38,6 @@ class ModalFuncaoAdministrativaTable extends Component implements HasTable, HasF
                     ->boolean()
                     ->label('Relação com Turma'),
             ])
-            ->headerActions([
-                CreateAction::make()
-                    ->label('Nova Função')
-                    ->model(FuncaoAdministrativa::class)
-                    ->schema([
-                        TextInput::make('nome')->required()->maxLength(255),
-                        Toggle::make('tem_relacao_turma')->required(),
-                    ]),
-            ])
             ->recordActions([
                 EditAction::make()
                     ->schema([
