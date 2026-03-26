@@ -55,15 +55,6 @@ class ManageFuncionarioAdministrativos extends ManageRecords
                     FuncaoAdministrativa::create($data);
                 })
                 ->successNotificationTitle('Função criada com sucesso'),
-
-            Action::make('gerenciarFuncoes')
-                ->label('Gerenciar Funções')
-                ->icon('heroicon-o-bookmark-square')
-                ->modalHeading('Funções Administrativas')
-                ->modalSubmitAction(false)
-                ->modalCancelActionLabel('Fechar')
-                ->modalWidth('3xl')
-                ->modalContent(view('filament.components.table.funcao-administrativa-manager')),
         ];
     }
 }
