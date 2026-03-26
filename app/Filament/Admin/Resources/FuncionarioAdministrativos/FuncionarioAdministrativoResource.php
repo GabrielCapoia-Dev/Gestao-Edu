@@ -392,9 +392,9 @@ class FuncionarioAdministrativoResource extends Resource
                                             return 'Nenhuma turma vinculada';
                                         }
 
-                                        $html = '<div class="flex flex-wrap gap-2">';
+                                        $html = '<div style="display:flex;flex-wrap:wrap;gap:8px;">';
                                         foreach ($turmas as $turma) {
-                                            $html .= '<span class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-primary-100 text-primary-800 dark:bg-primary-800 dark:text-primary-100">'
+                                            $html .= '<span style="display:inline-flex;align-items:center;padding:4px 12px;border-radius:9999px;font-size:0.875rem;background-color:rgb(224 242 254);color:rgb(7 89 133);">'
                                                 . e($turma->serie->nome) . ' - ' . e($turma->nome)
                                                 . '</span>';
                                         }
