@@ -133,12 +133,7 @@ class AdminPanelProvider extends PanelProvider
                     <path d="M4 6h16M4 12h16M4 18h16"/>
                 </svg>
             </button>
-
-            {{-- Breadcrumb --}}
-            <nav aria-label="Trilha" style="display:flex;align-items:center;gap:8px;font-size:13px;">
-                {{ \Filament\Facades\Filament::getBreadcrumbs() ? '' : '' }}
-            </nav>
-
+            
             {{-- Spacer --}}
             <div style="flex:1"></div>
 
