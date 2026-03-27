@@ -211,7 +211,7 @@
 }
 
 .fi-ta-table thead tr {
-    background-color: #0F2261;
+    background-color: #0F2261 !important;
     color: #FFF;
 }
 
