@@ -39,6 +39,7 @@ use App\Observers\PedidoObserver;
 use Filament\View\PanelsRenderHook;
 use Filament\Support\Facades\FilamentView;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\URL;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -46,16 +47,9 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        // ── Trusted Proxies ────────────────────────────────────────────────────
-        // Necessário para que o Laravel leia X-Forwarded-Proto/Host do nginx
-        // externo e gere URLs corretas (incluindo assinaturas do Livewire upload)
-        Request::setTrustedProxies(
-            ['*'],
-            Request::HEADER_X_FORWARDED_FOR   |
-            Request::HEADER_X_FORWARDED_HOST  |
-            Request::HEADER_X_FORWARDED_PORT  |
-            Request::HEADER_X_FORWARDED_PROTO
-        );
+        if (app()->environment('production')) {
+            URL::forceScheme('https');
+        }
 
         // ── Policies ───────────────────────────────────────────────────────────
         Gate::policy(User::class,           UserPolicy::class);
@@ -77,7 +71,7 @@ class AppServiceProvider extends ServiceProvider
         Pedido::observe(PedidoObserver::class);
 
         // ── Gates ──────────────────────────────────────────────────────────────
-        Gate::define('admin-only', fn ($user) => $user->hasRole('Admin'));
+        Gate::define('admin-only', fn($user) => $user->hasRole('Admin'));
 
         // ── Assets ─────────────────────────────────────────────────────────────
         FilamentAsset::register([
@@ -88,7 +82,7 @@ class AppServiceProvider extends ServiceProvider
         // ── Render Hooks ───────────────────────────────────────────────────────
         FilamentView::registerRenderHook(
             PanelsRenderHook::BODY_END,
-            fn () => view('components.open-url-listener'),
+            fn() => view('components.open-url-listener'),
         );
     }
 }

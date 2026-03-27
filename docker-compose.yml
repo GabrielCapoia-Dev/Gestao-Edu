@@ -14,6 +14,7 @@ services:
     volumes:
       - .:/var/www
       - ./vendor:/var/www/vendor
+      - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
       db:
         condition: service_healthy
@@ -51,7 +52,7 @@ services:
     ports:
       - "${DOCKER_DB_PORT}:3306"
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-p${MYSQL_ROOT_PASSWORD}"]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-p${MYSQL_ROOT_PASSWORD}" ]
       interval: 5s
       timeout: 5s
       retries: 20
