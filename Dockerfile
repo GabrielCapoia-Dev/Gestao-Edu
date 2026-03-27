@@ -43,7 +43,7 @@ RUN echo "upload_max_filesize=10M" > /usr/local/etc/php/conf.d/uploads.ini \
 WORKDIR /var/www
 
 # ── nginx config ───────────────────────────────────────────────────────────
-COPY nginx.conf /etc/nginx/sites-available/default
+COPY docker/nginx/conf.d/default.conf /etc/nginx/conf.d/default.conf
 
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
