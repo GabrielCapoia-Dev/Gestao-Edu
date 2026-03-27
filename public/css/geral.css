@@ -210,9 +210,9 @@
     overflow: hidden;
 }
 
-tr {
+.fi-ta-table thead tr th {
     background-color: #0F2261 !important;
-    color: #FFF;
+    color: #FFF !important;
 }
 
 .fi-ac-btn-action {
