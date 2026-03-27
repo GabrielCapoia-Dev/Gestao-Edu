@@ -47,6 +47,7 @@ use Filament\Support\Facades\FilamentView;
 use Livewire\Livewire;
 use App\Livewire\TopbarNotifications;
 use Illuminate\Support\Facades\URL;
+use Symfony\Component\HttpFoundation\Request;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -97,6 +98,15 @@ class AppServiceProvider extends ServiceProvider
             fn() => view('components.open-url-listener'),
         );
 
-        URL::forceScheme('https');
+        if (app()->environment('production')) {
+            URL::forceHttps();
+            Request::setTrustedProxies(
+                ['*'], // ou o IP do seu proxy/nginx
+                Request::HEADER_X_FORWARDED_FOR |
+                    Request::HEADER_X_FORWARDED_HOST |
+                    Request::HEADER_X_FORWARDED_PORT |
+                    Request::HEADER_X_FORWARDED_PROTO
+            );
+        }
     }
 }
