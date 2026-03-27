@@ -210,6 +210,10 @@
     overflow: hidden;
 }
 
+.fi-ta-table thead tr {
+    background-color: #0F2261;
+    color: #FFF;
+}
 
 .fi-ac-btn-action {
     box-shadow: 3px 4px 10px rgba(0, 0, 0, 0.45);
