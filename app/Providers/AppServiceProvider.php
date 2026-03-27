@@ -38,7 +38,7 @@ use App\Policies\PedidoArquivoPolicy;
 use App\Observers\PedidoObserver;
 use Filament\View\PanelsRenderHook;
 use Filament\Support\Facades\FilamentView;
-use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Request;
 
 class AppServiceProvider extends ServiceProvider
 {
