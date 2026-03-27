@@ -215,14 +215,42 @@ class EmpresaContratadaService
                     return $record;
                 }),
 
-            DeleteAction::make(),
+            DeleteAction::make()
+                ->before(function (EmpresaContratada $record) {
+
+                    if ($record->contratos()->exists()) {
+
+                        Notification::make()
+                            ->title('Ação bloqueada')
+                            ->body('Esta empresa possui contratos vinculados e não pode ser excluída.')
+                            ->danger()
+                            ->send();
+
+                        return false; // impede o delete
+                    }
+                }),
         ];
     }
 
     private function acoesEmMassa(): array
     {
         return [
-            DeleteBulkAction::make(),
+            DeleteBulkAction::make()
+                ->before(function ($records) {
+
+                    foreach ($records as $record) {
+                        if ($record->contratos()->exists()) {
+
+                            Notification::make()
+                                ->title('Ação bloqueada')
+                                ->body('Uma ou mais empresas possuem contratos vinculados.')
+                                ->danger()
+                                ->send();
+
+                            return false;
+                        }
+                    }
+                }),
         ];
     }
 }
