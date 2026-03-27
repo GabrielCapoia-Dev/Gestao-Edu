@@ -27,6 +27,11 @@ use Illuminate\Support\ServiceProvider;
 use Filament\Support\Assets\Css;
 use Filament\Support\Assets\Js;
 use Filament\Support\Facades\FilamentAsset;
+use Filament\Events\ServingFilament;
+use Filament\Facades\Filament;
+use Illuminate\Support\Facades\Event;
+use App\Services\UserService;
+use Illuminate\Support\Facades\Auth;
 use App\Models\AlunoLaudo;
 use App\Policies\AlunoLaudoPolicy;
 use App\Models\TipoManutencao;
@@ -35,60 +40,64 @@ use App\Models\Pedido;
 use App\Policies\PedidoPolicy;
 use App\Models\PedidoArquivo;
 use App\Policies\PedidoArquivoPolicy;
+use Illuminate\Support\Facades\Blade;
 use App\Observers\PedidoObserver;
 use Filament\View\PanelsRenderHook;
 use Filament\Support\Facades\FilamentView;
+use Livewire\Livewire;
+use App\Livewire\TopbarNotifications;
+use Illuminate\Support\Facades\URL;
 use Symfony\Component\HttpFoundation\Request;
 
 class AppServiceProvider extends ServiceProvider
 {
+    /**
+     * Register any application services.
+     */
     public function register(): void {}
 
+    /**
+     * Bootstrap any application services.
+     */
     public function boot(): void
     {
-        // ── Trusted Proxies ────────────────────────────────────────────────────
-        // Necessário para que o Laravel leia X-Forwarded-Proto/Host do nginx
-        // externo e gere URLs corretas (incluindo assinaturas do Livewire upload)
-        Request::setTrustedProxies(
-            ['*'],
-            Request::HEADER_X_FORWARDED_FOR   |
-            Request::HEADER_X_FORWARDED_HOST  |
-            Request::HEADER_X_FORWARDED_PORT  |
-            Request::HEADER_X_FORWARDED_PROTO
-        );
 
-        // ── Policies ───────────────────────────────────────────────────────────
-        Gate::policy(User::class,           UserPolicy::class);
-        Gate::policy(Role::class,           RolePolicy::class);
-        Gate::policy(Permission::class,     PermissionPolicy::class);
-        Gate::policy(DominioEmail::class,   DominioEmailPolicy::class);
-        Gate::policy(Escola::class,         EscolaPolicy::class);
-        Gate::policy(Serie::class,          SeriePolicy::class);
-        Gate::policy(Turma::class,          TurmaPolicy::class);
-        Gate::policy(Aluno::class,          AlunoPolicy::class);
-        Gate::policy(Professor::class,      ProfessorPolicy::class);
-        Gate::policy(Laudo::class,          LaudoPolicy::class);
-        Gate::policy(AlunoLaudo::class,     AlunoLaudoPolicy::class);
+
+        Gate::policy(User::class, UserPolicy::class);
+        Gate::policy(Role::class, RolePolicy::class);
+        Gate::policy(Permission::class, PermissionPolicy::class);
+        Gate::policy(DominioEmail::class, DominioEmailPolicy::class);
+        Gate::policy(Escola::class, EscolaPolicy::class);
+        Gate::policy(Serie::class, SeriePolicy::class);
+        Gate::policy(Turma::class, TurmaPolicy::class);
+        Gate::policy(Aluno::class, AlunoPolicy::class);
+        Gate::policy(Professor::class, ProfessorPolicy::class);
+        Gate::policy(Laudo::class, LaudoPolicy::class);
+        Gate::policy(AlunoLaudo::class, AlunoLaudoPolicy::class);
         Gate::policy(TipoManutencao::class, TipoManutencaoPolicy::class);
-        Gate::policy(Pedido::class,         PedidoPolicy::class);
-        Gate::policy(PedidoArquivo::class,  PedidoArquivoPolicy::class);
+        Gate::policy(Pedido::class, PedidoPolicy::class);
+        Gate::policy(PedidoArquivo::class, PedidoArquivoPolicy::class);
 
-        // ── Observers ──────────────────────────────────────────────────────────
         Pedido::observe(PedidoObserver::class);
 
-        // ── Gates ──────────────────────────────────────────────────────────────
-        Gate::define('admin-only', fn ($user) => $user->hasRole('Admin'));
+        Gate::define('admin-only', function ($user) {
+            return $user->hasRole('Admin');
+        });
 
-        // ── Assets ─────────────────────────────────────────────────────────────
         FilamentAsset::register([
-            Js::make('chartjs-datalabels', 'https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2'),
+            Js::make(
+                'chartjs-datalabels',
+                'https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2'
+            ),
+
             Css::make('geral', secure_asset('css/geral.css')),
         ]);
 
-        // ── Render Hooks ───────────────────────────────────────────────────────
         FilamentView::registerRenderHook(
             PanelsRenderHook::BODY_END,
-            fn () => view('components.open-url-listener'),
+            fn() => view('components.open-url-listener'),
         );
+
+        URL::forceScheme('https');
     }
 }

@@ -7,7 +7,6 @@ RUN apt-get update && apt-get install -y \
     unzip \
     nano \
     vim \
-    nginx \
     libpng-dev \
     libonig-dev \
     libxml2-dev \
@@ -25,6 +24,7 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y nodejs \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
+
 # ── OPcache ────────────────────────────────────────────────────────────────
 RUN echo "opcache.enable=1"                    >> /usr/local/etc/php/conf.d/opcache.ini \
     && echo "opcache.memory_consumption=256"      >> /usr/local/etc/php/conf.d/opcache.ini \
@@ -36,14 +36,11 @@ RUN echo "opcache.enable=1"                    >> /usr/local/etc/php/conf.d/opca
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 RUN echo "upload_max_filesize=10M" > /usr/local/etc/php/conf.d/uploads.ini \
-    && echo "post_max_size=20M"   >> /usr/local/etc/php/conf.d/uploads.ini \
-    && echo "memory_limit=256M"   >> /usr/local/etc/php/conf.d/uploads.ini \
+    && echo "post_max_size=20M" >> /usr/local/etc/php/conf.d/uploads.ini \
+    && echo "memory_limit=256M" >> /usr/local/etc/php/conf.d/uploads.ini \
     && echo "max_execution_time=120" >> /usr/local/etc/php/conf.d/uploads.ini
 
 WORKDIR /var/www
-
-# ── nginx config ───────────────────────────────────────────────────────────
-COPY nginx.conf /etc/nginx/sites-available/default
 
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
@@ -54,7 +51,5 @@ RUN npm ci
 COPY resources ./resources
 COPY vite.config.js ./
 RUN npm run build
-
-EXPOSE 80
 
 ENTRYPOINT ["entrypoint.sh"]
