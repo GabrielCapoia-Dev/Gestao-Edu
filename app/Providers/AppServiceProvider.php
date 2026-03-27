@@ -38,7 +38,7 @@ use App\Policies\PedidoArquivoPolicy;
 use App\Observers\PedidoObserver;
 use Filament\View\PanelsRenderHook;
 use Filament\Support\Facades\FilamentView;
-use Symfony\Component\HttpFoundation\Request;
+use Illuminate\Http\Request;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -47,11 +47,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         // ── Trusted Proxies ────────────────────────────────────────────────────
-        // Deve vir PRIMEIRO, antes de qualquer geração de URL.
-        // Faz o Laravel ler X-Forwarded-Proto/Host/Port do nginx e gerar
-        // todas as URLs (incluindo assinaturas do Livewire) com o host/scheme correto.
-        // Sem isso, o container enxerga "https://localhost:8020" e a assinatura
-        // do upload falha com 401.
+        // Necessário para que o Laravel leia X-Forwarded-Proto/Host do nginx
+        // externo e gere URLs corretas (incluindo assinaturas do Livewire upload)
         Request::setTrustedProxies(
             ['*'],
             Request::HEADER_X_FORWARDED_FOR   |
@@ -61,20 +58,20 @@ class AppServiceProvider extends ServiceProvider
         );
 
         // ── Policies ───────────────────────────────────────────────────────────
-        Gate::policy(User::class,          UserPolicy::class);
-        Gate::policy(Role::class,          RolePolicy::class);
-        Gate::policy(Permission::class,    PermissionPolicy::class);
-        Gate::policy(DominioEmail::class,  DominioEmailPolicy::class);
-        Gate::policy(Escola::class,        EscolaPolicy::class);
-        Gate::policy(Serie::class,         SeriePolicy::class);
-        Gate::policy(Turma::class,         TurmaPolicy::class);
-        Gate::policy(Aluno::class,         AlunoPolicy::class);
-        Gate::policy(Professor::class,     ProfessorPolicy::class);
-        Gate::policy(Laudo::class,         LaudoPolicy::class);
-        Gate::policy(AlunoLaudo::class,    AlunoLaudoPolicy::class);
-        Gate::policy(TipoManutencao::class,TipoManutencaoPolicy::class);
-        Gate::policy(Pedido::class,        PedidoPolicy::class);
-        Gate::policy(PedidoArquivo::class, PedidoArquivoPolicy::class);
+        Gate::policy(User::class,           UserPolicy::class);
+        Gate::policy(Role::class,           RolePolicy::class);
+        Gate::policy(Permission::class,     PermissionPolicy::class);
+        Gate::policy(DominioEmail::class,   DominioEmailPolicy::class);
+        Gate::policy(Escola::class,         EscolaPolicy::class);
+        Gate::policy(Serie::class,          SeriePolicy::class);
+        Gate::policy(Turma::class,          TurmaPolicy::class);
+        Gate::policy(Aluno::class,          AlunoPolicy::class);
+        Gate::policy(Professor::class,      ProfessorPolicy::class);
+        Gate::policy(Laudo::class,          LaudoPolicy::class);
+        Gate::policy(AlunoLaudo::class,     AlunoLaudoPolicy::class);
+        Gate::policy(TipoManutencao::class, TipoManutencaoPolicy::class);
+        Gate::policy(Pedido::class,         PedidoPolicy::class);
+        Gate::policy(PedidoArquivo::class,  PedidoArquivoPolicy::class);
 
         // ── Observers ──────────────────────────────────────────────────────────
         Pedido::observe(PedidoObserver::class);

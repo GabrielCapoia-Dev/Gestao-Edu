@@ -10,7 +10,7 @@ services:
     env_file:
       - .env
     ports:
-      - "${DOCKER_APP_PORT}:${APP_PORT}"
+      - "${DOCKER_APP_PORT}:80"
     volumes:
       - .:/var/www
       - ./vendor:/var/www/vendor
