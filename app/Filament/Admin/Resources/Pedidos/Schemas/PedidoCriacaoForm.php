@@ -18,6 +18,7 @@ class PedidoCriacaoForm
         return $schema
             ->components([
                 Section::make('Novo Pedido')
+                    ->columnSpanFull()
                     ->description('Informe o problema encontrado')
                     ->schema([
 
