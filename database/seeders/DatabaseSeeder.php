@@ -337,11 +337,11 @@ class DatabaseSeeder extends Seeder
             // // ProfessorSeeder::class,
             // // AlunoSeeder::class,
 
-            SetorSeeder::class,
-            TipoStatusSeeder::class,
-            TipoManutencaoSeeder::class,
+            // SetorSeeder::class,
+            // TipoStatusSeeder::class,
+            // TipoManutencaoSeeder::class,
             EmpresaContratadaSeeder::class,
-            PedidoSeeder::class,
+            // PedidoSeeder::class,
 
             ItensSeeder::class,
             ContratoSeeder::class,
