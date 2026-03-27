@@ -210,7 +210,7 @@
     overflow: hidden;
 }
 
-.fi-ta-table thead tr {
+tr {
     background-color: #0F2261 !important;
     color: #FFF;
 }
