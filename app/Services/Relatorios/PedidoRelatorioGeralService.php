@@ -21,7 +21,7 @@ class PedidoRelatorioGeralService
      */
     public function gerar(array $filtros = [], User $usuario): Response
     {
-        $pdf = Pdf::loadView('relatorios.manutencao.geral-pedidos', [
+        $pdf = Pdf::loadView('relatorios.Manutencao.geral-pedidos', [
             // Métricas agregadas via SQL — sem carregar registros na memória
             'metricas'         => $this->calcularMetricas($filtros),
             'porStatus'        => $this->agruparPorStatus($filtros),
