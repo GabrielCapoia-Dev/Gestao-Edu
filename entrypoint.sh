@@ -15,13 +15,18 @@ php artisan migrate --force --seed
 
 php artisan storage:link --force 2>/dev/null || true
 
-# ── Cache do Laravel (impacto enorme no tempo de boot de cada request) ─────
+# ── Limpa caches antigos antes de reconstruir ──────────────────────────────
+# Necessário para evitar que valores cacheados no build (ex: APP_URL errado)
+# sobrevivam ao runtime com as variáveis de ambiente corretas do .env
+php artisan config:clear
+php artisan route:clear
+php artisan event:clear
+php artisan view:clear
+
+# ── Reconstrói cache com as variáveis de ambiente corretas do runtime ───────
 php artisan config:cache
 php artisan route:cache
 php artisan event:cache
 php artisan filament:cache-components
-
-
-
 
 php artisan serve --host=0.0.0.0 --port=${APP_PORT}
