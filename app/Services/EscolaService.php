@@ -16,6 +16,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Grid;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Notifications\Notification;
 
 class EscolaService
 {
@@ -169,7 +170,34 @@ class EscolaService
                     return $record;
                 }),
 
-            DeleteAction::make(),
+            DeleteAction::make()
+                ->successNotification(null)
+                ->using(function (Escola $record) {
+
+                    // ajuste aqui conforme suas relações reais
+                    $possuiVinculo =
+                        $record->turmas()->exists() ||
+                        $record->alunos()->exists() ||
+                        $record->professores()->exists();
+
+                    if ($possuiVinculo) {
+
+                        Notification::make()
+                            ->title('Ação bloqueada')
+                            ->body('Esta escola possui vínculos e não pode ser excluída.')
+                            ->danger()
+                            ->send();
+
+                        return;
+                    }
+
+                    $record->delete();
+
+                    Notification::make()
+                        ->title('Escola excluída com sucesso')
+                        ->success()
+                        ->send();
+                }),
         ];
     }
 
