@@ -347,11 +347,6 @@ class ProfessorService
     {
         return [
             DeleteBulkAction::make()
-                ->before(function ($records, $action) use ($user) {
-                    if (! $this->userService->podeDeletarEmLote($user, $records)) {
-                        $action->halt();
-                    }
-                })
                 ->visible(fn() => $this->userService->podeExcluirProfessoresEmLote(Auth::user())),
         ];
     }
