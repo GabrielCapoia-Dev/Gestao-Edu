@@ -50,6 +50,7 @@ class RoleResource extends Resource
         return $schema
             ->components([
                 Components\TextInput::make('name')
+                    ->columnSpanFull()
                     ->label('Nivel de acesso')
                     ->required()
                     ->disabled(fn($record, $context) => app(RoleService::class)->bloquearCampo($record, $context))
@@ -57,6 +58,7 @@ class RoleResource extends Resource
 
                 Section::make('Permissões')
                     ->description('Selecione as permissões para este nível de acesso.')
+                    ->columnSpanFull()
                     ->collapsible()
                     ->schema([
                         Components\TextInput::make('search_permissions')
