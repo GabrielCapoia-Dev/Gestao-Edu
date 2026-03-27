@@ -15,6 +15,12 @@ php artisan migrate --force --seed
 
 php artisan storage:link --force 2>/dev/null || true
 
+# ── Build dos assets ───────────────────────────────────────────────────────
+if [ ! -d "public/build" ]; then
+    npm ci
+    npm run build
+fi
+
 # ── Limpa caches antigos antes de reconstruir ──────────────────────────────
 php artisan config:clear
 php artisan route:clear

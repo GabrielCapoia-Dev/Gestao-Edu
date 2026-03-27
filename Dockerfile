@@ -42,24 +42,15 @@ RUN echo "upload_max_filesize=10M" > /usr/local/etc/php/conf.d/uploads.ini \
 
 WORKDIR /var/www
 
-# ── nginx config ───────────────────────────────────────────────────────────
 COPY docker/nginx/conf.d/default.conf /etc/nginx/conf.d/default.conf
 
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-COPY package.json package-lock.json ./
-RUN npm ci
-
-COPY resources ./resources
-COPY vite.config.js ./
-RUN npm run build
-
 RUN mkdir -p /var/www/storage /var/www/bootstrap/cache \
     && chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache \
     && chmod -R 775 /var/www/storage /var/www/bootstrap/cache \
     && chmod 1777 /tmp
-
 
 EXPOSE 80
 
