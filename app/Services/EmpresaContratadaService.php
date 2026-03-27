@@ -158,21 +158,6 @@ class EmpresaContratadaService
     private function acoesTabela(): array
     {
         return [
-
-            Action::make('historico')
-                ->label('Histórico')
-                ->icon('heroicon-o-clock')
-                ->slideOver()
-                ->modalWidth('4xl')
-                ->modalSubmitAction(false)
-                ->modalCancelActionLabel('Fechar')
-                ->modalContent(
-                    fn(EmpresaContratada $record) =>
-                    view('components.empresas.historico', [
-                        'historico' => $record->historico,
-                    ])
-                ),
-
             EditAction::make()
                 ->using(function (EmpresaContratada $record, array $data): EmpresaContratada {
 
