@@ -47,6 +47,7 @@ use Filament\Support\Facades\FilamentView;
 use Livewire\Livewire;
 use App\Livewire\TopbarNotifications;
 use Illuminate\Support\Facades\URL;
+use Symfony\Component\HttpFoundation\Request;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -99,6 +100,9 @@ class AppServiceProvider extends ServiceProvider
 
         URL::forceScheme('https');
 
-        Livewire::updateRoute(config('livewire.update_uri', 'livewire/update'));
+        Request::setTrustedProxies(
+            ['*'],
+            Request::HEADER_X_FORWARDED_PROTO
+        );
     }
 }
