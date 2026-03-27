@@ -210,8 +210,8 @@
     overflow: hidden;
 }
 
-.fi-ta-cell {
-    background-color: #0d2b8f !important;
+.fi-ta-table thead tr th {
+    background-color: #0F2261 !important;
     color: #FFF !important;
 }
 
