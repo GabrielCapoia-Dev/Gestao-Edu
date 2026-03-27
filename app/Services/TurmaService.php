@@ -108,14 +108,16 @@ class TurmaService
     public function acoesTabela(?User $user): array
     {
         return [
-            Action::make('viewAlunos')
-                ->label('Ver Alunos')
-                ->icon('heroicon-o-eye')
-                ->visible(fn() => $this->userService->podeVisualizarAlunos(Auth::user()))
-                ->color('info')
-                ->url(fn($record) => AlunoResource::getUrl('index', [
-                    'turma' => $record->id,
-                ])),
+            // Action::make('viewAlunos')
+            //     ->label('Ver Alunos')
+            //     ->icon('heroicon-o-eye')
+            //     ->visible(fn() => $this->userService->podeVisualizarAlunos(Auth::user()))
+            //     ->color('info')
+            //     ->url(fn($record) => AlunoResource::getUrl('index', [
+            //         'turma' => $record->id,
+            //     ])),
+
+
             EditAction::make(),
             DeleteAction::make()
                 ->before(function ($record, $action) {
