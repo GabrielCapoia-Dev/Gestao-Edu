@@ -149,6 +149,11 @@ class UserService
         return $user->hasPermissionTo('Exportar Professores');
     }
 
+    public function podeExcluirProfessores(?User $user): bool
+    {
+        return $user->hasPermissionTo('Excluir Professores');
+    }
+
     // =========================================================================
     // Regras de formulário (usadas pelo UserForm)
     // =========================================================================

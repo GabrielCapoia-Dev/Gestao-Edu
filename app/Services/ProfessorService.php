@@ -322,7 +322,7 @@ class ProfessorService
                 ->successNotification(null)
                 ->using(function ($record) use ($user) {
 
-                    if (! $this->userService->podeDeletar($user, $record)) {
+                    if (! $this->userService->podeExcluirProfessores($user)) {
 
                         Notification::make()
                             ->title('Ação bloqueada')
