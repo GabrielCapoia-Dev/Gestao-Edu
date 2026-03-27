@@ -17,6 +17,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Grid;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\DB;
 
 class EscolaService
 {
@@ -174,14 +175,12 @@ class EscolaService
                 ->successNotification(null)
                 ->using(function (Escola $record) {
 
-                    // ajuste aqui conforme suas relações reais
                     $possuiVinculo =
-                        $record->turmas()->exists() ||
-                        $record->alunos()->exists() ||
-                        $record->professores()->exists();
+                        DB::table('users')->where('id_escola', $record->id)->exists() ||
+                        DB::table('turmas')->where('id_escola', $record->id)->exists() ||
+                        DB::table('professores')->where('id_escola', $record->id)->exists();
 
                     if ($possuiVinculo) {
-
                         Notification::make()
                             ->title('Ação bloqueada')
                             ->body('Esta escola possui vínculos e não pode ser excluída.')
