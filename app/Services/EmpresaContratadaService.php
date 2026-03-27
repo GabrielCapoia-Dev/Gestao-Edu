@@ -201,6 +201,7 @@ class EmpresaContratadaService
                 }),
 
             DeleteAction::make()
+                ->successNotification(null)
                 ->using(function (EmpresaContratada $record) {
 
                     if ($record->contratos()->exists()) {
@@ -223,6 +224,7 @@ class EmpresaContratadaService
     {
         return [
             DeleteBulkAction::make()
+                ->successNotification(null)
                 ->using(function ($records) {
 
                     foreach ($records as $record) {
