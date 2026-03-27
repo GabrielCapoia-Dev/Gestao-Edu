@@ -19,7 +19,7 @@ class ExportarRelatorioAction
         return Action::make('relatorio_geral')
             ->label('Exportar Relatório')
             ->icon('heroicon-o-document-chart-bar')
-            ->color(Color::hex('#00aeff'))
+            ->color(Color::hex('#102b86'))
             ->schema(static::schema())
             ->modalHeading('Exportar Relatório de Pedidos')
             ->modalDescription('Configure os filtros e clique em Exportar para gerar o PDF.')
