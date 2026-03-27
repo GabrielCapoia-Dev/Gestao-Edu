@@ -29,6 +29,7 @@ use Filament\Actions\EditAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
+use Filament\Notifications\Notification;
 
 
 class ProfessorService
@@ -315,13 +316,30 @@ class ProfessorService
                 }),
 
             EditAction::make(),
+
+
             DeleteAction::make()
-                ->before(function (User $record, DeleteAction $action) use ($user) {
+                ->successNotification(null)
+                ->using(function ($record) use ($user) {
+
                     if (! $this->userService->podeDeletar($user, $record)) {
-                        $action->failure();
-                        $action->halt();
+
+                        Notification::make()
+                            ->title('Ação bloqueada')
+                            ->body('Você não tem permissão para excluir este registro.')
+                            ->danger()
+                            ->send();
+
+                        return;
                     }
-                }),
+
+                    $record->delete();
+
+                    Notification::make()
+                        ->title('Excluído com sucesso')
+                        ->success()
+                        ->send();
+                })
         ];
     }
 
