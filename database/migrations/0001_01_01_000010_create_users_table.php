@@ -17,10 +17,6 @@ return new class extends Migration
                 ->nullable()
                 ->constrained('escolas')
                 ->cascadeOnDelete();
-            $table->foreignId('setor_id')
-                ->nullable()
-                ->constrained('setor')
-                ->nullOnDelete();
             $table->string('name');
             $table->string('email')->unique();
             $table->boolean('email_approved')->default(false);
