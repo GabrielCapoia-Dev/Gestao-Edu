@@ -19,12 +19,18 @@ class Dashboard extends Page
     {
         return '';
     }
+    public static function canAccess(): bool
+    {
+        /** @var \App\Models\User */
+        $user = Auth::user();
+        return $user->hasPermissionTo('Visualizar Tela de Inicio');
+    }
 
     public function getHeading(): string
     {
         return '';
     }
-    
+
     protected static ?string $navigationLabel = 'Inicio';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::Home;

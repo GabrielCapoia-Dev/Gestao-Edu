@@ -170,6 +170,7 @@ class CriarPermissoes extends Command
             'Visualizar Notificação: Pedidos Emergenciais',
             'Visualizar Notificação: Pedido Reaberto',
             'Visualizar Laudos de Aluno',
+            'Visualizar Tela de Inicio',
 
             // FILTROS
             'Filtrar Professores por Escola',
