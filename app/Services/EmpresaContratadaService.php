@@ -216,7 +216,7 @@ class EmpresaContratadaService
                 }),
 
             DeleteAction::make()
-                ->before(function (EmpresaContratada $record) {
+                ->using(function (EmpresaContratada $record) {
 
                     if ($record->contratos()->exists()) {
 
@@ -226,8 +226,10 @@ class EmpresaContratadaService
                             ->danger()
                             ->send();
 
-                        return false; // impede o delete
+                        return; // impede o delete
                     }
+
+                    $record->delete();
                 }),
         ];
     }
@@ -236,7 +238,7 @@ class EmpresaContratadaService
     {
         return [
             DeleteBulkAction::make()
-                ->before(function ($records) {
+                ->using(function ($records) {
 
                     foreach ($records as $record) {
                         if ($record->contratos()->exists()) {
@@ -247,8 +249,12 @@ class EmpresaContratadaService
                                 ->danger()
                                 ->send();
 
-                            return false;
+                            return;
                         }
+                    }
+
+                    foreach ($records as $record) {
+                        $record->delete();
                     }
                 }),
         ];
