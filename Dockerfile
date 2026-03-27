@@ -55,6 +55,11 @@ COPY resources ./resources
 COPY vite.config.js ./
 RUN npm run build
 
+RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache \
+    && chmod -R 775 /var/www/storage /var/www/bootstrap/cache \
+    && chmod 1777 /tmp
+
+
 EXPOSE 80
 
 ENTRYPOINT ["entrypoint.sh"]
