@@ -45,6 +45,7 @@ class CriarPermissoes extends Command
             'Listar Pedidos: Merenda',
             'Listar Gestão de Estoque',
             'Listar Gestão de Margens',
+            'Listar Componente Curricular',
 
             // CRIAR
             'Criar Empresa Contratada',
@@ -67,6 +68,7 @@ class CriarPermissoes extends Command
             'Criar Tipos de Avaliações',
             'Criar Contratos',
             'Criar Pedidos: Merenda',
+            'Criar Componente Curricular',
 
             // EDITAR
             'Editar Empresa Contratada',
@@ -103,6 +105,7 @@ class CriarPermissoes extends Command
             'Editar Tipos de Avaliações',
             'Editar Contratos',
             'Editar Pedidos: Merenda',
+            'Editar Componente Curricular',
 
             // EXCLUIR
             'Excluir Empresa Contratada',
@@ -125,7 +128,7 @@ class CriarPermissoes extends Command
             'Excluir Funções Administrativas',
             'Excluir Tipos de Avaliações',
             'Excluir Contratos',
-            'Excluir Componentes',
+            'Excluir Componente Curricular',
             'Excluir Pedidos: Merenda',
 
             // EXCLUIR EM MASSA
@@ -151,7 +154,7 @@ class CriarPermissoes extends Command
             'Exportar Arquivos Pedido',
             'Exportar Laudos de Aluno',
             'Exportar Relatório de Alunos',
-            'Exportar Componentes',
+            'Exportar Componente Curricular',
 
             // VISUALIZAR
             'Visualizar Histórico dos Alunos',

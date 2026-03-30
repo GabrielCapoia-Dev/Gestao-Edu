@@ -28,6 +28,7 @@ use Filament\Support\Assets\Css;
 use Filament\Support\Assets\Js;
 use Filament\Support\Facades\FilamentAsset;
 use App\Models\AlunoLaudo;
+use App\Models\ComponenteCurricular;
 use App\Policies\AlunoLaudoPolicy;
 use App\Models\TipoManutencao;
 use App\Policies\TipoManutencaoPolicy;
@@ -40,6 +41,9 @@ use Filament\View\PanelsRenderHook;
 use Filament\Support\Facades\FilamentView;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
+use App\Models\EquipeGestora;
+use App\Policies\EquipeGestoraPolicy;
+use App\Policies\ComponenteCurricularPolicy;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -66,6 +70,9 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(TipoManutencao::class, TipoManutencaoPolicy::class);
         Gate::policy(Pedido::class,         PedidoPolicy::class);
         Gate::policy(PedidoArquivo::class,  PedidoArquivoPolicy::class);
+        Gate::policy(EquipeGestora::class,  EquipeGestoraPolicy::class);
+        Gate::policy(ComponenteCurricular::class,  ComponenteCurricularPolicy::class);
+
 
         // ── Observers ──────────────────────────────────────────────────────────
         Pedido::observe(PedidoObserver::class);
