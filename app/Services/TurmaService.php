@@ -17,6 +17,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\TextArea;
 use Filament\Forms\Components\Hidden;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
@@ -319,30 +320,28 @@ class TurmaService
                             ->schema([
                                 Grid::make(3)
                                     ->schema([
-                                        TextInput::make('componente_nome')
+                                        TextArea::make('componente_nome')
                                             ->label('Componente Curricular')
                                             ->disabled()
                                             ->dehydrated(false)
-                                            ->prefixIcon('heroicon-o-academic-cap')
                                             ->extraInputAttributes([
                                                 'style' => '
-            background: transparent !important;
-            border-color: transparent !important;
-            box-shadow: none !important;
-            font-weight: 500;
-            font-size: 0.95rem;
-            padding-left: 0 !important;
-            cursor: default;
-            white-space: normal !important;
-            word-break: break-word !important;
-            overflow: visible !important;
-            height: auto !important;
-        ',
-                                                'x-data' => '{}',
-                                                'x-init' => '
-            $el.style.height = "auto";
-            $el.style.height = $el.scrollHeight + "px";
-        ',
+                            background: transparent !important;
+                            border: none !important;
+                            box-shadow: none !important;
+                            font-weight: 500;
+                            font-size: 0.95rem;
+                            color: var(--gray-900) !important;
+                            padding-left: 0 !important;
+                            cursor: default;
+                        ',
+                                            ])
+                                            ->extraAttributes([
+                                                'style' => '
+                            border-left: 3px solid var(--primary-500);
+                            padding-left: 0.5rem;
+                            border-radius: 0;
+                        ',
                                             ]),
 
                                         Select::make('professor_id')
