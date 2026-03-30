@@ -13,10 +13,10 @@ return new class extends Migration
     {
         Schema::create('escolas', function (Blueprint $table) {
             $table->id();
-            $table->string('codigo')->nullable()->unique()->min(3)->max(3);
+            $table->string('codigo')->nullable()->unique();
             $table->string('nome');
-            $table->string('email')->nullable()->after('nome');
-            $table->string('telefone')->nullable()->after('email');
+            $table->string('email')->nullable();
+            $table->string('telefone')->nullable();
             $table->timestamps();
         });
     }
