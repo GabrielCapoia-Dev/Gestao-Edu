@@ -108,17 +108,49 @@ class TurmaService
     public function acoesTabela(?User $user): array
     {
         return [
-            // Action::make('viewAlunos')
-            //     ->label('Ver Alunos')
-            //     ->icon('heroicon-o-eye')
-            //     ->visible(fn() => $this->userService->podeVisualizarAlunos(Auth::user()))
-            //     ->color('info')
-            //     ->url(fn($record) => AlunoResource::getUrl('index', [
-            //         'turma' => $record->id,
-            //     ])),
+            EditAction::make()
+                ->mutateFormDataBeforeFill(function (array $data) {
+                    $turma = \App\Models\Turma::with([
+                        'serie.componentesCurriculares',
+                        'componentes',
+                    ])->find($data['id']);
 
+                    $componentesDaSerie = $turma->serie?->componentesCurriculares ?? collect();
 
-            EditAction::make(),
+                    $data['componentes'] = $componentesDaSerie->map(function ($componente) use ($turma) {
+                        $pivot = $turma->componentes->firstWhere('id', $componente->id);
+
+                        return [
+                            'componente_curricular_id' => $componente->id,
+                            'componente_nome'          => $componente->nome,
+                            'professor_id'             => $pivot?->pivot->professor_id,
+                            'tem_professor'            => $pivot ? (bool) $pivot->pivot->tem_professor : false,
+                        ];
+                    })->toArray();
+
+                    return $data;
+                })
+                ->using(function (\App\Models\Turma $record, array $data) {
+                    $componentes = $data['componentes'] ?? [];
+                    unset($data['componentes']);
+
+                    $record->update($data);
+
+                    $sync = [];
+                    foreach ($componentes as $item) {
+                        if (!empty($item['componente_curricular_id'])) {
+                            $sync[$item['componente_curricular_id']] = [
+                                'professor_id'  => $item['professor_id'] ?? null,
+                                'tem_professor' => $item['tem_professor'] ?? false,
+                            ];
+                        }
+                    }
+
+                    $record->componentes()->sync($sync);
+
+                    return $record;
+                }),
+
             DeleteAction::make()
                 ->before(function ($record, $action) {
                     if ($record->alunos()->exists()) {
@@ -225,9 +257,8 @@ class TurmaService
                             ->searchable()
                             ->preload()
                             ->required()
-                            ->reactive()
+                            ->live()
                             ->afterStateUpdated(function ($state, Set $set) {
-                                dd($state);
                                 if (!$state) {
                                     $set('componentes', []);
                                     return;

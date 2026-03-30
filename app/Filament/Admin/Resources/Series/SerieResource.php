@@ -49,6 +49,7 @@ class SerieResource extends Resource
             ->components([
 
                 Section::make('Dados da Série')
+                    ->columnSpanFull()
                     ->schema([
                         TextInput::make('codigo')
                             ->label('Código')
@@ -67,6 +68,7 @@ class SerieResource extends Resource
                     ->columns(2),
 
                 Section::make('Componentes Curriculares')
+                    ->columnSpanFull()
                     ->schema([
                         Select::make('componentesCurriculares')
                             ->label('Componentes')
