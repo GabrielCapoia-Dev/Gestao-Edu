@@ -225,7 +225,7 @@ class TurmaService
                             ->searchable()
                             ->preload()
                             ->required()
-                            ->live()
+                            ->reactive()
                             ->afterStateUpdated(function ($state, Set $set) {
                                 dd($state);
                                 if (!$state) {
