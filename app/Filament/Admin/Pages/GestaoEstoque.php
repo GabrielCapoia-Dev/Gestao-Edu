@@ -10,6 +10,7 @@ use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use UnitEnum;
+use Illuminate\Support\Facades\Auth;
 
 class GestaoEstoque extends Page
 {
@@ -40,6 +41,13 @@ class GestaoEstoque extends Page
     public string $itemSelecionadoNome = '';
     public string $itemSelecionadoUnidade = '';
     public array $movimentacoes = [];
+
+    public static function canAccess(): bool
+    {
+        /** @var \App\Models\User */
+        $user = Auth::user();
+        return $user->hasPermissionTo('Listar Gestão de Estoque');
+    }
 
     // -------------------------------------------------------------------------
     // Hooks de reset de página

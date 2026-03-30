@@ -10,6 +10,7 @@ use Filament\Pages\Page;
 use BackedEnum;
 use UnitEnum;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Facades\Auth;
 
 class GestaoMargens extends Page
 {
@@ -37,7 +38,12 @@ class GestaoMargens extends Page
             $this->sortDir = 'asc';
         }
     }
-
+    public static function canAccess(): bool
+    {
+        /** @var \App\Models\User */
+        $user = Auth::user();
+        return $user->hasPermissionTo('Listar Gestão de Margens');
+    }
 
     // -------------------------------------------------------------------------
     // Estado da página

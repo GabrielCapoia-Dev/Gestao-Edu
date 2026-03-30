@@ -43,6 +43,8 @@ class CriarPermissoes extends Command
             'Listar Tipos de Avaliações',
             'Listar Contratos',
             'Listar Pedidos: Merenda',
+            'Listar Gestão de Estoque',
+            'Listar Gestão de Margens',
 
             // CRIAR
             'Criar Empresa Contratada',
