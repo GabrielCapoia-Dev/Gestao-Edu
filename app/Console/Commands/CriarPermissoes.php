@@ -106,6 +106,8 @@ class CriarPermissoes extends Command
             'Editar Contratos',
             'Editar Pedidos: Merenda',
             'Editar Componente Curricular',
+            'Editar Dados do Professor',
+            
 
             // EXCLUIR
             'Excluir Empresa Contratada',

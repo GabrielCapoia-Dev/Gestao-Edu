@@ -33,6 +33,7 @@ class ComponenteCurricularResource extends Resource
         return $schema
             ->components([
                 Section::make('Dados do Componente')
+                    ->columnSpanFull()
                     ->schema([
                         TextInput::make('codigo')
                             ->label('Código')
