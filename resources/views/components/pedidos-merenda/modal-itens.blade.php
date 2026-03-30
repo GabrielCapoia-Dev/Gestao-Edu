@@ -478,7 +478,6 @@
             <tr>
                 <th>Item</th>
                 <th>Empresa / Contrato</th>
-                <th class="right">Saldo Disponível</th>
                 <th class="right">Qtd. Pedida</th>
                 <th class="right">Entregue</th>
                 <th class="right">Pendente</th>
@@ -562,14 +561,7 @@
                         <div class="mi-item-nome" style="font-size:.8125rem">{{ $entry['empresa'] }}</div>
                         <div class="mi-secondary">{{ $entry['numero_contrato'] }}</div>
                     </td>
-
-                    {{-- Saldo --}}
-                    <td class="right">
-                        <div class="mi-saldo-disp">
-                            {{ number_format($entry['saldo_com_pedido'] - $entry['quantidade'], 3, ',', '.') }}
-                        </div>
-                    </td>
-
+                    
                     {{-- Qtd Pedida --}}
                     <td class="right">
                         <span class="mi-qty-label">
