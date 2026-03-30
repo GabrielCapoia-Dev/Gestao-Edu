@@ -146,6 +146,7 @@ class CriarPermissoes extends Command
             'Excluir Equipe Gestora em Massa',
             'Excluir Funções Administrativas em Massa',
             'Excluir Tipos de Avaliações em Massa',
+            'Excluir Itens em Massa',
 
             // EXPORTAR
             'Exportar Alunos',
