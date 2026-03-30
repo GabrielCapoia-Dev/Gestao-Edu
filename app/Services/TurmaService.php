@@ -109,16 +109,16 @@ class TurmaService
     {
         return [
             EditAction::make()
-                ->mutateFormDataBeforeFill(function (array $data) {
-                    $turma = \App\Models\Turma::with([
+                ->fillForm(function (Turma $record, array $data): array {
+                    $record->load([
                         'serie.componentesCurriculares',
                         'componentes',
-                    ])->find($data['id']);
+                    ]);
 
-                    $componentesDaSerie = $turma->serie?->componentesCurriculares ?? collect();
+                    $componentesDaSerie = $record->serie?->componentesCurriculares ?? collect();
 
-                    $data['componentes'] = $componentesDaSerie->map(function ($componente) use ($turma) {
-                        $pivot = $turma->componentes->firstWhere('id', $componente->id);
+                    $data['componentes'] = $componentesDaSerie->map(function ($componente) use ($record) {
+                        $pivot = $record->componentes->firstWhere('id', $componente->id);
 
                         return [
                             'componente_curricular_id' => $componente->id,
@@ -130,7 +130,7 @@ class TurmaService
 
                     return $data;
                 })
-                ->using(function (\App\Models\Turma $record, array $data) {
+                ->using(function (Turma $record, array $data): Turma {
                     $componentes = $data['componentes'] ?? [];
                     unset($data['componentes']);
 
