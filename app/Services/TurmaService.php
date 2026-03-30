@@ -324,6 +324,7 @@ class TurmaService
                                             ->label('Componente Curricular')
                                             ->disabled()
                                             ->dehydrated(false)
+                                            ->autosize()
                                             ->extraInputAttributes([
                                                 'style' => '
                             background: transparent !important;
