@@ -73,7 +73,9 @@ class PedidoMerenda extends Model
      */
     public function recalcularStatus(): void
     {
-        $itens = $this->itens()->get();
+        $itens = $this->itens()
+            ->where('quantidade_pedida', '>', 0)
+            ->get();
 
         $totalEntregue = $itens->sum(fn($i) => (float) $i->quantidade_entregue);
         $totalPedido   = $itens->sum(fn($i) => (float) $i->quantidade_pedida);

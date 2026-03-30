@@ -57,4 +57,32 @@ class PedidoMerendaItem extends Model
     {
         return $this->quantidade_pendente === 0.0;
     }
+
+    protected static function booted(): void
+    {
+        static::updating(function ($model) {
+            if ($model->isDirty('quantidade_pedida')) {
+                throw new \DomainException('Quantidade pedida não pode ser alterada após criação.');
+            }
+
+            if ($model->quantidade_entregue > $model->quantidade_pedida) {
+                throw new \DomainException('Quantidade entregue não pode ser maior que a pedida.');
+            }
+        });
+    }
+
+    public function registrarEntrega(float $quantidade): void
+    {
+        if ($quantidade <= 0) {
+            throw new \InvalidArgumentException('Quantidade inválida.');
+        }
+
+        if ($this->quantidade_entregue + $quantidade > $this->quantidade_pedida) {
+            throw new \DomainException('Entrega excede o pedido.');
+        }
+
+        $this->increment('quantidade_entregue', $quantidade);
+
+        $this->pedido->recalcularStatus();
+    }
 }
