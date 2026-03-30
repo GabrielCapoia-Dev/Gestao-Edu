@@ -221,7 +221,7 @@ class TurmaService
 
                         Select::make('id_serie')
                             ->label('Série')
-                            ->relationship('serie', 'nome')
+                            ->options(\App\Models\Serie::pluck('nome', 'id'))
                             ->searchable()
                             ->preload()
                             ->required()
