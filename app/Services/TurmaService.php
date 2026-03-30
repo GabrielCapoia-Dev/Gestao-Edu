@@ -26,6 +26,7 @@ use Filament\Actions\EditAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\Action;
 use App\Models\Turma;
+use Filament\Infolists\Components\TextEntry;
 use App\Models\Professor;
 
 class TurmaService
@@ -323,10 +324,8 @@ class TurmaService
                             ->schema([
                                 Grid::make(3)
                                     ->schema([
-                                        TextInput::make('componente_nome')
-                                            ->label('Componente Curricular')
-                                            ->disabled()
-                                            ->dehydrated(false),
+                                        TextEntry::make('componente_nome')
+                                            ->label('Componente Curricular'),
 
                                         Select::make('professor_id')
                                             ->label('Professor')
