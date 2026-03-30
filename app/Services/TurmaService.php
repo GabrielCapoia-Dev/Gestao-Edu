@@ -17,7 +17,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\TextArea;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Hidden;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
@@ -320,7 +320,7 @@ class TurmaService
                             ->schema([
                                 Grid::make(3)
                                     ->schema([
-                                        TextArea::make('componente_nome')
+                                        Textarea::make('componente_nome')
                                             ->label('Componente Curricular')
                                             ->disabled()
                                             ->dehydrated(false)
