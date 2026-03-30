@@ -60,7 +60,7 @@
                 </a>
                 @endcan
 
-                @can('Listar Alunos')
+                <!-- @can('Listar Alunos')
                 <a href="{{ route('filament.admin.grupo-alunos.resources.alunos.index') }}" class="nav-card nav-card--green">
                     <div class="nav-card-icon">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -73,7 +73,7 @@
                     </div>
                     <div class="nav-card-arrow">→</div>
                 </a>
-                @endcan
+                @endcan -->
 
                 @can('Listar Turmas')
                 <a href="{{ route('filament.admin.resources.turmas.index') }}" class="nav-card nav-card--amber">
@@ -106,7 +106,7 @@
                 @endcan
 
 
-                @can('Listar Laudos')
+                <!-- @can('Listar Laudos')
                 <a href="{{ route('filament.admin.resources.laudos.index') }}" class="nav-card nav-card--rose">
                     <div class="nav-card-icon">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -119,7 +119,7 @@
                     </div>
                     <div class="nav-card-arrow">→</div>
                 </a>
-                @endcan
+                @endcan -->
 
                 @can('Listar Contratos')
                 <a href="{{ route('filament.admin.resources.contratos.index') }}" class="nav-card nav-card--orange">
@@ -152,7 +152,7 @@
                 @endcan
 
                 @can('Listar Gestão de Estoque')
-                <a href="{{ route('filament.admin.resources.gestao-estoque.index') }}" class="nav-card nav-card--amber">
+                <a href="{{ route('filament.admin.pages.gestao-estoque') }}" class="nav-card nav-card--amber">
                     <div class="nav-card-icon">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
@@ -167,7 +167,7 @@
                 @endcan
 
                 @can('Listar Gestão de Margens')
-                <a href="{{ route('filament.admin.resources.gestao-margens.index') }}" class="nav-card nav-card--purple">
+                <a href="{{ route('filament.admin.pages.gestao-margens') }}" class="nav-card nav-card--purple">
                     <div class="nav-card-icon">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
@@ -181,7 +181,7 @@
                 </a>
                 @endcan
 
-                @can('Listar Retenção')
+                <!-- @can('Listar Retenção')
                 <a href="{{ route('filament.admin.resources.retencao.index') }}" class="nav-card nav-card--rose">
                     <div class="nav-card-icon">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -194,7 +194,7 @@
                     </div>
                     <div class="nav-card-arrow">→</div>
                 </a>
-                @endcan
+                @endcan -->
 
                 @can('Listar Equipe Gestora')
                 <a href="{{ route('filament.admin.resources.equipe-gestora.index') }}" class="nav-card nav-card--teal">
@@ -226,7 +226,7 @@
                 </a>
                 @endcan
 
-                @can('Listar Tipos de Avaliações')
+                <!-- @can('Listar Tipos de Avaliações')
                 <a href="{{ route('filament.admin.resources.tipos-avaliacoes.index') }}" class="nav-card nav-card--slate">
                     <div class="nav-card-icon">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -239,7 +239,7 @@
                     </div>
                     <div class="nav-card-arrow">→</div>
                 </a>
-                @endcan
+                @endcan -->
 
                 @can('Listar Séries')
                 <a href="{{ route('filament.admin.resources.series.index') }}" class="nav-card nav-card--orange">
@@ -330,22 +330,6 @@
                     <div class="nav-card-arrow">→</div>
                 </a>
                 @endcan
-
-                @can('Visualizar Painel Personalizado')
-                <a href="{{ route('filament.admin.pages.painel-personalizado') }}" class="nav-card nav-card--blue">
-                    <div class="nav-card-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z" />
-                        </svg>
-                    </div>
-                    <div class="nav-card-body">
-                        <h3>Painel Personalizado</h3>
-                        <p>Visão geral personalizada do sistema</p>
-                    </div>
-                    <div class="nav-card-arrow">→</div>
-                </a>
-                @endcan
-
             </div>
         </div>
 
