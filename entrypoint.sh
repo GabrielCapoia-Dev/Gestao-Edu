@@ -3,23 +3,16 @@ set -e
 
 cd /var/www
 
-if [ ! -f "vendor/autoload.php" ]; then
-    composer install --no-interaction --prefer-dist --optimize-autoloader
-fi
-
+# ── APP_KEY ────────────────────────────────────────────────────────────────
 if [ -z "$APP_KEY" ] || [ "$APP_KEY" = "base64:" ]; then
     php artisan key:generate --force
 fi
 
+# ── Migrations ─────────────────────────────────────────────────────────────
 php artisan migrate --force --seed
 
+# ── Storage link ───────────────────────────────────────────────────────────
 php artisan storage:link --force 2>/dev/null || true
-
-# ── Build dos assets ───────────────────────────────────────────────────────
-if [ ! -d "public/build" ]; then
-    npm ci
-    npm run build
-fi
 
 # ── Limpa caches antigos antes de reconstruir ──────────────────────────────
 php artisan config:clear

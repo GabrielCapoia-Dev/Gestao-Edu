@@ -13,8 +13,7 @@ services:
       - "${DOCKER_HTTP_PORT}:80"
       - "${DOCKER_HTTPS_PORT}:443"
     volumes:
-      - .:/var/www
-      - ./vendor:/var/www/vendor
+      - storage_data:/var/www/storage
       - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
       db:
@@ -31,7 +30,7 @@ services:
     entrypoint: []
     command: sh -c "while true; do php artisan schedule:run; sleep 60; done"
     volumes:
-      - .:/var/www
+      - storage_data:/var/www/storage
     depends_on:
       db:
         condition: service_healthy
@@ -75,7 +74,8 @@ services:
     networks:
       - laravel_gestao-edu
 
-volumes: {}
+volumes:
+  storage_data:
 
 networks:
   laravel_gestao-edu:
