@@ -109,6 +109,8 @@ class TurmaService
     {
         return [
             EditAction::make()
+                ->modal()
+                ->slideOver()
                 ->fillForm(function (Turma $record, array $data): array {
                     $record->load([
                         'serie.componentesCurriculares',
