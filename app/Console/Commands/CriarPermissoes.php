@@ -132,6 +132,7 @@ class CriarPermissoes extends Command
             'Excluir Contratos',
             'Excluir Componente Curricular',
             'Excluir Pedidos: Merenda',
+            'Excluir Itens',
 
             // EXCLUIR EM MASSA
             'Excluir Empresa Contratada em Massa',
