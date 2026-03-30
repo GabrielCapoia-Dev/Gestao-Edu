@@ -1181,6 +1181,8 @@
     </style>
 
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+        <h1 style="font-size:1.25rem;font-weight:600"></h1>
+
         <div style="display:flex;gap:.5rem">
             <x-filament::button
                 tag="a"
