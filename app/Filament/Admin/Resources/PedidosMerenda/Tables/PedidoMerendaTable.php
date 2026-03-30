@@ -40,14 +40,14 @@ class PedidoMerendaTable
             TextColumn::make('status')
                 ->label('Status')
                 ->badge()
-                ->color(fn($state) => match ($state) {
+                ->color(fn ($state) => match ($state) {
                     StatusPedidoMerenda::Aguardando           => 'warning',
                     StatusPedidoMerenda::ParcialmenteEntregue => 'info',
                     StatusPedidoMerenda::Entregue             => 'success',
                     StatusPedidoMerenda::Cancelado            => 'danger',
                     default                                   => 'gray',
                 })
-                ->formatStateUsing(fn($state) => $state?->label()),
+                ->formatStateUsing(fn ($state) => $state?->label()),
 
             TextColumn::make('itens_count')
                 ->label('Itens')
@@ -81,10 +81,28 @@ class PedidoMerendaTable
                 ->label('Status')
                 ->options(
                     collect(StatusPedidoMerenda::cases())
-                        ->mapWithKeys(fn($case) => [$case->value => $case->label()])
+                        ->mapWithKeys(fn ($case) => [$case->value => $case->label()])
                         ->toArray()
                 ),
         ];
+    }
+
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
+
+    /**
+     * Resolve o PedidoMerenda diretamente pelo ID, sem passar pelo escopo
+     * de filtros da tabela. Isso garante que o record continue acessível
+     * mesmo após mudança de status (ex.: aguardando → parcialmente_entregue).
+     */
+    private static function resolveRecord(?PedidoMerenda $record): ?PedidoMerenda
+    {
+        if (! $record) {
+            return null;
+        }
+
+        return PedidoMerenda::find($record->id);
     }
 
     // -------------------------------------------------------------------------
@@ -103,25 +121,34 @@ class PedidoMerendaTable
                 ->modalWidth('4xl')
                 ->modalSubmitAction(false)
                 ->modalCancelActionLabel('Fechar')
-                ->modalHeading(
-                    fn(?PedidoMerenda $record) => $record
-                        ? "Itens do Pedido #{$record->id}"
-                        : 'Itens do Pedido'
-                )
-                ->modalDescription(fn(?PedidoMerenda $record) => match ($record?->status) {
-                    StatusPedidoMerenda::Aguardando           => 'Você pode ajustar as quantidades e registrar entregas parciais.',
-                    StatusPedidoMerenda::ParcialmenteEntregue => 'Pedido com entrega parcial em andamento. Registre as próximas entregas abaixo.',
-                    StatusPedidoMerenda::Entregue             => 'Este pedido foi totalmente entregue. Somente visualização.',
-                    StatusPedidoMerenda::Cancelado            => 'Este pedido foi cancelado. Somente visualização.',
-                    default                                   => null,
+
+                // Heading: resolve sem filtro para não perder o record
+                ->modalHeading(function (?PedidoMerenda $record) {
+                    $pedido = static::resolveRecord($record);
+
+                    return $pedido
+                        ? "Itens do Pedido #{$pedido->id}"
+                        : 'Itens do Pedido';
                 })
+
+                // Description: idem — resolve sem filtro
+                ->modalDescription(function (?PedidoMerenda $record) {
+                    $pedido = static::resolveRecord($record);
+
+                    return match ($pedido?->status) {
+                        StatusPedidoMerenda::Aguardando           => 'Você pode ajustar as quantidades e registrar entregas parciais.',
+                        StatusPedidoMerenda::ParcialmenteEntregue => 'Pedido com entrega parcial em andamento. Registre as próximas entregas abaixo.',
+                        StatusPedidoMerenda::Entregue             => 'Este pedido foi totalmente entregue. Somente visualização.',
+                        StatusPedidoMerenda::Cancelado            => 'Este pedido foi cancelado. Somente visualização.',
+                        default                                   => null,
+                    };
+                })
+
+                // Content: idem — resolve sem filtro e carrega itens frescos
                 ->modalContent(function (?PedidoMerenda $record) {
+                    $pedido = static::resolveRecord($record);
 
-                    $record = $record
-                        ? PedidoMerenda::find($record->id)
-                        : null;
-
-                    if (! $record) {
+                    if (! $pedido) {
                         return view('components.pedidos-merenda.modal-itens', [
                             'itens'    => collect(),
                             'editavel' => false,
@@ -129,10 +156,7 @@ class PedidoMerendaTable
                         ]);
                     }
 
-                    // Recarrega o pedido do banco para garantir status atualizado
-                    $record->refresh();
-
-                    $itens = $record->itens()
+                    $itens = $pedido->itens()
                         ->with([
                             'contratoItem.item',
                             'contratoItem.contrato.empresaContratada',
@@ -157,7 +181,7 @@ class PedidoMerendaTable
                         });
 
                     // Editável somente enquanto não estiver totalmente entregue ou cancelado
-                    $editavel = in_array($record->status, [
+                    $editavel = in_array($pedido->status, [
                         StatusPedidoMerenda::Aguardando,
                         StatusPedidoMerenda::ParcialmenteEntregue,
                     ]);
@@ -165,7 +189,7 @@ class PedidoMerendaTable
                     return view('components.pedidos-merenda.modal-itens', [
                         'itens'    => $itens,
                         'editavel' => $editavel,
-                        'pedido'   => $record,
+                        'pedido'   => $pedido,
                     ]);
                 }),
 
@@ -178,25 +202,33 @@ class PedidoMerendaTable
                     ->color('danger')
                     ->requiresConfirmation()
                     ->modalHeading('Cancelar pedido')
-                    ->modalDescription(
-                        fn(?PedidoMerenda $record) => $record
-                            ? "Confirma o cancelamento do Pedido #{$record->id}? " .
-                            "O saldo pendente de entrega será devolvido aos contratos. " .
-                            "Quantidades já entregues permanecem no estoque. " .
-                            "Esta ação não pode ser desfeita."
-                            : ''
-                    )
+                    ->modalDescription(function (?PedidoMerenda $record) {
+                        $pedido = static::resolveRecord($record);
+
+                        return $pedido
+                            ? "Confirma o cancelamento do Pedido #{$pedido->id}? " .
+                              "O saldo pendente de entrega será devolvido aos contratos. " .
+                              "Quantidades já entregues permanecem no estoque. " .
+                              "Esta ação não pode ser desfeita."
+                            : '';
+                    })
                     ->modalSubmitActionLabel('Confirmar cancelamento')
-                    ->visible(fn(?PedidoMerenda $record) => $record && in_array($record->status, [
-                        StatusPedidoMerenda::Aguardando,
-                        StatusPedidoMerenda::ParcialmenteEntregue,
-                    ]))
+                    ->visible(function (?PedidoMerenda $record) {
+                        $pedido = static::resolveRecord($record);
+
+                        return $pedido && in_array($pedido->status, [
+                            StatusPedidoMerenda::Aguardando,
+                            StatusPedidoMerenda::ParcialmenteEntregue,
+                        ]);
+                    })
                     ->action(function (?PedidoMerenda $record) {
-                        if (! $record) {
+                        $pedido = static::resolveRecord($record);
+
+                        if (! $pedido) {
                             return;
                         }
 
-                        static::processarCancelamento($record);
+                        static::processarCancelamento($pedido);
                     }),
             ]),
         ];
