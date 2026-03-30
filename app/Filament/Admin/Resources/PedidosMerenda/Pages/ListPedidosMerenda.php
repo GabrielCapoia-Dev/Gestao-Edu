@@ -21,23 +21,33 @@ class ListPedidosMerenda extends ListRecords
         ];
     }
 
-    /**
-     * Chamado pelo $wire.salvarQuantidade() no blade modal-itens.
-     * Aceita 0 = item removido do pedido (mantém registro, devolve reserva).
-     */
+    // -------------------------------------------------------------------------
+    // Salvar quantidade pedida (edição do pedido ainda em aberto)
+    // Chamado pelo $wire.salvarQuantidade() no blade modal-itens.
+    // -------------------------------------------------------------------------
+
     public function salvarQuantidade(int $pedidoItemId, float $novaQuantidade): void
     {
-        $pedidoItem = PedidoMerendaItem::with('contratoItem')->findOrFail($pedidoItemId);
+        $pedidoItem        = PedidoMerendaItem::with('contratoItem')->findOrFail($pedidoItemId);
         $quantidadeAnterior = (float) $pedidoItem->quantidade_pedida;
+        $jaEntregue        = (float) $pedidoItem->quantidade_entregue;
 
-        // Negativo nunca é válido; zero = remoção do item
         if ($novaQuantidade < 0) {
             Notification::make()->title('Quantidade inválida.')->danger()->send();
             return;
         }
 
-        $ci = $pedidoItem->contratoItem;
-        $saldoMaximo = (float) $ci->saldo_disponivel + $quantidadeAnterior;
+        // Não permite reduzir a quantidade pedida abaixo do que já foi entregue
+        if ($novaQuantidade < $jaEntregue) {
+            Notification::make()
+                ->title("Não é possível reduzir abaixo da quantidade já entregue ({$jaEntregue}).")
+                ->danger()
+                ->send();
+            return;
+        }
+
+        $ci           = $pedidoItem->contratoItem;
+        $saldoMaximo  = (float) $ci->saldo_disponivel + $quantidadeAnterior;
 
         if ($novaQuantidade > $saldoMaximo) {
             Notification::make()
@@ -54,10 +64,65 @@ class ListPedidosMerenda extends ListRecords
             $ci->increment('quantidade_reservada', $diferenca);
         });
 
-        $mensagem = $novaQuantidade === 0.0
-            ? 'Item removido. Saldo devolvido ao contrato.'
-            : 'Quantidade atualizada com sucesso.';
+        Notification::make()
+            ->title('Quantidade atualizada com sucesso.')
+            ->success()
+            ->send();
+    }
 
-        Notification::make()->title($mensagem)->success()->send();
+    // -------------------------------------------------------------------------
+    // Registrar entrega parcial de um item
+    // Chamado pelo $wire.salvarEntregaParcial() no blade modal-itens.
+    // -------------------------------------------------------------------------
+
+    public function salvarEntregaParcial(int $pedidoItemId, float $quantidadeEntregaAgora): void
+    {
+        $pedidoItem  = PedidoMerendaItem::with(['contratoItem.item', 'pedido'])->findOrFail($pedidoItemId);
+        $pendente    = (float) $pedidoItem->quantidade_pendente;
+
+        if ($quantidadeEntregaAgora <= 0) {
+            Notification::make()->title('Informe uma quantidade maior que zero.')->warning()->send();
+            return;
+        }
+
+        if ($quantidadeEntregaAgora > $pendente) {
+            Notification::make()
+                ->title("Quantidade excede o saldo pendente de entrega ({$pendente}).")
+                ->danger()
+                ->send();
+            return;
+        }
+
+        $ci     = $pedidoItem->contratoItem;
+        $pedido = $pedidoItem->pedido;
+
+        DB::transaction(function () use ($pedidoItem, $ci, $pedido, $quantidadeEntregaAgora) {
+            // 1. Atualiza quantidade entregue no item do pedido
+            $pedidoItem->increment('quantidade_entregue', $quantidadeEntregaAgora);
+
+            // 2. Move reserva → utilizado no contrato
+            $ci->decrement('quantidade_reservada', $quantidadeEntregaAgora);
+            $ci->increment('quantidade_utilizada', $quantidadeEntregaAgora);
+
+            // 3. Entrada no estoque central
+            $estoque = \App\Models\Estoque::firstOrCreate(
+                ['item_id' => $ci->item_id],
+                ['quantidade' => 0]
+            );
+
+            $estoque->entrada(
+                quantidade: $quantidadeEntregaAgora,
+                pedidoMerendaId: $pedido->id,
+                observacao: "Entrega parcial do pedido #{$pedido->id}",
+            );
+
+            // 4. Recalcula status do pedido (Aguardando / ParcialmenteEntregue / Entregue)
+            $pedido->recalcularStatus();
+        });
+
+        Notification::make()
+            ->title('Entrega registrada com sucesso.')
+            ->success()
+            ->send();
     }
 }

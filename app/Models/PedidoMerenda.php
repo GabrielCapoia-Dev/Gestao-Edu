@@ -51,8 +51,41 @@ class PedidoMerenda extends Model
         return $query->where('status', StatusPedidoMerenda::Aguardando);
     }
 
+    public function scopeParcialmenteEntregue($query)
+    {
+        return $query->where('status', StatusPedidoMerenda::ParcialmenteEntregue);
+    }
+
     public function scopeEntregue($query)
     {
         return $query->where('status', StatusPedidoMerenda::Entregue);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Helpers
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Recalcula e persiste o status do pedido com base na entrega dos itens.
+     * Deve ser chamado após qualquer alteração em quantidade_entregue dos itens.
+     */
+    public function recalcularStatus(): void
+    {
+        $itens = $this->itens()->get();
+
+        $totalEntregue = $itens->sum(fn($i) => (float) $i->quantidade_entregue);
+        $totalPedido   = $itens->sum(fn($i) => (float) $i->quantidade_pedida);
+
+        if ($totalEntregue <= 0) {
+            $novoStatus = StatusPedidoMerenda::Aguardando;
+        } elseif ($totalEntregue >= $totalPedido) {
+            $novoStatus = StatusPedidoMerenda::Entregue;
+        } else {
+            $novoStatus = StatusPedidoMerenda::ParcialmenteEntregue;
+        }
+
+        $this->update(['status' => $novoStatus]);
     }
 }

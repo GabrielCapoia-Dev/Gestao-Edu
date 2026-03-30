@@ -78,7 +78,6 @@
         white-space: nowrap;
     }
 
-    /* item removido */
     .mi-row-removed td {
         opacity: .5;
     }
@@ -98,7 +97,6 @@
         vertical-align: middle;
     }
 
-    /* item com alteração pendente */
     .mi-badge-pending {
         display: inline-flex;
         align-items: center;
@@ -114,7 +112,6 @@
         vertical-align: middle;
     }
 
-    /* alerta de alterações não salvas */
     .mi-unsaved-alert {
         display: flex;
         align-items: flex-start;
@@ -268,7 +265,108 @@
         margin-bottom: 1rem;
     }
 
-    /* dark */
+    /* ── Entrega parcial ────────────────────────────────── */
+    .mi-entrega-wrap {
+        margin-top: .5rem;
+        padding: .45rem .65rem;
+        border-radius: .375rem;
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        flex-wrap: wrap;
+    }
+
+    .mi-entrega-label {
+        font-size: .75rem;
+        color: #15803d;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    .mi-entrega-input {
+        width: 6.5rem;
+        border-radius: .375rem;
+        border: 1px solid #86efac;
+        background: #fff;
+        color: var(--gray-900, #111827);
+        font-size: .875rem;
+        padding: .3rem .5rem;
+        outline: none;
+        font-family: inherit;
+        box-sizing: border-box;
+    }
+
+    .mi-entrega-input:focus {
+        border-color: #16a34a;
+        box-shadow: 0 0 0 2px #bbf7d0;
+    }
+
+    .mi-btn-entregar {
+        display: inline-flex;
+        align-items: center;
+        gap: .25rem;
+        padding: .25rem .65rem;
+        border-radius: .375rem;
+        background: #16a34a;
+        color: #fff;
+        font-size: .75rem;
+        font-weight: 500;
+        border: none;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: opacity .15s;
+    }
+
+    .mi-btn-entregar:hover:not(:disabled) {
+        opacity: .85;
+    }
+
+    .mi-btn-entregar:disabled {
+        opacity: .4;
+        cursor: not-allowed;
+    }
+
+    /* badges status item */
+    .mi-item-status {
+        display: inline-flex;
+        align-items: center;
+        padding: .15rem .5rem;
+        border-radius: 9999px;
+        font-size: .7rem;
+        font-weight: 600;
+        white-space: nowrap;
+        margin-left: .4rem;
+        vertical-align: middle;
+    }
+
+    .mi-item-status-pendente {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .mi-item-status-parcial {
+        background: #dbeafe;
+        color: #1d4ed8;
+    }
+
+    .mi-item-status-completo {
+        background: #dcfce7;
+        color: #15803d;
+    }
+
+    .mi-col-entregue {
+        font-weight: 600;
+        color: #16a34a;
+    }
+
+    .mi-col-pendente {
+        font-weight: 600;
+        color: #d97706;
+    }
+
+    /* dark ──────────────────────────────────────────────── */
     .dark .mi-table thead tr {
         background: #1e293b;
         color: #94a3b8;
@@ -291,7 +389,8 @@
         color: #64748b;
     }
 
-    .dark .mi-qty-input {
+    .dark .mi-qty-input,
+    .dark .mi-entrega-input {
         background: #0f172a;
         border-color: #334155;
         color: #f1f5f9;
@@ -322,6 +421,38 @@
         border-color: #854d0e;
         color: #fcd34d;
     }
+
+    .dark .mi-entrega-wrap {
+        background: #052e16;
+        border-color: #166534;
+    }
+
+    .dark .mi-entrega-label {
+        color: #4ade80;
+    }
+
+    .dark .mi-item-status-pendente {
+        background: #451a03;
+        color: #fcd34d;
+    }
+
+    .dark .mi-item-status-parcial {
+        background: #1e3a5f;
+        color: #93c5fd;
+    }
+
+    .dark .mi-item-status-completo {
+        background: #052e16;
+        color: #4ade80;
+    }
+
+    .dark .mi-col-entregue {
+        color: #4ade80;
+    }
+
+    .dark .mi-col-pendente {
+        color: #fbbf24;
+    }
 </style>
 
 @if($itens->isEmpty())
@@ -341,16 +472,12 @@
 </div>
 @endif
 
-{{--
-        Componente raiz Alpine que controla o estado global dos itens.
-        `pendingCount` conta itens com alterações não salvas (qty !== originalQty).
-    --}}
 <div
     x-data="{ pendingCount: 0 }"
     x-on:item-pending.window="pendingCount++"
     x-on:item-saved.window="pendingCount = Math.max(0, pendingCount - 1)"
     x-on:item-reverted.window="pendingCount = Math.max(0, pendingCount - 1)">
-    {{-- Alerta: aparece quando há ao menos 1 alteração não salva --}}
+
     @if($editavel)
     <div class="mi-unsaved-alert" x-show="pendingCount > 0" x-cloak>
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -371,7 +498,9 @@
                 <th>Item</th>
                 <th>Empresa / Contrato</th>
                 <th class="right">Saldo Disponível</th>
-                <th class="right">Qtd. Solicitada</th>
+                <th class="right">Qtd. Pedida</th>
+                <th class="right">Entregue</th>
+                <th class="right">Pendente</th>
                 @if($editavel)
                 <th class="right">Nova Qtd.</th>
                 <th></th>
@@ -380,16 +509,30 @@
         </thead>
         <tbody>
             @foreach($itens as $entry)
-            <tr
-                x-data="{
-                            qty: {{ $entry['quantidade'] }},
+            @php
+            $qtdEntregue = $entry['quantidade_entregue'];
+            $qtdPendente = $entry['quantidade_pendente'];
+            $itemCompleto = $qtdPendente <= 0;
+                $itemParcial=$qtdEntregue> 0 && ! $itemCompleto;
+                @endphp
+                <tr
+                    x-data="{
+                            qty:         {{ $entry['quantidade'] }},
                             originalQty: {{ $entry['quantidade'] }},
-                            saving: false,
-                            get removed()  { return this.originalQty === 0 },
-                            get dirty()    { return this.qty !== this.originalQty },
-                            get diff()     { return this.qty - this.originalQty },
-                            get saldoBase(){ return {{ $entry['saldo_com_pedido'] }} },
+                            saving:      false,
+                            entregando:  false,
+                            qtdEntrega:  '',
+
+                            get removed()         { return this.originalQty === 0 },
+                            get dirty()           { return this.qty !== this.originalQty },
+                            get diff()            { return this.qty - this.originalQty },
+                            get saldoBase()       { return {{ $entry['saldo_com_pedido'] }} },
                             get saldoAposEdicao() { return this.saldoBase - this.qty },
+                            get pendente()        { return {{ $qtdPendente }} },
+                            get entregaValida() {
+                                const v = parseFloat(this.qtdEntrega);
+                                return !isNaN(v) && v > 0 && v <= this.pendente;
+                            },
 
                             init() {
                                 this.$watch('dirty', (val, old) => {
@@ -408,100 +551,159 @@
                                         if (wasDirty) this.$dispatch('item-saved');
                                     })
                                     .finally(() => this.saving = false);
+                            },
+
+                            registrarEntrega() {
+                                const v = parseFloat(this.qtdEntrega);
+                                if (!this.entregaValida) return;
+                                this.entregando = true;
+                                $wire.salvarEntregaParcial({{ $entry['pedido_item_id'] }}, v)
+                                    .then(() => { this.qtdEntrega = ''; })
+                                    .finally(() => this.entregando = false);
                             }
                         }"
-                :class="{ 'mi-row-removed': removed }">
-                <td>
-                    <span class="mi-item-nome">{{ $entry['item_nome'] }}</span>
-                    <span class="mi-item-unit">({{ $entry['unidade'] }})</span>
-                    <span class="mi-badge-removed" x-show="removed">Removido</span>
-                    {{-- Badge "Não salvo" quando há alteração pendente --}}
-                    <span class="mi-badge-pending" x-show="dirty && !removed && !saving">Não salvo</span>
-                </td>
+                    :class="{ 'mi-row-removed': removed }">
 
-                <td>
-                    <div class="mi-item-nome" style="font-size:.8125rem">{{ $entry['empresa'] }}</div>
-                    <div class="mi-secondary">{{ $entry['numero_contrato'] }}</div>
-                </td>
+                    {{-- ── Item ── --}}
+                    <td>
+                        <span class="mi-item-nome">{{ $entry['item_nome'] }}</span>
+                        <span class="mi-item-unit">({{ $entry['unidade'] }})</span>
+                        <span class="mi-badge-removed" x-show="removed">Removido</span>
+                        <span class="mi-badge-pending" x-show="dirty && !removed && !saving">Não salvo</span>
 
-                <td class="right">
-                    <div class="mi-saldo-disp" x-text="saldoAposEdicao.toLocaleString('pt-BR', {minimumFractionDigits:3, maximumFractionDigits:3})"></div>
-                    @if($editavel)
-                    <div
-                        x-show="diff !== 0"
-                        :class="diff > 0 ? 'mi-saldo-diff-neg' : 'mi-saldo-diff-pos'"
-                        x-text="(diff > 0 ? '▼ ' : '▲ ') + Math.abs(diff).toLocaleString('pt-BR', {minimumFractionDigits:3, maximumFractionDigits:3})"></div>
-                    @endif
-                </td>
+                        {{-- Badge status de entrega (renderizado no servidor, não reage a mudanças em tempo real) --}}
+                        @if($itemCompleto)
+                        <span class="mi-item-status mi-item-status-completo">Completo</span>
+                        @elseif($itemParcial)
+                        <span class="mi-item-status mi-item-status-parcial">Parcial</span>
+                        @else
+                        <span class="mi-item-status mi-item-status-pendente">Pendente</span>
+                        @endif
 
-                <td class="right">
-                    <template x-if="!removed">
-                        <span class="mi-qty-label" x-text="originalQty.toLocaleString('pt-BR', {minimumFractionDigits:3, maximumFractionDigits:3})"></span>
-                    </template>
-                    <template x-if="removed">
-                        <span class="mi-qty-label" style="background:#fee2e2;color:#991b1b">—</span>
-                    </template>
-                </td>
-
-                @if($editavel)
-                <td class="right">
-                    <template x-if="!removed">
-                        <div class="mi-qty-wrap" style="justify-content:flex-end">
+                        {{-- Input de entrega parcial --}}
+                        @if($editavel && ! $itemCompleto)
+                        <div class="mi-entrega-wrap" x-show="!removed">
+                            <span class="mi-entrega-label">Entregar agora:</span>
                             <input
                                 type="number"
                                 step="0.001"
                                 min="0.001"
-                                :max="saldoBase"
-                                x-model.number="qty"
-                                class="mi-qty-input" />
-                        </div>
-                    </template>
-                </td>
-
-                <td>
-                    <div class="mi-actions">
-                        <template x-if="!removed">
+                                max="{{ $qtdPendente }}"
+                                placeholder="0.000"
+                                x-model="qtdEntrega"
+                                class="mi-entrega-input" />
                             <button
-                                class="mi-btn-save"
-                                :disabled="saving || !dirty || qty <= 0 || qty > saldoBase"
-                                @click="salvar(qty)">
+                                class="mi-btn-entregar"
+                                :disabled="!entregaValida || entregando || saving"
+                                @click="registrarEntrega()">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:.75rem;height:.75rem">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                                 </svg>
-                                <span x-text="saving ? 'Salvando...' : 'Salvar'"></span>
+                                <span x-text="entregando ? 'Salvando...' : 'Registrar'"></span>
                             </button>
-                        </template>
+                        </div>
+                        @endif
+                    </td>
 
+                    {{-- ── Empresa / Contrato ── --}}
+                    <td>
+                        <div class="mi-item-nome" style="font-size:.8125rem">{{ $entry['empresa'] }}</div>
+                        <div class="mi-secondary">{{ $entry['numero_contrato'] }}</div>
+                    </td>
+
+                    {{-- ── Saldo Disponível ── --}}
+                    <td class="right">
+                        <div class="mi-saldo-disp" x-text="saldoAposEdicao.toLocaleString('pt-BR', {minimumFractionDigits:3, maximumFractionDigits:3})"></div>
+                        @if($editavel)
+                        <div
+                            x-show="diff !== 0"
+                            :class="diff > 0 ? 'mi-saldo-diff-neg' : 'mi-saldo-diff-pos'"
+                            x-text="(diff > 0 ? '▼ ' : '▲ ') + Math.abs(diff).toLocaleString('pt-BR', {minimumFractionDigits:3, maximumFractionDigits:3})">
+                        </div>
+                        @endif
+                    </td>
+
+                    {{-- ── Qtd. Pedida ── --}}
+                    <td class="right">
                         <template x-if="!removed">
-                            <button
-                                class="mi-btn-remove"
-                                :disabled="saving"
-                                @click="confirm('Remover este item do pedido? O saldo será devolvido ao contrato.') && salvar(0)"
-                                title="Remover item">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:.75rem;height:.75rem">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-                                </svg>
-                                Remover
-                            </button>
+                            <span class="mi-qty-label" x-text="originalQty.toLocaleString('pt-BR', {minimumFractionDigits:3, maximumFractionDigits:3})"></span>
                         </template>
-
                         <template x-if="removed">
-                            <button
-                                class="mi-btn-restore"
-                                :disabled="saving"
-                                @click="confirm('Restaurar este item com quantidade 1?') && salvar(1)"
-                                title="Restaurar item">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:.75rem;height:.75rem">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
-                                </svg>
-                                Restaurar
-                            </button>
+                            <span class="mi-qty-label" style="background:#fee2e2;color:#991b1b">—</span>
                         </template>
-                    </div>
-                </td>
-                @endif
-            </tr>
-            @endforeach
+                    </td>
+
+                    {{-- ── Entregue ── --}}
+                    <td class="right mi-col-entregue">
+                        {{ number_format($qtdEntregue, 3, ',', '.') }}
+                    </td>
+
+                    {{-- ── Pendente ── --}}
+                    <td class="right mi-col-pendente">
+                        {{ $itemCompleto ? '—' : number_format($qtdPendente, 3, ',', '.') }}
+                    </td>
+
+                    @if($editavel)
+                    {{-- ── Nova Qtd. ── --}}
+                    <td class="right">
+                        <template x-if="!removed">
+                            <div class="mi-qty-wrap" style="justify-content:flex-end">
+                                <input
+                                    type="number"
+                                    step="0.001"
+                                    min="0.001"
+                                    :max="saldoBase"
+                                    x-model.number="qty"
+                                    class="mi-qty-input" />
+                            </div>
+                        </template>
+                    </td>
+
+                    {{-- ── Ações ── --}}
+                    <td>
+                        <div class="mi-actions">
+                            <template x-if="!removed">
+                                <button
+                                    class="mi-btn-save"
+                                    :disabled="saving || !dirty || qty <= 0 || qty > saldoBase"
+                                    @click="salvar(qty)">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:.75rem;height:.75rem">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                                    </svg>
+                                    <span x-text="saving ? 'Salvando...' : 'Salvar'"></span>
+                                </button>
+                            </template>
+
+                            <template x-if="!removed">
+                                <button
+                                    class="mi-btn-remove"
+                                    :disabled="saving || entregando"
+                                    @click="confirm('Remover este item do pedido? O saldo pendente será devolvido ao contrato.') && salvar(0)"
+                                    title="Remover item">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:.75rem;height:.75rem">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                                    </svg>
+                                    Remover
+                                </button>
+                            </template>
+
+                            <template x-if="removed">
+                                <button
+                                    class="mi-btn-restore"
+                                    :disabled="saving"
+                                    @click="confirm('Restaurar este item com quantidade 1?') && salvar(1)"
+                                    title="Restaurar item">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:.75rem;height:.75rem">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+                                    </svg>
+                                    Restaurar
+                                </button>
+                            </template>
+                        </div>
+                    </td>
+                    @endif
+                </tr>
+                @endforeach
         </tbody>
     </table>
 </div>
