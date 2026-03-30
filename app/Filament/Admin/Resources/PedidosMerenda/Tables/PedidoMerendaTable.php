@@ -40,14 +40,14 @@ class PedidoMerendaTable
             TextColumn::make('status')
                 ->label('Status')
                 ->badge()
-                ->color(fn($state) => match ($state) {
+                ->color(fn ($state) => match ($state) {
                     StatusPedidoMerenda::Aguardando           => 'warning',
                     StatusPedidoMerenda::ParcialmenteEntregue => 'info',
                     StatusPedidoMerenda::Entregue             => 'success',
                     StatusPedidoMerenda::Cancelado            => 'danger',
                     default                                   => 'gray',
                 })
-                ->formatStateUsing(fn($state) => $state?->label()),
+                ->formatStateUsing(fn ($state) => $state?->label()),
 
             TextColumn::make('itens_count')
                 ->label('Itens')
@@ -81,7 +81,7 @@ class PedidoMerendaTable
                 ->label('Status')
                 ->options(
                     collect(StatusPedidoMerenda::cases())
-                        ->mapWithKeys(fn($case) => [$case->value => $case->label()])
+                        ->mapWithKeys(fn ($case) => [$case->value => $case->label()])
                         ->toArray()
                 ),
         ];
@@ -103,15 +103,29 @@ class PedidoMerendaTable
                 ->modalWidth('4xl')
                 ->modalSubmitAction(false)
                 ->modalCancelActionLabel('Fechar')
-                ->modalHeading(fn(PedidoMerenda $record) => "Itens do Pedido #{$record->id}")
-                ->modalDescription(fn(PedidoMerenda $record) => match ($record->status) {
+                ->modalHeading(fn (?PedidoMerenda $record) => $record
+                    ? "Itens do Pedido #{$record->id}"
+                    : 'Itens do Pedido'
+                )
+                ->modalDescription(fn (?PedidoMerenda $record) => match ($record?->status) {
                     StatusPedidoMerenda::Aguardando           => 'Você pode ajustar as quantidades e registrar entregas parciais.',
                     StatusPedidoMerenda::ParcialmenteEntregue => 'Pedido com entrega parcial em andamento. Registre as próximas entregas abaixo.',
                     StatusPedidoMerenda::Entregue             => 'Este pedido foi totalmente entregue. Somente visualização.',
                     StatusPedidoMerenda::Cancelado            => 'Este pedido foi cancelado. Somente visualização.',
                     default                                   => null,
                 })
-                ->modalContent(function (PedidoMerenda $record) {
+                ->modalContent(function (?PedidoMerenda $record) {
+                    if (! $record) {
+                        return view('components.pedidos-merenda.modal-itens', [
+                            'itens'    => collect(),
+                            'editavel' => false,
+                            'pedido'   => null,
+                        ]);
+                    }
+
+                    // Recarrega o pedido do banco para garantir status atualizado
+                    $record->refresh();
+
                     $itens = $record->itens()
                         ->with([
                             'contratoItem.item',
@@ -122,15 +136,15 @@ class PedidoMerendaTable
                             $ci = $pedidoItem->contratoItem;
 
                             return [
-                                'pedido_item_id'    => $pedidoItem->id,
-                                'contrato_item_id'  => $ci->id,
-                                'item_nome'         => $ci->item->nome,
-                                'unidade'           => $ci->item->unidade_medida->value,
-                                'empresa'           => $ci->contrato->empresaContratada->nome,
-                                'numero_contrato'   => $ci->contrato->numero_contrato,
-                                'saldo_atual'       => (float) $ci->saldo_disponivel,
-                                'saldo_com_pedido'  => (float) $ci->saldo_disponivel + (float) $pedidoItem->quantidade_pedida,
-                                'quantidade'        => (float) $pedidoItem->quantidade_pedida,
+                                'pedido_item_id'      => $pedidoItem->id,
+                                'contrato_item_id'    => $ci->id,
+                                'item_nome'           => $ci->item->nome,
+                                'unidade'             => $ci->item->unidade_medida->value,
+                                'empresa'             => $ci->contrato->empresaContratada->nome,
+                                'numero_contrato'     => $ci->contrato->numero_contrato,
+                                'saldo_atual'         => (float) $ci->saldo_disponivel,
+                                'saldo_com_pedido'    => (float) $ci->saldo_disponivel + (float) $pedidoItem->quantidade_pedida,
+                                'quantidade'          => (float) $pedidoItem->quantidade_pedida,
                                 'quantidade_entregue' => (float) $pedidoItem->quantidade_entregue,
                                 'quantidade_pendente' => (float) $pedidoItem->quantidade_pendente,
                             ];
@@ -158,22 +172,26 @@ class PedidoMerendaTable
                     ->color('danger')
                     ->requiresConfirmation()
                     ->modalHeading('Cancelar pedido')
-                    ->modalDescription(
-                        fn(PedidoMerenda $record) =>
-                        "Confirma o cancelamento do Pedido #{$record->id}? " .
-                            "O saldo pendente de entrega será devolvido aos contratos. " .
-                            "Quantidades já entregues permanecem no estoque. " .
-                            "Esta ação não pode ser desfeita."
+                    ->modalDescription(fn (?PedidoMerenda $record) => $record
+                        ? "Confirma o cancelamento do Pedido #{$record->id}? " .
+                          "O saldo pendente de entrega será devolvido aos contratos. " .
+                          "Quantidades já entregues permanecem no estoque. " .
+                          "Esta ação não pode ser desfeita."
+                        : ''
                     )
                     ->modalSubmitActionLabel('Confirmar cancelamento')
-                    ->visible(fn(PedidoMerenda $record) => in_array($record->status, [
+                    ->visible(fn (?PedidoMerenda $record) => $record && in_array($record->status, [
                         StatusPedidoMerenda::Aguardando,
                         StatusPedidoMerenda::ParcialmenteEntregue,
                     ]))
-                    ->action(function (PedidoMerenda $record) {
+                    ->action(function (?PedidoMerenda $record) {
+                        if (! $record) {
+                            return;
+                        }
+
                         static::processarCancelamento($record);
                     }),
-            ])
+            ]),
         ];
     }
 
