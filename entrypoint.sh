@@ -3,6 +3,19 @@ set -e
 
 cd /var/www
 
+# ── Permissões (aplicadas após o volume ser montado) ───────────────────────
+chown -R www-data:www-data \
+    /var/www/storage \
+    /var/www/bootstrap/cache
+chmod -R 775 \
+    /var/www/storage \
+    /var/www/bootstrap/cache
+
+# ── Dependências PHP ───────────────────────────────────────────────────────
+if [ ! -f "vendor/autoload.php" ]; then
+    composer install --no-interaction --prefer-dist --optimize-autoloader
+fi
+
 # ── APP_KEY ────────────────────────────────────────────────────────────────
 if [ -z "$APP_KEY" ] || [ "$APP_KEY" = "base64:" ]; then
     php artisan key:generate --force
@@ -14,7 +27,7 @@ php artisan migrate --force --seed
 # ── Storage link ───────────────────────────────────────────────────────────
 php artisan storage:link --force 2>/dev/null || true
 
-# ── Limpa caches antigos antes de reconstruir ──────────────────────────────
+# ── Limpa caches antigos ───────────────────────────────────────────────────
 php artisan config:clear
 php artisan route:clear
 php artisan event:clear
