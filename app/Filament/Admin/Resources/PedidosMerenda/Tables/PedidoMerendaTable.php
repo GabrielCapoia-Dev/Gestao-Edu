@@ -40,14 +40,14 @@ class PedidoMerendaTable
             TextColumn::make('status')
                 ->label('Status')
                 ->badge()
-                ->color(fn ($state) => match ($state) {
+                ->color(fn($state) => match ($state) {
                     StatusPedidoMerenda::Aguardando           => 'warning',
                     StatusPedidoMerenda::ParcialmenteEntregue => 'info',
                     StatusPedidoMerenda::Entregue             => 'success',
                     StatusPedidoMerenda::Cancelado            => 'danger',
                     default                                   => 'gray',
                 })
-                ->formatStateUsing(fn ($state) => $state?->label()),
+                ->formatStateUsing(fn($state) => $state?->label()),
 
             TextColumn::make('itens_count')
                 ->label('Itens')
@@ -81,7 +81,7 @@ class PedidoMerendaTable
                 ->label('Status')
                 ->options(
                     collect(StatusPedidoMerenda::cases())
-                        ->mapWithKeys(fn ($case) => [$case->value => $case->label()])
+                        ->mapWithKeys(fn($case) => [$case->value => $case->label()])
                         ->toArray()
                 ),
         ];
@@ -103,11 +103,12 @@ class PedidoMerendaTable
                 ->modalWidth('4xl')
                 ->modalSubmitAction(false)
                 ->modalCancelActionLabel('Fechar')
-                ->modalHeading(fn (?PedidoMerenda $record) => $record
-                    ? "Itens do Pedido #{$record->id}"
-                    : 'Itens do Pedido'
+                ->modalHeading(
+                    fn(?PedidoMerenda $record) => $record
+                        ? "Itens do Pedido #{$record->id}"
+                        : 'Itens do Pedido'
                 )
-                ->modalDescription(fn (?PedidoMerenda $record) => match ($record?->status) {
+                ->modalDescription(fn(?PedidoMerenda $record) => match ($record?->status) {
                     StatusPedidoMerenda::Aguardando           => 'Você pode ajustar as quantidades e registrar entregas parciais.',
                     StatusPedidoMerenda::ParcialmenteEntregue => 'Pedido com entrega parcial em andamento. Registre as próximas entregas abaixo.',
                     StatusPedidoMerenda::Entregue             => 'Este pedido foi totalmente entregue. Somente visualização.',
@@ -115,6 +116,11 @@ class PedidoMerendaTable
                     default                                   => null,
                 })
                 ->modalContent(function (?PedidoMerenda $record) {
+
+                    $record = $record
+                        ? PedidoMerenda::find($record->id)
+                        : null;
+
                     if (! $record) {
                         return view('components.pedidos-merenda.modal-itens', [
                             'itens'    => collect(),
@@ -172,15 +178,16 @@ class PedidoMerendaTable
                     ->color('danger')
                     ->requiresConfirmation()
                     ->modalHeading('Cancelar pedido')
-                    ->modalDescription(fn (?PedidoMerenda $record) => $record
-                        ? "Confirma o cancelamento do Pedido #{$record->id}? " .
-                          "O saldo pendente de entrega será devolvido aos contratos. " .
-                          "Quantidades já entregues permanecem no estoque. " .
-                          "Esta ação não pode ser desfeita."
-                        : ''
+                    ->modalDescription(
+                        fn(?PedidoMerenda $record) => $record
+                            ? "Confirma o cancelamento do Pedido #{$record->id}? " .
+                            "O saldo pendente de entrega será devolvido aos contratos. " .
+                            "Quantidades já entregues permanecem no estoque. " .
+                            "Esta ação não pode ser desfeita."
+                            : ''
                     )
                     ->modalSubmitActionLabel('Confirmar cancelamento')
-                    ->visible(fn (?PedidoMerenda $record) => $record && in_array($record->status, [
+                    ->visible(fn(?PedidoMerenda $record) => $record && in_array($record->status, [
                         StatusPedidoMerenda::Aguardando,
                         StatusPedidoMerenda::ParcialmenteEntregue,
                     ]))
