@@ -227,6 +227,7 @@ class TurmaService
                             ->required()
                             ->live()
                             ->afterStateUpdated(function ($state, Set $set) {
+                                dd($state);
                                 if (!$state) {
                                     $set('componentes', []);
                                     return;
