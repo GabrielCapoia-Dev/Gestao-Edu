@@ -115,6 +115,13 @@ class TurmaService
                         'componentes',
                     ]);
 
+                    // Garante que os campos do model estejam presentes
+                    $data['id_escola'] = $record->id_escola;
+                    $data['id_serie']  = $record->id_serie;
+                    $data['nome']      = $record->nome;
+                    $data['turno']     = $record->turno;
+                    $data['codigo']    = $record->codigo;
+
                     $componentesDaSerie = $record->serie?->componentesCurriculares ?? collect();
 
                     $data['componentes'] = $componentesDaSerie->map(function ($componente) use ($record) {
@@ -129,26 +136,6 @@ class TurmaService
                     })->toArray();
 
                     return $data;
-                })
-                ->using(function (Turma $record, array $data): Turma {
-                    $componentes = $data['componentes'] ?? [];
-                    unset($data['componentes']);
-
-                    $record->update($data);
-
-                    $sync = [];
-                    foreach ($componentes as $item) {
-                        if (!empty($item['componente_curricular_id'])) {
-                            $sync[$item['componente_curricular_id']] = [
-                                'professor_id'  => $item['professor_id'] ?? null,
-                                'tem_professor' => $item['tem_professor'] ?? false,
-                            ];
-                        }
-                    }
-
-                    $record->componentes()->sync($sync);
-
-                    return $record;
                 }),
 
             DeleteAction::make()
