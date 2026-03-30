@@ -324,8 +324,29 @@ class TurmaService
                             ->schema([
                                 Grid::make(3)
                                     ->schema([
-                                        TextEntry::make('componente_nome')
-                                            ->label('Componente Curricular'),
+                                        TextInput::make('componente_nome')
+                                            ->label('Componente Curricular')
+                                            ->disabled()
+                                            ->dehydrated(false)
+                                            ->extraInputAttributes([
+                                                'style' => '
+                            background: transparent !important;
+                            border: none !important;
+                            box-shadow: none !important;
+                            font-weight: 500;
+                            font-size: 0.95rem;
+                            color: var(--gray-900) !important;
+                            padding-left: 0 !important;
+                            cursor: default;
+                        ',
+                                            ])
+                                            ->extraAttributes([
+                                                'style' => '
+                            border-left: 3px solid var(--primary-500);
+                            padding-left: 0.5rem;
+                            border-radius: 0;
+                        ',
+                                            ]),
 
                                         Select::make('professor_id')
                                             ->label('Professor')
