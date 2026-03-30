@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class PedidoMerendaItem extends Model
 {
@@ -58,6 +59,12 @@ class PedidoMerendaItem extends Model
         return $this->quantidade_pendente === 0.0;
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Observers
+    |--------------------------------------------------------------------------
+    */
+
     protected static function booted(): void
     {
         static::updating(function ($model) {
@@ -71,6 +78,22 @@ class PedidoMerendaItem extends Model
         });
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Métodos de Negócio
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Registra a entrega (parcial ou total) de uma quantidade deste item.
+     *
+     * O que acontece no ContratoItem:
+     *   - quantidade_reservada  -= $quantidade  (saiu da reserva)
+     *   - quantidade_utilizada  += $quantidade  (entrou como utilizado)
+     *
+     * Isso mantém o saldo_disponivel intacto (já estava descontado pela reserva),
+     * mas move o valor para o campo correto, refletindo o consumo real do contrato.
+     */
     public function registrarEntrega(float $quantidade): void
     {
         if ($quantidade <= 0) {
@@ -81,8 +104,22 @@ class PedidoMerendaItem extends Model
             throw new \DomainException('Entrega excede o pedido.');
         }
 
-        $this->increment('quantidade_entregue', $quantidade);
+        DB::transaction(function () use ($quantidade) {
+            // 1. Atualiza a quantidade entregue neste item do pedido
+            $this->increment('quantidade_entregue', $quantidade);
 
-        $this->pedido->recalcularStatus();
+            // 2. No ContratoItem: move da reserva para utilizado
+            //    reservada -= quantidade  →  utilizada += quantidade
+            //    O saldo_disponivel não muda pois ambos os campos o afetam igualmente.
+            $this->contratoItem()->lockForUpdate()->first()->tap(function (ContratoItem $ci) use ($quantidade) {
+                $ci->decrement('quantidade_reservada', $quantidade);
+                $ci->increment('quantidade_utilizada', $quantidade);
+            });
+
+            // 3. Garante dados frescos antes de recalcular o status do pedido
+            $this->refresh();
+            $this->pedido->refresh();
+            $this->pedido->recalcularStatus();
+        });
     }
 }
