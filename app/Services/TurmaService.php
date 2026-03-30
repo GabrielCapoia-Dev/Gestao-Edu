@@ -314,11 +314,6 @@ class TurmaService
 
                 Section::make('Professores por Componente')
                     ->schema([
-                        // Placeholder::make('aviso')
-                        //     ->label('')
-                        //     ->content('Selecione a escola e a série para carregar os componentes curriculares')
-                        //     ->visible(fn(Get $get) => !$get('id_serie') || !$get('id_escola')),
-
                         Repeater::make('componentes')
                             ->label('')
                             ->schema([
@@ -328,24 +323,26 @@ class TurmaService
                                             ->label('Componente Curricular')
                                             ->disabled()
                                             ->dehydrated(false)
+                                            ->prefixIcon('heroicon-o-academic-cap')
                                             ->extraInputAttributes([
                                                 'style' => '
-                            background: transparent !important;
-                            border: none !important;
-                            box-shadow: none !important;
-                            font-weight: 500;
-                            font-size: 0.95rem;
-                            color: var(--gray-900) !important;
-                            padding-left: 0 !important;
-                            cursor: default;
-                        ',
-                                            ])
-                                            ->extraAttributes([
-                                                'style' => '
-                            border-left: 3px solid var(--primary-500);
-                            padding-left: 0.5rem;
-                            border-radius: 0;
-                        ',
+            background: transparent !important;
+            border-color: transparent !important;
+            box-shadow: none !important;
+            font-weight: 500;
+            font-size: 0.95rem;
+            padding-left: 0 !important;
+            cursor: default;
+            white-space: normal !important;
+            word-break: break-word !important;
+            overflow: visible !important;
+            height: auto !important;
+        ',
+                                                'x-data' => '{}',
+                                                'x-init' => '
+            $el.style.height = "auto";
+            $el.style.height = $el.scrollHeight + "px";
+        ',
                                             ]),
 
                                         Select::make('professor_id')
