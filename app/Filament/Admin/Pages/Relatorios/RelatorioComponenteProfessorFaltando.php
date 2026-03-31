@@ -33,52 +33,76 @@ class RelatorioComponenteProfessorFaltando extends Page implements HasTable
         return $user->hasPermissionTo('Listar Relatórios: Componentes com Professores Faltando');
     }
 
+    private function baseQuery(): \Illuminate\Database\Query\Builder
+    {
+        return DB::table('turma_componente_professor as tcp')
+            ->join('componentes_curriculares as cc', 'cc.id', '=', 'tcp.componente_curricular_id')
+            ->join('turmas', 'turmas.id', '=', 'tcp.turma_id')
+            ->join('escolas', 'escolas.id', '=', 'turmas.id_escola')
+            ->join('series', 'series.id', '=', 'turmas.id_serie')
+            ->selectRaw('
+                ROW_NUMBER() OVER (ORDER BY SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) DESC) as id,
+                cc.id as componente_id,
+                cc.nome as componente_nome,
+                COUNT(*) as total,
+                SUM(CASE WHEN tcp.professor_id IS NOT NULL THEN 1 ELSE 0 END) as com_professor,
+                SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) as sem_professor,
+                turmas.id_escola,
+                turmas.id_serie
+            ')
+            ->groupBy('cc.id', 'cc.nome', 'turmas.id_escola', 'turmas.id_serie')
+            ->havingRaw('SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) > 0');
+    }
+
     public function table(Table $table): Table
     {
         return $table
-            ->query(
-                TurmaComponenteProfessor::query()
-                    ->from('turma_componente_professor as tcp')
-                    ->join('componentes_curriculares as cc', 'cc.id', '=', 'tcp.componente_curricular_id')
-                    ->join('turmas', 'turmas.id', '=', 'tcp.turma_id')
-                    ->join('escolas', 'escolas.id', '=', 'turmas.id_escola')
-                    ->join('series', 'series.id', '=', 'turmas.id_serie')
-                    ->selectRaw('
-                        MIN(tcp.id) as id,
-                        cc.nome as componente_nome,
-                        COUNT(*) as total,
-                        SUM(CASE WHEN tcp.professor_id IS NOT NULL THEN 1 ELSE 0 END) as com_professor,
-                        SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) as sem_professor,
-                        turmas.id_escola,
-                        turmas.id_serie
-                    ')
-                    ->groupBy('cc.id', 'cc.nome', 'turmas.id_escola', 'turmas.id_serie')
-                    ->havingRaw('SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) > 0')
-            )
+            ->query(function (): Builder {
+                // Envolve em subquery — o Filament vai ordenar por "sub.id" que existe
+                $sub = $this->baseQuery();
+
+                return TurmaComponenteProfessor::query()
+                    ->fromSub($sub, 'sub')
+                    ->select('sub.*');
+            })
 
             ->columns([
                 Tables\Columns\TextColumn::make('componente_nome')
                     ->label('Componente')
-                    ->searchable()
-                    ->sortable(),
+                    ->searchable(
+                        query: fn(Builder $query, string $search) =>
+                            $query->where('sub.componente_nome', 'like', "%{$search}%")
+                    )
+                    ->sortable(
+                        query: fn(Builder $query, string $direction) =>
+                            $query->orderBy('sub.componente_nome', $direction)
+                    ),
 
                 Tables\Columns\TextColumn::make('total')
                     ->label('Total de vínculos')
                     ->badge()
                     ->color('gray')
-                    ->sortable(),
+                    ->sortable(
+                        query: fn(Builder $query, string $direction) =>
+                            $query->orderBy('sub.total', $direction)
+                    ),
 
                 Tables\Columns\TextColumn::make('com_professor')
                     ->label('Com professor')
                     ->badge()
                     ->color('success')
-                    ->sortable(),
+                    ->sortable(
+                        query: fn(Builder $query, string $direction) =>
+                            $query->orderBy('sub.com_professor', $direction)
+                    ),
 
                 Tables\Columns\TextColumn::make('sem_professor')
                     ->label('Sem professor')
+                    ->badge()
+                    ->color('danger')
                     ->sortable(
-                        query: fn($query, $direction) =>
-                        $query->orderByRaw("SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) {$direction}")
+                        query: fn(Builder $query, string $direction) =>
+                            $query->orderBy('sub.sem_professor', $direction)
                     ),
 
                 Tables\Columns\TextColumn::make('cobertura')
@@ -89,9 +113,9 @@ class RelatorioComponenteProfessorFaltando extends Page implements HasTable
                     })
                     ->badge()
                     ->color(fn($state) => match (true) {
-                        (int)$state === 100 => 'success',
-                        (int)$state >= 50 => 'warning',
-                        default => 'danger',
+                        str_replace('%', '', $state) == 100 => 'success',
+                        str_replace('%', '', $state) >= 50  => 'warning',
+                        default                             => 'danger',
                     }),
             ])
 
@@ -101,9 +125,9 @@ class RelatorioComponenteProfessorFaltando extends Page implements HasTable
                     ->options(fn() => Escola::pluck('nome', 'id'))
                     ->query(
                         fn(Builder $query, array $data) =>
-                        $data['value']
-                            ? $query->where('turmas.id_escola', $data['value'])
-                            : $query
+                            $data['value']
+                                ? $query->where('sub.id_escola', $data['value'])
+                                : $query
                     ),
 
                 Tables\Filters\SelectFilter::make('serie')
@@ -111,9 +135,9 @@ class RelatorioComponenteProfessorFaltando extends Page implements HasTable
                     ->options(fn() => Serie::pluck('nome', 'id'))
                     ->query(
                         fn(Builder $query, array $data) =>
-                        $data['value']
-                            ? $query->where('turmas.id_serie', $data['value'])
-                            : $query
+                            $data['value']
+                                ? $query->where('sub.id_serie', $data['value'])
+                                : $query
                     ),
             ])
 
