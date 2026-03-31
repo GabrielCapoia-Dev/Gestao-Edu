@@ -15,6 +15,7 @@ use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use BackedEnum;
 use App\Models\TurmaComponenteProfessor;
+use Illuminate\Database\Eloquent\Model;
 
 class RelatorioComponenteProfessorFaltando extends Page implements HasTable
 {
@@ -33,12 +34,10 @@ class RelatorioComponenteProfessorFaltando extends Page implements HasTable
         return $user->hasPermissionTo('Listar Relatórios: Componentes com Professores Faltando');
     }
 
-    // ✅ Isso impede o Filament de injetar ORDER BY turma_componente_professor.id
-    public function getTableRecordKey(\Illuminate\Database\Eloquent\Model $record): string
+    public function getTableRecordKey($record): string
     {
-        return (string) $record->row_num;
+        return (string) data_get($record, 'row_num');
     }
-
     public function table(Table $table): Table
     {
         return $table
@@ -78,11 +77,11 @@ class RelatorioComponenteProfessorFaltando extends Page implements HasTable
                     ->label('Componente')
                     ->searchable(
                         query: fn(Builder $query, string $search) =>
-                            $query->where('sub.componente_nome', 'like', "%{$search}%")
+                        $query->where('sub.componente_nome', 'like', "%{$search}%")
                     )
                     ->sortable(
                         query: fn(Builder $query, string $direction) =>
-                            $query->orderBy('sub.componente_nome', $direction)
+                        $query->orderBy('sub.componente_nome', $direction)
                     ),
 
                 Tables\Columns\TextColumn::make('total')
@@ -91,7 +90,7 @@ class RelatorioComponenteProfessorFaltando extends Page implements HasTable
                     ->color('gray')
                     ->sortable(
                         query: fn(Builder $query, string $direction) =>
-                            $query->orderBy('sub.total', $direction)
+                        $query->orderBy('sub.total', $direction)
                     ),
 
                 Tables\Columns\TextColumn::make('com_professor')
@@ -100,7 +99,7 @@ class RelatorioComponenteProfessorFaltando extends Page implements HasTable
                     ->color('success')
                     ->sortable(
                         query: fn(Builder $query, string $direction) =>
-                            $query->orderBy('sub.com_professor', $direction)
+                        $query->orderBy('sub.com_professor', $direction)
                     ),
 
                 Tables\Columns\TextColumn::make('sem_professor')
@@ -109,7 +108,7 @@ class RelatorioComponenteProfessorFaltando extends Page implements HasTable
                     ->color('danger')
                     ->sortable(
                         query: fn(Builder $query, string $direction) =>
-                            $query->orderBy('sub.sem_professor', $direction)
+                        $query->orderBy('sub.sem_professor', $direction)
                     ),
 
                 Tables\Columns\TextColumn::make('cobertura')
@@ -132,9 +131,9 @@ class RelatorioComponenteProfessorFaltando extends Page implements HasTable
                     ->options(fn() => Escola::pluck('nome', 'id'))
                     ->query(
                         fn(Builder $query, array $data) =>
-                            $data['value']
-                                ? $query->where('sub.id_escola', $data['value'])
-                                : $query
+                        $data['value']
+                            ? $query->where('sub.id_escola', $data['value'])
+                            : $query
                     ),
 
                 Tables\Filters\SelectFilter::make('serie')
@@ -142,9 +141,9 @@ class RelatorioComponenteProfessorFaltando extends Page implements HasTable
                     ->options(fn() => Serie::pluck('nome', 'id'))
                     ->query(
                         fn(Builder $query, array $data) =>
-                            $data['value']
-                                ? $query->where('sub.id_serie', $data['value'])
-                                : $query
+                        $data['value']
+                            ? $query->where('sub.id_serie', $data['value'])
+                            : $query
                     ),
             ])
 
