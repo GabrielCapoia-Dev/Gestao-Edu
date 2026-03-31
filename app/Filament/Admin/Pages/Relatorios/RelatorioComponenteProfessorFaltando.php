@@ -79,9 +79,8 @@ class RelatorioComponenteProfessorFaltando extends Page implements HasTable
                     ->mergeBindings($sub)
                     ->selectRaw('inner_sub.*, ROW_NUMBER() OVER (ORDER BY inner_sub.sem_professor DESC) as row_num');
 
-                return TurmaComponenteProfessor::query()
+                return \App\Relatorios\RelatorioComponenteProfessorFaltandoModel::query()
                     ->fromSub($outer, 'sub')
-                    ->setModel(new TurmaComponenteProfessor()) // força contexto correto
                     ->select('sub.*')
                     ->orderBy('sub.sem_professor', 'desc');
             })
