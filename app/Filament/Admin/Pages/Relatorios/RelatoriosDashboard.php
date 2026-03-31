@@ -18,6 +18,21 @@ class RelatoriosDashboard extends Page
     protected static ?string $title = 'Dashboard de Relatórios';
     protected static ?string $slug = 'relatorios-dashboard';
 
+
+    public int $totalProfessores = 0;
+    public int $totalTurmas = 0;
+    public int $totalComponentes = 0;
+    public int $totalEscolas = 0;
+
+    public function mount(): void
+    {
+        $this->totalProfessores = \App\Models\Professor::count();
+        $this->totalTurmas      = \App\Models\Turma::count();
+        $this->totalComponentes = \App\Models\ComponenteCurricular::count();
+        $this->totalEscolas     = \App\Models\Escola::count();
+    }
+
+
     public static function canAccess(): bool
     {
         /** @var \App\Models\User */
