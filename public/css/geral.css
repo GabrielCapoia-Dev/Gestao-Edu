@@ -1,107 +1,601 @@
-/* Deixa o fundo de TODOS os modais/slideOvers bem escuro e com pouco ou nenhum blur */
+/* ═══════════════════════════════════════════════
+   GESTÃO EDU — Filament Custom Theme
+   Design System v1.0 | Light + Dark Mode
+   ═══════════════════════════════════════════════ */
 
-.fi-modal-close-overlay {
-    /* Fundo quase preto e bem opaco */
-    background-color: rgba(8, 17, 36, 0.541);
-    /* mais escuro ainda */
+/* ── TOKENS ────────────────────────────────────── */
+:root {
+    /* Primary Blue (identidade educacional) */
+    --edu-primary-950: #06112e;
+    --edu-primary-900: #0F2261;
+    --edu-primary-800: #102b86;
+    --edu-primary-700: #1a3ba0;
+    --edu-primary-600: #2450bb;
+    --edu-primary-500: #3366d6;
+    --edu-primary-400: #5580e8;
+    --edu-primary-300: #7fa0f2;
+    --edu-primary-200: #adc3f8;
+    --edu-primary-100: #d6e2fc;
+    --edu-primary-50:  #eef3fe;
 
+    /* Accent Gold (destaque educacional) */
+    --edu-gold-500: #f59e0b;
+    --edu-gold-400: #fbbf24;
+    --edu-gold-100: #fef3c7;
+    --edu-gold-50:  #fffbeb;
 
-    /* Se quiser tirar totalmente o blur: */
-    backdrop-filter: blur(10px) !important;
+    /* Accent Green (aprovação, presença, sucesso) */
+    --edu-green-600: #16a34a;
+    --edu-green-500: #22c55e;
+    --edu-green-100: #dcfce7;
+    --edu-green-50:  #f0fdf4;
 
-    /* Se quiser um leve blur, troca por algo tipo:
-       backdrop-filter: blur(4px) !important;
-    */
+    /* Neutral */
+    --edu-neutral-900: #0f172a;
+    --edu-neutral-800: #1e293b;
+    --edu-neutral-700: #334155;
+    --edu-neutral-600: #475569;
+    --edu-neutral-500: #64748b;
+    --edu-neutral-400: #94a3b8;
+    --edu-neutral-300: #cbd5e1;
+    --edu-neutral-200: #e2e8f0;
+    --edu-neutral-100: #f1f5f9;
+    --edu-neutral-50:  #f8fafc;
+    --edu-white:       #ffffff;
+
+    /* Shadows */
+    --edu-shadow-sm: 0 1px 3px rgba(15, 34, 97, 0.06), 0 1px 2px rgba(15, 34, 97, 0.04);
+    --edu-shadow-md: 0 4px 6px rgba(15, 34, 97, 0.07), 0 2px 4px rgba(15, 34, 97, 0.04);
+    --edu-shadow-lg: 0 10px 15px rgba(15, 34, 97, 0.10), 0 4px 6px rgba(15, 34, 97, 0.05);
+    --edu-shadow-table: 4px 6px 16px rgba(39, 39, 39, 0.55);
+    --edu-shadow-sidebar: 2px 0 16px rgba(10, 26, 74, 0.12);
 }
 
-/* Opcional: dar um destaque na própria janela do modal */
-.fi-modal-window {
+/* ── Dark mode tokens ───────────────────────────── */
+.dark {
+    --edu-shadow-table: 4px 6px 16px rgba(0, 0, 0, 0.75);
+}
+
+/* ═══════════════════════════════════════════════
+   TOPBAR / HEADER
+   ═══════════════════════════════════════════════ */
+.fi-topbar {
+    background-color: var(--edu-primary-900);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.48);
+    backdrop-filter: blur(12px);
+}
+
+.fi-logo {
+    color: var(--edu-white);
+    font-weight: 700;
+    font-size: 0.95rem;
+    letter-spacing: 0.02em;
+}
+
+.gestao-edu {
+    color: var(--edu-white);
+}
+
+/* Ícones do topbar */
+.fi-topbar .fi-icon-btn {
+    color: rgba(255, 255, 255, 0.55);
+    transition: color 0.2s, background 0.2s;
+}
+
+.fi-topbar .fi-icon-btn:hover {
+    color: var(--edu-white);
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+}
+
+/* Global search */
+.fi-global-search .fi-input-wrp {
+    background: rgba(255, 255, 255, 0.07);
+    border: 1.5px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.fi-global-search .fi-input-wrp:focus-within {
+    background: rgba(255, 255, 255, 0.11);
+    border-color: rgba(255, 255, 255, 0.35);
+    box-shadow: 0 0 0 3px rgba(23, 54, 141, 0.20);
+}
+
+.fi-global-search .fi-input {
+    background: transparent;
+    color: var(--edu-white);
+    font-size: 0.875rem;
+}
+
+.fi-global-search .fi-input::placeholder {
+    color: rgba(255, 255, 255, 0.35);
+}
+
+.fi-global-search .fi-input-wrp-prefix svg {
+    color: rgba(255, 255, 255, 0.40);
+}
+
+/* Avatar */
+.fi-user-menu-trigger {
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    border-radius: 50%;
+    transition: border-color 0.2s;
+}
+
+.fi-user-menu-trigger:hover {
+    border-color: var(--edu-primary-300);
+}
+
+/* ═══════════════════════════════════════════════
+   SIDEBAR
+   ═══════════════════════════════════════════════ */
+.fi-sidebar,
+.fi-main-sidebar {
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: var(--edu-shadow-sidebar);
+}
+
+.fi-sidebar-nav {
+    background-color: var(--edu-white);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.48);
+}
+
+.dark .fi-sidebar-nav {
+    background-color: rgba(12, 23, 46, 0.74);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.48);
+}
+
+/* Header da sidebar */
+.fi-sidebar-header {
+    background: var(--edu-primary-900);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 1rem 1.25rem;
+}
+
+.fi-sidebar-header .fi-logo {
+    color: var(--edu-white);
+}
+
+/* Group label */
+.fi-sidebar-group-label {
+    color: rgba(0, 0, 0, 0.38);
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.dark .fi-sidebar-group-label {
+    color: rgba(255, 255, 255, 0.28);
+}
+
+/* Botão de colapso */
+.fi-sidebar-group-collapse-btn {
+    color: rgba(0, 0, 0, 0.28);
+}
+
+.fi-sidebar-group-collapse-btn:hover {
+    color: rgba(0, 0, 0, 0.60);
+    background: transparent;
+}
+
+.dark .fi-sidebar-group-collapse-btn {
+    color: rgba(255, 255, 255, 0.28);
+}
+
+.dark .fi-sidebar-group-collapse-btn:hover {
+    color: rgba(255, 255, 255, 0.60);
+}
+
+/* Item */
+.fi-sidebar-item-btn {
+    border-radius: 8px;
+    padding: 0.625rem 0.75rem;
+    gap: 0.75rem;
+    transition: background 0.18s, color 0.18s;
+}
+
+.fi-sidebar-item-btn:hover {
+    background: rgba(15, 34, 97, 0.06);
+}
+
+.dark .fi-sidebar-item-btn:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+/* Item ativo */
+.fi-sidebar-item.fi-active .fi-sidebar-item-btn,
+.fi-sidebar-item-btn[data-current] {
+    background: rgba(15, 34, 97, 0.10) !important;
+    color: var(--edu-primary-800) !important;
+}
+
+.dark .fi-sidebar-item.fi-active .fi-sidebar-item-btn,
+.dark .fi-sidebar-item-btn[data-current] {
+    background: rgba(255, 255, 255, 0.10) !important;
+    color: var(--edu-primary-200) !important;
+}
+
+/* Ícones e labels da sidebar */
+.fi-sidebar-item.fi-active > .fi-sidebar-item-btn > .fi-icon {
+    color: var(--edu-primary-800) !important;
+}
+
+.dark .fi-sidebar-item.fi-active > .fi-sidebar-item-btn > .fi-icon {
+    color: var(--edu-primary-50) !important;
+}
+
+.fi-sidebar-item-btn > .fi-icon {
+    color: var(--edu-neutral-600) !important;
+}
+
+.dark .fi-sidebar-item-btn > .fi-icon {
+    color: var(--edu-primary-50) !important;
+}
+
+.fi-sidebar-item-label {
+    color: var(--edu-neutral-700) !important;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.dark .fi-sidebar-item-label {
+    color: var(--edu-primary-50) !important;
+}
+
+/* Overlay mobile */
+.fi-sidebar-close-overlay {
+    background: rgba(10, 26, 74, 0.55);
+    backdrop-filter: blur(4px);
+}
+
+/* Largura sidebar */
+.fi-sidebar.fi-sidebar-open {
+    --sidebar-width: 14rem !important;
+}
+
+/* ═══════════════════════════════════════════════
+   MAIN CONTENT
+   ═══════════════════════════════════════════════ */
+.fi-main {
+    background: var(--edu-neutral-50);
+}
+
+.dark .fi-main-ctn {
+    background-color: #0b1731;
+    background-image: none;
+}
+
+.fi-page-content {
+    padding: 1.5rem;
+}
+
+.fi-main.fi-width-7xl,
+.fi-width-7xl {
+    max-width: 90% !important;
+}
+
+/* ═══════════════════════════════════════════════
+   PAGE HEADER
+   ═══════════════════════════════════════════════ */
+.fi-header-heading {
+    color: var(--edu-primary-900);
+    font-weight: 700;
+    font-size: 1.5rem;
+    letter-spacing: -0.015em;
+}
+
+.fi-header-subheading {
+    color: var(--edu-neutral-500);
+    font-size: 0.9rem;
+}
+
+/* ═══════════════════════════════════════════════
+   TABLES
+   ═══════════════════════════════════════════════ */
+.fi-ta {
     border-radius: 0.75rem;
-    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.45);
+    box-shadow: var(--edu-shadow-table);
+    background-image: url('/images/fundo_completo.svg');
+    overflow: hidden;
 }
 
-/* Fundo azulado para os checkboxes de permissões (não marcados) */
-.permissions-checkbox-list label {
-    background-color: rgba(59, 130, 246, 0.05);
-    padding: 0.5rem;
-    border-radius: 0.375rem;
-    transition: all 0.2s;
+.dark .fi-ta {
+    box-shadow: var(--edu-shadow-table);
+    background-image: none;
+    overflow: hidden;
 }
 
-.permissions-checkbox-list label:hover {
-    background-color: rgba(59, 130, 246, 0.1);
+/* Cabeçalho das colunas */
+.fi-ta-table thead tr th {
+    background-color: var(--edu-primary-800) !important;
+    color: var(--edu-white) !important;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.75rem 1rem;
 }
 
-/* ✅ VERSÃO MAIS ABRANGENTE - Checkbox marcado */
-.permissions-checkbox-list label:has(input[type="checkbox"]:checked) {
-    background-color: rgb(37, 99, 235) !important;
-    /* bg-blue-600 */
-    color: white !important;
-    font-weight: 600 !important;
+/* Células */
+.fi-ta-cell {
+    padding: 0.875rem 1rem;
+    border-bottom: 1px solid var(--edu-neutral-100);
+    color: var(--edu-neutral-700);
+    font-size: 0.875rem;
+    vertical-align: middle;
 }
 
-.permissions-checkbox-list label:has(input[type="checkbox"]:checked) span {
-    color: white !important;
-    font-weight: 600 !important;
+/* Hover na linha */
+.fi-ta-row:hover .fi-ta-cell {
+    background: var(--edu-primary-50);
 }
 
-/* Opcional: remover hover quando marcado */
-.permissions-checkbox-list label:has(input[type="checkbox"]:checked):hover {
-    background-color: rgb(29, 78, 216) !important;
-    /* bg-blue-700 - um pouco mais escuro */
+/* Última linha sem borda */
+.fi-ta-row:last-child .fi-ta-cell {
+    border-bottom: none;
 }
 
+/* Footer */
+.fi-ta-footer {
+    background: var(--edu-white);
+    border-top: 1px solid var(--edu-neutral-100);
+    padding: 0.75rem 1.25rem;
+}
+
+/* Linha destacada (highlight-latest) */
 .highlight-latest td {
-    background-color: #e5eaf1ff !important;
-    border-top: 2px solid #074f9bff !important;
-    border-bottom: 2px solid #074f9bff !important;
+    background-color: #e5eaf1 !important;
+    border-top: 2px solid var(--edu-primary-800) !important;
+    border-bottom: 2px solid var(--edu-primary-800) !important;
 }
 
 .highlight-latest td:first-child {
-    border-left: 5px solid #074f9bff !important;
+    border-left: 5px solid var(--edu-primary-800) !important;
 }
 
 .dark .highlight-latest td {
-    background-color: #081124ff !important;
-    border-top: 2px solid #c7def8c7 !important;
-    border-bottom: 2px solid #c7def8c7 !important;
+    background-color: #081124 !important;
+    border-top: 2px solid rgba(199, 222, 248, 0.78) !important;
+    border-bottom: 2px solid rgba(199, 222, 248, 0.78) !important;
 }
 
 .dark .highlight-latest td:first-child {
-    border-left: 5px solid #c7def8c7 !important;
+    border-left: 5px solid rgba(199, 222, 248, 0.78) !important;
 }
 
-.fi-tabs-item[style*="--tab-color"] span,
-.fi-tabs-item[style*="--tab-color"] {
-    color: var(--tab-color) !important;
+/* ═══════════════════════════════════════════════
+   PAGINAÇÃO
+   ═══════════════════════════════════════════════ */
+.fi-pagination-item button,
+.fi-pagination-item a {
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--edu-neutral-600);
+    border: 1px solid transparent;
+    transition: all 0.15s;
 }
 
-.tab-todos {
-    margin-right: 20px;
-    border: 1px solid #2563EB !important;
-    background-color: #2563EB20 !important;
-
+.fi-pagination-item button:hover,
+.fi-pagination-item a:hover {
+    background: var(--edu-neutral-50);
+    border-color: var(--edu-neutral-200);
+    color: var(--edu-neutral-800);
 }
 
-/* Hover discreto estilo badge para colunas com tooltip */
-.tooltip-hover-effect {
-    display: inline-block;
-    padding: 0.15rem 0.4rem;
-    border-radius: 0.375rem;
-    transition: all 0.18s ease-in-out;
+.fi-pagination-item--active button,
+.fi-pagination-item--active a {
+    background: var(--edu-primary-800) !important;
+    color: var(--edu-white) !important;
+    border-color: var(--edu-primary-800) !important;
 }
 
-.tooltip-hover-effect:hover {
-    background-color: rgba(148, 163, 184, 0.15);
-    /* cinza neutro suave */
+/* ═══════════════════════════════════════════════
+   BADGES / TAGS
+   ═══════════════════════════════════════════════ */
+.fi-badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    border-radius: 9999px;
+    padding: 3px 10px;
 }
 
-.dark .tooltip-hover-effect:hover {
-    background-color: rgba(203, 213, 225, 0.12);
+/* ═══════════════════════════════════════════════
+   BOTÕES
+   ═══════════════════════════════════════════════ */
+.fi-btn {
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    transition: all 0.2s;
 }
 
+.fi-btn-color-primary {
+    background: var(--edu-primary-800);
+    border-color: var(--edu-primary-800);
+    color: var(--edu-white);
+}
 
+.fi-btn-color-primary:hover {
+    background: var(--edu-primary-700);
+    box-shadow: 0 6px 20px rgba(23, 54, 141, 0.30);
+}
 
+.fi-btn-color-gray {
+    background: var(--edu-white);
+    border-color: var(--edu-neutral-200);
+    color: var(--edu-neutral-700);
+}
+
+.fi-btn-color-gray:hover {
+    background: var(--edu-neutral-50);
+    border-color: var(--edu-neutral-300);
+}
+
+/* Action buttons */
+.fi-ac-btn-action {
+    box-shadow: 3px 4px 10px rgba(0, 0, 0, 0.45);
+    overflow: hidden;
+}
+
+/* ═══════════════════════════════════════════════
+   INPUTS / FORMS
+   ═══════════════════════════════════════════════ */
+.fi-input-wrp {
+    border-radius: 8px;
+    border: 1.5px solid var(--edu-neutral-200);
+    background: var(--edu-white);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.fi-input-wrp:focus-within {
+    border-color: var(--edu-primary-600);
+    box-shadow: 0 0 0 3px rgba(23, 54, 141, 0.12);
+}
+
+.fi-input,
+.fi-select-input,
+.fi-textarea-input {
+    background: transparent;
+    color: var(--edu-neutral-800);
+    font-size: 0.875rem;
+}
+
+.fi-input::placeholder,
+.fi-textarea-input::placeholder {
+    color: var(--edu-neutral-400);
+}
+
+.fi-fo-field-wrp-label label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--edu-neutral-700);
+}
+
+.fi-fo-field-wrp-helper-text {
+    font-size: 0.75rem;
+    color: var(--edu-neutral-500);
+}
+
+/* ═══════════════════════════════════════════════
+   DROPDOWN
+   ═══════════════════════════════════════════════ */
+.fi-dropdown-panel {
+    background: var(--edu-white);
+    border: 1px solid var(--edu-neutral-200);
+    border-radius: 12px;
+    box-shadow: var(--edu-shadow-lg);
+    overflow: hidden;
+}
+
+.fi-dropdown-list-item {
+    color: var(--edu-neutral-700);
+    font-size: 0.875rem;
+    font-weight: 500;
+    padding: 0.625rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    transition: background 0.15s, color 0.15s;
+    text-decoration: none;
+    border: none;
+    background: transparent;
+    width: 100%;
+    cursor: pointer;
+}
+
+.fi-dropdown-list-item:hover {
+    background: var(--edu-primary-50);
+    color: var(--edu-primary-800);
+}
+
+.fi-dropdown-list-item .fi-icon {
+    color: var(--edu-neutral-500);
+    width: 1.125rem;
+    height: 1.125rem;
+}
+
+.fi-dropdown-list-item:hover .fi-icon {
+    color: var(--edu-primary-600);
+}
+
+.fi-dropdown-list {
+    padding: 0.375rem;
+}
+
+.fi-dropdown-list + .fi-dropdown-list {
+    border-top: 1px solid var(--edu-neutral-100);
+}
+
+/* ═══════════════════════════════════════════════
+   MODALS / SLIDE-OVERS
+   ═══════════════════════════════════════════════ */
+.fi-modal-close-overlay {
+    background-color: rgba(8, 17, 36, 0.54);
+    backdrop-filter: blur(10px);
+}
+
+.fi-modal-backdrop,
+.fi-overlay-backdrop {
+    background: rgba(10, 26, 74, 0.97) !important;
+    backdrop-filter: none !important;
+}
+
+.fi-modal-window {
+    background: var(--edu-white);
+    border-radius: 0.75rem;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.45);
+    border: 1px solid var(--edu-neutral-200);
+    /* Altura máxima com scroll interno */
+    max-height: 90vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+}
+
+.fi-modal-header {
+    border-bottom: 1px solid var(--edu-neutral-100);
+    padding: 1.25rem 1.5rem;
+}
+
+.fi-modal-heading {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--edu-neutral-900);
+}
+
+/* Corpo scrollável */
+.fi-modal-window .fi-modal-content {
+    flex: 1 1 auto !important;
+    overflow-y: auto !important;
+    min-height: 0 !important;
+}
+
+/* Footer fixo */
+.fi-modal-window .fi-modal-footer,
+.fi-modal-footer {
+    flex-shrink: 0 !important;
+    border-top: 1px solid var(--edu-neutral-100);
+    background: var(--edu-white);
+    padding: 1rem 1.5rem;
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+}
+
+/* ═══════════════════════════════════════════════
+   NOTIFICATIONS / TOASTS
+   ═══════════════════════════════════════════════ */
+.fi-no-notification {
+    background: var(--edu-white);
+    border: 1px solid var(--edu-neutral-200);
+    border-radius: 12px;
+    box-shadow: var(--edu-shadow-lg);
+}
+
+/* ── Sino de notificações ───────────────────────── */
 .notification-bell {
     position: relative;
     display: inline-flex;
@@ -110,7 +604,7 @@
     width: 32px;
     height: 32px;
     background-color: #f7eedb;
-    color: #f3f4f6;
+    color: var(--edu-neutral-100);
     border-radius: 50%;
     transition: background-color 0.2s ease;
     cursor: pointer;
@@ -118,11 +612,11 @@
 }
 
 .notification-bell:hover {
-    background-color: #111827;
+    background-color: var(--edu-neutral-900);
 }
 
 .notification-bell:focus-visible {
-    outline: 2px solid #3b82f6;
+    outline: 2px solid var(--edu-primary-500);
     outline-offset: 2px;
 }
 
@@ -136,7 +630,7 @@
     top: -8px;
     right: -8px;
     background-color: #ef4444;
-    color: #ffffff;
+    color: var(--edu-white);
     border-radius: 50%;
     font-size: 11px;
     font-weight: bold;
@@ -149,103 +643,155 @@
     overflow-x: hidden;
 }
 
-.modal-notificacoes-container::-webkit-scrollbar {
-    width: 6px;
-}
-
-.modal-notificacoes-container::-webkit-scrollbar-track {
-    background: #f3f4f6;
-    border-radius: 10px;
-}
-
-.dark .modal-notificacoes-container::-webkit-scrollbar-track {
-    background: #374151;
-}
-
-.modal-notificacoes-container::-webkit-scrollbar-thumb {
-    background: #d1d5db;
-    border-radius: 10px;
-}
-
-.dark .modal-notificacoes-container::-webkit-scrollbar-thumb {
-    background: #6b7280;
-}
-
-.modal-notificacoes-container::-webkit-scrollbar-thumb:hover {
-    background: #9ca3af;
-}
+.modal-notificacoes-container::-webkit-scrollbar { width: 6px; }
+.modal-notificacoes-container::-webkit-scrollbar-track { background: var(--edu-neutral-100); border-radius: 10px; }
+.dark .modal-notificacoes-container::-webkit-scrollbar-track { background: #374151; }
+.modal-notificacoes-container::-webkit-scrollbar-thumb { background: var(--edu-neutral-300); border-radius: 10px; }
+.dark .modal-notificacoes-container::-webkit-scrollbar-thumb { background: #6b7280; }
+.modal-notificacoes-container::-webkit-scrollbar-thumb:hover { background: var(--edu-neutral-400); }
 
 .card-notification {
     padding: 5px;
 }
 
-.fi-sidebar-nav {
-    background-color: #ffffff;
-    box-shadow: 0 2px 8px #0000007a;
+/* ═══════════════════════════════════════════════
+   SECTIONS
+   ═══════════════════════════════════════════════ */
+.fi-section {
+    background: var(--edu-white);
+    border: 1px solid var(--edu-neutral-200);
+    border-radius: 16px;
+    box-shadow: var(--edu-shadow-sm);
 }
 
-.dark .fi-sidebar-nav {
-    background-color: #0c172ebd;
-    box-shadow: 0 2px 8px #0000007a;
+.fi-section-header {
+    border-bottom: 1px solid var(--edu-neutral-100);
+    padding: 1rem 1.25rem;
 }
 
-.fi-topbar {
-    background-color: #0F2261;
-    box-shadow: 0 2px 8px #0000007a;
+.fi-section-header-heading {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--edu-neutral-800);
 }
 
-.fi-ta {
-    border-radius: 0.75rem;
-    box-shadow: 4px 6px 16px rgba(39, 39, 39, 0.55);
-    background-image: url('/images/fundo_completo.svg');
-    overflow: hidden;
-}
-
-.gestao-edu {
-    color: #FFF;
-}
-
-.dark .fi-ta {
-    box-shadow: 4px 6px 16px rgba(0, 0, 0, 0.75);
-    overflow: hidden;
-}
-
-.fi-ta-table thead tr th {
-    background-color: #102b86 !important;
-    color: #FFF !important;
-}
-
-.fi-ac-btn-action {
-    box-shadow: 3px 4px 10px rgba(0, 0, 0, 0.45);
-    overflow: hidden;
-}
-
+/* ═══════════════════════════════════════════════
+   REPEATER
+   ═══════════════════════════════════════════════ */
 .fi-fo-repeater-item {
     border: 2px solid #ccc;
     border-radius: 0.5rem;
     box-shadow: 1px 2px 5px #ccc;
 }
 
-
-/* .fi-main-ctn {
-    background-image: url('/images/fundo_completo.svg');
-} */
-
-.dark .fi-main-ctn {
-    background-color: #0b1731;
-    background-image: none;
+/* Repeater estilo tabela */
+.dep-table-repeater .fi-fo-repeater-item {
+    border: none !important;
+    border-bottom: 1px solid var(--edu-neutral-100) !important;
+    border-radius: 0 !important;
+    padding: 0.625rem 0.75rem !important;
+    background: transparent !important;
+    box-shadow: none !important;
 }
 
-.fi-header-heading {
-    color: #0F2261;
+.dep-table-repeater .fi-fo-repeater-item:first-child {
+    border-top: 2px solid var(--edu-neutral-200) !important;
 }
 
-
-.fi-width-7xl {
-    max-width: 90% !important;
+.dep-table-repeater .fi-fo-repeater-item:last-child {
+    border-bottom: none !important;
 }
 
+.dep-table-repeater .fi-fo-repeater-item:hover {
+    background: var(--edu-primary-50) !important;
+}
 
+.dep-table-repeater .fi-fo-field-wrp-label,
+.dep-table-repeater .fi-fo-field-wrp-helper-text {
+    display: none !important;
+}
+
+.dep-table-repeater .fi-input-wrp {
+    border-color: transparent !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.dep-table-repeater .fi-input-wrp:focus-within {
+    border-color: var(--edu-primary-600) !important;
+    background: var(--edu-white) !important;
+    box-shadow: 0 0 0 3px rgba(23, 54, 141, 0.10) !important;
+}
+
+.dep-table-repeater .fi-input {
+    font-size: 0.875rem !important;
+    padding: 0.375rem 0.5rem !important;
+}
+
+/* ═══════════════════════════════════════════════
+   TABS
+   ═══════════════════════════════════════════════ */
+.fi-tabs-item[style*="--tab-color"] span,
+.fi-tabs-item[style*="--tab-color"] {
+    color: var(--tab-color) !important;
+}
+
+.tab-todos {
+    margin-right: 20px;
+    border: 1px solid var(--edu-primary-600) !important;
+    background-color: rgba(37, 99, 235, 0.125) !important;
+}
+
+/* ═══════════════════════════════════════════════
+   PERMISSIONS CHECKBOX LIST
+   ═══════════════════════════════════════════════ */
+.permissions-checkbox-list label {
+    background-color: rgba(59, 130, 246, 0.05);
+    padding: 0.5rem;
+    border-radius: 0.375rem;
+    transition: all 0.2s;
+}
+
+.permissions-checkbox-list label:hover {
+    background-color: rgba(59, 130, 246, 0.10);
+}
+
+.permissions-checkbox-list label:has(input[type="checkbox"]:checked) {
+    background-color: var(--edu-primary-700) !important;
+    color: var(--edu-white) !important;
+    font-weight: 600 !important;
+}
+
+.permissions-checkbox-list label:has(input[type="checkbox"]:checked) span {
+    color: var(--edu-white) !important;
+    font-weight: 600 !important;
+}
+
+.permissions-checkbox-list label:has(input[type="checkbox"]:checked):hover {
+    background-color: var(--edu-primary-800) !important;
+}
+
+/* ═══════════════════════════════════════════════
+   TOOLTIP HOVER EFFECT
+   ═══════════════════════════════════════════════ */
+.tooltip-hover-effect {
+    display: inline-block;
+    padding: 0.15rem 0.4rem;
+    border-radius: 0.375rem;
+    transition: all 0.18s ease-in-out;
+}
+
+.tooltip-hover-effect:hover {
+    background-color: rgba(148, 163, 184, 0.15);
+}
+
+.dark .tooltip-hover-effect:hover {
+    background-color: rgba(203, 213, 225, 0.12);
+}
+
+/* ═══════════════════════════════════════════════
+   PROFESSOR / TURMAS CARDS
+   ═══════════════════════════════════════════════ */
 .prof-turmas-list {
     display: flex;
     flex-direction: column;
@@ -254,23 +800,31 @@
 
 .prof-turma-card {
     padding: 0.75rem;
-    background-color: #f9fafb;
-    border: 1px solid #e5e7eb;
+    background-color: var(--edu-neutral-50);
+    border: 1px solid var(--edu-neutral-200);
     border-radius: 0.5rem;
 }
 
 .prof-turma-title {
     font-weight: 600;
-    color: #2563eb;
+    color: var(--edu-primary-600);
     margin-bottom: 0.25rem;
 }
 
 .prof-turma-info {
     font-size: 0.875rem;
-    color: #4b5563;
+    color: var(--edu-neutral-600);
     margin-top: 0.125rem;
 }
 
 .prof-turma-label {
     font-weight: 500;
 }
+
+/* ═══════════════════════════════════════════════
+   SCROLLBAR
+   ═══════════════════════════════════════════════ */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--edu-neutral-300); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--edu-neutral-400); }
