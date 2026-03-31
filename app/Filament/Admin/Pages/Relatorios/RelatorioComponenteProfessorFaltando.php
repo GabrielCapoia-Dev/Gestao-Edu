@@ -44,7 +44,7 @@ class RelatorioComponenteProfessorFaltando extends Page implements HasTable
                     ->join('escolas', 'escolas.id', '=', 'turmas.id_escola')
                     ->join('series', 'series.id', '=', 'turmas.id_serie')
                     ->selectRaw('
-                        tcp.id,
+                        MIN(tcp.id) as id,
                         cc.nome as componente_nome,
                         COUNT(*) as total,
                         SUM(CASE WHEN tcp.professor_id IS NOT NULL THEN 1 ELSE 0 END) as com_professor,
@@ -52,9 +52,8 @@ class RelatorioComponenteProfessorFaltando extends Page implements HasTable
                         turmas.id_escola,
                         turmas.id_serie
                     ')
-                    ->groupBy('tcp.id', 'cc.id', 'cc.nome', 'turmas.id_escola', 'turmas.id_serie')
+                    ->groupBy('cc.id', 'cc.nome', 'turmas.id_escola', 'turmas.id_serie')
                     ->havingRaw('SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) > 0')
-                    ->orderByRaw('SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) DESC')
             )
 
             ->columns([
@@ -77,9 +76,10 @@ class RelatorioComponenteProfessorFaltando extends Page implements HasTable
 
                 Tables\Columns\TextColumn::make('sem_professor')
                     ->label('Sem professor')
-                    ->badge()
-                    ->color('danger')
-                    ->sortable(),
+                    ->sortable(
+                        query: fn($query, $direction) =>
+                        $query->orderByRaw("SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) {$direction}")
+                    ),
 
                 Tables\Columns\TextColumn::make('cobertura')
                     ->label('Cobertura')
@@ -117,7 +117,6 @@ class RelatorioComponenteProfessorFaltando extends Page implements HasTable
                     ),
             ])
 
-            ->defaultSort('sem_professor', 'desc') // 🔴 ESSENCIAL
             ->paginated([5, 10, 25, 50, 100])
             ->defaultPaginationPageOption(5);
     }
