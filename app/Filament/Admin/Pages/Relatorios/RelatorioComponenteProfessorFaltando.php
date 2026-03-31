@@ -44,15 +44,17 @@ class RelatorioComponenteProfessorFaltando extends Page implements HasTable
                     ->join('escolas', 'escolas.id', '=', 'turmas.id_escola')
                     ->join('series', 'series.id', '=', 'turmas.id_serie')
                     ->selectRaw('
-            cc.nome as componente_nome,
-            COUNT(*) as total,
-            SUM(CASE WHEN tcp.professor_id IS NOT NULL THEN 1 ELSE 0 END) as com_professor,
-            SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) as sem_professor,
-            turmas.id_escola,
-            turmas.id_serie
-        ')
-                    ->groupBy('cc.id', 'cc.nome', 'turmas.id_escola', 'turmas.id_serie')
+                        tcp.id,
+                        cc.nome as componente_nome,
+                        COUNT(*) as total,
+                        SUM(CASE WHEN tcp.professor_id IS NOT NULL THEN 1 ELSE 0 END) as com_professor,
+                        SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) as sem_professor,
+                        turmas.id_escola,
+                        turmas.id_serie
+                    ')
+                    ->groupBy('tcp.id', 'cc.id', 'cc.nome', 'turmas.id_escola', 'turmas.id_serie')
                     ->havingRaw('SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) > 0')
+                    ->orderByRaw('SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) DESC')
             )
 
             ->columns([
