@@ -33,37 +33,44 @@ class RelatorioComponenteProfessorFaltando extends Page implements HasTable
         return $user->hasPermissionTo('Listar Relatórios: Componentes com Professores Faltando');
     }
 
-    private function baseQuery(): \Illuminate\Database\Query\Builder
+    // ✅ Isso impede o Filament de injetar ORDER BY turma_componente_professor.id
+    public function getTableRecordKey(\Illuminate\Database\Eloquent\Model $record): string
     {
-        return DB::table('turma_componente_professor as tcp')
-            ->join('componentes_curriculares as cc', 'cc.id', '=', 'tcp.componente_curricular_id')
-            ->join('turmas', 'turmas.id', '=', 'tcp.turma_id')
-            ->join('escolas', 'escolas.id', '=', 'turmas.id_escola')
-            ->join('series', 'series.id', '=', 'turmas.id_serie')
-            ->selectRaw('
-                ROW_NUMBER() OVER (ORDER BY SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) DESC) as id,
-                cc.id as componente_id,
-                cc.nome as componente_nome,
-                COUNT(*) as total,
-                SUM(CASE WHEN tcp.professor_id IS NOT NULL THEN 1 ELSE 0 END) as com_professor,
-                SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) as sem_professor,
-                turmas.id_escola,
-                turmas.id_serie
-            ')
-            ->groupBy('cc.id', 'cc.nome', 'turmas.id_escola', 'turmas.id_serie')
-            ->havingRaw('SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) > 0');
+        return (string) $record->row_num;
     }
 
     public function table(Table $table): Table
     {
         return $table
             ->query(function (): Builder {
-                // Envolve em subquery — o Filament vai ordenar por "sub.id" que existe
-                $sub = $this->baseQuery();
+                $sub = DB::table('turma_componente_professor as tcp')
+                    ->join('componentes_curriculares as cc', 'cc.id', '=', 'tcp.componente_curricular_id')
+                    ->join('turmas', 'turmas.id', '=', 'tcp.turma_id')
+                    ->join('escolas', 'escolas.id', '=', 'turmas.id_escola')
+                    ->join('series', 'series.id', '=', 'turmas.id_serie')
+                    ->selectRaw('
+                        cc.id as componente_id,
+                        cc.nome as componente_nome,
+                        COUNT(*) as total,
+                        SUM(CASE WHEN tcp.professor_id IS NOT NULL THEN 1 ELSE 0 END) as com_professor,
+                        SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) as sem_professor,
+                        turmas.id_escola,
+                        turmas.id_serie
+                    ')
+                    ->groupBy('cc.id', 'cc.nome', 'turmas.id_escola', 'turmas.id_serie')
+                    ->havingRaw('SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) > 0')
+                    ->orderByRaw('SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) DESC');
+
+                // Envolve em mais uma subquery adicionando row_num como chave
+                $outer = DB::table(DB::raw("({$sub->toSql()}) as inner_sub"))
+                    ->mergeBindings($sub)
+                    ->selectRaw('inner_sub.*, ROW_NUMBER() OVER (ORDER BY inner_sub.sem_professor DESC) as row_num');
 
                 return TurmaComponenteProfessor::query()
-                    ->fromSub($sub, 'sub')
-                    ->select('sub.*');
+                    ->fromSub($outer, 'sub')
+                    ->select('sub.*')
+                    // ✅ Força ordenação por coluna que existe na subquery
+                    ->orderBy('sub.sem_professor', 'desc');
             })
 
             ->columns([
@@ -108,14 +115,14 @@ class RelatorioComponenteProfessorFaltando extends Page implements HasTable
                 Tables\Columns\TextColumn::make('cobertura')
                     ->label('Cobertura')
                     ->getStateUsing(function ($record) {
-                        if ($record->total == 0) return '0%';
+                        if (!$record->total) return '0%';
                         return round(($record->com_professor / $record->total) * 100) . '%';
                     })
                     ->badge()
-                    ->color(fn($state) => match (true) {
-                        str_replace('%', '', $state) == 100 => 'success',
-                        str_replace('%', '', $state) >= 50  => 'warning',
-                        default                             => 'danger',
+                    ->color(fn(?string $state) => match (true) {
+                        ((int) str_replace('%', '', $state ?? '0')) === 100 => 'success',
+                        ((int) str_replace('%', '', $state ?? '0')) >= 50  => 'warning',
+                        default => 'danger',
                     }),
             ])
 
