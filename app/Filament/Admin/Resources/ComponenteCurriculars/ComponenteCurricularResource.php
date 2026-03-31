@@ -56,7 +56,8 @@ class ComponenteCurricularResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-      ->paginated([10, 25, 50, 100])
+            ->paginated([5, 10, 25, 50, 100])
+            ->defaultPaginationPageOption(5)
             ->columns([
                 TextColumn::make('codigo')
                     ->label('Código')

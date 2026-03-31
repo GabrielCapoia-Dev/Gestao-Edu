@@ -135,7 +135,8 @@ class ItensRelationManager extends RelationManager
                 DeleteAction::make(),
             ])
             ->defaultSort('created_at', 'desc')
-            ->paginated([5, 10, 25]);
+            ->paginated([5, 10, 25, 50, 100])
+            ->defaultPaginationPageOption(5);
     }
 
     private function attachItem(array $data, TipoItemContrato $tipo): void

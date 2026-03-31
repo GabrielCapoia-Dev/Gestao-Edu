@@ -104,7 +104,8 @@ class ArquivosRelationManager extends RelationManager
 
             ])
             ->defaultSort('created_at', 'desc')
-            ->paginated([5, 10, 25, 50]);
+            ->paginated([5, 10, 25, 50, 100])
+            ->defaultPaginationPageOption(5);
     }
 
     public function isReadOnly(): bool

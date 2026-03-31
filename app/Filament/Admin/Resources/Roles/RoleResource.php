@@ -126,6 +126,7 @@ class RoleResource extends Resource
     {
         return $table
             ->paginated([5, 10, 25, 50, 100])
+            ->defaultPaginationPageOption(5)
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->label('Nivel de acesso')

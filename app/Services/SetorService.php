@@ -41,6 +41,7 @@ class SetorService
     {
         return $table
             ->paginated([5, 10, 25, 50, 100])
+            ->defaultPaginationPageOption(5)
             ->columns($this->colunasTabela())
             ->recordActions($this->acoesTabela())
             ->toolbarActions($this->acoesEmMassa())

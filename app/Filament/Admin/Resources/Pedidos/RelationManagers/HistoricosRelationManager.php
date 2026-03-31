@@ -53,7 +53,8 @@ class HistoricosRelationManager extends RelationManager
                 fn($record) => $record->id === $latestId ? 'highlight-latest' : null
             )
             ->defaultSort('created_at', 'desc')
-            ->paginated([5, 10, 25]);
+            ->paginated([5, 10, 25, 50, 100])
+            ->defaultPaginationPageOption(5);
     }
 
     public function isReadOnly(): bool

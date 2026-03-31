@@ -31,6 +31,7 @@ class PedidosTable
 
         return $table
             ->paginated([5, 10, 25, 50, 100])
+            ->defaultPaginationPageOption(5)
             ->columns(static::columns($user))
             ->filters(static::filters(), layout: FiltersLayout::AboveContent)
             ->recordActions(static::actions($user, $service))

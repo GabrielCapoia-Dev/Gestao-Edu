@@ -263,6 +263,7 @@ class FuncionarioAdministrativoResource extends Resource
     {
         return $table
             ->paginated([5, 10, 25, 50, 100])
+            ->defaultPaginationPageOption(5)
             ->modifyQueryUsing(function (Builder $query) {
                 $user = Auth::user();
                 $query = app(UserService::class)->aplicarFiltroPorEscolaDoUsuario($query, $user);

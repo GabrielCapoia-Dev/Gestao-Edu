@@ -110,6 +110,7 @@ class ProfessorService
                 $this->userService->aplicarFiltroPorEscolaDoUsuarioEmTurma($query, $user);
             })
             ->paginated([5, 10, 25, 50, 100])
+            ->defaultPaginationPageOption(5)
             ->columns($this->colunasTabela())
             ->recordActions($this->acoesTabela($user))
             ->toolbarActions($this->acoesEmMassa($user))

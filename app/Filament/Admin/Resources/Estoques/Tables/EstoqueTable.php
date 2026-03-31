@@ -21,7 +21,8 @@ class EstoqueTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->paginated([10, 25, 50])
+            ->paginated([5, 10, 25, 50, 100])
+            ->defaultPaginationPageOption(5)
             ->defaultSort('quantidade', 'desc')
             ->columns(static::columns())
             ->filters(static::filters(), layout: FiltersLayout::AboveContent)

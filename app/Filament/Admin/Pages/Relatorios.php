@@ -310,7 +310,7 @@ class Relatorios extends Page implements HasTable
                             : $query
                     ),
             ])
-            ->paginated([10, 25, 50, 100])
-            ->defaultPaginationPageOption(25);
+            ->paginated([5, 10, 25, 50, 100])
+            ->defaultPaginationPageOption(5);
     }
 }
