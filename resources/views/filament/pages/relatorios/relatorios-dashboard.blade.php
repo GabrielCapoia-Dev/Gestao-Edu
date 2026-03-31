@@ -259,12 +259,13 @@
     /* ── KPIs ─────────────────────────────── */
     .rel-kpi-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: .875rem;
         margin-bottom: 1rem;
     }
+
     .rel-kpi-grid--3 {
-        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     }
     .rel-kpi-card {
         display: flex; align-items: center; gap: .875rem;
