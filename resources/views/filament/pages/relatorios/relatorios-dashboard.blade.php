@@ -109,7 +109,7 @@
         <div class="rel-table-header">
             <div>
                 <h3 class="rel-table-title">Componentes com mais vínculos</h3>
-                <p class="rel-table-sub">Top 5 componentes curriculares por quantidade de turmas vinculadas</p>
+                <p class="rel-table-sub">Top 5 componentes curriculares com mais turmas sem professor</p>
             </div>
         </div>
         <div class="rel-table-wrap">

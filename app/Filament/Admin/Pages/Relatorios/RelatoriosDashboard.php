@@ -54,7 +54,7 @@ class RelatoriosDashboard extends Page
                 DB::raw('SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) as sem_professor')
             )
             ->groupBy('cc.id', 'cc.nome')
-            ->orderByDesc('total')
+            ->orderByDesc('sem_professor')
             ->limit(5)
             ->get()
             ->toArray();
