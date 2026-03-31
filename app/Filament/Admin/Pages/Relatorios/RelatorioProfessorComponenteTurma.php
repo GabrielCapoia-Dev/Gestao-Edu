@@ -31,9 +31,7 @@ class RelatorioProfessorComponenteTurma extends Page implements HasTable
     use InteractsWithTable;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ChartBar;
-    protected static ?string $navigationLabel = 'Professor por Componente e Turma';
     protected static ?string $title = 'Relatório de Professor por Componente e Turma';
-    protected static string|UnitEnum|null $navigationGroup = 'Relatórios';
     protected string $view = 'filament.pages.relatorios.relatorio-professor-componente-turma';
     protected static ?string $slug = 'relatorio-professor-componente-turma';
     protected static bool $shouldRegisterNavigation = false;

@@ -14,7 +14,7 @@ class Relatorios extends Page
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ChartBar;
     protected static ?string $navigationLabel = 'Relatórios';
-    protected static $navigationSort = 2;
+    protected static ?int $navigationSort = 2;
     protected static ?string $title = 'Dashboard de Relatórios';
     protected static ?string $slug = 'relatorios-dashboard';
 
