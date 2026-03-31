@@ -25,7 +25,7 @@ class DatabaseSeeder extends Seeder
         $permissionsList = [
 
             'Listar Alunos',
-            'Listar Relatórios',
+            'Listar Relatórios: Professor por Componente e Turma',
             'Listar Retenção',
             'Listar Tipo Manutenção',
             'Listar Tipo Status',

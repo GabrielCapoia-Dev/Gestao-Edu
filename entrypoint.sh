@@ -24,6 +24,10 @@ fi
 # ── Migrations ─────────────────────────────────────────────────────────────
 php artisan migrate --force --seed
 
+
+# ── Permissoes ─────────────────────────────────────────────────────────────
+php artisan permissoes:criar
+
 # ── Storage link ───────────────────────────────────────────────────────────
 php artisan storage:link --force 2>/dev/null || true
 

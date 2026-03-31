@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Admin\Pages;
+namespace App\Filament\Admin\Pages\Relatorios;
 
 use AlperenErsoy\FilamentExport\Actions\FilamentExportBulkAction;
 use App\Models\Escola;
@@ -26,21 +26,21 @@ use UnitEnum;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 
-class Relatorios extends Page implements HasTable
+class RelatorioProfessorComponenteTurma extends Page implements HasTable
 {
     use InteractsWithTable;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ChartBar;
-    protected static ?string $navigationLabel = 'Relatórios';
-    protected static ?string $title = 'Relatório de Turmas';
-    protected static string|UnitEnum|null $navigationGroup = 'Gestão Escolar';
+    protected static ?string $navigationLabel = 'Professor por Componente e Turma';
+    protected static ?string $title = 'Relatório de Professor por Componente e Turma';
+    protected static string|UnitEnum|null $navigationGroup = 'Relatórios';
     protected string $view = 'filament.pages.relatorios';
 
     public static function canAccess(): bool
     {
         /** @var \App\Models\User */
         $user = Auth::user();
-        return $user->hasPermissionTo('Listar Relatórios');
+        return $user->hasPermissionTo('Listar Relatórios: Professor por Componente e Turma');
     }
 
 
