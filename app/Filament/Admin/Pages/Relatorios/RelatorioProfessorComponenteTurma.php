@@ -34,7 +34,11 @@ class RelatorioProfessorComponenteTurma extends Page implements HasTable
     protected static ?string $navigationLabel = 'Professor por Componente e Turma';
     protected static ?string $title = 'Relatório de Professor por Componente e Turma';
     protected static string|UnitEnum|null $navigationGroup = 'Relatórios';
-    protected string $view = 'filament.pages.relatorios';
+    protected string $view = 'filament.pages.relatorios.relatorio-professor-componente-turma';
+    protected static ?string $slug = 'relatorio-professor-componente-turma';
+    protected static bool $shouldRegisterNavigation = false;
+
+
 
     public static function canAccess(): bool
     {
