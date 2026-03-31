@@ -8,7 +8,7 @@ use BackedEnum;
 use UnitEnum;
 use Illuminate\Support\Facades\Auth;
 
-class Relatorios extends Page
+class RelatoriosDashboard extends Page
 {
     protected string $view = 'filament.pages.relatorios.relatorios-dashboard';
 
