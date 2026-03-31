@@ -5,8 +5,13 @@ namespace App\Filament\Admin\Pages\Relatorios;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use BackedEnum;
-use UnitEnum;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use App\Models\Professor;
+use App\Models\Turma;
+use App\Models\ComponenteCurricular;
+use App\Models\Escola;
+use App\Models\TurmaComponenteProfessor;
 
 class RelatoriosDashboard extends Page
 {
@@ -19,17 +24,40 @@ class RelatoriosDashboard extends Page
     protected static ?string $slug = 'relatorios-dashboard';
 
 
-    public int $totalProfessores = 0;
-    public int $totalTurmas = 0;
-    public int $totalComponentes = 0;
-    public int $totalEscolas = 0;
+    public int $totalProfessores    = 0;
+    public int $totalTurmas         = 0;
+    public int $totalComponentes    = 0;
+    public int $totalEscolas        = 0;
+    public int $vinculos            = 0;
+    public int $semProfessor        = 0;
+    public int $comProfessor        = 0;
+    public array $topComponentes    = [];
 
     public function mount(): void
     {
-        $this->totalProfessores = \App\Models\Professor::count();
-        $this->totalTurmas      = \App\Models\Turma::count();
-        $this->totalComponentes = \App\Models\ComponenteCurricular::count();
-        $this->totalEscolas     = \App\Models\Escola::count();
+        $this->totalProfessores = Professor::count();
+        $this->totalTurmas      = Turma::count();
+        $this->totalComponentes = ComponenteCurricular::count();
+        $this->totalEscolas     = Escola::count();
+
+        $this->vinculos     = TurmaComponenteProfessor::count();
+        $this->semProfessor = TurmaComponenteProfessor::whereNull('professor_id')->count();
+        $this->comProfessor = TurmaComponenteProfessor::whereNotNull('professor_id')->count();
+
+        // Top componentes com mais vínculos (com ou sem professor)
+        $this->topComponentes = DB::table('turma_componente_professor as tcp')
+            ->join('componentes_curriculares as cc', 'cc.id', '=', 'tcp.componente_curricular_id')
+            ->select(
+                'cc.nome',
+                DB::raw('COUNT(*) as total'),
+                DB::raw('SUM(CASE WHEN tcp.professor_id IS NOT NULL THEN 1 ELSE 0 END) as com_professor'),
+                DB::raw('SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) as sem_professor')
+            )
+            ->groupBy('cc.id', 'cc.nome')
+            ->orderByDesc('total')
+            ->limit(5)
+            ->get()
+            ->toArray();
     }
 
 
