@@ -117,6 +117,6 @@ class RelatorioComponenteProfessorFaltando extends Page implements HasTable
 
             ->defaultSort('sem_professor', 'desc') // 🔴 ESSENCIAL
             ->paginated([5, 10, 25, 50, 100])
-            ->defaultPaginationPageOption(10);
+            ->defaultPaginationPageOption(5);
     }
 }
