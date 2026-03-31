@@ -217,6 +217,10 @@
     color: var(--edu-primary-200) !important;
 }
 
+.fi-sidebar-nav-groups {
+    row-gap: calc(var(--spacing) * 3);
+}
+
 /* Ícones e labels da sidebar */
 .fi-sidebar-item.fi-active>.fi-sidebar-item-btn>.fi-icon {
     color: var(--edu-primary-800) !important;
