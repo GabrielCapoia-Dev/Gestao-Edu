@@ -38,6 +38,9 @@ php artisan config:cache
 php artisan route:cache
 php artisan event:cache
 php artisan filament:cache-components
+php artisan filament:assets
+php artisan optimize:clear
+
 
 # ── Inicia php-fpm em background e nginx em foreground ─────────────────────
 php-fpm -D
