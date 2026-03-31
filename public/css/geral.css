@@ -16,19 +16,19 @@
     --edu-primary-300: #7fa0f2;
     --edu-primary-200: #adc3f8;
     --edu-primary-100: #d6e2fc;
-    --edu-primary-50:  #eef3fe;
+    --edu-primary-50: #eef3fe;
 
     /* Accent Gold (destaque educacional) */
     --edu-gold-500: #f59e0b;
     --edu-gold-400: #fbbf24;
     --edu-gold-100: #fef3c7;
-    --edu-gold-50:  #fffbeb;
+    --edu-gold-50: #fffbeb;
 
     /* Accent Green (aprovação, presença, sucesso) */
     --edu-green-600: #16a34a;
     --edu-green-500: #22c55e;
     --edu-green-100: #dcfce7;
-    --edu-green-50:  #f0fdf4;
+    --edu-green-50: #f0fdf4;
 
     /* Neutral */
     --edu-neutral-900: #0f172a;
@@ -40,8 +40,8 @@
     --edu-neutral-300: #cbd5e1;
     --edu-neutral-200: #e2e8f0;
     --edu-neutral-100: #f1f5f9;
-    --edu-neutral-50:  #f8fafc;
-    --edu-white:       #ffffff;
+    --edu-neutral-50: #f8fafc;
+    --edu-white: #ffffff;
 
     /* Shadows */
     --edu-shadow-sm: 0 1px 3px rgba(15, 34, 97, 0.06), 0 1px 2px rgba(15, 34, 97, 0.04);
@@ -218,19 +218,19 @@
 }
 
 /* Ícones e labels da sidebar */
-.fi-sidebar-item.fi-active > .fi-sidebar-item-btn > .fi-icon {
+.fi-sidebar-item.fi-active>.fi-sidebar-item-btn>.fi-icon {
     color: var(--edu-primary-800) !important;
 }
 
-.dark .fi-sidebar-item.fi-active > .fi-sidebar-item-btn > .fi-icon {
+.dark .fi-sidebar-item.fi-active>.fi-sidebar-item-btn>.fi-icon {
     color: var(--edu-primary-50) !important;
 }
 
-.fi-sidebar-item-btn > .fi-icon {
+.fi-sidebar-item-btn>.fi-icon {
     color: var(--edu-neutral-600) !important;
 }
 
-.dark .fi-sidebar-item-btn > .fi-icon {
+.dark .fi-sidebar-item-btn>.fi-icon {
     color: var(--edu-primary-50) !important;
 }
 
@@ -252,7 +252,7 @@
 
 /* Largura sidebar */
 .fi-sidebar.fi-sidebar-open {
-    --sidebar-width: 14rem !important;
+    --sidebar-width: 16rem !important;
 }
 
 /* ═══════════════════════════════════════════════
@@ -525,7 +525,7 @@
     padding: 0.375rem;
 }
 
-.fi-dropdown-list + .fi-dropdown-list {
+.fi-dropdown-list+.fi-dropdown-list {
     border-top: 1px solid var(--edu-neutral-100);
 }
 
@@ -643,12 +643,31 @@
     overflow-x: hidden;
 }
 
-.modal-notificacoes-container::-webkit-scrollbar { width: 6px; }
-.modal-notificacoes-container::-webkit-scrollbar-track { background: var(--edu-neutral-100); border-radius: 10px; }
-.dark .modal-notificacoes-container::-webkit-scrollbar-track { background: #374151; }
-.modal-notificacoes-container::-webkit-scrollbar-thumb { background: var(--edu-neutral-300); border-radius: 10px; }
-.dark .modal-notificacoes-container::-webkit-scrollbar-thumb { background: #6b7280; }
-.modal-notificacoes-container::-webkit-scrollbar-thumb:hover { background: var(--edu-neutral-400); }
+.modal-notificacoes-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.modal-notificacoes-container::-webkit-scrollbar-track {
+    background: var(--edu-neutral-100);
+    border-radius: 10px;
+}
+
+.dark .modal-notificacoes-container::-webkit-scrollbar-track {
+    background: #374151;
+}
+
+.modal-notificacoes-container::-webkit-scrollbar-thumb {
+    background: var(--edu-neutral-300);
+    border-radius: 10px;
+}
+
+.dark .modal-notificacoes-container::-webkit-scrollbar-thumb {
+    background: #6b7280;
+}
+
+.modal-notificacoes-container::-webkit-scrollbar-thumb:hover {
+    background: var(--edu-neutral-400);
+}
 
 .card-notification {
     padding: 5px;
@@ -821,10 +840,28 @@
     font-weight: 500;
 }
 
+.fi-main.fi-width-7xl,
+.fi-width-7xl {
+    max-width: 150rem !important;
+}
+
 /* ═══════════════════════════════════════════════
    SCROLLBAR
    ═══════════════════════════════════════════════ */
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--edu-neutral-300); border-radius: 9999px; }
-::-webkit-scrollbar-thumb:hover { background: var(--edu-neutral-400); }
+::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--edu-neutral-300);
+    border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--edu-neutral-400);
+}
