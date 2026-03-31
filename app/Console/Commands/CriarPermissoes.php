@@ -22,6 +22,7 @@ class CriarPermissoes extends Command
             // LISTAR
             'Listar Alunos',
             'Listar Relatórios: Professor por Componente e Turma',
+            'Listar Relatórios: Componentes com Professores Faltando',
             'Listar Relatórios: Dashboard',
             'Listar Retenção',
             'Listar Tipo Manutenção',
