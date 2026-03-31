@@ -16,6 +16,9 @@ use Illuminate\Support\Facades\Auth;
 use BackedEnum;
 use App\Models\TurmaComponenteProfessor;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Professor;
+use App\Models\Turma;
+use App\Models\ComponenteCurricular;
 
 class RelatorioComponenteProfessorFaltando extends Page implements HasTable
 {
@@ -26,6 +29,17 @@ class RelatorioComponenteProfessorFaltando extends Page implements HasTable
     protected string $view = 'filament.pages.relatorios.relatorio-componente-professor-faltando';
     protected static ?string $slug = 'relatorio-componentes-com-professores-faltando';
     protected static bool $shouldRegisterNavigation = false;
+
+    public int $totalProfessores;
+    public int $totalTurmas;
+    public int $totalComponentes;
+    public int $totalEscolas;
+
+    public int $vinculos;
+    public int $comProfessor;
+    public int $semProfessor;
+
+    public $topComponentes = [];
 
     public static function canAccess(): bool
     {
@@ -50,7 +64,7 @@ class RelatorioComponenteProfessorFaltando extends Page implements HasTable
                     ->selectRaw('
                         cc.id as componente_id,
                         cc.nome as componente_nome,
-                        COUNT(*) as total,
+                        COUNT(*) as total, 
                         SUM(CASE WHEN tcp.professor_id IS NOT NULL THEN 1 ELSE 0 END) as com_professor,
                         SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) as sem_professor,
                         turmas.id_escola,
@@ -67,8 +81,8 @@ class RelatorioComponenteProfessorFaltando extends Page implements HasTable
 
                 return TurmaComponenteProfessor::query()
                     ->fromSub($outer, 'sub')
+                    ->setModel(new TurmaComponenteProfessor()) // força contexto correto
                     ->select('sub.*')
-                    // ✅ Força ordenação por coluna que existe na subquery
                     ->orderBy('sub.sem_professor', 'desc');
             })
 
@@ -149,5 +163,37 @@ class RelatorioComponenteProfessorFaltando extends Page implements HasTable
 
             ->paginated([5, 10, 25, 50, 100])
             ->defaultPaginationPageOption(5);
+    }
+
+
+    public function mount(): void
+    {
+        // KPIs básicos
+        $this->totalProfessores = Professor::count();
+        $this->totalTurmas = Turma::count();
+        $this->totalComponentes = ComponenteCurricular::count();
+        $this->totalEscolas = Escola::count();
+
+        // KPIs de vínculos
+        $this->vinculos = TurmaComponenteProfessor::count();
+
+        $this->comProfessor = TurmaComponenteProfessor::whereNotNull('professor_id')->count();
+
+        $this->semProfessor = TurmaComponenteProfessor::whereNull('professor_id')->count();
+
+        // TOP COMPONENTES (mesma lógica da tabela, simplificada)
+        $this->topComponentes = DB::table('turma_componente_professor as tcp')
+            ->join('componentes_curriculares as cc', 'cc.id', '=', 'tcp.componente_curricular_id')
+            ->selectRaw('
+            cc.nome,
+            COUNT(*) as total,
+            SUM(CASE WHEN tcp.professor_id IS NOT NULL THEN 1 ELSE 0 END) as com_professor,
+            SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) as sem_professor
+        ')
+            ->groupBy('cc.id', 'cc.nome')
+            ->havingRaw('SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) > 0')
+            ->orderByDesc('sem_professor')
+            ->limit(5)
+            ->get();
     }
 }
