@@ -70,15 +70,15 @@ class User extends Authenticatable implements FilamentUser
                 ->body('Usuário cadastrado com sucesso. Solicite aprovação do administrador para acessar o painel.')
                 ->success()
                 ->send();
-        } else {
-            Notification::make()
-                ->title('Aguardando Aprovação')
-                ->body('Seu cadastro foi encaminhado para aprovação.')
-                ->icon('heroicon-o-arrow-path')
-                ->duration(10000)
-                ->warning()
-                ->send();
         }
+        Notification::make()
+            ->title('Aguardando Aprovação')
+            ->body('Entre em contato com o administrador para solicitar a aprovação do seu e-mail.')
+            ->icon('heroicon-o-arrow-path')
+            ->duration(10000)
+            ->warning()
+            ->send();
+
 
         // Redireciona para o login do painel correto (Symfony RedirectResponse)
         $loginRouteName = "filament.{$panel->getId()}.auth.login";
@@ -139,7 +139,7 @@ class User extends Authenticatable implements FilamentUser
     {
         return $this->belongsTo(Setor::class);
     }
-    
+
     public static function scopeAuthUser()
     {
 
