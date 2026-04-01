@@ -223,10 +223,45 @@
 
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    .notif-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: 99999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .notif-backdrop {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+    }
+
+    .notif-dialog {
+        position: relative;
+        background: #fff;
+        border-radius: 0.75rem;
+        width: 100%;
+        max-width: 56rem;
+        max-height: 90vh;
+        overflow-y: auto;
+        padding: 1.5rem;
+        z-index: 1;
+        margin: 1rem;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    }
+
     [x-cloak] { display: none !important; }
 </style>
 
-{{-- UM único elemento raiz para o Livewire --}}
+{{-- Elemento raiz para o Livewire --}}
 <div
     x-data="{ open: false }"
     x-on:open-notif-modal.window="open = true"
@@ -245,23 +280,34 @@
         </button>
     </div>
 
-    {{-- Modal --}}
-    <div
-        x-show="open"
-        x-cloak
-        x-transition.opacity
-        style="position: fixed; inset: 0; z-index: 9999;">
-
-        {{-- Backdrop --}}
+    {{--
+        x-teleport="body" → move o modal para fora do stacking context do Filament,
+        garantindo que o position: fixed + flex centralize corretamente na viewport.
+    --}}
+    <template x-teleport="body">
         <div
-            x-on:click="open = false"
-            style="position: absolute; inset: 0; background: rgba(0,0,0,0.5);"></div>
+            x-show="open"
+            x-cloak
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100"
+            x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="opacity-100"
+            x-transition:leave-end="opacity-0"
+            class="notif-overlay">
 
-        {{-- Centralizador — flex fica aqui, fora do x-show --}}
-        <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 1rem;">
+            {{-- Backdrop --}}
+            <div class="notif-backdrop" x-on:click="open = false"></div>
 
-            {{-- Conteúdo --}}
-            <div style="position: relative; background: #fff; border-radius: 0.75rem; width: 100%; max-width: 56rem; max-height: 90vh; overflow-y: auto; padding: 1.5rem; z-index: 1;">
+            {{-- Caixa do modal --}}
+            <div
+                class="notif-dialog"
+                x-transition:enter="transition ease-out duration-200"
+                x-transition:enter-start="opacity-0 scale-95"
+                x-transition:enter-end="opacity-100 scale-100"
+                x-transition:leave="transition ease-in duration-150"
+                x-transition:leave-start="opacity-100 scale-100"
+                x-transition:leave-end="opacity-0 scale-95">
 
                 <div class="notif-heading">
                     <div class="notif-heading-left">
@@ -329,7 +375,7 @@
 
             </div>
         </div>
-    </div>
+    </template>
 </div>
 
 <script>
