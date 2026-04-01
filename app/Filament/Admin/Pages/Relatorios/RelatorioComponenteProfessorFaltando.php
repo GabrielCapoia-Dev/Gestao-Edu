@@ -83,6 +83,7 @@ class RelatorioComponenteProfessorFaltando extends Page
             ->limit(5)
             ->get()
             ->toArray();
+            
 
         $this->carregarDados();
         $this->carregarTurmas();
