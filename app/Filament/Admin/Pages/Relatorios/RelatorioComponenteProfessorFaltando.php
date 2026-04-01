@@ -5,41 +5,45 @@ namespace App\Filament\Admin\Pages\Relatorios;
 use App\Models\Escola;
 use App\Models\Serie;
 use Filament\Pages\Page;
-use Filament\Tables\Concerns\InteractsWithTable;
-use Filament\Tables\Contracts\HasTable;
-use Filament\Tables\Table;
-use Filament\Tables;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
-use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Auth;
 use BackedEnum;
-use App\Models\TurmaComponenteProfessor;
-use Illuminate\Database\Eloquent\Model;
+use Filament\Support\Icons\Heroicon;
 use App\Models\Professor;
 use App\Models\Turma;
 use App\Models\ComponenteCurricular;
+use App\Models\TurmaComponenteProfessor;
 
-class RelatorioComponenteProfessorFaltando extends Page implements HasTable
+class RelatorioComponenteProfessorFaltando extends Page
 {
-    use InteractsWithTable;
-
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ChartBar;
     protected static ?string $title = 'Componentes com Falta de Professores';
     protected string $view = 'filament.pages.relatorios.relatorio-componente-professor-faltando';
     protected static ?string $slug = 'relatorio-componentes-com-professores-faltando';
     protected static bool $shouldRegisterNavigation = false;
 
-    public int $totalProfessores;
-    public int $totalTurmas;
-    public int $totalComponentes;
-    public int $totalEscolas;
+    // Filtros
+    public ?int $escola_id = null;
+    public ?int $serie_id  = null;
+    public string $search  = '';
 
-    public int $vinculos;
-    public int $comProfessor;
-    public int $semProfessor;
+    // Paginação
+    public int $perPage    = 10;
+    public int $page       = 1;
 
-    public $topComponentes = [];
+    // KPIs
+    public int $totalProfessores = 0;
+    public int $totalTurmas      = 0;
+    public int $totalComponentes = 0;
+    public int $totalEscolas     = 0;
+    public int $vinculos         = 0;
+    public int $comProfessor     = 0;
+    public int $semProfessor     = 0;
+    public array $topComponentes = [];
+
+    // Dados da tabela
+    public array $registros  = [];
+    public int $totalRegistros = 0;
 
     public static function canAccess(): bool
     {
@@ -47,157 +51,116 @@ class RelatorioComponenteProfessorFaltando extends Page implements HasTable
         $user = Auth::user();
         return $user->hasPermissionTo('Listar Relatórios: Componentes com Professores Faltando');
     }
-    // Adicione este método na classe para desabilitar o defaultSort de desempate do Filament
-    protected function getDefaultTableSortColumn(): ?string
-    {
-        return null;
-    }
-
-    protected function getDefaultTableSortDirection(): ?string
-    {
-        return null;
-    }
-
-    public function getTableRecordKey($record): string
-    {
-        return (string) data_get($record, 'row_num');
-    }
-    public function table(Table $table): Table
-    {
-        return $table
-            ->query(function (): Builder {
-                $sub = DB::table('turma_componente_professor as tcp')
-                    ->join('componentes_curriculares as cc', 'cc.id', '=', 'tcp.componente_curricular_id')
-                    ->join('turmas', 'turmas.id', '=', 'tcp.turma_id')
-                    ->join('escolas', 'escolas.id', '=', 'turmas.id_escola')
-                    ->join('series', 'series.id', '=', 'turmas.id_serie')
-                    ->selectRaw('
-                    cc.id as componente_id,
-                    cc.nome as componente_nome,
-                    COUNT(*) as total, 
-                    SUM(CASE WHEN tcp.professor_id IS NOT NULL THEN 1 ELSE 0 END) as com_professor,
-                    SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) as sem_professor,
-                    turmas.id_escola,
-                    turmas.id_serie,
-                    ROW_NUMBER() OVER (ORDER BY SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) DESC) as row_num
-                ')
-                    ->groupBy('cc.id', 'cc.nome', 'turmas.id_escola', 'turmas.id_serie')
-                    ->havingRaw('SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) > 0');
-
-                return \App\Relatorios\RelatorioComponenteProfessorFaltandoModel::query()
-                    ->fromSub($sub, 'sub')
-                    ->select('sub.*');
-            })
-            ->defaultSort('sem_professor', 'desc')
-
-            ->columns([
-                Tables\Columns\TextColumn::make('componente_nome')
-                    ->label('Componente')
-                    ->searchable(
-                        query: fn(Builder $query, string $search) =>
-                        $query->where('sub.componente_nome', 'like', "%{$search}%")
-                    )
-                    ->sortable(
-                        query: fn(Builder $query, string $direction) =>
-                        $query->orderBy('sub.componente_nome', $direction)
-                    ),
-
-                Tables\Columns\TextColumn::make('total')
-                    ->label('Total de vínculos')
-                    ->badge()
-                    ->color('gray')
-                    ->sortable(
-                        query: fn(Builder $query, string $direction) =>
-                        $query->orderBy('sub.total', $direction)
-                    ),
-
-                Tables\Columns\TextColumn::make('com_professor')
-                    ->label('Com professor')
-                    ->badge()
-                    ->color('success')
-                    ->sortable(
-                        query: fn(Builder $query, string $direction) =>
-                        $query->orderBy('sub.com_professor', $direction)
-                    ),
-
-                Tables\Columns\TextColumn::make('sem_professor')
-                    ->label('Sem professor')
-                    ->badge()
-                    ->color('danger')
-                    ->sortable(
-                        query: fn(Builder $query, string $direction) =>
-                        $query->orderBy('sub.sem_professor', $direction)
-                    ),
-
-                Tables\Columns\TextColumn::make('cobertura')
-                    ->label('Cobertura')
-                    ->getStateUsing(function ($record) {
-                        if (!$record->total) return '0%';
-                        return round(($record->com_professor / $record->total) * 100) . '%';
-                    })
-                    ->badge()
-                    ->color(fn(?string $state) => match (true) {
-                        ((int) str_replace('%', '', $state ?? '0')) === 100 => 'success',
-                        ((int) str_replace('%', '', $state ?? '0')) >= 50  => 'warning',
-                        default => 'danger',
-                    }),
-            ])
-
-            ->filters([
-                Tables\Filters\SelectFilter::make('escola')
-                    ->label('Escola')
-                    ->options(fn() => Escola::pluck('nome', 'id'))
-                    ->query(
-                        fn(Builder $query, array $data) =>
-                        $data['value']
-                            ? $query->where('sub.id_escola', $data['value'])
-                            : $query
-                    ),
-
-                Tables\Filters\SelectFilter::make('serie')
-                    ->label('Série')
-                    ->options(fn() => Serie::pluck('nome', 'id'))
-                    ->query(
-                        fn(Builder $query, array $data) =>
-                        $data['value']
-                            ? $query->where('sub.id_serie', $data['value'])
-                            : $query
-                    ),
-            ])
-
-            ->paginated([5, 10, 25, 50, 100])
-            ->defaultPaginationPageOption(5);
-    }
-
 
     public function mount(): void
     {
-        // KPIs básicos
         $this->totalProfessores = Professor::count();
-        $this->totalTurmas = Turma::count();
+        $this->totalTurmas      = Turma::count();
         $this->totalComponentes = ComponenteCurricular::count();
-        $this->totalEscolas = Escola::count();
+        $this->totalEscolas     = Escola::count();
 
-        // KPIs de vínculos
-        $this->vinculos = TurmaComponenteProfessor::count();
-
+        $this->vinculos     = TurmaComponenteProfessor::count();
         $this->comProfessor = TurmaComponenteProfessor::whereNotNull('professor_id')->count();
-
         $this->semProfessor = TurmaComponenteProfessor::whereNull('professor_id')->count();
 
-        // TOP COMPONENTES (mesma lógica da tabela, simplificada)
         $this->topComponentes = DB::table('turma_componente_professor as tcp')
             ->join('componentes_curriculares as cc', 'cc.id', '=', 'tcp.componente_curricular_id')
-            ->selectRaw('
-            cc.nome,
-            COUNT(*) as total,
-            SUM(CASE WHEN tcp.professor_id IS NOT NULL THEN 1 ELSE 0 END) as com_professor,
-            SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) as sem_professor
-        ')
+            ->selectRaw('cc.nome, COUNT(*) as total,
+                SUM(CASE WHEN tcp.professor_id IS NOT NULL THEN 1 ELSE 0 END) as com_professor,
+                SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) as sem_professor')
             ->groupBy('cc.id', 'cc.nome')
             ->havingRaw('SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) > 0')
             ->orderByDesc('sem_professor')
             ->limit(5)
-            ->get();
+            ->get()
+            ->toArray();
+
+        $this->carregarDados();
+    }
+
+    public function carregarDados(): void
+    {
+        $query = DB::table('turma_componente_professor as tcp')
+            ->join('componentes_curriculares as cc', 'cc.id', '=', 'tcp.componente_curricular_id')
+            ->join('turmas', 'turmas.id', '=', 'tcp.turma_id')
+            ->join('escolas', 'escolas.id', '=', 'turmas.id_escola')
+            ->join('series', 'series.id', '=', 'turmas.id_serie')
+            ->selectRaw('
+                cc.id as componente_id,
+                cc.nome as componente_nome,
+                COUNT(*) as total,
+                SUM(CASE WHEN tcp.professor_id IS NOT NULL THEN 1 ELSE 0 END) as com_professor,
+                SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) as sem_professor
+            ')
+            ->groupBy('cc.id', 'cc.nome')
+            ->havingRaw('SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) > 0');
+
+        if ($this->escola_id) {
+            $query->where('turmas.id_escola', $this->escola_id);
+        }
+
+        if ($this->serie_id) {
+            $query->where('turmas.id_serie', $this->serie_id);
+        }
+
+        if ($this->search) {
+            $query->where('cc.nome', 'like', '%' . $this->search . '%');
+        }
+
+        $this->totalRegistros = DB::table(DB::raw("({$query->toSql()}) as sub"))
+            ->mergeBindings($query)
+            ->count();
+
+        $this->registros = $query
+            ->orderByDesc('sem_professor')
+            ->offset(($this->page - 1) * $this->perPage)
+            ->limit($this->perPage)
+            ->get()
+            ->toArray();
+    }
+
+    public function updatedSearch(): void
+    {
+        $this->page = 1;
+        $this->carregarDados();
+    }
+
+    public function updatedEscolaId(): void
+    {
+        $this->page = 1;
+        $this->carregarDados();
+    }
+
+    public function updatedSerieId(): void
+    {
+        $this->page = 1;
+        $this->carregarDados();
+    }
+
+    public function updatedPerPage(): void
+    {
+        $this->page = 1;
+        $this->carregarDados();
+    }
+
+    public function irParaPagina(int $pagina): void
+    {
+        $this->page = $pagina;
+        $this->carregarDados();
+    }
+
+    public function getTotalPaginasProperty(): int
+    {
+        return (int) ceil($this->totalRegistros / $this->perPage);
+    }
+
+    public function getEscolasProperty(): \Illuminate\Support\Collection
+    {
+        return Escola::orderBy('nome')->get();
+    }
+
+    public function getSeriesProperty(): \Illuminate\Support\Collection
+    {
+        return Serie::orderBy('nome')->get();
     }
 }
