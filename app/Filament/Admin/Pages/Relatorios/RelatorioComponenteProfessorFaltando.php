@@ -26,6 +26,7 @@ class RelatorioComponenteProfessorFaltando extends Page
     public ?int $escola_id = null;
     public ?int $serie_id  = null;
     public string $search  = '';
+    public string $situacao = '';
 
     // Paginação
     public int $perPage    = 10;
@@ -106,6 +107,13 @@ class RelatorioComponenteProfessorFaltando extends Page
         if ($this->search) {
             $query->where('cc.nome', 'like', '%' . $this->search . '%');
         }
+        if ($this->situacao === 'sem_professor') {
+            $query->havingRaw('SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) > 0');
+        }
+
+        if ($this->situacao === 'com_professor') {
+            $query->havingRaw('SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) = 0');
+        }
 
         $this->totalRegistros = DB::table(DB::raw("({$query->toSql()}) as sub"))
             ->mergeBindings($query)
@@ -117,6 +125,12 @@ class RelatorioComponenteProfessorFaltando extends Page
             ->limit($this->perPage)
             ->get()
             ->toArray();
+    }
+
+    public function updatedSituacao(): void 
+    {
+        $this->page = 1;
+        $this->carregarDados();
     }
 
     public function updatedSearch(): void
