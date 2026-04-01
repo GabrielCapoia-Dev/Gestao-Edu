@@ -90,33 +90,41 @@ class RelatorioComponenteProfessorFaltando extends Page
 
     public function carregarDados(): void
     {
-        $query = DB::table('turma_componente_professor as tcp')
+        // Base de vínculos com os filtros aplicados
+        $baseQuery = DB::table('turma_componente_professor as tcp')
             ->join('componentes_curriculares as cc', 'cc.id', '=', 'tcp.componente_curricular_id')
             ->join('turmas', 'turmas.id', '=', 'tcp.turma_id')
             ->join('escolas', 'escolas.id', '=', 'turmas.id_escola')
-            ->join('series', 'series.id', '=', 'turmas.id_serie')
-            ->selectRaw('
-                cc.id as componente_id,
-                cc.nome as componente_nome,
-                COUNT(*) as total,
-                SUM(CASE WHEN tcp.professor_id IS NOT NULL THEN 1 ELSE 0 END) as com_professor,
-                SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) as sem_professor
-            ')
+            ->join('series', 'series.id', '=', 'turmas.id_serie');
+
+        if ($this->escola_id) {
+            $baseQuery->where('turmas.id_escola', $this->escola_id);
+        }
+        if ($this->serie_id) {
+            $baseQuery->where('turmas.id_serie', $this->serie_id);
+        }
+        if ($this->search) {
+            $baseQuery->where('cc.nome', 'like', '%' . $this->search . '%');
+        }
+
+        // KPIs reativos
+        $kpiQuery = clone $baseQuery;
+        $this->vinculos     = $kpiQuery->count();
+        $this->comProfessor = (clone $baseQuery)->whereNotNull('tcp.professor_id')->count();
+        $this->semProfessor = (clone $baseQuery)->whereNull('tcp.professor_id')->count();
+
+        // Tabela de componentes
+        $query = clone $baseQuery;
+        $query->selectRaw('
+            cc.id as componente_id,
+            cc.nome as componente_nome,
+            COUNT(*) as total,
+            SUM(CASE WHEN tcp.professor_id IS NOT NULL THEN 1 ELSE 0 END) as com_professor,
+            SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) as sem_professor
+        ')
             ->groupBy('cc.id', 'cc.nome')
             ->havingRaw('SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) > 0');
 
-        if ($this->escola_id) {
-            $query->where('turmas.id_escola', $this->escola_id);
-        }
-        if ($this->serie_id) {
-            $query->where('turmas.id_serie', $this->serie_id);
-        }
-        if ($this->search) {
-            $query->where('cc.nome', 'like', '%' . $this->search . '%');
-        }
-        if ($this->situacao === 'sem_professor') {
-            $query->havingRaw('SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) > 0');
-        }
         if ($this->situacao === 'com_professor') {
             $query->havingRaw('SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) = 0');
         }
@@ -142,12 +150,12 @@ class RelatorioComponenteProfessorFaltando extends Page
             ->join('componentes_curriculares as cc', 'cc.id', '=', 'tcp.componente_curricular_id')
             ->whereNull('tcp.professor_id')
             ->selectRaw('
-                turmas.id as turma_id,
-                turmas.nome as turma_nome,
-                escolas.nome as escola_nome,
-                series.nome as serie_nome,
-                COUNT(*) as componentes_sem_professor
-            ')
+            turmas.id as turma_id,
+            turmas.nome as turma_nome,
+            escolas.nome as escola_nome,
+            series.nome as serie_nome,
+            COUNT(*) as componentes_sem_professor
+        ')
             ->groupBy('turmas.id', 'turmas.nome', 'escolas.nome', 'series.nome');
 
         if ($this->escola_id) {
