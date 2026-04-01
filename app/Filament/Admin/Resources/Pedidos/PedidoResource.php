@@ -50,7 +50,10 @@ class PedidoResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return PedidosTable::configure($table);
+        /** @var User $user */
+        $user = Auth::user();
+
+        return PedidosTable::configure($table, $user);
     }
 
     public static function getPages(): array
