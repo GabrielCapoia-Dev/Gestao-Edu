@@ -42,11 +42,7 @@
     {{-- FILTROS --}}
     <div class="rel-filters mb-rel">
         <div class="rel-filter-group">
-            <input
-                type="text"
-                wire:model.live.debounce.400ms="search"
-                placeholder="Pesquisar componente..."
-                class="rel-filter-input" />
+            <input type="text" wire:model.live.debounce.400ms="search" placeholder="Pesquisar componente..." class="rel-filter-input" />
         </div>
         <div class="rel-filter-group">
             <select wire:model.live="escola_id" class="rel-filter-select">
@@ -64,7 +60,6 @@
                 @endforeach
             </select>
         </div>
-
         <div class="rel-filter-group">
             <select wire:model.live="perPage" class="rel-filter-select rel-filter-select--sm">
                 <option value="5">5 por página</option>
@@ -75,7 +70,7 @@
         </div>
     </div>
 
-    {{-- TABELA --}}
+    {{-- TABELA: COMPONENTES --}}
     <div class="rel-table-card mb-rel">
         <div class="rel-table-header">
             <div>
@@ -142,8 +137,6 @@
                 </tbody>
             </table>
         </div>
-
-        {{-- PAGINAÇÃO --}}
         @if($this->totalPaginas > 1)
         <div class="rel-pagination">
             <span class="rel-pagination-info">
@@ -161,10 +154,78 @@
         @endif
     </div>
 
+    {{-- TABELA: TURMAS COM PROFESSOR FALTANDO --}}
+    <div class="rel-table-card mb-rel">
+        <div class="rel-table-header">
+            <div>
+                <h3 class="rel-table-title">Turmas com componentes sem professor</h3>
+                <p class="rel-table-sub">
+                    {{ $this->totalTurmasFaltando }} {{ $this->totalTurmasFaltando === 1 ? 'turma encontrada' : 'turmas encontradas' }}
+                </p>
+            </div>
+            <div class="rel-filter-group">
+                <select wire:model.live="perPageTurmas" class="rel-filter-select rel-filter-select--sm">
+                    <option value="5">5 por página</option>
+                    <option value="10">10 por página</option>
+                    <option value="25">25 por página</option>
+                    <option value="50">50 por página</option>
+                </select>
+            </div>
+        </div>
+        <div class="rel-table-wrap">
+            <table class="rel-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Turma</th>
+                        <th>Escola</th>
+                        <th>Série</th>
+                        <th>Componentes sem professor</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($this->turmas as $i => $turma)
+                        @php $turma = (object) $turma; @endphp
+                        <tr>
+                            <td class="rel-table-rank">{{ (($this->pageTurmas - 1) * $this->perPageTurmas) + $i + 1 }}</td>
+                            <td class="rel-table-name">{{ $turma->turma_nome }}</td>
+                            <td class="rel-table-muted">{{ $turma->escola_nome }}</td>
+                            <td class="rel-table-muted">{{ $turma->serie_nome }}</td>
+                            <td>
+                                <span class="rel-badge rel-badge--red">{{ $turma->componentes_sem_professor }}</span>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="5" class="rel-empty">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
+                                <p>Nenhuma turma com professor faltando encontrada.</p>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        @if($this->totalPaginasTurmas > 1)
+        <div class="rel-pagination">
+            <span class="rel-pagination-info">
+                Mostrando {{ (($this->pageTurmas - 1) * $this->perPageTurmas) + 1 }}–{{ min($this->pageTurmas * $this->perPageTurmas, $this->totalTurmasFaltando) }}
+                de {{ $this->totalTurmasFaltando }}
+            </span>
+            <div class="rel-pagination-btns">
+                <button wire:click="irParaPaginaTurmas({{ $this->pageTurmas - 1 }})" @if($this->pageTurmas <= 1) disabled @endif class="rel-page-btn">←</button>
+                @for($p = 1; $p <= $this->totalPaginasTurmas; $p++)
+                    <button wire:click="irParaPaginaTurmas({{ $p }})" class="rel-page-btn {{ $p === $this->pageTurmas ? 'rel-page-btn--active' : '' }}">{{ $p }}</button>
+                @endfor
+                <button wire:click="irParaPaginaTurmas({{ $this->pageTurmas + 1 }})" @if($this->pageTurmas >= $this->totalPaginasTurmas) disabled @endif class="rel-page-btn">→</button>
+            </div>
+        </div>
+        @endif
+    </div>
+
 </div>
 
 <style>
-    /* ─── KPI Grid ─── */
     .rel-kpi-grid { display: grid; gap: 1rem; }
     .rel-kpi-grid--3 { grid-template-columns: repeat(3, 1fr); }
     .rel-kpi-card {
@@ -173,10 +234,7 @@
         border-radius: 8px; padding: 1rem 1.25rem;
         box-shadow: 0 1px 2px 0 rgb(0 0 0 / .04);
     }
-    .rel-kpi-icon {
-        width: 40px; height: 40px; border-radius: 8px;
-        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-    }
+    .rel-kpi-icon { width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .rel-kpi-icon svg { width: 18px; height: 18px; }
     .rel-kpi-icon--slate { background: #f1f5f9; color: #64748b; }
     .rel-kpi-icon--green { background: #dcfce7; color: #16a34a; }
@@ -194,7 +252,6 @@
     .dark .rel-kpi-value { color: #f9fafb; }
     .dark .rel-kpi-label { color: #9ca3af; }
 
-    /* ─── Filtros ─── */
     .rel-filters { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; }
     .rel-filter-group { display: flex; }
     .rel-filter-input,
@@ -206,56 +263,32 @@
         transition: border-color .15s, box-shadow .15s;
     }
     .rel-filter-input:focus,
-    .rel-filter-select:focus {
-        border-color: #6366f1;
-        box-shadow: 0 0 0 2px rgb(99 102 241 / .12);
-    }
+    .rel-filter-select:focus { border-color: #6366f1; box-shadow: 0 0 0 2px rgb(99 102 241 / .12); }
     .rel-filter-select--sm { min-width: 130px; }
-    .rel-filter-select--situacao { min-width: 190px; border-color: #fca5a5; }
-    .rel-filter-select--situacao:focus { border-color: #ef4444; box-shadow: 0 0 0 2px rgb(239 68 68 / .12); }
     .dark .rel-filter-input,
     .dark .rel-filter-select { background: rgb(17 24 39); border-color: rgba(255,255,255,.1); color: #f3f4f6; }
 
-    /* ─── Badge inline (subtítulo) ─── */
-    .rel-badge-inline {
-        display: inline-flex; align-items: center;
-        padding: .1rem .5rem; border-radius: 999px;
-        font-size: .68rem; font-weight: 600; margin-left: .4rem;
-    }
+    .rel-badge-inline { display: inline-flex; align-items: center; padding: .1rem .5rem; border-radius: 999px; font-size: .68rem; font-weight: 600; margin-left: .4rem; }
     .rel-badge-inline--red   { background: #fee2e2; color: #b91c1c; }
     .rel-badge-inline--green { background: #dcfce7; color: #15803d; }
 
-    /* ─── Tabela Card ─── */
-    .rel-table-card {
-        background: white; border: 1px solid #e5e7eb;
-        border-radius: 8px; overflow: hidden;
-        box-shadow: 0 1px 2px 0 rgb(0 0 0 / .04);
-    }
-    .rel-table-header {
-        display: flex; align-items: flex-start; justify-content: space-between;
-        padding: 1rem 1.25rem .7rem; border-bottom: 1px solid #f1f5f9;
-    }
+    .rel-table-card { background: white; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 2px 0 rgb(0 0 0 / .04); }
+    .rel-table-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem .7rem; border-bottom: 1px solid #f1f5f9; gap: 1rem; }
     .rel-table-title { margin: 0; font-size: .9rem; font-weight: 600; color: #111827; }
     .rel-table-sub { margin: .2rem 0 0; font-size: .76rem; color: #6b7280; display: flex; align-items: center; flex-wrap: wrap; gap: .25rem; }
     .dark .rel-table-card { background: rgb(17 24 39); border-color: rgba(255,255,255,.07); box-shadow: none; }
     .dark .rel-table-header { border-bottom-color: rgba(255,255,255,.06); }
     .dark .rel-table-title { color: #f9fafb; }
 
-    /* ─── Tabela ─── */
     .rel-table-wrap { overflow-x: auto; }
     .rel-table { width: 100%; border-collapse: collapse; font-size: .83rem; }
     .rel-table thead th {
         padding: .6rem 1rem; text-align: left;
-        font-size: .7rem; font-weight: 600; color: #374151;
+        font-size: .7rem; font-weight: 600;
         text-transform: uppercase; letter-spacing: .06em;
-        background: #1e3a5f; color: white;
-        white-space: nowrap;
+        background: #1e3a5f; color: white; white-space: nowrap;
     }
-    .rel-table thead th:first-child { border-radius: 0; }
-    .rel-table tbody td {
-        padding: .65rem 1rem; border-bottom: 1px solid #f3f4f6;
-        color: #374151; vertical-align: middle;
-    }
+    .rel-table tbody td { padding: .65rem 1rem; border-bottom: 1px solid #f3f4f6; color: #374151; vertical-align: middle; }
     .rel-table tbody tr:last-child td { border-bottom: none; }
     .rel-table tbody tr:hover { background: #f9fafb; }
     .dark .rel-table thead th { background: #1e3a5f; color: #e2e8f0; }
@@ -263,19 +296,15 @@
     .dark .rel-table tbody tr:hover { background: rgba(255,255,255,.02); }
     .rel-table-rank { font-size: .75rem; color: #9ca3af; font-weight: 500; width: 36px; }
     .rel-table-name { font-weight: 500; color: #111827; }
+    .rel-table-muted { color: #6b7280; font-size: .81rem; }
     .dark .rel-table-name { color: #f9fafb; }
+    .dark .rel-table-muted { color: #9ca3af; }
 
-    /* ─── Badges ─── */
-    .rel-badge {
-        display: inline-flex; align-items: center; justify-content: center;
-        padding: .15rem .55rem; border-radius: 999px;
-        font-size: .73rem; font-weight: 600;
-    }
+    .rel-badge { display: inline-flex; align-items: center; justify-content: center; padding: .15rem .55rem; border-radius: 999px; font-size: .73rem; font-weight: 600; }
     .rel-badge--slate { background: #f1f5f9; color: #475569; }
     .rel-badge--green { background: #dcfce7; color: #15803d; }
     .rel-badge--red   { background: #fee2e2; color: #b91c1c; }
 
-    /* ─── Progresso ─── */
     .rel-progress-wrap { display: flex; align-items: center; gap: .5rem; min-width: 110px; }
     .rel-progress { flex: 1; height: 5px; background: #e5e7eb; border-radius: 99px; overflow: hidden; }
     .rel-progress-bar { height: 100%; border-radius: 99px; transition: width .3s; }
@@ -286,36 +315,23 @@
     .dark .rel-progress { background: rgba(255,255,255,.1); }
     .dark .rel-progress-label { color: #d1d5db; }
 
-    /* ─── Empty state ─── */
     .rel-empty { text-align: center; padding: 2.5rem 1rem !important; color: #9ca3af; }
     .rel-empty svg { width: 32px; height: 32px; margin: 0 auto .5rem; display: block; }
     .rel-empty p { margin: 0; font-size: .82rem; }
 
-    /* ─── Paginação ─── */
-    .rel-pagination {
-        display: flex; align-items: center; justify-content: space-between;
-        padding: .75rem 1.25rem; border-top: 1px solid #f3f4f6;
-        flex-wrap: wrap; gap: .5rem;
-    }
+    .rel-pagination { display: flex; align-items: center; justify-content: space-between; padding: .75rem 1.25rem; border-top: 1px solid #f3f4f6; flex-wrap: wrap; gap: .5rem; }
     .dark .rel-pagination { border-top-color: rgba(255,255,255,.05); }
     .rel-pagination-info { font-size: .76rem; color: #6b7280; }
     .rel-pagination-btns { display: flex; gap: .2rem; }
-    .rel-page-btn {
-        min-width: 30px; height: 30px; padding: 0 .45rem;
-        border: 1px solid #e5e7eb; border-radius: 5px;
-        background: white; font-size: .78rem; color: #374151;
-        cursor: pointer; transition: background .12s, border-color .12s;
-    }
+    .rel-page-btn { min-width: 30px; height: 30px; padding: 0 .45rem; border: 1px solid #e5e7eb; border-radius: 5px; background: white; font-size: .78rem; color: #374151; cursor: pointer; transition: background .12s, border-color .12s; }
     .rel-page-btn:hover:not(:disabled) { background: #f3f4f6; border-color: #d1d5db; }
     .rel-page-btn:disabled { opacity: .35; cursor: not-allowed; }
     .rel-page-btn--active { background: #1e3a5f; border-color: #1e3a5f; color: white; font-weight: 600; }
     .dark .rel-page-btn { background: rgb(17 24 39); border-color: rgba(255,255,255,.1); color: #d1d5db; }
     .dark .rel-page-btn--active { background: #1e3a5f; border-color: #1e3a5f; color: white; }
 
-    /* ─── Utilitário ─── */
     .mb-rel { margin-bottom: 1.1rem; }
 
-    /* ─── Responsivo ─── */
     @media (max-width: 768px) {
         .rel-kpi-grid--3 { grid-template-columns: 1fr; }
         .rel-filters { flex-direction: column; align-items: stretch; }
