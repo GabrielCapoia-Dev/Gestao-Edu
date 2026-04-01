@@ -344,6 +344,7 @@ class PedidosTable
                                 ->disk('public')
                                 ->visibility('public')
                                 ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                                ->helperText('Formatos aceitos: JPG, PNG, WebP. Arquivos .jfif não são suportados.')
                                 ->columnSpanFull(),
                         ]),
                 ])
