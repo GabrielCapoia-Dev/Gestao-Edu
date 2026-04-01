@@ -249,78 +249,84 @@
     <div
         x-show="open"
         x-cloak
-        style="position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center;">
+        x-transition.opacity
+        style="position: fixed; inset: 0; z-index: 9999;">
 
         {{-- Backdrop --}}
         <div
             x-on:click="open = false"
             style="position: absolute; inset: 0; background: rgba(0,0,0,0.5);"></div>
 
-        {{-- Conteúdo --}}
-        <div style="position: relative; background: #fff; border-radius: 0.75rem; width: 100%; max-width: 56rem; max-height: 90vh; overflow-y: auto; padding: 1.5rem; z-index: 1; margin: 1rem;">
+        {{-- Centralizador — flex fica aqui, fora do x-show --}}
+        <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 1rem;">
 
-            <div class="notif-heading">
-                <div class="notif-heading-left">
-                    <span class="notif-title">Notificações</span>
-                    @if($unread > 0)
-                        <span class="notif-count-badge">{{ $unread }}</span>
-                        <button type="button" class="notif-mark-all-btn" onclick="markAllAsRead(this)" title="Marcar todas como lidas">
-                            <span class="btn-icon">
-                                <x-heroicon-o-check-badge style="width:16px;height:16px;color:#374151;" />
-                            </span>
-                            <span class="btn-spinner" style="display:none;">
-                                <div class="spinner"></div>
-                            </span>
-                        </button>
-                    @endif
-                </div>
-                @if($unread > 0)
-                    <span class="notif-unread-label">{{ $unread === 1 ? '1 não lida' : $unread . ' não lidas' }}</span>
-                @endif
-                <button
-                    type="button"
-                    x-on:click="open = false"
-                    style="margin-left: auto; background: none; border: none; cursor: pointer; font-size: 1.25rem; color: #6b7280; line-height: 1;">
-                    ✕
-                </button>
-            </div>
+            {{-- Conteúdo --}}
+            <div style="position: relative; background: #fff; border-radius: 0.75rem; width: 100%; max-width: 56rem; max-height: 90vh; overflow-y: auto; padding: 1.5rem; z-index: 1;">
 
-            <div class="notif-list">
-                @forelse($notifications as $notification)
-                    @php
-                        $data = json_decode($notification->data, true) ?? $notification->data;
-                        $isUnread = is_null($notification->read_at);
-                    @endphp
-                    <div wire:key="notif-{{ $notification->id }}" class="notif-item {{ $isUnread ? 'unread' : 'read' }}">
-                        @if($isUnread)
-                            <div class="notif-dot"></div>
+                <div class="notif-heading">
+                    <div class="notif-heading-left">
+                        <span class="notif-title">Notificações</span>
+                        @if($unread > 0)
+                            <span class="notif-count-badge">{{ $unread }}</span>
+                            <button type="button" class="notif-mark-all-btn" onclick="markAllAsRead(this)" title="Marcar todas como lidas">
+                                <span class="btn-icon">
+                                    <x-heroicon-o-check-badge style="width:16px;height:16px;color:#374151;" />
+                                </span>
+                                <span class="btn-spinner" style="display:none;">
+                                    <div class="spinner"></div>
+                                </span>
+                            </button>
                         @endif
-                        <div class="notif-body">
-                            <p class="notif-body-title">{{ $data['titulo'] ?? '' }}</p>
-                            <p class="notif-body-msg">{{ $data['mensagem'] ?? '' }}</p>
-                            <a href="{{ $data['url'] ?? '' }}" target="_blank" class="notif-link">
-                                {{ $data['label'] ?? 'Ver detalhes' }}
-                                <x-heroicon-o-arrow-top-right-on-square style="width:14px;height:14px;" />
-                            </a>
+                    </div>
+                    @if($unread > 0)
+                        <span class="notif-unread-label">{{ $unread === 1 ? '1 não lida' : $unread . ' não lidas' }}</span>
+                    @endif
+                    <button
+                        type="button"
+                        x-on:click="open = false"
+                        style="margin-left: auto; background: none; border: none; cursor: pointer; font-size: 1.25rem; color: #6b7280; line-height: 1;">
+                        ✕
+                    </button>
+                </div>
+
+                <div class="notif-list">
+                    @forelse($notifications as $notification)
+                        @php
+                            $data = json_decode($notification->data, true) ?? $notification->data;
+                            $isUnread = is_null($notification->read_at);
+                        @endphp
+                        <div wire:key="notif-{{ $notification->id }}" class="notif-item {{ $isUnread ? 'unread' : 'read' }}">
                             @if($isUnread)
-                                <button type="button" class="notif-check-btn" onclick="markAsRead(this, '{{ $notification->id }}')" title="Marcar como lida">
-                                    <span class="btn-icon">
-                                        <x-heroicon-o-check style="width:16px;height:16px;color:#374151;" />
-                                    </span>
-                                    <span class="btn-spinner" style="display:none;">
-                                        <div class="spinner"></div>
-                                    </span>
-                                </button>
+                                <div class="notif-dot"></div>
                             @endif
-                            <p class="notif-time">{{ \Carbon\Carbon::parse($notification->created_at)->diffForHumans() }}</p>
+                            <div class="notif-body">
+                                <p class="notif-body-title">{{ $data['titulo'] ?? '' }}</p>
+                                <p class="notif-body-msg">{{ $data['mensagem'] ?? '' }}</p>
+                                <a href="{{ $data['url'] ?? '' }}" target="_blank" class="notif-link">
+                                    {{ $data['label'] ?? 'Ver detalhes' }}
+                                    <x-heroicon-o-arrow-top-right-on-square style="width:14px;height:14px;" />
+                                </a>
+                                @if($isUnread)
+                                    <button type="button" class="notif-check-btn" onclick="markAsRead(this, '{{ $notification->id }}')" title="Marcar como lida">
+                                        <span class="btn-icon">
+                                            <x-heroicon-o-check style="width:16px;height:16px;color:#374151;" />
+                                        </span>
+                                        <span class="btn-spinner" style="display:none;">
+                                            <div class="spinner"></div>
+                                        </span>
+                                    </button>
+                                @endif
+                                <p class="notif-time">{{ \Carbon\Carbon::parse($notification->created_at)->diffForHumans() }}</p>
+                            </div>
                         </div>
-                    </div>
-                @empty
-                    <div class="notif-empty">
-                        <x-heroicon-o-bell />
-                        <p>Nenhuma notificação</p>
-                    </div>
-                @endforelse
+                    @empty
+                        <div class="notif-empty">
+                            <x-heroicon-o-bell />
+                            <p>Nenhuma notificação</p>
+                        </div>
+                    @endforelse
+                </div>
+
             </div>
         </div>
     </div>
