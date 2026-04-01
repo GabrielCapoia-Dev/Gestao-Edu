@@ -66,7 +66,7 @@ class PedidoObserver
                         new SistemaNotification(
                             titulo: 'Pedido Reaberto',
                             mensagem: "Seu pedido {$pedido->numero_protocolo} foi reaberto e encaminhado ao setor responsável.",
-                            url: route('filament.admin.resources.pedidos.view', $pedido),
+                            url: route('filament.admin.resources.pedidos.edit', $pedido),
                         )
                     );
                 }
@@ -77,10 +77,10 @@ class PedidoObserver
                         continue;
                     }
 
-                    $user->notify(
+                    $solicitante->notify(
                         new SistemaNotification(
-                            titulo: 'Pedido Reaberto',
-                            mensagem: "O pedido {$pedido->numero_protocolo} foi reaberto.",
+                            titulo: 'Atualização no Pedido',
+                            mensagem: "O status do seu pedido {$pedido->numero_protocolo} foi atualizado para \n\"{$statusAtual->nome}\".",
                             url: route('filament.admin.resources.pedidos.edit', $pedido),
                         )
                     );
