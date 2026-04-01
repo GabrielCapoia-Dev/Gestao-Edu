@@ -65,15 +65,6 @@
             </select>
         </div>
 
-        {{-- NOVO: Filtro de situação --}}
-        <div class="rel-filter-group">
-            <select wire:model.live="situacao" class="rel-filter-select rel-filter-select--situacao">
-                <option value="">Todos os componentes</option>
-                <option value="sem_professor">Sem professor</option>
-                <option value="com_professor">Com professor</option>
-            </select>
-        </div>
-
         <div class="rel-filter-group">
             <select wire:model.live="perPage" class="rel-filter-select rel-filter-select--sm">
                 <option value="5">5 por página</option>
