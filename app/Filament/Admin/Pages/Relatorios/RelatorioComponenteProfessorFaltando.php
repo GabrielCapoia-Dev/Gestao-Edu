@@ -47,6 +47,16 @@ class RelatorioComponenteProfessorFaltando extends Page implements HasTable
         $user = Auth::user();
         return $user->hasPermissionTo('Listar Relatórios: Componentes com Professores Faltando');
     }
+    // Adicione este método na classe para desabilitar o defaultSort de desempate do Filament
+    protected function getDefaultTableSortColumn(): ?string
+    {
+        return null;
+    }
+
+    protected function getDefaultTableSortDirection(): ?string
+    {
+        return null;
+    }
 
     public function getTableRecordKey($record): string
     {
@@ -62,28 +72,23 @@ class RelatorioComponenteProfessorFaltando extends Page implements HasTable
                     ->join('escolas', 'escolas.id', '=', 'turmas.id_escola')
                     ->join('series', 'series.id', '=', 'turmas.id_serie')
                     ->selectRaw('
-                        cc.id as componente_id,
-                        cc.nome as componente_nome,
-                        COUNT(*) as total, 
-                        SUM(CASE WHEN tcp.professor_id IS NOT NULL THEN 1 ELSE 0 END) as com_professor,
-                        SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) as sem_professor,
-                        turmas.id_escola,
-                        turmas.id_serie
-                    ')
+                    cc.id as componente_id,
+                    cc.nome as componente_nome,
+                    COUNT(*) as total, 
+                    SUM(CASE WHEN tcp.professor_id IS NOT NULL THEN 1 ELSE 0 END) as com_professor,
+                    SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) as sem_professor,
+                    turmas.id_escola,
+                    turmas.id_serie,
+                    ROW_NUMBER() OVER (ORDER BY SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) DESC) as row_num
+                ')
                     ->groupBy('cc.id', 'cc.nome', 'turmas.id_escola', 'turmas.id_serie')
-                    ->havingRaw('SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) > 0')
-                    ->orderByRaw('SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) DESC');
-
-                // Envolve em mais uma subquery adicionando row_num como chave
-                $outer = DB::table(DB::raw("({$sub->toSql()}) as inner_sub"))
-                    ->mergeBindings($sub)
-                    ->selectRaw('inner_sub.*, ROW_NUMBER() OVER (ORDER BY inner_sub.sem_professor DESC) as row_num');
+                    ->havingRaw('SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) > 0');
 
                 return \App\Relatorios\RelatorioComponenteProfessorFaltandoModel::query()
-                    ->fromSub($outer, 'sub')
-                    ->select('sub.*')
-                    ->orderBy('sub.sem_professor', 'desc');
+                    ->fromSub($sub, 'sub')
+                    ->select('sub.*');
             })
+            ->defaultSort('sem_professor', 'desc')
 
             ->columns([
                 Tables\Columns\TextColumn::make('componente_nome')
