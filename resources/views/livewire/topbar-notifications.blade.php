@@ -80,8 +80,15 @@
     }
 
     @keyframes notif-pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.6; }
+
+        0%,
+        100% {
+            opacity: 1;
+        }
+
+        50% {
+            opacity: 0.6;
+        }
     }
 
     .notif-mark-all-btn {
@@ -124,8 +131,14 @@
         border: 1px solid #e5e7eb;
     }
 
-    .notif-item.unread { background-color: #f9fafb; }
-    .notif-item.read { background-color: #fff; opacity: 0.7; }
+    .notif-item.unread {
+        background-color: #f9fafb;
+    }
+
+    .notif-item.read {
+        background-color: #fff;
+        opacity: 0.7;
+    }
 
     .notif-dot {
         width: 8px;
@@ -186,7 +199,9 @@
         transition: background-color 0.2s ease;
     }
 
-    .notif-check-btn:hover { background-color: #d1d5db; }
+    .notif-check-btn:hover {
+        background-color: #d1d5db;
+    }
 
     .notif-time {
         font-size: 0.75rem;
@@ -221,7 +236,11 @@
         animation: spin 0.6s linear infinite;
     }
 
-    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
 
     .notif-overlay {
         position: fixed;
@@ -258,7 +277,9 @@
         box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
     }
 
-    [x-cloak] { display: none !important; }
+    [x-cloak] {
+        display: none !important;
+    }
 </style>
 
 {{-- Elemento raiz para o Livewire --}}
@@ -268,14 +289,14 @@
     x-on:keydown.escape.window="open = false">
 
     {{-- Sino com poll --}}
-    <div class="notif-wrapper" wire:poll.10s="refresh">
+    <div class="notif-wrapper">
         <button
             type="button"
             class="notif-bell-btn"
             x-on:click="open = true">
             <x-heroicon-o-bell style="width: 20px; height: 20px;" />
             @if($unread > 0)
-                <span class="notification-badge">{{ $unread > 99 ? '99+' : $unread }}</span>
+            <span class="notification-badge">{{ $unread > 99 ? '99+' : $unread }}</span>
             @endif
         </button>
     </div>
@@ -313,19 +334,19 @@
                     <div class="notif-heading-left">
                         <span class="notif-title">Notificações</span>
                         @if($unread > 0)
-                            <span class="notif-count-badge">{{ $unread }}</span>
-                            <button type="button" class="notif-mark-all-btn" onclick="markAllAsRead(this)" title="Marcar todas como lidas">
-                                <span class="btn-icon">
-                                    <x-heroicon-o-check-badge style="width:16px;height:16px;color:#374151;" />
-                                </span>
-                                <span class="btn-spinner" style="display:none;">
-                                    <div class="spinner"></div>
-                                </span>
-                            </button>
+                        <span class="notif-count-badge">{{ $unread }}</span>
+                        <button type="button" class="notif-mark-all-btn" onclick="markAllAsRead(this)" title="Marcar todas como lidas">
+                            <span class="btn-icon">
+                                <x-heroicon-o-check-badge style="width:16px;height:16px;color:#374151;" />
+                            </span>
+                            <span class="btn-spinner" style="display:none;">
+                                <div class="spinner"></div>
+                            </span>
+                        </button>
                         @endif
                     </div>
                     @if($unread > 0)
-                        <span class="notif-unread-label">{{ $unread === 1 ? '1 não lida' : $unread . ' não lidas' }}</span>
+                    <span class="notif-unread-label">{{ $unread === 1 ? '1 não lida' : $unread . ' não lidas' }}</span>
                     @endif
                     <button
                         type="button"
@@ -337,39 +358,39 @@
 
                 <div class="notif-list">
                     @forelse($notifications as $notification)
-                        @php
-                            $data = json_decode($notification->data, true) ?? $notification->data;
-                            $isUnread = is_null($notification->read_at);
-                        @endphp
-                        <div wire:key="notif-{{ $notification->id }}" class="notif-item {{ $isUnread ? 'unread' : 'read' }}">
+                    @php
+                    $data = json_decode($notification->data, true) ?? $notification->data;
+                    $isUnread = is_null($notification->read_at);
+                    @endphp
+                    <div wire:key="notif-{{ $notification->id }}" class="notif-item {{ $isUnread ? 'unread' : 'read' }}">
+                        @if($isUnread)
+                        <div class="notif-dot"></div>
+                        @endif
+                        <div class="notif-body">
+                            <p class="notif-body-title">{{ $data['titulo'] ?? '' }}</p>
+                            <p class="notif-body-msg">{{ $data['mensagem'] ?? '' }}</p>
+                            <a href="{{ $data['url'] ?? '' }}" target="_blank" class="notif-link">
+                                {{ $data['label'] ?? 'Ver detalhes' }}
+                                <x-heroicon-o-arrow-top-right-on-square style="width:14px;height:14px;" />
+                            </a>
                             @if($isUnread)
-                                <div class="notif-dot"></div>
+                            <button type="button" class="notif-check-btn" onclick="markAsRead(this, '{{ $notification->id }}')" title="Marcar como lida">
+                                <span class="btn-icon">
+                                    <x-heroicon-o-check style="width:16px;height:16px;color:#374151;" />
+                                </span>
+                                <span class="btn-spinner" style="display:none;">
+                                    <div class="spinner"></div>
+                                </span>
+                            </button>
                             @endif
-                            <div class="notif-body">
-                                <p class="notif-body-title">{{ $data['titulo'] ?? '' }}</p>
-                                <p class="notif-body-msg">{{ $data['mensagem'] ?? '' }}</p>
-                                <a href="{{ $data['url'] ?? '' }}" target="_blank" class="notif-link">
-                                    {{ $data['label'] ?? 'Ver detalhes' }}
-                                    <x-heroicon-o-arrow-top-right-on-square style="width:14px;height:14px;" />
-                                </a>
-                                @if($isUnread)
-                                    <button type="button" class="notif-check-btn" onclick="markAsRead(this, '{{ $notification->id }}')" title="Marcar como lida">
-                                        <span class="btn-icon">
-                                            <x-heroicon-o-check style="width:16px;height:16px;color:#374151;" />
-                                        </span>
-                                        <span class="btn-spinner" style="display:none;">
-                                            <div class="spinner"></div>
-                                        </span>
-                                    </button>
-                                @endif
-                                <p class="notif-time">{{ \Carbon\Carbon::parse($notification->created_at)->diffForHumans() }}</p>
-                            </div>
+                            <p class="notif-time">{{ \Carbon\Carbon::parse($notification->created_at)->diffForHumans() }}</p>
                         </div>
+                    </div>
                     @empty
-                        <div class="notif-empty">
-                            <x-heroicon-o-bell />
-                            <p>Nenhuma notificação</p>
-                        </div>
+                    <div class="notif-empty">
+                        <x-heroicon-o-bell />
+                        <p>Nenhuma notificação</p>
+                    </div>
                     @endforelse
                 </div>
 
@@ -391,7 +412,10 @@
         setLoading(btn, true);
         await fetch('/admin/notifications/mark-all-read', {
             method: 'POST',
-            headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+            headers: {
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json'
+            },
         });
         Livewire.dispatch('refresh-notifications');
         setLoading(btn, false);
@@ -401,9 +425,17 @@
         setLoading(btn, true);
         await fetch(`/admin/notifications/${id}/mark-read`, {
             method: 'POST',
-            headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+            headers: {
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json'
+            },
         });
         Livewire.dispatch('refresh-notifications');
         setLoading(btn, false);
     }
+
+    setInterval(() => {
+        Livewire.dispatch('refresh-notifications');
+    }, 10000);
+    F
 </script>
