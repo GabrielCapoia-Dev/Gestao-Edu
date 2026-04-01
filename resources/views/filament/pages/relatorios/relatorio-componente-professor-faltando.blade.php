@@ -2,7 +2,7 @@
     <div class="relatorios-root">
 
         {{-- KPIs --}}
-        <div class="rel-kpi-grid rel-kpi-grid--3 mb-rel">
+        <div class="rel-kpi-grid rel-kpi-grid--5 mb-rel">
             <div class="rel-kpi-card">
                 <div class="rel-kpi-icon rel-kpi-icon--slate">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -22,7 +22,7 @@
                     </svg>
                 </div>
                 <div class="rel-kpi-body">
-                    <span class="rel-kpi-label">Com professor</span>
+                    <span class="rel-kpi-label">Componentes com professor</span>
                     <span class="rel-kpi-value rel-kpi-value--green">{{ $this->comProfessor }}</span>
                     @if($this->vinculos > 0)
                     <span class="rel-kpi-sub">{{ round(($this->comProfessor / $this->vinculos) * 100) }}% dos vínculos</span>
@@ -36,11 +36,37 @@
                     </svg>
                 </div>
                 <div class="rel-kpi-body">
-                    <span class="rel-kpi-label">Sem professor</span>
+                    <span class="rel-kpi-label">Componentes sem professor</span>
                     <span class="rel-kpi-value rel-kpi-value--red">{{ $this->semProfessor }}</span>
                     @if($this->vinculos > 0)
                     <span class="rel-kpi-sub">{{ round(($this->semProfessor / $this->vinculos) * 100) }}% dos vínculos</span>
                     @endif
+                </div>
+            </div>
+            <div class="rel-kpi-card">
+                <div class="rel-kpi-icon rel-kpi-icon--rose">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4.26 10.147a60.438 60.438 0 0 0-.491 6.347A48.62 48.62 0 0 1 12 20.904a48.62 48.62 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.636 50.636 0 0 0-2.658-.813A59.906 59.906 0 0 1 12 3.493a59.903 59.903 0 0 1 10.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0 1 12 13.489a50.702 50.702 0 0 1 3.741-1.342M6.75 15a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 0v-3.675A55.378 55.378 0 0 1 12 8.443m-7.007 11.55A5.981 5.981 0 0 0 6.75 15.75v-1.5" />
+                    </svg>
+                </div>
+                <div class="rel-kpi-body">
+                    <span class="rel-kpi-label">Turmas sem professor</span>
+                    <span class="rel-kpi-value rel-kpi-value--red">{{ $this->totalTurmasFaltando }}</span>
+                    @if($this->totalTurmas > 0)
+                    <span class="rel-kpi-sub">de {{ $this->totalTurmas }} turmas</span>
+                    @endif
+                </div>
+            </div>
+            <div class="rel-kpi-card">
+                <div class="rel-kpi-icon rel-kpi-icon--slate">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                    </svg>
+                </div>
+                <div class="rel-kpi-body">
+                    <span class="rel-kpi-label">Total de professores</span>
+                    <span class="rel-kpi-value">{{ $this->totalProfessores }}</span>
+                    <span class="rel-kpi-sub">cadastrados</span>
                 </div>
             </div>
         </div>
@@ -236,6 +262,23 @@
     </div>
 
     <style>
+        .rel-kpi-grid--5 {
+            grid-template-columns: repeat(5, 1fr);
+        }
+
+        @media (max-width: 1024px) {
+            .rel-kpi-grid--5 {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .rel-kpi-grid--5 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        
         .rel-kpi-grid {
             display: grid;
             gap: 1rem;
