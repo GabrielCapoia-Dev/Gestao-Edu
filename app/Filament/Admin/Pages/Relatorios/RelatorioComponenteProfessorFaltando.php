@@ -22,15 +22,19 @@ class RelatorioComponenteProfessorFaltando extends Page
     protected static ?string $slug = 'relatorio-componentes-com-professores-faltando';
     protected static bool $shouldRegisterNavigation = false;
 
-    // Filtros
-    public ?int $escola_id = null;
-    public ?int $serie_id  = null;
-    public string $search  = '';
+    // Filtros compartilhados
+    public ?int $escola_id  = null;
+    public ?int $serie_id   = null;
+    public string $search   = '';
     public string $situacao = '';
 
-    // Paginação
-    public int $perPage    = 10;
-    public int $page       = 1;
+    // Paginação — componentes
+    public int $perPage = 10;
+    public int $page    = 1;
+
+    // Paginação — turmas
+    public int $perPageTurmas = 10;
+    public int $pageTurmas    = 1;
 
     // KPIs
     public int $totalProfessores = 0;
@@ -42,9 +46,13 @@ class RelatorioComponenteProfessorFaltando extends Page
     public int $semProfessor     = 0;
     public array $topComponentes = [];
 
-    // Dados da tabela
-    public array $registros  = [];
+    // Tabela de componentes
+    public array $registros    = [];
     public int $totalRegistros = 0;
+
+    // Tabela de turmas
+    public array $turmas              = [];
+    public int $totalTurmasFaltando   = 0;
 
     public static function canAccess(): bool
     {
@@ -77,6 +85,7 @@ class RelatorioComponenteProfessorFaltando extends Page
             ->toArray();
 
         $this->carregarDados();
+        $this->carregarTurmas();
     }
 
     public function carregarDados(): void
@@ -99,18 +108,15 @@ class RelatorioComponenteProfessorFaltando extends Page
         if ($this->escola_id) {
             $query->where('turmas.id_escola', $this->escola_id);
         }
-
         if ($this->serie_id) {
             $query->where('turmas.id_serie', $this->serie_id);
         }
-
         if ($this->search) {
             $query->where('cc.nome', 'like', '%' . $this->search . '%');
         }
         if ($this->situacao === 'sem_professor') {
             $query->havingRaw('SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) > 0');
         }
-
         if ($this->situacao === 'com_professor') {
             $query->havingRaw('SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) = 0');
         }
@@ -127,7 +133,46 @@ class RelatorioComponenteProfessorFaltando extends Page
             ->toArray();
     }
 
-    public function updatedSituacao(): void 
+    public function carregarTurmas(): void
+    {
+        $query = DB::table('turma_componente_professor as tcp')
+            ->join('turmas', 'turmas.id', '=', 'tcp.turma_id')
+            ->join('escolas', 'escolas.id', '=', 'turmas.id_escola')
+            ->join('series', 'series.id', '=', 'turmas.id_serie')
+            ->join('componentes_curriculares as cc', 'cc.id', '=', 'tcp.componente_curricular_id')
+            ->whereNull('tcp.professor_id')
+            ->selectRaw('
+                turmas.id as turma_id,
+                turmas.nome as turma_nome,
+                escolas.nome as escola_nome,
+                series.nome as serie_nome,
+                COUNT(*) as componentes_sem_professor
+            ')
+            ->groupBy('turmas.id', 'turmas.nome', 'escolas.nome', 'series.nome');
+
+        if ($this->escola_id) {
+            $query->where('turmas.id_escola', $this->escola_id);
+        }
+        if ($this->serie_id) {
+            $query->where('turmas.id_serie', $this->serie_id);
+        }
+        if ($this->search) {
+            $query->where('cc.nome', 'like', '%' . $this->search . '%');
+        }
+
+        $this->totalTurmasFaltando = DB::table(DB::raw("({$query->toSql()}) as sub"))
+            ->mergeBindings($query)
+            ->count();
+
+        $this->turmas = $query
+            ->orderByDesc('componentes_sem_professor')
+            ->offset(($this->pageTurmas - 1) * $this->perPageTurmas)
+            ->limit($this->perPageTurmas)
+            ->get()
+            ->toArray();
+    }
+
+    public function updatedSituacao(): void
     {
         $this->page = 1;
         $this->carregarDados();
@@ -135,20 +180,26 @@ class RelatorioComponenteProfessorFaltando extends Page
 
     public function updatedSearch(): void
     {
-        $this->page = 1;
+        $this->page       = 1;
+        $this->pageTurmas = 1;
         $this->carregarDados();
+        $this->carregarTurmas();
     }
 
     public function updatedEscolaId(): void
     {
-        $this->page = 1;
+        $this->page       = 1;
+        $this->pageTurmas = 1;
         $this->carregarDados();
+        $this->carregarTurmas();
     }
 
     public function updatedSerieId(): void
     {
-        $this->page = 1;
+        $this->page       = 1;
+        $this->pageTurmas = 1;
         $this->carregarDados();
+        $this->carregarTurmas();
     }
 
     public function updatedPerPage(): void
@@ -157,15 +208,32 @@ class RelatorioComponenteProfessorFaltando extends Page
         $this->carregarDados();
     }
 
+    public function updatedPerPageTurmas(): void
+    {
+        $this->pageTurmas = 1;
+        $this->carregarTurmas();
+    }
+
     public function irParaPagina(int $pagina): void
     {
         $this->page = $pagina;
         $this->carregarDados();
     }
 
+    public function irParaPaginaTurmas(int $pagina): void
+    {
+        $this->pageTurmas = $pagina;
+        $this->carregarTurmas();
+    }
+
     public function getTotalPaginasProperty(): int
     {
         return (int) ceil($this->totalRegistros / $this->perPage);
+    }
+
+    public function getTotalPaginasTurmasProperty(): int
+    {
+        return (int) ceil($this->totalTurmasFaltando / $this->perPageTurmas);
     }
 
     public function getEscolasProperty(): \Illuminate\Support\Collection
