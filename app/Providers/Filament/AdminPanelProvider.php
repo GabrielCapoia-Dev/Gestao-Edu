@@ -40,7 +40,6 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->login()
             ->profile()
-            ->spa()
             ->darkMode(false)
             ->colors([
                 'primary' => [
