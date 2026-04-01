@@ -1,6 +1,4 @@
-@php
-$id = 'modal-notificacoes';
-@endphp
+@php $id = 'modal-notificacoes'; @endphp
 
 <style>
     .notif-wrapper {
@@ -50,6 +48,7 @@ $id = 'modal-notificacoes';
         align-items: center;
         justify-content: space-between;
         width: 100%;
+        margin-bottom: 1rem;
     }
 
     .notif-heading-left {
@@ -81,15 +80,8 @@ $id = 'modal-notificacoes';
     }
 
     @keyframes notif-pulse {
-
-        0%,
-        100% {
-            opacity: 1;
-        }
-
-        50% {
-            opacity: 0.6;
-        }
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.6; }
     }
 
     .notif-mark-all-btn {
@@ -228,11 +220,6 @@ $id = 'modal-notificacoes';
         color: #d1d5db;
     }
 
-    .btn-loading {
-        pointer-events: none;
-        opacity: 0.7;
-    }
-
     .spinner {
         width: 16px;
         height: 16px;
@@ -243,43 +230,51 @@ $id = 'modal-notificacoes';
     }
 
     @keyframes spin {
-        to {
-            transform: rotate(360deg);
-        }
+        to { transform: rotate(360deg); }
     }
+
+    [x-cloak] { display: none !important; }
 </style>
 
+{{-- Sino: wire:poll isolado aqui --}}
 <div class="notif-wrapper" wire:poll.10s="refresh">
-
     <button
         type="button"
         class="notif-bell-btn"
-        x-on:click="$dispatch('open-modal', { id: '{{ $id }}' })">
-
+        x-data
+        x-on:click="$dispatch('open-notif-modal')">
         <x-heroicon-o-bell style="width: 20px; height: 20px;" />
-
         @if($unread > 0)
-        <span class="notification-badge">
-            {{ $unread > 99 ? '99+' : $unread }}
-        </span>
+            <span class="notification-badge">{{ $unread > 99 ? '99+' : $unread }}</span>
         @endif
     </button>
+</div>
 
-    <x-filament::modal :id="$id" width="4xl">
-        <x-slot name="heading">
-            <div class="notif-heading">
-                <div class="notif-heading-left">
-                    <span class="notif-title">Notificações</span>
+{{-- Modal teleportado direto pro body, fora do wire:poll --}}
+@teleport('body')
+<div
+    x-data="{ open: false }"
+    x-on:open-notif-modal.window="open = true"
+    x-on:keydown.escape.window="open = false"
+    x-show="open"
+    x-cloak
+    style="position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center;">
 
-                    @if($unread > 0)
+    {{-- Backdrop --}}
+    <div
+        x-on:click="open = false"
+        style="position: absolute; inset: 0; background: rgba(0,0,0,0.5);"></div>
+
+    {{-- Modal --}}
+    <div style="position: relative; background: #fff; border-radius: 0.75rem; width: 100%; max-width: 56rem; max-height: 90vh; overflow-y: auto; padding: 1.5rem; z-index: 1; margin: 1rem;">
+
+        {{-- Heading --}}
+        <div class="notif-heading">
+            <div class="notif-heading-left">
+                <span class="notif-title">Notificações</span>
+                @if($unread > 0)
                     <span class="notif-count-badge">{{ $unread }}</span>
-
-                    {{-- Botão: marcar TODAS como lidas --}}
-                    <button
-                        type="button"
-                        class="notif-mark-all-btn"
-                        onclick="markAllAsRead(this)"
-                        title="Marcar todas como lidas">
+                    <button type="button" class="notif-mark-all-btn" onclick="markAllAsRead(this)" title="Marcar todas como lidas">
                         <span class="btn-icon">
                             <x-heroicon-o-check-badge style="width:16px;height:16px;color:#374151;" />
                         </span>
@@ -287,109 +282,93 @@ $id = 'modal-notificacoes';
                             <div class="spinner"></div>
                         </span>
                     </button>
-                    @endif
-                </div>
-
-                @if($unread > 0)
-                <span class="notif-unread-label">
-                    {{ $unread === 1 ? '1 não lida' : $unread . ' não lidas' }}
-                </span>
                 @endif
             </div>
-        </x-slot>
-
-        <div class="notif-list">
-
-            @forelse($notifications as $notification)
-            @php
-            $data = json_decode($notification->data, true) ?? $notification->data;
-            $isUnread = is_null($notification->read_at);
-            @endphp
-
-            <div wire:key="notif-{{ $notification->id }}" class="notif-item {{ $isUnread ? 'unread' : 'read' }}">
-
-                @if($isUnread)
-                <div class="notif-dot"></div>
-                @endif
-
-                <div class="notif-body">
-                    <p class="notif-body-title">{{ $data['titulo'] ?? '' }}</p>
-                    <p class="notif-body-msg">{{ $data['mensagem'] ?? '' }}</p>
-
-                    <a href="{{ $data['url'] ?? '' }}" target="_blank" class="notif-link">
-                        {{ $data['label'] ?? 'Ver detalhes' }}
-                        <x-heroicon-o-arrow-top-right-on-square style="width:14px;height:14px;" />
-                    </a>
-
-                    @if($isUnread)
-                    {{-- Botão: marcar INDIVIDUAL como lida --}}
-                    <button
-                        type="button"
-                        class="notif-check-btn"
-                        onclick="markAsRead(this, '{{ $notification->id }}')"
-                        title="Marcar como lida">
-                        <span class="btn-icon">
-                            <x-heroicon-o-check style="width:16px;height:16px;color:#374151;" />
-                        </span>
-                        <span class="btn-spinner" style="display:none;">
-                            <div class="spinner"></div>
-                        </span>
-                    </button>
-                    @endif
-
-                    <p class="notif-time">
-                        {{ \Carbon\Carbon::parse($notification->created_at)->diffForHumans() }}
-                    </p>
-                </div>
-            </div>
-
-            @empty
-            <div class="notif-empty">
-                <x-heroicon-o-bell />
-                <p>Nenhuma notificação</p>
-            </div>
-            @endforelse
-
+            @if($unread > 0)
+                <span class="notif-unread-label">{{ $unread === 1 ? '1 não lida' : $unread . ' não lidas' }}</span>
+            @endif
+            <button
+                type="button"
+                x-on:click="open = false"
+                style="margin-left: auto; background: none; border: none; cursor: pointer; font-size: 1.25rem; color: #6b7280; line-height: 1;">
+                ✕
+            </button>
         </div>
-    </x-filament::modal>
 
-    <script>
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
-
-        function setLoading(btn, loading) {
-            btn.disabled = loading;
-            btn.querySelector('.btn-icon').style.display = loading ? 'none' : '';
-            btn.querySelector('.btn-spinner').style.display = loading ? '' : 'none';
-        }
-
-        async function markAllAsRead(btn) {
-            setLoading(btn, true);
-
-            await fetch('/admin/notifications/mark-all-read', {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': csrfToken,
-                    'Accept': 'application/json',
-                },
-            });
-
-            Livewire.dispatch('refresh-notifications');
-            setLoading(btn, false);
-        }
-
-        async function markAsRead(btn, id) {
-            setLoading(btn, true);
-
-            await fetch(`/admin/notifications/${id}/mark-read`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': csrfToken,
-                    'Accept': 'application/json',
-                },
-            });
-
-            Livewire.dispatch('refresh-notifications');
-            setLoading(btn, false);
-        }
-    </script>
+        {{-- Lista --}}
+        <div class="notif-list">
+            @forelse($notifications as $notification)
+                @php
+                    $data = json_decode($notification->data, true) ?? $notification->data;
+                    $isUnread = is_null($notification->read_at);
+                @endphp
+                <div wire:key="notif-{{ $notification->id }}" class="notif-item {{ $isUnread ? 'unread' : 'read' }}">
+                    @if($isUnread)
+                        <div class="notif-dot"></div>
+                    @endif
+                    <div class="notif-body">
+                        <p class="notif-body-title">{{ $data['titulo'] ?? '' }}</p>
+                        <p class="notif-body-msg">{{ $data['mensagem'] ?? '' }}</p>
+                        <a href="{{ $data['url'] ?? '' }}" target="_blank" class="notif-link">
+                            {{ $data['label'] ?? 'Ver detalhes' }}
+                            <x-heroicon-o-arrow-top-right-on-square style="width:14px;height:14px;" />
+                        </a>
+                        @if($isUnread)
+                            <button type="button" class="notif-check-btn" onclick="markAsRead(this, '{{ $notification->id }}')" title="Marcar como lida">
+                                <span class="btn-icon">
+                                    <x-heroicon-o-check style="width:16px;height:16px;color:#374151;" />
+                                </span>
+                                <span class="btn-spinner" style="display:none;">
+                                    <div class="spinner"></div>
+                                </span>
+                            </button>
+                        @endif
+                        <p class="notif-time">{{ \Carbon\Carbon::parse($notification->created_at)->diffForHumans() }}</p>
+                    </div>
+                </div>
+            @empty
+                <div class="notif-empty">
+                    <x-heroicon-o-bell />
+                    <p>Nenhuma notificação</p>
+                </div>
+            @endforelse
+        </div>
+    </div>
 </div>
+@endteleport
+
+<script>
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+
+    function setLoading(btn, loading) {
+        btn.disabled = loading;
+        btn.querySelector('.btn-icon').style.display = loading ? 'none' : '';
+        btn.querySelector('.btn-spinner').style.display = loading ? '' : 'none';
+    }
+
+    async function markAllAsRead(btn) {
+        setLoading(btn, true);
+        await fetch('/admin/notifications/mark-all-read', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json',
+            },
+        });
+        Livewire.dispatch('refresh-notifications');
+        setLoading(btn, false);
+    }
+
+    async function markAsRead(btn, id) {
+        setLoading(btn, true);
+        await fetch(`/admin/notifications/${id}/mark-read`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': csrfToken,
+                'Accept': 'application/json',
+            },
+        });
+        Livewire.dispatch('refresh-notifications');
+        setLoading(btn, false);
+    }
+</script>
