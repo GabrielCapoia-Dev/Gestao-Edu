@@ -98,7 +98,7 @@ class PedidoObserver
                     new SistemaNotification(
                         titulo: 'Atualização no Pedido',
                         mensagem: "O status do seu pedido {$pedido->numero_protocolo} foi atualizado para \n\"{$statusAtual->nome}\".",
-                        url: route('filament.admin.resources.pedidos.view', $pedido),
+                        url: route('filament.admin.resources.pedidos.index', $pedido),
                     )
                 );
             }
