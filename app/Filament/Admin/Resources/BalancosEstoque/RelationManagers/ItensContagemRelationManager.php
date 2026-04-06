@@ -21,7 +21,7 @@ class ItensContagemRelationManager extends RelationManager
 {
     protected static string $relationship = 'itensContagem';
 
-    protected static ?string $title = 'Itens do Balanço';
+    protected static ?string $title = 'Itens do Balanco';
 
     public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
     {
@@ -51,19 +51,28 @@ class ItensContagemRelationManager extends RelationManager
                     ->label('Unidade')
                     ->formatStateUsing(fn ($state) => strtoupper($state?->value ?? (string) $state)),
                 TextColumn::make('saldo_sistema_antes')
-                    ->label('Saldo Antes')
+                    ->label('Saldo antes')
                     ->numeric(decimalPlaces: 3, decimalSeparator: ',', thousandsSeparator: '.'),
                 TextColumn::make('quantidade_contada')
-                    ->label('Quantidade Real')
+                    ->label('Quantidade real')
                     ->placeholder('Pendente')
                     ->numeric(decimalPlaces: 3, decimalSeparator: ',', thousandsSeparator: '.'),
                 TextColumn::make('diferenca')
-                    ->label('Diferença')
+                    ->label('Divergencia')
                     ->placeholder('-')
                     ->numeric(decimalPlaces: 3, decimalSeparator: ',', thousandsSeparator: '.')
                     ->color(fn (BalancoEstoqueItem $record): string => (float) ($record->diferenca ?? 0) === 0.0 ? 'gray' : 'warning'),
+                TextColumn::make('valor_unitario_referencia')
+                    ->label('Valor unitario')
+                    ->money('BRL')
+                    ->placeholder('-'),
+                TextColumn::make('valor_impacto')
+                    ->label('Impacto financeiro')
+                    ->money('BRL')
+                    ->placeholder('-')
+                    ->color(fn (BalancoEstoqueItem $record): string => (float) ($record->valor_impacto ?? 0) > 0 ? 'success' : ((float) ($record->valor_impacto ?? 0) < 0 ? 'danger' : 'gray')),
                 TextColumn::make('saldo_final')
-                    ->label('Saldo Final')
+                    ->label('Saldo final')
                     ->placeholder('-')
                     ->numeric(decimalPlaces: 3, decimalSeparator: ',', thousandsSeparator: '.'),
                 TextColumn::make('status_contagem_label')
@@ -74,13 +83,13 @@ class ItensContagemRelationManager extends RelationManager
                     ->label('Contado por')
                     ->placeholder('-'),
                 TextColumn::make('observacao_contagem')
-                    ->label('Observação')
+                    ->label('Observacao')
                     ->limit(60)
                     ->wrap(),
             ])
             ->recordActions([
                 Action::make('registrarContagem')
-                    ->label(fn (BalancoEstoqueItem $record): string => $record->quantidade_contada === null ? 'Registrar Contagem' : 'Atualizar Contagem')
+                    ->label(fn (BalancoEstoqueItem $record): string => $record->quantidade_contada === null ? 'Registrar contagem' : 'Atualizar contagem')
                     ->icon('heroicon-o-pencil-square')
                     ->color('primary')
                     ->visible(fn (): bool => $this->getOwnerRecord()->isEmAndamento() && (Auth::user()?->hasPermissionTo('Registrar Contagem de Balanços de Estoque') ?? false))
@@ -96,7 +105,7 @@ class ItensContagemRelationManager extends RelationManager
                             ->minValue(0)
                             ->step('0.001'),
                         Textarea::make('observacao_contagem')
-                            ->label('Observação da contagem')
+                            ->label('Observacao da contagem')
                             ->rows(4)
                             ->maxLength(1500),
                     ])

@@ -105,4 +105,13 @@ class BalancoEstoque extends Model
     {
         return $this->status === BalancoEstoqueStatus::Cancelado;
     }
+
+    public function getImpactoFinanceiroTotalAttribute(): float
+    {
+        if (array_key_exists('impacto_financeiro_total', $this->attributes)) {
+            return round((float) $this->attributes['impacto_financeiro_total'], 2);
+        }
+
+        return round((float) $this->itensContagem()->sum('valor_impacto'), 2);
+    }
 }

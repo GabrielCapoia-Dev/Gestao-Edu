@@ -1,7 +1,7 @@
 @extends('relatorios.layouts.base-pdf')
 
 @section('reportTitle', $reportTitle ?? 'Relatorio de Balanco de Estoque')
-@section('reportSubtitle', $reportSubtitle ?? 'Resumo completo de contagens, divergencias e historico do balanco')
+@section('reportSubtitle', $reportSubtitle ?? 'Resumo completo de divergencias e impacto financeiro do balanco')
 
 @section('styles')
     .cards {
@@ -12,7 +12,7 @@
     }
 
     .cards td {
-        width: 25%;
+        width: 33.33%;
         border: 1px solid #d1d5db;
         background: #f8fafc;
         padding: 10px;
@@ -91,16 +91,26 @@
                 <div class="value">{{ $metricas->itens_selecionados }}</div>
             </td>
             <td>
-                <div class="label">Itens Fora do Balanco</div>
-                <div class="value">{{ $metricas->itens_fora }}</div>
-            </td>
-            <td>
                 <div class="label">Pendentes</div>
                 <div class="value">{{ $metricas->itens_pendentes }}</div>
             </td>
             <td>
                 <div class="label">Divergencias</div>
                 <div class="value">{{ $metricas->divergencias }}</div>
+            </td>
+        </tr>
+        <tr>
+            <td>
+                <div class="label">Impacto Financeiro Total</div>
+                <div class="value">R$ {{ number_format($metricas->impacto_financeiro_total, 2, ',', '.') }}</div>
+            </td>
+            <td>
+                <div class="label">Impacto Positivo</div>
+                <div class="value">R$ {{ number_format($metricas->impacto_financeiro_positivo, 2, ',', '.') }}</div>
+            </td>
+            <td>
+                <div class="label">Impacto Negativo</div>
+                <div class="value">R$ {{ number_format($metricas->impacto_financeiro_negativo, 2, ',', '.') }}</div>
             </td>
         </tr>
     </table>
@@ -181,7 +191,9 @@
                 <th>Unidade</th>
                 <th class="right">Saldo Antes</th>
                 <th class="right">Qtd. Contada</th>
-                <th class="right">Diferenca</th>
+                <th class="right">Divergencia</th>
+                <th class="right">Valor Unitario</th>
+                <th class="right">Impacto Financeiro</th>
                 <th class="right">Saldo Final</th>
                 <th>Status</th>
                 <th>Contado por</th>
@@ -201,6 +213,8 @@
                     <td class="right">
                         {{ $item['diferenca'] !== null ? number_format($item['diferenca'], 3, ',', '.') : '-' }}
                     </td>
+                    <td class="right">R$ {{ number_format($item['valor_unitario_referencia'], 2, ',', '.') }}</td>
+                    <td class="right">R$ {{ number_format($item['valor_impacto'], 2, ',', '.') }}</td>
                     <td class="right">
                         {{ $item['saldo_final'] !== null ? number_format($item['saldo_final'], 3, ',', '.') : '-' }}
                     </td>
@@ -210,33 +224,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="10" class="muted">Este balanco ainda nao possui itens selecionados para contagem.</td>
-                </tr>
-            @endforelse
-        </tbody>
-    </table>
-
-    <div class="section-title">Itens Fora Deste Balanco</div>
-    <table class="listagem">
-        <thead>
-            <tr>
-                <th>Tipo</th>
-                <th>Item</th>
-                <th>Unidade</th>
-                <th class="right">Saldo no Snapshot</th>
-            </tr>
-        </thead>
-        <tbody>
-            @forelse($itensFora as $item)
-                <tr>
-                    <td>{{ $item['tipo'] }}</td>
-                    <td>{{ $item['item_nome'] }}</td>
-                    <td>{{ $item['unidade'] }}</td>
-                    <td class="right">{{ number_format($item['saldo_sistema_antes'], 3, ',', '.') }}</td>
-                </tr>
-            @empty
-                <tr>
-                    <td colspan="4" class="muted">Nao ha itens fora deste balanco.</td>
+                    <td colspan="12" class="muted">Este balanco ainda nao possui itens selecionados para contagem.</td>
                 </tr>
             @endforelse
         </tbody>

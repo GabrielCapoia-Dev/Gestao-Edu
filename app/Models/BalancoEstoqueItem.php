@@ -17,6 +17,8 @@ class BalancoEstoqueItem extends Model
         'quantidade_contada',
         'saldo_final',
         'diferenca',
+        'valor_unitario_referencia',
+        'valor_impacto',
         'observacao_contagem',
         'contado_em',
         'contado_por_id',
@@ -28,6 +30,8 @@ class BalancoEstoqueItem extends Model
         'quantidade_contada' => 'decimal:3',
         'saldo_final' => 'decimal:3',
         'diferenca' => 'decimal:3',
+        'valor_unitario_referencia' => 'decimal:2',
+        'valor_impacto' => 'decimal:2',
         'contado_em' => 'datetime',
     ];
 
@@ -62,7 +66,7 @@ class BalancoEstoqueItem extends Model
     public function getStatusContagemLabelAttribute(): string
     {
         return match ($this->status_contagem) {
-            'fora' => 'Fora do Balanço',
+            'fora' => 'Fora do Balanco',
             'pendente' => 'Pendente',
             'ajustado' => 'Ajustado',
             default => 'Contado',

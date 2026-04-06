@@ -5,7 +5,6 @@ namespace App\Filament\Admin\Resources\BalancosEstoque;
 use App\Filament\Admin\Resources\BalancosEstoque\Pages\ListBalancosEstoque;
 use App\Filament\Admin\Resources\BalancosEstoque\Pages\ViewBalancoEstoque;
 use App\Filament\Admin\Resources\BalancosEstoque\RelationManagers\ItensContagemRelationManager;
-use App\Filament\Admin\Resources\BalancosEstoque\RelationManagers\ItensForaRelationManager;
 use App\Models\BalancoEstoque;
 use App\Models\Enums\BalancoEstoqueStatus;
 use BackedEnum;
@@ -33,15 +32,15 @@ class BalancoEstoqueResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ClipboardDocumentCheck;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Alimentação Escolar';
+    protected static string|UnitEnum|null $navigationGroup = 'Alimentacao Escolar';
 
-    protected static ?string $navigationParentItem = 'Gestão de Estoque';
+    protected static ?string $navigationParentItem = 'Gestao de Estoque';
 
-    protected static ?string $navigationLabel = 'Balanços';
+    protected static ?string $navigationLabel = 'Balancos';
 
-    protected static ?string $modelLabel = 'Balanço de Estoque';
+    protected static ?string $modelLabel = 'Balanco de Estoque';
 
-    protected static ?string $pluralModelLabel = 'Balanços de Estoque';
+    protected static ?string $pluralModelLabel = 'Balancos de Estoque';
 
     protected static ?string $slug = 'balancos-estoque';
 
@@ -84,7 +83,7 @@ class BalancoEstoqueResource extends Resource
                     ->seconds(false)
                     ->native(false),
                 Textarea::make('observacao_inicial')
-                    ->label('Observação inicial')
+                    ->label('Observacao inicial')
                     ->rows(4)
                     ->maxLength(1500)
                     ->columnSpanFull(),
@@ -99,7 +98,7 @@ class BalancoEstoqueResource extends Resource
                 Section::make('Resumo')
                     ->schema([
                         TextEntry::make('codigo')
-                            ->label('Código')
+                            ->label('Codigo')
                             ->badge()
                             ->color('gray'),
                         TextEntry::make('status')
@@ -121,7 +120,7 @@ class BalancoEstoqueResource extends Resource
                             ->label('Iniciado por')
                             ->placeholder('-'),
                         TextEntry::make('concluido_em')
-                            ->label('Concluído em')
+                            ->label('Concluido em')
                             ->dateTime('d/m/Y H:i')
                             ->placeholder('-'),
                         TextEntry::make('cancelado_em')
@@ -140,25 +139,27 @@ class BalancoEstoqueResource extends Resource
                             ->label('Pendentes')
                             ->state(fn (BalancoEstoque $record): int => (int) ($record->itens_pendentes_count ?? $record->itensContagem()->whereNull('quantidade_contada')->count())),
                         TextEntry::make('divergencias_count')
-                            ->label('Divergências')
+                            ->label('Divergencias')
                             ->state(fn (BalancoEstoque $record): int => (int) ($record->divergencias_count ?? $record->itensContagem()->whereNotNull('diferenca')->where('diferenca', '<>', 0)->count())),
-                        TextEntry::make('itens_fora_count')
-                            ->label('Itens fora deste balanço')
-                            ->state(fn (BalancoEstoque $record): int => (int) ($record->itens_fora_count ?? $record->itensFora()->count())),
+                        TextEntry::make('impacto_financeiro_total')
+                            ->label('Impacto financeiro')
+                            ->state(fn (BalancoEstoque $record): float => (float) ($record->impacto_financeiro_total ?? 0))
+                            ->money('BRL')
+                            ->color(fn (BalancoEstoque $record): string => $record->impacto_financeiro_total > 0 ? 'success' : ($record->impacto_financeiro_total < 0 ? 'danger' : 'gray')),
                     ])
                     ->columns(4),
 
-                Section::make('Observação Inicial')
+                Section::make('Observacao Inicial')
                     ->schema([
                         TextEntry::make('observacao_inicial')
                             ->label('')
-                            ->placeholder('Sem observação inicial.')
+                            ->placeholder('Sem observacao inicial.')
                             ->columnSpanFull(),
                     ])
                     ->visible(fn (BalancoEstoque $record): bool => filled($record->observacao_inicial))
                     ->columns(1),
 
-                Section::make('Timeline do Balanço')
+                Section::make('Timeline do Balanco')
                     ->schema([
                         RepeatableEntry::make('eventos')
                             ->label('')
@@ -166,8 +167,8 @@ class BalancoEstoqueResource extends Resource
                             ->table([
                                 TableColumn::make('Data'),
                                 TableColumn::make('Evento'),
-                                TableColumn::make('Responsável'),
-                                TableColumn::make('Descrição'),
+                                TableColumn::make('Responsavel'),
+                                TableColumn::make('Descricao'),
                             ])
                             ->schema([
                                 TextEntry::make('created_at')
@@ -179,10 +180,10 @@ class BalancoEstoqueResource extends Resource
                                     ->badge()
                                     ->color(fn ($state) => $state?->color() ?? 'gray'),
                                 TextEntry::make('usuario.name')
-                                    ->label('Responsável')
+                                    ->label('Responsavel')
                                     ->placeholder('Sistema'),
                                 TextEntry::make('descricao')
-                                    ->label('Descrição'),
+                                    ->label('Descricao'),
                             ]),
                     ])
                     ->columnSpanFull(),
@@ -197,7 +198,7 @@ class BalancoEstoqueResource extends Resource
             ->recordUrl(fn (BalancoEstoque $record): string => static::getUrl('view', ['record' => $record]))
             ->columns([
                 TextColumn::make('codigo')
-                    ->label('Código')
+                    ->label('Codigo')
                     ->searchable()
                     ->sortable()
                     ->weight('bold'),
@@ -208,7 +209,7 @@ class BalancoEstoqueResource extends Resource
                     ->color(fn ($state) => $state?->color() ?? 'gray')
                     ->sortable(),
                 TextColumn::make('data_agendada')
-                    ->label('Data Agendada')
+                    ->label('Data agendada')
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
                 TextColumn::make('iniciado_em')
@@ -217,12 +218,12 @@ class BalancoEstoqueResource extends Resource
                     ->placeholder('-')
                     ->sortable(),
                 TextColumn::make('concluido_em')
-                    ->label('Concluído em')
+                    ->label('Concluido em')
                     ->dateTime('d/m/Y H:i')
                     ->placeholder('-')
                     ->sortable(),
                 TextColumn::make('itens_contagem_count')
-                    ->label('Itens Selecionados')
+                    ->label('Itens')
                     ->badge()
                     ->sortable(),
                 TextColumn::make('itens_pendentes_count')
@@ -231,12 +232,18 @@ class BalancoEstoqueResource extends Resource
                     ->color(fn (int $state): string => $state > 0 ? 'warning' : 'success')
                     ->sortable(),
                 TextColumn::make('divergencias_count')
-                    ->label('Divergências')
+                    ->label('Divergencias')
                     ->badge()
                     ->color(fn (int $state): string => $state > 0 ? 'danger' : 'success')
                     ->sortable(),
+                TextColumn::make('impacto_financeiro_total')
+                    ->label('Impacto financeiro')
+                    ->state(fn (BalancoEstoque $record): float => (float) ($record->impacto_financeiro_total ?? 0))
+                    ->money('BRL')
+                    ->color(fn (BalancoEstoque $record): string => $record->impacto_financeiro_total > 0 ? 'success' : ($record->impacto_financeiro_total < 0 ? 'danger' : 'gray'))
+                    ->sortable(),
                 TextColumn::make('criadoPor.name')
-                    ->label('Responsável')
+                    ->label('Responsavel')
                     ->placeholder('-')
                     ->sortable(),
             ])
@@ -249,15 +256,15 @@ class BalancoEstoqueResource extends Resource
                             ->toArray()
                     ),
                 SelectFilter::make('criado_por_id')
-                    ->label('Responsável')
+                    ->label('Responsavel')
                     ->relationship('criadoPor', 'name'),
                 Filter::make('periodo')
-                    ->label('Período agendado')
+                    ->label('Periodo agendado')
                     ->schema([
                         DatePicker::make('data_inicio')
                             ->label('De'),
                         DatePicker::make('data_fim')
-                            ->label('Até'),
+                            ->label('Ate'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query
@@ -278,7 +285,6 @@ class BalancoEstoqueResource extends Resource
     {
         return [
             ItensContagemRelationManager::class,
-            ItensForaRelationManager::class,
         ];
     }
 
@@ -309,7 +315,9 @@ class BalancoEstoqueResource extends Resource
                     ->where('incluido_na_contagem', true)
                     ->whereNotNull('diferenca')
                     ->where('diferenca', '<>', 0),
-                'itens as itens_fora_count' => fn (Builder $query) => $query->where('incluido_na_contagem', false),
-            ]);
+            ])
+            ->withSum([
+                'itens as impacto_financeiro_total' => fn (Builder $query) => $query->where('incluido_na_contagem', true),
+            ], 'valor_impacto');
     }
 }

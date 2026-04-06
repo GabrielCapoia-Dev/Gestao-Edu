@@ -6,7 +6,6 @@ use App\Models\BalancoEstoque;
 use App\Models\BalancoEstoqueEvento;
 use App\Models\BalancoEstoqueItem;
 use App\Models\User;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -33,11 +32,6 @@ class BalancoEstoqueRelatorioService
             ->values()
             ->map(fn (BalancoEstoqueItem $item): array => $this->mapearItem($item));
 
-        $itensFora = $balanco->itens
-            ->where('incluido_na_contagem', false)
-            ->values()
-            ->map(fn (BalancoEstoqueItem $item): array => $this->mapearItemFora($item));
-
         $eventos = $balanco->eventos
             ->sortBy('created_at')
             ->values()
@@ -48,11 +42,16 @@ class BalancoEstoqueRelatorioService
                 'descricao' => $evento->descricao,
             ]);
 
+        $impactoPositivo = round((float) $itensContagem->filter(fn (array $item): bool => $item['valor_impacto'] > 0)->sum('valor_impacto'), 2);
+        $impactoNegativo = round((float) $itensContagem->filter(fn (array $item): bool => $item['valor_impacto'] < 0)->sum('valor_impacto'), 2);
+
         $metricas = (object) [
             'itens_selecionados' => $itensContagem->count(),
-            'itens_fora' => $itensFora->count(),
             'itens_pendentes' => $itensContagem->where('status', 'Pendente')->count(),
             'divergencias' => $itensContagem->filter(fn (array $item): bool => ((float) ($item['diferenca'] ?? 0)) !== 0.0)->count(),
+            'impacto_financeiro_total' => round((float) $itensContagem->sum('valor_impacto'), 2),
+            'impacto_financeiro_positivo' => $impactoPositivo,
+            'impacto_financeiro_negativo' => $impactoNegativo,
         ];
 
         return $this->renderer->download('relatorios.Estoque.balanco-estoque', [
@@ -60,9 +59,8 @@ class BalancoEstoqueRelatorioService
             'metricas' => $metricas,
             'eventos' => $eventos,
             'itensContagem' => $itensContagem,
-            'itensFora' => $itensFora,
             'reportTitle' => 'Relatorio de Balanco de Estoque',
-            'reportSubtitle' => 'Resumo completo de contagens, divergencias e historico do balanco',
+            'reportSubtitle' => 'Resumo completo de divergencias e impacto financeiro do balanco',
             'reportFilters' => $this->filtrosDoBalanco($balanco),
             'usuarioExportacao' => $usuario,
             'dataExportacao' => now(),
@@ -93,20 +91,12 @@ class BalancoEstoqueRelatorioService
             'quantidade_contada' => $item->quantidade_contada !== null ? (float) $item->quantidade_contada : null,
             'saldo_final' => $item->saldo_final !== null ? (float) $item->saldo_final : null,
             'diferenca' => $item->diferenca !== null ? (float) $item->diferenca : null,
+            'valor_unitario_referencia' => (float) ($item->valor_unitario_referencia ?? 0),
+            'valor_impacto' => (float) ($item->valor_impacto ?? 0),
             'status' => $item->status_contagem_label,
             'contado_por' => $item->contadoPor?->name ?? '-',
             'contado_em' => $item->contado_em?->format('d/m/Y H:i') ?? '-',
             'observacao' => $item->observacao_contagem ?: '-',
-        ];
-    }
-
-    protected function mapearItemFora(BalancoEstoqueItem $item): array
-    {
-        return [
-            'tipo' => $item->item?->tipo_item?->label() ?? 'Sem tipo definido',
-            'item_nome' => $item->item?->nome ?? 'Item removido',
-            'unidade' => strtoupper($item->item?->unidade_medida?->value ?? '-'),
-            'saldo_sistema_antes' => (float) $item->saldo_sistema_antes,
         ];
     }
 

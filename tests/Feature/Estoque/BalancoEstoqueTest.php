@@ -3,9 +3,13 @@
 namespace Tests\Feature\Estoque;
 
 use App\Exceptions\ItemEmBalancoException;
+use App\Models\Contrato;
+use App\Models\ContratoItem;
+use App\Models\EmpresaContratada;
 use App\Models\Enums\BalancoEstoqueEventoTipo;
 use App\Models\Enums\BalancoEstoqueStatus;
 use App\Models\Enums\TipoItem;
+use App\Models\Enums\TipoItemContrato;
 use App\Models\Enums\TipoMovimentacao;
 use App\Models\Enums\UnidadeMedida;
 use App\Models\Estoque;
@@ -24,6 +28,8 @@ class BalancoEstoqueTest extends TestCase
     use RefreshDatabase;
 
     protected BalancoEstoqueService $service;
+
+    protected int $sequenciaContrato = 1;
 
     protected function setUp(): void
     {
@@ -70,6 +76,8 @@ class BalancoEstoqueTest extends TestCase
         $itemFora = $this->criarItem('Feijao');
         $itemInativoComEstoque = $this->criarItem('Estoque legado', ativo: false);
 
+        $this->criarContratoItemComPreco($itemSelecionado, 4.25);
+
         Estoque::query()->create([
             'item_id' => $itemSelecionado->id,
             'quantidade' => 12.000,
@@ -101,6 +109,7 @@ class BalancoEstoqueTest extends TestCase
         $this->assertSame('12.000', $snapshotSelecionado->saldo_sistema_antes);
         $this->assertSame('0.000', $snapshotFora->saldo_sistema_antes);
         $this->assertSame('3.500', $snapshotLegado->saldo_sistema_antes);
+        $this->assertSame('4.25', $snapshotSelecionado->valor_unitario_referencia);
     }
 
     public function test_it_impede_inicio_quando_item_ja_esta_em_outro_balanco_em_andamento(): void
@@ -149,7 +158,34 @@ class BalancoEstoqueTest extends TestCase
         $this->assertSame('3.000', $estoqueLivre->quantidade);
     }
 
-    public function test_it_conclui_balanco_e_gera_movimentacoes_de_reajuste(): void
+    public function test_it_calculates_financial_impact_when_registering_count(): void
+    {
+        $user = $this->criarUsuario();
+        $item = $this->criarItem('Aveia');
+
+        $this->criarContratoItemComPreco($item, 4.20);
+
+        Estoque::query()->create([
+            'item_id' => $item->id,
+            'quantidade' => 10.000,
+        ]);
+
+        $balanco = $this->service->agendar(['data_agendada' => '2026-04-10 09:00:00'], $user);
+        $balanco = $this->service->iniciar($balanco, [$item->id], $user);
+
+        $registro = $this->service->registrarContagem(
+            $balanco->itens()->where('item_id', $item->id)->first(),
+            7.000,
+            'Contagem revisada',
+            $user,
+        );
+
+        $this->assertSame('-3.000', $registro->diferenca);
+        $this->assertSame('4.20', $registro->valor_unitario_referencia);
+        $this->assertSame('-12.60', $registro->valor_impacto);
+    }
+
+    public function test_it_conclui_balanco_e_gera_movimentacoes_de_reajuste_e_impacto_financeiro(): void
     {
         $user = $this->criarUsuario();
         $this->actingAs($user);
@@ -157,6 +193,10 @@ class BalancoEstoqueTest extends TestCase
         $itemEntrada = $this->criarItem('Arroz integral');
         $itemSaida = $this->criarItem('Farinha');
         $itemSemEstoque = $this->criarItem('Milho');
+
+        $this->criarContratoItemComPreco($itemEntrada, 5.50);
+        $this->criarContratoItemComPreco($itemSaida, 2.00);
+        $this->criarContratoItemComPreco($itemSemEstoque, 1.25);
 
         $estoqueEntrada = Estoque::query()->create([
             'item_id' => $itemEntrada->id,
@@ -178,6 +218,7 @@ class BalancoEstoqueTest extends TestCase
         $balanco = $this->service->concluir($balanco, $user);
 
         $this->assertSame(BalancoEstoqueStatus::Concluido, $balanco->status);
+        $this->assertSame(10.00, $balanco->fresh()->impacto_financeiro_total);
 
         $estoqueEntrada->refresh();
         $estoqueSaida->refresh();
@@ -204,6 +245,22 @@ class BalancoEstoqueTest extends TestCase
             'item_id' => $itemEntrada->id,
             'saldo_final' => 12.000,
             'diferenca' => 2.000,
+            'valor_unitario_referencia' => 5.50,
+            'valor_impacto' => 11.00,
+        ]);
+
+        $this->assertDatabaseHas('balanco_estoque_itens', [
+            'balanco_estoque_id' => $balanco->id,
+            'item_id' => $itemSaida->id,
+            'valor_unitario_referencia' => 2.00,
+            'valor_impacto' => -6.00,
+        ]);
+
+        $this->assertDatabaseHas('balanco_estoque_itens', [
+            'balanco_estoque_id' => $balanco->id,
+            'item_id' => $itemSemEstoque->id,
+            'valor_unitario_referencia' => 1.25,
+            'valor_impacto' => 5.00,
         ]);
     }
 
@@ -245,6 +302,8 @@ class BalancoEstoqueTest extends TestCase
         ]);
 
         $item = $this->criarItem('Cafe');
+        $this->criarContratoItemComPreco($item, 3.30);
+
         $balanco = $this->service->agendar(['data_agendada' => '2026-04-10 09:00:00'], $user);
         $balanco = $this->service->iniciar($balanco, [$item->id], $user);
 
@@ -260,6 +319,8 @@ class BalancoEstoqueTest extends TestCase
     {
         $user = $this->criarUsuario(['Listar Balanços de Estoque']);
         $item = $this->criarItem('Aveia');
+
+        $this->criarContratoItemComPreco($item, 4.20);
 
         Estoque::query()->create([
             'item_id' => $item->id,
@@ -325,6 +386,35 @@ class BalancoEstoqueTest extends TestCase
             'tipo_item' => TipoItem::Fruta,
             'unidade_medida' => UnidadeMedida::Quilograma,
             'ativo' => $ativo,
+        ]);
+    }
+
+    protected function criarContratoItemComPreco(Item $item, float $precoUnitario): ContratoItem
+    {
+        $sequencia = $this->sequenciaContrato++;
+
+        $empresa = EmpresaContratada::query()->create([
+            'nome' => "Empresa {$sequencia}",
+            'cnpj' => str_pad((string) $sequencia, 14, '0', STR_PAD_LEFT),
+            'ativo' => true,
+        ]);
+
+        $contrato = Contrato::query()->create([
+            'id_empresa_contratada' => $empresa->id,
+            'numero_contrato' => 'CTR-' . str_pad((string) $sequencia, 5, '0', STR_PAD_LEFT),
+            'data_inicio' => now()->subDay(),
+            'data_vencimento' => now()->addYear(),
+            'ativo' => true,
+        ]);
+
+        return ContratoItem::query()->create([
+            'contrato_id' => $contrato->id,
+            'item_id' => $item->id,
+            'tipo' => TipoItemContrato::Compra,
+            'quantidade_total' => 100.000,
+            'quantidade_utilizada' => 0,
+            'quantidade_reservada' => 0,
+            'preco_unitario' => $precoUnitario,
         ]);
     }
 }
