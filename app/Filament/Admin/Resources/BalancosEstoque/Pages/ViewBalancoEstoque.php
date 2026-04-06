@@ -4,13 +4,19 @@ namespace App\Filament\Admin\Resources\BalancosEstoque\Pages;
 
 use App\Filament\Admin\Resources\BalancosEstoque\BalancoEstoqueResource;
 use App\Models\BalancoEstoque;
+use App\Models\Enums\TipoItem;
 use App\Services\Estoque\BalancoEstoqueService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Schemas\Components\Group;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 
@@ -23,38 +29,53 @@ class ViewBalancoEstoque extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('exportarRelatorio')
+                ->label('Exportar Relatório')
+                ->icon('heroicon-o-arrow-down-tray')
+                ->color('gray')
+                ->visible(fn (): bool => $this->pode('Listar Balanços de Estoque'))
+                ->url(fn (): string => route('balancos-estoque.relatorio.pdf', ['balanco' => $this->getRecord()]))
+                ->openUrlInNewTab(),
+
             Action::make('iniciar')
                 ->label('Iniciar')
                 ->icon('heroicon-o-play')
                 ->color('warning')
+                ->modalWidth('7xl')
                 ->visible(fn (): bool => $this->getRecord()->isAgendado() && $this->pode('Iniciar Balanços de Estoque'))
                 ->disabled(fn (): bool => $this->itensDisponiveisParaInicio()->where('bloqueado', false)->isEmpty())
                 ->schema([
-                    CheckboxList::make('item_ids')
-                        ->label('Itens do balanço')
-                        ->options(fn (): array => $this->itensDisponiveisParaInicio()->mapWithKeys(
-                            fn (array $item) => [
-                                $item['item_id'] => $item['item']->nome,
-                            ]
-                        )->toArray())
-                        ->descriptions(fn (): array => $this->itensDisponiveisParaInicio()->mapWithKeys(
-                            fn (array $item) => [
-                                $item['item_id'] => $this->descricaoItemInicio($item),
-                            ]
-                        )->toArray())
-                        ->disableOptionWhen(fn (string $value): bool => $this->itemInicioBloqueado((int) $value))
+                    Select::make('tipos_filtro')
+                        ->label('Filtrar itens por tipo')
+                        ->options(fn (): array => $this->opcoesTiposInicio())
+                        ->multiple()
+                        ->live()
+                        ->dehydrated(false)
+                        ->placeholder('Todos os tipos')
+                        ->helperText('Os grupos abaixo ficam organizados por tipo. Use "Selecionar tudo" em cada grupo para marcar todos os itens daquele tipo.'),
+                    Hidden::make('item_ids_state')
                         ->default(fn (): array => $this->itensDisponiveisParaInicio()
                             ->where('bloqueado', false)
                             ->pluck('item_id')
-                            ->all())
-                        ->bulkToggleable()
-                        ->columns(2)
-                        ->required()
-                        ->helperText('Os itens não marcados serão registrados como fora deste balanço.'),
+                            ->map(fn (mixed $id): int => (int) $id)
+                            ->all()),
+                    Group::make()
+                        ->schema(fn (Get $get): array => $this->schemaItensInicioPorTipo($get))
+                        ->columnSpanFull(),
                 ])
                 ->action(function (array $data): void {
                     try {
-                        $this->service()->iniciar($this->getRecord(), $data['item_ids'] ?? [], Auth::user());
+                        $this->service()->iniciar(
+                            $this->getRecord(),
+                            collect($data['item_ids_state'] ?? [])
+                                ->map(fn (mixed $id): int => (int) $id)
+                                ->filter()
+                                ->unique()
+                                ->values()
+                                ->all(),
+                            Auth::user(),
+                        );
+
                         $this->refreshRecordState();
 
                         Notification::make()
@@ -183,6 +204,113 @@ class ViewBalancoEstoque extends ViewRecord
         $record = $this->getRecord();
 
         return $this->itensInicioCache = $this->service()->itensDisponiveisParaInicio($record);
+    }
+
+    protected function schemaItensInicioPorTipo(Get $get): array
+    {
+        return $this->itensAgrupadosPorTipoParaInicio($get)
+            ->map(function (Collection $itens, string $tipo): Section {
+                $itemIdsDoTipo = $itens
+                    ->pluck('item_id')
+                    ->map(fn (mixed $id): int => (int) $id)
+                    ->all();
+
+                return Section::make($this->labelTipoInicio($tipo))
+                    ->description($this->descricaoTipoInicio($itens))
+                    ->collapsible()
+                    ->schema([
+                        CheckboxList::make("item_ids_por_tipo.{$tipo}")
+                            ->label('Itens')
+                            ->options($itens->mapWithKeys(
+                                fn (array $item): array => [
+                                    $item['item_id'] => $item['item']->nome,
+                                ]
+                            )->toArray())
+                            ->descriptions($itens->mapWithKeys(
+                                fn (array $item): array => [
+                                    $item['item_id'] => $this->descricaoItemInicio($item),
+                                ]
+                            )->toArray())
+                            ->disableOptionWhen(fn (string $value): bool => $this->itemInicioBloqueado((int) $value))
+                            ->default(fn (Get $get): array => $this->idsSelecionadosDoTipo($get, $itemIdsDoTipo))
+                            ->afterStateUpdated(function (?array $state, Get $get, callable $set) use ($itemIdsDoTipo): void {
+                                $selecionadosGlobais = collect($get('item_ids_state') ?? [])
+                                    ->map(fn (mixed $id): int => (int) $id)
+                                    ->filter()
+                                    ->unique()
+                                    ->values();
+
+                                $selecionadosAtualizados = $selecionadosGlobais
+                                    ->diff($itemIdsDoTipo)
+                                    ->merge(
+                                        collect($state ?? [])
+                                            ->map(fn (mixed $id): int => (int) $id)
+                                            ->filter()
+                                            ->values()
+                                    )
+                                    ->unique()
+                                    ->values()
+                                    ->all();
+
+                                $set('item_ids_state', $selecionadosAtualizados);
+                            })
+                            ->bulkToggleable()
+                            ->columns(2),
+                    ])
+                    ->columnSpanFull();
+            })
+            ->values()
+            ->all();
+    }
+
+    protected function itensAgrupadosPorTipoParaInicio(Get $get): Collection
+    {
+        $tiposFiltrados = collect($get('tipos_filtro') ?? [])
+            ->filter()
+            ->values();
+
+        return $this->itensDisponiveisParaInicio()
+            ->groupBy(fn (array $item): string => $item['item']->tipo_item?->value ?? 'sem_tipo')
+            ->sortKeys()
+            ->filter(fn (Collection $itens, string $tipo): bool => $tiposFiltrados->isEmpty() || $tiposFiltrados->contains($tipo))
+            ->map(fn (Collection $itens): Collection => $itens->sortBy(fn (array $item): string => mb_strtolower((string) $item['item']->nome))->values());
+    }
+
+    protected function opcoesTiposInicio(): array
+    {
+        return $this->itensDisponiveisParaInicio()
+            ->groupBy(fn (array $item): string => $item['item']->tipo_item?->value ?? 'sem_tipo')
+            ->mapWithKeys(fn (Collection $itens, string $tipo): array => [$tipo => $this->labelTipoInicio($tipo)])
+            ->sortKeys()
+            ->toArray();
+    }
+
+    protected function idsSelecionadosDoTipo(Get $get, array $itemIdsDoTipo): array
+    {
+        return collect($get('item_ids_state') ?? [])
+            ->map(fn (mixed $id): int => (int) $id)
+            ->filter()
+            ->intersect($itemIdsDoTipo)
+            ->values()
+            ->all();
+    }
+
+    protected function descricaoTipoInicio(Collection $itens): string
+    {
+        $total = $itens->count();
+        $bloqueados = $itens->where('bloqueado', true)->count();
+        $disponiveis = $total - $bloqueados;
+
+        return "{$total} item(ns) neste tipo, {$disponiveis} disponivel(is) e {$bloqueados} bloqueado(s).";
+    }
+
+    protected function labelTipoInicio(string $tipo): string
+    {
+        if ($tipo === 'sem_tipo') {
+            return 'Sem tipo definido';
+        }
+
+        return TipoItem::tryFrom($tipo)?->label() ?? ucfirst(str_replace('_', ' ', $tipo));
     }
 
     protected function descricaoItemInicio(array $item): string

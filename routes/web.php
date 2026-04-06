@@ -19,6 +19,7 @@ use App\Services\Relatorios\FeedbackGraficoService;
 use App\Services\Relatorios\ChartRenderService;
 use Illuminate\Support\Facades\Auth;
 use \App\Http\Controllers\PedidoRelatorioGeralController;
+use App\Http\Controllers\BalancoEstoqueRelatorioController;
 use App\Http\Controllers\BaixasEstoqueRelatorioController;
 use App\Http\Controllers\EstoqueRelatorioController;
 use Illuminate\Support\Facades\DB;
@@ -142,6 +143,9 @@ Route::prefix('admin')
 
         Route::get('/estoque/{estoque}/relatorio/xlsx', [EstoqueRelatorioController::class, 'exportarItemXlsx'])
             ->name('gestao-estoque.item-relatorio.xlsx');
+
+        Route::get('/balancos-estoque/{balanco}/relatorio/pdf', [BalancoEstoqueRelatorioController::class, 'exportarPdf'])
+            ->name('balancos-estoque.relatorio.pdf');
     });
 
 
