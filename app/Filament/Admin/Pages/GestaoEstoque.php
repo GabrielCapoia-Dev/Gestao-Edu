@@ -2,25 +2,25 @@
 
 namespace App\Filament\Admin\Pages;
 
+use App\Models\Enums\TipoItem;
 use App\Models\Estoque;
 use App\Models\EstoqueMovimentacao;
 use App\Services\Estoque\GestaoEstoqueDataService;
-use App\Models\Enums\TipoItem;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
-use UnitEnum;
 use Illuminate\Support\Facades\Auth;
+use UnitEnum;
 
 class GestaoEstoque extends Page
 {
     protected string $view = 'filament.pages.gestao-estoque';
 
-    protected static ?string $title = 'Gestão de Estoque';
+    protected static ?string $title = 'Gestao de Estoque';
     protected static ?string $slug = 'gestao-estoque';
     protected static ?int $navigationSort = 5;
     protected static string|BackedEnum|null $navigationIcon = Heroicon::BuildingStorefront;
-    protected static string|UnitEnum|null $navigationGroup = 'Alimentação Escolar';
+    protected static string|UnitEnum|null $navigationGroup = 'Alimentacao Escolar';
 
     public string $busca = '';
     public int $porPagina = 5;
@@ -35,11 +35,14 @@ class GestaoEstoque extends Page
     public string $itemSelecionadoUnidade = '';
     public array $movimentacoes = [];
     public int $totalMovimentacoesItem = 0;
+    public int $totalMovimentacoesItem = 0;
 
     public static function canAccess(): bool
     {
         /** @var \App\Models\User $user */
+        /** @var \App\Models\User $user */
         $user = Auth::user();
+
 
         return $user->hasPermissionTo('Listar Gestão de Estoque');
     }
@@ -76,12 +79,19 @@ class GestaoEstoque extends Page
         if (! $this->estoqueSelecionadoId) {
             return null;
         }
+        if (! $this->estoqueSelecionadoId) {
+            return null;
+        }
 
         return Estoque::find($this->estoqueSelecionadoId);
     }
 
     public function getCardsProperty(): array
     {
+        $itens = $this->dataService()->itens();
+        $totalItens = $itens->count();
+        $itensZerados = $itens->where('status', 'zerado')->count();
+        $itensCriticos = $itens->where('status', 'critico')->count();
         $itens = $this->dataService()->itens();
         $totalItens = $itens->count();
         $itensZerados = $itens->where('status', 'zerado')->count();
@@ -94,6 +104,10 @@ class GestaoEstoque extends Page
                 'valor' => $totalItens,
                 'icone' => 'heroicon-o-cube',
                 'cor' => 'blue',
+                'titulo' => 'Itens no Estoque',
+                'valor' => $totalItens,
+                'icone' => 'heroicon-o-cube',
+                'cor' => 'blue',
                 'descricao' => 'itens cadastrados',
             ],
             [
@@ -102,8 +116,17 @@ class GestaoEstoque extends Page
                 'icone' => 'heroicon-o-exclamation-triangle',
                 'cor' => 'amber',
                 'descricao' => 'itens com <= 10 unidades',
+                'titulo' => 'Estoque Baixo',
+                'valor' => $itensCriticos,
+                'icone' => 'heroicon-o-exclamation-triangle',
+                'cor' => 'amber',
+                'descricao' => 'itens com <= 10 unidades',
             ],
             [
+                'titulo' => 'Itens Zerados',
+                'valor' => $itensZerados,
+                'icone' => 'heroicon-o-x-circle',
+                'cor' => 'red',
                 'titulo' => 'Itens Zerados',
                 'valor' => $itensZerados,
                 'icone' => 'heroicon-o-x-circle',
@@ -116,12 +139,18 @@ class GestaoEstoque extends Page
                 'icone' => 'heroicon-o-arrow-path',
                 'cor' => 'green',
                 'descricao' => 'entradas e saidas registradas',
+                'titulo' => 'Movimentacoes',
+                'valor' => $totalMovimentacoes,
+                'icone' => 'heroicon-o-arrow-path',
+                'cor' => 'green',
+                'descricao' => 'entradas e saidas registradas',
             ],
         ];
     }
 
     public function getAbasProperty(): array
     {
+        $categorias = $this->dataService()->categoriasDisponiveis();
         $categorias = $this->dataService()->categoriasDisponiveis();
         $abas = [['value' => 'todas', 'label' => 'Todos']];
 
@@ -140,6 +169,7 @@ class GestaoEstoque extends Page
     public function getItensFiltradosBaseProperty(): \Illuminate\Support\Collection
     {
         return $this->dataService()->itens($this->filtrosExportacao);
+        return $this->dataService()->itens($this->filtrosExportacao);
     }
 
     public function getItensFiltradosProperty(): \Illuminate\Support\Collection
@@ -152,13 +182,19 @@ class GestaoEstoque extends Page
     public function getPaginacaoProperty(): array
     {
         $total = $this->itensFiltradosBase->count();
+        $total = $this->itensFiltradosBase->count();
         $totalPaginas = $total > 0 ? (int) ceil($total / $this->porPagina) : 1;
 
         return [
             'total' => $total,
             'porPagina' => $this->porPagina,
             'paginaAtual' => $this->paginaAtual,
+            'total' => $total,
+            'porPagina' => $this->porPagina,
+            'paginaAtual' => $this->paginaAtual,
             'totalPaginas' => $totalPaginas,
+            'de' => $total === 0 ? 0 : ($this->paginaAtual - 1) * $this->porPagina + 1,
+            'ate' => min($this->paginaAtual * $this->porPagina, $total),
             'de' => $total === 0 ? 0 : ($this->paginaAtual - 1) * $this->porPagina + 1,
             'ate' => min($this->paginaAtual * $this->porPagina, $total),
         ];
@@ -180,16 +216,35 @@ class GestaoEstoque extends Page
         $user = Auth::user();
 
         return $user?->hasPermissionTo('Exportar Relatórios') ?? false;
+    public function getFiltrosExportacaoProperty(): array
+    {
+        return [
+            'busca' => $this->busca,
+            'categoria' => $this->abaAtiva,
+            'sortCol' => $this->sortCol,
+            'sortDir' => $this->sortDir,
+        ];
+    }
+
+    public function getPodeExportarProperty(): bool
+    {
+        /** @var \App\Models\User|null $user */
+        $user = Auth::user();
+
+        return $user?->hasPermissionTo('Exportar Relatórios') ?? false;
     }
 
     public function mudarAba(string $aba): void
     {
+        $this->abaAtiva = $aba;
         $this->abaAtiva = $aba;
         $this->paginaAtual = 1;
     }
 
     public function mudarPagina(int $pagina): void
     {
+        $total = $this->itensFiltradosBase->count();
+        $totalPaginas = max(1, (int) ceil($total / $this->porPagina));
         $total = $this->itensFiltradosBase->count();
         $totalPaginas = max(1, (int) ceil($total / $this->porPagina));
 
@@ -203,11 +258,19 @@ class GestaoEstoque extends Page
         if (! $estoque || ! $estoque->item) {
             return;
         }
+        if (! $estoque || ! $estoque->item) {
+            return;
+        }
 
+        $this->estoqueSelecionadoId = $estoqueId;
+        $this->itemSelecionadoNome = $estoque->item->nome;
         $this->estoqueSelecionadoId = $estoqueId;
         $this->itemSelecionadoNome = $estoque->item->nome;
         $this->itemSelecionadoUnidade = strtoupper($estoque->item->unidade_medida->value);
 
+        $movimentacoes = $this->dataService()->movimentacoesPorEstoque($estoque);
+        $this->totalMovimentacoesItem = $movimentacoes->count();
+        $this->movimentacoes = $movimentacoes->take(50)->values()->all();
         $movimentacoes = $this->dataService()->movimentacoesPorEstoque($estoque);
         $this->totalMovimentacoesItem = $movimentacoes->count();
         $this->movimentacoes = $movimentacoes->take(50)->values()->all();
@@ -218,7 +281,11 @@ class GestaoEstoque extends Page
     public function fecharSlideOver(): void
     {
         $this->slideOverAberto = false;
+        $this->slideOverAberto = false;
         $this->estoqueSelecionadoId = null;
+        $this->movimentacoes = [];
+        $this->totalMovimentacoesItem = 0;
+        $this->itemSelecionadoNome = '';
         $this->movimentacoes = [];
         $this->totalMovimentacoesItem = 0;
         $this->itemSelecionadoNome = '';
@@ -228,6 +295,11 @@ class GestaoEstoque extends Page
     protected function getHeaderActions(): array
     {
         return [];
+    }
+
+    protected function dataService(): GestaoEstoqueDataService
+    {
+        return app(GestaoEstoqueDataService::class);
     }
 
     protected function dataService(): GestaoEstoqueDataService
