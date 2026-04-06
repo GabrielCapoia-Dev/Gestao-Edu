@@ -32,9 +32,9 @@ class BalancoEstoqueResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ClipboardDocumentCheck;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Alimentacao Escolar';
+    protected static string|UnitEnum|null $navigationGroup = 'Alimentação Escolar';
 
-    protected static ?string $navigationParentItem = 'Gestao de Estoque';
+    protected static ?string $navigationParentItem = 'Gestão de Estoque';
 
     protected static ?string $navigationLabel = 'Balancos';
 
