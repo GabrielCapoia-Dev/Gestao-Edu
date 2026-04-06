@@ -20,6 +20,7 @@ use App\Services\Relatorios\ChartRenderService;
 use Illuminate\Support\Facades\Auth;
 use \App\Http\Controllers\PedidoRelatorioGeralController;
 use App\Http\Controllers\BaixasEstoqueRelatorioController;
+use App\Http\Controllers\EstoqueRelatorioController;
 use Illuminate\Support\Facades\DB;
 
 Route::get('/', function () {
@@ -129,6 +130,18 @@ Route::prefix('admin')
 
         Route::get('/estoque/baixas/relatorio', [BaixasEstoqueRelatorioController::class, 'exportar'])
             ->name('baixas-estoque.relatorio');
+
+        Route::get('/estoque/relatorio/pdf', [EstoqueRelatorioController::class, 'exportarPdf'])
+            ->name('gestao-estoque.relatorio.pdf');
+
+        Route::get('/estoque/relatorio/xlsx', [EstoqueRelatorioController::class, 'exportarXlsx'])
+            ->name('gestao-estoque.relatorio.xlsx');
+
+        Route::get('/estoque/{estoque}/relatorio/pdf', [EstoqueRelatorioController::class, 'exportarItemPdf'])
+            ->name('gestao-estoque.item-relatorio.pdf');
+
+        Route::get('/estoque/{estoque}/relatorio/xlsx', [EstoqueRelatorioController::class, 'exportarItemXlsx'])
+            ->name('gestao-estoque.item-relatorio.xlsx');
     });
 
 
