@@ -560,6 +560,7 @@
             cursor: pointer;
             white-space: nowrap;
             transition: background var(--ge-trans);
+            text-decoration: none;
         }
 
         .dark .ge-btn-ver {
@@ -1256,6 +1257,25 @@
         </div>
     </div>
 
+    @if ($this->podeExportar)
+    <div style="display:flex;justify-content:flex-end;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem">
+        <x-filament::button
+            tag="a"
+            :href="route('gestao-estoque.relatorio.pdf', $this->filtrosExportacao)"
+            color="gray"
+            icon="heroicon-o-document-text">
+            Exportar PDF
+        </x-filament::button>
+        <x-filament::button
+            tag="a"
+            :href="route('gestao-estoque.relatorio.xlsx', $this->filtrosExportacao)"
+            color="success"
+            icon="heroicon-o-table-cells">
+            Exportar XLSX
+        </x-filament::button>
+    </div>
+    @endif
+
     {{-- ============================================================= --}}
     {{-- PAINEL: ABAS + TABELA                                         --}}
     {{-- ============================================================= --}}
@@ -1597,6 +1617,22 @@
 
             {{-- Footer --}}
             <div class="ge-modal-ft">
+                @if ($this->podeExportar && $estoqueSelecionadoId)
+                <a
+                    href="{{ route('gestao-estoque.item-relatorio.pdf', ['estoque' => $estoqueSelecionadoId]) }}"
+                    class="ge-btn-fechar"
+                    style="margin-bottom:.5rem;text-decoration:none">
+                    <x-filament::icon icon="heroicon-o-document-text" />
+                    Exportar PDF Completo
+                </a>
+                <a
+                    href="{{ route('gestao-estoque.item-relatorio.xlsx', ['estoque' => $estoqueSelecionadoId]) }}"
+                    class="ge-btn-fechar"
+                    style="margin-bottom:.5rem;text-decoration:none">
+                    <x-filament::icon icon="heroicon-o-table-cells" />
+                    Exportar XLSX Completo
+                </a>
+                @endif
                 <button class="ge-btn-fechar" wire:click="fecharSlideOver">
                     <x-filament::icon icon="heroicon-o-x-mark" />
                     Fechar
