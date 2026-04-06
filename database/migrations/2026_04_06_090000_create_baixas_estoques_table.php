@@ -12,7 +12,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('estoque_id')->constrained('estoque')->restrictOnDelete();
             $table->decimal('quantidade', 10, 3);
-            $table->text('motivo');
+            $table->string('motivo', 60);
+            $table->text('descricao');
             $table->decimal('saldo_anterior', 10, 3);
             $table->decimal('saldo_posterior', 10, 3);
             $table->string('registrado_por')->nullable();

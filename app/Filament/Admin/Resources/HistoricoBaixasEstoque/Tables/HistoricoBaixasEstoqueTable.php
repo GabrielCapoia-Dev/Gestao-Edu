@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\HistoricoBaixasEstoque\Tables;
 
+use App\Models\Enums\MotivoBaixa;
 use App\Models\Enums\TipoItem;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
@@ -51,6 +52,12 @@ class HistoricoBaixasEstoqueTable
 
             TextColumn::make('motivo')
                 ->label('Motivo')
+                ->badge()
+                ->formatStateUsing(fn($state) => $state?->label() ?? $state)
+                ->sortable(),
+
+            TextColumn::make('descricao')
+                ->label('Descricao')
                 ->limit(80)
                 ->wrap(),
 
@@ -82,6 +89,13 @@ class HistoricoBaixasEstoqueTable
 
                     return $query->whereHas('estoque.item', fn($itemQuery) => $itemQuery->where('tipo_item', $data['value']));
                 }),
+            SelectFilter::make('motivo')
+                ->label('Motivo')
+                ->options(
+                    collect(MotivoBaixa::cases())
+                        ->mapWithKeys(fn(MotivoBaixa $motivo) => [$motivo->value => $motivo->label()])
+                        ->toArray()
+                ),
         ];
     }
 }

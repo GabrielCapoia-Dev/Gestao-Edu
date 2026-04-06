@@ -2,9 +2,11 @@
 
 namespace App\Filament\Admin\Resources\BaixasEstoque\Tables;
 
+use App\Models\Enums\MotivoBaixa;
 use App\Models\Enums\TipoItem;
 use App\Models\Estoque;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -93,15 +95,25 @@ class BaixasEstoqueTable
                         ->required()
                         ->minValue(0.001)
                         ->step('0.001'),
-                    Textarea::make('motivo')
+                    Select::make('motivo')
                         ->label('Motivo da baixa')
+                        ->options(
+                            collect(MotivoBaixa::cases())
+                                ->mapWithKeys(fn(MotivoBaixa $motivo) => [$motivo->value => $motivo->label()])
+                                ->toArray()
+                        )
+                        ->native(false)
+                        ->required(),
+                    Textarea::make('descricao')
+                        ->label('Descricao do ocorrido')
                         ->required()
                         ->rows(4)
                         ->maxLength(1000),
                 ])
                 ->action(function (Estoque $record, array $data) {
                     $quantidade = (float) $data['quantidade'];
-                    $motivo = trim((string) $data['motivo']);
+                    $motivo = MotivoBaixa::from((string) $data['motivo']);
+                    $descricao = trim((string) $data['descricao']);
 
                     if ($quantidade > (float) $record->quantidade) {
                         Notification::make()
@@ -112,7 +124,7 @@ class BaixasEstoqueTable
                         return;
                     }
 
-                    $record->registrarBaixa($quantidade, $motivo);
+                    $record->registrarBaixa($quantidade, $motivo, $descricao);
 
                     Notification::make()
                         ->title('Baixa registrada com sucesso.')

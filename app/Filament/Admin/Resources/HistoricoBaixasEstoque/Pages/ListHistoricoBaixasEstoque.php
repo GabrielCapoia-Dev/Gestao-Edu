@@ -17,6 +17,12 @@ class ListHistoricoBaixasEstoque extends ListRecords
                 ->label('Tela de Baixas')
                 ->icon('heroicon-o-arrow-trending-down')
                 ->url(route('filament.admin.resources.baixas-estoque.index')),
+            Action::make('exportarRelatorio')
+                ->label('Exportar Relatorio')
+                ->icon('heroicon-o-document-arrow-down')
+                ->color('gray')
+                ->url(fn() => route('baixas-estoque.relatorio', request()->query()))
+                ->openUrlInNewTab(),
         ];
     }
 }

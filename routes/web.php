@@ -19,6 +19,7 @@ use App\Services\Relatorios\FeedbackGraficoService;
 use App\Services\Relatorios\ChartRenderService;
 use Illuminate\Support\Facades\Auth;
 use \App\Http\Controllers\PedidoRelatorioGeralController;
+use App\Http\Controllers\BaixasEstoqueRelatorioController;
 use Illuminate\Support\Facades\DB;
 
 Route::get('/', function () {
@@ -125,6 +126,9 @@ Route::prefix('admin')
         )
             ->name('pedidos.arquivos.download')
             ->middleware('can:download,pedidoArquivo');
+
+        Route::get('/estoque/baixas/relatorio', [BaixasEstoqueRelatorioController::class, 'exportar'])
+            ->name('baixas-estoque.relatorio');
     });
 
 
