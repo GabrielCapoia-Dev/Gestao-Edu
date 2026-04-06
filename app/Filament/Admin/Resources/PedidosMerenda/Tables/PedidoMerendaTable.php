@@ -78,6 +78,13 @@ class PedidoMerendaTable
     public static function filters(): array
     {
         return [
+            SelectFilter::make('status')
+                ->label('Status')
+                ->options(
+                    collect(StatusPedidoMerenda::cases())
+                        ->mapWithKeys(fn(StatusPedidoMerenda $status) => [$status->value => $status->label()])
+                        ->toArray()
+                ),
         ];
     }
 

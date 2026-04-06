@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 
 class Estoque extends Model
@@ -41,6 +42,11 @@ class Estoque extends Model
         return $this->hasMany(EstoqueMovimentacao::class);
     }
 
+    public function baixas()
+    {
+        return $this->hasMany(BaixasEstoques::class);
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Helpers
@@ -77,6 +83,46 @@ class Estoque extends Model
             'observacao'         => $observacao,
             'registrado_por'     => $this->user()?->name,
         ]);
+    }
+
+    /**
+     * Registra uma baixa operacional de estoque.
+     */
+    public function registrarBaixa(float $quantidade, string $motivo): BaixasEstoques
+    {
+        if ($quantidade <= 0) {
+            throw new \InvalidArgumentException('Quantidade de baixa invalida.');
+        }
+
+        if ($quantidade > (float) $this->quantidade) {
+            throw new \DomainException('Quantidade de baixa maior que o saldo em estoque.');
+        }
+
+        return DB::transaction(function () use ($quantidade, $motivo) {
+            $this->refresh();
+
+            $saldoAnterior = (float) $this->quantidade;
+
+            if ($quantidade > $saldoAnterior) {
+                throw new \DomainException('Quantidade de baixa maior que o saldo em estoque.');
+            }
+
+            $this->saida(
+                quantidade: $quantidade,
+                pedidoMerendaId: null,
+                observacao: "Baixa de estoque: {$motivo}",
+            );
+
+            $this->refresh();
+
+            return $this->baixas()->create([
+                'quantidade' => $quantidade,
+                'motivo' => $motivo,
+                'saldo_anterior' => $saldoAnterior,
+                'saldo_posterior' => (float) $this->quantidade,
+                'registrado_por' => $this->user()?->name,
+            ]);
+        });
     }
 
     /*
