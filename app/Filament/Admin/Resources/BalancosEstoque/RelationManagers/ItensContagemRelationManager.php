@@ -7,6 +7,7 @@ use App\Models\BalancoEstoque;
 use App\Models\BalancoEstoqueItem;
 use App\Services\Estoque\BalancoEstoqueService;
 use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -14,6 +15,7 @@ use Filament\Resources\Pages\ViewRecord;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 
@@ -120,6 +122,32 @@ class ItensContagemRelationManager extends RelationManager
 
                             Notification::make()
                                 ->title('Contagem registrada com sucesso.')
+                                ->success()
+                                ->send();
+                        } catch (\DomainException $exception) {
+                            Notification::make()
+                                ->title($exception->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    }),
+            ])
+            ->groupedBulkActions([
+                BulkAction::make('manterSaldoAtual')
+                    ->label('Manter saldo atual')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('gray')
+                    ->requiresConfirmation()
+                    ->modalHeading('Manter saldo atual')
+                    ->modalDescription('A quantidade contada dos itens selecionados sera preenchida com o saldo atual do sistema, zerando a divergencia desses registros.')
+                    ->visible(fn (): bool => $this->getOwnerRecord()->isEmAndamento() && (Auth::user()?->hasPermissionTo('Registrar Contagem de Balanços de Estoque') ?? false))
+                    ->deselectRecordsAfterCompletion()
+                    ->action(function (EloquentCollection $records): void {
+                        try {
+                            $total = app(BalancoEstoqueService::class)->manterSaldoAtualEmLote($records, Auth::user());
+
+                            Notification::make()
+                                ->title("Saldo atual mantido para {$total} item(ns).")
                                 ->success()
                                 ->send();
                         } catch (\DomainException $exception) {

@@ -168,6 +168,34 @@ class BalancoEstoqueService
         return $balancoItem->fresh(['item', 'contadoPor']);
     }
 
+    public function manterSaldoAtual(BalancoEstoqueItem $balancoItem, User $user, ?string $observacao = null): BalancoEstoqueItem
+    {
+        return $this->registrarContagem(
+            $balancoItem,
+            (float) $balancoItem->saldo_sistema_antes,
+            $observacao ?? 'Mantido saldo atual',
+            $user,
+        );
+    }
+
+    public function manterSaldoAtualEmLote(iterable $itens, User $user, ?string $observacao = null): int
+    {
+        return DB::transaction(function () use ($itens, $user, $observacao): int {
+            $processados = 0;
+
+            foreach ($itens as $item) {
+                if (! $item instanceof BalancoEstoqueItem) {
+                    continue;
+                }
+
+                $this->manterSaldoAtual($item, $user, $observacao);
+                $processados++;
+            }
+
+            return $processados;
+        });
+    }
+
     public function cancelar(BalancoEstoque $balanco, string $motivo, User $user): BalancoEstoque
     {
         if ($balanco->isConcluido() || $balanco->isCancelado()) {

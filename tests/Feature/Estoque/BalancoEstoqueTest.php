@@ -185,6 +185,51 @@ class BalancoEstoqueTest extends TestCase
         $this->assertSame('-12.60', $registro->valor_impacto);
     }
 
+    public function test_it_can_keep_current_balance_in_batch_for_selected_items(): void
+    {
+        $user = $this->criarUsuario();
+        $itemA = $this->criarItem('Granola');
+        $itemB = $this->criarItem('Mel');
+
+        $this->criarContratoItemComPreco($itemA, 6.00);
+        $this->criarContratoItemComPreco($itemB, 8.50);
+
+        Estoque::query()->create([
+            'item_id' => $itemA->id,
+            'quantidade' => 15.000,
+        ]);
+
+        Estoque::query()->create([
+            'item_id' => $itemB->id,
+            'quantidade' => 4.000,
+        ]);
+
+        $balanco = $this->service->agendar(['data_agendada' => '2026-04-10 09:00:00'], $user);
+        $balanco = $this->service->iniciar($balanco, [$itemA->id, $itemB->id], $user);
+
+        $registroA = $balanco->itens()->where('item_id', $itemA->id)->first();
+        $registroB = $balanco->itens()->where('item_id', $itemB->id)->first();
+
+        $this->service->registrarContagem($registroA, 12.000, 'Contagem divergente', $user);
+
+        $processados = $this->service->manterSaldoAtualEmLote([$registroA, $registroB], $user);
+
+        $this->assertSame(2, $processados);
+
+        $registroA->refresh();
+        $registroB->refresh();
+
+        $this->assertSame('15.000', $registroA->quantidade_contada);
+        $this->assertSame('0.000', $registroA->diferenca);
+        $this->assertSame('0.00', $registroA->valor_impacto);
+        $this->assertSame('Mantido saldo atual', $registroA->observacao_contagem);
+
+        $this->assertSame('4.000', $registroB->quantidade_contada);
+        $this->assertSame('0.000', $registroB->diferenca);
+        $this->assertSame('0.00', $registroB->valor_impacto);
+        $this->assertSame('Mantido saldo atual', $registroB->observacao_contagem);
+    }
+
     public function test_it_conclui_balanco_e_gera_movimentacoes_de_reajuste_e_impacto_financeiro(): void
     {
         $user = $this->criarUsuario();
