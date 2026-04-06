@@ -1,100 +1,87 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="utf-8">
-    <title>Relatório - Lista de Alunos</title>
+@extends('relatorios.layouts.base-pdf')
 
-    <style>
-        * {
-            box-sizing: border-box;
-            font-family: DejaVu Sans, sans-serif;
-            font-size: 11px;
-        }
+@section('reportTitle', $reportTitle ?? 'Relatorio - Lista de Alunos')
+@section('reportSubtitle', $reportSubtitle ?? 'Listagem consolidada de alunos')
 
-        body {
-            margin: 10px 20px;
-        }
+@section('styles')
+    .summary-box {
+        margin-bottom: 12px;
+        padding: 8px 10px;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        background: #f9fafb;
+        font-size: 10px;
+    }
 
-        h1 {
-            font-size: 16px;
-            margin-bottom: 4px;
-        }
+    table.listagem {
+        width: 100%;
+        border-collapse: collapse;
+        page-break-inside: auto;
+    }
 
-        .subtitulo {
-            font-size: 10px;
-            margin-bottom: 10px;
-        }
+    table.listagem th,
+    table.listagem td {
+        border: 1px solid #d1d5db;
+        padding: 5px 6px;
+        vertical-align: top;
+        word-wrap: break-word;
+        font-size: 10px;
+    }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
+    table.listagem thead {
+        display: table-header-group;
+    }
 
-        th,
-        td {
-            border: 1px solid #000;
-            padding: 4px 6px;
-            vertical-align: top;
-            word-wrap: break-word;
-        }
+    table.listagem th {
+        background: #f3f4f6;
+        text-align: left;
+    }
 
-        th {
-            background: #f0f0f0;
-            text-align: left;
-        }
+    table.listagem tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
+    }
 
-        .text-center {
-            text-align: center;
-        }
+    .text-center {
+        text-align: center;
+    }
+@endsection
 
-        /* Ajuda o DOMPDF a quebrar a página sem cortar linhas no meio */
-        table {
-            page-break-inside: auto;
-        }
+@section('content')
+    @php
+        $totalAlunos = is_countable($alunos) ? count($alunos) : 0;
+    @endphp
 
-        tr {
-            page-break-inside: avoid;
-            page-break-after: auto;
-        }
-    </style>
-</head>
-<body>
-    <h1>Relatório - Lista de Alunos</h1>
-
-    <div class="subtitulo">
-        Gerado em: {{ now()->format('d/m/Y H:i') }}<br>
-        Total de alunos: {{ is_countable($alunos) ? count($alunos) : 0 }}
+    <div class="summary-box">
+        <strong>Total de alunos:</strong> {{ $totalAlunos }}
     </div>
 
-    <table>
+    <table class="listagem">
         <thead>
             <tr>
                 <th>CGM</th>
-                <th>NOME DO ALUNO</th>
-                <th>SEXO</th>
-                <th>ESCOLA</th>
-                <th>SÉRIE/TURMA</th>
-                <th>TURNO</th>
-                <th>LAUDOS</th>
+                <th>Nome do Aluno</th>
+                <th>Sexo</th>
+                <th>Escola</th>
+                <th>Serie/Turma</th>
+                <th>Turno</th>
+                <th>Laudos</th>
             </tr>
         </thead>
         <tbody>
             @foreach ($alunos as $aluno)
                 @php
-                    $cgm    = data_get($aluno, 'cgm');
-                    $nome   = data_get($aluno, 'nome');
-                    $sexo   = data_get($aluno, 'sexo');
-
+                    $cgm = data_get($aluno, 'cgm');
+                    $nome = data_get($aluno, 'nome');
+                    $sexo = data_get($aluno, 'sexo');
                     $escola = data_get($aluno, 'turma.escola.nome');
-                    $serie  = data_get($aluno, 'turma.serie.nome');
-                    $turma  = data_get($aluno, 'turma.turma');
-                    $turno  = data_get($aluno, 'turma.turno');
-
-                    // laudos vem como array no JSON; pluck('nome') e junta
+                    $serie = data_get($aluno, 'turma.serie.nome');
+                    $turma = data_get($aluno, 'turma.turma');
+                    $turno = data_get($aluno, 'turma.turno');
                     $laudosArray = data_get($aluno, 'laudos', []);
                     $laudosNomes = collect($laudosArray)
                         ->pluck('nome')
-                        ->filter()            // tira nulos/vazios
+                        ->filter()
                         ->implode(', ');
                 @endphp
 
@@ -103,14 +90,11 @@
                     <td>{{ $nome }}</td>
                     <td class="text-center">{{ $sexo }}</td>
                     <td>{{ $escola }}</td>
-                    <td>
-                        {{ trim(($serie ? $serie . ' - ' : '') . ($turma ?? '')) }}
-                    </td>
+                    <td>{{ trim(($serie ? $serie . ' - ' : '') . ($turma ?? '')) }}</td>
                     <td class="text-center">{{ $turno }}</td>
                     <td>{{ $laudosNomes ?: '-' }}</td>
                 </tr>
             @endforeach
         </tbody>
     </table>
-</body>
-</html>
+@endsection

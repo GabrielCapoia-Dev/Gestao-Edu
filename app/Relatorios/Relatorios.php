@@ -2,55 +2,68 @@
 
 namespace App\Relatorios;
 
-use Barryvdh\DomPDF\PDF as DomPdfInstance;
-use Barryvdh\DomPDF\Facade\Pdf;
+use App\Services\Relatorios\RelatorioPdfRenderer;
 use Illuminate\Http\Response;
 
 class Relatorios
 {
-    public const TIPO_FICHA      = 'ficha';
-    public const TIPO_BULK_LIST  = 'bulk_list';
+    public const TIPO_FICHA = 'ficha';
+    public const TIPO_BULK_LIST = 'bulk_list';
     public const TIPO_BULK_FICHA = 'bulk_ficha';
 
     /**
-     * Gera o PDF e retorna uma Response (stream no navegador).
+     * Gera o PDF e retorna uma Response em stream no navegador.
      */
     public static function pdf(string $view, array $data = [], ?string $tipo = null): Response
     {
-        $tipo = $tipo ?? self::TIPO_FICHA;
+        $tipo ??= self::TIPO_FICHA;
 
-        $fileName = match ($tipo) {
-            self::TIPO_BULK_LIST  => 'relatorio-lista-alunos.pdf',
-            self::TIPO_BULK_FICHA => 'relatorio-fichas-alunos.pdf',
-            default               => 'relatorio.pdf',
-        };
-
-        $pdf = Pdf::loadView($view, $data)
-            ->setPaper('a4', 'portrait'); // ajuste se precisar landscape
-
-        // IMPORTANTE: devolver uma Response, não o objeto PDF
-        return $pdf->stream($fileName);
-
-        // Se preferir download automático:
-        // return $pdf->download($fileName);
+        return app(RelatorioPdfRenderer::class)->stream(
+            $view,
+            self::preparePayload($data, $tipo),
+            self::fileNameForTipo($tipo)
+        );
     }
 
-    /**
-     * Nome padrão de arquivo baseado no tipo de relatório.
-     */
     protected static function defaultFileName(string $tipo): string
     {
         $prefix = match ($tipo) {
-            self::TIPO_BULK_LIST  => 'relatorio-lista',
+            self::TIPO_BULK_LIST => 'relatorio-lista',
             self::TIPO_BULK_FICHA => 'relatorio-fichas',
-            default               => 'relatorio-ficha',
+            default => 'relatorio-ficha',
         };
 
         return sprintf('%s-%s.pdf', $prefix, now()->format('Ymd_His'));
     }
 
+    protected static function fileNameForTipo(string $tipo): string
+    {
+        return match ($tipo) {
+            self::TIPO_BULK_LIST => 'relatorio-lista-alunos.pdf',
+            self::TIPO_BULK_FICHA => 'relatorio-fichas-alunos.pdf',
+            default => 'relatorio.pdf',
+        };
+    }
+
+    protected static function defaultTitle(string $tipo): string
+    {
+        return match ($tipo) {
+            self::TIPO_BULK_LIST => 'Relatorio - Lista de Alunos',
+            self::TIPO_BULK_FICHA => 'Relatorio - Fichas de Alunos',
+            default => 'Relatorio',
+        };
+    }
+
+    protected static function preparePayload(array $data, string $tipo): array
+    {
+        return array_replace([
+            'reportTitle' => self::defaultTitle($tipo),
+            'showPagination' => true,
+        ], $data);
+    }
+
     /**
-     * Alias mais semântico pra quem preferir chamar assim.
+     * Alias mais semantico pra quem preferir chamar assim.
      */
     public static function gerarRelatorio(string $view, array $data = [], ?string $tipo = null): Response
     {
@@ -58,28 +71,35 @@ class Relatorios
     }
 
     /**
-     * Alias semântico de gerarRelatorio().
+     * Alias semantico de gerarRelatorio().
      */
     public static function download(
         string $view,
         array $data,
         string $tipo = self::TIPO_FICHA,
-    ) {
-        return static::gerarRelatorio($view, $data, $tipo);
+    ): Response {
+        return app(RelatorioPdfRenderer::class)->download(
+            $view,
+            self::preparePayload($data, $tipo),
+            static::defaultFileName($tipo)
+        );
     }
 
     /**
-     * Stream em vez de download.
+     * Stream com nome customizado quando necessario.
      */
     public static function stream(
         string $view,
         array $data,
         string $tipo = self::TIPO_FICHA,
         ?string $fileName = null,
-    ) {
+    ): Response {
         $fileName ??= static::defaultFileName($tipo);
 
-        return static::pdf($view, $data)
-            ->stream($fileName);
+        return app(RelatorioPdfRenderer::class)->stream(
+            $view,
+            self::preparePayload($data, $tipo),
+            $fileName
+        );
     }
 }

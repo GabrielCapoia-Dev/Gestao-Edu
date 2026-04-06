@@ -29,6 +29,7 @@ Consulte a skill pelo dominio da tarefa antes de alterar codigo sensivel. Em mud
 | [regras-criticas-pedidos.md](./regras-criticas-pedidos.md) | Destacar dependencias, strings seedadas, efeitos colaterais e riscos do fluxo de pedidos. | Antes de mudar status, setores, notificacoes ou observer. |
 | [merenda-contratos-e-estoque.md](./merenda-contratos-e-estoque.md) | Explicar reserva, utilizacao, saldo, entregas, cancelamento e impacto em estoque. | Alteracoes em merenda, contratos, margem ou estoque. |
 | [persistencia-e-arquivos.md](./persistencia-e-arquivos.md) | Resumir migrations-chave, seeders estruturantes, storage e downloads protegidos. | Mudancas de banco, upload/download, seed ou migracao. |
+| [padrao-relatorios-pdf.md](./padrao-relatorios-pdf.md) | Definir o layout, renderer e metadados obrigatorios dos relatorios PDF. | Criacao ou manutencao de relatorios e exportacoes PDF. |
 | [testes-e-debug.md](./testes-e-debug.md) | Registrar estado atual de testes, passos de reproducao local e pontos de observabilidade. | Debugging, validacao manual e estrategia de teste. |
 | [pontos-frageis-e-divida-tecnica.md](./pontos-frageis-e-divida-tecnica.md) | Consolidar riscos reais, inconsistencias e areas com maior chance de regressao. | Planejamento de refactor, review e analise de risco. |
 | [checklist-alterar-logica-sensivel.md](./checklist-alterar-logica-sensivel.md) | Checklist curto antes de mexer em fluxos que propagam efeitos colaterais. | Toda alteracao em regras centrais. |

@@ -23,6 +23,8 @@ class AlunoRelatorioService
             'view' => 'relatorios.Ficha.alunos-ficha',
             'data' => [
                 'aluno' => $aluno,
+                'reportTitle' => 'Ficha de Aluno',
+                'reportSubtitle' => $aluno->nome,
             ],
         ];
     }
@@ -43,6 +45,8 @@ class AlunoRelatorioService
             'view' => 'relatorios.BulkList.alunos-bulklist',
             'data' => [
                 'alunos' => $alunos,
+                'reportTitle' => 'Relatorio - Lista de Alunos',
+                'reportSubtitle' => 'Listagem consolidada para exportacao',
             ],
         ];
     }
@@ -63,6 +67,8 @@ class AlunoRelatorioService
             'view' => 'relatorios.BulkFicha.alunos-bulkficha',
             'data' => [
                 'alunos' => $alunos,
+                'reportTitle' => 'Relatorio - Fichas de Alunos',
+                'reportSubtitle' => 'Fichas detalhadas em lote',
             ],
         ];
     }

@@ -1,40 +1,70 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <title>Relatorio de Baixas de Estoque</title>
-    <style>
-        body { font-family: DejaVu Sans, sans-serif; font-size: 12px; color: #1f2937; }
-        h1 { font-size: 20px; margin-bottom: 4px; }
-        .muted { color: #6b7280; font-size: 11px; }
-        .cards { width: 100%; margin: 14px 0 18px; border-collapse: collapse; }
-        .cards td { width: 25%; border: 1px solid #d1d5db; padding: 10px; vertical-align: top; }
-        .cards .label { font-size: 10px; text-transform: uppercase; color: #6b7280; }
-        .cards .value { font-size: 18px; font-weight: bold; margin-top: 4px; }
-        table.listagem { width: 100%; border-collapse: collapse; }
-        table.listagem th, table.listagem td { border: 1px solid #d1d5db; padding: 7px; text-align: left; vertical-align: top; }
-        table.listagem th { background: #f3f4f6; font-size: 11px; }
-        .right { text-align: right; }
-    </style>
-</head>
-<body>
-    <h1>Relatorio de Baixas de Estoque</h1>
-    <p class="muted">
-        Exportado em {{ $dataExportacao->format('d/m/Y H:i') }}
-        @if($usuarioExportacao)
-            por {{ $usuarioExportacao->name }}
-        @endif
-    </p>
+@extends('relatorios.layouts.base-pdf')
 
-    @if(!empty($filtros))
-        <p class="muted">
-            Filtros:
-            @foreach($filtros as $chave => $valor)
-                {{ ucfirst($chave) }}: {{ $valor }}@if(!$loop->last) | @endif
-            @endforeach
-        </p>
-    @endif
+@section('reportTitle', $reportTitle ?? 'Relatorio de Baixas de Estoque')
+@section('reportSubtitle', $reportSubtitle ?? 'Historico consolidado das baixas registradas')
 
+@section('styles')
+    .cards {
+        width: 100%;
+        margin: 14px 0 18px;
+        border-collapse: collapse;
+    }
+
+    .cards td {
+        width: 25%;
+        border: 1px solid #d1d5db;
+        padding: 10px;
+        vertical-align: top;
+        background: #f9fafb;
+    }
+
+    .cards .label {
+        font-size: 10px;
+        text-transform: uppercase;
+        color: #6b7280;
+    }
+
+    .cards .value {
+        font-size: 18px;
+        font-weight: bold;
+        margin-top: 4px;
+    }
+
+    table.listagem {
+        width: 100%;
+        border-collapse: collapse;
+        page-break-inside: auto;
+    }
+
+    table.listagem th,
+    table.listagem td {
+        border: 1px solid #d1d5db;
+        padding: 7px;
+        text-align: left;
+        vertical-align: top;
+        font-size: 10px;
+    }
+
+    table.listagem thead {
+        display: table-header-group;
+    }
+
+    table.listagem th {
+        background: #f3f4f6;
+        font-size: 11px;
+    }
+
+    table.listagem tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
+    }
+
+    .right {
+        text-align: right;
+    }
+@endsection
+
+@section('content')
     <table class="cards">
         <tr>
             <td>
@@ -51,7 +81,7 @@
             </td>
             <td>
                 <div class="label">Motivo Frequente</div>
-                <div class="value" style="font-size: 14px">{{ $metricas->motivo_mais_frequente }}</div>
+                <div class="value" style="font-size: 14px;">{{ $metricas->motivo_mais_frequente }}</div>
             </td>
         </tr>
     </table>
@@ -90,5 +120,4 @@
             @endforelse
         </tbody>
     </table>
-</body>
-</html>
+@endsection

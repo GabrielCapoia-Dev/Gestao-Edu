@@ -6,33 +6,30 @@ use App\Models\BaixasEstoques;
 use App\Models\Enums\MotivoBaixa;
 use App\Models\Enums\TipoItem;
 use App\Models\User;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Collection;
 use Symfony\Component\HttpFoundation\Response;
 
 class BaixasEstoqueRelatorioService
 {
+    public function __construct(
+        protected RelatorioPdfRenderer $renderer,
+    ) {}
+
     public function gerar(array $params, ?User $usuario): Response
     {
         $filtros = $this->extrairFiltros($params);
         $baixas = $this->buscarBaixas($filtros);
+        $reportFilters = $this->formatarFiltros($filtros);
 
-        $pdf = Pdf::loadView('relatorios.Estoque.baixas-estoque', [
+        return $this->renderer->download('relatorios.Estoque.baixas-estoque', [
             'baixas' => $baixas,
             'metricas' => $this->calcularMetricas($baixas),
-            'filtros' => $this->formatarFiltros($filtros),
             'usuarioExportacao' => $usuario,
             'dataExportacao' => now(),
-        ])->setPaper('a4', 'portrait')
-            ->setOptions([
-                'dpi' => 96,
-                'defaultFont' => 'DejaVu Sans',
-                'isRemoteEnabled' => false,
-                'isHtml5ParserEnabled' => true,
-                'isFontSubsettingEnabled' => true,
-            ]);
-
-        return $pdf->download('relatorio-baixas-estoque-' . now()->format('Y-m-d_H-i') . '.pdf');
+            'reportTitle' => 'Relatorio de Baixas de Estoque',
+            'reportSubtitle' => 'Historico consolidado das baixas registradas',
+            'reportFilters' => $reportFilters,
+        ], 'relatorio-baixas-estoque-' . now()->format('Y-m-d_H-i') . '.pdf');
     }
 
     protected function extrairFiltros(array $params): array
@@ -50,7 +47,7 @@ class BaixasEstoqueRelatorioService
             ->orderByDesc('created_at');
 
         if (! empty($filtros['categoria'])) {
-            $query->whereHas('estoque.item', fn($q) => $q->where('tipo_item', $filtros['categoria']));
+            $query->whereHas('estoque.item', fn ($q) => $q->where('tipo_item', $filtros['categoria']));
         }
 
         if (! empty($filtros['motivo'])) {
@@ -62,8 +59,8 @@ class BaixasEstoqueRelatorioService
 
     protected function calcularMetricas(Collection $baixas): object
     {
-        $motivoMaisFrequente = $baixas->groupBy(fn($baixa) => $baixa->motivo?->value)
-            ->sortByDesc(fn($grupo) => $grupo->count())
+        $motivoMaisFrequente = $baixas->groupBy(fn ($baixa) => $baixa->motivo?->value)
+            ->sortByDesc(fn ($grupo) => $grupo->count())
             ->keys()
             ->first();
 
