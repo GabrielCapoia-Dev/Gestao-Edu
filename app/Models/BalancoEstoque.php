@@ -1,0 +1,108 @@
+<?php
+
+namespace App\Models;
+
+use App\Models\Enums\BalancoEstoqueStatus;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class BalancoEstoque extends Model
+{
+    protected $table = 'balancos_estoque';
+
+    protected $fillable = [
+        'codigo',
+        'status',
+        'data_agendada',
+        'observacao_inicial',
+        'iniciado_em',
+        'concluido_em',
+        'cancelado_em',
+        'criado_por_id',
+        'iniciado_por_id',
+        'concluido_por_id',
+        'cancelado_por_id',
+    ];
+
+    protected $casts = [
+        'status' => BalancoEstoqueStatus::class,
+        'data_agendada' => 'datetime',
+        'iniciado_em' => 'datetime',
+        'concluido_em' => 'datetime',
+        'cancelado_em' => 'datetime',
+    ];
+
+    protected static function booted(): void
+    {
+        static::created(function (self $balanco): void {
+            if (filled($balanco->codigo)) {
+                return;
+            }
+
+            $balanco->forceFill([
+                'codigo' => 'BAL-' . str_pad((string) $balanco->getKey(), 6, '0', STR_PAD_LEFT),
+            ])->saveQuietly();
+        });
+    }
+
+    public function criadoPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'criado_por_id');
+    }
+
+    public function iniciadoPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'iniciado_por_id');
+    }
+
+    public function concluidoPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'concluido_por_id');
+    }
+
+    public function canceladoPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelado_por_id');
+    }
+
+    public function itens(): HasMany
+    {
+        return $this->hasMany(BalancoEstoqueItem::class)->orderBy('id');
+    }
+
+    public function itensContagem(): HasMany
+    {
+        return $this->itens()->where('incluido_na_contagem', true);
+    }
+
+    public function itensFora(): HasMany
+    {
+        return $this->itens()->where('incluido_na_contagem', false);
+    }
+
+    public function eventos(): HasMany
+    {
+        return $this->hasMany(BalancoEstoqueEvento::class)->orderByDesc('created_at');
+    }
+
+    public function isAgendado(): bool
+    {
+        return $this->status === BalancoEstoqueStatus::Agendado;
+    }
+
+    public function isEmAndamento(): bool
+    {
+        return $this->status === BalancoEstoqueStatus::EmAndamento;
+    }
+
+    public function isConcluido(): bool
+    {
+        return $this->status === BalancoEstoqueStatus::Concluido;
+    }
+
+    public function isCancelado(): bool
+    {
+        return $this->status === BalancoEstoqueStatus::Cancelado;
+    }
+}

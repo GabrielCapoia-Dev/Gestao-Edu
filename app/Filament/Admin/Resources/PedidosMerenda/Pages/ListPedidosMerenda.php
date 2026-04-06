@@ -21,47 +21,44 @@ class ListPedidosMerenda extends ListRecords
         ];
     }
 
-    // -------------------------------------------------------------------------
-    // Salvar quantidade pedida (edição do pedido ainda em aberto)
-    // Chamado pelo $wire.salvarQuantidade() no blade modal-itens.
-    // -------------------------------------------------------------------------
-
     public function salvarQuantidade(int $pedidoItemId, float $novaQuantidade): void
     {
-        $pedidoItem        = PedidoMerendaItem::with('contratoItem')->findOrFail($pedidoItemId);
+        $pedidoItem = PedidoMerendaItem::with('contratoItem')->findOrFail($pedidoItemId);
         $quantidadeAnterior = (float) $pedidoItem->quantidade_pedida;
-        $jaEntregue        = (float) $pedidoItem->quantidade_entregue;
+        $jaEntregue = (float) $pedidoItem->quantidade_entregue;
 
         if ($novaQuantidade < 0) {
             Notification::make()->title('Quantidade inválida.')->danger()->send();
+
             return;
         }
 
-        // Não permite reduzir a quantidade pedida abaixo do que já foi entregue
         if ($novaQuantidade < $jaEntregue) {
             Notification::make()
                 ->title("Não é possível reduzir abaixo da quantidade já entregue ({$jaEntregue}).")
                 ->danger()
                 ->send();
+
             return;
         }
 
-        $ci           = $pedidoItem->contratoItem;
-        $saldoMaximo  = (float) $ci->saldo_disponivel + $quantidadeAnterior;
+        $contratoItem = $pedidoItem->contratoItem;
+        $saldoMaximo = (float) $contratoItem->saldo_disponivel + $quantidadeAnterior;
 
         if ($novaQuantidade > $saldoMaximo) {
             Notification::make()
                 ->title("Quantidade excede o saldo disponível ({$saldoMaximo}).")
                 ->danger()
                 ->send();
+
             return;
         }
 
         $diferenca = $novaQuantidade - $quantidadeAnterior;
 
-        DB::transaction(function () use ($pedidoItem, $ci, $novaQuantidade, $diferenca) {
+        DB::transaction(function () use ($pedidoItem, $contratoItem, $novaQuantidade, $diferenca) {
             $pedidoItem->update(['quantidade_pedida' => $novaQuantidade]);
-            $ci->increment('quantidade_reservada', $diferenca);
+            $contratoItem->increment('quantidade_reservada', $diferenca);
         });
 
         Notification::make()
@@ -70,18 +67,14 @@ class ListPedidosMerenda extends ListRecords
             ->send();
     }
 
-    // -------------------------------------------------------------------------
-    // Registrar entrega parcial de um item
-    // Chamado pelo $wire.salvarEntregaParcial() no blade modal-itens.
-    // -------------------------------------------------------------------------
-
     public function salvarEntregaParcial(int $pedidoItemId, float $quantidadeEntregaAgora): void
     {
-        $pedidoItem  = PedidoMerendaItem::with(['contratoItem.item', 'pedido'])->findOrFail($pedidoItemId);
-        $pendente    = (float) $pedidoItem->quantidade_pendente;
+        $pedidoItem = PedidoMerendaItem::with(['contratoItem.item', 'pedido'])->findOrFail($pedidoItemId);
+        $pendente = (float) $pedidoItem->quantidade_pendente;
 
         if ($quantidadeEntregaAgora <= 0) {
             Notification::make()->title('Informe uma quantidade maior que zero.')->warning()->send();
+
             return;
         }
 
@@ -90,35 +83,41 @@ class ListPedidosMerenda extends ListRecords
                 ->title("Quantidade excede o saldo pendente de entrega ({$pendente}).")
                 ->danger()
                 ->send();
+
             return;
         }
 
-        $ci     = $pedidoItem->contratoItem;
+        $contratoItem = $pedidoItem->contratoItem;
         $pedido = $pedidoItem->pedido;
 
-        DB::transaction(function () use ($pedidoItem, $ci, $pedido, $quantidadeEntregaAgora) {
-            // 1. Atualiza quantidade entregue no item do pedido
-            $pedidoItem->increment('quantidade_entregue', $quantidadeEntregaAgora);
+        try {
+            DB::transaction(function () use ($pedidoItem, $contratoItem, $pedido, $quantidadeEntregaAgora) {
+                $pedidoItem->increment('quantidade_entregue', $quantidadeEntregaAgora);
 
-            // 2. Move reserva → utilizado no contrato
-            $ci->decrement('quantidade_reservada', $quantidadeEntregaAgora);
-            $ci->increment('quantidade_utilizada', $quantidadeEntregaAgora);
+                $contratoItem->decrement('quantidade_reservada', $quantidadeEntregaAgora);
+                $contratoItem->increment('quantidade_utilizada', $quantidadeEntregaAgora);
 
-            // 3. Entrada no estoque central
-            $estoque = \App\Models\Estoque::firstOrCreate(
-                ['item_id' => $ci->item_id],
-                ['quantidade' => 0]
-            );
+                $estoque = \App\Models\Estoque::firstOrCreate(
+                    ['item_id' => $contratoItem->item_id],
+                    ['quantidade' => 0]
+                );
 
-            $estoque->entrada(
-                quantidade: $quantidadeEntregaAgora,
-                pedidoMerendaId: $pedido->id,
-                observacao: "Entrega parcial do pedido #{$pedido->id}",
-            );
+                $estoque->entrada(
+                    quantidade: $quantidadeEntregaAgora,
+                    pedidoMerendaId: $pedido->id,
+                    observacao: "Entrega parcial do pedido #{$pedido->id}",
+                );
 
-            // 4. Recalcula status do pedido (Aguardando / ParcialmenteEntregue / Entregue)
-            $pedido->recalcularStatus();
-        });
+                $pedido->recalcularStatus();
+            });
+        } catch (\DomainException $exception) {
+            Notification::make()
+                ->title($exception->getMessage())
+                ->danger()
+                ->send();
+
+            return;
+        }
 
         Notification::make()
             ->title('Entrega registrada com sucesso.')

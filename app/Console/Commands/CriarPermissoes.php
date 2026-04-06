@@ -11,11 +11,10 @@ class CriarPermissoes extends Command
 {
     protected $signature = 'permissoes:criar';
 
-    protected $description = 'Cria permissões vincular à role';
+    protected $description = 'Cria permissões e vincula à role Admin';
 
     public function handle(): int
     {
-        // Limpa cache de permissões
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         $permissoes = [
@@ -46,6 +45,7 @@ class CriarPermissoes extends Command
             'Listar Contratos',
             'Listar Pedidos: Merenda',
             'Listar Gestão de Estoque',
+            'Listar Balanços de Estoque',
             'Listar Gestão de Margens',
             'Listar Componente Curricular',
 
@@ -70,6 +70,7 @@ class CriarPermissoes extends Command
             'Criar Tipos de Avaliações',
             'Criar Contratos',
             'Criar Pedidos: Merenda',
+            'Criar Balanços de Estoque',
             'Criar Componente Curricular',
 
             // EDITAR
@@ -109,7 +110,6 @@ class CriarPermissoes extends Command
             'Editar Pedidos: Merenda',
             'Editar Componente Curricular',
             'Editar Dados do Professor',
-            
 
             // EXCLUIR
             'Excluir Empresa Contratada',
@@ -180,6 +180,7 @@ class CriarPermissoes extends Command
             'Visualizar Notificação: Pedidos Atrasados',
             'Visualizar Notificação: Pedidos Emergenciais',
             'Visualizar Notificação: Pedido Reaberto',
+            'Visualizar Notificação: Balanço de Estoque',
             'Visualizar Laudos de Aluno',
             'Visualizar Tela de Inicio',
 
@@ -194,12 +195,16 @@ class CriarPermissoes extends Command
             'Aplicar Permissoes',
             'Anexar Laudos de Aluno',
             'Avaliar Pedidos',
+            'Iniciar Balanços de Estoque',
+            'Registrar Contagem de Balanços de Estoque',
+            'Concluir Balanços de Estoque',
+            'Adiar Balanços de Estoque',
+            'Cancelar Balanços de Estoque',
         ];
 
         $this->info('Criando permissões...');
 
         foreach ($permissoes as $nome) {
-
             $permission = Permission::firstOrCreate(['name' => $nome]);
 
             if ($permission->wasRecentlyCreated) {
@@ -207,17 +212,17 @@ class CriarPermissoes extends Command
             }
         }
 
-
         $adminRole = Role::where('name', 'Admin')->first();
 
-        if (!$adminRole) {
+        if (! $adminRole) {
             $this->error('Role Admin não encontrada.');
+
             return Command::FAILURE;
         }
 
         $adminRole->givePermissionTo($permissoes);
 
-        $this->info('Permissões vinculadas à role Admin com sucesso ✅');
+        $this->info('Permissões vinculadas à role Admin com sucesso.');
 
         return Command::SUCCESS;
     }

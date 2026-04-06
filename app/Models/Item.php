@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Enums\UnidadeMedida;
 use App\Models\Enums\TipoItem;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Item extends Model
 {
@@ -27,9 +29,19 @@ class Item extends Model
     ];
 
     // 🔥 relação correta agora
-    public function contratoItens()
+    public function contratoItens(): HasMany
     {
         return $this->hasMany(ContratoItem::class);
+    }
+
+    public function estoque(): HasOne
+    {
+        return $this->hasOne(Estoque::class, 'item_id');
+    }
+
+    public function balancoItens(): HasMany
+    {
+        return $this->hasMany(BalancoEstoqueItem::class);
     }
 
     public function getNomeComUnidadeAttribute(): string

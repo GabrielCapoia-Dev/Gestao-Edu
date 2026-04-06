@@ -11,6 +11,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Notifications\Notifiable;
+use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 use Spatie\Permission\Traits\HasRoles;
 use Illuminate\Support\Facades\Auth;
 
@@ -19,7 +20,9 @@ class User extends Authenticatable implements FilamentUser
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory;
     use Notifiable;
-    use HasRoles;
+    use HasRoles {
+        hasPermissionTo as protected traitHasPermissionTo;
+    }
 
     /**
      * The attributes that are mass assignable.
@@ -90,6 +93,15 @@ class User extends Authenticatable implements FilamentUser
     public function validateAccessGoogle(?string $register, ?string $login): bool
     {
         return $this->email_approved;
+    }
+
+    public function hasPermissionTo($permission, $guardName = null): bool
+    {
+        try {
+            return $this->traitHasPermissionTo($permission, $guardName);
+        } catch (PermissionDoesNotExist) {
+            return false;
+        }
     }
 
     protected static function booted()

@@ -25,6 +25,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('app:notificar-pedidos-a-vencer')
             ->dailyAt('08:00');
     })
+    ->withSchedule(function (Schedule $schedule) {
+        $schedule
+            ->command('app:notificar-balancos-estoque-vencidos')
+            ->hourly();
+    })
     ->withExceptions(function (Exceptions $exceptions) {
         //
     })->create();

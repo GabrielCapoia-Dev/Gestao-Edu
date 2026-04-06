@@ -2,19 +2,18 @@
 
 namespace App\Filament\Admin\Resources\Estoques\Tables;
 
-use App\Models\Estoque;
-use App\Models\Item;
-use App\Models\EstoqueMovimentacao;
+use App\Models\Enums\TipoItem;
 use App\Models\Enums\TipoMovimentacao;
-use Filament\Notifications\Notification;
+use App\Models\Estoque;
+use App\Models\EstoqueMovimentacao;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Enums\FiltersLayout;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\DB;
-use App\Models\Enums\TipoItem;
 
 class EstoqueTable
 {
@@ -29,10 +28,6 @@ class EstoqueTable
             ->recordActions(static::recordActions());
     }
 
-    // -------------------------------------------------------------------------
-    // Columns
-    // -------------------------------------------------------------------------
-
     public static function columns(): array
     {
         return [
@@ -43,13 +38,13 @@ class EstoqueTable
 
             TextColumn::make('item.unidade_medida')
                 ->label('Unidade')
-                ->formatStateUsing(fn($state) => strtoupper($state?->value ?? $state))
+                ->formatStateUsing(fn ($state) => strtoupper($state?->value ?? $state))
                 ->badge()
                 ->color('gray'),
 
             TextColumn::make('item.tipo_item')
                 ->label('Categoria')
-                ->formatStateUsing(fn($state) => $state?->label())
+                ->formatStateUsing(fn ($state) => $state?->label())
                 ->badge()
                 ->color('info'),
 
@@ -57,10 +52,10 @@ class EstoqueTable
                 ->label('Quantidade em Estoque')
                 ->numeric(decimalPlaces: 3, decimalSeparator: ',', thousandsSeparator: '.')
                 ->sortable()
-                ->color(fn(Estoque $record): string => match (true) {
-                    (float) $record->quantidade <= 0   => 'danger',
-                    (float) $record->quantidade <= 10  => 'warning',
-                    default                            => 'success',
+                ->color(fn (Estoque $record): string => match (true) {
+                    (float) $record->quantidade <= 0 => 'danger',
+                    (float) $record->quantidade <= 10 => 'warning',
+                    default => 'success',
                 }),
 
             TextColumn::make('movimentacoes_count')
@@ -77,33 +72,24 @@ class EstoqueTable
         ];
     }
 
-    // -------------------------------------------------------------------------
-    // Filters
-    // -------------------------------------------------------------------------
-
     public static function filters(): array
     {
         return [
             SelectFilter::make('tipo_item')
                 ->label('Categoria')
                 ->options(
-                    collect(TipoItem::cases())->mapWithKeys(fn($case) => [
+                    collect(TipoItem::cases())->mapWithKeys(fn ($case) => [
                         $case->value => $case->label(),
                     ])
                 )
                 ->query(function ($query, $value) {
                     $query->whereHas(
                         'item',
-                        fn($q) =>
-                        $q->where('tipo_item', $value)
+                        fn ($itemQuery) => $itemQuery->where('tipo_item', $value)
                     );
                 }),
         ];
     }
-
-    // -------------------------------------------------------------------------
-    // Record Actions
-    // -------------------------------------------------------------------------
 
     public static function recordActions(): array
     {
@@ -116,7 +102,7 @@ class EstoqueTable
                 ->modalWidth('3xl')
                 ->modalSubmitAction(false)
                 ->modalCancelActionLabel('Fechar')
-                ->modalHeading(fn(Estoque $record) => "Movimentações — {$record->item->nome}")
+                ->modalHeading(fn (Estoque $record) => "Movimentações - {$record->item->nome}")
                 ->modalContent(function (Estoque $record) {
                     $movimentacoes = $record->movimentacoes()
                         ->with('pedidoMerenda')
@@ -125,20 +111,20 @@ class EstoqueTable
                         ->get()
                         ->map(function (EstoqueMovimentacao $mov) {
                             return [
-                                'id'               => $mov->id,
-                                'tipo'             => $mov->tipo,
-                                'tipo_label'       => $mov->tipo === TipoMovimentacao::Entrada ? 'Entrada' : 'Saída',
-                                'quantidade'       => (float) $mov->quantidade,
-                                'pedido_id'        => $mov->pedido_merenda_id,
-                                'observacao'       => $mov->observacao,
-                                'registrado_por'   => $mov->registrado_por,
-                                'data'             => $mov->created_at->format('d/m/Y H:i'),
+                                'id' => $mov->id,
+                                'tipo' => $mov->tipo,
+                                'tipo_label' => $mov->tipo === TipoMovimentacao::Entrada ? 'Entrada' : 'Saída',
+                                'quantidade' => (float) $mov->quantidade,
+                                'pedido_id' => $mov->pedido_merenda_id,
+                                'observacao' => $mov->observacao,
+                                'registrado_por' => $mov->registrado_por,
+                                'data' => $mov->created_at->format('d/m/Y H:i'),
                             ];
                         });
 
                     return view('components.estoque.modal-movimentacoes', [
-                        'estoque'        => $record,
-                        'movimentacoes'  => $movimentacoes,
+                        'estoque' => $record,
+                        'movimentacoes' => $movimentacoes,
                     ]);
                 }),
 
@@ -186,25 +172,26 @@ class EstoqueTable
         ];
     }
 
-    // -------------------------------------------------------------------------
-    // Entrada manual (sem vínculo com pedido)
-    // -------------------------------------------------------------------------
-
     public static function processarEntradaManual(Estoque $estoque, float $quantidade, ?string $observacao): void
     {
-        DB::transaction(function () use ($estoque, $quantidade, $observacao) {
-            $estoque->entrada($quantidade, null, $observacao ?? 'Entrada manual');
-        });
+        try {
+            DB::transaction(function () use ($estoque, $quantidade, $observacao) {
+                $estoque->entrada($quantidade, null, $observacao ?? 'Entrada manual');
+            });
+        } catch (\DomainException $exception) {
+            Notification::make()
+                ->title($exception->getMessage())
+                ->danger()
+                ->send();
+
+            return;
+        }
 
         Notification::make()
             ->title("Entrada de {$quantidade} registrada no estoque.")
             ->success()
             ->send();
     }
-
-    // -------------------------------------------------------------------------
-    // Saída manual
-    // -------------------------------------------------------------------------
 
     public static function processarSaidaManual(Estoque $estoque, float $quantidade, ?string $observacao): void
     {
@@ -213,12 +200,22 @@ class EstoqueTable
                 ->title("Saldo insuficiente. Estoque atual: {$estoque->quantidade}.")
                 ->danger()
                 ->send();
+
             return;
         }
 
-        DB::transaction(function () use ($estoque, $quantidade, $observacao) {
-            $estoque->saida($quantidade, null, $observacao ?? 'Saída manual');
-        });
+        try {
+            DB::transaction(function () use ($estoque, $quantidade, $observacao) {
+                $estoque->saida($quantidade, null, $observacao ?? 'Saída manual');
+            });
+        } catch (\DomainException $exception) {
+            Notification::make()
+                ->title($exception->getMessage())
+                ->danger()
+                ->send();
+
+            return;
+        }
 
         Notification::make()
             ->title("Saída de {$quantidade} registrada no estoque.")

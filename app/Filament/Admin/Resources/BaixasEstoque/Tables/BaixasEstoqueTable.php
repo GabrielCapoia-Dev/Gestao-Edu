@@ -124,7 +124,16 @@ class BaixasEstoqueTable
                         return;
                     }
 
-                    $record->registrarBaixa($quantidade, $motivo, $descricao);
+                    try {
+                        $record->registrarBaixa($quantidade, $motivo, $descricao);
+                    } catch (\DomainException $exception) {
+                        Notification::make()
+                            ->title($exception->getMessage())
+                            ->danger()
+                            ->send();
+
+                        return;
+                    }
 
                     Notification::make()
                         ->title('Baixa registrada com sucesso.')

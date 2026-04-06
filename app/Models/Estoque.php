@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Enums\MotivoBaixa;
+use App\Services\Estoque\BalancoEstoqueBloqueioService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -57,8 +58,14 @@ class Estoque extends Model
     /**
      * Adiciona quantidade ao saldo do estoque e registra a movimentação.
      */
-    public function entrada(float $quantidade, ?int $pedidoMerendaId = null, ?string $observacao = null): EstoqueMovimentacao
+    public function entrada(
+        float $quantidade,
+        ?int $pedidoMerendaId = null,
+        ?string $observacao = null,
+        ?int $ignorarBalancoId = null,
+    ): EstoqueMovimentacao
     {
+        $this->assertItemDisponivel($ignorarBalancoId);
         $this->increment('quantidade', $quantidade);
 
         return $this->movimentacoes()->create([
@@ -73,8 +80,14 @@ class Estoque extends Model
     /**
      * Remove quantidade do saldo do estoque e registra a movimentação.
      */
-    public function saida(float $quantidade, ?int $pedidoMerendaId = null, ?string $observacao = null): EstoqueMovimentacao
+    public function saida(
+        float $quantidade,
+        ?int $pedidoMerendaId = null,
+        ?string $observacao = null,
+        ?int $ignorarBalancoId = null,
+    ): EstoqueMovimentacao
     {
+        $this->assertItemDisponivel($ignorarBalancoId);
         $this->decrement('quantidade', $quantidade);
 
         return $this->movimentacoes()->create([
@@ -94,6 +107,8 @@ class Estoque extends Model
         if ($quantidade <= 0) {
             throw new \InvalidArgumentException('Quantidade de baixa invalida.');
         }
+
+        $this->assertItemDisponivel();
 
         if ($quantidade > (float) $this->quantidade) {
             throw new \DomainException('Quantidade de baixa maior que o saldo em estoque.');
@@ -136,5 +151,14 @@ class Estoque extends Model
     public function scopeDoItem($query, int $itemId)
     {
         return $query->where('item_id', $itemId);
+    }
+
+    protected function assertItemDisponivel(?int $ignorarBalancoId = null): void
+    {
+        if (! $this->item_id) {
+            return;
+        }
+
+        app(BalancoEstoqueBloqueioService::class)->assertItemDisponivel((int) $this->item_id, $ignorarBalancoId);
     }
 }

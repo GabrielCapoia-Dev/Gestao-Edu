@@ -2,37 +2,37 @@
 
 namespace App\Providers\Filament;
 
+use App\Http\Controllers\LaudoArquivoController;
+use App\Livewire\LoginPage;
+use App\Livewire\TopBar;
+use App\Models\User;
+use App\Services\UserService;
+use Caresome\FilamentAuthDesigner\AuthDesignerPlugin;
+use Caresome\FilamentAuthDesigner\Data\AuthPageConfig;
+use Caresome\FilamentAuthDesigner\Enums\MediaPosition;
+use Caresome\FilamentAuthDesigner\View\AuthDesignerRenderHook;
+use Filament\Actions\Action as GlobalAction;
+use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\View\Middleware\ShareErrorsFromSession;
-use Filament\Http\Middleware\Authenticate;
-use App\Livewire\LoginPage;
-use App\Services\UserService;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\LaudoArquivoController;
-use Filament\Actions\Action as GlobalAction;
-use App\Models\User;
-use Filament\View\PanelsRenderHook;
 use Illuminate\Support\Facades\Blade;
-use Caresome\FilamentAuthDesigner\AuthDesignerPlugin;
-use Caresome\FilamentAuthDesigner\Data\AuthPageConfig;
-use Caresome\FilamentAuthDesigner\Enums\MediaPosition;
-use Caresome\FilamentAuthDesigner\View\AuthDesignerRenderHook;
-use App\Livewire\TopBar;
+use Illuminate\Support\Facades\Route;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Spatie\Permission\Models\Permission;
 
 class AdminPanelProvider extends PanelProvider
 {
-
     public function panel(Panel $panel): Panel
     {
         return $panel
@@ -43,7 +43,7 @@ class AdminPanelProvider extends PanelProvider
             ->darkMode(false)
             ->colors([
                 'primary' => [
-                    50  => '#eef6fc',
+                    50 => '#eef6fc',
                     100 => '#d8ecf7',
                     200 => '#a2c7ef',
                     300 => '#73abe7',
@@ -56,7 +56,7 @@ class AdminPanelProvider extends PanelProvider
                     950 => '#040b1e',
                 ],
                 'gray' => [
-                    50  => '#f4f5f9',
+                    50 => '#f4f5f9',
                     100 => '#e8ebf2',
                     200 => '#d4d8e6',
                     300 => '#b4bace',
@@ -69,17 +69,14 @@ class AdminPanelProvider extends PanelProvider
                     950 => '#081124',
                 ],
             ])
-
-            ->brandLogo(fn() => view('components.logo-admin-do-sistema'))
+            ->brandLogo(fn () => view('components.logo-admin-do-sistema'))
             ->sidebarCollapsibleOnDesktop()
-
             ->discoverResources(in: app_path('Filament/Admin/Resources'), for: 'App\\Filament\\Admin\\Resources')
             ->discoverPages(in: app_path('Filament/Admin/Pages'), for: 'App\\Filament\\Admin\\Pages')
             ->discoverClusters(in: app_path('Filament/Admin/Clusters'), for: 'App\\Filament\\Admin\\Clusters')
             ->pages([])
             ->discoverWidgets(in: app_path('Filament/Admin/Widgets'), for: 'App\\Filament\\Admin\\Widgets')
             ->widgets([])
-
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
@@ -94,36 +91,43 @@ class AdminPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ])
-
             ->renderHook(
                 PanelsRenderHook::USER_MENU_BEFORE,
                 function () {
                     $user = User::authUser();
+                    $permission = collect([
+                        'Visualizar Notificacoes',
+                        'Visualizar Notificações',
+                        'Visualizar NotificaÃ§Ãµes',
+                    ])->first(fn (string $name): bool => Permission::query()->where('name', $name)->exists());
 
-                    if ($user->hasPermissionTo('Visualizar Notificações')) {
+                    if (
+                        $user
+                        && filled($permission)
+                        && $user->hasPermissionTo($permission)
+                    ) {
                         return view('livewire.topbar-notifications-hook');
                     }
 
                     return '';
                 }
             )
-
             ->plugins([
                 AuthDesignerPlugin::make()
                     ->login(
-                        fn(AuthPageConfig $config) => $config
+                        fn (AuthPageConfig $config) => $config
                             ->media(asset('images/background.png'))
                             ->mediaPosition(MediaPosition::Left)
-                            ->renderHook(AuthDesignerRenderHook::MediaOverlay, fn() => view('background-page'))
+                            ->renderHook(AuthDesignerRenderHook::MediaOverlay, fn () => view('background-page'))
                             ->usingPage(LoginPage::class)
                             ->mediaSize('70%')
                             ->themeToggle()
                     )
                     ->profile(
-                        fn($config) => $config
+                        fn ($config) => $config
                             ->media(asset('images/background.png'))
                             ->mediaPosition(MediaPosition::Cover)
-                    )
+                    ),
             ]);
     }
 }
