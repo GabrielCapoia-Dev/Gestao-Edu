@@ -83,6 +83,7 @@ class AppServiceProvider extends ServiceProvider
         // ── Assets ─────────────────────────────────────────────────────────────
         FilamentAsset::register([
             Js::make('chartjs-datalabels', 'https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2'),
+            Js::make('filament-modal-select-fix', secure_asset('js/filament-modal-select-fix.js')),
             Css::make('geral', secure_asset('css/geral.css')),
         ]);
 

@@ -1011,7 +1011,7 @@
 :root {
     --edu-select-visible-options: 5;
     --edu-select-option-height: 2.75rem;
-    --edu-select-dropdown-z: 1200;
+    --edu-select-dropdown-z: 6000;
 }
 
 .fi-select-input {
@@ -1027,6 +1027,16 @@
 .choices__list--dropdown,
 .choices__list[aria-expanded] {
     z-index: var(--edu-select-dropdown-z) !important;
+}
+
+.fi-modal-window.fi-fixed-positioning-context {
+    overflow: visible !important;
+}
+
+.fi-modal-window.fi-fixed-positioning-context .fi-modal-header,
+.fi-modal-window.fi-fixed-positioning-context .fi-modal-footer {
+    position: relative;
+    z-index: 1;
 }
 
 .fi-select-input .fi-dropdown-panel {
