@@ -330,23 +330,7 @@ class DatabaseSeeder extends Seeder
 
 
         $this->call([
-            // EscolaSeeder::class,
-            // SecretarioUnidadesSeeder::class,
-            // // AlunoPlanilhaSeeder::class,
-            // // TurmaSeeder::class,
-            // // ProfessorSeeder::class,
-            // // AlunoSeeder::class,
-
-            // SetorSeeder::class,
-            // TipoStatusSeeder::class,
-            // TipoManutencaoSeeder::class,
-            // EmpresaContratadaSeeder::class,
-            // PedidoSeeder::class,
-
-            // ItensSeeder::class,
-            // ContratoSeeder::class,
-            // PedidoMerendaSeeder::class,
-
+            EstoqueInventarioOrganicoSeeder::class,
         ]);
 
     }
