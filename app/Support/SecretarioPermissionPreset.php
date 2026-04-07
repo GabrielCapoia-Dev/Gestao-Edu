@@ -8,7 +8,7 @@ class SecretarioPermissionPreset
     {
         return [
             'Listar Alunos',
-            'Listar RetenÃ§Ã£o',
+            'Listar Retenção',
             'Listar Pedidos',
             'Listar Turmas',
             'Listar Professores',
