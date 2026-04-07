@@ -3,6 +3,7 @@
 namespace App\Services\Inventario;
 
 use App\Models\ContratoItem;
+use App\Models\Enums\MotivoBaixa;
 use App\Models\Enums\TipoItem;
 use App\Models\Enums\TipoMovimentacao;
 use App\Models\Inventario;
@@ -325,18 +326,79 @@ class InventarioDataService
             ->values();
     }
 
-    public function comparativoBaixasPorEscola(Collection $inventarios): Collection
+    public function comparativoBaixasPorEscola(Collection $inventarios, ?string $tipoBaixa = null): Collection
     {
-        $max = (float) ($inventarios->max('quantidade_baixada') ?: 1);
+        $inventarioIds = $inventarios
+            ->pluck('inventario_id')
+            ->filter()
+            ->map(fn (mixed $id): int => (int) $id)
+            ->values()
+            ->all();
 
-        return $inventarios
-            ->sortByDesc('quantidade_baixada')
+        if ($inventarioIds === []) {
+            return collect();
+        }
+
+        $precos = $this->precosReferencia();
+        $tipoBaixa = $this->normalizarTipoBaixa($tipoBaixa);
+
+        $baixasPorInventario = InventarioBaixa::query()
+            ->with(['estoque.inventario.escola', 'estoque.item'])
+            ->whereHas('estoque', fn ($estoqueQuery) => $estoqueQuery->whereIn('inventario_id', $inventarioIds))
+            ->when($tipoBaixa !== null, fn ($query) => $query->where('motivo', $tipoBaixa))
+            ->get()
+            ->groupBy(fn (InventarioBaixa $baixa): int => (int) ($baixa->estoque?->inventario_id ?? 0));
+
+        $rows = $inventarios
+            ->map(function (array $inventario) use ($baixasPorInventario, $precos): array {
+                $baixas = $baixasPorInventario->get((int) $inventario['inventario_id'], collect());
+
+                $valorBaixado = round((float) $baixas->sum(function (InventarioBaixa $baixa) use ($precos): float {
+                    $itemId = $baixa->estoque?->item_id;
+                    $valorUnitario = (float) ($precos->get($itemId) ?? 0);
+
+                    return round((float) $baixa->quantidade * $valorUnitario, 2);
+                }), 2);
+
+                return [
+                    'inventario_id' => $inventario['inventario_id'],
+                    'inventario_nome' => $inventario['inventario_nome'],
+                    'escola_nome' => $inventario['escola_nome'],
+                    'total_baixas_filtradas' => $baixas->count(),
+                    'quantidade_baixada_filtrada' => round((float) $baixas->sum('quantidade'), 3),
+                    'valor_baixado' => $valorBaixado,
+                ];
+            })
+            ->filter(fn (array $inventario): bool => $inventario['total_baixas_filtradas'] > 0)
+            ->sortByDesc('valor_baixado')
+            ->values();
+
+        $max = (float) ($rows->max('valor_baixado') ?: 1);
+
+        return $rows
             ->map(function (array $inventario) use ($max): array {
-                $inventario['pct_barra'] = $max > 0 ? (int) round(($inventario['quantidade_baixada'] / $max) * 100) : 0;
+                $inventario['pct_barra'] = $max > 0 ? (int) round(($inventario['valor_baixado'] / $max) * 100) : 0;
 
                 return $inventario;
             })
             ->values();
+    }
+
+    public function tiposBaixaDisponiveis(): array
+    {
+        return collect(MotivoBaixa::cases())
+            ->mapWithKeys(fn (MotivoBaixa $motivo): array => [$motivo->value => $motivo->label()])
+            ->prepend('Todas as baixas', 'todas')
+            ->all();
+    }
+
+    public function rotuloTipoBaixa(?string $tipoBaixa): string
+    {
+        $tipoBaixa = $this->normalizarTipoBaixa($tipoBaixa);
+
+        return $tipoBaixa !== null
+            ? (MotivoBaixa::tryFrom($tipoBaixa)?->label() ?? 'Tipo de baixa')
+            : 'Todas as baixas';
     }
 
     protected function ordenarItens(Collection $itens, string $sortCol, string $sortDir): Collection
@@ -459,5 +521,16 @@ class InventarioDataService
             ->mapWithKeys(fn (ContratoItem $item): array => [$item->item_id => (float) $item->preco_unitario]);
 
         return $this->precosReferenciaCache = $precosAtivos->union($precosFallback);
+    }
+
+    protected function normalizarTipoBaixa(?string $tipoBaixa): ?string
+    {
+        $tipoBaixa = trim((string) $tipoBaixa);
+
+        if ($tipoBaixa === '' || $tipoBaixa === 'todas') {
+            return null;
+        }
+
+        return MotivoBaixa::tryFrom($tipoBaixa)?->value;
     }
 }

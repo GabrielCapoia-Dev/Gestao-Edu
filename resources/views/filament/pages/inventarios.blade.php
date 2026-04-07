@@ -157,7 +157,19 @@
             <div class="inv-panel-head">
                 <div>
                     <p class="inv-panel-kicker">Comparativo</p>
-                    <h2>Baixas por escola</h2>
+                    <h2>Impacto das baixas por escola</h2>
+                    <p>Filtro atual: {{ $this->tipoBaixaSelecionadaLabel }}</p>
+                </div>
+
+                <div class="inv-panel-tools">
+                    <label class="inv-field inv-field--small">
+                        <span>Tipo de baixa</span>
+                        <select wire:model.live="tipoBaixa">
+                            @foreach ($this->tiposBaixaOptions as $valor => $label)
+                            <option value="{{ $valor }}">{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </label>
                 </div>
             </div>
 
@@ -166,14 +178,18 @@
                 <div class="inv-bar">
                     <div class="inv-bar-label">
                         <span>{{ $item['escola_nome'] }}</span>
-                        <strong>{{ number_format((float) $item['quantidade_baixada'], 3, ',', '.') }}</strong>
+                        <strong>R$ {{ number_format((float) $item['valor_baixado'], 2, ',', '.') }}</strong>
                     </div>
                     <div class="inv-bar-track inv-bar-track--rose">
                         <span style="width: {{ $item['pct_barra'] }}%"></span>
                     </div>
+                    <small>
+                        {{ number_format((float) $item['quantidade_baixada_filtrada'], 3, ',', '.') }}
+                        unidades • {{ $item['total_baixas_filtradas'] }} registros
+                    </small>
                 </div>
                 @empty
-                <p class="inv-empty-copy">Sem baixas registradas.</p>
+                <p class="inv-empty-copy">Sem baixas registradas para o filtro selecionado.</p>
                 @endforelse
             </div>
         </section>

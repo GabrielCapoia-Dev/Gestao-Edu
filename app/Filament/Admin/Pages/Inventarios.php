@@ -35,6 +35,8 @@ class Inventarios extends Page
 
     public int $paginaAtual = 1;
 
+    public string $tipoBaixa = 'todas';
+
     public bool $slideOverAberto = false;
 
     public array $movimentacoes = [];
@@ -86,7 +88,20 @@ class Inventarios extends Page
 
     public function getComparativoBaixasProperty(): Collection
     {
-        return $this->dataService()->comparativoBaixasPorEscola($this->inventariosResumoBase);
+        return $this->dataService()->comparativoBaixasPorEscola(
+            $this->inventariosResumoBase,
+            $this->tipoBaixa,
+        );
+    }
+
+    public function getTiposBaixaOptionsProperty(): array
+    {
+        return $this->dataService()->tiposBaixaDisponiveis();
+    }
+
+    public function getTipoBaixaSelecionadaLabelProperty(): string
+    {
+        return $this->dataService()->rotuloTipoBaixa($this->tipoBaixa);
     }
 
     public function getPaginacaoProperty(): array

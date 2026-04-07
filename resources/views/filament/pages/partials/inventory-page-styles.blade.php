@@ -272,6 +272,15 @@
         gap: 1rem;
     }
 
+    .inv-panel-tools {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        align-items: end;
+        justify-content: flex-end;
+        min-width: min(14rem, 100%);
+    }
+
     .gi-toolbar-left,
     .gi-toolbar-right {
         display: flex;
@@ -666,6 +675,11 @@
             flex-direction: column;
         }
 
+        .inv-panel-tools {
+            width: 100%;
+            justify-content: stretch;
+        }
+
         .gi-row-actions {
             justify-content: flex-start;
         }
@@ -699,6 +713,7 @@
         .inv-actions>*,
         .gi-actions>*,
         .gi-row-actions>*,
+        .inv-panel-tools>*,
         .inv-pagination button,
         .gi-pagination button,
         .gi-modal footer>* {
