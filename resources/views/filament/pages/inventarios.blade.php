@@ -79,34 +79,34 @@
                         </thead>
                         <tbody>
                             @forelse ($this->inventariosResumo as $inventario)
-                                <tr>
-                                    <td>
-                                        <strong>{{ $inventario['escola_nome'] }}</strong>
-                                        <small>{{ $inventario['inventario_nome'] }}</small>
-                                    </td>
-                                    <td>
-                                        <strong>{{ $inventario['total_itens'] }}</strong>
-                                        <small>{{ number_format((float) $inventario['quantidade_total'], 3, ',', '.') }} unidades</small>
-                                    </td>
-                                    <td>
-                                        <strong>R$ {{ number_format((float) $inventario['valor_total'], 2, ',', '.') }}</strong>
-                                        <small>{{ $inventario['itens_criticos'] }} criticos</small>
-                                    </td>
-                                    <td>
-                                        <strong>{{ number_format((float) $inventario['quantidade_baixada'], 3, ',', '.') }}</strong>
-                                        <small>{{ $inventario['total_baixas'] }} registros</small>
-                                    </td>
-                                    <td>{{ $inventario['ultima_movimentacao'] }}</td>
-                                    <td class="text-right">
-                                        <a href="{{ route('filament.admin.pages.gestao-inventario', ['inventario' => $inventario['inventario_id']]) }}" class="inv-link">
-                                            Abrir inventário
-                                        </a>
-                                    </td>
-                                </tr>
+                            <tr>
+                                <td>
+                                    <strong>{{ $inventario['escola_nome'] }}</strong>
+                                    <small>{{ $inventario['inventario_nome'] }}</small>
+                                </td>
+                                <td>
+                                    <strong>{{ $inventario['total_itens'] }}</strong>
+                                    <small>{{ number_format((float) $inventario['quantidade_total'], 3, ',', '.') }} unidades</small>
+                                </td>
+                                <td>
+                                    <strong>R$ {{ number_format((float) $inventario['valor_total'], 2, ',', '.') }}</strong>
+                                    <small>{{ $inventario['itens_criticos'] }} criticos</small>
+                                </td>
+                                <td>
+                                    <strong>{{ number_format((float) $inventario['quantidade_baixada'], 3, ',', '.') }}</strong>
+                                    <small>{{ $inventario['total_baixas'] }} registros</small>
+                                </td>
+                                <td>{{ $inventario['ultima_movimentacao'] }}</td>
+                                <td class="text-right">
+                                    <a href="{{ route('filament.admin.pages.gestao-inventario', ['inventario' => $inventario['inventario_id']]) }}" class="inv-link">
+                                        Abrir inventário
+                                    </a>
+                                </td>
+                            </tr>
                             @empty
-                                <tr>
-                                    <td colspan="6" class="inv-empty">Nenhum inventário encontrado.</td>
-                                </tr>
+                            <tr>
+                                <td colspan="6" class="inv-empty">Nenhum inventário encontrado.</td>
+                            </tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -117,10 +117,10 @@
                     <span>Mostrando {{ $paginacao['de'] }}-{{ $paginacao['ate'] }} de {{ $paginacao['total'] }}</span>
 
                     <div>
-                        <button type="button" wire:click="mudarPagina({{ max(1, $paginacao['paginaAtual'] - 1) }})" @disabled($paginacao['paginaAtual'] === 1)>
+                        <button type="button" wire:click="mudarPagina({{ max(1, $paginacao['paginaAtual'] - 1) }})" @disabled($paginacao['paginaAtual']===1)>
                             Anterior
                         </button>
-                        <button type="button" wire:click="mudarPagina({{ min($paginacao['totalPaginas'], $paginacao['paginaAtual'] + 1) }})" @disabled($paginacao['paginaAtual'] === $paginacao['totalPaginas'])>
+                        <button type="button" wire:click="mudarPagina({{ min($paginacao['totalPaginas'], $paginacao['paginaAtual'] + 1) }})" @disabled($paginacao['paginaAtual']===$paginacao['totalPaginas'])>
                             Proxima
                         </button>
                     </div>
@@ -135,19 +135,19 @@
                     </div>
                 </div>
 
-                <div class="inv-bars">
+                <div class="inv-bars inv-bars--limit-10">
                     @forelse ($this->comparativoValor as $item)
-                        <div class="inv-bar">
-                            <div class="inv-bar-label">
-                                <span>{{ $item['escola_nome'] }}</span>
-                                <strong>R$ {{ number_format((float) $item['valor_total'], 2, ',', '.') }}</strong>
-                            </div>
-                            <div class="inv-bar-track">
-                                <span style="width: {{ $item['pct_barra'] }}%"></span>
-                            </div>
+                    <div class="inv-bar">
+                        <div class="inv-bar-label">
+                            <span>{{ $item['escola_nome'] }}</span>
+                            <strong>R$ {{ number_format((float) $item['valor_total'], 2, ',', '.') }}</strong>
                         </div>
+                        <div class="inv-bar-track">
+                            <span style="width: {{ $item['pct_barra'] }}%"></span>
+                        </div>
+                    </div>
                     @empty
-                        <p class="inv-empty-copy">Sem dados de valor para comparar.</p>
+                    <p class="inv-empty-copy">Sem dados de valor para comparar.</p>
                     @endforelse
                 </div>
             </article>
@@ -161,53 +161,53 @@
                 </div>
             </div>
 
-            <div class="inv-bars inv-bars--compact">
+            <div class="inv-bars inv-bars--compact inv-bars--limit-10">
                 @forelse ($this->comparativoBaixas as $item)
-                    <div class="inv-bar">
-                        <div class="inv-bar-label">
-                            <span>{{ $item['escola_nome'] }}</span>
-                            <strong>{{ number_format((float) $item['quantidade_baixada'], 3, ',', '.') }}</strong>
-                        </div>
-                        <div class="inv-bar-track inv-bar-track--rose">
-                            <span style="width: {{ $item['pct_barra'] }}%"></span>
-                        </div>
+                <div class="inv-bar">
+                    <div class="inv-bar-label">
+                        <span>{{ $item['escola_nome'] }}</span>
+                        <strong>{{ number_format((float) $item['quantidade_baixada'], 3, ',', '.') }}</strong>
                     </div>
+                    <div class="inv-bar-track inv-bar-track--rose">
+                        <span style="width: {{ $item['pct_barra'] }}%"></span>
+                    </div>
+                </div>
                 @empty
-                    <p class="inv-empty-copy">Sem baixas registradas.</p>
+                <p class="inv-empty-copy">Sem baixas registradas.</p>
                 @endforelse
             </div>
         </section>
     </div>
 
     @if ($slideOverAberto)
-        <div class="inv-overlay" wire:click="fecharSlideOver"></div>
-        <aside class="inv-slideover">
-            <header>
-                <div>
-                    <p class="inv-panel-kicker">Historico consolidado</p>
-                    <h3>Últimas movimentações</h3>
-                </div>
-                <button type="button" wire:click="fecharSlideOver">Fechar</button>
-            </header>
-
-            <div class="inv-slideover-body">
-                @forelse ($movimentacoes as $mov)
-                    <article class="inv-mov">
-                        <div>
-                            <strong>{{ $mov['item_nome'] }}</strong>
-                            <small>{{ $mov['escola_nome'] ?? 'Rede' }} • {{ $mov['categoria'] }}</small>
-                        </div>
-                        <div class="inv-mov-meta">
-                            <span class="badge badge-{{ $mov['tipo'] }}">{{ $mov['tipo_label'] }}</span>
-                            <strong>{{ number_format((float) $mov['quantidade'], 3, ',', '.') }}</strong>
-                            <small>{{ $mov['data'] }}</small>
-                        </div>
-                    </article>
-                @empty
-                    <p class="inv-empty-copy">Nenhuma movimentacao encontrada.</p>
-                @endforelse
+    <div class="inv-overlay" wire:click="fecharSlideOver"></div>
+    <aside class="inv-slideover">
+        <header>
+            <div>
+                <p class="inv-panel-kicker">Historico consolidado</p>
+                <h3>Últimas movimentações</h3>
             </div>
-        </aside>
+            <button type="button" wire:click="fecharSlideOver">Fechar</button>
+        </header>
+
+        <div class="inv-slideover-body">
+            @forelse ($movimentacoes as $mov)
+            <article class="inv-mov">
+                <div>
+                    <strong>{{ $mov['item_nome'] }}</strong>
+                    <small>{{ $mov['escola_nome'] ?? 'Rede' }} • {{ $mov['categoria'] }}</small>
+                </div>
+                <div class="inv-mov-meta">
+                    <span class="badge badge-{{ $mov['tipo'] }}">{{ $mov['tipo_label'] }}</span>
+                    <strong>{{ number_format((float) $mov['quantidade'], 3, ',', '.') }}</strong>
+                    <small>{{ $mov['data'] }}</small>
+                </div>
+            </article>
+            @empty
+            <p class="inv-empty-copy">Nenhuma movimentacao encontrada.</p>
+            @endforelse
+        </div>
+    </aside>
     @endif
 
     @include('filament.pages.partials.inventory-page-styles')

@@ -1,4 +1,27 @@
 <style>
+    .inv-bars--limit-10 {
+        --item-height: 56px;
+        /* ajuste fino se cada linha estiver maior/menor */
+        --item-gap: 12px;
+        max-height: calc((var(--item-height) * 10) + (var(--item-gap) * 9));
+        overflow-y: auto;
+        padding-right: 6px;
+    }
+
+    .inv-bars--limit-10::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .inv-bars--limit-10::-webkit-scrollbar-thumb {
+        background: rgba(15, 23, 42, 0.18);
+        border-radius: 999px;
+    }
+
+    .inv-bars--limit-10::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    
     .inv-page,
     .gi-page {
         display: grid;
@@ -170,6 +193,7 @@
     }
 
     @media (hover: hover) {
+
         .inv-action:hover,
         .gi-action:hover,
         .inv-link:hover,
@@ -633,6 +657,7 @@
     }
 
     @media (max-width: 64rem) {
+
         .inv-hero,
         .gi-hero,
         .inv-panel-head,
@@ -647,6 +672,7 @@
     }
 
     @media (max-width: 48rem) {
+
         .inv-page,
         .gi-page {
             gap: 1rem;
@@ -670,12 +696,12 @@
             width: 100%;
         }
 
-        .inv-actions > *,
-        .gi-actions > *,
-        .gi-row-actions > *,
+        .inv-actions>*,
+        .gi-actions>*,
+        .gi-row-actions>*,
         .inv-pagination button,
         .gi-pagination button,
-        .gi-modal footer > * {
+        .gi-modal footer>* {
             flex: 1 1 100%;
         }
 
