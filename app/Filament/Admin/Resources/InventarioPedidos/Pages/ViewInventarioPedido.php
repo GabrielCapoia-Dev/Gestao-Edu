@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\InventarioPedidos\Pages;
 
 use App\Filament\Admin\Resources\InventarioPedidos\InventarioPedidoResource;
+use App\Models\Enums\InventarioPedidoItemStatus;
 use App\Models\InventarioPedido;
 use App\Models\Item;
 use App\Services\Inventario\InventarioContextService;
@@ -217,7 +218,7 @@ class ViewInventarioPedido extends ViewRecord
             'itens' => $this->getRecord()->itens()
                 ->with('item')
                 ->get()
-                ->reject(fn ($item) => (string) $item->status === 'recusado')
+                ->reject(fn ($item) => $item->status === InventarioPedidoItemStatus::Recusado)
                 ->map(fn ($item): array => [
                     'item_id' => $item->item_id,
                     'item_nome' => $this->formatarNomeItem($item->item),
