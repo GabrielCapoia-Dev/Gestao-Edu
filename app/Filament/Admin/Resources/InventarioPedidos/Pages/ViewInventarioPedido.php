@@ -4,11 +4,11 @@ namespace App\Filament\Admin\Resources\InventarioPedidos\Pages;
 
 use App\Filament\Admin\Resources\InventarioPedidos\InventarioPedidoResource;
 use App\Models\InventarioPedido;
+use App\Models\Item;
 use App\Services\Inventario\InventarioContextService;
 use App\Services\Inventario\InventarioPedidoService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -37,14 +37,17 @@ class ViewInventarioPedido extends ViewRecord
                 ->color('info')
                 ->visible(fn (): bool => $this->getRecord()->isPendente() && $this->pode('Aprovar Pedidos de Inventário') && $this->ehGestorGeral())
                 ->modalWidth('6xl')
+                ->fillForm(fn (): array => $this->dadosAnalisePedido())
                 ->schema([
                     Repeater::make('itens')
                         ->label('Itens do pedido')
                         ->schema([
                             Hidden::make('item_id'),
-                            Placeholder::make('item_nome')
+                            TextInput::make('item_nome')
                                 ->label('Item')
-                                ->content(fn ($record, $state, $get) => $this->nomeItem((int) $get('item_id'))),
+                                ->disabled()
+                                ->dehydrated(false)
+                                ->columnSpanFull(),
                             TextInput::make('quantidade_solicitada')
                                 ->label('Qtd. solicitada')
                                 ->disabled()
@@ -63,17 +66,7 @@ class ViewInventarioPedido extends ViewRecord
                         ->columns(2)
                         ->reorderable(false)
                         ->addable(false)
-                        ->deletable(false)
-                        ->default(fn (): array => $this->getRecord()->itens()
-                            ->with('item')
-                            ->get()
-                            ->map(fn ($item): array => [
-                                'item_id' => $item->item_id,
-                                'quantidade_solicitada' => (float) $item->quantidade_solicitada,
-                                'quantidade_aprovada' => (float) $item->quantidade_solicitada,
-                                'observacao_aprovacao' => $item->observacao_aprovacao,
-                            ])
-                            ->all()),
+                        ->deletable(false),
                     Textarea::make('observacao_gestor')
                         ->label('Observação geral do gestor')
                         ->rows(4)
@@ -108,14 +101,17 @@ class ViewInventarioPedido extends ViewRecord
                 ->color('success')
                 ->visible(fn (): bool => $this->getRecord()->isEmAndamento() && $this->pode('Conferir Pedidos de Inventário') && $this->podeConferirPedido())
                 ->modalWidth('6xl')
+                ->fillForm(fn (): array => $this->dadosConferenciaPedido())
                 ->schema([
                     Repeater::make('itens')
                         ->label('Conferência dos itens')
                         ->schema([
                             Hidden::make('item_id'),
-                            Placeholder::make('item_nome')
+                            TextInput::make('item_nome')
                                 ->label('Item')
-                                ->content(fn ($record, $state, $get) => $this->nomeItem((int) $get('item_id'))),
+                                ->disabled()
+                                ->dehydrated(false)
+                                ->columnSpanFull(),
                             TextInput::make('quantidade_aprovada')
                                 ->label('Qtd. do romaneio')
                                 ->disabled()
@@ -134,18 +130,7 @@ class ViewInventarioPedido extends ViewRecord
                         ->columns(2)
                         ->reorderable(false)
                         ->addable(false)
-                        ->deletable(false)
-                        ->default(fn (): array => $this->getRecord()->itens()
-                            ->with('item')
-                            ->get()
-                            ->reject(fn ($item) => (string) $item->status === 'recusado')
-                            ->map(fn ($item): array => [
-                                'item_id' => $item->item_id,
-                                'quantidade_aprovada' => (float) ($item->quantidade_aprovada ?? 0),
-                                'quantidade_recebida' => (float) ($item->quantidade_aprovada ?? 0),
-                                'observacao_conferencia' => $item->observacao_conferencia,
-                            ])
-                            ->all()),
+                        ->deletable(false),
                     Textarea::make('observacao_conferencia')
                         ->label('Observação geral da conferência')
                         ->rows(4)
@@ -208,10 +193,49 @@ class ViewInventarioPedido extends ViewRecord
         return (int) $this->getRecord()->escola_id === (int) Auth::user()?->id_escola;
     }
 
-    protected function nomeItem(int $itemId): string
+    protected function dadosAnalisePedido(): array
     {
-        $item = $this->getRecord()->itens->firstWhere('item_id', $itemId)?->item;
+        return [
+            'itens' => $this->getRecord()->itens()
+                ->with('item')
+                ->get()
+                ->map(fn ($item): array => [
+                    'item_id' => $item->item_id,
+                    'item_nome' => $this->formatarNomeItem($item->item),
+                    'quantidade_solicitada' => (float) $item->quantidade_solicitada,
+                    'quantidade_aprovada' => (float) $item->quantidade_solicitada,
+                    'observacao_aprovacao' => $item->observacao_aprovacao,
+                ])
+                ->all(),
+            'observacao_gestor' => $this->getRecord()->observacao_gestor,
+        ];
+    }
 
-        return $item?->nome . ' - ' . strtoupper($item?->unidade_medida?->value ?? 'N/A');
+    protected function dadosConferenciaPedido(): array
+    {
+        return [
+            'itens' => $this->getRecord()->itens()
+                ->with('item')
+                ->get()
+                ->reject(fn ($item) => (string) $item->status === 'recusado')
+                ->map(fn ($item): array => [
+                    'item_id' => $item->item_id,
+                    'item_nome' => $this->formatarNomeItem($item->item),
+                    'quantidade_aprovada' => (float) ($item->quantidade_aprovada ?? 0),
+                    'quantidade_recebida' => (float) ($item->quantidade_aprovada ?? 0),
+                    'observacao_conferencia' => $item->observacao_conferencia,
+                ])
+                ->all(),
+            'observacao_conferencia' => $this->getRecord()->observacao_conferencia,
+        ];
+    }
+
+    protected function formatarNomeItem(?Item $item): string
+    {
+        if (! $item) {
+            return 'Item indisponível - N/A';
+        }
+
+        return $item->nome . ' - ' . strtoupper($item->unidade_medida?->value ?? 'N/A');
     }
 }
