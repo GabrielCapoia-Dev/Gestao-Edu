@@ -122,6 +122,31 @@ class BalancoInventarioTest extends TestCase
         $this->assertSame('3.000', $estoqueB->quantidade);
     }
 
+    public function test_it_registra_baixa_operacional_no_inventario_sem_erro_de_escopo(): void
+    {
+        $escola = $this->criarEscola('Escola Baixa');
+        $gestor = $this->criarUsuario($escola);
+        $inventario = $this->criarInventario($escola, $gestor);
+        $item = $this->criarItem('Macarrao');
+
+        $estoque = InventarioEstoque::query()->create([
+            'inventario_id' => $inventario->id,
+            'item_id' => $item->id,
+            'quantidade' => 9.000,
+        ]);
+
+        $baixa = $estoque->registrarBaixa(
+            2.500,
+            \App\Models\Enums\MotivoBaixa::Perda,
+            'Pacotes danificados',
+        );
+
+        $this->assertSame('6.500', $estoque->fresh()->quantidade);
+        $this->assertSame('2.500', $baixa->quantidade);
+        $this->assertSame('9.000', $baixa->saldo_anterior);
+        $this->assertSame('6.500', $baixa->saldo_posterior);
+    }
+
     public function test_it_conclui_balanco_e_gera_movimentacoes_de_reajuste_no_inventario(): void
     {
         $escola = $this->criarEscola('Escola Aurora');

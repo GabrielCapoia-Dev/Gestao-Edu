@@ -108,7 +108,7 @@ class InventarioEstoque extends Model
             throw new \DomainException('Quantidade de baixa maior que o saldo em inventario.');
         }
 
-        return DB::transaction(function () use ($quantidade, $motivo, $descricao) {
+        return DB::transaction(function () use ($quantidade, $motivo, $descricao, $ignorarBalancoId) {
             $this->refresh();
 
             $saldoAnterior = (float) $this->quantidade;
