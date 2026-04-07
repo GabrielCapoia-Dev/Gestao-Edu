@@ -1,0 +1,5 @@
+interface:
+  display_name: "Estoque Escolar"
+  short_description: "Mapeia estoque da matriz, inventarios por escola, pedidos internos e romaneios neste projeto"
+  default_prompt: "Use Estoque Escolar para analisar o fluxo atual da matriz, mapear impactos em inventarios por escola, pedidos internos, reservas e relatorios antes de implementar mudanças."
+

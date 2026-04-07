@@ -15,10 +15,12 @@ class Estoque extends Model
     protected $fillable = [
         'item_id',
         'quantidade',
+        'quantidade_reservada',
     ];
 
     protected $casts = [
         'quantidade' => 'decimal:3',
+        'quantidade_reservada' => 'decimal:3',
     ];
 
     protected function user()
@@ -47,6 +49,11 @@ class Estoque extends Model
     public function baixas()
     {
         return $this->hasMany(BaixasEstoques::class);
+    }
+
+    public function getQuantidadeDisponivelAttribute(): float
+    {
+        return round(max(0, (float) $this->quantidade - (float) $this->quantidade_reservada), 3);
     }
 
     /*
@@ -110,7 +117,7 @@ class Estoque extends Model
 
         $this->assertItemDisponivel();
 
-        if ($quantidade > (float) $this->quantidade) {
+        if ($quantidade > $this->quantidade_disponivel) {
             throw new \DomainException('Quantidade de baixa maior que o saldo em estoque.');
         }
 
@@ -119,7 +126,7 @@ class Estoque extends Model
 
             $saldoAnterior = (float) $this->quantidade;
 
-            if ($quantidade > $saldoAnterior) {
+            if ($quantidade > $this->quantidade_disponivel) {
                 throw new \DomainException('Quantidade de baixa maior que o saldo em estoque.');
             }
 
@@ -139,6 +146,56 @@ class Estoque extends Model
                 'saldo_posterior' => (float) $this->quantidade,
                 'registrado_por' => $this->user()?->name,
             ]);
+        });
+    }
+
+    public function reservar(float $quantidade, ?string $observacao = null): void
+    {
+        if ($quantidade <= 0) {
+            throw new \InvalidArgumentException('Quantidade de reserva invalida.');
+        }
+
+        $this->assertItemDisponivel();
+        $this->refresh();
+
+        if ($quantidade > $this->quantidade_disponivel) {
+            throw new \DomainException('Quantidade de reserva maior que o saldo disponivel em estoque.');
+        }
+
+        $this->increment('quantidade_reservada', $quantidade);
+    }
+
+    public function confirmarEntregaReservada(float $quantidadeReservada, float $quantidadeEntregue, ?string $observacao = null): void
+    {
+        if ($quantidadeReservada <= 0) {
+            throw new \InvalidArgumentException('Quantidade reservada invalida.');
+        }
+
+        if ($quantidadeEntregue < 0) {
+            throw new \InvalidArgumentException('Quantidade entregue invalida.');
+        }
+
+        DB::transaction(function () use ($quantidadeReservada, $quantidadeEntregue, $observacao) {
+            $this->assertItemDisponivel();
+            $this->refresh();
+
+            if ($quantidadeReservada > (float) $this->quantidade_reservada) {
+                throw new \DomainException('Quantidade reservada maior que o saldo reservado em estoque.');
+            }
+
+            if ($quantidadeEntregue > (float) $this->quantidade) {
+                throw new \DomainException('Quantidade entregue maior que o saldo em estoque.');
+            }
+
+            $this->decrement('quantidade_reservada', $quantidadeReservada);
+
+            if ($quantidadeEntregue > 0) {
+                $this->saida(
+                    quantidade: $quantidadeEntregue,
+                    pedidoMerendaId: null,
+                    observacao: $observacao,
+                );
+            }
         });
     }
 

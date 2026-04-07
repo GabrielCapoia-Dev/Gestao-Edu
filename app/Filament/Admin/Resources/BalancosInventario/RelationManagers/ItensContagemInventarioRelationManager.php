@@ -1,0 +1,162 @@
+<?php
+
+namespace App\Filament\Admin\Resources\BalancosInventario\RelationManagers;
+
+use App\Filament\Admin\Resources\BalancosInventario\BalancoInventarioResource;
+use App\Models\BalancoInventario;
+use App\Models\BalancoInventarioItem;
+use App\Services\Inventario\BalancoInventarioService;
+use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
+use Filament\Resources\Pages\ViewRecord;
+use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
+
+class ItensContagemInventarioRelationManager extends RelationManager
+{
+    protected static string $relationship = 'itensContagem';
+
+    protected static ?string $title = 'Itens do Balanço';
+
+    public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
+    {
+        return $ownerRecord instanceof BalancoInventario
+            && ! $ownerRecord->isAgendado()
+            && BalancoInventarioResource::canView($ownerRecord)
+            && is_subclass_of($pageClass, ViewRecord::class);
+    }
+
+    public function isReadOnly(): bool
+    {
+        return false;
+    }
+
+    public function table(Table $table): Table
+    {
+        return $table
+            ->paginated([10, 25, 50, 100])
+            ->defaultPaginationPageOption(10)
+            ->columns([
+                TextColumn::make('item.nome')
+                    ->label('Item')
+                    ->searchable()
+                    ->sortable()
+                    ->weight('bold'),
+                TextColumn::make('item.unidade_medida')
+                    ->label('Unidade')
+                    ->formatStateUsing(fn ($state) => strtoupper($state?->value ?? (string) $state)),
+                TextColumn::make('saldo_sistema_antes')
+                    ->label('Saldo antes')
+                    ->numeric(decimalPlaces: 3, decimalSeparator: ',', thousandsSeparator: '.'),
+                TextColumn::make('quantidade_contada')
+                    ->label('Quantidade real')
+                    ->placeholder('Pendente')
+                    ->numeric(decimalPlaces: 3, decimalSeparator: ',', thousandsSeparator: '.'),
+                TextColumn::make('diferenca')
+                    ->label('Divergência')
+                    ->placeholder('-')
+                    ->numeric(decimalPlaces: 3, decimalSeparator: ',', thousandsSeparator: '.')
+                    ->color(fn (BalancoInventarioItem $record): string => (float) ($record->diferenca ?? 0) === 0.0 ? 'gray' : 'warning'),
+                TextColumn::make('valor_unitario_referencia')
+                    ->label('Valor unitário')
+                    ->money('BRL')
+                    ->placeholder('-'),
+                TextColumn::make('valor_impacto')
+                    ->label('Impacto financeiro')
+                    ->money('BRL')
+                    ->placeholder('-')
+                    ->color(fn (BalancoInventarioItem $record): string => (float) ($record->valor_impacto ?? 0) > 0 ? 'success' : ((float) ($record->valor_impacto ?? 0) < 0 ? 'danger' : 'gray')),
+                TextColumn::make('saldo_final')
+                    ->label('Saldo final')
+                    ->placeholder('-')
+                    ->numeric(decimalPlaces: 3, decimalSeparator: ',', thousandsSeparator: '.'),
+                TextColumn::make('status_contagem_label')
+                    ->label('Status')
+                    ->badge()
+                    ->color(fn (BalancoInventarioItem $record): string => $record->status_contagem_color),
+                TextColumn::make('contadoPor.name')
+                    ->label('Contado por')
+                    ->placeholder('-'),
+                TextColumn::make('observacao_contagem')
+                    ->label('Observação')
+                    ->limit(60)
+                    ->wrap(),
+            ])
+            ->recordActions([
+                Action::make('registrarContagem')
+                    ->label(fn (BalancoInventarioItem $record): string => $record->quantidade_contada === null ? 'Registrar contagem' : 'Atualizar contagem')
+                    ->icon('heroicon-o-pencil-square')
+                    ->color('primary')
+                    ->visible(fn (): bool => $this->getOwnerRecord()->isEmAndamento() && (Auth::user()?->hasPermissionTo('Registrar Contagem de Balanços de Inventário') ?? false))
+                    ->fillForm(fn (BalancoInventarioItem $record): array => [
+                        'quantidade_contada' => $record->quantidade_contada,
+                        'observacao_contagem' => $record->observacao_contagem,
+                    ])
+                    ->schema([
+                        TextInput::make('quantidade_contada')
+                            ->label('Quantidade real')
+                            ->numeric()
+                            ->required()
+                            ->minValue(0)
+                            ->step('0.001'),
+                        Textarea::make('observacao_contagem')
+                            ->label('Observação da contagem')
+                            ->rows(4)
+                            ->maxLength(1500),
+                    ])
+                    ->action(function (BalancoInventarioItem $record, array $data): void {
+                        try {
+                            app(BalancoInventarioService::class)->registrarContagem(
+                                $record,
+                                (float) $data['quantidade_contada'],
+                                $data['observacao_contagem'] ?? null,
+                                Auth::user(),
+                            );
+
+                            Notification::make()
+                                ->title('Contagem registrada com sucesso.')
+                                ->success()
+                                ->send();
+                        } catch (\DomainException $exception) {
+                            Notification::make()
+                                ->title($exception->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    }),
+            ])
+            ->groupedBulkActions([
+                BulkAction::make('manterSaldoAtual')
+                    ->label('Manter saldo atual')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('gray')
+                    ->requiresConfirmation()
+                    ->modalHeading('Manter saldo atual')
+                    ->modalDescription('A quantidade contada dos itens selecionados será preenchida com o saldo atual do sistema, zerando a divergência desses registros.')
+                    ->visible(fn (): bool => $this->getOwnerRecord()->isEmAndamento() && (Auth::user()?->hasPermissionTo('Registrar Contagem de Balanços de Inventário') ?? false))
+                    ->deselectRecordsAfterCompletion()
+                    ->action(function (EloquentCollection $records): void {
+                        try {
+                            $total = app(BalancoInventarioService::class)->manterSaldoAtualEmLote($records, Auth::user());
+
+                            Notification::make()
+                                ->title("Saldo atual mantido para {$total} item(ns).")
+                                ->success()
+                                ->send();
+                        } catch (\DomainException $exception) {
+                            Notification::make()
+                                ->title($exception->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    }),
+            ]);
+    }
+}

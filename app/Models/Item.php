@@ -39,9 +39,24 @@ class Item extends Model
         return $this->hasOne(Estoque::class, 'item_id');
     }
 
+    public function inventarioEstoques(): HasMany
+    {
+        return $this->hasMany(InventarioEstoque::class, 'item_id');
+    }
+
+    public function inventarioPedidoItens(): HasMany
+    {
+        return $this->hasMany(InventarioPedidoItem::class, 'item_id');
+    }
+
     public function balancoItens(): HasMany
     {
         return $this->hasMany(BalancoEstoqueItem::class);
+    }
+
+    public function balancoInventarioItens(): HasMany
+    {
+        return $this->hasMany(BalancoInventarioItem::class);
     }
 
     public function getNomeComUnidadeAttribute(): string

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Escola extends Model
 {
@@ -39,6 +40,11 @@ class Escola extends Model
     public function historicoPosteriores(): HasMany
     {
         return $this->hasMany(Escola::class, 'registro_anterior_id');
+    }
+
+    public function inventario(): HasOne
+    {
+        return $this->hasOne(Inventario::class);
     }
 
     // ================= SCOPES =================

@@ -120,6 +120,51 @@
                 </a>
                 @endcan
 
+                @can('Listar Inventários')
+                <a href="{{ route('filament.admin.pages.inventarios') }}" class="nav-card nav-card--teal">
+                    <div class="nav-card-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 4.5h16.5v4.5H3.75V4.5Zm0 7.5h7.5v7.5h-7.5V12Zm10.5 0h6v3h-6v-3Zm0 6h6v1.5h-6V18Z" />
+                        </svg>
+                    </div>
+                    <div class="nav-card-body">
+                        <h3>Inventários</h3>
+                        <p>Painel macro dos estoques escolares</p>
+                    </div>
+                    <div class="nav-card-arrow">→</div>
+                </a>
+                @endcan
+
+                @can('Listar Gestão de Inventário')
+                <a href="{{ route('filament.admin.pages.gestao-inventario') }}" class="nav-card nav-card--green">
+                    <div class="nav-card-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5v10.125c0 .621-.504 1.125-1.125 1.125H4.875A1.125 1.125 0 0 1 3.75 17.625V7.5m16.5 0-1.279-3.196A1.125 1.125 0 0 0 17.93 3.75H6.07c-.46 0-.874.28-1.042.708L3.75 7.5m16.5 0H3.75m4.5 4.5h7.5" />
+                        </svg>
+                    </div>
+                    <div class="nav-card-body">
+                        <h3>Gestão de Inventário</h3>
+                        <p>Operação do estoque da escola</p>
+                    </div>
+                    <div class="nav-card-arrow">→</div>
+                </a>
+                @endcan
+
+                @can('Listar Pedidos de Inventário')
+                <a href="{{ route('filament.admin.resources.pedidos-inventario.index') }}" class="nav-card nav-card--rose">
+                    <div class="nav-card-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75A2.25 2.25 0 0 1 4.5 4.5h15A2.25 2.25 0 0 1 21.75 6.75v10.5A2.25 2.25 0 0 1 19.5 19.5h-15a2.25 2.25 0 0 1-2.25-2.25V6.75Zm4.5 3.75h10.5m-10.5 3h6" />
+                        </svg>
+                    </div>
+                    <div class="nav-card-body">
+                        <h3>Pedidos de Inventário</h3>
+                        <p>Solicitações escola → matriz e romaneios</p>
+                    </div>
+                    <div class="nav-card-arrow">→</div>
+                </a>
+                @endcan
+
                 @can('Listar Gestão de Estoque')
                 <a href="{{ route('filament.admin.pages.gestao-estoque') }}" class="nav-card nav-card--amber">
                     <div class="nav-card-icon">
