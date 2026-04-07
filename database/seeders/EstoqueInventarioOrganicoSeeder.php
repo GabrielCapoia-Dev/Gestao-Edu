@@ -19,6 +19,7 @@ use App\Models\User;
 use App\Services\Estoque\BalancoEstoqueService;
 use App\Services\Inventario\BalancoInventarioService;
 use App\Services\Inventario\InventarioPedidoService;
+use App\Support\SecretarioPermissionPreset;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -222,6 +223,8 @@ class EstoqueInventarioOrganicoSeeder extends Seeder
             'Cancelar Balanços de Inventário',
             'Exportar Relatórios',
         ];
+
+        $schoolPermissions = SecretarioPermissionPreset::gestaoEscolar();
 
         $this->gestoresEscola = Escola::query()
             ->where('ativo', true)

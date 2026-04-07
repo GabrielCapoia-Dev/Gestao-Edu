@@ -10,6 +10,7 @@ use App\Models\Inventario;
 use App\Models\InventarioPedido;
 use App\Models\Item;
 use App\Models\User;
+use App\Support\SecretarioPermissionPreset;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -118,6 +119,42 @@ class InventarioPagesTest extends TestCase
 
         $this->actingAs($gestor)
             ->get(route('filament.admin.resources.pedidos-inventario.index'))
+            ->assertOk();
+    }
+
+    public function test_secretario_da_escola_herda_acoes_da_gestao_escolar_pela_role(): void
+    {
+        foreach (SecretarioPermissionPreset::gestaoEscolar() as $permissao) {
+            Permission::findOrCreate($permissao);
+        }
+
+        $role = Role::findOrCreate('Secretário');
+        $role->syncPermissions(SecretarioPermissionPreset::gestaoEscolar());
+
+        $escola = $this->criarEscola('Escola Vista Alegre');
+
+        $secretario = User::factory()->create([
+            'id_escola' => $escola->id,
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $secretario->assignRole($role);
+
+        Inventario::query()->create([
+            'escola_id' => $escola->id,
+            'criado_por_id' => $secretario->id,
+        ]);
+
+        $this->actingAs($secretario)
+            ->get(route('filament.admin.pages.gestao-inventario'))
+            ->assertOk();
+
+        $this->actingAs($secretario)
+            ->get(route('filament.admin.resources.pedidos-inventario.index'))
+            ->assertOk();
+
+        $this->actingAs($secretario)
+            ->get(route('filament.admin.resources.pedidos-inventario.create'))
             ->assertOk();
     }
 

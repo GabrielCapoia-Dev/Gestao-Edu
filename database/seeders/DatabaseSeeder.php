@@ -7,6 +7,7 @@ use App\Models\Laudo;
 use App\Models\Professor;
 use App\Models\Turma;
 use App\Models\Serie;
+use App\Support\SecretarioPermissionPreset;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
@@ -210,6 +211,8 @@ class DatabaseSeeder extends Seeder
 
             'Avaliar Pedidos',
         ];
+
+        $permissionsSecretario = SecretarioPermissionPreset::all();
 
         $password = "Senha@123";
 

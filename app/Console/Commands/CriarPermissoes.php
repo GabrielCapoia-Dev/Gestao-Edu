@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Support\SecretarioPermissionPreset;
 use Illuminate\Console\Command;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -236,6 +237,8 @@ class CriarPermissoes extends Command
         }
 
         $adminRole->givePermissionTo($permissoes);
+        Role::firstOrCreate(['name' => 'Secretário'])
+            ->syncPermissions(SecretarioPermissionPreset::all());
 
         $this->info('Permissões vinculadas à role Admin com sucesso.');
 
