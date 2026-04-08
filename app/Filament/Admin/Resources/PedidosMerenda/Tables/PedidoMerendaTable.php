@@ -85,6 +85,7 @@ class PedidoMerendaTable
         return [
             SelectFilter::make('status')
                 ->label('Status')
+                ->columnSpan(3)
                 ->multiple()
                 ->options(
                     collect(StatusPedidoMerenda::cases())
@@ -94,6 +95,7 @@ class PedidoMerendaTable
 
             SelectFilter::make('criado_por')
                 ->label('Criado por')
+                ->columnSpan(3)
                 ->searchable()
                 ->options(fn () => PedidoMerenda::query()
                     ->whereNotNull('criado_por')
@@ -103,11 +105,15 @@ class PedidoMerendaTable
 
             Filter::make('periodo_criacao')
                 ->label('Periodo de criacao')
+                ->columnSpan(6)
+                ->columns(2)
                 ->schema([
                     DatePicker::make('data_inicio')
-                        ->label('De'),
+                        ->label('De')
+                        ->columnSpan(1),
                     DatePicker::make('data_fim')
-                        ->label('Ate'),
+                        ->label('Ate')
+                        ->columnSpan(1),
                 ])
                 ->query(function (Builder $query, array $data): Builder {
                     return $query
