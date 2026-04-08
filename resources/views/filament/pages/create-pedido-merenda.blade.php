@@ -1,5 +1,6 @@
 <x-filament-panels::page>
 <style>
+    .fi-page-content { padding: 0; }
     .pm-page { padding: 0.5rem; }
     .pm-header { margin-bottom: 1.5rem; }
     .pm-header h2 { font-size: 1.25rem; font-weight: 700; margin: 0 0 .25rem; color: var(--gray-900, #111827); }
