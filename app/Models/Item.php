@@ -14,6 +14,7 @@ class Item extends Model
 
     protected $fillable = [
         'nome',
+        'codigo',
         'descricao',
         'tipo_item',
         'unidade_medida',
@@ -22,11 +23,23 @@ class Item extends Model
 
     protected $casts = [
         'nome'           => 'string',
+        'codigo'         => 'string',
         'descricao'      => 'string',
         'tipo_item'      => TipoItem::class,
         'unidade_medida' => UnidadeMedida::class,
         'ativo'          => 'boolean',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (self $item): void {
+            if (filled($item->codigo)) {
+                return;
+            }
+
+            $item->codigo = self::gerarProximoCodigo();
+        });
+    }
 
     // 🔥 relação correta agora
     public function contratoItens(): HasMany
@@ -62,5 +75,17 @@ class Item extends Model
     public function getNomeComUnidadeAttribute(): string
     {
         return "{$this->nome} - {$this->unidade_medida->value}";
+    }
+
+    public static function gerarProximoCodigo(): string
+    {
+        $ultimoCodigo = self::query()
+            ->where('codigo', 'like', 'ITM-%')
+            ->orderByDesc('codigo')
+            ->value('codigo');
+
+        $ultimoNumero = (int) preg_replace('/\D/', '', (string) $ultimoCodigo);
+
+        return 'ITM-' . str_pad((string) ($ultimoNumero + 1), 6, '0', STR_PAD_LEFT);
     }
 }

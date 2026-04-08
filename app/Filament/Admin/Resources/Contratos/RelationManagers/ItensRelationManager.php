@@ -3,17 +3,22 @@
 namespace App\Filament\Admin\Resources\Contratos\RelationManagers;
 
 use App\Models\Item;
+use App\Services\Contratos\ContratoItemSpreadsheetService;
+use Filament\Actions\Action;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Table;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\FileUpload;
 use Filament\Schemas\Schema;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use App\Models\Enums\TipoItemContrato;
 use Filament\Schemas\Components\Grid;
+use InvalidArgumentException;
 
 class ItensRelationManager extends RelationManager
 {
@@ -39,6 +44,10 @@ class ItensRelationManager extends RelationManager
             ->columns([
                 TextColumn::make('item.nome')
                     ->label('Item')
+                    ->searchable(),
+
+                TextColumn::make('item.codigo')
+                    ->label('Codigo')
                     ->searchable(),
 
                 TextColumn::make('tipo')
@@ -81,6 +90,57 @@ class ItensRelationManager extends RelationManager
                     ->sortable(),
             ])
             ->headerActions([
+                Action::make('exportarModelo')
+                    ->label('Exportar Modelo')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('gray')
+                    ->action(fn () => $this->spreadsheetService()->exportarModelo()),
+
+                Action::make('importarTabela')
+                    ->label('Importar Tabela')
+                    ->icon('heroicon-o-arrow-up-tray')
+                    ->color('primary')
+                    ->schema([
+                        FileUpload::make('arquivo')
+                            ->label('Arquivo da planilha')
+                            ->disk('local')
+                            ->directory('imports/contratos-itens')
+                            ->visibility('private')
+                            ->storeFiles()
+                            ->preserveFilenames()
+                            ->acceptedFileTypes([
+                                'text/csv',
+                                'text/plain',
+                                'application/csv',
+                                'application/vnd.ms-excel',
+                                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                            ])
+                            ->maxSize(5120)
+                            ->required()
+                            ->helperText('Aceita arquivos CSV e XLSX com as colunas Codigo do Item, Quantidade e Preco unitario.'),
+                    ])
+                    ->action(function (array $data): void {
+                        try {
+                            $resultado = $this->spreadsheetService()->importar(
+                                $this->ownerRecord,
+                                $data['arquivo']
+                            );
+
+                            Notification::make()
+                                ->title('Importacao concluida')
+                                ->body("{$resultado['total_importado']} item(ns) foram adicionados ao contrato.")
+                                ->success()
+                                ->send();
+                        } catch (InvalidArgumentException $exception) {
+                            Notification::make()
+                                ->title('Nao foi possivel importar a planilha')
+                                ->body($exception->getMessage())
+                                ->danger()
+                                ->persistent()
+                                ->send();
+                        }
+                    }),
+
                 CreateAction::make('compra')
                     ->label('Adicionar Item')
                     ->schema([
@@ -232,5 +292,10 @@ class ItensRelationManager extends RelationManager
     public function isReadOnly(): bool
     {
         return false;
+    }
+
+    private function spreadsheetService(): ContratoItemSpreadsheetService
+    {
+        return app(ContratoItemSpreadsheetService::class);
     }
 }

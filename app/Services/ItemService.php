@@ -10,12 +10,14 @@ use App\Services\UserService;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Schema;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\DeleteAction;
 use App\Models\Enums\UnidadeMedida;
 use App\Models\Enums\TipoItem;
+use App\Models\Item;
 
 
 class ItemService
@@ -40,6 +42,11 @@ class ItemService
     public function colunasTabela(): array
     {
         return [
+            TextColumn::make('codigo')
+                ->label('Codigo')
+                ->sortable()
+                ->searchable(),
+
             TextColumn::make('nome')
                 ->label('Nome')
                 ->sortable()
@@ -101,6 +108,24 @@ class ItemService
     {
         return $schema
             ->components([
+                Toggle::make('gerar_codigo_automaticamente')
+                    ->label('Gerar codigo automaticamente')
+                    ->default(true)
+                    ->dehydrated(false)
+                    ->live(),
+
+                TextInput::make('codigo')
+                    ->label('Codigo')
+                    ->helperText('Voce pode informar manualmente ou deixar o sistema gerar.')
+                    ->maxLength(50)
+                    ->required(fn ($get) => ! $get('gerar_codigo_automaticamente'))
+                    ->unique(ignoreRecord: true)
+                    ->default(fn () => Item::gerarProximoCodigo())
+                    ->disabled(fn ($get) => (bool) $get('gerar_codigo_automaticamente'))
+                    ->dehydrated(fn ($get) => ! $get('gerar_codigo_automaticamente'))
+                    ->formatStateUsing(fn ($state) => filled($state) ? $state : Item::gerarProximoCodigo())
+                    ->live(),
+
                 TextInput::make('nome')
                     ->label('Nome')
                     ->helperText('Digite o nome do Item')
