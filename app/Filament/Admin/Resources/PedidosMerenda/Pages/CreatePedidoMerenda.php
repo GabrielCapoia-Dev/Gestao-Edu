@@ -22,6 +22,8 @@ class CreatePedidoMerenda extends Page
     protected static string $resource = PedidosMerendaResource::class;
     protected string $view = 'filament.pages.create-pedido-merenda';
 
+    protected static ?string $title = 'Novo Pedido de Merenda';
+
     // -------------------------------------------------------------------------
     // Estado em memória — nada vai para o banco até confirmarPedido()
     // -------------------------------------------------------------------------
