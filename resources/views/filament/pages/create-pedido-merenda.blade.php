@@ -1,6 +1,6 @@
 <x-filament-panels::page>
 <style>
-    .pm-page { padding: 1.5rem; }
+    .pm-page { padding: 0.5rem; }
     .pm-header { margin-bottom: 1.5rem; }
     .pm-header h2 { font-size: 1.25rem; font-weight: 700; margin: 0 0 .25rem; color: var(--gray-900, #111827); }
     .pm-header p  { font-size: .875rem; color: var(--gray-500, #6b7280); margin: 0; }
@@ -226,12 +226,6 @@
 </style>
 
 <div class="pm-page">
-
-    {{-- CABEÇALHO --}}
-    <div class="pm-header">
-        <h2>Novo Pedido de Merenda</h2>
-        <p>Monte a relação de itens antes de confirmar o pedido.</p>
-    </div>
 
     {{-- SECTION PRINCIPAL --}}
     <div class="pm-section">
