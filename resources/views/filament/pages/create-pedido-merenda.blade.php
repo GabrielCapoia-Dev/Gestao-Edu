@@ -1,401 +1,561 @@
 <x-filament-panels::page>
 <style>
     .fi-page-content { padding: 0; }
-    .pm-page { padding: 0.5rem; }
-    .pm-header { margin-bottom: 1.5rem; }
-    .pm-header h2 { font-size: 1.25rem; font-weight: 700; margin: 0 0 .25rem; color: var(--gray-900, #111827); }
-    .pm-header p  { font-size: .875rem; color: var(--gray-500, #6b7280); margin: 0; }
-
-    .pm-field-label { display: block; font-size: .875rem; font-weight: 500; color: var(--gray-700, #374151); margin-bottom: .375rem; }
-    .pm-field-label span { font-weight: 400; color: var(--gray-400, #9ca3af); }
-    .pm-textarea {
-        width: 100%; border-radius: .5rem;
-        border: 1px solid var(--gray-300, #d1d5db);
-        background: #fff;
-        color: var(--gray-900, #111827);
-        font-size: .875rem; padding: .5rem .75rem;
-        outline: none; resize: vertical;
-        font-family: inherit;
-        box-sizing: border-box;
-        margin-bottom: 1.25rem;
-    }
-    .pm-textarea:focus { border-color: var(--primary-500, #6366f1); box-shadow: 0 0 0 2px var(--primary-200, #c7d2fe); }
-
-    /* card */
-    .pm-card {
-        background: #fff;
-        border: 1px solid var(--gray-200, #e5e7eb);
-        border-radius: .75rem;
-        overflow: hidden;
-        margin-bottom: 1rem;
-        box-shadow: 0 1px 3px rgba(0,0,0,.06);
-    }
-    .pm-card-toolbar {
-        display: flex; align-items: center; justify-content: space-between;
-        padding: .75rem 1rem;
-        border-bottom: 1px solid var(--gray-200, #e5e7eb);
-    }
-    .pm-card-toolbar-title { font-size: .875rem; font-weight: 600; color: var(--gray-700, #374151); }
-    .pm-badge {
-        display: inline-flex; align-items: center;
-        padding: .1rem .5rem; border-radius: 9999px;
-        font-size: .75rem; font-weight: 500;
-        background: #ede9fe; color: #5b21b6;
-        margin-left: .5rem;
-    }
-
-    /* botão primário */
-    .pm-btn {
-        display: inline-flex; align-items: center; gap: .375rem;
-        padding: .4rem .85rem; border-radius: .5rem;
-        font-size: .875rem; font-weight: 500;
-        cursor: pointer; border: none; transition: opacity .15s;
-    }
-    .pm-btn:hover { opacity: .88; }
-    .pm-btn-primary { background: var(--primary-600, #4f46e5); color: #fff; }
-    .pm-btn-success { background: #16a34a; color: #fff; }
-    .pm-btn-success:disabled { opacity: .5; cursor: not-allowed; }
-    .pm-btn-outline {
-        background: transparent;
-        border: 1px solid var(--gray-300, #d1d5db);
-        color: var(--gray-700, #374151);
-        text-decoration: none;
-    }
-    .pm-btn-danger-ghost { background: transparent; border: none; color: #ef4444; padding: .25rem; cursor: pointer; }
-    .pm-btn-danger-ghost:hover { color: #b91c1c; }
-
-    /* empty state */
-    .pm-empty {
-        display: flex; flex-direction: column; align-items: center;
-        justify-content: center; padding: 3rem 1rem;
-        color: var(--gray-400, #9ca3af);
-        font-size: .875rem;
-    }
-    .pm-empty svg { width: 2.5rem; height: 2.5rem; margin-bottom: .5rem; }
-
-    /* tabela */
-    .pm-table { width: 100%; border-collapse: collapse; font-size: .875rem; }
-    .pm-table thead tr {
-        background: var(--gray-50, #f9fafb);
-        text-transform: uppercase;
-        font-size: .7rem; letter-spacing: .05em;
-        color: var(--gray-500, #6b7280);
-        font-weight: 600;
-    }
-    .pm-table th, .pm-table td { padding: .65rem 1rem; text-align: left; }
-    .pm-table th.right, .pm-table td.right { text-align: right; }
-    .pm-table tbody tr { border-top: 1px solid var(--gray-100, #f3f4f6); }
-    .pm-table tbody tr:hover { background: var(--gray-50, #f9fafb); }
-    .pm-table .td-item-nome { font-weight: 500; color: var(--gray-900, #111827); }
-    .pm-table .td-unit { font-size: .75rem; color: var(--gray-400, #9ca3af); margin-left: .25rem; }
-    .pm-table .td-secondary { color: var(--gray-600, #4b5563); }
-    .pm-table .td-saldo { color: var(--gray-600, #4b5563); }
-    .pm-table .td-qty { font-weight: 600; color: var(--gray-900, #111827); }
-
-    /* footer actions */
-    .pm-actions { display: flex; align-items: center; justify-content: flex-end; gap: .75rem; margin-top: .5rem; }
-
-    /* ── MODAL ── */
-    .pm-overlay {
-        position: fixed; inset: 0; z-index: 50;
-        display: flex; align-items: center; justify-content: center;
-    }
-    .pm-overlay-bg {
-        position: absolute; inset: 0;
-        background: rgba(0,0,0,.45);
-        backdrop-filter: blur(2px);
-    }
-    .pm-modal {
-        position: relative; z-index: 10;
-        width: 100%; max-width: 42rem;
-        margin: 1rem;
-        background: #fff;
-        border-radius: 1rem;
-        box-shadow: 0 20px 60px rgba(0,0,0,.2);
-        overflow: hidden;
-    }
-    .pm-modal-header {
-        display: flex; align-items: center; justify-content: space-between;
-        padding: 1rem 1.5rem;
-        border-bottom: 1px solid var(--gray-200, #e5e7eb);
-    }
-    .pm-modal-header h3 { font-size: 1rem; font-weight: 600; margin: 0; color: var(--gray-900, #111827); }
-    .pm-modal-body { padding: 1.25rem 1.5rem; display: flex; flex-direction: column; gap: 1.25rem; max-height: 70vh; overflow-y: auto; }
-    .pm-modal-footer {
-        display: flex; align-items: center; justify-content: flex-end; gap: .75rem;
-        padding: .875rem 1.5rem;
-        border-top: 1px solid var(--gray-200, #e5e7eb);
-    }
-
-    /* select nativo */
-    .pm-select {
-        width: 100%; border-radius: .5rem;
-        border: 1px solid var(--gray-300, #d1d5db);
-        background: #fff; color: var(--gray-900, #111827);
-        font-size: .875rem; padding: .5rem .75rem;
-        outline: none; font-family: inherit;
-        box-sizing: border-box;
-    }
-    .pm-select:focus { border-color: var(--primary-500, #6366f1); box-shadow: 0 0 0 2px var(--primary-200, #c7d2fe); }
-    .pm-field-hint { font-size: .75rem; color: var(--gray-400, #9ca3af); margin-top: .25rem; }
-
-    /* contrato card no modal */
-    .pm-contrato-row {
-        display: flex; align-items: center; gap: .75rem;
-        padding: .75rem;
-        border: 1px solid var(--gray-200, #e5e7eb);
-        border-radius: .5rem;
-        background: var(--gray-50, #f9fafb);
-    }
-    .pm-contrato-info { flex: 1; min-width: 0; }
-    .pm-contrato-empresa { font-size: .875rem; font-weight: 600; color: var(--gray-900, #111827); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .pm-contrato-numero { font-size: .75rem; color: var(--gray-500, #6b7280); }
-    .pm-contrato-numero span { font-weight: 500; color: var(--gray-700, #374151); }
-    .pm-saldo-box { text-align: right; flex-shrink: 0; }
-    .pm-saldo-label { font-size: .75rem; color: var(--gray-500, #6b7280); }
-    .pm-saldo-value { font-size: .875rem; font-weight: 600; color: #16a34a; }
-    .pm-qty-box { flex-shrink: 0; width: 7rem; }
-    .pm-qty-label { font-size: .75rem; color: var(--gray-500, #6b7280); margin-bottom: .25rem; }
-    .pm-qty-input {
-        width: 100%; border-radius: .375rem;
-        border: 1px solid var(--gray-300, #d1d5db);
-        background: #fff; color: var(--gray-900, #111827);
-        font-size: .875rem; padding: .3rem .5rem;
-        outline: none; box-sizing: border-box; font-family: inherit;
-    }
-    .pm-qty-input:focus { border-color: var(--primary-500, #6366f1); box-shadow: 0 0 0 2px var(--primary-200, #c7d2fe); }
-
-    /* aviso */
-    .pm-alert-warn {
-        display: flex; align-items: center; gap: .5rem;
-        padding: .75rem; border-radius: .5rem;
-        background: #fffbeb; color: #92400e;
-        border: 1px solid #fde68a;
-        font-size: .875rem;
-    }
-    .pm-alert-warn svg { width: 1rem; height: 1rem; flex-shrink: 0; }
-
-    /* section — replica o card padrão do Filament */
+    .pm-page { padding: 0.75rem; }
+    .pm-layout { display: grid; gap: 1rem; }
     .pm-section {
         background: #fff;
         border: 1px solid #e5e7eb;
-        border-radius: .75rem;
-        padding: 1.5rem;
-        margin-bottom: 1.25rem;
-        box-shadow: 0 1px 2px rgba(0,0,0,.04);
+        border-radius: 0.9rem;
+        padding: 1.25rem;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
     }
     .pm-section-title {
-        font-size: .9375rem;
-        font-weight: 600;
+        font-size: 0.98rem;
+        font-weight: 700;
         color: #111827;
-        margin: 0 0 1.25rem;
-        padding-bottom: .875rem;
-        border-bottom: 1px solid #e5e7eb;
+        margin: 0 0 1rem;
     }
-    .dark .pm-section { background: #1e293b; border-color: #334155; }
-    .dark .pm-section-title { color: #f1f5f9; border-color: #334155; }
-
-    /* dark mode — Filament aplica classe .dark no <html> */
-    .dark .pm-header h2 { color: #f9fafb; }
-    .dark .pm-header p  { color: #9ca3af; }
-    .dark .pm-field-label { color: #d1d5db; }
-    .dark .pm-field-hint { color: #6b7280; }
-    .dark .pm-textarea, .dark .pm-select, .dark .pm-qty-input { background: #1f2937; border-color: #374151; color: #f9fafb; }
-    .dark .pm-card { background: #1f2937; border-color: #374151; }
-    .dark .pm-card-toolbar { border-color: #374151; background: #1f2937; }
-    .dark .pm-card-toolbar-title { color: #e5e7eb; }
-    .dark .pm-table thead tr { background: #111827; color: #9ca3af; }
-    .dark .pm-table tbody tr { border-color: #374151; }
-    .dark .pm-table tbody tr:hover { background: #1f2937; }
-    .dark .pm-table .td-item-nome, .dark .pm-table .td-qty { color: #f9fafb; }
-    .dark .pm-table .td-secondary, .dark .pm-table .td-saldo { color: #9ca3af; }
-    .dark .pm-table .td-unit { color: #6b7280; }
-    .dark .pm-empty { color: #6b7280; }
-    .dark .pm-modal { background: #1f2937; }
-    .dark .pm-modal-header { border-color: #374151; }
-    .dark .pm-modal-header h3 { color: #f9fafb; }
-    .dark .pm-modal-footer { border-color: #374151; }
-    .dark .pm-modal-body { background: #1f2937; }
-    .dark .pm-contrato-row { background: #111827; border-color: #374151; }
-    .dark .pm-contrato-empresa { color: #f9fafb; }
-    .dark .pm-contrato-numero { color: #9ca3af; }
-    .dark .pm-contrato-numero span { color: #d1d5db; }
-    .dark .pm-saldo-label, .dark .pm-qty-label { color: #9ca3af; }
-    .dark .pm-btn-outline { border-color: #374151; color: #d1d5db; background: transparent; }
-    .dark .pm-btn-outline:hover { background: #374151; }
-    .dark .pm-overlay-bg { background: rgba(0,0,0,.65); }
+    .pm-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 0.85rem;
+        margin-bottom: 1rem;
+    }
+    .pm-stat {
+        border: 1px solid #e5e7eb;
+        border-radius: 0.8rem;
+        padding: 0.9rem 1rem;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    }
+    .pm-stat-label {
+        display: block;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #64748b;
+        margin-bottom: 0.35rem;
+    }
+    .pm-stat-value {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #0f172a;
+    }
+    .pm-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        margin-bottom: 1rem;
+    }
+    .pm-toolbar-left,
+    .pm-toolbar-right {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+    .pm-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.15rem 0.6rem;
+        border-radius: 999px;
+        background: #e0f2fe;
+        color: #0369a1;
+        font-size: 0.78rem;
+        font-weight: 700;
+    }
+    .pm-field-label {
+        display: block;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #334155;
+        margin-bottom: 0.4rem;
+    }
+    .pm-field-label span { color: #94a3b8; font-weight: 500; }
+    .pm-textarea,
+    .pm-input,
+    .pm-select,
+    .pm-qty-input {
+        width: 100%;
+        border-radius: 0.7rem;
+        border: 1px solid #cbd5e1;
+        background: #fff;
+        color: #0f172a;
+        font-size: 0.92rem;
+        padding: 0.7rem 0.85rem;
+        box-sizing: border-box;
+        outline: none;
+    }
+    .pm-textarea:focus,
+    .pm-input:focus,
+    .pm-select:focus,
+    .pm-qty-input:focus {
+        border-color: #0ea5e9;
+        box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.12);
+    }
+    .pm-textarea { resize: vertical; min-height: 88px; }
+    .pm-search-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 0.85rem;
+        margin-bottom: 1rem;
+    }
+    .pm-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 0.85rem;
+        overflow: hidden;
+        background: #fff;
+    }
+    .pm-table-wrap { overflow-x: auto; }
+    .pm-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.89rem;
+    }
+    .pm-table thead tr {
+        background: #f8fafc;
+        color: #64748b;
+        text-transform: uppercase;
+        font-size: 0.72rem;
+        letter-spacing: 0.05em;
+    }
+    .pm-table th,
+    .pm-table td {
+        padding: 0.8rem 1rem;
+        text-align: left;
+        border-top: 1px solid #f1f5f9;
+        vertical-align: middle;
+    }
+    .pm-table th.right,
+    .pm-table td.right { text-align: right; }
+    .pm-table tbody tr:hover { background: #f8fafc; }
+    .pm-item-name { font-weight: 700; color: #0f172a; }
+    .pm-item-meta,
+    .pm-muted { color: #64748b; font-size: 0.82rem; }
+    .pm-empty {
+        padding: 2.5rem 1rem;
+        text-align: center;
+        color: #94a3b8;
+        font-size: 0.92rem;
+    }
+    .pm-empty strong { display: block; color: #334155; margin-bottom: 0.35rem; }
+    .pm-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.45rem;
+        padding: 0.7rem 1rem;
+        border-radius: 0.7rem;
+        font-size: 0.9rem;
+        font-weight: 700;
+        cursor: pointer;
+        border: none;
+        text-decoration: none;
+        transition: 0.18s ease;
+    }
+    .pm-btn:hover { transform: translateY(-1px); }
+    .pm-btn-primary { background: #0284c7; color: #fff; }
+    .pm-btn-success { background: #15803d; color: #fff; }
+    .pm-btn-outline { background: #fff; color: #334155; border: 1px solid #cbd5e1; }
+    .pm-btn-danger-ghost {
+        background: transparent;
+        color: #dc2626;
+        border: none;
+        padding: 0.25rem;
+        cursor: pointer;
+    }
+    .pm-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+    .pm-hint {
+        font-size: 0.78rem;
+        color: #94a3b8;
+        margin-top: 0.35rem;
+    }
+    .pm-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    }
+    .pm-overlay-bg {
+        position: absolute;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.55);
+        backdrop-filter: blur(3px);
+    }
+    .pm-modal {
+        position: relative;
+        z-index: 1;
+        width: min(980px, 100%);
+        max-height: calc(100vh - 2rem);
+        overflow: hidden;
+        border-radius: 1rem;
+        background: #fff;
+        box-shadow: 0 24px 80px rgba(15, 23, 42, 0.28);
+        display: flex;
+        flex-direction: column;
+    }
+    .pm-modal-header,
+    .pm-modal-footer {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+    }
+    .pm-modal-footer {
+        border-bottom: none;
+        border-top: 1px solid #e5e7eb;
+        justify-content: flex-end;
+    }
+    .pm-modal-header h3 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 700;
+        color: #0f172a;
+    }
+    .pm-modal-body {
+        padding: 1.25rem;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    .pm-contract-grid {
+        display: grid;
+        gap: 0.75rem;
+    }
+    .pm-contract-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 0.85rem;
+        padding: 0.9rem;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        display: grid;
+        grid-template-columns: minmax(0, 1.8fr) minmax(120px, 0.8fr) minmax(140px, 0.8fr);
+        gap: 0.75rem;
+        align-items: end;
+    }
+    .pm-contract-company { font-weight: 700; color: #0f172a; }
+    .pm-contract-line { font-size: 0.82rem; color: #64748b; margin-top: 0.2rem; }
+    .pm-contract-balance {
+        border-radius: 0.75rem;
+        background: #ecfccb;
+        padding: 0.7rem 0.85rem;
+        text-align: center;
+    }
+    .pm-contract-balance small {
+        display: block;
+        color: #4d7c0f;
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        margin-bottom: 0.2rem;
+    }
+    .pm-contract-balance strong { color: #166534; font-size: 1rem; }
+    .pm-alert {
+        border: 1px solid #fde68a;
+        background: #fffbeb;
+        color: #92400e;
+        border-radius: 0.8rem;
+        padding: 0.9rem 1rem;
+        font-size: 0.9rem;
+    }
+    .pm-subtle {
+        font-size: 0.8rem;
+        color: #64748b;
+    }
+    @media (max-width: 768px) {
+        .pm-page { padding: 0.45rem; }
+        .pm-section { padding: 1rem; }
+        .pm-table th,
+        .pm-table td { padding: 0.7rem 0.75rem; }
+        .pm-contract-card {
+            grid-template-columns: 1fr;
+            align-items: stretch;
+        }
+        .pm-actions,
+        .pm-modal-footer,
+        .pm-modal-header { flex-direction: column; align-items: stretch; }
+        .pm-btn { width: 100%; }
+    }
+    .dark .pm-section,
+    .dark .pm-card,
+    .dark .pm-modal { background: #0f172a; border-color: #334155; }
+    .dark .pm-section-title,
+    .dark .pm-modal-header h3,
+    .dark .pm-stat-value,
+    .dark .pm-item-name,
+    .dark .pm-contract-company { color: #f8fafc; }
+    .dark .pm-stat,
+    .dark .pm-contract-card { background: linear-gradient(180deg, #0f172a 0%, #111827 100%); border-color: #334155; }
+    .dark .pm-stat-label,
+    .dark .pm-muted,
+    .dark .pm-item-meta,
+    .dark .pm-subtle,
+    .dark .pm-field-label,
+    .dark .pm-hint,
+    .dark .pm-contract-line { color: #94a3b8; }
+    .dark .pm-textarea,
+    .dark .pm-input,
+    .dark .pm-select,
+    .dark .pm-qty-input { background: #111827; border-color: #334155; color: #f8fafc; }
+    .dark .pm-btn-outline { background: #0f172a; border-color: #334155; color: #e2e8f0; }
+    .dark .pm-table thead tr { background: #111827; color: #94a3b8; }
+    .dark .pm-table th,
+    .dark .pm-table td,
+    .dark .pm-modal-header,
+    .dark .pm-modal-footer { border-color: #334155; }
+    .dark .pm-table tbody tr:hover { background: #111827; }
+    .dark .pm-empty { color: #94a3b8; }
+    .dark .pm-empty strong { color: #e2e8f0; }
+    .dark .pm-contract-balance { background: #16341f; }
+    .dark .pm-contract-balance small { color: #86efac; }
+    .dark .pm-contract-balance strong { color: #dcfce7; }
+    .dark .pm-alert { background: #2a2305; border-color: #854d0e; color: #fcd34d; }
 </style>
 
 <div class="pm-page">
+    <div class="pm-layout">
+        <div class="pm-summary-grid">
+            <div class="pm-stat">
+                <span class="pm-stat-label">Itens no pedido</span>
+                <span class="pm-stat-value">{{ $this->totalItensPedido }}</span>
+            </div>
+            <div class="pm-stat">
+                <span class="pm-stat-label">Quantidade total</span>
+                <span class="pm-stat-value">{{ number_format($this->quantidadeTotalPedido, 3, ',', '.') }}</span>
+            </div>
+            <div class="pm-stat">
+                <span class="pm-stat-label">Contratos usados</span>
+                <span class="pm-stat-value">{{ $this->totalContratosSelecionados }}</span>
+            </div>
+            <div class="pm-stat">
+                <span class="pm-stat-label">Empresas envolvidas</span>
+                <span class="pm-stat-value">{{ $this->totalEmpresasSelecionadas }}</span>
+            </div>
+        </div>
 
-    {{-- SECTION PRINCIPAL --}}
-    <div class="pm-section">
-        <div class="pm-section-title">Novo Pedido</div>
+        <div class="pm-section">
+            <h3 class="pm-section-title">Resumo do pedido</h3>
 
-        {{-- OBSERVAÇÕES --}}
-        <label class="pm-field-label">Observações <span>(opcional)</span></label>
-        <textarea
-            wire:model="observacoes"
-            rows="2"
-            class="pm-textarea"
-            placeholder="Informações adicionais sobre este pedido..."
-        ></textarea>
+            <label class="pm-field-label">Observacoes <span>(opcional)</span></label>
+            <textarea
+                wire:model.live.debounce.300ms="observacoes"
+                class="pm-textarea"
+                placeholder="Anote contexto, urgencia, observacoes de entrega ou qualquer detalhe util."
+            ></textarea>
 
-        {{-- TABELA DE ITENS EM MEMÓRIA --}}
-        <div class="pm-card">
-        <div class="pm-card-toolbar">
-            <span class="pm-card-toolbar-title">
-                Itens do Pedido
-                @if(count($itensPedido) > 0)
-                    <span class="pm-badge">{{ count($itensPedido) }}</span>
+            <div class="pm-toolbar">
+                <div class="pm-toolbar-left">
+                    <strong style="font-size:0.95rem;color:#334155;">Itens adicionados</strong>
+                    <span class="pm-badge">{{ count($this->itensPedidoFiltrados) }} visiveis</span>
+                </div>
+                <div class="pm-toolbar-right">
+                    <div style="min-width:260px;max-width:360px;width:100%;">
+                        <input
+                            type="text"
+                            wire:model.live.debounce.250ms="buscaItensPedido"
+                            class="pm-input"
+                            placeholder="Buscar por item, empresa ou contrato..."
+                        >
+                    </div>
+                    <button wire:click="abrirModal" type="button" class="pm-btn pm-btn-primary">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:1rem;height:1rem"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                        Adicionar item
+                    </button>
+                </div>
+            </div>
+
+            <div class="pm-card">
+                @if(empty($itensPedido))
+                    <div class="pm-empty">
+                        <strong>Nenhum item foi adicionado ainda.</strong>
+                        Comece escolhendo um item com saldo disponivel para montar o pedido.
+                    </div>
+                @elseif(empty($this->itensPedidoFiltrados))
+                    <div class="pm-empty">
+                        <strong>Nenhum resultado para a busca atual.</strong>
+                        Ajuste os termos para localizar os itens ja adicionados.
+                    </div>
+                @else
+                    <div class="pm-table-wrap">
+                        <table class="pm-table">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Contrato</th>
+                                    <th>Empresa</th>
+                                    <th class="right">Saldo</th>
+                                    <th class="right">Qtd. pedida</th>
+                                    <th class="right">Adicionado</th>
+                                    <th class="right"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($this->itensPedidoFiltrados as $chave => $entry)
+                                    <tr>
+                                        <td>
+                                            <div class="pm-item-name">{{ $entry['item_nome'] }}</div>
+                                            <div class="pm-item-meta">{{ $entry['unidade'] }}</div>
+                                        </td>
+                                        <td class="pm-muted">{{ $entry['numero_contrato'] }}</td>
+                                        <td class="pm-muted">{{ $entry['empresa'] }}</td>
+                                        <td class="right pm-muted">{{ number_format($entry['saldo'], 3, ',', '.') }}</td>
+                                        <td class="right"><strong>{{ number_format($entry['quantidade'], 3, ',', '.') }}</strong></td>
+                                        <td class="right pm-muted">{{ \Illuminate\Support\Carbon::parse($entry['adicionado_em'] ?? now())->format('d/m/Y H:i') }}</td>
+                                        <td class="right">
+                                            <button wire:click="removerItem('{{ $chave }}')" type="button" class="pm-btn-danger-ghost" title="Remover item">
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" style="width:1rem;height:1rem"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
                 @endif
-            </span>
-            <button wire:click="abrirModal" type="button" class="pm-btn pm-btn-primary">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:1rem;height:1rem"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-                Adicionar Item
+            </div>
+        </div>
+
+        <div class="pm-actions">
+            <a href="{{ \App\Filament\Admin\Resources\PedidosMerenda\PedidosMerendaResource::getUrl('index') }}" class="pm-btn pm-btn-outline">
+                Cancelar
+            </a>
+            <button
+                wire:click="confirmarPedido"
+                type="button"
+                class="pm-btn pm-btn-success"
+                @if(empty($itensPedido)) disabled @endif
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:1rem;height:1rem"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
+                Confirmar pedido
             </button>
         </div>
-
-        @if(empty($itensPedido))
-            <div class="pm-empty">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z"/></svg>
-                Nenhum item adicionado ainda.
-            </div>
-        @else
-            <table class="pm-table">
-                <thead>
-                    <tr>
-                        <th>Item</th>
-                        <th>Contrato</th>
-                        <th>Empresa</th>
-                        <th class="right">Saldo Disponível</th>
-                        <th class="right">Qtd. Pedida</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($itensPedido as $chave => $entry)
-                        <tr>
-                            <td>
-                                <span class="td-item-nome">{{ $entry['item_nome'] }}</span>
-                                <span class="td-unit">({{ $entry['unidade'] }})</span>
-                            </td>
-                            <td class="td-secondary">{{ $entry['numero_contrato'] }}</td>
-                            <td class="td-secondary">{{ $entry['empresa'] }}</td>
-                            <td class="right td-saldo">{{ number_format($entry['saldo'], 3, ',', '.') }}</td>
-                            <td class="right td-qty">{{ number_format($entry['quantidade'], 3, ',', '.') }}</td>
-                            <td class="right">
-                                <button wire:click="removerItem('{{ $chave }}')" type="button" class="pm-btn-danger-ghost" title="Remover">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:1rem;height:1rem"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
-                                </button>
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        @endif
-        </div>
-    </div>{{-- /.pm-section --}}
-
-    {{-- BOTÕES DE AÇÃO --}}
-    <div class="pm-actions">
-        <a href="{{ \App\Filament\Admin\Resources\PedidosMerenda\PedidosMerendaResource::getUrl('index') }}" class="pm-btn pm-btn-outline">
-            Cancelar
-        </a>
-        <button
-            wire:click="confirmarPedido"
-            type="button"
-            class="pm-btn pm-btn-success"
-            @if(empty($itensPedido)) disabled @endif
-        >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:1rem;height:1rem"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
-            Confirmar Pedido
-        </button>
     </div>
-
 </div>
 
-{{-- ================================================================ --}}
-{{-- MODAL — ADICIONAR ITEM                                           --}}
-{{-- ================================================================ --}}
 @if($modalAberto)
     <div class="pm-overlay" x-data x-init="$el.querySelector('[data-modal-panel]').focus()">
-
         <div class="pm-overlay-bg" wire:click="fecharModal"></div>
 
         <div data-modal-panel tabindex="-1" class="pm-modal" style="outline:none">
-
-            {{-- Header --}}
             <div class="pm-modal-header">
-                <h3>Adicionar Item ao Pedido</h3>
-                <button wire:click="fecharModal" class="pm-btn-danger-ghost" style="color:#9ca3af">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:1.25rem;height:1.25rem"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+                <div>
+                    <h3>Adicionar item ao pedido</h3>
+                    <div class="pm-subtle">Busque o item, filtre os contratos e informe apenas as quantidades necessarias.</div>
+                </div>
+                <button wire:click="fecharModal" class="pm-btn-danger-ghost" type="button">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:1.2rem;height:1.2rem"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
                 </button>
             </div>
 
-            {{-- Corpo --}}
             <div class="pm-modal-body">
-
-                {{-- Select de item --}}
-                <div>
-                    <label class="pm-field-label">Item <span style="color:#ef4444">*</span></label>
-                    <select wire:model.live="itemSelecionado" class="pm-select">
-                        <option value="">Selecione um item...</option>
-                        @foreach($this->itensComSaldo as $id => $label)
-                            <option value="{{ $id }}">{{ $label }}</option>
-                        @endforeach
-                    </select>
-                    <p class="pm-field-hint">Apenas itens com saldo disponível em contratos ativos.</p>
+                <div class="pm-search-grid">
+                    <div>
+                        <label class="pm-field-label">Buscar item disponivel</label>
+                        <input
+                            type="text"
+                            wire:model.live.debounce.250ms="buscaItemDisponivel"
+                            class="pm-input"
+                            placeholder="Nome, descricao ou unidade..."
+                        >
+                        <div class="pm-hint">Mostrando ate 100 itens com saldo em contratos ativos.</div>
+                    </div>
+                    <div>
+                        <label class="pm-field-label">Selecionar item</label>
+                        <select wire:model.live="itemSelecionado" class="pm-select">
+                            <option value="">Selecione um item...</option>
+                            @foreach($this->itensComSaldo as $id => $label)
+                                <option value="{{ $id }}">{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                 </div>
 
-                {{-- Contratos com saldo --}}
-                @if($itemSelecionado && count($contratosDoItem) > 0)
-                    <div>
-                        <label class="pm-field-label">Contratos com saldo disponível</label>
-                        <div style="display:flex;flex-direction:column;gap:.75rem">
-                            @foreach($contratosDoItem as $contratoItemId => $entry)
-                                <div class="pm-contrato-row">
-                                    <div class="pm-contrato-info">
-                                        <div class="pm-contrato-empresa">{{ $entry['empresa'] }}</div>
-                                        <div class="pm-contrato-numero">
-                                            Contrato: <span>{{ $entry['numero_contrato'] }}</span>
-                                        </div>
-                                    </div>
-                                    <div class="pm-saldo-box">
-                                        <div class="pm-saldo-label">Saldo</div>
-                                        <div class="pm-saldo-value">{{ number_format($entry['saldo'], 3, ',', '.') }}</div>
-                                    </div>
-                                    <div class="pm-qty-box">
-                                        <div class="pm-qty-label">Qtd. a pedir</div>
-                                        <input
-                                            type="number"
-                                            step="0.001"
-                                            min="0"
-                                            max="{{ $entry['saldo'] }}"
-                                            placeholder="0.000"
-                                            wire:change="atualizarQuantidade({{ $contratoItemId }}, $event.target.value)"
-                                            class="pm-qty-input"
-                                        />
-                                    </div>
-                                </div>
-                            @endforeach
+                @if($itemSelecionado)
+                    <div class="pm-search-grid">
+                        <div>
+                            <label class="pm-field-label">Filtrar por empresa</label>
+                            <input
+                                type="text"
+                                wire:model.live.debounce.250ms="filtroEmpresaModal"
+                                class="pm-input"
+                                placeholder="Nome da empresa contratada..."
+                            >
+                        </div>
+                        <div>
+                            <label class="pm-field-label">Filtrar por contrato</label>
+                            <input
+                                type="text"
+                                wire:model.live.debounce.250ms="filtroContratoModal"
+                                class="pm-input"
+                                placeholder="Numero do contrato..."
+                            >
                         </div>
                     </div>
-                @elseif($itemSelecionado && count($contratosDoItem) === 0)
-                    <div class="pm-alert-warn">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/></svg>
-                        Nenhum contrato ativo com saldo disponível para este item.
+                @endif
+
+                @if($itemSelecionado && count($contratosDoItem) > 0 && count($this->contratosFiltrados) > 0)
+                    <div class="pm-toolbar" style="margin-bottom:0;">
+                        <div class="pm-toolbar-left">
+                            <strong style="font-size:0.92rem;color:#334155;">Contratos com saldo</strong>
+                            <span class="pm-badge">{{ count($this->contratosFiltrados) }} resultados</span>
+                        </div>
+                    </div>
+
+                    <div class="pm-contract-grid">
+                        @foreach($this->contratosFiltrados as $contratoItemId => $entry)
+                            <div class="pm-contract-card">
+                                <div>
+                                    <div class="pm-contract-company">{{ $entry['empresa'] }}</div>
+                                    <div class="pm-contract-line">Contrato: <strong>{{ $entry['numero_contrato'] }}</strong></div>
+                                </div>
+                                <div class="pm-contract-balance">
+                                    <small>Saldo disponivel</small>
+                                    <strong>{{ number_format($entry['saldo'], 3, ',', '.') }}</strong>
+                                </div>
+                                <div>
+                                    <label class="pm-field-label" style="margin-bottom:0.3rem;">Qtd. a pedir</label>
+                                    <input
+                                        type="number"
+                                        step="0.001"
+                                        min="0"
+                                        max="{{ $entry['saldo'] }}"
+                                        placeholder="0.000"
+                                        wire:change="atualizarQuantidade({{ $contratoItemId }}, $event.target.value)"
+                                        class="pm-qty-input"
+                                    />
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @elseif($itemSelecionado && count($contratosDoItem) > 0)
+                    <div class="pm-alert">
+                        Nenhum contrato corresponde aos filtros atuais. Ajuste a busca por empresa ou contrato para continuar.
+                    </div>
+                @elseif($itemSelecionado)
+                    <div class="pm-alert">
+                        Nenhum contrato ativo com saldo disponivel foi encontrado para este item.
                     </div>
                 @endif
             </div>
 
-            {{-- Footer --}}
             <div class="pm-modal-footer">
                 <button wire:click="fecharModal" type="button" class="pm-btn pm-btn-outline">Cancelar</button>
-                <button wire:click="confirmarAdicaoItem" type="button" class="pm-btn pm-btn-primary">Confirmar Adição</button>
+                <button wire:click="confirmarAdicaoItem" type="button" class="pm-btn pm-btn-primary">Confirmar adicao</button>
             </div>
         </div>
     </div>
 @endif
-
 </x-filament-panels::page>
