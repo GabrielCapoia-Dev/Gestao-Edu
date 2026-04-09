@@ -33,6 +33,14 @@ class ListPedidosMerenda extends Page
 
     public bool $mostrarCancelados = false;
 
+    public int $porPagina = 5;
+
+    public int $paginaAguardando = 1;
+
+    public int $paginaParcial = 1;
+
+    public int $paginaFinalizado = 1;
+
     public bool $modalItensAberto = false;
 
     public ?int $pedidoSelecionadoId = null;
@@ -44,6 +52,36 @@ class ListPedidosMerenda extends Page
             StatusPedidoMerenda::ParcialmenteEntregue->value,
             StatusPedidoMerenda::Entregue->value,
         ];
+    }
+
+    public function updatedBusca(): void
+    {
+        $this->resetPaginas();
+    }
+
+    public function updatedCriadoPor(): void
+    {
+        $this->resetPaginas();
+    }
+
+    public function updatedDataInicio(): void
+    {
+        $this->resetPaginas();
+    }
+
+    public function updatedDataFim(): void
+    {
+        $this->resetPaginas();
+    }
+
+    public function updatedStatusSelecionados(): void
+    {
+        $this->resetPaginas();
+    }
+
+    public function updatedPorPagina(): void
+    {
+        $this->resetPaginas();
     }
 
     public function updatedMostrarCancelados(bool $value): void
@@ -58,6 +96,8 @@ class ListPedidosMerenda extends Page
                 fn (string $status) => $status !== StatusPedidoMerenda::Cancelado->value
             ));
         }
+
+        $this->resetPaginas();
     }
 
     public function getPedidosProperty(): Collection
@@ -86,17 +126,17 @@ class ListPedidosMerenda extends Page
             ->find($this->pedidoSelecionadoId);
     }
 
-    public function getPedidosAguardandoProperty(): Collection
+    public function getPedidosAguardandoBaseProperty(): Collection
     {
-        return $this->pedidos->where('status', StatusPedidoMerenda::Aguardando);
+        return $this->pedidos->where('status', StatusPedidoMerenda::Aguardando)->values();
     }
 
-    public function getPedidosParciaisProperty(): Collection
+    public function getPedidosParciaisBaseProperty(): Collection
     {
-        return $this->pedidos->where('status', StatusPedidoMerenda::ParcialmenteEntregue);
+        return $this->pedidos->where('status', StatusPedidoMerenda::ParcialmenteEntregue)->values();
     }
 
-    public function getPedidosFinalizadosProperty(): Collection
+    public function getPedidosFinalizadosBaseProperty(): Collection
     {
         $status = [StatusPedidoMerenda::Entregue];
 
@@ -104,9 +144,39 @@ class ListPedidosMerenda extends Page
             $status[] = StatusPedidoMerenda::Cancelado;
         }
 
-        return $this->pedidos->filter(
-            fn (PedidoMerenda $pedido) => in_array($pedido->status, $status, true)
-        )->values();
+        return $this->pedidos
+            ->filter(fn (PedidoMerenda $pedido) => in_array($pedido->status, $status, true))
+            ->values();
+    }
+
+    public function getPedidosAguardandoProperty(): Collection
+    {
+        return $this->sliceCollection($this->pedidosAguardandoBase, $this->paginaAguardando);
+    }
+
+    public function getPedidosParciaisProperty(): Collection
+    {
+        return $this->sliceCollection($this->pedidosParciaisBase, $this->paginaParcial);
+    }
+
+    public function getPedidosFinalizadosProperty(): Collection
+    {
+        return $this->sliceCollection($this->pedidosFinalizadosBase, $this->paginaFinalizado);
+    }
+
+    public function getPaginacaoAguardandoProperty(): array
+    {
+        return $this->buildPaginacao($this->pedidosAguardandoBase, $this->paginaAguardando);
+    }
+
+    public function getPaginacaoParcialProperty(): array
+    {
+        return $this->buildPaginacao($this->pedidosParciaisBase, $this->paginaParcial);
+    }
+
+    public function getPaginacaoFinalizadoProperty(): array
+    {
+        return $this->buildPaginacao($this->pedidosFinalizadosBase, $this->paginaFinalizado);
     }
 
     public function getResumoCardsProperty(): array
@@ -118,31 +188,27 @@ class ListPedidosMerenda extends Page
             [
                 'titulo' => 'Pedidos visiveis',
                 'valor' => $pedidos->count(),
-                'meta' => $pedidos->where('status', '!=', StatusPedidoMerenda::Cancelado)->count() . ' ativos',
-                'cor' => 'sky',
+                'descricao' => $pedidos->where('status', '!=', StatusPedidoMerenda::Cancelado)->count() . ' ativos no filtro atual',
             ],
             [
                 'titulo' => 'Aguardando entrega',
                 'valor' => $pedidos->where('status', StatusPedidoMerenda::Aguardando)->count(),
-                'meta' => number_format((float) $itens->where('quantidade_entregue', 0)->sum('quantidade_pedida'), 3, ',', '.') . ' volumes',
-                'cor' => 'amber',
+                'descricao' => number_format((float) $itens->where('quantidade_entregue', 0)->sum('quantidade_pedida'), 3, ',', '.') . ' unidades ainda sem entrega',
             ],
             [
                 'titulo' => 'Entrega parcial',
                 'valor' => $pedidos->where('status', StatusPedidoMerenda::ParcialmenteEntregue)->count(),
-                'meta' => number_format((float) $itens->sum('quantidade_entregue'), 3, ',', '.') . ' entregues',
-                'cor' => 'blue',
+                'descricao' => number_format((float) $itens->sum('quantidade_entregue'), 3, ',', '.') . ' unidades entregues',
             ],
             [
                 'titulo' => 'Empresas envolvidas',
                 'valor' => $pedidos
-                    ->flatMap(fn (PedidoMerenda $pedido) => $pedido->itens)
+                    ->flatMap->itens
                     ->map(fn (PedidoMerendaItem $item) => $item->contratoItem?->contrato?->empresaContratada?->nome)
                     ->filter()
                     ->unique()
                     ->count(),
-                'meta' => $pedidos->flatMap->itens->pluck('contrato_item_id')->filter()->unique()->count() . ' contratos/item',
-                'cor' => 'rose',
+                'descricao' => $pedidos->flatMap->itens->pluck('contrato_item_id')->filter()->unique()->count() . ' contratos relacionados',
             ],
         ];
     }
@@ -185,6 +251,22 @@ class ListPedidosMerenda extends Page
             StatusPedidoMerenda::ParcialmenteEntregue->value,
             StatusPedidoMerenda::Entregue->value,
         ];
+
+        $this->porPagina = 5;
+        $this->resetPaginas();
+    }
+
+    public function mudarPagina(string $secao, int $pagina): void
+    {
+        $property = $this->paginaProperty($secao);
+        $paginacao = match ($secao) {
+            'aguardando' => $this->paginacaoAguardando,
+            'parcial' => $this->paginacaoParcial,
+            'finalizado' => $this->paginacaoFinalizado,
+            default => ['totalPaginas' => 1],
+        };
+
+        $this->{$property} = max(1, min($pagina, $paginacao['totalPaginas']));
     }
 
     public function salvarQuantidade(int $pedidoItemId, float $novaQuantidade): void
@@ -298,10 +380,8 @@ class ListPedidosMerenda extends Page
             ->with('itens.contratoItem')
             ->findOrFail($pedidoId);
 
-        $itens = $pedido->itens;
-
-        DB::transaction(function () use ($pedido, $itens) {
-            foreach ($itens as $pedidoItem) {
+        DB::transaction(function () use ($pedido) {
+            foreach ($pedido->itens as $pedidoItem) {
                 $pendente = (float) $pedidoItem->quantidade_pendente;
 
                 if ($pendente <= 0) {
@@ -338,11 +418,11 @@ class ListPedidosMerenda extends Page
         $status = $status instanceof StatusPedidoMerenda ? $status : StatusPedidoMerenda::tryFrom((string) $status);
 
         return match ($status) {
-            StatusPedidoMerenda::Aguardando => 'pm-status-waiting',
-            StatusPedidoMerenda::ParcialmenteEntregue => 'pm-status-partial',
-            StatusPedidoMerenda::Entregue => 'pm-status-done',
-            StatusPedidoMerenda::Cancelado => 'pm-status-cancelled',
-            default => 'pm-status-neutral',
+            StatusPedidoMerenda::Aguardando => 'pm-badge-warning',
+            StatusPedidoMerenda::ParcialmenteEntregue => 'pm-badge-info',
+            StatusPedidoMerenda::Entregue => 'pm-badge-success',
+            StatusPedidoMerenda::Cancelado => 'pm-badge-danger',
+            default => 'pm-badge-neutral',
         };
     }
 
@@ -375,6 +455,45 @@ class ListPedidosMerenda extends Page
                 $this->statusSelecionados !== [],
                 fn (Builder $query) => $query->whereIn('status', $this->statusSelecionados)
             );
+    }
+
+    protected function sliceCollection(Collection $items, int $pagina): Collection
+    {
+        return $items
+            ->slice(($pagina - 1) * $this->porPagina, $this->porPagina)
+            ->values();
+    }
+
+    protected function buildPaginacao(Collection $items, int $paginaAtual): array
+    {
+        $total = $items->count();
+        $totalPaginas = $total > 0 ? (int) ceil($total / $this->porPagina) : 1;
+
+        return [
+            'total' => $total,
+            'porPagina' => $this->porPagina,
+            'paginaAtual' => max(1, min($paginaAtual, $totalPaginas)),
+            'totalPaginas' => $totalPaginas,
+            'de' => $total === 0 ? 0 : (($paginaAtual - 1) * $this->porPagina) + 1,
+            'ate' => min($paginaAtual * $this->porPagina, $total),
+        ];
+    }
+
+    protected function paginaProperty(string $secao): string
+    {
+        return match ($secao) {
+            'aguardando' => 'paginaAguardando',
+            'parcial' => 'paginaParcial',
+            'finalizado' => 'paginaFinalizado',
+            default => 'paginaAguardando',
+        };
+    }
+
+    protected function resetPaginas(): void
+    {
+        $this->paginaAguardando = 1;
+        $this->paginaParcial = 1;
+        $this->paginaFinalizado = 1;
     }
 
     protected function getHeaderActions(): array
