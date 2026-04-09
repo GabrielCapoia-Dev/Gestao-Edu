@@ -7,7 +7,6 @@ use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Hash;
-use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -41,17 +40,6 @@ class DatabaseSeeder extends Seeder
         }
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
-
-        $this->syncRolePermissions($administrativoRole, [
-            'Listar Pedidos',
-            'Listar Tipo Manutenção',
-            'Listar Todos os Pedidos',
-            'Criar Tipo Manutenção',
-            'Editar Pedidos',
-            'Editar Tipo Manutenção',
-            'Excluir Tipo Manutenção',
-            'Excluir Tipos de Manutenção em Massa',
-        ]);
 
         $adminUser = User::firstOrCreate(
             ['email' => 'admin@admin.com'],
@@ -103,20 +91,6 @@ class DatabaseSeeder extends Seeder
             // PedidoMerendaSeeder::class,
             // EstoqueInventarioOrganicoSeeder::class,
         ]);
-    }
-
-    private function syncRolePermissions(Role $role, array $permissions): void
-    {
-        $permissionNames = array_values(array_unique($permissions));
-
-        foreach ($permissionNames as $permissionName) {
-            Permission::firstOrCreate([
-                'name' => $permissionName,
-                'guard_name' => 'web',
-            ]);
-        }
-
-        $role->syncPermissions($permissionNames);
     }
 
     private function seedDominios(): void

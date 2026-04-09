@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Support\SecretarioPermissionPreset;
 use Illuminate\Console\Command;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -12,13 +11,52 @@ class CriarPermissoes extends Command
 {
     protected $signature = 'permissoes:criar';
 
-    protected $description = 'Cria permissoes base do sistema e sincroniza as roles principais';
+    protected $description = 'Cria permissoes base e sincroniza niveis de acesso por contexto';
 
     public function handle(): int
     {
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-        $permissoes = [
+        $permissions = $this->basePermissions();
+
+        $this->info('Criando permissoes...');
+
+        foreach ($permissions as $permissionName) {
+            $permission = Permission::firstOrCreate([
+                'name' => $permissionName,
+                'guard_name' => 'web',
+            ]);
+
+            if ($permission->wasRecentlyCreated) {
+                $this->line("Criada: {$permissionName}");
+            }
+        }
+
+        $permissionGroups = $this->permissionGroups($permissions);
+
+        $this->info('Sincronizando niveis de acesso...');
+
+        foreach ($this->rolePresets($permissions, $permissionGroups) as $roleName => $rolePermissions) {
+            $role = Role::firstOrCreate([
+                'name' => $roleName,
+                'guard_name' => 'web',
+            ]);
+
+            $role->syncPermissions($rolePermissions);
+
+            $this->line("Nivel sincronizado: {$roleName} (" . count($rolePermissions) . ' permissoes)');
+        }
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $this->info('Permissoes e niveis de acesso sincronizados com sucesso.');
+
+        return Command::SUCCESS;
+    }
+
+    private function basePermissions(): array
+    {
+        return [
             'Listar Alunos',
             'Listar Relatórios: Professor por Componente e Turma',
             'Listar Relatórios: Componentes com Professores Faltando',
@@ -200,42 +238,271 @@ class CriarPermissoes extends Command
             'Adiar Balanços de Estoque',
             'Cancelar Balanços de Estoque',
         ];
+    }
 
-        $this->info('Criando permissoes...');
+    private function permissionGroups(array $permissions): array
+    {
+        return [
+            'acesso' => $this->onlyPermissions($permissions, [
+                'Listar Usuários',
+                'Criar Usuários',
+                'Editar Usuários',
+                'Excluir Usuários',
+                'Listar Níveis de Acesso',
+                'Criar Níveis de Acesso',
+                'Editar Níveis de Acesso',
+                'Excluir Níveis de Acesso',
+                'Listar Permissões de Execução',
+                'Criar Permissões de Execução',
+                'Editar Permissões de Execução',
+                'Excluir Permissões de Execução',
+                'Listar Dominios de Email',
+                'Criar Dominios de Email',
+                'Editar Dominios de Email',
+                'Excluir Dominios de Email',
+                'Editar Escola do Usuario',
+                'Editar Setor do Usuário',
+                'Visualizar Setor do Usuário',
+                'Aplicar Permissoes',
+            ]),
+            'alunos_e_laudos' => $this->onlyPermissions($permissions, [
+                'Listar Alunos',
+                'Listar Retenção',
+                'Criar Alunos',
+                'Editar Alunos',
+                'Editar Escola do Aluno',
+                'Editar Turma do Aluno',
+                'Editar Status do Aluno',
+                'Editar CGM do Aluno',
+                'Excluir Alunos',
+                'Excluir Alunos em Massa',
+                'Exportar Alunos',
+                'Exportar Relatório de Alunos',
+                'Visualizar Histórico dos Alunos',
+                'Visualizar Detalhes de Aluno',
+                'Filtrar Alunos por Escola',
+                'Listar Laudos',
+                'Criar Laudos',
+                'Editar Laudos',
+                'Excluir Laudos',
+                'Excluir Laudos em Massa',
+                'Excluir Laudos de Aluno',
+                'Exportar Laudos de Aluno',
+                'Anexar Laudos de Aluno',
+                'Visualizar Laudos de Aluno',
+            ]),
+            'professores_e_turmas' => $this->onlyPermissions($permissions, [
+                'Listar Escolas',
+                'Criar Escolas',
+                'Editar Escolas',
+                'Editar Campos da Escola',
+                'Editar Codigo da Escola',
+                'Excluir Escolas',
+                'Exportar Escolas',
+                'Listar Turmas',
+                'Criar Turmas',
+                'Editar Turmas',
+                'Editar Dados da Turma',
+                'Editar Escola da Turma',
+                'Excluir Turmas',
+                'Excluir Turmas em Massa',
+                'Exportar Turmas',
+                'Filtrar Turmas por Escola',
+                'Listar Séries',
+                'Criar Séries',
+                'Editar Séries',
+                'Excluir Séries',
+                'Listar Professores',
+                'Criar Professores',
+                'Editar Professores',
+                'Editar Escola do Professor',
+                'Editar Matricula do Professor',
+                'Editar Nome do Professor',
+                'Editar Especializações de Professores',
+                'Editar Dados do Professor',
+                'Excluir Professores',
+                'Excluir Professores em Massa',
+                'Exportar Professores',
+                'Visualizar Professores',
+                'Visualizar Especializações de Professores',
+                'Visualizar Detalhes de Professor',
+                'Filtrar Professores por Escola',
+                'Filtrar Professores por Componente',
+                'Filtrar Professores por Serie',
+            ]),
+            'pedidos' => $this->onlyPermissions($permissions, [
+                'Listar Pedidos',
+                'Listar Todos os Pedidos',
+                'Listar Tipo Manutenção',
+                'Listar Tipo Status',
+                'Criar Pedidos',
+                'Criar Tipo Manutenção',
+                'Criar Tipo Status',
+                'Editar Pedidos',
+                'Editar Tipo Manutenção',
+                'Editar Tipo Status',
+                'Excluir Pedidos',
+                'Excluir Pedidos em Massa',
+                'Excluir Tipo Manutenção',
+                'Excluir Tipos de Manutenção em Massa',
+                'Excluir Tipo Status',
+                'Excluir Tipo Status em Massa',
+                'Exportar Arquivos Pedido',
+                'Visualizar Status: Encaminhado ao Setor',
+                'Visualizar Histórico de Pedidos',
+                'Visualizar Arquivos de Pedidos',
+                'Visualizar Pedidos por Status',
+                'Visualizar Feedback de Pedidos',
+                'Visualizar Notificação: Vencimento de Pedidos',
+                'Visualizar Notificação: Pedidos Atrasados',
+                'Visualizar Notificação: Pedidos Emergenciais',
+                'Visualizar Notificação: Pedido Reaberto',
+                'Avaliar Pedidos',
+            ]),
+            'merenda' => $this->onlyPermissions($permissions, [
+                'Listar Pedidos: Merenda',
+                'Criar Pedidos: Merenda',
+                'Editar Pedidos: Merenda',
+                'Excluir Pedidos: Merenda',
+            ]),
+            'inventario' => $this->onlyPermissions($permissions, [
+                'Listar Inventários',
+                'Criar Inventários',
+                'Listar Gestão de Inventário',
+                'Listar Pedidos de Inventário',
+                'Criar Pedidos de Inventário',
+                'Aprovar Pedidos de Inventário',
+                'Gerar Romaneios de Inventário',
+                'Conferir Pedidos de Inventário',
+                'Listar Balanços de Inventário',
+                'Criar Balanços de Inventário',
+                'Iniciar Balanços de Inventário',
+                'Registrar Contagem de Balanços de Inventário',
+                'Concluir Balanços de Inventário',
+                'Adiar Balanços de Inventário',
+                'Cancelar Balanços de Inventário',
+            ]),
+            'estoque' => $this->onlyPermissions($permissions, [
+                'Listar Gestão de Estoque',
+                'Listar Balanços de Estoque',
+                'Criar Balanços de Estoque',
+                'Listar Gestão de Margens',
+                'Iniciar Balanços de Estoque',
+                'Registrar Contagem de Balanços de Estoque',
+                'Concluir Balanços de Estoque',
+                'Adiar Balanços de Estoque',
+                'Cancelar Balanços de Estoque',
+                'Visualizar Notificação: Balanço de Estoque',
+            ]),
+            'cadastros_gerais' => $this->onlyPermissions($permissions, [
+                'Listar Empresa Contratada',
+                'Criar Empresa Contratada',
+                'Editar Empresa Contratada',
+                'Excluir Empresa Contratada',
+                'Excluir Empresa Contratada em Massa',
+                'Listar Contratos',
+                'Criar Contratos',
+                'Editar Contratos',
+                'Excluir Contratos',
+                'Listar Componente Curricular',
+                'Criar Componente Curricular',
+                'Editar Componente Curricular',
+                'Excluir Componente Curricular',
+                'Exportar Componente Curricular',
+                'Listar Funções Administrativas',
+                'Criar Funções Administrativas',
+                'Editar Funções Administrativas',
+                'Excluir Funções Administrativas',
+                'Excluir Funções Administrativas em Massa',
+                'Listar Equipe Gestora',
+                'Criar Equipe Gestora',
+                'Editar Equipe Gestora',
+                'Excluir Equipe Gestora',
+                'Excluir Equipe Gestora em Massa',
+                'Listar Alternativas',
+                'Criar Alternativas',
+                'Editar Alternativas',
+                'Excluir Alternativas',
+                'Excluir Alternativas em Massa',
+                'Listar Tipos de Avaliações',
+                'Criar Tipos de Avaliações',
+                'Editar Tipos de Avaliações',
+                'Excluir Tipos de Avaliações',
+                'Excluir Tipos de Avaliações em Massa',
+                'Excluir Itens',
+                'Excluir Itens em Massa',
+            ]),
+            'relatorios_e_painel' => $this->onlyPermissions($permissions, [
+                'Listar Relatórios: Professor por Componente e Turma',
+                'Listar Relatórios: Componentes com Professores Faltando',
+                'Listar Relatórios: Dashboard',
+                'Exportar Relatórios',
+                'Visualizar Notificações',
+                'Visualizar Painel Personalizado',
+                'Visualizar Tela de Inicio',
+            ]),
+            'administrativo' => $this->onlyPermissions($permissions, [
+                'Listar Pedidos',
+                'Listar Todos os Pedidos',
+                'Listar Tipo Manutenção',
+                'Criar Tipo Manutenção',
+                'Editar Pedidos',
+                'Editar Tipo Manutenção',
+                'Excluir Tipo Manutenção',
+                'Excluir Tipos de Manutenção em Massa',
+            ]),
+        ];
+    }
 
-        foreach ($permissoes as $nome) {
-            $permission = Permission::firstOrCreate([
-                'name' => $nome,
-                'guard_name' => 'web',
-            ]);
+    private function rolePresets(array $permissions, array $groups): array
+    {
+        return [
+            'Admin' => $permissions,
+            'Secretário' => $this->mergeGroups($groups, [
+                'alunos_e_laudos',
+                'professores_e_turmas',
+                'pedidos',
+                'relatorios_e_painel',
+                'inventario',
+            ]),
+            'Administrativo' => $groups['administrativo'],
+            'Gestao de Usuarios e Acessos' => $groups['acesso'],
+            'Gestao Pedagogica' => $this->mergeGroups($groups, [
+                'alunos_e_laudos',
+                'professores_e_turmas',
+                'relatorios_e_painel',
+            ]),
+            'Gestao de Pedidos' => $this->mergeGroups($groups, [
+                'pedidos',
+                'relatorios_e_painel',
+            ]),
+            'Gestao de Merenda' => $groups['merenda'],
+            'Gestao de Inventario' => $this->mergeGroups($groups, [
+                'inventario',
+                'relatorios_e_painel',
+            ]),
+            'Gestao de Estoque' => $this->mergeGroups($groups, [
+                'estoque',
+                'relatorios_e_painel',
+            ]),
+            'Gestao de Cadastros Gerais' => $groups['cadastros_gerais'],
+            'Relatorios e Painel' => $groups['relatorios_e_painel'],
+        ];
+    }
 
-            if ($permission->wasRecentlyCreated) {
-                $this->line("Criada: {$nome}");
-            }
+    private function mergeGroups(array $groups, array $groupNames): array
+    {
+        $merged = [];
+
+        foreach ($groupNames as $groupName) {
+            $merged = [...$merged, ...($groups[$groupName] ?? [])];
         }
 
-        $adminRole = Role::firstOrCreate([
-            'name' => 'Admin',
-            'guard_name' => 'web',
-        ]);
+        return array_values(array_unique($merged));
+    }
 
-        $secretarioRole = Role::firstOrCreate([
-            'name' => 'Secretário',
-            'guard_name' => 'web',
-        ]);
-
-        Role::firstOrCreate([
-            'name' => 'Administrativo',
-            'guard_name' => 'web',
-        ]);
-
-        $adminRole->syncPermissions($permissoes);
-        $secretarioRole->syncPermissions(SecretarioPermissionPreset::all());
-
-        app(PermissionRegistrar::class)->forgetCachedPermissions();
-
-        $this->info('Permissoes sincronizadas com sucesso.');
-
-        return Command::SUCCESS;
+    private function onlyPermissions(array $permissions, array $selectedPermissions): array
+    {
+        return array_values(array_intersect($permissions, $selectedPermissions));
     }
 }
