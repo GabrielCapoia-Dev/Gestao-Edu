@@ -10,6 +10,7 @@ use App\Models\Inventario;
 use App\Models\InventarioBaixa;
 use App\Models\InventarioEstoque;
 use App\Models\InventarioMovimentacao;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 class InventarioDataService
@@ -242,21 +243,238 @@ class InventarioDataService
         return $resultado;
     }
 
-    public function inventariosResumo(array $filtros = []): Collection
+    public function normalizarFiltrosRelatorioEnvios(array $filtros = []): array
     {
-        $busca = mb_strtolower(trim((string) ($filtros['busca'] ?? '')));
-        $inventarios = Inventario::query()
-            ->with(['escola', 'estoques.item'])
-            ->get();
+        $periodo = (string) ($filtros['periodo'] ?? 'geral');
+        $mes = (int) ($filtros['mes'] ?? 0);
+        $ano = (int) ($filtros['ano'] ?? now()->year);
 
-        if ($busca !== '') {
-            $inventarios = $inventarios->filter(function (Inventario $inventario) use ($busca): bool {
-                return str_contains(mb_strtolower((string) $inventario->escola?->nome), $busca)
-                    || str_contains(mb_strtolower((string) $inventario->nome), $busca);
-            })->values();
+        return [
+            'busca' => trim((string) ($filtros['busca'] ?? '')),
+            'escolas' => collect($filtros['escolas'] ?? [])
+                ->map(fn (mixed $id): int => (int) $id)
+                ->filter()
+                ->unique()
+                ->values()
+                ->all(),
+            'periodo' => $periodo === 'mensal' ? 'mensal' : 'geral',
+            'mes' => $periodo === 'mensal' && $mes >= 1 && $mes <= 12 ? $mes : null,
+            'ano' => $ano >= 2000 ? $ano : now()->year,
+        ];
+    }
+
+    public function formatarFiltrosRelatorioEnvios(array $filtros = []): array
+    {
+        $filtros = $this->normalizarFiltrosRelatorioEnvios($filtros);
+        $resultado = [];
+
+        if ($filtros['busca'] !== '') {
+            $resultado['busca'] = $filtros['busca'];
         }
 
-        return $inventarios->map(function (Inventario $inventario): array {
+        if ($filtros['escolas'] !== []) {
+            $resultado['escolas'] = $this->rotuloEscolasSelecionadas($filtros['escolas']);
+        }
+
+        $resultado['periodo'] = $this->rotuloPeriodoRelatorioEnvios($filtros);
+
+        return $resultado;
+    }
+
+    public function mesesRelatorioOptions(): array
+    {
+        return [
+            1 => 'Janeiro',
+            2 => 'Fevereiro',
+            3 => 'Marco',
+            4 => 'Abril',
+            5 => 'Maio',
+            6 => 'Junho',
+            7 => 'Julho',
+            8 => 'Agosto',
+            9 => 'Setembro',
+            10 => 'Outubro',
+            11 => 'Novembro',
+            12 => 'Dezembro',
+        ];
+    }
+
+    public function anosRelatorioEnviosOptions(): array
+    {
+        $primeiraData = InventarioMovimentacao::query()
+            ->where('tipo', TipoMovimentacao::Entrada)
+            ->whereNotNull('inventario_pedido_id')
+            ->orderBy('created_at')
+            ->value('created_at');
+
+        $anoAtual = now()->year;
+        $anoInicial = $primeiraData instanceof Carbon
+            ? $primeiraData->year
+            : ($primeiraData ? Carbon::parse($primeiraData)->year : $anoAtual);
+
+        $anoInicial = max(2000, min($anoInicial, $anoAtual));
+
+        return collect(range($anoAtual, $anoInicial))
+            ->mapWithKeys(fn (int $ano): array => [$ano => (string) $ano])
+            ->all();
+    }
+
+    public function escolasRelatorioEnviosOptions(string $busca = ''): array
+    {
+        return $this->inventariosPanorama(['busca' => $busca])
+            ->mapWithKeys(fn (Inventario $inventario): array => [
+                (int) $inventario->escola_id => $inventario->escola?->nome ?? $inventario->nome,
+            ])
+            ->all();
+    }
+
+    public function relatorioEnviosEscolas(array $filtros = []): object
+    {
+        $filtros = $this->normalizarFiltrosRelatorioEnvios($filtros);
+        $inventarios = $this->inventariosPanorama($filtros);
+        $inventarioIds = $inventarios
+            ->pluck('id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->filter()
+            ->values()
+            ->all();
+
+        if ($inventarioIds === []) {
+            return (object) [
+                'filtros' => $filtros,
+                'periodo_label' => $this->rotuloPeriodoRelatorioEnvios($filtros),
+                'escolas' => collect(),
+                'movimentacoes' => collect(),
+                'resumo' => (object) [
+                    'total_escolas' => 0,
+                    'total_pedidos' => 0,
+                    'total_entregas' => 0,
+                    'total_itens' => 0,
+                    'quantidade_total' => 0.0,
+                    'valor_total' => 0.0,
+                ],
+            ];
+        }
+
+        $precos = $this->precosReferencia();
+
+        $movimentacoes = InventarioMovimentacao::query()
+            ->with(['estoque.inventario.escola', 'estoque.item', 'pedido.romaneio'])
+            ->where('tipo', TipoMovimentacao::Entrada)
+            ->whereNotNull('inventario_pedido_id')
+            ->whereHas('estoque', fn ($estoqueQuery) => $estoqueQuery->whereIn('inventario_id', $inventarioIds))
+            ->when(
+                $filtros['periodo'] === 'mensal',
+                fn ($query) => $query
+                    ->whereMonth('created_at', (int) $filtros['mes'])
+                    ->whereYear('created_at', (int) $filtros['ano'])
+            )
+            ->orderBy('created_at')
+            ->get()
+            ->map(function (InventarioMovimentacao $movimentacao) use ($precos): array {
+                $itemId = $movimentacao->estoque?->item_id;
+                $valorUnitario = round((float) ($precos->get($itemId) ?? 0), 2);
+                $quantidade = round((float) $movimentacao->quantidade, 3);
+
+                return [
+                    'inventario_id' => (int) ($movimentacao->estoque?->inventario_id ?? 0),
+                    'inventario_nome' => $movimentacao->estoque?->inventario?->nome ?? 'Inventario Escolar',
+                    'escola_id' => (int) ($movimentacao->estoque?->inventario?->escola_id ?? 0),
+                    'escola_nome' => $movimentacao->estoque?->inventario?->escola?->nome ?? 'Escola nao informada',
+                    'pedido_id' => (int) ($movimentacao->inventario_pedido_id ?? 0),
+                    'romaneio_codigo' => $movimentacao->pedido?->romaneio?->codigo,
+                    'item_id' => (int) ($itemId ?? 0),
+                    'item_nome' => $movimentacao->estoque?->item?->nome ?? 'Item',
+                    'categoria' => $movimentacao->estoque?->item?->tipo_item?->label() ?? 'N/A',
+                    'unidade' => strtoupper($movimentacao->estoque?->item?->unidade_medida?->value ?? 'N/A'),
+                    'quantidade' => $quantidade,
+                    'valor_unitario_referencia' => $valorUnitario,
+                    'valor_total' => round($quantidade * $valorUnitario, 2),
+                    'observacao' => $movimentacao->observacao,
+                    'registrado_por' => $movimentacao->registrado_por ?? 'N/A',
+                    'data' => $movimentacao->created_at?->format('d/m/Y H:i') ?? 'N/A',
+                    'data_raw' => $movimentacao->created_at,
+                ];
+            })
+            ->values();
+
+        $escolas = $movimentacoes
+            ->groupBy('inventario_id')
+            ->map(function (Collection $rows): array {
+                $primeira = $rows
+                    ->sortBy(fn (array $row) => $row['data_raw']?->timestamp ?? 0)
+                    ->first();
+                $ultima = $rows
+                    ->sortByDesc(fn (array $row) => $row['data_raw']?->timestamp ?? 0)
+                    ->first();
+                $base = $rows->first();
+
+                $itens = $rows
+                    ->groupBy('item_id')
+                    ->map(function (Collection $itemRows): array {
+                        $base = $itemRows->first();
+                        $ultimaEntrega = $itemRows
+                            ->sortByDesc(fn (array $row) => $row['data_raw']?->timestamp ?? 0)
+                            ->first();
+
+                        return [
+                            'item_id' => (int) ($base['item_id'] ?? 0),
+                            'nome' => $base['item_nome'] ?? 'Item',
+                            'categoria' => $base['categoria'] ?? 'N/A',
+                            'unidade' => $base['unidade'] ?? 'N/A',
+                            'quantidade_total' => round((float) $itemRows->sum('quantidade'), 3),
+                            'valor_unitario_referencia' => round((float) ($base['valor_unitario_referencia'] ?? 0), 2),
+                            'valor_total' => round((float) $itemRows->sum('valor_total'), 2),
+                            'total_entregas' => $itemRows->count(),
+                            'ultima_entrega' => $ultimaEntrega['data'] ?? 'N/A',
+                            'romaneios' => $itemRows
+                                ->pluck('romaneio_codigo')
+                                ->filter()
+                                ->unique()
+                                ->values()
+                                ->implode(', '),
+                        ];
+                    })
+                    ->sortByDesc('valor_total')
+                    ->values();
+
+                return [
+                    'inventario_id' => (int) ($base['inventario_id'] ?? 0),
+                    'inventario_nome' => $base['inventario_nome'] ?? 'Inventario Escolar',
+                    'escola_id' => (int) ($base['escola_id'] ?? 0),
+                    'escola_nome' => $base['escola_nome'] ?? 'Escola nao informada',
+                    'total_pedidos' => $rows->pluck('pedido_id')->filter()->unique()->count(),
+                    'total_entregas' => $rows->count(),
+                    'total_itens' => $itens->count(),
+                    'quantidade_total' => round((float) $rows->sum('quantidade'), 3),
+                    'valor_total' => round((float) $rows->sum('valor_total'), 2),
+                    'primeiro_envio' => $primeira['data'] ?? 'N/A',
+                    'ultimo_envio' => $ultima['data'] ?? 'N/A',
+                    'itens' => $itens,
+                ];
+            })
+            ->sortBy('escola_nome', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values();
+
+        return (object) [
+            'filtros' => $filtros,
+            'periodo_label' => $this->rotuloPeriodoRelatorioEnvios($filtros),
+            'escolas' => $escolas,
+            'movimentacoes' => $movimentacoes,
+            'resumo' => (object) [
+                'total_escolas' => $escolas->count(),
+                'total_pedidos' => $movimentacoes->pluck('pedido_id')->filter()->unique()->count(),
+                'total_entregas' => $movimentacoes->count(),
+                'total_itens' => (int) $escolas->sum('total_itens'),
+                'quantidade_total' => round((float) $movimentacoes->sum('quantidade'), 3),
+                'valor_total' => round((float) $movimentacoes->sum('valor_total'), 2),
+            ],
+        ];
+    }
+
+    public function inventariosResumo(array $filtros = []): Collection
+    {
+        return $this->inventariosPanorama($filtros)->map(function (Inventario $inventario): array {
             $itens = $this->itens($inventario);
             $movimentacoes = $this->movimentacoesDoInventario($inventario);
             $baixas = $this->baixasDoInventario($inventario);
@@ -264,6 +482,7 @@ class InventarioDataService
 
             return [
                 'inventario_id' => $inventario->getKey(),
+                'escola_id' => (int) $inventario->escola_id,
                 'inventario_nome' => $inventario->nome,
                 'escola_nome' => $inventario->escola?->nome ?? 'Escola nao informada',
                 'total_itens' => $metricas->total_itens,
@@ -499,6 +718,41 @@ class InventarioDataService
         return $label . ' (' . ($sortDir === 'desc' ? 'decrescente' : 'crescente') . ')';
     }
 
+    protected function inventariosPanorama(array $filtros = []): Collection
+    {
+        $busca = mb_strtolower(trim((string) ($filtros['busca'] ?? '')));
+        $escolas = collect($filtros['escolas'] ?? [])
+            ->map(fn (mixed $id): int => (int) $id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $inventarios = Inventario::query()
+            ->with(['escola', 'estoques.item'])
+            ->get();
+
+        if ($busca !== '') {
+            $inventarios = $inventarios->filter(function (Inventario $inventario) use ($busca): bool {
+                return str_contains(mb_strtolower((string) $inventario->escola?->nome), $busca)
+                    || str_contains(mb_strtolower((string) $inventario->nome), $busca);
+            })->values();
+        }
+
+        if ($escolas !== []) {
+            $inventarios = $inventarios
+                ->filter(fn (Inventario $inventario): bool => in_array((int) $inventario->escola_id, $escolas, true))
+                ->values();
+        }
+
+        return $inventarios
+            ->sortBy(
+                fn (Inventario $inventario): string => mb_strtolower((string) ($inventario->escola?->nome ?? $inventario->nome)),
+                SORT_NATURAL | SORT_FLAG_CASE
+            )
+            ->values();
+    }
+
     protected function precosReferencia(): Collection
     {
         if ($this->precosReferenciaCache instanceof Collection) {
@@ -532,5 +786,37 @@ class InventarioDataService
         }
 
         return MotivoBaixa::tryFrom($tipoBaixa)?->value;
+    }
+
+    protected function rotuloEscolasSelecionadas(array $escolas): string
+    {
+        $nomes = collect($this->escolasRelatorioEnviosOptions())
+            ->only($escolas)
+            ->values();
+
+        if ($nomes->isEmpty()) {
+            return 'Escolas selecionadas';
+        }
+
+        $texto = $nomes->take(3)->implode(', ');
+
+        if ($nomes->count() > 3) {
+            $texto .= ' +' . ($nomes->count() - 3);
+        }
+
+        return $texto;
+    }
+
+    protected function rotuloPeriodoRelatorioEnvios(array $filtros): string
+    {
+        if (($filtros['periodo'] ?? 'geral') !== 'mensal') {
+            return 'Geral';
+        }
+
+        $mes = (int) ($filtros['mes'] ?? 0);
+        $ano = (int) ($filtros['ano'] ?? now()->year);
+        $meses = $this->mesesRelatorioOptions();
+
+        return ($meses[$mes] ?? 'Mes') . ' de ' . $ano;
     }
 }

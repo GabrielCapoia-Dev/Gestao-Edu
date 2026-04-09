@@ -91,6 +91,48 @@ class InventarioRelatorioService
         );
     }
 
+    public function gerarPdfEnviosEscolas(array $params, ?User $usuario): Response
+    {
+        $relatorio = $this->dataService->relatorioEnviosEscolas($params);
+
+        return $this->renderer->download('relatorios.Inventario.envios-escolas', [
+            'resumo' => $relatorio->resumo,
+            'escolas' => $relatorio->escolas,
+            'periodoLabel' => $relatorio->periodo_label,
+            'reportTitle' => 'Relatorio de Envios para Escolas',
+            'reportSubtitle' => 'Consolidado das entregas realizadas para os inventarios escolares',
+            'reportFilters' => $this->dataService->formatarFiltrosRelatorioEnvios($relatorio->filtros),
+            'usuarioExportacao' => $usuario,
+            'dataExportacao' => now(),
+            'orientation' => 'landscape',
+        ], 'relatorio-envios-escolas-' . now()->format('Y-m-d_H-i') . '.pdf');
+    }
+
+    public function gerarXlsxEnviosEscolas(array $params, ?User $usuario): Response
+    {
+        $relatorio = $this->dataService->relatorioEnviosEscolas($params);
+        $spreadsheet = new Spreadsheet();
+
+        $resumoSheet = $spreadsheet->getActiveSheet();
+        $resumoSheet->setTitle('Resumo');
+        $this->preencherResumoEnviosSheet($resumoSheet, $relatorio, $usuario);
+
+        $titulosUsados = ['Resumo'];
+
+        foreach ($relatorio->escolas as $escola) {
+            $sheet = $spreadsheet->createSheet();
+            $sheet->setTitle($this->resolverTituloSheetEscola($escola, $titulosUsados));
+            $this->preencherEscolaEnviosSheet($sheet, $escola, $relatorio->periodo_label, $usuario);
+        }
+
+        $spreadsheet->setActiveSheetIndex(0);
+
+        return $this->downloadSpreadsheet(
+            $spreadsheet,
+            'relatorio-envios-escolas-' . now()->format('Y-m-d_H-i') . '.xlsx'
+        );
+    }
+
     public function gerarPdfItem(InventarioEstoque $estoque, ?User $usuario): Response
     {
         $estoque->loadMissing(['item', 'inventario.escola']);
@@ -320,6 +362,126 @@ class InventarioRelatorioService
         $this->autoSizeColumns($sheet, count($headers));
     }
 
+    protected function preencherResumoEnviosSheet(Worksheet $sheet, object $relatorio, ?User $usuario): void
+    {
+        $linha = $this->preencherCabecalhoSheet(
+            $sheet,
+            'Relatorio de Envios para Escolas',
+            $this->dataService->formatarFiltrosRelatorioEnvios($relatorio->filtros),
+            $usuario
+        );
+
+        $sheet->setCellValue("A{$linha}", 'Indicador');
+        $sheet->setCellValue("B{$linha}", 'Valor');
+        $this->estilizarHeaderLinha($sheet, "A{$linha}:B{$linha}");
+        $linha++;
+
+        $indicadores = [
+            'Escolas com entregas' => $relatorio->resumo->total_escolas,
+            'Pedidos atendidos' => $relatorio->resumo->total_pedidos,
+            'Entregas registradas' => $relatorio->resumo->total_entregas,
+            'Itens consolidados' => $relatorio->resumo->total_itens,
+            'Quantidade total enviada' => $relatorio->resumo->quantidade_total,
+            'Valor total estimado' => $relatorio->resumo->valor_total,
+            'Periodo considerado' => $relatorio->periodo_label,
+        ];
+
+        foreach ($indicadores as $label => $valor) {
+            $sheet->setCellValue("A{$linha}", $label);
+            $sheet->setCellValue("B{$linha}", $valor);
+            $linha++;
+        }
+
+        $this->estilizarCorpoTabela($sheet, 'A' . ($linha - count($indicadores)) . ':B' . ($linha - 1));
+        $linha += 2;
+
+        $sheet->setCellValue("A{$linha}", 'Escola');
+        $sheet->setCellValue("B{$linha}", 'Pedidos');
+        $sheet->setCellValue("C{$linha}", 'Itens');
+        $sheet->setCellValue("D{$linha}", 'Quantidade');
+        $sheet->setCellValue("E{$linha}", 'Valor');
+        $sheet->setCellValue("F{$linha}", 'Ultimo envio');
+        $this->estilizarHeaderLinha($sheet, "A{$linha}:F{$linha}");
+        $linha++;
+
+        foreach ($relatorio->escolas as $escola) {
+            $sheet->setCellValue("A{$linha}", $escola['escola_nome']);
+            $sheet->setCellValue("B{$linha}", $escola['total_pedidos']);
+            $sheet->setCellValue("C{$linha}", $escola['total_itens']);
+            $sheet->setCellValue("D{$linha}", $escola['quantidade_total']);
+            $sheet->setCellValue("E{$linha}", $escola['valor_total']);
+            $sheet->setCellValue("F{$linha}", $escola['ultimo_envio']);
+            $linha++;
+        }
+
+        if ($relatorio->escolas->isNotEmpty()) {
+            $this->estilizarCorpoTabela($sheet, 'A' . ($linha - $relatorio->escolas->count()) . ':F' . ($linha - 1));
+        }
+
+        $this->autoSizeColumns($sheet, 6);
+    }
+
+    protected function preencherEscolaEnviosSheet(
+        Worksheet $sheet,
+        array $escola,
+        string $periodoLabel,
+        ?User $usuario
+    ): void {
+        $linha = $this->preencherCabecalhoSheet($sheet, 'Envios para ' . $escola['escola_nome'], [
+            'escola' => $escola['escola_nome'],
+            'inventario' => $escola['inventario_nome'],
+            'periodo' => $periodoLabel,
+        ], $usuario);
+
+        $sheet->setCellValue("A{$linha}", 'Indicador');
+        $sheet->setCellValue("B{$linha}", 'Valor');
+        $this->estilizarHeaderLinha($sheet, "A{$linha}:B{$linha}");
+        $linha++;
+
+        $indicadores = [
+            'Pedidos atendidos' => $escola['total_pedidos'],
+            'Entregas registradas' => $escola['total_entregas'],
+            'Itens consolidados' => $escola['total_itens'],
+            'Quantidade total enviada' => $escola['quantidade_total'],
+            'Valor total estimado' => $escola['valor_total'],
+            'Primeiro envio' => $escola['primeiro_envio'],
+            'Ultimo envio' => $escola['ultimo_envio'],
+        ];
+
+        foreach ($indicadores as $label => $valor) {
+            $sheet->setCellValue("A{$linha}", $label);
+            $sheet->setCellValue("B{$linha}", $valor);
+            $linha++;
+        }
+
+        $this->estilizarCorpoTabela($sheet, 'A' . ($linha - count($indicadores)) . ':B' . ($linha - 1));
+        $linha += 2;
+
+        $headers = [
+            'Item',
+            'Categoria',
+            'Unidade',
+            'Entregas',
+            'Quantidade Enviada',
+            'Valor Unitario',
+            'Valor Total',
+            'Ultima Entrega',
+            'Romaneios',
+        ];
+
+        $this->preencherTabelaSimples($sheet, $linha, $headers, $escola['itens']->map(fn (array $item) => [
+            $item['nome'],
+            $item['categoria'],
+            $item['unidade'],
+            $item['total_entregas'],
+            $item['quantidade_total'],
+            $item['valor_unitario_referencia'],
+            $item['valor_total'],
+            $item['ultima_entrega'],
+            $item['romaneios'] !== '' ? $item['romaneios'] : '-',
+        ]));
+    }
+
     protected function preencherCabecalhoSheet(Worksheet $sheet, string $titulo, array $filtros, ?User $usuario): int
     {
         $sheet->setCellValue('A1', $titulo);
@@ -403,5 +565,24 @@ class InventarioRelatorioService
     protected function slugItem(InventarioEstoque $estoque): string
     {
         return Str::slug($estoque->item?->nome ?? 'item') . '-' . $estoque->getKey();
+    }
+
+    protected function resolverTituloSheetEscola(array $escola, array &$titulosUsados): string
+    {
+        $base = trim((string) preg_replace('/[\\\\\\/?*:\\[\\]]/', ' ', $escola['escola_nome']));
+        $base = $base !== '' ? $base : 'Escola';
+        $base = Str::limit($base, 31, '');
+        $titulo = $base;
+        $contador = 2;
+
+        while (in_array($titulo, $titulosUsados, true)) {
+            $sufixo = ' ' . $contador;
+            $titulo = Str::limit($base, 31 - strlen($sufixo), '') . $sufixo;
+            $contador++;
+        }
+
+        $titulosUsados[] = $titulo;
+
+        return $titulo;
     }
 }

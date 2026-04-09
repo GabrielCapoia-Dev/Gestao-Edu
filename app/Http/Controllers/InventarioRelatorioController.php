@@ -24,12 +24,28 @@ class InventarioRelatorioController extends Controller
         return $this->service->gerarPdfGeral($inventario, $request->all(), Auth::user());
     }
 
+    public function exportarRedePdf(Request $request)
+    {
+        $this->autorizarExportacaoRede();
+        $this->prepararExecucao();
+
+        return $this->service->gerarPdfEnviosEscolas($request->all(), Auth::user());
+    }
+
     public function exportarXlsx(Request $request, Inventario $inventario)
     {
         $this->autorizarExportacao($inventario);
         $this->prepararExecucao();
 
         return $this->service->gerarXlsxGeral($inventario, $request->all(), Auth::user());
+    }
+
+    public function exportarRedeXlsx(Request $request)
+    {
+        $this->autorizarExportacaoRede();
+        $this->prepararExecucao();
+
+        return $this->service->gerarXlsxEnviosEscolas($request->all(), Auth::user());
     }
 
     public function exportarItemPdf(InventarioEstoque $estoque)
@@ -68,5 +84,13 @@ class InventarioRelatorioController extends Controller
         }
 
         abort_unless((int) $inventario->escola_id === (int) $user?->id_escola, 403);
+    }
+
+    protected function autorizarExportacaoRede(): void
+    {
+        $user = Auth::user();
+
+        abort_unless($user?->hasPermissionTo('Exportar RelatÃ³rios'), 403);
+        abort_unless($this->contextService->ehGestorGeral($user), 403);
     }
 }

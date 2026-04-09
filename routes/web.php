@@ -157,6 +157,12 @@ Route::prefix('admin')
         Route::get('/inventarios/{inventario}/relatorio/xlsx', [InventarioRelatorioController::class, 'exportarXlsx'])
             ->name('gestao-inventario.relatorio.xlsx');
 
+        Route::get('/inventarios/relatorio/envios/pdf', [InventarioRelatorioController::class, 'exportarRedePdf'])
+            ->name('inventarios.relatorio.envios.pdf');
+
+        Route::get('/inventarios/relatorio/envios/xlsx', [InventarioRelatorioController::class, 'exportarRedeXlsx'])
+            ->name('inventarios.relatorio.envios.xlsx');
+
         Route::get('/inventario-estoques/{estoque}/relatorio/pdf', [InventarioRelatorioController::class, 'exportarItemPdf'])
             ->name('gestao-inventario.item-relatorio.pdf');
 

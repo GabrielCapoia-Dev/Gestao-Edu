@@ -8,8 +8,10 @@ use App\Services\Inventario\InventarioService;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -104,6 +106,26 @@ class Inventarios extends Page
         return $this->dataService()->rotuloTipoBaixa($this->tipoBaixa);
     }
 
+    public function getPodeExportarProperty(): bool
+    {
+        return Auth::user()?->hasPermissionTo('Exportar Relatórios') ?? false;
+    }
+
+    public function getMesesRelatorioEnviosOptionsProperty(): array
+    {
+        return $this->dataService()->mesesRelatorioOptions();
+    }
+
+    public function getAnosRelatorioEnviosOptionsProperty(): array
+    {
+        return $this->dataService()->anosRelatorioEnviosOptions();
+    }
+
+    public function getEscolasRelatorioEnviosOptionsProperty(): array
+    {
+        return $this->dataService()->escolasRelatorioEnviosOptions($this->busca);
+    }
+
     public function getPaginacaoProperty(): array
     {
         $total = $this->inventariosResumoBase->count();
@@ -152,6 +174,62 @@ class Inventarios extends Page
                 ->icon('heroicon-o-arrows-right-left')
                 ->color('gray')
                 ->action(fn () => $this->abrirSlideOver()),
+            Action::make('exportarEnvios')
+                ->label('Exportar envios')
+                ->icon('heroicon-o-document-arrow-down')
+                ->color('gray')
+                ->visible(fn (): bool => $this->podeExportar)
+                ->modalHeading('Exportar envios para as escolas')
+                ->modalDescription('Gere um consolidado agrupado por escola, respeitando o contexto do panorama e com opcao mensal.')
+                ->modalWidth('lg')
+                ->modalSubmitActionLabel('Exportar')
+                ->schema([
+                    TextInput::make('busca')
+                        ->label('Busca')
+                        ->default(fn (): string => $this->busca)
+                        ->maxLength(255)
+                        ->placeholder('Escola ou inventario'),
+                    Select::make('escolas')
+                        ->label('Escolas')
+                        ->options(fn (): array => $this->escolasRelatorioEnviosOptions)
+                        ->multiple()
+                        ->searchable()
+                        ->preload()
+                        ->placeholder('Todas as escolas visiveis')
+                        ->helperText('Se nada for selecionado, o relatorio considera todas as escolas do contexto filtrado.'),
+                    Select::make('periodo')
+                        ->label('Periodo')
+                        ->options([
+                            'geral' => 'Geral',
+                            'mensal' => 'Por mes',
+                        ])
+                        ->default('geral')
+                        ->native(false)
+                        ->live(),
+                    Select::make('mes')
+                        ->label('Mes de referencia')
+                        ->options($this->mesesRelatorioEnviosOptions)
+                        ->native(false)
+                        ->visible(fn (Get $get): bool => $get('periodo') === 'mensal')
+                        ->required(fn (Get $get): bool => $get('periodo') === 'mensal'),
+                    Select::make('ano')
+                        ->label('Ano de referencia')
+                        ->options(fn (): array => $this->anosRelatorioEnviosOptions)
+                        ->default((string) now()->year)
+                        ->native(false)
+                        ->visible(fn (Get $get): bool => $get('periodo') === 'mensal')
+                        ->required(fn (Get $get): bool => $get('periodo') === 'mensal'),
+                    Select::make('formato')
+                        ->label('Formato')
+                        ->options([
+                            'xlsx' => 'Planilha (XLSX)',
+                            'pdf' => 'PDF',
+                        ])
+                        ->default('xlsx')
+                        ->native(false)
+                        ->required(),
+                ])
+                ->action(fn (array $data): mixed => $this->redirecionarExportacaoEnvios($data)),
             Action::make('novoInventario')
                 ->label('Novo inventario')
                 ->icon('heroicon-o-plus-circle')
@@ -196,5 +274,25 @@ class Inventarios extends Page
     protected function inventarioService(): InventarioService
     {
         return app(InventarioService::class);
+    }
+
+    protected function redirecionarExportacaoEnvios(array $data): mixed
+    {
+        $formato = ($data['formato'] ?? 'xlsx') === 'pdf' ? 'pdf' : 'xlsx';
+        $periodo = ($data['periodo'] ?? 'geral') === 'mensal' ? 'mensal' : 'geral';
+
+        $params = array_filter([
+            'busca' => trim((string) ($data['busca'] ?? $this->busca)),
+            'escolas' => collect($data['escolas'] ?? [])
+                ->map(fn (mixed $id): int => (int) $id)
+                ->filter()
+                ->values()
+                ->all(),
+            'periodo' => $periodo,
+            'mes' => $periodo === 'mensal' ? (int) ($data['mes'] ?? 0) : null,
+            'ano' => $periodo === 'mensal' ? (int) ($data['ano'] ?? now()->year) : null,
+        ], fn (mixed $value): bool => ! ($value === null || $value === '' || $value === []));
+
+        return $this->redirect(route("inventarios.relatorio.envios.{$formato}", $params), navigate: false);
     }
 }
