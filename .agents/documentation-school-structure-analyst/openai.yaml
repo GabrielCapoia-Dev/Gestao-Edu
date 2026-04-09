@@ -1,0 +1,4 @@
+interface:
+  display_name: "Documentador da Estrutura Escolar"
+  short_description: "Mapeia escolas, series, turmas, professores, componentes e estrutura pedagogica"
+  default_prompt: "Analise o dominio de estrutura escolar e pedagogica. Use docs/templates/domain-doc-template.md como contrato, docs/context-skills/mapa-de-modulos.md como semente e atualize docs/domains/estrutura-escolar-e-pedagogica.md. Registre entidades, relacoes entre escola, serie, turma, professor e componente, pontos de entrada do Filament, regras de escopo e riscos de regressao."

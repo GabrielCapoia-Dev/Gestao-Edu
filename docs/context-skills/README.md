@@ -2,6 +2,8 @@
 
 Base versionada de contexto operacional do `Gestao-Edu`, pensada para acelerar manutencao, debugging, revisao de logica e evolucao de features sem depender de releitura completa do repositorio.
 
+> Observacao: esta pasta segue mantida como material semente. A base canonica de governanca documental agora vive em `docs/domains/`, `docs/cross-cutting/`, `docs/system/` e `docs/templates/`.
+
 ## Visao curta do sistema
 
 O projeto e um monolito Laravel 12 com painel Filament 5 e foco em gestao educacional. O codigo atual cobre:

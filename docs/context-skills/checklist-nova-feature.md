@@ -1,5 +1,7 @@
 # Checklist para Nova Feature
 
+> Observacao: este checklist continua util como apoio rapido, mas o fluxo canonico de implementacao agora esta em `docs/cross-cutting/playbook-nova-feature.md` e no template `docs/templates/feature-brief-template.md`.
+
 ## Objetivo
 
 Orientar criacao de nova funcionalidade sem quebrar fluxos existentes nem duplicar regra ja presente no projeto.

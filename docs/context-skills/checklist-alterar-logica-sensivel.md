@@ -1,5 +1,7 @@
 # Checklist para Alterar Logica Sensivel
 
+> Observacao: este checklist segue como fonte semente. A versao canonica para uso corrente esta em `docs/cross-cutting/checklist-alteracao-sensivel.md`.
+
 ## Objetivo
 
 Servir como roteiro curto antes de mexer em fluxos que geram efeitos colaterais ou dependem de dados seedados.

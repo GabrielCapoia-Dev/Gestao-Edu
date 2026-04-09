@@ -1,0 +1,4 @@
+interface:
+  display_name: "Consolidador do Sistema"
+  short_description: "Sintetiza os domain docs e gera a visao geral canonica do sistema"
+  default_prompt: "Consolide a documentacao do sistema a partir dos arquivos em docs/domains e docs/cross-cutting. Atualize docs/system/documento-mestre.md e docs/system/glossario.md sem inventar comportamento novo. Preserve contradicoes explicitas como lacunas a resolver e destaque hotspots, dependencias entre dominios e riscos tecnicos."

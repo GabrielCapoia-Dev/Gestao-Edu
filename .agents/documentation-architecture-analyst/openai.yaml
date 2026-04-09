@@ -1,0 +1,4 @@
+interface:
+  display_name: "Documentador de Arquitetura"
+  short_description: "Mapeia entrypoints, providers, painel Filament e fronteiras tecnicas do monolito"
+  default_prompt: "Analise a arquitetura geral deste repositorio. Use docs/templates/domain-doc-template.md como contrato, aproveite docs/context-skills/arquitetura-geral.md e docs/context-skills/mapa-de-modulos.md como sementes, confirme o comportamento no codigo atual e atualize docs/domains/arquitetura-e-painel-filament.md. Registre entrypoints, providers, painel Filament, middleware, hooks, assets, riscos e lacunas sem inventar comportamento."

@@ -1,4 +1,4 @@
 interface:
   display_name: "Analista de Estoque Escolar"
   short_description: "Audita o fluxo de estoque da matriz e aponta riscos para inventarios por escola e pedidos internos"
-  default_prompt: "Analise o fluxo atual de estoque, baixas, balancos, escopo por escola e relatorios deste repositorio. Liste entidades, permissoes, pontos de extensao e riscos para implementar inventarios escolares, pedidos internos e romaneios."
+  default_prompt: "Analise o fluxo atual de estoque, baixas, balancos, escopo por escola e relatorios deste repositorio. Use docs/templates/domain-doc-template.md como contrato, docs/context-skills/fluxo-estoque-atual.md e docs/context-skills/inventarios-escolares-e-pedidos-internos.md como sementes e produza ou atualize docs/domains/estoque-da-matriz.md e docs/domains/inventario-escolar-e-pedidos-internos.md, destacando entidades, permissoes, pontos de extensao e riscos."

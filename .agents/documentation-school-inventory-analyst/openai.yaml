@@ -1,0 +1,4 @@
+interface:
+  display_name: "Documentador de Inventario Escolar"
+  short_description: "Documenta inventarios por escola, pedidos internos, romaneios e conferencias"
+  default_prompt: "Analise o dominio de inventario escolar e pedidos internos. Use docs/templates/domain-doc-template.md como contrato, docs/context-skills/inventarios-escolares-e-pedidos-internos.md como semente e confirme tudo no codigo atual. Atualize docs/domains/inventario-escolar-e-pedidos-internos.md com entidades, services, escopo por escola, romaneio, conferencia, relatorios, permissoes e testes."

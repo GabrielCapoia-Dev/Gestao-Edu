@@ -1,0 +1,4 @@
+interface:
+  display_name: "Documentador de Merenda"
+  short_description: "Mapeia contratos, pedidos de merenda, saldo reservado e estoque operacional"
+  default_prompt: "Analise o dominio de merenda, contratos e estoque da matriz. Use docs/templates/domain-doc-template.md como contrato, docs/context-skills/merenda-contratos-e-estoque.md e docs/context-skills/fluxo-estoque-atual.md como sementes e atualize docs/domains/merenda-contratos-e-estoque.md. Registre saldo reservado/utilizado, entrega parcial, cancelamento, estoque, balancos, exportacoes, permissoes e lacunas de teste."
