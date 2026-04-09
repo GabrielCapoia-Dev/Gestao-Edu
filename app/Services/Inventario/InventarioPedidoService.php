@@ -60,6 +60,10 @@ class InventarioPedidoService
             throw new DomainException('O usuario nao possui inventario escolar disponivel para solicitar itens.');
         }
 
+        if ($this->escolaPossuiPedidoEmAndamento($user)) {
+            throw new DomainException('Pedido Em Andamento aguardando confirmação de Recebimento,  confirme o recebimento do pedido em andamento para realizar um novo pedido');
+        }
+
         $itens = $this->normalizarItensSolicitados($data['itens'] ?? []);
 
         if ($itens->isEmpty()) {
@@ -330,6 +334,18 @@ class InventarioPedidoService
             ->where('status', InventarioPedidoStatus::Aprovado)
             ->orderBy('created_at')
             ->get();
+    }
+
+    public function escolaPossuiPedidoEmAndamento(User $user): bool
+    {
+        if ($this->contextService->ehGestorGeral($user) || blank($user->id_escola)) {
+            return false;
+        }
+
+        return InventarioPedido::query()
+            ->where('escola_id', $user->id_escola)
+            ->where('status', InventarioPedidoStatus::EmAndamento)
+            ->exists();
     }
 
     protected function normalizarItensSolicitados(array $itens): Collection

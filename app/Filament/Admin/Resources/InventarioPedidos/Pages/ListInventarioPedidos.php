@@ -6,6 +6,7 @@ use App\Filament\Admin\Resources\InventarioPedidos\InventarioPedidoResource;
 use App\Models\Enums\InventarioPedidoStatus;
 use App\Services\Inventario\InventarioContextService;
 use Filament\Actions;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
 use Illuminate\Database\Eloquent\Builder;
@@ -20,6 +21,20 @@ class ListInventarioPedidos extends ListRecords
         return [
             Actions\CreateAction::make()
                 ->label('Novo Pedido')
+                ->before(function (Actions\CreateAction $action): void {
+                    $user = Auth::user();
+
+                    if (! $user || ! $this->pedidoService()->escolaPossuiPedidoEmAndamento($user)) {
+                        return;
+                    }
+
+                    Notification::make()
+                        ->title('Pedido Em Andamento aguardando confirmação de Recebimento,  confirme o recebimento do pedido em andamento para realizar um novo pedido')
+                        ->warning()
+                        ->send();
+
+                    $action->halt();
+                })
                 ->visible(fn (): bool => InventarioPedidoResource::canCreate()),
         ];
     }
@@ -68,5 +83,10 @@ class ListInventarioPedidos extends ListRecords
         }
 
         return 'todos';
+    }
+
+    protected function pedidoService(): \App\Services\Inventario\InventarioPedidoService
+    {
+        return app(\App\Services\Inventario\InventarioPedidoService::class);
     }
 }
