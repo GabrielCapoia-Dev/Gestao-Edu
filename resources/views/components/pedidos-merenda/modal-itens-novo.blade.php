@@ -15,12 +15,26 @@
 @endphp
 
 <style>
+    .pm-label{display:block;margin:0 0 .35rem;color:var(--gray-700);font-size:var(--text-sm);line-height:var(--text-sm--line-height);font-weight:var(--font-weight-medium)}
+    .pm-input{width:100%;min-height:2.65rem;padding:.72rem .85rem;border:1px solid var(--gray-300);border-radius:var(--radius-lg);background:#fff;color:var(--gray-950);font-size:var(--text-sm);line-height:1.5;transition:border-color .15s ease,box-shadow .15s ease,background-color .15s ease}
+    .pm-input:focus{outline:none;border-color:var(--primary-400);box-shadow:0 0 0 3px color-mix(in oklab,var(--primary-200) 70%,transparent)}
+    .pm-btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;min-height:2.35rem;padding:.55rem .9rem;border:1px solid var(--gray-200);border-radius:var(--radius-lg);background:#fff;color:var(--gray-700);font-size:var(--text-sm);line-height:var(--text-sm--line-height);font-weight:var(--font-weight-medium);text-decoration:none;cursor:pointer;transition:background-color .15s ease,border-color .15s ease,color .15s ease,box-shadow .15s ease}
+    .pm-btn-primary{border-color:var(--primary-600);background:var(--primary-600);color:#fff}
+    .pm-btn-success{border-color:var(--success-600);background:var(--success-600);color:#fff}
+    .pm-btn-light{background:#fff}
+    .pm-btn-danger{border-color:var(--danger-600);background:var(--danger-600);color:#fff}
+    .pmo-notes{padding:.85rem .95rem;border-radius:var(--radius-xl);border:1px solid var(--gray-200);background:var(--gray-50);color:var(--gray-700);font-size:var(--text-sm);line-height:1.55}
+    .pmo-badge{display:inline-flex;align-items:center;justify-content:center;padding:.25rem .625rem;border:1px solid transparent;border-radius:999px;font-size:var(--text-xs);line-height:var(--text-xs--line-height);font-weight:var(--font-weight-medium);white-space:nowrap}
+    .pm-status-waiting{border-color:var(--warning-200);background:var(--warning-50);color:var(--warning-700)}
+    .pm-status-partial{border-color:var(--primary-200);background:var(--primary-50);color:var(--primary-700)}
+    .pm-status-done{border-color:var(--success-200);background:var(--success-50);color:var(--success-700)}
     .pmm-items{display:grid;gap:.85rem}.pmm-card{border-radius:1.15rem;background:#fff;border:1px solid rgba(148,163,184,.2);overflow:hidden}
     .pmm-top{padding:1rem 1rem .8rem;display:flex;justify-content:space-between;gap:1rem;align-items:flex-start}.pmm-name{margin:0;font-size:1rem;color:#14213d;font-weight:800}
     .pmm-meta{margin-top:.3rem;color:#64748b;font-size:.83rem;line-height:1.45}.pmm-progress{margin-top:.85rem;height:.6rem;border-radius:999px;background:#e2e8f0;overflow:hidden}.pmm-progress>span{display:block;height:100%;border-radius:inherit;background:linear-gradient(135deg,#10b981,#0284c7)}
     .pmm-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.8rem;padding:0 1rem 1rem}.pmm-stat{border-radius:.95rem;background:#f8fafc;padding:.8rem;border:1px solid rgba(148,163,184,.12)}.pmm-stat span{display:block;font-size:.74rem;text-transform:uppercase;letter-spacing:.05em;color:#64748b;margin-bottom:.2rem}.pmm-stat strong{color:#14213d;font-size:.98rem}
     .pmm-actions{padding:0 1rem 1rem;display:grid;grid-template-columns:1.2fr 1fr;gap:.85rem}.pmm-box{border-radius:1rem;background:linear-gradient(180deg,#fff,#f8fafc);border:1px solid rgba(148,163,184,.18);padding:.9rem}.pmm-box h4{margin:0 0 .8rem;color:#14213d;font-size:.92rem;font-weight:800}
     .pmm-form{display:flex;align-items:flex-end;gap:.6rem;flex-wrap:wrap}.pmm-helper{margin-top:.45rem;color:#64748b;font-size:.77rem}
+    @media (hover:hover){.pm-btn:hover{border-color:var(--gray-300);background:var(--gray-50);color:var(--gray-950)}.pm-btn-primary:hover{border-color:var(--primary-700);background:var(--primary-700);color:#fff}.pm-btn-success:hover{border-color:var(--success-700);background:var(--success-700);color:#fff}.pm-btn-danger:hover{border-color:var(--danger-700);background:var(--danger-700);color:#fff}}
     @media (max-width:1100px){.pmm-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media (max-width:920px){.pmm-actions{grid-template-columns:1fr}}@media (max-width:680px){.pmm-grid{grid-template-columns:1fr}.pmm-top{flex-direction:column;align-items:stretch}}
 </style>
 
