@@ -31,6 +31,35 @@
         margin-bottom: 10px;
         font-size: 10px;
     }
+
+    .campo-em-branco {
+        display: block;
+        min-height: 14px;
+    }
+
+    .assinatura-recebimento {
+        margin-top: 18px;
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 10px;
+    }
+
+    .assinatura-recebimento td {
+        padding: 10px 8px 0 0;
+        vertical-align: bottom;
+    }
+
+    .linha-assinatura {
+        border-top: 1px solid #111827;
+        height: 26px;
+    }
+
+    .label-assinatura {
+        display: block;
+        margin-top: 4px;
+        font-size: 9px;
+        color: #4b5563;
+    }
 @endsection
 
 @section('content')
@@ -53,6 +82,7 @@
                         <th>Unidade</th>
                         <th class="right">Qtd. Solicitada</th>
                         <th class="right">Qtd. Aprovada</th>
+                        <th class="right">Qtd. Recebida</th>
                         <th>Obs. Solicitacao</th>
                         <th>Obs. Aprovacao</th>
                     </tr>
@@ -64,11 +94,29 @@
                             <td>{{ strtoupper($item->item?->unidade_medida?->value ?? 'N/A') }}</td>
                             <td class="right">{{ number_format((float) $item->quantidade_solicitada, 3, ',', '.') }}</td>
                             <td class="right">{{ number_format((float) ($item->quantidade_aprovada ?? 0), 3, ',', '.') }}</td>
+                            <td><span class="campo-em-branco">&nbsp;</span></td>
                             <td>{{ $item->observacao_solicitacao ?: '-' }}</td>
                             <td>{{ $item->observacao_aprovacao ?: '-' }}</td>
                         </tr>
                     @endforeach
                 </tbody>
+            </table>
+
+            <table class="assinatura-recebimento">
+                <tr>
+                    <td style="width: 45%;">
+                        <div class="linha-assinatura"></div>
+                        <span class="label-assinatura">Assinatura de recebimento</span>
+                    </td>
+                    <td style="width: 35%;">
+                        <div class="linha-assinatura"></div>
+                        <span class="label-assinatura">Nome do responsavel</span>
+                    </td>
+                    <td style="width: 20%;">
+                        <div class="linha-assinatura"></div>
+                        <span class="label-assinatura">Data</span>
+                    </td>
+                </tr>
             </table>
         </div>
     @endforeach
