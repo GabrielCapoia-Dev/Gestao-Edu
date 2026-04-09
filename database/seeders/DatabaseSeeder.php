@@ -96,12 +96,12 @@ class DatabaseSeeder extends Seeder
             SetorSeeder::class,
             TipoStatusSeeder::class,
             TipoManutencaoSeeder::class,
-            EmpresaContratadaSeeder::class,
-            PedidoSeeder::class,
-            ItensSeeder::class,
-            ContratoSeeder::class,
-            PedidoMerendaSeeder::class,
-            EstoqueInventarioOrganicoSeeder::class,
+            // EmpresaContratadaSeeder::class,
+            // PedidoSeeder::class,
+            // ItensSeeder::class,
+            // ContratoSeeder::class,
+            // PedidoMerendaSeeder::class,
+            // EstoqueInventarioOrganicoSeeder::class,
         ]);
     }
 
