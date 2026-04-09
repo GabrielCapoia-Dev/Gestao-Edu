@@ -25,6 +25,7 @@ use App\Http\Controllers\BaixasEstoqueRelatorioController;
 use App\Http\Controllers\EstoqueRelatorioController;
 use App\Http\Controllers\InventarioRelatorioController;
 use App\Http\Controllers\InventarioRomaneioController;
+use App\Http\Controllers\PedidoMerendaEmpenhoController;
 use Illuminate\Support\Facades\DB;
 
 Route::get('/', function () {
@@ -124,6 +125,9 @@ Route::prefix('admin')
         Route::get('/pedidos/{pedido}/pdf', function (Pedido $pedido, PedidoRelatorioService $service) {
             return $service->gerar($pedido);
         })->name('pedidos.pdf');
+
+        Route::get('/pedidos-merenda/{pedidoMerenda}/empenho', [PedidoMerendaEmpenhoController::class, 'exportar'])
+            ->name('pedidos-merenda.exportar-empenho');
 
         Route::get(
             '/pedidos/arquivos/{pedidoArquivo}/download',
