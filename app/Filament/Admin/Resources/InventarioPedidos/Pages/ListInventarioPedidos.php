@@ -19,21 +19,22 @@ class ListInventarioPedidos extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make()
+            Actions\Action::make('novoPedido')
                 ->label('Novo Pedido')
-                ->before(function (Actions\CreateAction $action): void {
+                ->icon('heroicon-o-plus')
+                ->action(function (): void {
                     $user = Auth::user();
 
                     if (! $user || ! $this->pedidoService()->escolaPossuiPedidoEmAndamento($user)) {
+                        $this->redirect(InventarioPedidoResource::getUrl('create'));
+
                         return;
                     }
 
                     Notification::make()
-                        ->title('Pedido Em Andamento aguardando confirmação de Recebimento,  confirme o recebimento do pedido em andamento para realizar um novo pedido')
+                        ->title('Pedido Em Andamento aguardando confirmação de Recebimento, confirme o recebimento do pedido em andamento para realizar um novo pedido')
                         ->warning()
                         ->send();
-
-                    $action->halt();
                 })
                 ->visible(fn (): bool => InventarioPedidoResource::canCreate()),
         ];
