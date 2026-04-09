@@ -5,12 +5,15 @@ namespace App\Services;
 use App\Models\Escola;
 use App\Models\User;
 use App\Models\IgnoredUser;
+use App\Models\Role;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Schemas\Components\Utilities\Get;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\PermissionRegistrar;
 
 class UserService
 {
@@ -163,6 +166,76 @@ class UserService
         return $this->ehAdmin($user) ? $base : $base->where('name', '!=', 'Admin');
     }
 
+    public function opcoesDeRolesParaSelect(?User $user): array
+    {
+        return $this->opcoesDeRoles(Role::query(), $user)
+            ->orderBy('name')
+            ->pluck('name', 'id')
+            ->toArray();
+    }
+
+    public function idsDeRolesSelecionadas(array $data): array
+    {
+        $roles = $data['roles'] ?? $data['role'] ?? [];
+
+        return collect(is_array($roles) ? $roles : [$roles])
+            ->filter(fn($roleId) => filled($roleId))
+            ->map(fn($roleId) => (int) $roleId)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    public function permissoesSelecionadas(array $data): Collection
+    {
+        return collect($data)
+            ->filter(fn($_, $key) => str_starts_with($key, 'permissions_'))
+            ->flatMap(fn($permissions) => is_array($permissions) ? $permissions : [$permissions])
+            ->filter(fn($permission) => filled($permission))
+            ->unique()
+            ->values();
+    }
+
+    public function sincronizarAcessosDoUsuario(User $record, array $data): void
+    {
+        if (array_key_exists('roles', $data) || array_key_exists('role', $data)) {
+            $roles = Role::query()
+                ->whereIn('id', $this->idsDeRolesSelecionadas($data))
+                ->get();
+
+            $record->syncRoles($roles);
+        }
+
+        $record->load('roles.permissions');
+
+        if (! array_key_exists('usar_permissoes_extras', $data)) {
+            app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+            return;
+        }
+
+        if (empty($data['usar_permissoes_extras'])) {
+            $record->syncPermissions([]);
+            app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+            return;
+        }
+
+        $permissoesHerdadas = $record->roles
+            ->flatMap(fn($role) => $role->permissions->pluck('name'))
+            ->unique()
+            ->values();
+
+        $permissoesDiretas = $this->permissoesSelecionadas($data)
+            ->diff($permissoesHerdadas)
+            ->values()
+            ->all();
+
+        $record->syncPermissions($permissoesDiretas);
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+    }
+
     public function desabilitarCampoRole(?User $user, ?User $record, string $context): bool
     {
         if ($context === 'create' || ! $record) return false;
@@ -289,7 +362,7 @@ class UserService
 
             $helperText = '';
             if (! empty($permissoesDoGrupoNaRole)) {
-                $helperText = '🔒 Herança da role: ' . implode(', ', $permissoesDoGrupoNaRole);
+                $helperText = 'Herdadas dos niveis: ' . implode(', ', $permissoesDoGrupoNaRole);
             }
 
             $schema[] = CheckboxList::make("permissions_{$grupo}")

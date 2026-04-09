@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\Users\Tables;
 
+use App\Models\Role;
 use App\Models\User;
 use App\Services\UserService;
 use Filament\Actions\Action;
@@ -9,13 +10,15 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Components;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Builder;
+use Spatie\Permission\PermissionRegistrar;
 
 class UsersTable
 {
@@ -102,11 +105,11 @@ class UsersTable
                     return $state ? $state->format('d/m/Y H:i:s') : '-';
                 }),
 
-            \Filament\Tables\Columns\TextColumn::make('role')
-                ->label('Nivel de acesso')
-                ->alignCenter()
+            \Filament\Tables\Columns\TextColumn::make('roles')
+                ->label('Niveis de acesso')
                 ->grow(false)
-                ->getStateUsing(fn(User $record) => $record->roles->first()?->name ?? '-')
+                ->wrap()
+                ->getStateUsing(fn(User $record) => $record->roles->pluck('name')->join(', ') ?: '-')
                 ->toggleable(isToggledHiddenByDefault: false),
 
             \Filament\Tables\Columns\TextColumn::make('created_at')
@@ -237,6 +240,80 @@ class UsersTable
     {
         return [
 
+            Action::make('niveis_em_massa')
+                ->label('Editar niveis')
+                ->icon('heroicon-o-shield-check')
+                ->color('primary')
+                ->slideOver()
+                ->visible(fn() => $user->hasPermissionTo('Aplicar Permissoes'))
+                ->closeModalByClickingAway(false)
+                ->closeModalByEscaping(false)
+                ->modalCloseButton(false)
+                ->modalCancelAction(fn(Action $action) => $action->label('Fechar'))
+                ->modalHeading('Editar niveis em massa')
+                ->modalDescription('Adicione, substitua ou remova niveis de acesso dos usuarios selecionados.')
+                ->modalIcon('heroicon-o-shield-check')
+                ->schema(fn() => [
+                    Select::make('modo_roles')
+                        ->label('Como aplicar')
+                        ->options([
+                            'add' => 'Adicionar niveis',
+                            'replace' => 'Substituir niveis atuais',
+                            'remove' => 'Remover niveis selecionados',
+                        ])
+                        ->default('add')
+                        ->selectablePlaceholder(false)
+                        ->required(),
+
+                    Select::make('roles')
+                        ->label('Niveis de acesso')
+                        ->helperText('Selecione um ou mais niveis para os usuarios escolhidos.')
+                        ->options(fn() => $service->opcoesDeRolesParaSelect($user))
+                        ->multiple()
+                        ->searchable()
+                        ->preload()
+                        ->required(),
+                ])
+                ->action(function ($records, array $data) use ($service) {
+                    $roleIds = $service->idsDeRolesSelecionadas($data);
+
+                    if (empty($roleIds)) {
+                        return;
+                    }
+
+                    $modo = $data['modo_roles'] ?? 'add';
+
+                    $afetados = 0;
+
+                    foreach ($records as $record) {
+                        if ($record->hasRole('Admin')) {
+                            continue;
+                        }
+
+                        $roleIdsAtuais = $record->roles()->pluck('id')->map(fn($roleId) => (int) $roleId);
+
+                        $novosRoleIds = match ($modo) {
+                            'replace' => collect($roleIds)->values(),
+                            'remove' => $roleIdsAtuais->diff($roleIds)->values(),
+                            default => $roleIdsAtuais->merge($roleIds)->unique()->values(),
+                        };
+
+                        $record->syncRoles(
+                            Role::query()->whereIn('id', $novosRoleIds->all())->get()
+                        );
+
+                        $afetados++;
+                    }
+
+                    app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+                    Notification::make()
+                        ->title('Niveis de acesso atualizados')
+                        ->body("{$afetados} usuario(s) atualizados.")
+                        ->success()
+                        ->send();
+                }),
+
             Action::make('permissoes_em_massa')
                 ->label('Editar permissões')
                 ->icon('heroicon-o-key')
@@ -251,10 +328,16 @@ class UsersTable
                 ->modalDescription('As permissões selecionadas serão aplicadas aos usuários escolhidos.')
                 ->modalIcon('heroicon-o-key')
                 ->schema(fn() => [
-                    Toggle::make('substituir')
-                        ->label('Substituir permissões existentes')
-                        ->visible(false)
-                        ->default(true),
+                    Select::make('modo_permissoes')
+                        ->label('Como aplicar')
+                        ->options([
+                            'add' => 'Adicionar permissoes',
+                            'replace' => 'Substituir permissoes diretas',
+                            'remove' => 'Remover permissoes diretas',
+                        ])
+                        ->default('add')
+                        ->selectablePlaceholder(false)
+                        ->required(),
 
                     Components\Section::make('Permissões')
                         ->collapsible()
@@ -271,20 +354,65 @@ class UsersTable
                             ...$service->checkboxesPermissoesEmMassa($get, $user),
                         ]),
                 ])
-                ->action(function ($records, array $data) {
-                    $permissoesSelecionadas = collect($data)
-                        ->filter(fn($_, $key) => str_starts_with($key, 'permissions_'))
-                        ->flatten()
-                        ->unique()
-                        ->values()
-                        ->toArray();
+                ->action(function ($records, array $data) use ($service) {
+                    $modo = $data['modo_permissoes'] ?? 'add';
+                    $permissoesSelecionadas = $service->permissoesSelecionadas($data);
 
-                    if (empty($permissoesSelecionadas)) return;
+                    if ($permissoesSelecionadas->isEmpty()) {
+                        return;
+                    }
+
+                    $afetados = 0;
 
                     foreach ($records as $record) {
-                        if ($record->hasRole('Admin')) continue;
-                        $record->givePermissionTo($permissoesSelecionadas);
+                        if ($record->hasRole('Admin')) {
+                            continue;
+                        }
+
+                        $record->load('roles.permissions');
+
+                        $permissoesHerdadas = $record->roles
+                            ->flatMap(fn($role) => $role->permissions->pluck('name'))
+                            ->unique()
+                            ->values();
+
+                        $permissoesDiretas = $record->getDirectPermissions()->pluck('name');
+
+                        if ($modo === 'replace') {
+                            $record->syncPermissions(
+                                $permissoesSelecionadas->diff($permissoesHerdadas)->values()->all()
+                            );
+                        } elseif ($modo === 'remove') {
+                            $paraRemover = $permissoesDiretas
+                                ->intersect($permissoesSelecionadas)
+                                ->values()
+                                ->all();
+
+                            if (! empty($paraRemover)) {
+                                $record->revokePermissionTo($paraRemover);
+                            }
+                        } else {
+                            $paraAdicionar = $permissoesSelecionadas
+                                ->diff($permissoesHerdadas)
+                                ->diff($permissoesDiretas)
+                                ->values()
+                                ->all();
+
+                            if (! empty($paraAdicionar)) {
+                                $record->givePermissionTo($paraAdicionar);
+                            }
+                        }
+
+                        $afetados++;
                     }
+
+                    app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+                    Notification::make()
+                        ->title('Permissoes atualizadas')
+                        ->body("{$afetados} usuario(s) atualizados.")
+                        ->success()
+                        ->send();
                 }),
 
             DeleteBulkAction::make()

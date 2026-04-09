@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\Users\Pages;
 
 use App\Filament\Admin\Resources\Users\UserResource;
+use App\Services\UserService;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Auth;
 
@@ -24,6 +25,11 @@ class CreateUser extends CreateRecord
         }
 
         return $data;
+    }
+
+    protected function afterCreate(): void
+    {
+        app(UserService::class)->sincronizarAcessosDoUsuario($this->record, $this->data);
     }
 
     protected function getRedirectUrl(): string

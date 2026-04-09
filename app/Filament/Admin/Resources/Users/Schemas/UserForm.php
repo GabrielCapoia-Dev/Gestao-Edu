@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\Users\Schemas;
 
+use App\Models\Role;
 use App\Models\User;
 use App\Services\UserService;
 use Filament\Forms\Components\CheckboxList;
@@ -11,7 +12,6 @@ use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password as PasswordRule;
@@ -53,14 +53,17 @@ class UserForm
                     'max' => 'A senha deve ter no máximo 30 caracteres.',
                 ]),
 
-            Select::make('role')
-                ->label('Nivel de acesso')
-                ->helperText('Necessário para delimitar as acoes do usuario no sistema.')
-                ->relationship('roles', 'name', function (Builder $query) use ($service, $user) {
-                    return $service->opcoesDeRoles($query, $user);
-                })
+            Select::make('roles')
+                ->label('Niveis de acesso')
+                ->helperText('Voce pode vincular um ou mais niveis de acesso ao usuario.')
+                ->options(fn() => $service->opcoesDeRolesParaSelect($user))
+                ->multiple()
+                ->searchable()
+                ->live()
                 ->preload()
                 ->required()
+                ->default(fn(?User $record) => $record?->roles->pluck('id')->all() ?? [])
+                ->dehydrated(true)
                 ->disabled(
                     fn(string $context, ?User $record) =>
                     $service->desabilitarCampoRole($user, $record, $context)
@@ -96,19 +99,30 @@ class UserForm
             Components\Section::make('Permissões específicas')
                 ->collapsible()
                 ->columnSpanFull()
-                ->description('Permissões herdadas do nível de acesso já vêm marcadas.')
+                ->description('As permissoes herdadas dos niveis de acesso ficam destacadas.')
                 ->visible(fn(Get $get) => $get('usar_permissoes_extras') === true)
-                ->schema(function (?User $record) use ($service, $user) {
+                ->schema(function (Get $get, ?User $record) use ($service, $user) {
                     if (! $user || ! $service->ehAdmin($user)) {
                         return [];
                     }
 
                     $todasPermissoes = Permission::orderBy('name')->get();
 
-                    $permissoesDaRole = $record?->roles
+                    $roleIds = collect($get('roles') ?? $record?->roles->pluck('id')->all() ?? [])
+                        ->filter(fn($roleId) => filled($roleId))
+                        ->map(fn($roleId) => (int) $roleId)
+                        ->unique()
+                        ->values()
+                        ->all();
+
+                    $permissoesDaRole = Role::query()
+                        ->with('permissions')
+                        ->whereIn('id', $roleIds)
+                        ->get()
                         ->flatMap(fn($role) => $role->permissions)
                         ->pluck('name')
-                        ->toArray() ?? [];
+                        ->unique()
+                        ->toArray();
 
                     $permissoesDiretas = $record?->getDirectPermissions()
                         ->pluck('name')
@@ -128,7 +142,7 @@ class UserForm
 
                         $helperText = '';
                         if (! empty($permissoesDoGrupoNaRole)) {
-                            $helperText = '🔒 Herança da role: ' . implode(', ', $permissoesDoGrupoNaRole);
+                            $helperText = 'Herdadas dos niveis: ' . implode(', ', $permissoesDoGrupoNaRole);
                         }
 
                         $schema[] = CheckboxList::make("permissions_{$grupo}")
