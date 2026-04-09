@@ -101,49 +101,14 @@ class ViewInventarioPedido extends ViewRecord
                 ->icon('heroicon-o-inbox-arrow-down')
                 ->color('success')
                 ->visible(fn (): bool => $this->getRecord()->isEmAndamento() && $this->pode('Conferir Pedidos de Inventário') && $this->podeConferirPedido())
-                ->modalWidth('6xl')
-                ->fillForm(fn (): array => $this->dadosConferenciaPedido())
-                ->schema([
-                    Repeater::make('itens')
-                        ->label('Conferência dos itens')
-                        ->schema([
-                            Hidden::make('item_id'),
-                            TextInput::make('item_nome')
-                                ->label('Item')
-                                ->disabled()
-                                ->dehydrated(false)
-                                ->columnSpanFull(),
-                            TextInput::make('quantidade_aprovada')
-                                ->label('Qtd. do romaneio')
-                                ->disabled()
-                                ->dehydrated(false),
-                            TextInput::make('quantidade_recebida')
-                                ->label('Qtd. recebida')
-                                ->numeric()
-                                ->required()
-                                ->minValue(0)
-                                ->step('0.001'),
-                            Textarea::make('observacao_conferencia')
-                                ->label('Observação do item')
-                                ->rows(2)
-                                ->columnSpanFull(),
-                        ])
-                        ->columns(2)
-                        ->reorderable(false)
-                        ->addable(false)
-                        ->deletable(false),
-                    Textarea::make('observacao_conferencia')
-                        ->label('Observação geral da conferência')
-                        ->rows(4)
-                        ->helperText('Obrigatória quando qualquer item chegar com quantidade diferente da aprovada no romaneio.')
-                        ->maxLength(2000),
-                ])
-                ->action(function (array $data): void {
+                ->action(function (): void {
                     try {
+                        $dados = $this->dadosConferenciaPedido();
+
                         $this->service()->conferirEntrega(
                             $this->getRecord(),
-                            $data['itens'] ?? [],
-                            $data['observacao_conferencia'] ?? null,
+                            $dados['itens'] ?? [],
+                            $dados['observacao_conferencia'] ?? null,
                             Auth::user(),
                         );
 

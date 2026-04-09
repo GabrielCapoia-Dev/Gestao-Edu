@@ -147,7 +147,8 @@ class ItemService
                             ->required()
                             ->maxLength(255)
                             ->columnSpanFull(),
-                    ]),
+                    ])
+                    ->columnSpanFull(),
 
                 Section::make('Classificacao')
                     ->description('Defina como o item sera agrupado e exibido em relatorios e listagens.')
@@ -176,7 +177,8 @@ class ItemService
                                             ->toArray()
                                     ),
                             ]),
-                    ]),
+                    ])
+                    ->columnSpanFull(),
 
                 Section::make('Detalhes Adicionais')
                     ->description('Campo opcional para observacoes curtas sobre apresentacao, uso ou identificacao.')
@@ -187,7 +189,8 @@ class ItemService
                             ->maxLength(100)
                             ->rows(3)
                             ->columnSpanFull(),
-                    ]),
+                    ])
+                    ->columnSpanFull(),
             ]);
     }
 }
