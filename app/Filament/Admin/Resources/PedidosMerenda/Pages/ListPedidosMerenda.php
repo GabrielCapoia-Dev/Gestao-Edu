@@ -271,48 +271,9 @@ class ListPedidosMerenda extends Page
 
     public function salvarQuantidade(int $pedidoItemId, float $novaQuantidade): void
     {
-        $pedidoItem = PedidoMerendaItem::with(['contratoItem', 'pedido'])->findOrFail($pedidoItemId);
-        $quantidadeAnterior = (float) $pedidoItem->quantidade_pedida;
-        $jaEntregue = (float) $pedidoItem->quantidade_entregue;
-
-        if ($novaQuantidade < 0) {
-            Notification::make()->title('Quantidade invalida.')->danger()->send();
-
-            return;
-        }
-
-        if ($novaQuantidade < $jaEntregue) {
-            Notification::make()
-                ->title("Nao e possivel reduzir abaixo da quantidade ja entregue ({$jaEntregue}).")
-                ->danger()
-                ->send();
-
-            return;
-        }
-
-        $contratoItem = $pedidoItem->contratoItem;
-        $saldoMaximo = (float) $contratoItem->saldo_disponivel + $quantidadeAnterior;
-
-        if ($novaQuantidade > $saldoMaximo) {
-            Notification::make()
-                ->title("Quantidade excede o saldo disponivel ({$saldoMaximo}).")
-                ->danger()
-                ->send();
-
-            return;
-        }
-
-        $diferenca = $novaQuantidade - $quantidadeAnterior;
-
-        DB::transaction(function () use ($pedidoItem, $contratoItem, $novaQuantidade, $diferenca) {
-            $pedidoItem->update(['quantidade_pedida' => $novaQuantidade]);
-            $contratoItem->increment('quantidade_reservada', $diferenca);
-            $pedidoItem->pedido->recalcularStatus();
-        });
-
         Notification::make()
-            ->title('Quantidade atualizada com sucesso.')
-            ->success()
+            ->title('Quantidade pedida nao pode ser alterada apos a criacao do pedido.')
+            ->warning()
             ->send();
     }
 
