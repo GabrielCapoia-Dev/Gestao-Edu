@@ -63,7 +63,7 @@
                             <button type="button" wire:click="abrirModalItens({{ $pedido->id }})">Itens</button>
 
                             @if ($mostrarEmpenho && $pedido->status === \App\Models\Enums\StatusPedidoMerenda::Aguardando)
-                                <a href="{{ route('pedidos-merenda.exportar-empenho', $pedido) }}">Empenho</a>
+                                <a href="{{ route('pedidos-merenda.exportar-empenho', $pedido) }}">Exportar empenho</a>
                             @endif
 
                             @if (in_array($pedido->status, [\App\Models\Enums\StatusPedidoMerenda::Aguardando, \App\Models\Enums\StatusPedidoMerenda::ParcialmenteEntregue], true))

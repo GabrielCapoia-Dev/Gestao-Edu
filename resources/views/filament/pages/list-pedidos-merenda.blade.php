@@ -85,18 +85,15 @@
                 <div class="pm-panel-head">
                     <div>
                         <p class="pm-panel-kicker">Em andamento</p>
-                        <h2>Pedidos parcialmente entregues</h2>
+                        <h2>Itens parcialmente entregues</h2>
                     </div>
                 </div>
 
-                @include('components.pedidos-merenda.table-list', [
-                    'pedidos' => $this->pedidosParciais,
+                @include('components.pedidos-merenda.table-partial-items', [
+                    'itens' => $this->itensParciais,
                     'paginacao' => $this->paginacaoParcial,
                     'secao' => 'parcial',
                     'page' => $this,
-                    'mostrarEmpenho' => false,
-                    'compacta' => true,
-                    'exibirStatus' => false,
                 ])
             </article>
         </section>

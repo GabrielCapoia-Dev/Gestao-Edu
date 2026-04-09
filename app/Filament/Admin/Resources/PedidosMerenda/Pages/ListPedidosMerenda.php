@@ -159,6 +159,36 @@ class ListPedidosMerenda extends Page
         return $this->sliceCollection($this->pedidosParciaisBase, $this->paginaParcial);
     }
 
+    public function getItensParciaisBaseProperty(): Collection
+    {
+        return $this->pedidosParciaisBase
+            ->flatMap(function (PedidoMerenda $pedido) {
+                return $pedido->itens
+                    ->filter(fn (PedidoMerendaItem $item) => (float) $item->quantidade_entregue > 0 && (float) $item->quantidade_pendente > 0)
+                    ->map(function (PedidoMerendaItem $item) use ($pedido) {
+                        $contratoItem = $item->contratoItem;
+
+                        return [
+                            'pedido' => $pedido,
+                            'pedido_item' => $item,
+                            'item_nome' => $contratoItem?->item?->nome ?: 'Item nao encontrado',
+                            'unidade' => $contratoItem?->item?->unidade_medida?->value ?: '-',
+                            'empresa' => $contratoItem?->contrato?->empresaContratada?->nome ?: 'Empresa nao encontrada',
+                            'contrato' => $contratoItem?->contrato?->numero_contrato ?: '-',
+                            'quantidade_pedida' => (float) $item->quantidade_pedida,
+                            'quantidade_entregue' => (float) $item->quantidade_entregue,
+                            'quantidade_pendente' => (float) $item->quantidade_pendente,
+                        ];
+                    });
+            })
+            ->values();
+    }
+
+    public function getItensParciaisProperty(): Collection
+    {
+        return $this->sliceCollection($this->itensParciaisBase, $this->paginaParcial);
+    }
+
     public function getPedidosFinalizadosProperty(): Collection
     {
         return $this->sliceCollection($this->pedidosFinalizadosBase, $this->paginaFinalizado);
@@ -171,7 +201,7 @@ class ListPedidosMerenda extends Page
 
     public function getPaginacaoParcialProperty(): array
     {
-        return $this->buildPaginacao($this->pedidosParciaisBase, $this->paginaParcial);
+        return $this->buildPaginacao($this->itensParciaisBase, $this->paginaParcial);
     }
 
     public function getPaginacaoFinalizadoProperty(): array
