@@ -12,14 +12,13 @@ class CriarPermissoes extends Command
 {
     protected $signature = 'permissoes:criar';
 
-    protected $description = 'Cria permissões e vincula à role Admin';
+    protected $description = 'Cria permissoes base do sistema e sincroniza as roles principais';
 
     public function handle(): int
     {
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         $permissoes = [
-            // LISTAR
             'Listar Alunos',
             'Listar Relatórios: Professor por Componente e Turma',
             'Listar Relatórios: Componentes com Professores Faltando',
@@ -53,8 +52,6 @@ class CriarPermissoes extends Command
             'Listar Balanços de Estoque',
             'Listar Gestão de Margens',
             'Listar Componente Curricular',
-
-            // CRIAR
             'Criar Empresa Contratada',
             'Criar Alunos',
             'Criar Tipo Manutenção',
@@ -80,8 +77,6 @@ class CriarPermissoes extends Command
             'Criar Balanços de Inventário',
             'Criar Balanços de Estoque',
             'Criar Componente Curricular',
-
-            // EDITAR
             'Editar Empresa Contratada',
             'Editar Alunos',
             'Editar Pedidos',
@@ -95,6 +90,7 @@ class CriarPermissoes extends Command
             'Editar Nome do Professor',
             'Editar Especializações de Professores',
             'Editar Dados da Turma',
+            'Editar Turmas',
             'Editar Turma do Aluno',
             'Editar Status do Aluno',
             'Editar CGM do Aluno',
@@ -107,7 +103,6 @@ class CriarPermissoes extends Command
             'Editar Dominios de Email',
             'Editar Séries',
             'Editar Escolas',
-            'Editar Turmas',
             'Editar Laudos',
             'Editar Professores',
             'Editar Equipe Gestora',
@@ -118,8 +113,6 @@ class CriarPermissoes extends Command
             'Editar Pedidos: Merenda',
             'Editar Componente Curricular',
             'Editar Dados do Professor',
-
-            // EXCLUIR
             'Excluir Empresa Contratada',
             'Excluir Alunos',
             'Excluir Laudos',
@@ -143,8 +136,6 @@ class CriarPermissoes extends Command
             'Excluir Componente Curricular',
             'Excluir Pedidos: Merenda',
             'Excluir Itens',
-
-            // EXCLUIR EM MASSA
             'Excluir Empresa Contratada em Massa',
             'Excluir Alunos em Massa',
             'Excluir Laudos em Massa',
@@ -158,8 +149,6 @@ class CriarPermissoes extends Command
             'Excluir Funções Administrativas em Massa',
             'Excluir Tipos de Avaliações em Massa',
             'Excluir Itens em Massa',
-
-            // EXPORTAR
             'Exportar Alunos',
             'Exportar Turmas',
             'Exportar Escolas',
@@ -169,8 +158,6 @@ class CriarPermissoes extends Command
             'Exportar Laudos de Aluno',
             'Exportar Relatório de Alunos',
             'Exportar Componente Curricular',
-
-            // VISUALIZAR
             'Visualizar Histórico dos Alunos',
             'Visualizar Professores',
             'Visualizar Notificações',
@@ -191,15 +178,11 @@ class CriarPermissoes extends Command
             'Visualizar Notificação: Balanço de Estoque',
             'Visualizar Laudos de Aluno',
             'Visualizar Tela de Inicio',
-
-            // FILTROS
             'Filtrar Professores por Escola',
             'Filtrar Professores por Componente',
             'Filtrar Professores por Serie',
             'Filtrar Turmas por Escola',
             'Filtrar Alunos por Escola',
-
-            // OUTROS
             'Aplicar Permissoes',
             'Anexar Laudos de Aluno',
             'Avaliar Pedidos',
@@ -218,29 +201,40 @@ class CriarPermissoes extends Command
             'Cancelar Balanços de Estoque',
         ];
 
-        $this->info('Criando permissões...');
+        $this->info('Criando permissoes...');
 
         foreach ($permissoes as $nome) {
-            $permission = Permission::firstOrCreate(['name' => $nome]);
+            $permission = Permission::firstOrCreate([
+                'name' => $nome,
+                'guard_name' => 'web',
+            ]);
 
             if ($permission->wasRecentlyCreated) {
-                $this->line("✔ Criada: {$nome}");
+                $this->line("Criada: {$nome}");
             }
         }
 
-        $adminRole = Role::where('name', 'Admin')->first();
+        $adminRole = Role::firstOrCreate([
+            'name' => 'Admin',
+            'guard_name' => 'web',
+        ]);
 
-        if (! $adminRole) {
-            $this->error('Role Admin não encontrada.');
+        $secretarioRole = Role::firstOrCreate([
+            'name' => 'Secretário',
+            'guard_name' => 'web',
+        ]);
 
-            return Command::FAILURE;
-        }
+        Role::firstOrCreate([
+            'name' => 'Administrativo',
+            'guard_name' => 'web',
+        ]);
 
-        $adminRole->givePermissionTo($permissoes);
-        Role::firstOrCreate(['name' => 'Secretário'])
-            ->syncPermissions(SecretarioPermissionPreset::all());
+        $adminRole->syncPermissions($permissoes);
+        $secretarioRole->syncPermissions(SecretarioPermissionPreset::all());
 
-        $this->info('Permissões vinculadas à role Admin com sucesso.');
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $this->info('Permissoes sincronizadas com sucesso.');
 
         return Command::SUCCESS;
     }
