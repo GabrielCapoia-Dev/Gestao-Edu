@@ -45,6 +45,8 @@ class ListPedidosMerenda extends Page
 
     public ?int $pedidoSelecionadoId = null;
 
+    protected int $porPaginaParcial = 3;
+
     public function mount(): void
     {
         $this->statusSelecionados = [
@@ -186,7 +188,7 @@ class ListPedidosMerenda extends Page
 
     public function getItensParciaisProperty(): Collection
     {
-        return $this->sliceCollection($this->itensParciaisBase, $this->paginaParcial);
+        return $this->sliceCollection($this->itensParciaisBase, $this->paginaParcial, $this->porPaginaParcial);
     }
 
     public function getPedidosFinalizadosProperty(): Collection
@@ -201,7 +203,7 @@ class ListPedidosMerenda extends Page
 
     public function getPaginacaoParcialProperty(): array
     {
-        return $this->buildPaginacao($this->itensParciaisBase, $this->paginaParcial);
+        return $this->buildPaginacao($this->itensParciaisBase, $this->paginaParcial, $this->porPaginaParcial);
     }
 
     public function getPaginacaoFinalizadoProperty(): array
@@ -448,25 +450,29 @@ class ListPedidosMerenda extends Page
             );
     }
 
-    protected function sliceCollection(Collection $items, int $pagina): Collection
+    protected function sliceCollection(Collection $items, int $pagina, ?int $porPagina = null): Collection
     {
+        $porPagina ??= $this->porPagina;
+
         return $items
-            ->slice(($pagina - 1) * $this->porPagina, $this->porPagina)
+            ->slice(($pagina - 1) * $porPagina, $porPagina)
             ->values();
     }
 
-    protected function buildPaginacao(Collection $items, int $paginaAtual): array
+    protected function buildPaginacao(Collection $items, int $paginaAtual, ?int $porPagina = null): array
     {
+        $porPagina ??= $this->porPagina;
         $total = $items->count();
-        $totalPaginas = $total > 0 ? (int) ceil($total / $this->porPagina) : 1;
+        $totalPaginas = $total > 0 ? (int) ceil($total / $porPagina) : 1;
+        $paginaAtual = max(1, min($paginaAtual, $totalPaginas));
 
         return [
             'total' => $total,
-            'porPagina' => $this->porPagina,
-            'paginaAtual' => max(1, min($paginaAtual, $totalPaginas)),
+            'porPagina' => $porPagina,
+            'paginaAtual' => $paginaAtual,
             'totalPaginas' => $totalPaginas,
-            'de' => $total === 0 ? 0 : (($paginaAtual - 1) * $this->porPagina) + 1,
-            'ate' => min($paginaAtual * $this->porPagina, $total),
+            'de' => $total === 0 ? 0 : (($paginaAtual - 1) * $porPagina) + 1,
+            'ate' => min($paginaAtual * $porPagina, $total),
         ];
     }
 
