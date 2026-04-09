@@ -76,7 +76,7 @@ class InventarioRelatorioController extends Controller
     {
         $user = Auth::user();
 
-        abort_unless($user?->hasPermissionTo('Exportar Relatórios'), 403);
+        abort_unless($this->usuarioPodeExportarRelatorios($user), 403);
         abort_unless($inventario !== null, 404);
 
         if ($this->contextService->ehGestorGeral($user)) {
@@ -90,7 +90,12 @@ class InventarioRelatorioController extends Controller
     {
         $user = Auth::user();
 
-        abort_unless($user?->hasPermissionTo('Exportar RelatÃ³rios'), 403);
+        abort_unless($this->usuarioPodeExportarRelatorios($user), 403);
         abort_unless($this->contextService->ehGestorGeral($user), 403);
+    }
+
+    protected function usuarioPodeExportarRelatorios($user): bool
+    {
+        return $user?->hasPermissionTo('Exportar RelatÃ³rios') ?? false;
     }
 }

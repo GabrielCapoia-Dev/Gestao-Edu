@@ -36,7 +36,6 @@ class InventarioRelatorioControllerTest extends TestCase
 
     public function test_gestor_geral_consegue_exportar_planilha_de_envios_para_escolas(): void
     {
-        Permission::findOrCreate('Exportar Relatórios');
         Permission::findOrCreate('Exportar RelatÃ³rios');
         Role::findOrCreate('Admin');
 
@@ -45,7 +44,7 @@ class InventarioRelatorioControllerTest extends TestCase
             'email_verified_at' => now(),
         ]);
         $gestor->assignRole('Admin');
-        $gestor->givePermissionTo(['Exportar Relatórios', 'Exportar RelatÃ³rios']);
+        $gestor->givePermissionTo('Exportar RelatÃ³rios');
 
         $escola = $this->criarEscola('Escola Caminho do Sol');
         $inventario = Inventario::query()->create([
