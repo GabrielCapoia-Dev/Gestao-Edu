@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Auth;
 
 class InventarioRelatorioController extends Controller
 {
+    protected const PERMISSAO_EXPORTAR_RELATORIOS = "Exportar Relat\xC3\xB3rios";
+
     public function __construct(
         protected InventarioRelatorioService $service,
         protected InventarioContextService $contextService,
@@ -96,6 +98,6 @@ class InventarioRelatorioController extends Controller
 
     protected function usuarioPodeExportarRelatorios($user): bool
     {
-        return $user?->hasPermissionTo('Exportar RelatÃ³rios') ?? false;
+        return $user?->hasPermissionTo(self::PERMISSAO_EXPORTAR_RELATORIOS) ?? false;
     }
 }

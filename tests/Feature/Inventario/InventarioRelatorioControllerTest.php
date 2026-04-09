@@ -27,6 +27,8 @@ class InventarioRelatorioControllerTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected const PERMISSAO_EXPORTAR_RELATORIOS = "Exportar Relat\xC3\xB3rios";
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -36,50 +38,7 @@ class InventarioRelatorioControllerTest extends TestCase
 
     public function test_gestor_geral_consegue_exportar_planilha_de_envios_para_escolas(): void
     {
-        Permission::findOrCreate('Exportar RelatÃ³rios');
-        Role::findOrCreate('Admin');
-
-        $gestor = User::factory()->create([
-            'email_approved' => true,
-            'email_verified_at' => now(),
-        ]);
-        $gestor->assignRole('Admin');
-        $gestor->givePermissionTo('Exportar RelatÃ³rios');
-
-        $escola = $this->criarEscola('Escola Caminho do Sol');
-        $inventario = Inventario::query()->create([
-            'escola_id' => $escola->id,
-            'criado_por_id' => $gestor->id,
-        ]);
-
-        $item = $this->criarItem('Farinha de milho');
-        $this->criarPrecoReferencia($item, 4.70);
-
-        $estoque = InventarioEstoque::query()->create([
-            'inventario_id' => $inventario->id,
-            'item_id' => $item->id,
-            'quantidade' => 0,
-        ]);
-
-        $pedido = InventarioPedido::query()->create([
-            'inventario_id' => $inventario->id,
-            'escola_id' => $escola->id,
-            'status' => InventarioPedidoStatus::Entregue,
-            'solicitado_por_id' => $gestor->id,
-        ]);
-
-        $movimentacao = InventarioMovimentacao::query()->create([
-            'inventario_estoque_id' => $estoque->id,
-            'tipo' => TipoMovimentacao::Entrada,
-            'quantidade' => 12.000,
-            'inventario_pedido_id' => $pedido->id,
-            'observacao' => 'Entrega de teste',
-            'registrado_por' => $gestor->name,
-        ]);
-        $movimentacao->forceFill([
-            'created_at' => now()->setDate(2026, 1, 12)->setTime(10, 15),
-            'updated_at' => now()->setDate(2026, 1, 12)->setTime(10, 15),
-        ])->saveQuietly();
+        $gestor = $this->criarCenarioRelatorioEnvios();
 
         $response = $this->actingAs($gestor)
             ->get(route('inventarios.relatorio.envios.xlsx', [
@@ -93,6 +52,19 @@ class InventarioRelatorioControllerTest extends TestCase
             '.xlsx',
             (string) $response->headers->get('content-disposition')
         );
+    }
+
+    public function test_gestor_geral_consegue_exportar_pdf_de_envios_para_escolas(): void
+    {
+        $gestor = $this->criarCenarioRelatorioEnvios();
+
+        $response = $this->actingAs($gestor)
+            ->get(route('inventarios.relatorio.envios.pdf', [
+                'periodo' => 'geral',
+            ]));
+
+        $response->assertOk();
+        $response->assertHeader('content-type', 'application/pdf');
     }
 
     protected function criarEscola(string $nome): Escola
@@ -148,5 +120,55 @@ class InventarioRelatorioControllerTest extends TestCase
             'quantidade_reservada' => 0,
             'preco_unitario' => $precoUnitario,
         ]);
+    }
+
+    protected function criarCenarioRelatorioEnvios(): User
+    {
+        Permission::findOrCreate(self::PERMISSAO_EXPORTAR_RELATORIOS);
+        Role::findOrCreate('Admin');
+
+        $gestor = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $gestor->assignRole('Admin');
+        $gestor->givePermissionTo(self::PERMISSAO_EXPORTAR_RELATORIOS);
+
+        $escola = $this->criarEscola('Escola Caminho do Sol');
+        $inventario = Inventario::query()->create([
+            'escola_id' => $escola->id,
+            'criado_por_id' => $gestor->id,
+        ]);
+
+        $item = $this->criarItem('Farinha de milho');
+        $this->criarPrecoReferencia($item, 4.70);
+
+        $estoque = InventarioEstoque::query()->create([
+            'inventario_id' => $inventario->id,
+            'item_id' => $item->id,
+            'quantidade' => 0,
+        ]);
+
+        $pedido = InventarioPedido::query()->create([
+            'inventario_id' => $inventario->id,
+            'escola_id' => $escola->id,
+            'status' => InventarioPedidoStatus::Entregue,
+            'solicitado_por_id' => $gestor->id,
+        ]);
+
+        $movimentacao = InventarioMovimentacao::query()->create([
+            'inventario_estoque_id' => $estoque->id,
+            'tipo' => TipoMovimentacao::Entrada,
+            'quantidade' => 12.000,
+            'inventario_pedido_id' => $pedido->id,
+            'observacao' => 'Entrega de teste',
+            'registrado_por' => $gestor->name,
+        ]);
+        $movimentacao->forceFill([
+            'created_at' => now()->setDate(2026, 1, 12)->setTime(10, 15),
+            'updated_at' => now()->setDate(2026, 1, 12)->setTime(10, 15),
+        ])->saveQuietly();
+
+        return $gestor;
     }
 }
