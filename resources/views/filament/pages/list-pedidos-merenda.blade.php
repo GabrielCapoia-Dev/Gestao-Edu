@@ -1,30 +1,26 @@
 <x-filament-panels::page>
     <div class="pm-page">
-        <section class="pm-hero">
-            <div>
-                <p class="pm-eyebrow">Merenda Escolar</p>
-                <h1>Panorama dos Pedidos de Merenda</h1>
-                <p>Visao operacional dos pedidos com filtros, acompanhamento por status, exportacao de empenho e controle direto dos itens.</p>
+        <section class="pm-panel pm-panel--full">
+            <div class="pm-hero">
+                <div>
+                    <p class="pm-eyebrow">Merenda Escolar</p>
+                    <h1>Panorama dos Pedidos de Merenda</h1>
+                    <p>Visao operacional dos pedidos com filtros, acompanhamento por status, exportacao de empenho e controle direto dos itens.</p>
+                </div>
             </div>
 
-            <div class="pm-actions">
-                <a href="{{ \App\Filament\Admin\Resources\PedidosMerenda\PedidosMerendaResource::getUrl('create') }}" class="pm-action pm-action--primary">
-                    Novo pedido
-                </a>
+            <div class="pm-cards">
+                @foreach ($this->resumoCards as $card)
+                    <article class="pm-card">
+                        <span>{{ $card['titulo'] }}</span>
+                        <strong>{{ $card['valor'] }}</strong>
+                        <small>{{ $card['descricao'] }}</small>
+                    </article>
+                @endforeach
             </div>
         </section>
 
-        <section class="pm-cards">
-            @foreach ($this->resumoCards as $card)
-                <article class="pm-card">
-                    <span>{{ $card['titulo'] }}</span>
-                    <strong>{{ $card['valor'] }}</strong>
-                    <small>{{ $card['descricao'] }}</small>
-                </article>
-            @endforeach
-        </section>
-
-        <section class="pm-panel">
+        <section class="pm-panel pm-panel--half">
             <div class="pm-panel-head">
                 <div>
                     <p class="pm-panel-kicker">Busca e filtros</p>
@@ -87,7 +83,38 @@
             </div>
         </section>
 
-        <section class="pm-panel">
+        <section class="pm-panel pm-panel--half">
+            <div class="pm-panel-head">
+                <div>
+                    <p class="pm-panel-kicker">Acoes</p>
+                    <h2>Atalhos operacionais</h2>
+                </div>
+            </div>
+
+            <div class="pm-action-grid">
+                <a href="{{ \App\Filament\Admin\Resources\PedidosMerenda\PedidosMerendaResource::getUrl('create') }}" class="pm-action-card pm-action-card--primary">
+                    <strong>Novo pedido</strong>
+                    <span>Inicia um novo pedido de merenda com reserva de itens dos contratos.</span>
+                </a>
+
+                <button type="button" class="pm-action-card" x-data @click="$el.closest('.pm-page').querySelector('[data-secao=\"aguardando\"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' })">
+                    <strong>Fila aguardando</strong>
+                    <span>Va direto para a tabela com pedidos prontos para empenho e tratativas.</span>
+                </button>
+
+                <button type="button" class="pm-action-card" x-data @click="$el.closest('.pm-page').querySelector('[data-secao=\"parcial\"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' })">
+                    <strong>Entregas parciais</strong>
+                    <span>Acesse rapidamente a fila que ainda precisa de entregas complementares.</span>
+                </button>
+
+                <button type="button" class="pm-action-card" x-data @click="$el.closest('.pm-page').querySelector('[data-secao=\"finalizado\"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' })">
+                    <strong>Historico final</strong>
+                    <span>Consulte pedidos entregues e, se habilitado, os cancelados.</span>
+                </button>
+            </div>
+        </section>
+
+        <section class="pm-panel pm-panel--half" data-secao="aguardando">
             <div class="pm-panel-head">
                 <div>
                     <p class="pm-panel-kicker">Fila principal</p>
@@ -104,7 +131,7 @@
             ])
         </section>
 
-        <section class="pm-panel">
+        <section class="pm-panel pm-panel--half" data-secao="parcial">
             <div class="pm-panel-head">
                 <div>
                     <p class="pm-panel-kicker">Em andamento</p>
@@ -121,7 +148,7 @@
             ])
         </section>
 
-        <section class="pm-panel">
+        <section class="pm-panel pm-panel--full" data-secao="finalizado">
             <div class="pm-panel-head">
                 <div>
                     <p class="pm-panel-kicker">Historico</p>
@@ -144,16 +171,19 @@
     @endif
 
 <style>
-    .pm-page{display:grid;gap:1rem}.pm-hero,.pm-panel,.pm-card{background:#fff;border:1px solid #e2e8f0;border-radius:1.25rem;box-shadow:0 12px 32px rgba(15,23,42,.05)}
-    .pm-hero{padding:1.5rem;display:flex;align-items:flex-start;justify-content:space-between;gap:1rem}.pm-eyebrow,.pm-panel-kicker{text-transform:uppercase;letter-spacing:.08em;font-size:.72rem;font-weight:700;color:#64748b;margin:0 0 .35rem}
-    .pm-hero h1,.pm-panel-head h2{margin:0;color:#0f172a}.pm-hero p{margin:.5rem 0 0;color:#475569;max-width:58rem;line-height:1.5}.pm-actions{display:flex;gap:.75rem;flex-wrap:wrap}
-    .pm-action{display:inline-flex;align-items:center;justify-content:center;border-radius:.9rem;padding:.8rem 1rem;font-weight:700;text-decoration:none}.pm-action--primary{background:#0f766e;color:#fff}
-    .pm-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem}.pm-card{padding:1rem}.pm-card span{display:block;font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;color:#64748b}.pm-card strong{display:block;font-size:1.55rem;color:#0f172a;margin-top:.4rem}.pm-card small{display:block;margin-top:.3rem;color:#475569;line-height:1.45}
+    .pm-page{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:1rem}
+    .pm-panel,.pm-card{background:#fff;border:1px solid #e2e8f0;border-radius:1.25rem;box-shadow:0 12px 32px rgba(15,23,42,.05)}
+    .pm-panel--full{grid-column:1 / -1}.pm-panel--half{grid-column:span 6}
+    .pm-hero{padding:1.5rem 1.5rem .5rem}.pm-eyebrow,.pm-panel-kicker{text-transform:uppercase;letter-spacing:.08em;font-size:.72rem;font-weight:700;color:#64748b;margin:0 0 .35rem}
+    .pm-hero h1,.pm-panel-head h2{margin:0;color:#0f172a}.pm-hero p{margin:.5rem 0 0;color:#475569;max-width:58rem;line-height:1.5}
+    .pm-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;padding:0 1.5rem 1.5rem}.pm-card{padding:1rem}.pm-card span{display:block;font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;color:#64748b}.pm-card strong{display:block;font-size:1.55rem;color:#0f172a;margin-top:.4rem}.pm-card small{display:block;margin-top:.3rem;color:#475569;line-height:1.45}
     .pm-panel{padding:1.1rem 1.2rem}.pm-panel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:1rem}
     .pm-filter-grid{display:grid;grid-template-columns:minmax(0,2fr) repeat(4,minmax(0,1fr));gap:.85rem}.pm-status-grid{display:flex;gap:.75rem;flex-wrap:wrap;align-items:center;margin-top:.9rem}
     .pm-field{display:flex;flex-direction:column;gap:.35rem}.pm-field span{font-size:.8rem;font-weight:700;color:#475569}.pm-field input,.pm-field select{width:100%;border-radius:.9rem;border:1px solid #cbd5e1;background:#fff;padding:.75rem .85rem;color:#0f172a;outline:none}
     .pm-field input:focus,.pm-field select:focus{border-color:#0f766e;box-shadow:0 0 0 3px rgba(15,118,110,.12)}.pm-check{display:inline-flex;align-items:center;gap:.5rem;padding:.6rem .8rem;border:1px solid #e2e8f0;border-radius:.9rem;background:#f8fafc;color:#334155;font-size:.85rem}
     .pm-link-button{border:none;background:transparent;color:#0f766e;font-weight:700;cursor:pointer}.pm-link-button:hover{text-decoration:underline}
+    .pm-action-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.85rem}.pm-action-card{display:flex;flex-direction:column;gap:.45rem;align-items:flex-start;justify-content:flex-start;padding:1rem;border:1px solid #e2e8f0;border-radius:1rem;background:#f8fafc;color:#1e293b;text-decoration:none;cursor:pointer;text-align:left}
+    .pm-action-card strong{color:#0f172a}.pm-action-card span{color:#64748b;line-height:1.45;font-size:.86rem}.pm-action-card--primary{background:#0f766e;border-color:#0f766e}.pm-action-card--primary strong,.pm-action-card--primary span{color:#fff}
     .pm-table-wrap{overflow:auto}.pm-table{width:100%;border-collapse:collapse}.pm-table thead tr{background:#f8fafc}.pm-table th,.pm-table td{padding:.9rem .85rem;border-top:1px solid #e2e8f0;text-align:left;vertical-align:middle}
     .pm-table th{font-size:.76rem;text-transform:uppercase;letter-spacing:.05em;color:#64748b}.pm-table td strong{display:block;color:#0f172a}.pm-table td small{display:block;color:#64748b;margin-top:.15rem}
     .pm-row-actions{display:flex;gap:.5rem;justify-content:flex-end;flex-wrap:wrap}.pm-row-actions a,.pm-row-actions button{border-radius:.8rem;padding:.55rem .75rem;border:1px solid #dbe4ee;background:#fff;color:#1e293b;font-weight:700;font-size:.82rem;text-decoration:none;cursor:pointer}
@@ -167,7 +197,8 @@
     .pm-mini{border:1px solid #e2e8f0;border-radius:1rem;background:#f8fafc;padding:.85rem}.pm-mini span{display:block;font-size:.74rem;text-transform:uppercase;letter-spacing:.05em;color:#64748b}.pm-mini strong{display:block;margin-top:.25rem;color:#0f172a}
     .pm-chip-list{display:flex;gap:.5rem;flex-wrap:wrap}.pm-chip{display:inline-flex;align-items:center;padding:.35rem .65rem;border-radius:999px;background:#f8fafc;border:1px solid #e2e8f0;color:#475569;font-size:.76rem;font-weight:700}
     .pm-modal-foot{padding:1rem 1.2rem;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap}
-    @media (max-width:1100px){.pm-cards,.pm-modal-overview{grid-template-columns:repeat(2,minmax(0,1fr))}.pm-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-    @media (max-width:700px){.pm-hero,.pm-pagination,.pm-modal-head,.pm-modal-foot{flex-direction:column;align-items:stretch}.pm-cards,.pm-filter-grid,.pm-modal-overview{grid-template-columns:1fr}.pm-row-actions{justify-content:flex-start}}
+    @media (max-width:1100px){.pm-cards,.pm-modal-overview,.pm-action-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.pm-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media (max-width:800px){.pm-panel--half,.pm-panel--full{grid-column:1 / -1}}
+    @media (max-width:700px){.pm-pagination,.pm-modal-head,.pm-modal-foot{flex-direction:column;align-items:stretch}.pm-cards,.pm-filter-grid,.pm-modal-overview,.pm-action-grid{grid-template-columns:1fr}.pm-row-actions{justify-content:flex-start}}
 </style>
 </x-filament-panels::page>
