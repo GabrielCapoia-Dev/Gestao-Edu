@@ -11,9 +11,11 @@ class CreateUser extends CreateRecord
 {
     protected static string $resource = UserResource::class;
 
+    protected string $view = 'filament.admin.resources.users.pages.create-user';
+
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        /** @var \App\Models\User */
+        /** @var \App\Models\User $auth */
         $auth = Auth::user();
 
         if ($auth && ! $auth->hasRole('Admin') && ! empty($auth->id_escola)) {
@@ -35,5 +37,66 @@ class CreateUser extends CreateRecord
     protected function getRedirectUrl(): string
     {
         return $this->previousUrl ?? $this->getResource()::getUrl('index');
+    }
+
+    public function getOverviewCards(): array
+    {
+        /** @var \App\Models\User $auth */
+        $auth = Auth::user();
+        $service = app(UserService::class);
+
+        return [
+            [
+                'label' => 'Niveis disponiveis',
+                'value' => number_format(count($service->opcoesDeRolesParaSelect($auth)), 0, ',', '.'),
+                'description' => 'Perfis que voce pode atribuir neste cadastro.',
+                'icon' => 'heroicon-o-shield-check',
+                'tone' => 'amber',
+            ],
+            [
+                'label' => 'Permissoes extras',
+                'value' => $service->ehAdmin($auth) ? 'Liberadas' : 'Controladas',
+                'description' => 'Excecoes individuais alem dos niveis padrao.',
+                'icon' => 'heroicon-o-key',
+                'tone' => 'rose',
+            ],
+            [
+                'label' => 'Vinculo escolar',
+                'value' => $service->deveTravarCampoEscola($auth, 'create') ? 'Herdado' : 'Editavel',
+                'description' => 'Define o alcance operacional do usuario.',
+                'icon' => 'heroicon-o-building-library',
+                'tone' => 'sky',
+            ],
+            [
+                'label' => 'Vinculo setorial',
+                'value' => $service->podeEditarSetor($auth, 'create') ? 'Editavel' : 'Opcional',
+                'description' => 'Ajuda a organizar acessos por frente de trabalho.',
+                'icon' => 'heroicon-o-building-office-2',
+                'tone' => 'emerald',
+            ],
+        ];
+    }
+
+    public function getHighlights(): array
+    {
+        return [
+            'Combine niveis de acesso por tema',
+            'Use permissoes extras so quando necessario',
+            'Defina escola e setor logo no cadastro',
+        ];
+    }
+
+    public function getSupportItems(): array
+    {
+        return [
+            [
+                'title' => 'Cadastro preparado para crescimento',
+                'description' => 'Ja e possivel criar usuarios com mais de um nivel de acesso, sem perder a simplicidade no preenchimento.',
+            ],
+            [
+                'title' => 'Melhor pratica',
+                'description' => 'Priorize niveis de acesso reutilizaveis. As permissoes especificas ficam melhores quando usadas apenas para ajustes finos.',
+            ],
+        ];
     }
 }
