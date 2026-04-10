@@ -217,3 +217,5 @@ Route::prefix('admin/feedback-pedidos')
         Route::get('/exportar-pdf/terceirizada', [FeedbackPedidoExportController::class, 'exportarTerceirizada'])
             ->name('feedback-pedidos.export-terceirizada');
     });
+
+require __DIR__ . '/mobile.php';

@@ -1,6 +1,4 @@
 <x-filament-panels::page>
-    @php($currentPanelId = filament()->getCurrentPanel()?->getId())
-
     <div class="relatorios-root">
 
         {{-- HERO --}}
@@ -178,7 +176,7 @@
             <div class="rel-grid">
 
                 @can('Listar Relatórios: Professor por Componente e Turma')
-                <a href="{{ \App\Filament\Admin\Pages\Relatorios\RelatorioProfessorComponenteTurma::getUrl(panel: $currentPanelId) }}" class="rel-card rel-card--blue">
+                <a href="{{ route('filament.admin.pages.relatorio-professor-componente-turma') }}" class="rel-card rel-card--blue">
                     <div class="rel-card-header">
                         <div class="rel-card-icon">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -204,7 +202,7 @@
                 @endcan
 
                 @can('Listar Relatórios: Componentes com Professores Faltando')
-                <a href="{{ \App\Filament\Admin\Pages\Relatorios\RelatorioComponenteProfessorFaltando::getUrl(panel: $currentPanelId) }}" class="rel-card rel-card--amber">
+                <a href="{{ route('filament.admin.pages.relatorio-componentes-com-professores-faltando') }}" class="rel-card rel-card--amber">
                     <div class="rel-card-header">
                         <div class="rel-card-icon">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
