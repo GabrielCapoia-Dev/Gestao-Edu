@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\Setor;
 use App\Models\User;
-use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -75,54 +74,7 @@ class SetorService
     private function acoesTabela(): array
     {
         return [
-            Action::make('historico')
-                ->label('Historico')
-                ->icon('heroicon-o-clock')
-                ->slideOver()
-                ->modalWidth('4xl')
-                ->modalSubmitAction(false)
-                ->modalCancelActionLabel('Fechar')
-                ->modalContent(fn (Setor $record) => view('components.setor.historico', [
-                    'historico' => $record->historicoCompleto(),
-                ])),
-
-            EditAction::make()
-                ->fillForm(fn (Setor $record) => [
-                    'nome' => $record->nome,
-                    'status' => $record->status,
-                    'recebe_pedidos_iniciais' => $record->recebe_pedidos_iniciais,
-                    'encaminha_pedido_para_setor_ids' => $record->encaminha_pedido_para_setor_ids ?? [],
-                ])
-                ->using(function (Setor $record, array $data): Setor {
-                    $camposComparaveis = [
-                        'nome',
-                        'status',
-                        'recebe_pedidos_iniciais',
-                        'encaminha_pedido_para_setor_ids',
-                    ];
-
-                    $alterou = false;
-
-                    foreach ($camposComparaveis as $campo) {
-                        if (($record->{$campo} ?? null) != ($data[$campo] ?? null)) {
-                            $alterou = true;
-                            break;
-                        }
-                    }
-
-                    if (! $alterou) {
-                        return $record;
-                    }
-
-                    $record->update(['ativo' => false]);
-
-                    return Setor::create([
-                        ...$data,
-                        'ativo' => true,
-                        'registro_anterior_id' => $record->id,
-                    ]);
-                }),
-
+            EditAction::make(),
             DeleteAction::make(),
         ];
     }
