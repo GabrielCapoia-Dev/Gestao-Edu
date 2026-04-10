@@ -240,6 +240,65 @@ class UsersTable
     {
         return [
 
+            Action::make('verificacao_em_massa')
+                ->label('Verificacao de acesso')
+                ->icon('heroicon-o-check-badge')
+                ->color('success')
+                ->slideOver()
+                ->visible(fn() => $service->podeVerToggleAprovacaoEmail(Auth::user(), null, 'table'))
+                ->closeModalByClickingAway(false)
+                ->closeModalByEscaping(false)
+                ->modalCloseButton(false)
+                ->modalCancelAction(fn(Action $action) => $action->label('Fechar'))
+                ->modalHeading('Verificacao de acesso em massa')
+                ->modalDescription('Aprove ou desaprove o acesso dos usuarios selecionados. O Admin do sistema sempre sera ignorado.')
+                ->modalIcon('heroicon-o-check-badge')
+                ->schema(fn() => [
+                    Select::make('acao_verificacao')
+                        ->label('Acao')
+                        ->options([
+                            'approve' => 'Aprovar acesso',
+                            'disapprove' => 'Desaprovar acesso',
+                        ])
+                        ->default('approve')
+                        ->selectablePlaceholder(false)
+                        ->required(),
+                ])
+                ->action(function ($records, array $data) {
+                    $acao = $data['acao_verificacao'] ?? 'approve';
+                    $aprovar = $acao === 'approve';
+
+                    $afetados = 0;
+                    $ignorados = 0;
+
+                    foreach ($records as $record) {
+                        if (! $record instanceof User) {
+                            continue;
+                        }
+
+                        if ($record->id === 1 || $record->hasRole('Admin')) {
+                            $ignorados++;
+                            continue;
+                        }
+
+                        $record->update([
+                            'email_approved' => $aprovar,
+                        ]);
+
+                        $afetados++;
+                    }
+
+                    Notification::make()
+                        ->title($aprovar ? 'Acessos aprovados' : 'Acessos desaprovados')
+                        ->body(
+                            $ignorados > 0
+                                ? "{$afetados} usuario(s) atualizados. {$ignorados} admin(s) ignorado(s)."
+                                : "{$afetados} usuario(s) atualizados."
+                        )
+                        ->success()
+                        ->send();
+                }),
+
             Action::make('niveis_em_massa')
                 ->label('Editar niveis')
                 ->icon('heroicon-o-shield-check')
