@@ -5,20 +5,6 @@
     @php($highlights = array_slice($this->getHighlights(), 0, 2))
 
     <div class="am-page">
-        <section class="am-hero">
-            <p class="am-kicker">Edicao de usuario</p>
-            <h2 class="am-title">Ajustes de acesso com leitura mais objetiva.</h2>
-            <p class="am-subtitle">
-                Revise niveis, permissoes e vinculos sem disputar atencao com informacoes secundarias.
-            </p>
-
-            <div class="am-pill-list">
-                @foreach ($highlights as $highlight)
-                    <span class="am-pill">{{ $highlight }}</span>
-                @endforeach
-            </div>
-        </section>
-
         <section class="am-panel">
             <div class="am-panel__header">
                 <p class="am-panel__eyebrow">Formulario</p>

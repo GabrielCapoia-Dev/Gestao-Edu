@@ -5,20 +5,6 @@
     @php($highlights = array_slice($this->getHighlights(), 0, 2))
 
     <div class="am-page">
-        <section class="am-hero">
-            <p class="am-kicker">Usuarios e acessos</p>
-            <h2 class="am-title">Gestao de usuarios com foco total na operacao.</h2>
-            <p class="am-subtitle">
-                A tela continua com as mesmas acoes e regras, mas agora esta mais direta para consultar, editar e aplicar acessos.
-            </p>
-
-            <div class="am-pill-list">
-                @foreach ($highlights as $highlight)
-                    <span class="am-pill">{{ $highlight }}</span>
-                @endforeach
-            </div>
-        </section>
-
         <section class="am-panel">
             <div class="am-panel__header">
                 <p class="am-panel__eyebrow">Painel principal</p>
