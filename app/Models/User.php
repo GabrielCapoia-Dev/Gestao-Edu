@@ -152,6 +152,20 @@ class User extends Authenticatable implements FilamentUser
         return $this->belongsTo(Setor::class);
     }
 
+    public function podeGerenciarSetor(?Setor $setor = null): bool
+    {
+        if (! $this->setor) {
+            return false;
+        }
+
+        return $this->setor->podeGerenciarSetor($setor);
+    }
+
+    public function pertenceAoSetorGeral(): bool
+    {
+        return $this->setor?->ehSetorGeral() ?? false;
+    }
+
     public static function scopeAuthUser()
     {
 

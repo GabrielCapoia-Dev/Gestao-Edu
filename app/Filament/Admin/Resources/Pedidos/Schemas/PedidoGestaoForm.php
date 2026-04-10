@@ -2,17 +2,17 @@
 
 namespace App\Filament\Admin\Resources\Pedidos\Schemas;
 
-use App\Models\TipoStatus;
 use App\Models\Enums\NivelEmergenciaPedido;
-use Filament\Notifications\Notification;
-use Filament\Schemas\Schema;
-use App\Models\Pedido;
 use App\Models\Setor;
+use App\Models\TipoStatus;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\View;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\DatePicker;
+use Filament\Schemas\Schema;
 
 class PedidoGestaoForm
 {
@@ -20,14 +20,13 @@ class PedidoGestaoForm
     {
         return $schema
             ->components([
-
                 Section::make('Informações do Pedido')
                     ->schema([
                         View::make('components.pedido.pedido-cabecalho')
-                            ->viewData(fn($record) => [
-                                'record' => $record
+                            ->viewData(fn ($record) => [
+                                'record' => $record,
                             ])
-                            ->columnSpanFull()
+                            ->columnSpanFull(),
                     ])
                     ->columnSpanFull(),
 
@@ -35,12 +34,11 @@ class PedidoGestaoForm
                     ->collapsible()
                     ->columnSpanFull()
                     ->schema([
-
                         Select::make('novo_status_id')
                             ->label('Atualizar Status')
                             ->reactive()
                             ->options(
-                                fn() => TipoStatus::query()
+                                fn () => TipoStatus::query()
                                     ->where('ativo', true)
                                     ->whereNotIn('nome', ['Em Aberto', 'Em Análise', 'Concluído'])
                                     ->orderBy('nome')
@@ -48,26 +46,31 @@ class PedidoGestaoForm
                                     ->toArray()
                             )
                             ->afterStateUpdated(function ($state, callable $get, callable $set) {
-                                if (! $state) return;
+                                if (! $state) {
+                                    return;
+                                }
 
                                 $status = TipoStatus::find($state);
-                                if (! $status) return;
+
+                                if (! $status) {
+                                    return;
+                                }
 
                                 $setor = ($setorId = $get('setor_id'))
                                     ? Setor::find($setorId)
                                     : null;
 
-                                if ($status->nome === 'Encaminhado ao Setor' && $setor?->nome !== 'Obras') {
+                                if ($status->nome === 'Encaminhado ao Setor' && ! $setor?->encaminhaPedidoParaSetor) {
                                     $set('novo_status_id', null);
 
                                     Notification::make()
                                         ->title('Status inválido')
-                                        ->body('Para encaminhar ao setor, o setor selecionado deve ser Obras.')
+                                        ->body('Para encaminhar ao setor, selecione um setor com destino configurado.')
                                         ->danger()
                                         ->send();
                                 }
                             })
-                            ->helperText('Encaminhado ao Setor só pode ser usado quando o setor for Obras.')
+                            ->helperText('Use este status quando o pedido precisar seguir para o próximo setor do fluxo.')
                             ->placeholder('Padrão: Em Análise')
                             ->searchable()
                             ->nullable(),
@@ -76,7 +79,7 @@ class PedidoGestaoForm
                             ->label('Nível de Prioridade')
                             ->options(
                                 collect(NivelEmergenciaPedido::cases())
-                                    ->mapWithKeys(fn($case) => [$case->value => $case->label()])
+                                    ->mapWithKeys(fn ($case) => [$case->value => $case->label()])
                                     ->toArray()
                             )
                             ->nullable()
@@ -87,30 +90,45 @@ class PedidoGestaoForm
                             ->relationship(
                                 name: 'setor',
                                 titleAttribute: 'nome',
-                                modifyQueryUsing: fn($query) => $query->where('ativo', true)
+                                modifyQueryUsing: fn ($query) => $query->where('ativo', true)
                             )
                             ->reactive()
                             ->afterStateUpdated(function ($state, callable $get, callable $set) {
                                 $statusId = $get('novo_status_id');
-                                if (! $statusId) return;
+
+                                if (! $statusId) {
+                                    return;
+                                }
 
                                 $status = TipoStatus::find($statusId);
-                                if (! $status) return;
+
+                                if (! $status) {
+                                    return;
+                                }
 
                                 $setor = $state ? Setor::find($state) : null;
 
-                                if ($status->nome === 'Encaminhado ao Setor' && $setor?->nome !== 'Obras') {
+                                if ($status->nome === 'Encaminhado ao Setor' && ! $setor?->encaminhaPedidoParaSetor) {
                                     $set('novo_status_id', null);
 
                                     Notification::make()
                                         ->title('Status removido')
-                                        ->body('Encaminhado ao Setor exige que o setor seja Obras.')
+                                        ->body('Encaminhado ao Setor exige um setor com encaminhamento configurado.')
                                         ->warning()
                                         ->send();
                                 }
                             })
                             ->searchable()
                             ->preload()
+                            ->nullable(),
+
+                        TextInput::make('valor_custo')
+                            ->label('Valor gasto')
+                            ->numeric()
+                            ->prefix('R$')
+                            ->inputMode('decimal')
+                            ->step('0.01')
+                            ->minValue(0)
                             ->nullable(),
 
                         DatePicker::make('data_prevista')
@@ -122,7 +140,7 @@ class PedidoGestaoForm
                             ->relationship(
                                 name: 'empresaContratada',
                                 titleAttribute: 'nome',
-                                modifyQueryUsing: fn($query) => $query->where('ativo', true)
+                                modifyQueryUsing: fn ($query) => $query->where('ativo', true)
                             )
                             ->searchable()
                             ->preload()
@@ -139,7 +157,6 @@ class PedidoGestaoForm
                             ->required()
                             ->maxLength(2000)
                             ->columnSpanFull(),
-
                     ])
                     ->columns(2),
             ]);

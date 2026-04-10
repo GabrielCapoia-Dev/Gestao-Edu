@@ -33,6 +33,7 @@ class Pedido extends Model
 
         'setor_id', // Setor atual
         'empresa_contratada_id', // Empresa externa (se houver)
+        'valor_custo', // Valor gasto no pedido
 
         'data_solicitacao',
         'data_prevista',
@@ -47,6 +48,7 @@ class Pedido extends Model
         'data_solicitacao' => 'date',
         'data_prevista' => 'date',
         'data_entrega' => 'date',
+        'valor_custo' => 'decimal:2',
         'ativo' => 'boolean',
         'nivel_prioridade' => NivelEmergenciaPedido::class,
     ];

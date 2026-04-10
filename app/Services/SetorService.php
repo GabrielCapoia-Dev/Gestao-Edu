@@ -2,41 +2,26 @@
 
 namespace App\Services;
 
-use App\Models\User;
 use App\Models\Setor;
-use Filament\Forms\Form;
-use Filament\Tables\Table;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\IconColumn;
-use Illuminate\Support\Facades\Auth;
-use App\Models\Escola;
-use App\Models\IgnoredUser;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Gate;
-use Spatie\Permission\Models\Permission;
-use App\Services\UserService;
-use Filament\Forms\Components\CheckboxList;
+use App\Models\User;
+use Filament\Actions\Action;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Schemas\Components;
-use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Schema;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules\Password as PasswordRule;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\Action;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
 
 class SetorService
 {
-    /* =========================
-     * TABELA
-     * ========================= */
-
     public function configurarTabela(Table $table, ?User $user): Table
     {
         return $table
@@ -56,6 +41,15 @@ class SetorService
                 ->label('Nome')
                 ->searchable()
                 ->sortable(),
+
+            IconColumn::make('recebe_pedidos_iniciais')
+                ->label('Setor Geral')
+                ->boolean(),
+
+            TextColumn::make('encaminhaPedidoParaSetor.nome')
+                ->label('Encaminha Para')
+                ->placeholder('Nao se aplica')
+                ->toggleable(),
 
             TextColumn::make('status')
                 ->label('Status')
@@ -80,46 +74,51 @@ class SetorService
     {
         return [
             Action::make('historico')
-                ->label('Histórico')
+                ->label('Historico')
                 ->icon('heroicon-o-clock')
                 ->slideOver()
                 ->modalWidth('4xl')
                 ->modalSubmitAction(false)
                 ->modalCancelActionLabel('Fechar')
-                ->modalContent(fn (Setor $record) =>
-                    view('components.setor.historico', [
-                        'historico' => $record->historicoCompleto(),
-                    ])
-                ),
+                ->modalContent(fn (Setor $record) => view('components.setor.historico', [
+                    'historico' => $record->historicoCompleto(),
+                ])),
 
             EditAction::make()
                 ->fillForm(fn (Setor $record) => [
                     'nome' => $record->nome,
                     'status' => $record->status,
+                    'recebe_pedidos_iniciais' => $record->recebe_pedidos_iniciais,
+                    'encaminha_pedido_para_setor_id' => $record->encaminha_pedido_para_setor_id,
                 ])
                 ->using(function (Setor $record, array $data): Setor {
+                    $camposComparaveis = [
+                        'nome',
+                        'status',
+                        'recebe_pedidos_iniciais',
+                        'encaminha_pedido_para_setor_id',
+                    ];
 
                     $alterou = false;
 
-                    foreach (['nome', 'status'] as $campo) {
-                        if ($record->{$campo} != ($data[$campo] ?? null)) {
+                    foreach ($camposComparaveis as $campo) {
+                        if (($record->{$campo} ?? null) != ($data[$campo] ?? null)) {
                             $alterou = true;
                             break;
                         }
                     }
 
-                    if ($alterou) {
-
-                        $record->update(['ativo' => false]);
-
-                        return Setor::create([
-                            ...$data,
-                            'ativo' => true,
-                            'registro_anterior_id' => $record->id,
-                        ]);
+                    if (! $alterou) {
+                        return $record;
                     }
 
-                    return $record;
+                    $record->update(['ativo' => false]);
+
+                    return Setor::create([
+                        ...$data,
+                        'ativo' => true,
+                        'registro_anterior_id' => $record->id,
+                    ]);
                 }),
 
             DeleteAction::make(),
@@ -133,17 +132,12 @@ class SetorService
         ];
     }
 
-    /* =========================
-     * FORM
-     * ========================= */
-
     public function configurarFormulario(Schema $schema): Schema
     {
         return $schema->components([
             Section::make('Dados Gerais')
                 ->schema([
                     Grid::make(2)->schema([
-
                         TextInput::make('nome')
                             ->required()
                             ->minLength(3)
@@ -155,6 +149,41 @@ class SetorService
                                 'Ativo' => 'Ativo',
                                 'Inativo' => 'Inativo',
                             ]),
+
+                        Toggle::make('recebe_pedidos_iniciais')
+                            ->label('Recebe os pedidos iniciais')
+                            ->helperText('Somente um setor pode ficar marcado como responsavel geral.')
+                            ->live(),
+
+                        Select::make('encaminha_pedido_para_setor_id')
+                            ->label('Envia pedido para outro setor')
+                            ->relationship(
+                                name: 'encaminhaPedidoParaSetor',
+                                titleAttribute: 'nome',
+                                modifyQueryUsing: function ($query, ?Setor $record) {
+                                    $query->where('ativo', true);
+
+                                    if ($record?->exists) {
+                                        $query->whereKeyNot($record->getKey());
+                                    }
+
+                                    return $query;
+                                }
+                            )
+                            ->searchable()
+                            ->preload()
+                            ->nullable()
+                            ->required(fn (Get $get) => ! $get('recebe_pedidos_iniciais'))
+                            ->disabled(fn (Get $get) => (bool) $get('recebe_pedidos_iniciais'))
+                            ->dehydrated(fn (Get $get) => ! $get('recebe_pedidos_iniciais'))
+                            ->helperText('Os demais setores precisam apontar para um setor de destino.'),
+
+                        Placeholder::make('fluxo_resumo')
+                            ->label('Resumo do fluxo')
+                            ->content(fn (Get $get): string => $get('recebe_pedidos_iniciais')
+                                ? 'Este setor sera a porta de entrada dos pedidos e podera gerenciar todos os demais.'
+                                : 'Este setor deve encaminhar os pedidos para o setor configurado acima.')
+                            ->columnSpanFull(),
                     ]),
                 ]),
         ]);

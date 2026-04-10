@@ -2,13 +2,13 @@
 
 namespace App\Services;
 
-use App\Models\Pedido;
-use App\Models\PedidoHistorico;
-use App\Models\TipoStatus;
-use App\Models\Setor;
-use App\Models\User;
 use App\Models\Enums\NivelEmergenciaPedido;
 use App\Models\Enums\TipoArquivoPedido;
+use App\Models\Pedido;
+use App\Models\PedidoHistorico;
+use App\Models\Setor;
+use App\Models\TipoStatus;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Storage;
 
@@ -36,23 +36,27 @@ class PedidoService
     }
 
     /**
-     * Verifica se o usuário pode gerenciar um registro específico (visibilidade do botão "Gerenciar").
+     * Verifica se o usuário pode gerenciar um registro específico.
      */
     public function podeGerenciarRegistro(Pedido $pedido, ?User $user): bool
     {
-        if (! $user) return false;
+        if (! $user) {
+            return false;
+        }
 
-        if (! $user->hasPermissionTo('Editar Pedidos')) return false;
+        if (! $user->hasPermissionTo('Editar Pedidos')) {
+            return false;
+        }
 
         if ($pedido->tipoStatus?->finaliza_pedido || $pedido->tipoStatus?->cancela_pedido) {
             return false;
         }
 
-        // Sem setor → pode gerenciar tudo
-        if (! $user->setor_id) return true;
+        if (! $user->setor) {
+            return true;
+        }
 
-        // Com setor → somente pedidos do mesmo setor
-        return $pedido->setor_id === $user->setor_id;
+        return $user->podeGerenciarSetor($pedido->setor);
     }
 
     /*
@@ -67,7 +71,7 @@ class PedidoService
             return null;
         }
 
-        if ($user?->setor?->nome === 'Obras') {
+        if ($user?->setor && ! $user->pertenceAoSetorGeral()) {
             $statusBase = TipoStatus::where('ativo', true)
                 ->where('nome', 'Encaminhado ao Setor')
                 ->first();
@@ -78,13 +82,19 @@ class PedidoService
                 ->first();
         }
 
-        if (! $statusBase) return null;
+        if (! $statusBase) {
+            return null;
+        }
 
         $query = Pedido::where('ativo', true)
             ->where('tipo_status_id', $statusBase->id);
 
         if (! $this->ehAdmin($user) && $user?->id_escola) {
             $query->where('escola_id', $user->id_escola);
+        }
+
+        if ($user?->setor && ! $user->pertenceAoSetorGeral()) {
+            $query->where('setor_id', $user->setor_id);
         }
 
         $count = $query->count();
@@ -110,6 +120,14 @@ class PedidoService
             return $query;
         }
 
+        if ($user->setor) {
+            if ($user->pertenceAoSetorGeral()) {
+                return $query;
+            }
+
+            return $query->where('setor_id', $user->setor_id);
+        }
+
         if ($user->id_escola) {
             $query->where('escola_id', $user->id_escola);
         }
@@ -123,10 +141,20 @@ class PedidoService
             ->with('ultimoHistorico')
             ->where('ativo', true);
 
-        if (! $user) return $query->nenhum();
+        if (! $user) {
+            return $query->nenhum();
+        }
 
         if ($user->hasRole('Admin') || $user->hasPermissionTo('Listar Todos os Pedidos')) {
             return $query;
+        }
+
+        if ($user->setor) {
+            if ($user->pertenceAoSetorGeral()) {
+                return $query;
+            }
+
+            return $query->where('setor_id', $user->setor_id);
         }
 
         if ($user->id_escola) {
@@ -142,10 +170,20 @@ class PedidoService
             ->with('ultimoHistorico')
             ->where('ativo', true);
 
-        if (! $user) return $query->nenhum();
+        if (! $user) {
+            return $query->nenhum();
+        }
 
         if ($user->hasRole('Admin') || $user->hasPermissionTo('Listar Todos os Pedidos')) {
             return $query->orderByDesc('updated_at');
+        }
+
+        if ($user->setor) {
+            if ($user->pertenceAoSetorGeral()) {
+                return $query->orderByDesc('updated_at');
+            }
+
+            return $query->where('setor_id', $user->setor_id)->orderByDesc('updated_at');
         }
 
         if ($user->id_escola) {
@@ -164,22 +202,23 @@ class PedidoService
     public function criarPedido(array $data, User $solicitante): Pedido
     {
         $statusInicial = TipoStatus::where('nome', 'Em Aberto')->firstOrFail();
+        $setorInicial = Setor::setorGeral();
 
-        $setorEducacao = Setor::where('nome', 'Educação')
-            ->where('ativo', true)
-            ->firstOrFail();
+        if (! $setorInicial) {
+            throw new \RuntimeException('Nenhum setor foi configurado para receber os pedidos iniciais.');
+        }
 
         $pedido = Pedido::create([
             'tipo_manutencao_id' => $data['tipo_manutencao_id'],
-            'descricao_pedido'   => $data['descricao_pedido'],
-            'nome_solicitante'   => $data['nome_solicitante'],
-            'nivel_prioridade'   => NivelEmergenciaPedido::INDEFINIDO,
-            'solicitante_id'     => $solicitante->id,
-            'escola_id'          => $solicitante->id_escola,
-            'tipo_status_id'     => $statusInicial->id,
-            'setor_id'           => $setorEducacao->id,
-            'data_solicitacao'   => now(),
-            'ativo'              => true,
+            'descricao_pedido' => $data['descricao_pedido'],
+            'nome_solicitante' => $data['nome_solicitante'],
+            'nivel_prioridade' => NivelEmergenciaPedido::INDEFINIDO,
+            'solicitante_id' => $solicitante->id,
+            'escola_id' => $solicitante->id_escola,
+            'tipo_status_id' => $statusInicial->id,
+            'setor_id' => $setorInicial->id,
+            'data_solicitacao' => now(),
+            'ativo' => true,
         ]);
 
         if (filled($data['arquivos'])) {
@@ -226,17 +265,19 @@ class PedidoService
 
     /*
     |--------------------------------------------------------------------------
-    | ASSUMIR PEDIDO (ação "Gerenciar")
+    | ASSUMIR PEDIDO
     |--------------------------------------------------------------------------
     */
 
     public function assumirPedido(Pedido $pedido, User $usuario): void
     {
-        $statusEmAberto    = TipoStatus::where('nome', 'Em Aberto')->first();
+        $statusEmAberto = TipoStatus::where('nome', 'Em Aberto')->first();
         $statusEncaminhado = TipoStatus::where('nome', 'Encaminhado ao Setor')->first();
-        $statusAnalise     = TipoStatus::where('nome', 'Em Análise')->first();
+        $statusAnalise = TipoStatus::where('nome', 'Em Análise')->first();
 
-        if (! $statusAnalise) return;
+        if (! $statusAnalise) {
+            return;
+        }
 
         $podeIrParaAnalise = false;
 
@@ -245,9 +286,10 @@ class PedidoService
         }
 
         if (
-            $statusEncaminhado &&
-            $pedido->tipo_status_id === $statusEncaminhado->id &&
-            $usuario->setor?->nome === 'Obras'
+            $statusEncaminhado
+            && $pedido->tipo_status_id === $statusEncaminhado->id
+            && $usuario->setor
+            && $usuario->podeGerenciarSetor($pedido->setor)
         ) {
             $podeIrParaAnalise = true;
         }
@@ -264,7 +306,7 @@ class PedidoService
 
     /*
     |--------------------------------------------------------------------------
-    | AVALIAR PEDIDO (ação "Avaliar")
+    | AVALIAR PEDIDO
     |--------------------------------------------------------------------------
     */
 
@@ -273,10 +315,10 @@ class PedidoService
         $nota = (int) $data['valor'];
 
         $statusConcluido = TipoStatus::where('ativo', true)->where('nome', 'Concluído')->firstOrFail();
-        $statusReaberto  = TipoStatus::where('ativo', true)->where('nome', 'Reaberto')->firstOrFail();
+        $statusReaberto = TipoStatus::where('ativo', true)->where('nome', 'Reaberto')->firstOrFail();
 
         $pedido->feedbacks()->create([
-            'valor'     => $nota,
+            'valor' => $nota,
             'descricao' => $data['descricao'] ?? null,
         ]);
 
@@ -317,13 +359,12 @@ class PedidoService
         User $usuario,
         ?string $descricao = null
     ): PedidoHistorico {
-
         return PedidoHistorico::create([
-            'pedido_id'           => $pedido->id,
-            'status_anterior_id'  => $statusAnteriorId,
-            'status_novo_id'      => $statusNovoId,
-            'usuario_id'          => $usuario->id,
-            'setor_id'            => $pedido->setor_id,
+            'pedido_id' => $pedido->id,
+            'status_anterior_id' => $statusAnteriorId,
+            'status_novo_id' => $statusNovoId,
+            'usuario_id' => $usuario->id,
+            'setor_id' => $pedido->setor_id,
             'descricao_alteracao' => $descricao,
         ]);
     }
@@ -344,12 +385,12 @@ class PedidoService
         $mime = Storage::mimeType("public/{$path}");
 
         $pedido->arquivos()->create([
-            'usuario_id'    => $usuarioId,
-            'tipo_arquivo'  => $tipo,
-            'caminho'       => $path,
+            'usuario_id' => $usuarioId,
+            'tipo_arquivo' => $tipo,
+            'caminho' => $path,
             'nome_original' => basename($path),
-            'mime_type'     => $mime,
-            'descricao'     => $descricao,
+            'mime_type' => $mime,
+            'descricao' => $descricao,
         ]);
     }
 }
