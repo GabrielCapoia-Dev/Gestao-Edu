@@ -14,11 +14,9 @@ return new class extends Migration
                 ->default(false)
                 ->after('status');
 
-            $table->foreignId('encaminha_pedido_para_setor_id')
+            $table->json('encaminha_pedido_para_setor_ids')
                 ->nullable()
-                ->after('recebe_pedidos_iniciais')
-                ->constrained('setor')
-                ->nullOnDelete();
+                ->after('recebe_pedidos_iniciais');
         });
 
         Schema::table('pedidos', function (Blueprint $table) {
@@ -38,13 +36,15 @@ return new class extends Migration
                 ->where('id', $setorGeralId)
                 ->update([
                     'recebe_pedidos_iniciais' => true,
-                    'encaminha_pedido_para_setor_id' => null,
+                    'encaminha_pedido_para_setor_ids' => json_encode([], JSON_UNESCAPED_UNICODE),
                 ]);
 
             DB::table('setor')
                 ->where('id', '!=', $setorGeralId)
-                ->whereNull('encaminha_pedido_para_setor_id')
-                ->update(['encaminha_pedido_para_setor_id' => $setorGeralId]);
+                ->whereNull('encaminha_pedido_para_setor_ids')
+                ->update([
+                    'encaminha_pedido_para_setor_ids' => json_encode([$setorGeralId], JSON_UNESCAPED_UNICODE),
+                ]);
         }
     }
 
@@ -55,7 +55,7 @@ return new class extends Migration
         });
 
         Schema::table('setor', function (Blueprint $table) {
-            $table->dropConstrainedForeignId('encaminha_pedido_para_setor_id');
+            $table->dropColumn('encaminha_pedido_para_setor_ids');
             $table->dropColumn('recebe_pedidos_iniciais');
         });
     }

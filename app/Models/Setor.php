@@ -15,7 +15,7 @@ class Setor extends Model
         'nome',
         'status',
         'recebe_pedidos_iniciais',
-        'encaminha_pedido_para_setor_id',
+        'encaminha_pedido_para_setor_ids',
         'alterado_por',
         'ativo',
         'registro_anterior_id',
@@ -24,6 +24,7 @@ class Setor extends Model
     protected $casts = [
         'ativo' => 'boolean',
         'recebe_pedidos_iniciais' => 'boolean',
+        'encaminha_pedido_para_setor_ids' => 'array',
     ];
 
     protected static function booted()
@@ -37,12 +38,6 @@ class Setor extends Model
         });
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Histórico
-    |--------------------------------------------------------------------------
-    */
-
     public function registroAnterior()
     {
         return $this->belongsTo(self::class, 'registro_anterior_id');
@@ -52,22 +47,6 @@ class Setor extends Model
     {
         return $this->hasMany(self::class, 'registro_anterior_id');
     }
-
-    public function encaminhaPedidoParaSetor()
-    {
-        return $this->belongsTo(self::class, 'encaminha_pedido_para_setor_id');
-    }
-
-    public function setoresGerenciados()
-    {
-        return $this->hasMany(self::class, 'encaminha_pedido_para_setor_id');
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Scopes
-    |--------------------------------------------------------------------------
-    */
 
     public function scopeAtivos($query)
     {
@@ -106,12 +85,41 @@ class Setor extends Model
         return $this->is($setor);
     }
 
+    public function getSetoresDestinoAttribute()
+    {
+        $ids = collect($this->encaminha_pedido_para_setor_ids ?? [])
+            ->filter(fn ($id) => filled($id))
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+
+        if ($ids === []) {
+            return collect();
+        }
+
+        return static::query()
+            ->whereIn('id', $ids)
+            ->orderBy('nome')
+            ->get();
+    }
+
+    public function temSetoresDestino(): bool
+    {
+        return count($this->encaminha_pedido_para_setor_ids ?? []) > 0;
+    }
+
     protected function validarFluxoPedidos(): void
     {
         $this->recebe_pedidos_iniciais = (bool) $this->recebe_pedidos_iniciais;
+        $ids = collect($this->encaminha_pedido_para_setor_ids ?? [])
+            ->filter(fn ($id) => filled($id))
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
 
         if ($this->recebe_pedidos_iniciais) {
-            $this->encaminha_pedido_para_setor_id = null;
+            $this->encaminha_pedido_para_setor_ids = [];
 
             $outroSetorGeralExiste = static::query()
                 ->where('recebe_pedidos_iniciais', true)
@@ -127,16 +135,18 @@ class Setor extends Model
             return;
         }
 
-        if (! $this->encaminha_pedido_para_setor_id) {
+        if ($ids === []) {
             throw ValidationException::withMessages([
-                'encaminha_pedido_para_setor_id' => 'Selecione o setor para o qual este setor encaminha os pedidos.',
+                'encaminha_pedido_para_setor_ids' => 'Selecione ao menos um setor para encaminhamento.',
             ]);
         }
 
-        if ($this->exists && $this->encaminha_pedido_para_setor_id === $this->getKey()) {
+        if ($this->exists && in_array((int) $this->getKey(), $ids, true)) {
             throw ValidationException::withMessages([
-                'encaminha_pedido_para_setor_id' => 'Um setor não pode encaminhar pedidos para ele mesmo.',
+                'encaminha_pedido_para_setor_ids' => 'Um setor não pode encaminhar pedidos para ele mesmo.',
             ]);
         }
+
+        $this->encaminha_pedido_para_setor_ids = $ids;
     }
 }

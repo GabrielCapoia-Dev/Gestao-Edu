@@ -36,8 +36,8 @@ class SetorSeeder extends Seeder
         if ($setorGeral) {
             Setor::query()
                 ->where('id', '!=', $setorGeral->id)
-                ->whereNull('encaminha_pedido_para_setor_id')
-                ->update(['encaminha_pedido_para_setor_id' => $setorGeral->id]);
+                ->whereNull('encaminha_pedido_para_setor_ids')
+                ->update(['encaminha_pedido_para_setor_ids' => [$setorGeral->id]]);
         }
     }
 }

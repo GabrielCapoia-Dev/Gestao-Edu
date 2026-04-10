@@ -46,9 +46,11 @@ class SetorService
                 ->label('Setor Geral')
                 ->boolean(),
 
-            TextColumn::make('encaminhaPedidoParaSetor.nome')
+            TextColumn::make('encaminha_pedido_para_setor_ids')
                 ->label('Encaminha Para')
+                ->formatStateUsing(fn (Setor $record) => $record->setores_destino->pluck('nome')->implode(', '))
                 ->placeholder('Nao se aplica')
+                ->wrap()
                 ->toggleable(),
 
             TextColumn::make('status')
@@ -89,14 +91,14 @@ class SetorService
                     'nome' => $record->nome,
                     'status' => $record->status,
                     'recebe_pedidos_iniciais' => $record->recebe_pedidos_iniciais,
-                    'encaminha_pedido_para_setor_id' => $record->encaminha_pedido_para_setor_id,
+                    'encaminha_pedido_para_setor_ids' => $record->encaminha_pedido_para_setor_ids ?? [],
                 ])
                 ->using(function (Setor $record, array $data): Setor {
                     $camposComparaveis = [
                         'nome',
                         'status',
                         'recebe_pedidos_iniciais',
-                        'encaminha_pedido_para_setor_id',
+                        'encaminha_pedido_para_setor_ids',
                     ];
 
                     $alterou = false;
@@ -136,6 +138,7 @@ class SetorService
     {
         return $schema->components([
             Section::make('Dados Gerais')
+                ->columnSpanFull()
                 ->schema([
                     Grid::make(2)->schema([
                         TextInput::make('nome')
@@ -155,34 +158,28 @@ class SetorService
                             ->helperText('Somente um setor pode ficar marcado como responsavel geral.')
                             ->live(),
 
-                        Select::make('encaminha_pedido_para_setor_id')
-                            ->label('Envia pedido para outro setor')
-                            ->relationship(
-                                name: 'encaminhaPedidoParaSetor',
-                                titleAttribute: 'nome',
-                                modifyQueryUsing: function ($query, ?Setor $record) {
-                                    $query->where('ativo', true);
-
-                                    if ($record?->exists) {
-                                        $query->whereKeyNot($record->getKey());
-                                    }
-
-                                    return $query;
-                                }
-                            )
+                        Select::make('encaminha_pedido_para_setor_ids')
+                            ->label('Encaminha para outros setores')
+                            ->options(fn (?Setor $record) => Setor::query()
+                                ->where('ativo', true)
+                                ->when($record?->exists, fn ($query) => $query->whereKeyNot($record->getKey()))
+                                ->orderBy('nome')
+                                ->pluck('nome', 'id')
+                                ->toArray())
+                            ->multiple()
                             ->searchable()
                             ->preload()
                             ->nullable()
                             ->required(fn (Get $get) => ! $get('recebe_pedidos_iniciais'))
                             ->disabled(fn (Get $get) => (bool) $get('recebe_pedidos_iniciais'))
                             ->dehydrated(fn (Get $get) => ! $get('recebe_pedidos_iniciais'))
-                            ->helperText('Os demais setores precisam apontar para um setor de destino.'),
+                            ->helperText('Selecione um ou mais setores para onde este setor pode encaminhar pedidos.'),
 
                         Placeholder::make('fluxo_resumo')
                             ->label('Resumo do fluxo')
                             ->content(fn (Get $get): string => $get('recebe_pedidos_iniciais')
                                 ? 'Este setor sera a porta de entrada dos pedidos e podera gerenciar todos os demais.'
-                                : 'Este setor deve encaminhar os pedidos para o setor configurado acima.')
+                                : 'Este setor podera encaminhar pedidos para um ou mais setores selecionados acima.')
                             ->columnSpanFull(),
                     ]),
                 ]),

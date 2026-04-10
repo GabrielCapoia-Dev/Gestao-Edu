@@ -60,7 +60,7 @@ class PedidoGestaoForm
                                     ? Setor::find($setorId)
                                     : null;
 
-                                if ($status->nome === 'Encaminhado ao Setor' && ! $setor?->encaminhaPedidoParaSetor) {
+                                if ($status->nome === 'Encaminhado ao Setor' && ! $setor?->temSetoresDestino()) {
                                     $set('novo_status_id', null);
 
                                     Notification::make()
@@ -108,7 +108,7 @@ class PedidoGestaoForm
 
                                 $setor = $state ? Setor::find($state) : null;
 
-                                if ($status->nome === 'Encaminhado ao Setor' && ! $setor?->encaminhaPedidoParaSetor) {
+                                if ($status->nome === 'Encaminhado ao Setor' && ! $setor?->temSetoresDestino()) {
                                     $set('novo_status_id', null);
 
                                     Notification::make()
