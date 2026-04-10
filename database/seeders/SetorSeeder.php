@@ -9,35 +9,33 @@ class SetorSeeder extends Seeder
 {
     public function run(): void
     {
-        $setores = [
-            ['nome' => 'Educação', 'status' => 'Ativo', 'ativo' => true, 'recebe_pedidos_iniciais' => true],
-            ['nome' => 'Obras', 'status' => 'Ativo', 'ativo' => true, 'recebe_pedidos_iniciais' => false],
-            ['nome' => 'Serviços Publicos', 'status' => 'Ativo', 'ativo' => true, 'recebe_pedidos_iniciais' => false],
+        $setorGeral = Setor::updateOrCreate(
+            ['nome' => 'Educação'],
+            [
+                'status' => 'Ativo',
+                'ativo' => true,
+                'recebe_pedidos_iniciais' => true,
+                'encaminha_pedido_para_setor_ids' => [],
+                'alterado_por' => 'Seeder',
+            ]
+        );
+
+        $setoresDependentes = [
+            'Obras',
+            'Serviços Publicos',
         ];
 
-        $setorGeral = null;
-
-        foreach ($setores as $setor) {
-            $registro = Setor::firstOrCreate(
-                ['nome' => $setor['nome']],
+        foreach ($setoresDependentes as $nome) {
+            Setor::updateOrCreate(
+                ['nome' => $nome],
                 [
-                    'status' => $setor['status'],
-                    'ativo' => $setor['ativo'],
-                    'recebe_pedidos_iniciais' => $setor['recebe_pedidos_iniciais'],
+                    'status' => 'Ativo',
+                    'ativo' => true,
+                    'recebe_pedidos_iniciais' => false,
+                    'encaminha_pedido_para_setor_ids' => [$setorGeral->id],
                     'alterado_por' => 'Seeder',
                 ]
             );
-
-            if ($setor['recebe_pedidos_iniciais']) {
-                $setorGeral = $registro;
-            }
-        }
-
-        if ($setorGeral) {
-            Setor::query()
-                ->where('id', '!=', $setorGeral->id)
-                ->whereNull('encaminha_pedido_para_setor_ids')
-                ->update(['encaminha_pedido_para_setor_ids' => [$setorGeral->id]]);
         }
     }
 }
