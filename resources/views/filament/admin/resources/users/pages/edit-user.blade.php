@@ -1,63 +1,52 @@
 <x-filament-panels::page>
     @include('filament.pages.partials.access-management-styles')
 
+    @php($cards = collect($this->getOverviewCards())->take(3)->values())
+    @php($highlights = array_slice($this->getHighlights(), 0, 2))
+
     <div class="am-page">
         <section class="am-hero">
-            <div class="am-hero__content">
-                <p class="am-kicker">Edicao de usuario</p>
-                <h2 class="am-title">Ajuste niveis, excecoes e vinculos sem perder a visao completa do acesso atual.</h2>
-                <p class="am-subtitle">
-                    Esta tela ajuda a entender rapidamente como o usuario esta configurado hoje antes de aplicar qualquer
-                    alteracao em niveis de acesso, permissoes adicionais ou escopo operacional.
-                </p>
+            <p class="am-kicker">Edicao de usuario</p>
+            <h2 class="am-title">Ajustes de acesso com leitura mais objetiva.</h2>
+            <p class="am-subtitle">
+                Revise niveis, permissoes e vinculos sem disputar atencao com informacoes secundarias.
+            </p>
 
-                <div class="am-pill-list">
-                    @foreach ($this->getHighlights() as $highlight)
-                        <span class="am-pill">{{ $highlight }}</span>
-                    @endforeach
-                </div>
-            </div>
-
-            <div class="am-hero__cards">
-                <div class="am-cards">
-                    @foreach ($this->getOverviewCards() as $card)
-                        <article class="am-card am-card--{{ $card['tone'] }}">
-                            <div class="am-card__icon">
-                                <x-filament::icon :icon="$card['icon']" />
-                            </div>
-                            <p class="am-card__label">{{ $card['label'] }}</p>
-                            <p class="am-card__value">{{ $card['value'] }}</p>
-                            <p class="am-card__description">{{ $card['description'] }}</p>
-                        </article>
-                    @endforeach
-                </div>
+            <div class="am-pill-list">
+                @foreach ($highlights as $highlight)
+                    <span class="am-pill">{{ $highlight }}</span>
+                @endforeach
             </div>
         </section>
 
-        <div class="am-grid am-grid--with-sidebar">
-            <section class="am-panel">
-                <div class="am-panel__header">
-                    <p class="am-panel__eyebrow">Formulario de edicao</p>
-                    <h3 class="am-panel__title">Revisao completa do perfil</h3>
-                    <p class="am-panel__subtitle">
-                        Atualize o que for necessario mantendo o uso intacto: niveis acumulativos, permissoes diretas e os
-                        vinculos com escola e setor continuam funcionando exatamente como antes.
-                    </p>
-                </div>
+        <section class="am-panel">
+            <div class="am-panel__header">
+                <p class="am-panel__eyebrow">Formulario</p>
+                <h3 class="am-panel__title">Perfil atual do usuario</h3>
+                <p class="am-panel__subtitle">O essencial fica visivel logo acima do formulario.</p>
+            </div>
 
-                <div class="am-panel__body">
-                    {{ $this->content }}
-                </div>
-            </section>
+            <div class="am-summary">
+                @foreach ($cards as $card)
+                    <article class="am-summary-card am-summary-card--{{ $card['tone'] }}">
+                        <div class="am-summary-card__top">
+                            <div class="am-summary-card__icon">
+                                <x-filament::icon :icon="$card['icon']" />
+                            </div>
+                            <div>
+                                <p class="am-summary-card__label">{{ $card['label'] }}</p>
+                                <p class="am-summary-card__value">{{ $card['value'] }}</p>
+                            </div>
+                        </div>
 
-            <aside class="am-sidebar">
-                @foreach ($this->getSupportItems() as $item)
-                    <section class="am-note">
-                        <h3 class="am-note__title">{{ $item['title'] }}</h3>
-                        <p class="am-note__description">{{ $item['description'] }}</p>
-                    </section>
+                        <p class="am-summary-card__description">{{ $card['description'] }}</p>
+                    </article>
                 @endforeach
-            </aside>
-        </div>
+            </div>
+
+            <div class="am-panel__body">
+                {{ $this->content }}
+            </div>
+        </section>
     </div>
 </x-filament-panels::page>
