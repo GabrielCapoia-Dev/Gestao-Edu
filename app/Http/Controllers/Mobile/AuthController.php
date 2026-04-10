@@ -10,6 +10,21 @@ use Illuminate\View\View;
 
 class AuthController extends Controller
 {
+    public function showInstall(Request $request): View
+    {
+        $user = $request->user();
+        $shareUrl = route('mobile.install.short');
+
+        return view('mobile.auth.install', [
+            'shareUrl' => $shareUrl,
+            'whatsAppUrl' => 'https://wa.me/?text=' . rawurlencode(
+                "Instale o Gestao Edu Mobile no seu celular: {$shareUrl}"
+            ),
+            'entryUrl' => $user ? route('mobile.home') : route('mobile.login'),
+            'entryLabel' => $user ? 'Abrir app mobile' : 'Entrar no app mobile',
+        ]);
+    }
+
     public function showLogin(Request $request): View|RedirectResponse
     {
         if (Auth::check()) {

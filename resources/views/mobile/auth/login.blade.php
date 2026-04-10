@@ -51,6 +51,9 @@
                 <a href="{{ route('google.redirect', ['redirect_to' => route('mobile.home')]) }}" class="mobile-button mobile-button--ghost">
                     Entrar com Google
                 </a>
+                <a href="{{ route('mobile.install') }}" class="mobile-button mobile-button--ghost">
+                    Como instalar o app
+                </a>
                 <button type="button" class="mobile-button mobile-button--ghost" data-pwa-install hidden>
                     Instalar app
                 </button>

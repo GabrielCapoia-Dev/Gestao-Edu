@@ -219,3 +219,7 @@ Route::prefix('admin/feedback-pedidos')
     });
 
 require __DIR__ . '/mobile.php';
+
+Route::get('/baixar-app', function () {
+    return redirect()->route('mobile.install');
+})->name('mobile.install.short');

@@ -452,6 +452,60 @@ a {
     margin-top: 0.9rem;
 }
 
+.mobile-install-actions {
+    display: grid;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.mobile-share-box {
+    display: grid;
+    gap: 0.45rem;
+    padding: 0.95rem 1rem;
+    border-radius: var(--mobile-radius-md);
+    background: #f8fbff;
+    border: 1px solid var(--mobile-line);
+}
+
+.mobile-share-box__label {
+    font-size: 0.76rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--mobile-primary);
+}
+
+.mobile-share-box__link {
+    overflow-wrap: anywhere;
+    font-size: 0.9rem;
+    color: var(--mobile-primary-deep);
+}
+
+.mobile-install-guide {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.mobile-install-guide__item {
+    padding: 1rem;
+    border-radius: var(--mobile-radius-md);
+    background: #f8fbff;
+    border: 1px solid var(--mobile-line);
+}
+
+.mobile-install-guide__item strong {
+    display: block;
+    margin-bottom: 0.35rem;
+    font-size: 0.95rem;
+}
+
+.mobile-install-guide__item p {
+    margin: 0;
+    color: var(--mobile-muted);
+    font-size: 0.88rem;
+    line-height: 1.65;
+}
+
 .mobile-item-card {
     padding: 1rem;
     border-radius: var(--mobile-radius-md);
@@ -521,6 +575,12 @@ a {
     border-color: rgba(190, 24, 93, 0.18);
     background: #fff1f2;
     color: #9f1239;
+}
+
+.mobile-alert--success {
+    border-color: rgba(5, 150, 105, 0.18);
+    background: #ecfdf5;
+    color: #047857;
 }
 
 .mobile-pager {

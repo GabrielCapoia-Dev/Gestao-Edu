@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('app')
     ->name('mobile.')
     ->group(function (): void {
+        Route::get('/instalar', [AuthController::class, 'showInstall'])->name('install');
         Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
         Route::post('/login', [AuthController::class, 'login'])->name('login.store');
         Route::post('/logout', [AuthController::class, 'logout'])
