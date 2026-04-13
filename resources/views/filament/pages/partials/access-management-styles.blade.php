@@ -289,6 +289,8 @@
     }
 
     .am-role-card {
+        display: flex;
+        flex-direction: column;
         border-radius: 1.2rem;
         border: 1px solid #dbe4ee;
         background:
@@ -296,6 +298,8 @@
             linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
         box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
         padding: 1rem;
+        min-height: 26rem;
+        max-height: 26rem;
     }
 
     .dark .am-role-card {
@@ -368,6 +372,29 @@
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 0.6rem;
+        align-content: start;
+        overflow-y: auto;
+        padding-right: 0.25rem;
+        max-height: 13.25rem;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(148, 163, 184, 0.7) transparent;
+    }
+
+    .am-role-card__permissions::-webkit-scrollbar {
+        width: 0.45rem;
+    }
+
+    .am-role-card__permissions::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .am-role-card__permissions::-webkit-scrollbar-thumb {
+        border-radius: 9999px;
+        background: rgba(148, 163, 184, 0.6);
+    }
+
+    .dark .am-role-card__permissions::-webkit-scrollbar-thumb {
+        background: rgba(100, 116, 139, 0.8);
     }
 
     .am-permission-chip {
