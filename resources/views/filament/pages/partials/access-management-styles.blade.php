@@ -366,18 +366,94 @@
         align-items: center;
         gap: 0.45rem;
         flex-shrink: 0;
+        flex-wrap: wrap;
     }
 
     .am-role-card__permissions {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 0.6rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
         align-content: start;
         overflow-y: auto;
         padding-right: 0.25rem;
         max-height: 13.25rem;
         scrollbar-width: thin;
         scrollbar-color: rgba(148, 163, 184, 0.7) transparent;
+    }
+
+    .am-role-card__collapsed {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: 1;
+        border: 1px dashed #d7dee8;
+        border-radius: 1rem;
+        background: rgba(248, 250, 252, 0.92);
+        padding: 1rem;
+        text-align: center;
+    }
+
+    .dark .am-role-card__collapsed {
+        border-color: #334155;
+        background: rgba(15, 23, 42, 0.45);
+    }
+
+    .am-role-card__collapsed p {
+        margin: 0;
+        font-size: 0.85rem;
+        line-height: 1.6;
+        color: #64748b;
+    }
+
+    .dark .am-role-card__collapsed p {
+        color: #94a3b8;
+    }
+
+    .am-permission-group {
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        background: rgba(255, 255, 255, 0.82);
+        padding: 0.8rem;
+    }
+
+    .dark .am-permission-group {
+        border-color: #334155;
+        background: rgba(15, 23, 42, 0.55);
+    }
+
+    .am-permission-group__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        margin-bottom: 0.7rem;
+    }
+
+    .am-permission-group__header h5 {
+        margin: 0;
+        font-size: 0.86rem;
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    .dark .am-permission-group__header h5 {
+        color: #f8fafc;
+    }
+
+    .am-permission-group__header p {
+        margin: 0.2rem 0 0;
+        font-size: 0.75rem;
+        color: #64748b;
+    }
+
+    .dark .am-permission-group__header p {
+        color: #94a3b8;
+    }
+
+    .am-permission-group__items {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.55rem;
     }
 
     .am-role-card__permissions::-webkit-scrollbar {
@@ -585,8 +661,7 @@
             min-width: 0;
         }
 
-        .am-roles-grid,
-        .am-role-card__permissions {
+        .am-roles-grid {
             grid-template-columns: 1fr;
         }
     }

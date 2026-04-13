@@ -21,6 +21,8 @@ class ManageRoles extends ManageRecords
 
     public string $search = '';
 
+    public array $expandedRoles = [];
+
     protected function getHeaderActions(): array
     {
         return [];
@@ -191,10 +193,26 @@ class ManageRoles extends ManageRecords
     {
         $permissions = $role->permissions
             ->pluck('name')
-            ->map(fn (string $permission): array => [
-                'label' => $permission,
-                'icon' => $this->resolvePermissionIcon($permission),
-            ])
+            ->values();
+
+        $groupedPermissions = $permissions
+            ->groupBy(function (string $permission): string {
+                return Str::of($permission)->before(' ')->headline()->toString();
+            })
+            ->sortKeys()
+            ->map(function (Collection $group, string $groupName): array {
+                return [
+                    'name' => $groupName,
+                    'count' => $group->count(),
+                    'items' => $group
+                        ->sort()
+                        ->values()
+                        ->map(fn (string $permission): array => [
+                            'label' => $permission,
+                            'icon' => $this->resolvePermissionIcon($permission),
+                        ]),
+                ];
+            })
             ->values();
 
         $permissionsByPrefix = $role->permissions
@@ -206,13 +224,31 @@ class ManageRoles extends ManageRecords
             'id' => (string) $role->getKey(),
             'name' => $role->name,
             'permissions' => $permissions,
+            'grouped_permissions' => $groupedPermissions,
             'permission_count' => $permissions->count(),
             'summary' => $permissionsByPrefix->take(3)->map(
                 fn (int $total, string $group) => "{$group}: {$total}"
             )->values(),
             'palette' => $this->resolvePalette($role),
             'actions' => $this->canManageRole($role),
+            'expanded' => $this->isRoleExpanded((string) $role->getKey()),
         ];
+    }
+
+    public function toggleRoleExpansion(string $roleId): void
+    {
+        if ($this->isRoleExpanded($roleId)) {
+            unset($this->expandedRoles[$roleId]);
+
+            return;
+        }
+
+        $this->expandedRoles[$roleId] = true;
+    }
+
+    protected function isRoleExpanded(string $roleId): bool
+    {
+        return (bool) ($this->expandedRoles[$roleId] ?? false);
     }
 
     protected function resolvePalette(Role $role): array

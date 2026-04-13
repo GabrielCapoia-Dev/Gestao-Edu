@@ -93,6 +93,14 @@
                                     </div>
 
                                     <div class="am-role-card__actions">
+                                        <x-filament::button
+                                            size="sm"
+                                            color="gray"
+                                            wire:click="toggleRoleExpansion('{{ $role['id'] }}')"
+                                        >
+                                            {{ $role['expanded'] ? 'Fechar' : 'Abrir' }}
+                                        </x-filament::button>
+
                                         @if ($role['actions']['edit'])
                                             <x-filament::button
                                                 size="sm"
@@ -114,20 +122,39 @@
                                     </div>
                                 </div>
 
-                                <div class="am-role-card__permissions">
-                                    @foreach ($role['permissions'] as $permission)
-                                        <div class="am-permission-chip">
-                                            <div class="am-permission-chip__label">
-                                                <x-filament::icon :icon="$permission['icon']" />
-                                                <span>{{ $permission['label'] }}</span>
-                                            </div>
+                                @if ($role['expanded'])
+                                    <div class="am-role-card__permissions">
+                                        @foreach ($role['grouped_permissions'] as $permissionGroup)
+                                            <section class="am-permission-group">
+                                                <div class="am-permission-group__header">
+                                                    <div>
+                                                        <h5>{{ $permissionGroup['name'] }}</h5>
+                                                        <p>{{ $permissionGroup['count'] }} permissoes</p>
+                                                    </div>
+                                                </div>
 
-                                            <span class="am-permission-chip__status">
-                                                <x-filament::icon icon="heroicon-o-check" />
-                                            </span>
-                                        </div>
-                                    @endforeach
-                                </div>
+                                                <div class="am-permission-group__items">
+                                                    @foreach ($permissionGroup['items'] as $permission)
+                                                        <div class="am-permission-chip">
+                                                            <div class="am-permission-chip__label">
+                                                                <x-filament::icon :icon="$permission['icon']" />
+                                                                <span>{{ $permission['label'] }}</span>
+                                                            </div>
+
+                                                            <span class="am-permission-chip__status">
+                                                                <x-filament::icon icon="heroicon-o-check" />
+                                                            </span>
+                                                        </div>
+                                                    @endforeach
+                                                </div>
+                                            </section>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <div class="am-role-card__collapsed">
+                                        <p>Card fechado. Abra para visualizar as permissoes agrupadas por tipo.</p>
+                                    </div>
+                                @endif
                             </article>
                         @endforeach
                     </div>
