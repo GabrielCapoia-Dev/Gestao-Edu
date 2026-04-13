@@ -30,6 +30,14 @@ class Dashboard extends Page
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::Home;
 
+    public static function canAccess(): bool
+    {
+        /** @var \App\Models\User|null $user */
+        $user = Auth::user();
+
+        return $user?->hasPermissionTo('Visualizar Tela de Inicio') ?? false;
+    }
+
     protected function getHeaderActions(): array
     {
         $installUrl = route('mobile.install.short');

@@ -11,6 +11,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 use Spatie\Permission\Traits\HasRoles;
 use Illuminate\Support\Facades\Auth;
@@ -102,6 +103,28 @@ class User extends Authenticatable implements FilamentUser
         } catch (PermissionDoesNotExist) {
             return false;
         }
+    }
+
+    public function hasAnyPermissionTo(array $permissions, $guardName = null): bool
+    {
+        foreach ($permissions as $permission) {
+            if ($this->hasPermissionTo($permission, $guardName)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function hasPermissionLike(string $fragment): bool
+    {
+        $needle = Str::lower(Str::ascii($fragment));
+
+        return $this->getAllPermissions()->contains(function ($permission) use ($needle): bool {
+            $name = Str::lower(Str::ascii((string) $permission->name));
+
+            return str_contains($name, $needle);
+        });
     }
 
     protected static function booted()

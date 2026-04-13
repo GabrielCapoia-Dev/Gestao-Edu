@@ -25,7 +25,7 @@ class FeedbackPedido extends Page implements HasTable
     protected static ?string $slug = 'feedback-pedidos';
     protected string $view = 'filament.pages.feedback-pedido';
     protected static string|BackedEnum|null $navigationIcon = Heroicon::Star;
-    protected static string|UnitEnum|null $navigationGroup = 'Manutenção';
+    protected static string|UnitEnum|null $navigationGroup = 'Manutencao';
     protected static ?string $navigationParentItem = 'Pedidos';
     public static ?string $navigationLabel = 'Feedback de Pedidos';
 
@@ -87,11 +87,11 @@ class FeedbackPedido extends Page implements HasTable
                 Tables\Filters\SelectFilter::make('valor')
                     ->label('Nota')
                     ->options([
-                        '1' => '⭐',
-                        '2' => '⭐⭐',
-                        '3' => '⭐⭐⭐',
-                        '4' => '⭐⭐⭐⭐',
-                        '5' => '⭐⭐⭐⭐⭐',
+                        '1' => '1 estrela',
+                        '2' => '2 estrelas',
+                        '3' => '3 estrelas',
+                        '4' => '4 estrelas',
+                        '5' => '5 estrelas',
                     ])
                     ->query(function ($query, array $data) {
                         $this->updateChartFilters('valor', $data['value'] ?? null);
@@ -99,7 +99,7 @@ class FeedbackPedido extends Page implements HasTable
                     }),
 
                 Tables\Filters\SelectFilter::make('pedido.nivel_prioridade')
-                    ->label('Nível de Prioridade')
+                    ->label('Nivel de Prioridade')
                     ->options(
                         collect(NivelEmergenciaPedido::cases())
                             ->mapWithKeys(fn($case) => [
@@ -122,7 +122,7 @@ class FeedbackPedido extends Page implements HasTable
                     }),
 
                 Tables\Filters\SelectFilter::make('pedido.tipo_manutencao_id')
-                    ->label('Tipo de Manutenção')
+                    ->label('Tipo de Manutencao')
                     ->options(
                         \App\Models\TipoManutencao::pluck('nome', 'id')->toArray()
                     )
@@ -152,14 +152,14 @@ class FeedbackPedido extends Page implements HasTable
                     }),
 
                 Tables\Filters\Filter::make('mes')
-                    ->label('Mês')
+                    ->label('Mes')
                     ->form([
                         Forms\Components\Select::make('mes')
-                            ->label('Mês')
+                            ->label('Mes')
                             ->options([
                                 '01' => 'Janeiro',
                                 '02' => 'Fevereiro',
-                                '03' => 'Março',
+                                '03' => 'Marco',
                                 '04' => 'Abril',
                                 '05' => 'Maio',
                                 '06' => 'Junho',
@@ -231,22 +231,26 @@ class FeedbackPedido extends Page implements HasTable
     {
         return [
             Actions\Action::make('export_geral')
-                ->label('📊 Relatório Geral')
+                ->label('Relatorio Geral')
+                ->visible(fn() => User::authUser()?->hasPermissionLike('exportar relatorios') ?? false)
                 ->url(fn() => $this->gerarUrlExportacao('geral'))
                 ->openUrlInNewTab(),
 
             Actions\Action::make('export_listagem')
-                ->label('📋 Listagem')
+                ->label('Listagem')
+                ->visible(fn() => User::authUser()?->hasPermissionLike('exportar relatorios') ?? false)
                 ->url(fn() => $this->gerarUrlExportacao('listagem'))
                 ->openUrlInNewTab(),
 
             Actions\Action::make('export_graficos')
-                ->label('📈 Gráficos')
+                ->label('Graficos')
+                ->visible(fn() => User::authUser()?->hasPermissionLike('exportar relatorios') ?? false)
                 ->url(fn() => $this->gerarUrlExportacao('graficos'))
                 ->openUrlInNewTab(),
 
             Actions\Action::make('export_terceirizada')
-                ->label('🏦 Terceirizada')
+                ->label('Terceirizada')
+                ->visible(fn() => User::authUser()?->hasPermissionLike('exportar relatorios') ?? false)
                 ->url(fn() => $this->gerarUrlExportacao('terceirizada'))
                 ->openUrlInNewTab(),
         ];
@@ -256,7 +260,7 @@ class FeedbackPedido extends Page implements HasTable
     {
         $params = [];
 
-        // Adicionar filtros à URL
+        // Adicionar filtros a URL
         if (!empty($this->chartFilters)) {
             foreach ($this->chartFilters as $key => $value) {
                 if ($value !== null) {

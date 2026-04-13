@@ -14,7 +14,8 @@ class PedidoRelatorioGeralController extends Controller
 
     public function exportar(Request $request)
     {
-        // Precisa estar aqui — esta requisição é HTTP normal, não Livewire
+        abort_unless(Auth::user()?->hasPermissionLike('exportar relatorios'), 403);
+        // Precisa estar aqui: esta requisicao e HTTP normal, nao Livewire.
         ini_set('memory_limit', '2048M');
         set_time_limit(180);
 

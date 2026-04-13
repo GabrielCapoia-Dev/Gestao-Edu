@@ -69,7 +69,7 @@ Route::post('/test/notify', function () {
         )
     );
 
-    return back()->with('success', 'Notificação enviada');
+    return back()->with('success', 'Notificacao enviada');
 })->name('test.notify');
 
 Route::get('/pedidos/relatorio-geral', [PedidoRelatorioGeralController::class, 'exportar'])
@@ -80,15 +80,15 @@ Route::get('/oauth/redirect/google', [GoogleAuthController::class, 'redirect'])-
 Route::get('/oauth/callback/google', [GoogleAuthController::class, 'callback'])->name('google.callback');
 
 Route::prefix('admin')
-    ->middleware(['web']) // sem 'auth' aqui
+    ->middleware(['web', 'auth'])
     ->group(function () {
         Route::get('/laudos/{alunoLaudo}', [LaudoArquivoController::class, 'show'])
             ->name('laudos.show')
-            ->middleware('can:view,alunoLaudo'); // se não puder → 403
+            ->middleware('can:view,alunoLaudo'); // Se nao puder, retorna 403.
 
         Route::get('/laudos/{alunoLaudo}/download', [LaudoArquivoController::class, 'download'])
             ->name('laudos.download')
-            ->middleware('can:download,alunoLaudo'); // se não puder → 403
+            ->middleware('can:download,alunoLaudo'); // Se nao puder, retorna 403.
 
         Route::get('/relatorios/ficha', [RelatorioController::class, 'ficha'])
             ->name('relatorios.ficha');
@@ -102,6 +102,8 @@ Route::prefix('admin')
 
 
         Route::post('/notifications/mark-all-read', function () {
+            abort_unless(Auth::user()?->hasPermissionLike('visualizar notifica'), 403);
+
             DB::table('notifications')
                 ->where('notifiable_id', Auth::id())
                 ->where('notifiable_type', User::class)
@@ -112,6 +114,8 @@ Route::prefix('admin')
         })->name('notifications.markAllRead');
 
         Route::post('/notifications/{id}/mark-read', function ($id) {
+            abort_unless(Auth::user()?->hasPermissionLike('visualizar notifica'), 403);
+
             DB::table('notifications')
                 ->where('id', $id)
                 ->where('notifiable_id', Auth::id())
@@ -200,20 +204,20 @@ Route::prefix('admin/feedback-pedidos')
     ->middleware(['auth'])
     ->group(function () {
 
-        // Relatório Geral (cards + gráficos + matriz + tabela)
+        // Relatorio geral (cards + graficos + matriz + tabela)
         Route::get('/exportar-pdf/geral', [FeedbackPedidoExportController::class, 'exportarGeral'])
             ->name('feedback-pedidos.export-geral');
 
-        // Relatório de Listagem (apenas tabela)
+        // Relatorio de listagem (apenas tabela)
         Route::get('/exportar-pdf/listagem', [FeedbackPedidoExportController::class, 'exportarListagem'])
             ->name('feedback-pedidos.export-listagem');
 
-        // Relatório de Gráficos (cards + gráficos + matriz)
+        // Relatorio de graficos (cards + graficos + matriz)
         Route::get('/exportar-pdf/graficos', [FeedbackPedidoExportController::class, 'exportarGraficos'])
             ->name('feedback-pedidos.export-graficos');
 
 
-        // Relatório de Avaliação de Empresas Terceirizadas
+        // Relatorio de avaliacao de empresas terceirizadas
         Route::get('/exportar-pdf/terceirizada', [FeedbackPedidoExportController::class, 'exportarTerceirizada'])
             ->name('feedback-pedidos.export-terceirizada');
     });

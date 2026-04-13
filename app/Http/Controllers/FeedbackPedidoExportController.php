@@ -44,7 +44,10 @@ class FeedbackPedidoExportController extends Controller
             /** @var \App\Models\User $user */
             $user = Auth::user();
 
-            if (! $user->hasPermissionTo('Visualizar Feedback de Pedidos')) {
+            if (
+                ! $user->hasPermissionTo('Visualizar Feedback de Pedidos')
+                || ! $user->hasPermissionLike('exportar relatorios')
+            ) {
                 return abort(403, 'Sem permissao para exportar este relatorio');
             }
 

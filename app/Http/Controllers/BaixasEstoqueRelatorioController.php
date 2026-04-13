@@ -14,6 +14,8 @@ class BaixasEstoqueRelatorioController extends Controller
 
     public function exportar(Request $request)
     {
+        abort_unless(Auth::user()?->hasPermissionLike('exportar relatorios'), 403);
+
         ini_set('memory_limit', '512M');
         set_time_limit(120);
 

@@ -44,6 +44,12 @@ use Illuminate\Support\Facades\URL;
 use App\Models\EquipeGestora;
 use App\Policies\EquipeGestoraPolicy;
 use App\Policies\ComponenteCurricularPolicy;
+use App\Models\FuncaoAdministrativa;
+use App\Models\Item;
+use App\Models\Setor;
+use App\Policies\FuncaoAdministrativaPolicy;
+use App\Policies\ItemPolicy;
+use App\Policies\SetorPolicy;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -72,6 +78,9 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(PedidoArquivo::class,  PedidoArquivoPolicy::class);
         Gate::policy(EquipeGestora::class,  EquipeGestoraPolicy::class);
         Gate::policy(ComponenteCurricular::class,  ComponenteCurricularPolicy::class);
+        Gate::policy(FuncaoAdministrativa::class, FuncaoAdministrativaPolicy::class);
+        Gate::policy(Item::class, ItemPolicy::class);
+        Gate::policy(Setor::class, SetorPolicy::class);
 
 
         // ── Observers ──────────────────────────────────────────────────────────

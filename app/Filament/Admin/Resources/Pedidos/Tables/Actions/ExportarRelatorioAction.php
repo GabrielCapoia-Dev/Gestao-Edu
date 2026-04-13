@@ -11,6 +11,7 @@ use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Colors\Color;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 
 class ExportarRelatorioAction
@@ -21,6 +22,7 @@ class ExportarRelatorioAction
             ->label('Exportar Relatorio')
             ->icon('heroicon-o-document-chart-bar')
             ->color(Color::hex('#102b86'))
+            ->visible(fn (): bool => Auth::user()?->hasPermissionLike('exportar relatorios') ?? false)
             ->schema(static::schema())
             ->modalHeading('Exportar Relatorio de Pedidos')
             ->modalDescription('Configure os filtros. O periodo e obrigatorio para gerar o PDF.')

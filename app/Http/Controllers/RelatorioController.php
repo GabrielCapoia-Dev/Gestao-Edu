@@ -4,15 +4,18 @@ namespace App\Http\Controllers;
 
 use App\Relatorios\Relatorios;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class RelatorioController extends Controller
 {
     /**
-     * Ficha de um único objeto (modelo).
+     * Ficha de um unico objeto (modelo).
      * Espera: view, data (JSON base64), tipo=ficha
      */
     public function ficha(Request $request)
     {
+        $this->autorizarExportacaoDeAlunos();
+
         $view = $request->query('view'); // ex.: relatorios.alunos.ficha
         $tipo = $request->query('tipo', Relatorios::TIPO_FICHA);
 
@@ -27,15 +30,16 @@ class RelatorioController extends Controller
     }
 
     /**
-     * Lista (bulkList) de vários objetos.
+     * Lista (bulkList) de varios objetos.
      */
     public function bulkList(Request $request)
     {
-        // Recupera o pacote salvo na sessão
+        $this->autorizarExportacaoDeAlunos();
+        // Recupera o pacote salvo na sessao
         $payload = $request->session()->get('relatorios.bulk_list');
 
         if (! $payload) {
-            abort(400, 'Nenhum dado encontrado para gerar o relatório.');
+            abort(400, 'Nenhum dado encontrado para gerar o relatorio.');
         }
 
         $view = $payload['view'] ?? null;
@@ -43,11 +47,11 @@ class RelatorioController extends Controller
         $tipo = $payload['tipo'] ?? Relatorios::TIPO_BULK_LIST;
 
         if (! $view) {
-            abort(400, 'View do relatório não informada.');
+            abort(400, 'View do relatorio nao informada.');
         }
 
-        // Aqui você chama sua classe geradora de PDF
-        // Ajuste o método conforme sua implementação atual:
+        // Aqui voce chama sua classe geradora de PDF.
+        // Ajuste o metodo conforme sua implementacao atual.
         // Exemplo:
         return Relatorios::gerarRelatorio(
             view: $view,
@@ -55,16 +59,17 @@ class RelatorioController extends Controller
             tipo: $tipo,
         );
 
-        // ou, se for um método de instância:
+        // Ou, se for um metodo de instancia:
         // $rel = new Relatorios();
         // return $rel->gerarRelatorio($view, $data, $tipo);
     }
 
     /**
-     * Fichas em lote (bulkFicha) — várias fichas detalhadas.
+     * Fichas em lote (bulkFicha) - varias fichas detalhadas.
      */
     public function bulkFicha(Request $request)
     {
+        $this->autorizarExportacaoDeAlunos();
         $view = $request->query('view'); // ex.: relatorios.alunos.fichas
         $tipo = $request->query('tipo', Relatorios::TIPO_BULK_FICHA);
 
@@ -105,8 +110,13 @@ class RelatorioController extends Controller
 
             return $data;
         } catch (\Throwable $e) {
-            // se der ruim, volta array vazio pra não quebrar
+            // Se der ruim, volta array vazio para nao quebrar.
             return [];
         }
+    }
+
+    protected function autorizarExportacaoDeAlunos(): void
+    {
+        abort_unless(Auth::user()?->hasPermissionLike('exportar relatorio de alunos'), 403);
     }
 }
