@@ -30,7 +30,7 @@ class SetorResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::BuildingOffice;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Manutencao';
+    protected static string|UnitEnum|null $navigationGroup = 'Manutenção';
 
     public static function form(Schema $schema): Schema
     {
