@@ -87,6 +87,26 @@ class UserService
         return $user->hasPermissionTo('Excluir Turmas');
     }
 
+    public function podeVisualizarAlunos(?User $user): bool
+    {
+        return $user?->hasPermissionTo('Listar Alunos') ?? false;
+    }
+
+    public function podeCriarAlunos(?User $user): bool
+    {
+        return $user?->hasPermissionTo('Criar Alunos') ?? false;
+    }
+
+    public function podeEditarAlunos(?User $user): bool
+    {
+        return $user?->hasPermissionTo('Editar Alunos') ?? false;
+    }
+
+    public function podeExcluirAlunos(?User $user): bool
+    {
+        return $user?->hasPermissionTo('Excluir Alunos') ?? false;
+    }
+
     public function podeVisualizarSetor(?User $user): bool
     {
         return $user?->hasPermissionTo('Visualizar Setor do UsuÃ¡rio') ?? false;
@@ -511,6 +531,29 @@ class UserService
 
         if (! empty($user->id_escola)) {
             return $query->where('id_escola', $user->id_escola);
+        }
+
+        return $query;
+    }
+
+    public function aplicarFiltroAlunosDoUsuario(Builder $query, ?User $user): Builder
+    {
+        if (! $user || $this->ehAdmin($user)) {
+            return $query;
+        }
+
+        if ($user->ehProfessor()) {
+            $professoresIds = $user->professores()->pluck('id')->toArray();
+
+            return $query->whereHas('turma.componentes', function ($q) use ($professoresIds) {
+                $q->whereIn('turma_componente_professor.professor_id', $professoresIds);
+            });
+        }
+
+        if (! empty($user->id_escola)) {
+            return $query->whereHas('turma', function ($q) use ($user) {
+                $q->where('id_escola', $user->id_escola);
+            });
         }
 
         return $query;

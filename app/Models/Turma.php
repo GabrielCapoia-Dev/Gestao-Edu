@@ -58,4 +58,9 @@ class Turma extends Model
             'turma_componente_professor'
         )->withPivot('componente_curricular_id');
     }
+
+    public function alunos()
+    {
+        return $this->hasMany(Aluno::class, 'id_turma');
+    }
 }

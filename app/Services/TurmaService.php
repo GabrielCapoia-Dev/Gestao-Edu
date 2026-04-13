@@ -20,8 +20,10 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Actions\DeleteAction;
+use Filament\Notifications\Notification;
 use App\Models\Turma;
 use App\Models\Professor;
 
@@ -40,7 +42,7 @@ class TurmaService
                 $query->with([
                     'escola:id,nome',
                     'serie:id,nome',
-                ]);
+                ])->withCount('alunos');
             })
             ->paginated([5, 10, 25, 50, 100])
             ->defaultPaginationPageOption(5)
@@ -132,7 +134,26 @@ class TurmaService
                     return $data;
                 }),
 
+            Action::make('ver_alunos')
+                ->label('Ver Alunos')
+                ->icon('heroicon-o-academic-cap')
+                ->url(fn(Turma $record) => route('filament.admin.resources.alunos.index', [
+                    'turma' => $record->id,
+                ]))
+                ->visible(fn() => $this->userService->podeVisualizarAlunos(Auth::user())),
+
             DeleteAction::make()
+                ->before(function (Turma $record, $action) {
+                    if ($record->alunos()->exists()) {
+                        Notification::make()
+                            ->title('Ação bloqueada')
+                            ->body('Não é possível excluir turma com alunos vinculados.')
+                            ->danger()
+                            ->send();
+
+                        $action->cancel();
+                    }
+                })
                 ->visible(fn() => $this->userService->podeExcluirTurmas(Auth::user())),
         ];
     }
@@ -173,6 +194,20 @@ class TurmaService
     {
         return [
             DeleteBulkAction::make()
+                ->before(function ($records, $action) {
+                    foreach ($records as $record) {
+                        if ($record->alunos()->exists()) {
+                            Notification::make()
+                                ->title('Ação bloqueada')
+                                ->body('Não é possível excluir turmas com alunos vinculados.')
+                                ->danger()
+                                ->send();
+
+                            $action->cancel();
+                            break;
+                        }
+                    }
+                })
                 ->requiresConfirmation()
                 ->visible(function ($records) use ($user) {
                     return $user->hasPermissionTo('Excluir Turmas em Massa');

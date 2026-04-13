@@ -170,6 +170,16 @@ class User extends Authenticatable implements FilamentUser
         return $this->belongsTo(Escola::class, 'id_escola');
     }
 
+    public function professores()
+    {
+        return $this->hasMany(Professor::class, 'user_id');
+    }
+
+    public function ehProfessor(): bool
+    {
+        return $this->professores()->exists();
+    }
+
     public function setor()
     {
         return $this->belongsTo(Setor::class);
