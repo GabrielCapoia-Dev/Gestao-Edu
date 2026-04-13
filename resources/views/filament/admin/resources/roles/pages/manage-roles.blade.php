@@ -74,7 +74,7 @@
                 @else
                     <div class="am-roles-grid">
                         @foreach ($roles as $role)
-                            <article class="am-role-card am-role-card--{{ $role['palette']['accent'] }}">
+                            <article class="am-role-card am-role-card--{{ $role['palette']['accent'] }} {{ $role['expanded'] ? 'is-expanded' : 'is-collapsed' }}">
                                 <div class="am-role-card__header">
                                     <div class="am-role-card__identity">
                                         <div class="am-role-card__icon">
@@ -149,10 +149,6 @@
                                                 </div>
                                             </section>
                                         @endforeach
-                                    </div>
-                                @else
-                                    <div class="am-role-card__collapsed">
-                                        <p>Card fechado. Abra para visualizar as permissoes agrupadas por tipo.</p>
                                     </div>
                                 @endif
                             </article>

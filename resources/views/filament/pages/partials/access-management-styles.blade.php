@@ -298,8 +298,16 @@
             linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
         box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
         padding: 1rem;
+    }
+
+    .am-role-card.is-expanded {
         min-height: 26rem;
         max-height: 26rem;
+    }
+
+    .am-role-card.is-collapsed {
+        min-height: auto;
+        max-height: none;
     }
 
     .dark .am-role-card {
@@ -379,34 +387,6 @@
         max-height: 13.25rem;
         scrollbar-width: thin;
         scrollbar-color: rgba(148, 163, 184, 0.7) transparent;
-    }
-
-    .am-role-card__collapsed {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex: 1;
-        border: 1px dashed #d7dee8;
-        border-radius: 1rem;
-        background: rgba(248, 250, 252, 0.92);
-        padding: 1rem;
-        text-align: center;
-    }
-
-    .dark .am-role-card__collapsed {
-        border-color: #334155;
-        background: rgba(15, 23, 42, 0.45);
-    }
-
-    .am-role-card__collapsed p {
-        margin: 0;
-        font-size: 0.85rem;
-        line-height: 1.6;
-        color: #64748b;
-    }
-
-    .dark .am-role-card__collapsed p {
-        color: #94a3b8;
     }
 
     .am-permission-group {
