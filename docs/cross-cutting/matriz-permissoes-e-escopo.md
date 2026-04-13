@@ -20,7 +20,6 @@ Este documento explica como o acesso e montado no projeto. A regra pratica e: qu
 | Usuarios | `Listar Usuarios`, `Criar Usuarios`, `Editar Usuarios`, `Excluir Usuarios` | `UserPolicy` | pode haver restricoes de tela e fluxo operacional | policy cobre capacidade ampla |
 | Pedidos de manutencao | `Listar Pedidos`, `Criar Pedidos`, `Editar Pedidos` | `PedidoPolicy` | `PedidoService` filtra por `id_escola`, `setor` e perfil | policy sozinha nao define visibilidade real |
 | Pedidos de merenda | `Listar Pedidos: Merenda`, `Criar Pedidos: Merenda`, `Editar Pedidos: Merenda` | `PedidoMerendaPolicy` | sem escopo por escola no fluxo atual | risco ao evoluir inventario escolar |
-| Laudos e downloads | permissoes do modulo | policy especifica | rota usa `can:` | download protegido depende de policy |
 | Estoque matriz | permissoes de gestao e balanco | geralmente direta na tela/acao | sem `id_escola` hoje | fluxo centralizado na matriz |
 
 ## Regras de decisao para novas features

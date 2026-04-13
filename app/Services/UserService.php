@@ -27,17 +27,19 @@ class UserService
     }
 
     // =========================================================================
-    // Verificações de permissão (públicas)
+    // VerificaÃ§Ãµes de permissÃ£o (pÃºblicas)
     // =========================================================================
 
     public function podeVisualizarPainelPersonalizado(?User $user): bool
     {
         return $user?->hasPermissionTo('Visualizar Painel Personalizado') ?? false;
     }
+
     public function podeExcluirItens(?User $user): bool
     {
         return $user?->hasPermissionTo('Excluir Itens') ?? false;
     }
+
     public function podeExcluirItensEmMassa(?User $user): bool
     {
         return $user?->hasPermissionTo('Excluir Itens em Massa') ?? false;
@@ -45,7 +47,10 @@ class UserService
 
     public function podeEditarMatriculaDoProfessor(?User $user, ?string $operation = null): bool
     {
-        if ($operation === 'create') return true;
+        if ($operation === 'create') {
+            return true;
+        }
+
         return $user->hasPermissionTo('Editar Matricula do Professor');
     }
 
@@ -56,29 +61,25 @@ class UserService
 
     public function podeEditarNomeDoProfessor(?User $user, ?string $operation = null): bool
     {
-        if ($operation === 'create') return true;
+        if ($operation === 'create') {
+            return true;
+        }
+
         return $user->hasPermissionTo('Editar Nome do Professor');
     }
 
     public function podeVisualizarEspecializacoesDeProfessores(?User $user): bool
     {
-        return $user->hasPermissionTo('Visualizar Especializações de Professores');
+        return $user->hasPermissionTo('Visualizar EspecializaÃ§Ãµes de Professores');
     }
 
     public function podeEditarEspecializacoesDeProfessores(?User $user, ?string $operation = null): bool
     {
-        if ($operation === 'create') return true;
-        return $user->hasPermissionTo('Editar Especializações de Professores');
-    }
+        if ($operation === 'create') {
+            return true;
+        }
 
-    public function podeVisualizarAlunos(?User $user): bool
-    {
-        return $user->hasPermissionTo('Listar Alunos');
-    }
-
-    public function podeListarRetencoes(?User $user): bool
-    {
-        return $user->hasPermissionTo('Listar Retenção');
+        return $user->hasPermissionTo('Editar EspecializaÃ§Ãµes de Professores');
     }
 
     public function podeExcluirTurmas(?User $user): bool
@@ -88,23 +89,21 @@ class UserService
 
     public function podeVisualizarSetor(?User $user): bool
     {
-        return $user?->hasPermissionTo('Visualizar Setor do Usuário') ?? false;
+        return $user?->hasPermissionTo('Visualizar Setor do UsuÃ¡rio') ?? false;
     }
 
     public function podeEditarSetor(?User $user, string $context): bool
     {
-        if (! $user) return false;
-        return $user->hasPermissionTo('Editar Setor do Usuário');
+        if (! $user) {
+            return false;
+        }
+
+        return $user->hasPermissionTo('Editar Setor do UsuÃ¡rio');
     }
 
     public function ehAdmin(?User $user = null): bool
     {
         return Gate::allows('admin-only', $user);
-    }
-
-    public function podeVerLaudos(?User $user): bool
-    {
-        return $user->hasPermissionTo('Visualizar Laudos de Aluno');
     }
 
     public function podeVisualizarDetalhesProfessor(?User $user): bool
@@ -114,32 +113,12 @@ class UserService
 
     public function podeVisualizarEspecializacoesProfessor(?User $user): bool
     {
-        return $user->hasPermissionTo('Visualizar Especializações de Professores');
-    }
-
-    public function podeAnexarLaudos(?User $user): bool
-    {
-        return $user->hasPermissionTo('Anexar Laudos de Aluno');
+        return $user->hasPermissionTo('Visualizar EspecializaÃ§Ãµes de Professores');
     }
 
     public function podeExcluirProfessoresEmLote(?User $user): bool
     {
         return $user->hasPermissionTo('Excluir Professores em Massa');
-    }
-
-    public function podeExcluirLaudos(?User $user): bool
-    {
-        return $user->hasPermissionTo('Excluir Laudos');
-    }
-
-    public function podeExcluirLaudosEmLote(?User $user): bool
-    {
-        return $user->hasPermissionTo('Excluir Laudos em Massa');
-    }
-
-    public function podeBaixarLaudos(?User $user): bool
-    {
-        return $user->hasPermissionTo('Exportar Laudos de Aluno');
     }
 
     public function podeFiltrarProfessoresPorEscola(?User $user): bool
@@ -158,7 +137,7 @@ class UserService
     }
 
     // =========================================================================
-    // Regras de formulário (usadas pelo UserForm)
+    // Regras de formulÃ¡rio (usadas pelo UserForm)
     // =========================================================================
 
     public function opcoesDeRoles(Builder $base, ?User $user): Builder
@@ -238,18 +217,39 @@ class UserService
 
     public function desabilitarCampoRole(?User $user, ?User $record, string $context): bool
     {
-        if ($context === 'create' || ! $record) return false;
-        if ($record->hasRole('Admin') && $user->id == 1) return false;
-        if ($record->hasRole('Admin')) return true;
-        if ($user && $record->id === $user->id) return true;
+        if ($context === 'create' || ! $record) {
+            return false;
+        }
+
+        if ($record->hasRole('Admin') && $user->id == 1) {
+            return false;
+        }
+
+        if ($record->hasRole('Admin')) {
+            return true;
+        }
+
+        if ($user && $record->id === $user->id) {
+            return true;
+        }
+
         return false;
     }
 
     public function podeVerToggleAprovacaoEmail(?User $user, ?User $record, string $context): bool
     {
-        if ($context === 'create') return true;
-        if (! $user || ! $this->ehAdmin($user)) return false;
-        if ($record && ($record->hasRole('Admin') || ($user && $record->id === $user->id))) return false;
+        if ($context === 'create') {
+            return true;
+        }
+
+        if (! $user || ! $this->ehAdmin($user)) {
+            return false;
+        }
+
+        if ($record && ($record->hasRole('Admin') || ($user && $record->id === $user->id))) {
+            return false;
+        }
+
         return true;
     }
 
@@ -273,9 +273,18 @@ class UserService
 
     public function deveTravarCampoEscola(?User $currentUser, string $context): bool
     {
-        if ($this->ehAdmin($currentUser)) return false;
-        if ($context === 'create' && filled($currentUser?->id_escola)) return true;
-        if ($context === 'edit') return true;
+        if ($this->ehAdmin($currentUser)) {
+            return false;
+        }
+
+        if ($context === 'create' && filled($currentUser?->id_escola)) {
+            return true;
+        }
+
+        if ($context === 'edit') {
+            return true;
+        }
+
         return false;
     }
 
@@ -294,30 +303,51 @@ class UserService
 
     public function podeSelecionarRegistro(?User $user, User $record): bool
     {
-        if ($record->hasRole('Admin')) return false;
-        if (! $this->ehAdmin($user) && $record->hasRole('Admin')) return false;
+        if ($record->hasRole('Admin')) {
+            return false;
+        }
+
+        if (! $this->ehAdmin($user) && $record->hasRole('Admin')) {
+            return false;
+        }
+
         return true;
     }
 
     public function podeDeletar(?User $user, User $record): bool
     {
-        if (! $user) return false;
-        if ($record->id === 1) return false;
-        if ($record->id === $user->id) return false;
+        if (! $user) {
+            return false;
+        }
+
+        if ($record->id === 1) {
+            return false;
+        }
+
+        if ($record->id === $user->id) {
+            return false;
+        }
+
         return $this->ehAdmin($user);
     }
 
     public function podeDeletarEmLote(?User $user, iterable $records): bool
     {
-        if (! $this->ehAdmin($user)) return false;
-        foreach ($records as $record) {
-            if ($record instanceof User && $record->hasRole('Admin')) return false;
+        if (! $this->ehAdmin($user)) {
+            return false;
         }
+
+        foreach ($records as $record) {
+            if ($record instanceof User && $record->hasRole('Admin')) {
+                return false;
+            }
+        }
+
         return true;
     }
 
     // =========================================================================
-    // Helpers de checkboxes de permissão (usados pelas duas classes acima)
+    // Helpers de checkboxes de permissÃ£o (usados pelas duas classes acima)
     // =========================================================================
 
     public function checkboxesPermissoesComEstado(User $record, Get $get, User $userLogado): array
@@ -353,7 +383,9 @@ class UserService
                 )
             );
 
-            if ($filtradas->isEmpty()) continue;
+            if ($filtradas->isEmpty()) {
+                continue;
+            }
 
             $permissoesDoGrupoNaRole = collect($filtradas)
                 ->filter(fn($p) => in_array($p->name, $permissoesDaRole))
@@ -420,12 +452,15 @@ class UserService
         if (! $this->ehAdmin($user)) {
             $base->whereDoesntHave('roles', fn($q) => $q->where('name', 'Admin'));
         }
+
         return $base;
     }
 
     public function badgeNavegacaoParaNovosUsuarios(?User $user): ?string
     {
-        if (! $user || ! $this->ehAdmin($user)) return null;
+        if (! $user || ! $this->ehAdmin($user)) {
+            return null;
+        }
 
         $ignorados = IgnoredUser::where('admin_id', $user->id)->pluck('user_id')->toArray();
         $count = User::where('email_approved', false)->whereNotIn('id', $ignorados)->count();
@@ -435,13 +470,16 @@ class UserService
 
     public function sincronizarIgnoradosParaAdmin(User $admin): void
     {
-        if (! $this->ehAdmin($admin)) return;
+        if (! $this->ehAdmin($admin)) {
+            return;
+        }
 
         $pendentes = User::where('email_approved', false)->pluck('id');
+
         foreach ($pendentes as $userId) {
             IgnoredUser::firstOrCreate([
                 'admin_id' => $admin->id,
-                'user_id'  => $userId,
+                'user_id' => $userId,
             ]);
         }
     }
@@ -453,15 +491,19 @@ class UserService
                 $turmaQuery->where('id_escola', $user->id_escola);
             });
         }
+
         return $query;
     }
 
     public function aplicarFiltroTurmasDoUsuario(Builder $query, ?User $user): Builder
     {
-        if (! $user || $this->ehAdmin($user)) return $query;
+        if (! $user || $this->ehAdmin($user)) {
+            return $query;
+        }
 
         if ($user->ehProfessor()) {
             $professoresIds = $user->professores->pluck('id')->toArray();
+
             return $query->whereHas('componentes', function ($q) use ($professoresIds) {
                 $q->whereIn('turma_componente_professor.professor_id', $professoresIds);
             });
@@ -474,32 +516,16 @@ class UserService
         return $query;
     }
 
-    public function aplicarFiltroAlunosDaEscolaDoUsuario(Builder $query, ?User $user): Builder
-    {
-        if (! $user || $this->ehAdmin($user)) return $query;
-
-        if ($user->ehProfessor()) {
-            $professoresIds = $user->professores->pluck('id')->toArray();
-            return $query->whereHas('turma.componentes', function ($q) use ($professoresIds) {
-                $q->whereIn('turma_componente_professor.professor_id', $professoresIds);
-            });
-        }
-
-        if (! empty($user->id_escola)) {
-            return $query->whereHas('turma', function ($q) use ($user) {
-                $q->where('id_escola', $user->id_escola);
-            });
-        }
-
-        return $query;
-    }
-
     public function aplicarFiltroPorEscolaDoUsuarioEmTurma(Builder $query, ?User $user): Builder
     {
-        if (! $user || $this->ehAdmin($user)) return $query;
+        if (! $user || $this->ehAdmin($user)) {
+            return $query;
+        }
+
         if (! empty($user->id_escola)) {
             return $query->where('id_escola', $user->id_escola);
         }
+
         return $query;
     }
 }

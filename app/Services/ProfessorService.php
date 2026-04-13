@@ -35,8 +35,7 @@ use Filament\Notifications\Notification;
 class ProfessorService
 {
     public function __construct(
-        protected UserService $userService,
-        protected AlunoService $alunoService
+        protected UserService $userService
     ) {}
 
 

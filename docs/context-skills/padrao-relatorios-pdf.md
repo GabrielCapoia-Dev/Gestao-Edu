@@ -34,7 +34,7 @@ Definir o padrao obrigatorio para qualquer relatorio PDF novo ou alterado no pro
 - Nao use `Pdf::loadView()` diretamente em novos fluxos, senao a paginacao e o layout padrao podem divergir.
 - Se o Blade precisar de imagens locais, mantenha os assets dentro de `public/` para respeitar o `chroot`.
 - Em relatorios multipagina, preserve `display: table-header-group` em tabelas longas e `page-break-*` nos blocos sensiveis.
-- O fluxo `relatorios.Ficha.alunos-ficha` continua referenciado no codigo, mas o Blade nao existe hoje. Se esse fluxo voltar a ser usado, criar o arquivo seguindo este padrao.
+- Use este padrao quando um novo fluxo de ficha ou listagem em PDF for criado, sempre com Blade existente e renderer configurado.
 
 ## Quando consultar
 

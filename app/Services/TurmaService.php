@@ -2,8 +2,6 @@
 
 namespace App\Services;
 
-use App\Filament\Admin\Clusters\Aluno\Resources\Alunos\AlunoResource;
-use Filament\Notifications\Notification;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
@@ -12,7 +10,6 @@ use Illuminate\Database\Eloquent\Builder;
 use App\Models\User;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Grid;
-use App\Services\UserService;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Checkbox;
@@ -25,14 +22,11 @@ use Filament\Schemas\Schema;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\DeleteAction;
-use Filament\Actions\Action;
 use App\Models\Turma;
-use Filament\Infolists\Components\TextEntry;
 use App\Models\Professor;
 
 class TurmaService
 {
-
     public function __construct(
         protected UserService $userService
     ) {}
@@ -41,15 +35,12 @@ class TurmaService
     {
         return $table
             ->modifyQueryUsing(function (Builder $query) use ($user) {
-
                 $this->userService->aplicarFiltroPorEscolaDoUsuarioEmTurma($query, $user);
 
-                $query
-                    ->with([
-                        'escola:id,nome',
-                        'serie:id,nome'
-                    ])
-                    ->withCount('alunos');
+                $query->with([
+                    'escola:id,nome',
+                    'serie:id,nome',
+                ]);
             })
             ->paginated([5, 10, 25, 50, 100])
             ->defaultPaginationPageOption(5)
@@ -61,7 +52,6 @@ class TurmaService
             ->striped();
     }
 
-
     public function colunasTabela(): array
     {
         return [
@@ -72,7 +62,7 @@ class TurmaService
                 ->wrap(),
 
             TextColumn::make('serie.nome')
-                ->label('Série')
+                ->label('SÃ©rie')
                 ->searchable()
                 ->sortable(),
 
@@ -85,7 +75,7 @@ class TurmaService
                 ->label('Turno')
                 ->badge()
                 ->formatStateUsing(fn(string $state) => match ($state) {
-                    'manha' => 'Manhã',
+                    'manha' => 'ManhÃ£',
                     'tarde' => 'Tarde',
                     'noite' => 'Noite',
                     'integral' => 'Integral',
@@ -120,12 +110,11 @@ class TurmaService
                         'componentes',
                     ]);
 
-                    // Garante que os campos do model estejam presentes
                     $data['id_escola'] = $record->id_escola;
-                    $data['id_serie']  = $record->id_serie;
-                    $data['nome']      = $record->nome;
-                    $data['turno']     = $record->turno;
-                    $data['codigo']    = $record->codigo;
+                    $data['id_serie'] = $record->id_serie;
+                    $data['nome'] = $record->nome;
+                    $data['turno'] = $record->turno;
+                    $data['codigo'] = $record->codigo;
 
                     $componentesDaSerie = $record->serie?->componentesCurriculares ?? collect();
 
@@ -134,9 +123,9 @@ class TurmaService
 
                         return [
                             'componente_curricular_id' => $componente->id,
-                            'componente_nome'          => $componente->nome,
-                            'professor_id'             => $pivot?->pivot->professor_id,
-                            'tem_professor'            => $pivot ? (bool) $pivot->pivot->tem_professor : false,
+                            'componente_nome' => $componente->nome,
+                            'professor_id' => $pivot?->pivot->professor_id,
+                            'tem_professor' => $pivot ? (bool) $pivot->pivot->tem_professor : false,
                         ];
                     })->toArray();
 
@@ -144,17 +133,6 @@ class TurmaService
                 }),
 
             DeleteAction::make()
-                ->before(function ($record, $action) {
-                    if ($record->alunos()->exists()) {
-                        Notification::make()
-                            ->title('Não é possível excluir esta turma.')
-                            ->body('Existem alunos vinculados a ela.')
-                            ->danger()
-                            ->send();
-
-                        $action->cancel();
-                    }
-                })
                 ->visible(fn() => $this->userService->podeExcluirTurmas(Auth::user())),
         ];
     }
@@ -166,7 +144,7 @@ class TurmaService
 
         return [
             SelectFilter::make('id_serie')
-                ->label('Série')
+                ->label('SÃ©rie')
                 ->relationship('serie', 'nome')
                 ->searchable()
                 ->preload(),
@@ -177,14 +155,13 @@ class TurmaService
                 ->searchable()
                 ->preload()
                 ->visible(function () use ($user) {
-
                     return $user->hasPermissionTo('Filtrar Turmas por Escola');
                 }),
 
             SelectFilter::make('turno')
                 ->label('Turno')
                 ->options([
-                    'manha' => 'Manhã',
+                    'manha' => 'ManhÃ£',
                     'tarde' => 'Tarde',
                     'noite' => 'Noite',
                     'integral' => 'Integral',
@@ -192,43 +169,26 @@ class TurmaService
         ];
     }
 
-
     private function acoesEmMassa(?User $user): array
     {
         return [
             DeleteBulkAction::make()
-                ->before(function ($records, $action) {
-
-                    foreach ($records as $record) {
-                        if ($record->alunos()->exists()) {
-                            Notification::make()
-                                ->title('Ação cancelada.')
-                                ->body('Não é possivel excluir turmas com alunos vinculados.')
-                                ->danger()
-                                ->send();
-
-                            $action->halt();
-                        }
-                    }
-                })
                 ->requiresConfirmation()
                 ->visible(function ($records) use ($user) {
-
                     return $user->hasPermissionTo('Excluir Turmas em Massa');
                 }),
         ];
     }
 
-
     public static function configurarFormulario(Schema $schema): Schema
     {
         /** @var \App\Models\User */
         $user = Auth::user();
+
         return $schema
             ->components([
                 Section::make('Dados da Turma')
                     ->columnSpanFull()
-
                     ->schema([
                         Select::make('id_escola')
                             ->label('Escola')
@@ -244,20 +204,21 @@ class TurmaService
                             ->columnSpanFull(),
 
                         Select::make('id_serie')
-                            ->label('Série')
+                            ->label('SÃ©rie')
                             ->options(\App\Models\Serie::pluck('nome', 'id'))
                             ->searchable()
                             ->preload()
                             ->required()
                             ->live()
                             ->afterStateUpdated(function ($state, Set $set) {
-                                if (!$state) {
+                                if (! $state) {
                                     $set('componentes', []);
                                     return;
                                 }
 
                                 $serie = \App\Models\Serie::with('componentesCurriculares')->find($state);
-                                if (!$serie) {
+
+                                if (! $serie) {
                                     $set('componentes', []);
                                     return;
                                 }
@@ -272,12 +233,10 @@ class TurmaService
 
                                 $set('componentes', $componentes);
                             })
-                            ->placeholder('Selecione a série')
-                            ->disabled(
-                                function ($context) use ($user) {
-                                    return $context === 'edit' && ! $user->hasPermissionTo('Editar Dados da Turma');
-                                }
-                            )
+                            ->placeholder('Selecione a sÃ©rie')
+                            ->disabled(function ($context) use ($user) {
+                                return $context === 'edit' && ! $user->hasPermissionTo('Editar Dados da Turma');
+                            })
                             ->columnSpanFull(),
 
                         TextInput::make('nome')
@@ -286,28 +245,23 @@ class TurmaService
                             ->maxLength(255)
                             ->placeholder('Ex: A, B, C')
                             ->hint('Apenas a letra/identificador da turma')
-                            ->disabled(
-                                function ($context) use ($user) {
-                                    return $context === 'edit' && ! $user->hasPermissionTo('Editar Dados da Turma');
-                                }
-                            ),
+                            ->disabled(function ($context) use ($user) {
+                                return $context === 'edit' && ! $user->hasPermissionTo('Editar Dados da Turma');
+                            }),
 
                         Select::make('turno')
                             ->label('Turno')
                             ->options([
-                                'manha' => 'Manhã',
+                                'manha' => 'ManhÃ£',
                                 'tarde' => 'Tarde',
                                 'noite' => 'Noite',
                                 'integral' => 'Integral',
                             ])
                             ->required()
                             ->placeholder('Selecione o turno')
-                            ->disabled(
-                                function ($context) use ($user) {
-                                    return $context === 'edit' && ! $user->hasPermissionTo('Editar Dados da Turma');
-                                }
-                            ),
-
+                            ->disabled(function ($context) use ($user) {
+                                return $context === 'edit' && ! $user->hasPermissionTo('Editar Dados da Turma');
+                            }),
 
                         Hidden::make('codigo')
                             ->default(fn() => 'TUR' . str_pad(Turma::max('id') + 1, 3, '0', STR_PAD_LEFT)),
@@ -350,11 +304,10 @@ class TurmaService
                                             ->label('Professor')
                                             ->options(function (Get $get) {
                                                 $escolaId = $get('../../id_escola');
-                                                if (!$escolaId) {
+                                                if (! $escolaId) {
                                                     return [];
                                                 }
 
-                                                // Exclui professores com função administrativa
                                                 return Professor::where('id_escola', $escolaId)
                                                     ->whereNull('funcao_administrativa_id')
                                                     ->pluck('nome', 'id')
@@ -363,10 +316,10 @@ class TurmaService
                                             ->searchable()
                                             ->placeholder('Selecione o professor')
                                             ->disabled(fn(Get $get) => $get('tem_professor'))
-                                            ->dehydrated(fn(Get $get) => !$get('tem_professor')),
+                                            ->dehydrated(fn(Get $get) => ! $get('tem_professor')),
 
                                         Checkbox::make('tem_professor')
-                                            ->label('Não tem Professor?')
+                                            ->label('NÃ£o tem Professor?')
                                             ->default(false)
                                             ->live()
                                             ->afterStateUpdated(function ($state, Set $set) {
@@ -374,6 +327,7 @@ class TurmaService
                                                     $set('professor_id', null);
                                                 }
                                             }),
+
                                         Hidden::make('componente_curricular_id'),
                                     ]),
                             ])
@@ -384,9 +338,7 @@ class TurmaService
                             ->columnSpanFull(),
                     ])
                     ->columnSpanFull()
-
                     ->visible(fn(Get $get) => $get('id_serie') && $get('id_escola')),
-
             ]);
     }
 
@@ -398,10 +350,8 @@ class TurmaService
             return $data;
         }
 
-        $data['turma']  = $letra;
+        $data['turma'] = $letra;
         $data['codigo'] = 'TR' . $letra;
-
-        // $data['codigo'] = Str::substr($data['codigo'], 0, 3);
 
         return $data;
     }

@@ -39,8 +39,8 @@ class Relatorios
     protected static function fileNameForTipo(string $tipo): string
     {
         return match ($tipo) {
-            self::TIPO_BULK_LIST => 'relatorio-lista-alunos.pdf',
-            self::TIPO_BULK_FICHA => 'relatorio-fichas-alunos.pdf',
+            self::TIPO_BULK_LIST => 'relatorio-lista.pdf',
+            self::TIPO_BULK_FICHA => 'relatorio-fichas.pdf',
             default => 'relatorio.pdf',
         };
     }
@@ -48,8 +48,8 @@ class Relatorios
     protected static function defaultTitle(string $tipo): string
     {
         return match ($tipo) {
-            self::TIPO_BULK_LIST => 'Relatorio - Lista de Alunos',
-            self::TIPO_BULK_FICHA => 'Relatorio - Fichas de Alunos',
+            self::TIPO_BULK_LIST => 'Relatorio - Lista',
+            self::TIPO_BULK_FICHA => 'Relatorio - Fichas',
             default => 'Relatorio',
         };
     }

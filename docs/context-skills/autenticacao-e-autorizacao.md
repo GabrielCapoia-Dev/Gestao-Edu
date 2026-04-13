@@ -25,7 +25,7 @@ Explicar como usuarios entram no sistema, como o acesso e aprovado e como a auto
 - O registro via Google depende de dominio autorizado em `DominioEmailService`.
 - Mesmo apos autenticacao, `User::canAccessPanel()` exige `email_approved = true`; caso contrario, faz logout e redireciona para login com notificacao.
 - Roles e permissoes usam Spatie Permission.
-- Parte da autorizacao e global por permissao; parte e contextual, por exemplo laudos de aluno e pedidos filtrados por escola.
+- Parte da autorizacao e global por permissao; parte e contextual, por exemplo pedidos filtrados por escola.
 
 ## Regras de negocio
 

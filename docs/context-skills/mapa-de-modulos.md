@@ -26,11 +26,6 @@ Dar um panorama rapido dos dominios do sistema e de onde cada responsabilidade p
 - `Escola`, `Setor`, `Serie`, `Turma`, `Professor`, `ComponenteCurricular`, `FuncaoAdministrativa`, `EquipeGestora`
 - Relacoes entre escola, serie, turma, professor e componente vivem em models e resources do Filament
 
-### Apoio especializado
-
-- `Aluno`, `Laudo`, `AlunoLaudo`, `AlunoRetencao`
-- Laudos tem upload/download protegido por policy e storage dedicado
-
 ### Manutencao predial
 
 - `Pedido`, `TipoStatus`, `TipoManutencao`, `PedidoHistorico`, `PedidoArquivo`, `FeedbackPedido`, `EmpresaContratada`

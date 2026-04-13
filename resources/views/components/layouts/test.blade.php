@@ -22,13 +22,10 @@
     </head>
 
     <div class="container mx-auto grid grid-cols-[3fr_2fr] gap-5 max-w-[1400px]">
-
-        {{-- Mapa --}}
         <div>
             <div id="map" class="h-[600px] rounded-xl border border-gray-200 shadow-sm"></div>
         </div>
 
-        {{-- Sidebar --}}
         <div>
             <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm p-5">
                 <div style="padding:1rem">
@@ -36,19 +33,18 @@
                         Clique no mapa para adicionar o ponto
                     </div>
 
-                    {{-- Quando clicar em visualizar aparece a lista de pontos --}}
                     <div class="flex gap-2 mb-4">
                         <button id="btn" onclick="setMode('parada')"
                             class="flex-1 px-3 py-2 rounded-lg border text-sm font-medium transition 
                            bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 
                            hover:bg-gray-50">
-                            🗺 Visualizar Pontos
+                            Visualizar Pontos
                         </button>
                         <button id="btn" onclick="setMode('parada')"
                             class="flex-1 px-3 py-2 rounded-lg border text-sm font-medium transition 
                            bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 
                            hover:bg-gray-50">
-                            👨‍🎓 Visualizar Alunos
+                            Visualizar Registros
                         </button>
                     </div>
 
@@ -57,13 +53,10 @@
                     </h3>
                     <div id="pointList" class="space-y-2 max-h-72 overflow-y-auto"></div>
 
-
                     <h3 class="text-base font-semibold text-gray-700 dark:text-gray-200 border-b border-gray-200 pb-2 mb-3">
-                        Lista de alunos
+                        Lista de registros
                     </h3>
                     <div id="studentList" class="space-y-2 max-h-72 overflow-y-auto"></div>
-
-
                 </div>
             </div>
             <div style="margin-top: 1rem;" class="bg-white dark:bg-gray-900 rounded-xl shadow-sm p-5">

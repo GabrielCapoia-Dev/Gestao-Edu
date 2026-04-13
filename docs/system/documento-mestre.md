@@ -29,7 +29,6 @@ O objetivo desta governanca e fazer com que toda alteracao futura tenha:
 | Autenticacao, autorizacao e permissoes | piloto pronto | cobre onboarding, gate do painel, roles, permissoes e policies |
 | Cadastros administrativos base | planejado | ainda depende de consolidacao por dominio |
 | Estrutura escolar e pedagogica | planejado | mapeado no contexto atual, falta contrato final |
-| Alunos, laudos e retencao | planejado | exige revisao combinada de policy e storage |
 | Pedidos de manutencao | planejado | ja possui skill semente forte |
 | Merenda, contratos e estoque | piloto pronto | cobre contratos, pedidos, saldo e estoque central |
 | Estoque da matriz | planejado | parte do piloto atual, mas ainda pede aprofundamento proprio |

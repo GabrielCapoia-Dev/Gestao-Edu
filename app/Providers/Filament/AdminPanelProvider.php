@@ -2,7 +2,6 @@
 
 namespace App\Providers\Filament;
 
-use App\Http\Controllers\LaudoArquivoController;
 use App\Livewire\LoginPage;
 use App\Livewire\TopBar;
 use App\Models\User;

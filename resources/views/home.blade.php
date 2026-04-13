@@ -480,7 +480,7 @@ footer{background:#020D1F;padding:64px 24px 32px;}
       <div>
         <div class="problem-card reveal">
           <div class="prob-icon">📂</div>
-          <div><h3>Dados fragmentados em planilhas e papel</h3><p>Informações de alunos, funcionários e patrimônio dispersas em arquivos Excel e pastas físicas — sem rastreabilidade nem histórico confiável.</p><div class="solution-tag">Gestão Edu unifica tudo em uma base central</div></div>
+          <div><h3>Dados fragmentados em planilhas e papel</h3><p>Informações operacionais, funcionários e patrimônio dispersas em arquivos Excel e pastas físicas — sem rastreabilidade nem histórico confiável.</p><div class="solution-tag">Gestão Edu unifica tudo em uma base central</div></div>
         </div>
         <div class="problem-card reveal d1">
           <div class="prob-icon">⏳</div>
@@ -488,7 +488,7 @@ footer{background:#020D1F;padding:64px 24px 32px;}
         </div>
         <div class="problem-card reveal d2">
           <div class="prob-icon">🔗</div>
-          <div><h3>Setores que não se comunicam entre si</h3><p>Transporte não sabe quais alunos estão ativos. Alimentação não sabe a frequência da semana. Cada área opera em silo, gerando inconsistências.</p><div class="solution-tag">Dados compartilhados entre todos os módulos</div></div>
+          <div><h3>Setores que não se comunicam entre si</h3><p>Transporte não sabe quais rotas estão ativas. Alimentação não conhece a demanda prevista da semana. Cada área opera em silo, gerando inconsistências.</p><div class="solution-tag">Dados compartilhados entre todos os módulos</div></div>
         </div>
         <div class="problem-card reveal d3">
           <div class="prob-icon">📉</div>
@@ -526,7 +526,7 @@ footer{background:#020D1F;padding:64px 24px 32px;}
             <div class="mck-main">
               <div class="mck-hrow"><span class="mck-t">Turma 4º Ano B — 2026</span><span class="mck-badge g">Ativo</span></div>
               <div class="mck-cards">
-                <div class="mck-card"><div class="mck-val">28</div><div class="mck-lbl">Alunos</div></div>
+                <div class="mck-card"><div class="mck-val">28</div><div class="mck-lbl">Registros</div></div>
                 <div class="mck-card"><div class="mck-val">92%</div><div class="mck-lbl">Frequência</div></div>
                 <div class="mck-card"><div class="mck-val">7.4</div><div class="mck-lbl">Média geral</div></div>
               </div>
@@ -554,13 +554,13 @@ footer{background:#020D1F;padding:64px 24px 32px;}
         <div class="mod-tag">Módulo 01 — Pedagógico</div>
         <div class="mod-icon-big">📋</div>
         <h2>Gestão Pedagógica Completa</h2>
-        <p>Acompanhe a vida escolar de cada aluno em tempo real — da matrícula ao histórico acadêmico. Professores, coordenadores e a secretaria têm visibilidade integrada sobre frequência, desempenho, intervenções e o cumprimento do currículo em toda a rede.</p>
+        <p>Acompanhe os indicadores pedagógicos e operacionais em tempo real, com visibilidade integrada sobre frequência, desempenho e cumprimento do currículo em toda a rede.</p>
         <div class="feat-grid">
           <div class="feat-item"><div class="feat-item-icon">🏫</div><h4>Turmas e matrículas</h4><p>Gestão de matrículas, transferências, reclassificações e histórico escolar completo.</p></div>
           <div class="feat-item"><div class="feat-item-icon">✅</div><h4>Frequência diária</h4><p>Registro por turma com alertas automáticos para baixa frequência e risco de reprovação.</p></div>
           <div class="feat-item"><div class="feat-item-icon">📝</div><h4>Avaliações e notas</h4><p>Provas, diagnósticos, recuperação e cálculo automático de médias por disciplina.</p></div>
-          <div class="feat-item"><div class="feat-item-icon">🎯</div><h4>Planos de intervenção</h4><p>Identificação de alunos em risco e registro de intervenções pedagógicas individualizadas.</p></div>
-          <div class="feat-item"><div class="feat-item-icon">📊</div><h4>Relatórios de desempenho</h4><p>Indicadores por aluno, turma, escola e rede para tomada de decisão fundamentada.</p></div>
+          <div class="feat-item"><div class="feat-item-icon">🎯</div><h4>Planos de intervenção</h4><p>Identificação de turmas e frentes em risco com registro estruturado de intervenções pedagógicas.</p></div>
+          <div class="feat-item"><div class="feat-item-icon">📊</div><h4>Relatórios de desempenho</h4><p>Indicadores por turma, escola e rede para tomada de decisão fundamentada.</p></div>
           <div class="feat-item"><div class="feat-item-icon">🗓️</div><h4>Calendário escolar</h4><p>Planejamento integrado com eventos, avaliações e datas para toda a rede municipal.</p></div>
         </div>
         <div class="mod-cta-row"><a href="/admin/login" class="btn-blue">Acessar o módulo</a><a href="#como-funciona" class="btn-txt">Como funciona a implantação →</a></div>
@@ -577,7 +577,7 @@ footer{background:#020D1F;padding:64px 24px 32px;}
             <div class="mck-main">
               <div class="mck-hrow"><span class="mck-t">Rotas — Turno Manhã</span><span class="mck-badge g">18 ativas</span></div>
               <div class="mck-cards">
-                <div class="mck-card"><div class="mck-val">412</div><div class="mck-lbl">Alunos elegíveis</div></div>
+                <div class="mck-card"><div class="mck-val">412</div><div class="mck-lbl">Usuários elegíveis</div></div>
                 <div class="mck-card"><div class="mck-val">18</div><div class="mck-lbl">Rotas</div></div>
                 <div class="mck-card"><div class="mck-val">96%</div><div class="mck-lbl">Ocupação</div></div>
               </div>
@@ -607,14 +607,14 @@ footer{background:#020D1F;padding:64px 24px 32px;}
         <div class="mod-tag">Módulo 02 — Transporte</div>
         <div class="mod-icon-big">🚌</div>
         <h2>Transporte Escolar Inteligente</h2>
-        <p>Controle total das rotas, veículos e elegibilidade — eliminando o uso irregular do transporte, otimizando a logística e garantindo que cada aluno com direito ao serviço seja atendido com segurança e rastreabilidade.</p>
+        <p>Controle total das rotas, veículos e elegibilidade — eliminando usos irregulares, otimizando a logística e garantindo atendimento com segurança e rastreabilidade.</p>
         <div class="feat-grid">
           <div class="feat-item"><div class="feat-item-icon">🗺️</div><h4>Gestão de rotas</h4><p>Cadastro de rotas com paradas, horários, distâncias e veículos designados a cada trecho.</p></div>
           <div class="feat-item"><div class="feat-item-icon">✅</div><h4>Controle de elegibilidade</h4><p>Critérios automáticos por distância e zona rural para definir o direito ao transporte gratuito.</p></div>
-          <div class="feat-item"><div class="feat-item-icon">🪪</div><h4>Emissão de carteirinhas</h4><p>Geração digital de carteirinhas com foto, dados do aluno e QR code para validação.</p></div>
+          <div class="feat-item"><div class="feat-item-icon">🪪</div><h4>Emissão de carteirinhas</h4><p>Geração digital de carteirinhas com foto, dados do usuário e QR code para validação.</p></div>
           <div class="feat-item"><div class="feat-item-icon">📊</div><h4>Ocupação por rota</h4><p>Monitoramento de lotação por veículo para redistribuição e otimização da frota.</p></div>
-          <div class="feat-item"><div class="feat-item-icon">📋</div><h4>Histórico de uso</h4><p>Registro de embarques por aluno, com histórico auditável para prestação de contas.</p></div>
-          <div class="feat-item"><div class="feat-item-icon">🔔</div><h4>Alertas e irregularidades</h4><p>Detecção de alunos usando o transporte sem elegibilidade ou fora da rota designada.</p></div>
+          <div class="feat-item"><div class="feat-item-icon">📋</div><h4>Histórico de uso</h4><p>Registro de embarques por usuário, com histórico auditável para prestação de contas.</p></div>
+          <div class="feat-item"><div class="feat-item-icon">🔔</div><h4>Alertas e irregularidades</h4><p>Detecção de usos fora dos critérios de elegibilidade ou da rota designada.</p></div>
         </div>
         <div class="mod-cta-row"><a href="/admin/login" class="btn-blue">Acessar o módulo</a><a href="#como-funciona" class="btn-txt">Como funciona a implantação →</a></div>
       </div>
@@ -657,7 +657,7 @@ footer{background:#020D1F;padding:64px 24px 32px;}
         <div class="mod-tag">Módulo 03 — Alimentação</div>
         <div class="mod-icon-big">🍽️</div>
         <h2>Alimentação Escolar Nutritiva</h2>
-        <p>Do planejamento nutricional ao controle de estoque — o sistema calcula automaticamente por quantos dias o estoque atual sustenta o cardápio planejado, com base no número real de alunos atendidos por escola e turno.</p>
+        <p>Do planejamento nutricional ao controle de estoque — o sistema calcula automaticamente por quantos dias o estoque atual sustenta o cardápio planejado, com base na demanda real atendida por escola e turno.</p>
         <div class="feat-grid">
           <div class="feat-item"><div class="feat-item-icon">🥗</div><h4>Elaboração de cardápios</h4><p>Planejamento semanal e mensal de cardápios por escola, turno e faixa etária.</p></div>
           <div class="feat-item"><div class="feat-item-icon">📦</div><h4>Controle de estoque</h4><p>Entradas, saídas e saldo por insumo com alertas de estoque mínimo configuráveis.</p></div>
@@ -791,7 +791,7 @@ footer{background:#020D1F;padding:64px 24px 32px;}
     </div>
     <div class="benefits-grid">
       <div class="benefit-card reveal"><div class="benefit-icon">🎯</div><h3>Centralização de Dados</h3><p>Todas as informações — pedagógicas, patrimoniais, de pessoal e de alimentação — reunidas em uma única base confiável e acessível.</p></div>
-      <div class="benefit-card feat reveal d1"><div class="benefit-icon">🔗</div><h3>Integração Real entre Setores</h3><p>O RH sabe quais professores estão de atestado. A alimentação conhece a frequência prevista. O transporte vê os alunos matriculados. Tudo conectado.</p></div>
+      <div class="benefit-card feat reveal d1"><div class="benefit-icon">🔗</div><h3>Integração Real entre Setores</h3><p>O RH sabe quais professores estão de atestado. A alimentação conhece a demanda prevista. O transporte vê as rotas ativas. Tudo conectado.</p></div>
       <div class="benefit-card reveal d2"><div class="benefit-icon">⚡</div><h3>Eficiência Administrativa</h3><p>Redução de retrabalho, padronização de processos e automação de tarefas repetitivas que consomem horas da equipe diariamente.</p></div>
       <div class="benefit-card reveal d1"><div class="benefit-icon">🔍</div><h3>Transparência Total</h3><p>Histórico auditável de todas as ações — quem fez o quê, quando e em qual unidade — para prestação de contas sem margem para erros.</p></div>
       <div class="benefit-card reveal d2"><div class="benefit-icon">📱</div><h3>Acesso Responsivo</h3><p>Interface adaptada para computadores, tablets e smartphones — gestores, diretores e professores acessam de qualquer lugar.</p></div>
@@ -806,7 +806,7 @@ footer{background:#020D1F;padding:64px 24px 32px;}
     <div style="text-align:center;margin-bottom:64px;" class="reveal">
       <div class="sec-eyebrow">Integração</div>
       <h2 class="sec-title">Um ecossistema, <span class="italic">não uma coleção de ferramentas</span></h2>
-      <p class="sec-body" style="margin:0 auto;">Os cinco módulos compartilham a mesma base de dados. A matrícula alimenta o transporte. A frequência alimenta a alimentação. O RH alimenta tudo. Essa é a diferença de um sistema realmente integrado.</p>
+      <p class="sec-body" style="margin:0 auto;">Os cinco módulos compartilham a mesma base de dados. O planejamento alimenta o transporte. A demanda alimenta a alimentação. O RH alimenta tudo. Essa é a diferença de um sistema realmente integrado.</p>
     </div>
     <div class="int-spokes reveal">
       <div class="int-center">🏛️</div>
@@ -817,7 +817,7 @@ footer{background:#020D1F;padding:64px 24px 32px;}
       <div class="int-spoke s5"><div class="int-spoke-icon">👥</div><div class="int-spoke-lbl">R. Humanos</div></div>
     </div>
     <div class="int-grid">
-      <div class="int-point reveal"><div class="int-point-icon">🔄</div><h3>Dados compartilhados</h3><p>Aluno matriculado no módulo pedagógico já aparece automaticamente no transporte e na alimentação.</p></div>
+      <div class="int-point reveal"><div class="int-point-icon">🔄</div><h3>Dados compartilhados</h3><p>Informações operacionais registradas em um módulo passam a alimentar os demais fluxos automaticamente.</p></div>
       <div class="int-point reveal d1"><div class="int-point-icon">📊</div><h3>Relatórios consolidados</h3><p>Visão gerencial da secretaria com dados de todos os módulos em uma única tela de indicadores.</p></div>
       <div class="int-point reveal d2"><div class="int-point-icon">🔔</div><h3>Alertas cruzados</h3><p>Queda de frequência no pedagógico gera alerta no RH. Sistema que pensa junto com o gestor.</p></div>
     </div>
@@ -830,10 +830,10 @@ footer{background:#020D1F;padding:64px 24px 32px;}
     <div class="sec-left reveal">
       <div class="sec-eyebrow">Segurança e Privacidade</div>
       <h2 class="sec-title">Dados públicos exigem <span class="italic">proteção de nível profissional</span></h2>
-      <p class="sec-body">O Gestão Edu foi projetado com a LGPD como princípio de design — protegendo as informações de alunos, funcionários e a própria secretaria com rigor técnico e conformidade legal.</p>
+      <p class="sec-body">O Gestão Edu foi projetado com a LGPD como princípio de design — protegendo as informações operacionais, de funcionários e da própria secretaria com rigor técnico e conformidade legal.</p>
       <div class="sec-list">
         <div class="sec-item"><div class="sec-ico">🔒</div><div><h4>Criptografia em trânsito e em repouso</h4><p>Comunicações protegidas por TLS 1.3 e dados armazenados cifrados — impossibilitando acesso não autorizado mesmo em caso de vazamento de infraestrutura.</p></div></div>
-        <div class="sec-item"><div class="sec-ico">👤</div><div><h4>Controle de acesso por perfil (RBAC)</h4><p>Cada usuário vê apenas o que sua função permite. Um professor não acessa dados de RH; um motorista não vê notas de alunos.</p></div></div>
+        <div class="sec-item"><div class="sec-ico">👤</div><div><h4>Controle de acesso por perfil (RBAC)</h4><p>Cada usuário vê apenas o que sua função permite. Um professor não acessa dados de RH; um motorista não vê informações fora do seu escopo.</p></div></div>
         <div class="sec-item"><div class="sec-ico">🗄️</div><div><h4>Backups automáticos e recuperação garantida</h4><p>Cópias automáticas diárias com retenção de 30 dias. Recuperação de dados em caso de incidentes sem perda de histórico.</p></div></div>
         <div class="sec-item"><div class="sec-ico">📋</div><div><h4>Log de auditoria imutável</h4><p>Registro completo de toda ação no sistema — quem, o quê, quando e de qual dispositivo — para fins de auditoria e conformidade legal.</p></div></div>
       </div>
@@ -872,7 +872,7 @@ footer{background:#020D1F;padding:64px 24px 32px;}
     <h2>Pronto para transformar a gestão da <span class="italic">educação de Umuarama?</span></h2>
     <p>Entre com suas credenciais institucionais e acesse o painel completo da Secretaria Municipal de Educação.</p>
     <div class="cta-cards">
-      <div class="cta-card"><div class="cta-card-icon">📋</div><h4>Gestão Pedagógica</h4><p>Alunos, turmas, notas e frequência</p></div>
+      <div class="cta-card"><div class="cta-card-icon">📋</div><h4>Gestão Pedagógica</h4><p>Turmas, indicadores, planejamento e frequência</p></div>
       <div class="cta-card"><div class="cta-card-icon">🚌</div><h4>Transporte e Alimentação</h4><p>Rotas, cardápios e estoque integrados</p></div>
       <div class="cta-card"><div class="cta-card-icon">👥</div><h4>RH e Patrimônio</h4><p>Servidores, bens e manutenções</p></div>
     </div>

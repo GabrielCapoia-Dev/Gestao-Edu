@@ -1,13 +1,11 @@
 <?php
 
 use App\Http\Controllers\FeedbackPedidoExportController;
-use App\Http\Controllers\RelatorioController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use Illuminate\Support\Collection;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Str;
-use App\Http\Controllers\LaudoArquivoController;
 use App\Models\FeedbackPedido;
 use App\Models\Pedido;
 use App\Services\Relatorios\PedidoRelatorioService;
@@ -82,25 +80,6 @@ Route::get('/oauth/callback/google', [GoogleAuthController::class, 'callback'])-
 Route::prefix('admin')
     ->middleware(['web', 'auth'])
     ->group(function () {
-        Route::get('/laudos/{alunoLaudo}', [LaudoArquivoController::class, 'show'])
-            ->name('laudos.show')
-            ->middleware('can:view,alunoLaudo'); // Se nao puder, retorna 403.
-
-        Route::get('/laudos/{alunoLaudo}/download', [LaudoArquivoController::class, 'download'])
-            ->name('laudos.download')
-            ->middleware('can:download,alunoLaudo'); // Se nao puder, retorna 403.
-
-        Route::get('/relatorios/ficha', [RelatorioController::class, 'ficha'])
-            ->name('relatorios.ficha');
-
-        Route::get('/relatorios/bulk-list', [RelatorioController::class, 'bulkList'])
-            ->name('relatorios.bulkList');
-
-
-        Route::get('/relatorios/bulk-ficha', [RelatorioController::class, 'bulkFicha'])
-            ->name('relatorios.bulkFicha');
-
-
         Route::post('/notifications/mark-all-read', function () {
             abort_unless(Auth::user()?->hasPermissionLike('visualizar notifica'), 403);
 

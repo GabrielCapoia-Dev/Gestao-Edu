@@ -9,7 +9,6 @@ Resumir os pontos de persistencia que mais influenciam comportamento global: mig
 - `database/migrations`
 - `database/seeders`
 - `config/filesystems.php`
-- `app/Http/Controllers/LaudoArquivoController.php`
 - `app/Http/Controllers/PedidoArquivoController.php`
 
 ## Persistencia estruturante
@@ -18,7 +17,7 @@ Resumir os pontos de persistencia que mais influenciam comportamento global: mig
 - `setor`, `escolas`, `tipo_status`, `tipo_manutencao` sustentam o fluxo de manutencao.
 - `pedidos`, `pedido_historicos`, `pedido_arquivos`, `feedback_pedidos` sustentam rastreabilidade de manutencao.
 - `contratos`, `contrato_item`, `pedidos_merenda`, `pedido_merenda_itens`, `estoque`, `estoque_movimentacoes` sustentam alimentacao escolar.
-- `laudos`, `alunos`, `aluno_laudo`, `turmas`, `professores`, `componentes` sustentam o dominio pedagogico.
+- `turmas`, `professores`, `componentes` sustentam o dominio pedagogico remanescente.
 
 ## Seeders criticos
 
@@ -32,8 +31,6 @@ Resumir os pontos de persistencia que mais influenciam comportamento global: mig
 ## Arquivos e storage
 
 - Disk `public`: arquivos publicos, inclusive uploads de pedidos.
-- Disk `laudos`: storage local privado em `storage/app/laudos`.
-- Laudos sao servidos por controller com policy, nao por link publico direto.
 - Downloads de anexos de pedido tambem passam por policy.
 
 ## Riscos e cuidados

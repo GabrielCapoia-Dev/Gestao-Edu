@@ -46,7 +46,6 @@ O consolidado:
 | `documentation-auth-access-analyst` | autenticacao, autorizacao e permissoes | `docs/domains/autenticacao-autorizacao-e-permissoes.md` |
 | `documentation-admin-cadastros-analyst` | cadastros administrativos base | `docs/domains/cadastros-administrativos-base.md` |
 | `documentation-school-structure-analyst` | estrutura escolar e pedagogica | `docs/domains/estrutura-escolar-e-pedagogica.md` |
-| `documentation-student-support-analyst` | alunos, laudos e retencao | `docs/domains/alunos-laudos-e-retencao.md` |
 | `documentation-maintenance-requests-analyst` | pedidos de manutencao | `docs/domains/pedidos-de-manutencao.md` |
 | `documentation-school-meals-contracts-stock-analyst` | merenda, contratos e estoque | `docs/domains/merenda-contratos-e-estoque.md` |
 | `documentation-stock-analyst` | estoque da matriz | `docs/domains/estoque-da-matriz.md` |

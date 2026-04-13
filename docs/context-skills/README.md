@@ -11,7 +11,7 @@ O projeto e um monolito Laravel 12 com painel Filament 5 e foco em gestao educac
 - acesso, usuarios, papeis e permissoes
 - manutencao predial escolar com fluxo de pedidos
 - alimentacao escolar com contratos, margem e estoque
-- estrutura pedagogica, alunos, turmas, professores e laudos
+- estrutura pedagogica remanescente, turmas, professores e componentes
 - relatorios, exportacoes e notificacoes internas
 
 O README do projeto esta parcialmente defasado. Estas skills refletem o estado real do codigo.

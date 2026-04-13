@@ -71,7 +71,7 @@ O limite deste dominio termina na autorizacao e no enquadramento do usuario. Reg
 ### Policies
 
 - policies sao registradas explicitamente em `AppServiceProvider`
-- exemplos: `UserPolicy`, `RolePolicy`, `PermissionPolicy`, `PedidoPolicy`, `PedidoMerendaPolicy`, `AlunoLaudoPolicy`
+- exemplos: `UserPolicy`, `RolePolicy`, `PermissionPolicy`, `PedidoPolicy`, `PedidoMerendaPolicy`
 - policy costuma responder a capacidade ampla do recurso, nao ao filtro contextual completo
 
 ### Filtros de escopo
@@ -82,7 +82,7 @@ O limite deste dominio termina na autorizacao e no enquadramento do usuario. Reg
 
 ### Middleware e guardas de rota
 
-- rotas especificas usam `can:` em downloads sensiveis, como laudos e arquivos de pedido
+- rotas especificas usam `can:` em downloads sensiveis, como arquivos de pedido
 - o acesso ao painel depende de `Authenticate` do Filament e do gate final em `canAccessPanel`
 
 ## Regras de negocio criticas

@@ -8,7 +8,6 @@ use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Grid;
 use Filament\Tables\Columns\IconColumn;
-use App\Filament\Clusters\AlunoCluster\Resources\AlunoResource;
 use Filament\Notifications\Notification;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
