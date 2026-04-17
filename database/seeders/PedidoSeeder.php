@@ -13,6 +13,7 @@ use App\Models\Escola;
 use App\Models\EmpresaContratada;
 use App\Models\Enums\NivelEmergenciaPedido;
 use App\Models\FeedbackPedido;
+use RuntimeException;
 
 class PedidoSeeder extends Seeder
 {
@@ -58,6 +59,16 @@ class PedidoSeeder extends Seeder
         $escolas  = Escola::where('ativo', true)->pluck('id')->toArray();
         $empresas = EmpresaContratada::where('ativo', true)->pluck('id')->toArray();
 
+        if ($statuses->isEmpty()) {
+            throw new RuntimeException('PedidoSeeder: nenhum TipoStatus ativo encontrado.');
+        }
+
+        $this->assertNonEmpty($tipos, 'tipos de manutencao');
+        $this->assertNonEmpty($setores, 'setores');
+        $this->assertNonEmpty($users, 'usuarios');
+        $this->assertNonEmpty($escolas, 'escolas');
+        $this->assertNonEmpty($empresas, 'empresas contratadas');
+
         $prioridades = [
             NivelEmergenciaPedido::INDEFINIDO,
             NivelEmergenciaPedido::EMERGENCIAL,
@@ -67,12 +78,16 @@ class PedidoSeeder extends Seeder
 
         $sAberto = TipoStatus::where('nome', 'Em Aberto')->first();
 
+        if (! $sAberto) {
+            throw new RuntimeException('PedidoSeeder: status "Em Aberto" nao encontrado.');
+        }
+
         foreach ($statuses as $statusAtual) {
 
             for ($i = 1; $i <= $this->numeroDePedidos; $i++) {
 
                 $solicitanteId = $this->rand($users);
-                $responsavelId = $this->rand(array_values(array_filter($users, fn($id) => $id !== $solicitanteId)));
+                $responsavelId = $this->randResponsavel($users, $solicitanteId);
 
                 $setorId = $this->rand($setores);
 
@@ -155,7 +170,7 @@ class PedidoSeeder extends Seeder
             foreach ($escolas as $escolaId) {
 
                 $solicitanteId = $this->rand($users);
-                $responsavelId = $this->rand(array_values(array_filter($users, fn($id) => $id !== $solicitanteId)));
+                $responsavelId = $this->randResponsavel($users, $solicitanteId);
 
                 $setorId = $this->rand($setores);
 
@@ -213,7 +228,7 @@ class PedidoSeeder extends Seeder
                 $escolaId = $this->rand($escolas);
 
                 $solicitanteId = $this->rand($users);
-                $responsavelId = $this->rand(array_values(array_filter($users, fn($id) => $id !== $solicitanteId)));
+                $responsavelId = $this->randResponsavel($users, $solicitanteId);
 
                 $setorId = $this->rand($setores);
 
@@ -277,7 +292,7 @@ class PedidoSeeder extends Seeder
             for ($i = 0; $i < $this->numeroPedidosConcluidosExtras; $i++) {
 
                 $solicitanteId = $this->rand($users);
-                $responsavelId = $this->rand(array_values(array_filter($users, fn($id) => $id !== $solicitanteId)));
+                $responsavelId = $this->randResponsavel($users, $solicitanteId);
 
                 $setorId = $this->rand($setores);
 
@@ -379,6 +394,31 @@ class PedidoSeeder extends Seeder
 
     private function rand(array $items): mixed
     {
+        if ($items === []) {
+            throw new RuntimeException('PedidoSeeder: tentativa de sortear item de uma lista vazia.');
+        }
+
         return $items[array_rand($items)];
+    }
+
+    private function randResponsavel(array $users, int $solicitanteId): int
+    {
+        $responsaveis = array_values(array_filter(
+            $users,
+            fn($id) => $id !== $solicitanteId
+        ));
+
+        if ($responsaveis === []) {
+            return $solicitanteId;
+        }
+
+        return (int) $this->rand($responsaveis);
+    }
+
+    private function assertNonEmpty(array $items, string $label): void
+    {
+        if ($items === []) {
+            throw new RuntimeException("PedidoSeeder: lista de {$label} esta vazia. Verifique a ordem dos seeders.");
+        }
     }
 }
