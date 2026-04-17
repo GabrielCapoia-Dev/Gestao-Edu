@@ -83,8 +83,53 @@
                         </svg>
                     </div>
                     <div class="nav-card-body">
-                        <h3>Avaliações</h3>
+                        <h3>Minhas Avaliações</h3>
                         <p>Responder avaliações das suas turmas</p>
+                    </div>
+                    <div class="nav-card-arrow">→</div>
+                </a>
+                @endcan
+
+                @can('Listar Avaliações')
+                <a href="{{ route('filament.admin.pages.avaliacoes-gestao') }}" class="nav-card nav-card--teal">
+                    <div class="nav-card-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m5.25 2.25a8.97 8.97 0 0 1-8.25 8.964A8.97 8.97 0 0 1 3.75 12a8.97 8.97 0 0 1 8.25-8.964A8.97 8.97 0 0 1 20.25 12Z" />
+                        </svg>
+                    </div>
+                    <div class="nav-card-body">
+                        <h3>Gestão de Avaliações</h3>
+                        <p>Criar e organizar ciclos avaliativos</p>
+                    </div>
+                    <div class="nav-card-arrow">→</div>
+                </a>
+                @endcan
+
+                @can('Listar Pautas')
+                <a href="{{ route('filament.admin.pages.avaliacoes-pautas') }}" class="nav-card nav-card--blue">
+                    <div class="nav-card-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-7.5A3.375 3.375 0 0 0 5.25 11.625v2.625m14.25 0v4.5A2.25 2.25 0 0 1 17.25 21h-10.5A2.25 2.25 0 0 1 4.5 18.75v-4.5m15 0h-15M9 7.5V5.25A2.25 2.25 0 0 1 11.25 3h1.5A2.25 2.25 0 0 1 15 5.25V7.5" />
+                        </svg>
+                    </div>
+                    <div class="nav-card-body">
+                        <h3>Pautas</h3>
+                        <p>Gerenciar perguntas e vínculos por componente</p>
+                    </div>
+                    <div class="nav-card-arrow">→</div>
+                </a>
+                @endcan
+
+                @can('Listar Alternativas')
+                <a href="{{ route('filament.admin.pages.avaliacoes-alternativas') }}" class="nav-card nav-card--amber">
+                    <div class="nav-card-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 7.5 3.75-3.75 3.75 3.75M8.25 16.5l3.75 3.75 3.75-3.75M4.5 12h15" />
+                        </svg>
+                    </div>
+                    <div class="nav-card-body">
+                        <h3>Alternativas</h3>
+                        <p>Cadastro de opções para avaliação e observação</p>
                     </div>
                     <div class="nav-card-arrow">→</div>
                 </a>

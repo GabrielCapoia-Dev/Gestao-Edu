@@ -29,6 +29,8 @@ class PautaResource extends Resource
 {
     protected static ?string $model = Pauta::class;
 
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ClipboardDocumentList;
 
     protected static string|UnitEnum|null $navigationGroup = 'Pedagógico';
@@ -170,5 +172,10 @@ class PautaResource extends Resource
         return [
             'index' => ManagePautas::route('/'),
         ];
+    }
+
+    public static function canAccess(): bool
+    {
+        return false;
     }
 }

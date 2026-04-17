@@ -29,6 +29,8 @@ class AvaliacaoResource extends Resource
 {
     protected static ?string $model = Avaliacao::class;
 
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ClipboardDocumentCheck;
 
     protected static string|UnitEnum|null $navigationGroup = 'Pedagógico';
@@ -188,5 +190,10 @@ class AvaliacaoResource extends Resource
         return [
             'index' => ManageAvaliacoes::route('/'),
         ];
+    }
+
+    public static function canAccess(): bool
+    {
+        return false;
     }
 }

@@ -22,7 +22,7 @@ class AvaliacoesProfessor extends Page
 
     protected static ?string $title = 'Avaliações';
 
-    protected static ?string $navigationLabel = 'Avaliações';
+    protected static ?string $navigationLabel = 'Minhas Avaliações';
 
     protected static ?string $slug = 'avaliacoes-professor';
 
