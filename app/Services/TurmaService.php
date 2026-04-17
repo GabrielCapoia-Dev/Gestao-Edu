@@ -77,7 +77,7 @@ class TurmaService
                 ->label('Turno')
                 ->badge()
                 ->formatStateUsing(fn(string $state) => match ($state) {
-                    'manha' => 'ManhÃ£',
+                    'manha' => 'Manhã',
                     'tarde' => 'Tarde',
                     'noite' => 'Noite',
                     'integral' => 'Integral',
@@ -182,7 +182,7 @@ class TurmaService
             SelectFilter::make('turno')
                 ->label('Turno')
                 ->options([
-                    'manha' => 'ManhÃ£',
+                    'manha' => 'Manhã',
                     'tarde' => 'Tarde',
                     'noite' => 'Noite',
                     'integral' => 'Integral',
@@ -287,7 +287,7 @@ class TurmaService
                         Select::make('turno')
                             ->label('Turno')
                             ->options([
-                                'manha' => 'ManhÃ£',
+                                'manha' => 'Manhã',
                                 'tarde' => 'Tarde',
                                 'noite' => 'Noite',
                                 'integral' => 'Integral',
