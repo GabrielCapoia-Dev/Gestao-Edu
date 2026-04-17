@@ -64,7 +64,7 @@ class TurmaService
                 ->wrap(),
 
             TextColumn::make('serie.nome')
-                ->label('SÃ©rie')
+                ->label('Série')
                 ->searchable()
                 ->sortable(),
 
@@ -165,7 +165,7 @@ class TurmaService
 
         return [
             SelectFilter::make('id_serie')
-                ->label('SÃ©rie')
+                ->label('Série')
                 ->relationship('serie', 'nome')
                 ->searchable()
                 ->preload(),
@@ -239,7 +239,7 @@ class TurmaService
                             ->columnSpanFull(),
 
                         Select::make('id_serie')
-                            ->label('SÃ©rie')
+                            ->label('Série')
                             ->options(\App\Models\Serie::pluck('nome', 'id'))
                             ->searchable()
                             ->preload()
@@ -268,7 +268,7 @@ class TurmaService
 
                                 $set('componentes', $componentes);
                             })
-                            ->placeholder('Selecione a sÃ©rie')
+                            ->placeholder('Selecione a Série')
                             ->disabled(function ($context) use ($user) {
                                 return $context === 'edit' && ! $user->hasPermissionTo('Editar Dados da Turma');
                             })
