@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Professor;
+use Closure;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Repeater;
@@ -80,11 +81,20 @@ class ProfessorService
                         TextInput::make('email')
                             ->label('E-mail')
                             ->email()
+                            ->required()
+                            ->dehydrateStateUsing(fn(?string $state): string => Professor::normalizarEmail($state))
+                            ->rule(function () {
+                                return function (string $attribute, mixed $value, Closure $fail): void {
+                                    if (! Professor::emailInstitucionalValido((string) $value)) {
+                                        $fail('Use somente e-mail institucional @edu.umuarama.pr.gov.br.');
+                                    }
+                                };
+                            })
                             ->maxLength(255)
                             ->disabled(function (?Professor $record) use ($user) {
                                 return $record !== null && !$user->hasPermissionTo('Editar Dados do Professor');
                             })
-                            ->placeholder('professor@exemplo.com'),
+                            ->placeholder('professor@edu.umuarama.pr.gov.br'),
 
                         TextInput::make('telefone')
                             ->label('Telefone')

@@ -561,14 +561,6 @@ class UserService
 
     public function aplicarFiltroPorEscolaDoUsuarioEmTurma(Builder $query, ?User $user): Builder
     {
-        if (! $user || $this->ehAdmin($user)) {
-            return $query;
-        }
-
-        if (! empty($user->id_escola)) {
-            return $query->where('id_escola', $user->id_escola);
-        }
-
-        return $query;
+        return $this->aplicarFiltroTurmasDoUsuario($query, $user);
     }
 }

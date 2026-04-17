@@ -5,10 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 class Professor extends Model
 {
     use HasFactory;
+
+    public const EMAIL_INSTITUCIONAL_DOMINIO = 'edu.umuarama.pr.gov.br';
 
     protected $table = 'professores';
 
@@ -55,7 +58,7 @@ class Professor extends Model
      */
     public static function buscarTodosPorEmail(string $email): \Illuminate\Database\Eloquent\Collection
     {
-        return static::where('email', strtolower(trim($email)))->get();
+        return static::where('email', static::normalizarEmail($email))->get();
     }
 
     /**
@@ -63,9 +66,32 @@ class Professor extends Model
      */
     public static function emailJaTemConta(string $email): bool
     {
-        return static::where('email', strtolower(trim($email)))
+        return static::where('email', static::normalizarEmail($email))
             ->whereNotNull('user_id')
             ->exists();
+    }
+
+    public static function normalizarEmail(?string $email): string
+    {
+        return Str::lower(trim((string) $email));
+    }
+
+    public static function emailInstitucionalValido(?string $email): bool
+    {
+        $emailNormalizado = static::normalizarEmail($email);
+
+        if ($emailNormalizado === '') {
+            return false;
+        }
+
+        return str_ends_with($emailNormalizado, '@' . static::EMAIL_INSTITUCIONAL_DOMINIO);
+    }
+
+    public function setEmailAttribute(?string $value): void
+    {
+        $email = static::normalizarEmail($value);
+
+        $this->attributes['email'] = $email !== '' ? $email : null;
     }
 
     public function escola()

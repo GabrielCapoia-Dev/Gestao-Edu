@@ -62,7 +62,7 @@ class User extends Authenticatable implements FilamentUser
 
     public function canAccessPanel(Panel $panel, ?bool $register = false): bool
     {
-        if ($this->email_approved == true) {
+        if ($this->canAccessAdminPanel()) {
             return true;
         }
 
@@ -93,7 +93,14 @@ class User extends Authenticatable implements FilamentUser
 
     public function validateAccessGoogle(?string $register, ?string $login): bool
     {
-        return $this->email_approved;
+        return $this->canAccessAdminPanel();
+    }
+
+    public function canAccessAdminPanel(): bool
+    {
+        return (bool) $this->email_approved
+            || $this->hasPermissionTo('Acessar Painel')
+            || $this->hasRole('Acessar Painel');
     }
 
     public function hasPermissionTo($permission, $guardName = null): bool

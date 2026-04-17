@@ -26,6 +26,8 @@ class CriarPermissoesCommandTest extends TestCase
         $inventarioRole = Role::findByName('Gestao de Inventario', 'web');
         $pedidosRole = Role::findByName('Gestao de Pedidos', 'web');
         $accessRole = Role::findByName('Gestao de Usuarios e Acessos', 'web');
+        $painelRole = Role::findByName('Acessar Painel', 'web');
+        $professorViewRole = Role::findByName('Visualizar Turmas e Alunos', 'web');
 
         $this->assertTrue($inventarioRole->hasPermissionTo('Listar Gestão de Inventário'));
         $this->assertTrue($inventarioRole->hasPermissionTo('Aprovar Pedidos de Inventário'));
@@ -38,6 +40,13 @@ class CriarPermissoesCommandTest extends TestCase
         $this->assertTrue($accessRole->hasPermissionTo('Aplicar Permissoes'));
         $this->assertTrue($accessRole->hasPermissionTo('Editar Usuários'));
         $this->assertFalse($accessRole->hasPermissionTo('Editar Pedidos'));
+
+        $this->assertTrue($painelRole->hasPermissionTo('Visualizar Tela de Inicio'));
+        $this->assertFalse($painelRole->hasPermissionTo('Listar Turmas'));
+
+        $this->assertTrue($professorViewRole->hasPermissionTo('Listar Turmas'));
+        $this->assertTrue($professorViewRole->hasPermissionTo('Listar Alunos'));
+        $this->assertFalse($professorViewRole->hasPermissionTo('Editar Turmas'));
     }
 
     public function test_it_keeps_legacy_default_roles_available(): void

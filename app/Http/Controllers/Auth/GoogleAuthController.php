@@ -66,7 +66,7 @@ class GoogleAuthController extends Controller
             $oauthUser = Socialite::driver('google')->user();
             $user = $service->registrarOuLogar($oauthUser);
 
-            if (! $user->email_approved) {
+            if (! $user->canAccessAdminPanel()) {
                 session()->forget('google_auth.redirect_to');
 
                 Notification::make()

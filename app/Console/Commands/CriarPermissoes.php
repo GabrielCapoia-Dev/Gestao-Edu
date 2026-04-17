@@ -209,6 +209,7 @@ class CriarPermissoes extends Command
             'Visualizar Notificação: Pedido Reaberto',
             'Visualizar Notificação: Balanço de Estoque',
             'Visualizar Tela de Inicio',
+            'Acessar Painel',
             'Baixar App',
             'Filtrar Alunos por Escola',
             'Filtrar Professores por Escola',
@@ -424,6 +425,13 @@ class CriarPermissoes extends Command
                 'Visualizar Tela de Inicio',
                 'Baixar App',
             ]),
+            'acesso_painel' => $this->onlyPermissions($permissions, [
+                'Visualizar Tela de Inicio',
+            ]),
+            'visualizacao_turmas_alunos' => $this->onlyPermissions($permissions, [
+                'Listar Turmas',
+                'Listar Alunos',
+            ]),
             'administrativo' => $this->onlyPermissions($permissions, [
                 'Listar Pedidos',
                 'Listar Todos os Pedidos',
@@ -470,6 +478,8 @@ class CriarPermissoes extends Command
             ]),
             'Gestao de Cadastros Gerais' => $groups['cadastros_gerais'],
             'Relatorios e Painel' => $groups['relatorios_e_painel'],
+            'Acessar Painel' => $groups['acesso_painel'],
+            'Visualizar Turmas e Alunos' => $groups['visualizacao_turmas_alunos'],
         ];
     }
 
