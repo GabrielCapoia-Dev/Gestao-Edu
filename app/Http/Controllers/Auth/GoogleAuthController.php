@@ -4,9 +4,14 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Services\GoogleService;
+use Filament\Facades\Filament;
+use Filament\Notifications\Notification;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Laravel\Socialite\Two\InvalidStateException;
 use Laravel\Socialite\Facades\Socialite;
+use Throwable;
 
 class GoogleAuthController extends Controller
 {
@@ -45,26 +50,64 @@ class GoogleAuthController extends Controller
     }
 
 
-    public function callback(GoogleService $service)
+    public function callback(GoogleService $service): RedirectResponse
     {
         $redirectTo = $this->sanitizeRedirectTo(session()->get('google_auth.redirect_to'));
+        $loginUrl = route('filament.admin.auth.login');
 
         try {
             $oauthUser = Socialite::driver('google')->user();
-
             $user = $service->registrarOuLogar($oauthUser);
-            \Filament\Facades\Filament::auth()->login($user, true);
+
+            if (! $user->email_approved) {
+                session()->forget('google_auth.redirect_to');
+
+                Notification::make()
+                    ->title('Aguardando aprovacao')
+                    ->body('Seu cadastro foi localizado, mas o acesso ainda depende da aprovacao do administrador.')
+                    ->warning()
+                    ->persistent()
+                    ->send();
+
+                return redirect()->to($loginUrl);
+            }
+
+            Filament::auth()->login($user, true);
+            session()->regenerate();
 
             session()->forget('google_auth.redirect_to');
 
-            return redirect()->intended($redirectTo ?: \Filament\Facades\Filament::getUrl());
-        } catch (\Throwable $e) {
+            Notification::make()
+                ->title('Acesso permitido')
+                ->body('Bem-vindo de volta!')
+                ->success()
+                ->send();
+
+            return redirect()->intended($redirectTo ?: Filament::getUrl());
+        } catch (Throwable $e) {
             report($e);
             session()->forget('google_auth.redirect_to');
 
-            return redirect()->to($redirectTo ?: route('filament.admin.auth.login'))
-                ->withErrors(['google' => 'Falha ao autenticar com Google: ' . $e->getMessage()]);
+            Notification::make()
+                ->title('Falha ao autenticar com Google')
+                ->body($this->resolveErrorMessage($e))
+                ->danger()
+                ->persistent()
+                ->send();
+
+            return redirect()->to($loginUrl);
         }
+    }
+
+    protected function resolveErrorMessage(Throwable $error): string
+    {
+        if ($error instanceof InvalidStateException) {
+            return 'Sua sessao expirou durante o login com Google. Tente novamente.';
+        }
+
+        return filled($error->getMessage())
+            ? $error->getMessage()
+            : 'Nao foi possivel concluir o login com Google. Tente novamente em instantes.';
     }
 
     protected function sanitizeRedirectTo(?string $redirectTo): ?string
