@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Socialite\Two\InvalidStateException;
 use Laravel\Socialite\Facades\Socialite;
+use RuntimeException;
 use Throwable;
 
 class GoogleAuthController extends Controller
@@ -53,7 +54,13 @@ class GoogleAuthController extends Controller
     public function callback(GoogleService $service): RedirectResponse
     {
         $redirectTo = $this->sanitizeRedirectTo(session()->get('google_auth.redirect_to'));
-        $loginUrl = route('filament.admin.auth.login');
+        $panel = Filament::getPanel('admin');
+
+        if (! $panel) {
+            throw new RuntimeException('Painel admin do Filament nao encontrado.');
+        }
+
+        $loginUrl = $panel->getLoginUrl();
 
         try {
             $oauthUser = Socialite::driver('google')->user();
@@ -72,7 +79,7 @@ class GoogleAuthController extends Controller
                 return redirect()->to($loginUrl);
             }
 
-            Filament::auth()->login($user, true);
+            $panel->auth()->login($user, true);
             session()->regenerate();
 
             session()->forget('google_auth.redirect_to');
@@ -83,7 +90,7 @@ class GoogleAuthController extends Controller
                 ->success()
                 ->send();
 
-            return redirect()->intended($redirectTo ?: Filament::getUrl());
+            return redirect()->intended($redirectTo ?: $panel->getUrl());
         } catch (Throwable $e) {
             report($e);
             session()->forget('google_auth.redirect_to');

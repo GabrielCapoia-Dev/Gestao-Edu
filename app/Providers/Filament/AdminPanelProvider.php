@@ -36,6 +36,7 @@ class AdminPanelProvider extends PanelProvider
     {
         return $panel
             ->id('admin')
+            ->default()
             ->path('admin')
             ->login()
             ->profile()
