@@ -118,9 +118,9 @@ class AvaliacoesProfessor extends Page
         }
 
         $alternativaId = (int) ($this->avaliacaoEmMassa[$pautaId] ?? 0);
-        $alternativasValidas = $pauta->alternativas->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $alternativa = $pauta->alternativas->firstWhere('id', $alternativaId);
 
-        if (! in_array($alternativaId, $alternativasValidas, true)) {
+        if (! $alternativa) {
             Notification::make()
                 ->title('Selecione uma alternativa válida para aplicar em massa.')
                 ->warning()
@@ -135,6 +135,7 @@ class AvaliacoesProfessor extends Page
 
         Notification::make()
             ->title('Alternativa aplicada para toda a turma nesta pauta.')
+            ->body($alternativa->tem_observacao ? 'Essa alternativa exige observação por aluno.' : null)
             ->success()
             ->send();
     }
@@ -163,22 +164,31 @@ class AvaliacoesProfessor extends Page
         }
 
         $faltandoResposta = 0;
+        $faltandoObservacao = 0;
         $payload = [];
         $professorId = $this->professorIdDaTurma((int) $this->turma);
         $agora = now();
 
         foreach ($pautas as $pauta) {
-            $alternativasValidas = $pauta->alternativas->pluck('id')->map(fn ($id) => (int) $id)->all();
-
             foreach ($alunos as $aluno) {
                 $alternativaId = (int) ($this->respostas[$pauta->id][$aluno->id]['alternativa_id'] ?? 0);
+                $alternativa = $pauta->alternativas->firstWhere('id', $alternativaId);
 
-                if (! in_array($alternativaId, $alternativasValidas, true)) {
+                if (! $alternativa) {
                     $faltandoResposta++;
                     continue;
                 }
 
-                $observacao = trim((string) ($this->respostas[$pauta->id][$aluno->id]['observacao'] ?? ''));
+                $observacaoInformada = trim((string) ($this->respostas[$pauta->id][$aluno->id]['observacao'] ?? ''));
+
+                if ($alternativa->tem_observacao && $observacaoInformada === '') {
+                    $faltandoObservacao++;
+                    continue;
+                }
+
+                $observacao = $alternativa->tem_observacao && $observacaoInformada !== ''
+                    ? $observacaoInformada
+                    : null;
 
                 $payload[] = [
                     'avaliacao_id' => (int) $this->avaliacao,
@@ -187,7 +197,7 @@ class AvaliacoesProfessor extends Page
                     'aluno_id' => (int) $aluno->id,
                     'professor_id' => $professorId,
                     'alternativa_id' => $alternativaId,
-                    'observacao' => $observacao !== '' ? $observacao : null,
+                    'observacao' => $observacao,
                     'respondido_em' => $agora,
                     'created_at' => $agora,
                     'updated_at' => $agora,
@@ -195,10 +205,20 @@ class AvaliacoesProfessor extends Page
             }
         }
 
-        if ($faltandoResposta > 0) {
+        if ($faltandoResposta > 0 || $faltandoObservacao > 0) {
+            $mensagens = [];
+
+            if ($faltandoResposta > 0) {
+                $mensagens[] = 'Preencha todas as combinações de aluno e pauta.';
+            }
+
+            if ($faltandoObservacao > 0) {
+                $mensagens[] = 'Algumas alternativas exigem observação obrigatória.';
+            }
+
             Notification::make()
-                ->title('Ainda existem respostas pendentes.')
-                ->body('Preencha todas as combinações de aluno e pauta antes de salvar.')
+                ->title('Existem pendências no preenchimento.')
+                ->body(implode(' ', $mensagens))
                 ->warning()
                 ->send();
 
@@ -217,6 +237,23 @@ class AvaliacoesProfessor extends Page
             ->title('Avaliação salva com sucesso.')
             ->success()
             ->send();
+    }
+
+    public function alternativaRequerObservacao(int $pautaId, ?int $alternativaId): bool
+    {
+        if (! $alternativaId) {
+            return false;
+        }
+
+        $pauta = $this->pautasDisponiveis->firstWhere('id', $pautaId);
+
+        if (! $pauta) {
+            return false;
+        }
+
+        $alternativa = $pauta->alternativas->firstWhere('id', (int) $alternativaId);
+
+        return (bool) ($alternativa?->tem_observacao ?? false);
     }
 
     public function getAvaliacoesDisponiveisProperty(): Collection
@@ -431,3 +468,4 @@ class AvaliacoesProfessor extends Page
         return $professorId ? (int) $professorId : null;
     }
 }
+

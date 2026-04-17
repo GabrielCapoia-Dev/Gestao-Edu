@@ -83,10 +83,10 @@ class GestaoAvaliacoes extends Page
     public function getAvaliacoesProperty(): LengthAwarePaginator
     {
         $query = Avaliacao::query()
-            ->withCount(['pautas', 'turmas'])
+            ->withCount(['pautas'])
             ->with([
-                'pautas:id,texto',
-                'turmas:id,nome',
+                'pautas:id,texto,componente_curricular_id',
+                'pautas.componente:id,nome',
             ]);
 
         if (filled($this->busca)) {

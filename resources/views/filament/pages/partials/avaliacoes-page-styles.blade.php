@@ -204,6 +204,37 @@
         white-space: nowrap;
     }
 
+    .av-modal--wide {
+        width: min(74rem, calc(100vw - 1.5rem));
+    }
+
+    .av-chip-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+    }
+
+    .av-chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 1.8rem;
+        padding: 0.2rem 0.55rem;
+        border: 1px solid var(--primary-200);
+        border-radius: 999px;
+        background: var(--primary-50);
+        color: var(--primary-700);
+        font-size: var(--text-xs);
+        line-height: var(--text-xs--line-height);
+        font-weight: var(--font-weight-medium);
+        white-space: nowrap;
+    }
+
+    .av-chip--muted {
+        border-color: var(--gray-300);
+        background: var(--gray-100);
+        color: var(--gray-700);
+    }
+
     .av-table-input {
         width: 100%;
         min-height: 2.45rem;
@@ -224,6 +255,18 @@
         outline: none;
         border-color: var(--primary-400);
         box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary-200) 70%, transparent);
+    }
+
+    .av-field-hint {
+        display: block;
+        margin-top: 0.45rem;
+        color: var(--gray-500);
+        font-size: var(--text-xs);
+        line-height: 1.45;
+    }
+
+    .av-field-hint--danger {
+        color: var(--danger-700);
     }
 
     @media (max-width: 64rem) {
@@ -294,6 +337,26 @@
         border-color: var(--gray-700);
         background: var(--gray-900);
         color: var(--gray-100);
+    }
+
+    :root.dark .av-chip {
+        border-color: color-mix(in oklab, var(--primary-400) 35%, var(--gray-800));
+        background: color-mix(in oklab, var(--primary-700) 20%, var(--gray-950));
+        color: var(--primary-200);
+    }
+
+    :root.dark .av-chip--muted {
+        border-color: var(--gray-700);
+        background: var(--gray-800);
+        color: var(--gray-200);
+    }
+
+    :root.dark .av-field-hint {
+        color: var(--gray-400);
+    }
+
+    :root.dark .av-field-hint--danger {
+        color: var(--danger-200);
     }
 
     :root.dark .av-progress-track {

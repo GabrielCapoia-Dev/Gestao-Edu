@@ -90,7 +90,7 @@
                                         <option value="">Selecione uma alternativa</option>
                                         @foreach ($pauta->alternativas as $alternativa)
                                             <option value="{{ $alternativa->id }}">
-                                                {{ $alternativa->nome }}
+                                                {{ $alternativa->nome }}{{ $alternativa->tem_observacao ? ' (exige observacao)' : '' }}
                                             </option>
                                         @endforeach
                                     </select>
@@ -110,7 +110,7 @@
                                     <tr>
                                         <th>Aluno</th>
                                         <th>Alternativa</th>
-                                        <th>Observacao (opcional)</th>
+                                        <th>Observacao da pauta</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -125,18 +125,26 @@
                                                     <option value="">Selecione</option>
                                                     @foreach ($pauta->alternativas as $alternativa)
                                                         <option value="{{ $alternativa->id }}">
-                                                            {{ $alternativa->nome }}
+                                                            {{ $alternativa->nome }}{{ $alternativa->tem_observacao ? ' (exige observacao)' : '' }}
                                                         </option>
                                                     @endforeach
                                                 </select>
                                             </td>
                                             <td>
-                                                <input
-                                                    type="text"
-                                                    maxlength="1000"
-                                                    placeholder="Observacao livre"
-                                                    class="av-table-input"
-                                                    wire:model.blur="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao" />
+                                                @php($alternativaSelecionadaId = (int) ($respostas[$pauta->id][$aluno->id]['alternativa_id'] ?? 0))
+                                                @php($requerObservacao = $this->alternativaRequerObservacao((int) $pauta->id, $alternativaSelecionadaId))
+
+                                                @if ($requerObservacao)
+                                                    <input
+                                                        type="text"
+                                                        maxlength="1000"
+                                                        placeholder="Observacao obrigatoria"
+                                                        class="av-table-input"
+                                                        wire:model.blur="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao" />
+                                                    <small class="av-field-hint av-field-hint--danger">Obrigatoria para esta alternativa.</small>
+                                                @else
+                                                    <small class="av-field-hint">Somente alternativas com observacao habilitam este campo.</small>
+                                                @endif
                                             </td>
                                         </tr>
                                     @endforeach

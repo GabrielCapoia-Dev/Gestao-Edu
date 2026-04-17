@@ -4,7 +4,7 @@
             <div>
                 <p class="gi-eyebrow">Avaliacoes</p>
                 <h1>Gestao de Avaliacoes</h1>
-                <p>Monte ciclos avaliativos com periodo, status, pautas obrigatorias e turmas vinculadas.</p>
+                <p>Monte ciclos avaliativos com periodo, status e pautas obrigatorias por componente.</p>
             </div>
 
             @can('Criar Avaliações')
@@ -60,7 +60,7 @@
                             <th>Avaliacao</th>
                             <th>Periodo</th>
                             <th class="text-right">Pautas</th>
-                            <th class="text-right">Turmas</th>
+                            <th>Componentes</th>
                             <th>Status</th>
                             <th>Atualizada em</th>
                             <th class="text-right">Acoes</th>
@@ -87,7 +87,22 @@
                                     {{ optional($avaliacao->data_fim)->format('d/m/Y') }}
                                 </td>
                                 <td class="text-right">{{ $avaliacao->pautas_count }}</td>
-                                <td class="text-right">{{ $avaliacao->turmas_count }}</td>
+                                <td>
+                                    @php
+                                        $componentes = $avaliacao->pautas
+                                            ->map(fn ($pauta) => $pauta->componente?->nome)
+                                            ->filter()
+                                            ->unique()
+                                            ->values();
+                                    @endphp
+                                    <div class="av-chip-grid">
+                                        @forelse ($componentes as $componenteNome)
+                                            <span class="av-chip">{{ $componenteNome }}</span>
+                                        @empty
+                                            <span class="av-chip av-chip--muted">Geral</span>
+                                        @endforelse
+                                    </div>
+                                </td>
                                 <td>
                                     <span class="av-status {{ $statusClass }}">
                                         {{ \App\Models\Avaliacao::statusOptions()[$avaliacao->status] ?? $avaliacao->status }}
@@ -143,7 +158,7 @@
     @if ($modalAberto)
         <div class="gi-overlay" wire:click="fecharModal"></div>
 
-        <div class="gi-modal" role="dialog" aria-modal="true">
+        <div class="gi-modal av-modal--wide" role="dialog" aria-modal="true">
             <header>
                 <div>
                     <p class="gi-eyebrow">Avaliacoes</p>

@@ -204,23 +204,23 @@ class AvaliacaoFluxoSeeder extends Seeder
 
         $alternativaExcelente = Alternativa::updateOrCreate(
             ['nome' => 'Excelente'],
-            ['observacao' => 'Desempenho acima do esperado.', 'status' => true]
+            ['tem_observacao' => false, 'observacao' => null, 'status' => true]
         );
         $alternativaBom = Alternativa::updateOrCreate(
             ['nome' => 'Bom'],
-            ['observacao' => 'Desempenho adequado ao esperado.', 'status' => true]
+            ['tem_observacao' => false, 'observacao' => null, 'status' => true]
         );
         $alternativaRegular = Alternativa::updateOrCreate(
             ['nome' => 'Regular'],
-            ['observacao' => 'Necessita reforço pontual.', 'status' => true]
+            ['tem_observacao' => false, 'observacao' => null, 'status' => true]
         );
         $alternativaInsuficiente = Alternativa::updateOrCreate(
             ['nome' => 'Insuficiente'],
-            ['observacao' => 'Necessita intervenção pedagógica.', 'status' => true]
+            ['tem_observacao' => false, 'observacao' => null, 'status' => true]
         );
         $alternativaDiscursiva = Alternativa::updateOrCreate(
             ['nome' => 'Resposta Discursiva'],
-            ['observacao' => 'Alternativa para texto livre do professor.', 'status' => true]
+            ['tem_observacao' => true, 'observacao' => 'Alternativa para texto livre do professor.', 'status' => true]
         );
 
         $pautaMatematica = Pauta::updateOrCreate(

@@ -135,11 +135,13 @@ class AvaliacaoProfessorPageTest extends TestCase
 
         $alternativaA = Alternativa::query()->create([
             'nome' => 'Excelente',
+            'tem_observacao' => false,
             'status' => true,
         ]);
 
         $alternativaB = Alternativa::query()->create([
             'nome' => 'Regular',
+            'tem_observacao' => false,
             'status' => true,
         ]);
 
@@ -184,7 +186,7 @@ class AvaliacaoProfessorPageTest extends TestCase
             'aluno_id' => $alunoA->id,
             'professor_id' => $professor->id,
             'alternativa_id' => $alternativaA->id,
-            'observacao' => 'Participou bastante.',
+            'observacao' => null,
         ]);
 
         $this->assertDatabaseHas('avaliacao_respostas', [
@@ -207,6 +209,7 @@ class AvaliacaoProfessorPageTest extends TestCase
 
         $alternativa = Alternativa::query()->create([
             'nome' => 'Atende',
+            'tem_observacao' => false,
             'status' => true,
         ]);
 

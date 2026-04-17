@@ -15,6 +15,7 @@ class Alternativa extends Model
 
     protected $fillable = [
         'nome',
+        'tem_observacao',
         'observacao',
         'status',
     ];
@@ -22,6 +23,7 @@ class Alternativa extends Model
     protected function casts(): array
     {
         return [
+            'tem_observacao' => 'boolean',
             'status' => 'boolean',
         ];
     }

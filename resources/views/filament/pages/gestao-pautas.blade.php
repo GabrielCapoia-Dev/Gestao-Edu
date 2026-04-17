@@ -190,7 +190,9 @@
                     <select multiple class="av-multi-select" wire:model.defer="form.alternativas_ids">
                         @foreach ($this->alternativasOptions as $alternativa)
                             <option value="{{ $alternativa->id }}">
-                                {{ $alternativa->nome }} {{ $alternativa->status ? '' : '(inativa)' }}
+                                {{ $alternativa->nome }}
+                                {{ $alternativa->tem_observacao ? '(exige observacao)' : '' }}
+                                {{ $alternativa->status ? '' : '(inativa)' }}
                             </option>
                         @endforeach
                     </select>
@@ -224,18 +226,28 @@
                                     <input type="text" maxlength="255" wire:model.defer="novasAlternativas.{{ $index }}.nome" />
                                 </label>
 
-                                <label class="gi-field">
-                                    <span>Observacao</span>
-                                    <input type="text" maxlength="1000" wire:model.defer="novasAlternativas.{{ $index }}.observacao" />
+                                <label class="gi-field gi-field--small">
+                                    <span>Tem observacao?</span>
+                                    <select wire:model.live="novasAlternativas.{{ $index }}.tem_observacao">
+                                        <option value="0">Nao</option>
+                                        <option value="1">Sim</option>
+                                    </select>
                                 </label>
 
-                                <label class="gi-field gi-field--small">
+                                <label class="gi-field">
                                     <span>Status</span>
                                     <select wire:model.defer="novasAlternativas.{{ $index }}.status">
                                         <option value="1">Ativa</option>
                                         <option value="0">Inativa</option>
                                     </select>
                                 </label>
+
+                                @if ((bool) ($novasAlternativas[$index]['tem_observacao'] ?? false))
+                                    <label class="gi-field">
+                                        <span>Observacao da alternativa (opcional)</span>
+                                        <input type="text" maxlength="1000" wire:model.defer="novasAlternativas.{{ $index }}.observacao" />
+                                    </label>
+                                @endif
 
                                 <div class="gi-row-actions">
                                     <button type="button" wire:click="removerNovaAlternativa({{ $index }})">

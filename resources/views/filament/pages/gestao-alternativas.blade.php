@@ -57,6 +57,7 @@
                     <thead>
                         <tr>
                             <th>Nome</th>
+                            <th>Tem observacao?</th>
                             <th>Observacao</th>
                             <th>Status</th>
                             <th class="text-right">Pautas</th>
@@ -68,7 +69,12 @@
                         @forelse ($this->alternativas as $alternativa)
                             <tr>
                                 <td><strong>{{ $alternativa->nome }}</strong></td>
-                                <td>{{ $alternativa->observacao ?: 'Sem observacao' }}</td>
+                                <td>
+                                    <span class="av-status {{ $alternativa->tem_observacao ? 'av-status--active' : 'av-status--inactive' }}">
+                                        {{ $alternativa->tem_observacao ? 'Sim' : 'Nao' }}
+                                    </span>
+                                </td>
+                                <td>{{ $alternativa->tem_observacao ? ($alternativa->observacao ?: 'Sem observacao padrao') : 'Nao se aplica' }}</td>
                                 <td>
                                     <span class="av-status {{ $alternativa->status ? 'av-status--active' : 'av-status--inactive' }}">
                                         {{ $alternativa->status ? 'Ativa' : 'Inativa' }}
@@ -97,7 +103,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="gi-empty">Nenhuma alternativa encontrada para os filtros aplicados.</td>
+                                <td colspan="7" class="gi-empty">Nenhuma alternativa encontrada para os filtros aplicados.</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -146,13 +152,26 @@
                     @enderror
                 </label>
 
-                <label class="gi-field">
-                    <span>Observacao (opcional)</span>
-                    <textarea wire:model.defer="form.observacao" rows="4" maxlength="1000"></textarea>
-                    @error('form.observacao')
+                <label class="gi-field gi-field--small">
+                    <span>Tem observacao?</span>
+                    <select wire:model.live="form.tem_observacao">
+                        <option value="0">Nao</option>
+                        <option value="1">Sim</option>
+                    </select>
+                    @error('form.tem_observacao')
                         <p class="error">{{ $message }}</p>
                     @enderror
                 </label>
+
+                @if ((bool) ($form['tem_observacao'] ?? false))
+                    <label class="gi-field">
+                        <span>Observacao da alternativa (opcional)</span>
+                        <textarea wire:model.defer="form.observacao" rows="4" maxlength="1000"></textarea>
+                        @error('form.observacao')
+                            <p class="error">{{ $message }}</p>
+                        @enderror
+                    </label>
+                @endif
 
                 <label class="gi-field gi-field--small">
                     <span>Status</span>

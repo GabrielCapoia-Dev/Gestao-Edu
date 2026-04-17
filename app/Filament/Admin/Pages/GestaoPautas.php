@@ -133,7 +133,7 @@ class GestaoPautas extends Page
     {
         return Alternativa::query()
             ->orderBy('nome')
-            ->get(['id', 'nome', 'status']);
+            ->get(['id', 'nome', 'tem_observacao', 'status']);
     }
 
     public function abrirModalCriacao(): void
@@ -193,6 +193,7 @@ class GestaoPautas extends Page
     {
         $this->novasAlternativas[] = [
             'nome' => '',
+            'tem_observacao' => false,
             'observacao' => '',
             'status' => true,
         ];
@@ -243,6 +244,7 @@ class GestaoPautas extends Page
             'form.alternativas_ids.*' => ['integer', 'exists:alternativas,id'],
             'novasAlternativas' => ['array'],
             'novasAlternativas.*.nome' => ['nullable', 'string', 'max:255'],
+            'novasAlternativas.*.tem_observacao' => ['required', 'boolean'],
             'novasAlternativas.*.observacao' => ['nullable', 'string', 'max:1000'],
             'novasAlternativas.*.status' => ['required', 'boolean'],
         ]);
@@ -254,9 +256,14 @@ class GestaoPautas extends Page
 
         $novasAlternativasComNome = collect($validated['novasAlternativas'] ?? [])
             ->map(function (array $item): array {
+                $temObservacao = (bool) ($item['tem_observacao'] ?? false);
+
                 return [
                     'nome' => trim((string) ($item['nome'] ?? '')),
-                    'observacao' => filled($item['observacao'] ?? null) ? trim((string) $item['observacao']) : null,
+                    'tem_observacao' => $temObservacao,
+                    'observacao' => $temObservacao && filled($item['observacao'] ?? null)
+                        ? trim((string) $item['observacao'])
+                        : null,
                     'status' => (bool) ($item['status'] ?? true),
                 ];
             })

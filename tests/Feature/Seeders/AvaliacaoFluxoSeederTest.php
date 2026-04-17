@@ -23,6 +23,7 @@ class AvaliacaoFluxoSeederTest extends TestCase
         $this->assertTrue(Avaliacao::query()->count() >= 3);
         $this->assertTrue(Pauta::query()->count() >= 5);
         $this->assertTrue(Alternativa::query()->count() >= 5);
+        $this->assertTrue(Alternativa::query()->where('tem_observacao', true)->exists());
         $this->assertTrue(Turma::query()->count() >= 3);
         $this->assertTrue(AvaliacaoResposta::query()->count() > 0);
 

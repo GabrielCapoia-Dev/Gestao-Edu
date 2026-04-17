@@ -43,6 +43,7 @@ class GestaoAlternativas extends Page
 
     public array $form = [
         'nome' => '',
+        'tem_observacao' => false,
         'observacao' => '',
         'status' => true,
     ];
@@ -114,6 +115,7 @@ class GestaoAlternativas extends Page
         $this->alternativaIdEditando = null;
         $this->form = [
             'nome' => '',
+            'tem_observacao' => false,
             'observacao' => '',
             'status' => true,
         ];
@@ -146,6 +148,7 @@ class GestaoAlternativas extends Page
         $this->alternativaIdEditando = $alternativa->id;
         $this->form = [
             'nome' => (string) $alternativa->nome,
+            'tem_observacao' => (bool) $alternativa->tem_observacao,
             'observacao' => (string) ($alternativa->observacao ?? ''),
             'status' => (bool) $alternativa->status,
         ];
@@ -187,6 +190,7 @@ class GestaoAlternativas extends Page
                 'max:255',
                 Rule::unique('alternativas', 'nome')->ignore($this->alternativaIdEditando),
             ],
+            'form.tem_observacao' => ['required', 'boolean'],
             'form.observacao' => ['nullable', 'string', 'max:1000'],
             'form.status' => ['required', 'boolean'],
         ]);
@@ -208,7 +212,8 @@ class GestaoAlternativas extends Page
 
         $alternativa->fill([
             'nome' => trim((string) $validated['form']['nome']),
-            'observacao' => filled($validated['form']['observacao'] ?? null)
+            'tem_observacao' => (bool) $validated['form']['tem_observacao'],
+            'observacao' => ((bool) $validated['form']['tem_observacao']) && filled($validated['form']['observacao'] ?? null)
                 ? trim((string) $validated['form']['observacao'])
                 : null,
             'status' => (bool) $validated['form']['status'],
