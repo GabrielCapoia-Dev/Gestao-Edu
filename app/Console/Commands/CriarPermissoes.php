@@ -209,6 +209,7 @@ class CriarPermissoes extends Command
             'Visualizar Notificação: Pedido Reaberto',
             'Visualizar Notificação: Balanço de Estoque',
             'Visualizar Tela de Inicio',
+            'Baixar App',
             'Filtrar Alunos por Escola',
             'Filtrar Professores por Escola',
             'Filtrar Professores por Componente',
@@ -421,6 +422,7 @@ class CriarPermissoes extends Command
                 'Visualizar Notificações',
                 'Visualizar Painel Personalizado',
                 'Visualizar Tela de Inicio',
+                'Baixar App',
             ]),
             'administrativo' => $this->onlyPermissions($permissions, [
                 'Listar Pedidos',

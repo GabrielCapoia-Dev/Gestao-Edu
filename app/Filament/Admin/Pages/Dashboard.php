@@ -41,17 +41,22 @@ class Dashboard extends Page
     protected function getHeaderActions(): array
     {
         $installUrl = route('mobile.install.short');
+        /** @var \App\Models\User|null $user */
+        $user = Auth::user();
+        $canDownloadApp = $user?->hasPermissionTo('Baixar App') ?? false;
 
         return [
             Action::make('instalar_app_mobile')
                 ->label('Instalar app mobile')
                 ->icon('heroicon-o-device-phone-mobile')
                 ->color('primary')
+                ->visible($canDownloadApp)
                 ->url($installUrl, shouldOpenInNewTab: true),
             Action::make('compartilhar_app_mobile')
                 ->label('Compartilhar no WhatsApp')
                 ->icon('heroicon-o-chat-bubble-left-right')
                 ->color('success')
+                ->visible($canDownloadApp)
                 ->url(
                     'https://wa.me/?text=' . rawurlencode(
                         "Instale o Gestao Edu Mobile no celular: {$installUrl}"
