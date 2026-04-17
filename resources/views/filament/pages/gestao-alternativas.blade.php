@@ -1,207 +1,178 @@
 <x-filament-panels::page>
-    <div class="space-y-6">
-        <section class="relative overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 p-6 text-white shadow-lg">
-            <div class="pointer-events-none absolute inset-0 opacity-25">
-                <div class="absolute -left-16 -top-16 h-44 w-44 rounded-full bg-cyan-300 blur-3xl"></div>
-                <div class="absolute -bottom-16 -right-10 h-44 w-44 rounded-full bg-blue-400 blur-3xl"></div>
+    <div class="gi-page av-page">
+        <section class="gi-hero">
+            <div>
+                <p class="gi-eyebrow">Avaliacoes</p>
+                <h1>Gestao de Alternativas</h1>
+                <p>Cadastre e organize as alternativas usadas nas pautas sem perder historico.</p>
             </div>
-            <div class="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-cyan-100/90">Avaliações</p>
-                    <h1 class="mt-2 text-2xl font-semibold">Alternativas</h1>
-                    <p class="mt-2 max-w-2xl text-sm text-slate-100/85">
-                        Cadastre e organize as alternativas usadas nas pautas. Você pode ativar ou inativar opções sem perder histórico.
-                    </p>
-                </div>
 
-                @can('Criar Alternativas')
-                    <x-filament::button
-                        type="button"
-                        color="info"
-                        icon="heroicon-o-plus"
-                        wire:click="abrirModalCriacao">
+            @can('Criar Alternativas')
+                <div class="gi-actions">
+                    <button type="button" class="gi-action gi-action--primary" wire:click="abrirModalCriacao">
                         Nova Alternativa
-                    </x-filament::button>
-                @endcan
-            </div>
+                    </button>
+                </div>
+            @endcan
         </section>
 
-        <section class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-            <div class="grid gap-3 md:grid-cols-[1fr_auto_auto_auto]">
-                <label class="block">
-                    <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">
-                        Buscar
-                    </span>
-                    <input
-                        type="search"
-                        wire:model.live.debounce.300ms="busca"
-                        placeholder="Nome ou observação"
-                        class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100" />
-                </label>
+        <section class="gi-panel">
+            <div class="gi-toolbar">
+                <div class="gi-toolbar-left">
+                    <label class="gi-field">
+                        <span>Buscar</span>
+                        <input type="search" wire:model.live.debounce.300ms="busca" placeholder="Nome ou observacao" />
+                    </label>
 
-                <label class="block">
-                    <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">
-                        Status
-                    </span>
-                    <select
-                        wire:model.live="filtroStatus"
-                        class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100">
-                        <option value="todas">Todas</option>
-                        <option value="ativas">Ativas</option>
-                        <option value="inativas">Inativas</option>
-                    </select>
-                </label>
+                    <label class="gi-field gi-field--small">
+                        <span>Status</span>
+                        <select wire:model.live="filtroStatus">
+                            <option value="todas">Todas</option>
+                            <option value="ativas">Ativas</option>
+                            <option value="inativas">Inativas</option>
+                        </select>
+                    </label>
 
-                <label class="block">
-                    <span class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">
-                        Por página
-                    </span>
-                    <select
-                        wire:model.live="porPagina"
-                        class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100">
-                        <option value="5">5</option>
-                        <option value="10">10</option>
-                        <option value="25">25</option>
-                        <option value="50">50</option>
-                    </select>
-                </label>
+                    <label class="gi-field gi-field--small">
+                        <span>Por pagina</span>
+                        <select wire:model.live="porPagina">
+                            <option value="5">5</option>
+                            <option value="10">10</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                        </select>
+                    </label>
+                </div>
 
-                <div class="flex items-end">
-                    <div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
-                        Total: <span class="font-semibold">{{ $this->alternativas->total() }}</span>
+                <div class="gi-toolbar-right">
+                    <div class="av-total-card">
+                        Total:
+                        <strong>{{ $this->alternativas->total() }}</strong>
                     </div>
                 </div>
             </div>
-        </section>
 
-        <section class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                    <thead class="bg-slate-50 dark:bg-slate-800/80">
+            <div class="gi-table-wrap">
+                <table class="gi-table">
+                    <thead>
                         <tr>
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">Nome</th>
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">Observação</th>
-                            <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">Status</th>
-                            <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">Pautas</th>
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">Atualizada em</th>
-                            <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">Ações</th>
+                            <th>Nome</th>
+                            <th>Observacao</th>
+                            <th>Status</th>
+                            <th class="text-right">Pautas</th>
+                            <th>Atualizada em</th>
+                            <th class="text-right">Acoes</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                    <tbody>
                         @forelse ($this->alternativas as $alternativa)
-                            <tr class="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
-                                <td class="px-4 py-3 text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                    {{ $alternativa->nome }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
-                                    {{ $alternativa->observacao ?: 'Sem observação' }}
-                                </td>
-                                <td class="px-4 py-3 text-center">
-                                    <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold {{ $alternativa->status ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300' }}">
+                            <tr>
+                                <td><strong>{{ $alternativa->nome }}</strong></td>
+                                <td>{{ $alternativa->observacao ?: 'Sem observacao' }}</td>
+                                <td>
+                                    <span class="av-status {{ $alternativa->status ? 'av-status--active' : 'av-status--inactive' }}">
                                         {{ $alternativa->status ? 'Ativa' : 'Inativa' }}
                                     </span>
                                 </td>
-                                <td class="px-4 py-3 text-center text-sm font-semibold text-gray-800 dark:text-gray-200">
-                                    {{ $alternativa->pautas_count }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
-                                    {{ optional($alternativa->updated_at)->format('d/m/Y H:i') }}
-                                </td>
-                                <td class="px-4 py-3 text-right">
-                                    <div class="inline-flex items-center gap-2">
+                                <td class="text-right">{{ $alternativa->pautas_count }}</td>
+                                <td class="av-no-wrap">{{ optional($alternativa->updated_at)->format('d/m/Y H:i') }}</td>
+                                <td>
+                                    <div class="gi-row-actions">
                                         @can('Editar Alternativas')
-                                            <x-filament::button
-                                                type="button"
-                                                color="gray"
-                                                size="xs"
-                                                wire:click="abrirModalEdicao({{ $alternativa->id }})">
+                                            <button type="button" wire:click="abrirModalEdicao({{ $alternativa->id }})">
                                                 Editar
-                                            </x-filament::button>
+                                            </button>
                                         @endcan
 
                                         @can('Excluir Alternativas')
-                                            <x-filament::button
+                                            <button
                                                 type="button"
-                                                color="danger"
-                                                size="xs"
                                                 wire:click="excluirAlternativa({{ $alternativa->id }})"
                                                 onclick="return confirm('Deseja realmente excluir esta alternativa?')">
                                                 Excluir
-                                            </x-filament::button>
+                                            </button>
                                         @endcan
                                     </div>
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="px-4 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
-                                    Nenhuma alternativa encontrada para os filtros aplicados.
-                                </td>
+                                <td colspan="6" class="gi-empty">Nenhuma alternativa encontrada para os filtros aplicados.</td>
                             </tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
 
-            <div class="border-t border-gray-200 px-4 py-3 dark:border-gray-700">
-                {{ $this->alternativas->links() }}
+            @php($paginacao = $this->alternativas)
+            <div class="gi-pagination">
+                <span>
+                    Mostrando {{ $paginacao->firstItem() ?? 0 }}-{{ $paginacao->lastItem() ?? 0 }} de {{ $paginacao->total() }}
+                </span>
+
+                <div>
+                    <button type="button" wire:click="previousPage" @disabled(! $paginacao->onFirstPage())>
+                        Anterior
+                    </button>
+                    <button type="button" wire:click="nextPage" @disabled(! $paginacao->hasMorePages())>
+                        Proxima
+                    </button>
+                </div>
             </div>
         </section>
     </div>
 
     @if ($modalAberto)
-        <div class="fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-sm" wire:click="fecharModal"></div>
-        <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div class="w-full max-w-2xl rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-gray-900">
-                <div class="flex items-center justify-between border-b border-gray-200 px-5 py-4 dark:border-gray-700">
-                    <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">
-                        {{ $alternativaIdEditando ? 'Editar Alternativa' : 'Nova Alternativa' }}
-                    </h3>
-                    <button type="button" wire:click="fecharModal" class="text-gray-500 hover:text-gray-800 dark:hover:text-gray-200">
-                        <x-filament::icon icon="heroicon-o-x-mark" class="h-5 w-5" />
-                    </button>
+        <div class="gi-overlay" wire:click="fecharModal"></div>
+
+        <div class="gi-modal" role="dialog" aria-modal="true">
+            <header>
+                <div>
+                    <p class="gi-eyebrow">Avaliacoes</p>
+                    <h3>{{ $alternativaIdEditando ? 'Editar Alternativa' : 'Nova Alternativa' }}</h3>
                 </div>
 
-                <div class="space-y-4 p-5">
-                    <label class="block">
-                        <span class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">Nome</span>
-                        <input
-                            type="text"
-                            wire:model.defer="form.nome"
-                            maxlength="255"
-                            class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100" />
-                        @error('form.nome')
-                            <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
-                        @enderror
-                    </label>
+                <button type="button" wire:click="fecharModal">
+                    Fechar
+                </button>
+            </header>
 
-                    <label class="block">
-                        <span class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">Observação (opcional)</span>
-                        <textarea
-                            wire:model.defer="form.observacao"
-                            rows="4"
-                            maxlength="1000"
-                            class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"></textarea>
-                        @error('form.observacao')
-                            <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
-                        @enderror
-                    </label>
+            <div class="gi-modal-body">
+                <label class="gi-field">
+                    <span>Nome</span>
+                    <input type="text" wire:model.defer="form.nome" maxlength="255" />
+                    @error('form.nome')
+                        <p class="error">{{ $message }}</p>
+                    @enderror
+                </label>
 
-                    <label class="inline-flex items-center gap-2">
-                        <input type="checkbox" wire:model.defer="form.status" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
-                        <span class="text-sm text-gray-700 dark:text-gray-200">Alternativa ativa</span>
-                    </label>
-                </div>
+                <label class="gi-field">
+                    <span>Observacao (opcional)</span>
+                    <textarea wire:model.defer="form.observacao" rows="4" maxlength="1000"></textarea>
+                    @error('form.observacao')
+                        <p class="error">{{ $message }}</p>
+                    @enderror
+                </label>
 
-                <div class="flex justify-end gap-2 border-t border-gray-200 px-5 py-4 dark:border-gray-700">
-                    <x-filament::button type="button" color="gray" wire:click="fecharModal">
-                        Cancelar
-                    </x-filament::button>
-                    <x-filament::button type="button" wire:click="salvarAlternativa">
-                        Salvar
-                    </x-filament::button>
-                </div>
+                <label class="gi-field gi-field--small">
+                    <span>Status</span>
+                    <select wire:model.defer="form.status">
+                        <option value="1">Ativa</option>
+                        <option value="0">Inativa</option>
+                    </select>
+                </label>
             </div>
+
+            <footer>
+                <button type="button" class="gi-action" wire:click="fecharModal">
+                    Cancelar
+                </button>
+                <button type="button" class="gi-action gi-action--primary" wire:click="salvarAlternativa">
+                    Salvar alternativa
+                </button>
+            </footer>
         </div>
     @endif
+
+    @include('filament.pages.partials.avaliacoes-page-styles')
 </x-filament-panels::page>

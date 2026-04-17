@@ -1,39 +1,37 @@
 <x-filament-panels::page>
-    <div class="space-y-6">
-        <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-            <div class="grid gap-4 md:grid-cols-2">
-                <label class="block">
-                    <span class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
-                        Avaliação
-                    </span>
-                    <select
-                        wire:model.live="avaliacao"
-                        class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100">
-                        <option value="">Selecione uma avaliação</option>
+    <div class="gi-page av-page">
+        <section class="gi-hero">
+            <div>
+                <p class="gi-eyebrow">Professor</p>
+                <h1>Minhas Avaliacoes</h1>
+                <p>Selecione avaliacao e turma para registrar respostas por aluno com apoio de avaliacao em massa.</p>
+            </div>
+        </section>
+
+        <section class="gi-panel">
+            <div class="av-form-grid av-form-grid--two">
+                <label class="gi-field">
+                    <span>Avaliacao</span>
+                    <select wire:model.live="avaliacao">
+                        <option value="">Selecione uma avaliacao</option>
                         @foreach ($this->avaliacoesDisponiveis as $avaliacaoItem)
                             <option value="{{ $avaliacaoItem->id }}">
                                 {{ $avaliacaoItem->nome }} |
                                 {{ optional($avaliacaoItem->data_inicio)->format('d/m/Y') }}
-                                até
+                                ate
                                 {{ optional($avaliacaoItem->data_fim)->format('d/m/Y') }}
                             </option>
                         @endforeach
                     </select>
                 </label>
 
-                <label class="block">
-                    <span class="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-200">
-                        Turma
-                    </span>
-                    <select
-                        wire:model.live="turma"
-                        @disabled(! $avaliacao)
-                        class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100">
+                <label class="gi-field">
+                    <span>Turma</span>
+                    <select wire:model.live="turma" @disabled(! $avaliacao)>
                         <option value="">Selecione uma turma</option>
                         @foreach ($this->turmasDisponiveis as $turmaItem)
                             <option value="{{ $turmaItem->id }}">
-                                {{ $turmaItem->escola?->nome }} - {{ $turmaItem->serie?->nome }} - Turma
-                                {{ $turmaItem->nome }}
+                                {{ $turmaItem->escola?->nome }} - {{ $turmaItem->serie?->nome }} - Turma {{ $turmaItem->nome }}
                             </option>
                         @endforeach
                     </select>
@@ -42,113 +40,88 @@
 
             @php($progresso = $this->progresso)
             @php($percentual = $progresso['total'] > 0 ? min(100, (int) round(($progresso['preenchidas'] / $progresso['total']) * 100)) : 0)
-
-            <div class="mt-4">
-                <div class="mb-1 flex items-center justify-between text-xs text-gray-600 dark:text-gray-300">
+            <div class="av-progress">
+                <div class="av-progress-head">
                     <span>Progresso do preenchimento</span>
                     <span>{{ $progresso['preenchidas'] }}/{{ $progresso['total'] }}</span>
                 </div>
-                <div class="h-2 rounded-full bg-gray-100 dark:bg-gray-700">
-                    <div
-                        class="h-2 rounded-full bg-primary-600 transition-all"
-                        style="width: {{ $percentual }}%"></div>
+                <div class="av-progress-track">
+                    <div class="av-progress-bar" style="width: {{ $percentual }}%"></div>
                 </div>
             </div>
-        </div>
+        </section>
 
         @if ($this->avaliacoesDisponiveis->isEmpty())
-            <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-600/40 dark:bg-amber-900/20 dark:text-amber-200">
-                Não existem avaliações pendentes para seus componentes neste momento.
-            </div>
+            <section class="av-note av-note--warning">
+                Nao existem avaliacoes pendentes para seus componentes neste momento.
+            </section>
         @elseif (! $avaliacao)
-            <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-800/40 dark:text-gray-200">
-                Selecione uma avaliação para começar.
-            </div>
+            <section class="av-note">
+                Selecione uma avaliacao para comecar.
+            </section>
         @elseif ($this->turmasDisponiveis->isEmpty())
-            <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-600/40 dark:bg-amber-900/20 dark:text-amber-200">
-                Esta avaliação não possui turmas com pautas vinculadas aos componentes que você leciona.
-            </div>
+            <section class="av-note av-note--warning">
+                Esta avaliacao nao possui turmas com pautas vinculadas aos componentes que voce leciona.
+            </section>
         @elseif (! $turma)
-            <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-800/40 dark:text-gray-200">
+            <section class="av-note">
                 Selecione a turma para visualizar as pautas e os alunos.
-            </div>
+            </section>
         @elseif ($this->pautasDisponiveis->isEmpty())
-            <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-600/40 dark:bg-amber-900/20 dark:text-amber-200">
-                Nenhuma pauta desta avaliação está disponível para os seus componentes nessa turma.
-            </div>
+            <section class="av-note av-note--warning">
+                Nenhuma pauta desta avaliacao esta disponivel para os seus componentes nesta turma.
+            </section>
         @else
-            @foreach ($this->pautasDisponiveis as $pauta)
-                <div
-                    wire:key="pauta-{{ $pauta->id }}"
-                    class="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
-                    <div class="border-b border-gray-200 px-4 py-3 dark:border-gray-700">
-                        <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                            {{ $pauta->texto }}
-                        </h3>
-                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                            Componente:
-                            {{ $pauta->componente?->nome ?? 'Geral (sem componente específico)' }}
-                        </p>
-                    </div>
+            <div class="av-stack">
+                @foreach ($this->pautasDisponiveis as $pauta)
+                    <section wire:key="pauta-{{ $pauta->id }}" class="gi-panel">
+                        <div class="av-pauta-head">
+                            <h3 class="av-pauta-title">{{ $pauta->texto }}</h3>
+                            <p class="av-pauta-meta">
+                                Componente: {{ $pauta->componente?->nome ?? 'Geral (sem componente especifico)' }}
+                            </p>
+                        </div>
 
-                    <div class="space-y-4 p-4">
-                        <div class="grid gap-3 md:grid-cols-[1fr_auto]">
-                            <label class="block">
-                                <span class="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-600 dark:text-gray-300">
-                                    Avaliação em massa
-                                </span>
-                                <select
-                                    wire:model="avaliacaoEmMassa.{{ $pauta->id }}"
-                                    class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100">
-                                    <option value="">Selecione uma alternativa</option>
-                                    @foreach ($pauta->alternativas as $alternativa)
-                                        <option value="{{ $alternativa->id }}">
-                                            {{ $alternativa->nome }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </label>
+                        <div class="gi-toolbar">
+                            <div class="gi-toolbar-left">
+                                <label class="gi-field">
+                                    <span>Avaliacao em massa</span>
+                                    <select wire:model="avaliacaoEmMassa.{{ $pauta->id }}">
+                                        <option value="">Selecione uma alternativa</option>
+                                        @foreach ($pauta->alternativas as $alternativa)
+                                            <option value="{{ $alternativa->id }}">
+                                                {{ $alternativa->nome }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </label>
+                            </div>
 
-                            <div class="flex items-end">
-                                <x-filament::button
-                                    type="button"
-                                    wire:click="aplicarEmMassa({{ $pauta->id }})"
-                                    color="gray">
+                            <div class="gi-toolbar-right">
+                                <button type="button" class="gi-action" wire:click="aplicarEmMassa({{ $pauta->id }})">
                                     Aplicar para todos os alunos
-                                </x-filament::button>
+                                </button>
                             </div>
                         </div>
 
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gray-200 text-sm dark:divide-gray-700">
-                                <thead class="bg-gray-50 dark:bg-gray-800">
+                        <div class="gi-table-wrap">
+                            <table class="gi-table">
+                                <thead>
                                     <tr>
-                                        <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">
-                                            Aluno
-                                        </th>
-                                        <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">
-                                            Alternativa
-                                        </th>
-                                        <th class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">
-                                            Observação (opcional)
-                                        </th>
+                                        <th>Aluno</th>
+                                        <th>Alternativa</th>
+                                        <th>Observacao (opcional)</th>
                                     </tr>
                                 </thead>
-                                <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                                <tbody>
                                     @foreach ($this->alunosDaTurma as $aluno)
                                         <tr wire:key="pauta-{{ $pauta->id }}-aluno-{{ $aluno->id }}">
-                                            <td class="px-3 py-2 align-top">
-                                                <p class="font-medium text-gray-900 dark:text-gray-100">
-                                                    {{ $aluno->nome }}
-                                                </p>
-                                                <p class="text-xs text-gray-500 dark:text-gray-400">
-                                                    CGM: {{ $aluno->cgm }}
-                                                </p>
+                                            <td>
+                                                <strong>{{ $aluno->nome }}</strong>
+                                                <small>CGM: {{ $aluno->cgm }}</small>
                                             </td>
-                                            <td class="px-3 py-2 align-top">
-                                                <select
-                                                    wire:model="respostas.{{ $pauta->id }}.{{ $aluno->id }}.alternativa_id"
-                                                    class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100">
+                                            <td>
+                                                <select class="av-table-input" wire:model="respostas.{{ $pauta->id }}.{{ $aluno->id }}.alternativa_id">
                                                     <option value="">Selecione</option>
                                                     @foreach ($pauta->alternativas as $alternativa)
                                                         <option value="{{ $alternativa->id }}">
@@ -157,28 +130,35 @@
                                                     @endforeach
                                                 </select>
                                             </td>
-                                            <td class="px-3 py-2 align-top">
+                                            <td>
                                                 <input
                                                     type="text"
-                                                    wire:model.blur="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao"
                                                     maxlength="1000"
-                                                    placeholder="Observação livre"
-                                                    class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100" />
+                                                    placeholder="Observacao livre"
+                                                    class="av-table-input"
+                                                    wire:model.blur="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao" />
                                             </td>
                                         </tr>
                                     @endforeach
                                 </tbody>
                             </table>
                         </div>
+                    </section>
+                @endforeach
+            </div>
+
+            <section class="gi-panel">
+                <div class="gi-toolbar">
+                    <div></div>
+                    <div class="gi-toolbar-right">
+                        <button type="button" class="gi-action gi-action--primary" wire:click="salvarRespostas">
+                            Salvar avaliacao da turma
+                        </button>
                     </div>
                 </div>
-            @endforeach
-
-            <div class="flex justify-end">
-                <x-filament::button type="button" wire:click="salvarRespostas">
-                    Salvar Avaliação da Turma
-                </x-filament::button>
-            </div>
+            </section>
         @endif
     </div>
+
+    @include('filament.pages.partials.avaliacoes-page-styles')
 </x-filament-panels::page>
