@@ -28,6 +28,7 @@ class LoginPage extends BaseLogin
             Forms\Components\TextInput::make('password')
                 ->label('Senha')
                 ->password()
+                ->revealable()
                 ->required()
                 ->placeholder('************')
                 ->autocomplete('current-password'),
