@@ -63,4 +63,15 @@ class Turma extends Model
     {
         return $this->hasMany(Aluno::class, 'id_turma');
     }
+
+    public function avaliacoes()
+    {
+        return $this->belongsToMany(Avaliacao::class, 'avaliacao_turma')
+            ->withTimestamps();
+    }
+
+    public function avaliacaoRespostas()
+    {
+        return $this->hasMany(AvaliacaoResposta::class, 'turma_id');
+    }
 }

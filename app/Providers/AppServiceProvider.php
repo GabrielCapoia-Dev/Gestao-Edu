@@ -5,15 +5,21 @@ namespace App\Providers;
 use App\Models\DominioEmail;
 use App\Models\Escola;
 use App\Models\Permission;
+use App\Models\Alternativa;
 use App\Models\Aluno;
+use App\Models\Avaliacao;
+use App\Models\Pauta;
 use App\Models\Professor;
 use App\Models\Role;
 use App\Models\Serie;
 use App\Models\Turma;
 use App\Models\User;
+use App\Policies\AlternativaPolicy;
+use App\Policies\AvaliacaoPolicy;
 use App\Policies\DominioEmailPolicy;
 use App\Policies\EscolaPolicy;
 use App\Policies\PermissionPolicy;
+use App\Policies\PautaPolicy;
 use App\Policies\RolePolicy;
 use App\Policies\SeriePolicy;
 use App\Policies\TurmaPolicy;
@@ -75,6 +81,9 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(FuncaoAdministrativa::class, FuncaoAdministrativaPolicy::class);
         Gate::policy(Item::class, ItemPolicy::class);
         Gate::policy(Setor::class, SetorPolicy::class);
+        Gate::policy(Alternativa::class, AlternativaPolicy::class);
+        Gate::policy(Pauta::class, PautaPolicy::class);
+        Gate::policy(Avaliacao::class, AvaliacaoPolicy::class);
 
 
         // ── Observers ──────────────────────────────────────────────────────────

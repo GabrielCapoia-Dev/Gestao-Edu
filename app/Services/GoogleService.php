@@ -20,6 +20,7 @@ class GoogleService
     private const ROLE_ACESSAR_PAINEL = 'Acessar Painel';
     private const ROLE_VISUALIZAR_TURMAS_ALUNOS = 'Visualizar Turmas e Alunos';
     private const PERMISSION_ACESSAR_PAINEL = 'Acessar Painel';
+    private const PERMISSION_RESPONDER_AVALIACOES = 'Responder Avaliações';
 
     public function registrarOuLogar(SocialiteUserContract $oauthUser): User
     {
@@ -118,6 +119,7 @@ class GoogleService
         Permission::findOrCreate('Visualizar Tela de Inicio', 'web');
         Permission::findOrCreate('Listar Turmas', 'web');
         Permission::findOrCreate('Listar Alunos', 'web');
+        Permission::findOrCreate(self::PERMISSION_RESPONDER_AVALIACOES, 'web');
 
         $roleAcessoPainel = Role::findOrCreate(self::ROLE_ACESSAR_PAINEL, 'web');
         $roleAcessoPainel->syncPermissions([
@@ -128,6 +130,7 @@ class GoogleService
         $roleVisualizacaoProfessor->syncPermissions([
             'Listar Turmas',
             'Listar Alunos',
+            self::PERMISSION_RESPONDER_AVALIACOES,
         ]);
 
         $user->givePermissionTo(self::PERMISSION_ACESSAR_PAINEL);

@@ -164,4 +164,9 @@ class Professor extends Model
     {
         return $query->whereNotNull('funcao_administrativa_id');
     }
+
+    public function avaliacaoRespostas()
+    {
+        return $this->hasMany(AvaliacaoResposta::class, 'professor_id');
+    }
 }

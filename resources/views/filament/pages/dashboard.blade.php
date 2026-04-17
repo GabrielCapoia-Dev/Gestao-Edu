@@ -75,6 +75,21 @@
                 </a>
                 @endcan
 
+                @can('Responder Avaliações')
+                <a href="{{ route('filament.admin.pages.avaliacoes-professor') }}" class="nav-card nav-card--green">
+                    <div class="nav-card-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m5.25 2.25a8.97 8.97 0 0 1-8.25 8.964A8.97 8.97 0 0 1 3.75 12a8.97 8.97 0 0 1 8.25-8.964A8.97 8.97 0 0 1 20.25 12Z" />
+                        </svg>
+                    </div>
+                    <div class="nav-card-body">
+                        <h3>Avaliações</h3>
+                        <p>Responder avaliações das suas turmas</p>
+                    </div>
+                    <div class="nav-card-arrow">→</div>
+                </a>
+                @endcan
+
                 @can('Listar Professores')
                 <a href="{{ route('filament.admin.resources.professores.index') }}" class="nav-card nav-card--purple">
                     <div class="nav-card-icon">

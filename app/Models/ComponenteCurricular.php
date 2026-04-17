@@ -39,4 +39,9 @@ class ComponenteCurricular extends Model
             'turma_componente_professor'
         )->withPivot('professor_id');
     }
+
+    public function pautas()
+    {
+        return $this->hasMany(Pauta::class, 'componente_curricular_id');
+    }
 }

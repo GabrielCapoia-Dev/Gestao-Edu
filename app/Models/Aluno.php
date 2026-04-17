@@ -32,5 +32,9 @@ class Aluno extends Model
     {
         return $this->belongsTo(Turma::class, 'id_turma');
     }
-}
 
+    public function avaliacaoRespostas()
+    {
+        return $this->hasMany(AvaliacaoResposta::class, 'aluno_id');
+    }
+}

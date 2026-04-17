@@ -57,6 +57,7 @@ class GoogleServiceProfessorAccessTest extends TestCase
         $this->assertTrue($user->hasPermissionTo('Acessar Painel'));
         $this->assertTrue($user->hasPermissionTo('Listar Turmas'));
         $this->assertTrue($user->hasPermissionTo('Listar Alunos'));
+        $this->assertTrue($user->hasPermissionTo('Responder Avaliações'));
         $this->assertTrue($user->canAccessAdminPanel());
     }
 
@@ -84,6 +85,7 @@ class GoogleServiceProfessorAccessTest extends TestCase
         $this->assertFalse($user->hasRole('Acessar Painel'));
         $this->assertFalse($user->hasRole('Visualizar Turmas e Alunos'));
         $this->assertFalse($user->hasPermissionTo('Acessar Painel'));
+        $this->assertFalse($user->hasPermissionTo('Responder Avaliações'));
         $this->assertFalse($user->canAccessAdminPanel());
     }
 
