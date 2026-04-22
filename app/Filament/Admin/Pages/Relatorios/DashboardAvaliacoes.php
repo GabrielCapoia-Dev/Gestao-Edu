@@ -14,8 +14,12 @@ use App\Models\TipoAvaliacao;
 use App\Services\Relatorios\RelatorioPdfRenderer;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -31,8 +35,10 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use UnitEnum;
 
-class DashboardAvaliacoes extends Page
+class DashboardAvaliacoes extends Page implements HasForms
 {
+    use InteractsWithForms;
+
     protected string $view = 'filament.pages.relatorios.dashboard-avaliacoes';
 
     protected static ?string $title = 'Dashboard de Avaliações';
@@ -78,6 +84,104 @@ class DashboardAvaliacoes extends Page
     {
         $this->filtros = $this->filtrosPadrao();
         $this->atualizarDashboard();
+    }
+
+    protected function getForms(): array
+    {
+        return [
+            'filtrosForm',
+        ];
+    }
+
+    public function filtrosForm(Schema $schema): Schema
+    {
+        return $schema
+            ->components([
+                Select::make('avaliacao_id')
+                    ->label('Avaliação')
+                    ->options(fn (): array => $this->avaliacoesOptions)
+                    ->placeholder('Todas')
+                    ->searchable()
+                    ->preload()
+                    ->live(),
+                Select::make('periodo_id')
+                    ->label('Período')
+                    ->options(fn (): array => $this->periodosOptions)
+                    ->placeholder('Todos')
+                    ->searchable()
+                    ->preload()
+                    ->live(),
+                Select::make('tipo_id')
+                    ->label('Tipo')
+                    ->options(fn (): array => $this->tiposOptions)
+                    ->placeholder('Todos')
+                    ->searchable()
+                    ->preload()
+                    ->live(),
+                Select::make('status')
+                    ->label('Status da avaliação')
+                    ->options(fn (): array => $this->statusOptions)
+                    ->default('todas')
+                    ->live(),
+                Select::make('series_ids')
+                    ->label('Séries')
+                    ->options(fn (): array => $this->seriesOptions)
+                    ->multiple()
+                    ->native(false)
+                    ->searchable()
+                    ->preload()
+                    ->live(),
+                Select::make('turnos')
+                    ->label('Turnos')
+                    ->options(fn (): array => $this->turnosOptions)
+                    ->multiple()
+                    ->native(false)
+                    ->searchable()
+                    ->preload()
+                    ->live(),
+                Select::make('componentes_ids')
+                    ->label('Componentes')
+                    ->options(fn (): array => $this->componentesOptions)
+                    ->multiple()
+                    ->native(false)
+                    ->searchable()
+                    ->preload()
+                    ->live(),
+                Select::make('escolas_ids')
+                    ->label('Escolas')
+                    ->options(fn (): array => $this->escolasOptions)
+                    ->multiple()
+                    ->native(false)
+                    ->searchable()
+                    ->preload()
+                    ->live(),
+                Select::make('professores_ids')
+                    ->label('Professores')
+                    ->options(fn (): array => $this->professoresOptions)
+                    ->multiple()
+                    ->native(false)
+                    ->searchable()
+                    ->preload()
+                    ->live(),
+                Select::make('pautas_ids')
+                    ->label('Pautas')
+                    ->options(fn (): array => $this->pautasOptions)
+                    ->multiple()
+                    ->native(false)
+                    ->searchable()
+                    ->preload()
+                    ->live(),
+                Select::make('alternativas_ids')
+                    ->label('Alternativas')
+                    ->options(fn (): array => $this->alternativasOptions)
+                    ->multiple()
+                    ->native(false)
+                    ->searchable()
+                    ->preload()
+                    ->live(),
+            ])
+            ->columns(4)
+            ->statePath('filtros');
     }
 
     protected function getHeaderActions(): array

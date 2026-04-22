@@ -32,110 +32,7 @@
                     Limpar filtros
                 </button>
             </div>
-
-            <div class="dav-filters-grid">
-                <label class="dav-field">
-                    <span>Avaliação</span>
-                    <select wire:model.live="filtros.avaliacao_id">
-                        <option value="">Todas</option>
-                        @foreach ($this->avaliacoesOptions as $id => $label)
-                            <option value="{{ $id }}">{{ $label }}</option>
-                        @endforeach
-                    </select>
-                </label>
-
-                <label class="dav-field">
-                    <span>Período</span>
-                    <select wire:model.live="filtros.periodo_id">
-                        <option value="">Todos</option>
-                        @foreach ($this->periodosOptions as $id => $label)
-                            <option value="{{ $id }}">{{ $label }}</option>
-                        @endforeach
-                    </select>
-                </label>
-
-                <label class="dav-field">
-                    <span>Tipo</span>
-                    <select wire:model.live="filtros.tipo_id">
-                        <option value="">Todos</option>
-                        @foreach ($this->tiposOptions as $id => $label)
-                            <option value="{{ $id }}">{{ $label }}</option>
-                        @endforeach
-                    </select>
-                </label>
-
-                <label class="dav-field">
-                    <span>Status da avaliação</span>
-                    <select wire:model.live="filtros.status">
-                        @foreach ($this->statusOptions as $id => $label)
-                            <option value="{{ $id }}">{{ $label }}</option>
-                        @endforeach
-                    </select>
-                </label>
-
-                <label class="dav-field">
-                    <span>Séries</span>
-                    <select wire:model.live="filtros.series_ids" multiple size="5">
-                        @foreach ($this->seriesOptions as $id => $label)
-                            <option value="{{ $id }}">{{ $label }}</option>
-                        @endforeach
-                    </select>
-                </label>
-
-                <label class="dav-field">
-                    <span>Turnos</span>
-                    <select wire:model.live="filtros.turnos" multiple size="5">
-                        @foreach ($this->turnosOptions as $id => $label)
-                            <option value="{{ $id }}">{{ $label }}</option>
-                        @endforeach
-                    </select>
-                </label>
-
-                <label class="dav-field">
-                    <span>Componentes</span>
-                    <select wire:model.live="filtros.componentes_ids" multiple size="5">
-                        @foreach ($this->componentesOptions as $id => $label)
-                            <option value="{{ $id }}">{{ $label }}</option>
-                        @endforeach
-                    </select>
-                </label>
-
-                <label class="dav-field">
-                    <span>Escolas</span>
-                    <select wire:model.live="filtros.escolas_ids" multiple size="5">
-                        @foreach ($this->escolasOptions as $id => $label)
-                            <option value="{{ $id }}">{{ $label }}</option>
-                        @endforeach
-                    </select>
-                </label>
-
-                <label class="dav-field">
-                    <span>Professores</span>
-                    <select wire:model.live="filtros.professores_ids" multiple size="5">
-                        @foreach ($this->professoresOptions as $id => $label)
-                            <option value="{{ $id }}">{{ $label }}</option>
-                        @endforeach
-                    </select>
-                </label>
-
-                <label class="dav-field">
-                    <span>Pautas</span>
-                    <select wire:model.live="filtros.pautas_ids" multiple size="5">
-                        @foreach ($this->pautasOptions as $id => $label)
-                            <option value="{{ $id }}">{{ $label }}</option>
-                        @endforeach
-                    </select>
-                </label>
-
-                <label class="dav-field">
-                    <span>Alternativas</span>
-                    <select wire:model.live="filtros.alternativas_ids" multiple size="5">
-                        @foreach ($this->alternativasOptions as $id => $label)
-                            <option value="{{ $id }}">{{ $label }}</option>
-                        @endforeach
-                    </select>
-                </label>
-            </div>
+            {{ $this->filtrosForm }}
 
             @if ($filtrosAplicados !== [])
                 <div class="dav-filter-chips">
@@ -907,3 +804,4 @@
         }
     </style>
 </x-filament-panels::page>
+
