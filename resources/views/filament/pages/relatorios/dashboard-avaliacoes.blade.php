@@ -183,7 +183,9 @@
                     <p>Percentual de escolas do escopo com ao menos uma turma respondida.</p>
                 </header>
 
-                @php($escolasPercent = (float) ($cards['percentual_escolas_preenchidas'] ?? 0))
+                @php
+                    $escolasPercent = (float) ($cards['percentual_escolas_preenchidas'] ?? 0);
+                @endphp
                 <div class="dav-ring-wrap">
                     <div class="dav-ring" style="--progress: {{ $escolasPercent }};">
                         <div class="dav-ring-inner">
