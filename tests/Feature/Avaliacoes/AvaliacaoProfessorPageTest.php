@@ -96,6 +96,54 @@ class AvaliacaoProfessorPageTest extends TestCase
             ->assertDontSee('Avaliação Inativa');
     }
 
+    public function test_formulario_inicia_sem_avaliacao_e_sem_turma_selecionadas(): void
+    {
+        Permission::findOrCreate('Responder AvaliaÃ§Ãµes');
+
+        $escola = $this->criarEscola('Escola Estado Inicial');
+        $turma = $this->criarTurma($escola, 'Turma Inicial');
+
+        $componente = ComponenteCurricular::query()->create([
+            'codigo' => 'COMP-INI',
+            'nome' => 'Linguagens',
+        ]);
+
+        $userProfessor = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $userProfessor->givePermissionTo('Responder AvaliaÃ§Ãµes');
+
+        $professor = Professor::query()->create([
+            'user_id' => $userProfessor->id,
+            'id_escola' => $escola->id,
+            'matricula' => 'PROF-INI',
+            'nome' => 'Professor Inicial',
+            'email' => 'inicial@edu.umuarama.pr.gov.br',
+        ]);
+
+        $turma->componentes()->attach($componente->id, [
+            'professor_id' => $professor->id,
+            'tem_professor' => true,
+        ]);
+
+        $pauta = $this->criarPautaComAlternativa('Pauta Inicial', $componente->id);
+
+        $avaliacao = Avaliacao::query()->create([
+            'nome' => 'Avaliacao Inicial',
+            'data_inicio' => now()->subDay()->toDateString(),
+            'data_fim' => now()->addDays(5)->toDateString(),
+            'status' => Avaliacao::STATUS_ATIVA,
+        ]);
+        $avaliacao->pautas()->attach($pauta->id);
+        $avaliacao->turmas()->attach($turma->id);
+
+        Livewire::actingAs($userProfessor)
+            ->test(AvaliacoesProfessor::class)
+            ->assertSet('avaliacao', null)
+            ->assertSet('turma', null);
+    }
+
     public function test_professor_aplica_avaliacao_em_massa_e_salva_respostas_por_aluno(): void
     {
         Permission::findOrCreate('Responder Avaliações');
@@ -172,6 +220,8 @@ class AvaliacaoProfessorPageTest extends TestCase
 
         Livewire::actingAs($userProfessor)
             ->test(AvaliacoesProfessor::class)
+            ->set('avaliacao', $avaliacao->id)
+            ->set('turma', $turma->id)
             ->set("avaliacaoEmMassa.{$pauta->id}", $alternativaA->id)
             ->call('aplicarEmMassa', $pauta->id)
             ->assertSet("respostas.{$pauta->id}.{$alunoA->id}.alternativa_id", $alternativaA->id)
@@ -268,6 +318,8 @@ class AvaliacaoProfessorPageTest extends TestCase
 
         $component = Livewire::actingAs($userProfessor)
             ->test(AvaliacoesProfessor::class)
+            ->set('avaliacao', $avaliacao->id)
+            ->set('turma', $turma->id)
             ->set("respostas.{$pauta->id}.{$aluno->id}.alternativa_id", $alternativaExigeObservacao->id);
 
         $this->assertDatabaseMissing('avaliacao_respostas', [

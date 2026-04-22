@@ -40,6 +40,8 @@ class AvaliacoesProfessor extends Page
 
     public array $avaliacaoEmMassa = [];
 
+    public array $pautasExpandidas = [];
+
     public array $professorIds = [];
 
     public array $componentesPorTurma = [];
@@ -58,23 +60,6 @@ class AvaliacoesProfessor extends Page
     public function mount(): void
     {
         $this->sincronizarVinculosProfessor();
-
-        $primeiraAvaliacao = $this->avaliacoesDisponiveis->first();
-
-        if (! $primeiraAvaliacao) {
-            return;
-        }
-
-        $this->avaliacao = (int) $primeiraAvaliacao->id;
-
-        $primeiraTurma = $this->turmasDisponiveis->first();
-
-        if (! $primeiraTurma) {
-            return;
-        }
-
-        $this->turma = (int) $primeiraTurma->id;
-        $this->carregarRespostas();
     }
 
     public function updatedAvaliacao(): void
@@ -82,26 +67,37 @@ class AvaliacoesProfessor extends Page
         $this->turma = null;
         $this->respostas = [];
         $this->avaliacaoEmMassa = [];
-
-        if (! $this->avaliacao) {
-            return;
-        }
-
-        $primeiraTurma = $this->turmasDisponiveis->first();
-
-        if ($primeiraTurma) {
-            $this->turma = (int) $primeiraTurma->id;
-        }
+        $this->pautasExpandidas = [];
     }
 
     public function updatedTurma(): void
     {
         $this->respostas = [];
         $this->avaliacaoEmMassa = [];
+        $this->pautasExpandidas = [];
 
         if ($this->avaliacao && $this->turma) {
             $this->carregarRespostas();
         }
+    }
+
+    public function alternarPauta(int $pautaId): void
+    {
+        $indice = array_search($pautaId, $this->pautasExpandidas, true);
+
+        if ($indice !== false) {
+            unset($this->pautasExpandidas[$indice]);
+            $this->pautasExpandidas = array_values($this->pautasExpandidas);
+
+            return;
+        }
+
+        $this->pautasExpandidas[] = $pautaId;
+    }
+
+    public function pautaEstaExpandida(int $pautaId): bool
+    {
+        return in_array($pautaId, $this->pautasExpandidas, true);
     }
 
     public function updated(string $name): void
@@ -419,9 +415,7 @@ class AvaliacoesProfessor extends Page
 
         foreach ($pautas as $pauta) {
             foreach ($alunos as $aluno) {
-                $alternativaId = (int) ($this->respostas[$pauta->id][$aluno->id]['alternativa_id'] ?? 0);
-
-                if ($alternativaId > 0) {
+                if ($this->respostaEstaCompleta($pauta, (int) $aluno->id)) {
                     $preenchidas++;
                 }
             }
@@ -431,6 +425,42 @@ class AvaliacoesProfessor extends Page
             'preenchidas' => $preenchidas,
             'total' => $total,
         ];
+    }
+
+    public function getProgressoPorPautaProperty(): array
+    {
+        $pautas = $this->pautasDisponiveis;
+        $alunos = $this->alunosDaTurma;
+
+        if ($pautas->isEmpty() || $alunos->isEmpty()) {
+            return [];
+        }
+
+        $progresso = [];
+
+        foreach ($pautas as $pauta) {
+            $total = $alunos->count();
+            $preenchidas = 0;
+
+            foreach ($alunos as $aluno) {
+                if ($this->respostaEstaCompleta($pauta, (int) $aluno->id)) {
+                    $preenchidas++;
+                }
+            }
+
+            $percentual = $total > 0
+                ? min(100, (int) round(($preenchidas / $total) * 100))
+                : 0;
+
+            $progresso[$pauta->id] = [
+                'preenchidas' => $preenchidas,
+                'total' => $total,
+                'percentual' => $percentual,
+                'concluida' => $total > 0 && $preenchidas === $total,
+            ];
+        }
+
+        return $progresso;
     }
 
     private function sincronizarVinculosProfessor(): void
@@ -624,5 +654,28 @@ class AvaliacoesProfessor extends Page
             ->where('turma_id', (int) $this->turma)
             ->where('aluno_id', $alunoId)
             ->delete();
+    }
+
+    private function respostaEstaCompleta(Pauta $pauta, int $alunoId): bool
+    {
+        $alternativaId = (int) ($this->respostas[$pauta->id][$alunoId]['alternativa_id'] ?? 0);
+
+        if ($alternativaId <= 0) {
+            return false;
+        }
+
+        $alternativa = $pauta->alternativas->firstWhere('id', $alternativaId);
+
+        if (! $alternativa) {
+            return false;
+        }
+
+        if (! $alternativa->tem_observacao) {
+            return true;
+        }
+
+        $observacao = trim((string) ($this->respostas[$pauta->id][$alunoId]['observacao'] ?? ''));
+
+        return $observacao !== '';
     }
 }
