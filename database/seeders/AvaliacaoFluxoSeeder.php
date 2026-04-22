@@ -52,15 +52,23 @@ class AvaliacaoFluxoSeeder extends Seeder
             ]
         );
 
-        $serie5 = Serie::updateOrCreate(
-            ['codigo' => 'SERAVA5'],
-            ['nome' => '5o Ano']
+        $serie5 = Serie::query()->firstOrCreate(
+            ['nome' => '5o Ano'],
+            ['codigo' => 'SERAVA5']
         );
 
-        $serie6 = Serie::updateOrCreate(
-            ['codigo' => 'SERAVA6'],
-            ['nome' => '6o Ano']
+        if (! filled($serie5->codigo)) {
+            $serie5->update(['codigo' => 'SERAVA5']);
+        }
+
+        $serie6 = Serie::query()->firstOrCreate(
+            ['nome' => '6o Ano'],
+            ['codigo' => 'SERAVA6']
         );
+
+        if (! filled($serie6->codigo)) {
+            $serie6->update(['codigo' => 'SERAVA6']);
+        }
 
         $componenteMatematica = ComponenteCurricular::updateOrCreate(
             ['codigo' => 'COMP-MAT-AV'],
@@ -215,45 +223,40 @@ class AvaliacaoFluxoSeeder extends Seeder
         $this->criarAlunosDaTurma($turmaJardimA, 'J', 10);
 
         $alternativaExcelente = Alternativa::updateOrCreate(
-            ['nome' => 'Excelente'],
+            ['tipo_avaliacao_id' => $tipoParecer->id, 'nome' => 'Excelente'],
             [
-                'tipo_avaliacao_id' => $tipoParecer->id,
                 'tem_observacao' => false,
                 'observacao' => null,
                 'status' => true,
             ]
         );
         $alternativaBom = Alternativa::updateOrCreate(
-            ['nome' => 'Bom'],
+            ['tipo_avaliacao_id' => $tipoParecer->id, 'nome' => 'Bom'],
             [
-                'tipo_avaliacao_id' => $tipoParecer->id,
                 'tem_observacao' => false,
                 'observacao' => null,
                 'status' => true,
             ]
         );
         $alternativaRegular = Alternativa::updateOrCreate(
-            ['nome' => 'Regular'],
+            ['tipo_avaliacao_id' => $tipoParecer->id, 'nome' => 'Regular'],
             [
-                'tipo_avaliacao_id' => $tipoParecer->id,
                 'tem_observacao' => false,
                 'observacao' => null,
                 'status' => true,
             ]
         );
         $alternativaInsuficiente = Alternativa::updateOrCreate(
-            ['nome' => 'Insuficiente'],
+            ['tipo_avaliacao_id' => $tipoParecer->id, 'nome' => 'Insuficiente'],
             [
-                'tipo_avaliacao_id' => $tipoParecer->id,
                 'tem_observacao' => false,
                 'observacao' => null,
                 'status' => true,
             ]
         );
         $alternativaDiscursiva = Alternativa::updateOrCreate(
-            ['nome' => 'Resposta Discursiva'],
+            ['tipo_avaliacao_id' => $tipoParecer->id, 'nome' => 'Resposta Discursiva'],
             [
-                'tipo_avaliacao_id' => $tipoParecer->id,
                 'tem_observacao' => true,
                 'observacao' => 'Alternativa para texto livre do professor.',
                 'status' => true,
