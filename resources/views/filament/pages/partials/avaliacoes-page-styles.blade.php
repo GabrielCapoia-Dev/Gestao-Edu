@@ -128,12 +128,26 @@
         line-height: 1.55;
     }
 
-    .av-multi-select {
-        min-height: 11rem !important;
+    .av-filament-scope-form {
+        display: grid;
+        gap: 0.75rem;
     }
 
-    .av-multi-select option {
-        padding: 0.25rem 0.3rem;
+    .av-filament-scope-form .fi-fo-field-wrp {
+        margin-bottom: 0;
+    }
+
+    .av-filament-scope-form .fi-input-wrp {
+        background: #fff;
+    }
+
+    .av-filament-scope-form .fi-fo-field-wrp-helper-text {
+        font-size: var(--text-xs);
+        line-height: 1.5;
+    }
+
+    :root.dark .av-filament-scope-form .fi-input-wrp {
+        background: var(--gray-950);
     }
 
     .av-selection-grid {

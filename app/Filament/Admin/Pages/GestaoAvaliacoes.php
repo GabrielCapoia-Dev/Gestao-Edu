@@ -7,8 +7,12 @@ use App\Models\ComponenteCurricular;
 use App\Models\Escola;
 use App\Models\Pauta;
 use BackedEnum;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
@@ -16,8 +20,9 @@ use Illuminate\Support\Facades\DB;
 use Livewire\WithPagination;
 use UnitEnum;
 
-class GestaoAvaliacoes extends Page
+class GestaoAvaliacoes extends Page implements HasForms
 {
+    use InteractsWithForms;
     use WithPagination;
 
     protected string $view = 'filament.pages.gestao-avaliacoes';
@@ -65,6 +70,54 @@ class GestaoAvaliacoes extends Page
         $user = Auth::user();
 
         return $user?->hasPermissionTo('Listar Avaliações') ?? false;
+    }
+
+    protected function getForms(): array
+    {
+        return [
+            'escopoForm',
+        ];
+    }
+
+    public function escopoForm(Schema $schema): Schema
+    {
+        return $schema
+            ->components([
+                Select::make('escola_id')
+                    ->label('Escola')
+                    ->helperText('Escolha uma escola especifica ou mantenha todas para abranger toda a rede.')
+                    ->options(fn (): array => $this->escolasOptions)
+                    ->required()
+                    ->native(false)
+                    ->searchable()
+                    ->preload()
+                    ->live()
+                    ->default('todas')
+                    ->afterStateUpdated(fn () => $this->updatedFormEscolaId()),
+                Select::make('componentes_ids')
+                    ->label('Componentes')
+                    ->helperText('Selecione um ou mais componentes. As turmas serao vinculadas automaticamente.')
+                    ->options(fn (): array => $this->componentesOptions)
+                    ->multiple()
+                    ->required()
+                    ->native(false)
+                    ->searchable()
+                    ->preload()
+                    ->live()
+                    ->afterStateUpdated(fn () => $this->updatedFormComponentesIds()),
+                Select::make('pautas_ids')
+                    ->label('Pautas')
+                    ->helperText('Selecione uma ou mais pautas para compor a avaliacao.')
+                    ->options(fn (): array => $this->pautasOptions)
+                    ->multiple()
+                    ->required()
+                    ->native(false)
+                    ->searchable()
+                    ->preload()
+                    ->live(),
+            ])
+            ->columns(3)
+            ->statePath('form');
     }
 
     public function updatedBusca(): void
