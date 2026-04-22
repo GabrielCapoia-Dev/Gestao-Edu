@@ -231,22 +231,77 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     public function getStatusOptionsProperty(): array
     {
-        return ['todas' => 'Todos'] + Avaliacao::statusOptions();
+        $filtros = $this->filtrosIgnorandoCampo('status');
+        $avaliacaoIds = $this->obterIdsAvaliacoesFiltradas(filtros: $filtros);
+        $opcoesBase = ['todas' => 'Todos'];
+
+        if ($avaliacaoIds === []) {
+            return $opcoesBase;
+        }
+
+        $statusDisponiveis = Avaliacao::query()
+            ->whereIn('id', $avaliacaoIds)
+            ->pluck('status')
+            ->map(fn ($status): string => (string) $status)
+            ->unique()
+            ->values()
+            ->all();
+
+        foreach (Avaliacao::statusOptions() as $status => $label) {
+            if (in_array($status, $statusDisponiveis, true)) {
+                $opcoesBase[$status] = $label;
+            }
+        }
+
+        return $opcoesBase;
     }
 
     public function getTurnosOptionsProperty(): array
     {
-        return [
+        $labels = [
             'manha' => 'Manhã',
             'tarde' => 'Tarde',
             'noite' => 'Noite',
             'integral' => 'Integral',
         ];
+
+        $filtros = $this->filtrosIgnorandoCampo('turnos');
+        $avaliacaoIds = $this->obterIdsAvaliacoesFiltradas(filtros: $filtros);
+
+        if ($avaliacaoIds === []) {
+            return [];
+        }
+
+        $turnosDisponiveis = (clone $this->baseTurmasContextoQuery($avaliacaoIds, $filtros))
+            ->whereNotNull('t.turno')
+            ->distinct()
+            ->pluck('t.turno')
+            ->map(fn ($turno): string => (string) $turno)
+            ->values()
+            ->all();
+
+        $opcoes = [];
+
+        foreach ($labels as $turno => $label) {
+            if (in_array($turno, $turnosDisponiveis, true)) {
+                $opcoes[$turno] = $label;
+            }
+        }
+
+        return $opcoes;
     }
 
     public function getAvaliacoesOptionsProperty(): array
     {
+        $filtros = $this->filtrosIgnorandoCampo('avaliacao_id');
+        $avaliacaoIds = $this->obterIdsAvaliacoesFiltradas(filtros: $filtros);
+
+        if ($avaliacaoIds === []) {
+            return [];
+        }
+
         return Avaliacao::query()
+            ->whereIn('id', $avaliacaoIds)
             ->orderByDesc('data_inicio')
             ->orderBy('nome')
             ->pluck('nome', 'id')
@@ -255,8 +310,28 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     public function getPeriodosOptionsProperty(): array
     {
+        $filtros = $this->filtrosIgnorandoCampo('periodo_id');
+        $avaliacaoIds = $this->obterIdsAvaliacoesFiltradas(filtros: $filtros);
+
+        if ($avaliacaoIds === []) {
+            return [];
+        }
+
+        $periodosIds = Avaliacao::query()
+            ->whereIn('id', $avaliacaoIds)
+            ->whereNotNull('periodo_avaliacao_id')
+            ->pluck('periodo_avaliacao_id')
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($periodosIds === []) {
+            return [];
+        }
+
         return PeriodoAvaliacao::query()
-            ->where('status', true)
+            ->whereIn('id', $periodosIds)
             ->orderBy('nome')
             ->pluck('nome', 'id')
             ->toArray();
@@ -264,8 +339,28 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     public function getTiposOptionsProperty(): array
     {
+        $filtros = $this->filtrosIgnorandoCampo('tipo_id');
+        $avaliacaoIds = $this->obterIdsAvaliacoesFiltradas(filtros: $filtros);
+
+        if ($avaliacaoIds === []) {
+            return [];
+        }
+
+        $tiposIds = Avaliacao::query()
+            ->whereIn('id', $avaliacaoIds)
+            ->whereNotNull('tipo_avaliacao_id')
+            ->pluck('tipo_avaliacao_id')
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($tiposIds === []) {
+            return [];
+        }
+
         return TipoAvaliacao::query()
-            ->where('status', true)
+            ->whereIn('id', $tiposIds)
             ->orderBy('nome')
             ->pluck('nome', 'id')
             ->toArray();
@@ -273,8 +368,28 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     public function getSeriesOptionsProperty(): array
     {
+        $filtros = $this->filtrosIgnorandoCampo('series_ids');
+        $avaliacaoIds = $this->obterIdsAvaliacoesFiltradas(filtros: $filtros);
+
+        if ($avaliacaoIds === []) {
+            return [];
+        }
+
+        $seriesIds = (clone $this->baseTurmasContextoQuery($avaliacaoIds, $filtros))
+            ->whereNotNull('t.id_serie')
+            ->distinct()
+            ->pluck('t.id_serie')
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($seriesIds === []) {
+            return [];
+        }
+
         return Serie::query()
-            ->whereHas('turmas')
+            ->whereIn('id', $seriesIds)
             ->orderBy('nome')
             ->pluck('nome', 'id')
             ->toArray();
@@ -282,7 +397,57 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     public function getComponentesOptionsProperty(): array
     {
+        $filtros = $this->filtrosIgnorandoCampo('componentes_ids');
+        $avaliacaoIds = $this->obterIdsAvaliacoesFiltradas(filtros: $filtros);
+
+        if ($avaliacaoIds === []) {
+            return [];
+        }
+
+        $componentesIds = collect();
+
+        $componentesEscopo = DB::table('avaliacao_componente')
+            ->whereIn('avaliacao_id', $avaliacaoIds)
+            ->pluck('componente_curricular_id')
+            ->map(fn ($id): int => (int) $id);
+
+        $componentesPautas = DB::table('avaliacao_pauta as ap')
+            ->join('pautas as p', 'p.id', '=', 'ap.pauta_id')
+            ->whereIn('ap.avaliacao_id', $avaliacaoIds)
+            ->whereNotNull('p.componente_curricular_id');
+
+        if ($filtros['series_ids'] !== []) {
+            $componentesPautas->where(function (QueryBuilder $query) use ($filtros): void {
+                $query->whereIn('p.serie_id', $filtros['series_ids'])
+                    ->orWhereNull('p.serie_id');
+            });
+        }
+
+        if ($filtros['pautas_ids'] !== []) {
+            $componentesPautas->whereIn('p.id', $filtros['pautas_ids']);
+        }
+
+        $componentesTurmas = (clone $this->baseTurmasContextoQuery($avaliacaoIds, $filtros, forcarJoinComponenteProfessor: true))
+            ->whereNotNull('tcp.componente_curricular_id')
+            ->distinct()
+            ->pluck('tcp.componente_curricular_id')
+            ->map(fn ($id): int => (int) $id);
+
+        $componentesIds = $componentesIds
+            ->merge($componentesEscopo)
+            ->merge($componentesPautas->pluck('p.componente_curricular_id')->map(fn ($id): int => (int) $id))
+            ->merge($componentesTurmas)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($componentesIds === []) {
+            return [];
+        }
+
         return ComponenteCurricular::query()
+            ->whereIn('id', $componentesIds)
             ->orderBy('nome')
             ->pluck('nome', 'id')
             ->toArray();
@@ -290,7 +455,28 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     public function getEscolasOptionsProperty(): array
     {
+        $filtros = $this->filtrosIgnorandoCampo('escolas_ids');
+        $avaliacaoIds = $this->obterIdsAvaliacoesFiltradas(filtros: $filtros);
+
+        if ($avaliacaoIds === []) {
+            return [];
+        }
+
+        $escolasIds = (clone $this->baseTurmasContextoQuery($avaliacaoIds, $filtros))
+            ->whereNotNull('t.id_escola')
+            ->distinct()
+            ->pluck('t.id_escola')
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($escolasIds === []) {
+            return [];
+        }
+
         return Escola::query()
+            ->whereIn('id', $escolasIds)
             ->orderBy('nome')
             ->pluck('nome', 'id')
             ->toArray();
@@ -298,7 +484,46 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     public function getProfessoresOptionsProperty(): array
     {
+        $filtros = $this->filtrosIgnorandoCampo('professores_ids');
+        $avaliacaoIds = $this->obterIdsAvaliacoesFiltradas(filtros: $filtros);
+
+        if ($avaliacaoIds === []) {
+            return [];
+        }
+
+        $query = (clone $this->baseTurmasContextoQuery($avaliacaoIds, $filtros, forcarJoinComponenteProfessor: true))
+            ->join('professores as pr', 'pr.id', '=', 'tcp.professor_id')
+            ->whereNotNull('tcp.professor_id');
+
+        if ($filtros['alternativas_ids'] !== []) {
+            $query->whereExists(function (QueryBuilder $subQuery) use ($filtros): void {
+                $subQuery
+                    ->from('avaliacao_respostas as ar')
+                    ->whereColumn('ar.avaliacao_id', 'at.avaliacao_id')
+                    ->whereColumn('ar.turma_id', 't.id')
+                    ->whereColumn('ar.professor_id', 'tcp.professor_id')
+                    ->whereIn('ar.alternativa_id', $filtros['alternativas_ids']);
+
+                if ($filtros['pautas_ids'] !== []) {
+                    $subQuery->whereIn('ar.pauta_id', $filtros['pautas_ids']);
+                }
+            });
+        }
+
+        $professoresIds = $query
+            ->distinct()
+            ->pluck('pr.id')
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($professoresIds === []) {
+            return [];
+        }
+
         return Professor::query()
+            ->whereIn('id', $professoresIds)
             ->orderBy('nome')
             ->pluck('nome', 'id')
             ->toArray();
@@ -306,7 +531,73 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     public function getPautasOptionsProperty(): array
     {
+        $filtros = $this->filtrosIgnorandoCampo('pautas_ids');
+        $avaliacaoIds = $this->obterIdsAvaliacoesFiltradas(filtros: $filtros);
+
+        if ($avaliacaoIds === []) {
+            return [];
+        }
+
+        $query = DB::table('avaliacao_pauta as ap')
+            ->join('pautas as p', 'p.id', '=', 'ap.pauta_id')
+            ->whereIn('ap.avaliacao_id', $avaliacaoIds)
+            ->where('p.status', true);
+
+        if ($filtros['componentes_ids'] !== []) {
+            $query->whereIn('p.componente_curricular_id', $filtros['componentes_ids']);
+        }
+
+        if ($filtros['series_ids'] !== []) {
+            $query->where(function (QueryBuilder $subQuery) use ($filtros): void {
+                $subQuery->whereIn('p.serie_id', $filtros['series_ids'])
+                    ->orWhereNull('p.serie_id');
+            });
+        }
+
+        if ($filtros['professores_ids'] !== [] || $filtros['alternativas_ids'] !== []) {
+            $query->whereExists(function (QueryBuilder $subQuery) use ($filtros): void {
+                $subQuery
+                    ->from('avaliacao_respostas as ar')
+                    ->join('turmas as t2', 't2.id', '=', 'ar.turma_id')
+                    ->whereColumn('ar.avaliacao_id', 'ap.avaliacao_id')
+                    ->whereColumn('ar.pauta_id', 'p.id');
+
+                if ($filtros['professores_ids'] !== []) {
+                    $subQuery->whereIn('ar.professor_id', $filtros['professores_ids']);
+                }
+
+                if ($filtros['alternativas_ids'] !== []) {
+                    $subQuery->whereIn('ar.alternativa_id', $filtros['alternativas_ids']);
+                }
+
+                if ($filtros['turnos'] !== []) {
+                    $subQuery->whereIn('t2.turno', $filtros['turnos']);
+                }
+
+                if ($filtros['series_ids'] !== []) {
+                    $subQuery->whereIn('t2.id_serie', $filtros['series_ids']);
+                }
+
+                if ($filtros['escolas_ids'] !== []) {
+                    $subQuery->whereIn('t2.id_escola', $filtros['escolas_ids']);
+                }
+            });
+        }
+
+        $pautasIds = $query
+            ->distinct()
+            ->pluck('p.id')
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($pautasIds === []) {
+            return [];
+        }
+
         return Pauta::query()
+            ->whereIn('id', $pautasIds)
             ->orderBy('texto')
             ->pluck('texto', 'id')
             ->toArray();
@@ -314,11 +605,189 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     public function getAlternativasOptionsProperty(): array
     {
+        $filtros = $this->filtrosIgnorandoCampo('alternativas_ids');
+        $avaliacaoIds = $this->obterIdsAvaliacoesFiltradas(filtros: $filtros);
+
+        if ($avaliacaoIds === []) {
+            return [];
+        }
+
+        $alternativasIds = collect();
+
+        $tiposIds = Avaliacao::query()
+            ->whereIn('id', $avaliacaoIds)
+            ->whereNotNull('tipo_avaliacao_id')
+            ->pluck('tipo_avaliacao_id')
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($tiposIds !== []) {
+            $alternativasIds = $alternativasIds->merge(
+                Alternativa::query()
+                    ->where('status', true)
+                    ->whereIn('tipo_avaliacao_id', $tiposIds)
+                    ->pluck('id')
+                    ->map(fn ($id): int => (int) $id)
+            );
+        }
+
+        $queryOverrides = DB::table('avaliacao_pauta_alternativa')
+            ->whereIn('avaliacao_id', $avaliacaoIds);
+
+        if ($filtros['pautas_ids'] !== []) {
+            $queryOverrides->whereIn('pauta_id', $filtros['pautas_ids']);
+        }
+
+        $alternativasIds = $alternativasIds->merge(
+            $queryOverrides->pluck('alternativa_id')->map(fn ($id): int => (int) $id)
+        );
+
+        if ($filtros['pautas_ids'] !== []) {
+            $alternativasIds = $alternativasIds->merge(
+                DB::table('alternativa_pauta')
+                    ->whereIn('pauta_id', $filtros['pautas_ids'])
+                    ->pluck('alternativa_id')
+                    ->map(fn ($id): int => (int) $id)
+            );
+        }
+
+        if (
+            $filtros['professores_ids'] !== []
+            || $filtros['pautas_ids'] !== []
+            || $filtros['series_ids'] !== []
+            || $filtros['escolas_ids'] !== []
+            || $filtros['turnos'] !== []
+            || $filtros['componentes_ids'] !== []
+        ) {
+            $alternativasIds = $alternativasIds->merge(
+                (clone $this->baseRespostasQuery($avaliacaoIds, ignorarAlternativas: true, filtros: $filtros))
+                    ->distinct()
+                    ->pluck('ar.alternativa_id')
+                    ->map(fn ($id): int => (int) $id)
+            );
+        }
+
+        $alternativasIds = $alternativasIds
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($alternativasIds === []) {
+            return [];
+        }
+
         return Alternativa::query()
             ->where('status', true)
+            ->whereIn('id', $alternativasIds)
             ->orderBy('nome')
             ->pluck('nome', 'id')
             ->toArray();
+    }
+
+    private function filtrosIgnorandoCampo(string $campo): array
+    {
+        $filtros = $this->filtros;
+
+        if (in_array($campo, ['series_ids', 'turnos', 'componentes_ids', 'escolas_ids', 'professores_ids', 'pautas_ids', 'alternativas_ids'], true)) {
+            $filtros[$campo] = [];
+
+            return $filtros;
+        }
+
+        if ($campo === 'status') {
+            $filtros[$campo] = 'todas';
+
+            return $filtros;
+        }
+
+        $filtros[$campo] = null;
+
+        return $filtros;
+    }
+
+    private function componentesIdsDasPautasSelecionadas(array $filtros): array
+    {
+        if (($filtros['pautas_ids'] ?? []) === []) {
+            return [];
+        }
+
+        return Pauta::query()
+            ->whereIn('id', $filtros['pautas_ids'])
+            ->whereNotNull('componente_curricular_id')
+            ->pluck('componente_curricular_id')
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function baseTurmasContextoQuery(
+        array $avaliacaoIds,
+        array $filtros,
+        bool $forcarJoinComponenteProfessor = false
+    ): QueryBuilder {
+        $query = DB::table('avaliacao_turma as at')
+            ->join('turmas as t', 't.id', '=', 'at.turma_id')
+            ->whereIn('at.avaliacao_id', $avaliacaoIds);
+
+        if (($filtros['series_ids'] ?? []) !== []) {
+            $query->whereIn('t.id_serie', $filtros['series_ids']);
+        }
+
+        if (($filtros['turnos'] ?? []) !== []) {
+            $query->whereIn('t.turno', $filtros['turnos']);
+        }
+
+        if (($filtros['escolas_ids'] ?? []) !== []) {
+            $query->whereIn('t.id_escola', $filtros['escolas_ids']);
+        }
+
+        $componentesDasPautas = $this->componentesIdsDasPautasSelecionadas($filtros);
+
+        $deveJoinComponenteProfessor = $forcarJoinComponenteProfessor
+            || ($filtros['componentes_ids'] ?? []) !== []
+            || ($filtros['professores_ids'] ?? []) !== []
+            || $componentesDasPautas !== [];
+
+        if ($deveJoinComponenteProfessor) {
+            $query->join('turma_componente_professor as tcp', 'tcp.turma_id', '=', 't.id');
+
+            if (($filtros['componentes_ids'] ?? []) !== []) {
+                $query->whereIn('tcp.componente_curricular_id', $filtros['componentes_ids']);
+            }
+
+            if (($filtros['professores_ids'] ?? []) !== []) {
+                $query->whereIn('tcp.professor_id', $filtros['professores_ids']);
+            }
+
+            if ($componentesDasPautas !== []) {
+                $query->whereIn('tcp.componente_curricular_id', $componentesDasPautas);
+            }
+        }
+
+        if (($filtros['alternativas_ids'] ?? []) !== []) {
+            $query->whereExists(function (QueryBuilder $subQuery) use ($filtros): void {
+                $subQuery
+                    ->from('avaliacao_respostas as ar')
+                    ->whereColumn('ar.avaliacao_id', 'at.avaliacao_id')
+                    ->whereColumn('ar.turma_id', 't.id')
+                    ->whereIn('ar.alternativa_id', $filtros['alternativas_ids']);
+
+                if (($filtros['pautas_ids'] ?? []) !== []) {
+                    $subQuery->whereIn('ar.pauta_id', $filtros['pautas_ids']);
+                }
+
+                if (($filtros['professores_ids'] ?? []) !== []) {
+                    $subQuery->whereIn('ar.professor_id', $filtros['professores_ids']);
+                }
+            });
+        }
+
+        return $query;
     }
 
     public function exportarPdf()
@@ -559,17 +1028,19 @@ class DashboardAvaliacoes extends Page implements HasForms
     /**
      * @return array<int>
      */
-    private function obterIdsAvaliacoesFiltradas(bool $forcarAtivas = false): array
+    private function obterIdsAvaliacoesFiltradas(bool $forcarAtivas = false, ?array $filtros = null): array
     {
+        $filtrosAtivos = $filtros ?? $this->filtros;
+
         $query = Avaliacao::query()
             ->select('avaliacoes.id')
             ->distinct();
 
-        $this->aplicarFiltrosDiretosAvaliacao($query, $forcarAtivas);
+        $this->aplicarFiltrosDiretosAvaliacao($query, $forcarAtivas, $filtrosAtivos);
 
-        if ($this->temFiltrosDeResposta()) {
-            $query->whereHas('respostas', function (EloquentBuilder $respostaQuery): void {
-                $this->aplicarFiltrosRespostaEloquent($respostaQuery);
+        if ($this->temFiltrosDeResposta($filtrosAtivos)) {
+            $query->whereHas('respostas', function (EloquentBuilder $respostaQuery) use ($filtrosAtivos): void {
+                $this->aplicarFiltrosRespostaEloquent($respostaQuery, filtros: $filtrosAtivos);
             });
         }
 
@@ -580,17 +1051,19 @@ class DashboardAvaliacoes extends Page implements HasForms
             ->all();
     }
 
-    private function aplicarFiltrosDiretosAvaliacao(EloquentBuilder $query, bool $forcarAtivas = false): void
+    private function aplicarFiltrosDiretosAvaliacao(EloquentBuilder $query, bool $forcarAtivas = false, ?array $filtros = null): void
     {
-        $avaliacaoId = $this->filtros['avaliacao_id'];
-        $periodoId = $this->filtros['periodo_id'];
-        $tipoId = $this->filtros['tipo_id'];
-        $status = $forcarAtivas ? Avaliacao::STATUS_ATIVA : $this->filtros['status'];
-        $seriesIds = $this->filtros['series_ids'];
-        $componentesIds = $this->filtros['componentes_ids'];
-        $escolasIds = $this->filtros['escolas_ids'];
-        $pautasIds = $this->filtros['pautas_ids'];
-        $turnos = $this->filtros['turnos'];
+        $filtrosAtivos = $filtros ?? $this->filtros;
+
+        $avaliacaoId = $filtrosAtivos['avaliacao_id'];
+        $periodoId = $filtrosAtivos['periodo_id'];
+        $tipoId = $filtrosAtivos['tipo_id'];
+        $status = $forcarAtivas ? Avaliacao::STATUS_ATIVA : $filtrosAtivos['status'];
+        $seriesIds = $filtrosAtivos['series_ids'];
+        $componentesIds = $filtrosAtivos['componentes_ids'];
+        $escolasIds = $filtrosAtivos['escolas_ids'];
+        $pautasIds = $filtrosAtivos['pautas_ids'];
+        $turnos = $filtrosAtivos['turnos'];
 
         if ($avaliacaoId) {
             $query->whereKey($avaliacaoId);
@@ -632,15 +1105,21 @@ class DashboardAvaliacoes extends Page implements HasForms
         }
     }
 
-    private function aplicarFiltrosRespostaEloquent(EloquentBuilder $query, bool $ignorarAlternativas = false): void
+    private function aplicarFiltrosRespostaEloquent(
+        EloquentBuilder $query,
+        bool $ignorarAlternativas = false,
+        ?array $filtros = null
+    ): void
     {
-        $professoresIds = $this->filtros['professores_ids'];
-        $pautasIds = $this->filtros['pautas_ids'];
-        $alternativasIds = $this->filtros['alternativas_ids'];
-        $turnos = $this->filtros['turnos'];
-        $seriesIds = $this->filtros['series_ids'];
-        $escolasIds = $this->filtros['escolas_ids'];
-        $componentesIds = $this->filtros['componentes_ids'];
+        $filtrosAtivos = $filtros ?? $this->filtros;
+
+        $professoresIds = $filtrosAtivos['professores_ids'];
+        $pautasIds = $filtrosAtivos['pautas_ids'];
+        $alternativasIds = $filtrosAtivos['alternativas_ids'];
+        $turnos = $filtrosAtivos['turnos'];
+        $seriesIds = $filtrosAtivos['series_ids'];
+        $escolasIds = $filtrosAtivos['escolas_ids'];
+        $componentesIds = $filtrosAtivos['componentes_ids'];
 
         if ($professoresIds !== []) {
             $query->whereIn('professor_id', $professoresIds);
@@ -674,14 +1153,22 @@ class DashboardAvaliacoes extends Page implements HasForms
         }
     }
 
-    private function temFiltrosDeResposta(): bool
+    private function temFiltrosDeResposta(?array $filtros = null): bool
     {
-        return $this->filtros['professores_ids'] !== []
-            || $this->filtros['alternativas_ids'] !== [];
+        $filtrosAtivos = $filtros ?? $this->filtros;
+
+        return $filtrosAtivos['professores_ids'] !== []
+            || $filtrosAtivos['alternativas_ids'] !== [];
     }
 
-    private function baseRespostasQuery(array $avaliacaoIds, bool $ignorarAlternativas = false): QueryBuilder
+    private function baseRespostasQuery(
+        array $avaliacaoIds,
+        bool $ignorarAlternativas = false,
+        ?array $filtros = null
+    ): QueryBuilder
     {
+        $filtrosAtivos = $filtros ?? $this->filtros;
+
         if ($avaliacaoIds === []) {
             return DB::table('avaliacao_respostas as ar')->whereRaw('1 = 0');
         }
@@ -692,32 +1179,32 @@ class DashboardAvaliacoes extends Page implements HasForms
             ->join('alternativas as alt', 'alt.id', '=', 'ar.alternativa_id')
             ->whereIn('ar.avaliacao_id', $avaliacaoIds);
 
-        if ($this->filtros['series_ids'] !== []) {
-            $query->whereIn('t.id_serie', $this->filtros['series_ids']);
+        if ($filtrosAtivos['series_ids'] !== []) {
+            $query->whereIn('t.id_serie', $filtrosAtivos['series_ids']);
         }
 
-        if ($this->filtros['turnos'] !== []) {
-            $query->whereIn('t.turno', $this->filtros['turnos']);
+        if ($filtrosAtivos['turnos'] !== []) {
+            $query->whereIn('t.turno', $filtrosAtivos['turnos']);
         }
 
-        if ($this->filtros['componentes_ids'] !== []) {
-            $query->whereIn('p.componente_curricular_id', $this->filtros['componentes_ids']);
+        if ($filtrosAtivos['componentes_ids'] !== []) {
+            $query->whereIn('p.componente_curricular_id', $filtrosAtivos['componentes_ids']);
         }
 
-        if ($this->filtros['escolas_ids'] !== []) {
-            $query->whereIn('t.id_escola', $this->filtros['escolas_ids']);
+        if ($filtrosAtivos['escolas_ids'] !== []) {
+            $query->whereIn('t.id_escola', $filtrosAtivos['escolas_ids']);
         }
 
-        if ($this->filtros['professores_ids'] !== []) {
-            $query->whereIn('ar.professor_id', $this->filtros['professores_ids']);
+        if ($filtrosAtivos['professores_ids'] !== []) {
+            $query->whereIn('ar.professor_id', $filtrosAtivos['professores_ids']);
         }
 
-        if ($this->filtros['pautas_ids'] !== []) {
-            $query->whereIn('ar.pauta_id', $this->filtros['pautas_ids']);
+        if ($filtrosAtivos['pautas_ids'] !== []) {
+            $query->whereIn('ar.pauta_id', $filtrosAtivos['pautas_ids']);
         }
 
-        if (! $ignorarAlternativas && $this->filtros['alternativas_ids'] !== []) {
-            $query->whereIn('ar.alternativa_id', $this->filtros['alternativas_ids']);
+        if (! $ignorarAlternativas && $filtrosAtivos['alternativas_ids'] !== []) {
+            $query->whereIn('ar.alternativa_id', $filtrosAtivos['alternativas_ids']);
         }
 
         return $query;
@@ -1093,18 +1580,20 @@ class DashboardAvaliacoes extends Page implements HasForms
         ];
     }
 
-    private function aplicarFiltrosTurmaQuery(QueryBuilder $query, string $alias = 't'): void
+    private function aplicarFiltrosTurmaQuery(QueryBuilder $query, string $alias = 't', ?array $filtros = null): void
     {
-        if ($this->filtros['series_ids'] !== []) {
-            $query->whereIn($alias . '.id_serie', $this->filtros['series_ids']);
+        $filtrosAtivos = $filtros ?? $this->filtros;
+
+        if ($filtrosAtivos['series_ids'] !== []) {
+            $query->whereIn($alias . '.id_serie', $filtrosAtivos['series_ids']);
         }
 
-        if ($this->filtros['turnos'] !== []) {
-            $query->whereIn($alias . '.turno', $this->filtros['turnos']);
+        if ($filtrosAtivos['turnos'] !== []) {
+            $query->whereIn($alias . '.turno', $filtrosAtivos['turnos']);
         }
 
-        if ($this->filtros['escolas_ids'] !== []) {
-            $query->whereIn($alias . '.id_escola', $this->filtros['escolas_ids']);
+        if ($filtrosAtivos['escolas_ids'] !== []) {
+            $query->whereIn($alias . '.id_escola', $filtrosAtivos['escolas_ids']);
         }
     }
 
