@@ -199,6 +199,110 @@ class AvaliacaoProfessorPageTest extends TestCase
         ]);
     }
 
+    public function test_professor_tem_autosave_por_aluno_e_observacao_obrigatoria_quando_alternativa_exige(): void
+    {
+        Permission::findOrCreate('Responder Avaliações');
+
+        $escola = $this->criarEscola('Escola Autosave');
+        $turma = $this->criarTurma($escola, 'Turma Autosave');
+
+        $componente = ComponenteCurricular::query()->create([
+            'codigo' => 'COMP-AUTO',
+            'nome' => 'Artes',
+        ]);
+
+        $userProfessor = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $userProfessor->givePermissionTo('Responder Avaliações');
+
+        $professor = Professor::query()->create([
+            'user_id' => $userProfessor->id,
+            'id_escola' => $escola->id,
+            'matricula' => 'PROF-003',
+            'nome' => 'Professor Autosave',
+            'email' => 'autosave@edu.umuarama.pr.gov.br',
+        ]);
+
+        $turma->componentes()->attach($componente->id, [
+            'professor_id' => $professor->id,
+            'tem_professor' => true,
+        ]);
+
+        $pauta = Pauta::query()->create([
+            'texto' => 'Registro descritivo',
+            'componente_curricular_id' => $componente->id,
+            'status' => true,
+        ]);
+
+        $alternativaExigeObservacao = Alternativa::query()->create([
+            'nome' => 'Com observação',
+            'tem_observacao' => true,
+            'status' => true,
+        ]);
+
+        $alternativaSemObservacao = Alternativa::query()->create([
+            'nome' => 'Sem observação',
+            'tem_observacao' => false,
+            'status' => true,
+        ]);
+
+        $pauta->alternativas()->attach([$alternativaExigeObservacao->id, $alternativaSemObservacao->id]);
+
+        $avaliacao = Avaliacao::query()->create([
+            'nome' => 'Avaliação com autosave',
+            'data_inicio' => now()->subDay()->toDateString(),
+            'data_fim' => now()->addDays(5)->toDateString(),
+            'status' => Avaliacao::STATUS_ATIVA,
+        ]);
+        $avaliacao->pautas()->attach($pauta->id);
+        $avaliacao->turmas()->attach($turma->id);
+
+        $aluno = Aluno::query()->create([
+            'nome' => 'Aluno Autosave',
+            'cgm' => 'CGM-AUTO-001',
+            'data_nascimento' => '2015-03-01',
+            'id_turma' => $turma->id,
+        ]);
+
+        $component = Livewire::actingAs($userProfessor)
+            ->test(AvaliacoesProfessor::class)
+            ->set("respostas.{$pauta->id}.{$aluno->id}.alternativa_id", $alternativaExigeObservacao->id);
+
+        $this->assertDatabaseMissing('avaliacao_respostas', [
+            'avaliacao_id' => $avaliacao->id,
+            'pauta_id' => $pauta->id,
+            'turma_id' => $turma->id,
+            'aluno_id' => $aluno->id,
+            'alternativa_id' => $alternativaExigeObservacao->id,
+        ]);
+
+        $component->set("respostas.{$pauta->id}.{$aluno->id}.observacao", 'Observação registrada.');
+
+        $this->assertDatabaseHas('avaliacao_respostas', [
+            'avaliacao_id' => $avaliacao->id,
+            'pauta_id' => $pauta->id,
+            'turma_id' => $turma->id,
+            'aluno_id' => $aluno->id,
+            'alternativa_id' => $alternativaExigeObservacao->id,
+            'observacao' => 'Observação registrada.',
+            'professor_id' => $professor->id,
+        ]);
+
+        $component->set("respostas.{$pauta->id}.{$aluno->id}.alternativa_id", $alternativaSemObservacao->id);
+
+        $this->assertDatabaseHas('avaliacao_respostas', [
+            'avaliacao_id' => $avaliacao->id,
+            'pauta_id' => $pauta->id,
+            'turma_id' => $turma->id,
+            'aluno_id' => $aluno->id,
+            'alternativa_id' => $alternativaSemObservacao->id,
+            'observacao' => null,
+            'professor_id' => $professor->id,
+        ]);
+    }
+
     private function criarPautaComAlternativa(string $texto, int $componenteId): Pauta
     {
         $pauta = Pauta::query()->create([

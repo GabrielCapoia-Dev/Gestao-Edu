@@ -136,6 +136,23 @@
         padding: 0.25rem 0.3rem;
     }
 
+    .av-selection-grid {
+        display: grid;
+        gap: 0.85rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .av-selection-title {
+        display: inline-block;
+        margin-bottom: 0.5rem;
+        color: var(--gray-500);
+        font-size: var(--text-xs);
+        line-height: var(--text-xs--line-height);
+        font-weight: var(--font-weight-semibold);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+    }
+
     .av-subitem {
         display: grid;
         gap: 0.9rem;
@@ -257,6 +274,40 @@
         box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary-200) 70%, transparent);
     }
 
+    .av-input-wrap {
+        display: grid;
+        gap: 0.35rem;
+    }
+
+    .av-saving-indicator {
+        display: none;
+        align-items: center;
+        gap: 0.35rem;
+        color: var(--primary-600);
+        font-size: var(--text-xs);
+        line-height: var(--text-xs--line-height);
+        font-weight: var(--font-weight-medium);
+    }
+
+    .av-spinner {
+        width: 0.85rem;
+        height: 0.85rem;
+        border: 2px solid color-mix(in oklab, var(--primary-200) 70%, transparent);
+        border-top-color: var(--primary-600);
+        border-radius: 999px;
+        animation: av-spin 0.7s linear infinite;
+    }
+
+    @keyframes av-spin {
+        from {
+            transform: rotate(0deg);
+        }
+
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
     .av-field-hint {
         display: block;
         margin-top: 0.45rem;
@@ -287,6 +338,10 @@
         .av-form-grid--three,
         .av-form-grid--two,
         .av-subitem {
+            grid-template-columns: 1fr;
+        }
+
+        .av-selection-grid {
             grid-template-columns: 1fr;
         }
 
@@ -355,8 +410,16 @@
         color: var(--gray-400);
     }
 
+    :root.dark .av-selection-title {
+        color: var(--gray-400);
+    }
+
     :root.dark .av-field-hint--danger {
         color: var(--danger-200);
+    }
+
+    :root.dark .av-saving-indicator {
+        color: var(--primary-300);
     }
 
     :root.dark .av-progress-track {

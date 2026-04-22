@@ -4,7 +4,7 @@
             <div>
                 <p class="gi-eyebrow">Professor</p>
                 <h1>Minhas Avaliacoes</h1>
-                <p>Selecione avaliacao e turma para registrar respostas por aluno com apoio de avaliacao em massa.</p>
+                <p>Selecione avaliacao e turma para registrar respostas por aluno. Cada alteracao e salva automaticamente.</p>
             </div>
         </section>
 
@@ -98,7 +98,7 @@
                             </div>
 
                             <div class="gi-toolbar-right">
-                                <button type="button" class="gi-action" wire:click="aplicarEmMassa({{ $pauta->id }})">
+                                <button type="button" class="gi-action" wire:click="aplicarEmMassa({{ $pauta->id }})" wire:loading.attr="disabled" wire:target="aplicarEmMassa">
                                     Aplicar para todos os alunos
                                 </button>
                             </div>
@@ -121,26 +121,40 @@
                                                 <small>CGM: {{ $aluno->cgm }}</small>
                                             </td>
                                             <td>
-                                                <select class="av-table-input" wire:model="respostas.{{ $pauta->id }}.{{ $aluno->id }}.alternativa_id">
-                                                    <option value="">Selecione</option>
-                                                    @foreach ($pauta->alternativas as $alternativa)
-                                                        <option value="{{ $alternativa->id }}">
-                                                            {{ $alternativa->nome }}{{ $alternativa->tem_observacao ? ' (exige observacao)' : '' }}
-                                                        </option>
-                                                    @endforeach
-                                                </select>
+                                                <div class="av-input-wrap">
+                                                    <select class="av-table-input" wire:model.live="respostas.{{ $pauta->id }}.{{ $aluno->id }}.alternativa_id">
+                                                        <option value="">Selecione</option>
+                                                        @foreach ($pauta->alternativas as $alternativa)
+                                                            <option value="{{ $alternativa->id }}">
+                                                                {{ $alternativa->nome }}{{ $alternativa->tem_observacao ? ' (exige observacao)' : '' }}
+                                                            </option>
+                                                        @endforeach
+                                                    </select>
+
+                                                    <span class="av-saving-indicator" wire:loading.flex wire:target="respostas.{{ $pauta->id }}.{{ $aluno->id }}.alternativa_id">
+                                                        <span class="av-spinner"></span>
+                                                        Salvando...
+                                                    </span>
+                                                </div>
                                             </td>
                                             <td>
                                                 @php($alternativaSelecionadaId = (int) ($respostas[$pauta->id][$aluno->id]['alternativa_id'] ?? 0))
                                                 @php($requerObservacao = $this->alternativaRequerObservacao((int) $pauta->id, $alternativaSelecionadaId))
 
                                                 @if ($requerObservacao)
-                                                    <input
-                                                        type="text"
-                                                        maxlength="1000"
-                                                        placeholder="Observacao obrigatoria"
-                                                        class="av-table-input"
-                                                        wire:model.blur="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao" />
+                                                    <div class="av-input-wrap">
+                                                        <input
+                                                            type="text"
+                                                            maxlength="1000"
+                                                            placeholder="Observacao obrigatoria"
+                                                            class="av-table-input"
+                                                            wire:model.live.debounce.500ms="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao" />
+
+                                                        <span class="av-saving-indicator" wire:loading.flex wire:target="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao">
+                                                            <span class="av-spinner"></span>
+                                                            Salvando...
+                                                        </span>
+                                                    </div>
                                                     <small class="av-field-hint av-field-hint--danger">Obrigatoria para esta alternativa.</small>
                                                 @else
                                                     <small class="av-field-hint">Somente alternativas com observacao habilitam este campo.</small>
@@ -160,7 +174,7 @@
                     <div></div>
                     <div class="gi-toolbar-right">
                         <button type="button" class="gi-action gi-action--primary" wire:click="salvarRespostas">
-                            Salvar avaliacao da turma
+                            Validar pendencias da turma
                         </button>
                     </div>
                 </div>

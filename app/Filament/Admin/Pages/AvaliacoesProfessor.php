@@ -104,6 +104,31 @@ class AvaliacoesProfessor extends Page
         }
     }
 
+    public function updated(string $name): void
+    {
+        if (! str_starts_with($name, 'respostas.')) {
+            return;
+        }
+
+        $partes = explode('.', $name);
+
+        if (count($partes) < 4) {
+            return;
+        }
+
+        [, $pautaId, $alunoId, $campo] = $partes;
+
+        if (! is_numeric($pautaId) || ! is_numeric($alunoId)) {
+            return;
+        }
+
+        if (! in_array($campo, ['alternativa_id', 'observacao'], true)) {
+            return;
+        }
+
+        $this->autoSalvarResposta((int) $pautaId, (int) $alunoId);
+    }
+
     public function aplicarEmMassa(int $pautaId): void
     {
         $pauta = $this->pautasDisponiveis->firstWhere('id', $pautaId);
@@ -133,9 +158,64 @@ class AvaliacoesProfessor extends Page
             $this->respostas[$pautaId][$aluno->id]['alternativa_id'] = $alternativaId;
         }
 
+        $payload = [];
+        $alunosComPendencia = [];
+        $professorId = $this->professorIdDaTurma((int) $this->turma);
+        $agora = now();
+
+        foreach ($this->alunosDaTurma as $aluno) {
+            $observacaoInformada = trim((string) ($this->respostas[$pautaId][$aluno->id]['observacao'] ?? ''));
+
+            if (! $alternativa->tem_observacao) {
+                $this->respostas[$pautaId][$aluno->id]['observacao'] = null;
+                $observacaoInformada = '';
+            }
+
+            if ($alternativa->tem_observacao && $observacaoInformada === '') {
+                $alunosComPendencia[] = (int) $aluno->id;
+                continue;
+            }
+
+            $payload[] = [
+                'avaliacao_id' => (int) $this->avaliacao,
+                'pauta_id' => (int) $pauta->id,
+                'turma_id' => (int) $this->turma,
+                'aluno_id' => (int) $aluno->id,
+                'professor_id' => $professorId,
+                'alternativa_id' => (int) $alternativaId,
+                'observacao' => $alternativa->tem_observacao ? $observacaoInformada : null,
+                'respondido_em' => $agora,
+                'created_at' => $agora,
+                'updated_at' => $agora,
+            ];
+        }
+
+        DB::transaction(function () use ($payload, $alunosComPendencia, $pautaId): void {
+            if ($payload !== []) {
+                AvaliacaoResposta::query()->upsert(
+                    $payload,
+                    ['avaliacao_id', 'pauta_id', 'turma_id', 'aluno_id'],
+                    ['professor_id', 'alternativa_id', 'observacao', 'respondido_em', 'updated_at']
+                );
+            }
+
+            if ($alunosComPendencia !== []) {
+                AvaliacaoResposta::query()
+                    ->where('avaliacao_id', (int) $this->avaliacao)
+                    ->where('pauta_id', (int) $pautaId)
+                    ->where('turma_id', (int) $this->turma)
+                    ->whereIn('aluno_id', $alunosComPendencia)
+                    ->delete();
+            }
+        });
+
+        $mensagemPendencia = count($alunosComPendencia) > 0
+            ? count($alunosComPendencia) . ' aluno(s) ainda precisam preencher observação para concluir o salvamento.'
+            : null;
+
         Notification::make()
             ->title('Alternativa aplicada para toda a turma nesta pauta.')
-            ->body($alternativa->tem_observacao ? 'Essa alternativa exige observação por aluno.' : null)
+            ->body($mensagemPendencia ?? ($alternativa->tem_observacao ? 'Essa alternativa exige observação por aluno.' : 'Respostas salvas automaticamente.'))
             ->success()
             ->send();
     }
@@ -467,5 +547,82 @@ class AvaliacoesProfessor extends Page
 
         return $professorId ? (int) $professorId : null;
     }
-}
 
+    private function autoSalvarResposta(int $pautaId, int $alunoId): void
+    {
+        if (! $this->avaliacao || ! $this->turma) {
+            return;
+        }
+
+        $pauta = $this->pautasDisponiveis->firstWhere('id', $pautaId);
+
+        if (! $pauta) {
+            return;
+        }
+
+        $alunoDaTurma = $this->alunosDaTurma->firstWhere('id', $alunoId);
+
+        if (! $alunoDaTurma) {
+            return;
+        }
+
+        $alternativaId = (int) ($this->respostas[$pautaId][$alunoId]['alternativa_id'] ?? 0);
+        $alternativa = $pauta->alternativas->firstWhere('id', $alternativaId);
+
+        if (! $alternativa) {
+            $this->removerRespostaPersistida($pautaId, $alunoId);
+
+            return;
+        }
+
+        $observacaoInformada = trim((string) ($this->respostas[$pautaId][$alunoId]['observacao'] ?? ''));
+
+        if (! $alternativa->tem_observacao) {
+            if (($this->respostas[$pautaId][$alunoId]['observacao'] ?? null) !== null) {
+                $this->respostas[$pautaId][$alunoId]['observacao'] = null;
+            }
+
+            $observacaoInformada = '';
+        }
+
+        if ($alternativa->tem_observacao && $observacaoInformada === '') {
+            $this->removerRespostaPersistida($pautaId, $alunoId);
+
+            return;
+        }
+
+        $agora = now();
+        $professorId = $this->professorIdDaTurma((int) $this->turma);
+
+        AvaliacaoResposta::query()->upsert(
+            [[
+                'avaliacao_id' => (int) $this->avaliacao,
+                'pauta_id' => $pautaId,
+                'turma_id' => (int) $this->turma,
+                'aluno_id' => $alunoId,
+                'professor_id' => $professorId,
+                'alternativa_id' => $alternativaId,
+                'observacao' => $alternativa->tem_observacao ? $observacaoInformada : null,
+                'respondido_em' => $agora,
+                'created_at' => $agora,
+                'updated_at' => $agora,
+            ]],
+            ['avaliacao_id', 'pauta_id', 'turma_id', 'aluno_id'],
+            ['professor_id', 'alternativa_id', 'observacao', 'respondido_em', 'updated_at']
+        );
+    }
+
+    private function removerRespostaPersistida(int $pautaId, int $alunoId): void
+    {
+        if (! $this->avaliacao || ! $this->turma) {
+            return;
+        }
+
+        AvaliacaoResposta::query()
+            ->where('avaliacao_id', (int) $this->avaliacao)
+            ->where('pauta_id', $pautaId)
+            ->where('turma_id', (int) $this->turma)
+            ->where('aluno_id', $alunoId)
+            ->delete();
+    }
+}

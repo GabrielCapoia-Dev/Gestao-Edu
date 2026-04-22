@@ -3,8 +3,9 @@
 namespace App\Filament\Admin\Pages;
 
 use App\Models\Avaliacao;
+use App\Models\ComponenteCurricular;
+use App\Models\Escola;
 use App\Models\Pauta;
-use App\Models\Turma;
 use BackedEnum;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -48,8 +49,9 @@ class GestaoAvaliacoes extends Page
         'data_inicio' => '',
         'data_fim' => '',
         'status' => Avaliacao::STATUS_ATIVA,
+        'escola_id' => 'todas',
+        'componentes_ids' => [],
         'pautas_ids' => [],
-        'turmas_ids' => [],
     ];
 
     protected $queryString = [
@@ -78,6 +80,34 @@ class GestaoAvaliacoes extends Page
     public function updatedPorPagina(): void
     {
         $this->resetPage();
+    }
+
+    public function updatedFormEscolaId(): void
+    {
+        $componentesDisponiveis = collect(array_keys($this->componentesOptions))
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $this->form['componentes_ids'] = collect($this->form['componentes_ids'] ?? [])
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->intersect($componentesDisponiveis)
+            ->values()
+            ->all();
+
+        $this->sincronizarPautasSelecionadasComFiltros();
+    }
+
+    public function updatedFormComponentesIds(): void
+    {
+        $this->form['componentes_ids'] = collect($this->form['componentes_ids'] ?? [])
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        $this->sincronizarPautasSelecionadasComFiltros();
     }
 
     public function getAvaliacoesProperty(): LengthAwarePaginator
@@ -112,11 +142,50 @@ class GestaoAvaliacoes extends Page
         return Avaliacao::statusOptions();
     }
 
+    public function getEscolasOptionsProperty(): array
+    {
+        return ['todas' => 'Todas as escolas'] + Escola::query()
+            ->orderBy('nome')
+            ->pluck('nome', 'id')
+            ->mapWithKeys(fn ($nome, $id): array => [(string) $id => $nome])
+            ->all();
+    }
+
+    public function getComponentesOptionsProperty(): array
+    {
+        $escolaId = $this->resolverEscolaIdSelecionada($this->form['escola_id'] ?? 'todas');
+
+        return ComponenteCurricular::query()
+            ->select('componentes_curriculares.id', 'componentes_curriculares.nome')
+            ->join('turma_componente_professor as tcp', 'tcp.componente_curricular_id', '=', 'componentes_curriculares.id')
+            ->join('turmas as t', 't.id', '=', 'tcp.turma_id')
+            ->when($escolaId, fn ($query, $id) => $query->where('t.id_escola', $id))
+            ->orderBy('componentes_curriculares.nome')
+            ->distinct()
+            ->pluck('componentes_curriculares.nome', 'componentes_curriculares.id')
+            ->toArray();
+    }
+
     public function getPautasOptionsProperty(): array
     {
+        $componentesIds = collect($this->form['componentes_ids'] ?? [])
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
         return Pauta::query()
             ->with(['componente:id,nome'])
             ->withCount('alternativas')
+            ->where('status', true)
+            ->when(
+                $componentesIds !== [],
+                fn ($query) => $query->where(function ($subQuery) use ($componentesIds): void {
+                    $subQuery->whereNull('componente_curricular_id')
+                        ->orWhereIn('componente_curricular_id', $componentesIds);
+                })
+            )
             ->orderBy('texto')
             ->get()
             ->mapWithKeys(function (Pauta $pauta): array {
@@ -129,24 +198,6 @@ class GestaoAvaliacoes extends Page
                 $label .= ' | ' . $pauta->alternativas_count . ' alternativas';
 
                 return [$pauta->id => $label];
-            })
-            ->toArray();
-    }
-
-    public function getTurmasOptionsProperty(): array
-    {
-        return Turma::query()
-            ->with(['escola:id,nome', 'serie:id,nome'])
-            ->orderBy('nome')
-            ->get()
-            ->mapWithKeys(function (Turma $turma): array {
-                $label = collect([
-                    $turma->escola?->nome,
-                    $turma->serie?->nome,
-                    'Turma ' . $turma->nome,
-                ])->filter()->join(' - ');
-
-                return [$turma->id => $label];
             })
             ->toArray();
     }
@@ -180,7 +231,7 @@ class GestaoAvaliacoes extends Page
         }
 
         $avaliacao = Avaliacao::query()
-            ->with(['pautas:id', 'turmas:id'])
+            ->with(['pautas:id,componente_curricular_id', 'turmas:id,id_escola'])
             ->find($avaliacaoId);
 
         if (! $avaliacao) {
@@ -192,15 +243,44 @@ class GestaoAvaliacoes extends Page
             return;
         }
 
+        $escolasIds = $avaliacao->turmas
+            ->pluck('id_escola')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        $componentesIds = $avaliacao->pautas
+            ->pluck('componente_curricular_id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($componentesIds === [] && $avaliacao->turmas->isNotEmpty()) {
+            $componentesIds = DB::table('turma_componente_professor')
+                ->whereIn('turma_id', $avaliacao->turmas->pluck('id')->all())
+                ->distinct()
+                ->pluck('componente_curricular_id')
+                ->filter()
+                ->map(fn ($id) => (int) $id)
+                ->values()
+                ->all();
+        }
+
         $this->avaliacaoIdEditando = $avaliacao->id;
         $this->form = [
             'nome' => (string) $avaliacao->nome,
             'data_inicio' => optional($avaliacao->data_inicio)->format('Y-m-d') ?? '',
             'data_fim' => optional($avaliacao->data_fim)->format('Y-m-d') ?? '',
             'status' => (string) $avaliacao->status,
+            'escola_id' => count($escolasIds) === 1 ? (string) $escolasIds[0] : 'todas',
+            'componentes_ids' => $componentesIds,
             'pautas_ids' => $avaliacao->pautas->pluck('id')->map(fn ($id) => (int) $id)->all(),
-            'turmas_ids' => $avaliacao->turmas->pluck('id')->map(fn ($id) => (int) $id)->all(),
         ];
+        $this->sincronizarPautasSelecionadasComFiltros();
         $this->modalAberto = true;
         $this->resetValidation();
     }
@@ -239,16 +319,53 @@ class GestaoAvaliacoes extends Page
             'form.data_inicio' => ['required', 'date'],
             'form.data_fim' => ['required', 'date', 'after_or_equal:form.data_inicio'],
             'form.status' => ['required', 'in:' . implode(',', $statusOptions)],
+            'form.escola_id' => ['required'],
+            'form.componentes_ids' => ['required', 'array', 'min:1'],
+            'form.componentes_ids.*' => ['integer', 'exists:componentes_curriculares,id'],
             'form.pautas_ids' => ['required', 'array', 'min:1'],
             'form.pautas_ids.*' => ['integer', 'exists:pautas,id'],
-            'form.turmas_ids' => ['required', 'array', 'min:1'],
-            'form.turmas_ids.*' => ['integer', 'exists:turmas,id'],
         ]);
+
+        $escolaSelecionada = (string) ($validated['form']['escola_id'] ?? 'todas');
+        $escolaId = $this->resolverEscolaIdSelecionada($escolaSelecionada);
+
+        if ($escolaSelecionada !== 'todas' && (! $escolaId || ! Escola::query()->whereKey($escolaId)->exists())) {
+            $this->addError('form.escola_id', 'Selecione uma escola válida ou mantenha a opção "Todas as escolas".');
+
+            return;
+        }
+
+        $componentesIds = collect($validated['form']['componentes_ids'] ?? [])
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
 
         $pautasIds = collect($validated['form']['pautas_ids'] ?? [])
             ->filter()
             ->map(fn ($id) => (int) $id)
+            ->unique()
             ->values();
+
+        $turmasIds = $this->buscarTurmasIdsPorComponentes($componentesIds->all(), $escolaId);
+
+        if ($turmasIds === []) {
+            $this->addError('form.componentes_ids', 'Nenhuma turma foi encontrada para os componentes e escola selecionados.');
+
+            return;
+        }
+
+        $pautasIncompativeis = Pauta::query()
+            ->whereIn('id', $pautasIds->all())
+            ->whereNotNull('componente_curricular_id')
+            ->whereNotIn('componente_curricular_id', $componentesIds->all())
+            ->count();
+
+        if ($pautasIncompativeis > 0) {
+            $this->addError('form.pautas_ids', 'As pautas selecionadas devem pertencer aos componentes escolhidos ou ser pautas gerais.');
+
+            return;
+        }
 
         $pautasSemAlternativas = Pauta::query()
             ->whereIn('id', $pautasIds->all())
@@ -261,7 +378,7 @@ class GestaoAvaliacoes extends Page
             return;
         }
 
-        DB::transaction(function () use ($isEdicao, $validated): void {
+        DB::transaction(function () use ($isEdicao, $validated, $turmasIds): void {
             if ($isEdicao) {
                 $avaliacao = Avaliacao::query()->find($this->avaliacaoIdEditando);
 
@@ -281,7 +398,7 @@ class GestaoAvaliacoes extends Page
             $avaliacao->save();
 
             $avaliacao->pautas()->sync($validated['form']['pautas_ids']);
-            $avaliacao->turmas()->sync($validated['form']['turmas_ids']);
+            $avaliacao->turmas()->sync($turmasIds);
         });
 
         $this->fecharModal();
@@ -329,8 +446,51 @@ class GestaoAvaliacoes extends Page
             'data_inicio' => now()->toDateString(),
             'data_fim' => now()->toDateString(),
             'status' => Avaliacao::STATUS_ATIVA,
+            'escola_id' => 'todas',
+            'componentes_ids' => [],
             'pautas_ids' => [],
-            'turmas_ids' => [],
         ];
+    }
+
+    private function resolverEscolaIdSelecionada(mixed $escolaSelecionada): ?int
+    {
+        if ($escolaSelecionada === 'todas' || blank($escolaSelecionada)) {
+            return null;
+        }
+
+        $id = (int) $escolaSelecionada;
+
+        return $id > 0 ? $id : null;
+    }
+
+    private function buscarTurmasIdsPorComponentes(array $componentesIds, ?int $escolaId): array
+    {
+        if ($componentesIds === []) {
+            return [];
+        }
+
+        return DB::table('turma_componente_professor as tcp')
+            ->join('turmas as t', 't.id', '=', 'tcp.turma_id')
+            ->whereIn('tcp.componente_curricular_id', $componentesIds)
+            ->when($escolaId, fn ($query, $id) => $query->where('t.id_escola', $id))
+            ->distinct()
+            ->pluck('t.id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+    }
+
+    private function sincronizarPautasSelecionadasComFiltros(): void
+    {
+        $pautasDisponiveis = collect(array_keys($this->pautasOptions))
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $this->form['pautas_ids'] = collect($this->form['pautas_ids'] ?? [])
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->intersect($pautasDisponiveis)
+            ->values()
+            ->all();
     }
 }

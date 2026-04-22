@@ -137,7 +137,9 @@
                 </table>
             </div>
 
-            @php($paginacao = $this->avaliacoes)
+            @php
+                $paginacao = $this->avaliacoes;
+            @endphp
             <div class="gi-pagination">
                 <span>
                     Mostrando {{ $paginacao->firstItem() ?? 0 }}-{{ $paginacao->lastItem() ?? 0 }} de {{ $paginacao->total() }}
@@ -210,37 +212,87 @@
                 </label>
 
                 <section class="av-form-section">
-                    <h4>Pautas vinculadas</h4>
-                    <p>Selecione ao menos uma pauta existente.</p>
+                    <h4>Escopo pedagogico</h4>
+                    <p>Selecione escola, componentes e pautas. As turmas serao vinculadas automaticamente pelos componentes escolhidos.</p>
 
-                    <select multiple class="av-multi-select" wire:model.defer="form.pautas_ids">
-                        @foreach ($this->pautasOptions as $pautaId => $pautaLabel)
-                            <option value="{{ $pautaId }}">{{ $pautaLabel }}</option>
-                        @endforeach
-                    </select>
-                    @error('form.pautas_ids')
-                        <p class="error">{{ $message }}</p>
-                    @enderror
-                    @error('form.pautas_ids.*')
-                        <p class="error">{{ $message }}</p>
-                    @enderror
-                </section>
+                    <div class="av-form-grid av-form-grid--three">
+                        <label class="gi-field">
+                            <span>Escola</span>
+                            <select wire:model.live="form.escola_id">
+                                @foreach ($this->escolasOptions as $escolaId => $escolaNome)
+                                    <option value="{{ $escolaId }}">{{ $escolaNome }}</option>
+                                @endforeach
+                            </select>
+                            @error('form.escola_id')
+                                <p class="error">{{ $message }}</p>
+                            @enderror
+                        </label>
 
-                <section class="av-form-section">
-                    <h4>Turmas vinculadas</h4>
-                    <p>Selecione as turmas que participarao desta avaliacao.</p>
+                        <label class="gi-field">
+                            <span>Componentes (multiplos)</span>
+                            <select multiple class="av-multi-select" wire:model.live="form.componentes_ids">
+                                @foreach ($this->componentesOptions as $componenteId => $componenteNome)
+                                    <option value="{{ $componenteId }}">{{ $componenteNome }}</option>
+                                @endforeach
+                            </select>
+                            @error('form.componentes_ids')
+                                <p class="error">{{ $message }}</p>
+                            @enderror
+                            @error('form.componentes_ids.*')
+                                <p class="error">{{ $message }}</p>
+                            @enderror
+                        </label>
 
-                    <select multiple class="av-multi-select" wire:model.defer="form.turmas_ids">
-                        @foreach ($this->turmasOptions as $turmaId => $turmaLabel)
-                            <option value="{{ $turmaId }}">{{ $turmaLabel }}</option>
-                        @endforeach
-                    </select>
-                    @error('form.turmas_ids')
-                        <p class="error">{{ $message }}</p>
-                    @enderror
-                    @error('form.turmas_ids.*')
-                        <p class="error">{{ $message }}</p>
-                    @enderror
+                        <label class="gi-field">
+                            <span>Pautas (multiplas)</span>
+                            <select multiple class="av-multi-select" wire:model.defer="form.pautas_ids">
+                                @foreach ($this->pautasOptions as $pautaId => $pautaLabel)
+                                    <option value="{{ $pautaId }}">{{ $pautaLabel }}</option>
+                                @endforeach
+                            </select>
+                            @error('form.pautas_ids')
+                                <p class="error">{{ $message }}</p>
+                            @enderror
+                            @error('form.pautas_ids.*')
+                                <p class="error">{{ $message }}</p>
+                            @enderror
+                        </label>
+                    </div>
+
+                    @php
+                        $componentesSelecionados = collect($form['componentes_ids'] ?? [])
+                            ->map(fn ($id) => $this->componentesOptions[(int) $id] ?? null)
+                            ->filter()
+                            ->values();
+                        $pautasSelecionadas = collect($form['pautas_ids'] ?? [])
+                            ->map(fn ($id) => $this->pautasOptions[(int) $id] ?? null)
+                            ->filter()
+                            ->values();
+                    @endphp
+
+                    <div class="av-selection-grid">
+                        <div>
+                            <small class="av-selection-title">Componentes selecionados</small>
+                            <div class="av-chip-grid">
+                                @forelse ($componentesSelecionados as $componenteSelecionado)
+                                    <span class="av-chip">{{ $componenteSelecionado }}</span>
+                                @empty
+                                    <span class="av-chip av-chip--muted">Nenhum componente selecionado</span>
+                                @endforelse
+                            </div>
+                        </div>
+
+                        <div>
+                            <small class="av-selection-title">Pautas selecionadas</small>
+                            <div class="av-chip-grid">
+                                @forelse ($pautasSelecionadas as $pautaSelecionada)
+                                    <span class="av-chip">{{ $pautaSelecionada }}</span>
+                                @empty
+                                    <span class="av-chip av-chip--muted">Nenhuma pauta selecionada</span>
+                                @endforelse
+                            </div>
+                        </div>
+                    </div>
                 </section>
             </div>
 
