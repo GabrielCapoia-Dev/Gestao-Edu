@@ -11,6 +11,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Str;
 use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 use Spatie\Permission\Traits\HasRoles;
@@ -175,6 +176,28 @@ class User extends Authenticatable implements FilamentUser
     public function escola()
     {
         return $this->belongsTo(Escola::class, 'id_escola');
+    }
+
+    public function escolas(): BelongsToMany
+    {
+        return $this->belongsToMany(Escola::class, 'escola_user', 'user_id', 'escola_id')
+            ->withTimestamps();
+    }
+
+    public function idsEscolasVinculadas(): array
+    {
+        $ids = $this->escolas()
+            ->pluck('escolas.id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($ids === [] && filled($this->id_escola)) {
+            return [(int) $this->id_escola];
+        }
+
+        return $ids;
     }
 
     public function professores()

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Escola extends Model
 {
@@ -45,6 +46,12 @@ class Escola extends Model
     public function inventario(): HasOne
     {
         return $this->hasOne(Inventario::class);
+    }
+
+    public function users(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'escola_user', 'escola_id', 'user_id')
+            ->withTimestamps();
     }
 
     // ================= SCOPES =================

@@ -8,6 +8,7 @@ use Filament\Resources\Pages\ManageRecords;
 use App\Filament\Admin\Resources\Series\SerieResource;
 use App\Models\Serie;
 use App\Services\TurmaService;
+use App\Services\ProfessorEscolaVinculoService;
 use Filament\Actions;
 use Illuminate\Support\Facades\Auth;
 use Filament\Schemas\Schema;
@@ -49,18 +50,28 @@ class ManageTurmas extends ManageRecords
                     unset($data['componentes']);
 
                     $turma = static::getModel()::create($data);
+                    $professoresIds = [];
 
                     foreach ($componentes as $componente) {
                         if (! isset($componente['componente_curricular_id'])) {
                             continue;
                         }
 
+                        $professorId = isset($componente['professor_id']) ? (int) $componente['professor_id'] : null;
+                        if ($professorId) {
+                            $professoresIds[] = $professorId;
+                        }
+
                         $turma->componentes()->syncWithoutDetaching([
                             $componente['componente_curricular_id'] => [
-                                'professor_id' => $componente['professor_id'] ?? null,
-                                'tem_professor' => ! empty($componente['professor_id']),
+                                'professor_id' => $professorId,
+                                'tem_professor' => filled($professorId),
                             ],
                         ]);
+                    }
+
+                    if ($professoresIds !== []) {
+                        app(ProfessorEscolaVinculoService::class)->sincronizarPorProfessores($professoresIds);
                     }
 
                     return $turma;

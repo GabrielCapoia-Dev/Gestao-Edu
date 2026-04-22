@@ -39,6 +39,8 @@ use App\Policies\PedidoPolicy;
 use App\Models\PedidoArquivo;
 use App\Policies\PedidoArquivoPolicy;
 use App\Observers\PedidoObserver;
+use App\Observers\ProfessorObserver;
+use App\Observers\TurmaComponenteProfessorObserver;
 use Filament\View\PanelsRenderHook;
 use Filament\Support\Facades\FilamentView;
 use Illuminate\Http\Request;
@@ -49,6 +51,7 @@ use App\Policies\ComponenteCurricularPolicy;
 use App\Models\FuncaoAdministrativa;
 use App\Models\Item;
 use App\Models\Setor;
+use App\Models\TurmaComponenteProfessor;
 use App\Policies\FuncaoAdministrativaPolicy;
 use App\Policies\ItemPolicy;
 use App\Policies\SetorPolicy;
@@ -88,6 +91,8 @@ class AppServiceProvider extends ServiceProvider
 
         // ── Observers ──────────────────────────────────────────────────────────
         Pedido::observe(PedidoObserver::class);
+        Professor::observe(ProfessorObserver::class);
+        TurmaComponenteProfessor::observe(TurmaComponenteProfessorObserver::class);
 
         // ── Gates ──────────────────────────────────────────────────────────────
         Gate::define('admin-only', fn($user) => $user->hasRole('Admin'));

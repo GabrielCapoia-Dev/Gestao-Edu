@@ -21,6 +21,10 @@ class GoogleService
     private const ROLE_VISUALIZAR_TURMAS_ALUNOS = 'Visualizar Turmas e Alunos';
     private const PERMISSION_ACESSAR_PAINEL = 'Acessar Painel';
     private const PERMISSION_RESPONDER_AVALIACOES = 'Responder Avaliações';
+    
+    public function __construct(
+        private readonly ProfessorEscolaVinculoService $professorEscolaVinculoService
+    ) {}
 
     public function registrarOuLogar(SocialiteUserContract $oauthUser): User
     {
@@ -74,6 +78,9 @@ class GoogleService
             return;
         }
 
+        $deveSincronizarVinculos = $user->professores()->exists()
+            || $user->hasRole(self::ROLE_VISUALIZAR_TURMAS_ALUNOS);
+
         $professoresElegiveis = Professor::query()
             ->whereRaw('LOWER(email) = ?', [$email])
             ->where(function ($query) use ($user) {
@@ -82,6 +89,9 @@ class GoogleService
             ->get();
 
         if ($professoresElegiveis->isEmpty()) {
+            if ($deveSincronizarVinculos) {
+                $this->professorEscolaVinculoService->sincronizarPorUsuario($user);
+            }
             return;
         }
 
@@ -89,9 +99,11 @@ class GoogleService
 
         $temVinculoPedagogico = TurmaComponenteProfessor::query()
             ->whereIn('professor_id', $professorIds)
+            ->where('tem_professor', true)
             ->exists();
 
         if (! $temVinculoPedagogico) {
+            $this->professorEscolaVinculoService->sincronizarPorUsuario($user);
             return;
         }
 
@@ -109,6 +121,8 @@ class GoogleService
                 ])->save();
             }
         });
+
+        $this->professorEscolaVinculoService->sincronizarPorUsuario($user);
     }
 
     private function garantirAcessoProfessor(User $user): void

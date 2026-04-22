@@ -8,6 +8,7 @@ use App\Models\Escola;
 use App\Models\Professor;
 use App\Models\Serie;
 use App\Models\Turma;
+use App\Models\TurmaComponenteProfessor;
 use App\Services\GoogleService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Socialite\Contracts\User as SocialiteUserContract;
@@ -57,8 +58,10 @@ class GoogleServiceProfessorAccessTest extends TestCase
         $this->assertTrue($user->hasPermissionTo('Acessar Painel'));
         $this->assertTrue($user->hasPermissionTo('Listar Turmas'));
         $this->assertTrue($user->hasPermissionTo('Listar Alunos'));
-        $this->assertTrue($user->hasPermissionTo('Responder Avaliações'));
+        $this->assertTrue($user->hasPermissionTo("Responder Avalia\u{00E7}\u{00F5}es"));
         $this->assertTrue($user->canAccessAdminPanel());
+        $this->assertSame([$escola->id], $user->escolas()->pluck('escolas.id')->map(fn ($id) => (int) $id)->all());
+        $this->assertSame($escola->id, (int) $user->id_escola);
     }
 
     public function test_professor_sem_vinculo_pedagogico_nao_recebe_liberacao_automatica(): void
@@ -85,8 +88,135 @@ class GoogleServiceProfessorAccessTest extends TestCase
         $this->assertFalse($user->hasRole('Acessar Painel'));
         $this->assertFalse($user->hasRole('Visualizar Turmas e Alunos'));
         $this->assertFalse($user->hasPermissionTo('Acessar Painel'));
-        $this->assertFalse($user->hasPermissionTo('Responder Avaliações'));
+        $this->assertFalse($user->hasPermissionTo("Responder Avalia\u{00E7}\u{00F5}es"));
         $this->assertFalse($user->canAccessAdminPanel());
+        $this->assertSame([], $user->escolas()->pluck('escolas.id')->all());
+    }
+
+    public function test_professor_em_multiplas_escolas_tem_usuario_vinculado_a_todas_no_login(): void
+    {
+        DominioEmail::query()->create([
+            'dominio_email' => 'edu.umuarama.pr.gov.br',
+            'status' => true,
+        ]);
+
+        $escolaCentro = $this->criarEscola('Escola Centro');
+        $escolaJardim = $this->criarEscola('Escola Jardim');
+
+        $turmaCentro = $this->criarTurma($escolaCentro, 'Turma Centro');
+        $turmaJardim = $this->criarTurma($escolaJardim, 'Turma Jardim');
+
+        $componente = ComponenteCurricular::query()->create([
+            'codigo' => 'COMP-MULTI',
+            'nome' => 'Matematica',
+        ]);
+
+        $professorCentro = Professor::query()->create([
+            'id_escola' => $escolaCentro->id,
+            'matricula' => 'PROF-MULTI-01',
+            'nome' => 'Professor Multi',
+            'email' => 'prof.multi@edu.umuarama.pr.gov.br',
+        ]);
+
+        $professorJardim = Professor::query()->create([
+            'id_escola' => $escolaJardim->id,
+            'matricula' => 'PROF-MULTI-02',
+            'nome' => 'Professor Multi',
+            'email' => 'prof.multi@edu.umuarama.pr.gov.br',
+        ]);
+
+        $turmaCentro->componentes()->attach($componente->id, [
+            'professor_id' => $professorCentro->id,
+            'tem_professor' => true,
+        ]);
+
+        $turmaJardim->componentes()->attach($componente->id, [
+            'professor_id' => $professorJardim->id,
+            'tem_professor' => true,
+        ]);
+
+        $oauthUser = $this->fakeOAuthUser('prof.multi@edu.umuarama.pr.gov.br', 'Professor Multi');
+
+        $user = app(GoogleService::class)->registrarOuLogar($oauthUser);
+        $user->refresh();
+
+        $escolasIds = $user->escolas()
+            ->orderBy('escolas.id')
+            ->pluck('escolas.id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $this->assertSame([$escolaCentro->id, $escolaJardim->id], $escolasIds);
+        $this->assertContains((int) $user->id_escola, $escolasIds);
+    }
+
+    public function test_usuario_do_professor_perde_vinculo_de_escola_automaticamente_quando_professor_e_desvinculado(): void
+    {
+        DominioEmail::query()->create([
+            'dominio_email' => 'edu.umuarama.pr.gov.br',
+            'status' => true,
+        ]);
+
+        $escolaCentro = $this->criarEscola('Escola Centro Sync');
+        $escolaJardim = $this->criarEscola('Escola Jardim Sync');
+
+        $turmaCentro = $this->criarTurma($escolaCentro, 'Turma Centro Sync');
+        $turmaJardim = $this->criarTurma($escolaJardim, 'Turma Jardim Sync');
+
+        $componente = ComponenteCurricular::query()->create([
+            'codigo' => 'COMP-SYNC',
+            'nome' => 'Historia',
+        ]);
+
+        $professorCentro = Professor::query()->create([
+            'id_escola' => $escolaCentro->id,
+            'matricula' => 'PROF-SYNC-01',
+            'nome' => 'Professor Sync',
+            'email' => 'prof.sync@edu.umuarama.pr.gov.br',
+        ]);
+
+        $professorJardim = Professor::query()->create([
+            'id_escola' => $escolaJardim->id,
+            'matricula' => 'PROF-SYNC-02',
+            'nome' => 'Professor Sync',
+            'email' => 'prof.sync@edu.umuarama.pr.gov.br',
+        ]);
+
+        $turmaCentro->componentes()->attach($componente->id, [
+            'professor_id' => $professorCentro->id,
+            'tem_professor' => true,
+        ]);
+
+        $turmaJardim->componentes()->attach($componente->id, [
+            'professor_id' => $professorJardim->id,
+            'tem_professor' => true,
+        ]);
+
+        $oauthUser = $this->fakeOAuthUser('prof.sync@edu.umuarama.pr.gov.br', 'Professor Sync');
+
+        $user = app(GoogleService::class)->registrarOuLogar($oauthUser);
+        $user->refresh();
+
+        $this->assertCount(2, $user->escolas()->get());
+
+        $vinculoJardim = TurmaComponenteProfessor::query()
+            ->where('turma_id', $turmaJardim->id)
+            ->where('componente_curricular_id', $componente->id)
+            ->where('professor_id', $professorJardim->id)
+            ->firstOrFail();
+
+        $vinculoJardim->delete();
+
+        $user->refresh();
+
+        $escolasIdsAtualizadas = $user->escolas()
+            ->orderBy('escolas.id')
+            ->pluck('escolas.id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $this->assertSame([$escolaCentro->id], $escolasIdsAtualizadas);
+        $this->assertSame($escolaCentro->id, (int) $user->id_escola);
     }
 
     private function criarEscola(string $nome): Escola
@@ -107,7 +237,7 @@ class GoogleServiceProfessorAccessTest extends TestCase
         ]);
 
         return Turma::query()->create([
-            'codigo' => 'TUR' . strtoupper(substr(md5($nome . microtime()), 0, 8)),
+            'codigo' => 'TUR' . strtoupper(substr(md5($nome . uniqid('', true)), 0, 8)),
             'nome' => $nome,
             'turno' => 'manha',
             'id_serie' => $serie->id,
