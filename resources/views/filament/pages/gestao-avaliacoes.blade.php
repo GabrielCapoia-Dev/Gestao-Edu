@@ -218,11 +218,13 @@
                     <div class="av-form-grid av-form-grid--three">
                         <label class="gi-field">
                             <span>Escola</span>
-                            <select wire:model.live="form.escola_id">
-                                @foreach ($this->escolasOptions as $escolaId => $escolaNome)
-                                    <option value="{{ $escolaId }}">{{ $escolaNome }}</option>
-                                @endforeach
-                            </select>
+                            <x-filament::input.wrapper>
+                                <x-filament::input.select wire:model.live="form.escola_id">
+                                    @foreach ($this->escolasOptions as $escolaId => $escolaNome)
+                                        <option value="{{ $escolaId }}">{{ $escolaNome }}</option>
+                                    @endforeach
+                                </x-filament::input.select>
+                            </x-filament::input.wrapper>
                             @error('form.escola_id')
                                 <p class="error">{{ $message }}</p>
                             @enderror
@@ -230,11 +232,17 @@
 
                         <label class="gi-field">
                             <span>Componentes (multiplos)</span>
-                            <select multiple class="av-multi-select" wire:model.live="form.componentes_ids">
-                                @foreach ($this->componentesOptions as $componenteId => $componenteNome)
-                                    <option value="{{ $componenteId }}">{{ $componenteNome }}</option>
-                                @endforeach
-                            </select>
+                            <x-filament::input.wrapper>
+                                <x-filament::input.select
+                                    wire:model.live="form.componentes_ids"
+                                    class="av-multi-select"
+                                    multiple
+                                    size="8">
+                                    @foreach ($this->componentesOptions as $componenteId => $componenteNome)
+                                        <option value="{{ $componenteId }}">{{ $componenteNome }}</option>
+                                    @endforeach
+                                </x-filament::input.select>
+                            </x-filament::input.wrapper>
                             @error('form.componentes_ids')
                                 <p class="error">{{ $message }}</p>
                             @enderror
@@ -245,11 +253,17 @@
 
                         <label class="gi-field">
                             <span>Pautas (multiplas)</span>
-                            <select multiple class="av-multi-select" wire:model.defer="form.pautas_ids">
-                                @foreach ($this->pautasOptions as $pautaId => $pautaLabel)
-                                    <option value="{{ $pautaId }}">{{ $pautaLabel }}</option>
-                                @endforeach
-                            </select>
+                            <x-filament::input.wrapper>
+                                <x-filament::input.select
+                                    wire:model.defer="form.pautas_ids"
+                                    class="av-multi-select"
+                                    multiple
+                                    size="8">
+                                    @foreach ($this->pautasOptions as $pautaId => $pautaLabel)
+                                        <option value="{{ $pautaId }}">{{ $pautaLabel }}</option>
+                                    @endforeach
+                                </x-filament::input.select>
+                            </x-filament::input.wrapper>
                             @error('form.pautas_ids')
                                 <p class="error">{{ $message }}</p>
                             @enderror
