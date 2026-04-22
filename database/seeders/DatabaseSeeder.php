@@ -93,6 +93,7 @@ class DatabaseSeeder extends Seeder
             EstoqueInventarioOrganicoSeeder::class,
             AvaliacaoFluxoSeeder::class,
             PautasCombinatoriasSeeder::class,
+            AvaliacoesVariadasSeeder::class,
         ]);
     }
 
