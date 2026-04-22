@@ -256,6 +256,62 @@
                 </table>
             </div>
         </section>
+
+        <section class="dav-card">
+            <header>
+                <h3>Turmas Avaliadas</h3>
+                <p>Turmas com respostas registradas no recorte atual, com atalho para a tela de preenchimento do professor.</p>
+            </header>
+
+            <div class="dav-table-wrap">
+                <table class="dav-table">
+                    <thead>
+                        <tr>
+                            <th>Avaliação</th>
+                            <th>Escola</th>
+                            <th>Série</th>
+                            <th>Turma</th>
+                            <th>Turno</th>
+                            <th class="text-right">Respostas</th>
+                            <th class="text-right">Alunos</th>
+                            <th class="text-right">Pautas</th>
+                            <th>Última resposta</th>
+                            <th class="text-right">Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($turmasAvaliadas as $item)
+                            <tr>
+                                <td>{{ $item['avaliacao_nome'] }}</td>
+                                <td>{{ $item['escola_nome'] }}</td>
+                                <td>{{ $item['serie_nome'] }}</td>
+                                <td>{{ $item['turma_nome'] }}</td>
+                                <td>
+                                    <span class="dav-badge dav-badge--muted">
+                                        {{ ucfirst((string) $item['turno']) }}
+                                    </span>
+                                </td>
+                                <td class="text-right">{{ $item['respostas_total'] }}</td>
+                                <td class="text-right">{{ $item['alunos_respondidos'] }}</td>
+                                <td class="text-right">{{ $item['pautas_respondidas'] }}</td>
+                                <td>{{ $item['ultima_resposta'] }}</td>
+                                <td class="text-right">
+                                    <a
+                                        class="dav-link-action"
+                                        href="{{ route('filament.admin.pages.avaliacoes-professor', ['avaliacao' => $item['avaliacao_id'], 'turma' => $item['turma_id']]) }}">
+                                        Abrir avaliação
+                                    </a>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="10" class="dav-empty">Nenhuma turma com respostas para os filtros atuais.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </section>
     </div>
 
     <style>
@@ -684,6 +740,28 @@
             border-color: #d7dce2;
         }
 
+        .dav-link-action {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 1.7rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 0.45rem;
+            border: 1px solid #bfd8fb;
+            background: #eff6ff;
+            color: #0f4e9b;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-decoration: none;
+            transition: all 0.15s ease;
+        }
+
+        .dav-link-action:hover {
+            background: #dbeafe;
+            border-color: #93c5fd;
+            color: #1e40af;
+        }
+
         .dav-empty {
             margin: 0;
             color: var(--gray-500);
@@ -758,6 +836,18 @@
 
         :root.dark .dav-table td small {
             color: var(--gray-400);
+        }
+
+        :root.dark .dav-link-action {
+            background: #17263a;
+            border-color: #274161;
+            color: #93c5fd;
+        }
+
+        :root.dark .dav-link-action:hover {
+            background: #1f3550;
+            border-color: #356091;
+            color: #bfdbfe;
         }
 
         @media (max-width: 1080px) {

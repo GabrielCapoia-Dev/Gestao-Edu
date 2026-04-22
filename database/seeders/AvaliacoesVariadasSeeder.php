@@ -9,10 +9,10 @@ use App\Models\AvaliacaoResposta;
 use App\Models\ComponenteCurricular;
 use App\Models\PeriodoAvaliacao;
 use App\Models\Pauta;
-use App\Models\TipoAvaliacao;
 use App\Models\Turma;
 use App\Models\TurmaComponenteProfessor;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -23,172 +23,35 @@ class AvaliacoesVariadasSeeder extends Seeder
         $referencia = now()->startOfDay();
         $agora = now();
 
-        $tipoParecer = TipoAvaliacao::query()->firstOrCreate(
-            ['nome' => 'Parecer Descritivo'],
-            ['status' => true]
-        );
-        $tipoRubrica = TipoAvaliacao::query()->firstOrCreate(
-            ['nome' => 'Rubrica Objetiva'],
-            ['status' => true]
-        );
+        $periodos = $this->garantirPeriodosBase();
 
-        $periodoPrimeiroSemestre = PeriodoAvaliacao::query()->firstOrCreate(
-            ['nome' => '1o Semestre'],
-            ['status' => true]
-        );
-        $periodoSegundoSemestre = PeriodoAvaliacao::query()->firstOrCreate(
-            ['nome' => '2o Semestre'],
-            ['status' => true]
-        );
+        $alternativasPorTipo = Alternativa::query()
+            ->where('status', true)
+            ->whereNotNull('tipo_avaliacao_id')
+            ->orderBy('nome')
+            ->get(['id', 'tipo_avaliacao_id'])
+            ->groupBy('tipo_avaliacao_id')
+            ->map(fn (Collection $itens): array => $itens
+                ->pluck('id')
+                ->map(fn ($id): int => (int) $id)
+                ->unique()
+                ->values()
+                ->all());
 
-        $alternativasPorTipo = [
-            (int) $tipoParecer->id => $this->garantirAlternativasDoTipo((int) $tipoParecer->id, [
-                ['nome' => 'Excelente', 'tem_observacao' => false, 'observacao' => null],
-                ['nome' => 'Bom', 'tem_observacao' => false, 'observacao' => null],
-                ['nome' => 'Parcial', 'tem_observacao' => true, 'observacao' => 'Descreva os pontos que ainda precisam evoluir.'],
-                ['nome' => 'Nao', 'tem_observacao' => true, 'observacao' => 'Informe os pontos de intervencao sugeridos.'],
-            ]),
-            (int) $tipoRubrica->id => $this->garantirAlternativasDoTipo((int) $tipoRubrica->id, [
-                ['nome' => 'Atingiu', 'tem_observacao' => false, 'observacao' => null],
-                ['nome' => 'Em desenvolvimento', 'tem_observacao' => true, 'observacao' => 'Registre evidencias da evolucao observada.'],
-                ['nome' => 'Nao atingiu', 'tem_observacao' => true, 'observacao' => 'Registre plano de recuperacao sugerido.'],
-            ]),
-        ];
+        $tiposDisponiveisIds = $alternativasPorTipo
+            ->keys()
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->values()
+            ->all();
 
-        $avaliacoes = [
-            [
-                'nome' => '[Seed Avaliacoes] Diagnostica Bimestre 1',
-                'data_inicio' => $referencia->copy()->subDays(20),
-                'data_fim' => $referencia->copy()->addDays(12),
-                'status' => Avaliacao::STATUS_ATIVA,
-                'tipo_avaliacao_id' => (int) $tipoParecer->id,
-                'periodo_avaliacao_id' => (int) $periodoPrimeiroSemestre->id,
-                'quantidade_turmas' => 3,
-                'quantidade_pautas' => 6,
-                'cobertura_respostas' => 0.88,
-            ],
-            [
-                'nome' => '[Seed Avaliacoes] Formativa Intermediaria',
-                'data_inicio' => $referencia->copy()->subDays(8),
-                'data_fim' => $referencia->copy()->addDays(20),
-                'status' => Avaliacao::STATUS_ATIVA,
-                'tipo_avaliacao_id' => (int) $tipoParecer->id,
-                'periodo_avaliacao_id' => (int) $periodoPrimeiroSemestre->id,
-                'quantidade_turmas' => 2,
-                'quantidade_pautas' => 5,
-                'cobertura_respostas' => 0.76,
-            ],
-            [
-                'nome' => '[Seed Avaliacoes] Sondagem de Entrada',
-                'data_inicio' => $referencia->copy()->subDays(45),
-                'data_fim' => $referencia->copy()->subDays(30),
-                'status' => Avaliacao::STATUS_ENCERRADA,
-                'tipo_avaliacao_id' => (int) $tipoRubrica->id,
-                'periodo_avaliacao_id' => (int) $periodoPrimeiroSemestre->id,
-                'quantidade_turmas' => 2,
-                'quantidade_pautas' => 4,
-                'cobertura_respostas' => 0.97,
-            ],
-            [
-                'nome' => '[Seed Avaliacoes] Consolidacao Trimestral',
-                'data_inicio' => $referencia->copy()->subDays(90),
-                'data_fim' => $referencia->copy()->subDays(60),
-                'status' => Avaliacao::STATUS_ENCERRADA,
-                'tipo_avaliacao_id' => (int) $tipoParecer->id,
-                'periodo_avaliacao_id' => (int) $periodoPrimeiroSemestre->id,
-                'quantidade_turmas' => 3,
-                'quantidade_pautas' => 6,
-                'cobertura_respostas' => 0.99,
-            ],
-            [
-                'nome' => '[Seed Avaliacoes] Recuperacao Parcial',
-                'data_inicio' => $referencia->copy()->addDays(10),
-                'data_fim' => $referencia->copy()->addDays(25),
-                'status' => Avaliacao::STATUS_INATIVA,
-                'tipo_avaliacao_id' => (int) $tipoRubrica->id,
-                'periodo_avaliacao_id' => (int) $periodoPrimeiroSemestre->id,
-                'quantidade_turmas' => 2,
-                'quantidade_pautas' => 4,
-                'cobertura_respostas' => 0.39,
-            ],
-            [
-                'nome' => '[Seed Avaliacoes] Simulado de Competencias',
-                'data_inicio' => $referencia->copy()->addDays(35),
-                'data_fim' => $referencia->copy()->addDays(50),
-                'status' => Avaliacao::STATUS_INATIVA,
-                'tipo_avaliacao_id' => (int) $tipoParecer->id,
-                'periodo_avaliacao_id' => (int) $periodoSegundoSemestre->id,
-                'quantidade_turmas' => 3,
-                'quantidade_pautas' => 5,
-                'cobertura_respostas' => 0.33,
-            ],
-            [
-                'nome' => '[Seed Avaliacoes] Avaliacao Extraordinaria',
-                'data_inicio' => $referencia->copy()->subDays(15),
-                'data_fim' => $referencia->copy()->addDays(5),
-                'status' => Avaliacao::STATUS_CANCELADA,
-                'tipo_avaliacao_id' => (int) $tipoRubrica->id,
-                'periodo_avaliacao_id' => (int) $periodoPrimeiroSemestre->id,
-                'quantidade_turmas' => 2,
-                'quantidade_pautas' => 4,
-                'cobertura_respostas' => 0.22,
-            ],
-            [
-                'nome' => '[Seed Avaliacoes] Projeto Integrador',
-                'data_inicio' => $referencia->copy()->addDays(55),
-                'data_fim' => $referencia->copy()->addDays(75),
-                'status' => Avaliacao::STATUS_CANCELADA,
-                'tipo_avaliacao_id' => (int) $tipoParecer->id,
-                'periodo_avaliacao_id' => (int) $periodoSegundoSemestre->id,
-                'quantidade_turmas' => 2,
-                'quantidade_pautas' => 5,
-                'cobertura_respostas' => 0.11,
-            ],
-            [
-                'nome' => '[Seed Avaliacoes] Diagnostica Bimestre 2',
-                'data_inicio' => $referencia->copy()->addDays(3),
-                'data_fim' => $referencia->copy()->addDays(30),
-                'status' => Avaliacao::STATUS_ATIVA,
-                'tipo_avaliacao_id' => (int) $tipoParecer->id,
-                'periodo_avaliacao_id' => (int) $periodoSegundoSemestre->id,
-                'quantidade_turmas' => 3,
-                'quantidade_pautas' => 6,
-                'cobertura_respostas' => 0.69,
-            ],
-            [
-                'nome' => '[Seed Avaliacoes] Fechamento Semestral',
-                'data_inicio' => $referencia->copy()->subDays(180),
-                'data_fim' => $referencia->copy()->subDays(150),
-                'status' => Avaliacao::STATUS_ENCERRADA,
-                'tipo_avaliacao_id' => (int) $tipoRubrica->id,
-                'periodo_avaliacao_id' => (int) $periodoPrimeiroSemestre->id,
-                'quantidade_turmas' => 3,
-                'quantidade_pautas' => 5,
-                'cobertura_respostas' => 0.94,
-            ],
-            [
-                'nome' => '[Seed Avaliacoes] Monitoramento Quinzenal',
-                'data_inicio' => $referencia->copy()->subDays(2),
-                'data_fim' => $referencia->copy()->addDays(13),
-                'status' => Avaliacao::STATUS_ATIVA,
-                'tipo_avaliacao_id' => (int) $tipoRubrica->id,
-                'periodo_avaliacao_id' => (int) $periodoPrimeiroSemestre->id,
-                'quantidade_turmas' => 2,
-                'quantidade_pautas' => 4,
-                'cobertura_respostas' => 0.81,
-            ],
-            [
-                'nome' => '[Seed Avaliacoes] Fechamento Anual Parcial',
-                'data_inicio' => $referencia->copy()->subDays(220),
-                'data_fim' => $referencia->copy()->subDays(190),
-                'status' => Avaliacao::STATUS_ENCERRADA,
-                'tipo_avaliacao_id' => (int) $tipoParecer->id,
-                'periodo_avaliacao_id' => (int) $periodoSegundoSemestre->id,
-                'quantidade_turmas' => 3,
-                'quantidade_pautas' => 6,
-                'cobertura_respostas' => 1.00,
-            ],
-        ];
+        if ($tiposDisponiveisIds === []) {
+            if ($this->command) {
+                $this->command->warn('AvaliacoesVariadasSeeder: nenhuma alternativa ativa com tipo encontrada.');
+            }
+
+            return;
+        }
 
         $turmas = Turma::query()
             ->with([
@@ -196,24 +59,63 @@ class AvaliacoesVariadasSeeder extends Seeder
                 'alunos:id,id_turma',
             ])
             ->whereHas('alunos')
+            ->whereHas('componentes')
             ->orderBy('id')
             ->get(['id', 'id_serie', 'id_escola']);
 
-        $turmasIds = $turmas
-            ->pluck('id')
-            ->map(fn ($id): int => (int) $id)
-            ->all();
-
-        if ($turmasIds === []) {
+        if ($turmas->isEmpty()) {
             if ($this->command) {
-                $this->command->warn('AvaliacoesVariadasSeeder: nenhuma turma com alunos encontrada.');
+                $this->command->warn('AvaliacoesVariadasSeeder: nenhuma turma com alunos e componentes encontrada.');
             }
 
             return;
         }
 
         $turmasPorId = $turmas->keyBy('id');
+
+        /** @var array<int, array<int>> $componentesPorTurma */
+        $componentesPorTurma = [];
+        /** @var array<int, array<int>> $turmasPorComponente */
+        $turmasPorComponente = [];
+
+        foreach ($turmas as $turma) {
+            $turmaId = (int) $turma->id;
+            $componentesIds = $turma->componentes
+                ->pluck('id')
+                ->map(fn ($id): int => (int) $id)
+                ->filter(fn (int $id): bool => $id > 0)
+                ->unique()
+                ->values()
+                ->all();
+
+            $componentesPorTurma[$turmaId] = $componentesIds;
+
+            foreach ($componentesIds as $componenteId) {
+                $turmasPorComponente[$componenteId] = $turmasPorComponente[$componenteId] ?? [];
+                $turmasPorComponente[$componenteId][] = $turmaId;
+            }
+        }
+
+        if ($turmasPorComponente === []) {
+            if ($this->command) {
+                $this->command->warn('AvaliacoesVariadasSeeder: nao foi possivel mapear turmas por componente.');
+            }
+
+            return;
+        }
+
+        $componentesIds = array_keys($turmasPorComponente);
+        sort($componentesIds);
         $nomesComponentes = ComponenteCurricular::query()->pluck('nome', 'id');
+
+        $avaliacoesPlanejadas = $this->montarPlanoAvaliacoes(
+            referencia: $referencia,
+            periodos: $periodos,
+            tiposDisponiveisIds: $tiposDisponiveisIds,
+            componentesIds: $componentesIds,
+            turmasPorComponente: $turmasPorComponente,
+            nomesComponentes: $nomesComponentes
+        );
 
         $criadas = 0;
         $atualizadas = 0;
@@ -221,16 +123,21 @@ class AvaliacoesVariadasSeeder extends Seeder
         $informacoesComplementaresGeradas = 0;
         $overridesGerados = 0;
 
-        foreach ($avaliacoes as $indice => $dados) {
-            $quantidadeTurmas = min(
-                max(1, (int) ($dados['quantidade_turmas'] ?? 2)),
-                count($turmasIds)
-            );
+        foreach ($avaliacoesPlanejadas as $indice => $dados) {
+            $turmasSelecionadas = collect($dados['turma_ids'] ?? [])
+                ->map(fn (int $turmaId): ?Turma => $turmasPorId->get($turmaId))
+                ->filter()
+                ->values();
 
-            $turmasParaVincular = $this->recorteCircularIds($turmasIds, $indice, $quantidadeTurmas);
-            $turmasSelecionadas = collect($turmasParaVincular)
-                ->map(fn (int $turmaId) => $turmasPorId->get($turmaId))
-                ->filter();
+            if ($turmasSelecionadas->isEmpty()) {
+                continue;
+            }
+
+            $turmasParaVincular = $turmasSelecionadas
+                ->pluck('id')
+                ->map(fn ($id): int => (int) $id)
+                ->values()
+                ->all();
 
             $seriesIds = $turmasSelecionadas
                 ->pluck('id_serie')
@@ -248,49 +155,72 @@ class AvaliacoesVariadasSeeder extends Seeder
                 ->values()
                 ->all();
 
-            $componentesIds = $turmasSelecionadas
-                ->flatMap(fn (Turma $turma): Collection => $turma->componentes->pluck('id'))
-                ->filter()
+            $componentesDasTurmasSelecionadas = $turmasSelecionadas
+                ->flatMap(fn (Turma $turma): array => $componentesPorTurma[(int) $turma->id] ?? [])
                 ->map(fn ($componenteId): int => (int) $componenteId)
                 ->unique()
                 ->values()
                 ->all();
 
-            $quantidadePautas = max(1, (int) ($dados['quantidade_pautas'] ?? 4));
+            $componentesIdsPlanejados = collect($dados['componentes_ids'] ?? [])
+                ->map(fn ($id): int => (int) $id)
+                ->filter(fn (int $id): bool => in_array($id, $componentesDasTurmasSelecionadas, true))
+                ->unique()
+                ->values()
+                ->all();
+
+            if ($componentesIdsPlanejados === []) {
+                $componentesIdsPlanejados = $componentesDasTurmasSelecionadas;
+            }
+
+            if ($componentesIdsPlanejados === []) {
+                continue;
+            }
+
+            $tipoAvaliacaoId = (int) ($dados['tipo_avaliacao_id'] ?? 0);
+            $periodoAvaliacaoId = (int) ($dados['periodo_avaliacao_id'] ?? 0);
+            $alternativasTipoIds = $alternativasPorTipo->get($tipoAvaliacaoId, []);
+
+            if ($alternativasTipoIds === []) {
+                continue;
+            }
+
+            $quantidadePautas = max(3, (int) ($dados['quantidade_pautas'] ?? 4));
             $pautasParaVincular = $this->selecionarPautasParaContexto(
-                tipoAvaliacaoId: (int) $dados['tipo_avaliacao_id'],
+                tipoAvaliacaoId: $tipoAvaliacaoId,
                 seriesIds: $seriesIds,
-                componentesIds: $componentesIds,
+                componentesIds: $componentesIdsPlanejados,
                 indiceBase: $indice,
                 quantidade: $quantidadePautas,
                 nomesComponentes: $nomesComponentes
             );
 
+            if ($pautasParaVincular === []) {
+                continue;
+            }
+
             $avaliacao = Avaliacao::query()->updateOrCreate(
-                ['nome' => $dados['nome']],
+                ['nome' => (string) $dados['nome']],
                 [
-                    'tipo_avaliacao_id' => (int) $dados['tipo_avaliacao_id'],
-                    'periodo_avaliacao_id' => (int) $dados['periodo_avaliacao_id'],
+                    'tipo_avaliacao_id' => $tipoAvaliacaoId,
+                    'periodo_avaliacao_id' => $periodoAvaliacaoId,
                     'data_inicio' => $dados['data_inicio']->toDateString(),
                     'data_fim' => $dados['data_fim']->toDateString(),
-                    'status' => $dados['status'],
+                    'status' => (string) $dados['status'],
                 ]
             );
 
-            if ($pautasParaVincular !== []) {
-                $avaliacao->pautas()->sync($pautasParaVincular);
-            }
-
-            if ($turmasParaVincular !== []) {
-                $avaliacao->turmas()->sync($turmasParaVincular);
-            }
-
+            $avaliacao->pautas()->sync($pautasParaVincular);
+            $avaliacao->turmas()->sync($turmasParaVincular);
             $avaliacao->series()->sync($seriesIds);
-            $avaliacao->componentes()->sync($componentesIds);
+            $avaliacao->componentes()->sync($componentesIdsPlanejados);
             $avaliacao->escolas()->sync($escolasIds);
 
-            $alternativasTipoIds = $alternativasPorTipo[(int) $dados['tipo_avaliacao_id']] ?? [];
-            $this->sincronizarAlternativasLegadasDasPautas($pautasParaVincular, $alternativasTipoIds);
+            $this->sincronizarAlternativasLegadasDasPautas(
+                pautaIds: $pautasParaVincular,
+                alternativasPorTipo: $alternativasPorTipo,
+                tipoAvaliacaoPadraoId: $tipoAvaliacaoId
+            );
 
             $overridesGerados += $this->sincronizarOverridesDeAlternativas(
                 avaliacaoId: (int) $avaliacao->id,
@@ -330,29 +260,226 @@ class AvaliacoesVariadasSeeder extends Seeder
         }
     }
 
-    private function garantirAlternativasDoTipo(int $tipoAvaliacaoId, array $alternativas): array
+    private function garantirPeriodosBase(): Collection
     {
-        $ids = [];
+        $periodosPadrao = [
+            '1o Semestre',
+            '2o Semestre',
+            '3o Trimestre',
+            '4o Bimestre',
+        ];
 
-        foreach ($alternativas as $alternativaDados) {
-            $alternativa = Alternativa::query()->updateOrCreate(
-                [
-                    'tipo_avaliacao_id' => $tipoAvaliacaoId,
-                    'nome' => (string) $alternativaDados['nome'],
-                ],
-                [
-                    'status' => true,
-                    'tem_observacao' => (bool) ($alternativaDados['tem_observacao'] ?? false),
-                    'observacao' => $alternativaDados['observacao'] ?? null,
-                ]
+        foreach ($periodosPadrao as $nomePeriodo) {
+            PeriodoAvaliacao::query()->updateOrCreate(
+                ['nome' => $nomePeriodo],
+                ['status' => true]
             );
-
-            $ids[] = (int) $alternativa->id;
         }
 
-        return array_values(array_unique($ids));
+        return PeriodoAvaliacao::query()
+            ->where('status', true)
+            ->orderBy('nome')
+            ->get(['id', 'nome']);
     }
 
+    /**
+     * @param array<int> $tiposDisponiveisIds
+     * @param array<int> $componentesIds
+     * @param array<int, array<int>> $turmasPorComponente
+     * @return array<int, array{
+     *     nome: string,
+     *     data_inicio: Carbon,
+     *     data_fim: Carbon,
+     *     status: string,
+     *     tipo_avaliacao_id: int,
+     *     periodo_avaliacao_id: int,
+     *     turma_ids: array<int>,
+     *     componentes_ids: array<int>,
+     *     quantidade_pautas: int,
+     *     cobertura_respostas: float
+     * }>
+     */
+    private function montarPlanoAvaliacoes(
+        Carbon $referencia,
+        Collection $periodos,
+        array $tiposDisponiveisIds,
+        array $componentesIds,
+        array $turmasPorComponente,
+        Collection $nomesComponentes
+    ): array {
+        if ($componentesIds === [] || $tiposDisponiveisIds === [] || $periodos->isEmpty()) {
+            return [];
+        }
+
+        $periodos = $periodos->values();
+        $statusSequenciaExtras = [
+            Avaliacao::STATUS_ATIVA,
+            Avaliacao::STATUS_ATIVA,
+            Avaliacao::STATUS_ENCERRADA,
+            Avaliacao::STATUS_INATIVA,
+            Avaliacao::STATUS_CANCELADA,
+            Avaliacao::STATUS_ATIVA,
+        ];
+
+        $avaliacoes = [];
+
+        foreach ($componentesIds as $indice => $componenteId) {
+            $tipoAvaliacaoId = $tiposDisponiveisIds[$indice % count($tiposDisponiveisIds)];
+            $periodoAvaliacaoId = (int) ($periodos->get($indice % $periodos->count())->id ?? 0);
+            $nomeComponente = (string) ($nomesComponentes[$componenteId] ?? "Componente {$componenteId}");
+            $janela = $this->gerarJanelaDatas($referencia, $indice, Avaliacao::STATUS_ATIVA);
+
+            $avaliacoes[] = [
+                'nome' => sprintf('[Seed Variadas] Cobertura Geral - %s', $nomeComponente),
+                'data_inicio' => $janela['inicio'],
+                'data_fim' => $janela['fim'],
+                'status' => Avaliacao::STATUS_ATIVA,
+                'tipo_avaliacao_id' => (int) $tipoAvaliacaoId,
+                'periodo_avaliacao_id' => $periodoAvaliacaoId,
+                'turma_ids' => collect($turmasPorComponente[$componenteId] ?? [])
+                    ->map(fn ($turmaId): int => (int) $turmaId)
+                    ->unique()
+                    ->values()
+                    ->all(),
+                'componentes_ids' => [(int) $componenteId],
+                'quantidade_pautas' => 4 + $this->hashIndice(3, "pauta-base|{$componenteId}"),
+                'cobertura_respostas' => $this->coberturaParaSeed("cobertura-base|{$componenteId}", 68, 98),
+            ];
+        }
+
+        $templatesExtras = [
+            'Monitoramento quinzenal',
+            'Formativa integrada',
+            'Sondagem pedagogica',
+            'Consolidacao mensal',
+            'Acompanhamento por habilidade',
+            'Trilha de recomposicao',
+        ];
+
+        $quantidadeExtras = max(10, min(24, count($componentesIds) * 3));
+
+        for ($indice = 0; $indice < $quantidadeExtras; $indice++) {
+            $quantidadeComponentes = min(
+                count($componentesIds),
+                max(1, 1 + $this->hashIndice(3, "qtd-comp-extra|{$indice}"))
+            );
+
+            $componentesSelecionados = $this->recorteCircularIds(
+                $componentesIds,
+                $indice + 2,
+                $quantidadeComponentes
+            );
+
+            $turmasPool = collect($componentesSelecionados)
+                ->flatMap(fn (int $componenteId): array => $turmasPorComponente[$componenteId] ?? [])
+                ->map(fn ($turmaId): int => (int) $turmaId)
+                ->unique()
+                ->values()
+                ->all();
+
+            if ($turmasPool === []) {
+                continue;
+            }
+
+            $quantidadeTurmas = min(
+                count($turmasPool),
+                max(2, 2 + $this->hashIndice(4, "qtd-turmas-extra|{$indice}"))
+            );
+
+            $status = $statusSequenciaExtras[$this->hashIndice(count($statusSequenciaExtras), "status-extra|{$indice}")];
+            $janela = $this->gerarJanelaDatas($referencia, 100 + $indice, $status);
+            $tipoAvaliacaoId = $tiposDisponiveisIds[($indice + 1) % count($tiposDisponiveisIds)];
+            $periodoAvaliacaoId = (int) ($periodos->get(($indice + 1) % $periodos->count())->id ?? 0);
+            $nomeTemplate = $templatesExtras[$indice % count($templatesExtras)];
+            $resumoComponentes = $this->resumoComponentes($componentesSelecionados, $nomesComponentes);
+
+            $avaliacoes[] = [
+                'nome' => sprintf('[Seed Variadas] %s %02d - %s', $nomeTemplate, $indice + 1, $resumoComponentes),
+                'data_inicio' => $janela['inicio'],
+                'data_fim' => $janela['fim'],
+                'status' => $status,
+                'tipo_avaliacao_id' => (int) $tipoAvaliacaoId,
+                'periodo_avaliacao_id' => $periodoAvaliacaoId,
+                'turma_ids' => $this->recorteCircularIds(
+                    $turmasPool,
+                    $indice * 3,
+                    max(1, $quantidadeTurmas)
+                ),
+                'componentes_ids' => $componentesSelecionados,
+                'quantidade_pautas' => 3 + $this->hashIndice(5, "pauta-extra|{$indice}"),
+                'cobertura_respostas' => $this->coberturaParaSeed("cobertura-extra|{$indice}", 35, 90),
+            ];
+        }
+
+        return $avaliacoes;
+    }
+
+    /**
+     * @return array{inicio: Carbon, fim: Carbon}
+     */
+    private function gerarJanelaDatas(Carbon $referencia, int $indice, string $status): array
+    {
+        $offset = $this->hashIndice(140, "janela|{$indice}|{$status}");
+
+        return match ($status) {
+            Avaliacao::STATUS_ENCERRADA => [
+                'inicio' => $referencia->copy()->subDays(220 + $offset),
+                'fim' => $referencia->copy()->subDays(140 + ($offset % 90)),
+            ],
+            Avaliacao::STATUS_INATIVA => [
+                'inicio' => $referencia->copy()->addDays(7 + ($offset % 40)),
+                'fim' => $referencia->copy()->addDays(30 + ($offset % 65)),
+            ],
+            Avaliacao::STATUS_CANCELADA => [
+                'inicio' => $referencia->copy()->subDays(70 + ($offset % 80)),
+                'fim' => $referencia->copy()->addDays(3 + ($offset % 20)),
+            ],
+            default => [
+                'inicio' => $referencia->copy()->subDays(20 + ($offset % 35)),
+                'fim' => $referencia->copy()->addDays(12 + ($offset % 40)),
+            ],
+        };
+    }
+
+    private function coberturaParaSeed(string $seed, int $minPercentual, int $maxPercentual): float
+    {
+        $minimo = max(0, min(100, $minPercentual));
+        $maximo = max($minimo, min(100, $maxPercentual));
+        $faixa = max(1, ($maximo - $minimo) + 1);
+        $percentual = $minimo + $this->hashIndice($faixa, $seed);
+
+        return round($percentual / 100, 2);
+    }
+
+    /**
+     * @param array<int> $componentesIds
+     */
+    private function resumoComponentes(array $componentesIds, Collection $nomesComponentes): string
+    {
+        $nomes = collect($componentesIds)
+            ->map(fn (int $componenteId): string => (string) ($nomesComponentes[$componenteId] ?? "Componente {$componenteId}"))
+            ->values();
+
+        if ($nomes->isEmpty()) {
+            return 'Contexto geral';
+        }
+
+        if ($nomes->count() === 1) {
+            return (string) $nomes->first();
+        }
+
+        if ($nomes->count() === 2) {
+            return $nomes->implode(' e ');
+        }
+
+        return $nomes->take(2)->implode(', ') . ' e +' . ($nomes->count() - 2);
+    }
+
+    /**
+     * @param array<int> $seriesIds
+     * @param array<int> $componentesIds
+     * @return array<int>
+     */
     private function selecionarPautasParaContexto(
         int $tipoAvaliacaoId,
         array $seriesIds,
@@ -361,55 +488,40 @@ class AvaliacoesVariadasSeeder extends Seeder
         int $quantidade,
         Collection $nomesComponentes
     ): array {
-        $pautasIds = Pauta::query()
+        $query = Pauta::query()
             ->where('status', true)
-            ->where('tipo_avaliacao_id', $tipoAvaliacaoId)
-            ->where(function ($query) use ($seriesIds): void {
-                if ($seriesIds !== []) {
-                    $query->whereIn('serie_id', $seriesIds)
-                        ->orWhereNull('serie_id');
+            ->where('tipo_avaliacao_id', $tipoAvaliacaoId);
 
-                    return;
-                }
+        if ($seriesIds !== []) {
+            $query->where(function ($subQuery) use ($seriesIds): void {
+                $subQuery->whereIn('serie_id', $seriesIds)
+                    ->orWhereNull('serie_id');
+            });
+        }
 
-                $query->whereNull('serie_id');
-            })
-            ->where(function ($query) use ($componentesIds): void {
-                if ($componentesIds !== []) {
-                    $query->whereIn('componente_curricular_id', $componentesIds)
-                        ->orWhereNull('componente_curricular_id');
+        if ($componentesIds !== []) {
+            $query->where(function ($subQuery) use ($componentesIds): void {
+                $subQuery->whereIn('componente_curricular_id', $componentesIds)
+                    ->orWhereNull('componente_curricular_id');
+            });
+        }
 
-                    return;
-                }
-
-                $query->whereNull('componente_curricular_id');
-            })
+        $pautasIds = $query
             ->orderBy('id')
             ->pluck('id')
             ->map(fn ($id): int => (int) $id)
             ->all();
 
-        if ($pautasIds === [] && $componentesIds !== []) {
-            $componentesParaCriar = $this->recorteCircularIds(
-                $componentesIds,
-                $indiceBase,
-                min(3, count($componentesIds))
-            );
+        $quantidadeMinimaEsperada = max(3, min($quantidade, max(1, count($componentesIds))));
 
-            foreach ($componentesParaCriar as $offset => $componenteId) {
-                $serieId = $seriesIds[$offset % max(count($seriesIds), 1)] ?? null;
-                $nomeComponente = (string) ($nomesComponentes[(int) $componenteId] ?? "Componente {$componenteId}");
-                $texto = sprintf(
-                    '[Seed Avaliacoes] %s | Indicador %d',
-                    $nomeComponente,
-                    $offset + 1
-                );
-
+        if (count($pautasIds) < $quantidadeMinimaEsperada) {
+            if ($componentesIds === []) {
+                $serieId = $seriesIds[0] ?? null;
                 $pauta = Pauta::query()->updateOrCreate(
                     [
-                        'texto' => $texto,
+                        'texto' => '[Seed Variadas] Participacao geral e protagonismo do aluno',
                         'tipo_avaliacao_id' => $tipoAvaliacaoId,
-                        'componente_curricular_id' => (int) $componenteId,
+                        'componente_curricular_id' => null,
                         'serie_id' => $serieId,
                     ],
                     ['status' => true]
@@ -418,10 +530,33 @@ class AvaliacoesVariadasSeeder extends Seeder
                 $pautasIds[] = (int) $pauta->id;
             }
 
+            foreach ($componentesIds as $offset => $componenteId) {
+                $serieId = $seriesIds[$offset % max(count($seriesIds), 1)] ?? null;
+                $nomeComponente = (string) ($nomesComponentes[$componenteId] ?? "Componente {$componenteId}");
+
+                for ($i = 0; $i < 2; $i++) {
+                    $pauta = Pauta::query()->updateOrCreate(
+                        [
+                            'texto' => sprintf(
+                                '[Seed Variadas] %s - Indicador %d',
+                                $nomeComponente,
+                                1 + (($indiceBase + $offset + $i) % 9)
+                            ),
+                            'tipo_avaliacao_id' => $tipoAvaliacaoId,
+                            'componente_curricular_id' => (int) $componenteId,
+                            'serie_id' => $serieId,
+                        ],
+                        ['status' => true]
+                    );
+
+                    $pautasIds[] = (int) $pauta->id;
+                }
+            }
+
             if ($seriesIds !== []) {
                 $pautaGeral = Pauta::query()->updateOrCreate(
                     [
-                        'texto' => '[Seed Avaliacoes] Participacao e protagonismo do aluno',
+                        'texto' => '[Seed Variadas] Desenvolvimento socioemocional e autonomia',
                         'tipo_avaliacao_id' => $tipoAvaliacaoId,
                         'componente_curricular_id' => null,
                         'serie_id' => (int) $seriesIds[0],
@@ -433,25 +568,64 @@ class AvaliacoesVariadasSeeder extends Seeder
             }
         }
 
+        $pautasIds = array_values(array_unique(array_map('intval', $pautasIds)));
+
         if ($pautasIds === []) {
             return [];
         }
 
-        $quantidade = min(max(1, $quantidade), count($pautasIds));
+        $pautas = Pauta::query()
+            ->whereIn('id', $pautasIds)
+            ->get(['id', 'componente_curricular_id']);
 
-        return $this->recorteCircularIds($pautasIds, $indiceBase, $quantidade);
+        $selecionadas = [];
+
+        foreach ($componentesIds as $componenteId) {
+            $pautaComponente = $pautas->firstWhere('componente_curricular_id', $componenteId);
+
+            if ($pautaComponente) {
+                $selecionadas[] = (int) $pautaComponente->id;
+            }
+        }
+
+        $selecionadas = array_values(array_unique($selecionadas));
+        $quantidadeFinal = min(max(1, $quantidade), count($pautasIds));
+        $inicio = $indiceBase % count($pautasIds);
+
+        for ($i = 0; $i < count($pautasIds) && count($selecionadas) < $quantidadeFinal; $i++) {
+            $pautaId = (int) $pautasIds[($inicio + $i) % count($pautasIds)];
+
+            if (! in_array($pautaId, $selecionadas, true)) {
+                $selecionadas[] = $pautaId;
+            }
+        }
+
+        return array_slice($selecionadas, 0, $quantidadeFinal);
     }
 
-    private function sincronizarAlternativasLegadasDasPautas(array $pautaIds, array $alternativasIds): void
-    {
-        if ($pautaIds === [] || $alternativasIds === []) {
+    private function sincronizarAlternativasLegadasDasPautas(
+        array $pautaIds,
+        Collection $alternativasPorTipo,
+        int $tipoAvaliacaoPadraoId
+    ): void {
+        if ($pautaIds === []) {
             return;
         }
 
         Pauta::query()
             ->whereIn('id', $pautaIds)
-            ->get(['id'])
-            ->each(function (Pauta $pauta) use ($alternativasIds): void {
+            ->get(['id', 'tipo_avaliacao_id'])
+            ->each(function (Pauta $pauta) use ($alternativasPorTipo, $tipoAvaliacaoPadraoId): void {
+                $tipoAvaliacaoId = (int) ($pauta->tipo_avaliacao_id ?: $tipoAvaliacaoPadraoId);
+                $alternativasIds = $alternativasPorTipo->get(
+                    $tipoAvaliacaoId,
+                    $alternativasPorTipo->get($tipoAvaliacaoPadraoId, [])
+                );
+
+                if ($alternativasIds === []) {
+                    return;
+                }
+
                 $pauta->alternativas()->syncWithoutDetaching($alternativasIds);
             });
     }
@@ -461,17 +635,17 @@ class AvaliacoesVariadasSeeder extends Seeder
         array $pautaIds,
         array $alternativasIds,
         int $indiceBase,
-        \Illuminate\Support\Carbon $agora
+        Carbon $agora
     ): int {
         DB::table('avaliacao_pauta_alternativa')
             ->where('avaliacao_id', $avaliacaoId)
             ->delete();
 
-        if ($pautaIds === [] || count($alternativasIds) < 2 || ($indiceBase % 3) !== 0) {
+        if ($pautaIds === [] || count($alternativasIds) < 2 || ($indiceBase % 2) !== 0) {
             return 0;
         }
 
-        $quantidadePautasComOverride = min(2, count($pautaIds));
+        $quantidadePautasComOverride = min(max(1, (int) floor(count($pautaIds) / 3)), 3);
         $pautasComOverride = $this->recorteCircularIds($pautaIds, $indiceBase, $quantidadePautasComOverride);
 
         $linhas = [];
@@ -514,7 +688,7 @@ class AvaliacoesVariadasSeeder extends Seeder
         array $pautaIds,
         float $coberturaRespostas,
         int $indiceBase,
-        \Illuminate\Support\Carbon $agora
+        Carbon $agora
     ): array {
         AvaliacaoResposta::query()
             ->where('avaliacao_id', (int) $avaliacao->id)
@@ -650,8 +824,8 @@ class AvaliacoesVariadasSeeder extends Seeder
                         'observacao' => $observacao,
                         'respondido_em' => $agora
                             ->copy()
-                            ->subDays($this->hashIndice(45, "dia|{$avaliacao->id}|{$turmaId}|{$pautaId}|{$alunoId}"))
-                            ->subMinutes($this->hashIndice(480, "min|{$avaliacao->id}|{$turmaId}|{$pautaId}|{$alunoId}")),
+                            ->subDays($this->hashIndice(60, "dia|{$avaliacao->id}|{$turmaId}|{$pautaId}|{$alunoId}"))
+                            ->subMinutes($this->hashIndice(600, "min|{$avaliacao->id}|{$turmaId}|{$pautaId}|{$alunoId}")),
                         'created_at' => $agora,
                         'updated_at' => $agora,
                     ];
@@ -671,7 +845,7 @@ class AvaliacoesVariadasSeeder extends Seeder
                     "info|{$avaliacao->id}|{$turmaId}|{$alunoId}|{$indiceBase}"
                 );
 
-                if ($marcadorInfo > 28) {
+                if ($marcadorInfo > 35) {
                     continue;
                 }
 
@@ -820,6 +994,10 @@ class AvaliacoesVariadasSeeder extends Seeder
         return (int) sprintf('%u', crc32($seed));
     }
 
+    /**
+     * @param array<int> $ids
+     * @return array<int>
+     */
     private function recorteCircularIds(array $ids, int $indiceBase, int $tamanho): array
     {
         if ($ids === [] || $tamanho <= 0) {
@@ -829,16 +1007,17 @@ class AvaliacoesVariadasSeeder extends Seeder
         $total = count($ids);
 
         if ($tamanho >= $total) {
-            return $ids;
+            return array_values(array_unique(array_map('intval', $ids)));
         }
 
         $inicio = $indiceBase % $total;
         $selecionados = [];
 
         for ($i = 0; $i < $tamanho; $i++) {
-            $selecionados[] = $ids[($inicio + $i) % $total];
+            $selecionados[] = (int) $ids[($inicio + $i) % $total];
         }
 
         return array_values(array_unique($selecionados));
     }
 }
+

@@ -66,6 +66,33 @@ class AvaliacoesProfessor extends Page
     public function mount(): void
     {
         $this->sincronizarVinculosProfessor();
+
+        $avaliacaoQuery = $this->normalizarQueryId(request()->query('avaliacao'));
+        $turmaQuery = $this->normalizarQueryId(request()->query('turma'));
+
+        if ($avaliacaoQuery) {
+            $this->avaliacao = $avaliacaoQuery;
+        }
+
+        if ($this->avaliacao && ! $this->avaliacoesDisponiveis->contains('id', (int) $this->avaliacao)) {
+            $this->avaliacao = null;
+            $this->turma = null;
+
+            return;
+        }
+
+        if ($turmaQuery) {
+            $this->turma = $turmaQuery;
+        }
+
+        if ($this->turma && ! $this->turmasDisponiveis->contains('id', (int) $this->turma)) {
+            $this->turma = null;
+        }
+
+        if ($this->avaliacao && $this->turma) {
+            $this->carregarRespostas();
+            $this->carregarInformacoesComplementares();
+        }
     }
 
     public function updatedAvaliacao(): void
@@ -869,6 +896,14 @@ class AvaliacoesProfessor extends Page
 
         return $observacao !== '';
     }
+
+    private function normalizarQueryId(mixed $valor): ?int
+    {
+        $id = (int) $valor;
+
+        return $id > 0 ? $id : null;
+    }
+
     public function getTitle(): string
     {
         return '';

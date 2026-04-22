@@ -65,6 +65,8 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     public array $distribuicaoAlternativas = [];
 
+    public array $turmasAvaliadas = [];
+
     public array $filtrosAplicados = [];
 
     public string $ultimaAtualizacao = '';
@@ -965,6 +967,7 @@ class DashboardAvaliacoes extends Page implements HasForms
         $this->avaliacoesResumo = $dados['avaliacoes_resumo'];
         $this->graficoAvaliacoesAtivasPorEscola = $dados['grafico_avaliacoes_ativas_por_escola'];
         $this->distribuicaoAlternativas = $dados['distribuicao_alternativas'];
+        $this->turmasAvaliadas = $dados['turmas_avaliadas'];
         $this->filtrosAplicados = $this->filtrosAplicadosFormatados();
         $this->ultimaAtualizacao = now()->format('d/m/Y H:i:s');
     }
@@ -975,7 +978,8 @@ class DashboardAvaliacoes extends Page implements HasForms
      *     tabela_escolas: array<int, array<string, int|float|string|bool>>,
      *     avaliacoes_resumo: array<int, array<string, int|float|string>>,
      *     grafico_avaliacoes_ativas_por_escola: array<int, array<string, int|float|string>>,
-     *     distribuicao_alternativas: array<string, mixed>
+     *     distribuicao_alternativas: array<string, mixed>,
+     *     turmas_avaliadas: array<int, array<string, int|string>>
      * }
      */
     private function montarDashboardData(): array
@@ -1022,6 +1026,7 @@ class DashboardAvaliacoes extends Page implements HasForms
             'avaliacoes_resumo' => $this->montarResumoAvaliacoes($avaliacaoIds),
             'grafico_avaliacoes_ativas_por_escola' => $this->montarGraficoAvaliacoesAtivasPorEscola($avaliacaoIdsAtivas),
             'distribuicao_alternativas' => $this->montarDistribuicaoAlternativas($avaliacaoIds),
+            'turmas_avaliadas' => $this->montarTurmasAvaliadas($avaliacaoIds),
         ];
     }
 
@@ -1452,6 +1457,68 @@ class DashboardAvaliacoes extends Page implements HasForms
                     'pautas_total' => (int) ($avaliacao->pautas_count ?? 0),
                     'data_inicio' => optional($avaliacao->data_inicio)->format('d/m/Y') ?? '-',
                     'data_fim' => optional($avaliacao->data_fim)->format('d/m/Y') ?? '-',
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, array<string, int|string>>
+     */
+    private function montarTurmasAvaliadas(array $avaliacaoIds): array
+    {
+        if ($avaliacaoIds === []) {
+            return [];
+        }
+
+        $dados = (clone $this->baseRespostasQuery($avaliacaoIds))
+            ->join('avaliacoes as av', 'av.id', '=', 'ar.avaliacao_id')
+            ->leftJoin('escolas as e', 'e.id', '=', 't.id_escola')
+            ->leftJoin('series as s', 's.id', '=', 't.id_serie')
+            ->groupBy(
+                'ar.avaliacao_id',
+                'ar.turma_id',
+                'av.nome',
+                't.nome',
+                't.turno',
+                'e.nome',
+                's.nome'
+            )
+            ->orderByDesc(DB::raw('MAX(ar.respondido_em)'))
+            ->orderBy('av.nome')
+            ->limit(120)
+            ->select(
+                'ar.avaliacao_id',
+                'ar.turma_id',
+                'av.nome as avaliacao_nome',
+                't.nome as turma_nome',
+                't.turno',
+                'e.nome as escola_nome',
+                's.nome as serie_nome',
+                DB::raw('COUNT(*) as respostas_total'),
+                DB::raw('COUNT(DISTINCT ar.aluno_id) as alunos_respondidos'),
+                DB::raw('COUNT(DISTINCT ar.pauta_id) as pautas_respondidas'),
+                DB::raw('MAX(ar.respondido_em) as ultima_resposta_em')
+            )
+            ->get();
+
+        return $dados
+            ->map(function ($item): array {
+                return [
+                    'avaliacao_id' => (int) $item->avaliacao_id,
+                    'turma_id' => (int) $item->turma_id,
+                    'avaliacao_nome' => (string) ($item->avaliacao_nome ?? '-'),
+                    'escola_nome' => (string) ($item->escola_nome ?? '-'),
+                    'serie_nome' => (string) ($item->serie_nome ?? '-'),
+                    'turma_nome' => (string) ($item->turma_nome ?? '-'),
+                    'turno' => (string) ($item->turno ?? '-'),
+                    'respostas_total' => (int) ($item->respostas_total ?? 0),
+                    'alunos_respondidos' => (int) ($item->alunos_respondidos ?? 0),
+                    'pautas_respondidas' => (int) ($item->pautas_respondidas ?? 0),
+                    'ultima_resposta' => $item->ultima_resposta_em
+                        ? \Illuminate\Support\Carbon::parse($item->ultima_resposta_em)->format('d/m/Y H:i')
+                        : '-',
                 ];
             })
             ->values()
