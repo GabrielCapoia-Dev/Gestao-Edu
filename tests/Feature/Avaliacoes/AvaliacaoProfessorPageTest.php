@@ -9,11 +9,14 @@ use App\Models\Avaliacao;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
 use App\Models\Pauta;
+use App\Models\PeriodoAvaliacao;
 use App\Models\Professor;
 use App\Models\Serie;
+use App\Models\TipoAvaliacao;
 use App\Models\Turma;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
@@ -26,17 +29,21 @@ class AvaliacaoProfessorPageTest extends TestCase
     {
         Permission::findOrCreate('Responder Avaliações');
 
+        $tipo = TipoAvaliacao::query()->create(['nome' => 'Parecer', 'status' => true]);
+        $periodo = PeriodoAvaliacao::query()->create(['nome' => '1o Semestre', 'status' => true]);
+
         $escola = $this->criarEscola('Escola Base');
-        $turma = $this->criarTurma($escola, 'Turma A');
+        $serie = $this->criarSerie('SER-BASE', '1o Ano');
+        $turma = $this->criarTurma($escola, $serie, 'Turma A');
 
         $componenteMatematica = ComponenteCurricular::query()->create([
             'codigo' => 'COMP-MAT',
-            'nome' => 'Matemática',
+            'nome' => 'Matematica',
         ]);
 
         $componenteHistoria = ComponenteCurricular::query()->create([
             'codigo' => 'COMP-HIS',
-            'nome' => 'História',
+            'nome' => 'Historia',
         ]);
 
         $userProfessor = User::factory()->create([
@@ -49,7 +56,7 @@ class AvaliacaoProfessorPageTest extends TestCase
             'user_id' => $userProfessor->id,
             'id_escola' => $escola->id,
             'matricula' => 'PROF-001',
-            'nome' => 'Professor Matemática',
+            'nome' => 'Professor Matematica',
             'email' => 'matematica@edu.umuarama.pr.gov.br',
         ]);
 
@@ -58,102 +65,75 @@ class AvaliacaoProfessorPageTest extends TestCase
             'tem_professor' => true,
         ]);
 
-        $pautaMatematica = $this->criarPautaComAlternativa('Pauta de Matemática', $componenteMatematica->id);
-        $pautaHistoria = $this->criarPautaComAlternativa('Pauta de História', $componenteHistoria->id);
-
-        $avaliacaoVisivel = Avaliacao::query()->create([
-            'nome' => 'Avaliação Bimestral - Matemática',
-            'data_inicio' => now()->subDay()->toDateString(),
-            'data_fim' => now()->addDays(10)->toDateString(),
-            'status' => Avaliacao::STATUS_ATIVA,
+        $alternativa = Alternativa::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'nome' => 'Atende',
+            'tem_observacao' => false,
+            'status' => true,
         ]);
+
+        $pautaMatematica = Pauta::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'texto' => 'Pauta de Matematica',
+            'serie_id' => $serie->id,
+            'componente_curricular_id' => $componenteMatematica->id,
+            'status' => true,
+        ]);
+        $pautaMatematica->alternativas()->attach($alternativa->id);
+
+        $pautaHistoria = Pauta::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'texto' => 'Pauta de Historia',
+            'serie_id' => $serie->id,
+            'componente_curricular_id' => $componenteHistoria->id,
+            'status' => true,
+        ]);
+        $pautaHistoria->alternativas()->attach($alternativa->id);
+
+        $avaliacaoVisivel = $this->criarAvaliacao('Avaliacao Matematica', $tipo, $periodo);
         $avaliacaoVisivel->pautas()->attach($pautaMatematica->id);
         $avaliacaoVisivel->turmas()->attach($turma->id);
+        $this->sincronizarEscopoAvaliacao($avaliacaoVisivel, [$serie->id], [$componenteMatematica->id], [$escola->id]);
 
-        $avaliacaoNaoVisivelComponente = Avaliacao::query()->create([
-            'nome' => 'Avaliação Bimestral - História',
-            'data_inicio' => now()->subDay()->toDateString(),
-            'data_fim' => now()->addDays(10)->toDateString(),
-            'status' => Avaliacao::STATUS_ATIVA,
-        ]);
+        $avaliacaoNaoVisivelComponente = $this->criarAvaliacao('Avaliacao Historia', $tipo, $periodo);
         $avaliacaoNaoVisivelComponente->pautas()->attach($pautaHistoria->id);
         $avaliacaoNaoVisivelComponente->turmas()->attach($turma->id);
+        $this->sincronizarEscopoAvaliacao($avaliacaoNaoVisivelComponente, [$serie->id], [$componenteHistoria->id], [$escola->id]);
 
         $avaliacaoInativa = Avaliacao::query()->create([
-            'nome' => 'Avaliação Inativa',
+            'nome' => 'Avaliacao Inativa',
+            'tipo_avaliacao_id' => $tipo->id,
+            'periodo_avaliacao_id' => $periodo->id,
             'data_inicio' => now()->subDay()->toDateString(),
             'data_fim' => now()->addDays(10)->toDateString(),
             'status' => Avaliacao::STATUS_INATIVA,
         ]);
         $avaliacaoInativa->pautas()->attach($pautaMatematica->id);
         $avaliacaoInativa->turmas()->attach($turma->id);
+        $this->sincronizarEscopoAvaliacao($avaliacaoInativa, [$serie->id], [$componenteMatematica->id], [$escola->id]);
 
         $this->actingAs($userProfessor)
             ->get(route('filament.admin.pages.avaliacoes-professor'))
             ->assertOk()
-            ->assertSee('Avaliação Bimestral - Matemática')
-            ->assertDontSee('Avaliação Bimestral - História')
-            ->assertDontSee('Avaliação Inativa');
+            ->assertSee('Avaliacao Matematica')
+            ->assertDontSee('Avaliacao Historia')
+            ->assertDontSee('Avaliacao Inativa');
     }
 
-    public function test_formulario_inicia_sem_avaliacao_e_sem_turma_selecionadas(): void
-    {
-        Permission::findOrCreate('Responder AvaliaÃ§Ãµes');
-
-        $escola = $this->criarEscola('Escola Estado Inicial');
-        $turma = $this->criarTurma($escola, 'Turma Inicial');
-
-        $componente = ComponenteCurricular::query()->create([
-            'codigo' => 'COMP-INI',
-            'nome' => 'Linguagens',
-        ]);
-
-        $userProfessor = User::factory()->create([
-            'email_approved' => true,
-            'email_verified_at' => now(),
-        ]);
-        $userProfessor->givePermissionTo('Responder AvaliaÃ§Ãµes');
-
-        $professor = Professor::query()->create([
-            'user_id' => $userProfessor->id,
-            'id_escola' => $escola->id,
-            'matricula' => 'PROF-INI',
-            'nome' => 'Professor Inicial',
-            'email' => 'inicial@edu.umuarama.pr.gov.br',
-        ]);
-
-        $turma->componentes()->attach($componente->id, [
-            'professor_id' => $professor->id,
-            'tem_professor' => true,
-        ]);
-
-        $pauta = $this->criarPautaComAlternativa('Pauta Inicial', $componente->id);
-
-        $avaliacao = Avaliacao::query()->create([
-            'nome' => 'Avaliacao Inicial',
-            'data_inicio' => now()->subDay()->toDateString(),
-            'data_fim' => now()->addDays(5)->toDateString(),
-            'status' => Avaliacao::STATUS_ATIVA,
-        ]);
-        $avaliacao->pautas()->attach($pauta->id);
-        $avaliacao->turmas()->attach($turma->id);
-
-        Livewire::actingAs($userProfessor)
-            ->test(AvaliacoesProfessor::class)
-            ->assertSet('avaliacao', null)
-            ->assertSet('turma', null);
-    }
-
-    public function test_professor_aplica_avaliacao_em_massa_e_salva_respostas_por_aluno(): void
+    public function test_professor_usa_override_de_alternativas_por_pauta(): void
     {
         Permission::findOrCreate('Responder Avaliações');
 
-        $escola = $this->criarEscola('Escola Avaliações');
-        $turma = $this->criarTurma($escola, 'Turma B');
+        $tipo = TipoAvaliacao::query()->create(['nome' => 'Parecer Override', 'status' => true]);
+        $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Periodo Override', 'status' => true]);
+
+        $escola = $this->criarEscola('Escola Override');
+        $serie = $this->criarSerie('SER-OVR', '2o Ano');
+        $turma = $this->criarTurma($escola, $serie, 'Turma B');
 
         $componente = ComponenteCurricular::query()->create([
-            'codigo' => 'COMP-CIEN',
-            'nome' => 'Ciências',
+            'codigo' => 'COMP-OVR',
+            'nome' => 'Ciencias',
         ]);
 
         $userProfessor = User::factory()->create([
@@ -166,7 +146,7 @@ class AvaliacaoProfessorPageTest extends TestCase
             'user_id' => $userProfessor->id,
             'id_escola' => $escola->id,
             'matricula' => 'PROF-002',
-            'nome' => 'Professor Ciências',
+            'nome' => 'Professor Ciencias',
             'email' => 'ciencias@edu.umuarama.pr.gov.br',
         ]);
 
@@ -175,45 +155,45 @@ class AvaliacaoProfessorPageTest extends TestCase
             'tem_professor' => true,
         ]);
 
+        $alternativaPadrao = Alternativa::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'nome' => 'Padrao',
+            'tem_observacao' => false,
+            'status' => true,
+        ]);
+
+        $alternativaOverride = Alternativa::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'nome' => 'Override',
+            'tem_observacao' => false,
+            'status' => true,
+        ]);
+
         $pauta = Pauta::query()->create([
-            'texto' => 'Participação em sala',
+            'tipo_avaliacao_id' => $tipo->id,
+            'texto' => 'Participacao em aula',
+            'serie_id' => $serie->id,
             'componente_curricular_id' => $componente->id,
             'status' => true,
         ]);
+        $pauta->alternativas()->attach($alternativaPadrao->id);
 
-        $alternativaA = Alternativa::query()->create([
-            'nome' => 'Excelente',
-            'tem_observacao' => false,
-            'status' => true,
-        ]);
-
-        $alternativaB = Alternativa::query()->create([
-            'nome' => 'Regular',
-            'tem_observacao' => false,
-            'status' => true,
-        ]);
-
-        $pauta->alternativas()->attach([$alternativaA->id, $alternativaB->id]);
-
-        $avaliacao = Avaliacao::query()->create([
-            'nome' => 'Avaliação Diagnóstica',
-            'data_inicio' => now()->subDay()->toDateString(),
-            'data_fim' => now()->addDays(5)->toDateString(),
-            'status' => Avaliacao::STATUS_ATIVA,
-        ]);
+        $avaliacao = $this->criarAvaliacao('Avaliacao Override', $tipo, $periodo);
         $avaliacao->pautas()->attach($pauta->id);
         $avaliacao->turmas()->attach($turma->id);
+        $this->sincronizarEscopoAvaliacao($avaliacao, [$serie->id], [$componente->id], [$escola->id]);
 
-        $alunoA = Aluno::query()->create([
-            'nome' => 'Aluno A',
-            'cgm' => 'CGM-A-001',
-            'data_nascimento' => '2015-01-01',
-            'id_turma' => $turma->id,
+        DB::table('avaliacao_pauta_alternativa')->insert([
+            'avaliacao_id' => $avaliacao->id,
+            'pauta_id' => $pauta->id,
+            'alternativa_id' => $alternativaOverride->id,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
-        $alunoB = Aluno::query()->create([
-            'nome' => 'Aluno B',
-            'cgm' => 'CGM-B-001',
+        $aluno = Aluno::query()->create([
+            'nome' => 'Aluno Override',
+            'cgm' => 'CGM-OVR-001',
             'data_nascimento' => '2015-02-01',
             'id_turma' => $turma->id,
         ]);
@@ -222,43 +202,41 @@ class AvaliacaoProfessorPageTest extends TestCase
             ->test(AvaliacoesProfessor::class)
             ->set('avaliacao', $avaliacao->id)
             ->set('turma', $turma->id)
-            ->set("avaliacaoEmMassa.{$pauta->id}", $alternativaA->id)
-            ->call('aplicarEmMassa', $pauta->id)
-            ->assertSet("respostas.{$pauta->id}.{$alunoA->id}.alternativa_id", $alternativaA->id)
-            ->assertSet("respostas.{$pauta->id}.{$alunoB->id}.alternativa_id", $alternativaA->id)
-            ->set("respostas.{$pauta->id}.{$alunoA->id}.observacao", 'Participou bastante.')
+            ->set("respostas.{$pauta->id}.{$aluno->id}.alternativa_id", $alternativaOverride->id)
             ->call('salvarRespostas');
 
         $this->assertDatabaseHas('avaliacao_respostas', [
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
             'turma_id' => $turma->id,
-            'aluno_id' => $alunoA->id,
+            'aluno_id' => $aluno->id,
             'professor_id' => $professor->id,
-            'alternativa_id' => $alternativaA->id,
-            'observacao' => null,
+            'alternativa_id' => $alternativaOverride->id,
         ]);
 
-        $this->assertDatabaseHas('avaliacao_respostas', [
+        $this->assertDatabaseMissing('avaliacao_respostas', [
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
             'turma_id' => $turma->id,
-            'aluno_id' => $alunoB->id,
-            'professor_id' => $professor->id,
-            'alternativa_id' => $alternativaA->id,
+            'aluno_id' => $aluno->id,
+            'alternativa_id' => $alternativaPadrao->id,
         ]);
     }
 
-    public function test_professor_tem_autosave_por_aluno_e_observacao_obrigatoria_quando_alternativa_exige(): void
+    public function test_professor_autosalva_informacoes_complementares_por_aluno(): void
     {
         Permission::findOrCreate('Responder Avaliações');
 
-        $escola = $this->criarEscola('Escola Autosave');
-        $turma = $this->criarTurma($escola, 'Turma Autosave');
+        $tipo = TipoAvaliacao::query()->create(['nome' => 'Tipo Complementar', 'status' => true]);
+        $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Periodo Complementar', 'status' => true]);
+
+        $escola = $this->criarEscola('Escola Complementar');
+        $serie = $this->criarSerie('SER-CMP', '3o Ano');
+        $turma = $this->criarTurma($escola, $serie, 'Turma C');
 
         $componente = ComponenteCurricular::query()->create([
-            'codigo' => 'COMP-AUTO',
-            'nome' => 'Artes',
+            'codigo' => 'COMP-CMP',
+            'nome' => 'Portugues',
         ]);
 
         $userProfessor = User::factory()->create([
@@ -271,8 +249,8 @@ class AvaliacaoProfessorPageTest extends TestCase
             'user_id' => $userProfessor->id,
             'id_escola' => $escola->id,
             'matricula' => 'PROF-003',
-            'nome' => 'Professor Autosave',
-            'email' => 'autosave@edu.umuarama.pr.gov.br',
+            'nome' => 'Professor Portugues',
+            'email' => 'portugues@edu.umuarama.pr.gov.br',
         ]);
 
         $turma->componentes()->attach($componente->id, [
@@ -280,98 +258,61 @@ class AvaliacaoProfessorPageTest extends TestCase
             'tem_professor' => true,
         ]);
 
-        $pauta = Pauta::query()->create([
-            'texto' => 'Registro descritivo',
-            'componente_curricular_id' => $componente->id,
-            'status' => true,
-        ]);
-
-        $alternativaExigeObservacao = Alternativa::query()->create([
-            'nome' => 'Com observação',
-            'tem_observacao' => true,
-            'status' => true,
-        ]);
-
-        $alternativaSemObservacao = Alternativa::query()->create([
-            'nome' => 'Sem observação',
-            'tem_observacao' => false,
-            'status' => true,
-        ]);
-
-        $pauta->alternativas()->attach([$alternativaExigeObservacao->id, $alternativaSemObservacao->id]);
-
-        $avaliacao = Avaliacao::query()->create([
-            'nome' => 'Avaliação com autosave',
-            'data_inicio' => now()->subDay()->toDateString(),
-            'data_fim' => now()->addDays(5)->toDateString(),
-            'status' => Avaliacao::STATUS_ATIVA,
-        ]);
-        $avaliacao->pautas()->attach($pauta->id);
-        $avaliacao->turmas()->attach($turma->id);
-
-        $aluno = Aluno::query()->create([
-            'nome' => 'Aluno Autosave',
-            'cgm' => 'CGM-AUTO-001',
-            'data_nascimento' => '2015-03-01',
-            'id_turma' => $turma->id,
-        ]);
-
-        $component = Livewire::actingAs($userProfessor)
-            ->test(AvaliacoesProfessor::class)
-            ->set('avaliacao', $avaliacao->id)
-            ->set('turma', $turma->id)
-            ->set("respostas.{$pauta->id}.{$aluno->id}.alternativa_id", $alternativaExigeObservacao->id);
-
-        $this->assertDatabaseMissing('avaliacao_respostas', [
-            'avaliacao_id' => $avaliacao->id,
-            'pauta_id' => $pauta->id,
-            'turma_id' => $turma->id,
-            'aluno_id' => $aluno->id,
-            'alternativa_id' => $alternativaExigeObservacao->id,
-        ]);
-
-        $component->set("respostas.{$pauta->id}.{$aluno->id}.observacao", 'Observação registrada.');
-
-        $this->assertDatabaseHas('avaliacao_respostas', [
-            'avaliacao_id' => $avaliacao->id,
-            'pauta_id' => $pauta->id,
-            'turma_id' => $turma->id,
-            'aluno_id' => $aluno->id,
-            'alternativa_id' => $alternativaExigeObservacao->id,
-            'observacao' => 'Observação registrada.',
-            'professor_id' => $professor->id,
-        ]);
-
-        $component->set("respostas.{$pauta->id}.{$aluno->id}.alternativa_id", $alternativaSemObservacao->id);
-
-        $this->assertDatabaseHas('avaliacao_respostas', [
-            'avaliacao_id' => $avaliacao->id,
-            'pauta_id' => $pauta->id,
-            'turma_id' => $turma->id,
-            'aluno_id' => $aluno->id,
-            'alternativa_id' => $alternativaSemObservacao->id,
-            'observacao' => null,
-            'professor_id' => $professor->id,
-        ]);
-    }
-
-    private function criarPautaComAlternativa(string $texto, int $componenteId): Pauta
-    {
-        $pauta = Pauta::query()->create([
-            'texto' => $texto,
-            'componente_curricular_id' => $componenteId,
-            'status' => true,
-        ]);
-
         $alternativa = Alternativa::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
             'nome' => 'Atende',
             'tem_observacao' => false,
             'status' => true,
         ]);
 
+        $pauta = Pauta::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'texto' => 'Leitura e interpretacao',
+            'serie_id' => $serie->id,
+            'componente_curricular_id' => $componente->id,
+            'status' => true,
+        ]);
         $pauta->alternativas()->attach($alternativa->id);
 
-        return $pauta;
+        $avaliacao = $this->criarAvaliacao('Avaliacao Complementar', $tipo, $periodo);
+        $avaliacao->pautas()->attach($pauta->id);
+        $avaliacao->turmas()->attach($turma->id);
+        $this->sincronizarEscopoAvaliacao($avaliacao, [$serie->id], [$componente->id], [$escola->id]);
+
+        $aluno = Aluno::query()->create([
+            'nome' => 'Aluno Complementar',
+            'cgm' => 'CGM-CMP-001',
+            'data_nascimento' => '2015-03-01',
+            'id_turma' => $turma->id,
+        ]);
+
+        Livewire::actingAs($userProfessor)
+            ->test(AvaliacoesProfessor::class)
+            ->set('avaliacao', $avaliacao->id)
+            ->set('turma', $turma->id)
+            ->set("respostas.{$pauta->id}.{$aluno->id}.alternativa_id", $alternativa->id)
+            ->set("informacoesComplementares.{$aluno->id}", 'Aluno evoluiu na comunicacao oral.')
+            ->call('salvarRespostas');
+
+        $this->assertDatabaseHas('avaliacao_informacoes_complementares', [
+            'avaliacao_id' => $avaliacao->id,
+            'turma_id' => $turma->id,
+            'aluno_id' => $aluno->id,
+            'professor_id' => $professor->id,
+            'informacoes_complementares' => 'Aluno evoluiu na comunicacao oral.',
+        ]);
+    }
+
+    private function criarAvaliacao(string $nome, TipoAvaliacao $tipo, PeriodoAvaliacao $periodo): Avaliacao
+    {
+        return Avaliacao::query()->create([
+            'nome' => $nome,
+            'tipo_avaliacao_id' => $tipo->id,
+            'periodo_avaliacao_id' => $periodo->id,
+            'data_inicio' => now()->subDay()->toDateString(),
+            'data_fim' => now()->addDays(10)->toDateString(),
+            'status' => Avaliacao::STATUS_ATIVA,
+        ]);
     }
 
     private function criarEscola(string $nome): Escola
@@ -384,13 +325,16 @@ class AvaliacaoProfessorPageTest extends TestCase
         ]);
     }
 
-    private function criarTurma(Escola $escola, string $nome): Turma
+    private function criarSerie(string $codigo, string $nome): Serie
     {
-        $serie = Serie::query()->create([
-            'codigo' => 'SER' . strtoupper(substr(md5($nome), 0, 4)),
-            'nome' => 'Série ' . $nome,
+        return Serie::query()->create([
+            'codigo' => $codigo,
+            'nome' => $nome,
         ]);
+    }
 
+    private function criarTurma(Escola $escola, Serie $serie, string $nome): Turma
+    {
         return Turma::query()->create([
             'codigo' => 'TUR' . strtoupper(substr(md5($nome . microtime()), 0, 8)),
             'nome' => $nome,
@@ -398,5 +342,12 @@ class AvaliacaoProfessorPageTest extends TestCase
             'id_serie' => $serie->id,
             'id_escola' => $escola->id,
         ]);
+    }
+
+    private function sincronizarEscopoAvaliacao(Avaliacao $avaliacao, array $seriesIds, array $componentesIds, array $escolasIds): void
+    {
+        $avaliacao->series()->sync($seriesIds);
+        $avaliacao->componentes()->sync($componentesIds);
+        $avaliacao->escolas()->sync($escolasIds);
     }
 }

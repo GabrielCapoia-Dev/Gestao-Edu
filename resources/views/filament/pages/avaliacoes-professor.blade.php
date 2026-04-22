@@ -76,6 +76,7 @@
                 @foreach ($this->pautasDisponiveis as $pauta)
                     @php($progressoPauta = $this->progressoPorPauta[$pauta->id] ?? ['preenchidas' => 0, 'total' => $this->alunosDaTurma->count(), 'percentual' => 0, 'concluida' => false])
                     @php($pautaExpandida = $this->pautaEstaExpandida((int) $pauta->id))
+                    @php($alternativasPauta = $this->alternativasDaPauta((int) $pauta->id))
 
                     <section wire:key="pauta-{{ $pauta->id }}" class="gi-panel av-pauta-section {{ $pautaExpandida ? 'is-open' : '' }}">
                         <button type="button" class="av-pauta-toggle" wire:click="alternarPauta({{ $pauta->id }})">
@@ -114,9 +115,9 @@
                                             <span>Avaliacao em massa</span>
                                             <select wire:model="avaliacaoEmMassa.{{ $pauta->id }}">
                                                 <option value="">Selecione uma alternativa</option>
-                                                @foreach ($pauta->alternativas as $alternativa)
-                                                    <option value="{{ $alternativa->id }}">
-                                                        {{ $alternativa->nome }}{{ $alternativa->tem_observacao ? ' (exige observacao)' : '' }}
+                                                @foreach ($alternativasPauta as $alternativa)
+                                                    <option value="{{ $alternativa['id'] }}">
+                                                        {{ $alternativa['nome'] }}{{ ($alternativa['tem_observacao'] ?? false) ? ' (exige observacao)' : '' }}
                                                     </option>
                                                 @endforeach
                                             </select>
@@ -150,9 +151,9 @@
                                                         <div class="av-input-wrap">
                                                             <select class="av-table-input" wire:model.live="respostas.{{ $pauta->id }}.{{ $aluno->id }}.alternativa_id">
                                                                 <option value="">Selecione</option>
-                                                                @foreach ($pauta->alternativas as $alternativa)
-                                                                    <option value="{{ $alternativa->id }}">
-                                                                        {{ $alternativa->nome }}{{ $alternativa->tem_observacao ? ' (exige observacao)' : '' }}
+                                                                @foreach ($alternativasPauta as $alternativa)
+                                                                    <option value="{{ $alternativa['id'] }}">
+                                                                        {{ $alternativa['nome'] }}{{ ($alternativa['tem_observacao'] ?? false) ? ' (exige observacao)' : '' }}
                                                                     </option>
                                                                 @endforeach
                                                             </select>
@@ -196,6 +197,53 @@
                     </section>
                 @endforeach
             </div>
+
+            <details class="gi-panel av-pauta-section" open>
+                <summary class="av-pauta-toggle">
+                    <div class="av-pauta-toggle-main">
+                        <h3 class="av-pauta-title">Informacoes complementares por aluno</h3>
+                        <p class="av-pauta-meta">Campo opcional da avaliacao, independente das pautas.</p>
+                    </div>
+                </summary>
+
+                <div class="av-pauta-content" style="padding-top: .75rem;">
+                    <div class="gi-table-wrap">
+                        <table class="gi-table">
+                            <thead>
+                                <tr>
+                                    <th>Aluno</th>
+                                    <th>Informacoes complementares</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach ($this->alunosDaTurma as $aluno)
+                                    <tr wire:key="complemento-aluno-{{ $aluno->id }}">
+                                        <td>
+                                            <strong>{{ $aluno->nome }}</strong>
+                                            <small>CGM: {{ $aluno->cgm }}</small>
+                                        </td>
+                                        <td>
+                                            <div class="av-input-wrap">
+                                                <input
+                                                    type="text"
+                                                    maxlength="2000"
+                                                    placeholder="Informacoes complementares (opcional)"
+                                                    class="av-table-input"
+                                                    wire:model.live.debounce.600ms="informacoesComplementares.{{ $aluno->id }}" />
+
+                                                <span class="av-saving-indicator" wire:loading.flex wire:target="informacoesComplementares.{{ $aluno->id }}">
+                                                    <span class="av-spinner"></span>
+                                                    Salvando...
+                                                </span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </details>
 
             <section class="gi-panel">
                 <div class="gi-toolbar">

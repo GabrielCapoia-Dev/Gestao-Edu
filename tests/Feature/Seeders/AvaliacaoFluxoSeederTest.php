@@ -5,7 +5,9 @@ namespace Tests\Feature\Seeders;
 use App\Models\Alternativa;
 use App\Models\Avaliacao;
 use App\Models\AvaliacaoResposta;
+use App\Models\PeriodoAvaliacao;
 use App\Models\Pauta;
+use App\Models\TipoAvaliacao;
 use App\Models\Turma;
 use App\Models\User;
 use Database\Seeders\AvaliacaoFluxoSeeder;
@@ -24,6 +26,8 @@ class AvaliacaoFluxoSeederTest extends TestCase
         $this->assertTrue(Pauta::query()->count() >= 5);
         $this->assertTrue(Alternativa::query()->count() >= 5);
         $this->assertTrue(Alternativa::query()->where('tem_observacao', true)->exists());
+        $this->assertTrue(TipoAvaliacao::query()->count() >= 1);
+        $this->assertTrue(PeriodoAvaliacao::query()->count() >= 1);
         $this->assertTrue(Turma::query()->count() >= 3);
         $this->assertTrue(AvaliacaoResposta::query()->count() > 0);
 

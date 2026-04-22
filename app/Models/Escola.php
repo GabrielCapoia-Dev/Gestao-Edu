@@ -54,6 +54,17 @@ class Escola extends Model
             ->withTimestamps();
     }
 
+    public function turmas(): HasMany
+    {
+        return $this->hasMany(Turma::class, 'id_escola');
+    }
+
+    public function avaliacoes(): BelongsToMany
+    {
+        return $this->belongsToMany(Avaliacao::class, 'avaliacao_escola', 'escola_id', 'avaliacao_id')
+            ->withTimestamps();
+    }
+
     // ================= SCOPES =================
 
     public function scopeAtivas(Builder $query): Builder

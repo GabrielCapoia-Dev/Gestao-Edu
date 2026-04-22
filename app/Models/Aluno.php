@@ -37,4 +37,9 @@ class Aluno extends Model
     {
         return $this->hasMany(AvaliacaoResposta::class, 'aluno_id');
     }
+
+    public function avaliacaoInformacoesComplementares()
+    {
+        return $this->hasMany(AvaliacaoInformacaoComplementar::class, 'aluno_id');
+    }
 }

@@ -57,6 +57,7 @@
                     <thead>
                         <tr>
                             <th>Nome</th>
+                            <th>Tipo</th>
                             <th>Tem observacao?</th>
                             <th>Observacao</th>
                             <th>Status</th>
@@ -69,6 +70,7 @@
                         @forelse ($this->alternativas as $alternativa)
                             <tr>
                                 <td><strong>{{ $alternativa->nome }}</strong></td>
+                                <td>{{ $alternativa->tipo?->nome ?? 'Sem tipo' }}</td>
                                 <td>
                                     <span class="av-status {{ $alternativa->tem_observacao ? 'av-status--active' : 'av-status--inactive' }}">
                                         {{ $alternativa->tem_observacao ? 'Sim' : 'Nao' }}
@@ -103,7 +105,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="gi-empty">Nenhuma alternativa encontrada para os filtros aplicados.</td>
+                                <td colspan="8" class="gi-empty">Nenhuma alternativa encontrada para os filtros aplicados.</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -144,6 +146,27 @@
             </header>
 
             <div class="gi-modal-body">
+                <label class="gi-field">
+                    <span>Tipo da avaliacao</span>
+                    <select wire:model.defer="form.tipo_avaliacao_id">
+                        <option value="">Selecione um tipo</option>
+                        @foreach ($this->tiposOptions as $tipoId => $tipoNome)
+                            <option value="{{ $tipoId }}">{{ $tipoNome }}</option>
+                        @endforeach
+                    </select>
+                    @error('form.tipo_avaliacao_id')
+                        <p class="error">{{ $message }}</p>
+                    @enderror
+                </label>
+
+                <label class="gi-field">
+                    <span>Ou cadastre um novo tipo</span>
+                    <input type="text" wire:model.defer="form.novo_tipo_nome" maxlength="255" placeholder="Ex.: Parecer Descritivo" />
+                    @error('form.novo_tipo_nome')
+                        <p class="error">{{ $message }}</p>
+                    @enderror
+                </label>
+
                 <label class="gi-field">
                     <span>Nome</span>
                     <input type="text" wire:model.defer="form.nome" maxlength="255" />

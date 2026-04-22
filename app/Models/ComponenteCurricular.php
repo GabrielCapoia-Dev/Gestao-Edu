@@ -44,4 +44,12 @@ class ComponenteCurricular extends Model
     {
         return $this->hasMany(Pauta::class, 'componente_curricular_id');
     }
+
+    public function avaliacoes()
+    {
+        return $this->belongsToMany(
+            Avaliacao::class,
+            'avaliacao_componente'
+        )->withTimestamps();
+    }
 }

@@ -38,4 +38,17 @@ class Serie extends Model
             'serie_componente_curricular'
         );
     }
+
+    public function pautas()
+    {
+        return $this->hasMany(Pauta::class, 'serie_id');
+    }
+
+    public function avaliacoes()
+    {
+        return $this->belongsToMany(
+            Avaliacao::class,
+            'avaliacao_serie'
+        )->withTimestamps();
+    }
 }

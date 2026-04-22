@@ -15,8 +15,10 @@ class Pauta extends Model
     protected $table = 'pautas';
 
     protected $fillable = [
+        'tipo_avaliacao_id',
         'texto',
         'componente_curricular_id',
+        'serie_id',
         'status',
     ];
 
@@ -30,6 +32,16 @@ class Pauta extends Model
     public function componente(): BelongsTo
     {
         return $this->belongsTo(ComponenteCurricular::class, 'componente_curricular_id');
+    }
+
+    public function tipo(): BelongsTo
+    {
+        return $this->belongsTo(TipoAvaliacao::class, 'tipo_avaliacao_id');
+    }
+
+    public function serie(): BelongsTo
+    {
+        return $this->belongsTo(Serie::class, 'serie_id');
     }
 
     public function alternativas(): BelongsToMany

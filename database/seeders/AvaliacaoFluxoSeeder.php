@@ -9,10 +9,12 @@ use App\Models\Aluno;
 use App\Models\ComponenteCurricular;
 use App\Models\DominioEmail;
 use App\Models\Escola;
+use App\Models\PeriodoAvaliacao;
 use App\Models\Pauta;
 use App\Models\Professor;
 use App\Models\Role;
 use App\Models\Serie;
+use App\Models\TipoAvaliacao;
 use App\Models\Turma;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -29,13 +31,13 @@ class AvaliacaoFluxoSeeder extends Seeder
 
         DominioEmail::firstOrCreate(
             ['dominio_email' => 'edu.umuarama.pr.gov.br'],
-            ['setor' => 'Educação', 'status' => true]
+            ['setor' => 'Educacao', 'status' => true]
         );
 
         $escolaCentro = Escola::updateOrCreate(
             ['codigo' => 'ESCAVC'],
             [
-                'nome' => 'Escola Municipal Centro Avaliações',
+                'nome' => 'Escola Municipal Centro Avaliacoes',
                 'email' => 'escola.centro@edu.umuarama.pr.gov.br',
                 'telefone' => '(44) 3900-1001',
             ]
@@ -44,7 +46,7 @@ class AvaliacaoFluxoSeeder extends Seeder
         $escolaJardim = Escola::updateOrCreate(
             ['codigo' => 'ESCAVJ'],
             [
-                'nome' => 'Escola Municipal Jardim Avaliações',
+                'nome' => 'Escola Municipal Jardim Avaliacoes',
                 'email' => 'escola.jardim@edu.umuarama.pr.gov.br',
                 'telefone' => '(44) 3900-1002',
             ]
@@ -52,22 +54,22 @@ class AvaliacaoFluxoSeeder extends Seeder
 
         $serie5 = Serie::updateOrCreate(
             ['codigo' => 'SERAVA5'],
-            ['nome' => '5º Ano']
+            ['nome' => '5o Ano']
         );
 
         $serie6 = Serie::updateOrCreate(
             ['codigo' => 'SERAVA6'],
-            ['nome' => '6º Ano']
+            ['nome' => '6o Ano']
         );
 
         $componenteMatematica = ComponenteCurricular::updateOrCreate(
             ['codigo' => 'COMP-MAT-AV'],
-            ['nome' => 'Matemática']
+            ['nome' => 'Matematica']
         );
 
         $componenteHistoria = ComponenteCurricular::updateOrCreate(
             ['codigo' => 'COMP-HIS-AV'],
-            ['nome' => 'História']
+            ['nome' => 'Historia']
         );
 
         $componenteGeografia = ComponenteCurricular::updateOrCreate(
@@ -77,7 +79,17 @@ class AvaliacaoFluxoSeeder extends Seeder
 
         $componenteCiencias = ComponenteCurricular::updateOrCreate(
             ['codigo' => 'COMP-CIE-AV'],
-            ['nome' => 'Ciências']
+            ['nome' => 'Ciencias']
+        );
+
+        $tipoParecer = TipoAvaliacao::query()->firstOrCreate(
+            ['nome' => 'Parecer Descritivo'],
+            ['status' => true]
+        );
+
+        $periodoPrimeiroSemestre = PeriodoAvaliacao::query()->firstOrCreate(
+            ['nome' => '1o Semestre'],
+            ['status' => true]
         );
 
         $serie5->componentesCurriculares()->syncWithoutDetaching([
@@ -128,7 +140,7 @@ class AvaliacaoFluxoSeeder extends Seeder
             ['email' => 'gestor.avaliacoes@edu.umuarama.pr.gov.br'],
             [
                 'id_escola' => $escolaCentro->id,
-                'name' => 'Gestor de Avaliações',
+                'name' => 'Gestor Avaliacoes',
                 'password' => Hash::make('Senha@123'),
                 'email_approved' => true,
                 'email_verified_at' => now(),
@@ -138,7 +150,7 @@ class AvaliacaoFluxoSeeder extends Seeder
         $professorMatUser = User::updateOrCreate(
             ['email' => 'prof.matematica@edu.umuarama.pr.gov.br'],
             [
-                'name' => 'Professor Matemática',
+                'name' => 'Professor Matematica',
                 'password' => Hash::make('Senha@123'),
                 'email_approved' => true,
                 'email_verified_at' => now(),
@@ -148,7 +160,7 @@ class AvaliacaoFluxoSeeder extends Seeder
         $professorHistUser = User::updateOrCreate(
             ['email' => 'prof.historia@edu.umuarama.pr.gov.br'],
             [
-                'name' => 'Professor História',
+                'name' => 'Professor Historia',
                 'password' => Hash::make('Senha@123'),
                 'email_approved' => true,
                 'email_verified_at' => now(),
@@ -167,7 +179,7 @@ class AvaliacaoFluxoSeeder extends Seeder
             ['id_escola' => $escolaCentro->id, 'matricula' => 'PROF-MAT-01'],
             [
                 'user_id' => $professorMatUser->id,
-                'nome' => 'Professor Matemática',
+                'nome' => 'Professor Matematica',
                 'email' => 'prof.matematica@edu.umuarama.pr.gov.br',
                 'telefone' => '(44) 99999-0001',
             ]
@@ -177,7 +189,7 @@ class AvaliacaoFluxoSeeder extends Seeder
             ['id_escola' => $escolaCentro->id, 'matricula' => 'PROF-HIS-01'],
             [
                 'user_id' => $professorHistUser->id,
-                'nome' => 'Professor História',
+                'nome' => 'Professor Historia',
                 'email' => 'prof.historia@edu.umuarama.pr.gov.br',
                 'telefone' => '(44) 99999-0002',
             ]
@@ -204,61 +216,96 @@ class AvaliacaoFluxoSeeder extends Seeder
 
         $alternativaExcelente = Alternativa::updateOrCreate(
             ['nome' => 'Excelente'],
-            ['tem_observacao' => false, 'observacao' => null, 'status' => true]
+            [
+                'tipo_avaliacao_id' => $tipoParecer->id,
+                'tem_observacao' => false,
+                'observacao' => null,
+                'status' => true,
+            ]
         );
         $alternativaBom = Alternativa::updateOrCreate(
             ['nome' => 'Bom'],
-            ['tem_observacao' => false, 'observacao' => null, 'status' => true]
+            [
+                'tipo_avaliacao_id' => $tipoParecer->id,
+                'tem_observacao' => false,
+                'observacao' => null,
+                'status' => true,
+            ]
         );
         $alternativaRegular = Alternativa::updateOrCreate(
             ['nome' => 'Regular'],
-            ['tem_observacao' => false, 'observacao' => null, 'status' => true]
+            [
+                'tipo_avaliacao_id' => $tipoParecer->id,
+                'tem_observacao' => false,
+                'observacao' => null,
+                'status' => true,
+            ]
         );
         $alternativaInsuficiente = Alternativa::updateOrCreate(
             ['nome' => 'Insuficiente'],
-            ['tem_observacao' => false, 'observacao' => null, 'status' => true]
+            [
+                'tipo_avaliacao_id' => $tipoParecer->id,
+                'tem_observacao' => false,
+                'observacao' => null,
+                'status' => true,
+            ]
         );
         $alternativaDiscursiva = Alternativa::updateOrCreate(
             ['nome' => 'Resposta Discursiva'],
-            ['tem_observacao' => true, 'observacao' => 'Alternativa para texto livre do professor.', 'status' => true]
+            [
+                'tipo_avaliacao_id' => $tipoParecer->id,
+                'tem_observacao' => true,
+                'observacao' => 'Alternativa para texto livre do professor.',
+                'status' => true,
+            ]
         );
 
         $pautaMatematica = Pauta::updateOrCreate(
-            ['texto' => 'Resolve operações com números naturais e decimais.'],
+            ['texto' => 'Resolve operacoes com numeros naturais e decimais.'],
             [
+                'tipo_avaliacao_id' => $tipoParecer->id,
                 'componente_curricular_id' => $componenteMatematica->id,
+                'serie_id' => $serie5->id,
                 'status' => true,
             ]
         );
 
         $pautaHistoria = Pauta::updateOrCreate(
-            ['texto' => 'Compreende fatos históricos e suas relações com o presente.'],
+            ['texto' => 'Compreende fatos historicos e suas relacoes com o presente.'],
             [
+                'tipo_avaliacao_id' => $tipoParecer->id,
                 'componente_curricular_id' => $componenteHistoria->id,
+                'serie_id' => $serie5->id,
                 'status' => true,
             ]
         );
 
         $pautaGeografia = Pauta::updateOrCreate(
-            ['texto' => 'Interpreta mapas e localização no espaço geográfico.'],
+            ['texto' => 'Interpreta mapas e localizacao no espaco geografico.'],
             [
+                'tipo_avaliacao_id' => $tipoParecer->id,
                 'componente_curricular_id' => $componenteGeografia->id,
+                'serie_id' => $serie5->id,
                 'status' => true,
             ]
         );
 
         $pautaCiencias = Pauta::updateOrCreate(
-            ['texto' => 'Aplica conceitos científicos em situações do cotidiano.'],
+            ['texto' => 'Aplica conceitos cientificos em situacoes do cotidiano.'],
             [
+                'tipo_avaliacao_id' => $tipoParecer->id,
                 'componente_curricular_id' => $componenteCiencias->id,
+                'serie_id' => $serie5->id,
                 'status' => true,
             ]
         );
 
         $pautaParticipacao = Pauta::updateOrCreate(
-            ['texto' => 'Participação e engajamento do aluno durante as aulas.'],
+            ['texto' => 'Participacao e engajamento do aluno durante as aulas.'],
             [
+                'tipo_avaliacao_id' => $tipoParecer->id,
                 'componente_curricular_id' => null,
+                'serie_id' => $serie5->id,
                 'status' => true,
             ]
         );
@@ -278,8 +325,10 @@ class AvaliacaoFluxoSeeder extends Seeder
         $pautaParticipacao->alternativas()->sync($alternativasBaseIds);
 
         $avaliacaoDiagnostica = Avaliacao::updateOrCreate(
-            ['nome' => 'Diagnóstica 1º Bimestre 2026'],
+            ['nome' => 'Diagnostica 1o Bimestre 2026'],
             [
+                'tipo_avaliacao_id' => $tipoParecer->id,
+                'periodo_avaliacao_id' => $periodoPrimeiroSemestre->id,
                 'data_inicio' => now()->subDays(5)->toDateString(),
                 'data_fim' => now()->addDays(20)->toDateString(),
                 'status' => Avaliacao::STATUS_ATIVA,
@@ -296,10 +345,20 @@ class AvaliacaoFluxoSeeder extends Seeder
             $turmaCentroB->id,
             $turmaJardimA->id,
         ]);
+        $avaliacaoDiagnostica->series()->sync([$serie5->id, $serie6->id]);
+        $avaliacaoDiagnostica->componentes()->sync([
+            $componenteMatematica->id,
+            $componenteHistoria->id,
+            $componenteGeografia->id,
+            $componenteCiencias->id,
+        ]);
+        $avaliacaoDiagnostica->escolas()->sync([$escolaCentro->id, $escolaJardim->id]);
 
         $avaliacaoFormativa = Avaliacao::updateOrCreate(
-            ['nome' => 'Formativa Ciências e Matemática 2026'],
+            ['nome' => 'Formativa Ciencias e Matematica 2026'],
             [
+                'tipo_avaliacao_id' => $tipoParecer->id,
+                'periodo_avaliacao_id' => $periodoPrimeiroSemestre->id,
                 'data_inicio' => now()->subDays(1)->toDateString(),
                 'data_fim' => now()->addDays(15)->toDateString(),
                 'status' => Avaliacao::STATUS_ATIVA,
@@ -314,10 +373,15 @@ class AvaliacaoFluxoSeeder extends Seeder
             $turmaCentroA->id,
             $turmaJardimA->id,
         ]);
+        $avaliacaoFormativa->series()->sync([$serie5->id]);
+        $avaliacaoFormativa->componentes()->sync([$componenteMatematica->id, $componenteCiencias->id]);
+        $avaliacaoFormativa->escolas()->sync([$escolaCentro->id, $escolaJardim->id]);
 
         $avaliacaoEncerrada = Avaliacao::updateOrCreate(
-            ['nome' => 'Avaliação Encerrada 2025'],
+            ['nome' => 'Avaliacao Encerrada 2025'],
             [
+                'tipo_avaliacao_id' => $tipoParecer->id,
+                'periodo_avaliacao_id' => $periodoPrimeiroSemestre->id,
                 'data_inicio' => now()->subMonths(6)->toDateString(),
                 'data_fim' => now()->subMonths(5)->toDateString(),
                 'status' => Avaliacao::STATUS_ENCERRADA,
@@ -328,6 +392,9 @@ class AvaliacaoFluxoSeeder extends Seeder
             $pautaHistoria->id,
         ]);
         $avaliacaoEncerrada->turmas()->sync([$turmaCentroA->id]);
+        $avaliacaoEncerrada->series()->sync([$serie5->id]);
+        $avaliacaoEncerrada->componentes()->sync([$componenteMatematica->id, $componenteHistoria->id]);
+        $avaliacaoEncerrada->escolas()->sync([$escolaCentro->id]);
 
         foreach ($alunosCentroA->take(6) as $aluno) {
             AvaliacaoResposta::updateOrCreate(
@@ -357,17 +424,17 @@ class AvaliacaoFluxoSeeder extends Seeder
                 [
                     'professor_id' => $professorHist->id,
                     'alternativa_id' => $alternativaRegular->id,
-                    'observacao' => 'Avaliação parcial para testes de continuidade.',
+                    'observacao' => 'Avaliacao parcial para testes de continuidade.',
                     'respondido_em' => now()->subHours(2),
                 ]
             );
         }
 
         if ($this->command) {
-            $this->command->info('Seeder de avaliações concluído.');
-            $this->command->line('Usuário gestor: gestor.avaliacoes@edu.umuarama.pr.gov.br | Senha: Senha@123');
-            $this->command->line('Professor matemática: prof.matematica@edu.umuarama.pr.gov.br | Senha: Senha@123');
-            $this->command->line('Professor história: prof.historia@edu.umuarama.pr.gov.br | Senha: Senha@123');
+            $this->command->info('Seeder de avaliacoes concluido.');
+            $this->command->line('Usuario gestor: gestor.avaliacoes@edu.umuarama.pr.gov.br | Senha: Senha@123');
+            $this->command->line('Professor matematica: prof.matematica@edu.umuarama.pr.gov.br | Senha: Senha@123');
+            $this->command->line('Professor historia: prof.historia@edu.umuarama.pr.gov.br | Senha: Senha@123');
         }
     }
 

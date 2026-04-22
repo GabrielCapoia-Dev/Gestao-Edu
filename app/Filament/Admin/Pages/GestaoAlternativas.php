@@ -3,12 +3,14 @@
 namespace App\Filament\Admin\Pages;
 
 use App\Models\Alternativa;
+use App\Models\TipoAvaliacao;
 use BackedEnum;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\WithPagination;
 use UnitEnum;
@@ -42,6 +44,8 @@ class GestaoAlternativas extends Page
     public ?int $alternativaIdEditando = null;
 
     public array $form = [
+        'tipo_avaliacao_id' => null,
+        'novo_tipo_nome' => '',
         'nome' => '',
         'tem_observacao' => false,
         'observacao' => '',
@@ -78,7 +82,9 @@ class GestaoAlternativas extends Page
 
     public function getAlternativasProperty(): LengthAwarePaginator
     {
-        $query = Alternativa::query()->withCount('pautas');
+        $query = Alternativa::query()
+            ->with('tipo:id,nome')
+            ->withCount('pautas');
 
         if (filled($this->busca)) {
             $busca = trim($this->busca);
@@ -114,6 +120,8 @@ class GestaoAlternativas extends Page
 
         $this->alternativaIdEditando = null;
         $this->form = [
+            'tipo_avaliacao_id' => null,
+            'novo_tipo_nome' => '',
             'nome' => '',
             'tem_observacao' => false,
             'observacao' => '',
@@ -147,6 +155,8 @@ class GestaoAlternativas extends Page
 
         $this->alternativaIdEditando = $alternativa->id;
         $this->form = [
+            'tipo_avaliacao_id' => $alternativa->tipo_avaliacao_id,
+            'novo_tipo_nome' => '',
             'nome' => (string) $alternativa->nome,
             'tem_observacao' => (bool) $alternativa->tem_observacao,
             'observacao' => (string) ($alternativa->observacao ?? ''),
@@ -159,6 +169,15 @@ class GestaoAlternativas extends Page
     public function fecharModal(): void
     {
         $this->modalAberto = false;
+    }
+
+    public function getTiposOptionsProperty(): array
+    {
+        return TipoAvaliacao::query()
+            ->where('status', true)
+            ->orderBy('nome')
+            ->pluck('nome', 'id')
+            ->toArray();
     }
 
     public function salvarAlternativa(): void
@@ -184,6 +203,8 @@ class GestaoAlternativas extends Page
         }
 
         $validated = $this->validate([
+            'form.tipo_avaliacao_id' => ['nullable', 'integer', 'exists:tipos_avaliacao,id'],
+            'form.novo_tipo_nome' => ['nullable', 'string', 'max:255'],
             'form.nome' => [
                 'required',
                 'string',
@@ -194,6 +215,24 @@ class GestaoAlternativas extends Page
             'form.observacao' => ['nullable', 'string', 'max:1000'],
             'form.status' => ['required', 'boolean'],
         ]);
+
+        $novoTipoNome = Str::of((string) ($validated['form']['novo_tipo_nome'] ?? ''))->trim()->toString();
+        $tipoAvaliacaoId = (int) ($validated['form']['tipo_avaliacao_id'] ?? 0);
+
+        if ($novoTipoNome !== '') {
+            $tipoAvaliacaoId = (int) TipoAvaliacao::query()
+                ->firstOrCreate(
+                    ['nome' => $novoTipoNome],
+                    ['status' => true]
+                )
+                ->id;
+        }
+
+        if ($tipoAvaliacaoId <= 0) {
+            $this->addError('form.tipo_avaliacao_id', 'Selecione um tipo existente ou informe um novo tipo.');
+
+            return;
+        }
 
         if ($isEdicao) {
             $alternativa = Alternativa::query()->find($this->alternativaIdEditando);
@@ -211,6 +250,7 @@ class GestaoAlternativas extends Page
         }
 
         $alternativa->fill([
+            'tipo_avaliacao_id' => $tipoAvaliacaoId,
             'nome' => trim((string) $validated['form']['nome']),
             'tem_observacao' => (bool) $validated['form']['tem_observacao'],
             'observacao' => ((bool) $validated['form']['tem_observacao']) && filled($validated['form']['observacao'] ?? null)

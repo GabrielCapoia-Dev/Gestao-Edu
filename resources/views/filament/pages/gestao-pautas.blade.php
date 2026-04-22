@@ -67,6 +67,8 @@
                     <thead>
                         <tr>
                             <th>Pauta</th>
+                            <th>Tipo</th>
+                            <th>Serie</th>
                             <th>Componente</th>
                             <th class="text-right">Alternativas</th>
                             <th class="text-right">Avaliacoes</th>
@@ -79,6 +81,8 @@
                         @forelse ($this->pautas as $pauta)
                             <tr>
                                 <td><strong>{{ $pauta->texto }}</strong></td>
+                                <td>{{ $pauta->tipo?->nome ?? 'Sem tipo' }}</td>
+                                <td>{{ $pauta->serie?->nome ?? 'Sem serie' }}</td>
                                 <td>{{ $pauta->componente?->nome ?: 'Geral' }}</td>
                                 <td class="text-right">{{ $pauta->alternativas_count }}</td>
                                 <td class="text-right">{{ $pauta->avaliacoes_count }}</td>
@@ -109,7 +113,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="gi-empty">Nenhuma pauta encontrada para os filtros aplicados.</td>
+                                <td colspan="9" class="gi-empty">Nenhuma pauta encontrada para os filtros aplicados.</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -161,6 +165,32 @@
 
                     <div class="av-stack">
                         <label class="gi-field">
+                            <span>Tipo</span>
+                            <select wire:model.defer="form.tipo_avaliacao_id">
+                                <option value="">Selecione um tipo</option>
+                                @foreach ($this->tiposOptions as $tipoId => $tipoNome)
+                                    <option value="{{ $tipoId }}">{{ $tipoNome }}</option>
+                                @endforeach
+                            </select>
+                            @error('form.tipo_avaliacao_id')
+                                <p class="error">{{ $message }}</p>
+                            @enderror
+                        </label>
+
+                        <label class="gi-field">
+                            <span>Serie</span>
+                            <select wire:model.defer="form.serie_id">
+                                <option value="">Selecione uma serie</option>
+                                @foreach ($this->seriesOptions as $serieId => $serieNome)
+                                    <option value="{{ $serieId }}">{{ $serieNome }}</option>
+                                @endforeach
+                            </select>
+                            @error('form.serie_id')
+                                <p class="error">{{ $message }}</p>
+                            @enderror
+                        </label>
+
+                        <label class="gi-field">
                             <span>Componente (opcional)</span>
                             <select wire:model.defer="form.componente_curricular_id">
                                 <option value="">Geral (sem componente)</option>
@@ -185,7 +215,7 @@
 
                 <section class="av-form-section">
                     <h4>Alternativas existentes</h4>
-                    <p>Selecione as alternativas ja cadastradas para esta pauta.</p>
+                    <p>Selecione alternativas existentes do mesmo tipo, se desejar definir alternativas fixas para a pauta.</p>
 
                     <div class="av-filament-scope-form">
                         {{ $this->alternativasExistentesForm }}

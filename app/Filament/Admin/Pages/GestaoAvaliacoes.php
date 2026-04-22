@@ -2,10 +2,14 @@
 
 namespace App\Filament\Admin\Pages;
 
+use App\Models\Alternativa;
 use App\Models\Avaliacao;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
+use App\Models\PeriodoAvaliacao;
 use App\Models\Pauta;
+use App\Models\Serie;
+use App\Models\TipoAvaliacao;
 use BackedEnum;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -15,8 +19,10 @@ use Filament\Pages\Page;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Livewire\WithPagination;
 use UnitEnum;
 
@@ -51,12 +57,17 @@ class GestaoAvaliacoes extends Page implements HasForms
 
     public array $form = [
         'nome' => '',
+        'tipo_avaliacao_id' => null,
+        'periodo_avaliacao_id' => null,
+        'novo_periodo_nome' => '',
         'data_inicio' => '',
         'data_fim' => '',
         'status' => Avaliacao::STATUS_ATIVA,
-        'escola_id' => 'todas',
+        'series_ids' => [],
         'componentes_ids' => [],
-        'pautas_ids' => [],
+        'escolas_ids' => [],
+        'pautas_override_habilitado' => [],
+        'alternativas_override' => [],
     ];
 
     protected $queryString = [
@@ -83,20 +94,20 @@ class GestaoAvaliacoes extends Page implements HasForms
     {
         return $schema
             ->components([
-                Select::make('escola_id')
-                    ->label('Escola')
-                    ->helperText('Escolha uma escola especifica ou mantenha todas para abranger toda a rede.')
-                    ->options(fn (): array => $this->escolasOptions)
+                Select::make('series_ids')
+                    ->label('Séries')
+                    ->helperText('Selecione uma ou mais séries.')
+                    ->options(fn (): array => $this->seriesOptions)
+                    ->multiple()
                     ->required()
                     ->native(false)
                     ->searchable()
                     ->preload()
                     ->live()
-                    ->default('todas')
-                    ->afterStateUpdated(fn () => $this->updatedFormEscolaId()),
+                    ->afterStateUpdated(fn () => $this->updatedFormSeriesIds()),
                 Select::make('componentes_ids')
                     ->label('Componentes')
-                    ->helperText('Selecione um ou mais componentes. As turmas serao vinculadas automaticamente.')
+                    ->helperText('Após selecionar as séries, escolha os componentes.')
                     ->options(fn (): array => $this->componentesOptions)
                     ->multiple()
                     ->required()
@@ -105,16 +116,17 @@ class GestaoAvaliacoes extends Page implements HasForms
                     ->preload()
                     ->live()
                     ->afterStateUpdated(fn () => $this->updatedFormComponentesIds()),
-                Select::make('pautas_ids')
-                    ->label('Pautas')
-                    ->helperText('Selecione uma ou mais pautas para compor a avaliacao.')
-                    ->options(fn (): array => $this->pautasOptions)
+                Select::make('escolas_ids')
+                    ->label('Escolas')
+                    ->helperText('Selecione escolas elegíveis ou marque "Todas as escolas elegíveis".')
+                    ->options(fn (): array => $this->escolasOptions)
                     ->multiple()
                     ->required()
                     ->native(false)
                     ->searchable()
                     ->preload()
-                    ->live(),
+                    ->live()
+                    ->afterStateUpdated(fn () => $this->updatedFormEscolasIds()),
             ])
             ->columns(3)
             ->statePath('form');
@@ -135,20 +147,23 @@ class GestaoAvaliacoes extends Page implements HasForms
         $this->resetPage();
     }
 
-    public function updatedFormEscolaId(): void
+    public function updatedFormTipoAvaliacaoId(): void
     {
-        $componentesDisponiveis = collect(array_keys($this->componentesOptions))
-            ->map(fn ($id) => (int) $id)
-            ->all();
+        $this->sincronizarOverridesPautasComFiltros();
+    }
 
-        $this->form['componentes_ids'] = collect($this->form['componentes_ids'] ?? [])
+    public function updatedFormSeriesIds(): void
+    {
+        $this->form['series_ids'] = collect($this->form['series_ids'] ?? [])
             ->filter()
             ->map(fn ($id) => (int) $id)
-            ->intersect($componentesDisponiveis)
+            ->unique()
             ->values()
             ->all();
 
-        $this->sincronizarPautasSelecionadasComFiltros();
+        $this->sincronizarComponentesSelecionadosComFiltros();
+        $this->sincronizarEscolasSelecionadasComFiltros();
+        $this->sincronizarOverridesPautasComFiltros();
     }
 
     public function updatedFormComponentesIds(): void
@@ -160,7 +175,13 @@ class GestaoAvaliacoes extends Page implements HasForms
             ->values()
             ->all();
 
-        $this->sincronizarPautasSelecionadasComFiltros();
+        $this->sincronizarEscolasSelecionadasComFiltros();
+        $this->sincronizarOverridesPautasComFiltros();
+    }
+
+    public function updatedFormEscolasIds(): void
+    {
+        $this->sincronizarEscolasSelecionadasComFiltros();
     }
 
     public function getAvaliacoesProperty(): LengthAwarePaginator
@@ -168,16 +189,20 @@ class GestaoAvaliacoes extends Page implements HasForms
         $query = Avaliacao::query()
             ->withCount(['pautas'])
             ->with([
-                'pautas:id,texto,componente_curricular_id',
-                'pautas.componente:id,nome',
+                'tipo:id,nome',
+                'periodo:id,nome',
+                'componentes:id,nome',
+                'series:id,nome',
+                'escolas:id,nome',
             ]);
 
         if (filled($this->busca)) {
             $busca = trim($this->busca);
-            $query->where(function ($subQuery) use ($busca) {
+            $query->where(function ($subQuery) use ($busca): void {
                 $subQuery->where('nome', 'like', "%{$busca}%")
-                    ->orWhereHas('pautas', fn ($pautaQuery) => $pautaQuery->where('texto', 'like', "%{$busca}%"))
-                    ->orWhereHas('turmas', fn ($turmaQuery) => $turmaQuery->where('nome', 'like', "%{$busca}%"));
+                    ->orWhereHas('tipo', fn ($tipoQuery) => $tipoQuery->where('nome', 'like', "%{$busca}%"))
+                    ->orWhereHas('periodo', fn ($periodoQuery) => $periodoQuery->where('nome', 'like', "%{$busca}%"))
+                    ->orWhereHas('componentes', fn ($componenteQuery) => $componenteQuery->where('nome', 'like', "%{$busca}%"));
             });
         }
 
@@ -195,64 +220,107 @@ class GestaoAvaliacoes extends Page implements HasForms
         return Avaliacao::statusOptions();
     }
 
-    public function getEscolasOptionsProperty(): array
+    public function getTiposOptionsProperty(): array
     {
-        return ['todas' => 'Todas as escolas'] + Escola::query()
+        return TipoAvaliacao::query()
+            ->where('status', true)
             ->orderBy('nome')
             ->pluck('nome', 'id')
-            ->mapWithKeys(fn ($nome, $id): array => [(string) $id => $nome])
-            ->all();
+            ->toArray();
+    }
+
+    public function getPeriodosOptionsProperty(): array
+    {
+        return PeriodoAvaliacao::query()
+            ->where('status', true)
+            ->orderBy('nome')
+            ->pluck('nome', 'id')
+            ->toArray();
+    }
+
+    public function getSeriesOptionsProperty(): array
+    {
+        return Serie::query()
+            ->whereHas('turmas')
+            ->orderBy('nome')
+            ->pluck('nome', 'id')
+            ->toArray();
     }
 
     public function getComponentesOptionsProperty(): array
     {
-        $escolaId = $this->resolverEscolaIdSelecionada($this->form['escola_id'] ?? 'todas');
+        $seriesIds = collect($this->form['series_ids'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($seriesIds === []) {
+            return [];
+        }
 
         return ComponenteCurricular::query()
             ->select('componentes_curriculares.id', 'componentes_curriculares.nome')
-            ->join('turma_componente_professor as tcp', 'tcp.componente_curricular_id', '=', 'componentes_curriculares.id')
-            ->join('turmas as t', 't.id', '=', 'tcp.turma_id')
-            ->when($escolaId, fn ($query, $id) => $query->where('t.id_escola', $id))
+            ->join('serie_componente_curricular as scc', 'scc.componente_curricular_id', '=', 'componentes_curriculares.id')
+            ->whereIn('scc.serie_id', $seriesIds)
             ->orderBy('componentes_curriculares.nome')
             ->distinct()
             ->pluck('componentes_curriculares.nome', 'componentes_curriculares.id')
             ->toArray();
     }
 
-    public function getPautasOptionsProperty(): array
+    public function getEscolasOptionsProperty(): array
     {
-        $componentesIds = collect($this->form['componentes_ids'] ?? [])
-            ->filter()
-            ->map(fn ($id) => (int) $id)
-            ->unique()
-            ->values()
+        $escolasElegiveis = $this->buscarEscolasElegiveis(
+            collect($this->form['series_ids'] ?? [])->map(fn ($id) => (int) $id)->all(),
+            collect($this->form['componentes_ids'] ?? [])->map(fn ($id) => (int) $id)->all()
+        );
+
+        if ($escolasElegiveis->isEmpty()) {
+            return [];
+        }
+
+        return ['todas' => 'Todas as escolas elegíveis'] + $escolasElegiveis
+            ->pluck('nome', 'id')
+            ->mapWithKeys(fn ($nome, $id): array => [(string) $id => $nome])
             ->all();
+    }
 
-        return Pauta::query()
-            ->with(['componente:id,nome'])
-            ->withCount('alternativas')
+    public function getPautasCarregadasProperty(): Collection
+    {
+        $tipoAvaliacaoId = (int) ($this->form['tipo_avaliacao_id'] ?? 0);
+        $seriesIds = collect($this->form['series_ids'] ?? [])->map(fn ($id) => (int) $id)->filter()->values()->all();
+        $componentesIds = collect($this->form['componentes_ids'] ?? [])->map(fn ($id) => (int) $id)->filter()->values()->all();
+
+        if ($tipoAvaliacaoId <= 0 || $seriesIds === [] || $componentesIds === []) {
+            return collect();
+        }
+
+        return $this->buscarPautasParaEscopo($tipoAvaliacaoId, $seriesIds, $componentesIds);
+    }
+
+    public function getAlternativasAtivasOptionsProperty(): array
+    {
+        return Alternativa::query()
+            ->with('tipo:id,nome')
             ->where('status', true)
-            ->when(
-                $componentesIds !== [],
-                fn ($query) => $query->where(function ($subQuery) use ($componentesIds): void {
-                    $subQuery->whereNull('componente_curricular_id')
-                        ->orWhereIn('componente_curricular_id', $componentesIds);
-                })
-            )
-            ->orderBy('texto')
+            ->orderBy('nome')
             ->get()
-            ->mapWithKeys(function (Pauta $pauta): array {
-                $label = $pauta->texto;
+            ->mapWithKeys(function (Alternativa $alternativa): array {
+                $label = $alternativa->nome;
 
-                if ($pauta->componente?->nome) {
-                    $label .= ' | ' . $pauta->componente->nome;
+                if ($alternativa->tipo?->nome) {
+                    $label .= ' | ' . $alternativa->tipo->nome;
                 }
 
-                $label .= ' | ' . $pauta->alternativas_count . ' alternativas';
+                if ($alternativa->tem_observacao) {
+                    $label .= ' | exige observação';
+                }
 
-                return [$pauta->id => $label];
+                return [$alternativa->id => $label];
             })
-            ->toArray();
+            ->all();
     }
 
     public function abrirModalCriacao(): void
@@ -284,7 +352,11 @@ class GestaoAvaliacoes extends Page implements HasForms
         }
 
         $avaliacao = Avaliacao::query()
-            ->with(['pautas:id,componente_curricular_id', 'turmas:id,id_escola'])
+            ->with([
+                'series:id,nome',
+                'componentes:id,nome',
+                'escolas:id,nome',
+            ])
             ->find($avaliacaoId);
 
         if (! $avaliacao) {
@@ -296,44 +368,27 @@ class GestaoAvaliacoes extends Page implements HasForms
             return;
         }
 
-        $escolasIds = $avaliacao->turmas
-            ->pluck('id_escola')
-            ->filter()
-            ->map(fn ($id) => (int) $id)
-            ->unique()
-            ->values()
-            ->all();
-
-        $componentesIds = $avaliacao->pautas
-            ->pluck('componente_curricular_id')
-            ->filter()
-            ->map(fn ($id) => (int) $id)
-            ->unique()
-            ->values()
-            ->all();
-
-        if ($componentesIds === [] && $avaliacao->turmas->isNotEmpty()) {
-            $componentesIds = DB::table('turma_componente_professor')
-                ->whereIn('turma_id', $avaliacao->turmas->pluck('id')->all())
-                ->distinct()
-                ->pluck('componente_curricular_id')
-                ->filter()
-                ->map(fn ($id) => (int) $id)
-                ->values()
-                ->all();
-        }
-
         $this->avaliacaoIdEditando = $avaliacao->id;
         $this->form = [
             'nome' => (string) $avaliacao->nome,
+            'tipo_avaliacao_id' => $avaliacao->tipo_avaliacao_id,
+            'periodo_avaliacao_id' => $avaliacao->periodo_avaliacao_id,
+            'novo_periodo_nome' => '',
             'data_inicio' => optional($avaliacao->data_inicio)->format('Y-m-d') ?? '',
             'data_fim' => optional($avaliacao->data_fim)->format('Y-m-d') ?? '',
             'status' => (string) $avaliacao->status,
-            'escola_id' => count($escolasIds) === 1 ? (string) $escolasIds[0] : 'todas',
-            'componentes_ids' => $componentesIds,
-            'pautas_ids' => $avaliacao->pautas->pluck('id')->map(fn ($id) => (int) $id)->all(),
+            'series_ids' => $avaliacao->series->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
+            'componentes_ids' => $avaliacao->componentes->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
+            'escolas_ids' => $avaliacao->escolas->pluck('id')->map(fn ($id) => (string) $id)->values()->all(),
+            'pautas_override_habilitado' => [],
+            'alternativas_override' => [],
         ];
-        $this->sincronizarPautasSelecionadasComFiltros();
+
+        $this->sincronizarComponentesSelecionadosComFiltros();
+        $this->sincronizarEscolasSelecionadasComFiltros();
+        $this->sincronizarOverridesPautasComFiltros();
+        $this->preencherOverridesExistentes($avaliacao->id);
+
         $this->modalAberto = true;
         $this->resetValidation();
     }
@@ -369,69 +424,165 @@ class GestaoAvaliacoes extends Page implements HasForms
 
         $validated = $this->validate([
             'form.nome' => ['required', 'string', 'max:255'],
+            'form.tipo_avaliacao_id' => ['required', 'integer', 'exists:tipos_avaliacao,id'],
+            'form.periodo_avaliacao_id' => ['nullable', 'integer', 'exists:periodos_avaliacao,id'],
+            'form.novo_periodo_nome' => ['nullable', 'string', 'max:255'],
             'form.data_inicio' => ['required', 'date'],
             'form.data_fim' => ['required', 'date', 'after_or_equal:form.data_inicio'],
             'form.status' => ['required', 'in:' . implode(',', $statusOptions)],
-            'form.escola_id' => ['required'],
+            'form.series_ids' => ['required', 'array', 'min:1'],
+            'form.series_ids.*' => ['integer', 'exists:series,id'],
             'form.componentes_ids' => ['required', 'array', 'min:1'],
             'form.componentes_ids.*' => ['integer', 'exists:componentes_curriculares,id'],
-            'form.pautas_ids' => ['required', 'array', 'min:1'],
-            'form.pautas_ids.*' => ['integer', 'exists:pautas,id'],
+            'form.escolas_ids' => ['required', 'array', 'min:1'],
+            'form.escolas_ids.*' => ['required'],
         ]);
 
-        $escolaSelecionada = (string) ($validated['form']['escola_id'] ?? 'todas');
-        $escolaId = $this->resolverEscolaIdSelecionada($escolaSelecionada);
+        $novoPeriodoNome = Str::of((string) ($validated['form']['novo_periodo_nome'] ?? ''))->trim()->toString();
+        $periodoAvaliacaoId = (int) ($validated['form']['periodo_avaliacao_id'] ?? 0);
 
-        if ($escolaSelecionada !== 'todas' && (! $escolaId || ! Escola::query()->whereKey($escolaId)->exists())) {
-            $this->addError('form.escola_id', 'Selecione uma escola válida ou mantenha a opção "Todas as escolas".');
+        if ($novoPeriodoNome !== '') {
+            $periodoAvaliacaoId = (int) PeriodoAvaliacao::query()
+                ->firstOrCreate(
+                    ['nome' => $novoPeriodoNome],
+                    ['status' => true]
+                )
+                ->id;
+        }
+
+        if ($periodoAvaliacaoId <= 0) {
+            $this->addError('form.periodo_avaliacao_id', 'Selecione um período existente ou informe um novo.');
 
             return;
         }
 
-        $componentesIds = collect($validated['form']['componentes_ids'] ?? [])
-            ->filter()
-            ->map(fn ($id) => (int) $id)
-            ->unique()
-            ->values();
+        $tipoAvaliacaoId = (int) $validated['form']['tipo_avaliacao_id'];
+        $seriesIds = collect($validated['form']['series_ids'])->map(fn ($id) => (int) $id)->unique()->values()->all();
+        $componentesIds = collect($validated['form']['componentes_ids'])->map(fn ($id) => (int) $id)->unique()->values()->all();
 
-        $pautasIds = collect($validated['form']['pautas_ids'] ?? [])
-            ->filter()
-            ->map(fn ($id) => (int) $id)
-            ->unique()
-            ->values();
+        $escolasElegiveis = $this->buscarEscolasElegiveis($seriesIds, $componentesIds);
 
-        $turmasIds = $this->buscarTurmasIdsPorComponentes($componentesIds->all(), $escolaId);
+        if ($escolasElegiveis->isEmpty()) {
+            $this->addError('form.escolas_ids', 'Nenhuma escola elegível foi encontrada para o escopo selecionado.');
+
+            return;
+        }
+
+        $escolasIds = $this->resolverEscolasIdsSelecionadas(
+            (array) ($validated['form']['escolas_ids'] ?? []),
+            $escolasElegiveis->pluck('id')->map(fn ($id) => (int) $id)->all()
+        );
+
+        if ($escolasIds === []) {
+            $this->addError('form.escolas_ids', 'Selecione ao menos uma escola elegível.');
+
+            return;
+        }
+
+        $pautasCarregadas = $this->buscarPautasParaEscopo($tipoAvaliacaoId, $seriesIds, $componentesIds);
+
+        if ($pautasCarregadas->isEmpty()) {
+            $this->addError('form.componentes_ids', 'Nenhuma pauta ativa foi encontrada para o tipo, séries e componentes selecionados.');
+
+            return;
+        }
+
+        $turmasIds = $this->buscarTurmasIdsPorEscopo($seriesIds, $componentesIds, $escolasIds);
 
         if ($turmasIds === []) {
-            $this->addError('form.componentes_ids', 'Nenhuma turma foi encontrada para os componentes e escola selecionados.');
+            $this->addError('form.escolas_ids', 'Nenhuma turma foi encontrada para o escopo selecionado.');
 
             return;
         }
 
-        $pautasIncompativeis = Pauta::query()
-            ->whereIn('id', $pautasIds->all())
-            ->whereNotNull('componente_curricular_id')
-            ->whereNotIn('componente_curricular_id', $componentesIds->all())
-            ->count();
+        $alternativasTipoIds = Alternativa::query()
+            ->where('status', true)
+            ->where('tipo_avaliacao_id', $tipoAvaliacaoId)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
 
-        if ($pautasIncompativeis > 0) {
-            $this->addError('form.pautas_ids', 'As pautas selecionadas devem pertencer aos componentes escolhidos ou ser pautas gerais.');
+        $alternativasAtivasIds = Alternativa::query()
+            ->where('status', true)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
 
-            return;
+        $overridesPayload = [];
+        $agora = now();
+
+        foreach ($pautasCarregadas as $pauta) {
+            $pautaId = (int) $pauta->id;
+            $overrideHabilitado = (bool) (($this->form['pautas_override_habilitado'][$pautaId] ?? false));
+
+            if (! $overrideHabilitado) {
+                if ($alternativasTipoIds === []) {
+                    $this->addError(
+                        'form.pautas_override_habilitado.' . $pautaId,
+                        'O tipo selecionado não possui alternativas ativas. Defina um override nesta pauta.'
+                    );
+
+                    return;
+                }
+
+                continue;
+            }
+
+            $alternativasOverrideIds = collect($this->form['alternativas_override'][$pautaId] ?? [])
+                ->filter()
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->values()
+                ->all();
+
+            if ($alternativasOverrideIds === []) {
+                $this->addError(
+                    'form.alternativas_override.' . $pautaId,
+                    'Selecione pelo menos uma alternativa para o override desta pauta.'
+                );
+
+                return;
+            }
+
+            $alternativasValidas = collect($alternativasOverrideIds)
+                ->intersect($alternativasAtivasIds)
+                ->values()
+                ->all();
+
+            if (count($alternativasValidas) !== count($alternativasOverrideIds)) {
+                $this->addError(
+                    'form.alternativas_override.' . $pautaId,
+                    'O override contém alternativas inválidas ou inativas.'
+                );
+
+                return;
+            }
+
+            foreach ($alternativasValidas as $alternativaId) {
+                $overridesPayload[] = [
+                    'avaliacao_id' => 0,
+                    'pauta_id' => $pautaId,
+                    'alternativa_id' => (int) $alternativaId,
+                    'created_at' => $agora,
+                    'updated_at' => $agora,
+                ];
+            }
         }
 
-        $pautasSemAlternativas = Pauta::query()
-            ->whereIn('id', $pautasIds->all())
-            ->doesntHave('alternativas')
-            ->count();
-
-        if ($pautasSemAlternativas > 0) {
-            $this->addError('form.pautas_ids', 'Todas as pautas vinculadas precisam ter alternativas cadastradas.');
-
-            return;
-        }
-
-        DB::transaction(function () use ($isEdicao, $validated, $turmasIds): void {
+        DB::transaction(function () use (
+            $isEdicao,
+            $validated,
+            $tipoAvaliacaoId,
+            $periodoAvaliacaoId,
+            $pautasCarregadas,
+            $turmasIds,
+            $seriesIds,
+            $componentesIds,
+            $escolasIds,
+            $overridesPayload
+        ): void {
             if ($isEdicao) {
                 $avaliacao = Avaliacao::query()->find($this->avaliacaoIdEditando);
 
@@ -444,14 +595,33 @@ class GestaoAvaliacoes extends Page implements HasForms
 
             $avaliacao->fill([
                 'nome' => trim((string) $validated['form']['nome']),
+                'tipo_avaliacao_id' => $tipoAvaliacaoId,
+                'periodo_avaliacao_id' => $periodoAvaliacaoId,
                 'data_inicio' => $validated['form']['data_inicio'],
                 'data_fim' => $validated['form']['data_fim'],
                 'status' => $validated['form']['status'],
             ]);
             $avaliacao->save();
 
-            $avaliacao->pautas()->sync($validated['form']['pautas_ids']);
+            $avaliacao->pautas()->sync($pautasCarregadas->pluck('id')->map(fn ($id) => (int) $id)->all());
             $avaliacao->turmas()->sync($turmasIds);
+            $avaliacao->series()->sync($seriesIds);
+            $avaliacao->componentes()->sync($componentesIds);
+            $avaliacao->escolas()->sync($escolasIds);
+
+            DB::table('avaliacao_pauta_alternativa')
+                ->where('avaliacao_id', (int) $avaliacao->id)
+                ->delete();
+
+            if ($overridesPayload !== []) {
+                $payload = collect($overridesPayload)->map(function (array $row) use ($avaliacao): array {
+                    $row['avaliacao_id'] = (int) $avaliacao->id;
+
+                    return $row;
+                })->all();
+
+                DB::table('avaliacao_pauta_alternativa')->insert($payload);
+            }
         });
 
         $this->fecharModal();
@@ -492,40 +662,109 @@ class GestaoAvaliacoes extends Page implements HasForms
             ->send();
     }
 
+    private function preencherOverridesExistentes(int $avaliacaoId): void
+    {
+        $pautasIds = $this->pautasCarregadas
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+
+        if ($pautasIds === []) {
+            return;
+        }
+
+        $overrides = DB::table('avaliacao_pauta_alternativa')
+            ->where('avaliacao_id', $avaliacaoId)
+            ->whereIn('pauta_id', $pautasIds)
+            ->get(['pauta_id', 'alternativa_id'])
+            ->groupBy('pauta_id');
+
+        foreach ($overrides as $pautaId => $rows) {
+            $id = (int) $pautaId;
+            $this->form['pautas_override_habilitado'][$id] = true;
+            $this->form['alternativas_override'][$id] = collect($rows)
+                ->pluck('alternativa_id')
+                ->map(fn ($alternativaId) => (int) $alternativaId)
+                ->unique()
+                ->values()
+                ->all();
+        }
+    }
+
     private function resetForm(): void
     {
         $this->form = [
             'nome' => '',
+            'tipo_avaliacao_id' => null,
+            'periodo_avaliacao_id' => null,
+            'novo_periodo_nome' => '',
             'data_inicio' => now()->toDateString(),
             'data_fim' => now()->toDateString(),
             'status' => Avaliacao::STATUS_ATIVA,
-            'escola_id' => 'todas',
+            'series_ids' => [],
             'componentes_ids' => [],
-            'pautas_ids' => [],
+            'escolas_ids' => [],
+            'pautas_override_habilitado' => [],
+            'alternativas_override' => [],
         ];
     }
 
-    private function resolverEscolaIdSelecionada(mixed $escolaSelecionada): ?int
+    private function buscarPautasParaEscopo(int $tipoAvaliacaoId, array $seriesIds, array $componentesIds): Collection
     {
-        if ($escolaSelecionada === 'todas' || blank($escolaSelecionada)) {
-            return null;
-        }
-
-        $id = (int) $escolaSelecionada;
-
-        return $id > 0 ? $id : null;
+        return Pauta::query()
+            ->with([
+                'serie:id,nome',
+                'componente:id,nome',
+            ])
+            ->where('status', true)
+            ->where('tipo_avaliacao_id', $tipoAvaliacaoId)
+            ->whereIn('serie_id', $seriesIds)
+            ->whereIn('componente_curricular_id', $componentesIds)
+            ->orderBy('texto')
+            ->get();
     }
 
-    private function buscarTurmasIdsPorComponentes(array $componentesIds, ?int $escolaId): array
+    private function buscarEscolasElegiveis(array $seriesIds, array $componentesIds): Collection
     {
-        if ($componentesIds === []) {
+        $seriesIds = collect($seriesIds)->filter()->map(fn ($id) => (int) $id)->unique()->values()->all();
+        $componentesIds = collect($componentesIds)->filter()->map(fn ($id) => (int) $id)->unique()->values()->all();
+
+        if ($seriesIds === [] || $componentesIds === []) {
+            return collect();
+        }
+
+        $escolasIds = DB::table('turma_componente_professor as tcp')
+            ->join('turmas as t', 't.id', '=', 'tcp.turma_id')
+            ->whereIn('t.id_serie', $seriesIds)
+            ->whereIn('tcp.componente_curricular_id', $componentesIds)
+            ->distinct()
+            ->pluck('t.id_escola')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+
+        if ($escolasIds === []) {
+            return collect();
+        }
+
+        return Escola::query()
+            ->whereIn('id', $escolasIds)
+            ->orderBy('nome')
+            ->get(['id', 'nome']);
+    }
+
+    private function buscarTurmasIdsPorEscopo(array $seriesIds, array $componentesIds, array $escolasIds): array
+    {
+        if ($seriesIds === [] || $componentesIds === [] || $escolasIds === []) {
             return [];
         }
 
         return DB::table('turma_componente_professor as tcp')
             ->join('turmas as t', 't.id', '=', 'tcp.turma_id')
+            ->whereIn('t.id_serie', $seriesIds)
             ->whereIn('tcp.componente_curricular_id', $componentesIds)
-            ->when($escolaId, fn ($query, $id) => $query->where('t.id_escola', $id))
+            ->whereIn('t.id_escola', $escolasIds)
             ->distinct()
             ->pluck('t.id')
             ->map(fn ($id) => (int) $id)
@@ -533,17 +772,107 @@ class GestaoAvaliacoes extends Page implements HasForms
             ->all();
     }
 
-    private function sincronizarPautasSelecionadasComFiltros(): void
+    private function resolverEscolasIdsSelecionadas(array $escolasSelecionadas, array $escolasElegiveisIds): array
     {
-        $pautasDisponiveis = collect(array_keys($this->pautasOptions))
-            ->map(fn ($id) => (int) $id)
-            ->all();
-
-        $this->form['pautas_ids'] = collect($this->form['pautas_ids'] ?? [])
+        $escolasSelecionadas = collect($escolasSelecionadas)
             ->filter()
-            ->map(fn ($id) => (int) $id)
-            ->intersect($pautasDisponiveis)
+            ->map(fn ($value) => (string) $value)
+            ->unique()
             ->values()
             ->all();
+
+        if ($escolasSelecionadas === []) {
+            return [];
+        }
+
+        if (in_array('todas', $escolasSelecionadas, true)) {
+            return $escolasElegiveisIds;
+        }
+
+        return collect($escolasSelecionadas)
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id > 0)
+            ->intersect($escolasElegiveisIds)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function sincronizarComponentesSelecionadosComFiltros(): void
+    {
+        $componentesDisponiveis = collect(array_keys($this->componentesOptions))
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+
+        $this->form['componentes_ids'] = collect($this->form['componentes_ids'] ?? [])
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->intersect($componentesDisponiveis)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function sincronizarEscolasSelecionadasComFiltros(): void
+    {
+        $escolasDisponiveis = collect(array_keys($this->escolasOptions))
+            ->map(fn ($id) => (string) $id)
+            ->values()
+            ->all();
+
+        $escolasSelecionadas = collect($this->form['escolas_ids'] ?? [])
+            ->filter()
+            ->map(fn ($value) => (string) $value)
+            ->intersect($escolasDisponiveis)
+            ->unique()
+            ->values();
+
+        if ($escolasSelecionadas->contains('todas')) {
+            $this->form['escolas_ids'] = ['todas'];
+
+            return;
+        }
+
+        $this->form['escolas_ids'] = $escolasSelecionadas->all();
+    }
+
+    private function sincronizarOverridesPautasComFiltros(): void
+    {
+        $pautasIds = $this->pautasCarregadas
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+
+        $overridesAtivos = collect($this->form['pautas_override_habilitado'] ?? [])
+            ->filter(fn ($_value, $key) => in_array((int) $key, $pautasIds, true))
+            ->map(fn ($value) => (bool) $value)
+            ->all();
+
+        $alternativasOverrides = collect($this->form['alternativas_override'] ?? [])
+            ->filter(fn ($_value, $key) => in_array((int) $key, $pautasIds, true))
+            ->map(function ($ids): array {
+                return collect($ids ?? [])
+                    ->filter()
+                    ->map(fn ($id) => (int) $id)
+                    ->unique()
+                    ->values()
+                    ->all();
+            })
+            ->all();
+
+        foreach ($pautasIds as $pautaId) {
+            if (! array_key_exists($pautaId, $overridesAtivos)) {
+                $overridesAtivos[$pautaId] = false;
+            }
+
+            if (! array_key_exists($pautaId, $alternativasOverrides)) {
+                $alternativasOverrides[$pautaId] = [];
+            }
+        }
+
+        $this->form['pautas_override_habilitado'] = $overridesAtivos;
+        $this->form['alternativas_override'] = $alternativasOverrides;
     }
 }

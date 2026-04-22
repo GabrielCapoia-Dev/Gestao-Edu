@@ -3,7 +3,9 @@
 namespace App\Filament\Admin\Pages;
 
 use App\Models\Aluno;
+use App\Models\Alternativa;
 use App\Models\Avaliacao;
+use App\Models\AvaliacaoInformacaoComplementar;
 use App\Models\AvaliacaoResposta;
 use App\Models\Pauta;
 use App\Models\TurmaComponenteProfessor;
@@ -38,6 +40,10 @@ class AvaliacoesProfessor extends Page
 
     public array $respostas = [];
 
+    public array $informacoesComplementares = [];
+
+    public array $alternativasPorPauta = [];
+
     public array $avaliacaoEmMassa = [];
 
     public array $pautasExpandidas = [];
@@ -66,6 +72,8 @@ class AvaliacoesProfessor extends Page
     {
         $this->turma = null;
         $this->respostas = [];
+        $this->informacoesComplementares = [];
+        $this->alternativasPorPauta = [];
         $this->avaliacaoEmMassa = [];
         $this->pautasExpandidas = [];
     }
@@ -73,11 +81,14 @@ class AvaliacoesProfessor extends Page
     public function updatedTurma(): void
     {
         $this->respostas = [];
+        $this->informacoesComplementares = [];
+        $this->alternativasPorPauta = [];
         $this->avaliacaoEmMassa = [];
         $this->pautasExpandidas = [];
 
         if ($this->avaliacao && $this->turma) {
             $this->carregarRespostas();
+            $this->carregarInformacoesComplementares();
         }
     }
 
@@ -102,6 +113,17 @@ class AvaliacoesProfessor extends Page
 
     public function updated(string $name): void
     {
+        if (str_starts_with($name, 'informacoesComplementares.')) {
+            $partes = explode('.', $name);
+            $alunoId = $partes[1] ?? null;
+
+            if (is_numeric($alunoId)) {
+                $this->autoSalvarInformacaoComplementar((int) $alunoId);
+            }
+
+            return;
+        }
+
         if (! str_starts_with($name, 'respostas.')) {
             return;
         }
@@ -139,7 +161,7 @@ class AvaliacoesProfessor extends Page
         }
 
         $alternativaId = (int) ($this->avaliacaoEmMassa[$pautaId] ?? 0);
-        $alternativa = $pauta->alternativas->firstWhere('id', $alternativaId);
+        $alternativa = $this->alternativaDaPauta((int) $pauta->id, $alternativaId);
 
         if (! $alternativa) {
             Notification::make()
@@ -161,13 +183,14 @@ class AvaliacoesProfessor extends Page
 
         foreach ($this->alunosDaTurma as $aluno) {
             $observacaoInformada = trim((string) ($this->respostas[$pautaId][$aluno->id]['observacao'] ?? ''));
+            $temObservacao = (bool) ($alternativa['tem_observacao'] ?? false);
 
-            if (! $alternativa->tem_observacao) {
+            if (! $temObservacao) {
                 $this->respostas[$pautaId][$aluno->id]['observacao'] = null;
                 $observacaoInformada = '';
             }
 
-            if ($alternativa->tem_observacao && $observacaoInformada === '') {
+            if ($temObservacao && $observacaoInformada === '') {
                 $alunosComPendencia[] = (int) $aluno->id;
                 continue;
             }
@@ -179,7 +202,7 @@ class AvaliacoesProfessor extends Page
                 'aluno_id' => (int) $aluno->id,
                 'professor_id' => $professorId,
                 'alternativa_id' => (int) $alternativaId,
-                'observacao' => $alternativa->tem_observacao ? $observacaoInformada : null,
+                'observacao' => $temObservacao ? $observacaoInformada : null,
                 'respondido_em' => $agora,
                 'created_at' => $agora,
                 'updated_at' => $agora,
@@ -211,7 +234,12 @@ class AvaliacoesProfessor extends Page
 
         Notification::make()
             ->title('Alternativa aplicada para toda a turma nesta pauta.')
-            ->body($mensagemPendencia ?? ($alternativa->tem_observacao ? 'Essa alternativa exige observação por aluno.' : 'Respostas salvas automaticamente.'))
+            ->body(
+                $mensagemPendencia
+                ?? ((bool) ($alternativa['tem_observacao'] ?? false)
+                    ? 'Essa alternativa exige observação por aluno.'
+                    : 'Respostas salvas automaticamente.')
+            )
             ->success()
             ->send();
     }
@@ -248,7 +276,7 @@ class AvaliacoesProfessor extends Page
         foreach ($pautas as $pauta) {
             foreach ($alunos as $aluno) {
                 $alternativaId = (int) ($this->respostas[$pauta->id][$aluno->id]['alternativa_id'] ?? 0);
-                $alternativa = $pauta->alternativas->firstWhere('id', $alternativaId);
+                $alternativa = $this->alternativaDaPauta((int) $pauta->id, $alternativaId);
 
                 if (! $alternativa) {
                     $faltandoResposta++;
@@ -256,13 +284,14 @@ class AvaliacoesProfessor extends Page
                 }
 
                 $observacaoInformada = trim((string) ($this->respostas[$pauta->id][$aluno->id]['observacao'] ?? ''));
+                $temObservacao = (bool) ($alternativa['tem_observacao'] ?? false);
 
-                if ($alternativa->tem_observacao && $observacaoInformada === '') {
+                if ($temObservacao && $observacaoInformada === '') {
                     $faltandoObservacao++;
                     continue;
                 }
 
-                $observacao = $alternativa->tem_observacao && $observacaoInformada !== ''
+                $observacao = $temObservacao && $observacaoInformada !== ''
                     ? $observacaoInformada
                     : null;
 
@@ -317,19 +346,14 @@ class AvaliacoesProfessor extends Page
 
     public function alternativaRequerObservacao(int $pautaId, ?int $alternativaId): bool
     {
-        if (! $alternativaId) {
-            return false;
-        }
+        $alternativa = $this->alternativaDaPauta($pautaId, $alternativaId);
 
-        $pauta = $this->pautasDisponiveis->firstWhere('id', $pautaId);
+        return (bool) ($alternativa['tem_observacao'] ?? false);
+    }
 
-        if (! $pauta) {
-            return false;
-        }
-
-        $alternativa = $pauta->alternativas->firstWhere('id', (int) $alternativaId);
-
-        return (bool) ($alternativa?->tem_observacao ?? false);
+    public function alternativasDaPauta(int $pautaId): array
+    {
+        return $this->alternativasPorPauta[$pautaId] ?? [];
     }
 
     public function getAvaliacoesDisponiveisProperty(): Collection
@@ -344,10 +368,18 @@ class AvaliacoesProfessor extends Page
                 $query->whereIn('turma_componente_professor.professor_id', $this->professorIds);
             })
             ->with([
+                'tipo' => fn ($query) => $query
+                    ->with([
+                        'alternativas' => fn ($alternativas) => $alternativas->where('status', true),
+                    ]),
                 'pautas' => fn ($query) => $query
                     ->where('status', true)
                     ->with([
                         'componente:id,nome',
+                        'tipo' => fn ($tipoQuery) => $tipoQuery
+                            ->with([
+                                'alternativas' => fn ($alternativas) => $alternativas->where('status', true),
+                            ]),
                         'alternativas' => fn ($alternativas) => $alternativas->where('status', true),
                     ]),
                 'turmas' => fn ($query) => $query->with(['escola:id,nome', 'serie:id,nome']),
@@ -382,14 +414,14 @@ class AvaliacoesProfessor extends Page
 
         $componentesProfessor = $this->componentesPorTurma[(int) $this->turma] ?? [];
 
-        return $this->avaliacaoAtual->pautas
-            ->filter(function (Pauta $pauta) use ($componentesProfessor): bool {
-                if ($pauta->alternativas->isEmpty()) {
-                    return false;
-                }
+        $pautas = $this->avaliacaoAtual->pautas
+            ->filter(fn (Pauta $pauta): bool => $this->pautaEhRelevanteParaComponentes($pauta, $componentesProfessor))
+            ->values();
 
-                return $this->pautaEhRelevanteParaComponentes($pauta, $componentesProfessor);
-            })
+        $this->carregarAlternativasPorPauta($pautas);
+
+        return $pautas
+            ->filter(fn (Pauta $pauta): bool => $this->alternativasDaPauta((int) $pauta->id) !== [])
             ->values();
     }
 
@@ -515,7 +547,6 @@ class AvaliacoesProfessor extends Page
 
                 return $avaliacao->pautas->contains(
                     fn (Pauta $pauta): bool => $this->pautaEhRelevanteParaComponentes($pauta, $componentesProfessor)
-                        && $pauta->alternativas->isNotEmpty()
                 );
             })
             ->values();
@@ -538,6 +569,7 @@ class AvaliacoesProfessor extends Page
         if ($pautas->isEmpty() || $alunos->isEmpty()) {
             $this->respostas = [];
             $this->avaliacaoEmMassa = [];
+            $this->alternativasPorPauta = [];
 
             return;
         }
@@ -571,11 +603,130 @@ class AvaliacoesProfessor extends Page
         $this->avaliacaoEmMassa = $avaliacaoEmMassa;
     }
 
+    private function carregarAlternativasPorPauta(Collection $pautas): void
+    {
+        $this->alternativasPorPauta = [];
+
+        if (! $this->avaliacaoAtual || $pautas->isEmpty()) {
+            return;
+        }
+
+        $pautasIds = $pautas->pluck('id')->map(fn ($id) => (int) $id)->values()->all();
+
+        $overrides = DB::table('avaliacao_pauta_alternativa')
+            ->where('avaliacao_id', (int) $this->avaliacaoAtual->id)
+            ->whereIn('pauta_id', $pautasIds)
+            ->get(['pauta_id', 'alternativa_id'])
+            ->groupBy('pauta_id')
+            ->map(fn (Collection $rows): array => $rows->pluck('alternativa_id')->map(fn ($id) => (int) $id)->unique()->values()->all());
+
+        $overridesAlternativasIds = $overrides
+            ->flatten(1)
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        $alternativasOverride = Alternativa::query()
+            ->whereIn('id', $overridesAlternativasIds)
+            ->where('status', true)
+            ->orderBy('nome')
+            ->get()
+            ->keyBy('id');
+
+        $alternativasTipoAvaliacao = $this->avaliacaoAtual->tipo?->alternativas
+            ? $this->avaliacaoAtual->tipo->alternativas->where('status', true)->values()
+            : collect();
+
+        foreach ($pautas as $pauta) {
+            $pautaId = (int) $pauta->id;
+            $alternativas = collect();
+
+            $overrideIds = $overrides->get($pautaId, []);
+
+            if ($overrideIds !== []) {
+                $alternativas = collect($overrideIds)
+                    ->map(fn ($alternativaId) => $alternativasOverride->get((int) $alternativaId))
+                    ->filter()
+                    ->values();
+            }
+
+            if ($alternativas->isEmpty()) {
+                $alternativas = $pauta->tipo?->alternativas
+                    ? $pauta->tipo->alternativas->where('status', true)->values()
+                    : collect();
+            }
+
+            if ($alternativas->isEmpty()) {
+                $alternativas = $alternativasTipoAvaliacao;
+            }
+
+            if ($alternativas->isEmpty()) {
+                $alternativas = $pauta->alternativas->where('status', true)->values();
+            }
+
+            $this->alternativasPorPauta[$pautaId] = $alternativas
+                ->map(fn (Alternativa $alternativa): array => [
+                    'id' => (int) $alternativa->id,
+                    'nome' => (string) $alternativa->nome,
+                    'tem_observacao' => (bool) $alternativa->tem_observacao,
+                ])
+                ->values()
+                ->all();
+        }
+    }
+
+    private function carregarInformacoesComplementares(): void
+    {
+        if (! $this->avaliacao || ! $this->turma) {
+            $this->informacoesComplementares = [];
+
+            return;
+        }
+
+        $alunosIds = $this->alunosDaTurma
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+
+        if ($alunosIds === []) {
+            $this->informacoesComplementares = [];
+
+            return;
+        }
+
+        $registros = AvaliacaoInformacaoComplementar::query()
+            ->where('avaliacao_id', (int) $this->avaliacao)
+            ->where('turma_id', (int) $this->turma)
+            ->whereIn('aluno_id', $alunosIds)
+            ->get(['aluno_id', 'informacoes_complementares'])
+            ->keyBy('aluno_id');
+
+        $informacoes = [];
+
+        foreach ($alunosIds as $alunoId) {
+            $informacoes[$alunoId] = (string) ($registros->get($alunoId)?->informacoes_complementares ?? '');
+        }
+
+        $this->informacoesComplementares = $informacoes;
+    }
+
     private function professorIdDaTurma(int $turmaId): ?int
     {
         $professorId = $this->professorPorTurma[$turmaId] ?? null;
 
         return $professorId ? (int) $professorId : null;
+    }
+
+    private function alternativaDaPauta(int $pautaId, ?int $alternativaId): ?array
+    {
+        if (! $alternativaId) {
+            return null;
+        }
+
+        return collect($this->alternativasDaPauta($pautaId))
+            ->first(fn (array $alternativa): bool => (int) ($alternativa['id'] ?? 0) === (int) $alternativaId);
     }
 
     private function autoSalvarResposta(int $pautaId, int $alunoId): void
@@ -597,7 +748,7 @@ class AvaliacoesProfessor extends Page
         }
 
         $alternativaId = (int) ($this->respostas[$pautaId][$alunoId]['alternativa_id'] ?? 0);
-        $alternativa = $pauta->alternativas->firstWhere('id', $alternativaId);
+        $alternativa = $this->alternativaDaPauta($pautaId, $alternativaId);
 
         if (! $alternativa) {
             $this->removerRespostaPersistida($pautaId, $alunoId);
@@ -606,8 +757,9 @@ class AvaliacoesProfessor extends Page
         }
 
         $observacaoInformada = trim((string) ($this->respostas[$pautaId][$alunoId]['observacao'] ?? ''));
+        $temObservacao = (bool) ($alternativa['tem_observacao'] ?? false);
 
-        if (! $alternativa->tem_observacao) {
+        if (! $temObservacao) {
             if (($this->respostas[$pautaId][$alunoId]['observacao'] ?? null) !== null) {
                 $this->respostas[$pautaId][$alunoId]['observacao'] = null;
             }
@@ -615,7 +767,7 @@ class AvaliacoesProfessor extends Page
             $observacaoInformada = '';
         }
 
-        if ($alternativa->tem_observacao && $observacaoInformada === '') {
+        if ($temObservacao && $observacaoInformada === '') {
             $this->removerRespostaPersistida($pautaId, $alunoId);
 
             return;
@@ -632,13 +784,52 @@ class AvaliacoesProfessor extends Page
                 'aluno_id' => $alunoId,
                 'professor_id' => $professorId,
                 'alternativa_id' => $alternativaId,
-                'observacao' => $alternativa->tem_observacao ? $observacaoInformada : null,
+                'observacao' => $temObservacao ? $observacaoInformada : null,
                 'respondido_em' => $agora,
                 'created_at' => $agora,
                 'updated_at' => $agora,
             ]],
             ['avaliacao_id', 'pauta_id', 'turma_id', 'aluno_id'],
             ['professor_id', 'alternativa_id', 'observacao', 'respondido_em', 'updated_at']
+        );
+    }
+
+    private function autoSalvarInformacaoComplementar(int $alunoId): void
+    {
+        if (! $this->avaliacao || ! $this->turma) {
+            return;
+        }
+
+        $alunoDaTurma = $this->alunosDaTurma->firstWhere('id', $alunoId);
+
+        if (! $alunoDaTurma) {
+            return;
+        }
+
+        $informacoes = trim((string) ($this->informacoesComplementares[$alunoId] ?? ''));
+
+        if ($informacoes === '') {
+            AvaliacaoInformacaoComplementar::query()
+                ->where('avaliacao_id', (int) $this->avaliacao)
+                ->where('turma_id', (int) $this->turma)
+                ->where('aluno_id', $alunoId)
+                ->delete();
+
+            return;
+        }
+
+        AvaliacaoInformacaoComplementar::query()->upsert(
+            [[
+                'avaliacao_id' => (int) $this->avaliacao,
+                'turma_id' => (int) $this->turma,
+                'aluno_id' => $alunoId,
+                'professor_id' => $this->professorIdDaTurma((int) $this->turma),
+                'informacoes_complementares' => $informacoes,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]],
+            ['avaliacao_id', 'turma_id', 'aluno_id'],
+            ['professor_id', 'informacoes_complementares', 'updated_at']
         );
     }
 
@@ -664,13 +855,13 @@ class AvaliacoesProfessor extends Page
             return false;
         }
 
-        $alternativa = $pauta->alternativas->firstWhere('id', $alternativaId);
+        $alternativa = $this->alternativaDaPauta((int) $pauta->id, $alternativaId);
 
         if (! $alternativa) {
             return false;
         }
 
-        if (! $alternativa->tem_observacao) {
+        if (! ((bool) ($alternativa['tem_observacao'] ?? false))) {
             return true;
         }
 

@@ -74,4 +74,9 @@ class Turma extends Model
     {
         return $this->hasMany(AvaliacaoResposta::class, 'turma_id');
     }
+
+    public function avaliacaoInformacoesComplementares()
+    {
+        return $this->hasMany(AvaliacaoInformacaoComplementar::class, 'turma_id');
+    }
 }

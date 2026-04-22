@@ -5,6 +5,8 @@ namespace App\Filament\Admin\Pages;
 use App\Models\Alternativa;
 use App\Models\ComponenteCurricular;
 use App\Models\Pauta;
+use App\Models\Serie;
+use App\Models\TipoAvaliacao;
 use BackedEnum;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Concerns\InteractsWithForms;
@@ -52,7 +54,9 @@ class GestaoPautas extends Page implements HasForms
     public ?int $pautaIdEditando = null;
 
     public array $form = [
+        'tipo_avaliacao_id' => null,
         'texto' => '',
+        'serie_id' => null,
         'componente_curricular_id' => null,
         'status' => true,
         'alternativas_ids' => [],
@@ -121,7 +125,11 @@ class GestaoPautas extends Page implements HasForms
     public function getPautasProperty(): LengthAwarePaginator
     {
         $query = Pauta::query()
-            ->with(['componente:id,nome'])
+            ->with([
+                'tipo:id,nome',
+                'serie:id,nome',
+                'componente:id,nome',
+            ])
             ->withCount(['alternativas', 'avaliacoes']);
 
         if (filled($this->busca)) {
@@ -158,9 +166,29 @@ class GestaoPautas extends Page implements HasForms
             ->toArray();
     }
 
+    public function getSeriesOptionsProperty(): array
+    {
+        return Serie::query()
+            ->orderBy('nome')
+            ->pluck('nome', 'id')
+            ->toArray();
+    }
+
+    public function getTiposOptionsProperty(): array
+    {
+        return TipoAvaliacao::query()
+            ->where('status', true)
+            ->orderBy('nome')
+            ->pluck('nome', 'id')
+            ->toArray();
+    }
+
     public function getAlternativasOptionsProperty(): Collection
     {
+        $tipoAvaliacaoId = (int) ($this->form['tipo_avaliacao_id'] ?? 0);
+
         return Alternativa::query()
+            ->when($tipoAvaliacaoId > 0, fn ($query) => $query->where('tipo_avaliacao_id', $tipoAvaliacaoId))
             ->orderBy('nome')
             ->get(['id', 'nome', 'tem_observacao', 'status']);
     }
@@ -233,7 +261,9 @@ class GestaoPautas extends Page implements HasForms
 
         $this->pautaIdEditando = $pauta->id;
         $this->form = [
+            'tipo_avaliacao_id' => $pauta->tipo_avaliacao_id,
             'texto' => (string) $pauta->texto,
+            'serie_id' => $pauta->serie_id,
             'componente_curricular_id' => $pauta->componente_curricular_id,
             'status' => (bool) $pauta->status,
             'alternativas_ids' => $pauta->alternativas->pluck('id')->map(fn ($id) => (int) $id)->all(),
@@ -291,7 +321,9 @@ class GestaoPautas extends Page implements HasForms
         }
 
         $validated = $this->validate([
+            'form.tipo_avaliacao_id' => ['required', 'integer', 'exists:tipos_avaliacao,id'],
             'form.texto' => ['required', 'string', 'max:2000'],
+            'form.serie_id' => ['required', 'integer', 'exists:series,id'],
             'form.componente_curricular_id' => ['nullable', 'exists:componentes_curriculares,id'],
             'form.status' => ['required', 'boolean'],
             'form.alternativas_ids' => ['array'],
@@ -324,8 +356,13 @@ class GestaoPautas extends Page implements HasForms
             ->filter(fn (array $item): bool => $item['nome'] !== '')
             ->values();
 
-        if ($alternativasSelecionadas->isEmpty() && $novasAlternativasComNome->isEmpty()) {
-            $this->addError('form.alternativas_ids', 'Selecione ao menos uma alternativa existente ou crie uma nova alternativa.');
+        $alternativasIncompativeisComTipo = Alternativa::query()
+            ->whereIn('id', $alternativasSelecionadas->all())
+            ->where('tipo_avaliacao_id', '!=', (int) $validated['form']['tipo_avaliacao_id'])
+            ->count();
+
+        if ($alternativasIncompativeisComTipo > 0) {
+            $this->addError('form.alternativas_ids', 'Selecione apenas alternativas do mesmo tipo da pauta.');
 
             return;
         }
@@ -342,15 +379,20 @@ class GestaoPautas extends Page implements HasForms
             }
 
             $pauta->fill([
+                'tipo_avaliacao_id' => (int) $validated['form']['tipo_avaliacao_id'],
                 'texto' => trim((string) $validated['form']['texto']),
+                'serie_id' => (int) $validated['form']['serie_id'],
                 'componente_curricular_id' => $validated['form']['componente_curricular_id'] ?: null,
                 'status' => (bool) $validated['form']['status'],
             ]);
             $pauta->save();
 
             $novosIds = $novasAlternativasComNome
-                ->map(function (array $item): int {
-                    return Alternativa::query()->create($item)->id;
+                ->map(function (array $item) use ($validated): int {
+                    return Alternativa::query()->create([
+                        ...$item,
+                        'tipo_avaliacao_id' => (int) $validated['form']['tipo_avaliacao_id'],
+                    ])->id;
                 });
 
             $idsFinal = $alternativasSelecionadas
@@ -403,7 +445,9 @@ class GestaoPautas extends Page implements HasForms
     private function resetForm(): void
     {
         $this->form = [
+            'tipo_avaliacao_id' => null,
             'texto' => '',
+            'serie_id' => null,
             'componente_curricular_id' => null,
             'status' => true,
             'alternativas_ids' => [],
