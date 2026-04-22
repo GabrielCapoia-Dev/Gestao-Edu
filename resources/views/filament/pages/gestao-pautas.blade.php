@@ -187,21 +187,9 @@
                     <h4>Alternativas existentes</h4>
                     <p>Selecione as alternativas ja cadastradas para esta pauta.</p>
 
-                    <select multiple class="av-multi-select" wire:model.defer="form.alternativas_ids">
-                        @foreach ($this->alternativasOptions as $alternativa)
-                            <option value="{{ $alternativa->id }}">
-                                {{ $alternativa->nome }}
-                                {{ $alternativa->tem_observacao ? '(exige observacao)' : '' }}
-                                {{ $alternativa->status ? '' : '(inativa)' }}
-                            </option>
-                        @endforeach
-                    </select>
-                    @error('form.alternativas_ids')
-                        <p class="error">{{ $message }}</p>
-                    @enderror
-                    @error('form.alternativas_ids.*')
-                        <p class="error">{{ $message }}</p>
-                    @enderror
+                    <div class="av-filament-scope-form">
+                        {{ $this->alternativasExistentesForm }}
+                    </div>
                 </section>
 
                 <section class="av-form-section">

@@ -6,8 +6,12 @@ use App\Models\Alternativa;
 use App\Models\ComponenteCurricular;
 use App\Models\Pauta;
 use BackedEnum;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -16,8 +20,9 @@ use Illuminate\Support\Facades\DB;
 use Livewire\WithPagination;
 use UnitEnum;
 
-class GestaoPautas extends Page
+class GestaoPautas extends Page implements HasForms
 {
+    use InteractsWithForms;
     use WithPagination;
 
     protected string $view = 'filament.pages.gestao-pautas';
@@ -67,6 +72,30 @@ class GestaoPautas extends Page
         $user = Auth::user();
 
         return $user?->hasPermissionTo('Listar Pautas') ?? false;
+    }
+
+    protected function getForms(): array
+    {
+        return [
+            'alternativasExistentesForm',
+        ];
+    }
+
+    public function alternativasExistentesForm(Schema $schema): Schema
+    {
+        return $schema
+            ->components([
+                Select::make('alternativas_ids')
+                    ->label('Alternativas existentes')
+                    ->helperText('Selecione uma ou mais alternativas ja cadastradas para vincular nesta pauta.')
+                    ->options(fn (): array => $this->alternativasSelectOptions)
+                    ->multiple()
+                    ->native(false)
+                    ->searchable()
+                    ->preload()
+                    ->live(),
+            ])
+            ->statePath('form');
     }
 
     public function updatedBusca(): void
@@ -134,6 +163,31 @@ class GestaoPautas extends Page
         return Alternativa::query()
             ->orderBy('nome')
             ->get(['id', 'nome', 'tem_observacao', 'status']);
+    }
+
+    public function getAlternativasSelectOptionsProperty(): array
+    {
+        return $this->alternativasOptions
+            ->mapWithKeys(function (Alternativa $alternativa): array {
+                $sufixos = [];
+
+                if ($alternativa->tem_observacao) {
+                    $sufixos[] = 'exige observacao';
+                }
+
+                if (! $alternativa->status) {
+                    $sufixos[] = 'inativa';
+                }
+
+                $label = $alternativa->nome;
+
+                if ($sufixos !== []) {
+                    $label .= ' (' . implode(', ', $sufixos) . ')';
+                }
+
+                return [$alternativa->id => $label];
+            })
+            ->all();
     }
 
     public function abrirModalCriacao(): void
