@@ -62,10 +62,51 @@
                 </div>
             </div>
 
+            <div class="gi-toolbar" style="margin-top: 12px;">
+                <div class="gi-toolbar-left">
+                    <label class="gi-field gi-field--small">
+                        <span>Tipo em massa</span>
+                        <select wire:model.defer="acaoMassa.tipo_avaliacao_id">
+                            <option value="">Nao alterar</option>
+                            @foreach ($this->tiposOptions as $tipoId => $tipoNome)
+                                <option value="{{ $tipoId }}">{{ $tipoNome }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+
+                    <label class="gi-field gi-field--small">
+                        <span>Serie em massa</span>
+                        <select wire:model.defer="acaoMassa.serie_id">
+                            <option value="">Nao alterar</option>
+                            @foreach ($this->seriesOptions as $serieId => $serieNome)
+                                <option value="{{ $serieId }}">{{ $serieNome }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+
+                    <label class="gi-field gi-field--small">
+                        <span>Componente em massa</span>
+                        <select wire:model.defer="acaoMassa.componente_curricular_id">
+                            <option value="">Nao alterar</option>
+                            @foreach ($this->componentesOptions as $componenteId => $componenteNome)
+                                <option value="{{ $componenteId }}">{{ $componenteNome }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+
+                    <button type="button" class="gi-action" wire:click="aplicarCamposEmMassa">
+                        Aplicar nas selecionadas ({{ count($selecionadas) }})
+                    </button>
+                </div>
+            </div>
+
             <div class="gi-table-wrap">
                 <table class="gi-table">
                     <thead>
                         <tr>
+                            <th>
+                                <input type="checkbox" wire:model.live="selecionarPagina" />
+                            </th>
                             <th>Pauta</th>
                             <th>Tipo</th>
                             <th>Serie</th>
@@ -80,6 +121,9 @@
                     <tbody>
                         @forelse ($this->pautas as $pauta)
                             <tr>
+                                <td>
+                                    <input type="checkbox" wire:model.live="selecionadas" value="{{ $pauta->id }}" />
+                                </td>
                                 <td><strong>{{ $pauta->texto }}</strong></td>
                                 <td>{{ $pauta->tipo?->nome ?? 'Sem tipo' }}</td>
                                 <td>{{ $pauta->serie?->nome ?? 'Sem serie' }}</td>
@@ -113,7 +157,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="9" class="gi-empty">Nenhuma pauta encontrada para os filtros aplicados.</td>
+                                <td colspan="10" class="gi-empty">Nenhuma pauta encontrada para os filtros aplicados.</td>
                             </tr>
                         @endforelse
                     </tbody>

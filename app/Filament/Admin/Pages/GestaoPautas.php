@@ -53,6 +53,17 @@ class GestaoPautas extends Page implements HasForms
 
     public ?int $pautaIdEditando = null;
 
+    public bool $selecionarPagina = false;
+
+    /** @var array<int, int> */
+    public array $selecionadas = [];
+
+    public array $acaoMassa = [
+        'tipo_avaliacao_id' => null,
+        'serie_id' => null,
+        'componente_curricular_id' => null,
+    ];
+
     public array $form = [
         'tipo_avaliacao_id' => null,
         'texto' => '',
@@ -105,21 +116,54 @@ class GestaoPautas extends Page implements HasForms
     public function updatedBusca(): void
     {
         $this->resetPage();
+        $this->limparSelecaoMassa();
     }
 
     public function updatedFiltroStatus(): void
     {
         $this->resetPage();
+        $this->limparSelecaoMassa();
     }
 
     public function updatedFiltroComponente(): void
     {
         $this->resetPage();
+        $this->limparSelecaoMassa();
     }
 
     public function updatedPorPagina(): void
     {
         $this->resetPage();
+        $this->limparSelecaoMassa();
+    }
+
+    public function updatedSelecionarPagina(bool $value): void
+    {
+        if (! $value) {
+            $this->selecionadas = [];
+
+            return;
+        }
+
+        $this->selecionadas = $this->pautas
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
+    }
+
+    public function updatedSelecionadas(): void
+    {
+        $idsPagina = $this->pautas
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
+
+        $selecionadasNaPagina = collect($this->selecionadas)
+            ->map(fn ($id): int => (int) $id)
+            ->intersect($idsPagina)
+            ->count();
+
+        $this->selecionarPagina = count($idsPagina) > 0 && $selecionadasNaPagina === count($idsPagina);
     }
 
     public function getPautasProperty(): LengthAwarePaginator
@@ -442,6 +486,69 @@ class GestaoPautas extends Page implements HasForms
             ->send();
     }
 
+    public function aplicarCamposEmMassa(): void
+    {
+        if (! (Auth::user()?->hasPermissionTo('Editar Pautas') ?? false)) {
+            Notification::make()
+                ->title('Você não tem permissão para editar pautas.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $ids = collect($this->selecionadas)
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->values();
+
+        if ($ids->isEmpty()) {
+            Notification::make()
+                ->title('Selecione ao menos uma pauta.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $validated = $this->validate([
+            'acaoMassa.tipo_avaliacao_id' => ['nullable', 'integer', 'exists:tipos_avaliacao,id'],
+            'acaoMassa.serie_id' => ['nullable', 'integer', 'exists:series,id'],
+            'acaoMassa.componente_curricular_id' => ['nullable', 'integer', 'exists:componentes_curriculares,id'],
+        ]);
+
+        $updates = collect([
+            'tipo_avaliacao_id' => $validated['acaoMassa']['tipo_avaliacao_id'] ?? null,
+            'serie_id' => $validated['acaoMassa']['serie_id'] ?? null,
+            'componente_curricular_id' => $validated['acaoMassa']['componente_curricular_id'] ?? null,
+        ])->filter(fn ($value) => filled($value))->all();
+
+        if ($updates === []) {
+            $this->addError('acaoMassa.tipo_avaliacao_id', 'Informe ao menos um campo para aplicar em massa.');
+
+            return;
+        }
+
+        $updates['updated_at'] = now();
+
+        $quantidadeAtualizada = Pauta::query()
+            ->whereIn('id', $ids->all())
+            ->update($updates);
+
+        $this->acaoMassa = [
+            'tipo_avaliacao_id' => null,
+            'serie_id' => null,
+            'componente_curricular_id' => null,
+        ];
+        $this->limparSelecaoMassa();
+
+        Notification::make()
+            ->title("Campos aplicados em {$quantidadeAtualizada} pauta(s).")
+            ->success()
+            ->send();
+    }
+
     private function resetForm(): void
     {
         $this->form = [
@@ -453,5 +560,11 @@ class GestaoPautas extends Page implements HasForms
             'alternativas_ids' => [],
         ];
         $this->novasAlternativas = [];
+    }
+
+    private function limparSelecaoMassa(): void
+    {
+        $this->selecionarPagina = false;
+        $this->selecionadas = [];
     }
 }

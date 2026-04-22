@@ -43,6 +43,16 @@ class GestaoAlternativas extends Page
 
     public ?int $alternativaIdEditando = null;
 
+    public bool $selecionarPagina = false;
+
+    /** @var array<int, int> */
+    public array $selecionadas = [];
+
+    public array $acaoMassa = [
+        'tipo_avaliacao_id' => null,
+        'novo_tipo_nome' => '',
+    ];
+
     public array $form = [
         'tipo_avaliacao_id' => null,
         'novo_tipo_nome' => '',
@@ -68,16 +78,48 @@ class GestaoAlternativas extends Page
     public function updatedBusca(): void
     {
         $this->resetPage();
+        $this->limparSelecaoMassa();
     }
 
     public function updatedFiltroStatus(): void
     {
         $this->resetPage();
+        $this->limparSelecaoMassa();
     }
 
     public function updatedPorPagina(): void
     {
         $this->resetPage();
+        $this->limparSelecaoMassa();
+    }
+
+    public function updatedSelecionarPagina(bool $value): void
+    {
+        if (! $value) {
+            $this->selecionadas = [];
+
+            return;
+        }
+
+        $this->selecionadas = $this->alternativas
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
+    }
+
+    public function updatedSelecionadas(): void
+    {
+        $idsPagina = $this->alternativas
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
+
+        $selecionadasNaPagina = collect($this->selecionadas)
+            ->map(fn ($id): int => (int) $id)
+            ->intersect($idsPagina)
+            ->count();
+
+        $this->selecionarPagina = count($idsPagina) > 0 && $selecionadasNaPagina === count($idsPagina);
     }
 
     public function getAlternativasProperty(): LengthAwarePaginator
@@ -253,7 +295,7 @@ class GestaoAlternativas extends Page
             'tipo_avaliacao_id' => $tipoAvaliacaoId,
             'nome' => trim((string) $validated['form']['nome']),
             'tem_observacao' => (bool) $validated['form']['tem_observacao'],
-            'observacao' => ((bool) $validated['form']['tem_observacao']) && filled($validated['form']['observacao'] ?? null)
+            'observacao' => ((bool) ($validated['form']['tem_observacao'] ?? false)) && filled($validated['form']['observacao'] ?? null)
                 ? trim((string) $validated['form']['observacao'])
                 : null,
             'status' => (bool) $validated['form']['status'],
@@ -296,5 +338,79 @@ class GestaoAlternativas extends Page
             ->title('Alternativa excluída com sucesso.')
             ->success()
             ->send();
+    }
+
+    public function aplicarTipoEmMassa(): void
+    {
+        if (! (Auth::user()?->hasPermissionTo('Editar Alternativas') ?? false)) {
+            Notification::make()
+                ->title('Você não tem permissão para editar alternativas.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $ids = collect($this->selecionadas)
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->values();
+
+        if ($ids->isEmpty()) {
+            Notification::make()
+                ->title('Selecione ao menos uma alternativa.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $validated = $this->validate([
+            'acaoMassa.tipo_avaliacao_id' => ['nullable', 'integer', 'exists:tipos_avaliacao,id'],
+            'acaoMassa.novo_tipo_nome' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $novoTipoNome = Str::of((string) ($validated['acaoMassa']['novo_tipo_nome'] ?? ''))->trim()->toString();
+        $tipoAvaliacaoId = (int) ($validated['acaoMassa']['tipo_avaliacao_id'] ?? 0);
+
+        if ($novoTipoNome !== '') {
+            $tipoAvaliacaoId = (int) TipoAvaliacao::query()
+                ->firstOrCreate(
+                    ['nome' => $novoTipoNome],
+                    ['status' => true]
+                )
+                ->id;
+        }
+
+        if ($tipoAvaliacaoId <= 0) {
+            $this->addError('acaoMassa.tipo_avaliacao_id', 'Selecione um tipo existente ou informe um novo tipo.');
+
+            return;
+        }
+
+        $quantidadeAtualizada = Alternativa::query()
+            ->whereIn('id', $ids->all())
+            ->update([
+                'tipo_avaliacao_id' => $tipoAvaliacaoId,
+                'updated_at' => now(),
+            ]);
+
+        $this->acaoMassa = [
+            'tipo_avaliacao_id' => null,
+            'novo_tipo_nome' => '',
+        ];
+        $this->limparSelecaoMassa();
+
+        Notification::make()
+            ->title("Tipo aplicado em {$quantidadeAtualizada} alternativa(s).")
+            ->success()
+            ->send();
+    }
+
+    private function limparSelecaoMassa(): void
+    {
+        $this->selecionarPagina = false;
+        $this->selecionadas = [];
     }
 }

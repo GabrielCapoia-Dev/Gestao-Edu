@@ -52,10 +52,42 @@
                 </div>
             </div>
 
+            <div class="gi-toolbar" style="margin-top: 12px;">
+                <div class="gi-toolbar-left">
+                    <label class="gi-field gi-field--small">
+                        <span>Tipo em massa</span>
+                        <select wire:model.defer="acaoMassa.tipo_avaliacao_id">
+                            <option value="">Selecione um tipo</option>
+                            @foreach ($this->tiposOptions as $tipoId => $tipoNome)
+                                <option value="{{ $tipoId }}">{{ $tipoNome }}</option>
+                            @endforeach
+                        </select>
+                        @error('acaoMassa.tipo_avaliacao_id')
+                            <p class="error">{{ $message }}</p>
+                        @enderror
+                    </label>
+
+                    <label class="gi-field">
+                        <span>Ou novo tipo</span>
+                        <input type="text" wire:model.defer="acaoMassa.novo_tipo_nome" maxlength="255" placeholder="Ex.: Parecer Descritivo" />
+                        @error('acaoMassa.novo_tipo_nome')
+                            <p class="error">{{ $message }}</p>
+                        @enderror
+                    </label>
+
+                    <button type="button" class="gi-action" wire:click="aplicarTipoEmMassa">
+                        Aplicar nas selecionadas ({{ count($selecionadas) }})
+                    </button>
+                </div>
+            </div>
+
             <div class="gi-table-wrap">
                 <table class="gi-table">
                     <thead>
                         <tr>
+                            <th>
+                                <input type="checkbox" wire:model.live="selecionarPagina" />
+                            </th>
                             <th>Nome</th>
                             <th>Tipo</th>
                             <th>Tem observacao?</th>
@@ -69,6 +101,9 @@
                     <tbody>
                         @forelse ($this->alternativas as $alternativa)
                             <tr>
+                                <td>
+                                    <input type="checkbox" wire:model.live="selecionadas" value="{{ $alternativa->id }}" />
+                                </td>
                                 <td><strong>{{ $alternativa->nome }}</strong></td>
                                 <td>{{ $alternativa->tipo?->nome ?? 'Sem tipo' }}</td>
                                 <td>
@@ -105,7 +140,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="gi-empty">Nenhuma alternativa encontrada para os filtros aplicados.</td>
+                                <td colspan="9" class="gi-empty">Nenhuma alternativa encontrada para os filtros aplicados.</td>
                             </tr>
                         @endforelse
                     </tbody>
