@@ -281,4 +281,13 @@ class FeedbackPedido extends Page implements HasTable
 
         return route('feedback-pedidos.export-' . $tipo, array_filter($params));
     }
+    public function getTitle(): string
+    {
+        return '';
+    }
+
+    public function getHeading(): string
+    {
+        return '';
+    }
 }

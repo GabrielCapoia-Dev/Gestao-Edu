@@ -869,4 +869,13 @@ class AvaliacoesProfessor extends Page
 
         return $observacao !== '';
     }
+    public function getTitle(): string
+    {
+        return '';
+    }
+
+    public function getHeading(): string
+    {
+        return '';
+    }
 }

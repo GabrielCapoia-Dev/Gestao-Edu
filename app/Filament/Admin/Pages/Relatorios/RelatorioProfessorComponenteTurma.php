@@ -315,4 +315,13 @@ class RelatorioProfessorComponenteTurma extends Page implements HasTable
             ->paginated([5, 10, 25, 50, 100])
             ->defaultPaginationPageOption(5);
     }
+    public function getTitle(): string
+    {
+        return '';
+    }
+
+    public function getHeading(): string
+    {
+        return '';
+    }
 }

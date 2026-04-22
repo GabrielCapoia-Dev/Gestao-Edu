@@ -875,4 +875,13 @@ class GestaoAvaliacoes extends Page implements HasForms
         $this->form['pautas_override_habilitado'] = $overridesAtivos;
         $this->form['alternativas_override'] = $alternativasOverrides;
     }
+    public function getTitle(): string
+    {
+        return '';
+    }
+
+    public function getHeading(): string
+    {
+        return '';
+    }
 }

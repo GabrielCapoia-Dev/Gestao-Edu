@@ -330,4 +330,13 @@ class GestaoMargens extends Page
     {
         return [];
     }
+    public function getTitle(): string
+    {
+        return '';
+    }
+
+    public function getHeading(): string
+    {
+        return '';
+    }
 }

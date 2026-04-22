@@ -249,4 +249,13 @@ class GestaoEstoque extends Page
     {
         return app(GestaoEstoqueDataService::class);
     }
+    public function getTitle(): string
+    {
+        return '';
+    }
+
+    public function getHeading(): string
+    {
+        return '';
+    }
 }

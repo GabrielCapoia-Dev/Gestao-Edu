@@ -359,4 +359,13 @@ class GestaoInventario extends Page
     {
         return app(InventarioContextService::class);
     }
+    public function getTitle(): string
+    {
+        return '';
+    }
+
+    public function getHeading(): string
+    {
+        return '';
+    }
 }

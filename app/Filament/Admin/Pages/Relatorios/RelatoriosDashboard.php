@@ -67,4 +67,13 @@ class RelatoriosDashboard extends Page
         $user = Auth::user();
         return $user->hasPermissionTo('Listar Relatórios: Dashboard');
     }
+    public function getTitle(): string
+    {
+        return '';
+    }
+
+    public function getHeading(): string
+    {
+        return '';
+    }
 }

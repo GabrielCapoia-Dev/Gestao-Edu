@@ -725,4 +725,13 @@ class RelatorioComponenteProfessorFaltando extends Page
             default => $turno ?: 'Não informado',
         };
     }
+    public function getTitle(): string
+    {
+        return '';
+    }
+
+    public function getHeading(): string
+    {
+        return '';
+    }
 }

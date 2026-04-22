@@ -295,4 +295,13 @@ class Inventarios extends Page
 
         return $this->redirect(route("inventarios.relatorio.envios.{$formato}", $params), navigate: false);
     }
+    public function getTitle(): string
+    {
+        return '';
+    }
+
+    public function getHeading(): string
+    {
+        return '';
+    }
 }

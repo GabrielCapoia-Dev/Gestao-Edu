@@ -413,4 +413,13 @@ class GestaoAlternativas extends Page
         $this->selecionarPagina = false;
         $this->selecionadas = [];
     }
+    public function getTitle(): string
+    {
+        return '';
+    }
+
+    public function getHeading(): string
+    {
+        return '';
+    }
 }
