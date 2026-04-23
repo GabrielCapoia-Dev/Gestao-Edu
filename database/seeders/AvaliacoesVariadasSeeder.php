@@ -216,12 +216,6 @@ class AvaliacoesVariadasSeeder extends Seeder
             $avaliacao->componentes()->sync($componentesIdsPlanejados);
             $avaliacao->escolas()->sync($escolasIds);
 
-            $this->sincronizarAlternativasLegadasDasPautas(
-                pautaIds: $pautasParaVincular,
-                alternativasPorTipo: $alternativasPorTipo,
-                tipoAvaliacaoPadraoId: $tipoAvaliacaoId
-            );
-
             $overridesGerados += $this->sincronizarOverridesDeAlternativas(
                 avaliacaoId: (int) $avaliacao->id,
                 pautaIds: $pautasParaVincular,
@@ -603,33 +597,6 @@ class AvaliacoesVariadasSeeder extends Seeder
         return array_slice($selecionadas, 0, $quantidadeFinal);
     }
 
-    private function sincronizarAlternativasLegadasDasPautas(
-        array $pautaIds,
-        Collection $alternativasPorTipo,
-        int $tipoAvaliacaoPadraoId
-    ): void {
-        if ($pautaIds === []) {
-            return;
-        }
-
-        Pauta::query()
-            ->whereIn('id', $pautaIds)
-            ->get(['id', 'tipo_avaliacao_id'])
-            ->each(function (Pauta $pauta) use ($alternativasPorTipo, $tipoAvaliacaoPadraoId): void {
-                $tipoAvaliacaoId = (int) ($pauta->tipo_avaliacao_id ?: $tipoAvaliacaoPadraoId);
-                $alternativasIds = $alternativasPorTipo->get(
-                    $tipoAvaliacaoId,
-                    $alternativasPorTipo->get($tipoAvaliacaoPadraoId, [])
-                );
-
-                if ($alternativasIds === []) {
-                    return;
-                }
-
-                $pauta->alternativas()->syncWithoutDetaching($alternativasIds);
-            });
-    }
-
     private function sincronizarOverridesDeAlternativas(
         int $avaliacaoId,
         array $pautaIds,
@@ -878,19 +845,48 @@ class AvaliacoesVariadasSeeder extends Seeder
             }
         }
 
+        $chavesUnicasRespostas = $this->obterChavesUnicasDaTabela('avaliacao_respostas');
+        $chaveConflitoRespostas = $this->resolverChaveConflito(
+            $chavesUnicasRespostas,
+            ['avaliacao_id', 'pauta_id', 'turma_id', 'aluno_id'],
+            [
+                ['avaliacao_id', 'turma_id', 'aluno_id'],
+            ]
+        );
+
+        $respostasPayload = $this->deduplicarPayloadPorChavesUnicas(
+            $respostasPayload,
+            $chavesUnicasRespostas !== [] ? $chavesUnicasRespostas : [$chaveConflitoRespostas]
+        );
+
         if ($respostasPayload !== []) {
-            AvaliacaoResposta::query()->upsert(
-                $respostasPayload,
-                ['avaliacao_id', 'pauta_id', 'turma_id', 'aluno_id'],
-                ['professor_id', 'alternativa_id', 'observacao', 'respondido_em', 'updated_at']
+            $this->upsertEmLotes(
+                modelClass: AvaliacaoResposta::class,
+                linhas: $respostasPayload,
+                uniqueBy: $chaveConflitoRespostas,
+                updateColumns: ['professor_id', 'alternativa_id', 'observacao', 'respondido_em', 'updated_at'],
+                tamanhoLote: 500
             );
         }
 
+        $chavesUnicasInformacoes = $this->obterChavesUnicasDaTabela('avaliacao_informacoes_complementares');
+        $chaveConflitoInformacoes = $this->resolverChaveConflito(
+            $chavesUnicasInformacoes,
+            ['avaliacao_id', 'turma_id', 'aluno_id']
+        );
+
+        $informacoesPayload = $this->deduplicarPayloadPorChavesUnicas(
+            $informacoesPayload,
+            $chavesUnicasInformacoes !== [] ? $chavesUnicasInformacoes : [$chaveConflitoInformacoes]
+        );
+
         if ($informacoesPayload !== []) {
-            AvaliacaoInformacaoComplementar::query()->upsert(
-                $informacoesPayload,
-                ['avaliacao_id', 'turma_id', 'aluno_id'],
-                ['professor_id', 'informacoes_complementares', 'updated_at']
+            $this->upsertEmLotes(
+                modelClass: AvaliacaoInformacaoComplementar::class,
+                linhas: $informacoesPayload,
+                uniqueBy: $chaveConflitoInformacoes,
+                updateColumns: ['professor_id', 'informacoes_complementares', 'updated_at'],
+                tamanhoLote: 500
             );
         }
 
@@ -990,6 +986,150 @@ class AvaliacoesVariadasSeeder extends Seeder
         }
 
         return $resultado;
+    }
+
+    /**
+     * @return array<int, array<int, string>>
+     */
+    private function obterChavesUnicasDaTabela(string $tabela): array
+    {
+        $driver = (string) DB::connection()->getDriverName();
+
+        if (! in_array($driver, ['mysql', 'mariadb'], true)) {
+            return [];
+        }
+
+        $linhas = DB::select("SHOW INDEX FROM {$tabela}");
+        $agrupadas = [];
+
+        foreach ($linhas as $linha) {
+            $coluna = (string) ($linha->Column_name ?? '');
+            $nomeIndice = (string) ($linha->Key_name ?? '');
+            $sequencia = (int) ($linha->Seq_in_index ?? 0);
+            $naoUnico = (int) ($linha->Non_unique ?? 1);
+
+            if ($naoUnico !== 0 || $nomeIndice === 'PRIMARY' || $coluna === '') {
+                continue;
+            }
+
+            $agrupadas[$nomeIndice][$sequencia] = $coluna;
+        }
+
+        if ($agrupadas === []) {
+            return [];
+        }
+
+        $chaves = [];
+
+        foreach ($agrupadas as $colunasPorSequencia) {
+            ksort($colunasPorSequencia);
+            $chaves[] = array_values($colunasPorSequencia);
+        }
+
+        return $chaves;
+    }
+
+    /**
+     * @param array<int, array<int, string>> $chavesUnicas
+     * @param array<int, string> $preferida
+     * @param array<int, array<int, string>> $fallbacks
+     * @return array<int, string>
+     */
+    private function resolverChaveConflito(array $chavesUnicas, array $preferida, array $fallbacks = []): array
+    {
+        $candidatas = array_merge([$preferida], $fallbacks);
+
+        foreach ($candidatas as $candidata) {
+            foreach ($chavesUnicas as $chaveUnica) {
+                if ($this->mesmasColunas($chaveUnica, $candidata)) {
+                    return $candidata;
+                }
+            }
+        }
+
+        return $preferida;
+    }
+
+    /**
+     * @param array<int, string> $colunasA
+     * @param array<int, string> $colunasB
+     */
+    private function mesmasColunas(array $colunasA, array $colunasB): bool
+    {
+        $normalizadoA = array_values(array_unique($colunasA));
+        $normalizadoB = array_values(array_unique($colunasB));
+        sort($normalizadoA);
+        sort($normalizadoB);
+
+        return $normalizadoA === $normalizadoB;
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $linhas
+     * @param array<int, array<int, string>> $chavesUnicas
+     * @return array<int, array<string, mixed>>
+     */
+    private function deduplicarPayloadPorChavesUnicas(array $linhas, array $chavesUnicas): array
+    {
+        if ($linhas === [] || $chavesUnicas === []) {
+            return $linhas;
+        }
+
+        $resultado = $linhas;
+
+        foreach ($chavesUnicas as $colunasDaChave) {
+            if ($colunasDaChave === []) {
+                continue;
+            }
+
+            $resultado = $this->deduplicarPayloadPorColunas($resultado, $colunasDaChave);
+        }
+
+        return $resultado;
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $linhas
+     * @param array<int, string> $colunasDaChave
+     * @return array<int, array<string, mixed>>
+     */
+    private function deduplicarPayloadPorColunas(array $linhas, array $colunasDaChave): array
+    {
+        $resultado = [];
+
+        foreach ($linhas as $linha) {
+            $partes = [];
+
+            foreach ($colunasDaChave as $coluna) {
+                $valor = $linha[$coluna] ?? null;
+                $partes[] = is_null($valor) ? 'null' : (string) $valor;
+            }
+
+            $chaveComposta = implode('|', $partes);
+            $resultado[$chaveComposta] = $linha;
+        }
+
+        return array_values($resultado);
+    }
+
+    /**
+     * @param class-string<\Illuminate\Database\Eloquent\Model> $modelClass
+     * @param array<int, array<string, mixed>> $linhas
+     * @param array<int, string> $uniqueBy
+     * @param array<int, string> $updateColumns
+     */
+    private function upsertEmLotes(
+        string $modelClass,
+        array $linhas,
+        array $uniqueBy,
+        array $updateColumns,
+        int $tamanhoLote = 500
+    ): void {
+        $tamanhoLote = max(1, $tamanhoLote);
+
+        foreach (array_chunk($linhas, $tamanhoLote) as $lote) {
+            $modelClass::query()->upsert($lote, $uniqueBy, $updateColumns);
+        }
     }
 
     private function hashPercentual(string $seed): int
