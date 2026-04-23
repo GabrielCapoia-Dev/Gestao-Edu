@@ -6,9 +6,9 @@ Esta pasta contem a documentacao canonica por dominio funcional. O objetivo e ev
 
 | Dominio | Documento alvo | Fonte semente principal | Agente sugerido | Status |
 | --- | --- | --- | --- | --- |
-| Arquitetura geral e painel Filament | `docs/domains/arquitetura-e-painel-filament.md` | `docs/context-skills/arquitetura-geral.md` | `documentation-architecture-analyst` | planejado |
+| Arquitetura geral e painel Filament | [`docs/domains/arquitetura-e-painel-filament.md`](./arquitetura-e-painel-filament.md) | `docs/context-skills/arquitetura-geral.md` | `documentation-architecture-analyst` | draft |
 | Autenticacao, autorizacao e permissoes | [`docs/domains/autenticacao-autorizacao-e-permissoes.md`](./autenticacao-autorizacao-e-permissoes.md) | `docs/context-skills/autenticacao-e-autorizacao.md` | `documentation-auth-access-analyst` | piloto pronto |
-| Cadastros administrativos base | `docs/domains/cadastros-administrativos-base.md` | `docs/context-skills/mapa-de-modulos.md` | `documentation-admin-cadastros-analyst` | planejado |
+| Cadastros administrativos base | [`docs/domains/cadastros-administrativos-base.md`](./cadastros-administrativos-base.md) | `docs/context-skills/mapa-de-modulos.md` | `documentation-admin-cadastros-analyst` | draft |
 | Estrutura escolar e pedagogica | `docs/domains/estrutura-escolar-e-pedagogica.md` | `docs/context-skills/mapa-de-modulos.md` | `documentation-school-structure-analyst` | planejado |
 | Pedidos de manutencao | `docs/domains/pedidos-de-manutencao.md` | `docs/context-skills/fluxo-pedidos-manutencao.md` | `documentation-maintenance-requests-analyst` | planejado |
 | Merenda, contratos e estoque | [`docs/domains/merenda-contratos-e-estoque.md`](./merenda-contratos-e-estoque.md) | `docs/context-skills/merenda-contratos-e-estoque.md` | `documentation-school-meals-contracts-stock-analyst` | piloto pronto |

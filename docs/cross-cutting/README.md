@@ -5,6 +5,7 @@ Esta pasta concentra as regras transversais que precisam ser lidas junto da docu
 ## Documentos disponiveis
 
 - [`matriz-permissoes-e-escopo.md`](./matriz-permissoes-e-escopo.md)
+- [`fluxos-e-permissoes-do-painel-admin.md`](./fluxos-e-permissoes-do-painel-admin.md)
 - [`ponto-canonico-da-regra.md`](./ponto-canonico-da-regra.md)
 - [`playbook-nova-feature.md`](./playbook-nova-feature.md)
 - [`checklist-alteracao-sensivel.md`](./checklist-alteracao-sensivel.md)
