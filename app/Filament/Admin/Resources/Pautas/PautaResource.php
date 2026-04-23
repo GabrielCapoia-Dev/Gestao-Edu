@@ -33,7 +33,7 @@ class PautaResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ClipboardDocumentList;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Pedagógico';
+    protected static string|UnitEnum|null $navigationGroup = 'Pedagógico';
 
     protected static ?string $navigationLabel = 'Pautas';
 

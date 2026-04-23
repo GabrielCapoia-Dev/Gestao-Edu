@@ -33,7 +33,7 @@ class AvaliacaoResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ClipboardDocumentCheck;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Pedagógico';
+    protected static string|UnitEnum|null $navigationGroup = 'Pedagógico';
 
     protected static ?string $navigationLabel = 'Avaliações';
 
