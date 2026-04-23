@@ -47,6 +47,8 @@ class CriarPermissoes extends Command
             $this->line("Nivel sincronizado: {$roleName} (" . count($rolePermissions) . ' permissoes)');
         }
 
+        $this->sincronizarAdminComTodasAsPermissoes();
+
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         $this->info('Permissoes e niveis de acesso sincronizados com sucesso.');
@@ -196,6 +198,7 @@ class CriarPermissoes extends Command
             'Exportar Turmas',
             'Exportar Escolas',
             'Exportar Relatórios',
+            'Exportar Avaliações',
             'Exportar Professores',
             'Exportar Arquivos Pedido',
             'Exportar Componente Curricular',
@@ -527,5 +530,23 @@ class CriarPermissoes extends Command
     private function onlyPermissions(array $permissions, array $selectedPermissions): array
     {
         return array_values(array_intersect($permissions, $selectedPermissions));
+    }
+
+    private function sincronizarAdminComTodasAsPermissoes(): void
+    {
+        $admin = Role::firstOrCreate([
+            'name' => 'Admin',
+            'guard_name' => 'web',
+        ]);
+
+        $allPermissions = Permission::query()
+            ->where('guard_name', 'web')
+            ->pluck('name')
+            ->values()
+            ->all();
+
+        $admin->syncPermissions($allPermissions);
+
+        $this->line('Nivel sincronizado: Admin (' . count($allPermissions) . ' permissoes totais)');
     }
 }

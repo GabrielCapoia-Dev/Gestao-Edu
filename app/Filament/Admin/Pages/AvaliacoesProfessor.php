@@ -20,6 +20,10 @@ use UnitEnum;
 
 class AvaliacoesProfessor extends Page
 {
+    private const PERMISSAO_LISTAR_AVALIACOES = 'Listar Avaliações';
+    private const PERMISSAO_RESPONDER_AVALIACOES = 'Responder Avaliações';
+    private const PERMISSAO_EXPORTAR_AVALIACOES = 'Exportar Avaliações';
+
     protected string $view = 'filament.pages.avaliacoes-professor';
 
     protected static ?string $title = 'Avaliações';
@@ -59,8 +63,61 @@ class AvaliacoesProfessor extends Page
         /** @var \App\Models\User|null $user */
         $user = Auth::user();
 
-        return ($user?->hasPermissionTo('Responder Avaliações') ?? false)
-            && ($user?->ehProfessor() ?? false);
+        if (! $user) {
+            return false;
+        }
+
+        return $user->hasAnyPermission([
+            self::PERMISSAO_LISTAR_AVALIACOES,
+            self::PERMISSAO_RESPONDER_AVALIACOES,
+            self::PERMISSAO_EXPORTAR_AVALIACOES,
+        ]);
+    }
+
+    public function podeResponder(): bool
+    {
+        /** @var \App\Models\User|null $user */
+        $user = Auth::user();
+
+        return $user?->hasPermissionTo(self::PERMISSAO_RESPONDER_AVALIACOES) ?? false;
+    }
+
+    public function podeExportar(): bool
+    {
+        /** @var \App\Models\User|null $user */
+        $user = Auth::user();
+
+        return $user?->hasPermissionTo(self::PERMISSAO_EXPORTAR_AVALIACOES) ?? false;
+    }
+
+    private function deveFiltrarPorProfessor(): bool
+    {
+        /** @var \App\Models\User|null $user */
+        $user = Auth::user();
+
+        if (! $user) {
+            return false;
+        }
+
+        if ($this->professorIds === []) {
+            return false;
+        }
+
+        if ($user->hasPermissionTo(self::PERMISSAO_LISTAR_AVALIACOES)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private function abortSeNaoPuderResponder(): void
+    {
+        abort_unless($this->podeResponder(), 403);
+    }
+
+    private function abortSeNaoPuderExportar(): void
+    {
+        abort_unless($this->podeExportar(), 403);
     }
 
     public function mount(): void
@@ -176,6 +233,8 @@ class AvaliacoesProfessor extends Page
 
     public function aplicarEmMassa(int $pautaId): void
     {
+        $this->abortSeNaoPuderResponder();
+
         $pauta = $this->pautasDisponiveis->firstWhere('id', $pautaId);
 
         if (! $pauta) {
@@ -273,6 +332,8 @@ class AvaliacoesProfessor extends Page
 
     public function salvarRespostas(): void
     {
+        $this->abortSeNaoPuderResponder();
+
         if (! $this->avaliacao || ! $this->turma) {
             Notification::make()
                 ->title('Selecione uma avaliação e uma turma para continuar.')
@@ -371,6 +432,127 @@ class AvaliacoesProfessor extends Page
             ->send();
     }
 
+    public function exportarRespostas()
+    {
+        $this->abortSeNaoPuderExportar();
+
+        if (! $this->avaliacaoAtual || ! $this->turma) {
+            Notification::make()
+                ->title('Selecione uma avaliação e uma turma para exportar.')
+                ->warning()
+                ->send();
+
+            return null;
+        }
+
+        $turmaAtual = $this->turmasDisponiveis->firstWhere('id', (int) $this->turma);
+        $pautas = $this->pautasDisponiveis;
+        $alunos = $this->alunosDaTurma;
+
+        if (! $turmaAtual || $pautas->isEmpty() || $alunos->isEmpty()) {
+            Notification::make()
+                ->title('Não há dados suficientes para exportação (turma/pautas/alunos).')
+                ->warning()
+                ->send();
+
+            return null;
+        }
+
+        $pautasIds = $pautas->pluck('id')->map(fn ($id) => (int) $id)->values()->all();
+        $alunosIds = $alunos->pluck('id')->map(fn ($id) => (int) $id)->values()->all();
+
+        $respostas = AvaliacaoResposta::query()
+            ->where('avaliacao_id', (int) $this->avaliacaoAtual->id)
+            ->where('turma_id', (int) $turmaAtual->id)
+            ->whereIn('pauta_id', $pautasIds)
+            ->whereIn('aluno_id', $alunosIds)
+            ->with(['alternativa:id,nome'])
+            ->get()
+            ->keyBy(fn (AvaliacaoResposta $resposta): string => $resposta->pauta_id . '-' . $resposta->aluno_id);
+
+        $informacoesComplementares = AvaliacaoInformacaoComplementar::query()
+            ->where('avaliacao_id', (int) $this->avaliacaoAtual->id)
+            ->where('turma_id', (int) $turmaAtual->id)
+            ->whereIn('aluno_id', $alunosIds)
+            ->get(['aluno_id', 'informacoes_complementares'])
+            ->keyBy('aluno_id');
+
+        $avaliacaoId = (int) $this->avaliacaoAtual->id;
+        $turmaId = (int) $turmaAtual->id;
+        $avaliacaoNome = (string) $this->avaliacaoAtual->nome;
+        $turmaNome = (string) ($turmaAtual->nome ?? '');
+
+        $nomeArquivo = sprintf(
+            'avaliacao_%d_turma_%d_%s.csv',
+            $avaliacaoId,
+            $turmaId,
+            now()->format('Ymd_His')
+        );
+
+        return response()->streamDownload(function () use ($avaliacaoId, $avaliacaoNome, $turmaAtual, $turmaId, $turmaNome, $pautas, $alunos, $respostas, $informacoesComplementares): void {
+            echo "\xEF\xBB\xBF";
+
+            $out = fopen('php://output', 'w');
+
+            if ($out === false) {
+                return;
+            }
+
+            $delimiter = ';';
+
+            fputcsv($out, [
+                'Avaliacao ID',
+                'Avaliacao Nome',
+                'Turma ID',
+                'Turma Nome',
+                'Aluno ID',
+                'Aluno Nome',
+                'Aluno CGM',
+                'Pauta ID',
+                'Pauta Texto',
+                'Componente',
+                'Alternativa ID',
+                'Alternativa',
+                'Observacao',
+                'Respondido Em',
+                'Professor ID',
+                'Informacoes Complementares (Aluno)',
+            ], $delimiter);
+
+            foreach ($alunos as $aluno) {
+                foreach ($pautas as $pauta) {
+                    $chave = $pauta->id . '-' . $aluno->id;
+                    $resposta = $respostas->get($chave);
+                    $alternativa = $resposta?->alternativa;
+                    $info = $informacoesComplementares->get((int) $aluno->id);
+
+                    fputcsv($out, [
+                        $avaliacaoId,
+                        $avaliacaoNome,
+                        $turmaId,
+                        $turmaNome,
+                        (int) $aluno->id,
+                        (string) $aluno->nome,
+                        (string) $aluno->cgm,
+                        (int) $pauta->id,
+                        (string) $pauta->texto,
+                        (string) ($pauta->componente?->nome ?? ''),
+                        $resposta?->alternativa_id ? (int) $resposta->alternativa_id : '',
+                        (string) ($alternativa?->nome ?? ''),
+                        (string) ($resposta?->observacao ?? ''),
+                        $resposta?->respondido_em?->toDateTimeString() ?? '',
+                        $resposta?->professor_id ? (int) $resposta->professor_id : '',
+                        (string) ($info?->informacoes_complementares ?? ''),
+                    ], $delimiter);
+                }
+            }
+
+            fclose($out);
+        }, $nomeArquivo, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
     public function alternativaRequerObservacao(int $pautaId, ?int $alternativaId): bool
     {
         $alternativa = $this->alternativaDaPauta($pautaId, $alternativaId);
@@ -385,15 +567,16 @@ class AvaliacoesProfessor extends Page
 
     public function getAvaliacoesDisponiveisProperty(): Collection
     {
-        if ($this->professorIds === []) {
-            return collect();
+        $avaliacoesQuery = Avaliacao::query()
+            ->pendentesParaData(now());
+
+        if ($this->deveFiltrarPorProfessor()) {
+            $avaliacoesQuery->whereHas('turmas.componentes', function ($query) {
+                $query->whereIn('turma_componente_professor.professor_id', $this->professorIds);
+            });
         }
 
-        $avaliacoes = Avaliacao::query()
-            ->pendentesParaData(now())
-            ->whereHas('turmas.componentes', function ($query) {
-                $query->whereIn('turma_componente_professor.professor_id', $this->professorIds);
-            })
+        $avaliacoes = $avaliacoesQuery
             ->with([
                 'tipo' => fn ($query) => $query
                     ->with([
@@ -439,11 +622,17 @@ class AvaliacoesProfessor extends Page
             return collect();
         }
 
-        $componentesProfessor = $this->componentesPorTurma[(int) $this->turma] ?? [];
+        $pautas = $this->avaliacaoAtual->pautas;
 
-        $pautas = $this->avaliacaoAtual->pautas
-            ->filter(fn (Pauta $pauta): bool => $this->pautaEhRelevanteParaComponentes($pauta, $componentesProfessor))
-            ->values();
+        if ($this->deveFiltrarPorProfessor()) {
+            $componentesProfessor = $this->componentesPorTurma[(int) $this->turma] ?? [];
+
+            $pautas = $pautas
+                ->filter(fn (Pauta $pauta): bool => $this->pautaEhRelevanteParaComponentes($pauta, $componentesProfessor))
+                ->values();
+        } else {
+            $pautas = $pautas->values();
+        }
 
         $this->carregarAlternativasPorPauta($pautas);
 
@@ -564,6 +753,10 @@ class AvaliacoesProfessor extends Page
 
     private function filtrarTurmasDaAvaliacao(Avaliacao $avaliacao): Collection
     {
+        if (! $this->deveFiltrarPorProfessor()) {
+            return $avaliacao->turmas->values();
+        }
+
         return $avaliacao->turmas
             ->filter(function ($turma) use ($avaliacao): bool {
                 $componentesProfessor = $this->componentesPorTurma[(int) $turma->id] ?? [];
@@ -758,6 +951,8 @@ class AvaliacoesProfessor extends Page
 
     private function autoSalvarResposta(int $pautaId, int $alunoId): void
     {
+        $this->abortSeNaoPuderResponder();
+
         if (! $this->avaliacao || ! $this->turma) {
             return;
         }
@@ -823,6 +1018,8 @@ class AvaliacoesProfessor extends Page
 
     private function autoSalvarInformacaoComplementar(int $alunoId): void
     {
+        $this->abortSeNaoPuderResponder();
+
         if (! $this->avaliacao || ! $this->turma) {
             return;
         }
@@ -862,6 +1059,8 @@ class AvaliacoesProfessor extends Page
 
     private function removerRespostaPersistida(int $pautaId, int $alunoId): void
     {
+        $this->abortSeNaoPuderResponder();
+
         if (! $this->avaliacao || ! $this->turma) {
             return;
         }

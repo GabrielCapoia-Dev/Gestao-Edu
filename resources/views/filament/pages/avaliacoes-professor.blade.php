@@ -51,6 +51,12 @@
             </div>
         </section>
 
+        @if (! $this->podeResponder())
+            <section class="av-note">
+                Modo leitura: para alterar/responder avaliacoes, e necessario ter a permissao "Responder Avaliacoes".
+            </section>
+        @endif
+
         @if ($this->avaliacoesDisponiveis->isEmpty())
             <section class="av-note av-note--warning">
                 Nao existem avaliacoes pendentes para seus componentes neste momento.
@@ -113,7 +119,7 @@
                                     <div class="gi-toolbar-left">
                                         <label class="gi-field">
                                             <span>Avaliacao em massa</span>
-                                            <select wire:model="avaliacaoEmMassa.{{ $pauta->id }}">
+                                            <select wire:model="avaliacaoEmMassa.{{ $pauta->id }}" @disabled(! $this->podeResponder())>
                                                 <option value="">Selecione uma alternativa</option>
                                                 @foreach ($alternativasPauta as $alternativa)
                                                     <option value="{{ $alternativa['id'] }}">
@@ -125,7 +131,7 @@
                                     </div>
 
                                     <div class="gi-toolbar-right">
-                                        <button type="button" class="gi-action" wire:click="aplicarEmMassa({{ $pauta->id }})" wire:loading.attr="disabled" wire:target="aplicarEmMassa">
+                                        <button type="button" class="gi-action" wire:click="aplicarEmMassa({{ $pauta->id }})" wire:loading.attr="disabled" wire:target="aplicarEmMassa" @disabled(! $this->podeResponder())>
                                             Aplicar para todos os alunos
                                         </button>
                                     </div>
@@ -149,7 +155,7 @@
                                                     </td>
                                                     <td>
                                                         <div class="av-input-wrap">
-                                                            <select class="av-table-input" wire:model.live="respostas.{{ $pauta->id }}.{{ $aluno->id }}.alternativa_id">
+                                                            <select class="av-table-input" wire:model.live="respostas.{{ $pauta->id }}.{{ $aluno->id }}.alternativa_id" @disabled(! $this->podeResponder())>
                                                                 <option value="">Selecione</option>
                                                                 @foreach ($alternativasPauta as $alternativa)
                                                                     <option value="{{ $alternativa['id'] }}">
@@ -175,7 +181,8 @@
                                                                     maxlength="1000"
                                                                     placeholder="Observacao obrigatoria"
                                                                     class="av-table-input"
-                                                                    wire:model.live.debounce.500ms="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao" />
+                                                                    wire:model.live.debounce.500ms="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao"
+                                                                    @disabled(! $this->podeResponder()) />
 
                                                                 <span class="av-saving-indicator" wire:loading.flex wire:target="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao">
                                                                     <span class="av-spinner"></span>
@@ -229,7 +236,8 @@
                                                     maxlength="2000"
                                                     placeholder="Informacoes complementares (opcional)"
                                                     class="av-table-input"
-                                                    wire:model.live.debounce.600ms="informacoesComplementares.{{ $aluno->id }}" />
+                                                    wire:model.live.debounce.600ms="informacoesComplementares.{{ $aluno->id }}"
+                                                    @disabled(! $this->podeResponder()) />
 
                                                 <span class="av-saving-indicator" wire:loading.flex wire:target="informacoesComplementares.{{ $aluno->id }}">
                                                     <span class="av-spinner"></span>
@@ -249,7 +257,13 @@
                 <div class="gi-toolbar">
                     <div></div>
                     <div class="gi-toolbar-right">
-                        <button type="button" class="gi-action gi-action--primary" wire:click="salvarRespostas">
+                        @if ($this->podeExportar())
+                            <button type="button" class="gi-action" wire:click="exportarRespostas" wire:loading.attr="disabled" wire:target="exportarRespostas">
+                                Exportar CSV
+                            </button>
+                        @endif
+
+                        <button type="button" class="gi-action gi-action--primary" wire:click="salvarRespostas" @disabled(! $this->podeResponder())>
                             Validar pendencias da turma
                         </button>
                     </div>
