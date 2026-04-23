@@ -9,6 +9,8 @@ use App\Models\AvaliacaoResposta;
 use App\Models\ComponenteCurricular;
 use App\Models\PeriodoAvaliacao;
 use App\Models\Pauta;
+use App\Models\Serie;
+use App\Models\TipoAvaliacao;
 use App\Models\Turma;
 use App\Models\TurmaComponenteProfessor;
 use Illuminate\Database\Seeder;
@@ -38,20 +40,39 @@ class AvaliacoesVariadasSeeder extends Seeder
                 ->values()
                 ->all());
 
-        $tiposDisponiveisIds = $alternativasPorTipo
+        $tiposComAlternativasIds = $alternativasPorTipo
             ->keys()
             ->map(fn ($id): int => (int) $id)
             ->filter(fn (int $id): bool => $id > 0)
             ->values()
             ->all();
 
+        $tiposComPautasIds = Pauta::query()
+            ->where('status', true)
+            ->whereNotNull('tipo_avaliacao_id')
+            ->pluck('tipo_avaliacao_id')
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+
+        $tiposDisponiveisIds = collect($tiposComPautasIds)
+            ->intersect($tiposComAlternativasIds)
+            ->values()
+            ->all();
+
         if ($tiposDisponiveisIds === []) {
             if ($this->command) {
-                $this->command->warn('AvaliacoesVariadasSeeder: nenhuma alternativa ativa com tipo encontrada.');
+                $this->command->warn('AvaliacoesVariadasSeeder: nenhum tipo encontrado em pautas ativas com alternativas ativas.');
             }
 
             return;
         }
+
+        $tiposSondagemIds = $this->obterTiposSondagemIds();
+        $componentesPortuguesIds = $this->obterComponentesPortuguesIds();
+        $seriesDoTerceiroAoQuintoIds = $this->obterSeriesDoTerceiroAoQuintoAnoIds();
 
         $turmas = Turma::query()
             ->with([
@@ -178,6 +199,19 @@ class AvaliacoesVariadasSeeder extends Seeder
             }
 
             $tipoAvaliacaoId = (int) ($dados['tipo_avaliacao_id'] ?? 0);
+
+            if ($this->ehTipoSondagem($tipoAvaliacaoId, $tiposSondagemIds)) {
+                $componentesIdsPlanejados = array_values(array_intersect(
+                    $componentesIdsPlanejados,
+                    $componentesPortuguesIds
+                ));
+                $seriesIds = array_values(array_intersect($seriesIds, $seriesDoTerceiroAoQuintoIds));
+
+                if ($componentesIdsPlanejados === [] || $seriesIds === []) {
+                    continue;
+                }
+            }
+
             $periodoAvaliacaoId = (int) ($dados['periodo_avaliacao_id'] ?? 0);
             $alternativasTipoIds = $alternativasPorTipo->get($tipoAvaliacaoId, []);
 
@@ -192,7 +226,9 @@ class AvaliacoesVariadasSeeder extends Seeder
                 componentesIds: $componentesIdsPlanejados,
                 indiceBase: $indice,
                 quantidade: $quantidadePautas,
-                nomesComponentes: $nomesComponentes
+                tiposSondagemIds: $tiposSondagemIds,
+                componentesPortuguesIds: $componentesPortuguesIds,
+                seriesDoTerceiroAoQuintoIds: $seriesDoTerceiroAoQuintoIds
             );
 
             if ($pautasParaVincular === []) {
@@ -480,24 +516,44 @@ class AvaliacoesVariadasSeeder extends Seeder
         array $componentesIds,
         int $indiceBase,
         int $quantidade,
-        Collection $nomesComponentes
+        array $tiposSondagemIds,
+        array $componentesPortuguesIds,
+        array $seriesDoTerceiroAoQuintoIds
     ): array {
         $query = Pauta::query()
             ->where('status', true)
             ->where('tipo_avaliacao_id', $tipoAvaliacaoId);
 
-        if ($seriesIds !== []) {
-            $query->where(function ($subQuery) use ($seriesIds): void {
-                $subQuery->whereIn('serie_id', $seriesIds)
-                    ->orWhereNull('serie_id');
-            });
-        }
+        if ($this->ehTipoSondagem($tipoAvaliacaoId, $tiposSondagemIds)) {
+            if ($componentesPortuguesIds === [] || $seriesDoTerceiroAoQuintoIds === []) {
+                return [];
+            }
 
-        if ($componentesIds !== []) {
-            $query->where(function ($subQuery) use ($componentesIds): void {
-                $subQuery->whereIn('componente_curricular_id', $componentesIds)
-                    ->orWhereNull('componente_curricular_id');
-            });
+            $componentesPermitidos = array_values(array_intersect($componentesIds, $componentesPortuguesIds));
+            $seriesPermitidas = array_values(array_intersect($seriesIds, $seriesDoTerceiroAoQuintoIds));
+
+            if ($componentesPermitidos === [] || $seriesPermitidas === []) {
+                return [];
+            }
+
+            $query->whereIn('componente_curricular_id', $componentesPermitidos);
+            $query->whereIn('serie_id', $seriesPermitidas);
+            $componentesIds = $componentesPermitidos;
+            $seriesIds = $seriesPermitidas;
+        } else {
+            if ($seriesIds !== []) {
+                $query->where(function ($subQuery) use ($seriesIds): void {
+                    $subQuery->whereIn('serie_id', $seriesIds)
+                        ->orWhereNull('serie_id');
+                });
+            }
+
+            if ($componentesIds !== []) {
+                $query->where(function ($subQuery) use ($componentesIds): void {
+                    $subQuery->whereIn('componente_curricular_id', $componentesIds)
+                        ->orWhereNull('componente_curricular_id');
+                });
+            }
         }
 
         $pautasIds = $query
@@ -505,62 +561,6 @@ class AvaliacoesVariadasSeeder extends Seeder
             ->pluck('id')
             ->map(fn ($id): int => (int) $id)
             ->all();
-
-        $quantidadeMinimaEsperada = max(3, min($quantidade, max(1, count($componentesIds))));
-
-        if (count($pautasIds) < $quantidadeMinimaEsperada) {
-            if ($componentesIds === []) {
-                $serieId = $seriesIds[0] ?? null;
-                $pauta = Pauta::query()->updateOrCreate(
-                    [
-                        'texto' => '[Seed Variadas] Participacao geral e protagonismo do aluno',
-                        'tipo_avaliacao_id' => $tipoAvaliacaoId,
-                        'componente_curricular_id' => null,
-                        'serie_id' => $serieId,
-                    ],
-                    ['status' => true]
-                );
-
-                $pautasIds[] = (int) $pauta->id;
-            }
-
-            foreach ($componentesIds as $offset => $componenteId) {
-                $serieId = $seriesIds[$offset % max(count($seriesIds), 1)] ?? null;
-                $nomeComponente = (string) ($nomesComponentes[$componenteId] ?? "Componente {$componenteId}");
-
-                for ($i = 0; $i < 2; $i++) {
-                    $pauta = Pauta::query()->updateOrCreate(
-                        [
-                            'texto' => sprintf(
-                                '[Seed Variadas] %s - Indicador %d',
-                                $nomeComponente,
-                                1 + (($indiceBase + $offset + $i) % 9)
-                            ),
-                            'tipo_avaliacao_id' => $tipoAvaliacaoId,
-                            'componente_curricular_id' => (int) $componenteId,
-                            'serie_id' => $serieId,
-                        ],
-                        ['status' => true]
-                    );
-
-                    $pautasIds[] = (int) $pauta->id;
-                }
-            }
-
-            if ($seriesIds !== []) {
-                $pautaGeral = Pauta::query()->updateOrCreate(
-                    [
-                        'texto' => '[Seed Variadas] Desenvolvimento socioemocional e autonomia',
-                        'tipo_avaliacao_id' => $tipoAvaliacaoId,
-                        'componente_curricular_id' => null,
-                        'serie_id' => (int) $seriesIds[0],
-                    ],
-                    ['status' => true]
-                );
-
-                $pautasIds[] = (int) $pautaGeral->id;
-            }
-        }
 
         $pautasIds = array_values(array_unique(array_map('intval', $pautasIds)));
 
@@ -682,7 +682,7 @@ class AvaliacoesVariadasSeeder extends Seeder
 
         $pautas = Pauta::query()
             ->whereIn('id', $pautaIds)
-            ->get(['id', 'texto', 'componente_curricular_id', 'tipo_avaliacao_id']);
+            ->get(['id', 'texto', 'componente_curricular_id', 'tipo_avaliacao_id', 'serie_id']);
 
         if ($turmas->isEmpty() || $pautas->isEmpty()) {
             return [
@@ -942,6 +942,10 @@ class AvaliacoesVariadasSeeder extends Seeder
             ->values()
             ->all();
 
+        $tiposSondagemIds = $this->obterTiposSondagemIds();
+        $componentesPortuguesIds = $this->obterComponentesPortuguesIds();
+        $seriesDoTerceiroAoQuintoIds = $this->obterSeriesDoTerceiroAoQuintoAnoIds();
+
         $alternativasAtivas = Alternativa::query()
             ->where('status', true)
             ->whereIn('tipo_avaliacao_id', $tipoIds)
@@ -958,6 +962,23 @@ class AvaliacoesVariadasSeeder extends Seeder
         foreach ($pautas as $pauta) {
             $pautaId = (int) $pauta->id;
             $alternativas = collect();
+            $tipoAvaliacaoId = (int) $pauta->tipo_avaliacao_id;
+
+            if ($this->ehTipoSondagem($tipoAvaliacaoId, $tiposSondagemIds)) {
+                $componenteId = $pauta->componente_curricular_id ? (int) $pauta->componente_curricular_id : null;
+                $serieId = $pauta->serie_id ? (int) $pauta->serie_id : null;
+
+                $ehComponentePortugues = ! is_null($componenteId)
+                    && in_array($componenteId, $componentesPortuguesIds, true);
+                $ehSerieDoTerceiroAoQuinto = ! is_null($serieId)
+                    && in_array($serieId, $seriesDoTerceiroAoQuintoIds, true);
+
+                if (! $ehComponentePortugues || ! $ehSerieDoTerceiroAoQuinto) {
+                    $resultado[$pautaId] = collect();
+                    continue;
+                }
+            }
+
             $overrideIds = $overridesPorPauta->get($pautaId, []);
 
             if ($overrideIds !== []) {
@@ -1130,6 +1151,106 @@ class AvaliacoesVariadasSeeder extends Seeder
         foreach (array_chunk($linhas, $tamanhoLote) as $lote) {
             $modelClass::query()->upsert($lote, $uniqueBy, $updateColumns);
         }
+    }
+
+    /**
+     * @return array<int>
+     */
+    private function obterTiposSondagemIds(): array
+    {
+        return TipoAvaliacao::query()
+            ->where('status', true)
+            ->get(['id', 'nome'])
+            ->filter(fn (TipoAvaliacao $tipo): bool => str_contains(
+                $this->normalizarTexto((string) $tipo->nome),
+                'sondagem'
+            ))
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int>
+     */
+    private function obterComponentesPortuguesIds(): array
+    {
+        return ComponenteCurricular::query()
+            ->get(['id', 'nome'])
+            ->filter(function (ComponenteCurricular $componente): bool {
+                $nomeNormalizado = $this->normalizarTexto((string) $componente->nome);
+
+                return str_contains($nomeNormalizado, 'portugues')
+                    || str_contains($nomeNormalizado, 'lingua port')
+                    || (bool) preg_match('/\bport\b/', $nomeNormalizado);
+            })
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int>
+     */
+    private function obterSeriesDoTerceiroAoQuintoAnoIds(): array
+    {
+        return Serie::query()
+            ->get(['id', 'nome', 'codigo'])
+            ->filter(function (Serie $serie): bool {
+                $ano = $this->extrairAnoDaSerie((string) $serie->nome, (string) ($serie->codigo ?? ''));
+
+                return ! is_null($ano) && $ano >= 3 && $ano <= 5;
+            })
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param array<int> $tiposSondagemIds
+     */
+    private function ehTipoSondagem(int $tipoAvaliacaoId, array $tiposSondagemIds): bool
+    {
+        return $tipoAvaliacaoId > 0 && in_array($tipoAvaliacaoId, $tiposSondagemIds, true);
+    }
+
+    private function extrairAnoDaSerie(string $nome, string $codigo): ?int
+    {
+        $nomeNormalizado = $this->normalizarTexto($nome);
+        $codigoNormalizado = $this->normalizarTexto($codigo);
+
+        if (preg_match('/\b([1-9]|1[0-2])\s*o?\s*ano\b/', $nomeNormalizado, $matches) === 1) {
+            return (int) $matches[1];
+        }
+
+        if (preg_match('/\bs([1-9]|1[0-2])a\b/', $codigoNormalizado, $matches) === 1) {
+            return (int) $matches[1];
+        }
+
+        if (preg_match('/\b([1-9]|1[0-2])\b/', $nomeNormalizado, $matches) === 1) {
+            return (int) $matches[1];
+        }
+
+        return null;
+    }
+
+    private function normalizarTexto(string $valor): string
+    {
+        $texto = trim($valor);
+
+        if ($texto === '') {
+            return '';
+        }
+
+        $textoAscii = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $texto);
+        $textoNormalizado = $textoAscii !== false ? $textoAscii : $texto;
+        $textoNormalizado = strtolower($textoNormalizado);
+        $textoNormalizado = preg_replace('/[^a-z0-9]+/', ' ', $textoNormalizado) ?? $textoNormalizado;
+
+        return trim($textoNormalizado);
     }
 
     private function hashPercentual(string $seed): int
