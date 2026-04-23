@@ -23,7 +23,7 @@ class AlunoResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::AcademicCap;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Pedagógico';
+    protected static string|UnitEnum|null $navigationGroup = 'Pedagógico';
 
     protected static ?string $navigationParentItem = 'Turmas';
 

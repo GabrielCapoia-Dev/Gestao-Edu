@@ -29,7 +29,7 @@ class AlternativaResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::QueueList;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Pedagógico';
+    protected static string|UnitEnum|null $navigationGroup = 'Pedagógico';
 
     protected static ?string $navigationLabel = 'Alternativas';
 

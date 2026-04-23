@@ -51,7 +51,7 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ChartBar;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Pedagógico';
+    protected static string|UnitEnum|null $navigationGroup = 'Pedagógico';
 
     public array $filtros = [];
 

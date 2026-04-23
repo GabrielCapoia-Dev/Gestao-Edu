@@ -20,7 +20,7 @@ class ProfessorResource extends Resource
     protected static ?string $model = Professor::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::UserGroup;
-    protected static string|UnitEnum|null $navigationGroup = 'Pedagógico';
+    protected static string|UnitEnum|null $navigationGroup = 'Pedagógico';
 
     protected static ?string $navigationLabel = 'Professores';
     protected static ?string $pluralModelLabel = 'Professores';

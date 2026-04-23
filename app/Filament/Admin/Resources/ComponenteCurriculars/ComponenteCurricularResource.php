@@ -24,7 +24,7 @@ class ComponenteCurricularResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::BookmarkSquare;
     public static ?string $modelLabel = 'Componente Curricular';
-    protected static string|UnitEnum|null $navigationGroup = 'Pedagógico';
+    protected static string|UnitEnum|null $navigationGroup = 'Pedagógico';
     public static ?string $pluralModelLabel = 'Componentes Curriculares';
     public static ?string $slug = 'componentes-curriculares';
 

@@ -27,7 +27,7 @@ class EscolaResource extends Resource
     public static ?string $pluralModelLabel = 'Escolas';
     public static ?string $slug = 'escolas';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Pedagógico';
+    protected static string|UnitEnum|null $navigationGroup = 'Pedagógico';
 
 
     protected static function service(): Service
