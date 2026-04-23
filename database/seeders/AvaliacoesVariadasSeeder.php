@@ -747,12 +747,29 @@ class AvaliacoesVariadasSeeder extends Seeder
         $respostasPayload = [];
         $informacoesPayload = [];
         $coberturaPercentual = (int) round(max(0.0, min(1.0, $coberturaRespostas)) * 100);
+        $coberturaTurmasPercentual = max(20, min(96, $coberturaPercentual - 8));
+        $turmasIdsOrdenadas = $turmas
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->values()
+            ->all();
+        $turmaGarantidaId = $turmasIdsOrdenadas === []
+            ? null
+            : $turmasIdsOrdenadas[$this->hashIndice(count($turmasIdsOrdenadas), "garantia|{$avaliacao->id}|{$indiceBase}")];
 
         foreach ($turmas as $turma) {
             $turmaId = (int) $turma->id;
             $alunos = $turma->alunos;
 
             if ($alunos->isEmpty()) {
+                continue;
+            }
+
+            $marcadorTurma = $this->hashPercentual(
+                "turma|{$avaliacao->id}|{$turmaId}|{$indiceBase}"
+            );
+
+            if ($turmaId !== $turmaGarantidaId && $marcadorTurma >= $coberturaTurmasPercentual) {
                 continue;
             }
 
@@ -1020,4 +1037,3 @@ class AvaliacoesVariadasSeeder extends Seeder
         return array_values(array_unique($selecionados));
     }
 }
-
