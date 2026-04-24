@@ -62,6 +62,7 @@ class InventarioEstoque extends Model
         ?string $observacao = null,
         ?int $ignorarBalancoId = null,
     ): InventarioMovimentacao {
+        // Impacto: conferirEntrega() usa esta entrada para refletir o recebimento da escola. Alterar aqui muda saldo escolar, relatorios e balancos de inventario.
         $this->assertItemDisponivel($ignorarBalancoId);
         $this->increment('quantidade', $quantidade);
 
@@ -80,6 +81,7 @@ class InventarioEstoque extends Model
         ?string $observacao = null,
         ?int $ignorarBalancoId = null,
     ): InventarioMovimentacao {
+        // Impacto: baixas e balancos de inventario dependem desta validacao para nao permitir saldo escolar negativo.
         $this->assertItemDisponivel($ignorarBalancoId);
         $saldoAtual = (float) $this->quantidade;
 
@@ -100,6 +102,7 @@ class InventarioEstoque extends Model
 
     public function registrarBaixa(float $quantidade, MotivoBaixa $motivo, string $descricao, ?int $ignorarBalancoId = null): InventarioBaixa
     {
+        // Impacto: esta baixa combina movimentacao e historico. Separar as duas gravacoes quebra as telas de baixas e o saldo posterior auditado.
         if ($quantidade <= 0) {
             throw new \InvalidArgumentException('Quantidade de baixa invalida.');
         }
@@ -139,6 +142,7 @@ class InventarioEstoque extends Model
 
     protected function assertItemDisponivel(?int $ignorarBalancoId = null): void
     {
+        // Impacto: protege o snapshot do balanco escolar. Se ignorado em operacoes comuns, a contagem pode fechar sobre um saldo que mudou durante o processo.
         if (! $this->inventario_id || ! $this->item_id) {
             return;
         }

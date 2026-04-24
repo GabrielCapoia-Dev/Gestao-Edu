@@ -81,6 +81,7 @@ class BalancoEstoqueService
             ->unique()
             ->values();
 
+        // Impacto: sem itens selecionados o balanco mudaria para "em andamento" sem contagem real, travando telas e bloqueios de estoque.
         if ($selecionados->isEmpty()) {
             throw new DomainException('Selecione pelo menos um item para iniciar o balanco.');
         }
@@ -93,6 +94,7 @@ class BalancoEstoqueService
 
         $conflitos = $this->bloqueioService->buscarConflitos($selecionados->all(), $balanco->getKey());
 
+        // Impacto: este IF impede que o mesmo item fique bloqueado por dois balancos. Alterar aqui afeta BalancoEstoqueBloqueioService e pode gerar ajustes duplicados.
         if ($conflitos->isNotEmpty()) {
             $itens = $conflitos
                 ->map(fn (BalancoEstoqueItem $registro): string => ($registro->item?->nome ?? 'Item') . ' (' . ($registro->balanco?->codigo ?? 'N/A') . ')')
@@ -110,6 +112,7 @@ class BalancoEstoqueService
             ])->save();
 
             foreach ($elegiveis as $item) {
+                // Impacto: o snapshot registra todos os elegiveis, inclusive os nao contados, para dar contexto ao balanco. Filtrar apenas selecionados muda telas, relatorios e auditoria.
                 $balanco->itens()->create([
                     'item_id' => $item['item_id'],
                     'incluido_na_contagem' => $selecionados->contains($item['item_id']),
@@ -220,6 +223,7 @@ class BalancoEstoqueService
         $this->garantirStatus($balanco, BalancoEstoqueStatus::EmAndamento, 'Apenas balancos em andamento podem ser concluidos.');
 
         DB::transaction(function () use ($balanco, $user) {
+            // Impacto: lockForUpdate() protege a conclusao contra contagens simultaneas. Remover pode gerar valor_impacto e saldo_final divergentes.
             /** @var EloquentCollection<int, BalancoEstoqueItem> $itens */
             $itens = BalancoEstoqueItem::query()
                 ->where('balanco_estoque_id', $balanco->getKey())
@@ -229,6 +233,7 @@ class BalancoEstoqueService
 
             $pendentes = $itens->filter(fn (BalancoEstoqueItem $item): bool => $item->quantidade_contada === null);
 
+            // Impacto: concluir com pendencias ajustaria apenas parte do saldo e deixaria o relatorio do balanco sem fechamento contabil confiavel.
             if ($pendentes->isNotEmpty()) {
                 throw new DomainException('Todos os itens selecionados precisam ter contagem registrada antes da conclusao.');
             }
@@ -247,6 +252,7 @@ class BalancoEstoqueService
                 );
                 $observacao = "Reajustado via Balanco #{$balanco->codigo}";
 
+                // Impacto: o ajuste precisa passar por entrada()/saida() para manter bloqueio, movimentacoes e relatorios sincronizados com o saldo final.
                 if ($diferenca > 0) {
                     $estoque->entrada($diferenca, null, $observacao, $balanco->getKey());
                 } elseif ($diferenca < 0) {
@@ -287,6 +293,7 @@ class BalancoEstoqueService
 
     public function itensElegiveis(): Collection
     {
+        // Impacto: itens ativos sem estoque e itens inativos com saldo aparecem aqui para permitir contagem/correcao. Alterar esta regra muda a lista de inicio do balanco.
         $saldos = Estoque::query()
             ->get(['item_id', 'quantidade'])
             ->keyBy('item_id');

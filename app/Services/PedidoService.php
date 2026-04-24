@@ -48,6 +48,7 @@ class PedidoService
             return false;
         }
 
+        // Impacto: pedidos finalizados/cancelados nao devem voltar ao fluxo operacional por edicao direta; alterar aqui afeta historico, feedback e relatorios.
         if ($pedido->tipoStatus?->finaliza_pedido || $pedido->tipoStatus?->cancela_pedido) {
             return false;
         }
@@ -145,10 +146,12 @@ class PedidoService
             return $query->nenhum();
         }
 
+        // Impacto: esta permissao abre visao geral. Remover ou ampliar muda a separacao entre admin, setor e escola nas tabelas de pedidos.
         if ($user->hasRole('Admin') || $user->hasPermissionTo('Listar Todos os Pedidos')) {
             return $query;
         }
 
+        // Impacto: usuario com setor ve pedidos do setor; usuario sem setor cai no escopo da escola. Alterar esta ordem troca o dono operacional do pedido.
         if ($user->setor) {
             if ($user->pertenceAoSetorGeral()) {
                 return $query;
@@ -204,6 +207,7 @@ class PedidoService
         $statusInicial = TipoStatus::where('nome', 'Em Aberto')->firstOrFail();
         $setorInicial = Setor::setorGeral();
 
+        // Impacto: o setor geral e a porta de entrada do fluxo. Sem ele, assumir/encaminhar pedido e badge de novos chamados ficam sem referencia.
         if (! $setorInicial) {
             throw new \RuntimeException('Nenhum setor foi configurado para receber os pedidos iniciais.');
         }
@@ -258,6 +262,7 @@ class PedidoService
 
         $this->registrarHistorico($pedido, $statusAnteriorId, $novoStatus->id, $usuario, $descricao);
 
+        // Impacto: data_entrega e usada por relatorios e avaliacao do atendimento; mudar este IF pode marcar entrega antes do fechamento real.
         if ($novoStatus->finaliza_pedido) {
             $pedido->update(['data_entrega' => now()]);
         }
@@ -294,6 +299,7 @@ class PedidoService
             $podeIrParaAnalise = true;
         }
 
+        // Impacto: apenas estes status entram automaticamente em analise. Ampliar esta regra pode reabrir fluxos ja encaminhados, concluidos ou cancelados.
         if ($podeIrParaAnalise) {
             $this->alterarStatus(
                 $pedido,
@@ -334,6 +340,7 @@ class PedidoService
             }
         }
 
+        // Impacto: nota 1 reabre automaticamente o pedido. Alterar esta regra afeta o ciclo de retrabalho e os indicadores de satisfacao.
         $novoStatus = $nota === 1 ? $statusReaberto : $statusConcluido;
 
         $this->alterarStatus(

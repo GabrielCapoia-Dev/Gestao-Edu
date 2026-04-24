@@ -39,6 +39,7 @@ class InventarioPedidoService
             return $query->whereRaw('1 = 0');
         }
 
+        // Impacto: gestor geral enxerga todos os pedidos; usuario de escola fica restrito ao proprio inventario. Alterar este IF muda o isolamento entre unidades.
         if ($this->contextService->ehGestorGeral($user)) {
             return $query;
         }
@@ -56,10 +57,12 @@ class InventarioPedidoService
     {
         $inventario = $this->contextService->inventarioDoUsuario($user);
 
+        // Impacto: este guard evita que uma escola solicite itens em inventario de outra unidade. Afeta pedidos, romaneios e recebimento no estoque escolar.
         if (! $inventario || blank($user->id_escola) || (int) $inventario->escola_id !== (int) $user->id_escola) {
             throw new DomainException('O usuario nao possui inventario escolar disponivel para solicitar itens.');
         }
 
+        // Impacto: remover este bloqueio permite varios romaneios simultaneos para a mesma escola, dificultando conferencia e podendo duplicar reservas da matriz.
         if ($this->escolaPossuiPedidoEmAndamento($user)) {
             throw new DomainException('Pedido Em Andamento aguardando confirmação de Recebimento,  confirme o recebimento do pedido em andamento para realizar um novo pedido');
         }
@@ -122,6 +125,7 @@ class InventarioPedidoService
                     throw new DomainException('Nao e permitido aprovar quantidade negativa.');
                 }
 
+                // Impacto: aprovar acima do solicitado muda a base do romaneio e pode reservar saldo que a escola nao pediu.
                 if ($quantidadeAprovada > $quantidadeSolicitada) {
                     throw new DomainException("A quantidade aprovada do item {$pedidoItem->item?->nome} nao pode exceder a solicitada.");
                 }
@@ -185,6 +189,7 @@ class InventarioPedidoService
 
         $totaisPorItem = $this->agruparTotaisDoRomaneio($pedidos);
 
+        // Impacto: a pre-validacao evita criar romaneio parcial. Se removida, alguns itens podem ser reservados antes da falha de outro item.
         foreach ($totaisPorItem as $itemId => $quantidade) {
             $estoque = Estoque::query()->where('item_id', $itemId)->first();
             $itemNome = Item::query()->whereKey($itemId)->value('nome') ?? 'Item';
@@ -199,6 +204,7 @@ class InventarioPedidoService
                 $estoque = Estoque::query()->where('item_id', $itemId)->lockForUpdate()->firstOrFail();
                 $itemNome = $estoque->item?->nome ?? 'Item';
 
+                // Impacto: esta reserva compromete saldo da matriz ate a conferencia. Trocar por saida direta quebraria a logica de divergencia na entrega.
                 $estoque->reservar(
                     $quantidade,
                     "Reserva para romaneio de inventario - {$itemNome}"
@@ -265,6 +271,7 @@ class InventarioPedidoService
                     throw new DomainException('A quantidade recebida nao pode ser negativa.');
                 }
 
+                // Impacto: divergencia exige justificativa para manter auditoria entre romaneio, baixa da matriz e entrada no inventario escolar.
                 if ($quantidadeRecebida !== $quantidadeAprovada) {
                     $houveDivergencia = true;
                 }
@@ -286,6 +293,7 @@ class InventarioPedidoService
                     'Entrega para pedido de inventario #' . $pedido->getKey() . ' - ' . ($pedido->escola?->nome ?? 'Escola'),
                 );
 
+                // Impacto: somente o recebido entra no inventario escolar; mudar para aprovado faria o estoque da escola divergir da conferencia fisica.
                 if ($quantidadeRecebida > 0) {
                     $inventarioEstoque = InventarioEstoque::query()->firstOrCreate(
                         [

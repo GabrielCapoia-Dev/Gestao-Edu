@@ -56,6 +56,7 @@ class ProfessorService
                             ->required()
                             ->placeholder('Selecione a escola')
                             ->disabled(function (?Professor $record) use ($user) {
+                                // Impacto: em edicao, a escola do professor afeta filtros por unidade, vinculos com usuarios e relatorios pedagogicos.
                                 return $record !== null && !$user->hasPermissionTo('Editar Escola do Professor');
                             })
                             ->columnSpanFull(),
@@ -64,6 +65,7 @@ class ProfessorService
                             ->label('Matrícula')
                             ->required()
                             ->disabled(function (?Professor $record) use ($user) {
+                                // Impacto: matricula identifica o professor em importacoes/consultas; liberar edicao sem permissao pode quebrar conciliacao com bases externas.
                                 return $record !== null && !$user->hasPermissionTo('Editar Matricula do Professor');
                             })
                             ->maxLength(255)
@@ -116,6 +118,7 @@ class ProfessorService
     {
         return $table
             ->modifyQueryUsing(function (Builder $query) use ($user) {
+                // Impacto: este filtro aplica o escopo do usuario na tabela. Alterar aqui pode expor professores de outras escolas ou ocultar professores vinculados por turma.
                 $this->userService->aplicarFiltroPorEscolaDoUsuarioEmTurma($query, $user);
             })
             ->paginated([5, 10, 25, 50, 100])
@@ -382,6 +385,7 @@ class ProfessorService
                 )
                 ->searchable()
                 ->query(function ($query, array $data) {
+                    // Impacto: o filtro por serie passa pela relacao de turmas; trocar para campo direto nao funciona para professor com varias turmas.
                     if (! $data['value']) {
                         return $query;
                     }
@@ -401,6 +405,7 @@ class ProfessorService
                 )
                 ->searchable()
                 ->query(function ($query, array $data) {
+                    // Impacto: o filtro por componente depende do pivot turma_componente_professor; alterar esta relacao afeta tambem a visibilidade de alunos para professores.
                     if (! $data['value']) {
                         return $query;
                     }
@@ -417,6 +422,7 @@ class ProfessorService
 
     public function forcarVinculoComEscola(array $data, ?User $auth): array
     {
+        // Impacto: usuario vinculado a escola nao pode criar professor em outra unidade; remover isso quebra o isolamento entre escolas.
         if ($auth && filled($auth->id_escola)) {
             $data['id_escola'] = $auth->id_escola;
         }

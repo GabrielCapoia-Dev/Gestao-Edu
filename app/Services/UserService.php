@@ -197,6 +197,7 @@ class UserService
 
     public function sincronizarAcessosDoUsuario(User $record, array $data): void
     {
+        // Impacto: esta rotina e o ponto central de sincronizacao Spatie. Alterar ordem de roles/permissoes pode deixar permissoes herdadas gravadas como diretas.
         if (array_key_exists('roles', $data) || array_key_exists('role', $data)) {
             $roles = Role::query()
                 ->whereIn('id', $this->idsDeRolesSelecionadas($data))
@@ -207,12 +208,14 @@ class UserService
 
         $record->load('roles.permissions');
 
+        // Impacto: quando o formulario nao envia permissoes extras, preservamos o estado direto atual. Trocar por syncPermissions([]) removeria acessos fora do formulario.
         if (! array_key_exists('usar_permissoes_extras', $data)) {
             app(PermissionRegistrar::class)->forgetCachedPermissions();
 
             return;
         }
 
+        // Impacto: desligar permissoes extras deve limpar somente permissoes diretas; as herdadas continuam vindo das roles do usuario.
         if (empty($data['usar_permissoes_extras'])) {
             $record->syncPermissions([]);
             app(PermissionRegistrar::class)->forgetCachedPermissions();
@@ -241,6 +244,7 @@ class UserService
             return false;
         }
 
+        // Impacto: apenas o usuario raiz pode editar outro Admin. Alterar esta excecao muda a protecao contra perda acidental de administradores.
         if ($record->hasRole('Admin') && $user->id == 1) {
             return false;
         }
@@ -521,6 +525,7 @@ class UserService
             return $query;
         }
 
+        // Impacto: professor ve turmas pelo vinculo componente-professor, nao por id_escola. Trocar para escola amplia ou restringe indevidamente avaliacoes e alunos visiveis.
         if ($user->ehProfessor()) {
             $professoresIds = $user->professores->pluck('id')->toArray();
 
@@ -542,6 +547,7 @@ class UserService
             return $query;
         }
 
+        // Impacto: este filtro protege alunos por turmas lecionadas. Alterar para filtrar so por escola pode expor alunos de turmas sem vinculo com o professor.
         if ($user->ehProfessor()) {
             $professoresIds = $user->professores()->pluck('id')->toArray();
 

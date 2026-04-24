@@ -31,6 +31,7 @@ class GoogleAuthController extends Controller
         ];
         /** @var \App\Models\User|null $user */
         $user = Auth::user();
+        // Impacto: access_type=offline so deve ser pedido quando falta refresh token; alterar isso pode fazer usuarios perderem integracoes Google apos expirar o access token.
         if (!$user?->hasGoogleOauth()) {
             $queryParams['prompt'] = 'select_account';
             $queryParams['access_type'] = 'offline';
@@ -66,6 +67,7 @@ class GoogleAuthController extends Controller
             $oauthUser = Socialite::driver('google')->user();
             $user = $service->registrarOuLogar($oauthUser);
 
+            // Impacto: login Google pode criar/localizar usuario antes da aprovacao. Este bloqueio impede acesso ao painel ate email_approved/permissoes estarem validos.
             if (! $user->canAccessAdminPanel()) {
                 session()->forget('google_auth.redirect_to');
 
@@ -123,6 +125,7 @@ class GoogleAuthController extends Controller
             return null;
         }
 
+        // Impacto: este filtro evita open redirect apos OAuth. Aceitar URLs externas aqui cria risco de redirecionar o usuario para dominio nao confiavel.
         if (str_starts_with($redirectTo, '/')) {
             return $redirectTo;
         }

@@ -14,6 +14,7 @@ class InventarioContextService
             return false;
         }
 
+        // Impacto: esta regra define o escopo global do inventario. Alterar "blank(id_escola)" afeta listagens, romaneios e permissoes de gestores sem escola vinculada.
         return $user->hasRole('Admin') || blank($user->id_escola);
     }
 
@@ -35,6 +36,7 @@ class InventarioContextService
             return null;
         }
 
+        // Impacto: gestor geral precisa escolher inventario; usuario de escola nunca deve receber inventarioId arbitrario da request.
         if ($this->ehGestorGeral($user)) {
             if ($inventarioId) {
                 return Inventario::query()->with('escola')->find($inventarioId);

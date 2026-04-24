@@ -30,6 +30,7 @@ class GoogleService
     {
         $email = Professor::normalizarEmail((string) $oauthUser->getEmail());
 
+        // Impacto: todo o vinculo professor-usuario depende do e-mail normalizado. Alterar normalizacao aqui pode duplicar usuarios ou perder autoaprovacao de professor.
         if ($email === '') {
             throw new DomainException('Nao foi possivel identificar o e-mail retornado pelo Google.');
         }
@@ -74,6 +75,7 @@ class GoogleService
 
     private function sincronizarProfessorAoUsuario(User $user, string $email): void
     {
+        // Impacto: somente e-mail institucional participa do auto-vinculo docente; ampliar esta regra pode aprovar contas externas com permissoes de professor.
         if (! Professor::emailInstitucionalValido($email)) {
             return;
         }
@@ -88,6 +90,7 @@ class GoogleService
             })
             ->get();
 
+        // Impacto: quando nao ha professor elegivel, ainda sincronizamos escolas se o usuario ja tinha vinculo/role. Remover isso pode deixar acesso antigo sem escola_user atualizado.
         if ($professoresElegiveis->isEmpty()) {
             if ($deveSincronizarVinculos) {
                 $this->professorEscolaVinculoService->sincronizarPorUsuario($user);
@@ -102,6 +105,7 @@ class GoogleService
             ->where('tem_professor', true)
             ->exists();
 
+        // Impacto: o autoacesso so acontece com vinculo pedagogico ativo. Alterar este IF pode aprovar professor cadastrado, mas sem turma/componente vigente.
         if (! $temVinculoPedagogico) {
             $this->professorEscolaVinculoService->sincronizarPorUsuario($user);
             return;
@@ -127,6 +131,7 @@ class GoogleService
 
     private function garantirAcessoProfessor(User $user): void
     {
+        // Impacto: roles e permissoes criadas aqui liberam painel, turmas, alunos e avaliacoes. Remover uma delas quebra o login automatico de professores pelo Google.
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         Permission::findOrCreate(self::PERMISSION_ACESSAR_PAINEL, 'web');
