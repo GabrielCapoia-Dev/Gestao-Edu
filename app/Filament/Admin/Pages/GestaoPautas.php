@@ -8,6 +8,7 @@ use App\Models\Pauta;
 use App\Models\Serie;
 use App\Models\TipoAvaliacao;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
@@ -15,17 +16,28 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Filament\Tables\Actions\Action as TableAction;
+use Filament\Tables\Actions\BulkAction;
+use Filament\Tables\Actions\BulkActionGroup;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Concerns\InteractsWithTable;
+use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
+use Filament\Tables\Table;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Livewire\WithPagination;
+use Illuminate\Validation\ValidationException;
 use UnitEnum;
 
-class GestaoPautas extends Page implements HasForms
+class GestaoPautas extends Page implements HasForms, HasTable
 {
     use InteractsWithForms;
-    use WithPagination;
+    use InteractsWithTable;
+
+    protected static ?string $navigationParentItem = 'Avaliações';
 
     protected string $view = 'filament.pages.gestao-pautas';
 
@@ -41,28 +53,9 @@ class GestaoPautas extends Page implements HasForms
 
     protected static string|UnitEnum|null $navigationGroup = 'Pedagógico';
 
-    public string $busca = '';
-
-    public string $filtroStatus = 'todas';
-
-    public ?int $filtroComponente = null;
-
-    public int $porPagina = 10;
-
     public bool $modalAberto = false;
 
     public ?int $pautaIdEditando = null;
-
-    public bool $selecionarPagina = false;
-
-    /** @var array<int, int> */
-    public array $selecionadas = [];
-
-    public array $acaoMassa = [
-        'tipo_avaliacao_id' => null,
-        'serie_id' => null,
-        'componente_curricular_id' => null,
-    ];
 
     public array $form = [
         'tipo_avaliacao_id' => null,
@@ -75,18 +68,24 @@ class GestaoPautas extends Page implements HasForms
 
     public array $novasAlternativas = [];
 
-    protected $queryString = [
-        'busca' => ['except' => ''],
-        'filtroStatus' => ['except' => 'todas'],
-        'filtroComponente' => ['except' => null],
-    ];
-
     public static function canAccess(): bool
     {
         /** @var \App\Models\User|null $user */
         $user = Auth::user();
 
         return $user?->hasPermissionTo('Listar Pautas') ?? false;
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('create')
+                ->label('Nova pauta')
+                ->icon(Heroicon::Plus)
+                ->color('primary')
+                ->visible(fn (): bool => Auth::user()?->hasPermissionTo('Criar Pautas') ?? false)
+                ->action(fn () => $this->abrirModalCriacao()),
+        ];
     }
 
     protected function getForms(): array
@@ -102,7 +101,7 @@ class GestaoPautas extends Page implements HasForms
             ->components([
                 Select::make('alternativas_ids')
                     ->label('Alternativas existentes')
-                    ->helperText('Selecione uma ou mais alternativas ja cadastradas para vincular nesta pauta.')
+                    ->helperText('Selecione uma ou mais alternativas já cadastradas para vincular nesta pauta.')
                     ->options(fn (): array => $this->alternativasSelectOptions)
                     ->multiple()
                     ->native(false)
@@ -113,93 +112,163 @@ class GestaoPautas extends Page implements HasForms
             ->statePath('form');
     }
 
-    public function updatedBusca(): void
+    public function table(Table $table): Table
     {
-        $this->resetPage();
-        $this->limparSelecaoMassa();
-    }
+        return $table
+            ->query(
+                Pauta::query()
+                    ->with([
+                        'tipo:id,nome',
+                        'serie:id,nome',
+                        'componente:id,nome',
+                    ])
+                    ->withCount(['alternativas', 'avaliacoes'])
+            )
+            ->paginated([5, 10, 25, 50, 100])
+            ->defaultPaginationPageOption(10)
+            ->columns([
+                TextColumn::make('texto')
+                    ->label('Pauta')
+                    ->limit(80)
+                    ->searchable()
+                    ->wrap(),
 
-    public function updatedFiltroStatus(): void
-    {
-        $this->resetPage();
-        $this->limparSelecaoMassa();
-    }
+                TextColumn::make('tipo.nome')
+                    ->label('Tipo')
+                    ->sortable()
+                    ->placeholder('Sem tipo'),
 
-    public function updatedFiltroComponente(): void
-    {
-        $this->resetPage();
-        $this->limparSelecaoMassa();
-    }
+                TextColumn::make('serie.nome')
+                    ->label('Série')
+                    ->sortable()
+                    ->placeholder('Sem série'),
 
-    public function updatedPorPagina(): void
-    {
-        $this->resetPage();
-        $this->limparSelecaoMassa();
-    }
+                TextColumn::make('componente.nome')
+                    ->label('Componente')
+                    ->sortable()
+                    ->placeholder('Geral'),
 
-    public function updatedSelecionarPagina(bool $value): void
-    {
-        if (! $value) {
-            $this->selecionadas = [];
+                TextColumn::make('alternativas_count')
+                    ->label('Alternativas')
+                    ->sortable()
+                    ->alignCenter(),
 
-            return;
-        }
+                TextColumn::make('avaliacoes_count')
+                    ->label('Avaliações')
+                    ->sortable()
+                    ->alignCenter(),
 
-        $this->selecionadas = $this->pautas
-            ->pluck('id')
-            ->map(fn ($id): int => (int) $id)
-            ->all();
-    }
+                IconColumn::make('status')
+                    ->label('Ativa')
+                    ->boolean()
+                    ->sortable()
+                    ->alignCenter(),
 
-    public function updatedSelecionadas(): void
-    {
-        $idsPagina = $this->pautas
-            ->pluck('id')
-            ->map(fn ($id): int => (int) $id)
-            ->all();
-
-        $selecionadasNaPagina = collect($this->selecionadas)
-            ->map(fn ($id): int => (int) $id)
-            ->intersect($idsPagina)
-            ->count();
-
-        $this->selecionarPagina = count($idsPagina) > 0 && $selecionadasNaPagina === count($idsPagina);
-    }
-
-    public function getPautasProperty(): LengthAwarePaginator
-    {
-        $query = Pauta::query()
-            ->with([
-                'tipo:id,nome',
-                'serie:id,nome',
-                'componente:id,nome',
+                TextColumn::make('updated_at')
+                    ->label('Atualizada em')
+                    ->dateTime('d/m/Y H:i')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
-            ->withCount(['alternativas', 'avaliacoes']);
+            ->filters([
+                SelectFilter::make('tipo_avaliacao_id')
+                    ->label('Tipo')
+                    ->options(fn (): array => TipoAvaliacao::query()
+                        ->where('status', true)
+                        ->orderBy('nome')
+                        ->pluck('nome', 'id')
+                        ->toArray()
+                    ),
 
-        if (filled($this->busca)) {
-            $busca = trim($this->busca);
+                SelectFilter::make('serie_id')
+                    ->label('Série')
+                    ->options(fn (): array => Serie::query()
+                        ->orderBy('nome')
+                        ->pluck('nome', 'id')
+                        ->toArray()
+                    ),
 
-            $query->where(function ($subQuery) use ($busca) {
-                $subQuery->where('texto', 'like', "%{$busca}%")
-                    ->orWhereHas('componente', fn ($componentQuery) => $componentQuery->where('nome', 'like', "%{$busca}%"));
-            });
-        }
+                SelectFilter::make('componente_curricular_id')
+                    ->label('Componente')
+                    ->options(fn (): array => ComponenteCurricular::query()
+                        ->orderBy('nome')
+                        ->pluck('nome', 'id')
+                        ->toArray()
+                    ),
 
-        if ($this->filtroStatus === 'ativas') {
-            $query->where('status', true);
-        }
+                TernaryFilter::make('status')
+                    ->label('Status')
+                    ->trueLabel('Ativas')
+                    ->falseLabel('Inativas')
+                    ->native(false),
+            ])
+            ->actions([
+                TableAction::make('editar')
+                    ->label('Editar')
+                    ->icon(Heroicon::PencilSquare)
+                    ->visible(fn (): bool => Auth::user()?->hasPermissionTo('Editar Pautas') ?? false)
+                    ->action(fn (Pauta $record) => $this->abrirModalEdicao($record->getKey())),
 
-        if ($this->filtroStatus === 'inativas') {
-            $query->where('status', false);
-        }
+                TableAction::make('excluir')
+                    ->label('Excluir')
+                    ->icon(Heroicon::Trash)
+                    ->color('danger')
+                    ->visible(fn (): bool => Auth::user()?->hasPermissionTo('Excluir Pautas') ?? false)
+                    ->requiresConfirmation()
+                    ->action(fn (Pauta $record) => $this->excluirPauta($record->getKey())),
+            ])
+            ->bulkActions([
+                BulkActionGroup::make([
+                    BulkAction::make('aplicarCampos')
+                        ->label('Aplicar campos')
+                        ->icon(Heroicon::AdjustmentsHorizontal)
+                        ->visible(fn (): bool => Auth::user()?->hasPermissionTo('Editar Pautas') ?? false)
+                        ->form([
+                            Select::make('tipo_avaliacao_id')
+                                ->label('Tipo')
+                                ->options(fn (): array => $this->tiposOptions)
+                                ->searchable()
+                                ->preload(),
+                            Select::make('serie_id')
+                                ->label('Série')
+                                ->options(fn (): array => $this->seriesOptions)
+                                ->searchable()
+                                ->preload(),
+                            Select::make('componente_curricular_id')
+                                ->label('Componente')
+                                ->options(fn (): array => $this->componentesOptions)
+                                ->searchable()
+                                ->preload(),
+                        ])
+                        ->action(function (array $data, $records): void {
+                            $ids = collect($records)->map(fn (Pauta $record): int => (int) $record->getKey())->values();
 
-        if (filled($this->filtroComponente)) {
-            $query->where('componente_curricular_id', (int) $this->filtroComponente);
-        }
+                            $updates = collect([
+                                'tipo_avaliacao_id' => $data['tipo_avaliacao_id'] ?? null,
+                                'serie_id' => $data['serie_id'] ?? null,
+                                'componente_curricular_id' => $data['componente_curricular_id'] ?? null,
+                            ])->filter(fn ($value): bool => filled($value))->all();
 
-        return $query
-            ->orderByDesc('updated_at')
-            ->paginate($this->porPagina);
+                            if ($updates === []) {
+                                throw ValidationException::withMessages([
+                                    'tipo_avaliacao_id' => 'Informe ao menos um campo para aplicar em massa.',
+                                ]);
+                            }
+
+                            $updates['updated_at'] = now();
+
+                            $quantidadeAtualizada = Pauta::query()
+                                ->whereIn('id', $ids->all())
+                                ->update($updates);
+
+                            Notification::make()
+                                ->title("Campos aplicados em {$quantidadeAtualizada} pauta(s).")
+                                ->success()
+                                ->send();
+                        }),
+                ]),
+            ])
+            ->defaultSort('updated_at', 'desc');
     }
 
     public function getComponentesOptionsProperty(): array
@@ -244,7 +313,7 @@ class GestaoPautas extends Page implements HasForms
                 $sufixos = [];
 
                 if ($alternativa->tem_observacao) {
-                    $sufixos[] = 'exige observacao';
+                    $sufixos[] = 'exige observação';
                 }
 
                 if (! $alternativa->status) {
@@ -257,7 +326,7 @@ class GestaoPautas extends Page implements HasForms
                     $label .= ' (' . implode(', ', $sufixos) . ')';
                 }
 
-                return [$alternativa->id => $label];
+                return [(int) $alternativa->id => $label];
             })
             ->all();
     }
@@ -303,7 +372,7 @@ class GestaoPautas extends Page implements HasForms
             return;
         }
 
-        $this->pautaIdEditando = $pauta->id;
+        $this->pautaIdEditando = (int) $pauta->getKey();
         $this->form = [
             'tipo_avaliacao_id' => $pauta->tipo_avaliacao_id,
             'texto' => (string) $pauta->texto,
@@ -433,10 +502,10 @@ class GestaoPautas extends Page implements HasForms
 
             $novosIds = $novasAlternativasComNome
                 ->map(function (array $item) use ($validated): int {
-                    return Alternativa::query()->create([
+                    return (int) Alternativa::query()->create([
                         ...$item,
                         'tipo_avaliacao_id' => (int) $validated['form']['tipo_avaliacao_id'],
-                    ])->id;
+                    ])->getKey();
                 });
 
             $idsFinal = $alternativasSelecionadas
@@ -486,69 +555,6 @@ class GestaoPautas extends Page implements HasForms
             ->send();
     }
 
-    public function aplicarCamposEmMassa(): void
-    {
-        if (! (Auth::user()?->hasPermissionTo('Editar Pautas') ?? false)) {
-            Notification::make()
-                ->title('Você não tem permissão para editar pautas.')
-                ->warning()
-                ->send();
-
-            return;
-        }
-
-        $ids = collect($this->selecionadas)
-            ->map(fn ($id): int => (int) $id)
-            ->filter(fn (int $id): bool => $id > 0)
-            ->unique()
-            ->values();
-
-        if ($ids->isEmpty()) {
-            Notification::make()
-                ->title('Selecione ao menos uma pauta.')
-                ->warning()
-                ->send();
-
-            return;
-        }
-
-        $validated = $this->validate([
-            'acaoMassa.tipo_avaliacao_id' => ['nullable', 'integer', 'exists:tipos_avaliacao,id'],
-            'acaoMassa.serie_id' => ['nullable', 'integer', 'exists:series,id'],
-            'acaoMassa.componente_curricular_id' => ['nullable', 'integer', 'exists:componentes_curriculares,id'],
-        ]);
-
-        $updates = collect([
-            'tipo_avaliacao_id' => $validated['acaoMassa']['tipo_avaliacao_id'] ?? null,
-            'serie_id' => $validated['acaoMassa']['serie_id'] ?? null,
-            'componente_curricular_id' => $validated['acaoMassa']['componente_curricular_id'] ?? null,
-        ])->filter(fn ($value) => filled($value))->all();
-
-        if ($updates === []) {
-            $this->addError('acaoMassa.tipo_avaliacao_id', 'Informe ao menos um campo para aplicar em massa.');
-
-            return;
-        }
-
-        $updates['updated_at'] = now();
-
-        $quantidadeAtualizada = Pauta::query()
-            ->whereIn('id', $ids->all())
-            ->update($updates);
-
-        $this->acaoMassa = [
-            'tipo_avaliacao_id' => null,
-            'serie_id' => null,
-            'componente_curricular_id' => null,
-        ];
-        $this->limparSelecaoMassa();
-
-        Notification::make()
-            ->title("Campos aplicados em {$quantidadeAtualizada} pauta(s).")
-            ->success()
-            ->send();
-    }
-
     private function resetForm(): void
     {
         $this->form = [
@@ -560,20 +566,5 @@ class GestaoPautas extends Page implements HasForms
             'alternativas_ids' => [],
         ];
         $this->novasAlternativas = [];
-    }
-
-    private function limparSelecaoMassa(): void
-    {
-        $this->selecionarPagina = false;
-        $this->selecionadas = [];
-    }
-    public function getTitle(): string
-    {
-        return '';
-    }
-
-    public function getHeading(): string
-    {
-        return '';
     }
 }

@@ -11,6 +11,7 @@ use App\Models\Pauta;
 use App\Models\Serie;
 use App\Models\TipoAvaliacao;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
@@ -18,18 +19,22 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Livewire\WithPagination;
+use Filament\Tables\Actions\Action as TableAction;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Concerns\InteractsWithTable;
+use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
 use UnitEnum;
 
-class GestaoAvaliacoes extends Page implements HasForms
+class GestaoAvaliacoes extends Page implements HasForms, HasTable
 {
     use InteractsWithForms;
-    use WithPagination;
+    use InteractsWithTable;
 
     protected string $view = 'filament.pages.gestao-avaliacoes';
 
@@ -44,12 +49,6 @@ class GestaoAvaliacoes extends Page implements HasForms
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ClipboardDocumentCheck;
 
     protected static string|UnitEnum|null $navigationGroup = 'Pedagógico';
-
-    public string $busca = '';
-
-    public string $filtroStatus = 'todas';
-
-    public int $porPagina = 10;
 
     public bool $modalAberto = false;
 
@@ -70,17 +69,114 @@ class GestaoAvaliacoes extends Page implements HasForms
         'alternativas_override' => [],
     ];
 
-    protected $queryString = [
-        'busca' => ['except' => ''],
-        'filtroStatus' => ['except' => 'todas'],
-    ];
-
     public static function canAccess(): bool
     {
         /** @var \App\Models\User|null $user */
         $user = Auth::user();
 
         return $user?->hasPermissionTo('Listar Avaliações') ?? false;
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('create')
+                ->label('Nova avaliação')
+                ->icon(Heroicon::Plus)
+                ->color('primary')
+                ->visible(fn (): bool => Auth::user()?->hasPermissionTo('Criar Avaliações') ?? false)
+                ->action(fn () => $this->abrirModalCriacao()),
+        ];
+    }
+
+    public function table(Table $table): Table
+    {
+        return $table
+            ->query(
+                Avaliacao::query()
+                    ->withCount(['pautas'])
+                    ->with([
+                        'tipo:id,nome',
+                        'periodo:id,nome',
+                    ])
+            )
+            ->paginated([5, 10, 25, 50, 100])
+            ->defaultPaginationPageOption(10)
+            ->columns([
+                TextColumn::make('nome')
+                    ->label('Avaliação')
+                    ->searchable()
+                    ->sortable()
+                    ->description(function (Avaliacao $record): string {
+                        $inicio = $record->data_inicio?->format('d/m/Y') ?? '';
+                        $fim = $record->data_fim?->format('d/m/Y') ?? '';
+
+                        return trim("{$inicio} até {$fim}");
+                    })
+                    ->wrap(),
+
+                TextColumn::make('tipo.nome')
+                    ->label('Tipo')
+                    ->sortable()
+                    ->placeholder('Sem tipo'),
+
+                TextColumn::make('periodo.nome')
+                    ->label('Período')
+                    ->sortable()
+                    ->placeholder('Sem período'),
+
+                TextColumn::make('pautas_count')
+                    ->label('Pautas')
+                    ->sortable()
+                    ->alignCenter(),
+
+                TextColumn::make('status')
+                    ->label('Status')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        Avaliacao::STATUS_ATIVA => 'success',
+                        Avaliacao::STATUS_INATIVA => 'gray',
+                        Avaliacao::STATUS_ENCERRADA => 'warning',
+                        Avaliacao::STATUS_CANCELADA => 'danger',
+                        default => 'gray',
+                    })
+                    ->formatStateUsing(fn (string $state): string => Avaliacao::statusOptions()[$state] ?? $state),
+
+                TextColumn::make('updated_at')
+                    ->label('Atualizada em')
+                    ->dateTime('d/m/Y H:i')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+            ])
+            ->filters([
+                SelectFilter::make('status')
+                    ->label('Status')
+                    ->options(Avaliacao::statusOptions()),
+
+                SelectFilter::make('tipo_avaliacao_id')
+                    ->label('Tipo')
+                    ->options(fn (): array => TipoAvaliacao::query()->orderBy('nome')->pluck('nome', 'id')->toArray()),
+
+                SelectFilter::make('periodo_avaliacao_id')
+                    ->label('Período')
+                    ->options(fn (): array => PeriodoAvaliacao::query()->orderBy('nome')->pluck('nome', 'id')->toArray()),
+            ])
+            ->actions([
+                TableAction::make('editar')
+                    ->label('Editar')
+                    ->icon(Heroicon::PencilSquare)
+                    ->visible(fn (): bool => Auth::user()?->hasPermissionTo('Editar Avaliações') ?? false)
+                    ->action(fn (Avaliacao $record) => $this->abrirModalEdicao($record->getKey())),
+
+                TableAction::make('excluir')
+                    ->label('Excluir')
+                    ->icon(Heroicon::Trash)
+                    ->color('danger')
+                    ->visible(fn (): bool => Auth::user()?->hasPermissionTo('Excluir Avaliações') ?? false)
+                    ->requiresConfirmation()
+                    ->action(fn (Avaliacao $record) => $this->excluirAvaliacao($record->getKey())),
+            ])
+            ->defaultSort('updated_at', 'desc');
     }
 
     protected function getForms(): array
@@ -132,21 +228,6 @@ class GestaoAvaliacoes extends Page implements HasForms
             ->statePath('form');
     }
 
-    public function updatedBusca(): void
-    {
-        $this->resetPage();
-    }
-
-    public function updatedFiltroStatus(): void
-    {
-        $this->resetPage();
-    }
-
-    public function updatedPorPagina(): void
-    {
-        $this->resetPage();
-    }
-
     public function updatedFormTipoAvaliacaoId(): void
     {
         $this->sincronizarOverridesPautasComFiltros();
@@ -182,37 +263,6 @@ class GestaoAvaliacoes extends Page implements HasForms
     public function updatedFormEscolasIds(): void
     {
         $this->sincronizarEscolasSelecionadasComFiltros();
-    }
-
-    public function getAvaliacoesProperty(): LengthAwarePaginator
-    {
-        $query = Avaliacao::query()
-            ->withCount(['pautas'])
-            ->with([
-                'tipo:id,nome',
-                'periodo:id,nome',
-                'componentes:id,nome',
-                'series:id,nome',
-                'escolas:id,nome',
-            ]);
-
-        if (filled($this->busca)) {
-            $busca = trim($this->busca);
-            $query->where(function ($subQuery) use ($busca): void {
-                $subQuery->where('nome', 'like', "%{$busca}%")
-                    ->orWhereHas('tipo', fn ($tipoQuery) => $tipoQuery->where('nome', 'like', "%{$busca}%"))
-                    ->orWhereHas('periodo', fn ($periodoQuery) => $periodoQuery->where('nome', 'like', "%{$busca}%"))
-                    ->orWhereHas('componentes', fn ($componenteQuery) => $componenteQuery->where('nome', 'like', "%{$busca}%"));
-            });
-        }
-
-        if ($this->filtroStatus !== 'todas') {
-            $query->where('status', $this->filtroStatus);
-        }
-
-        return $query
-            ->orderByDesc('updated_at')
-            ->paginate($this->porPagina);
     }
 
     public function getStatusOptionsProperty(): array

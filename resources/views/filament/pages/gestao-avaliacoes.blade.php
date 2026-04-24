@@ -1,4 +1,7 @@
 <x-filament-panels::page>
+    {{ $this->table }}
+
+    {{--
     <div class="gi-page av-page">
         <section class="gi-hero">
             <div>
@@ -160,6 +163,7 @@
             </div>
         </section>
     </div>
+    --}}
 
     @if ($modalAberto)
         <div class="gi-overlay" wire:click="fecharModal"></div>
