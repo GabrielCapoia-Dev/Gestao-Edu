@@ -10,6 +10,7 @@ class ProfessorEscolaVinculoService
 {
     public function sincronizarPorUsuario(User|int|null $user): void
     {
+        // Fluxo: login Google/alteracoes pedagogicas chamam este metodo; ele recalcula escolas pelo vinculo turma-componente-professor, sincroniza escola_user e ajusta id_escola principal.
         $userModel = $user instanceof User
             ? $user->fresh()
             : User::query()->find($user);
@@ -49,6 +50,7 @@ class ProfessorEscolaVinculoService
 
     private function buscarEscolasPedagogicasDoUsuario(int $userId): array
     {
+        // Impacto: a fonte da verdade do professor e o pivot turma_componente_professor com tem_professor=true. Alterar essa consulta muda acesso a turmas, alunos e avaliacoes.
         return TurmaComponenteProfessor::query()
             ->join('professores as p', 'p.id', '=', 'turma_componente_professor.professor_id')
             ->join('turmas as t', 't.id', '=', 'turma_componente_professor.turma_id')
@@ -65,6 +67,7 @@ class ProfessorEscolaVinculoService
 
     private function atualizarEscolaPrincipal(User $user, array $escolasIds): void
     {
+        // Fluxo: se o usuario leciona em varias escolas, mantemos a escola atual quando ela ainda e valida; caso contrario usamos a primeira escola pedagogica encontrada.
         $escolaPrincipal = null;
 
         if ($escolasIds !== []) {

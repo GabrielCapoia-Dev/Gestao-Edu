@@ -33,6 +33,7 @@ class InventarioDataService
 
     public function itens(Inventario $inventario, array $filtros = []): Collection
     {
+        // Fluxo: dashboards e relatorios pedem os itens por inventario; aqui o estoque bruto vira DTO de tela com status, valor de referencia, filtros e ordenacao.
         $filtros = $this->normalizarFiltros($filtros);
         $precos = $this->precosReferencia();
 
@@ -64,6 +65,7 @@ class InventarioDataService
             })
             ->values();
 
+        // Impacto: filtros sao aplicados em memoria porque os campos exibidos misturam estoque, item e calculos; mover para SQL exige revisar ordenacao e labels.
         if ($filtros['categoria'] !== 'todas') {
             $itens = $itens->where('tipo_item', $filtros['categoria'])->values();
         }
@@ -156,6 +158,7 @@ class InventarioDataService
 
     public function metricasGerais(Collection $itens, Collection $movimentacoes, Collection $baixas): object
     {
+        // Fluxo: a tela monta itens/movimentacoes/baixas separadamente e entrega aqui; o resultado consolida cards numericos sem consultar banco de novo.
         $totalEntradas = (float) $movimentacoes
             ->where('tipo', TipoMovimentacao::Entrada->value)
             ->sum('quantidade');
@@ -330,6 +333,7 @@ class InventarioDataService
 
     public function relatorioEnviosEscolas(array $filtros = []): object
     {
+        // Fluxo: o relatorio parte dos inventarios filtrados, busca somente entradas geradas por pedidos/romaneios, agrupa por escola e devolve resumo + detalhamento por item.
         $filtros = $this->normalizarFiltrosRelatorioEnvios($filtros);
         $inventarios = $this->inventariosPanorama($filtros);
         $inventarioIds = $inventarios
@@ -339,6 +343,7 @@ class InventarioDataService
             ->values()
             ->all();
 
+        // Impacto: retorno vazio preserva o mesmo contrato de dados usado por Blade/PDF/XLSX; trocar por null exigiria tratar excecoes nos relatorios.
         if ($inventarioIds === []) {
             return (object) [
                 'filtros' => $filtros,
@@ -372,6 +377,7 @@ class InventarioDataService
             ->orderBy('created_at')
             ->get()
             ->map(function (InventarioMovimentacao $movimentacao) use ($precos): array {
+                // Fluxo: cada entrada de inventario escolar vira uma linha de envio, conectando escola, pedido, romaneio, item, quantidade e valor de referencia.
                 $itemId = $movimentacao->estoque?->item_id;
                 $valorUnitario = round((float) ($precos->get($itemId) ?? 0), 2);
                 $quantidade = round((float) $movimentacao->quantidade, 3);
@@ -401,6 +407,7 @@ class InventarioDataService
         $escolas = $movimentacoes
             ->groupBy('inventario_id')
             ->map(function (Collection $rows): array {
+                // Fluxo: depois das linhas individuais, agrupamos por inventario para gerar totais por escola e uma lista consolidada de itens recebidos.
                 $primeira = $rows
                     ->sortBy(fn (array $row) => $row['data_raw']?->timestamp ?? 0)
                     ->first();
@@ -720,6 +727,7 @@ class InventarioDataService
 
     protected function inventariosPanorama(array $filtros = []): Collection
     {
+        // Impacto: este metodo e a base comum do panorama e do relatorio de envios; mudar busca/escolas aqui altera dashboards e exportacoes juntos.
         $busca = mb_strtolower(trim((string) ($filtros['busca'] ?? '')));
         $escolas = collect($filtros['escolas'] ?? [])
             ->map(fn (mixed $id): int => (int) $id)
@@ -755,6 +763,7 @@ class InventarioDataService
 
     protected function precosReferencia(): Collection
     {
+        // Fluxo: primeiro busca preco do contrato ativo, depois completa com ultimo preco historico. O cache evita repetir essa consulta em cada linha de item/relatorio.
         if ($this->precosReferenciaCache instanceof Collection) {
             return $this->precosReferenciaCache;
         }

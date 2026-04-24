@@ -27,6 +27,7 @@ class GestaoEstoqueDataService
 
     public function itens(array $filtros = []): Collection
     {
+        // Fluxo: a pagina de gestao envia filtros; o servico carrega estoque + item, transforma em linhas de exibicao, aplica busca/categoria e devolve ordenado.
         $filtros = $this->normalizarFiltros($filtros);
 
         $itens = Estoque::query()
@@ -53,6 +54,7 @@ class GestaoEstoqueDataService
             })
             ->values();
 
+        // Impacto: filtros em colecao mantem a mesma regra usada nos cards, slide-over e relatorios; alterar aqui muda todos os consumidores do estoque.
         if ($filtros['categoria'] !== 'todas') {
             $itens = $itens->where('tipo_item', $filtros['categoria'])->values();
         }
@@ -107,6 +109,7 @@ class GestaoEstoqueDataService
 
     public function movimentacoesDosFiltros(array $filtros = []): Collection
     {
+        // Fluxo: primeiro resolve quais estoques aparecem com os filtros atuais, depois busca as movimentacoes desses estoques para metricas e relatorios.
         $estoqueIds = $this->itens($filtros)->pluck('estoque_id')->all();
 
         if ($estoqueIds === []) {
@@ -141,6 +144,7 @@ class GestaoEstoqueDataService
 
     public function metricasGerais(Collection $itens, Collection $movimentacoes, Collection $baixas): object
     {
+        // Impacto: estes totais alimentam cards do dashboard e exportacoes; mudar nomes/campos exige revisar views e servicos de relatorio.
         $totalEntradas = (float) $movimentacoes
             ->where('tipo', TipoMovimentacao::Entrada->value)
             ->sum('quantidade');
@@ -250,6 +254,7 @@ class GestaoEstoqueDataService
 
     protected function resolverStatus(float $quantidade): string
     {
+        // Impacto: o status visual do estoque nasce aqui. Alterar limites de critico/zerado muda badges, cards e alertas de baixa quantidade.
         if ($quantidade <= 0) {
             return 'zerado';
         }

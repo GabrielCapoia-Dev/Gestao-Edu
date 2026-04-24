@@ -54,6 +54,7 @@ class ContratoItemSpreadsheetService
 
     public function importar(Contrato $contrato, string $caminhoArquivo, string $disk = 'local'): array
     {
+        // Fluxo: o upload salva o arquivo temporario, este servico carrega a planilha, valida todas as linhas, grava os itens do contrato em transacao e remove o arquivo ao final.
         $caminhoCompleto = Storage::disk($disk)->path($caminhoArquivo);
 
         try {
@@ -91,6 +92,7 @@ class ContratoItemSpreadsheetService
 
     private function validarLinhas(array $rows): array
     {
+        // Impacto: a importacao so grava depois que todas as linhas passam. Alterar para gravacao parcial mudaria o contrato da UI, que hoje espera erro completo ou sucesso completo.
         if ($rows === [] || count($rows) < 2) {
             throw new InvalidArgumentException('O arquivo precisa conter cabecalho e ao menos uma linha de dados.');
         }
@@ -103,6 +105,7 @@ class ContratoItemSpreadsheetService
             self::HEADER_PRECO,
         ];
 
+        // Impacto: o cabecalho e propositalmente rigido para evitar importar colunas trocadas como quantidade/preco.
         if ($headers !== $esperados) {
             throw new InvalidArgumentException('Cabecalho invalido. Use exatamente: Codigo do Item, Quantidade, Preco unitario.');
         }
@@ -131,6 +134,7 @@ class ContratoItemSpreadsheetService
             ->keyBy('codigo');
 
         $linhasValidadas = $linhas->map(function (array $linha) use (&$erros, &$codigos, $itens): ?array {
+            // Fluxo: cada linha resolve codigo -> item cadastrado, valida duplicidade/ativo/numeros e so entao vira payload pronto para criar ContratoItem.
             $codigo = $linha['codigo'];
             $numeroLinha = $linha['numero_linha'];
 
@@ -205,6 +209,7 @@ class ContratoItemSpreadsheetService
 
     private function normalizarNumero(mixed $valor): ?float
     {
+        // Impacto: aceita formato brasileiro e internacional. Simplificar esta regra pode rejeitar planilhas com "1.234,56" ou interpretar preco com valor incorreto.
         if ($valor === null) {
             return null;
         }

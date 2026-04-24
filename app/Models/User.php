@@ -63,6 +63,7 @@ class User extends Authenticatable implements FilamentUser
 
     public function canAccessPanel(Panel $panel, ?bool $register = false): bool
     {
+        // Fluxo: Filament chama este metodo no acesso ao painel; se canAccessAdminPanel falhar, o usuario e deslogado, notificado e redirecionado para login.
         if ($this->canAccessAdminPanel()) {
             return true;
         }
@@ -99,6 +100,7 @@ class User extends Authenticatable implements FilamentUser
 
     public function canAccessAdminPanel(): bool
     {
+        // Impacto: este e o gate final do painel admin. email_approved, permissao direta ou role de acesso liberam login; alterar aqui afeta GoogleAuthController e Filament.
         return (bool) $this->email_approved
             || $this->hasPermissionTo('Acessar Painel')
             || $this->hasRole('Acessar Painel');
@@ -106,6 +108,7 @@ class User extends Authenticatable implements FilamentUser
 
     public function hasPermissionTo($permission, $guardName = null): bool
     {
+        // Impacto: retorna false quando a permissao ainda nao existe, evitando erro fatal em telas que consultam permissoes antes do seed/comando CriarPermissoes.
         try {
             return $this->traitHasPermissionTo($permission, $guardName);
         } catch (PermissionDoesNotExist) {
@@ -138,6 +141,7 @@ class User extends Authenticatable implements FilamentUser
     protected static function booted()
     {
         static::creating(function (User $user) {
+            // Fluxo: novo usuario recebe codigo sequencial a partir de 100; mudar essa regra afeta exibicoes/identificadores que usam codigo em vez de id.
             if (is_null($user->codigo)) {
                 $ultimoCodigo = User::max('codigo');
 
@@ -150,6 +154,7 @@ class User extends Authenticatable implements FilamentUser
         });
 
         static::updating(function (User $user) {
+            // Impacto: aprovar e-mail tambem marca verificacao. Remover isso pode deixar usuario aprovado sem email_verified_at, afetando regras futuras de acesso.
             if (
                 $user->isDirty('email_approved') &&
                 $user->email_approved &&
@@ -186,6 +191,7 @@ class User extends Authenticatable implements FilamentUser
 
     public function idsEscolasVinculadas(): array
     {
+        // Fluxo: primeiro usa o pivot escola_user; se ainda nao houver sincronizacao, cai para id_escola para manter compatibilidade com o modelo antigo.
         $ids = $this->escolas()
             ->pluck('escolas.id')
             ->map(fn ($id) => (int) $id)
@@ -217,6 +223,7 @@ class User extends Authenticatable implements FilamentUser
 
     public function podeGerenciarSetor(?Setor $setor = null): bool
     {
+        // Impacto: PedidoService usa esta regra para decidir se usuario pode atuar em pedido de setor especifico; alterar delegacao muda o fluxo operacional de chamados.
         if (! $this->setor) {
             return false;
         }

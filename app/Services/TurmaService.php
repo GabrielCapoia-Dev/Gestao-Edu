@@ -37,6 +37,7 @@ class TurmaService
     {
         return $table
             ->modifyQueryUsing(function (Builder $query) use ($user) {
+                // Fluxo: a tabela de turmas primeiro aplica o escopo do usuario, depois carrega escola/serie/alunos para evitar consultas repetidas nas colunas.
                 $this->userService->aplicarFiltroPorEscolaDoUsuarioEmTurma($query, $user);
 
                 $query->with([
@@ -107,6 +108,7 @@ class TurmaService
                 ->modal()
                 ->slideOver()
                 ->fillForm(function (Turma $record, array $data): array {
+                    // Fluxo: ao editar, a turma carrega a serie e seus componentes; cada componente vira uma linha do repeater com professor atual ou marcador "sem professor".
                     $record->load([
                         'serie.componentesCurriculares',
                         'componentes',
@@ -140,11 +142,13 @@ class TurmaService
                 ->url(fn(Turma $record) => route('filament.admin.resources.alunos.index', [
                     'turma' => $record->id,
                 ]))
+                // Impacto: este atalho depende do filtro da tela de alunos reconhecer o parametro turma; alterar rota/parametro quebra a navegacao entre turma e alunos.
                 ->visible(fn() => $this->userService->podeVisualizarAlunos(Auth::user())),
 
             DeleteAction::make()
                 ->before(function (Turma $record, $action) {
                     if ($record->alunos()->exists()) {
+                        // Impacto: excluir turma com alunos deixaria alunos orfaos e quebraria relatorios/filtros por turma.
                         Notification::make()
                             ->title('Ação bloqueada')
                             ->body('Não é possível excluir turma com alunos vinculados.')
@@ -246,6 +250,7 @@ class TurmaService
                             ->required()
                             ->live()
                             ->afterStateUpdated(function ($state, Set $set) {
+                                // Fluxo: ao escolher a serie, o formulario busca os componentes curriculares da serie e monta automaticamente as linhas de professor por componente.
                                 if (! $state) {
                                     $set('componentes', []);
                                     return;
@@ -338,6 +343,7 @@ class TurmaService
                                         Select::make('professor_id')
                                             ->label('Professor')
                                             ->options(function (Get $get) {
+                                                // Impacto: professores disponiveis sao filtrados pela escola da turma; remover esse filtro permite vincular professor de outra unidade.
                                                 $escolaId = $get('../../id_escola');
                                                 if (! $escolaId) {
                                                     return [];
@@ -379,6 +385,7 @@ class TurmaService
 
     public function aplicarCodigo(array $data): array
     {
+        // Impacto: normaliza a letra/codigo antes de salvar; mudar este padrao afeta buscas, exibicao e possiveis integracoes que dependem do codigo TR{letra}.
         $letra = strtoupper(preg_replace('/[^A-Za-z]/', '', (string) ($data['turma'] ?? '')));
 
         if (blank($letra)) {
@@ -393,6 +400,7 @@ class TurmaService
 
     public function forcarVinculoComEscola(array $data, ?User $auth): array
     {
+        // Impacto: usuario vinculado a escola nao pode criar turma em outra unidade; remover isso quebra isolamento entre escolas.
         if ($auth && filled($auth->id_escola)) {
             $data['id_escola'] = $auth->id_escola;
         }

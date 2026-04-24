@@ -72,6 +72,7 @@ class BalancoInventarioService
 
     public function iniciar(BalancoInventario $balanco, array $itemIdsSelecionados, User $user): BalancoInventario
     {
+        // Fluxo: a tela de balanco envia o agendamento e os itens escolhidos; aqui validamos inventario/status/conflitos, criamos o snapshot e devolvemos o balanco pronto para contagem.
         $this->garantirStatus($balanco, BalancoInventarioStatus::Agendado, 'Apenas balanços agendados podem ser iniciados.');
 
         $balanco->loadMissing('inventario');
@@ -88,6 +89,7 @@ class BalancoInventarioService
             ->unique()
             ->values();
 
+        // Impacto: sem selecao, o balanco ficaria em andamento sem item contavel e bloquearia o inventario sem gerar ajuste util.
         if ($selecionados->isEmpty()) {
             throw new DomainException('Selecione pelo menos um item para iniciar o balanço.');
         }
@@ -104,6 +106,7 @@ class BalancoInventarioService
             $balanco->getKey(),
         );
 
+        // Impacto: esse IF evita que a mesma escola tenha o mesmo item em dois balancos simultaneos, protegendo InventarioEstoque::entrada()/saida().
         if ($conflitos->isNotEmpty()) {
             $itens = $conflitos
                 ->map(fn (BalancoInventarioItem $registro): string => ($registro->item?->nome ?? 'Item') . ' (' . ($registro->balanco?->codigo ?? 'N/A') . ')')
@@ -121,6 +124,7 @@ class BalancoInventarioService
             ])->save();
 
             foreach ($elegiveis as $item) {
+                // Fluxo: cada item elegivel vira uma linha de snapshot; incluido_na_contagem diferencia contexto historico de item realmente contado.
                 $balanco->itens()->create([
                     'inventario_estoque_id' => $item['inventario_estoque_id'],
                     'item_id' => $item['item_id'],
@@ -144,6 +148,7 @@ class BalancoInventarioService
 
     public function registrarContagem(BalancoInventarioItem $balancoItem, float $quantidadeContada, ?string $observacao, User $user): BalancoInventarioItem
     {
+        // Fluxo: o usuario informa a quantidade fisica; o sistema compara com saldo_sistema_antes, calcula diferenca/valor_impacto e guarda a linha para posterior conclusao.
         $balancoItem->loadMissing(['balanco', 'item']);
         $balanco = $balancoItem->balanco;
 
@@ -151,6 +156,7 @@ class BalancoInventarioService
             throw new DomainException('Só é possível registrar contagem em balanços em andamento.');
         }
 
+        // Impacto: itens fora da contagem existem para contexto, mas nao podem gerar ajuste; remover este bloqueio alteraria saldo de item nao selecionado.
         if (! $balancoItem->incluido_na_contagem) {
             throw new DomainException('Este item está fora do balanço e não aceita contagem.');
         }
@@ -229,9 +235,11 @@ class BalancoInventarioService
 
     public function concluir(BalancoInventario $balanco, User $user): BalancoInventario
     {
+        // Fluxo: a conclusao pega as contagens registradas, trava as linhas, aplica entrada/saida no InventarioEstoque e grava evento final com impacto financeiro.
         $this->garantirStatus($balanco, BalancoInventarioStatus::EmAndamento, 'Apenas balanços em andamento podem ser concluídos.');
 
         DB::transaction(function () use ($balanco, $user) {
+            // Impacto: lockForUpdate() impede que duas conclusoes/contagens alterem o mesmo item enquanto o ajuste de saldo esta sendo aplicado.
             /** @var EloquentCollection<int, BalancoInventarioItem> $itens */
             $itens = BalancoInventarioItem::query()
                 ->where('balanco_inventario_id', $balanco->getKey())
@@ -241,6 +249,7 @@ class BalancoInventarioService
 
             $pendentes = $itens->filter(fn (BalancoInventarioItem $item): bool => $item->quantidade_contada === null);
 
+            // Impacto: permitir pendentes fecharia apenas parte do inventario e deixaria relatorio/eventos sem representar a contagem completa.
             if ($pendentes->isNotEmpty()) {
                 throw new DomainException('Todos os itens selecionados precisam ter contagem registrada antes da conclusão.');
             }
@@ -264,6 +273,7 @@ class BalancoInventarioService
                 );
                 $observacao = "Reajustado via Balanço de Inventário #{$balanco->codigo}";
 
+                // Impacto: o ajuste passa por entrada()/saida() para respeitar bloqueios e gerar movimentacao auditavel; atualizar quantidade diretamente quebraria historico.
                 if ($diferenca > 0) {
                     $inventarioEstoque->entrada($diferenca, null, $observacao, $balanco->getKey());
                 } elseif ($diferenca < 0) {
@@ -304,6 +314,7 @@ class BalancoInventarioService
 
     public function itensElegiveis(Inventario $inventario): Collection
     {
+        // Fluxo: o balanco escolar parte do estoque ja existente no inventario da escola; itens sem saldo/registro entram somente apos uma primeira entrada.
         return InventarioEstoque::query()
             ->with('item')
             ->where('inventario_id', $inventario->getKey())
@@ -348,6 +359,7 @@ class BalancoInventarioService
 
     protected function buscarValorUnitarioReferencia(int $itemId): float
     {
+        // Impacto: relatorios de balanco usam este preco para calcular valor_impacto; a prioridade e contrato ativo, com fallback para ultimo preco conhecido.
         $preco = ContratoItem::query()
             ->where('item_id', $itemId)
             ->whereHas('contrato', fn ($query) => $query->where('ativo', true))

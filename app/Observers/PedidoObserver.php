@@ -26,6 +26,7 @@ class PedidoObserver
     public function updated(Pedido $pedido): void
     {
 
+        // Fluxo: quando um pedido vira emergencial, o observer reage ao update, busca usuarios com permissao especifica e dispara notificacao com link para edicao.
         if (
             $pedido->wasChanged('nivel_prioridade') &&
             $pedido->nivel_prioridade === NivelEmergenciaPedido::EMERGENCIAL
@@ -45,12 +46,14 @@ class PedidoObserver
         }
 
 
+        // Fluxo: a alteracao de status vem de PedidoService::alterarStatus(); aqui o resultado e comunicado ao solicitante e, no caso de reabertura, aos responsaveis.
         if ($pedido->wasChanged('tipo_status_id')) {
 
             $statusAtual = $pedido->tipoStatus;
             $statusReaberto = TipoStatus::where('nome', 'Reaberto')->first();
 
 
+            // Impacto: pedido reaberto tem notificacao especial porque normalmente volta de uma avaliacao ruim; misturar com status comum reduziria visibilidade do retrabalho.
             if (
                 $statusReaberto &&
                 $pedido->tipo_status_id === $statusReaberto->id
