@@ -188,7 +188,7 @@ class EmpresaContratadaService
     {
         return [
             EditAction::make()
-                ->using(function (EmpresaContratada $record, array $data): EmpresaContratada {
+                ->using(function (EmpresaContratada $record, array $data, Action $action): EmpresaContratada {
 
                     $campos = [
                         'nome',
@@ -226,7 +226,8 @@ class EmpresaContratadaService
                                 ->danger()
                                 ->send();
 
-                            return $record;
+                            // Interrompe o ciclo da EditAction para a notificacao ser despachada na hora, sem ficar presa ate o proximo refresh.
+                            $action->halt();
                         }
                     }
 
@@ -249,7 +250,7 @@ class EmpresaContratadaService
 
             DeleteAction::make()
                 ->successNotification(null)
-                ->using(function (EmpresaContratada $record) {
+                ->using(function (EmpresaContratada $record, Action $action) {
 
                     $motivoBloqueio = $this->motivoBloqueioExclusao($record);
 
@@ -260,7 +261,8 @@ class EmpresaContratadaService
                             ->danger()
                             ->send();
 
-                        return;
+                        // Sem cancelar a action, o Filament conclui o fluxo e a notificacao so aparece no proximo carregamento.
+                        $action->cancel();
                     }
 
                     $record->delete();
@@ -273,7 +275,7 @@ class EmpresaContratadaService
         return [
             DeleteBulkAction::make()
                 ->successNotification(null)
-                ->using(function ($records) {
+                ->using(function ($records, Action $action) {
 
                     foreach ($records as $record) {
                         $motivoBloqueio = $this->motivoBloqueioExclusao($record, true);
@@ -285,7 +287,8 @@ class EmpresaContratadaService
                                 ->danger()
                                 ->send();
 
-                            return;
+                            // Mantem a selecao intacta e mostra o bloqueio imediatamente para o usuario.
+                            $action->cancel();
                         }
                     }
 
