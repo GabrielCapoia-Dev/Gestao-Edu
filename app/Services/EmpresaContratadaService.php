@@ -203,15 +203,16 @@ class EmpresaContratadaService
                 ->successNotification(null)
                 ->using(function (EmpresaContratada $record) {
 
-                    if ($record->contratos()->exists()) {
+                    $motivoBloqueio = $this->motivoBloqueioExclusao($record);
 
+                    if ($motivoBloqueio !== null) {
                         Notification::make()
                             ->title('Ação bloqueada')
-                            ->body('Esta empresa possui contratos vinculados e não pode ser excluída.')
+                            ->body($motivoBloqueio)
                             ->danger()
                             ->send();
 
-                        return; // impede o delete
+                        return;
                     }
 
                     $record->delete();
@@ -227,11 +228,12 @@ class EmpresaContratadaService
                 ->using(function ($records) {
 
                     foreach ($records as $record) {
-                        if ($record->contratos()->exists()) {
+                        $motivoBloqueio = $this->motivoBloqueioExclusao($record, true);
 
+                        if ($motivoBloqueio !== null) {
                             Notification::make()
                                 ->title('Ação bloqueada')
-                                ->body('Uma ou mais empresas possuem contratos vinculados.')
+                                ->body($motivoBloqueio)
                                 ->danger()
                                 ->send();
 
@@ -244,5 +246,31 @@ class EmpresaContratadaService
                     }
                 }),
         ];
+    }
+
+    private function motivoBloqueioExclusao(EmpresaContratada $empresa, bool $acaoEmMassa = false): ?string
+    {
+        // Contratos e pedidos usam a empresa como historico operacional; se a exclusao fosse permitida,
+        // relatorios, acompanhamentos e rastreabilidade poderiam perder a referencia da contratada.
+        $possuiContratos = $empresa->contratos()->exists();
+        $possuiPedidos = $empresa->pedidos()->exists();
+
+        if (! $possuiContratos && ! $possuiPedidos) {
+            return null;
+        }
+
+        if ($acaoEmMassa) {
+            return match (true) {
+                $possuiContratos && $possuiPedidos => 'Uma ou mais empresas possuem contratos ou pedidos de manutenção vinculados.',
+                $possuiContratos => 'Uma ou mais empresas possuem contratos vinculados.',
+                default => 'Uma ou mais empresas possuem pedidos de manutenção vinculados.',
+            };
+        }
+
+        return match (true) {
+            $possuiContratos && $possuiPedidos => 'Esta empresa possui contratos e pedidos de manutenção vinculados e não pode ser excluída.',
+            $possuiContratos => 'Esta empresa possui contratos vinculados e não pode ser excluída.',
+            default => 'Esta empresa possui pedidos de manutenção vinculados e não pode ser excluída.',
+        };
     }
 }
