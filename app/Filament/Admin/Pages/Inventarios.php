@@ -21,7 +21,7 @@ class Inventarios extends Page
 {
     protected string $view = 'filament.pages.inventarios';
 
-    protected static ?string $title = 'Panorama Geral dos Inventários';
+    protected static ?string $title = 'Gestão de Inventários';
 
     protected static ?string $slug = 'inventarios';
 
