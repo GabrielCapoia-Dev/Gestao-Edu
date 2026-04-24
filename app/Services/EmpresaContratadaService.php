@@ -10,6 +10,7 @@ use Filament\Schemas\Components\Grid;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Notifications\Notification;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Support\Facades\Auth;
@@ -28,6 +29,8 @@ use Filament\Actions\Action;
 
 class EmpresaContratadaService
 {
+    private const PERMISSAO_LISTAR_EMPRESAS_INATIVAS = 'Listar Empresas Inativas';
+
     /*
     |--------------------------------------------------------------------------
     | Formulário
@@ -108,9 +111,13 @@ class EmpresaContratadaService
 
     public function configurarTabela(Table $table): Table
     {
+        $podeListarInativas = Auth::user()?->hasPermissionTo(self::PERMISSAO_LISTAR_EMPRESAS_INATIVAS) ?? false;
+
         return $table
-            ->query(EmpresaContratada::query()->where('ativo', true))
+            ->query(EmpresaContratada::query()
+                ->when(! $podeListarInativas, fn (Builder $query) => $query->where('ativo', true)))
             ->columns($this->colunasTabela())
+            ->filters($this->filtrosTabela($podeListarInativas))
             ->recordActions($this->acoesTabela())
             ->toolbarActions($this->acoesEmMassa())
             ->defaultSort('updated_at', 'desc')
@@ -145,6 +152,29 @@ class EmpresaContratadaService
                 ->label('Atualizado')
                 ->since()
                 ->sortable(),
+        ];
+    }
+
+    private function filtrosTabela(bool $podeListarInativas): array
+    {
+        if (! $podeListarInativas) {
+            return [];
+        }
+
+        return [
+            TernaryFilter::make('listar_empresas_inativas')
+                ->label(self::PERMISSAO_LISTAR_EMPRESAS_INATIVAS)
+                ->trueLabel('Sim')
+                ->falseLabel('Não')
+                ->placeholder('Não')
+                ->default(false)
+                ->native(false)
+                ->queries(
+                    // Fluxo: por padrão a listagem mantém somente empresas ativas; ao marcar o filtro, o usuário autorizado também enxerga inativas para reativação.
+                    true: fn (Builder $query): Builder => $query,
+                    false: fn (Builder $query): Builder => $query->where('ativo', true),
+                    blank: fn (Builder $query): Builder => $query->where('ativo', true),
+                ),
         ];
     }
 
@@ -184,6 +214,22 @@ class EmpresaContratadaService
                         }
                     }
 
+                    $inativaRegistroAtual = (bool) $record->ativo && ($alterou || ! (bool) ($data['ativo'] ?? false));
+
+                    if ($inativaRegistroAtual) {
+                        $motivoBloqueio = $this->motivoBloqueioInativacao($record);
+
+                        if ($motivoBloqueio !== null) {
+                            Notification::make()
+                                ->title('Ação bloqueada')
+                                ->body($motivoBloqueio)
+                                ->danger()
+                                ->send();
+
+                            return $record;
+                        }
+                    }
+
                     if ($alterou) {
 
                         $record->update(['ativo' => false]);
@@ -195,6 +241,8 @@ class EmpresaContratadaService
                             'alterado_por' => Auth::user()?->name,
                         ]);
                     }
+
+                    $record->update($data);
 
                     return $record;
                 }),
@@ -271,6 +319,40 @@ class EmpresaContratadaService
             $possuiContratos && $possuiPedidos => 'Esta empresa possui contratos e pedidos de manutenção vinculados e não pode ser excluída.',
             $possuiContratos => 'Esta empresa possui contratos vinculados e não pode ser excluída.',
             default => 'Esta empresa possui pedidos de manutenção vinculados e não pode ser excluída.',
+        };
+    }
+
+    private function motivoBloqueioInativacao(EmpresaContratada $empresa): ?string
+    {
+        // Regra de negocio: empresa so pode sair de uso quando nao existe contrato vigente nem pedido em andamento.
+        // Se isso for relaxado, seletores podem ocultar a empresa enquanto contratos/pedidos ainda dependem dela operacionalmente.
+        $possuiContratoAtivoVigente = $empresa->contratos()
+            ->where('ativo', true)
+            ->whereDate('data_inicio', '<=', today())
+            ->where(function (Builder $query): void {
+                $query->whereNull('data_vencimento')
+                    ->orWhereDate('data_vencimento', '>=', today());
+            })
+            ->exists();
+
+        $possuiPedidoNaoFinalizado = $empresa->pedidos()
+            ->where(function (Builder $query): void {
+                $query->whereHas('tipoStatus', function (Builder $status): void {
+                    // "Concluido" e "Cancelado" sao representados pelos marcadores finaliza_pedido/cancela_pedido no cadastro de status.
+                    $status->where('finaliza_pedido', false)
+                        ->where('cancela_pedido', false);
+                })->orWhereDoesntHave('tipoStatus');
+            })
+            ->exists();
+
+        if (! $possuiContratoAtivoVigente && ! $possuiPedidoNaoFinalizado) {
+            return null;
+        }
+
+        return match (true) {
+            $possuiContratoAtivoVigente && $possuiPedidoNaoFinalizado => 'Esta empresa possui contratos ativos vigentes e pedidos de manutenção em andamento, por isso não pode ser inativada.',
+            $possuiContratoAtivoVigente => 'Esta empresa possui contratos ativos vigentes e não pode ser inativada.',
+            default => 'Esta empresa possui pedidos de manutenção em andamento e não pode ser inativada.',
         };
     }
 }

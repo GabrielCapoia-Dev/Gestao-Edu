@@ -68,6 +68,7 @@ class CriarPermissoes extends Command
             'Listar Pedidos',
             'Listar Todos os Pedidos',
             'Listar Empresa Contratada',
+            'Listar Empresas Inativas',
             'Listar Usuários',
             'Listar Níveis de Acesso',
             'Listar Permissões de Execução',
@@ -403,6 +404,7 @@ class CriarPermissoes extends Command
             ]),
             'cadastros_gerais' => $this->onlyPermissions($permissions, [
                 'Listar Empresa Contratada',
+                'Listar Empresas Inativas',
                 'Criar Empresa Contratada',
                 'Editar Empresa Contratada',
                 'Excluir Empresa Contratada',
