@@ -23,7 +23,6 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Filament\Tables\Actions\Action as TableAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
@@ -162,13 +161,13 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
                     ->options(fn (): array => PeriodoAvaliacao::query()->orderBy('nome')->pluck('nome', 'id')->toArray()),
             ])
             ->actions([
-                TableAction::make('editar')
+                Action::make('editar')
                     ->label('Editar')
                     ->icon(Heroicon::PencilSquare)
                     ->visible(fn (): bool => Auth::user()?->hasPermissionTo('Editar Avaliações') ?? false)
                     ->action(fn (Avaliacao $record) => $this->abrirModalEdicao($record->getKey())),
 
-                TableAction::make('excluir')
+                Action::make('excluir')
                     ->label('Excluir')
                     ->icon(Heroicon::Trash)
                     ->color('danger')
