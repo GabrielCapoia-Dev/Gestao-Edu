@@ -220,55 +220,53 @@ class GestaoPautas extends Page implements HasForms, HasTable
                     ->action(fn(Pauta $record) => $this->excluirPauta($record->getKey())),
             ])
             ->groupedBulkActions([
-                BulkActionGroup::make([
-                    BulkAction::make('aplicarCampos')
-                        ->label('Aplicar campos')
-                        ->icon(Heroicon::AdjustmentsHorizontal)
-                        ->visible(fn(): bool => Auth::user()?->hasPermissionTo('Editar Pautas') ?? false)
-                        ->form([
-                            Select::make('tipo_avaliacao_id')
-                                ->label('Tipo')
-                                ->options(fn(): array => $this->tiposOptions)
-                                ->searchable()
-                                ->preload(),
-                            Select::make('serie_id')
-                                ->label('Série')
-                                ->options(fn(): array => $this->seriesOptions)
-                                ->searchable()
-                                ->preload(),
-                            Select::make('componente_curricular_id')
-                                ->label('Componente')
-                                ->options(fn(): array => $this->componentesOptions)
-                                ->searchable()
-                                ->preload(),
-                        ])
-                        ->action(function (array $data, $records): void {
-                            $ids = collect($records)->map(fn(Pauta $record): int => (int) $record->getKey())->values();
+                BulkAction::make('aplicarCampos')
+                    ->label('Aplicar campos')
+                    ->icon(Heroicon::AdjustmentsHorizontal)
+                    ->visible(fn(): bool => Auth::user()?->hasPermissionTo('Editar Pautas') ?? false)
+                    ->form([
+                        Select::make('tipo_avaliacao_id')
+                            ->label('Tipo')
+                            ->options(fn(): array => $this->tiposOptions)
+                            ->searchable()
+                            ->preload(),
+                        Select::make('serie_id')
+                            ->label('Série')
+                            ->options(fn(): array => $this->seriesOptions)
+                            ->searchable()
+                            ->preload(),
+                        Select::make('componente_curricular_id')
+                            ->label('Componente')
+                            ->options(fn(): array => $this->componentesOptions)
+                            ->searchable()
+                            ->preload(),
+                    ])
+                    ->action(function (array $data, $records): void {
+                        $ids = collect($records)->map(fn(Pauta $record): int => (int) $record->getKey())->values();
 
-                            $updates = collect([
-                                'tipo_avaliacao_id' => $data['tipo_avaliacao_id'] ?? null,
-                                'serie_id' => $data['serie_id'] ?? null,
-                                'componente_curricular_id' => $data['componente_curricular_id'] ?? null,
-                            ])->filter(fn($value): bool => filled($value))->all();
+                        $updates = collect([
+                            'tipo_avaliacao_id' => $data['tipo_avaliacao_id'] ?? null,
+                            'serie_id' => $data['serie_id'] ?? null,
+                            'componente_curricular_id' => $data['componente_curricular_id'] ?? null,
+                        ])->filter(fn($value): bool => filled($value))->all();
 
-                            if ($updates === []) {
-                                throw ValidationException::withMessages([
-                                    'tipo_avaliacao_id' => 'Informe ao menos um campo para aplicar em massa.',
-                                ]);
-                            }
+                        if ($updates === []) {
+                            throw ValidationException::withMessages([
+                                'tipo_avaliacao_id' => 'Informe ao menos um campo para aplicar em massa.',
+                            ]);
+                        }
 
-                            $updates['updated_at'] = now();
+                        $updates['updated_at'] = now();
 
-                            $quantidadeAtualizada = Pauta::query()
-                                ->whereIn('id', $ids->all())
-                                ->update($updates);
+                        $quantidadeAtualizada = Pauta::query()
+                            ->whereIn('id', $ids->all())
+                            ->update($updates);
 
-                            Notification::make()
-                                ->title("Campos aplicados em {$quantidadeAtualizada} pauta(s).")
-                                ->success()
-                                ->send();
-                        }),
-                ]),
+                        Notification::make()
+                            ->title("Campos aplicados em {$quantidadeAtualizada} pauta(s).")
+                            ->success()
+                            ->send();
+                    }),
             ])
             ->defaultSort('updated_at', 'desc');
     }
