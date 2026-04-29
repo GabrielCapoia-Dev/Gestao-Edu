@@ -98,9 +98,19 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('admin-only', fn($user) => $user->hasRole('Admin'));
 
         // ── Assets ─────────────────────────────────────────────────────────────
+        $assetVersion = function (string $path): int {
+            $modifiedAt = file_exists(public_path($path))
+                ? filemtime(public_path($path))
+                : false;
+
+            return $modifiedAt ?: time();
+        };
+        $selectFixJs = 'js/filament-modal-select-fix.js';
+        $geralCss = 'css/geral.css';
+
         FilamentAsset::register([
-            Js::make('filament-modal-select-fix', secure_asset('js/filament-modal-select-fix.js')),
-            Css::make('geral', secure_asset('css/geral.css')),
+            Js::make('filament-modal-select-fix', asset($selectFixJs) . '?v=' . $assetVersion($selectFixJs)),
+            Css::make('geral', asset($geralCss) . '?v=' . $assetVersion($geralCss)),
         ]);
 
         // ── Render Hooks ───────────────────────────────────────────────────────
