@@ -3,10 +3,10 @@
     const dropdownSelector = '.fi-dropdown-panel';
     const buttonSelector = '.fi-select-input-btn[aria-expanded="true"]';
 
-    const viewportGap = 5;
+    const viewportGap = 15;
     const dropdownGap = 4;
     const maxDropdownHeight = 360;
-    const minDropdownHeight = 120;
+    const minDropdownHeight = 60;
 
     const dropdownStates = new Map();
     const containerDropdowns = new Map();
