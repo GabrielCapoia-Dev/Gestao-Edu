@@ -2,30 +2,32 @@
 
 namespace App\Services;
 
-use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Table;
-use Filament\Tables\Columns\TextColumn;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Database\Eloquent\Builder;
+use App\Models\Professor;
+use App\Models\Serie;
+use App\Models\Turma;
+use App\Models\TurmaComponenteProfessor;
 use App\Models\User;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Grid;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Repeater;
+use Filament\Actions\Action;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Forms\Components\Checkbox;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\Action;
-use Filament\Actions\EditAction;
-use Filament\Actions\DeleteAction;
-use Filament\Notifications\Notification;
-use App\Models\Turma;
-use App\Models\Professor;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
 class TurmaService
 {
@@ -77,14 +79,14 @@ class TurmaService
             TextColumn::make('turno')
                 ->label('Turno')
                 ->badge()
-                ->formatStateUsing(fn(string $state) => match ($state) {
+                ->formatStateUsing(fn (string $state) => match ($state) {
                     'manha' => 'Manhã',
                     'tarde' => 'Tarde',
                     'noite' => 'Noite',
                     'integral' => 'Integral',
                     default => ucfirst($state),
                 })
-                ->color(fn(string $state) => match ($state) {
+                ->color(fn (string $state) => match ($state) {
                     'manha' => 'info',
                     'tarde' => 'warning',
                     'noite' => 'gray',
@@ -134,16 +136,25 @@ class TurmaService
                     })->toArray();
 
                     return $data;
+                })
+                ->using(function (Turma $record, array $data): Turma {
+                    $componentes = $data['componentes'] ?? [];
+                    unset($data['componentes']);
+
+                    $record->update($data);
+                    $this->salvarComponentes($record, $componentes);
+
+                    return $record;
                 }),
 
             Action::make('ver_alunos')
                 ->label('Ver Alunos')
                 ->icon('heroicon-o-academic-cap')
-                ->url(fn(Turma $record) => route('filament.admin.resources.alunos.index', [
+                ->url(fn (Turma $record) => route('filament.admin.resources.alunos.index', [
                     'turma' => $record->id,
                 ]))
                 // Impacto: este atalho depende do filtro da tela de alunos reconhecer o parametro turma; alterar rota/parametro quebra a navegacao entre turma e alunos.
-                ->visible(fn() => $this->userService->podeVisualizarAlunos(Auth::user())),
+                ->visible(fn () => $this->userService->podeVisualizarAlunos(Auth::user())),
 
             DeleteAction::make()
                 ->before(function (Turma $record, $action) {
@@ -158,13 +169,13 @@ class TurmaService
                         $action->cancel();
                     }
                 })
-                ->visible(fn() => $this->userService->podeExcluirTurmas(Auth::user())),
+                ->visible(fn () => $this->userService->podeExcluirTurmas(Auth::user())),
         ];
     }
 
     private function filtrosTabela(): array
     {
-        /** @var \App\Models\User */
+        /** @var User */
         $user = Auth::user();
 
         return [
@@ -221,7 +232,7 @@ class TurmaService
 
     public static function configurarFormulario(Schema $schema): Schema
     {
-        /** @var \App\Models\User */
+        /** @var User */
         $user = Auth::user();
 
         return $schema
@@ -244,7 +255,7 @@ class TurmaService
 
                         Select::make('id_serie')
                             ->label('Série')
-                            ->options(\App\Models\Serie::pluck('nome', 'id'))
+                            ->options(Serie::pluck('nome', 'id'))
                             ->searchable()
                             ->preload()
                             ->required()
@@ -253,13 +264,15 @@ class TurmaService
                                 // Fluxo: ao escolher a serie, o formulario busca os componentes curriculares da serie e monta automaticamente as linhas de professor por componente.
                                 if (! $state) {
                                     $set('componentes', []);
+
                                     return;
                                 }
 
-                                $serie = \App\Models\Serie::with('componentesCurriculares')->find($state);
+                                $serie = Serie::with('componentesCurriculares')->find($state);
 
                                 if (! $serie) {
                                     $set('componentes', []);
+
                                     return;
                                 }
 
@@ -304,7 +317,7 @@ class TurmaService
                             }),
 
                         Hidden::make('codigo')
-                            ->default(fn() => 'TUR' . str_pad(Turma::max('id') + 1, 3, '0', STR_PAD_LEFT)),
+                            ->default(fn () => 'TUR'.str_pad(Turma::max('id') + 1, 3, '0', STR_PAD_LEFT)),
                     ])
                     ->columns(2),
 
@@ -356,8 +369,8 @@ class TurmaService
                                             })
                                             ->searchable()
                                             ->placeholder('Selecione o professor')
-                                            ->disabled(fn(Get $get) => $get('tem_professor'))
-                                            ->dehydrated(fn(Get $get) => ! $get('tem_professor')),
+                                            ->disabled(fn (Get $get) => $get('tem_professor'))
+                                            ->dehydrated(fn (Get $get) => ! $get('tem_professor')),
 
                                         Checkbox::make('tem_professor')
                                             ->label('NÃ£o tem Professor?')
@@ -372,14 +385,14 @@ class TurmaService
                                         Hidden::make('componente_curricular_id'),
                                     ]),
                             ])
-                            ->visible(fn(Get $get) => $get('id_serie') && $get('id_escola'))
+                            ->visible(fn (Get $get) => $get('id_serie') && $get('id_escola'))
                             ->addable(false)
                             ->deletable(false)
                             ->reorderable(false)
                             ->columnSpanFull(),
                     ])
                     ->columnSpanFull()
-                    ->visible(fn(Get $get) => $get('id_serie') && $get('id_escola')),
+                    ->visible(fn (Get $get) => $get('id_serie') && $get('id_escola')),
             ]);
     }
 
@@ -393,7 +406,7 @@ class TurmaService
         }
 
         $data['turma'] = $letra;
-        $data['codigo'] = 'TR' . $letra;
+        $data['codigo'] = 'TR'.$letra;
 
         return $data;
     }
@@ -406,5 +419,65 @@ class TurmaService
         }
 
         return $data;
+    }
+
+    public function salvarComponentes(Turma $turma, array $componentes): void
+    {
+        $componentesNormalizados = collect($componentes)
+            ->filter(fn (array $componente): bool => isset($componente['componente_curricular_id']))
+            ->map(function (array $componente): array {
+                $professorId = filled($componente['professor_id'] ?? null)
+                    ? (int) $componente['professor_id']
+                    : null;
+
+                return [
+                    'componente_curricular_id' => (int) $componente['componente_curricular_id'],
+                    'professor_id' => $professorId,
+                ];
+            })
+            ->values();
+
+        if ($componentesNormalizados->isEmpty()) {
+            return;
+        }
+
+        $componentesIds = $componentesNormalizados
+            ->pluck('componente_curricular_id')
+            ->all();
+
+        $professoresAnteriores = TurmaComponenteProfessor::query()
+            ->where('turma_id', $turma->id)
+            ->whereIn('componente_curricular_id', $componentesIds)
+            ->pluck('professor_id')
+            ->all();
+
+        $componentesNormalizados->each(function (array $componente) use ($turma): void {
+            TurmaComponenteProfessor::query()->updateOrCreate(
+                [
+                    'turma_id' => $turma->id,
+                    'componente_curricular_id' => $componente['componente_curricular_id'],
+                ],
+                [
+                    'professor_id' => $componente['professor_id'],
+                    'tem_professor' => filled($componente['professor_id']),
+                ],
+            );
+        });
+
+        $professoresAtualizados = $componentesNormalizados
+            ->pluck('professor_id')
+            ->all();
+
+        $professoresParaSincronizar = collect($professoresAnteriores)
+            ->merge($professoresAtualizados)
+            ->filter()
+            ->map(fn ($professorId): int => (int) $professorId)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($professoresParaSincronizar !== []) {
+            app(ProfessorEscolaVinculoService::class)->sincronizarPorProfessores($professoresParaSincronizar);
+        }
     }
 }

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Turmas;
 
+use App\Filament\Admin\Resources\Turmas\Pages\ManageTurmas;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
 use App\Models\Professor;
@@ -10,6 +11,7 @@ use App\Models\Turma;
 use App\Models\User;
 use App\Services\UserService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
@@ -107,12 +109,90 @@ class TurmaResourceScopeTest extends TestCase
         $this->assertNotContains($turmaC->id, $turmasVisiveis);
     }
 
+    public function test_edicao_atualiza_professor_do_componente_da_turma(): void
+    {
+        Permission::findOrCreate('Listar Turmas');
+        Permission::findOrCreate('Editar Turmas');
+        Permission::findOrCreate('Editar Dados da Turma');
+        Permission::findOrCreate('Editar Escola da Turma');
+
+        $escola = $this->criarEscola('Escola Edicao');
+        $serie = Serie::query()->create([
+            'codigo' => 'SER-EDIT',
+            'nome' => 'Serie Edicao',
+        ]);
+        $componente = ComponenteCurricular::query()->create([
+            'codigo' => 'COMP-EDIT',
+            'nome' => 'Matematica',
+        ]);
+        $serie->componentesCurriculares()->sync([$componente->id]);
+
+        $turma = Turma::query()->create([
+            'codigo' => 'TUR-EDIT',
+            'nome' => 'A',
+            'turno' => 'manha',
+            'id_serie' => $serie->id,
+            'id_escola' => $escola->id,
+        ]);
+
+        $professorAntigo = $this->criarProfessor($escola, 'PROF-ANT', 'Professor Antigo');
+        $professorNovo = $this->criarProfessor($escola, 'PROF-NOVO', 'Professor Novo');
+
+        $turma->componentes()->attach($componente->id, [
+            'professor_id' => $professorAntigo->id,
+            'tem_professor' => true,
+        ]);
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo([
+            'Listar Turmas',
+            'Editar Turmas',
+            'Editar Dados da Turma',
+            'Editar Escola da Turma',
+        ]);
+
+        Livewire::actingAs($usuario)
+            ->test(ManageTurmas::class)
+            ->callTableAction('edit', $turma, [
+                'id_escola' => $escola->id,
+                'id_serie' => $serie->id,
+                'nome' => $turma->nome,
+                'turno' => $turma->turno,
+                'codigo' => $turma->codigo,
+                'componentes' => [
+                    [
+                        'componente_curricular_id' => $componente->id,
+                        'componente_nome' => $componente->nome,
+                        'professor_id' => $professorNovo->id,
+                        'tem_professor' => false,
+                    ],
+                ],
+            ])
+            ->assertHasNoTableActionErrors();
+
+        $this->assertDatabaseHas('turma_componente_professor', [
+            'turma_id' => $turma->id,
+            'componente_curricular_id' => $componente->id,
+            'professor_id' => $professorNovo->id,
+            'tem_professor' => true,
+        ]);
+
+        $this->assertDatabaseMissing('turma_componente_professor', [
+            'turma_id' => $turma->id,
+            'componente_curricular_id' => $componente->id,
+            'professor_id' => $professorAntigo->id,
+        ]);
+    }
+
     private function criarEscola(string $nome): Escola
     {
         return Escola::query()->create([
             'codigo' => strtoupper(substr(md5($nome), 0, 5)),
             'nome' => $nome,
-            'email' => strtolower(str_replace(' ', '.', $nome)) . '@teste.local',
+            'email' => strtolower(str_replace(' ', '.', $nome)).'@teste.local',
             'telefone' => '(44) 99999-9999',
         ]);
     }
@@ -120,16 +200,26 @@ class TurmaResourceScopeTest extends TestCase
     private function criarTurma(Escola $escola, string $nome): Turma
     {
         $serie = Serie::query()->create([
-            'codigo' => 'SER' . strtoupper(substr(md5($nome), 0, 4)),
-            'nome' => 'Serie ' . $nome,
+            'codigo' => 'SER'.strtoupper(substr(md5($nome), 0, 4)),
+            'nome' => 'Serie '.$nome,
         ]);
 
         return Turma::query()->create([
-            'codigo' => 'TUR' . strtoupper(substr(md5($nome . microtime()), 0, 8)),
+            'codigo' => 'TUR'.strtoupper(substr(md5($nome.microtime()), 0, 8)),
             'nome' => $nome,
             'turno' => 'manha',
             'id_serie' => $serie->id,
             'id_escola' => $escola->id,
+        ]);
+    }
+
+    private function criarProfessor(Escola $escola, string $matricula, string $nome): Professor
+    {
+        return Professor::query()->create([
+            'id_escola' => $escola->id,
+            'matricula' => $matricula,
+            'nome' => $nome,
+            'email' => strtolower(str_replace(' ', '.', $nome)).'@edu.umuarama.pr.gov.br',
         ]);
     }
 }
