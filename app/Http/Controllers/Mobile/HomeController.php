@@ -55,7 +55,6 @@ class HomeController extends Controller
         return array_values(array_filter([
             $this->userHasAnyPermission($user, [
                 'Listar Relatórios: Dashboard',
-                'Listar RelatÃ³rios: Dashboard',
             ]) ? $this->makeCard(
                 title: 'Central de relatorios',
                 description: 'Resumo geral e entrada para as consultas operacionais.',
@@ -65,7 +64,6 @@ class HomeController extends Controller
             ) : null,
             $this->userHasAnyPermission($user, [
                 'Listar Relatórios: Professor por Componente e Turma',
-                'Listar RelatÃ³rios: Professor por Componente e Turma',
             ]) ? $this->makeCard(
                 title: 'Professor por turma',
                 description: 'Escola, serie, turno, componente e professor em cards mobile.',
@@ -75,7 +73,6 @@ class HomeController extends Controller
             ) : null,
             $this->userHasAnyPermission($user, [
                 'Listar Relatórios: Componentes com Professores Faltando',
-                'Listar RelatÃ³rios: Componentes com Professores Faltando',
             ]) ? $this->makeCard(
                 title: 'Componentes sem professor',
                 description: 'Mapeie rapidamente as lacunas de cobertura por componente e turma.',

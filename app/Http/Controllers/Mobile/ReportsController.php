@@ -139,7 +139,6 @@ class ReportsController extends Controller
         return array_values(array_filter([
             $this->userHasAnyPermission($user, [
                 'Listar Relatórios: Dashboard',
-                'Listar RelatÃ³rios: Dashboard',
             ]) ? $this->makeCard(
                 title: 'Dashboard',
                 description: 'Panorama geral dos vínculos, escolas, turmas e componentes.',
@@ -149,7 +148,6 @@ class ReportsController extends Controller
             ) : null,
             $this->userHasAnyPermission($user, [
                 'Listar Relatórios: Professor por Componente e Turma',
-                'Listar RelatÃ³rios: Professor por Componente e Turma',
             ]) ? $this->makeCard(
                 title: 'Professor por turma',
                 description: 'Consulta detalhada com filtros de escola, série, turno e busca.',
@@ -159,7 +157,6 @@ class ReportsController extends Controller
             ) : null,
             $this->userHasAnyPermission($user, [
                 'Listar Relatórios: Componentes com Professores Faltando',
-                'Listar RelatÃ³rios: Componentes com Professores Faltando',
             ]) ? $this->makeCard(
                 title: 'Componentes faltando',
                 description: 'Dois painéis: componentes afetados e turmas com falta de cobertura.',
@@ -184,7 +181,6 @@ class ReportsController extends Controller
     {
         abort_unless($this->userHasAnyPermission($request->user(), [
             $permission,
-            str_replace('ó', 'Ã³', $permission),
         ]), 403);
     }
 
@@ -245,7 +241,7 @@ class ReportsController extends Controller
         }
 
         if ($filters['search'] !== '') {
-            $search = '%' . $filters['search'] . '%';
+            $search = '%'.$filters['search'].'%';
 
             $query->where(function (QueryBuilder $subQuery) use ($search): void {
                 $subQuery

@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
@@ -18,6 +19,11 @@ class CriarPermissoes extends Command
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         $permissions = $this->basePermissions();
+        $permissionGroups = $this->permissionGroups($permissions);
+        $rolePresets = $this->rolePresets($permissions, $permissionGroups);
+
+        $this->normalizarPermissoesComMojibake($permissions);
+        $this->normalizarNiveisComMojibake(array_keys($rolePresets));
 
         $this->info('Criando permissoes...');
 
@@ -32,11 +38,9 @@ class CriarPermissoes extends Command
             }
         }
 
-        $permissionGroups = $this->permissionGroups($permissions);
-
         $this->info('Sincronizando niveis de acesso...');
 
-        foreach ($this->rolePresets($permissions, $permissionGroups) as $roleName => $rolePermissions) {
+        foreach ($rolePresets as $roleName => $rolePermissions) {
             $role = Role::firstOrCreate([
                 'name' => $roleName,
                 'guard_name' => 'web',
@@ -44,7 +48,7 @@ class CriarPermissoes extends Command
 
             $role->syncPermissions($rolePermissions);
 
-            $this->line("Nivel sincronizado: {$roleName} (" . count($rolePermissions) . ' permissoes)');
+            $this->line("Nivel sincronizado: {$roleName} (".count($rolePermissions).' permissoes)');
         }
 
         $this->sincronizarAdminComTodasAsPermissoes();
@@ -534,6 +538,137 @@ class CriarPermissoes extends Command
         return array_values(array_intersect($permissions, $selectedPermissions));
     }
 
+    private function normalizarPermissoesComMojibake(array $permissions): void
+    {
+        foreach ($this->aliasesComMojibake($permissions) as $legacyName => $correctName) {
+            $legacyPermission = Permission::query()
+                ->where('guard_name', 'web')
+                ->where('name', $legacyName)
+                ->first();
+
+            if (! $legacyPermission) {
+                continue;
+            }
+
+            $correctPermission = Permission::query()
+                ->where('guard_name', 'web')
+                ->where('name', $correctName)
+                ->first();
+
+            if (! $correctPermission) {
+                $legacyPermission->forceFill(['name' => $correctName])->save();
+
+                continue;
+            }
+
+            if ($legacyPermission->is($correctPermission)) {
+                continue;
+            }
+
+            DB::transaction(function () use ($legacyPermission, $correctPermission): void {
+                foreach (DB::table('role_has_permissions')->where('permission_id', $legacyPermission->id)->get() as $row) {
+                    DB::table('role_has_permissions')->insertOrIgnore([
+                        'permission_id' => $correctPermission->id,
+                        'role_id' => $row->role_id,
+                    ]);
+                }
+
+                foreach (DB::table('model_has_permissions')->where('permission_id', $legacyPermission->id)->get() as $row) {
+                    DB::table('model_has_permissions')->insertOrIgnore([
+                        'permission_id' => $correctPermission->id,
+                        'model_type' => $row->model_type,
+                        'model_id' => $row->model_id,
+                    ]);
+                }
+
+                DB::table('role_has_permissions')->where('permission_id', $legacyPermission->id)->delete();
+                DB::table('model_has_permissions')->where('permission_id', $legacyPermission->id)->delete();
+                $legacyPermission->delete();
+            });
+        }
+    }
+
+    private function normalizarNiveisComMojibake(array $roles): void
+    {
+        foreach ($this->aliasesComMojibake($roles) as $legacyName => $correctName) {
+            $legacyRole = Role::query()
+                ->where('guard_name', 'web')
+                ->where('name', $legacyName)
+                ->first();
+
+            if (! $legacyRole) {
+                continue;
+            }
+
+            $correctRole = Role::query()
+                ->where('guard_name', 'web')
+                ->where('name', $correctName)
+                ->first();
+
+            if (! $correctRole) {
+                $legacyRole->forceFill(['name' => $correctName])->save();
+
+                continue;
+            }
+
+            if ($legacyRole->is($correctRole)) {
+                continue;
+            }
+
+            DB::transaction(function () use ($legacyRole, $correctRole): void {
+                foreach (DB::table('role_has_permissions')->where('role_id', $legacyRole->id)->get() as $row) {
+                    DB::table('role_has_permissions')->insertOrIgnore([
+                        'permission_id' => $row->permission_id,
+                        'role_id' => $correctRole->id,
+                    ]);
+                }
+
+                foreach (DB::table('model_has_roles')->where('role_id', $legacyRole->id)->get() as $row) {
+                    DB::table('model_has_roles')->insertOrIgnore([
+                        'role_id' => $correctRole->id,
+                        'model_type' => $row->model_type,
+                        'model_id' => $row->model_id,
+                    ]);
+                }
+
+                DB::table('role_has_permissions')->where('role_id', $legacyRole->id)->delete();
+                DB::table('model_has_roles')->where('role_id', $legacyRole->id)->delete();
+                $legacyRole->delete();
+            });
+        }
+    }
+
+    private function aliasesComMojibake(array $names): array
+    {
+        $aliases = [];
+
+        foreach ($names as $name) {
+            foreach ($this->gerarAliasesComMojibake($name) as $legacyName) {
+                $aliases[$legacyName] = $name;
+            }
+        }
+
+        return $aliases;
+    }
+
+    private function gerarAliasesComMojibake(string $name): array
+    {
+        if (! function_exists('mb_convert_encoding')) {
+            return [];
+        }
+
+        $legacyName = mb_convert_encoding($name, 'UTF-8', 'ISO-8859-1');
+
+        return collect([
+            $legacyName,
+            str_replace("\u{00C3}\u{00A3}o", "\u{00C3}o", $legacyName),
+        ])
+            ->filter(fn (string $alias): bool => $alias !== $name)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
     private function sincronizarAdminComTodasAsPermissoes(): void
     {
         $admin = Role::firstOrCreate([
@@ -549,6 +684,6 @@ class CriarPermissoes extends Command
 
         $admin->syncPermissions($allPermissions);
 
-        $this->line('Nivel sincronizado: Admin (' . count($allPermissions) . ' permissoes totais)');
+        $this->line('Nivel sincronizado: Admin ('.count($allPermissions).' permissoes totais)');
     }
 }

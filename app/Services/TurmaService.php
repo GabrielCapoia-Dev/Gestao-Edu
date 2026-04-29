@@ -373,7 +373,7 @@ class TurmaService
                                             ->dehydrated(fn (Get $get) => ! $get('tem_professor')),
 
                                         Checkbox::make('tem_professor')
-                                            ->label('NÃ£o tem Professor?')
+                                            ->label('Não tem Professor?')
                                             ->default(false)
                                             ->live()
                                             ->afterStateUpdated(function ($state, Set $set) {

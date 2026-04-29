@@ -44,7 +44,7 @@ Este documento nao substitui os dominios de negocio (manutencao, merenda/estoque
 ### 3) Topbar de notificacoes
 
 - O painel injeta um hook antes do menu do usuario para exibir notificacoes.
-- Esse hook e exibido apenas para usuarios com permissao `Visualizar Notificacoes` (com tolerancia a variacoes de acentuacao observadas no codigo).
+- Esse hook e exibido apenas para usuarios com permissao `Visualizar Notificações`.
 
 ### 4) Dashboard e acoes globais
 
@@ -72,12 +72,12 @@ Este documento nao substitui os dominios de negocio (manutencao, merenda/estoque
 
 - Assets do painel: `AppServiceProvider` registra JS/CSS do Filament.
 - Hooks de renderizacao: `AppServiceProvider` injeta um listener global no `BODY_END`.
-- Notificacoes: a UX de acesso ao painel usa `Filament\Notifications\Notification`.
+- Notificações: a UX de acesso ao painel usa `Filament\Notifications\Notification`.
 
 ## Seeders, enums e vocabulario funcional dependente
 
 - O catalogo de permissoes base e semeado em `permissoes:criar` (`CriarPermissoes`).
-- `DatabaseSeeder` cria users padrao e roles (`Admin`, `SecretÃ¡rio`, `Administrativo`) e sincroniza permissao.
+- `DatabaseSeeder` cria users padrao e roles (`Admin`, `Secretário`, `Administrativo`) e sincroniza permissao.
 - O preset do `Secretario` vive em `app/Support/SecretarioPermissionPreset.php`.
 
 ## Pontos seguros para extensao
@@ -97,5 +97,4 @@ Este documento nao substitui os dominios de negocio (manutencao, merenda/estoque
 - Validacao manual minima recomendada:
   - login com usuario aprovado vs nao aprovado
   - acesso como `Admin` vs usuario restrito
-  - verificacao de menu/acoes com e sem permissao (`Visualizar Tela de Inicio`, `Baixar App`, `Visualizar Notificacoes`)
-
+  - verificacao de menu/acoes com e sem permissao (`Visualizar Tela de Inicio`, `Baixar App`, `Visualizar Notificações`)

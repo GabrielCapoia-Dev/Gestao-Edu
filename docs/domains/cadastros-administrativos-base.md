@@ -68,28 +68,28 @@ Observacao:
 
 - Policy: `UserPolicy`
 - Pode:
-  - Listar/Ver: `Listar UsuÃ¡rios`
-  - Criar: `Criar UsuÃ¡rios`
-  - Editar: `Editar UsuÃ¡rios`
-  - Excluir: `Excluir UsuÃ¡rios`
+  - Listar/Ver: `Listar Usuários`
+  - Criar: `Criar Usuários`
+  - Editar: `Editar Usuários`
+  - Excluir: `Excluir Usuários`
 
 ### Niveis de acesso (roles)
 
 - Policy: `RolePolicy`
 - Pode:
-  - Listar/Ver: `Listar NÃ­veis de Acesso`
-  - Criar: `Criar NÃ­veis de Acesso`
-  - Editar: `Editar NÃ­veis de Acesso`
-  - Excluir: `Excluir NÃ­veis de Acesso`
+  - Listar/Ver: `Listar Níveis de Acesso`
+  - Criar: `Criar Níveis de Acesso`
+  - Editar: `Editar Níveis de Acesso`
+  - Excluir: `Excluir Níveis de Acesso`
 
 ### Permissoes de execucao (catalogo)
 
 - Policy: `PermissionPolicy`
 - Pode:
-  - Listar/Ver: `Listar PermissÃµes de ExecuÃ§Ã£o`
-  - Criar: `Criar PermissÃµes de ExecuÃ§Ã£o`
-  - Editar: `Editar PermissÃµes de ExecuÃ§Ã£o`
-  - Excluir: `Excluir PermissÃµes de ExecuÃ§Ã£o`
+  - Listar/Ver: `Listar Permissões de Execução`
+  - Criar: `Criar Permissões de Execução`
+  - Editar: `Editar Permissões de Execução`
+  - Excluir: `Excluir Permissões de Execução`
 
 ### Dominios permitidos
 
@@ -106,7 +106,7 @@ Observacao:
 - `permissoes:criar` cria o catalogo base e sincroniza presets de roles.
 - `DatabaseSeeder` cria users padrao:
   - `admin@admin.com` (role `Admin`)
-  - `secretario@secretario.com` (role `SecretÃ¡rio`)
+  - `secretario@secretario.com` (role `Secretário`)
   - `administrativo@administrativo.com` (role `Administrativo`)
 - `SecretarioPermissionPreset` concentra um conjunto de permissoes padrao para esse perfil.
 
@@ -126,6 +126,6 @@ Observacao:
 - Nao foram encontrados testes automatizados dedicados ao CRUD de usuarios/roles/dominios.
 - Validacao manual minima recomendada:
   - acesso como `Admin`
-  - acesso como `SecretÃ¡rio` (preset) e confirmar menu/acoes habilitados
+  - acesso como `Secretário` (preset) e confirmar menu/acoes habilitados
   - tentativa de acesso sem permissoes (UI e policy devem negar)
 

@@ -5,6 +5,7 @@ namespace Tests\Feature\Console;
 use App\Models\Role;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -55,6 +56,45 @@ class CriarPermissoesCommandTest extends TestCase
         $this->assertFalse($professorViewRole->hasPermissionTo('Editar Turmas'));
     }
 
+    public function test_it_normalizes_legacy_mojibake_permission_and_role_names(): void
+    {
+        $legacyPermissionName = $this->mojibake('Visualizar Notificações');
+        $legacyRoleName = $this->mojibake('Secretário');
+
+        $permission = Permission::query()->create([
+            'name' => $legacyPermissionName,
+            'guard_name' => 'web',
+        ]);
+
+        $role = Role::query()->create([
+            'name' => $legacyRoleName,
+            'guard_name' => 'web',
+        ]);
+
+        $role->givePermissionTo($permission);
+
+        Artisan::call('permissoes:criar');
+
+        $this->assertDatabaseMissing('permissions', [
+            'name' => $legacyPermissionName,
+            'guard_name' => 'web',
+        ]);
+
+        $this->assertDatabaseMissing('roles', [
+            'name' => $legacyRoleName,
+            'guard_name' => 'web',
+        ]);
+
+        $this->assertDatabaseHas('permissions', [
+            'name' => 'Visualizar Notificações',
+            'guard_name' => 'web',
+        ]);
+
+        $secretario = Role::findByName('Secretário', 'web');
+
+        $this->assertTrue($secretario->hasPermissionTo('Visualizar Notificações'));
+    }
+
     public function test_it_keeps_legacy_default_roles_available(): void
     {
         Artisan::call('permissoes:criar');
@@ -73,5 +113,10 @@ class CriarPermissoesCommandTest extends TestCase
             'name' => 'Administrativo',
             'guard_name' => 'web',
         ]);
+    }
+
+    private function mojibake(string $value): string
+    {
+        return mb_convert_encoding($value, 'UTF-8', 'ISO-8859-1');
     }
 }

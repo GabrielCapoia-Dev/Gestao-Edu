@@ -3,9 +3,9 @@
 namespace App\Services;
 
 use App\Models\Escola;
-use App\Models\User;
 use App\Models\IgnoredUser;
 use App\Models\Role;
+use App\Models\User;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Schemas\Components\Utilities\Get;
 use Illuminate\Database\Eloquent\Builder;
@@ -21,13 +21,13 @@ class UserService
 
     public function __construct()
     {
-        /** @var \App\Models\User */
+        /** @var User */
         $user = Auth::user();
         $this->user = $user;
     }
 
     // =========================================================================
-    // VerificaÃ§Ãµes de permissÃ£o (pÃºblicas)
+    // Verificações de permissão (públicas)
     // =========================================================================
 
     public function podeVisualizarPainelPersonalizado(?User $user): bool
@@ -70,7 +70,7 @@ class UserService
 
     public function podeVisualizarEspecializacoesDeProfessores(?User $user): bool
     {
-        return $user->hasPermissionTo('Visualizar EspecializaÃ§Ãµes de Professores');
+        return $user->hasPermissionTo('Visualizar Especializações de Professores');
     }
 
     public function podeEditarEspecializacoesDeProfessores(?User $user, ?string $operation = null): bool
@@ -79,7 +79,7 @@ class UserService
             return true;
         }
 
-        return $user->hasPermissionTo('Editar EspecializaÃ§Ãµes de Professores');
+        return $user->hasPermissionTo('Editar Especializações de Professores');
     }
 
     public function podeExcluirTurmas(?User $user): bool
@@ -109,7 +109,7 @@ class UserService
 
     public function podeVisualizarSetor(?User $user): bool
     {
-        return $user?->hasPermissionTo('Visualizar Setor do UsuÃ¡rio') ?? false;
+        return $user?->hasPermissionTo('Visualizar Setor do Usuário') ?? false;
     }
 
     public function podeEditarSetor(?User $user, string $context): bool
@@ -118,7 +118,7 @@ class UserService
             return false;
         }
 
-        return $user->hasPermissionTo('Editar Setor do UsuÃ¡rio');
+        return $user->hasPermissionTo('Editar Setor do Usuário');
     }
 
     public function ehAdmin(?User $user = null): bool
@@ -133,7 +133,7 @@ class UserService
 
     public function podeVisualizarEspecializacoesProfessor(?User $user): bool
     {
-        return $user->hasPermissionTo('Visualizar EspecializaÃ§Ãµes de Professores');
+        return $user->hasPermissionTo('Visualizar Especializações de Professores');
     }
 
     public function podeExcluirProfessoresEmLote(?User $user): bool
@@ -157,7 +157,7 @@ class UserService
     }
 
     // =========================================================================
-    // Regras de formulÃ¡rio (usadas pelo UserForm)
+    // Regras de formulário (usadas pelo UserForm)
     // =========================================================================
 
     public function opcoesDeRoles(Builder $base, ?User $user): Builder
@@ -178,8 +178,8 @@ class UserService
         $roles = $data['roles'] ?? $data['role'] ?? [];
 
         return collect(is_array($roles) ? $roles : [$roles])
-            ->filter(fn($roleId) => filled($roleId))
-            ->map(fn($roleId) => (int) $roleId)
+            ->filter(fn ($roleId) => filled($roleId))
+            ->map(fn ($roleId) => (int) $roleId)
             ->unique()
             ->values()
             ->all();
@@ -188,9 +188,9 @@ class UserService
     public function permissoesSelecionadas(array $data): Collection
     {
         return collect($data)
-            ->filter(fn($_, $key) => str_starts_with($key, 'permissions_'))
-            ->flatMap(fn($permissions) => is_array($permissions) ? $permissions : [$permissions])
-            ->filter(fn($permission) => filled($permission))
+            ->filter(fn ($_, $key) => str_starts_with($key, 'permissions_'))
+            ->flatMap(fn ($permissions) => is_array($permissions) ? $permissions : [$permissions])
+            ->filter(fn ($permission) => filled($permission))
             ->unique()
             ->values();
     }
@@ -224,7 +224,7 @@ class UserService
         }
 
         $permissoesHerdadas = $record->roles
-            ->flatMap(fn($role) => $role->permissions->pluck('name'))
+            ->flatMap(fn ($role) => $role->permissions->pluck('name'))
             ->unique()
             ->values();
 
@@ -371,7 +371,7 @@ class UserService
     }
 
     // =========================================================================
-    // Helpers de checkboxes de permissÃ£o (usados pelas duas classes acima)
+    // Helpers de checkboxes de permissão (usados pelas duas classes acima)
     // =========================================================================
 
     public function checkboxesPermissoesComEstado(User $record, Get $get, User $userLogado): array
@@ -384,26 +384,26 @@ class UserService
 
         $todas = $permissoesDisponiveis
             ->orderBy('name')
-            ->when($busca, fn($q) => $q->whereRaw('LOWER(name) LIKE ?', ["%{$busca}%"]))
-            ->when(! $userLogado->hasRole('Admin'), fn($q) => $q->where('name', '!=', 'Aplicar Permissoes'))
+            ->when($busca, fn ($q) => $q->whereRaw('LOWER(name) LIKE ?', ["%{$busca}%"]))
+            ->when(! $userLogado->hasRole('Admin'), fn ($q) => $q->where('name', '!=', 'Aplicar Permissoes'))
             ->get();
 
         $permissoesDaRole = $record->roles
-            ->flatMap(fn($role) => $role->permissions)
+            ->flatMap(fn ($role) => $role->permissions)
             ->pluck('name')
             ->toArray();
 
         $permissoesDiretas = $record->getDirectPermissions()->pluck('name')->toArray();
 
-        $porGrupo = $todas->groupBy(fn($p) => explode(' ', $p->name)[0]);
+        $porGrupo = $todas->groupBy(fn ($p) => explode(' ', $p->name)[0]);
 
         $schema = [];
 
         foreach ($porGrupo as $grupo => $permissoes) {
             $filtradas = $permissoes->when(
                 $busca,
-                fn($collection) => $collection->filter(
-                    fn($perm) => str_contains(strtolower($perm->name), $busca)
+                fn ($collection) => $collection->filter(
+                    fn ($perm) => str_contains(strtolower($perm->name), $busca)
                 )
             );
 
@@ -412,13 +412,13 @@ class UserService
             }
 
             $permissoesDoGrupoNaRole = collect($filtradas)
-                ->filter(fn($p) => in_array($p->name, $permissoesDaRole))
+                ->filter(fn ($p) => in_array($p->name, $permissoesDaRole))
                 ->pluck('name')
                 ->toArray();
 
             $helperText = '';
             if (! empty($permissoesDoGrupoNaRole)) {
-                $helperText = 'Herdadas dos niveis: ' . implode(', ', $permissoesDoGrupoNaRole);
+                $helperText = 'Herdadas dos niveis: '.implode(', ', $permissoesDoGrupoNaRole);
             }
 
             $schema[] = CheckboxList::make("permissions_{$grupo}")
@@ -449,11 +449,11 @@ class UserService
 
         $todas = $permissoesDoUsuario
             ->orderBy('name')
-            ->when($busca, fn($q) => $q->whereRaw('LOWER(name) LIKE ?', ["%{$busca}%"]))
-            ->when(! $userLogado->hasRole('Admin'), fn($q) => $q->where('name', '!=', 'Aplicar Permissoes'))
+            ->when($busca, fn ($q) => $q->whereRaw('LOWER(name) LIKE ?', ["%{$busca}%"]))
+            ->when(! $userLogado->hasRole('Admin'), fn ($q) => $q->where('name', '!=', 'Aplicar Permissoes'))
             ->get();
 
-        $porGrupo = $todas->groupBy(fn($p) => explode(' ', $p->name)[0]);
+        $porGrupo = $todas->groupBy(fn ($p) => explode(' ', $p->name)[0]);
 
         $schema = [];
 
@@ -474,7 +474,7 @@ class UserService
     public function listarUsuariosQuery(Builder $base, ?User $user): Builder
     {
         if (! $this->ehAdmin($user)) {
-            $base->whereDoesntHave('roles', fn($q) => $q->where('name', 'Admin'));
+            $base->whereDoesntHave('roles', fn ($q) => $q->where('name', 'Admin'));
         }
 
         return $base;

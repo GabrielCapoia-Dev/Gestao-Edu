@@ -3,30 +3,23 @@
 namespace App\Providers\Filament;
 
 use App\Livewire\LoginPage;
-use App\Livewire\TopBar;
 use App\Models\User;
-use App\Services\UserService;
 use Caresome\FilamentAuthDesigner\AuthDesignerPlugin;
 use Caresome\FilamentAuthDesigner\Data\AuthPageConfig;
 use Caresome\FilamentAuthDesigner\Enums\MediaPosition;
 use Caresome\FilamentAuthDesigner\View\AuthDesignerRenderHook;
-use Filament\Actions\Action as GlobalAction;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Panel;
 use Filament\PanelProvider;
-use Filament\Support\Colors\Color;
 use Filament\View\PanelsRenderHook;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Blade;
-use Illuminate\Support\Facades\Route;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Spatie\Permission\Models\Permission;
 
@@ -96,9 +89,7 @@ class AdminPanelProvider extends PanelProvider
                 function () {
                     $user = User::authUser();
                     $permission = collect([
-                        'Visualizar Notificacoes',
                         'Visualizar Notificações',
-                        'Visualizar NotificaÃ§Ãµes',
                     ])->first(fn (string $name): bool => Permission::query()->where('name', $name)->exists());
 
                     if (

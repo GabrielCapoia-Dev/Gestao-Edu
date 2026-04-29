@@ -39,7 +39,7 @@ Documentar o ciclo de vida de `Pedido`, incluindo criacao, protocolo, historico,
 
 - Querys e visibilidade variam por perfil em `PedidoService`.
 - Parte importante do comportamento mora em actions e forms do Filament, nao apenas no service.
-- Notificacoes sao gravadas em banco, nao enfileiradas em jobs customizados.
+- Notificações são gravadas em banco, não enfileiradas em jobs customizados.
 
 ## Infraestrutura relacionada
 

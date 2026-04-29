@@ -36,19 +36,19 @@ Regras abaixo descrevem o "pode fazer" de alto nivel. Filtros de escopo e visibi
 
 Policy: `UserPolicy` (registrada em `AppServiceProvider`)
 
-- Listar/Ver: `Listar UsuÃ¡rios`
-- Criar: `Criar UsuÃ¡rios`
-- Editar: `Editar UsuÃ¡rios`
-- Excluir: `Excluir UsuÃ¡rios`
+- Listar/Ver: `Listar Usuários`
+- Criar: `Criar Usuários`
+- Editar: `Editar Usuários`
+- Excluir: `Excluir Usuários`
 
 ### Acesso -> Niveis de acesso (Filament `RoleResource`, slug `niveis-de-acesso`)
 
 Policy: `RolePolicy` (registrada em `AppServiceProvider`)
 
-- Listar/Ver: `Listar NÃ­veis de Acesso`
-- Criar: `Criar NÃ­veis de Acesso`
-- Editar: `Editar NÃ­veis de Acesso`
-- Excluir: `Excluir NÃ­veis de Acesso`
+- Listar/Ver: `Listar Níveis de Acesso`
+- Criar: `Criar Níveis de Acesso`
+- Editar: `Editar Níveis de Acesso`
+- Excluir: `Excluir Níveis de Acesso`
 
 Observacao:
 
@@ -58,10 +58,10 @@ Observacao:
 
 Policy: `PermissionPolicy` (registrada em `AppServiceProvider`)
 
-- Listar/Ver: `Listar PermissÃµes de ExecuÃ§Ã£o`
-- Criar: `Criar PermissÃµes de ExecuÃ§Ã£o`
-- Editar: `Editar PermissÃµes de ExecuÃ§Ã£o`
-- Excluir: `Excluir PermissÃµes de ExecuÃ§Ã£o`
+- Listar/Ver: `Listar Permissões de Execução`
+- Criar: `Criar Permissões de Execução`
+- Editar: `Editar Permissões de Execução`
+- Excluir: `Excluir Permissões de Execução`
 
 Observacao:
 
@@ -93,10 +93,10 @@ Policy: `EscolaPolicy` (registrada em `AppServiceProvider`)
 
 Policy: `SeriePolicy` (registrada em `AppServiceProvider`)
 
-- Listar/Ver: `Listar SÃ©ries`
-- Criar: `Criar SÃ©ries`
-- Editar: `Editar SÃ©ries`
-- Excluir: `Excluir SÃ©ries`
+- Listar/Ver: `Listar Séries`
+- Criar: `Criar Séries`
+- Editar: `Editar Séries`
+- Excluir: `Excluir Séries`
 
 ### Estrutura -> Turmas
 
@@ -178,10 +178,10 @@ Policy: `AlternativaPolicy` (registrada em `AppServiceProvider`)
 
 Policy: `AvaliacaoPolicy` (registrada em `AppServiceProvider`)
 
-- Listar/Ver: `Listar AvaliaÃ§Ãµes`
-- Criar: `Criar AvaliaÃ§Ãµes`
-- Editar: `Editar AvaliaÃ§Ãµes`
-- Excluir: `Excluir AvaliaÃ§Ãµes`
+- Listar/Ver: `Listar Avaliações`
+- Criar: `Criar Avaliações`
+- Editar: `Editar Avaliações`
+- Excluir: `Excluir Avaliações`
 
 ### Pedagogico -> Pautas
 
@@ -196,10 +196,10 @@ Policy: `PautaPolicy` (registrada em `AppServiceProvider`)
 
 Policy: `TipoManutencaoPolicy` (registrada em `AppServiceProvider`)
 
-- Listar/Ver: `Listar Tipo ManutenÃ§Ã£o`
-- Criar: `Criar Tipo ManutenÃ§Ã£o`
-- Editar: `Editar Tipo ManutenÃ§Ã£o`
-- Excluir: `Excluir Tipo ManutenÃ§Ã£o`
+- Listar/Ver: `Listar Tipo Manutenção`
+- Criar: `Criar Tipo Manutenção`
+- Editar: `Editar Tipo Manutenção`
+- Excluir: `Excluir Tipo Manutenção`
 
 ### Estrutura -> Equipe gestora
 
