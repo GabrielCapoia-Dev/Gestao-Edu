@@ -1008,117 +1008,114 @@
 }
 
 /* ═══════════════════════════════════════════════
-   SELECT EM MODAL — FIX DEFINITIVO SIMPLES
+   SELECT EM MODAL — PORTAL FIX
    ═══════════════════════════════════════════════
 
-   Importante:
-   - Não registre o JS antigo filament-modal-select-fix.js.
-   - O dropdown fica no próprio fluxo do modal, acima do rodapé.
+   A lista do select é movida via JS para o <body> com position: fixed.
+   Assim ela sai visualmente do modal e não é cortada pelo footer ou pelo
+   limite de altura da janela.
 */
 
 :root {
-    --edu-select-dropdown-z: 99999;
-    --edu-select-open-space: 19rem;
+    --edu-select-dropdown-z: 999999;
+    --edu-select-max-height: 320px;
 }
 
-.fi-modal,
-.fi-modal-window-ctn,
+/* O modal volta a ter comportamento normal. Não aumentamos a janela para caber o select. */
 .fi-modal-window {
-    overflow: visible !important;
-}
-
-.fi-modal-window {
-    isolation: auto !important;
+    background: var(--edu-white);
+    border-radius: 1rem;
+    box-shadow:
+        0 0 0 1px rgba(15, 34, 97, 0.08),
+        0 8px 24px rgba(15, 34, 97, 0.12),
+        0 32px 64px rgba(0, 0, 0, 0.18);
+    border: 1px solid var(--edu-neutral-200);
+    overflow: hidden !important;
 }
 
 .fi-modal-window:not(.fi-width-sm):not(.fi-width-md) {
-    max-height: calc(100dvh - 2rem) !important;
+    max-height: 90vh !important;
     display: flex !important;
     flex-direction: column !important;
-    overflow: visible !important;
+    overflow: hidden !important;
 }
 
-.fi-modal-window:not(.fi-width-sm):not(.fi-width-md) .fi-modal-content,
-.fi-modal-content {
-    overflow: visible !important;
-    overflow-x: visible !important;
-    overflow-y: visible !important;
-    position: relative !important;
-    z-index: 50 !important;
+.fi-modal-window:not(.fi-width-sm):not(.fi-width-md) .fi-modal-content {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
 }
 
-/* Quando o select estiver aberto, cria espaço real para o rodapé não cobrir a lista. */
-.fi-modal-window:has(.fi-select-input-btn[aria-expanded="true"]) .fi-modal-content,
-.fi-modal-window:has(.choices.is-open) .fi-modal-content {
-    padding-bottom: var(--edu-select-open-space) !important;
-}
-
-.fi-modal-window:has(.fi-select-input-btn[aria-expanded="true"]),
-.fi-modal-window:has(.choices.is-open) {
-    max-height: none !important;
-    overflow: visible !important;
-}
-
-.fi-modal-header {
-    position: relative !important;
-    z-index: 20 !important;
-}
-
+.fi-modal-header,
 .fi-modal-footer {
-    position: relative !important;
-    z-index: 10 !important;
-    flex-shrink: 0 !important;
+    flex-shrink: 0;
 }
 
+/* Select original */
 .fi-select-input,
 .fi-select-input-ctn {
-    position: relative !important;
+    position: relative;
 }
 
-.fi-select-input:has(.fi-select-input-btn[aria-expanded="true"]),
-.fi-select-input-ctn:has(.fi-select-input-btn[aria-expanded="true"]),
-.choices.is-open {
-    z-index: var(--edu-select-dropdown-z) !important;
-}
-
+/* Dropdown normal, quando não estiver portado */
 .fi-select-input .fi-dropdown-panel,
-.fi-select-input-ctn > .fi-dropdown-panel,
-.choices__list--dropdown,
-.choices__list[aria-expanded] {
-    z-index: var(--edu-select-dropdown-z) !important;
+.fi-select-input-ctn > .fi-dropdown-panel {
     width: 100% !important;
     min-width: 100% !important;
     max-width: 100% !important;
-    overflow-x: hidden !important;
-    overflow-y: auto !important;
-    max-height: 18rem !important;
+    z-index: var(--edu-select-dropdown-z) !important;
+}
+
+/* Dropdown movido para o body pelo JS */
+.edu-select-dropdown-portal {
+    position: fixed !important;
+    z-index: var(--edu-select-dropdown-z) !important;
     background: var(--edu-white) !important;
     border: 1px solid var(--edu-neutral-200) !important;
     border-radius: 0.75rem !important;
     box-shadow: var(--edu-shadow-lg) !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    max-height: var(--edu-select-max-height) !important;
+    max-width: calc(100vw - 1rem) !important;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
 }
 
-.fi-select-input .fi-select-input-search-ctn,
-.fi-select-input-ctn .fi-select-input-search-ctn {
-    position: sticky !important;
-    top: 0 !important;
-    z-index: 2 !important;
-    background: var(--edu-white) !important;
+.edu-select-dropdown-portal .fi-select-input-search-ctn {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--edu-white);
 }
 
-.fi-select-input .fi-dropdown-list,
-.fi-select-input-ctn .fi-dropdown-list,
-.fi-select-input .fi-select-input-options-ctn,
-.fi-select-input-ctn .fi-select-input-options-ctn {
+.edu-select-dropdown-portal .fi-dropdown-list,
+.edu-select-dropdown-portal .fi-select-input-options-ctn {
     width: 100% !important;
     min-width: 100% !important;
     max-height: none !important;
+    overflow: visible !important;
 }
 
-.fi-select-input .fi-select-input-option,
+.edu-select-dropdown-portal .fi-dropdown-list-item,
+.edu-select-dropdown-portal .fi-select-input-option,
 .fi-select-input .fi-dropdown-list-item,
-.fi-select-input-ctn .fi-select-input-option,
-.fi-select-input-ctn .fi-dropdown-list-item,
-.choices__item--choice {
-    min-height: 2.75rem !important;
+.fi-select-input .fi-select-input-option {
+    min-height: 2.5rem;
 }
+
+/* Compatibilidade com Choices.js, caso algum campo use esse padrão */
+.choices.is-open {
+    position: relative;
+    z-index: var(--edu-select-dropdown-z) !important;
+}
+
+.choices__list--dropdown,
+.choices__list[aria-expanded] {
+    z-index: var(--edu-select-dropdown-z) !important;
+    max-height: var(--edu-select-max-height) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+}
+

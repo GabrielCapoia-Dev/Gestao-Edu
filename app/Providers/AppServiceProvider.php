@@ -29,6 +29,7 @@ use App\Policies\ProfessorPolicy;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Filament\Support\Assets\Css;
+use Filament\Support\Assets\Js;
 use Filament\Support\Facades\FilamentAsset;
 use App\Models\ComponenteCurricular;
 use App\Models\TipoManutencao;
@@ -103,9 +104,11 @@ class AppServiceProvider extends ServiceProvider
             return $modifiedAt ?: time();
         };
 
+        $selectFixJs = 'js/filament-modal-select-fix.js';
         $geralCss = 'css/geral.css';
 
         FilamentAsset::register([
+            Js::make('filament-modal-select-fix', asset($selectFixJs) . '?v=' . $assetVersion($selectFixJs)),
             Css::make('geral', asset($geralCss) . '?v=' . $assetVersion($geralCss)),
         ]);
 
