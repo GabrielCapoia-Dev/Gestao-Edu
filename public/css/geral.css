@@ -1119,3 +1119,24 @@
     overflow-x: hidden !important;
 }
 
+
+
+.fi-select-dropdown-portal {
+    background: var(--edu-white);
+    border: 1px solid var(--edu-neutral-200);
+    border-radius: 0.75rem;
+    box-shadow: var(--edu-shadow-lg);
+    scrollbar-gutter: stable;
+}
+
+.fi-select-dropdown-portal .fi-select-input-search-ctn {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--edu-white);
+}
+
+.fi-select-dropdown-portal .fi-dropdown-list-item,
+.fi-select-dropdown-portal .fi-select-input-option {
+    min-height: 2.75rem;
+}
