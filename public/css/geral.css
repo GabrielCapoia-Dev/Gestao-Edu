@@ -1008,28 +1008,66 @@
 }
 
 /* ═══════════════════════════════════════════════
-/* ═══════════════════════════════════════════════
-   SELECT EM MODAL — FIX SIMPLES
-   ═══════════════════════════════════════════════ */
+   SELECT EM MODAL — FIX DEFINITIVO SIMPLES
+   ═══════════════════════════════════════════════
 
+   Importante:
+   - Não registre o JS antigo filament-modal-select-fix.js.
+   - O dropdown fica no próprio fluxo do modal, acima do rodapé.
+*/
+
+:root {
+    --edu-select-dropdown-z: 99999;
+    --edu-select-open-space: 19rem;
+}
+
+.fi-modal,
+.fi-modal-window-ctn,
 .fi-modal-window {
     overflow: visible !important;
 }
 
+.fi-modal-window {
+    isolation: auto !important;
+}
+
 .fi-modal-window:not(.fi-width-sm):not(.fi-width-md) {
-    max-height: 90vh !important;
+    max-height: calc(100dvh - 2rem) !important;
     display: flex !important;
     flex-direction: column !important;
     overflow: visible !important;
 }
 
+.fi-modal-window:not(.fi-width-sm):not(.fi-width-md) .fi-modal-content,
 .fi-modal-content {
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+    position: relative !important;
+    z-index: 50 !important;
+}
+
+/* Quando o select estiver aberto, cria espaço real para o rodapé não cobrir a lista. */
+.fi-modal-window:has(.fi-select-input-btn[aria-expanded="true"]) .fi-modal-content,
+.fi-modal-window:has(.choices.is-open) .fi-modal-content {
+    padding-bottom: var(--edu-select-open-space) !important;
+}
+
+.fi-modal-window:has(.fi-select-input-btn[aria-expanded="true"]),
+.fi-modal-window:has(.choices.is-open) {
+    max-height: none !important;
     overflow: visible !important;
 }
 
+.fi-modal-header {
+    position: relative !important;
+    z-index: 20 !important;
+}
+
 .fi-modal-footer {
-    position: relative;
-    z-index: 1;
+    position: relative !important;
+    z-index: 10 !important;
+    flex-shrink: 0 !important;
 }
 
 .fi-select-input,
@@ -1038,17 +1076,49 @@
 }
 
 .fi-select-input:has(.fi-select-input-btn[aria-expanded="true"]),
-.fi-select-input-ctn:has(.fi-select-input-btn[aria-expanded="true"]) {
-    z-index: 9999 !important;
+.fi-select-input-ctn:has(.fi-select-input-btn[aria-expanded="true"]),
+.choices.is-open {
+    z-index: var(--edu-select-dropdown-z) !important;
 }
 
 .fi-select-input .fi-dropdown-panel,
-.fi-select-input-ctn > .fi-dropdown-panel {
+.fi-select-input-ctn > .fi-dropdown-panel,
+.choices__list--dropdown,
+.choices__list[aria-expanded] {
+    z-index: var(--edu-select-dropdown-z) !important;
     width: 100% !important;
     min-width: 100% !important;
     max-width: 100% !important;
-    z-index: 9999 !important;
-    overflow-y: auto !important;
     overflow-x: hidden !important;
-    max-height: 280px !important;
+    overflow-y: auto !important;
+    max-height: 18rem !important;
+    background: var(--edu-white) !important;
+    border: 1px solid var(--edu-neutral-200) !important;
+    border-radius: 0.75rem !important;
+    box-shadow: var(--edu-shadow-lg) !important;
+}
+
+.fi-select-input .fi-select-input-search-ctn,
+.fi-select-input-ctn .fi-select-input-search-ctn {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 2 !important;
+    background: var(--edu-white) !important;
+}
+
+.fi-select-input .fi-dropdown-list,
+.fi-select-input-ctn .fi-dropdown-list,
+.fi-select-input .fi-select-input-options-ctn,
+.fi-select-input-ctn .fi-select-input-options-ctn {
+    width: 100% !important;
+    min-width: 100% !important;
+    max-height: none !important;
+}
+
+.fi-select-input .fi-select-input-option,
+.fi-select-input .fi-dropdown-list-item,
+.fi-select-input-ctn .fi-select-input-option,
+.fi-select-input-ctn .fi-dropdown-list-item,
+.choices__item--choice {
+    min-height: 2.75rem !important;
 }
