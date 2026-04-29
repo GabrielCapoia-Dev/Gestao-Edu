@@ -1,0 +1,127 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Services\NotificationCenterService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
+
+class NotificationCenterController extends Controller
+{
+    public function __construct(
+        private readonly NotificationCenterService $service,
+    ) {}
+
+    public function index(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        abort_unless($this->service->canView($user), 403);
+
+        return response()->json(
+            $this->service->payload($user, $request->only([
+                'modo',
+                'busca',
+                'periodo',
+                'prioridade',
+                'limite',
+            ]))
+        );
+    }
+
+    public function unreadCount(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        abort_unless($this->service->canView($user), 403);
+
+        return response()->json([
+            'unread' => $this->service->unreadCount($user),
+        ]);
+    }
+
+    public function markRead(Request $request, string $id): JsonResponse
+    {
+        $user = $request->user();
+
+        abort_unless($this->service->canView($user), 403);
+
+        $this->service->markRead($user, $id);
+
+        return response()->json([
+            'ok' => true,
+            'stats' => $this->service->stats($user),
+        ]);
+    }
+
+    public function markUnread(Request $request, string $id): JsonResponse
+    {
+        $user = $request->user();
+
+        abort_unless($this->service->canView($user), 403);
+
+        $this->service->markUnread($user, $id);
+
+        return response()->json([
+            'ok' => true,
+            'stats' => $this->service->stats($user),
+        ]);
+    }
+
+    public function markAllRead(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        abort_unless($this->service->canView($user), 403);
+
+        $updated = $this->service->markAllRead($user);
+
+        return response()->json([
+            'ok' => true,
+            'updated' => $updated,
+            'stats' => $this->service->stats($user),
+        ]);
+    }
+
+    public function send(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        abort_unless($this->service->canCreate($user), 403);
+
+        $data = $request->validate([
+            'titulo' => ['required', 'string', 'max:120'],
+            'mensagem' => ['required', 'string', 'max:1500'],
+            'url' => ['nullable', 'string', 'max:2048'],
+            'label' => ['nullable', 'string', 'max:80'],
+            'prioridade' => ['required', Rule::in(array_keys($this->service->prioridadeOptions()))],
+            'destino_tipo' => ['required', Rule::in(array_keys($this->service->destinoTipoOptions()))],
+            'usuarios_ids' => ['array'],
+            'usuarios_ids.*' => ['integer'],
+            'roles_ids' => ['array'],
+            'roles_ids.*' => ['integer'],
+            'escolas_ids' => ['array'],
+            'escolas_ids.*' => ['integer'],
+            'turmas_ids' => ['array'],
+            'turmas_ids.*' => ['integer'],
+            'permissoes' => ['array'],
+            'permissoes.*' => ['string'],
+        ]);
+
+        $result = $this->service->send($user, $data);
+
+        if (($result['count'] ?? 0) < 1) {
+            throw ValidationException::withMessages([
+                'destinatarios' => 'Nenhum destinatário encontrado para o público selecionado.',
+            ]);
+        }
+
+        return response()->json([
+            'ok' => true,
+            ...$result,
+            'stats' => $this->service->stats($user),
+        ]);
+    }
+}

@@ -1,12 +1,8 @@
-@php
-    $stats = $this->stats();
-    $modoEnviadas = $modo === 'enviadas';
-    $items = $modoEnviadas ? $this->envios() : $this->notificacoes();
-    $temMais = $modoEnviadas ? $this->temMaisEnvios() : $this->temMaisNotificacoes();
-@endphp
-
 <x-filament-panels::page>
-    <div class="notification-center" wire:poll.15s="refreshCentral">
+    <div
+        class="notification-center"
+        data-notification-center
+    >
         <div class="nc-header">
             <div class="nc-header__main">
                 <div class="nc-header__icon">
@@ -15,66 +11,78 @@
                 <div>
                     <p class="nc-kicker">Mensagens do sistema</p>
                     <h2>Central de notificações</h2>
-                    <p class="nc-subtitle">Acompanhe avisos ativos, histórico de leitura e disparos enviados.</p>
+                    <p class="nc-subtitle">Avisos recebidos, histórico e disparos em um painel único.</p>
                 </div>
             </div>
 
-            @if($stats['ativas'] > 0)
-                <button type="button" class="nc-action nc-action--primary" wire:click="marcarTodasComoLidas" wire:loading.attr="disabled">
+            <div class="nc-header__actions">
+                <button type="button" class="nc-action nc-action--ghost" data-action="mark-all-read" hidden>
                     <x-heroicon-o-check-badge />
-                    <span>Marcar ativas como lidas</span>
+                    <span>Marcar todas como lidas</span>
                 </button>
-            @endif
+
+                @if($canCreateNotifications)
+                    <button type="button" class="nc-action nc-action--primary" data-action="open-create">
+                        <x-heroicon-o-megaphone />
+                        <span>Nova notificação</span>
+                    </button>
+                @endif
+            </div>
         </div>
 
         <div class="nc-stats">
-            <button type="button" class="nc-stat {{ $modo === 'ativas' ? 'is-active' : '' }}" wire:click="setModo('ativas')">
-                <span class="nc-stat__label">Ativas</span>
-                <strong>{{ $stats['ativas'] }}</strong>
-                <x-heroicon-o-inbox-stack />
+            <button type="button" class="nc-stat is-active" data-mode="todas">
+                <span>Total</span>
+                <strong data-stat="total">0</strong>
+                <x-heroicon-o-inbox />
             </button>
-
-            <button type="button" class="nc-stat {{ $modo === 'historico' ? 'is-active' : '' }}" wire:click="setModo('historico')">
-                <span class="nc-stat__label">Histórico</span>
-                <strong>{{ $stats['historico'] }}</strong>
-                <x-heroicon-o-archive-box />
+            <button type="button" class="nc-stat" data-mode="ativas">
+                <span>Não lidas</span>
+                <strong data-stat="ativas">0</strong>
+                <x-heroicon-o-envelope />
             </button>
-
-            <button type="button" class="nc-stat {{ $modo === 'todas' ? 'is-active' : '' }}" wire:click="setModo('todas')">
-                <span class="nc-stat__label">Hoje</span>
-                <strong>{{ $stats['hoje'] }}</strong>
+            <button type="button" class="nc-stat" data-mode="historico">
+                <span>Lidas</span>
+                <strong data-stat="historico">0</strong>
+                <x-heroicon-o-envelope-open />
+            </button>
+            <div class="nc-stat nc-stat--plain">
+                <span>Hoje</span>
+                <strong data-stat="hoje">0</strong>
                 <x-heroicon-o-clock />
-            </button>
-
-            <div class="nc-stat nc-stat--urgent">
-                <span class="nc-stat__label">Urgentes</span>
-                <strong>{{ $stats['urgentes'] }}</strong>
-                <x-heroicon-o-exclamation-triangle />
             </div>
-
-            @if($this->podeCriarNotificacoes())
-                <button type="button" class="nc-stat {{ $modo === 'enviadas' ? 'is-active' : '' }}" wire:click="setModo('enviadas')">
-                    <span class="nc-stat__label">Enviadas</span>
-                    <strong>{{ $stats['enviadas'] }}</strong>
+            @if($canCreateNotifications)
+                <button type="button" class="nc-stat" data-mode="enviadas">
+                    <span>Enviadas</span>
+                    <strong data-stat="enviadas">0</strong>
                     <x-heroicon-o-megaphone />
                 </button>
             @endif
         </div>
 
-        <div class="nc-filters">
+        <div class="nc-toolbar">
+            <div class="nc-tabs" aria-label="Filtro rápido">
+                <button type="button" class="is-active" data-tab-mode="todas">Todas</button>
+                <button type="button" data-tab-mode="ativas">Não lidas</button>
+                <button type="button" data-tab-mode="historico">Histórico</button>
+                @if($canCreateNotifications)
+                    <button type="button" data-tab-mode="enviadas">Enviadas</button>
+                @endif
+            </div>
+
             <label class="nc-field nc-field--search">
                 <span>Pesquisar</span>
                 <div class="nc-input-wrap">
                     <x-heroicon-o-magnifying-glass />
-                    <input type="search" wire:model.live.debounce.350ms="busca" placeholder="Título, mensagem ou público">
+                    <input type="search" data-filter="busca" placeholder="Título, mensagem ou público">
                 </div>
             </label>
 
             <label class="nc-field">
                 <span>Prioridade</span>
-                <select wire:model.live="prioridade">
+                <select data-filter="prioridade">
                     <option value="todas">Todas</option>
-                    @foreach($this->prioridadeOptions() as $value => $label)
+                    @foreach($priorityOptions as $value => $label)
                         <option value="{{ $value }}">{{ $label }}</option>
                     @endforeach
                 </select>
@@ -82,128 +90,115 @@
 
             <label class="nc-field">
                 <span>Período</span>
-                <select wire:model.live="periodo">
+                <select data-filter="periodo">
                     <option value="7">Últimos 7 dias</option>
-                    <option value="30">Últimos 30 dias</option>
+                    <option value="30" selected>Últimos 30 dias</option>
                     <option value="90">Últimos 90 dias</option>
                     <option value="todos">Todo o histórico</option>
                 </select>
             </label>
 
-            <button type="button" class="nc-action nc-action--ghost" wire:click="limparFiltros">
+            <button type="button" class="nc-action nc-action--ghost" data-action="clear-filters">
                 <x-heroicon-o-x-mark />
                 <span>Limpar</span>
             </button>
         </div>
 
-        <div class="nc-list" wire:loading.class="is-loading">
-            @forelse($items as $item)
-                @if($modoEnviadas)
-                    <article class="nc-item" wire:key="envio-{{ $item['id'] }}">
-                        <div class="nc-item__rail">
-                            <span class="{{ $item['prioridade_meta']['class'] }}">
-                                <x-dynamic-component :component="$item['prioridade_meta']['icon']" />
-                            </span>
-                        </div>
-
-                        <div class="nc-item__content">
-                            <div class="nc-item__topline">
-                                <span class="nc-pill">{{ $item['prioridade_label'] }}</span>
-                                <span>{{ $item['destinatarios_count'] }} destinatário(s)</span>
-                                <span>{{ $item['criada_em_humano'] }}</span>
-                            </div>
-
-                            <h3>{{ $item['titulo'] }}</h3>
-                            <p>{{ $item['mensagem'] }}</p>
-
-                            <div class="nc-item__meta">
-                                <span><x-heroicon-o-users /> {{ $item['destino_label'] }}</span>
-                                <span><x-heroicon-o-user-circle /> {{ $item['autor'] }}</span>
-                                <span><x-heroicon-o-calendar-days /> {{ $item['criada_em'] }}</span>
-                            </div>
-
-                            @if(filled($item['url']))
-                                <div class="nc-item__actions">
-                                    <a class="nc-action nc-action--link" href="{{ $item['url'] }}" target="_blank" rel="noopener noreferrer">
-                                        <x-heroicon-o-arrow-top-right-on-square />
-                                        <span>{{ $item['label'] }}</span>
-                                    </a>
-                                </div>
-                            @endif
-                        </div>
-                    </article>
-                @else
-                    <article class="nc-item {{ $item['lida'] ? 'is-read' : 'is-unread' }}" wire:key="notificacao-{{ $item['id'] }}">
-                        <div class="nc-item__rail">
-                            <span class="{{ $item['prioridade_meta']['class'] }}">
-                                <x-dynamic-component :component="$item['prioridade_meta']['icon']" />
-                            </span>
-                        </div>
-
-                        <div class="nc-item__content">
-                            <div class="nc-item__topline">
-                                <span class="nc-pill">{{ $item['prioridade_label'] }}</span>
-                                <span>{{ $item['criada_em_humano'] }}</span>
-                                <span>{{ $item['lida'] ? 'Lida' : 'Ativa' }}</span>
-                            </div>
-
-                            <h3>{{ $item['titulo'] }}</h3>
-                            <p>{{ $item['mensagem'] }}</p>
-
-                            <div class="nc-item__meta">
-                                @if(filled($item['escopo']))
-                                    <span><x-heroicon-o-users /> {{ $item['escopo'] }}</span>
-                                @endif
-
-                                @if(filled($item['enviado_por_nome']))
-                                    <span><x-heroicon-o-user-circle /> {{ $item['enviado_por_nome'] }}</span>
-                                @endif
-
-                                <span><x-heroicon-o-calendar-days /> {{ $item['criada_em'] }}</span>
-
-                                @if($item['lida'] && filled($item['lida_em']))
-                                    <span><x-heroicon-o-envelope-open /> Lida em {{ $item['lida_em'] }}</span>
-                                @endif
-                            </div>
-
-                            <div class="nc-item__actions">
-                                @if(filled($item['url']))
-                                    <a class="nc-action nc-action--link" href="{{ $item['url'] }}" target="_blank" rel="noopener noreferrer" x-on:click="$wire.marcarComoLida('{{ $item['id'] }}')">
-                                        <x-heroicon-o-arrow-top-right-on-square />
-                                        <span>{{ $item['label'] }}</span>
-                                    </a>
-                                @endif
-
-                                @if($item['lida'])
-                                    <button type="button" class="nc-action nc-action--ghost" wire:click="marcarComoNaoLida('{{ $item['id'] }}')">
-                                        <x-heroicon-o-envelope />
-                                        <span>Marcar como ativa</span>
-                                    </button>
-                                @else
-                                    <button type="button" class="nc-action nc-action--ghost" wire:click="marcarComoLida('{{ $item['id'] }}')">
-                                        <x-heroicon-o-check />
-                                        <span>Marcar como lida</span>
-                                    </button>
-                                @endif
-                            </div>
-                        </div>
-                    </article>
-                @endif
-            @empty
-                <div class="nc-empty">
-                    <x-heroicon-o-bell-slash />
-                    <h3>Nenhum registro encontrado</h3>
-                    <p>Ajuste os filtros ou altere a aba selecionada.</p>
-                </div>
-            @endforelse
+        <div class="nc-status" data-status>
+            <span class="nc-spinner"></span>
+            <span data-status-text>Carregando notificações...</span>
         </div>
 
-        @if($temMais)
-            <div class="nc-more">
-                <button type="button" class="nc-action nc-action--ghost" wire:click="carregarMais">
-                    <x-heroicon-o-arrow-down-circle />
-                    <span>Carregar mais</span>
-                </button>
+        <div class="nc-list" data-list></div>
+
+        <div class="nc-more" data-more hidden>
+            <button type="button" class="nc-action nc-action--ghost" data-action="load-more">
+                <x-heroicon-o-arrow-down-circle />
+                <span>Carregar mais</span>
+            </button>
+        </div>
+
+        @if($canCreateNotifications)
+            <div class="nc-modal" data-create-modal hidden aria-hidden="true">
+                <div class="nc-modal__backdrop" data-action="close-create"></div>
+                <form class="nc-modal__panel" data-create-form>
+                    <div class="nc-modal__header">
+                        <div>
+                            <p class="nc-kicker">Disparo manual</p>
+                            <h3>Nova notificação</h3>
+                        </div>
+                        <button type="button" class="nc-icon-btn" data-action="close-create" aria-label="Fechar">
+                            <x-heroicon-o-x-mark />
+                        </button>
+                    </div>
+
+                    <div class="nc-form-grid">
+                        <label class="nc-field nc-field--full">
+                            <span>Título</span>
+                            <input type="text" name="titulo" maxlength="120" required>
+                        </label>
+
+                        <label class="nc-field nc-field--full">
+                            <span>Mensagem</span>
+                            <textarea name="mensagem" rows="4" maxlength="1500" required></textarea>
+                        </label>
+
+                        <label class="nc-field">
+                            <span>Prioridade</span>
+                            <select name="prioridade" required>
+                                @foreach($priorityOptions as $value => $label)
+                                    <option value="{{ $value }}" @selected($value === 'normal')>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+
+                        <label class="nc-field">
+                            <span>Enviar para</span>
+                            <select name="destino_tipo" data-destination-select required>
+                                @foreach($destinationTypeOptions as $value => $label)
+                                    <option value="{{ $value }}">{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+
+                        <label class="nc-field nc-field--full">
+                            <span>Link de ação</span>
+                            <input type="text" name="url" maxlength="2048" placeholder="https://...">
+                        </label>
+
+                        <label class="nc-field nc-field--full">
+                            <span>Texto do botão</span>
+                            <input type="text" name="label" maxlength="80" placeholder="Ver detalhes">
+                        </label>
+
+                        @foreach([
+                            'usuarios' => 'Usuários',
+                            'roles' => 'Níveis de acesso',
+                            'escolas' => 'Escolas',
+                            'turmas' => 'Turmas',
+                            'permissoes' => 'Permissões',
+                        ] as $group => $label)
+                            <label class="nc-field nc-field--full" data-recipient-group="{{ $group }}" hidden>
+                                <span>{{ $label }}</span>
+                                <select multiple size="7" data-recipient-select="{{ $group }}">
+                                    @foreach($recipientOptions[$group] ?? [] as $option)
+                                        <option value="{{ $option['id'] }}">{{ $option['label'] }}</option>
+                                    @endforeach
+                                </select>
+                            </label>
+                        @endforeach
+                    </div>
+
+                    <div class="nc-form-error" data-form-error hidden></div>
+
+                    <div class="nc-modal__footer">
+                        <button type="button" class="nc-action nc-action--ghost" data-action="close-create">Cancelar</button>
+                        <button type="submit" class="nc-action nc-action--primary">
+                            <x-heroicon-o-paper-airplane />
+                            <span>Enviar notificação</span>
+                        </button>
+                    </div>
+                </form>
             </div>
         @endif
     </div>
@@ -216,18 +211,29 @@
 
         .notification-center {
             --nc-ink: #111827;
-            --nc-muted: #64748b;
-            --nc-line: #d8dee9;
-            --nc-surface: #ffffff;
+            --nc-muted: #667085;
+            --nc-line: #d7deea;
+            --nc-surface: #fff;
             --nc-soft: #f7f9fc;
             --nc-primary: #17368d;
+            --nc-primary-soft: #eef4ff;
             --nc-green: #0f766e;
             --nc-amber: #b45309;
             --nc-red: #b91c1c;
             display: flex;
             flex-direction: column;
-            gap: 18px;
+            gap: 12px;
             color: var(--nc-ink);
+        }
+
+        .nc-header,
+        .nc-toolbar,
+        .nc-card,
+        .nc-empty,
+        .nc-status {
+            border: 1px solid var(--nc-line);
+            border-radius: 8px;
+            background: var(--nc-surface);
         }
 
         .nc-header {
@@ -235,46 +241,57 @@
             align-items: center;
             justify-content: space-between;
             gap: 16px;
-            padding: 22px;
-            border: 1px solid var(--nc-line);
-            border-radius: 8px;
-            background: var(--nc-surface);
+            padding: 16px;
+        }
+
+        .nc-header__main,
+        .nc-header__actions,
+        .nc-card__meta,
+        .nc-card__actions,
+        .nc-card__top,
+        .nc-inline {
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .nc-header__main {
-            display: flex;
-            align-items: center;
-            gap: 14px;
             min-width: 0;
+            gap: 12px;
+        }
+
+        .nc-header__actions {
+            flex-wrap: wrap;
+            justify-content: flex-end;
         }
 
         .nc-header__icon {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 48px;
-            height: 48px;
-            flex: 0 0 48px;
+            width: 42px;
+            height: 42px;
+            flex: 0 0 42px;
             border-radius: 8px;
-            background: #eef6fc;
+            background: var(--nc-primary-soft);
             color: var(--nc-primary);
         }
 
-        .nc-header__icon svg,
+        .nc-header svg,
         .nc-action svg,
         .nc-stat svg,
         .nc-input-wrap svg,
-        .nc-item__meta svg,
-        .nc-priority svg,
-        .nc-empty svg {
-            width: 18px;
-            height: 18px;
+        .nc-card svg,
+        .nc-icon-btn svg {
+            width: 17px;
+            height: 17px;
             flex: 0 0 auto;
         }
 
-        .nc-header h2 {
-            margin: 2px 0;
-            font-size: clamp(1.35rem, 2vw, 1.9rem);
+        .nc-header h2,
+        .nc-modal h3 {
+            margin: 0;
+            font-size: 1.2rem;
             font-weight: 760;
         }
 
@@ -285,262 +302,263 @@
         }
 
         .nc-kicker {
-            font-size: .78rem;
-            font-weight: 700;
+            font-size: .72rem;
+            font-weight: 760;
             text-transform: uppercase;
         }
 
         .nc-subtitle {
-            font-size: .92rem;
+            font-size: .86rem;
         }
 
         .nc-stats {
             display: grid;
             grid-template-columns: repeat(5, minmax(0, 1fr));
-            gap: 12px;
+            gap: 10px;
         }
 
         .nc-stat {
             position: relative;
-            min-height: 92px;
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 8px;
-            padding: 14px;
+            min-height: 72px;
+            padding: 11px 12px;
             border: 1px solid var(--nc-line);
             border-radius: 8px;
             background: var(--nc-surface);
             color: var(--nc-ink);
             text-align: left;
-            transition: border-color .18s ease, background .18s ease, transform .18s ease;
-        }
-
-        button.nc-stat {
             cursor: pointer;
         }
 
-        button.nc-stat:hover,
-        .nc-stat.is-active {
-            border-color: var(--nc-primary);
-            background: #f1f6ff;
-            transform: translateY(-1px);
+        .nc-stat--plain {
+            cursor: default;
         }
 
-        .nc-stat--urgent {
-            border-color: #f3c8c8;
-            background: #fff7f7;
+        .nc-stat.is-active,
+        .nc-stat:not(.nc-stat--plain):hover {
+            border-color: var(--nc-primary);
+            background: var(--nc-primary-soft);
+        }
+
+        .nc-stat span {
+            display: block;
+            color: var(--nc-muted);
+            font-size: .74rem;
+            font-weight: 740;
         }
 
         .nc-stat strong {
-            font-size: 1.65rem;
+            display: block;
+            margin-top: 7px;
+            font-size: 1.35rem;
             line-height: 1;
-        }
-
-        .nc-stat__label {
-            color: var(--nc-muted);
-            font-size: .84rem;
-            font-weight: 700;
         }
 
         .nc-stat svg {
             position: absolute;
-            right: 14px;
-            bottom: 14px;
-            color: var(--nc-muted);
+            right: 12px;
+            bottom: 12px;
+            color: #98a2b3;
         }
 
-        .nc-filters {
+        .nc-toolbar {
             display: grid;
-            grid-template-columns: minmax(220px, 1fr) minmax(160px, 220px) minmax(160px, 220px) auto;
+            grid-template-columns: auto minmax(220px, 1fr) minmax(145px, 180px) minmax(145px, 180px) auto;
             align-items: end;
-            gap: 12px;
-            padding: 16px;
-            border: 1px solid var(--nc-line);
-            border-radius: 8px;
+            gap: 10px;
+            padding: 12px;
             background: var(--nc-soft);
+        }
+
+        .nc-tabs {
+            display: inline-flex;
+            gap: 3px;
+            min-height: 40px;
+            padding: 3px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            background: #fff;
+        }
+
+        .nc-tabs button {
+            min-width: 78px;
+            border: 0;
+            border-radius: 6px;
+            background: transparent;
+            color: #475467;
+            font-size: .82rem;
+            font-weight: 740;
+            cursor: pointer;
+        }
+
+        .nc-tabs button.is-active {
+            background: var(--nc-primary);
+            color: #fff;
         }
 
         .nc-field {
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 5px;
             min-width: 0;
             color: var(--nc-muted);
-            font-size: .78rem;
-            font-weight: 700;
+            font-size: .74rem;
+            font-weight: 740;
         }
 
-        .nc-input-wrap,
-        .nc-field select {
-            min-height: 40px;
+        .nc-field input,
+        .nc-field textarea,
+        .nc-field select,
+        .nc-input-wrap {
+            width: 100%;
+            min-height: 38px;
             border: 1px solid #cbd5e1;
             border-radius: 8px;
             background: #fff;
+            color: var(--nc-ink);
+            font-size: .88rem;
+            outline: 0;
+        }
+
+        .nc-field input,
+        .nc-field textarea,
+        .nc-field select {
+            padding: 8px 10px;
+        }
+
+        .nc-field select[multiple] {
+            min-height: 150px;
         }
 
         .nc-input-wrap {
             display: flex;
             align-items: center;
             gap: 8px;
-            padding: 0 11px;
+            padding: 0 10px;
             color: var(--nc-muted);
         }
 
-        .nc-input-wrap input,
-        .nc-field select {
-            width: 100%;
+        .nc-input-wrap input {
+            min-height: 0;
+            padding: 0;
             border: 0;
-            outline: 0;
-            color: var(--nc-ink);
-            background: transparent;
-            font-size: .92rem;
-        }
-
-        .nc-field select {
-            padding: 0 11px;
+            border-radius: 0;
         }
 
         .nc-list {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            min-height: 120px;
-        }
-
-        .nc-list.is-loading {
-            opacity: .68;
-        }
-
-        .nc-item {
             display: grid;
-            grid-template-columns: 48px minmax(0, 1fr);
-            gap: 14px;
-            padding: 16px;
-            border: 1px solid var(--nc-line);
-            border-radius: 8px;
-            background: var(--nc-surface);
-        }
-
-        .nc-item.is-unread {
-            border-left: 4px solid var(--nc-primary);
-        }
-
-        .nc-item.is-read {
-            background: #fbfcfe;
-        }
-
-        .nc-item__rail {
-            display: flex;
-            justify-content: center;
-        }
-
-        .nc-priority {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 38px;
-            height: 38px;
-            border-radius: 8px;
-        }
-
-        .nc-priority--normal {
-            color: var(--nc-green);
-            background: #ecfdf5;
-        }
-
-        .nc-priority--info {
-            color: var(--nc-primary);
-            background: #eef6fc;
-        }
-
-        .nc-priority--high {
-            color: var(--nc-amber);
-            background: #fffbeb;
-        }
-
-        .nc-priority--urgent {
-            color: var(--nc-red);
-            background: #fef2f2;
-        }
-
-        .nc-item__content {
-            min-width: 0;
-        }
-
-        .nc-item__topline,
-        .nc-item__meta,
-        .nc-item__actions {
-            display: flex;
-            align-items: center;
-            flex-wrap: wrap;
+            grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
             gap: 8px;
         }
 
-        .nc-item__topline {
-            margin-bottom: 8px;
+        .nc-card {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 10px;
+            min-height: 78px;
+            padding: 10px 12px;
+            border-left-width: 4px;
+        }
+
+        .nc-card.is-unread {
+            border-left-color: var(--nc-primary);
+            background: #f3f7ff;
+        }
+
+        .nc-card.is-read,
+        .nc-card.is-sent {
+            border-left-color: #cbd5e1;
+            background: #fff;
+        }
+
+        .nc-card__main {
+            min-width: 0;
+        }
+
+        .nc-card__top {
+            flex-wrap: wrap;
+            margin-bottom: 3px;
             color: var(--nc-muted);
-            font-size: .78rem;
-            font-weight: 700;
+            font-size: .74rem;
+            font-weight: 740;
         }
 
-        .nc-pill {
-            display: inline-flex;
-            align-items: center;
-            min-height: 24px;
-            padding: 3px 9px;
-            border-radius: 999px;
-            background: #eef2f7;
-            color: #334155;
-        }
-
-        .nc-item h3 {
-            margin: 0 0 7px;
-            font-size: 1rem;
-            font-weight: 760;
-            overflow-wrap: anywhere;
-        }
-
-        .nc-item p {
-            margin: 0;
-            color: #334155;
+        .nc-card__title {
+            color: var(--nc-ink);
             font-size: .92rem;
-            line-height: 1.55;
-            overflow-wrap: anywhere;
+            font-weight: 760;
         }
 
-        .nc-item__meta {
-            margin-top: 12px;
-            color: var(--nc-muted);
-            font-size: .82rem;
+        .nc-card__message {
+            display: -webkit-box;
+            margin: 0;
+            overflow: hidden;
+            color: #475467;
+            font-size: .84rem;
+            line-height: 1.35;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
         }
 
-        .nc-item__meta span {
+        .nc-card__meta {
+            flex-wrap: wrap;
+            margin-top: 6px;
+            color: #7b8798;
+            font-size: .73rem;
+        }
+
+        .nc-card__meta span,
+        .nc-badge {
             display: inline-flex;
             align-items: center;
             gap: 5px;
             min-width: 0;
         }
 
-        .nc-item__actions {
-            margin-top: 14px;
+        .nc-card__actions {
+            align-self: center;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+            max-width: 230px;
+        }
+
+        .nc-badge {
+            min-height: 22px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: #eef2f7;
+            color: #344054;
+            font-size: .72rem;
+            font-weight: 760;
+        }
+
+        .nc-badge--urgente {
+            background: #fef2f2;
+            color: var(--nc-red);
+        }
+
+        .nc-badge--alta {
+            background: #fffbeb;
+            color: var(--nc-amber);
+        }
+
+        .nc-badge--informativa {
+            background: #eef6fc;
+            color: var(--nc-primary);
         }
 
         .nc-action {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 7px;
-            min-height: 38px;
-            padding: 8px 12px;
+            gap: 6px;
+            min-height: 34px;
+            padding: 7px 10px;
             border: 1px solid transparent;
             border-radius: 8px;
-            font-size: .86rem;
-            font-weight: 740;
+            font-size: .82rem;
+            font-weight: 760;
             text-decoration: none;
             cursor: pointer;
-            transition: background .18s ease, border-color .18s ease, color .18s ease;
         }
 
         .nc-action--primary {
@@ -548,59 +566,65 @@
             color: #fff;
         }
 
-        .nc-action--primary:hover {
-            background: #0f2261;
-        }
-
         .nc-action--ghost {
             border-color: #cbd5e1;
             background: #fff;
-            color: #334155;
-        }
-
-        .nc-action--ghost:hover {
-            border-color: var(--nc-primary);
-            color: var(--nc-primary);
+            color: #344054;
         }
 
         .nc-action--link {
-            background: #eef6fc;
+            background: var(--nc-primary-soft);
             color: var(--nc-primary);
         }
 
-        .nc-action--link:hover {
-            background: #d8ecf7;
+        .nc-action:disabled {
+            cursor: wait;
+            opacity: .62;
+        }
+
+        .nc-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            width: fit-content;
+            padding: 7px 10px;
+            color: var(--nc-muted);
+            font-size: .78rem;
+        }
+
+        .nc-status[hidden],
+        .nc-more[hidden],
+        .nc-modal[hidden],
+        [hidden] {
+            display: none !important;
+        }
+
+        .nc-spinner {
+            width: 14px;
+            height: 14px;
+            border: 2px solid #d0d5dd;
+            border-top-color: var(--nc-primary);
+            border-radius: 999px;
+            animation: nc-spin .7s linear infinite;
+        }
+
+        @keyframes nc-spin {
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         .nc-empty {
-            display: flex;
-            min-height: 220px;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            padding: 24px;
-            border: 1px dashed #cbd5e1;
-            border-radius: 8px;
-            background: #fff;
+            grid-column: 1 / -1;
+            padding: 30px 16px;
             text-align: center;
             color: var(--nc-muted);
         }
 
-        .nc-empty svg {
-            width: 42px;
-            height: 42px;
-            color: #94a3b8;
-        }
-
-        .nc-empty h3 {
-            margin: 0;
+        .nc-empty strong {
+            display: block;
+            margin-bottom: 4px;
             color: var(--nc-ink);
-            font-size: 1rem;
-        }
-
-        .nc-empty p {
-            margin: 0;
         }
 
         .nc-more {
@@ -608,42 +632,497 @@
             justify-content: center;
         }
 
-        @media (max-width: 1100px) {
-            .nc-stats {
+        .nc-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 99999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 18px;
+        }
+
+        .nc-modal__backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 23, 42, .48);
+        }
+
+        .nc-modal__panel {
+            position: relative;
+            z-index: 1;
+            width: min(760px, 100%);
+            max-height: 92vh;
+            overflow: auto;
+            padding: 16px;
+            border-radius: 8px;
+            background: #fff;
+            box-shadow: 0 24px 64px rgba(15, 23, 42, .24);
+        }
+
+        .nc-modal__header,
+        .nc-modal__footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .nc-modal__footer {
+            justify-content: flex-end;
+            margin-top: 14px;
+        }
+
+        .nc-form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .nc-field--full {
+            grid-column: 1 / -1;
+        }
+
+        .nc-icon-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 34px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            background: #fff;
+            color: #475467;
+            cursor: pointer;
+        }
+
+        .nc-form-error {
+            margin-top: 10px;
+            padding: 10px 12px;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            background: #fef2f2;
+            color: var(--nc-red);
+            font-size: .84rem;
+            font-weight: 700;
+        }
+
+        @media (max-width: 1180px) {
+            .nc-stats,
+            .nc-toolbar {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
 
-            .nc-filters {
-                grid-template-columns: 1fr 1fr;
+            .nc-tabs {
+                grid-column: 1 / -1;
             }
         }
 
-        @media (max-width: 720px) {
-            .nc-header {
+        @media (max-width: 760px) {
+            .nc-header,
+            .nc-card,
+            .nc-modal__header,
+            .nc-modal__footer {
                 align-items: stretch;
                 flex-direction: column;
             }
 
-            .nc-header__main {
-                align-items: flex-start;
-            }
-
             .nc-stats,
-            .nc-filters {
+            .nc-toolbar,
+            .nc-list,
+            .nc-form-grid {
                 grid-template-columns: 1fr;
             }
 
-            .nc-item {
-                grid-template-columns: 1fr;
+            .nc-card {
+                display: flex;
             }
 
-            .nc-item__rail {
-                justify-content: flex-start;
-            }
-
+            .nc-card__actions,
             .nc-action {
                 width: 100%;
+                max-width: none;
             }
         }
     </style>
+
+    <script>
+        (() => {
+            const root = document.querySelector('[data-notification-center]');
+
+            if (!root || root.dataset.ready === '1') {
+                return;
+            }
+
+            root.dataset.ready = '1';
+
+            const config = @js([
+                'endpoints' => $endpoints,
+                'canCreate' => $canCreateNotifications,
+            ]);
+
+            const state = {
+                modo: 'todas',
+                busca: '',
+                prioridade: 'todas',
+                periodo: '30',
+                limite: 35,
+            };
+
+            const csrf = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+            const list = root.querySelector('[data-list]');
+            const status = root.querySelector('[data-status]');
+            const statusText = root.querySelector('[data-status-text]');
+            const more = root.querySelector('[data-more]');
+            const markAllButton = root.querySelector('[data-action="mark-all-read"]');
+            const modal = root.querySelector('[data-create-modal]');
+            const form = root.querySelector('[data-create-form]');
+            const formError = root.querySelector('[data-form-error]');
+            let searchTimer = null;
+            let aborter = null;
+
+            const escapeHtml = (value) => String(value ?? '')
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
+
+            const svg = {
+                check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>',
+                envelope: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5A2.25 2.25 0 0 1 19.5 19.5h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0-9.75 6-9.75-6"/></svg>',
+                external: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H18m0 0v4.5M18 6 9.75 14.25M6 7.5v10.5h10.5"/></svg>',
+                calendar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3.75 8.25h16.5M5.25 5.25h13.5A1.5 1.5 0 0 1 20.25 6.75v12A1.5 1.5 0 0 1 18.75 20.25H5.25A1.5 1.5 0 0 1 3.75 18.75v-12A1.5 1.5 0 0 1 5.25 5.25Z"/></svg>',
+                users: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.5a6 6 0 0 0-12 0m12 0h6m-6 0a6 6 0 0 0-9 0m7.5-10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 1.5a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"/></svg>',
+            };
+
+            const priorityClass = (priority) => `nc-badge nc-badge--${priority || 'normal'}`;
+
+            const setStatus = (message, loading = false, visible = true) => {
+                status.hidden = !visible;
+                status.querySelector('.nc-spinner').hidden = !loading;
+                statusText.textContent = message;
+            };
+
+            const updateBadge = (count) => {
+                window.dispatchEvent(new CustomEvent('gestaoedu:notifications-count', {
+                    detail: { unread: count },
+                }));
+            };
+
+            const request = async (url, options = {}) => {
+                const response = await fetch(url, {
+                    credentials: 'same-origin',
+                    headers: {
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        ...(options.body ? { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf } : {}),
+                        ...(options.headers ?? {}),
+                    },
+                    ...options,
+                });
+
+                const payload = await response.json().catch(() => ({}));
+
+                if (!response.ok) {
+                    const message = payload.message
+                        || Object.values(payload.errors ?? {})?.flat()?.[0]
+                        || 'Não foi possível concluir a operação.';
+
+                    throw new Error(message);
+                }
+
+                return payload;
+            };
+
+            const load = async ({ silent = false } = {}) => {
+                if (aborter) {
+                    aborter.abort();
+                }
+
+                aborter = new AbortController();
+
+                if (!silent) {
+                    setStatus('Carregando notificações...', true);
+                }
+
+                const params = new URLSearchParams(state);
+
+                try {
+                    const data = await request(`${config.endpoints.index}?${params.toString()}`, {
+                        signal: aborter.signal,
+                    });
+
+                    state.modo = data.mode;
+                    renderStats(data.stats ?? {});
+                    renderItems(data.items ?? []);
+                    more.hidden = !data.has_more;
+                    markAllButton.hidden = !(data.stats?.ativas > 0);
+                    updateModeButtons();
+                    updateBadge(data.stats?.ativas ?? 0);
+                    setStatus(`Atualizado ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`, false, true);
+                } catch (error) {
+                    if (error.name === 'AbortError') {
+                        return;
+                    }
+
+                    setStatus(error.message, false, true);
+                }
+            };
+
+            const renderStats = (stats) => {
+                root.querySelectorAll('[data-stat]').forEach((element) => {
+                    element.textContent = stats[element.dataset.stat] ?? 0;
+                });
+            };
+
+            const renderItems = (items) => {
+                if (!items.length) {
+                    list.innerHTML = '<div class="nc-empty"><strong>Nenhum registro encontrado</strong><span>Ajuste os filtros ou altere a visualização.</span></div>';
+                    return;
+                }
+
+                list.innerHTML = items
+                    .map((item) => item.kind === 'sent' ? sentCard(item) : notificationCard(item))
+                    .join('');
+            };
+
+            const notificationCard = (item) => {
+                const statusLabel = item.lida ? 'Lida' : 'Não lida';
+                const readAction = item.lida
+                    ? `<button type="button" class="nc-action nc-action--ghost" data-action="mark-unread" data-id="${escapeHtml(item.id)}">${svg.envelope}<span>Ativar</span></button>`
+                    : `<button type="button" class="nc-action nc-action--ghost" data-action="mark-read" data-id="${escapeHtml(item.id)}">${svg.check}<span>Lida</span></button>`;
+                const link = item.url
+                    ? `<a class="nc-action nc-action--link" href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer" data-action="open-link" data-id="${escapeHtml(item.id)}">${svg.external}<span>${escapeHtml(item.label)}</span></a>`
+                    : '';
+                const extraMeta = [
+                    item.escopo ? `${svg.users}<span>${escapeHtml(item.escopo)}</span>` : '',
+                    item.enviado_por_nome ? `<span>${escapeHtml(item.enviado_por_nome)}</span>` : '',
+                    item.lida_em ? `<span>Lida em ${escapeHtml(item.lida_em)}</span>` : '',
+                ].filter(Boolean).join('');
+
+                return `
+                    <article class="nc-card ${item.lida ? 'is-read' : 'is-unread'}" data-id="${escapeHtml(item.id)}">
+                        <div class="nc-card__main">
+                            <div class="nc-card__top">
+                                <span class="nc-card__title">${escapeHtml(item.titulo)}</span>
+                                <span class="${priorityClass(item.prioridade)}">${escapeHtml(item.prioridade_label)}</span>
+                                <span>${statusLabel}</span>
+                                <span>${escapeHtml(item.criada_em_humano)}</span>
+                            </div>
+                            <p class="nc-card__message">${escapeHtml(item.mensagem)}</p>
+                            <div class="nc-card__meta">
+                                <span>${svg.calendar}${escapeHtml(item.criada_em)}</span>
+                                ${extraMeta}
+                            </div>
+                        </div>
+                        <div class="nc-card__actions">
+                            ${link}
+                            ${readAction}
+                        </div>
+                    </article>
+                `;
+            };
+
+            const sentCard = (item) => `
+                <article class="nc-card is-sent" data-id="${escapeHtml(item.id)}">
+                    <div class="nc-card__main">
+                        <div class="nc-card__top">
+                            <span class="nc-card__title">${escapeHtml(item.titulo)}</span>
+                            <span class="${priorityClass(item.prioridade)}">${escapeHtml(item.prioridade_label)}</span>
+                            <span>${escapeHtml(item.destinatarios_count)} destinatário(s)</span>
+                            <span>${escapeHtml(item.criada_em_humano)}</span>
+                        </div>
+                        <p class="nc-card__message">${escapeHtml(item.mensagem)}</p>
+                        <div class="nc-card__meta">
+                            <span>${svg.users}${escapeHtml(item.destino_label)}</span>
+                            <span>${escapeHtml(item.autor)}</span>
+                            <span>${svg.calendar}${escapeHtml(item.criada_em)}</span>
+                        </div>
+                    </div>
+                    <div class="nc-card__actions">
+                        ${item.url ? `<a class="nc-action nc-action--link" href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer">${svg.external}<span>${escapeHtml(item.label)}</span></a>` : ''}
+                    </div>
+                </article>
+            `;
+
+            const updateModeButtons = () => {
+                root.querySelectorAll('[data-mode], [data-tab-mode]').forEach((button) => {
+                    const mode = button.dataset.mode || button.dataset.tabMode;
+                    button.classList.toggle('is-active', mode === state.modo);
+                });
+            };
+
+            const setMode = (mode) => {
+                state.modo = mode;
+                state.limite = 35;
+                updateModeButtons();
+                load();
+            };
+
+            const mark = async (id, read) => {
+                const action = read ? 'mark-read' : 'mark-unread';
+                const url = `${config.endpoints.markReadBase}/${encodeURIComponent(id)}/${action}`;
+                await request(url, { method: 'POST', body: '{}' });
+                await load({ silent: true });
+            };
+
+            const syncRecipientGroups = () => {
+                const value = root.querySelector('[data-destination-select]')?.value ?? 'todos';
+                const map = {
+                    usuarios: 'usuarios',
+                    roles: 'roles',
+                    escolas: 'escolas',
+                    professores_turmas: 'turmas',
+                    permissoes: 'permissoes',
+                };
+
+                root.querySelectorAll('[data-recipient-group]').forEach((group) => {
+                    group.hidden = group.dataset.recipientGroup !== map[value];
+                });
+            };
+
+            const closeCreateModal = () => {
+                if (!modal) {
+                    return;
+                }
+
+                modal.hidden = true;
+                modal.setAttribute('aria-hidden', 'true');
+                formError.hidden = true;
+            };
+
+            const openCreateModal = () => {
+                if (!modal) {
+                    return;
+                }
+
+                modal.hidden = false;
+                modal.setAttribute('aria-hidden', 'false');
+                syncRecipientGroups();
+                modal.querySelector('input[name="titulo"]')?.focus();
+            };
+
+            const selectedValues = (name) => Array.from(root.querySelector(`[data-recipient-select="${name}"]`)?.selectedOptions ?? [])
+                .map((option) => option.value);
+
+            const submitCreate = async (event) => {
+                event.preventDefault();
+
+                const submit = form.querySelector('button[type="submit"]');
+                const formData = new FormData(form);
+                const data = {
+                    titulo: formData.get('titulo'),
+                    mensagem: formData.get('mensagem'),
+                    prioridade: formData.get('prioridade'),
+                    destino_tipo: formData.get('destino_tipo'),
+                    url: formData.get('url'),
+                    label: formData.get('label'),
+                    usuarios_ids: selectedValues('usuarios'),
+                    roles_ids: selectedValues('roles'),
+                    escolas_ids: selectedValues('escolas'),
+                    turmas_ids: selectedValues('turmas'),
+                    permissoes: selectedValues('permissoes'),
+                };
+
+                submit.disabled = true;
+                formError.hidden = true;
+
+                try {
+                    await request(config.endpoints.send, {
+                        method: 'POST',
+                        body: JSON.stringify(data),
+                    });
+
+                    form.reset();
+                    closeCreateModal();
+                    state.modo = 'todas';
+                    state.limite = 35;
+                    await load();
+                } catch (error) {
+                    formError.textContent = error.message;
+                    formError.hidden = false;
+                } finally {
+                    submit.disabled = false;
+                }
+            };
+
+            root.addEventListener('click', async (event) => {
+                const target = event.target.closest('[data-mode], [data-tab-mode], [data-action]');
+
+                if (!target) {
+                    return;
+                }
+
+                if (target.dataset.mode || target.dataset.tabMode) {
+                    setMode(target.dataset.mode || target.dataset.tabMode);
+                    return;
+                }
+
+                const action = target.dataset.action;
+
+                if (action === 'clear-filters') {
+                    state.busca = '';
+                    state.prioridade = 'todas';
+                    state.periodo = '30';
+                    state.limite = 35;
+                    root.querySelector('[data-filter="busca"]').value = '';
+                    root.querySelector('[data-filter="prioridade"]').value = 'todas';
+                    root.querySelector('[data-filter="periodo"]').value = '30';
+                    load();
+                } else if (action === 'load-more') {
+                    state.limite += 35;
+                    load();
+                } else if (action === 'mark-read') {
+                    await mark(target.dataset.id, true);
+                } else if (action === 'mark-unread') {
+                    await mark(target.dataset.id, false);
+                } else if (action === 'open-link') {
+                    mark(target.dataset.id, true);
+                } else if (action === 'mark-all-read') {
+                    await request(config.endpoints.markAllRead, { method: 'POST', body: '{}' });
+                    await load({ silent: true });
+                } else if (action === 'open-create') {
+                    openCreateModal();
+                } else if (action === 'close-create') {
+                    closeCreateModal();
+                }
+            });
+
+            root.querySelectorAll('[data-filter]').forEach((field) => {
+                field.addEventListener('input', () => {
+                    const apply = () => {
+                        state[field.dataset.filter] = field.value;
+                        state.limite = 35;
+                        load();
+                    };
+
+                    if (field.dataset.filter === 'busca') {
+                        clearTimeout(searchTimer);
+                        searchTimer = setTimeout(apply, 250);
+                    } else {
+                        apply();
+                    }
+                });
+            });
+
+            root.querySelector('[data-destination-select]')?.addEventListener('change', syncRecipientGroups);
+            form?.addEventListener('submit', submitCreate);
+
+            window.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape') {
+                    closeCreateModal();
+                }
+            });
+
+            load();
+
+            setInterval(() => {
+                if (document.visibilityState === 'visible') {
+                    load({ silent: true });
+                }
+            }, 5000);
+        })();
+    </script>
 </x-filament-panels::page>

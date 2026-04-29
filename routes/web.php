@@ -1,30 +1,22 @@
 <?php
 
-use App\Http\Controllers\FeedbackPedidoExportController;
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\GoogleAuthController;
-use Illuminate\Support\Collection;
-use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Str;
-use App\Models\FeedbackPedido;
-use App\Models\Pedido;
-use App\Services\Relatorios\PedidoRelatorioService;
-use App\Models\User;
-use App\Notifications\SistemaNotification;
-use Illuminate\Http\Request;
-use App\Services\Relatorios\FeedbackPedidoRelatorioService;
-use App\Services\Relatorios\FeedbackGraficoService;
-use App\Services\Relatorios\ChartRenderService;
-use Illuminate\Support\Facades\Auth;
-use \App\Http\Controllers\PedidoRelatorioGeralController;
-use App\Http\Controllers\BalancoInventarioRelatorioController;
-use App\Http\Controllers\BalancoEstoqueRelatorioController;
 use App\Http\Controllers\BaixasEstoqueRelatorioController;
+use App\Http\Controllers\BalancoEstoqueRelatorioController;
+use App\Http\Controllers\BalancoInventarioRelatorioController;
 use App\Http\Controllers\EstoqueRelatorioController;
+use App\Http\Controllers\FeedbackPedidoExportController;
 use App\Http\Controllers\InventarioRelatorioController;
 use App\Http\Controllers\InventarioRomaneioController;
+use App\Http\Controllers\NotificationCenterController;
+use App\Http\Controllers\PedidoArquivoController;
 use App\Http\Controllers\PedidoMerendaEmpenhoController;
-use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\PedidoRelatorioGeralController;
+use App\Models\Pedido;
+use App\Models\User;
+use App\Notifications\SistemaNotification;
+use App\Services\Relatorios\PedidoRelatorioService;
+use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return redirect()->route('filament.admin.auth.login');
@@ -73,37 +65,29 @@ Route::post('/test/notify', function () {
 Route::get('/pedidos/relatorio-geral', [PedidoRelatorioGeralController::class, 'exportar'])
     ->name('pedidos.relatorio-geral');
 
-
 Route::get('/oauth/redirect/google', [GoogleAuthController::class, 'redirect'])->name('google.redirect');
 Route::get('/oauth/callback/google', [GoogleAuthController::class, 'callback'])->name('google.callback');
 
 Route::prefix('admin')
     ->middleware(['web', 'auth'])
     ->group(function () {
-        Route::post('/notifications/mark-all-read', function () {
-            abort_unless(Auth::user()?->hasPermissionLike('visualizar notifica'), 403);
+        Route::get('/notifications/center', [NotificationCenterController::class, 'index'])
+            ->name('notifications.center');
 
-            DB::table('notifications')
-                ->where('notifiable_id', Auth::id())
-                ->where('notifiable_type', User::class)
-                ->whereNull('read_at')
-                ->update(['read_at' => now()]);
+        Route::get('/notifications/unread-count', [NotificationCenterController::class, 'unreadCount'])
+            ->name('notifications.unreadCount');
 
-            return response()->json(['ok' => true]);
-        })->name('notifications.markAllRead');
+        Route::post('/notifications/send', [NotificationCenterController::class, 'send'])
+            ->name('notifications.send');
 
-        Route::post('/notifications/{id}/mark-read', function ($id) {
-            abort_unless(Auth::user()?->hasPermissionLike('visualizar notifica'), 403);
+        Route::post('/notifications/mark-all-read', [NotificationCenterController::class, 'markAllRead'])
+            ->name('notifications.markAllRead');
 
-            DB::table('notifications')
-                ->where('id', $id)
-                ->where('notifiable_id', Auth::id())
-                ->where('notifiable_type', User::class)
-                ->update(['read_at' => now()]);
+        Route::post('/notifications/{id}/mark-read', [NotificationCenterController::class, 'markRead'])
+            ->name('notifications.markRead');
 
-            return response()->json(['ok' => true]);
-        })->name('notifications.markRead');
-
+        Route::post('/notifications/{id}/mark-unread', [NotificationCenterController::class, 'markUnread'])
+            ->name('notifications.markUnread');
 
         Route::get('/pedidos/{pedido}/pdf', function (Pedido $pedido, PedidoRelatorioService $service) {
             return $service->gerar($pedido);
@@ -114,7 +98,7 @@ Route::prefix('admin')
 
         Route::get(
             '/pedidos/arquivos/{pedidoArquivo}/download',
-            [\App\Http\Controllers\PedidoArquivoController::class, 'download']
+            [PedidoArquivoController::class, 'download']
         )
             ->name('pedidos.arquivos.download')
             ->middleware('can:download,pedidoArquivo');
@@ -162,14 +146,6 @@ Route::prefix('admin')
             ->name('balancos-estoque.relatorio.pdf');
     });
 
-
-
-
-
-
-
-
-
 Route::post('/notifications/{id}/read', function ($id) {
     $user = User::find(1);
 
@@ -195,13 +171,12 @@ Route::prefix('admin/feedback-pedidos')
         Route::get('/exportar-pdf/graficos', [FeedbackPedidoExportController::class, 'exportarGraficos'])
             ->name('feedback-pedidos.export-graficos');
 
-
         // Relatorio de avaliacao de empresas terceirizadas
         Route::get('/exportar-pdf/terceirizada', [FeedbackPedidoExportController::class, 'exportarTerceirizada'])
             ->name('feedback-pedidos.export-terceirizada');
     });
 
-require __DIR__ . '/mobile.php';
+require __DIR__.'/mobile.php';
 
 Route::get('/baixar-app', function () {
     return redirect()->route('mobile.install');
