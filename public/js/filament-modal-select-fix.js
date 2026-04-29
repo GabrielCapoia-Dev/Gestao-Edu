@@ -6,7 +6,7 @@
     const viewportGap = 15;
     const dropdownGap = 4;
     const maxDropdownHeight = 360;
-    const minDropdownHeight = 200;
+    const minDropdownHeight = 60;
 
     const dropdownStates = new Map();
     const containerDropdowns = new Map();
