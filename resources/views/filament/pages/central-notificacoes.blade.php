@@ -104,7 +104,7 @@
             </button>
         </div>
 
-        <div class="nc-status" data-status>
+        <div class="nc-status" data-status hidden>
             <span class="nc-spinner"></span>
             <span data-status-text>Carregando notificações...</span>
         </div>
@@ -780,7 +780,7 @@
             const form = root.querySelector('[data-create-form]');
             const formError = root.querySelector('[data-form-error]');
             let searchTimer = null;
-            let aborter = null;
+            let loadVersion = 0;
 
             const escapeHtml = (value) => String(value ?? '')
                 .replaceAll('&', '&amp;')
@@ -799,7 +799,7 @@
 
             const priorityClass = (priority) => `nc-badge nc-badge--${priority || 'normal'}`;
 
-            const setStatus = (message, loading = false, visible = true) => {
+            const setStatus = (message = '', loading = false, visible = true) => {
                 status.hidden = !visible;
                 status.querySelector('.nc-spinner').hidden = !loading;
                 statusText.textContent = message;
@@ -837,11 +837,7 @@
             };
 
             const load = async ({ silent = false } = {}) => {
-                if (aborter) {
-                    aborter.abort();
-                }
-
-                aborter = new AbortController();
+                const version = ++loadVersion;
 
                 if (!silent) {
                     setStatus('Carregando notificações...', true);
@@ -850,20 +846,22 @@
                 const params = new URLSearchParams(state);
 
                 try {
-                    const data = await request(`${config.endpoints.index}?${params.toString()}`, {
-                        signal: aborter.signal,
-                    });
+                    const data = await request(`${config.endpoints.index}?${params.toString()}`);
+
+                    if (version !== loadVersion) {
+                        return;
+                    }
 
                     state.modo = data.mode;
                     renderStats(data.stats ?? {});
                     renderItems(data.items ?? []);
+                    setStatus('', false, false);
                     more.hidden = !data.has_more;
                     markAllButton.hidden = !(data.stats?.ativas > 0);
                     updateModeButtons();
                     updateBadge(data.stats?.ativas ?? 0);
-                    setStatus(`Atualizado ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`, false, true);
                 } catch (error) {
-                    if (error.name === 'AbortError') {
+                    if (version !== loadVersion) {
                         return;
                     }
 
