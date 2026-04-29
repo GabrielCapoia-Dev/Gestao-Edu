@@ -210,6 +210,7 @@ class CriarPermissoes extends Command
             'Visualizar Detalhes de Aluno',
             'Visualizar Professores',
             'Visualizar Notificações',
+            'Criar Notificações',
             'Visualizar Especializações de Professores',
             'Visualizar Detalhes de Professor',
             'Visualizar Setor do Usuário',

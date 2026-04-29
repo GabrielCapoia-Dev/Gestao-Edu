@@ -2,49 +2,42 @@
 
 namespace App\Livewire;
 
-use Livewire\Component;
-use Illuminate\Support\Facades\Auth;
+use App\Filament\Admin\Pages\CentralNotificacoes;
 use App\Models\User;
-use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\On;
+use Livewire\Component;
 
 class TopbarNotifications extends Component
 {
-    public $unread = 0;
-    public $notifications = [];
+    public int $unread = 0;
 
     public function mount(): void
     {
-        $this->fetchNotifications();
+        $this->fetchUnreadCount();
     }
 
-    public function refresh(): void  // <- wire:poll chama este
+    public function refresh(): void
     {
-        $this->fetchNotifications();
+        $this->fetchUnreadCount();
     }
 
-    #[\Livewire\Attributes\On('refresh-notifications')]
+    #[On('refresh-notifications')]
     public function onRefreshNotifications(): void
     {
-        $this->fetchNotifications();
+        $this->fetchUnreadCount();
     }
 
-    private function fetchNotifications(): void  // <- private, não exposto
+    private function fetchUnreadCount(): void
     {
         $user = Auth::user();
 
-        $this->notifications = DB::table('notifications')
-            ->where('notifiable_id', $user->id)
-            ->where('notifiable_type', User::class)
-            ->whereNull('read_at')
-            ->orderBy('created_at', 'desc')
-            ->limit(50)
-            ->get()
-            ->map(function ($notification) {
-                $notification->created_at = Carbon::parse($notification->created_at);
-                return $notification;
-            })
-            ->toArray();
+        if (! $user) {
+            $this->unread = 0;
+
+            return;
+        }
 
         $this->unread = DB::table('notifications')
             ->where('notifiable_id', $user->id)
@@ -53,29 +46,10 @@ class TopbarNotifications extends Component
             ->count();
     }
 
-    public function markAllAsRead(): void
-    {
-        DB::table('notifications')
-            ->where('notifiable_id', Auth::id())
-            ->where('notifiable_type', User::class)
-            ->whereNull('read_at')
-            ->update(['read_at' => now()]);
-
-        $this->fetchNotifications();
-    }
-
-    public function markAsRead($id): void
-    {
-        DB::table('notifications')
-            ->where('id', $id)
-            ->where('notifiable_id', Auth::id())
-            ->where('notifiable_type', User::class)
-            ->update(['read_at' => now()]);
-
-        $this->fetchNotifications();
-    }
     public function render()
     {
-        return view('livewire.topbar-notifications');
+        return view('livewire.topbar-notifications', [
+            'centralUrl' => CentralNotificacoes::getUrl(),
+        ]);
     }
 }
