@@ -1008,158 +1008,47 @@
 }
 
 /* ═══════════════════════════════════════════════
-   SELECT / DROPDOWN EM MODAIS — FIX
+/* ═══════════════════════════════════════════════
+   SELECT EM MODAL — FIX SIMPLES
    ═══════════════════════════════════════════════ */
 
-:root {
-    --edu-select-visible-options: 6;
-    --edu-select-option-height: 2.75rem;
-    --edu-select-search-height: 3.25rem;
-    --edu-select-dropdown-z: 99999;
-}
-
-/*
-   O problema estava em dois pontos:
-   1. o modal grande usava overflow hidden e cortava a lista;
-   2. o dropdown do select ficava com largura calculada incorretamente durante o estado "Carregando...".
-*/
-
-.fi-modal,
-.fi-modal-window-ctn,
 .fi-modal-window {
     overflow: visible !important;
 }
 
-.fi-modal-window {
-    isolation: isolate;
+.fi-modal-window:not(.fi-width-sm):not(.fi-width-md) {
+    max-height: 90vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: visible !important;
 }
 
 .fi-modal-content {
-    position: relative;
-    z-index: 20;
-}
-
-.fi-modal-header,
-.fi-modal-footer {
-    position: relative;
-    z-index: 10;
-}
-
-/* O footer não pode cobrir a lista do select */
-.fi-modal-footer {
     overflow: visible !important;
 }
 
-/* Container do select precisa ser a referência da lista */
+.fi-modal-footer {
+    position: relative;
+    z-index: 1;
+}
+
 .fi-select-input,
 .fi-select-input-ctn {
     position: relative !important;
 }
 
-/* Quando o select abre, ele fica acima do footer */
-.fi-select-input.fi-has-open-select,
 .fi-select-input:has(.fi-select-input-btn[aria-expanded="true"]),
 .fi-select-input-ctn:has(.fi-select-input-btn[aria-expanded="true"]) {
-    z-index: var(--edu-select-dropdown-z) !important;
+    z-index: 9999 !important;
 }
 
-/* Painel do select no tamanho correto */
-.fi-select-input-ctn > .fi-dropdown-panel,
-.fi-select-input .fi-dropdown-panel {
-    left: 0 !important;
-    right: auto !important;
+.fi-select-input .fi-dropdown-panel,
+.fi-select-input-ctn > .fi-dropdown-panel {
     width: 100% !important;
     min-width: 100% !important;
     max-width: 100% !important;
-    z-index: var(--edu-select-dropdown-z) !important;
-
-    background: var(--edu-white);
-    border: 1px solid var(--edu-neutral-200);
-    border-radius: 0.75rem;
-    box-shadow: var(--edu-shadow-lg);
-}
-
-/* Evita o bloco estreito/quebrado no estado "Carregando..." */
-.fi-select-input-ctn > .fi-dropdown-panel *,
-.fi-select-input .fi-dropdown-panel * {
-    max-width: 100%;
-}
-
-.fi-select-input-ctn > .fi-dropdown-panel .fi-dropdown-list,
-.fi-select-input .fi-dropdown-panel .fi-dropdown-list,
-.fi-select-input-ctn > .fi-dropdown-panel .fi-select-input-options-ctn,
-.fi-select-input .fi-dropdown-panel .fi-select-input-options-ctn {
-    width: 100% !important;
-    min-width: 100% !important;
-}
-
-/* Campo de pesquisa dentro do dropdown */
-.fi-select-input .fi-select-input-search-ctn,
-.fi-select-input-ctn .fi-select-input-search-ctn {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    width: 100% !important;
-    background: var(--edu-white);
-}
-
-/* Altura máxima da lista */
-.fi-select-input-ctn > .fi-dropdown-panel.fi-scrollable,
-.fi-select-input .fi-dropdown-panel.fi-scrollable,
-.fi-select-input-ctn > .fi-dropdown-panel,
-.fi-select-input .fi-dropdown-panel {
-    max-height: min(
-        calc(100dvh - 2rem),
-        calc((var(--edu-select-visible-options) * var(--edu-select-option-height)) + var(--edu-select-search-height))
-    ) !important;
-
-    overflow-x: hidden !important;
-    overflow-y: auto !important;
-    overscroll-behavior: contain;
-    scrollbar-gutter: stable;
-}
-
-/* Opções */
-.fi-select-input .fi-select-input-option,
-.fi-select-input .fi-dropdown-list-item,
-.fi-select-input-ctn .fi-select-input-option,
-.fi-select-input-ctn .fi-dropdown-list-item,
-.choices__item--choice {
-    min-height: var(--edu-select-option-height);
-}
-
-/* Choices.js, caso algum campo use esse padrão */
-.choices.is-open {
-    position: relative;
-    z-index: var(--edu-select-dropdown-z) !important;
-}
-
-.choices__list--dropdown,
-.choices__list[aria-expanded] {
-    width: 100% !important;
-    min-width: 100% !important;
-    z-index: var(--edu-select-dropdown-z) !important;
-}
-
-.choices__list--dropdown .choices__list,
-.choices__list[aria-expanded] .choices__list,
-[data-headlessui-state="open"] [role="listbox"] {
-    max-height: calc(var(--edu-select-visible-options) * var(--edu-select-option-height)) !important;
+    z-index: 9999 !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
-    overscroll-behavior: contain;
-    scrollbar-gutter: stable;
+    max-height: 280px !important;
 }
-
-/*
-   Se estiver usando o JS filament-modal-select-fix.js antigo,
-   esta classe pode existir. Aqui ela é neutralizada para não gerar
-   dropdown estreito/desalinhado.
-*/
-.fi-select-dropdown-portal {
-    width: auto !important;
-    min-width: 0 !important;
-    max-width: calc(100vw - 1rem) !important;
-    z-index: var(--edu-select-dropdown-z) !important;
-}
-

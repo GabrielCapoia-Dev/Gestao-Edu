@@ -29,7 +29,6 @@ use App\Policies\ProfessorPolicy;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Filament\Support\Assets\Css;
-use Filament\Support\Assets\Js;
 use Filament\Support\Facades\FilamentAsset;
 use App\Models\ComponenteCurricular;
 use App\Models\TipoManutencao;
@@ -43,7 +42,6 @@ use App\Observers\ProfessorObserver;
 use App\Observers\TurmaComponenteProfessorObserver;
 use Filament\View\PanelsRenderHook;
 use Filament\Support\Facades\FilamentView;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
 use App\Models\EquipeGestora;
 use App\Policies\EquipeGestoraPolicy;
@@ -67,20 +65,20 @@ class AppServiceProvider extends ServiceProvider
         }
 
         // ── Policies ───────────────────────────────────────────────────────────
-        Gate::policy(User::class,           UserPolicy::class);
-        Gate::policy(Role::class,           RolePolicy::class);
-        Gate::policy(Permission::class,     PermissionPolicy::class);
-        Gate::policy(DominioEmail::class,   DominioEmailPolicy::class);
-        Gate::policy(Escola::class,         EscolaPolicy::class);
-        Gate::policy(Serie::class,          SeriePolicy::class);
-        Gate::policy(Turma::class,          TurmaPolicy::class);
-        Gate::policy(Aluno::class,          AlunoPolicy::class);
-        Gate::policy(Professor::class,      ProfessorPolicy::class);
+        Gate::policy(User::class, UserPolicy::class);
+        Gate::policy(Role::class, RolePolicy::class);
+        Gate::policy(Permission::class, PermissionPolicy::class);
+        Gate::policy(DominioEmail::class, DominioEmailPolicy::class);
+        Gate::policy(Escola::class, EscolaPolicy::class);
+        Gate::policy(Serie::class, SeriePolicy::class);
+        Gate::policy(Turma::class, TurmaPolicy::class);
+        Gate::policy(Aluno::class, AlunoPolicy::class);
+        Gate::policy(Professor::class, ProfessorPolicy::class);
         Gate::policy(TipoManutencao::class, TipoManutencaoPolicy::class);
-        Gate::policy(Pedido::class,         PedidoPolicy::class);
-        Gate::policy(PedidoArquivo::class,  PedidoArquivoPolicy::class);
-        Gate::policy(EquipeGestora::class,  EquipeGestoraPolicy::class);
-        Gate::policy(ComponenteCurricular::class,  ComponenteCurricularPolicy::class);
+        Gate::policy(Pedido::class, PedidoPolicy::class);
+        Gate::policy(PedidoArquivo::class, PedidoArquivoPolicy::class);
+        Gate::policy(EquipeGestora::class, EquipeGestoraPolicy::class);
+        Gate::policy(ComponenteCurricular::class, ComponenteCurricularPolicy::class);
         Gate::policy(FuncaoAdministrativa::class, FuncaoAdministrativaPolicy::class);
         Gate::policy(Item::class, ItemPolicy::class);
         Gate::policy(Setor::class, SetorPolicy::class);
@@ -88,14 +86,13 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Pauta::class, PautaPolicy::class);
         Gate::policy(Avaliacao::class, AvaliacaoPolicy::class);
 
-
         // ── Observers ──────────────────────────────────────────────────────────
         Pedido::observe(PedidoObserver::class);
         Professor::observe(ProfessorObserver::class);
         TurmaComponenteProfessor::observe(TurmaComponenteProfessorObserver::class);
 
         // ── Gates ──────────────────────────────────────────────────────────────
-        Gate::define('admin-only', fn($user) => $user->hasRole('Admin'));
+        Gate::define('admin-only', fn ($user) => $user->hasRole('Admin'));
 
         // ── Assets ─────────────────────────────────────────────────────────────
         $assetVersion = function (string $path): int {
@@ -105,18 +102,17 @@ class AppServiceProvider extends ServiceProvider
 
             return $modifiedAt ?: time();
         };
-        $selectFixJs = 'js/filament-modal-select-fix.js';
+
         $geralCss = 'css/geral.css';
 
         FilamentAsset::register([
-            Js::make('filament-modal-select-fix', asset($selectFixJs) . '?v=' . $assetVersion($selectFixJs)),
             Css::make('geral', asset($geralCss) . '?v=' . $assetVersion($geralCss)),
         ]);
 
         // ── Render Hooks ───────────────────────────────────────────────────────
         FilamentView::registerRenderHook(
             PanelsRenderHook::BODY_END,
-            fn() => view('components.open-url-listener'),
+            fn () => view('components.open-url-listener'),
         );
     }
 }
