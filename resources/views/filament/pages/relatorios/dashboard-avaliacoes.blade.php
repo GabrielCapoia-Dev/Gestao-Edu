@@ -1,4 +1,5 @@
 <x-filament-panels::page>
+    <div class="av-livewire-root">
     <div class="dav-page">
         <section class="dav-hero">
             <div class="dav-hero-grid"></div>
@@ -893,5 +894,5 @@
             }
         }
     </style>
+    </div>
 </x-filament-panels::page>
-

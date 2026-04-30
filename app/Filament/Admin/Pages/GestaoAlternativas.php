@@ -4,18 +4,15 @@ namespace App\Filament\Admin\Pages;
 
 use App\Models\Alternativa;
 use App\Models\TipoAvaliacao;
+use App\Models\User;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Actions\Action as TableAction;
-use Filament\Tables\Actions\BulkAction;
-use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
@@ -23,7 +20,6 @@ use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -65,7 +61,7 @@ class GestaoAlternativas extends Page implements HasTable
 
     public static function canAccess(): bool
     {
-        /** @var \App\Models\User|null $user */
+        /** @var User|null $user */
         $user = Auth::user();
 
         return $user?->hasPermissionTo('Listar Alternativas') ?? false;
@@ -156,13 +152,13 @@ class GestaoAlternativas extends Page implements HasTable
                     ->native(false),
             ])
             ->actions([
-                TableAction::make('editar')
+                Action::make('editar')
                     ->label('Editar')
                     ->icon(Heroicon::PencilSquare)
                     ->visible(fn (): bool => Auth::user()?->hasPermissionTo('Editar Alternativas') ?? false)
                     ->action(fn (Alternativa $record) => $this->abrirModalEdicao($record->getKey())),
 
-                TableAction::make('excluir')
+                Action::make('excluir')
                     ->label('Excluir')
                     ->icon(Heroicon::Trash)
                     ->color('danger')
@@ -170,61 +166,59 @@ class GestaoAlternativas extends Page implements HasTable
                     ->requiresConfirmation()
                     ->action(fn (Alternativa $record) => $this->excluirAlternativa($record->getKey())),
             ])
-            ->bulkActions([
-                BulkActionGroup::make([
-                    BulkAction::make('definirTipo')
-                        ->label('Definir tipo')
-                        ->icon(Heroicon::Tag)
-                        ->visible(fn (): bool => Auth::user()?->hasPermissionTo('Editar Alternativas') ?? false)
-                        ->form([
-                            Select::make('tipo_avaliacao_id')
-                                ->label('Tipo')
-                                ->options(fn (): array => TipoAvaliacao::query()
-                                    ->where('status', true)
-                                    ->orderBy('nome')
-                                    ->pluck('nome', 'id')
-                                    ->toArray()
+            ->groupedBulkActions([
+                BulkAction::make('definirTipo')
+                    ->label('Definir tipo')
+                    ->icon(Heroicon::Tag)
+                    ->visible(fn (): bool => Auth::user()?->hasPermissionTo('Editar Alternativas') ?? false)
+                    ->form([
+                        Select::make('tipo_avaliacao_id')
+                            ->label('Tipo')
+                            ->options(fn (): array => TipoAvaliacao::query()
+                                ->where('status', true)
+                                ->orderBy('nome')
+                                ->pluck('nome', 'id')
+                                ->toArray()
+                            )
+                            ->searchable()
+                            ->preload(),
+                        TextInput::make('novo_tipo_nome')
+                            ->label('Ou criar novo tipo')
+                            ->maxLength(255),
+                    ])
+                    ->action(function (array $data, $records): void {
+                        $ids = collect($records)->map(fn (Alternativa $record): int => (int) $record->getKey())->all();
+
+                        $novoTipoNome = Str::of((string) ($data['novo_tipo_nome'] ?? ''))->trim()->toString();
+                        $tipoAvaliacaoId = (int) ($data['tipo_avaliacao_id'] ?? 0);
+
+                        if ($novoTipoNome !== '') {
+                            $tipoAvaliacaoId = (int) TipoAvaliacao::query()
+                                ->firstOrCreate(
+                                    ['nome' => $novoTipoNome],
+                                    ['status' => true]
                                 )
-                                ->searchable()
-                                ->preload(),
-                            TextInput::make('novo_tipo_nome')
-                                ->label('Ou criar novo tipo')
-                                ->maxLength(255),
-                        ])
-                        ->action(function (array $data, $records): void {
-                            $ids = collect($records)->map(fn (Alternativa $record): int => (int) $record->getKey())->all();
+                                ->getKey();
+                        }
 
-                            $novoTipoNome = Str::of((string) ($data['novo_tipo_nome'] ?? ''))->trim()->toString();
-                            $tipoAvaliacaoId = (int) ($data['tipo_avaliacao_id'] ?? 0);
+                        if ($tipoAvaliacaoId <= 0) {
+                            throw ValidationException::withMessages([
+                                'tipo_avaliacao_id' => 'Selecione um tipo existente ou informe um novo tipo.',
+                            ]);
+                        }
 
-                            if ($novoTipoNome !== '') {
-                                $tipoAvaliacaoId = (int) TipoAvaliacao::query()
-                                    ->firstOrCreate(
-                                        ['nome' => $novoTipoNome],
-                                        ['status' => true]
-                                    )
-                                    ->getKey();
-                            }
+                        Alternativa::query()
+                            ->whereKey($ids)
+                            ->update([
+                                'tipo_avaliacao_id' => $tipoAvaliacaoId,
+                                'updated_at' => now(),
+                            ]);
 
-                            if ($tipoAvaliacaoId <= 0) {
-                                throw ValidationException::withMessages([
-                                    'tipo_avaliacao_id' => 'Selecione um tipo existente ou informe um novo tipo.',
-                                ]);
-                            }
-
-                            Alternativa::query()
-                                ->whereKey($ids)
-                                ->update([
-                                    'tipo_avaliacao_id' => $tipoAvaliacaoId,
-                                    'updated_at' => now(),
-                                ]);
-
-                            Notification::make()
-                                ->title('Tipo aplicado com sucesso.')
-                                ->success()
-                                ->send();
-                        }),
-                ]),
+                        Notification::make()
+                            ->title('Tipo aplicado com sucesso.')
+                            ->success()
+                            ->send();
+                    }),
             ])
             ->defaultSort('updated_at', 'desc');
     }
@@ -368,7 +362,7 @@ class GestaoAlternativas extends Page implements HasTable
                 return;
             }
         } else {
-            $alternativa = new Alternativa();
+            $alternativa = new Alternativa;
         }
 
         $temObservacao = (bool) ($validated['form']['tem_observacao'] ?? false);

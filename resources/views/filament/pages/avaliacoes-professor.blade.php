@@ -1,4 +1,5 @@
 <x-filament-panels::page>
+    <div class="av-livewire-root">
     <div class="gi-page av-page">
         <section class="gi-hero">
             <div>
@@ -273,4 +274,5 @@
     </div>
 
     @include('filament.pages.partials.avaliacoes-page-styles')
+    </div>
 </x-filament-panels::page>

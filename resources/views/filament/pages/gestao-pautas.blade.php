@@ -1,4 +1,5 @@
 <x-filament-panels::page>
+    <div class="av-livewire-root">
     {{ $this->table }}
 
     @if ($modalAberto)
@@ -155,4 +156,5 @@
     @endif
 
     @include('filament.pages.partials.avaliacoes-page-styles')
+    </div>
 </x-filament-panels::page>
