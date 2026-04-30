@@ -104,6 +104,62 @@
         grid-column: span 2;
     }
 
+    .av-modal-step-tabs {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        border-top: 1px solid var(--gray-200);
+        border-bottom: 1px solid var(--gray-200);
+        background: var(--gray-50);
+    }
+
+    .av-modal-step-tabs button {
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+        min-height: 3.15rem;
+        padding: 0.75rem 1.25rem;
+        border: 0;
+        border-right: 1px solid var(--gray-200);
+        background: transparent;
+        color: var(--gray-500);
+        font-size: var(--text-sm);
+        line-height: var(--text-sm--line-height);
+        font-weight: var(--font-weight-semibold);
+        text-align: left;
+        transition:
+            background-color 0.15s ease,
+            color 0.15s ease;
+    }
+
+    .av-modal-step-tabs button:last-child {
+        border-right: 0;
+    }
+
+    .av-modal-step-tabs button.is-active {
+        background: #fff;
+        color: var(--primary-700);
+    }
+
+    .av-tab-index {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.8rem;
+        height: 1.8rem;
+        flex: 0 0 auto;
+        border: 2px solid var(--gray-300);
+        border-radius: 999px;
+        color: var(--gray-500);
+        font-size: var(--text-xs);
+        line-height: 1;
+        font-weight: var(--font-weight-bold);
+    }
+
+    .av-modal-step-tabs button.is-active .av-tab-index {
+        border-color: var(--primary-600);
+        color: var(--primary-700);
+    }
+
     .av-form-section {
         display: grid;
         gap: 0.75rem;
@@ -475,6 +531,19 @@
     }
 
     @media (max-width: 48rem) {
+        .av-modal-step-tabs {
+            grid-template-columns: 1fr;
+        }
+
+        .av-modal-step-tabs button {
+            border-right: 0;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .av-modal-step-tabs button:last-child {
+            border-bottom: 0;
+        }
+
         .av-form-grid,
         .av-form-grid--three,
         .av-form-grid--two,
@@ -501,6 +570,31 @@
         border-color: var(--gray-800);
         background: var(--gray-900);
         color: var(--gray-300);
+    }
+
+    :root.dark .av-modal-step-tabs {
+        border-color: var(--gray-800);
+        background: var(--gray-900);
+    }
+
+    :root.dark .av-modal-step-tabs button {
+        border-color: var(--gray-800);
+        color: var(--gray-400);
+    }
+
+    :root.dark .av-modal-step-tabs button.is-active {
+        background: var(--gray-950);
+        color: var(--primary-200);
+    }
+
+    :root.dark .av-tab-index {
+        border-color: var(--gray-700);
+        color: var(--gray-400);
+    }
+
+    :root.dark .av-modal-step-tabs button.is-active .av-tab-index {
+        border-color: var(--primary-300);
+        color: var(--primary-200);
     }
 
     :root.dark .av-form-section--plain {

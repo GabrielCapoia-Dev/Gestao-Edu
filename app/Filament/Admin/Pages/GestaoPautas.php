@@ -56,6 +56,8 @@ class GestaoPautas extends Page implements HasForms, HasTable
 
     public ?int $pautaIdEditando = null;
 
+    public string $modalAbaPautas = 'configuracao';
+
     public array $form = [
         'tipo_avaliacao_id' => null,
         'textos' => [
@@ -346,6 +348,7 @@ class GestaoPautas extends Page implements HasForms, HasTable
 
         $this->resetForm();
         $this->pautaIdEditando = null;
+        $this->modalAbaPautas = 'configuracao';
         $this->modalAberto = true;
         $this->resetValidation();
     }
@@ -386,8 +389,28 @@ class GestaoPautas extends Page implements HasForms, HasTable
             'alternativas_ids' => $pauta->alternativas->pluck('id')->map(fn ($id) => (int) $id)->all(),
         ];
         $this->novasAlternativas = [];
+        $this->modalAbaPautas = 'configuracao';
         $this->modalAberto = true;
         $this->resetValidation();
+    }
+
+    public function abrirAbaPautas(string $aba): void
+    {
+        if (! in_array($aba, ['configuracao', 'textos'], true)) {
+            return;
+        }
+
+        $this->modalAbaPautas = $aba;
+    }
+
+    public function avancarParaTextosPautas(): void
+    {
+        $this->modalAbaPautas = 'textos';
+    }
+
+    public function voltarParaConfiguracaoPautas(): void
+    {
+        $this->modalAbaPautas = 'configuracao';
     }
 
     public function adicionarTextoPauta(): void
@@ -460,21 +483,31 @@ class GestaoPautas extends Page implements HasForms, HasTable
             return;
         }
 
-        $validated = $this->validate([
-            'form.tipo_avaliacao_id' => ['required', 'integer', 'exists:tipos_avaliacao,id'],
-            'form.textos' => ['required', 'array', 'min:1'],
-            'form.textos.*.texto' => ['nullable', 'string', 'max:2000'],
-            'form.serie_id' => ['required', 'integer', 'exists:series,id'],
-            'form.componente_curricular_id' => ['nullable', 'exists:componentes_curriculares,id'],
-            'form.status' => ['required', 'boolean'],
-            'form.alternativas_ids' => ['array'],
-            'form.alternativas_ids.*' => ['integer', 'exists:alternativas,id'],
-            'novasAlternativas' => ['array'],
-            'novasAlternativas.*.nome' => ['nullable', 'string', 'max:255'],
-            'novasAlternativas.*.tem_observacao' => ['required', 'boolean'],
-            'novasAlternativas.*.observacao' => ['nullable', 'string', 'max:1000'],
-            'novasAlternativas.*.status' => ['required', 'boolean'],
-        ]);
+        try {
+            $validated = $this->validate([
+                'form.tipo_avaliacao_id' => ['required', 'integer', 'exists:tipos_avaliacao,id'],
+                'form.textos' => ['required', 'array', 'min:1'],
+                'form.textos.*.texto' => ['nullable', 'string', 'max:2000'],
+                'form.serie_id' => ['required', 'integer', 'exists:series,id'],
+                'form.componente_curricular_id' => ['nullable', 'exists:componentes_curriculares,id'],
+                'form.status' => ['required', 'boolean'],
+                'form.alternativas_ids' => ['array'],
+                'form.alternativas_ids.*' => ['integer', 'exists:alternativas,id'],
+                'novasAlternativas' => ['array'],
+                'novasAlternativas.*.nome' => ['nullable', 'string', 'max:255'],
+                'novasAlternativas.*.tem_observacao' => ['required', 'boolean'],
+                'novasAlternativas.*.observacao' => ['nullable', 'string', 'max:1000'],
+                'novasAlternativas.*.status' => ['required', 'boolean'],
+            ]);
+        } catch (ValidationException $exception) {
+            $this->modalAbaPautas = collect($exception->validator->errors()->keys())->contains(
+                fn (string $key): bool => str_starts_with($key, 'form.textos')
+            )
+                ? 'textos'
+                : 'configuracao';
+
+            throw $exception;
+        }
 
         $textosPautas = collect($validated['form']['textos'] ?? [])
             ->map(fn (array $item): string => trim((string) ($item['texto'] ?? '')))
@@ -482,6 +515,7 @@ class GestaoPautas extends Page implements HasForms, HasTable
             ->values();
 
         if ($textosPautas->isEmpty()) {
+            $this->modalAbaPautas = 'textos';
             $this->addError('form.textos.0.texto', 'Informe ao menos um texto de pauta.');
 
             return;
@@ -520,6 +554,7 @@ class GestaoPautas extends Page implements HasForms, HasTable
             ->count();
 
         if ($alternativasIncompativeisComTipo > 0) {
+            $this->modalAbaPautas = 'configuracao';
             $this->addError('form.alternativas_ids', 'Selecione apenas alternativas do mesmo tipo da pauta.');
 
             return;
