@@ -202,6 +202,11 @@
         justify-content: flex-end;
     }
 
+    .av-override-select {
+        grid-column: span 2;
+        min-width: min(22rem, 100%);
+    }
+
     .av-filament-scope-form {
         display: grid;
         gap: 0.75rem;
@@ -560,6 +565,10 @@
         }
 
         .av-span-2 {
+            grid-column: span 1;
+        }
+
+        .av-override-select {
             grid-column: span 1;
         }
     }

@@ -6,10 +6,11 @@ use App\Models\Alternativa;
 use App\Models\Avaliacao;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
-use App\Models\PeriodoAvaliacao;
 use App\Models\Pauta;
+use App\Models\PeriodoAvaliacao;
 use App\Models\Serie;
 use App\Models\TipoAvaliacao;
+use App\Models\User;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
@@ -19,15 +20,15 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use UnitEnum;
 
 class GestaoAvaliacoes extends Page implements HasForms, HasTable
@@ -70,7 +71,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
 
     public static function canAccess(): bool
     {
-        /** @var \App\Models\User|null $user */
+        /** @var User|null $user */
         $user = Auth::user();
 
         return $user?->hasPermissionTo('Listar Avaliações') ?? false;
@@ -182,6 +183,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
     {
         return [
             'escopoForm',
+            'alternativasOverrideForm',
         ];
     }
 
@@ -227,9 +229,36 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
             ->statePath('form');
     }
 
+    public function alternativasOverrideForm(Schema $schema): Schema
+    {
+        $components = $this->pautasCarregadas
+            ->map(fn (Pauta $pauta): Select => Select::make("alternativas_override.{$pauta->id}")
+                ->key($this->alternativasOverrideComponentKey((int) $pauta->id))
+                ->label('Alternativas de override')
+                ->helperText('Selecione uma ou mais alternativas para esta pauta apenas nesta avaliacao.')
+                ->options(fn (): array => $this->alternativasAtivasOptions)
+                ->multiple()
+                ->native(false)
+                ->searchable()
+                ->preload()
+                ->live())
+            ->values()
+            ->all();
+
+        return $schema
+            ->components($components)
+            ->statePath('form');
+    }
+
+    public function alternativasOverrideComponentKey(int $pautaId): string
+    {
+        return "override_{$pautaId}";
+    }
+
     public function updatedFormTipoAvaliacaoId(): void
     {
         $this->sincronizarOverridesPautasComFiltros();
+        $this->limparCacheAlternativasOverrideForm();
     }
 
     public function updatedFormSeriesIds(): void
@@ -244,6 +273,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
         $this->sincronizarComponentesSelecionadosComFiltros();
         $this->sincronizarEscolasSelecionadasComFiltros();
         $this->sincronizarOverridesPautasComFiltros();
+        $this->limparCacheAlternativasOverrideForm();
     }
 
     public function updatedFormComponentesIds(): void
@@ -257,6 +287,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
 
         $this->sincronizarEscolasSelecionadasComFiltros();
         $this->sincronizarOverridesPautasComFiltros();
+        $this->limparCacheAlternativasOverrideForm();
     }
 
     public function updatedFormEscolasIds(): void
@@ -360,7 +391,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
                 $label = $alternativa->nome;
 
                 if ($alternativa->tipo?->nome) {
-                    $label .= ' | ' . $alternativa->tipo->nome;
+                    $label .= ' | '.$alternativa->tipo->nome;
                 }
 
                 if ($alternativa->tem_observacao) {
@@ -385,6 +416,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
 
         $this->resetForm();
         $this->avaliacaoIdEditando = null;
+        $this->limparCacheAlternativasOverrideForm();
         $this->modalAberto = true;
         $this->resetValidation();
     }
@@ -437,6 +469,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
         $this->sincronizarEscolasSelecionadasComFiltros();
         $this->sincronizarOverridesPautasComFiltros();
         $this->preencherOverridesExistentes($avaliacao->id);
+        $this->limparCacheAlternativasOverrideForm();
 
         $this->modalAberto = true;
         $this->resetValidation();
@@ -478,7 +511,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
             'form.novo_periodo_nome' => ['nullable', 'string', 'max:255'],
             'form.data_inicio' => ['required', 'date'],
             'form.data_fim' => ['required', 'date', 'after_or_equal:form.data_inicio'],
-            'form.status' => ['required', 'in:' . implode(',', $statusOptions)],
+            'form.status' => ['required', 'in:'.implode(',', $statusOptions)],
             'form.series_ids' => ['required', 'array', 'min:1'],
             'form.series_ids.*' => ['integer', 'exists:series,id'],
             'form.componentes_ids' => ['required', 'array', 'min:1'],
@@ -569,7 +602,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
             if (! $overrideHabilitado) {
                 if ($alternativasTipoIds === []) {
                     $this->addError(
-                        'form.pautas_override_habilitado.' . $pautaId,
+                        'form.pautas_override_habilitado.'.$pautaId,
                         'O tipo selecionado não possui alternativas ativas. Defina um override nesta pauta.'
                     );
 
@@ -588,7 +621,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
 
             if ($alternativasOverrideIds === []) {
                 $this->addError(
-                    'form.alternativas_override.' . $pautaId,
+                    'form.alternativas_override.'.$pautaId,
                     'Selecione pelo menos uma alternativa para o override desta pauta.'
                 );
 
@@ -602,7 +635,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
 
             if (count($alternativasValidas) !== count($alternativasOverrideIds)) {
                 $this->addError(
-                    'form.alternativas_override.' . $pautaId,
+                    'form.alternativas_override.'.$pautaId,
                     'O override contém alternativas inválidas ou inativas.'
                 );
 
@@ -639,7 +672,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
                     throw new \RuntimeException('Avaliação não encontrada para edição.');
                 }
             } else {
-                $avaliacao = new Avaliacao();
+                $avaliacao = new Avaliacao;
             }
 
             $avaliacao->fill([
@@ -739,6 +772,11 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
                 ->values()
                 ->all();
         }
+    }
+
+    private function limparCacheAlternativasOverrideForm(): void
+    {
+        unset($this->cachedSchemas['alternativasOverrideForm']);
     }
 
     private function resetForm(): void
@@ -924,6 +962,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
         $this->form['pautas_override_habilitado'] = $overridesAtivos;
         $this->form['alternativas_override'] = $alternativasOverrides;
     }
+
     public function getTitle(): string
     {
         return '';

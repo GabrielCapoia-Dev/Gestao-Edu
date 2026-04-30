@@ -353,7 +353,7 @@
                                         <span>Alternativas nesta pauta</span>
                                         <select wire:model.live="form.pautas_override_habilitado.{{ $pauta->id }}">
                                             <option value="0">Usar alternativas do tipo</option>
-                                            <option value="1">Substituir nesta avaliacao</option>
+                                            <option value="1">Substituir nessa avaliacao</option>
                                         </select>
                                         @error('form.pautas_override_habilitado.' . $pauta->id)
                                             <p class="error">{{ $message }}</p>
@@ -361,17 +361,9 @@
                                     </label>
 
                                     @if ($overrideHabilitado)
-                                        <label class="gi-field">
-                                            <span>Alternativas de override</span>
-                                            <select multiple wire:model="form.alternativas_override.{{ $pauta->id }}">
-                                                @foreach ($this->alternativasAtivasOptions as $alternativaId => $alternativaLabel)
-                                                    <option value="{{ $alternativaId }}">{{ $alternativaLabel }}</option>
-                                                @endforeach
-                                            </select>
-                                            @error('form.alternativas_override.' . $pauta->id)
-                                                <p class="error">{{ $message }}</p>
-                                            @enderror
-                                        </label>
+                                        <div class="av-filament-scope-form av-override-select">
+                                            {{ $this->getSchemaComponent('alternativasOverrideForm.' . $this->alternativasOverrideComponentKey((int) $pauta->id)) }}
+                                        </div>
                                     @endif
                                 </div>
                             @endforeach
