@@ -129,8 +129,6 @@
         <audio data-notification-sound preload="auto">
             <source src="{{ $soundUrl }}" type="audio/mpeg">
         </audio>
-            </button>
-        </div>
 
         @if($canCreateNotifications)
             <div class="nc-modal" data-create-modal hidden aria-hidden="true">
@@ -215,7 +213,6 @@
                 </form>
             </div>
         @endif
-    </div>
 
     <style>
         .notification-center,
@@ -1309,4 +1306,5 @@
             }, 10000);
         })();
     </script>
+    </div>
 </x-filament-panels::page>
