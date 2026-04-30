@@ -202,6 +202,38 @@
         justify-content: flex-end;
     }
 
+    .av-segmented-control {
+        display: inline-grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        padding: 0.2rem;
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius-lg);
+        background: var(--gray-100);
+    }
+
+    .av-segmented-control button {
+        min-height: 2.25rem;
+        padding: 0.45rem 0.85rem;
+        border: 0;
+        border-radius: calc(var(--radius-lg) - 0.2rem);
+        background: transparent;
+        color: var(--gray-600);
+        font-size: var(--text-sm);
+        line-height: var(--text-sm--line-height);
+        font-weight: var(--font-weight-semibold);
+        white-space: nowrap;
+        transition:
+            background-color 0.15s ease,
+            color 0.15s ease,
+            box-shadow 0.15s ease;
+    }
+
+    .av-segmented-control button.is-active {
+        background: #fff;
+        color: var(--primary-700);
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+    }
+
     .av-override-select {
         grid-column: span 2;
         min-width: min(22rem, 100%);
@@ -404,6 +436,24 @@
         padding-top: 0.15rem;
     }
 
+    .av-aluno-componente {
+        display: grid;
+        gap: 0.65rem;
+    }
+
+    .av-aluno-componente + .av-aluno-componente {
+        padding-top: 0.85rem;
+        border-top: 1px solid var(--gray-200);
+    }
+
+    .av-aluno-componente h4 {
+        margin: 0;
+        color: var(--gray-950);
+        font-size: var(--text-sm);
+        line-height: var(--text-sm--line-height);
+        font-weight: var(--font-weight-semibold);
+    }
+
     .av-pauta-title {
         margin: 0;
         color: var(--gray-950);
@@ -560,6 +610,10 @@
             grid-template-columns: 1fr;
         }
 
+        .av-segmented-control {
+            width: 100%;
+        }
+
         .av-pauta-toggle {
             grid-template-columns: 1fr;
         }
@@ -610,12 +664,28 @@
         background: var(--gray-950);
     }
 
+    :root.dark .av-segmented-control {
+        border-color: var(--gray-800);
+        background: var(--gray-950);
+    }
+
+    :root.dark .av-segmented-control button {
+        color: var(--gray-400);
+    }
+
+    :root.dark .av-segmented-control button.is-active {
+        background: var(--gray-800);
+        color: var(--primary-200);
+        box-shadow: none;
+    }
+
     :root.dark .av-repeater-item + .av-repeater-item {
         border-color: var(--gray-800);
     }
 
     :root.dark .av-total-card strong,
     :root.dark .av-form-section h4,
+    :root.dark .av-aluno-componente h4,
     :root.dark .av-pauta-title {
         color: #fff;
     }
@@ -699,6 +769,10 @@
         border-color: color-mix(in oklab, var(--warning-400) 40%, var(--gray-700));
         background: color-mix(in oklab, var(--warning-800) 24%, var(--gray-950));
         color: var(--warning-200);
+    }
+
+    :root.dark .av-aluno-componente + .av-aluno-componente {
+        border-color: var(--gray-800);
     }
 
     :root.dark .av-saving-indicator {

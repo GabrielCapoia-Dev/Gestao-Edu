@@ -2,13 +2,14 @@
 
 namespace App\Filament\Admin\Pages;
 
-use App\Models\Aluno;
 use App\Models\Alternativa;
+use App\Models\Aluno;
 use App\Models\Avaliacao;
 use App\Models\AvaliacaoInformacaoComplementar;
 use App\Models\AvaliacaoResposta;
 use App\Models\Pauta;
 use App\Models\TurmaComponenteProfessor;
+use App\Models\User;
 use BackedEnum;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -21,7 +22,9 @@ use UnitEnum;
 class AvaliacoesProfessor extends Page
 {
     private const PERMISSAO_LISTAR_AVALIACOES = 'Listar Avaliações';
+
     private const PERMISSAO_RESPONDER_AVALIACOES = 'Responder Avaliações';
+
     private const PERMISSAO_EXPORTAR_AVALIACOES = 'Exportar Avaliações';
 
     protected string $view = 'filament.pages.avaliacoes-professor';
@@ -52,6 +55,10 @@ class AvaliacoesProfessor extends Page
 
     public array $pautasExpandidas = [];
 
+    public array $alunosExpandidos = [];
+
+    public string $visualizacao = 'pautas';
+
     public array $professorIds = [];
 
     public array $componentesPorTurma = [];
@@ -60,7 +67,7 @@ class AvaliacoesProfessor extends Page
 
     public static function canAccess(): bool
     {
-        /** @var \App\Models\User|null $user */
+        /** @var User|null $user */
         $user = Auth::user();
 
         if (! $user) {
@@ -76,7 +83,7 @@ class AvaliacoesProfessor extends Page
 
     public function podeResponder(): bool
     {
-        /** @var \App\Models\User|null $user */
+        /** @var User|null $user */
         $user = Auth::user();
 
         return $user?->hasPermissionTo(self::PERMISSAO_RESPONDER_AVALIACOES) ?? false;
@@ -84,7 +91,7 @@ class AvaliacoesProfessor extends Page
 
     public function podeExportar(): bool
     {
-        /** @var \App\Models\User|null $user */
+        /** @var User|null $user */
         $user = Auth::user();
 
         return $user?->hasPermissionTo(self::PERMISSAO_EXPORTAR_AVALIACOES) ?? false;
@@ -92,7 +99,7 @@ class AvaliacoesProfessor extends Page
 
     private function deveFiltrarPorProfessor(): bool
     {
-        /** @var \App\Models\User|null $user */
+        /** @var User|null $user */
         $user = Auth::user();
 
         if (! $user) {
@@ -160,6 +167,7 @@ class AvaliacoesProfessor extends Page
         $this->alternativasPorPauta = [];
         $this->avaliacaoEmMassa = [];
         $this->pautasExpandidas = [];
+        $this->alunosExpandidos = [];
     }
 
     public function updatedTurma(): void
@@ -169,11 +177,21 @@ class AvaliacoesProfessor extends Page
         $this->alternativasPorPauta = [];
         $this->avaliacaoEmMassa = [];
         $this->pautasExpandidas = [];
+        $this->alunosExpandidos = [];
 
         if ($this->avaliacao && $this->turma) {
             $this->carregarRespostas();
             $this->carregarInformacoesComplementares();
         }
+    }
+
+    public function definirVisualizacao(string $visualizacao): void
+    {
+        if (! in_array($visualizacao, ['pautas', 'alunos'], true)) {
+            return;
+        }
+
+        $this->visualizacao = $visualizacao;
     }
 
     public function alternarPauta(int $pautaId): void
@@ -193,6 +211,25 @@ class AvaliacoesProfessor extends Page
     public function pautaEstaExpandida(int $pautaId): bool
     {
         return in_array($pautaId, $this->pautasExpandidas, true);
+    }
+
+    public function alternarAluno(int $alunoId): void
+    {
+        $indice = array_search($alunoId, $this->alunosExpandidos, true);
+
+        if ($indice !== false) {
+            unset($this->alunosExpandidos[$indice]);
+            $this->alunosExpandidos = array_values($this->alunosExpandidos);
+
+            return;
+        }
+
+        $this->alunosExpandidos[] = $alunoId;
+    }
+
+    public function alunoEstaExpandido(int $alunoId): bool
+    {
+        return in_array($alunoId, $this->alunosExpandidos, true);
     }
 
     public function updated(string $name): void
@@ -278,6 +315,7 @@ class AvaliacoesProfessor extends Page
 
             if ($temObservacao && $observacaoInformada === '') {
                 $alunosComPendencia[] = (int) $aluno->id;
+
                 continue;
             }
 
@@ -315,7 +353,7 @@ class AvaliacoesProfessor extends Page
         });
 
         $mensagemPendencia = count($alunosComPendencia) > 0
-            ? count($alunosComPendencia) . ' aluno(s) ainda precisam preencher observação para concluir o salvamento.'
+            ? count($alunosComPendencia).' aluno(s) ainda precisam preencher observação para concluir o salvamento.'
             : null;
 
         Notification::make()
@@ -368,6 +406,7 @@ class AvaliacoesProfessor extends Page
 
                 if (! $alternativa) {
                     $faltandoResposta++;
+
                     continue;
                 }
 
@@ -376,6 +415,7 @@ class AvaliacoesProfessor extends Page
 
                 if ($temObservacao && $observacaoInformada === '') {
                     $faltandoObservacao++;
+
                     continue;
                 }
 
@@ -468,7 +508,7 @@ class AvaliacoesProfessor extends Page
             ->whereIn('aluno_id', $alunosIds)
             ->with(['alternativa:id,nome'])
             ->get()
-            ->keyBy(fn (AvaliacaoResposta $resposta): string => $resposta->pauta_id . '-' . $resposta->aluno_id);
+            ->keyBy(fn (AvaliacaoResposta $resposta): string => $resposta->pauta_id.'-'.$resposta->aluno_id);
 
         $informacoesComplementares = AvaliacaoInformacaoComplementar::query()
             ->where('avaliacao_id', (int) $this->avaliacaoAtual->id)
@@ -489,7 +529,7 @@ class AvaliacoesProfessor extends Page
             now()->format('Ymd_His')
         );
 
-        return response()->streamDownload(function () use ($avaliacaoId, $avaliacaoNome, $turmaAtual, $turmaId, $turmaNome, $pautas, $alunos, $respostas, $informacoesComplementares): void {
+        return response()->streamDownload(function () use ($avaliacaoId, $avaliacaoNome, $turmaId, $turmaNome, $pautas, $alunos, $respostas, $informacoesComplementares): void {
             echo "\xEF\xBB\xBF";
 
             $out = fopen('php://output', 'w');
@@ -521,7 +561,7 @@ class AvaliacoesProfessor extends Page
 
             foreach ($alunos as $aluno) {
                 foreach ($pautas as $pauta) {
-                    $chave = $pauta->id . '-' . $aluno->id;
+                    $chave = $pauta->id.'-'.$aluno->id;
                     $resposta = $respostas->get($chave);
                     $alternativa = $resposta?->alternativa;
                     $info = $informacoesComplementares->get((int) $aluno->id);
@@ -711,9 +751,51 @@ class AvaliacoesProfessor extends Page
         return $progresso;
     }
 
+    public function getProgressoPorAlunoProperty(): array
+    {
+        $pautas = $this->pautasDisponiveis;
+        $alunos = $this->alunosDaTurma;
+
+        if ($pautas->isEmpty() || $alunos->isEmpty()) {
+            return [];
+        }
+
+        $progresso = [];
+
+        foreach ($alunos as $aluno) {
+            $total = $pautas->count();
+            $preenchidas = 0;
+
+            foreach ($pautas as $pauta) {
+                if ($this->respostaEstaCompleta($pauta, (int) $aluno->id)) {
+                    $preenchidas++;
+                }
+            }
+
+            $percentual = $total > 0
+                ? min(100, (int) round(($preenchidas / $total) * 100))
+                : 0;
+
+            $progresso[$aluno->id] = [
+                'preenchidas' => $preenchidas,
+                'total' => $total,
+                'percentual' => $percentual,
+                'concluida' => $total > 0 && $preenchidas === $total,
+            ];
+        }
+
+        return $progresso;
+    }
+
+    public function getPautasAgrupadasPorComponenteProperty(): Collection
+    {
+        return $this->pautasDisponiveis
+            ->groupBy(fn (Pauta $pauta): string => $pauta->componente?->nome ?? 'Geral (sem componente especifico)');
+    }
+
     private function sincronizarVinculosProfessor(): void
     {
-        /** @var \App\Models\User|null $user */
+        /** @var User|null $user */
         $user = Auth::user();
 
         if (! $user) {
@@ -800,7 +882,7 @@ class AvaliacoesProfessor extends Page
             ->whereIn('pauta_id', $pautas->pluck('id')->all())
             ->whereIn('aluno_id', $alunos->pluck('id')->all())
             ->get()
-            ->keyBy(fn (AvaliacaoResposta $resposta): string => $resposta->pauta_id . '-' . $resposta->aluno_id);
+            ->keyBy(fn (AvaliacaoResposta $resposta): string => $resposta->pauta_id.'-'.$resposta->aluno_id);
 
         $respostas = [];
         $avaliacaoEmMassa = [];
@@ -809,7 +891,7 @@ class AvaliacoesProfessor extends Page
             $avaliacaoEmMassa[$pauta->id] = null;
 
             foreach ($alunos as $aluno) {
-                $chave = $pauta->id . '-' . $aluno->id;
+                $chave = $pauta->id.'-'.$aluno->id;
                 $resposta = $respostasExistentes->get($chave);
 
                 $respostas[$pauta->id][$aluno->id] = [
