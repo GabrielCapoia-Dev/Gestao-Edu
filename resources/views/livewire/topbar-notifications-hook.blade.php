@@ -68,6 +68,10 @@
         <x-heroicon-o-bell />
         <span class="notification-badge" data-notification-badge hidden>0</span>
     </a>
+
+    <audio data-notification-topbar-sound preload="auto">
+        <source src="{{ asset('sons/som-notificacao.MP3') }}" type="audio/mpeg">
+    </audio>
 </div>
 
 <script>
@@ -78,11 +82,36 @@
 
         window.__gestaoEduNotificationTopbarReady = true;
 
+        let lastChangeToken = null;
+        let soundReady = false;
+
         const updateBadges = (count) => {
             document.querySelectorAll('[data-notification-badge]').forEach((badge) => {
                 badge.hidden = count < 1;
                 badge.textContent = count > 99 ? '99+' : String(count);
             });
+        };
+
+        const playSound = () => {
+            const topbar = document.querySelector('[data-notification-topbar]');
+            const audio = topbar?.querySelector('[data-notification-topbar-sound]');
+            const now = Date.now();
+
+            if (!audio || !soundReady) {
+                return;
+            }
+
+            if (window.__gestaoEduSuppressNotificationSoundUntil && now < window.__gestaoEduSuppressNotificationSoundUntil) {
+                return;
+            }
+
+            if (window.__gestaoEduLastNotificationSoundAt && now - window.__gestaoEduLastNotificationSoundAt < 3000) {
+                return;
+            }
+
+            window.__gestaoEduLastNotificationSoundAt = now;
+            audio.currentTime = 0;
+            audio.play().catch(() => {});
         };
 
         const refresh = async () => {
@@ -107,6 +136,16 @@
 
                 const data = await response.json();
                 updateBadges(Number(data.unread ?? 0));
+
+                if (lastChangeToken === null) {
+                    lastChangeToken = data.change_token ?? null;
+                    return;
+                }
+
+                if (data.change_token && data.change_token !== lastChangeToken) {
+                    lastChangeToken = data.change_token;
+                    playSound();
+                }
             } catch (error) {
                 //
             }
@@ -116,7 +155,15 @@
             updateBadges(Number(event.detail?.unread ?? 0));
         });
 
+        window.addEventListener('pointerdown', () => {
+            soundReady = true;
+        }, { once: true });
+
+        window.addEventListener('keydown', () => {
+            soundReady = true;
+        }, { once: true });
+
         refresh();
-        setInterval(refresh, 5000);
+        setInterval(refresh, 10000);
     })();
 </script>

@@ -52,6 +52,7 @@ class PedidoCriacaoForm
                         FileUpload::make('arquivos')
                             ->label('Fotos do Problema')
                             ->multiple()
+                            ->required()
                             ->image()
                             ->maxFiles(10)
                             ->maxSize(5120)

@@ -47,6 +47,7 @@ class CentralNotificacoes extends Page
                 'markAllRead' => route('notifications.markAllRead'),
                 'markReadBase' => url('/admin/notifications'),
             ],
+            'soundUrl' => asset('sons/som-notificacao.MP3'),
         ];
     }
 }

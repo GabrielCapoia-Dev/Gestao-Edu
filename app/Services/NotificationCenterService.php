@@ -115,30 +115,42 @@ class NotificationCenterService
     public function payload(User $user, array $filters): array
     {
         $mode = $this->normalizeMode($filters['modo'] ?? 'todas', $user);
-        $limit = $this->normalizeLimit($filters['limite'] ?? 35);
+        $page = $this->normalizePage($filters['page'] ?? 1);
+        $perPage = $this->normalizePerPage($filters['per_page'] ?? 18);
+        $stats = $this->stats($user);
 
         if ($mode === 'enviadas') {
             $query = $this->enviosQuery($filters);
-            $records = $query->limit($limit + 1)->get();
+            $total = (clone $query)->count();
+            $pagination = $this->pagination($page, $perPage, $total);
+            $records = $query
+                ->offset(($pagination['page'] - 1) * $perPage)
+                ->limit($perPage)
+                ->get();
 
             return [
                 'mode' => $mode,
-                'stats' => $this->stats($user),
-                'items' => $records->take($limit)->map(fn (NotificacaoEnvio $envio): array => $this->formatarEnvio($envio))->values(),
-                'has_more' => $records->count() > $limit,
+                'stats' => $stats,
+                'items' => $records->map(fn (NotificacaoEnvio $envio): array => $this->formatarEnvio($envio))->values(),
+                'pagination' => $pagination,
                 'can_create' => $this->canCreate($user),
                 'server_time' => now()->toIso8601String(),
             ];
         }
 
         $query = $this->notificationQuery($user, $filters, $mode);
-        $records = $query->limit($limit + 1)->get();
+        $total = (clone $query)->count();
+        $pagination = $this->pagination($page, $perPage, $total);
+        $records = $query
+            ->offset(($pagination['page'] - 1) * $perPage)
+            ->limit($perPage)
+            ->get();
 
         return [
             'mode' => $mode,
-            'stats' => $this->stats($user),
-            'items' => $records->take($limit)->map(fn (object $notification): array => $this->formatarNotificacao($notification))->values(),
-            'has_more' => $records->count() > $limit,
+            'stats' => $stats,
+            'items' => $records->map(fn (object $notification): array => $this->formatarNotificacao($notification))->values(),
+            'pagination' => $pagination,
             'can_create' => $this->canCreate($user),
             'server_time' => now()->toIso8601String(),
         ];
@@ -146,20 +158,41 @@ class NotificationCenterService
 
     public function stats(User $user): array
     {
-        $base = $this->notificationBaseQuery($user);
+        $row = $this->notificationBaseQuery($user)
+            ->selectRaw('count(*) as total')
+            ->selectRaw('sum(case when read_at is null then 1 else 0 end) as ativas')
+            ->selectRaw('sum(case when read_at is not null then 1 else 0 end) as historico')
+            ->selectRaw('sum(case when created_at >= ? then 1 else 0 end) as hoje', [now()->startOfDay()])
+            ->selectRaw('sum(case when read_at is null and data like ? then 1 else 0 end) as urgentes', ['%"prioridade":"urgente"%'])
+            ->selectRaw('max(updated_at) as latest_updated_at')
+            ->first();
+
+        $total = (int) ($row->total ?? 0);
+        $ativas = (int) ($row->ativas ?? 0);
+        $historico = (int) ($row->historico ?? 0);
+        $hoje = (int) ($row->hoje ?? 0);
+        $urgentes = (int) ($row->urgentes ?? 0);
+        $latestUpdatedAt = (string) ($row->latest_updated_at ?? '');
+        $enviadas = $this->canCreate($user)
+            ? NotificacaoEnvio::query()->count()
+            : 0;
 
         return [
-            'total' => (clone $base)->count(),
-            'ativas' => (clone $base)->whereNull('read_at')->count(),
-            'historico' => (clone $base)->whereNotNull('read_at')->count(),
-            'hoje' => (clone $base)->where('created_at', '>=', now()->startOfDay())->count(),
-            'urgentes' => (clone $base)
-                ->whereNull('read_at')
-                ->where('data', 'like', '%"prioridade":"urgente"%')
-                ->count(),
-            'enviadas' => $this->canCreate($user)
-                ? NotificacaoEnvio::query()->count()
-                : 0,
+            'total' => $total,
+            'ativas' => $ativas,
+            'historico' => $historico,
+            'hoje' => $hoje,
+            'urgentes' => $urgentes,
+            'enviadas' => $enviadas,
+            'change_token' => sha1(implode('|', [
+                $total,
+                $ativas,
+                $historico,
+                $hoje,
+                $urgentes,
+                $enviadas,
+                $latestUpdatedAt,
+            ])),
         ];
     }
 
@@ -499,9 +532,31 @@ class NotificationCenterService
         return $mode;
     }
 
-    private function normalizeLimit(mixed $limit): int
+    private function pagination(int $page, int $perPage, int $total): array
     {
-        return max(10, min(150, (int) $limit));
+        $lastPage = max(1, (int) ceil($total / $perPage));
+        $page = min($page, $lastPage);
+
+        return [
+            'page' => $page,
+            'per_page' => $perPage,
+            'total' => $total,
+            'last_page' => $lastPage,
+            'from' => $total === 0 ? 0 : (($page - 1) * $perPage) + 1,
+            'to' => min($total, $page * $perPage),
+            'has_previous' => $page > 1,
+            'has_next' => $page < $lastPage,
+        ];
+    }
+
+    private function normalizePage(mixed $page): int
+    {
+        return max(1, (int) $page);
+    }
+
+    private function normalizePerPage(mixed $perPage): int
+    {
+        return max(9, min(60, (int) $perPage));
     }
 
     private function likeNeedle(string $value): string

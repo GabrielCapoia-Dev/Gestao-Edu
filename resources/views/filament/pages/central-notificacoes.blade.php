@@ -111,10 +111,24 @@
 
         <div class="nc-list" data-list></div>
 
-        <div class="nc-more" data-more hidden>
-            <button type="button" class="nc-action nc-action--ghost" data-action="load-more">
-                <x-heroicon-o-arrow-down-circle />
-                <span>Carregar mais</span>
+        <div class="nc-pagination" data-pagination hidden>
+            <span data-pagination-label>0 registros</span>
+            <div class="nc-pagination__actions">
+                <button type="button" class="nc-action nc-action--ghost" data-action="previous-page">
+                    <x-heroicon-o-chevron-left />
+                    <span>Anterior</span>
+                </button>
+                <strong data-pagination-page>1 / 1</strong>
+                <button type="button" class="nc-action nc-action--ghost" data-action="next-page">
+                    <span>Próxima</span>
+                    <x-heroicon-o-chevron-right />
+                </button>
+            </div>
+        </div>
+
+        <audio data-notification-sound preload="auto">
+            <source src="{{ $soundUrl }}" type="audio/mpeg">
+        </audio>
             </button>
         </div>
 
@@ -593,7 +607,7 @@
         }
 
         .nc-status[hidden],
-        .nc-more[hidden],
+        .nc-pagination[hidden],
         .nc-modal[hidden],
         [hidden] {
             display: none !important;
@@ -627,9 +641,71 @@
             color: var(--nc-ink);
         }
 
-        .nc-more {
+        .nc-pagination {
             display: flex;
-            justify-content: center;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 10px 12px;
+            border: 1px solid var(--nc-line);
+            border-radius: 8px;
+            background: #fff;
+            color: var(--nc-muted);
+            font-size: .82rem;
+            font-weight: 700;
+        }
+
+        .nc-pagination__actions {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nc-pagination__actions strong {
+            min-width: 68px;
+            text-align: center;
+            color: var(--nc-ink);
+            font-size: .84rem;
+        }
+
+        .nc-card.is-updating {
+            position: relative;
+            opacity: .72;
+            transform: scale(.995);
+            transition: opacity .16s ease, transform .16s ease;
+        }
+
+        .nc-card.is-updating::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 8px;
+            background: rgba(238, 244, 255, .5);
+            pointer-events: none;
+        }
+
+        .nc-card.is-done {
+            animation: nc-done .45s ease;
+        }
+
+        @keyframes nc-done {
+            0% {
+                box-shadow: 0 0 0 0 rgba(15, 118, 110, .28);
+            }
+
+            100% {
+                box-shadow: 0 0 0 8px rgba(15, 118, 110, 0);
+            }
+        }
+
+        .nc-card .nc-action.is-loading {
+            background: var(--nc-primary);
+            color: #fff;
+            pointer-events: none;
+        }
+
+        .nc-card .nc-action.is-loading svg {
+            animation: nc-spin .7s linear infinite;
         }
 
         .nc-modal {
@@ -760,6 +836,7 @@
             const config = @js([
                 'endpoints' => $endpoints,
                 'canCreate' => $canCreateNotifications,
+                'soundUrl' => $soundUrl,
             ]);
 
             const state = {
@@ -767,20 +844,27 @@
                 busca: '',
                 prioridade: 'todas',
                 periodo: '30',
-                limite: 35,
+                page: 1,
+                per_page: 18,
             };
 
             const csrf = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
             const list = root.querySelector('[data-list]');
             const status = root.querySelector('[data-status]');
             const statusText = root.querySelector('[data-status-text]');
-            const more = root.querySelector('[data-more]');
+            const pagination = root.querySelector('[data-pagination]');
+            const paginationLabel = root.querySelector('[data-pagination-label]');
+            const paginationPage = root.querySelector('[data-pagination-page]');
             const markAllButton = root.querySelector('[data-action="mark-all-read"]');
+            const audio = root.querySelector('[data-notification-sound]');
             const modal = root.querySelector('[data-create-modal]');
             const form = root.querySelector('[data-create-form]');
             const formError = root.querySelector('[data-form-error]');
             let searchTimer = null;
             let loadVersion = 0;
+            let lastChangeToken = null;
+            let soundReady = false;
+            let suppressNextSound = false;
 
             const escapeHtml = (value) => String(value ?? '')
                 .replaceAll('&', '&amp;')
@@ -809,6 +893,43 @@
                 window.dispatchEvent(new CustomEvent('gestaoedu:notifications-count', {
                     detail: { unread: count },
                 }));
+            };
+
+            const playNotificationSound = () => {
+                if (!audio || !soundReady) {
+                    return;
+                }
+
+                if (window.__gestaoEduLastNotificationSoundAt && Date.now() - window.__gestaoEduLastNotificationSoundAt < 3000) {
+                    return;
+                }
+
+                audio.currentTime = 0;
+                window.__gestaoEduLastNotificationSoundAt = Date.now();
+                audio.play().catch(() => {});
+            };
+
+            const handleSoundSignal = (stats, silent) => {
+                const token = stats?.change_token ?? null;
+
+                if (!token) {
+                    return;
+                }
+
+                if (lastChangeToken === null) {
+                    lastChangeToken = token;
+                    return;
+                }
+
+                if (token !== lastChangeToken) {
+                    lastChangeToken = token;
+
+                    if (silent && !suppressNextSound) {
+                        playNotificationSound();
+                    }
+                }
+
+                suppressNextSound = false;
             };
 
             const request = async (url, options = {}) => {
@@ -855,8 +976,9 @@
                     state.modo = data.mode;
                     renderStats(data.stats ?? {});
                     renderItems(data.items ?? []);
+                    renderPagination(data.pagination ?? {});
+                    handleSoundSignal(data.stats ?? {}, silent);
                     setStatus('', false, false);
-                    more.hidden = !data.has_more;
                     markAllButton.hidden = !(data.stats?.ativas > 0);
                     updateModeButtons();
                     updateBadge(data.stats?.ativas ?? 0);
@@ -873,6 +995,23 @@
                 root.querySelectorAll('[data-stat]').forEach((element) => {
                     element.textContent = stats[element.dataset.stat] ?? 0;
                 });
+            };
+
+            const renderPagination = (data) => {
+                const total = Number(data.total ?? 0);
+                const page = Number(data.page ?? 1);
+                const lastPage = Number(data.last_page ?? 1);
+                const from = Number(data.from ?? 0);
+                const to = Number(data.to ?? 0);
+
+                state.page = page;
+                pagination.hidden = false;
+                paginationLabel.textContent = total > 0
+                    ? `Mostrando ${from} a ${to} de ${total}`
+                    : '0 registros';
+                paginationPage.textContent = `${page} / ${lastPage}`;
+                root.querySelector('[data-action="previous-page"]').disabled = !data.has_previous;
+                root.querySelector('[data-action="next-page"]').disabled = !data.has_next;
             };
 
             const renderItems = (items) => {
@@ -954,16 +1093,42 @@
 
             const setMode = (mode) => {
                 state.modo = mode;
-                state.limite = 35;
+                state.page = 1;
                 updateModeButtons();
                 load();
             };
 
-            const mark = async (id, read) => {
+            const mark = async (id, read, trigger = null) => {
                 const action = read ? 'mark-read' : 'mark-unread';
                 const url = `${config.endpoints.markReadBase}/${encodeURIComponent(id)}/${action}`;
-                await request(url, { method: 'POST', body: '{}' });
-                await load({ silent: true });
+                const card = root.querySelector(`.nc-card[data-id="${CSS.escape(id)}"]`);
+                const label = trigger?.querySelector('span');
+                const originalLabel = label?.textContent;
+
+                suppressNextSound = true;
+                window.__gestaoEduSuppressNotificationSoundUntil = Date.now() + 3000;
+                card?.classList.add('is-updating');
+                trigger?.classList.add('is-loading');
+                trigger?.setAttribute('disabled', 'disabled');
+
+                if (label) {
+                    label.textContent = 'Salvando';
+                }
+
+                try {
+                    await request(url, { method: 'POST', body: '{}' });
+                    card?.classList.add('is-done');
+                    await load({ silent: true });
+                } catch (error) {
+                    setStatus(error.message, false, true);
+                    card?.classList.remove('is-updating');
+                    trigger?.classList.remove('is-loading');
+                    trigger?.removeAttribute('disabled');
+
+                    if (label && originalLabel) {
+                        label.textContent = originalLabel;
+                    }
+                }
             };
 
             const syncRecipientGroups = () => {
@@ -1036,7 +1201,7 @@
                     form.reset();
                     closeCreateModal();
                     state.modo = 'todas';
-                    state.limite = 35;
+                    state.page = 1;
                     await load();
                 } catch (error) {
                     formError.textContent = error.message;
@@ -1064,23 +1229,36 @@
                     state.busca = '';
                     state.prioridade = 'todas';
                     state.periodo = '30';
-                    state.limite = 35;
+                    state.page = 1;
                     root.querySelector('[data-filter="busca"]').value = '';
                     root.querySelector('[data-filter="prioridade"]').value = 'todas';
                     root.querySelector('[data-filter="periodo"]').value = '30';
                     load();
-                } else if (action === 'load-more') {
-                    state.limite += 35;
+                } else if (action === 'previous-page') {
+                    state.page = Math.max(1, state.page - 1);
+                    load();
+                } else if (action === 'next-page') {
+                    state.page += 1;
                     load();
                 } else if (action === 'mark-read') {
-                    await mark(target.dataset.id, true);
+                    await mark(target.dataset.id, true, target);
                 } else if (action === 'mark-unread') {
-                    await mark(target.dataset.id, false);
+                    await mark(target.dataset.id, false, target);
                 } else if (action === 'open-link') {
+                    suppressNextSound = true;
+                    window.__gestaoEduSuppressNotificationSoundUntil = Date.now() + 3000;
                     mark(target.dataset.id, true);
                 } else if (action === 'mark-all-read') {
-                    await request(config.endpoints.markAllRead, { method: 'POST', body: '{}' });
-                    await load({ silent: true });
+                    suppressNextSound = true;
+                    window.__gestaoEduSuppressNotificationSoundUntil = Date.now() + 3000;
+                    target.disabled = true;
+                    try {
+                        await request(config.endpoints.markAllRead, { method: 'POST', body: '{}' });
+                        state.page = 1;
+                        await load({ silent: true });
+                    } finally {
+                        target.disabled = false;
+                    }
                 } else if (action === 'open-create') {
                     openCreateModal();
                 } else if (action === 'close-create') {
@@ -1092,7 +1270,7 @@
                 field.addEventListener('input', () => {
                     const apply = () => {
                         state[field.dataset.filter] = field.value;
-                        state.limite = 35;
+                        state.page = 1;
                         load();
                     };
 
@@ -1108,6 +1286,14 @@
             root.querySelector('[data-destination-select]')?.addEventListener('change', syncRecipientGroups);
             form?.addEventListener('submit', submitCreate);
 
+            window.addEventListener('pointerdown', () => {
+                soundReady = true;
+            }, { once: true });
+
+            window.addEventListener('keydown', () => {
+                soundReady = true;
+            }, { once: true });
+
             window.addEventListener('keydown', (event) => {
                 if (event.key === 'Escape') {
                     closeCreateModal();
@@ -1120,7 +1306,7 @@
                 if (document.visibilityState === 'visible') {
                     load({ silent: true });
                 }
-            }, 5000);
+            }, 10000);
         })();
     </script>
 </x-filament-panels::page>

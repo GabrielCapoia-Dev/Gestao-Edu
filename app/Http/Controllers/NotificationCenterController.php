@@ -26,7 +26,8 @@ class NotificationCenterController extends Controller
                 'busca',
                 'periodo',
                 'prioridade',
-                'limite',
+                'page',
+                'per_page',
             ]))
         );
     }
@@ -37,8 +38,11 @@ class NotificationCenterController extends Controller
 
         abort_unless($this->service->canView($user), 403);
 
+        $stats = $this->service->stats($user);
+
         return response()->json([
-            'unread' => $this->service->unreadCount($user),
+            'unread' => $stats['ativas'] ?? 0,
+            'change_token' => $stats['change_token'] ?? null,
         ]);
     }
 
