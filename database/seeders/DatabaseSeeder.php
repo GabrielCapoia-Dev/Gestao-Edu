@@ -91,9 +91,9 @@ class DatabaseSeeder extends Seeder
             // ContratoSeeder::class,
             // PedidoMerendaSeeder::class,
             // EstoqueInventarioOrganicoSeeder::class,
-            AvaliacaoFluxoSeeder::class,
-            PautasCombinatoriasSeeder::class,
-            AvaliacoesVariadasSeeder::class,
+            // AvaliacaoFluxoSeeder::class,
+            // PautasCombinatoriasSeeder::class,
+            // AvaliacoesVariadasSeeder::class,
         ]);
     }
 
