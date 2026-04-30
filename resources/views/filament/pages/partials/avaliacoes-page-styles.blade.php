@@ -128,6 +128,24 @@
         line-height: 1.55;
     }
 
+    .av-form-section--plain {
+        background: #fff;
+    }
+
+    .av-repeater-item {
+        display: grid;
+        gap: 0.65rem;
+    }
+
+    .av-repeater-item + .av-repeater-item {
+        padding-top: 0.85rem;
+        border-top: 1px solid var(--gray-200);
+    }
+
+    .av-repeater-item .gi-row-actions {
+        justify-content: flex-end;
+    }
+
     .av-filament-scope-form {
         display: grid;
         gap: 0.75rem;
@@ -483,6 +501,14 @@
         border-color: var(--gray-800);
         background: var(--gray-900);
         color: var(--gray-300);
+    }
+
+    :root.dark .av-form-section--plain {
+        background: var(--gray-950);
+    }
+
+    :root.dark .av-repeater-item + .av-repeater-item {
+        border-color: var(--gray-800);
     }
 
     :root.dark .av-total-card strong,

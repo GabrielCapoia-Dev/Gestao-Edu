@@ -9,7 +9,7 @@
             <header>
                 <div>
                     <p class="gi-eyebrow">Avaliacoes</p>
-                    <h3>{{ $pautaIdEditando ? 'Editar Pauta' : 'Nova Pauta' }}</h3>
+                    <h3>{{ $pautaIdEditando ? 'Editar Pauta' : 'Novas Pautas' }}</h3>
                 </div>
 
                 <button type="button" wire:click="fecharModal">
@@ -19,13 +19,43 @@
 
             <div class="gi-modal-body">
                 <div class="av-stack">
-                    <label class="gi-field">
-                        <span>Texto da pauta</span>
-                        <textarea wire:model.defer="form.texto" rows="5" maxlength="2000"></textarea>
-                        @error('form.texto')
-                            <p class="error">{{ $message }}</p>
-                        @enderror
-                    </label>
+                    <section class="av-form-section av-form-section--plain">
+                        <div class="gi-toolbar">
+                            <div>
+                                <h4>Textos das pautas</h4>
+                            </div>
+
+                            @if (! $pautaIdEditando)
+                                <div class="gi-toolbar-right">
+                                    <button type="button" class="gi-action" wire:click="adicionarTextoPauta">
+                                        Adicionar texto
+                                    </button>
+                                </div>
+                            @endif
+                        </div>
+
+                        <div class="av-stack">
+                            @foreach (($form['textos'] ?? [['texto' => '']]) as $index => $textoPauta)
+                                <div class="av-repeater-item" wire:key="texto-pauta-{{ $index }}">
+                                    <label class="gi-field">
+                                        <span>Texto {{ $index + 1 }}</span>
+                                        <textarea wire:model.defer="form.textos.{{ $index }}.texto" rows="4" maxlength="2000"></textarea>
+                                        @error("form.textos.{$index}.texto")
+                                            <p class="error">{{ $message }}</p>
+                                        @enderror
+                                    </label>
+
+                                    @if (! $pautaIdEditando && count($form['textos'] ?? []) > 1)
+                                        <div class="gi-row-actions">
+                                            <button type="button" wire:click="removerTextoPauta({{ $index }})">
+                                                Remover
+                                            </button>
+                                        </div>
+                                    @endif
+                                </div>
+                            @endforeach
+                        </div>
+                    </section>
 
                     <div class="av-form-grid av-form-grid--two">
                         <label class="gi-field">
@@ -149,7 +179,7 @@
                     Cancelar
                 </button>
                 <button type="button" class="gi-action gi-action--primary" wire:click="salvarPauta">
-                    Salvar pauta
+                    {{ $pautaIdEditando ? 'Salvar pauta' : 'Salvar pautas' }}
                 </button>
             </footer>
         </div>
