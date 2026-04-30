@@ -18,8 +18,8 @@
             </header>
 
             <div class="gi-modal-body">
-                <div class="av-form-grid av-form-grid--three">
-                    <label class="gi-field av-span-2">
+                <div class="av-stack">
+                    <label class="gi-field">
                         <span>Texto da pauta</span>
                         <textarea wire:model.defer="form.texto" rows="5" maxlength="2000"></textarea>
                         @error('form.texto')
@@ -27,7 +27,7 @@
                         @enderror
                     </label>
 
-                    <div class="av-stack">
+                    <div class="av-form-grid av-form-grid--two">
                         <label class="gi-field">
                             <span>Tipo</span>
                             <select wire:model.defer="form.tipo_avaliacao_id">
@@ -42,19 +42,6 @@
                         </label>
 
                         <label class="gi-field">
-                            <span>Serie</span>
-                            <select wire:model.defer="form.serie_id">
-                                <option value="">Selecione uma serie</option>
-                                @foreach ($this->seriesOptions as $serieId => $serieNome)
-                                    <option value="{{ $serieId }}">{{ $serieNome }}</option>
-                                @endforeach
-                            </select>
-                            @error('form.serie_id')
-                                <p class="error">{{ $message }}</p>
-                            @enderror
-                        </label>
-
-                        <label class="gi-field">
                             <span>Componente (opcional)</span>
                             <select wire:model.defer="form.componente_curricular_id">
                                 <option value="">Geral (sem componente)</option>
@@ -63,6 +50,19 @@
                                 @endforeach
                             </select>
                             @error('form.componente_curricular_id')
+                                <p class="error">{{ $message }}</p>
+                            @enderror
+                        </label>
+
+                        <label class="gi-field">
+                            <span>Serie</span>
+                            <select wire:model.defer="form.serie_id">
+                                <option value="">Selecione uma serie</option>
+                                @foreach ($this->seriesOptions as $serieId => $serieNome)
+                                    <option value="{{ $serieId }}">{{ $serieNome }}</option>
+                                @endforeach
+                            </select>
+                            @error('form.serie_id')
                                 <p class="error">{{ $message }}</p>
                             @enderror
                         </label>
