@@ -236,7 +236,7 @@ class AvaliacaoProfessorPageTest extends TestCase
             ->assertDontSee('Turma A');
     }
 
-    public function test_avaliacao_em_massa_respeita_turma_alvo_e_nao_sobrescreve_respostas_preenchidas(): void
+    public function test_avaliacao_em_massa_respeita_turma_alvo_e_nao_sobrescreve_respostas_com_observacao(): void
     {
         Permission::findOrCreate('Responder Avaliações');
 
@@ -284,6 +284,13 @@ class AvaliacaoProfessorPageTest extends TestCase
         $alternativaNao = Alternativa::query()->create([
             'tipo_avaliacao_id' => $tipo->id,
             'nome' => 'Nao',
+            'tem_observacao' => true,
+            'status' => true,
+        ]);
+
+        $alternativaParcial = Alternativa::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'nome' => 'Parcial',
             'tem_observacao' => false,
             'status' => true,
         ]);
@@ -295,7 +302,7 @@ class AvaliacaoProfessorPageTest extends TestCase
             'componente_curricular_id' => $componente->id,
             'status' => true,
         ]);
-        $pauta->alternativas()->attach([$alternativaSim->id, $alternativaNao->id]);
+        $pauta->alternativas()->attach([$alternativaSim->id, $alternativaNao->id, $alternativaParcial->id]);
 
         $avaliacao = $this->criarAvaliacao('Avaliacao Massa', $tipo, $periodo);
         $avaliacao->pautas()->attach($pauta->id);
@@ -316,6 +323,13 @@ class AvaliacaoProfessorPageTest extends TestCase
             'id_turma' => $turmaA->id,
         ]);
 
+        $alunoComRespostaSemObservacao = Aluno::query()->create([
+            'nome' => 'Aluno com resposta sem observacao',
+            'cgm' => 'CGM-MAS-004',
+            'data_nascimento' => '2015-01-04',
+            'id_turma' => $turmaA->id,
+        ]);
+
         $alunoOutraTurma = Aluno::query()->create([
             'nome' => 'Aluno outra turma',
             'cgm' => 'CGM-MAS-003',
@@ -323,11 +337,16 @@ class AvaliacaoProfessorPageTest extends TestCase
             'id_turma' => $turmaB->id,
         ]);
 
+        $observacaoManual = str_repeat('a', 1600);
+        $observacaoLimitada = str_repeat('a', 1500);
+
         Livewire::actingAs($userProfessor)
             ->test(AvaliacoesProfessor::class)
             ->set('avaliacao', $avaliacao->id)
             ->set('serieEscola', $escola->id.':'.$serie->id)
             ->set("respostas.{$pauta->id}.{$alunoPreenchido->id}.alternativa_id", $alternativaNao->id)
+            ->set("respostas.{$pauta->id}.{$alunoPreenchido->id}.observacao", $observacaoManual)
+            ->set("respostas.{$pauta->id}.{$alunoComRespostaSemObservacao->id}.alternativa_id", $alternativaParcial->id)
             ->set('turmaEmMassaGlobal', $turmaA->id)
             ->set('avaliacaoEmMassaGlobal', $alternativaSim->id)
             ->call('aplicarEmMassaNaSerie');
@@ -338,6 +357,7 @@ class AvaliacaoProfessorPageTest extends TestCase
             'turma_id' => $turmaA->id,
             'aluno_id' => $alunoPreenchido->id,
             'alternativa_id' => $alternativaNao->id,
+            'observacao' => $observacaoLimitada,
         ]);
 
         $this->assertDatabaseHas('avaliacao_respostas', [
@@ -345,6 +365,14 @@ class AvaliacaoProfessorPageTest extends TestCase
             'pauta_id' => $pauta->id,
             'turma_id' => $turmaA->id,
             'aluno_id' => $alunoVazio->id,
+            'alternativa_id' => $alternativaSim->id,
+        ]);
+
+        $this->assertDatabaseHas('avaliacao_respostas', [
+            'avaliacao_id' => $avaliacao->id,
+            'pauta_id' => $pauta->id,
+            'turma_id' => $turmaA->id,
+            'aluno_id' => $alunoComRespostaSemObservacao->id,
             'alternativa_id' => $alternativaSim->id,
         ]);
 
@@ -522,12 +550,15 @@ class AvaliacaoProfessorPageTest extends TestCase
             'id_turma' => $turma->id,
         ]);
 
+        $informacoesComplementares = str_repeat('b', 1600);
+        $informacoesLimitadas = str_repeat('b', 1500);
+
         Livewire::actingAs($userProfessor)
             ->test(AvaliacoesProfessor::class)
             ->set('avaliacao', $avaliacao->id)
             ->set('turma', $turma->id)
             ->set("respostas.{$pauta->id}.{$aluno->id}.alternativa_id", $alternativa->id)
-            ->set("informacoesComplementares.{$aluno->id}", 'Aluno evoluiu na comunicacao oral.')
+            ->set("informacoesComplementares.{$aluno->id}", $informacoesComplementares)
             ->call('salvarRespostas');
 
         $this->assertDatabaseHas('avaliacao_informacoes_complementares', [
@@ -535,7 +566,7 @@ class AvaliacaoProfessorPageTest extends TestCase
             'turma_id' => $turma->id,
             'aluno_id' => $aluno->id,
             'professor_id' => $professor->id,
-            'informacoes_complementares' => 'Aluno evoluiu na comunicacao oral.',
+            'informacoes_complementares' => $informacoesLimitadas,
         ]);
     }
 

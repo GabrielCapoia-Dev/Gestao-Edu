@@ -580,6 +580,11 @@
         box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary-200) 70%, transparent);
     }
 
+    .av-textarea-input {
+        min-height: 5.5rem;
+        resize: vertical;
+    }
+
     .av-input-wrap {
         display: grid;
         gap: 0.35rem;
@@ -624,6 +629,26 @@
 
     .av-field-hint--danger {
         color: var(--danger-700);
+    }
+
+    .av-field-meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+    }
+
+    .av-field-meta .av-field-hint {
+        margin-top: 0;
+    }
+
+    .av-char-count {
+        flex: 0 0 auto;
+        color: var(--gray-500);
+        font-size: var(--text-xs);
+        line-height: var(--text-xs--line-height);
+        font-weight: var(--font-weight-medium);
+        white-space: nowrap;
     }
 
     @media (max-width: 64rem) {
@@ -806,6 +831,10 @@
     }
 
     :root.dark .av-field-hint {
+        color: var(--gray-400);
+    }
+
+    :root.dark .av-char-count {
         color: var(--gray-400);
     }
 

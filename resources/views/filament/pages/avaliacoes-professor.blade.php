@@ -122,7 +122,7 @@
                                 type="button"
                                 class="gi-action"
                                 wire:click="aplicarEmMassaNaSerie"
-                                wire:confirm="Tem certeza que deseja aplicar a mesma resposta para todos os alunos do escopo selecionado? Campos ja preenchidos nao serao alterados."
+                                wire:confirm="Tem certeza que deseja aplicar a mesma resposta para todos os alunos do escopo selecionado? Campos com observacao ja preenchida nao serao alterados."
                                 wire:loading.attr="disabled"
                                 wire:target="aplicarEmMassaNaSerie"
                                 @disabled(! $this->podeResponder())>
@@ -253,21 +253,26 @@
                                                                             @php($requerObservacao = $this->alternativaRequerObservacao((int) $pauta->id, $alternativaSelecionadaId))
 
                                                                             @if ($requerObservacao)
-                                                                                <div class="av-input-wrap">
-                                                                                    <input
-                                                                                        type="text"
-                                                                                        maxlength="1000"
+                                                                                @php($observacaoAtual = (string) ($respostas[$pauta->id][$aluno->id]['observacao'] ?? ''))
+                                                                                <div class="av-input-wrap" x-data="{ count: @js(mb_strlen($observacaoAtual)) }" x-init="$nextTick(() => count = $refs.field.value.length)">
+                                                                                    <textarea
+                                                                                        x-ref="field"
+                                                                                        x-on:input="count = $event.target.value.length"
+                                                                                        maxlength="1500"
                                                                                         placeholder="Observacao obrigatoria"
-                                                                                        class="av-table-input"
+                                                                                        class="av-table-input av-textarea-input"
                                                                                         wire:model.live.debounce.500ms="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao"
-                                                                                        @disabled(! $this->podeResponder()) />
+                                                                                        @disabled(! $this->podeResponder())></textarea>
 
                                                                                     <span class="av-saving-indicator" wire:loading.flex wire:target="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao">
                                                                                         <span class="av-spinner"></span>
                                                                                         Salvando...
                                                                                     </span>
+                                                                                    <div class="av-field-meta">
+                                                                                        <small class="av-field-hint av-field-hint--danger">Obrigatoria para esta alternativa.</small>
+                                                                                        <small class="av-char-count" x-text="`${count}/1500`"></small>
+                                                                                    </div>
                                                                                 </div>
-                                                                                <small class="av-field-hint av-field-hint--danger">Obrigatoria para esta alternativa.</small>
                                                                             @else
                                                                                 <small class="av-field-hint">Somente alternativas com observacao habilitam este campo.</small>
                                                                             @endif
@@ -306,19 +311,25 @@
                                                                 <small>CGM: {{ $aluno->cgm }}</small>
                                                             </td>
                                                             <td>
-                                                                <div class="av-input-wrap">
-                                                                    <input
-                                                                        type="text"
-                                                                        maxlength="2000"
+                                                                @php($informacoesAtuais = (string) ($informacoesComplementares[$aluno->id] ?? ''))
+                                                                <div class="av-input-wrap" x-data="{ count: @js(mb_strlen($informacoesAtuais)) }" x-init="$nextTick(() => count = $refs.field.value.length)">
+                                                                    <textarea
+                                                                        x-ref="field"
+                                                                        x-on:input="count = $event.target.value.length"
+                                                                        maxlength="1500"
                                                                         placeholder="Informacoes complementares (opcional)"
-                                                                        class="av-table-input"
+                                                                        class="av-table-input av-textarea-input"
                                                                         wire:model.live.debounce.600ms="informacoesComplementares.{{ $aluno->id }}"
-                                                                        @disabled(! $this->podeResponder()) />
+                                                                        @disabled(! $this->podeResponder())></textarea>
 
                                                                     <span class="av-saving-indicator" wire:loading.flex wire:target="informacoesComplementares.{{ $aluno->id }}">
                                                                         <span class="av-spinner"></span>
                                                                         Salvando...
                                                                     </span>
+                                                                    <div class="av-field-meta">
+                                                                        <span></span>
+                                                                        <small class="av-char-count" x-text="`${count}/1500`"></small>
+                                                                    </div>
                                                                 </div>
                                                             </td>
                                                         </tr>
@@ -445,21 +456,26 @@
                                                                                     @php($requerObservacao = $this->alternativaRequerObservacao((int) $pauta->id, $alternativaSelecionadaId))
 
                                                                                     @if ($requerObservacao)
-                                                                                        <div class="av-input-wrap">
-                                                                                            <input
-                                                                                                type="text"
-                                                                                                maxlength="1000"
+                                                                                        @php($observacaoAtual = (string) ($respostas[$pauta->id][$aluno->id]['observacao'] ?? ''))
+                                                                                        <div class="av-input-wrap" x-data="{ count: @js(mb_strlen($observacaoAtual)) }" x-init="$nextTick(() => count = $refs.field.value.length)">
+                                                                                            <textarea
+                                                                                                x-ref="field"
+                                                                                                x-on:input="count = $event.target.value.length"
+                                                                                                maxlength="1500"
                                                                                                 placeholder="Observacao obrigatoria"
-                                                                                                class="av-table-input"
+                                                                                                class="av-table-input av-textarea-input"
                                                                                                 wire:model.live.debounce.500ms="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao"
-                                                                                                @disabled(! $this->podeResponder()) />
+                                                                                                @disabled(! $this->podeResponder())></textarea>
 
                                                                                             <span class="av-saving-indicator" wire:loading.flex wire:target="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao">
                                                                                                 <span class="av-spinner"></span>
                                                                                                 Salvando...
                                                                                             </span>
+                                                                                            <div class="av-field-meta">
+                                                                                                <small class="av-field-hint av-field-hint--danger">Obrigatoria para esta alternativa.</small>
+                                                                                                <small class="av-char-count" x-text="`${count}/1500`"></small>
+                                                                                            </div>
                                                                                         </div>
-                                                                                        <small class="av-field-hint av-field-hint--danger">Obrigatoria para esta alternativa.</small>
                                                                                     @else
                                                                                         <small class="av-field-hint">Somente alternativas com observacao habilitam este campo.</small>
                                                                                     @endif
@@ -500,19 +516,25 @@
                                                                 <small>CGM: {{ $aluno->cgm }}</small>
                                                             </td>
                                                             <td>
-                                                                <div class="av-input-wrap">
-                                                                    <input
-                                                                        type="text"
-                                                                        maxlength="2000"
+                                                                @php($informacoesAtuais = (string) ($informacoesComplementares[$aluno->id] ?? ''))
+                                                                <div class="av-input-wrap" x-data="{ count: @js(mb_strlen($informacoesAtuais)) }" x-init="$nextTick(() => count = $refs.field.value.length)">
+                                                                    <textarea
+                                                                        x-ref="field"
+                                                                        x-on:input="count = $event.target.value.length"
+                                                                        maxlength="1500"
                                                                         placeholder="Informacoes complementares (opcional)"
-                                                                        class="av-table-input"
+                                                                        class="av-table-input av-textarea-input"
                                                                         wire:model.live.debounce.600ms="informacoesComplementares.{{ $aluno->id }}"
-                                                                        @disabled(! $this->podeResponder()) />
+                                                                        @disabled(! $this->podeResponder())></textarea>
 
                                                                     <span class="av-saving-indicator" wire:loading.flex wire:target="informacoesComplementares.{{ $aluno->id }}">
                                                                         <span class="av-spinner"></span>
                                                                         Salvando...
                                                                     </span>
+                                                                    <div class="av-field-meta">
+                                                                        <span></span>
+                                                                        <small class="av-char-count" x-text="`${count}/1500`"></small>
+                                                                    </div>
                                                                 </div>
                                                             </td>
                                                         </tr>

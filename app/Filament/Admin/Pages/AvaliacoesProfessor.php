@@ -22,6 +22,8 @@ use UnitEnum;
 
 class AvaliacoesProfessor extends Page
 {
+    private const LIMITE_CARACTERES_TEXTO = 1500;
+
     private const PERMISSAO_LISTAR_AVALIACOES = 'Listar Avaliações';
 
     private const PERMISSAO_RESPONDER_AVALIACOES = 'Responder Avaliações';
@@ -409,7 +411,7 @@ class AvaliacoesProfessor extends Page
         $agora = now();
 
         foreach ($alunos as $aluno) {
-            $observacaoInformada = trim((string) ($this->respostas[$pautaId][$aluno->id]['observacao'] ?? ''));
+            $observacaoInformada = $this->limitarTextoCampo($this->respostas[$pautaId][$aluno->id]['observacao'] ?? '');
             $temObservacao = (bool) ($alternativa['tem_observacao'] ?? false);
 
             if (! $temObservacao) {
@@ -530,7 +532,7 @@ class AvaliacoesProfessor extends Page
                 foreach ($this->alunosDaTurma($turmaId) as $aluno) {
                     $alunoId = (int) $aluno->id;
 
-                    if ($this->respostaJaPreenchida((int) $pauta->id, $alunoId)) {
+                    if ($this->respostaTemObservacao((int) $pauta->id, $alunoId)) {
                         $totalIgnoradoPorPreenchimento++;
 
                         continue;
@@ -538,7 +540,7 @@ class AvaliacoesProfessor extends Page
 
                     $this->respostas[$pauta->id][$alunoId]['alternativa_id'] = $alternativaId;
 
-                    $observacaoInformada = trim((string) ($this->respostas[$pauta->id][$alunoId]['observacao'] ?? ''));
+                    $observacaoInformada = $this->limitarTextoCampo($this->respostas[$pauta->id][$alunoId]['observacao'] ?? '');
                     $temObservacao = (bool) ($alternativa['tem_observacao'] ?? false);
 
                     if (! $temObservacao) {
@@ -611,7 +613,7 @@ class AvaliacoesProfessor extends Page
         }
 
         if ($totalIgnoradoPorPreenchimento > 0) {
-            $mensagens[] = $totalIgnoradoPorPreenchimento.' resposta(s) ja preenchidas foram mantidas.';
+            $mensagens[] = $totalIgnoradoPorPreenchimento.' resposta(s) com observacao foram mantidas.';
         }
 
         Notification::make()
@@ -663,7 +665,7 @@ class AvaliacoesProfessor extends Page
                         continue;
                     }
 
-                    $observacaoInformada = trim((string) ($this->respostas[$pauta->id][$aluno->id]['observacao'] ?? ''));
+                    $observacaoInformada = $this->limitarTextoCampo($this->respostas[$pauta->id][$aluno->id]['observacao'] ?? '');
                     $temObservacao = (bool) ($alternativa['tem_observacao'] ?? false);
 
                     if ($temObservacao && $observacaoInformada === '') {
@@ -1445,7 +1447,7 @@ class AvaliacoesProfessor extends Page
             return;
         }
 
-        $observacaoInformada = trim((string) ($this->respostas[$pautaId][$alunoId]['observacao'] ?? ''));
+        $observacaoInformada = $this->limitarTextoCampo($this->respostas[$pautaId][$alunoId]['observacao'] ?? '');
         $temObservacao = (bool) ($alternativa['tem_observacao'] ?? false);
 
         if (! $temObservacao) {
@@ -1498,7 +1500,7 @@ class AvaliacoesProfessor extends Page
         }
 
         $turmaId = (int) $alunoDaTurma->id_turma;
-        $informacoes = trim((string) ($this->informacoesComplementares[$alunoId] ?? ''));
+        $informacoes = $this->limitarTextoCampo($this->informacoesComplementares[$alunoId] ?? '');
 
         if ($informacoes === '') {
             AvaliacaoInformacaoComplementar::query()
@@ -1570,13 +1572,17 @@ class AvaliacoesProfessor extends Page
         return $observacao !== '';
     }
 
-    private function respostaJaPreenchida(int $pautaId, int $alunoId): bool
+    private function respostaTemObservacao(int $pautaId, int $alunoId): bool
     {
         $resposta = $this->respostas[$pautaId][$alunoId] ?? [];
-        $alternativaId = (int) ($resposta['alternativa_id'] ?? 0);
         $observacao = trim((string) ($resposta['observacao'] ?? ''));
 
-        return $alternativaId > 0 || $observacao !== '';
+        return $observacao !== '';
+    }
+
+    private function limitarTextoCampo(mixed $valor): string
+    {
+        return mb_substr(trim((string) $valor), 0, self::LIMITE_CARACTERES_TEXTO);
     }
 
     private function turmasAlvoAvaliacaoEmMassa(): Collection
