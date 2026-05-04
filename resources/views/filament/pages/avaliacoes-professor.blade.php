@@ -268,6 +268,48 @@
                                             Esta turma nao possui pautas disponiveis nesta serie.
                                         </section>
                                     @endforelse
+
+                                    <section class="av-aluno-componente av-complementary-section">
+                                        <h4>Informacoes complementares por aluno</h4>
+                                        <p class="av-pauta-meta">Campo opcional desta turma, independente das pautas.</p>
+
+                                        <div class="gi-table-wrap">
+                                            <table class="gi-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Aluno</th>
+                                                        <th>Informacoes complementares</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach ($alunosDaTurma as $aluno)
+                                                        <tr wire:key="turma-{{ $turmaId }}-pautas-complemento-aluno-{{ $aluno->id }}">
+                                                            <td>
+                                                                <strong>{{ $aluno->nome }}</strong>
+                                                                <small>CGM: {{ $aluno->cgm }}</small>
+                                                            </td>
+                                                            <td>
+                                                                <div class="av-input-wrap">
+                                                                    <input
+                                                                        type="text"
+                                                                        maxlength="2000"
+                                                                        placeholder="Informacoes complementares (opcional)"
+                                                                        class="av-table-input"
+                                                                        wire:model.live.debounce.600ms="informacoesComplementares.{{ $aluno->id }}"
+                                                                        @disabled(! $this->podeResponder()) />
+
+                                                                    <span class="av-saving-indicator" wire:loading.flex wire:target="informacoesComplementares.{{ $aluno->id }}">
+                                                                        <span class="av-spinner"></span>
+                                                                        Salvando...
+                                                                    </span>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    @endforeach
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </section>
                                 </div>
                             @endif
                         </section>
@@ -420,67 +462,54 @@
                                             Esta turma nao possui alunos cadastrados.
                                         </section>
                                     @endforelse
+
+                                    <section class="av-aluno-componente av-complementary-section">
+                                        <h4>Informacoes complementares por aluno</h4>
+                                        <p class="av-pauta-meta">Campo opcional desta turma, independente das pautas.</p>
+
+                                        <div class="gi-table-wrap">
+                                            <table class="gi-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Aluno</th>
+                                                        <th>Informacoes complementares</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach ($alunosDaTurma as $aluno)
+                                                        <tr wire:key="turma-{{ $turmaId }}-alunos-complemento-aluno-{{ $aluno->id }}">
+                                                            <td>
+                                                                <strong>{{ $aluno->nome }}</strong>
+                                                                <small>CGM: {{ $aluno->cgm }}</small>
+                                                            </td>
+                                                            <td>
+                                                                <div class="av-input-wrap">
+                                                                    <input
+                                                                        type="text"
+                                                                        maxlength="2000"
+                                                                        placeholder="Informacoes complementares (opcional)"
+                                                                        class="av-table-input"
+                                                                        wire:model.live.debounce.600ms="informacoesComplementares.{{ $aluno->id }}"
+                                                                        @disabled(! $this->podeResponder()) />
+
+                                                                    <span class="av-saving-indicator" wire:loading.flex wire:target="informacoesComplementares.{{ $aluno->id }}">
+                                                                        <span class="av-spinner"></span>
+                                                                        Salvando...
+                                                                    </span>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    @endforeach
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </section>
                                 </div>
                             @endif
                         </section>
                     @endforeach
                 </div>
             @endif
-
-            <details class="gi-panel av-pauta-section" open>
-                <summary class="av-pauta-toggle">
-                    <div class="av-pauta-toggle-main">
-                        <h3 class="av-pauta-title">Informacoes complementares por aluno</h3>
-                        <p class="av-pauta-meta">Campo opcional da avaliacao, independente das pautas.</p>
-                    </div>
-                </summary>
-
-                <div class="av-pauta-content" style="padding-top: .75rem;">
-                    @foreach ($turmasDaSerie as $turmaItem)
-                        @php($turmaId = (int) $turmaItem->id)
-                        <section class="av-aluno-componente">
-                            <h4>{{ $this->nomeTurma($turmaItem) }}</h4>
-
-                            <div class="gi-table-wrap">
-                                <table class="gi-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Aluno</th>
-                                            <th>Informacoes complementares</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach ($this->alunosDaTurma($turmaId) as $aluno)
-                                            <tr wire:key="turma-{{ $turmaId }}-complemento-aluno-{{ $aluno->id }}">
-                                                <td>
-                                                    <strong>{{ $aluno->nome }}</strong>
-                                                    <small>CGM: {{ $aluno->cgm }}</small>
-                                                </td>
-                                                <td>
-                                                    <div class="av-input-wrap">
-                                                        <input
-                                                            type="text"
-                                                            maxlength="2000"
-                                                            placeholder="Informacoes complementares (opcional)"
-                                                            class="av-table-input"
-                                                            wire:model.live.debounce.600ms="informacoesComplementares.{{ $aluno->id }}"
-                                                            @disabled(! $this->podeResponder()) />
-
-                                                        <span class="av-saving-indicator" wire:loading.flex wire:target="informacoesComplementares.{{ $aluno->id }}">
-                                                            <span class="av-spinner"></span>
-                                                            Salvando...
-                                                        </span>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                        </section>
-                    @endforeach
-                </div>
-            </details>
 
             <section class="gi-panel">
                 <div class="gi-toolbar">
