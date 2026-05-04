@@ -244,12 +244,13 @@
 
     .av-bulk-control {
         display: grid;
-        grid-template-columns: minmax(18rem, 22rem) auto;
+        grid-template-columns: minmax(10rem, 14rem) minmax(18rem, 22rem) auto;
         align-items: end;
         gap: 0.5rem;
         flex: 0 1 auto;
     }
 
+    .av-bulk-turma-select,
     .av-bulk-select {
         min-width: 0;
         width: 100%;

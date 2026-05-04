@@ -62,6 +62,8 @@ class AvaliacoesProfessor extends Page
 
     public ?int $avaliacaoEmMassaGlobal = null;
 
+    public ?int $turmaEmMassaGlobal = null;
+
     public array $pautasExpandidas = [];
 
     public array $alunosExpandidos = [];
@@ -255,6 +257,7 @@ class AvaliacoesProfessor extends Page
         $this->alternativasPorPauta = [];
         $this->avaliacaoEmMassa = [];
         $this->avaliacaoEmMassaGlobal = null;
+        $this->turmaEmMassaGlobal = null;
         $this->pautasExpandidas = [];
         $this->alunosExpandidos = [];
 
@@ -496,10 +499,22 @@ class AvaliacoesProfessor extends Page
         $payload = [];
         $pendencias = [];
         $totalAplicado = 0;
+        $totalIgnoradoPorPreenchimento = 0;
         $pautasIgnoradas = 0;
         $agora = now();
 
-        foreach ($this->turmasDaSerieDisponiveis as $turma) {
+        $turmasAlvo = $this->turmasAlvoAvaliacaoEmMassa();
+
+        if ($turmasAlvo->isEmpty()) {
+            Notification::make()
+                ->title('Selecione uma turma valida para aplicar em massa.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        foreach ($turmasAlvo as $turma) {
             $turmaId = (int) $turma->id;
             $professorId = $this->professorIdDaTurma($turmaId);
 
@@ -514,6 +529,13 @@ class AvaliacoesProfessor extends Page
 
                 foreach ($this->alunosDaTurma($turmaId) as $aluno) {
                     $alunoId = (int) $aluno->id;
+
+                    if ($this->respostaJaPreenchida((int) $pauta->id, $alunoId)) {
+                        $totalIgnoradoPorPreenchimento++;
+
+                        continue;
+                    }
+
                     $this->respostas[$pauta->id][$alunoId]['alternativa_id'] = $alternativaId;
 
                     $observacaoInformada = trim((string) ($this->respostas[$pauta->id][$alunoId]['observacao'] ?? ''));
@@ -586,6 +608,10 @@ class AvaliacoesProfessor extends Page
 
         if ($pautasIgnoradas > 0) {
             $mensagens[] = $pautasIgnoradas.' pauta(s) nao possuem esta alternativa.';
+        }
+
+        if ($totalIgnoradoPorPreenchimento > 0) {
+            $mensagens[] = $totalIgnoradoPorPreenchimento.' resposta(s) ja preenchidas foram mantidas.';
         }
 
         Notification::make()
@@ -1542,6 +1568,28 @@ class AvaliacoesProfessor extends Page
         $observacao = trim((string) ($this->respostas[$pauta->id][$alunoId]['observacao'] ?? ''));
 
         return $observacao !== '';
+    }
+
+    private function respostaJaPreenchida(int $pautaId, int $alunoId): bool
+    {
+        $resposta = $this->respostas[$pautaId][$alunoId] ?? [];
+        $alternativaId = (int) ($resposta['alternativa_id'] ?? 0);
+        $observacao = trim((string) ($resposta['observacao'] ?? ''));
+
+        return $alternativaId > 0 || $observacao !== '';
+    }
+
+    private function turmasAlvoAvaliacaoEmMassa(): Collection
+    {
+        $turmaId = (int) ($this->turmaEmMassaGlobal ?? 0);
+
+        if ($turmaId <= 0) {
+            return $this->turmasDaSerieDisponiveis;
+        }
+
+        return $this->turmasDaSerieDisponiveis
+            ->filter(fn (Turma $turma): bool => (int) $turma->id === $turmaId)
+            ->values();
     }
 
     public function nomeTurma(Turma $turma): string

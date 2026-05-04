@@ -96,6 +96,16 @@
 
                     <div class="av-mode-actions">
                         <div class="av-bulk-control">
+                            <label class="gi-field av-bulk-turma-select">
+                                <span>Turma</span>
+                                <select wire:model.live="turmaEmMassaGlobal" @disabled(! $this->podeResponder())>
+                                    <option value="">Todas as turmas</option>
+                                    @foreach ($turmasDaSerie as $turmaItem)
+                                        <option value="{{ $turmaItem->id }}">{{ $this->rotuloTurma($turmaItem) }}</option>
+                                    @endforeach
+                                </select>
+                            </label>
+
                             <label class="gi-field av-bulk-select">
                                 <span>Avaliacao em massa</span>
                                 <select wire:model.live="avaliacaoEmMassaGlobal" @disabled(! $this->podeResponder())>
@@ -108,7 +118,14 @@
                                 </select>
                             </label>
 
-                            <button type="button" class="gi-action" wire:click="aplicarEmMassaNaSerie" wire:loading.attr="disabled" wire:target="aplicarEmMassaNaSerie" @disabled(! $this->podeResponder())>
+                            <button
+                                type="button"
+                                class="gi-action"
+                                wire:click="aplicarEmMassaNaSerie"
+                                wire:confirm="Tem certeza que deseja aplicar a mesma resposta para todos os alunos do escopo selecionado? Campos ja preenchidos nao serao alterados."
+                                wire:loading.attr="disabled"
+                                wire:target="aplicarEmMassaNaSerie"
+                                @disabled(! $this->podeResponder())>
                                 Aplicar
                             </button>
                         </div>

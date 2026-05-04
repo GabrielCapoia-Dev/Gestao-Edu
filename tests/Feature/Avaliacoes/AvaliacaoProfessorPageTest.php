@@ -236,6 +236,126 @@ class AvaliacaoProfessorPageTest extends TestCase
             ->assertDontSee('Turma A');
     }
 
+    public function test_avaliacao_em_massa_respeita_turma_alvo_e_nao_sobrescreve_respostas_preenchidas(): void
+    {
+        Permission::findOrCreate('Responder Avaliações');
+
+        $tipo = TipoAvaliacao::query()->create(['nome' => 'Parecer Massa', 'status' => true]);
+        $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Periodo Massa', 'status' => true]);
+
+        $escola = $this->criarEscola('Escola Massa');
+        $serie = $this->criarSerie('SER-MAS', '1o Ano');
+        $turmaA = $this->criarTurma($escola, $serie, 'A');
+        $turmaB = $this->criarTurma($escola, $serie, 'B');
+
+        $componente = ComponenteCurricular::query()->create([
+            'codigo' => 'COMP-MAS',
+            'nome' => 'Matematica Massa',
+        ]);
+
+        $userProfessor = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $userProfessor->givePermissionTo('Responder Avaliações');
+
+        $professor = Professor::query()->create([
+            'user_id' => $userProfessor->id,
+            'id_escola' => $escola->id,
+            'matricula' => 'PROF-MAS',
+            'nome' => 'Professor Massa',
+            'email' => 'massa@edu.umuarama.pr.gov.br',
+        ]);
+
+        foreach ([$turmaA, $turmaB] as $turma) {
+            $turma->componentes()->attach($componente->id, [
+                'professor_id' => $professor->id,
+                'tem_professor' => true,
+            ]);
+        }
+
+        $alternativaSim = Alternativa::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'nome' => 'Sim',
+            'tem_observacao' => false,
+            'status' => true,
+        ]);
+
+        $alternativaNao = Alternativa::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'nome' => 'Nao',
+            'tem_observacao' => false,
+            'status' => true,
+        ]);
+
+        $pauta = Pauta::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'texto' => 'Pauta massa',
+            'serie_id' => $serie->id,
+            'componente_curricular_id' => $componente->id,
+            'status' => true,
+        ]);
+        $pauta->alternativas()->attach([$alternativaSim->id, $alternativaNao->id]);
+
+        $avaliacao = $this->criarAvaliacao('Avaliacao Massa', $tipo, $periodo);
+        $avaliacao->pautas()->attach($pauta->id);
+        $avaliacao->turmas()->attach([$turmaA->id, $turmaB->id]);
+        $this->sincronizarEscopoAvaliacao($avaliacao, [$serie->id], [$componente->id], [$escola->id]);
+
+        $alunoPreenchido = Aluno::query()->create([
+            'nome' => 'Aluno preenchido',
+            'cgm' => 'CGM-MAS-001',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turmaA->id,
+        ]);
+
+        $alunoVazio = Aluno::query()->create([
+            'nome' => 'Aluno vazio',
+            'cgm' => 'CGM-MAS-002',
+            'data_nascimento' => '2015-01-02',
+            'id_turma' => $turmaA->id,
+        ]);
+
+        $alunoOutraTurma = Aluno::query()->create([
+            'nome' => 'Aluno outra turma',
+            'cgm' => 'CGM-MAS-003',
+            'data_nascimento' => '2015-01-03',
+            'id_turma' => $turmaB->id,
+        ]);
+
+        Livewire::actingAs($userProfessor)
+            ->test(AvaliacoesProfessor::class)
+            ->set('avaliacao', $avaliacao->id)
+            ->set('serieEscola', $escola->id.':'.$serie->id)
+            ->set("respostas.{$pauta->id}.{$alunoPreenchido->id}.alternativa_id", $alternativaNao->id)
+            ->set('turmaEmMassaGlobal', $turmaA->id)
+            ->set('avaliacaoEmMassaGlobal', $alternativaSim->id)
+            ->call('aplicarEmMassaNaSerie');
+
+        $this->assertDatabaseHas('avaliacao_respostas', [
+            'avaliacao_id' => $avaliacao->id,
+            'pauta_id' => $pauta->id,
+            'turma_id' => $turmaA->id,
+            'aluno_id' => $alunoPreenchido->id,
+            'alternativa_id' => $alternativaNao->id,
+        ]);
+
+        $this->assertDatabaseHas('avaliacao_respostas', [
+            'avaliacao_id' => $avaliacao->id,
+            'pauta_id' => $pauta->id,
+            'turma_id' => $turmaA->id,
+            'aluno_id' => $alunoVazio->id,
+            'alternativa_id' => $alternativaSim->id,
+        ]);
+
+        $this->assertDatabaseMissing('avaliacao_respostas', [
+            'avaliacao_id' => $avaliacao->id,
+            'pauta_id' => $pauta->id,
+            'turma_id' => $turmaB->id,
+            'aluno_id' => $alunoOutraTurma->id,
+        ]);
+    }
+
     public function test_professor_usa_override_de_alternativas_por_pauta(): void
     {
         Permission::findOrCreate('Responder Avaliações');
