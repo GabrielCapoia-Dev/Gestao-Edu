@@ -128,10 +128,12 @@ class AvaliacaoProfessorPageTest extends TestCase
         $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Periodo Serie', 'status' => true]);
 
         $escola = $this->criarEscola('Escola Serie');
+        $outraEscola = $this->criarEscola('Outra Escola Serie');
         $serie = $this->criarSerie('SER-AGR', '1o Ano');
         $outraSerie = $this->criarSerie('SER-FORA', '2o Ano');
         $turmaA = $this->criarTurma($escola, $serie, 'A');
         $turmaB = $this->criarTurma($escola, $serie, 'B');
+        $turmaOutraEscola = $this->criarTurma($outraEscola, $serie, 'C');
         $turmaFora = $this->criarTurma($escola, $outraSerie, 'C');
 
         $componente = ComponenteCurricular::query()->create([
@@ -153,7 +155,7 @@ class AvaliacaoProfessorPageTest extends TestCase
             'email' => 'serie@edu.umuarama.pr.gov.br',
         ]);
 
-        foreach ([$turmaA, $turmaB] as $turma) {
+        foreach ([$turmaA, $turmaB, $turmaOutraEscola] as $turma) {
             $turma->componentes()->attach($componente->id, [
                 'professor_id' => $professor->id,
                 'tem_professor' => true,
@@ -187,8 +189,8 @@ class AvaliacaoProfessorPageTest extends TestCase
 
         $avaliacao = $this->criarAvaliacao('Avaliacao por Serie', $tipo, $periodo);
         $avaliacao->pautas()->attach([$pautaSerie->id, $pautaOutraSerie->id]);
-        $avaliacao->turmas()->attach([$turmaA->id, $turmaB->id, $turmaFora->id]);
-        $this->sincronizarEscopoAvaliacao($avaliacao, [$serie->id, $outraSerie->id], [$componente->id], [$escola->id]);
+        $avaliacao->turmas()->attach([$turmaA->id, $turmaB->id, $turmaOutraEscola->id, $turmaFora->id]);
+        $this->sincronizarEscopoAvaliacao($avaliacao, [$serie->id, $outraSerie->id], [$componente->id], [$escola->id, $outraEscola->id]);
 
         Aluno::query()->create([
             'nome' => 'Aluno Turma A',
@@ -204,18 +206,34 @@ class AvaliacaoProfessorPageTest extends TestCase
             'id_turma' => $turmaB->id,
         ]);
 
+        Aluno::query()->create([
+            'nome' => 'Aluno Outra Escola',
+            'cgm' => 'CGM-SER-C',
+            'data_nascimento' => '2015-01-03',
+            'id_turma' => $turmaOutraEscola->id,
+        ]);
+
         Livewire::actingAs($userProfessor)
             ->test(AvaliacoesProfessor::class)
             ->set('avaliacao', $avaliacao->id)
+            ->assertSee('Escola Serie')
+            ->assertSee('Outra Escola Serie')
             ->assertSee('1o Ano')
             ->assertDontSee('2o Ano')
-            ->set('serie', $serie->id)
+            ->set('serieEscola', $escola->id.':'.$serie->id)
+            ->assertSet('turmasExpandidas', [])
             ->assertSee('Turma A')
             ->assertSee('Turma B')
             ->assertDontSee('Turma C')
             ->call('definirVisualizacao', 'alunos')
+            ->call('alternarTurma', $turmaA->id)
+            ->call('alternarTurma', $turmaB->id)
             ->assertSee('Aluno Turma A')
-            ->assertSee('Aluno Turma B');
+            ->assertSee('Aluno Turma B')
+            ->assertDontSee('Aluno Outra Escola')
+            ->set('serieEscola', $outraEscola->id.':'.$serie->id)
+            ->assertSee('Turma C')
+            ->assertDontSee('Turma A');
     }
 
     public function test_professor_usa_override_de_alternativas_por_pauta(): void

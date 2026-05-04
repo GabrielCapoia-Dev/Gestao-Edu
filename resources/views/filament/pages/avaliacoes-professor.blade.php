@@ -28,10 +28,14 @@
 
                 <label class="gi-field">
                     <span>Serie</span>
-                    <select wire:model.live="serie" @disabled(! $avaliacao)>
+                    <select wire:model.live="serieEscola" @disabled(! $avaliacao)>
                         <option value="">Selecione uma serie</option>
-                        @foreach ($this->seriesDisponiveis as $serieItem)
-                            <option value="{{ $serieItem->id }}">{{ $serieItem->nome }}</option>
+                        @foreach ($this->seriesPorEscolaDisponiveis->groupBy('escola_nome') as $escolaNome => $seriesDaEscola)
+                            <optgroup label="{{ $escolaNome }}">
+                                @foreach ($seriesDaEscola as $serieItem)
+                                    <option value="{{ $serieItem['value'] }}">{{ $serieItem['serie_nome'] }}</option>
+                                @endforeach
+                            </optgroup>
                         @endforeach
                     </select>
                 </label>
@@ -64,11 +68,11 @@
             <section class="av-note">
                 Selecione uma avaliacao para comecar.
             </section>
-        @elseif ($this->seriesDisponiveis->isEmpty())
+        @elseif ($this->seriesPorEscolaDisponiveis->isEmpty())
             <section class="av-note av-note--warning">
                 Esta avaliacao nao possui series com turmas vinculadas aos componentes que voce leciona.
             </section>
-        @elseif (! $serie)
+        @elseif (! $serieEscola)
             <section class="av-note">
                 Selecione a serie para visualizar as turmas, pautas e alunos.
             </section>
@@ -90,13 +94,33 @@
                         <p class="av-pauta-meta">Escolha como deseja preencher esta avaliacao.</p>
                     </div>
 
-                    <div class="av-segmented-control" role="tablist">
-                        <button type="button" class="{{ $visualizacao === 'pautas' ? 'is-active' : '' }}" wire:click="definirVisualizacao('pautas')">
-                            Por pautas
-                        </button>
-                        <button type="button" class="{{ $visualizacao === 'alunos' ? 'is-active' : '' }}" wire:click="definirVisualizacao('alunos')">
-                            Por alunos
-                        </button>
+                    <div class="av-mode-actions">
+                        <div class="av-bulk-control">
+                            <label class="gi-field av-bulk-select">
+                                <span>Avaliacao em massa</span>
+                                <select wire:model.live="avaliacaoEmMassaGlobal" @disabled(! $this->podeResponder())>
+                                    <option value="">Selecione uma alternativa</option>
+                                    @foreach ($this->alternativasEmMassaDisponiveis as $alternativa)
+                                        <option value="{{ $alternativa['id'] }}">
+                                            {{ $alternativa['nome'] }}{{ ($alternativa['tem_observacao'] ?? false) ? ' (exige observacao)' : '' }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </label>
+
+                            <button type="button" class="gi-action" wire:click="aplicarEmMassaNaSerie" wire:loading.attr="disabled" wire:target="aplicarEmMassaNaSerie" @disabled(! $this->podeResponder())>
+                                Aplicar
+                            </button>
+                        </div>
+
+                        <div class="av-segmented-control" role="tablist">
+                            <button type="button" class="{{ $visualizacao === 'pautas' ? 'is-active' : '' }}" wire:click="definirVisualizacao('pautas')">
+                                Por pautas
+                            </button>
+                            <button type="button" class="{{ $visualizacao === 'alunos' ? 'is-active' : '' }}" wire:click="definirVisualizacao('alunos')">
+                                Por alunos
+                            </button>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -174,28 +198,6 @@
 
                                             @if ($pautaExpandida)
                                                 <div class="av-pauta-content">
-                                                    <div class="gi-toolbar">
-                                                        <div class="gi-toolbar-left">
-                                                            <label class="gi-field">
-                                                                <span>Avaliacao em massa</span>
-                                                                <select wire:model="avaliacaoEmMassa.{{ $turmaId }}.{{ $pauta->id }}" @disabled(! $this->podeResponder())>
-                                                                    <option value="">Selecione uma alternativa</option>
-                                                                    @foreach ($alternativasPauta as $alternativa)
-                                                                        <option value="{{ $alternativa['id'] }}">
-                                                                            {{ $alternativa['nome'] }}{{ ($alternativa['tem_observacao'] ?? false) ? ' (exige observacao)' : '' }}
-                                                                        </option>
-                                                                    @endforeach
-                                                                </select>
-                                                            </label>
-                                                        </div>
-
-                                                        <div class="gi-toolbar-right">
-                                                            <button type="button" class="gi-action" wire:click="aplicarEmMassa({{ $turmaId }}, {{ $pauta->id }})" wire:loading.attr="disabled" wire:target="aplicarEmMassa" @disabled(! $this->podeResponder())>
-                                                                Aplicar para todos os alunos
-                                                            </button>
-                                                        </div>
-                                                    </div>
-
                                                     <div class="gi-table-wrap">
                                                         <table class="gi-table">
                                                             <thead>

@@ -46,6 +46,10 @@ class AvaliacoesProfessor extends Page
 
     public ?int $serie = null;
 
+    public ?int $escola = null;
+
+    public ?string $serieEscola = null;
+
     public ?int $turma = null;
 
     public array $respostas = [];
@@ -55,6 +59,8 @@ class AvaliacoesProfessor extends Page
     public array $alternativasPorPauta = [];
 
     public array $avaliacaoEmMassa = [];
+
+    public ?int $avaliacaoEmMassaGlobal = null;
 
     public array $pautasExpandidas = [];
 
@@ -138,6 +144,7 @@ class AvaliacoesProfessor extends Page
 
         $avaliacaoQuery = $this->normalizarQueryId(request()->query('avaliacao'));
         $serieQuery = $this->normalizarQueryId(request()->query('serie'));
+        $escolaQuery = $this->normalizarQueryId(request()->query('escola'));
         $turmaQuery = $this->normalizarQueryId(request()->query('turma'));
 
         if ($avaliacaoQuery) {
@@ -147,6 +154,8 @@ class AvaliacoesProfessor extends Page
         if ($this->avaliacao && ! $this->avaliacoesDisponiveis->contains('id', (int) $this->avaliacao)) {
             $this->avaliacao = null;
             $this->serie = null;
+            $this->escola = null;
+            $this->serieEscola = null;
             $this->turma = null;
 
             return;
@@ -154,18 +163,23 @@ class AvaliacoesProfessor extends Page
 
         if ($serieQuery) {
             $this->serie = $serieQuery;
+            $this->escola = $escolaQuery ?: $this->escolaDaSerie($serieQuery);
+            $this->sincronizarSerieEscola();
         } elseif ($turmaQuery) {
             $this->turma = $turmaQuery;
             $this->serie = $this->serieDaTurma($turmaQuery);
+            $this->escola = $this->escolaDaTurma($turmaQuery);
+            $this->sincronizarSerieEscola();
         }
 
-        if ($this->serie && ! $this->seriesDisponiveis->contains('id', (int) $this->serie)) {
+        if ($this->serie && ! $this->escopoSerieSelecionadoEhValido()) {
             $this->serie = null;
+            $this->escola = null;
+            $this->serieEscola = null;
             $this->turma = null;
         }
 
         if ($this->avaliacao && $this->serie) {
-            $this->expandirTurmasDaSerie();
             $this->carregarRespostas();
             $this->carregarInformacoesComplementares();
         }
@@ -174,23 +188,48 @@ class AvaliacoesProfessor extends Page
     public function updatedAvaliacao(): void
     {
         $this->serie = null;
+        $this->escola = null;
+        $this->serieEscola = null;
         $this->turma = null;
         $this->limparDadosDoEscopo(true);
     }
 
-    public function updatedSerie(): void
+    public function updatedSerieEscola(): void
     {
         $this->turma = null;
+        $this->aplicarSerieEscolaSelecionada();
         $this->limparDadosDoEscopo(true);
 
-        if ($this->serie && ! $this->seriesDisponiveis->contains('id', (int) $this->serie)) {
+        if (! $this->escopoSerieSelecionadoEhValido()) {
             $this->serie = null;
+            $this->escola = null;
+            $this->serieEscola = null;
 
             return;
         }
 
         if ($this->avaliacao && $this->serie) {
-            $this->expandirTurmasDaSerie();
+            $this->carregarRespostas();
+            $this->carregarInformacoesComplementares();
+        }
+    }
+
+    public function updatedSerie(): void
+    {
+        $this->turma = null;
+        $this->escola = $this->serie ? $this->escolaDaSerie((int) $this->serie) : null;
+        $this->sincronizarSerieEscola();
+        $this->limparDadosDoEscopo(true);
+
+        if ($this->serie && ! $this->escopoSerieSelecionadoEhValido()) {
+            $this->serie = null;
+            $this->escola = null;
+            $this->serieEscola = null;
+
+            return;
+        }
+
+        if ($this->avaliacao && $this->serie) {
             $this->carregarRespostas();
             $this->carregarInformacoesComplementares();
         }
@@ -199,10 +238,11 @@ class AvaliacoesProfessor extends Page
     public function updatedTurma(): void
     {
         $this->serie = $this->turma ? $this->serieDaTurma((int) $this->turma) : null;
+        $this->escola = $this->turma ? $this->escolaDaTurma((int) $this->turma) : null;
+        $this->sincronizarSerieEscola();
         $this->limparDadosDoEscopo(true);
 
         if ($this->avaliacao && $this->serie) {
-            $this->expandirTurmasDaSerie();
             $this->carregarRespostas();
             $this->carregarInformacoesComplementares();
         }
@@ -214,6 +254,7 @@ class AvaliacoesProfessor extends Page
         $this->informacoesComplementares = [];
         $this->alternativasPorPauta = [];
         $this->avaliacaoEmMassa = [];
+        $this->avaliacaoEmMassaGlobal = null;
         $this->pautasExpandidas = [];
         $this->alunosExpandidos = [];
 
@@ -424,6 +465,132 @@ class AvaliacoesProfessor extends Page
                     ? 'Essa alternativa exige observação por aluno.'
                     : 'Respostas salvas automaticamente.')
             )
+            ->success()
+            ->send();
+    }
+
+    public function aplicarEmMassaNaSerie(): void
+    {
+        $this->abortSeNaoPuderResponder();
+
+        if (! $this->avaliacao || ! $this->serie) {
+            Notification::make()
+                ->title('Selecione uma avaliacao e uma serie para aplicar em massa.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $alternativaId = (int) ($this->avaliacaoEmMassaGlobal ?? 0);
+
+        if ($alternativaId <= 0) {
+            Notification::make()
+                ->title('Selecione uma alternativa para aplicar em massa.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $payload = [];
+        $pendencias = [];
+        $totalAplicado = 0;
+        $pautasIgnoradas = 0;
+        $agora = now();
+
+        foreach ($this->turmasDaSerieDisponiveis as $turma) {
+            $turmaId = (int) $turma->id;
+            $professorId = $this->professorIdDaTurma($turmaId);
+
+            foreach ($this->pautasDaTurma($turmaId) as $pauta) {
+                $alternativa = $this->alternativaDaPauta((int) $pauta->id, $alternativaId);
+
+                if (! $alternativa) {
+                    $pautasIgnoradas++;
+
+                    continue;
+                }
+
+                foreach ($this->alunosDaTurma($turmaId) as $aluno) {
+                    $alunoId = (int) $aluno->id;
+                    $this->respostas[$pauta->id][$alunoId]['alternativa_id'] = $alternativaId;
+
+                    $observacaoInformada = trim((string) ($this->respostas[$pauta->id][$alunoId]['observacao'] ?? ''));
+                    $temObservacao = (bool) ($alternativa['tem_observacao'] ?? false);
+
+                    if (! $temObservacao) {
+                        $this->respostas[$pauta->id][$alunoId]['observacao'] = null;
+                        $observacaoInformada = '';
+                    }
+
+                    if ($temObservacao && $observacaoInformada === '') {
+                        $pendencias[$turmaId.':'.$pauta->id][] = $alunoId;
+
+                        continue;
+                    }
+
+                    $payload[] = [
+                        'avaliacao_id' => (int) $this->avaliacao,
+                        'pauta_id' => (int) $pauta->id,
+                        'turma_id' => $turmaId,
+                        'aluno_id' => $alunoId,
+                        'professor_id' => $professorId,
+                        'alternativa_id' => $alternativaId,
+                        'observacao' => $temObservacao ? $observacaoInformada : null,
+                        'respondido_em' => $agora,
+                        'created_at' => $agora,
+                        'updated_at' => $agora,
+                    ];
+                    $totalAplicado++;
+                }
+            }
+        }
+
+        if ($payload === [] && $pendencias === []) {
+            Notification::make()
+                ->title('A alternativa selecionada nao esta disponivel nas pautas desta serie.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        DB::transaction(function () use ($payload, $pendencias): void {
+            if ($payload !== []) {
+                AvaliacaoResposta::query()->upsert(
+                    $payload,
+                    ['avaliacao_id', 'pauta_id', 'turma_id', 'aluno_id'],
+                    ['professor_id', 'alternativa_id', 'observacao', 'respondido_em', 'updated_at']
+                );
+            }
+
+            foreach ($pendencias as $chave => $alunosIds) {
+                [$turmaId, $pautaId] = array_map('intval', explode(':', $chave));
+
+                AvaliacaoResposta::query()
+                    ->where('avaliacao_id', (int) $this->avaliacao)
+                    ->where('turma_id', $turmaId)
+                    ->where('pauta_id', $pautaId)
+                    ->whereIn('aluno_id', $alunosIds)
+                    ->delete();
+            }
+        });
+
+        $totalPendencias = collect($pendencias)->flatten()->count();
+        $mensagens = [$totalAplicado.' resposta(s) salvas automaticamente.'];
+
+        if ($totalPendencias > 0) {
+            $mensagens[] = $totalPendencias.' resposta(s) precisam de observacao obrigatoria.';
+        }
+
+        if ($pautasIgnoradas > 0) {
+            $mensagens[] = $pautasIgnoradas.' pauta(s) nao possuem esta alternativa.';
+        }
+
+        Notification::make()
+            ->title('Avaliacao em massa aplicada.')
+            ->body(implode(' ', $mensagens))
             ->success()
             ->send();
     }
@@ -670,6 +837,18 @@ class AvaliacoesProfessor extends Page
         return $this->alternativasPorPauta[$pautaId] ?? [];
     }
 
+    public function getAlternativasEmMassaDisponiveisProperty(): Collection
+    {
+        $this->pautasDisponiveis;
+
+        return collect($this->alternativasPorPauta)
+            ->flatten(1)
+            ->filter(fn (array $alternativa): bool => isset($alternativa['id'], $alternativa['nome']))
+            ->unique(fn (array $alternativa): int => (int) $alternativa['id'])
+            ->sortBy(fn (array $alternativa): string => (string) $alternativa['nome'])
+            ->values();
+    }
+
     public function getAvaliacoesDisponiveisProperty(): Collection
     {
         $avaliacoesQuery = Avaliacao::query()
@@ -752,6 +931,27 @@ class AvaliacoesProfessor extends Page
             ->values();
     }
 
+    public function getSeriesPorEscolaDisponiveisProperty(): Collection
+    {
+        return $this->turmasDisponiveis
+            ->filter(fn (Turma $turma): bool => $turma->serie !== null && $turma->escola !== null)
+            ->groupBy(fn (Turma $turma): string => $this->chaveSerieEscola((int) $turma->id_escola, (int) $turma->id_serie))
+            ->map(function (Collection $turmas): array {
+                /** @var Turma $turma */
+                $turma = $turmas->first();
+
+                return [
+                    'value' => $this->chaveSerieEscola((int) $turma->id_escola, (int) $turma->id_serie),
+                    'escola_id' => (int) $turma->id_escola,
+                    'escola_nome' => (string) ($turma->escola?->nome ?? 'Escola sem nome'),
+                    'serie_id' => (int) $turma->id_serie,
+                    'serie_nome' => (string) ($turma->serie?->nome ?? 'Serie sem nome'),
+                ];
+            })
+            ->sortBy(fn (array $escopo): string => mb_strtolower($escopo['escola_nome'].'|'.$escopo['serie_nome']))
+            ->values();
+    }
+
     public function getTurmasDaSerieDisponiveisProperty(): Collection
     {
         if (! $this->serie) {
@@ -759,7 +959,8 @@ class AvaliacoesProfessor extends Page
         }
 
         return $this->turmasDisponiveis
-            ->filter(fn (Turma $turma): bool => (int) $turma->id_serie === (int) $this->serie)
+            ->filter(fn (Turma $turma): bool => (int) $turma->id_serie === (int) $this->serie
+                && (! $this->escola || (int) $turma->id_escola === (int) $this->escola))
             ->values();
     }
 
@@ -1365,21 +1566,78 @@ class AvaliacoesProfessor extends Page
             : 'Turma '.$nome;
     }
 
-    private function expandirTurmasDaSerie(): void
-    {
-        $this->turmasExpandidas = $this->turmasDaSerieDisponiveis
-            ->pluck('id')
-            ->map(fn ($id) => (int) $id)
-            ->values()
-            ->all();
-    }
-
     private function serieDaTurma(int $turmaId): ?int
     {
         $turma = $this->turmasDisponiveis->firstWhere('id', $turmaId);
         $serieId = $turma?->id_serie;
 
         return $serieId ? (int) $serieId : null;
+    }
+
+    private function escolaDaTurma(int $turmaId): ?int
+    {
+        $turma = $this->turmasDisponiveis->firstWhere('id', $turmaId);
+        $escolaId = $turma?->id_escola;
+
+        return $escolaId ? (int) $escolaId : null;
+    }
+
+    private function escolaDaSerie(int $serieId): ?int
+    {
+        $escolasIds = $this->turmasDisponiveis
+            ->filter(fn (Turma $turma): bool => (int) $turma->id_serie === $serieId)
+            ->pluck('id_escola')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        return $escolasIds->isNotEmpty() ? (int) $escolasIds->first() : null;
+    }
+
+    private function aplicarSerieEscolaSelecionada(): void
+    {
+        if (! $this->serieEscola) {
+            $this->serie = null;
+            $this->escola = null;
+
+            return;
+        }
+
+        $partes = explode(':', $this->serieEscola);
+
+        if (count($partes) !== 2 || ! is_numeric($partes[0]) || ! is_numeric($partes[1])) {
+            $this->serie = null;
+            $this->escola = null;
+            $this->serieEscola = null;
+
+            return;
+        }
+
+        $this->escola = (int) $partes[0];
+        $this->serie = (int) $partes[1];
+    }
+
+    private function sincronizarSerieEscola(): void
+    {
+        $this->serieEscola = $this->serie && $this->escola
+            ? $this->chaveSerieEscola((int) $this->escola, (int) $this->serie)
+            : null;
+    }
+
+    private function escopoSerieSelecionadoEhValido(): bool
+    {
+        if (! $this->serie) {
+            return false;
+        }
+
+        if (! $this->escola) {
+            return $this->seriesDisponiveis->contains('id', (int) $this->serie);
+        }
+
+        return $this->seriesPorEscolaDisponiveis
+            ->contains(fn (array $escopo): bool => (int) $escopo['serie_id'] === (int) $this->serie
+                && (int) $escopo['escola_id'] === (int) $this->escola);
     }
 
     private function alunoDaSerieSelecionada(int $alunoId): ?Aluno
@@ -1404,6 +1662,11 @@ class AvaliacoesProfessor extends Page
     private function chaveExpansao(int $turmaId, int $itemId): string
     {
         return $turmaId.':'.$itemId;
+    }
+
+    private function chaveSerieEscola(int $escolaId, int $serieId): string
+    {
+        return $escolaId.':'.$serieId;
     }
 
     private function normalizarQueryId(mixed $valor): ?int

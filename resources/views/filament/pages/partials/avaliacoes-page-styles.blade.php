@@ -234,6 +234,25 @@
         box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
     }
 
+    .av-mode-actions {
+        display: flex;
+        align-items: end;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+
+    .av-bulk-control {
+        display: flex;
+        align-items: end;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .av-bulk-select {
+        min-width: min(22rem, 100%);
+    }
+
     .av-override-select {
         grid-column: span 2;
         min-width: min(22rem, 100%);
@@ -632,6 +651,13 @@
         }
 
         .av-segmented-control {
+            width: 100%;
+        }
+
+        .av-mode-actions,
+        .av-bulk-control,
+        .av-bulk-select,
+        .av-bulk-control .gi-action {
             width: 100%;
         }
 
