@@ -34,6 +34,12 @@
         font-weight: bold;
     }
 
+    .card-detail {
+        font-size: 8.5px;
+        color: #5b6b7c;
+        margin-top: 4px;
+    }
+
     .card-blue {
         background: #eff6ff;
         border-color: #c7dcfd;
@@ -153,10 +159,12 @@
         <div class="card">
             <div class="card-label">Preenchimento manhã</div>
             <div class="card-value">{{ number_format((float) ($cards['percentual_turno_manha'] ?? 0), 1, ',', '.') }}%</div>
+            <div class="card-detail">{{ $cards['turno_manha_alunos_pendentes'] ?? 0 }} de {{ $cards['turno_manha_alunos_total'] ?? 0 }} alunos com pauta pendente</div>
         </div>
         <div class="card">
             <div class="card-label">Preenchimento tarde</div>
             <div class="card-value">{{ number_format((float) ($cards['percentual_turno_tarde'] ?? 0), 1, ',', '.') }}%</div>
+            <div class="card-detail">{{ $cards['turno_tarde_alunos_pendentes'] ?? 0 }} de {{ $cards['turno_tarde_alunos_total'] ?? 0 }} alunos com pauta pendente</div>
         </div>
     </div>
 

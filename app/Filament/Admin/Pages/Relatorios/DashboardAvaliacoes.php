@@ -952,7 +952,9 @@ class DashboardAvaliacoes extends Page implements HasForms
             '% de escolas preenchidas' => ($dados['cards']['percentual_escolas_preenchidas'] ?? 0) . '%',
             'Escolas preenchidas' => ($dados['cards']['escolas_preenchidas'] ?? 0) . ' de ' . ($dados['cards']['total_escolas'] ?? 0),
             '% preenchimento manha' => ($dados['cards']['percentual_turno_manha'] ?? 0) . '%',
+            'Alunos sem resposta manha' => ($dados['cards']['turno_manha_alunos_pendentes'] ?? 0) . ' de ' . ($dados['cards']['turno_manha_alunos_total'] ?? 0),
             '% preenchimento tarde' => ($dados['cards']['percentual_turno_tarde'] ?? 0) . '%',
+            'Alunos sem resposta tarde' => ($dados['cards']['turno_tarde_alunos_pendentes'] ?? 0) . ' de ' . ($dados['cards']['turno_tarde_alunos_total'] ?? 0),
         ];
 
         foreach ($indicadores as $label => $valor) {
@@ -1097,9 +1099,13 @@ class DashboardAvaliacoes extends Page implements HasForms
                 'percentual_turno_manha' => $turnos['manha']['percentual_preenchimento'] ?? 0.0,
                 'turno_manha_respondidas' => $turnos['manha']['respondidas'] ?? 0,
                 'turno_manha_esperadas' => $turnos['manha']['esperadas'] ?? 0,
+                'turno_manha_alunos_pendentes' => $turnos['manha']['alunos_pendentes'] ?? 0,
+                'turno_manha_alunos_total' => $turnos['manha']['alunos_total'] ?? 0,
                 'percentual_turno_tarde' => $turnos['tarde']['percentual_preenchimento'] ?? 0.0,
                 'turno_tarde_respondidas' => $turnos['tarde']['respondidas'] ?? 0,
                 'turno_tarde_esperadas' => $turnos['tarde']['esperadas'] ?? 0,
+                'turno_tarde_alunos_pendentes' => $turnos['tarde']['alunos_pendentes'] ?? 0,
+                'turno_tarde_alunos_total' => $turnos['tarde']['alunos_total'] ?? 0,
             ],
             'tabela_escolas' => $tabelaEscolas,
             'avaliacoes_resumo' => $this->montarResumoAvaliacoes($avaliacaoIds),
@@ -1127,9 +1133,13 @@ class DashboardAvaliacoes extends Page implements HasForms
                 'percentual_turno_manha' => 0.0,
                 'turno_manha_respondidas' => 0,
                 'turno_manha_esperadas' => 0,
+                'turno_manha_alunos_pendentes' => 0,
+                'turno_manha_alunos_total' => 0,
                 'percentual_turno_tarde' => 0.0,
                 'turno_tarde_respondidas' => 0,
                 'turno_tarde_esperadas' => 0,
+                'turno_tarde_alunos_pendentes' => 0,
+                'turno_tarde_alunos_total' => 0,
             ],
             'tabela_escolas' => [],
             'avaliacoes_resumo' => [],
@@ -1515,8 +1525,20 @@ class DashboardAvaliacoes extends Page implements HasForms
     private function calcularPreenchimentoPorTurno(array $avaliacaoIds): array
     {
         $resultado = [
-            'manha' => ['esperadas' => 0, 'respondidas' => 0, 'percentual_preenchimento' => 0.0],
-            'tarde' => ['esperadas' => 0, 'respondidas' => 0, 'percentual_preenchimento' => 0.0],
+            'manha' => [
+                'esperadas' => 0,
+                'respondidas' => 0,
+                'percentual_preenchimento' => 0.0,
+                'alunos_total' => 0,
+                'alunos_pendentes' => 0,
+            ],
+            'tarde' => [
+                'esperadas' => 0,
+                'respondidas' => 0,
+                'percentual_preenchimento' => 0.0,
+                'alunos_total' => 0,
+                'alunos_pendentes' => 0,
+            ],
         ];
 
         if ($avaliacaoIds === []) {
@@ -1540,9 +1562,47 @@ class DashboardAvaliacoes extends Page implements HasForms
             ->get()
             ->keyBy('turno');
 
+        $esperadasPorAluno = (clone $this->basePreenchimentosEsperadosQuery($avaliacaoIds))
+            ->whereIn('t.turno', array_keys($resultado))
+            ->groupBy('t.turno', 'aln.id')
+            ->select(
+                't.turno',
+                'aln.id as aluno_id',
+                DB::raw("COUNT(DISTINCT {$distinctEsperado}) as total")
+            )
+            ->get()
+            ->groupBy('turno');
+
+        $respondidasPorAluno = (clone $this->baseRespostasQuery($avaliacaoIds, ignorarAlternativas: true))
+            ->whereIn('t.turno', array_keys($resultado))
+            ->groupBy('t.turno', 'ar.aluno_id')
+            ->select(
+                't.turno',
+                'ar.aluno_id',
+                DB::raw("COUNT(DISTINCT {$distinctRespondido}) as total")
+            )
+            ->get()
+            ->groupBy('turno')
+            ->map(fn (Collection $items): Collection => $items->keyBy('aluno_id'));
+
         foreach (array_keys($resultado) as $turno) {
             $totalEsperado = (int) ($esperadas->get($turno)?->total ?? 0);
             $totalRespondido = min((int) ($respondidas->get($turno)?->total ?? 0), $totalEsperado);
+            $esperadasDoTurno = $esperadasPorAluno->get($turno, collect());
+            $respondidasDoTurno = $respondidasPorAluno->get($turno, collect());
+            $alunosPendentes = 0;
+
+            foreach ($esperadasDoTurno as $esperadaPorAluno) {
+                $totalEsperadoAluno = (int) ($esperadaPorAluno->total ?? 0);
+                $totalRespondidoAluno = min(
+                    (int) ($respondidasDoTurno->get($esperadaPorAluno->aluno_id)?->total ?? 0),
+                    $totalEsperadoAluno
+                );
+
+                if ($totalEsperadoAluno > 0 && $totalRespondidoAluno < $totalEsperadoAluno) {
+                    $alunosPendentes++;
+                }
+            }
 
             $resultado[$turno] = [
                 'esperadas' => $totalEsperado,
@@ -1550,6 +1610,8 @@ class DashboardAvaliacoes extends Page implements HasForms
                 'percentual_preenchimento' => $totalEsperado > 0
                     ? round(($totalRespondido / $totalEsperado) * 100, 1)
                     : 0.0,
+                'alunos_total' => $esperadasDoTurno->count(),
+                'alunos_pendentes' => $alunosPendentes,
             ];
         }
 

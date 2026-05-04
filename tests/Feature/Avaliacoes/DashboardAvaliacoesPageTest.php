@@ -49,6 +49,7 @@ class DashboardAvaliacoesPageTest extends TestCase
 
         $alunoManhaUm = $this->criarAluno($turmaManha, 'Aluno Manha 1', 'CGM-DASH-001');
         $alunoManhaDois = $this->criarAluno($turmaManha, 'Aluno Manha 2', 'CGM-DASH-002');
+        $alunoManhaParcial = $this->criarAluno($turmaManha, 'Aluno Manha Parcial', 'CGM-DASH-004');
         $this->criarAluno($turmaTarde, 'Aluno Tarde 1', 'CGM-DASH-003');
 
         $alternativaSim = Alternativa::query()->create([
@@ -80,6 +81,7 @@ class DashboardAvaliacoesPageTest extends TestCase
         $this->registrarResposta($avaliacao, $turmaManha, $alunoManhaUm, $pautaDois, $alternativaNao);
         $this->registrarResposta($avaliacao, $turmaManha, $alunoManhaDois, $pautaUm, $alternativaSim);
         $this->registrarResposta($avaliacao, $turmaManha, $alunoManhaDois, $pautaDois, $alternativaNao);
+        $this->registrarResposta($avaliacao, $turmaManha, $alunoManhaParcial, $pautaUm, $alternativaSim);
 
         $component = Livewire::actingAs($user)
             ->test(DashboardAvaliacoes::class);
@@ -91,24 +93,28 @@ class DashboardAvaliacoesPageTest extends TestCase
 
         $cards = $component->instance()->cards;
 
-        $this->assertSame(6, $cards['preenchimentos_esperados']);
-        $this->assertSame(4, $cards['preenchimentos_respondidos']);
-        $this->assertSame(2, $cards['preenchimentos_pendentes']);
-        $this->assertEquals(33.3, $cards['percentual_alunos_sem_resposta_pautas']);
-        $this->assertEquals(50.0, $cards['percentual_turmas_preenchidas']);
-        $this->assertEquals(50.0, $cards['percentual_escolas_preenchidas']);
-        $this->assertEquals(100.0, $cards['percentual_turno_manha']);
+        $this->assertSame(8, $cards['preenchimentos_esperados']);
+        $this->assertSame(5, $cards['preenchimentos_respondidos']);
+        $this->assertSame(3, $cards['preenchimentos_pendentes']);
+        $this->assertEquals(37.5, $cards['percentual_alunos_sem_resposta_pautas']);
+        $this->assertEquals(0.0, $cards['percentual_turmas_preenchidas']);
+        $this->assertEquals(0.0, $cards['percentual_escolas_preenchidas']);
+        $this->assertEquals(83.3, $cards['percentual_turno_manha']);
         $this->assertEquals(0.0, $cards['percentual_turno_tarde']);
+        $this->assertSame(1, $cards['turno_manha_alunos_pendentes']);
+        $this->assertSame(3, $cards['turno_manha_alunos_total']);
+        $this->assertSame(1, $cards['turno_tarde_alunos_pendentes']);
+        $this->assertSame(1, $cards['turno_tarde_alunos_total']);
 
         $alternativas = collect($component->instance()->distribuicaoAlternativas['itens'])->keyBy('nome');
 
-        $this->assertEquals(66.7, $alternativas->get('Sim')['percentual']);
-        $this->assertEquals(66.7, $alternativas->get('Nao')['percentual']);
-        $this->assertSame(3, $component->instance()->distribuicaoAlternativas['total_alunos']);
+        $this->assertEquals(75.0, $alternativas->get('Sim')['percentual']);
+        $this->assertEquals(50.0, $alternativas->get('Nao')['percentual']);
+        $this->assertSame(4, $component->instance()->distribuicaoAlternativas['total_alunos']);
 
         $graficoEscolas = collect($component->instance()->graficoAlunosSemRespostaPorEscola)->keyBy('nome');
 
-        $this->assertEquals(0.0, $graficoEscolas->get('Escola Manha')['percentual']);
+        $this->assertEquals(16.7, $graficoEscolas->get('Escola Manha')['percentual']);
         $this->assertEquals(100.0, $graficoEscolas->get('Escola Tarde')['percentual']);
     }
 

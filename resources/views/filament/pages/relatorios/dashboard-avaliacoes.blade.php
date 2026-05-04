@@ -71,12 +71,12 @@
                 <article class="dav-kpi">
                     <span class="dav-kpi-label">Preenchimento manhã</span>
                     <strong>{{ number_format((float) ($cards['percentual_turno_manha'] ?? 0), 1, ',', '.') }}%</strong>
-                    <small>{{ $cards['turno_manha_respondidas'] ?? 0 }} de {{ $cards['turno_manha_esperadas'] ?? 0 }} preenchimentos</small>
+                    <small>{{ $cards['turno_manha_alunos_pendentes'] ?? 0 }} de {{ $cards['turno_manha_alunos_total'] ?? 0 }} alunos com pauta pendente</small>
                 </article>
                 <article class="dav-kpi">
                     <span class="dav-kpi-label">Preenchimento tarde</span>
                     <strong>{{ number_format((float) ($cards['percentual_turno_tarde'] ?? 0), 1, ',', '.') }}%</strong>
-                    <small>{{ $cards['turno_tarde_respondidas'] ?? 0 }} de {{ $cards['turno_tarde_esperadas'] ?? 0 }} preenchimentos</small>
+                    <small>{{ $cards['turno_tarde_alunos_pendentes'] ?? 0 }} de {{ $cards['turno_tarde_alunos_total'] ?? 0 }} alunos com pauta pendente</small>
                 </article>
             </section>
 
