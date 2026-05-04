@@ -80,58 +80,6 @@
                 </article>
             </section>
 
-            <section class="dav-chart-grid">
-                <article class="dav-card">
-                    <header>
-                        <h3>Alunos sem resposta em pautas</h3>
-                        <p>Percentual de combinações aluno x pauta ainda sem resposta no recorte selecionado.</p>
-                    </header>
-
-                    @php
-                        $semRespostaPercent = (float) ($cards['percentual_alunos_sem_resposta_pautas'] ?? 0);
-                    @endphp
-                    <div class="dav-ring-wrap">
-                        <div class="dav-ring dav-ring--amber" style="--progress: {{ $semRespostaPercent }};">
-                            <div class="dav-ring-inner">
-                                <strong>{{ number_format($semRespostaPercent, 1, ',', '.') }}%</strong>
-                            </div>
-                        </div>
-                        <div class="dav-ring-meta">
-                            <span>
-                                <strong>{{ $cards['preenchimentos_pendentes'] ?? 0 }}</strong> preenchimentos pendentes
-                            </span>
-                            <span>
-                                <strong>{{ $cards['preenchimentos_respondidos'] ?? 0 }}</strong> preenchimentos respondidos
-                            </span>
-                        </div>
-                    </div>
-                </article>
-
-                <article class="dav-card">
-                    <header>
-                        <h3>Alunos sem resposta por Escola</h3>
-                        <p>Percentual de combinações aluno x pauta sem resposta em cada escola.</p>
-                    </header>
-
-                    <div class="dav-bars">
-                        @forelse ($graficoAlunosSemRespostaPorEscola as $item)
-                            <div class="dav-bar-row">
-                                <div class="dav-bar-top">
-                                    <span>{{ $item['nome'] }}</span>
-                                    <strong>{{ number_format((float) $item['percentual'], 1, ',', '.') }}%</strong>
-                                </div>
-                                <div class="dav-bar-track">
-                                    <div class="dav-bar-fill dav-bar-fill--amber" style="width: {{ $item['percentual_barra'] }}%;"></div>
-                                </div>
-                                <small class="dav-bar-note">{{ $item['total'] }} de {{ $item['esperadas'] }} pendentes</small>
-                            </div>
-                        @empty
-                            <p class="dav-empty">Sem dados para o recorte atual.</p>
-                        @endforelse
-                    </div>
-                </article>
-            </section>
-
             <section class="dav-card">
                 <header>
                     <h3>{{ $distribuicaoAlternativas['titulo'] ?? 'Distribuição de alternativas' }}</h3>
