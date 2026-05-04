@@ -235,15 +235,19 @@
     }
 
     .av-mode-actions {
-        display: grid;
-        grid-template-columns: minmax(18rem, 22rem) auto auto;
+        display: flex;
         align-items: end;
-        gap: 0.75rem;
         justify-content: end;
+        gap: 0.75rem;
+        flex-wrap: nowrap;
     }
 
     .av-bulk-control {
-        display: contents;
+        display: grid;
+        grid-template-columns: minmax(18rem, 22rem) auto;
+        align-items: end;
+        gap: 0.5rem;
+        flex: 0 1 auto;
     }
 
     .av-bulk-select {
@@ -254,6 +258,7 @@
     .av-bulk-control .gi-action {
         min-height: 2.75rem;
         align-self: end;
+        white-space: nowrap;
     }
 
     .av-override-select {
@@ -670,12 +675,13 @@
         }
 
         .av-mode-actions {
-            grid-template-columns: 1fr;
+            flex-direction: column;
+            align-items: stretch;
             justify-content: stretch;
+            flex-wrap: wrap;
         }
 
         .av-bulk-control {
-            display: grid;
             grid-template-columns: 1fr;
             gap: 0.5rem;
         }
