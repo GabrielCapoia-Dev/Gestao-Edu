@@ -212,10 +212,29 @@
             </section>
 
             <section class="dav-card">
-            <header>
-                <h3>Turmas Avaliadas</h3>
-                <p>Turmas com respostas registradas no recorte atual, com atalho para a tela de preenchimento do professor.</p>
-            </header>
+                @php
+                    $turmasUltimaPagina = max((int) ceil(($turmasAvaliadasTotal ?? 0) / max((int) $turmasAvaliadasPorPagina, 1)), 1);
+                    $turmasInicio = ($turmasAvaliadasTotal ?? 0) > 0
+                        ? (((int) $turmasAvaliadasPagina - 1) * (int) $turmasAvaliadasPorPagina) + 1
+                        : 0;
+                    $turmasFim = min((int) ($turmasAvaliadasTotal ?? 0), (int) $turmasAvaliadasPagina * (int) $turmasAvaliadasPorPagina);
+                @endphp
+
+                <header class="dav-card-header--split">
+                    <div>
+                        <h3>Turmas Avaliadas</h3>
+                        <p>Turmas com respostas registradas no recorte atual, com atalho para a tela de preenchimento do professor.</p>
+                    </div>
+
+                    <label class="dav-page-size">
+                        <span>Itens por página</span>
+                        <select wire:model.live="turmasAvaliadasPorPagina" aria-label="Itens por página em turmas avaliadas">
+                            @foreach ($turmasAvaliadasPorPaginaOptions as $opcao)
+                                <option value="{{ $opcao }}">{{ $opcao }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+                </header>
 
             <div class="dav-table-wrap">
                 <table class="dav-table">
@@ -265,6 +284,29 @@
                     </tbody>
                 </table>
             </div>
+
+                @if (($turmasAvaliadasTotal ?? 0) > 0)
+                    <div class="dav-pagination">
+                        <span>Mostrando {{ $turmasInicio }}-{{ $turmasFim }} de {{ $turmasAvaliadasTotal }} turmas</span>
+                        <div class="dav-pagination-actions">
+                            <button
+                                type="button"
+                                class="dav-page-button"
+                                wire:click="paginaAnteriorTurmasAvaliadas"
+                                @disabled($turmasAvaliadasPagina <= 1)>
+                                Anterior
+                            </button>
+                            <span>Página {{ $turmasAvaliadasPagina }} de {{ $turmasUltimaPagina }}</span>
+                            <button
+                                type="button"
+                                class="dav-page-button"
+                                wire:click="proximaPaginaTurmasAvaliadas"
+                                @disabled($turmasAvaliadasPagina >= $turmasUltimaPagina)>
+                                Próxima
+                            </button>
+                        </div>
+                    </div>
+                @endif
             </section>
         @endif
     </div>
@@ -558,6 +600,32 @@
             line-height: 1.5;
         }
 
+        .dav-card-header--split {
+            display: flex;
+            align-items: end;
+            justify-content: space-between;
+            gap: 0.85rem;
+        }
+
+        .dav-page-size {
+            display: grid;
+            gap: 0.25rem;
+            min-width: 9rem;
+            color: var(--gray-600);
+            font-size: 0.72rem;
+            font-weight: 600;
+        }
+
+        .dav-page-size select {
+            min-height: 2.25rem;
+            border-radius: 0.55rem;
+            border: 1px solid var(--gray-300);
+            background: #fff;
+            color: var(--gray-900);
+            padding: 0.35rem 0.5rem;
+            font-size: 0.8rem;
+        }
+
         .dav-ring-wrap {
             display: grid;
             gap: 0.75rem;
@@ -762,6 +830,47 @@
             color: #1e40af;
         }
 
+        .dav-pagination {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            color: var(--gray-600);
+            font-size: 0.78rem;
+        }
+
+        .dav-pagination-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .dav-page-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 2rem;
+            padding: 0.25rem 0.7rem;
+            border-radius: 0.5rem;
+            border: 1px solid #bfd8fb;
+            background: #eff6ff;
+            color: #0f4e9b;
+            font-size: 0.75rem;
+            font-weight: 700;
+            transition: all 0.15s ease;
+        }
+
+        .dav-page-button:hover:not(:disabled) {
+            background: #dbeafe;
+            border-color: #93c5fd;
+            color: #1e40af;
+        }
+
+        .dav-page-button:disabled {
+            cursor: not-allowed;
+            opacity: 0.45;
+        }
+
         .dav-empty {
             margin: 0;
             color: var(--gray-500);
@@ -799,6 +908,12 @@
         }
 
         :root.dark .dav-field select {
+            background: var(--gray-900);
+            border-color: var(--gray-700);
+            color: var(--gray-100);
+        }
+
+        :root.dark .dav-page-size select {
             background: var(--gray-900);
             border-color: var(--gray-700);
             color: var(--gray-100);
@@ -858,6 +973,18 @@
             color: #bfdbfe;
         }
 
+        :root.dark .dav-page-button {
+            background: #17263a;
+            border-color: #274161;
+            color: #93c5fd;
+        }
+
+        :root.dark .dav-page-button:hover:not(:disabled) {
+            background: #1f3550;
+            border-color: #356091;
+            color: #bfdbfe;
+        }
+
         @media (max-width: 1080px) {
             .dav-filters-grid {
                 grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -888,6 +1015,16 @@
 
             .dav-chart-grid {
                 grid-template-columns: 1fr;
+            }
+
+            .dav-card-header--split,
+            .dav-pagination {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .dav-pagination-actions {
+                justify-content: space-between;
             }
         }
 

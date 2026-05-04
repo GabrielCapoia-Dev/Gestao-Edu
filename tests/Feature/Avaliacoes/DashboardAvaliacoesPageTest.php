@@ -118,6 +118,77 @@ class DashboardAvaliacoesPageTest extends TestCase
         $this->assertEquals(100.0, $graficoEscolas->get('Escola Tarde')['percentual']);
     }
 
+    public function test_listagem_de_turmas_avaliadas_tem_paginacao_configuravel(): void
+    {
+        Permission::findOrCreate('Listar Avaliacoes');
+
+        $user = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $user->givePermissionTo('Listar Avaliacoes');
+
+        $component = Livewire::actingAs($user)
+            ->test(DashboardAvaliacoes::class);
+
+        $tipo = TipoAvaliacao::query()->create(['nome' => 'Parecer Paginacao', 'status' => true]);
+        $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Periodo Paginacao', 'status' => true]);
+        $serie = $this->criarSerie('SER-PAG', '2o Ano');
+        $componente = ComponenteCurricular::query()->create([
+            'codigo' => 'COMP-PAG',
+            'nome' => 'Matematica',
+        ]);
+        $escola = $this->criarEscola('Escola Paginacao');
+        $alternativa = Alternativa::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'nome' => 'Sim',
+            'tem_observacao' => false,
+            'status' => true,
+        ]);
+        $pauta = $this->criarPauta($tipo, $serie, $componente, 'Pauta paginacao');
+        $pauta->alternativas()->attach([$alternativa->id]);
+
+        $avaliacao = $this->criarAvaliacao('Avaliacao Paginacao', $tipo, $periodo);
+        $avaliacao->series()->sync([$serie->id]);
+        $avaliacao->componentes()->sync([$componente->id]);
+        $avaliacao->escolas()->sync([$escola->id]);
+        $avaliacao->pautas()->sync([$pauta->id]);
+
+        $turmasIds = [];
+
+        for ($i = 1; $i <= 7; $i++) {
+            $turma = $this->criarTurma($escola, $serie, 'Turma Pag ' . $i, 'manha');
+            $aluno = $this->criarAluno($turma, 'Aluno Pag ' . $i, 'CGM-PAG-00' . $i);
+            $turmasIds[] = $turma->id;
+
+            $this->registrarResposta($avaliacao, $turma, $aluno, $pauta, $alternativa);
+        }
+
+        $avaliacao->turmas()->sync($turmasIds);
+
+        $component->set('filtros.avaliacao_id', $avaliacao->id);
+
+        $this->assertSame(7, $component->instance()->turmasAvaliadasTotal);
+        $this->assertCount(7, $component->instance()->turmasAvaliadas);
+
+        $component->set('turmasAvaliadasPorPagina', 5);
+
+        $this->assertSame(5, $component->instance()->turmasAvaliadasPorPagina);
+        $this->assertSame(1, $component->instance()->turmasAvaliadasPagina);
+        $this->assertCount(5, $component->instance()->turmasAvaliadas);
+
+        $component->call('proximaPaginaTurmasAvaliadas');
+
+        $this->assertSame(2, $component->instance()->turmasAvaliadasPagina);
+        $this->assertCount(2, $component->instance()->turmasAvaliadas);
+
+        $component->set('turmasAvaliadasPorPagina', 25);
+
+        $this->assertSame(25, $component->instance()->turmasAvaliadasPorPagina);
+        $this->assertSame(1, $component->instance()->turmasAvaliadasPagina);
+        $this->assertCount(7, $component->instance()->turmasAvaliadas);
+    }
+
     private function criarAvaliacao(string $nome, TipoAvaliacao $tipo, PeriodoAvaliacao $periodo): Avaliacao
     {
         return Avaliacao::query()->create([

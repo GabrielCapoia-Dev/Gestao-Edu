@@ -67,6 +67,14 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     public array $turmasAvaliadas = [];
 
+    public int $turmasAvaliadasTotal = 0;
+
+    public int $turmasAvaliadasPagina = 1;
+
+    public int $turmasAvaliadasPorPagina = 10;
+
+    public array $turmasAvaliadasPorPaginaOptions = [5, 10, 25, 50, 100];
+
     public array $filtrosAplicados = [];
 
     public string $ultimaAtualizacao = '';
@@ -79,6 +87,8 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     public function updatedFiltros(mixed $value = null, ?string $key = null): void
     {
+        $this->resetarPaginacaoTurmasAvaliadas();
+
         if ($key === 'avaliacao_id') {
             $this->limparFiltrosDependentes();
         }
@@ -88,6 +98,7 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     public function updatedFiltrosAvaliacaoId(): void
     {
+        $this->resetarPaginacaoTurmasAvaliadas();
         $this->limparFiltrosDependentes();
         $this->atualizarDashboard();
     }
@@ -95,6 +106,26 @@ class DashboardAvaliacoes extends Page implements HasForms
     public function limparFiltros(): void
     {
         $this->filtros = $this->filtrosPadrao();
+        $this->resetarPaginacaoTurmasAvaliadas();
+        $this->atualizarDashboard();
+    }
+
+    public function updatedTurmasAvaliadasPorPagina(mixed $value): void
+    {
+        $this->turmasAvaliadasPorPagina = $this->normalizarTurmasAvaliadasPorPagina($value);
+        $this->resetarPaginacaoTurmasAvaliadas();
+        $this->atualizarDashboard();
+    }
+
+    public function paginaAnteriorTurmasAvaliadas(): void
+    {
+        $this->turmasAvaliadasPagina = max($this->turmasAvaliadasPagina - 1, 1);
+        $this->atualizarDashboard();
+    }
+
+    public function proximaPaginaTurmasAvaliadas(): void
+    {
+        $this->turmasAvaliadasPagina = min($this->turmasAvaliadasPagina + 1, $this->totalPaginasTurmasAvaliadas());
         $this->atualizarDashboard();
     }
 
@@ -762,6 +793,37 @@ class DashboardAvaliacoes extends Page implements HasForms
         ];
     }
 
+    private function resetarPaginacaoTurmasAvaliadas(): void
+    {
+        $this->turmasAvaliadasPagina = 1;
+    }
+
+    private function normalizarTurmasAvaliadasPorPagina(mixed $value): int
+    {
+        $porPagina = (int) $value;
+
+        return in_array($porPagina, $this->turmasAvaliadasPorPaginaOptions, true)
+            ? $porPagina
+            : 10;
+    }
+
+    private function normalizarPaginaTurmasAvaliadas(?int $total = null): void
+    {
+        $this->turmasAvaliadasPorPagina = $this->normalizarTurmasAvaliadasPorPagina($this->turmasAvaliadasPorPagina);
+        $this->turmasAvaliadasPagina = min(
+            max((int) $this->turmasAvaliadasPagina, 1),
+            $this->totalPaginasTurmasAvaliadas($total)
+        );
+    }
+
+    private function totalPaginasTurmasAvaliadas(?int $total = null): int
+    {
+        $total = $total ?? $this->turmasAvaliadasTotal;
+        $porPagina = max($this->normalizarTurmasAvaliadasPorPagina($this->turmasAvaliadasPorPagina), 1);
+
+        return max((int) ceil($total / $porPagina), 1);
+    }
+
     private function filtrosIgnorandoCampo(string $campo): array
     {
         $filtros = $this->filtros;
@@ -1063,6 +1125,7 @@ class DashboardAvaliacoes extends Page implements HasForms
         $this->graficoAlunosSemRespostaPorEscola = $dados['grafico_alunos_sem_resposta_por_escola'];
         $this->distribuicaoAlternativas = $dados['distribuicao_alternativas'];
         $this->turmasAvaliadas = $dados['turmas_avaliadas'];
+        $this->turmasAvaliadasTotal = $dados['turmas_avaliadas_total'];
         $this->filtrosAplicados = $this->filtrosAplicadosFormatados();
         $this->ultimaAtualizacao = $this->avaliacaoSelecionada()
             ? now()->format('d/m/Y H:i:s')
@@ -1076,7 +1139,8 @@ class DashboardAvaliacoes extends Page implements HasForms
      *     avaliacoes_resumo: array<int, array<string, int|float|string>>,
      *     grafico_alunos_sem_resposta_por_escola: array<int, array<string, int|float|string>>,
      *     distribuicao_alternativas: array<string, mixed>,
-     *     turmas_avaliadas: array<int, array<string, int|string>>
+     *     turmas_avaliadas: array<int, array<string, int|string>>,
+     *     turmas_avaliadas_total: int
      * }
      */
     private function montarDashboardData(): array
@@ -1092,6 +1156,7 @@ class DashboardAvaliacoes extends Page implements HasForms
         $tabelaEscolas = $this->montarTabelaEscolas($avaliacaoIds);
         $totaisPreenchimento = $this->calcularTotaisPreenchimento($avaliacaoIds, $tabelaEscolas);
         $turnos = $this->calcularPreenchimentoPorTurno($avaliacaoIds);
+        $turmasAvaliadas = $this->montarTurmasAvaliadas($avaliacaoIds);
 
         return [
             'cards' => [
@@ -1111,7 +1176,8 @@ class DashboardAvaliacoes extends Page implements HasForms
             'avaliacoes_resumo' => $this->montarResumoAvaliacoes($avaliacaoIds),
             'grafico_alunos_sem_resposta_por_escola' => $this->montarGraficoAlunosSemRespostaPorEscola($tabelaEscolas),
             'distribuicao_alternativas' => $this->montarDistribuicaoAlternativas($avaliacaoIds),
-            'turmas_avaliadas' => $this->montarTurmasAvaliadas($avaliacaoIds),
+            'turmas_avaliadas' => $turmasAvaliadas['itens'],
+            'turmas_avaliadas_total' => $turmasAvaliadas['total'],
         ];
     }
 
@@ -1153,6 +1219,7 @@ class DashboardAvaliacoes extends Page implements HasForms
                 'itens' => [],
             ],
             'turmas_avaliadas' => [],
+            'turmas_avaliadas_total' => 0,
         ];
     }
 
@@ -1868,15 +1935,17 @@ class DashboardAvaliacoes extends Page implements HasForms
     }
 
     /**
-     * @return array<int, array<string, int|string>>
+     * @return array{itens: array<int, array<string, int|string>>, total: int}
      */
     private function montarTurmasAvaliadas(array $avaliacaoIds): array
     {
         if ($avaliacaoIds === []) {
-            return [];
+            $this->normalizarPaginaTurmasAvaliadas(0);
+
+            return ['itens' => [], 'total' => 0];
         }
 
-        $dados = (clone $this->baseRespostasQuery($avaliacaoIds))
+        $query = (clone $this->baseRespostasQuery($avaliacaoIds))
             ->join('avaliacoes as av', 'av.id', '=', 'ar.avaliacao_id')
             ->leftJoin('escolas as e', 'e.id', '=', 't.id_escola')
             ->leftJoin('series as s', 's.id', '=', 't.id_serie')
@@ -1889,9 +1958,6 @@ class DashboardAvaliacoes extends Page implements HasForms
                 'e.nome',
                 's.nome'
             )
-            ->orderByDesc(DB::raw('MAX(ar.respondido_em)'))
-            ->orderBy('av.nome')
-            ->limit(120)
             ->select(
                 'ar.avaliacao_id',
                 'ar.turma_id',
@@ -1904,10 +1970,21 @@ class DashboardAvaliacoes extends Page implements HasForms
                 DB::raw('COUNT(DISTINCT ar.aluno_id) as alunos_respondidos'),
                 DB::raw('COUNT(DISTINCT ar.pauta_id) as pautas_respondidas'),
                 DB::raw('MAX(ar.respondido_em) as ultima_resposta_em')
-            )
+            );
+
+        $total = (int) DB::query()
+            ->fromSub(clone $query, 'turmas_avaliadas')
+            ->count();
+
+        $this->normalizarPaginaTurmasAvaliadas($total);
+
+        $dados = $query
+            ->orderByDesc(DB::raw('MAX(ar.respondido_em)'))
+            ->orderBy('av.nome')
+            ->forPage($this->turmasAvaliadasPagina, $this->turmasAvaliadasPorPagina)
             ->get();
 
-        return $dados
+        $itens = $dados
             ->map(function ($item): array {
                 return [
                     'avaliacao_id' => (int) $item->avaliacao_id,
@@ -1927,6 +2004,8 @@ class DashboardAvaliacoes extends Page implements HasForms
             })
             ->values()
             ->all();
+
+        return ['itens' => $itens, 'total' => $total];
     }
 
     /**
