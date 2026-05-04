@@ -209,18 +209,7 @@ class DashboardAvaliacoes extends Page implements HasForms
     protected function getHeaderActions(): array
     {
         return [
-            Action::make('exportar_pdf')
-                ->label('Exportar PDF')
-                ->icon('heroicon-o-document-arrow-down')
-                ->color('gray')
-                ->visible(fn (): bool => $this->podeExportar)
-                ->action(fn () => $this->exportarPdf()),
-            Action::make('exportar_xlsx')
-                ->label('Exportar XLSX')
-                ->icon('heroicon-o-table-cells')
-                ->color('primary')
-                ->visible(fn (): bool => $this->podeExportar)
-                ->action(fn () => $this->exportarXlsx()),
+
         ];
     }
 
