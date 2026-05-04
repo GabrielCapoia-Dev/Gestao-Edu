@@ -22,6 +22,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
+use Filament\Actions\BulkAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\DeleteAction;
@@ -297,6 +298,40 @@ class EmpresaContratadaService
     private function acoesEmMassa(): array
     {
         return [
+            BulkAction::make('alterar_setor')
+                ->label('Alterar setor')
+                ->visible(fn (): bool => Auth::user()?->hasPermissionTo('Editar Empresa Contratada') ?? false)
+                ->form([
+                    Select::make('setor_id')
+                        ->label('Novo setor')
+                        ->options(fn () => Setor::query()
+                            ->ativos()
+                            ->orderBy('nome')
+                            ->pluck('nome', 'id')
+                            ->toArray())
+                        ->searchable()
+                        ->preload()
+                        ->required(),
+                ])
+                ->requiresConfirmation()
+                ->modalHeading('Alterar setor das empresas selecionadas')
+                ->modalDescription('As empresas selecionadas passarão a aparecer nas listagens e seletores do novo setor.')
+                ->action(function (array $data, $records): void {
+                    foreach ($records as $record) {
+                        $record->update([
+                            'setor_id' => $data['setor_id'],
+                            'alterado_por' => Auth::user()?->name,
+                        ]);
+                    }
+
+                    Notification::make()
+                        ->title('Setor atualizado')
+                        ->body('As empresas selecionadas foram vinculadas ao novo setor.')
+                        ->success()
+                        ->send();
+                })
+                ->deselectRecordsAfterCompletion(),
+
             DeleteBulkAction::make()
                 ->successNotification(null)
                 ->using(function ($records, Action $action) {
