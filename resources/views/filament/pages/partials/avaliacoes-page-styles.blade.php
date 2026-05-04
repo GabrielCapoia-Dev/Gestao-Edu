@@ -332,6 +332,27 @@
         gap: 0.85rem;
     }
 
+    .av-turma-section {
+        display: grid;
+        gap: 0.85rem;
+    }
+
+    .av-turma-content {
+        display: grid;
+        gap: 0.85rem;
+        padding-top: 0.15rem;
+    }
+
+    .av-pauta-section--nested {
+        padding-top: 0.85rem;
+        border-top: 1px solid var(--gray-200);
+    }
+
+    .av-pauta-section--nested:first-child {
+        padding-top: 0;
+        border-top: 0;
+    }
+
     .av-pauta-toggle {
         width: 100%;
         display: grid;
@@ -772,6 +793,10 @@
     }
 
     :root.dark .av-aluno-componente + .av-aluno-componente {
+        border-color: var(--gray-800);
+    }
+
+    :root.dark .av-pauta-section--nested {
         border-color: var(--gray-800);
     }
 

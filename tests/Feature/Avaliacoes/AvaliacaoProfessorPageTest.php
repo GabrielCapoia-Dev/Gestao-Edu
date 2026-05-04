@@ -120,6 +120,104 @@ class AvaliacaoProfessorPageTest extends TestCase
             ->assertDontSee('Avaliacao Inativa');
     }
 
+    public function test_professor_filtra_por_serie_e_visualiza_turmas_agrupadas(): void
+    {
+        Permission::findOrCreate('Responder Avaliações');
+
+        $tipo = TipoAvaliacao::query()->create(['nome' => 'Parecer Serie', 'status' => true]);
+        $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Periodo Serie', 'status' => true]);
+
+        $escola = $this->criarEscola('Escola Serie');
+        $serie = $this->criarSerie('SER-AGR', '1o Ano');
+        $outraSerie = $this->criarSerie('SER-FORA', '2o Ano');
+        $turmaA = $this->criarTurma($escola, $serie, 'A');
+        $turmaB = $this->criarTurma($escola, $serie, 'B');
+        $turmaFora = $this->criarTurma($escola, $outraSerie, 'C');
+
+        $componente = ComponenteCurricular::query()->create([
+            'codigo' => 'COMP-SER',
+            'nome' => 'Lingua Portuguesa',
+        ]);
+
+        $userProfessor = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $userProfessor->givePermissionTo('Responder Avaliações');
+
+        $professor = Professor::query()->create([
+            'user_id' => $userProfessor->id,
+            'id_escola' => $escola->id,
+            'matricula' => 'PROF-SER',
+            'nome' => 'Professor Serie',
+            'email' => 'serie@edu.umuarama.pr.gov.br',
+        ]);
+
+        foreach ([$turmaA, $turmaB] as $turma) {
+            $turma->componentes()->attach($componente->id, [
+                'professor_id' => $professor->id,
+                'tem_professor' => true,
+            ]);
+        }
+
+        $alternativa = Alternativa::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'nome' => 'Atende',
+            'tem_observacao' => false,
+            'status' => true,
+        ]);
+
+        $pautaSerie = Pauta::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'texto' => 'Pauta do primeiro ano',
+            'serie_id' => $serie->id,
+            'componente_curricular_id' => $componente->id,
+            'status' => true,
+        ]);
+        $pautaSerie->alternativas()->attach($alternativa->id);
+
+        $pautaOutraSerie = Pauta::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'texto' => 'Pauta do segundo ano',
+            'serie_id' => $outraSerie->id,
+            'componente_curricular_id' => $componente->id,
+            'status' => true,
+        ]);
+        $pautaOutraSerie->alternativas()->attach($alternativa->id);
+
+        $avaliacao = $this->criarAvaliacao('Avaliacao por Serie', $tipo, $periodo);
+        $avaliacao->pautas()->attach([$pautaSerie->id, $pautaOutraSerie->id]);
+        $avaliacao->turmas()->attach([$turmaA->id, $turmaB->id, $turmaFora->id]);
+        $this->sincronizarEscopoAvaliacao($avaliacao, [$serie->id, $outraSerie->id], [$componente->id], [$escola->id]);
+
+        Aluno::query()->create([
+            'nome' => 'Aluno Turma A',
+            'cgm' => 'CGM-SER-A',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turmaA->id,
+        ]);
+
+        Aluno::query()->create([
+            'nome' => 'Aluno Turma B',
+            'cgm' => 'CGM-SER-B',
+            'data_nascimento' => '2015-01-02',
+            'id_turma' => $turmaB->id,
+        ]);
+
+        Livewire::actingAs($userProfessor)
+            ->test(AvaliacoesProfessor::class)
+            ->set('avaliacao', $avaliacao->id)
+            ->assertSee('1o Ano')
+            ->assertDontSee('2o Ano')
+            ->set('serie', $serie->id)
+            ->assertSee('Turma A')
+            ->assertSee('Turma B')
+            ->assertDontSee('Turma C')
+            ->call('definirVisualizacao', 'alunos')
+            ->assertSee('Aluno Turma A')
+            ->assertSee('Aluno Turma B');
+    }
+
     public function test_professor_usa_override_de_alternativas_por_pauta(): void
     {
         Permission::findOrCreate('Responder Avaliações');
