@@ -3,6 +3,8 @@
 namespace App\Filament\Admin\Resources\Contratos\Schemas;
 
 use App\Models\Item;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Schemas\Components\Section;
@@ -31,7 +33,13 @@ class ContratoForm
 
                         Select::make('id_empresa_contratada')
                             ->label('Empresa Contratada')
-                            ->relationship('empresaContratada', 'nome')
+                            ->relationship(
+                                name: 'empresaContratada',
+                                titleAttribute: 'nome',
+                                modifyQueryUsing: fn (Builder $query): Builder => $query
+                                    ->where('ativo', true)
+                                    ->doSetorDoUsuario(Auth::user())
+                            )
                             ->searchable()
                             ->preload()
                             ->required()

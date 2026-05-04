@@ -14,6 +14,8 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
 
@@ -38,6 +40,12 @@ class ContratoResource extends Resource
     public static function table(Table $table): Table
     {
         return ContratosTable::configure($table);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->whereHas('empresaContratada', fn (Builder $query): Builder => $query->doSetorDoUsuario(Auth::user()));
     }
 
     public static function getRelations(): array

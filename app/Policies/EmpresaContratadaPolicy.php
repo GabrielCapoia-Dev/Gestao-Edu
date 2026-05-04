@@ -21,7 +21,8 @@ class EmpresaContratadaPolicy
      */
     public function view(User $user, EmpresaContratada $empresaContratada): bool
     {
-        return $user->hasPermissionTo('Listar Empresa Contratada');
+        return $user->hasPermissionTo('Listar Empresa Contratada')
+            && $this->pertenceAoSetorDoUsuario($user, $empresaContratada);
     }
 
     /**
@@ -37,7 +38,8 @@ class EmpresaContratadaPolicy
      */
     public function update(User $user, EmpresaContratada $empresaContratada): bool
     {
-        return $user->hasPermissionTo('Editar Empresa Contratada');
+        return $user->hasPermissionTo('Editar Empresa Contratada')
+            && $this->pertenceAoSetorDoUsuario($user, $empresaContratada);
     }
 
     /**
@@ -45,7 +47,17 @@ class EmpresaContratadaPolicy
      */
     public function delete(User $user, EmpresaContratada $empresaContratada): bool
     {
-        return $user->hasPermissionTo('Excluir Empresa Contratada');
+        return $user->hasPermissionTo('Excluir Empresa Contratada')
+            && $this->pertenceAoSetorDoUsuario($user, $empresaContratada);
+    }
+
+    private function pertenceAoSetorDoUsuario(User $user, EmpresaContratada $empresaContratada): bool
+    {
+        if (blank($user->setor_id)) {
+            return true;
+        }
+
+        return (int) $empresaContratada->setor_id === (int) $user->setor_id;
     }
 
     // /**

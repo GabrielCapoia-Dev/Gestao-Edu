@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\EmpresaContratada;
+use App\Models\Setor;
 use Filament\Forms\Form;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
@@ -78,6 +79,22 @@ class EmpresaContratadaService
                             ->tel()
                             ->maxLength(20),
 
+                        Select::make('setor_id')
+                            ->label('Setor')
+                            ->options(fn () => Setor::query()
+                                ->ativos()
+                                ->when(
+                                    filled(Auth::user()?->setor_id),
+                                    fn (Builder $query): Builder => $query->whereKey(Auth::user()->setor_id)
+                                )
+                                ->orderBy('nome')
+                                ->pluck('nome', 'id')
+                                ->toArray())
+                            ->default(fn () => Auth::user()?->setor_id)
+                            ->searchable()
+                            ->preload()
+                            ->required(),
+
                     ]),
                 ]),
 
@@ -115,6 +132,7 @@ class EmpresaContratadaService
 
         return $table
             ->query(EmpresaContratada::query()
+                ->doSetorDoUsuario(Auth::user())
                 ->when(! $podeListarInativas, fn (Builder $query) => $query->where('ativo', true)))
             ->columns($this->colunasTabela())
             ->filters($this->filtrosTabela($podeListarInativas))
@@ -143,6 +161,11 @@ class EmpresaContratadaService
 
             TextColumn::make('telefone')
                 ->label('Telefone'),
+
+            TextColumn::make('setor.nome')
+                ->label('Setor')
+                ->searchable()
+                ->sortable(),
 
             IconColumn::make('ativo')
                 ->label('Ativa')
@@ -196,6 +219,7 @@ class EmpresaContratadaService
                         'email',
                         'responsavel',
                         'telefone',
+                        'setor_id',
                         'cep',
                         'logradouro',
                         'numero',

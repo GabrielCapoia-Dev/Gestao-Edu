@@ -13,6 +13,8 @@ use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
 class PedidoGestaoForm
 {
@@ -140,7 +142,9 @@ class PedidoGestaoForm
                             ->relationship(
                                 name: 'empresaContratada',
                                 titleAttribute: 'nome',
-                                modifyQueryUsing: fn ($query) => $query->where('ativo', true)
+                                modifyQueryUsing: fn (Builder $query): Builder => $query
+                                    ->where('ativo', true)
+                                    ->doSetorDoUsuario(Auth::user())
                             )
                             ->searchable()
                             ->preload()

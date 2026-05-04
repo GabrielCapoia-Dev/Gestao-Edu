@@ -10,6 +10,7 @@ use Filament\Pages\Page;
 use BackedEnum;
 use UnitEnum;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 
 class GestaoMargens extends Page
@@ -69,11 +70,16 @@ class GestaoMargens extends Page
 
     public function getCardsProperty(): array
     {
-        $contratosAtivos = Contrato::where('ativo', true)->count();
+        $contratosAtivos = Contrato::query()
+            ->where('ativo', true)
+            ->whereHas('empresaContratada', fn (Builder $query): Builder => $query->doSetorDoUsuario(Auth::user()))
+            ->count();
 
         // Valor financeiro total disponível (saldo_disponivel * preco_unitario)
         $todosContratoItens = ContratoItem::query()
-            ->whereHas('contrato', fn($q) => $q->where('ativo', true))
+            ->whereHas('contrato', fn (Builder $q): Builder => $q
+                ->where('ativo', true)
+                ->whereHas('empresaContratada', fn (Builder $empresa): Builder => $empresa->doSetorDoUsuario(Auth::user())))
             ->get();
 
         $valorTotalDisponivel = $todosContratoItens->sum(
@@ -213,7 +219,9 @@ class GestaoMargens extends Page
     {
         $contratoItens = ContratoItem::query()
             ->with(['item', 'contrato.empresaContratada']) // 👈 adicionar .empresaContratada
-            ->whereHas('contrato', fn($q) => $q->where('ativo', true))
+            ->whereHas('contrato', fn (Builder $q): Builder => $q
+                ->where('ativo', true)
+                ->whereHas('empresaContratada', fn (Builder $empresa): Builder => $empresa->doSetorDoUsuario(Auth::user())))
             ->get();
 
 
@@ -285,7 +293,9 @@ class GestaoMargens extends Page
 
         $this->contratosDoItem = ContratoItem::query()
             ->with(['contrato.empresaContratada'])
-            ->whereHas('contrato', fn($q) => $q->where('ativo', true))
+            ->whereHas('contrato', fn (Builder $q): Builder => $q
+                ->where('ativo', true)
+                ->whereHas('empresaContratada', fn (Builder $empresa): Builder => $empresa->doSetorDoUsuario(Auth::user())))
             ->where('item_id', $itemId)
             ->get()
             ->map(function (ContratoItem $ci) {

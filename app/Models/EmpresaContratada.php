@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 
 class EmpresaContratada extends Model
@@ -16,6 +17,7 @@ class EmpresaContratada extends Model
         'email', // Email corporativo
         'responsavel', // Nome do responsável pelo contrato
         'telefone', // Telefone principal
+        'setor_id',
 
         // Endereço
         'cep',
@@ -47,6 +49,10 @@ class EmpresaContratada extends Model
         static::saving(function ($model) {
             if (Auth::check()) {
                 $model->alterado_por = Auth::user()->name;
+
+                if (blank($model->setor_id)) {
+                    $model->setor_id = Auth::user()->setor_id;
+                }
             }
         });
     }
@@ -65,6 +71,11 @@ class EmpresaContratada extends Model
     public function contratos()
     {
         return $this->hasMany(Contrato::class, 'id_empresa_contratada');
+    }
+
+    public function setor()
+    {
+        return $this->belongsTo(Setor::class);
     }
 
     /*
@@ -92,5 +103,15 @@ class EmpresaContratada extends Model
     public function scopeAtivas($query)
     {
         return $query->where('ativo', true);
+    }
+
+    public function scopeDoSetorDoUsuario(Builder $query, ?User $user = null): Builder
+    {
+        $user ??= Auth::user();
+
+        return $query->when(
+            filled($user?->setor_id),
+            fn (Builder $query): Builder => $query->where('setor_id', $user->setor_id)
+        );
     }
 }

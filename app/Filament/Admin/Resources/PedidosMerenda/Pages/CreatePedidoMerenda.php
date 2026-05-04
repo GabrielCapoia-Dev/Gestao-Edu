@@ -9,6 +9,8 @@ use App\Models\PedidoMerenda;
 use App\Models\PedidoMerendaItem;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\Page;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class CreatePedidoMerenda extends Page
@@ -69,7 +71,9 @@ class CreatePedidoMerenda extends Page
 
         $registros = ContratoItem::query()
             ->with(['contrato.empresaContratada'])
-            ->whereHas('contrato', fn ($query) => $query->where('ativo', true))
+            ->whereHas('contrato', fn (Builder $query): Builder => $query
+                ->where('ativo', true)
+                ->whereHas('empresaContratada', fn (Builder $empresa): Builder => $empresa->doSetorDoUsuario(Auth::user())))
             ->where('item_id', $value)
             ->whereRaw('(quantidade_total - quantidade_utilizada - quantidade_reservada) > 0')
             ->orderByDesc('updated_at')
@@ -205,7 +209,9 @@ class CreatePedidoMerenda extends Page
         return Item::query()
             ->where('ativo', true)
             ->whereHas('contratoItens', function ($query) {
-                $query->whereHas('contrato', fn ($contrato) => $contrato->where('ativo', true))
+                $query->whereHas('contrato', fn (Builder $contrato): Builder => $contrato
+                    ->where('ativo', true)
+                    ->whereHas('empresaContratada', fn (Builder $empresa): Builder => $empresa->doSetorDoUsuario(Auth::user())))
                     ->whereRaw('(quantidade_total - quantidade_utilizada - quantidade_reservada) > 0');
             })
             ->when(filled($this->buscaItemDisponivel), function ($query) {

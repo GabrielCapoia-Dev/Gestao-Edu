@@ -16,6 +16,7 @@ use App\Models\Enums\NivelEmergenciaPedido;
 use BackedEnum;
 use UnitEnum;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Facades\Auth;
 
 
 class FeedbackPedido extends Page implements HasTable
@@ -144,7 +145,10 @@ class FeedbackPedido extends Page implements HasTable
                 Tables\Filters\SelectFilter::make('pedido.empresa_contratada_id')
                     ->label('Empresa Contratada')
                     ->options(
-                        \App\Models\EmpresaContratada::pluck('nome', 'id')->toArray()
+                        \App\Models\EmpresaContratada::query()
+                            ->doSetorDoUsuario(Auth::user())
+                            ->pluck('nome', 'id')
+                            ->toArray()
                     )
                     ->query(function ($query, array $data) {
                         $this->updateChartFilters('empresa_contratada_id', $data['value'] ?? null);
