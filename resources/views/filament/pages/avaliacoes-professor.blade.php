@@ -309,9 +309,12 @@
                                         </section>
                                     @endforelse
 
-                                    <section class="av-aluno-componente av-complementary-section">
-                                        <h4>Informacoes complementares por aluno</h4>
-                                        <p class="av-pauta-meta">Campo opcional desta turma, independente das pautas.</p>
+                                    @foreach ($pautasDaTurma->groupBy('componente_curricular_id') as $componenteId => $pautasDoComponente)
+                                        <section class="av-aluno-componente av-complementary-section">
+                                        <h4>Informacoes complementares do componente</h4>
+                                        <p class="av-pauta-meta">
+                                            {{ $pautasDoComponente->first()?->componente?->nome ?? 'Sem componente' }} - campo opcional por componente para cada aluno desta turma.
+                                        </p>
 
                                         <div class="gi-table-wrap">
                                             <table class="gi-table">
@@ -329,7 +332,8 @@
                                                                 <small>CGM: {{ $aluno->cgm }}</small>
                                                             </td>
                                                             <td>
-                                                                @php($informacoesAtuais = (string) ($informacoesComplementares[$aluno->id] ?? ''))
+                                                                @php($componenteId = (int) $componenteId)
+                                                                @php($informacoesAtuais = (string) ($informacoesComplementares[$componenteId][$aluno->id] ?? ''))
                                                                 <div class="av-input-wrap" x-data="{ count: @js(mb_strlen($informacoesAtuais)) }" x-init="$nextTick(() => count = $refs.field.value.length)">
                                                                     <textarea
                                                                         x-ref="field"
@@ -337,10 +341,10 @@
                                                                         maxlength="1500"
                                                                         placeholder="Informacoes complementares (opcional)"
                                                                         class="av-table-input av-textarea-input"
-                                                                        wire:model.live.debounce.600ms="informacoesComplementares.{{ $aluno->id }}"
+                                                                        wire:model.live.debounce.600ms="informacoesComplementares.{{ $componenteId }}.{{ $aluno->id }}"
                                                                         @disabled(! $this->podeResponder())></textarea>
 
-                                                                    <span class="av-saving-indicator" wire:loading.flex wire:target="informacoesComplementares.{{ $aluno->id }}">
+                                                                    <span class="av-saving-indicator" wire:loading.flex wire:target="informacoesComplementares.{{ $componenteId }}.{{ $aluno->id }}">
                                                                         <span class="av-spinner"></span>
                                                                         Salvando...
                                                                     </span>
@@ -355,7 +359,8 @@
                                                 </tbody>
                                             </table>
                                         </div>
-                                    </section>
+                                        </section>
+                                    @endforeach
                                 </div>
                             @endif
                         </section>
@@ -536,9 +541,12 @@
                                         </section>
                                     @endforelse
 
-                                    <section class="av-aluno-componente av-complementary-section">
-                                        <h4>Informacoes complementares por aluno</h4>
-                                        <p class="av-pauta-meta">Campo opcional desta turma, independente das pautas.</p>
+                                    @foreach ($pautasDaTurma->groupBy('componente_curricular_id') as $componenteId => $pautasDoComponente)
+                                        <section class="av-aluno-componente av-complementary-section">
+                                        <h4>Informacoes complementares do componente</h4>
+                                        <p class="av-pauta-meta">
+                                            {{ $pautasDoComponente->first()?->componente?->nome ?? 'Sem componente' }} - campo opcional por componente para cada aluno desta turma.
+                                        </p>
 
                                         <div class="gi-table-wrap">
                                             <table class="gi-table">
@@ -556,7 +564,8 @@
                                                                 <small>CGM: {{ $aluno->cgm }}</small>
                                                             </td>
                                                             <td>
-                                                                @php($informacoesAtuais = (string) ($informacoesComplementares[$aluno->id] ?? ''))
+                                                                @php($componenteId = (int) $componenteId)
+                                                                @php($informacoesAtuais = (string) ($informacoesComplementares[$componenteId][$aluno->id] ?? ''))
                                                                 <div class="av-input-wrap" x-data="{ count: @js(mb_strlen($informacoesAtuais)) }" x-init="$nextTick(() => count = $refs.field.value.length)">
                                                                     <textarea
                                                                         x-ref="field"
@@ -564,10 +573,10 @@
                                                                         maxlength="1500"
                                                                         placeholder="Informacoes complementares (opcional)"
                                                                         class="av-table-input av-textarea-input"
-                                                                        wire:model.live.debounce.600ms="informacoesComplementares.{{ $aluno->id }}"
+                                                                        wire:model.live.debounce.600ms="informacoesComplementares.{{ $componenteId }}.{{ $aluno->id }}"
                                                                         @disabled(! $this->podeResponder())></textarea>
 
-                                                                    <span class="av-saving-indicator" wire:loading.flex wire:target="informacoesComplementares.{{ $aluno->id }}">
+                                                                    <span class="av-saving-indicator" wire:loading.flex wire:target="informacoesComplementares.{{ $componenteId }}.{{ $aluno->id }}">
                                                                         <span class="av-spinner"></span>
                                                                         Salvando...
                                                                     </span>
@@ -582,7 +591,8 @@
                                                 </tbody>
                                             </table>
                                         </div>
-                                    </section>
+                                        </section>
+                                    @endforeach
                                 </div>
                             @endif
                         </section>
