@@ -46,219 +46,224 @@
             @endif
         </section>
 
-        <section class="dav-kpi-grid">
-            <article class="dav-kpi">
-                <span class="dav-kpi-label">Avaliações no escopo</span>
-                <strong>{{ $cards['total_avaliacoes'] ?? 0 }}</strong>
-            </article>
-            <article class="dav-kpi">
-                <span class="dav-kpi-label">Avaliações ativas</span>
-                <strong>{{ $cards['total_avaliacoes_ativas'] ?? 0 }}</strong>
-            </article>
-            <article class="dav-kpi">
-                <span class="dav-kpi-label">Respostas registradas</span>
-                <strong>{{ $cards['total_respostas'] ?? 0 }}</strong>
-            </article>
-            <article class="dav-kpi">
-                <span class="dav-kpi-label">Escolas preenchidas</span>
-                <strong>{{ $cards['escolas_preenchidas'] ?? 0 }} / {{ $cards['total_escolas'] ?? 0 }}</strong>
-            </article>
-            <article class="dav-kpi dav-kpi--blue">
-                <span class="dav-kpi-label">% escolas preenchidas</span>
-                <strong>{{ number_format((float) ($cards['percentual_escolas_preenchidas'] ?? 0), 1, ',', '.') }}%</strong>
-            </article>
-            <article class="dav-kpi dav-kpi--green">
-                <span class="dav-kpi-label">% turmas preenchidas</span>
-                <strong>{{ number_format((float) ($cards['percentual_turmas_preenchidas'] ?? 0), 1, ',', '.') }}%</strong>
-                <small>{{ $cards['turmas_respondidas'] ?? 0 }} de {{ $cards['turmas_esperadas'] ?? 0 }} turmas</small>
-            </article>
-        </section>
+        @if (! $this->avaliacaoSelecionada())
+            <section class="dav-empty-state">
+                <h3>Selecione uma avaliação para carregar os indicadores.</h3>
+                <p>Os filtros de série, turno, componente, escola, professor, pauta e alternativa serão liberados a partir da avaliação escolhida.</p>
+            </section>
+        @else
+            <section class="dav-kpi-grid">
+                <article class="dav-kpi dav-kpi--amber">
+                    <span class="dav-kpi-label">% alunos sem resposta em pautas</span>
+                    <strong>{{ number_format((float) ($cards['percentual_alunos_sem_resposta_pautas'] ?? 0), 1, ',', '.') }}%</strong>
+                    <small>{{ $cards['preenchimentos_pendentes'] ?? 0 }} de {{ $cards['preenchimentos_esperados'] ?? 0 }} preenchimentos pendentes</small>
+                </article>
+                <article class="dav-kpi dav-kpi--green">
+                    <span class="dav-kpi-label">% turmas preenchidas</span>
+                    <strong>{{ number_format((float) ($cards['percentual_turmas_preenchidas'] ?? 0), 1, ',', '.') }}%</strong>
+                    <small>{{ $cards['turmas_preenchidas'] ?? 0 }} de {{ $cards['turmas_esperadas'] ?? 0 }} turmas</small>
+                </article>
+                <article class="dav-kpi dav-kpi--blue">
+                    <span class="dav-kpi-label">% escolas preenchidas</span>
+                    <strong>{{ number_format((float) ($cards['percentual_escolas_preenchidas'] ?? 0), 1, ',', '.') }}%</strong>
+                    <small>{{ $cards['escolas_preenchidas'] ?? 0 }} de {{ $cards['total_escolas'] ?? 0 }} escolas</small>
+                </article>
+                <article class="dav-kpi">
+                    <span class="dav-kpi-label">Preenchimento manhã</span>
+                    <strong>{{ number_format((float) ($cards['percentual_turno_manha'] ?? 0), 1, ',', '.') }}%</strong>
+                    <small>{{ $cards['turno_manha_respondidas'] ?? 0 }} de {{ $cards['turno_manha_esperadas'] ?? 0 }} preenchimentos</small>
+                </article>
+                <article class="dav-kpi">
+                    <span class="dav-kpi-label">Preenchimento tarde</span>
+                    <strong>{{ number_format((float) ($cards['percentual_turno_tarde'] ?? 0), 1, ',', '.') }}%</strong>
+                    <small>{{ $cards['turno_tarde_respondidas'] ?? 0 }} de {{ $cards['turno_tarde_esperadas'] ?? 0 }} preenchimentos</small>
+                </article>
+            </section>
 
-        <section class="dav-chart-grid">
-            <article class="dav-card">
-                <header>
-                    <h3>Preenchimento por Escola</h3>
-                    <p>Percentual de escolas do escopo com ao menos uma turma respondida.</p>
-                </header>
+            <section class="dav-chart-grid">
+                <article class="dav-card">
+                    <header>
+                        <h3>Alunos sem resposta em pautas</h3>
+                        <p>Percentual de combinações aluno x pauta ainda sem resposta no recorte selecionado.</p>
+                    </header>
 
-                @php
-                    $escolasPercent = (float) ($cards['percentual_escolas_preenchidas'] ?? 0);
-                @endphp
-                <div class="dav-ring-wrap">
-                    <div class="dav-ring" style="--progress: {{ $escolasPercent }};">
-                        <div class="dav-ring-inner">
-                            <strong>{{ number_format($escolasPercent, 1, ',', '.') }}%</strong>
+                    @php
+                        $semRespostaPercent = (float) ($cards['percentual_alunos_sem_resposta_pautas'] ?? 0);
+                    @endphp
+                    <div class="dav-ring-wrap">
+                        <div class="dav-ring dav-ring--amber" style="--progress: {{ $semRespostaPercent }};">
+                            <div class="dav-ring-inner">
+                                <strong>{{ number_format($semRespostaPercent, 1, ',', '.') }}%</strong>
+                            </div>
+                        </div>
+                        <div class="dav-ring-meta">
+                            <span>
+                                <strong>{{ $cards['preenchimentos_pendentes'] ?? 0 }}</strong> preenchimentos pendentes
+                            </span>
+                            <span>
+                                <strong>{{ $cards['preenchimentos_respondidos'] ?? 0 }}</strong> preenchimentos respondidos
+                            </span>
                         </div>
                     </div>
-                    <div class="dav-ring-meta">
-                        <span>
-                            <strong>{{ $cards['escolas_preenchidas'] ?? 0 }}</strong> escolas com preenchimento
-                        </span>
-                        <span>
-                            <strong>{{ $cards['escolas_nao_preenchidas'] ?? 0 }}</strong> escolas sem preenchimento
-                        </span>
-                    </div>
-                </div>
-            </article>
+                </article>
 
-            <article class="dav-card">
+                <article class="dav-card">
+                    <header>
+                        <h3>Alunos sem resposta por Escola</h3>
+                        <p>Percentual de combinações aluno x pauta sem resposta em cada escola.</p>
+                    </header>
+
+                    <div class="dav-bars">
+                        @forelse ($graficoAlunosSemRespostaPorEscola as $item)
+                            <div class="dav-bar-row">
+                                <div class="dav-bar-top">
+                                    <span>{{ $item['nome'] }}</span>
+                                    <strong>{{ number_format((float) $item['percentual'], 1, ',', '.') }}%</strong>
+                                </div>
+                                <div class="dav-bar-track">
+                                    <div class="dav-bar-fill dav-bar-fill--amber" style="width: {{ $item['percentual_barra'] }}%;"></div>
+                                </div>
+                                <small class="dav-bar-note">{{ $item['total'] }} de {{ $item['esperadas'] }} pendentes</small>
+                            </div>
+                        @empty
+                            <p class="dav-empty">Sem dados para o recorte atual.</p>
+                        @endforelse
+                    </div>
+                </article>
+            </section>
+
+            <section class="dav-card">
                 <header>
-                    <h3>Avaliações Ativas por Escola</h3>
-                    <p>Volume de avaliações ativas associadas por escola no recorte selecionado.</p>
+                    <h3>{{ $distribuicaoAlternativas['titulo'] ?? 'Distribuição de alternativas' }}</h3>
+                    <p>
+                        {{ $distribuicaoAlternativas['subtitulo'] ?? '' }}
+                        @if (($distribuicaoAlternativas['total_alunos'] ?? 0) > 0)
+                            ({{ $distribuicaoAlternativas['total_respostas'] ?? 0 }} alunos marcados de {{ $distribuicaoAlternativas['total_alunos'] }} alunos no escopo)
+                        @endif
+                    </p>
                 </header>
 
-                <div class="dav-bars">
-                    @forelse ($graficoAvaliacoesAtivasPorEscola as $item)
+                <div class="dav-bars dav-bars--alt">
+                    @forelse (($distribuicaoAlternativas['itens'] ?? []) as $item)
                         <div class="dav-bar-row">
                             <div class="dav-bar-top">
                                 <span>{{ $item['nome'] }}</span>
-                                <strong>{{ $item['total'] }}</strong>
+                                <strong>{{ $item['total'] }} ({{ number_format((float) $item['percentual'], 1, ',', '.') }}%)</strong>
                             </div>
                             <div class="dav-bar-track">
-                                <div class="dav-bar-fill" style="width: {{ $item['percentual_barra'] }}%;"></div>
+                                <div class="dav-bar-fill dav-bar-fill--alt" style="width: {{ $item['percentual_barra'] }}%;"></div>
                             </div>
                         </div>
                     @empty
-                        <p class="dav-empty">Sem dados para o recorte atual.</p>
+                        <p class="dav-empty">Nenhuma alternativa com respostas no recorte atual.</p>
                     @endforelse
                 </div>
-            </article>
-        </section>
+            </section>
 
-        <section class="dav-card">
-            <header>
-                <h3>{{ $distribuicaoAlternativas['titulo'] ?? 'Distribuição de alternativas' }}</h3>
-                <p>
-                    {{ $distribuicaoAlternativas['subtitulo'] ?? '' }}
-                    @if (($distribuicaoAlternativas['total_respostas'] ?? 0) > 0)
-                        ({{ $distribuicaoAlternativas['total_respostas'] }} respostas)
-                    @endif
-                </p>
-            </header>
+            <section class="dav-card">
+                <header>
+                    <h3>Progresso por Escola</h3>
+                    <p>Preenchimentos esperados, respondidos e pendentes por escola.</p>
+                </header>
 
-            <div class="dav-bars dav-bars--alt">
-                @forelse (($distribuicaoAlternativas['itens'] ?? []) as $item)
-                    <div class="dav-bar-row">
-                        <div class="dav-bar-top">
-                            <span>{{ $item['nome'] }}</span>
-                            <strong>{{ $item['total'] }} ({{ number_format((float) $item['percentual'], 1, ',', '.') }}%)</strong>
-                        </div>
-                        <div class="dav-bar-track">
-                            <div class="dav-bar-fill dav-bar-fill--alt" style="width: {{ $item['percentual_barra'] }}%;"></div>
-                        </div>
-                    </div>
-                @empty
-                    <p class="dav-empty">Nenhuma alternativa com respostas no recorte atual.</p>
-                @endforelse
-            </div>
-        </section>
-
-        <section class="dav-card">
-            <header>
-                <h3>Progresso por Escola</h3>
-                <p>Turmas esperadas x turmas respondidas por escola.</p>
-            </header>
-
-            <div class="dav-table-wrap">
-                <table class="dav-table">
-                    <thead>
-                        <tr>
-                            <th>Escola</th>
-                            <th class="text-right">Avaliações</th>
-                            <th class="text-right">Avaliações resp.</th>
-                            <th class="text-right">Turmas esperadas</th>
-                            <th class="text-right">Turmas resp.</th>
-                            <th class="text-right">% progresso</th>
-                            <th class="text-right">Respostas</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse ($tabelaEscolas as $item)
+                <div class="dav-table-wrap">
+                    <table class="dav-table">
+                        <thead>
                             <tr>
-                                <td>{{ $item['nome'] }}</td>
-                                <td class="text-right">{{ $item['avaliacoes_no_escopo'] }}</td>
-                                <td class="text-right">{{ $item['avaliacoes_respondidas'] }}</td>
-                                <td class="text-right">{{ $item['turmas_esperadas'] }}</td>
-                                <td class="text-right">{{ $item['turmas_respondidas'] }}</td>
-                                <td class="text-right">
-                                    <span class="dav-badge {{ $item['esta_preenchida'] ? 'dav-badge--ok' : 'dav-badge--muted' }}">
-                                        {{ number_format((float) $item['percentual_turmas'], 1, ',', '.') }}%
-                                    </span>
-                                </td>
-                                <td class="text-right">{{ $item['respostas_total'] }}</td>
+                                <th>Escola</th>
+                                <th class="text-right">% sem resposta</th>
+                                <th class="text-right">Pendentes</th>
+                                <th class="text-right">Respondidos</th>
+                                <th class="text-right">Esperados</th>
+                                <th class="text-right">% preenchimento</th>
+                                <th class="text-right">Turmas</th>
                             </tr>
-                        @empty
-                            <tr>
-                                <td colspan="7" class="dav-empty">Nenhuma escola encontrada para os filtros atuais.</td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-        </section>
+                        </thead>
+                        <tbody>
+                            @forelse ($tabelaEscolas as $item)
+                                <tr>
+                                    <td>{{ $item['nome'] }}</td>
+                                    <td class="text-right">
+                                        <span class="dav-badge {{ $item['esta_preenchida'] ? 'dav-badge--ok' : 'dav-badge--warn' }}">
+                                            {{ number_format((float) $item['percentual_pendentes'], 1, ',', '.') }}%
+                                        </span>
+                                    </td>
+                                    <td class="text-right">{{ $item['preenchimentos_pendentes'] }}</td>
+                                    <td class="text-right">{{ $item['preenchimentos_respondidos'] }}</td>
+                                    <td class="text-right">{{ $item['preenchimentos_esperados'] }}</td>
+                                    <td class="text-right">{{ number_format((float) $item['percentual_preenchimento'], 1, ',', '.') }}%</td>
+                                    <td class="text-right">{{ $item['turmas_com_resposta'] }} / {{ $item['turmas_esperadas'] }}</td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="7" class="dav-empty">Nenhuma escola encontrada para os filtros atuais.</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </section>
 
-        <section class="dav-card">
-            <header>
-                <h3>Resumo por Avaliação</h3>
-                <p>Visão consolidada de status, escolas, turmas e respostas.</p>
-            </header>
+            <section class="dav-card">
+                <header>
+                    <h3>Resumo da Avaliação</h3>
+                    <p>Visão consolidada do recorte selecionado.</p>
+                </header>
 
-            <div class="dav-table-wrap">
-                <table class="dav-table">
-                    <thead>
-                        <tr>
-                            <th>Avaliação</th>
-                            <th>Tipo</th>
-                            <th>Período</th>
-                            <th>Status</th>
-                            <th class="text-right">Escolas</th>
-                            <th class="text-right">Escolas resp.</th>
-                            <th class="text-right">% escolas</th>
-                            <th class="text-right">Turmas</th>
-                            <th class="text-right">Turmas resp.</th>
-                            <th class="text-right">Respostas</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse ($avaliacoesResumo as $item)
+                <div class="dav-table-wrap">
+                    <table class="dav-table">
+                        <thead>
                             <tr>
-                                <td>
-                                    <strong>{{ $item['nome'] }}</strong>
-                                    <small>{{ $item['data_inicio'] }} até {{ $item['data_fim'] }}</small>
-                                </td>
-                                <td>{{ $item['tipo'] }}</td>
-                                <td>{{ $item['periodo'] }}</td>
-                                <td>
-                                    @php
-                                        $statusClass = match ($item['status']) {
-                                            'ativa' => 'dav-badge--ok',
-                                            'encerrada' => 'dav-badge--warn',
-                                            'cancelada' => 'dav-badge--danger',
-                                            default => 'dav-badge--muted',
-                                        };
-                                    @endphp
-                                    <span class="dav-badge {{ $statusClass }}">
-                                        {{ $item['status_label'] }}
-                                    </span>
-                                </td>
-                                <td class="text-right">{{ $item['escolas_esperadas'] }}</td>
-                                <td class="text-right">{{ $item['escolas_respondidas'] }}</td>
-                                <td class="text-right">{{ number_format((float) $item['percentual_escolas'], 1, ',', '.') }}%</td>
-                                <td class="text-right">{{ $item['turmas_esperadas'] }}</td>
-                                <td class="text-right">{{ $item['turmas_respondidas'] }}</td>
-                                <td class="text-right">{{ $item['respostas_total'] }}</td>
+                                <th>Avaliação</th>
+                                <th>Tipo</th>
+                                <th>Período</th>
+                                <th>Status</th>
+                                <th class="text-right">Escolas</th>
+                                <th class="text-right">Turmas</th>
+                                <th class="text-right">Respondidos</th>
+                                <th class="text-right">Pendentes</th>
+                                <th class="text-right">% sem resposta</th>
                             </tr>
-                        @empty
-                            <tr>
-                                <td colspan="10" class="dav-empty">Nenhuma avaliação encontrada para os filtros atuais.</td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-        </section>
+                        </thead>
+                        <tbody>
+                            @forelse ($avaliacoesResumo as $item)
+                                <tr>
+                                    <td>
+                                        <strong>{{ $item['nome'] }}</strong>
+                                        <small>{{ $item['data_inicio'] }} até {{ $item['data_fim'] }}</small>
+                                    </td>
+                                    <td>{{ $item['tipo'] }}</td>
+                                    <td>{{ $item['periodo'] }}</td>
+                                    <td>
+                                        @php
+                                            $statusClass = match ($item['status']) {
+                                                'ativa' => 'dav-badge--ok',
+                                                'encerrada' => 'dav-badge--warn',
+                                                'cancelada' => 'dav-badge--danger',
+                                                default => 'dav-badge--muted',
+                                            };
+                                        @endphp
+                                        <span class="dav-badge {{ $statusClass }}">
+                                            {{ $item['status_label'] }}
+                                        </span>
+                                    </td>
+                                    <td class="text-right">{{ $item['escolas_esperadas'] }}</td>
+                                    <td class="text-right">{{ $item['turmas_esperadas'] }}</td>
+                                    <td class="text-right">{{ $item['preenchimentos_respondidos'] }} / {{ $item['preenchimentos_esperados'] }}</td>
+                                    <td class="text-right">{{ $item['preenchimentos_pendentes'] }}</td>
+                                    <td class="text-right">{{ number_format((float) $item['percentual_pendentes'], 1, ',', '.') }}%</td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="9" class="dav-empty">Nenhuma avaliação encontrada para os filtros atuais.</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </section>
 
-        <section class="dav-card">
+            <section class="dav-card">
             <header>
                 <h3>Turmas Avaliadas</h3>
                 <p>Turmas com respostas registradas no recorte atual, com atalho para a tela de preenchimento do professor.</p>
@@ -312,7 +317,8 @@
                     </tbody>
                 </table>
             </div>
-        </section>
+            </section>
+        @endif
     </div>
 
     <style>
@@ -503,7 +509,7 @@
         .dav-kpi-grid {
             display: grid;
             gap: 0.7rem;
-            grid-template-columns: repeat(6, minmax(0, 1fr));
+            grid-template-columns: repeat(5, minmax(0, 1fr));
         }
 
         .dav-kpi {
@@ -542,6 +548,37 @@
         .dav-kpi--green {
             border-color: #bce9d0;
             background: #f2fbf6;
+        }
+
+        .dav-kpi--amber {
+            border-color: #f4d68f;
+            background: #fff9eb;
+        }
+
+        .dav-empty-state {
+            border: 1px dashed var(--gray-300);
+            border-radius: 0.95rem;
+            background: #fff;
+            padding: 1.4rem;
+            display: grid;
+            gap: 0.35rem;
+            justify-items: center;
+            text-align: center;
+        }
+
+        .dav-empty-state h3 {
+            margin: 0;
+            color: var(--gray-900);
+            font-size: 1rem;
+            font-weight: 700;
+        }
+
+        .dav-empty-state p {
+            margin: 0;
+            max-width: 48rem;
+            color: var(--gray-600);
+            font-size: 0.84rem;
+            line-height: 1.5;
         }
 
         .dav-chart-grid {
@@ -588,6 +625,10 @@
             display: grid;
             place-items: center;
             background: conic-gradient(#0f63b8 calc(var(--progress) * 1%), #dbe7f4 0);
+        }
+
+        .dav-ring--amber {
+            background: conic-gradient(#d99012 calc(var(--progress) * 1%), #f3e8cf 0);
         }
 
         .dav-ring-inner {
@@ -657,6 +698,16 @@
 
         .dav-bar-fill--alt {
             background: linear-gradient(90deg, #0f766e 0%, #0f9c8d 100%);
+        }
+
+        .dav-bar-fill--amber {
+            background: linear-gradient(90deg, #c77700 0%, #e0a11a 100%);
+        }
+
+        .dav-bar-note {
+            color: var(--gray-500);
+            font-size: 0.7rem;
+            line-height: 1.35;
         }
 
         .dav-table-wrap {
@@ -773,6 +824,7 @@
 
         :root.dark .dav-panel,
         :root.dark .dav-kpi,
+        :root.dark .dav-empty-state,
         :root.dark .dav-card,
         :root.dark .dav-table-wrap {
             background: var(--gray-900);
@@ -780,6 +832,7 @@
         }
 
         :root.dark .dav-panel-head h3,
+        :root.dark .dav-empty-state h3,
         :root.dark .dav-card header h3,
         :root.dark .dav-kpi strong,
         :root.dark .dav-bar-top strong {
@@ -789,7 +842,9 @@
         :root.dark .dav-field span,
         :root.dark .dav-kpi-label,
         :root.dark .dav-card header p,
+        :root.dark .dav-empty-state p,
         :root.dark .dav-bar-top,
+        :root.dark .dav-bar-note,
         :root.dark .dav-ring-meta,
         :root.dark .dav-empty {
             color: var(--gray-300);
@@ -809,6 +864,10 @@
 
         :root.dark .dav-ring {
             background: conic-gradient(#60a5fa calc(var(--progress) * 1%), #31465a 0);
+        }
+
+        :root.dark .dav-ring--amber {
+            background: conic-gradient(#fbbf24 calc(var(--progress) * 1%), #3f3421 0);
         }
 
         :root.dark .dav-ring-inner {

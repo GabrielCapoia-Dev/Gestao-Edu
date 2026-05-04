@@ -139,47 +139,24 @@
 
     <div class="cards-row">
         <div class="card">
-            <div class="card-label">Avaliações no escopo</div>
-            <div class="card-value">{{ $cards['total_avaliacoes'] ?? 0 }}</div>
-        </div>
-        <div class="card">
-            <div class="card-label">Avaliações ativas</div>
-            <div class="card-value">{{ $cards['total_avaliacoes_ativas'] ?? 0 }}</div>
-        </div>
-        <div class="card">
-            <div class="card-label">Respostas registradas</div>
-            <div class="card-value">{{ $cards['total_respostas'] ?? 0 }}</div>
-        </div>
-        <div class="card card-blue">
-            <div class="card-label">% escolas preenchidas</div>
-            <div class="card-value">{{ number_format((float) ($cards['percentual_escolas_preenchidas'] ?? 0), 1, ',', '.') }}%</div>
+            <div class="card-label">% alunos sem resposta em pautas</div>
+            <div class="card-value">{{ number_format((float) ($cards['percentual_alunos_sem_resposta_pautas'] ?? 0), 1, ',', '.') }}%</div>
         </div>
         <div class="card card-green">
             <div class="card-label">% turmas preenchidas</div>
             <div class="card-value">{{ number_format((float) ($cards['percentual_turmas_preenchidas'] ?? 0), 1, ',', '.') }}%</div>
         </div>
-    </div>
-
-    <div class="cards-row">
-        <div class="card">
-            <div class="card-label">Escolas no escopo</div>
-            <div class="card-value">{{ $cards['total_escolas'] ?? 0 }}</div>
-        </div>
-        <div class="card card-green">
-            <div class="card-label">Escolas preenchidas</div>
-            <div class="card-value">{{ $cards['escolas_preenchidas'] ?? 0 }}</div>
-        </div>
         <div class="card card-blue">
-            <div class="card-label">Escolas sem preenchimento</div>
-            <div class="card-value">{{ $cards['escolas_nao_preenchidas'] ?? 0 }}</div>
+            <div class="card-label">% escolas preenchidas</div>
+            <div class="card-value">{{ number_format((float) ($cards['percentual_escolas_preenchidas'] ?? 0), 1, ',', '.') }}%</div>
         </div>
         <div class="card">
-            <div class="card-label">Turmas esperadas</div>
-            <div class="card-value">{{ $cards['turmas_esperadas'] ?? 0 }}</div>
+            <div class="card-label">Preenchimento manhã</div>
+            <div class="card-value">{{ number_format((float) ($cards['percentual_turno_manha'] ?? 0), 1, ',', '.') }}%</div>
         </div>
         <div class="card">
-            <div class="card-label">Turmas respondidas</div>
-            <div class="card-value">{{ $cards['turmas_respondidas'] ?? 0 }}</div>
+            <div class="card-label">Preenchimento tarde</div>
+            <div class="card-value">{{ number_format((float) ($cards['percentual_turno_tarde'] ?? 0), 1, ',', '.') }}%</div>
         </div>
     </div>
 
@@ -189,28 +166,28 @@
         <thead>
             <tr>
                 <th>Escola</th>
-                <th class="text-right">Avaliações</th>
-                <th class="text-right">Avaliações resp.</th>
-                <th class="text-right">Turmas esperadas</th>
-                <th class="text-right">Turmas resp.</th>
-                <th class="text-right">% progresso</th>
-                <th class="text-right">Respostas</th>
+                <th class="text-right">% sem resposta</th>
+                <th class="text-right">Pendentes</th>
+                <th class="text-right">Respondidos</th>
+                <th class="text-right">Esperados</th>
+                <th class="text-right">% preenchimento</th>
+                <th class="text-right">Turmas</th>
             </tr>
         </thead>
         <tbody>
             @forelse($escolas as $item)
                 <tr>
                     <td>{{ $item['nome'] }}</td>
-                    <td class="text-right">{{ $item['avaliacoes_no_escopo'] }}</td>
-                    <td class="text-right">{{ $item['avaliacoes_respondidas'] }}</td>
-                    <td class="text-right">{{ $item['turmas_esperadas'] }}</td>
-                    <td class="text-right">{{ $item['turmas_respondidas'] }}</td>
                     <td class="text-right">
-                        <span class="badge {{ $item['esta_preenchida'] ? 'badge-ok' : 'badge-muted' }}">
-                            {{ number_format((float) $item['percentual_turmas'], 1, ',', '.') }}%
+                        <span class="badge {{ $item['esta_preenchida'] ? 'badge-ok' : 'badge-warn' }}">
+                            {{ number_format((float) $item['percentual_pendentes'], 1, ',', '.') }}%
                         </span>
                     </td>
-                    <td class="text-right">{{ $item['respostas_total'] }}</td>
+                    <td class="text-right">{{ $item['preenchimentos_pendentes'] }}</td>
+                    <td class="text-right">{{ $item['preenchimentos_respondidos'] }}</td>
+                    <td class="text-right">{{ $item['preenchimentos_esperados'] }}</td>
+                    <td class="text-right">{{ number_format((float) $item['percentual_preenchimento'], 1, ',', '.') }}%</td>
+                    <td class="text-right">{{ $item['turmas_com_resposta'] }} / {{ $item['turmas_esperadas'] }}</td>
                 </tr>
             @empty
                 <tr>
@@ -220,7 +197,7 @@
         </tbody>
     </table>
 
-    <div class="section-title">Resumo por Avaliação</div>
+    <div class="section-title">Resumo da Avaliação</div>
 
     <table class="table">
         <thead>
@@ -230,11 +207,10 @@
                 <th>Período</th>
                 <th>Status</th>
                 <th class="text-right">Escolas</th>
-                <th class="text-right">Escolas resp.</th>
-                <th class="text-right">% escolas</th>
                 <th class="text-right">Turmas</th>
-                <th class="text-right">Turmas resp.</th>
-                <th class="text-right">Respostas</th>
+                <th class="text-right">Respondidos</th>
+                <th class="text-right">Pendentes</th>
+                <th class="text-right">% sem resposta</th>
             </tr>
         </thead>
         <tbody>
@@ -258,15 +234,14 @@
                     <td>{{ $item['periodo'] }}</td>
                     <td><span class="badge {{ $statusClass }}">{{ $item['status_label'] }}</span></td>
                     <td class="text-right">{{ $item['escolas_esperadas'] }}</td>
-                    <td class="text-right">{{ $item['escolas_respondidas'] }}</td>
-                    <td class="text-right">{{ number_format((float) $item['percentual_escolas'], 1, ',', '.') }}%</td>
                     <td class="text-right">{{ $item['turmas_esperadas'] }}</td>
-                    <td class="text-right">{{ $item['turmas_respondidas'] }}</td>
-                    <td class="text-right">{{ $item['respostas_total'] }}</td>
+                    <td class="text-right">{{ $item['preenchimentos_respondidos'] }} / {{ $item['preenchimentos_esperados'] }}</td>
+                    <td class="text-right">{{ $item['preenchimentos_pendentes'] }}</td>
+                    <td class="text-right">{{ number_format((float) $item['percentual_pendentes'], 1, ',', '.') }}%</td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="10">Nenhuma avaliação encontrada para os filtros aplicados.</td>
+                    <td colspan="9">Nenhuma avaliação encontrada para os filtros aplicados.</td>
                 </tr>
             @endforelse
         </tbody>
@@ -275,8 +250,8 @@
     <div class="section-title">{{ $alternativas['titulo'] ?? 'Distribuição de Alternativas' }}</div>
     <p style="margin: 0 0 8px 0; color: #6b7280;">
         {{ $alternativas['subtitulo'] ?? '' }}
-        @if(($alternativas['total_respostas'] ?? 0) > 0)
-            ({{ $alternativas['total_respostas'] }} respostas)
+        @if(($alternativas['total_alunos'] ?? 0) > 0)
+            ({{ $alternativas['total_respostas'] ?? 0 }} alunos marcados de {{ $alternativas['total_alunos'] }} alunos no escopo)
         @endif
     </p>
 
@@ -285,7 +260,7 @@
             <tr>
                 <th>Alternativa</th>
                 <th class="text-right">Respostas</th>
-                <th class="text-right">%</th>
+                <th class="text-right">% dos alunos</th>
                 <th>Distribuição</th>
             </tr>
         </thead>
