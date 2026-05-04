@@ -183,7 +183,7 @@
                                         <div class="gi-toolbar">
                                             <div></div>
                                             <div class="gi-toolbar-right">
-                                                <a class="gi-action" href="{{ route('avaliacoes.documento.pdf', ['avaliacao_id' => $avaliacao, 'escopo' => 'turma', 'turma_id' => $turmaId]) }}">
+                                                <a class="gi-action" data-av-export-pdf data-av-export-scope="turma" href="{{ route('avaliacoes.documento.pdf', ['avaliacao_id' => $avaliacao, 'escopo' => 'turma', 'turma_id' => $turmaId]) }}">
                                                     Exportar PDF da turma
                                                 </a>
                                             </div>
@@ -243,7 +243,7 @@
                                                                             <small>CGM: {{ $aluno->cgm }}</small>
                                                                             @if ($this->podeExportar())
                                                                                 <small>
-                                                                                    <a href="{{ route('avaliacoes.documento.pdf', ['avaliacao_id' => $avaliacao, 'escopo' => 'aluno', 'turma_id' => $turmaId, 'aluno_id' => $aluno->id]) }}">
+                                                                                    <a data-av-export-pdf data-av-export-scope="aluno" href="{{ route('avaliacoes.documento.pdf', ['avaliacao_id' => $avaliacao, 'escopo' => 'aluno', 'turma_id' => $turmaId, 'aluno_id' => $aluno->id]) }}">
                                                                                         PDF do aluno
                                                                                     </a>
                                                                                 </small>
@@ -403,7 +403,7 @@
                                         <div class="gi-toolbar">
                                             <div></div>
                                             <div class="gi-toolbar-right">
-                                                <a class="gi-action" href="{{ route('avaliacoes.documento.pdf', ['avaliacao_id' => $avaliacao, 'escopo' => 'turma', 'turma_id' => $turmaId]) }}">
+                                                <a class="gi-action" data-av-export-pdf data-av-export-scope="turma" href="{{ route('avaliacoes.documento.pdf', ['avaliacao_id' => $avaliacao, 'escopo' => 'turma', 'turma_id' => $turmaId]) }}">
                                                     Exportar PDF da turma
                                                 </a>
                                             </div>
@@ -447,7 +447,7 @@
                                                         <div class="gi-toolbar">
                                                             <div></div>
                                                             <div class="gi-toolbar-right">
-                                                                <a class="gi-action" href="{{ route('avaliacoes.documento.pdf', ['avaliacao_id' => $avaliacao, 'escopo' => 'aluno', 'turma_id' => $turmaId, 'aluno_id' => $aluno->id]) }}">
+                                                                <a class="gi-action" data-av-export-pdf data-av-export-scope="aluno" href="{{ route('avaliacoes.documento.pdf', ['avaliacao_id' => $avaliacao, 'escopo' => 'aluno', 'turma_id' => $turmaId, 'aluno_id' => $aluno->id]) }}">
                                                                     Exportar PDF do aluno
                                                                 </a>
                                                             </div>
@@ -595,7 +595,7 @@
                     <div></div>
                     <div class="gi-toolbar-right">
                         @if ($this->podeExportar())
-                            <a class="gi-action" href="{{ route('avaliacoes.documento.pdf', ['avaliacao_id' => $avaliacao, 'escopo' => 'escola', 'escola_id' => $escola]) }}">
+                            <a class="gi-action" data-av-export-pdf data-av-export-scope="escola" href="{{ route('avaliacoes.documento.pdf', ['avaliacao_id' => $avaliacao, 'escopo' => 'escola', 'escola_id' => $escola]) }}">
                                 Exportar PDF da escola
                             </a>
 
@@ -613,6 +613,122 @@
         @endif
     </div>
 
+    <div class="av-export-overlay" data-av-export-overlay hidden>
+        <section class="av-export-dialog" role="status" aria-live="polite">
+            <div class="av-export-head">
+                <div>
+                    <p>Exportacao de PDF</p>
+                    <h3 data-av-export-title>Preparando documento</h3>
+                </div>
+
+                <button type="button" data-av-export-close>Ocultar</button>
+            </div>
+
+            <div class="av-export-progress" aria-hidden="true">
+                <span data-av-export-bar style="width: 8%"></span>
+            </div>
+
+            <ol class="av-export-log" data-av-export-log></ol>
+        </section>
+    </div>
+
+    <iframe data-av-export-frame title="Download do PDF" hidden></iframe>
+
     @include('filament.pages.partials.avaliacoes-page-styles')
+
+    @once
+        <script>
+            (() => {
+                const root = document;
+                const overlay = root.querySelector('[data-av-export-overlay]');
+                const frame = root.querySelector('[data-av-export-frame]');
+                const title = root.querySelector('[data-av-export-title]');
+                const bar = root.querySelector('[data-av-export-bar]');
+                const log = root.querySelector('[data-av-export-log]');
+                const close = root.querySelector('[data-av-export-close]');
+                let timers = [];
+
+                if (! overlay || ! frame || ! title || ! bar || ! log) {
+                    return;
+                }
+
+                const labels = {
+                    aluno: 'Preparando PDF do aluno',
+                    turma: 'Preparando PDF da turma',
+                    escola: 'Preparando PDF da escola',
+                };
+
+                const messages = {
+                    aluno: [
+                        'Localizando avaliacao e estudante.',
+                        'Carregando respostas, observacoes e componente curricular.',
+                        'Montando cabecalho, legenda e assinatura.',
+                        'Gerando PDF e registrando log da exportacao.',
+                    ],
+                    turma: [
+                        'Localizando avaliacao e turma.',
+                        'Organizando alunos em ordem alfabetica.',
+                        'Carregando respostas, observacoes e professores.',
+                        'Gerando PDF e registrando log da exportacao.',
+                    ],
+                    escola: [
+                        'Localizando avaliacao e escola.',
+                        'Organizando turmas e alunos.',
+                        'Carregando respostas, observacoes e equipe gestora.',
+                        'Gerando PDF e registrando log da exportacao.',
+                    ],
+                };
+
+                const clearTimers = () => {
+                    timers.forEach((timer) => window.clearTimeout(timer));
+                    timers = [];
+                };
+
+                const addLog = (message) => {
+                    const item = document.createElement('li');
+                    item.textContent = message;
+                    log.appendChild(item);
+                };
+
+                const openProgress = (scope) => {
+                    clearTimers();
+                    log.innerHTML = '';
+                    title.textContent = labels[scope] || 'Preparando PDF';
+                    bar.style.width = '8%';
+                    overlay.hidden = false;
+
+                    const steps = messages[scope] || messages.turma;
+                    steps.forEach((message, index) => {
+                        timers.push(window.setTimeout(() => {
+                            addLog(message);
+                            bar.style.width = `${Math.min(92, 18 + (index * 22))}%`;
+                        }, index * 650));
+                    });
+
+                    timers.push(window.setTimeout(() => {
+                        addLog('Quando o arquivo estiver pronto, o download sera iniciado pelo navegador.');
+                        bar.style.width = '96%';
+                    }, (steps.length * 650) + 500));
+                };
+
+                document.addEventListener('click', (event) => {
+                    const link = event.target.closest('[data-av-export-pdf]');
+
+                    if (! link) {
+                        return;
+                    }
+
+                    event.preventDefault();
+                    openProgress(link.dataset.avExportScope || 'turma');
+                    frame.src = link.href;
+                });
+
+                close?.addEventListener('click', () => {
+                    overlay.hidden = true;
+                    clearTimers();
+                });
+            })();
+        </script>
+    @endonce
     </div>
 </x-filament-panels::page>

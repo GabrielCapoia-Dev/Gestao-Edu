@@ -119,6 +119,24 @@ class AvaliacaoDocumentoExportTest extends TestCase
             'respondido_em' => now(),
         ]);
 
+        $segundoAluno = Aluno::query()->create([
+            'nome' => 'Aluno Documento Dois',
+            'cgm' => 'CGM-DOC-002',
+            'data_nascimento' => '2021-01-02',
+            'id_turma' => $turma->id,
+        ]);
+
+        AvaliacaoResposta::query()->create([
+            'avaliacao_id' => $avaliacao->id,
+            'pauta_id' => $pauta->id,
+            'turma_id' => $turma->id,
+            'aluno_id' => $segundoAluno->id,
+            'professor_id' => $professor->id,
+            'alternativa_id' => $alternativaDocumento->id,
+            'observacao' => 'Observacao da segunda estudante',
+            'respondido_em' => now(),
+        ]);
+
         $response = $this->actingAs($usuario)->get(route('avaliacoes.documento.pdf', [
             'avaliacao_id' => $avaliacao->id,
             'escopo' => 'aluno',
@@ -146,6 +164,23 @@ class AvaliacaoDocumentoExportTest extends TestCase
         $this->assertSame('Parecer Periodo Diagnostico', $log->parametros['avaliacao']);
         $this->assertGreaterThan(0, $log->quantidade_paginas);
         $this->assertNotNull($log->exportado_em);
+
+        $response = $this->actingAs($usuario)->get(route('avaliacoes.documento.pdf', [
+            'avaliacao_id' => $avaliacao->id,
+            'escopo' => 'turma',
+            'turma_id' => $turma->id,
+        ]));
+
+        $response
+            ->assertOk()
+            ->assertHeader('Content-Type', 'application/pdf');
+
+        $logTurma = AvaliacaoExportacao::query()
+            ->where('escopo', 'turma')
+            ->firstOrFail();
+
+        $this->assertSame(2, $logTurma->quantidade_alunos);
+        $this->assertSame(2, $logTurma->quantidade_paginas);
     }
 
     private function criarEscola(string $nome): Escola

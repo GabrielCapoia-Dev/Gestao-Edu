@@ -45,6 +45,7 @@ class AvaliacaoDocumentoExportService
                 $paginas = $this->contarPaginasDocumento($documento);
                 $documento['paginas_estimadas'] = $paginas;
                 $documento['precisa_pagina_em_branco'] = $index < $documentos->count() - 1
+                    && $paginas > 1
                     && $paginas % 2 !== 0;
 
                 return $documento;

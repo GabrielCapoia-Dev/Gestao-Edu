@@ -48,6 +48,91 @@
         color: var(--danger-800);
     }
 
+    .av-export-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 60;
+        display: grid;
+        place-items: center;
+        padding: 1rem;
+        background: color-mix(in oklab, var(--gray-950) 46%, transparent);
+    }
+
+    .av-export-overlay[hidden] {
+        display: none;
+    }
+
+    .av-export-dialog {
+        width: min(34rem, 100%);
+        padding: 1rem;
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius-xl);
+        background: #fff;
+        box-shadow: var(--shadow-xl);
+    }
+
+    .av-export-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 0.85rem;
+    }
+
+    .av-export-head p {
+        margin: 0 0 0.2rem;
+        color: var(--gray-500);
+        font-size: var(--text-xs);
+        line-height: var(--text-xs--line-height);
+        font-weight: var(--font-weight-semibold);
+        text-transform: uppercase;
+    }
+
+    .av-export-head h3 {
+        margin: 0;
+        color: var(--gray-950);
+        font-size: var(--text-base);
+        line-height: var(--text-base--line-height);
+        font-weight: var(--font-weight-semibold);
+    }
+
+    .av-export-head button {
+        min-height: 2rem;
+        padding: 0.35rem 0.65rem;
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius-md);
+        background: var(--gray-50);
+        color: var(--gray-700);
+        font-size: var(--text-xs);
+        line-height: var(--text-xs--line-height);
+        font-weight: var(--font-weight-medium);
+    }
+
+    .av-export-progress {
+        overflow: hidden;
+        height: 0.55rem;
+        border-radius: 999px;
+        background: var(--gray-100);
+    }
+
+    .av-export-progress span {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: var(--primary-600);
+        transition: width 0.35s ease;
+    }
+
+    .av-export-log {
+        display: grid;
+        gap: 0.45rem;
+        margin: 0.85rem 0 0;
+        padding-left: 1.2rem;
+        color: var(--gray-700);
+        font-size: var(--text-sm);
+        line-height: 1.45;
+    }
+
     .av-status {
         display: inline-flex;
         align-items: center;
@@ -804,6 +889,29 @@
         border-color: color-mix(in oklab, var(--danger-400) 35%, var(--gray-800));
         background: color-mix(in oklab, var(--danger-800) 30%, var(--gray-950));
         color: var(--danger-200);
+    }
+
+    :root.dark .av-export-dialog {
+        border-color: var(--gray-800);
+        background: var(--gray-950);
+    }
+
+    :root.dark .av-export-head h3 {
+        color: #fff;
+    }
+
+    :root.dark .av-export-head button {
+        border-color: var(--gray-700);
+        background: var(--gray-900);
+        color: var(--gray-200);
+    }
+
+    :root.dark .av-export-progress {
+        background: var(--gray-800);
+    }
+
+    :root.dark .av-export-log {
+        color: var(--gray-300);
     }
 
     :root.dark .av-status--inactive {
