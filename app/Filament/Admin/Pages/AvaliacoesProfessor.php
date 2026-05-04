@@ -340,10 +340,11 @@ class AvaliacoesProfessor extends Page
     {
         if (str_starts_with($name, 'informacoesComplementares.')) {
             $partes = explode('.', $name);
-            $alunoId = $partes[1] ?? null;
+            $componenteId = $partes[1] ?? null;
+            $alunoId = $partes[2] ?? null;
 
-            if (is_numeric($alunoId)) {
-                $this->autoSalvarInformacaoComplementar((int) $alunoId);
+            if (is_numeric($componenteId) && is_numeric($alunoId)) {
+                $this->autoSalvarInformacaoComplementar((int) $componenteId, (int) $alunoId);
             }
 
             return;
@@ -770,8 +771,8 @@ class AvaliacoesProfessor extends Page
             ->where('avaliacao_id', (int) $this->avaliacaoAtual->id)
             ->whereIn('turma_id', $turmas->pluck('id')->map(fn ($id) => (int) $id)->all())
             ->whereIn('aluno_id', $alunosIds)
-            ->get(['aluno_id', 'informacoes_complementares'])
-            ->keyBy('aluno_id');
+            ->get(['aluno_id', 'componente_curricular_id', 'informacoes_complementares'])
+            ->keyBy(fn ($registro) => ((int) $registro->componente_curricular_id).'-'.((int) $registro->aluno_id));
 
         $avaliacaoId = (int) $this->avaliacaoAtual->id;
         $serieId = (int) $this->serie;
@@ -823,7 +824,7 @@ class AvaliacoesProfessor extends Page
                         $chave = $turmaId.'-'.$pauta->id.'-'.$aluno->id;
                         $resposta = $respostas->get($chave);
                         $alternativa = $resposta?->alternativa;
-                        $info = $informacoesComplementares->get((int) $aluno->id);
+                        $info = $informacoesComplementares->get(((int) ($pauta->componente_curricular_id ?? 0)).'-'.((int) $aluno->id));
 
                         fputcsv($out, [
                             $avaliacaoId,
@@ -1388,13 +1389,18 @@ class AvaliacoesProfessor extends Page
             ->where('avaliacao_id', (int) $this->avaliacao)
             ->whereIn('turma_id', $turmasIds)
             ->whereIn('aluno_id', $alunosIds)
-            ->get(['aluno_id', 'informacoes_complementares'])
-            ->keyBy('aluno_id');
+            ->get(['aluno_id', 'componente_curricular_id', 'informacoes_complementares'])
+            ->keyBy(fn ($registro) => ((int) $registro->componente_curricular_id).'-'.((int) $registro->aluno_id));
 
         $informacoes = [];
 
-        foreach ($alunosIds as $alunoId) {
-            $informacoes[$alunoId] = (string) ($registros->get($alunoId)?->informacoes_complementares ?? '');
+        foreach ($this->pautasDisponiveis as $pauta) {
+            $componenteId = (int) ($pauta->componente_curricular_id ?? 0);
+
+            foreach ($alunosIds as $alunoId) {
+                $chave = $componenteId.'-'.$alunoId;
+                $informacoes[$componenteId][$alunoId] = (string) ($registros->get($chave)?->informacoes_complementares ?? '');
+            }
         }
 
         $this->informacoesComplementares = $informacoes;
@@ -1485,7 +1491,7 @@ class AvaliacoesProfessor extends Page
         );
     }
 
-    private function autoSalvarInformacaoComplementar(int $alunoId): void
+    private function autoSalvarInformacaoComplementar(int $componenteId, int $alunoId): void
     {
         $this->abortSeNaoPuderResponder();
 
@@ -1500,13 +1506,14 @@ class AvaliacoesProfessor extends Page
         }
 
         $turmaId = (int) $alunoDaTurma->id_turma;
-        $informacoes = $this->limitarTextoCampo($this->informacoesComplementares[$alunoId] ?? '');
+        $informacoes = $this->limitarTextoCampo($this->informacoesComplementares[$componenteId][$alunoId] ?? '');
 
         if ($informacoes === '') {
             AvaliacaoInformacaoComplementar::query()
                 ->where('avaliacao_id', (int) $this->avaliacao)
                 ->where('turma_id', $turmaId)
                 ->where('aluno_id', $alunoId)
+                ->where('componente_curricular_id', $componenteId > 0 ? $componenteId : null)
                 ->delete();
 
             return;
@@ -1517,12 +1524,13 @@ class AvaliacoesProfessor extends Page
                 'avaliacao_id' => (int) $this->avaliacao,
                 'turma_id' => $turmaId,
                 'aluno_id' => $alunoId,
+                'componente_curricular_id' => $componenteId > 0 ? $componenteId : null,
                 'professor_id' => $this->professorIdDaTurma($turmaId),
                 'informacoes_complementares' => $informacoes,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]],
-            ['avaliacao_id', 'turma_id', 'aluno_id'],
+            ['avaliacao_id', 'turma_id', 'aluno_id', 'componente_curricular_id'],
             ['professor_id', 'informacoes_complementares', 'updated_at']
         );
     }

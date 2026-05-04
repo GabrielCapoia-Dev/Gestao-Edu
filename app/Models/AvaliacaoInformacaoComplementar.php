@@ -16,6 +16,7 @@ class AvaliacaoInformacaoComplementar extends Model
         'avaliacao_id',
         'turma_id',
         'aluno_id',
+        'componente_curricular_id',
         'professor_id',
         'informacoes_complementares',
     ];
