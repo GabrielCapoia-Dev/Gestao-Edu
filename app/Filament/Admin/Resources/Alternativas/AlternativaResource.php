@@ -56,8 +56,18 @@ class AlternativaResource extends Resource
                             ->label('Ativa')
                             ->default(true),
 
+                        Toggle::make('vai_no_documento')
+                            ->label('Vai no documento?')
+                            ->default(true),
+
                         Textarea::make('observacao')
                             ->label('Observação')
+                            ->rows(4)
+                            ->maxLength(1000)
+                            ->columnSpanFull(),
+
+                        Textarea::make('descricao_documento')
+                            ->label('Descricao no documento')
                             ->rows(4)
                             ->maxLength(1000)
                             ->columnSpanFull(),
@@ -82,6 +92,17 @@ class AlternativaResource extends Resource
                     ->label('Observação')
                     ->limit(80)
                     ->placeholder('Sem observação')
+                    ->toggleable(),
+
+                IconColumn::make('vai_no_documento')
+                    ->label('Documento')
+                    ->boolean()
+                    ->sortable(),
+
+                TextColumn::make('descricao_documento')
+                    ->label('Descricao no documento')
+                    ->limit(80)
+                    ->placeholder('Sem descricao')
                     ->toggleable(),
 
                 IconColumn::make('status')

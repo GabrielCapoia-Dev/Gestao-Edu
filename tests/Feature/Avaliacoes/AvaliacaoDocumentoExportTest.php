@@ -1,0 +1,179 @@
+<?php
+
+namespace Tests\Feature\Avaliacoes;
+
+use App\Models\Aluno;
+use App\Models\Alternativa;
+use App\Models\Avaliacao;
+use App\Models\AvaliacaoExportacao;
+use App\Models\AvaliacaoResposta;
+use App\Models\ComponenteCurricular;
+use App\Models\Escola;
+use App\Models\Pauta;
+use App\Models\PeriodoAvaliacao;
+use App\Models\Professor;
+use App\Models\Serie;
+use App\Models\TipoAvaliacao;
+use App\Models\Turma;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Permission;
+use Tests\TestCase;
+
+class AvaliacaoDocumentoExportTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_exporta_pdf_da_avaliacao_e_registra_log_simples(): void
+    {
+        Permission::findOrCreate('Exportar Avaliações');
+        Permission::findOrCreate('Listar Avaliações');
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo(['Exportar Avaliações', 'Listar Avaliações']);
+
+        $tipo = TipoAvaliacao::query()->create(['nome' => 'Parecer Descritivo', 'status' => true]);
+        $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Periodo Diagnostico', 'status' => true]);
+
+        $escola = $this->criarEscola('Escola Documento');
+        $serie = $this->criarSerie('SER-DOC', 'Infantil 4');
+        $turma = $this->criarTurma($escola, $serie, 'A');
+
+        $componente = ComponenteCurricular::query()->create([
+            'codigo' => 'COMP-DOC',
+            'nome' => 'O eu, o outro e o nos',
+        ]);
+
+        $professor = Professor::query()->create([
+            'id_escola' => $escola->id,
+            'matricula' => 'PROF-DOC',
+            'nome' => 'Professor Documento',
+            'email' => 'documento@edu.umuarama.pr.gov.br',
+        ]);
+
+        $turma->componentes()->attach($componente->id, [
+            'professor_id' => $professor->id,
+            'tem_professor' => true,
+        ]);
+
+        $alternativaDocumento = Alternativa::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'nome' => 'Sim',
+            'tem_observacao' => false,
+            'observacao' => 'Descricao antiga',
+            'vai_no_documento' => true,
+            'descricao_documento' => 'Atingiu a pauta completamente',
+            'status' => true,
+        ]);
+
+        $alternativaInterna = Alternativa::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'nome' => 'Uso interno',
+            'tem_observacao' => false,
+            'vai_no_documento' => false,
+            'descricao_documento' => 'Nao deve ir ao documento',
+            'status' => true,
+        ]);
+
+        $pauta = Pauta::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'texto' => 'Reconhece combinados da turma',
+            'serie_id' => $serie->id,
+            'componente_curricular_id' => $componente->id,
+            'status' => true,
+        ]);
+        $pauta->alternativas()->attach([$alternativaDocumento->id, $alternativaInterna->id]);
+
+        $avaliacao = Avaliacao::query()->create([
+            'nome' => 'Parecer Periodo Diagnostico',
+            'tipo_avaliacao_id' => $tipo->id,
+            'periodo_avaliacao_id' => $periodo->id,
+            'data_inicio' => '2026-02-01',
+            'data_fim' => '2026-12-20',
+            'status' => Avaliacao::STATUS_ATIVA,
+        ]);
+        $avaliacao->pautas()->attach($pauta->id);
+        $avaliacao->turmas()->attach($turma->id);
+        $avaliacao->series()->sync([$serie->id]);
+        $avaliacao->componentes()->sync([$componente->id]);
+        $avaliacao->escolas()->sync([$escola->id]);
+
+        $aluno = Aluno::query()->create([
+            'nome' => 'Aluno Documento',
+            'cgm' => 'CGM-DOC-001',
+            'data_nascimento' => '2021-01-01',
+            'id_turma' => $turma->id,
+        ]);
+
+        AvaliacaoResposta::query()->create([
+            'avaliacao_id' => $avaliacao->id,
+            'pauta_id' => $pauta->id,
+            'turma_id' => $turma->id,
+            'aluno_id' => $aluno->id,
+            'professor_id' => $professor->id,
+            'alternativa_id' => $alternativaDocumento->id,
+            'observacao' => 'Observacao da professora',
+            'respondido_em' => now(),
+        ]);
+
+        $response = $this->actingAs($usuario)->get(route('avaliacoes.documento.pdf', [
+            'avaliacao_id' => $avaliacao->id,
+            'escopo' => 'aluno',
+            'turma_id' => $turma->id,
+            'aluno_id' => $aluno->id,
+        ]));
+
+        $response
+            ->assertOk()
+            ->assertHeader('Content-Type', 'application/pdf');
+
+        $this->assertDatabaseHas('avaliacao_exportacoes', [
+            'avaliacao_id' => $avaliacao->id,
+            'escola_id' => $escola->id,
+            'turma_id' => $turma->id,
+            'aluno_id' => $aluno->id,
+            'user_id' => $usuario->id,
+            'escopo' => 'aluno',
+            'formato' => 'pdf',
+            'quantidade_alunos' => 1,
+        ]);
+
+        $log = AvaliacaoExportacao::query()->firstOrFail();
+
+        $this->assertSame('Parecer Periodo Diagnostico', $log->parametros['avaliacao']);
+        $this->assertGreaterThan(0, $log->quantidade_paginas);
+        $this->assertNotNull($log->exportado_em);
+    }
+
+    private function criarEscola(string $nome): Escola
+    {
+        return Escola::query()->create([
+            'codigo' => strtoupper(substr(md5($nome), 0, 5)),
+            'nome' => $nome,
+            'email' => strtolower(str_replace(' ', '.', $nome)).'@teste.local',
+            'telefone' => '(44) 99999-9999',
+        ]);
+    }
+
+    private function criarSerie(string $codigo, string $nome): Serie
+    {
+        return Serie::query()->create([
+            'codigo' => $codigo,
+            'nome' => $nome,
+        ]);
+    }
+
+    private function criarTurma(Escola $escola, Serie $serie, string $nome): Turma
+    {
+        return Turma::query()->create([
+            'codigo' => 'TUR'.strtoupper(substr(md5($nome.microtime()), 0, 8)),
+            'nome' => $nome,
+            'turno' => 'manha',
+            'id_serie' => $serie->id,
+            'id_escola' => $escola->id,
+        ]);
+    }
+}

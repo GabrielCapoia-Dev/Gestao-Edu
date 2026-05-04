@@ -307,7 +307,7 @@ class GestaoPautas extends Page implements HasForms, HasTable
         return Alternativa::query()
             ->when($tipoAvaliacaoId > 0, fn ($query) => $query->where('tipo_avaliacao_id', $tipoAvaliacaoId))
             ->orderBy('nome')
-            ->get(['id', 'nome', 'tem_observacao', 'status']);
+            ->get(['id', 'nome', 'tem_observacao', 'vai_no_documento', 'status']);
     }
 
     public function getAlternativasSelectOptionsProperty(): array
@@ -318,6 +318,10 @@ class GestaoPautas extends Page implements HasForms, HasTable
 
                 if ($alternativa->tem_observacao) {
                     $sufixos[] = 'exige observação';
+                }
+
+                if (! $alternativa->vai_no_documento) {
+                    $sufixos[] = 'fora do documento';
                 }
 
                 if (! $alternativa->status) {
@@ -442,6 +446,8 @@ class GestaoPautas extends Page implements HasForms, HasTable
             'nome' => '',
             'tem_observacao' => false,
             'observacao' => '',
+            'vai_no_documento' => true,
+            'descricao_documento' => '',
             'status' => true,
         ];
     }
@@ -497,6 +503,8 @@ class GestaoPautas extends Page implements HasForms, HasTable
                 'novasAlternativas.*.nome' => ['nullable', 'string', 'max:255'],
                 'novasAlternativas.*.tem_observacao' => ['required', 'boolean'],
                 'novasAlternativas.*.observacao' => ['nullable', 'string', 'max:1000'],
+                'novasAlternativas.*.vai_no_documento' => ['required', 'boolean'],
+                'novasAlternativas.*.descricao_documento' => ['nullable', 'string', 'max:1000'],
                 'novasAlternativas.*.status' => ['required', 'boolean'],
             ]);
         } catch (ValidationException $exception) {
@@ -535,12 +543,17 @@ class GestaoPautas extends Page implements HasForms, HasTable
         $novasAlternativasComNome = collect($validated['novasAlternativas'] ?? [])
             ->map(function (array $item): array {
                 $temObservacao = (bool) ($item['tem_observacao'] ?? false);
+                $vaiNoDocumento = (bool) ($item['vai_no_documento'] ?? true);
 
                 return [
                     'nome' => trim((string) ($item['nome'] ?? '')),
                     'tem_observacao' => $temObservacao,
                     'observacao' => $temObservacao && filled($item['observacao'] ?? null)
                         ? trim((string) $item['observacao'])
+                        : null,
+                    'vai_no_documento' => $vaiNoDocumento,
+                    'descricao_documento' => $vaiNoDocumento && filled($item['descricao_documento'] ?? null)
+                        ? trim((string) $item['descricao_documento'])
                         : null,
                     'status' => (bool) ($item['status'] ?? true),
                 ];

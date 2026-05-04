@@ -153,6 +153,21 @@
                                             </label>
                                         @endif
 
+                                        <label class="gi-field gi-field--small">
+                                            <span>Vai no documento?</span>
+                                            <select wire:model.live="novasAlternativas.{{ $index }}.vai_no_documento">
+                                                <option value="1">Sim</option>
+                                                <option value="0">Nao</option>
+                                            </select>
+                                        </label>
+
+                                        @if ((bool) ($novasAlternativas[$index]['vai_no_documento'] ?? true))
+                                            <label class="gi-field">
+                                                <span>Descricao no documento (opcional)</span>
+                                                <input type="text" maxlength="1000" wire:model.defer="novasAlternativas.{{ $index }}.descricao_documento" />
+                                            </label>
+                                        @endif
+
                                         <div class="gi-row-actions">
                                             <button type="button" wire:click="removerNovaAlternativa({{ $index }})">
                                                 Remover

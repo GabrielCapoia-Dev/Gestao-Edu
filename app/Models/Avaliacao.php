@@ -108,6 +108,11 @@ class Avaliacao extends Model
         return $this->hasMany(AvaliacaoInformacaoComplementar::class, 'avaliacao_id');
     }
 
+    public function exportacoes(): HasMany
+    {
+        return $this->hasMany(AvaliacaoExportacao::class, 'avaliacao_id');
+    }
+
     public function scopePendentesParaData(Builder $query, CarbonInterface|string|null $data = null): Builder
     {
         $referencia = $data instanceof CarbonInterface

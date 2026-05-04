@@ -69,6 +69,27 @@
                     @endif
 
                     <label class="gi-field gi-field--small">
+                        <span>Vai no documento?</span>
+                        <select wire:model.live="form.vai_no_documento">
+                            <option value="1">Sim</option>
+                            <option value="0">Nao</option>
+                        </select>
+                        @error('form.vai_no_documento')
+                            <p class="error">{{ $message }}</p>
+                        @enderror
+                    </label>
+
+                    @if ((bool) ($form['vai_no_documento'] ?? true))
+                        <label class="gi-field">
+                            <span>Descricao no documento (opcional)</span>
+                            <textarea wire:model.defer="form.descricao_documento" rows="4" maxlength="1000"></textarea>
+                            @error('form.descricao_documento')
+                                <p class="error">{{ $message }}</p>
+                            @enderror
+                        </label>
+                    @endif
+
+                    <label class="gi-field gi-field--small">
                         <span>Status</span>
                         <select wire:model.defer="form.status">
                             <option value="1">Ativa</option>

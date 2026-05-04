@@ -179,6 +179,17 @@
 
                             @if ($turmaExpandida)
                                 <div class="av-turma-content">
+                                    @if ($this->podeExportar())
+                                        <div class="gi-toolbar">
+                                            <div></div>
+                                            <div class="gi-toolbar-right">
+                                                <a class="gi-action" href="{{ route('avaliacoes.documento.pdf', ['avaliacao_id' => $avaliacao, 'escopo' => 'turma', 'turma_id' => $turmaId]) }}">
+                                                    Exportar PDF da turma
+                                                </a>
+                                            </div>
+                                        </div>
+                                    @endif
+
                                     @forelse ($this->pautasDaTurma($turmaId) as $pauta)
                                         @php($progressoPauta = $this->progressoPorPauta[$turmaId][$pauta->id] ?? ['preenchidas' => 0, 'total' => $alunosDaTurma->count(), 'percentual' => 0, 'concluida' => false])
                                         @php($pautaExpandida = $this->pautaEstaExpandida($turmaId, (int) $pauta->id))
@@ -230,6 +241,13 @@
                                                                         <td>
                                                                             <strong>{{ $aluno->nome }}</strong>
                                                                             <small>CGM: {{ $aluno->cgm }}</small>
+                                                                            @if ($this->podeExportar())
+                                                                                <small>
+                                                                                    <a href="{{ route('avaliacoes.documento.pdf', ['avaliacao_id' => $avaliacao, 'escopo' => 'aluno', 'turma_id' => $turmaId, 'aluno_id' => $aluno->id]) }}">
+                                                                                        PDF do aluno
+                                                                                    </a>
+                                                                                </small>
+                                                                            @endif
                                                                         </td>
                                                                         <td>
                                                                             <div class="av-input-wrap">
@@ -381,6 +399,17 @@
 
                             @if ($turmaExpandida)
                                 <div class="av-turma-content">
+                                    @if ($this->podeExportar())
+                                        <div class="gi-toolbar">
+                                            <div></div>
+                                            <div class="gi-toolbar-right">
+                                                <a class="gi-action" href="{{ route('avaliacoes.documento.pdf', ['avaliacao_id' => $avaliacao, 'escopo' => 'turma', 'turma_id' => $turmaId]) }}">
+                                                    Exportar PDF da turma
+                                                </a>
+                                            </div>
+                                        </div>
+                                    @endif
+
                                     @forelse ($alunosDaTurma as $aluno)
                                         @php($progressoAluno = $this->progressoPorAluno[$aluno->id] ?? ['preenchidas' => 0, 'total' => $pautasDaTurma->count(), 'percentual' => 0, 'concluida' => false])
                                         @php($alunoExpandido = $this->alunoEstaExpandido($turmaId, (int) $aluno->id))
@@ -414,6 +443,17 @@
 
                                             @if ($alunoExpandido)
                                                 <div class="av-pauta-content">
+                                                    @if ($this->podeExportar())
+                                                        <div class="gi-toolbar">
+                                                            <div></div>
+                                                            <div class="gi-toolbar-right">
+                                                                <a class="gi-action" href="{{ route('avaliacoes.documento.pdf', ['avaliacao_id' => $avaliacao, 'escopo' => 'aluno', 'turma_id' => $turmaId, 'aluno_id' => $aluno->id]) }}">
+                                                                    Exportar PDF do aluno
+                                                                </a>
+                                                            </div>
+                                                        </div>
+                                                    @endif
+
                                                     @foreach ($this->pautasAgrupadasPorComponenteDaTurma($turmaId) as $componenteNome => $pautasDoComponente)
                                                         <section class="av-aluno-componente">
                                                             <h4>{{ $componenteNome }}</h4>
@@ -555,6 +595,10 @@
                     <div></div>
                     <div class="gi-toolbar-right">
                         @if ($this->podeExportar())
+                            <a class="gi-action" href="{{ route('avaliacoes.documento.pdf', ['avaliacao_id' => $avaliacao, 'escopo' => 'escola', 'escola_id' => $escola]) }}">
+                                Exportar PDF da escola
+                            </a>
+
                             <button type="button" class="gi-action" wire:click="exportarRespostas" wire:loading.attr="disabled" wire:target="exportarRespostas">
                                 Exportar CSV
                             </button>

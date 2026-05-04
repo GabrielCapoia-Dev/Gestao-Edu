@@ -19,6 +19,8 @@ class Alternativa extends Model
         'nome',
         'tem_observacao',
         'observacao',
+        'vai_no_documento',
+        'descricao_documento',
         'status',
     ];
 
@@ -26,6 +28,7 @@ class Alternativa extends Model
     {
         return [
             'tem_observacao' => 'boolean',
+            'vai_no_documento' => 'boolean',
             'status' => 'boolean',
         ];
     }

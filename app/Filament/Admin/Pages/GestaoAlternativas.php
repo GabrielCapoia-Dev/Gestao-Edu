@@ -56,6 +56,8 @@ class GestaoAlternativas extends Page implements HasTable
         'nome' => '',
         'tem_observacao' => false,
         'observacao' => '',
+        'vai_no_documento' => true,
+        'descricao_documento' => '',
         'status' => true,
     ];
 
@@ -107,10 +109,22 @@ class GestaoAlternativas extends Page implements HasTable
                     ->sortable()
                     ->alignCenter(),
 
+                IconColumn::make('vai_no_documento')
+                    ->label('Vai no documento?')
+                    ->boolean()
+                    ->sortable()
+                    ->alignCenter(),
+
                 TextColumn::make('observacao')
                     ->label('Observação padrão')
                     ->limit(80)
                     ->placeholder('Sem observação')
+                    ->toggleable(),
+
+                TextColumn::make('descricao_documento')
+                    ->label('Descricao no documento')
+                    ->limit(80)
+                    ->placeholder('Sem descricao')
                     ->toggleable(),
 
                 IconColumn::make('status')
@@ -147,6 +161,12 @@ class GestaoAlternativas extends Page implements HasTable
 
                 TernaryFilter::make('tem_observacao')
                     ->label('Exige observação')
+                    ->trueLabel('Sim')
+                    ->falseLabel('Não')
+                    ->native(false),
+
+                TernaryFilter::make('vai_no_documento')
+                    ->label('Vai no documento')
                     ->trueLabel('Sim')
                     ->falseLabel('Não')
                     ->native(false),
@@ -241,6 +261,8 @@ class GestaoAlternativas extends Page implements HasTable
             'nome' => '',
             'tem_observacao' => false,
             'observacao' => '',
+            'vai_no_documento' => true,
+            'descricao_documento' => '',
             'status' => true,
         ];
         $this->modalAberto = true;
@@ -276,6 +298,8 @@ class GestaoAlternativas extends Page implements HasTable
             'nome' => (string) $alternativa->nome,
             'tem_observacao' => (bool) $alternativa->tem_observacao,
             'observacao' => (string) ($alternativa->observacao ?? ''),
+            'vai_no_documento' => (bool) $alternativa->vai_no_documento,
+            'descricao_documento' => (string) ($alternativa->descricao_documento ?? ''),
             'status' => (bool) $alternativa->status,
         ];
         $this->modalAberto = true;
@@ -329,6 +353,8 @@ class GestaoAlternativas extends Page implements HasTable
             ],
             'form.tem_observacao' => ['required', 'boolean'],
             'form.observacao' => ['nullable', 'string', 'max:1000'],
+            'form.vai_no_documento' => ['required', 'boolean'],
+            'form.descricao_documento' => ['nullable', 'string', 'max:1000'],
             'form.status' => ['required', 'boolean'],
         ]);
 
@@ -369,12 +395,18 @@ class GestaoAlternativas extends Page implements HasTable
         $observacao = $temObservacao && filled($validated['form']['observacao'] ?? null)
             ? trim((string) $validated['form']['observacao'])
             : null;
+        $vaiNoDocumento = (bool) ($validated['form']['vai_no_documento'] ?? true);
+        $descricaoDocumento = $vaiNoDocumento && filled($validated['form']['descricao_documento'] ?? null)
+            ? trim((string) $validated['form']['descricao_documento'])
+            : null;
 
         $alternativa->fill([
             'tipo_avaliacao_id' => $tipoAvaliacaoId,
             'nome' => trim((string) $validated['form']['nome']),
             'tem_observacao' => $temObservacao,
             'observacao' => $observacao,
+            'vai_no_documento' => $vaiNoDocumento,
+            'descricao_documento' => $descricaoDocumento,
             'status' => (bool) ($validated['form']['status'] ?? true),
         ]);
         $alternativa->save();

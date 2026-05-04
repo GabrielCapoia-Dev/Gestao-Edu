@@ -38,6 +38,10 @@ class AvaliacoesCustomPagesTest extends TestCase
         $this->actingAs($usuario)
             ->get(route('filament.admin.pages.avaliacoes-alternativas'))
             ->assertOk();
+
+        $this->actingAs($usuario)
+            ->get(route('filament.admin.pages.avaliacoes-log-exportacoes'))
+            ->assertOk();
     }
 
     public function test_resources_antigos_de_avaliacoes_nao_sao_acessiveis(): void

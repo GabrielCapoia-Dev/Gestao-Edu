@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\GoogleAuthController;
+use App\Http\Controllers\AvaliacaoDocumentoExportController;
 use App\Http\Controllers\BaixasEstoqueRelatorioController;
 use App\Http\Controllers\BalancoEstoqueRelatorioController;
 use App\Http\Controllers\BalancoInventarioRelatorioController;
@@ -95,6 +96,9 @@ Route::prefix('admin')
 
         Route::get('/pedidos-merenda/{pedidoMerenda}/empenho', [PedidoMerendaEmpenhoController::class, 'exportar'])
             ->name('pedidos-merenda.exportar-empenho');
+
+        Route::get('/avaliacoes/documento/pdf', [AvaliacaoDocumentoExportController::class, 'exportar'])
+            ->name('avaliacoes.documento.pdf');
 
         Route::get(
             '/pedidos/arquivos/{pedidoArquivo}/download',
