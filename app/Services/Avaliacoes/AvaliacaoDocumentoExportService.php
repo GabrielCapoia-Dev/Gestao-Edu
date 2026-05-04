@@ -378,7 +378,7 @@ class AvaliacaoDocumentoExportService
 
         $componentes = $pautas
             ->groupBy(fn (Pauta $pauta): string => $pauta->componente_curricular_id ? (string) $pauta->componente_curricular_id : 'geral')
-            ->map(function (Collection $pautasDoComponente) use ($turma, $respostas): array {
+            ->map(function (Collection $pautasDoComponente) use ($turma, $respostas, $informacoesComplementares): array {
                 /** @var Pauta $primeiraPauta */
                 $primeiraPauta = $pautasDoComponente->first();
                 $componenteId = $primeiraPauta->componente_curricular_id ? (int) $primeiraPauta->componente_curricular_id : null;
@@ -386,6 +386,7 @@ class AvaliacaoDocumentoExportService
                 return [
                     'nome' => $primeiraPauta->componente?->nome ?? 'Geral',
                     'professor' => $this->professorDoComponente($turma, $componenteId, $pautasDoComponente, $respostas),
+                    'informacoes_complementares' => trim((string) $informacoesComplementares),
                     'pautas' => $pautasDoComponente
                         ->values()
                         ->map(function (Pauta $pauta, int $index) use ($respostas): array {
@@ -415,12 +416,12 @@ class AvaliacaoDocumentoExportService
             'cgm' => (string) $aluno->cgm,
             'curso' => (string) ($turma->serie?->nome ?? ''),
             'turma' => $this->rotuloTurma($turma),
+            'turno' => $this->formatarTurno($turma),
             'ano_letivo' => (string) ($avaliacao->data_inicio?->format('Y') ?? now()->format('Y')),
             'diretor' => $gestores['diretor'],
             'coordenacao' => $gestores['coordenacao'],
             'legenda' => $legenda->all(),
             'componentes' => $componentes->all(),
-            'informacoes_complementares' => trim((string) $informacoesComplementares),
         ];
     }
 
@@ -511,9 +512,22 @@ class AvaliacaoDocumentoExportService
         return preg_match('/^turma\b/i', $nome) === 1 ? $nome : 'Turma '.$nome;
     }
 
+    private function formatarTurno(Turma $turma): string
+    {
+        $turno = trim(str_replace('_', ' ', (string) $turma->turno));
+
+        if ($turno === '') {
+            return '';
+        }
+
+        return mb_convert_case($turno, MB_CASE_TITLE, 'UTF-8');
+    }
+
     private function logoDataUri(): string
     {
         $paths = [
+            'C:\\Users\\gabriel.capoia\\Documents\\2026\\App Parecer\\app-desktop-electron\\src\\assets\\logo-prefeitura.jpeg',
+            base_path('../../App Parecer/app-desktop-electron/src/assets/logo-prefeitura.jpeg'),
             base_path('../../App Parecer/logo-prefeitura.jpeg'),
             public_path('images/logo-umuarma-educacao.png'),
             public_path('images/logo-umuarama.png'),

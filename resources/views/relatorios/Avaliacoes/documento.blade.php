@@ -89,8 +89,7 @@
         }
 
         .legend-table,
-        .component-table,
-        .complementary-table {
+        .component-table {
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
@@ -99,9 +98,7 @@
         .legend-table th,
         .legend-table td,
         .component-table th,
-        .component-table td,
-        .complementary-table th,
-        .complementary-table td {
+        .component-table td {
             border: 1px solid #9ca3af;
             padding: 4px 6px;
             vertical-align: top;
@@ -109,18 +106,10 @@
         }
 
         .legend-table th,
-        .component-table th,
-        .complementary-table th {
+        .component-table th {
             background: #f3f4f6;
             text-align: center;
             font-weight: 700;
-        }
-
-        .legend-mark {
-            background: #b7d6ea;
-            display: inline;
-            padding: 0 1px;
-            line-height: 1.25;
         }
 
         .component {
@@ -157,9 +146,14 @@
             width: 28%;
         }
 
-        .complementary {
-            margin-top: 10px;
-            page-break-inside: avoid;
+        .component-table .complementary-title {
+            background: #fff;
+            text-align: center;
+            font-weight: 700;
+        }
+
+        .component-table .complementary-text {
+            min-height: 24px;
         }
 
         .signature {
@@ -197,7 +191,7 @@
                 </tr>
                 <tr>
                     <td><span class="label">CURSO:</span> {{ $documento['curso'] ?? '' }}</td>
-                    <td></td>
+                    <td class="right"><span class="label">TURNO:</span> {{ $documento['turno'] ?? '' }}</td>
                 </tr>
                 <tr>
                     <td colspan="2"><span class="label">DIRETOR(A):</span> {{ $documento['diretor'] ?? '' }}</td>
@@ -218,14 +212,14 @@
                     <thead>
                         <tr>
                             @foreach ($documento['legenda'] as $alternativa)
-                                <th><span class="legend-mark">{{ $alternativa['nome'] }}</span></th>
+                                <th>{{ $alternativa['nome'] }}</th>
                             @endforeach
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
                             @foreach ($documento['legenda'] as $alternativa)
-                                <td><span class="legend-mark">{{ $alternativa['descricao'] }}</span></td>
+                                <td>{{ $alternativa['descricao'] }}</td>
                             @endforeach
                         </tr>
                     </tbody>
@@ -254,27 +248,16 @@
                                 <td class="observation">{{ $pauta['observacao'] }}</td>
                             </tr>
                         @endforeach
+                        <tr>
+                            <th class="complementary-title" colspan="3">Informacoes Complementares</th>
+                        </tr>
+                        <tr>
+                            <td class="complementary-text" colspan="3">{{ $componente['informacoes_complementares'] ?? '' }}</td>
+                        </tr>
                     </tbody>
                 </table>
             </section>
         @endforeach
-
-        @if (! empty($documento['informacoes_complementares']))
-            <section class="complementary">
-                <table class="complementary-table">
-                    <thead>
-                        <tr>
-                            <th>Informacoes Complementares</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>{{ $documento['informacoes_complementares'] }}</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </section>
-        @endif
 
         <section class="signature">
             <div class="signature-line">______________________________________________________</div>
