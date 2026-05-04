@@ -529,7 +529,7 @@ class AvaliacaoDocumentoExportService
             'C:\\Users\\gabriel.capoia\\Documents\\2026\\App Parecer\\app-desktop-electron\\src\\assets\\logo-prefeitura.jpeg',
             base_path('../../App Parecer/app-desktop-electron/src/assets/logo-prefeitura.jpeg'),
             base_path('../../App Parecer/logo-prefeitura.jpeg'),
-            public_path('images/logo-umuarma-educacao.png'),
+            public_path('images/logo-umuarma-educacao-abrinq.jpeg'),
             public_path('images/logo-umuarama.png'),
         ];
 
