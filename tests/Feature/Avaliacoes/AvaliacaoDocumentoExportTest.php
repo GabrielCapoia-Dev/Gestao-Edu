@@ -10,6 +10,7 @@ use App\Models\AvaliacaoInformacaoComplementar;
 use App\Models\AvaliacaoResposta;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
+use App\Models\FuncaoAdministrativa;
 use App\Models\Pauta;
 use App\Models\PeriodoAvaliacao;
 use App\Models\Professor;
@@ -17,7 +18,9 @@ use App\Models\Serie;
 use App\Models\TipoAvaliacao;
 use App\Models\Turma;
 use App\Models\User;
+use App\Services\Avaliacoes\AvaliacaoDocumentoExportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use ReflectionMethod;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
@@ -296,6 +299,51 @@ class AvaliacaoDocumentoExportTest extends TestCase
             'formato' => 'csv',
             'quantidade_alunos' => 1,
         ]);
+    }
+
+    public function test_resolve_diretor_e_coordenador_da_equipe_gestora_para_o_documento(): void
+    {
+        $escola = $this->criarEscola('Escola Gestora Documento');
+        $outraEscola = $this->criarEscola('Outra Escola Gestora');
+        $serie = $this->criarSerie('SER-GEST', '1o Ano');
+        $turma = $this->criarTurma($escola, $serie, 'A');
+
+        $funcaoDiretor = FuncaoAdministrativa::query()->create([
+            'nome' => 'Diretor(a)',
+            'tem_relacao_turma' => true,
+        ]);
+        $funcaoCoordenador = FuncaoAdministrativa::query()->create([
+            'nome' => 'Coordenador(a)',
+            'tem_relacao_turma' => true,
+        ]);
+
+        $diretor = Professor::query()->create([
+            'id_escola' => $outraEscola->id,
+            'matricula' => 'DIR-GEST',
+            'nome' => 'Diretora Documento',
+            'email' => 'diretora.documento@edu.umuarama.pr.gov.br',
+            'funcao_administrativa_id' => $funcaoDiretor->id,
+            'portaria' => '111/2026',
+        ]);
+        $diretor->turmasFuncao()->attach($turma->id);
+
+        $coordenadora = Professor::query()->create([
+            'id_escola' => $escola->id,
+            'matricula' => 'COORD-GEST',
+            'nome' => 'Coordenadora Documento',
+            'email' => 'coordenadora.documento@edu.umuarama.pr.gov.br',
+            'funcao_administrativa_id' => $funcaoCoordenador->id,
+            'portaria' => '222/2026',
+        ]);
+        $coordenadora->turmasFuncao()->attach($turma->id);
+
+        $metodo = new ReflectionMethod(AvaliacaoDocumentoExportService::class, 'gestoresDaTurma');
+        $metodo->setAccessible(true);
+
+        $gestores = $metodo->invoke(new AvaliacaoDocumentoExportService(), $turma);
+
+        $this->assertSame('Diretora Documento - 111/2026', $gestores['diretor']);
+        $this->assertSame('Coordenadora Documento - 222/2026', $gestores['coordenacao']);
     }
 
     private function criarEscola(string $nome): Escola

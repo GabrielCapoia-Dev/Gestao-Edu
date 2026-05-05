@@ -533,22 +533,64 @@ class AvaliacaoDocumentoExportService
     private function gestoresDaTurma(Turma $turma): array
     {
         $gestores = Professor::query()
-            ->where('id_escola', (int) $turma->id_escola)
             ->whereNotNull('funcao_administrativa_id')
+            ->where(function (Builder $query) use ($turma): void {
+                $query
+                    ->where('id_escola', (int) $turma->id_escola)
+                    ->orWhereHas('turmasFuncao', fn (Builder $turmas): Builder => $turmas->whereKey((int) $turma->id));
+            })
             ->with(['funcaoAdministrativa', 'turmasFuncao:id'])
             ->orderBy('nome')
             ->get();
 
-        $diretor = $gestores->first(fn (Professor $professor): bool => str_contains($this->normalizarTexto($professor->funcaoAdministrativa?->nome), 'diretor'));
-        $coordenacao = $gestores
-            ->filter(fn (Professor $professor): bool => str_contains($this->normalizarTexto($professor->funcaoAdministrativa?->nome), 'coorden'))
-            ->sortByDesc(fn (Professor $professor): int => $professor->turmasFuncao->contains('id', (int) $turma->id) ? 1 : 0)
-            ->first();
+        $diretor = $this->gestorPorFuncao($gestores, $turma, ['diretor']);
+        $coordenacao = $this->gestorPorFuncao($gestores, $turma, ['coorden']);
 
         return [
             'diretor' => $this->formatarGestor($diretor),
             'coordenacao' => $this->formatarGestor($coordenacao),
         ];
+    }
+
+    /**
+     * @param  Collection<int, Professor>  $gestores
+     * @param  array<int, string>  $termos
+     */
+    private function gestorPorFuncao(Collection $gestores, Turma $turma, array $termos): ?Professor
+    {
+        return $gestores
+            ->filter(fn (Professor $professor): bool => $this->funcaoContemTermo($professor, $termos))
+            ->sortByDesc(fn (Professor $professor): int => $this->pontuacaoGestorDaTurma($professor, $turma))
+            ->first();
+    }
+
+    /**
+     * @param  array<int, string>  $termos
+     */
+    private function funcaoContemTermo(Professor $professor, array $termos): bool
+    {
+        $funcao = $this->normalizarTexto($professor->funcaoAdministrativa?->nome);
+
+        foreach ($termos as $termo) {
+            if (str_contains($funcao, $termo)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function pontuacaoGestorDaTurma(Professor $professor, Turma $turma): int
+    {
+        if ($professor->turmasFuncao->contains('id', (int) $turma->id)) {
+            return 2;
+        }
+
+        if ((int) $professor->id_escola === (int) $turma->id_escola) {
+            return 1;
+        }
+
+        return 0;
     }
 
     private function formatarGestor(?Professor $professor): string
