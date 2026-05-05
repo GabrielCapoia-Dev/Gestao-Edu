@@ -149,6 +149,7 @@
                         @php($turmaExpandida = $this->turmaEstaExpandida($turmaId))
                         @php($progressoTurma = $this->progressoPorTurma[$turmaId] ?? ['preenchidas' => 0, 'total' => 0, 'percentual' => 0, 'concluida' => false])
                         @php($alunosDaTurma = $this->alunosDaTurma($turmaId))
+                        @php($pautasDaTurma = $this->pautasDaTurma($turmaId))
 
                         <section wire:key="turma-pautas-{{ $turmaId }}" class="gi-panel av-turma-section {{ $turmaExpandida ? 'is-open' : '' }}">
                             <button type="button" class="av-pauta-toggle" wire:click="alternarTurma({{ $turmaId }})">
@@ -179,7 +180,7 @@
 
                             @if ($turmaExpandida)
                                 <div class="av-turma-content">
-                                    @forelse ($this->pautasDaTurma($turmaId) as $pauta)
+                                    @forelse ($pautasDaTurma as $pauta)
                                         @php($progressoPauta = $this->progressoPorPauta[$turmaId][$pauta->id] ?? ['preenchidas' => 0, 'total' => $alunosDaTurma->count(), 'percentual' => 0, 'concluida' => false])
                                         @php($pautaExpandida = $this->pautaEstaExpandida($turmaId, (int) $pauta->id))
                                         @php($alternativasPauta = $this->alternativasDaPauta((int) $pauta->id))
