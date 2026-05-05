@@ -9,7 +9,7 @@
                 </div>
             </section>
 
-            <section class="gi-panel">
+            <section class="gi-panel av-professor-control-panel">
                 <div class="av-form-grid av-form-grid--two">
                     <label class="gi-field">
                         <span>Avaliacao</span>
@@ -87,7 +87,7 @@
             @else
             @php($turmasDaSerie = $this->turmasDaSerieDisponiveis)
 
-            <section class="gi-panel">
+            <section class="gi-panel av-professor-control-panel">
                 <div class="gi-toolbar">
                     <div>
                         <h3 class="av-pauta-title">Modo de visualizacao</h3>

@@ -26,6 +26,21 @@
         font-weight: var(--font-weight-semibold);
     }
 
+    .av-professor-control-panel {
+        border-color: color-mix(in oklab, var(--gray-300) 78%, var(--primary-200));
+        background:
+            linear-gradient(180deg, #eef2f7 0%, #e8edf4 100%);
+        box-shadow:
+            0 1px 2px rgba(15, 23, 42, 0.06),
+            0 14px 32px rgba(15, 23, 42, 0.07);
+    }
+
+    .av-professor-control-panel .gi-field input,
+    .av-professor-control-panel .gi-field select,
+    .av-professor-control-panel .gi-field textarea {
+        background: #fff;
+    }
+
     .av-note {
         padding: 0.9rem 1rem;
         border: 1px solid var(--gray-200);
@@ -821,6 +836,12 @@
     :root.dark .av-modal-step-tabs {
         border-color: var(--gray-800);
         background: var(--gray-900);
+    }
+
+    :root.dark .av-professor-control-panel {
+        border-color: var(--gray-700);
+        background:
+            linear-gradient(180deg, color-mix(in oklab, var(--gray-800) 86%, var(--primary-950)) 0%, var(--gray-900) 100%);
     }
 
     :root.dark .av-modal-step-tabs button {
