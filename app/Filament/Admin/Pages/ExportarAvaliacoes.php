@@ -4,7 +4,6 @@ namespace App\Filament\Admin\Pages;
 
 use App\Models\Aluno;
 use App\Models\Avaliacao;
-use App\Models\Escola;
 use App\Models\Turma;
 use App\Models\User;
 use BackedEnum;
@@ -31,17 +30,17 @@ class ExportarAvaliacoes extends Page
 
     protected static string|UnitEnum|null $navigationGroup = 'Pedagógico';
 
-    public ?int $avaliacao = null;
+    public string $modoListagem = 'alunos';
 
-    public string $escopo = 'aluno';
+    public string $busca = '';
 
-    public ?int $escola = null;
+    public ?int $alunoSelecionadoId = null;
 
-    public ?int $turma = null;
+    public ?int $turmaSelecionadaId = null;
 
-    public ?int $aluno = null;
+    public ?int $avaliacaoParaAlunoDaTurmaId = null;
 
-    public string $buscaAluno = '';
+    public ?int $alunoDaTurmaSelecionadoId = null;
 
     public static function canAccess(): bool
     {
@@ -51,177 +50,232 @@ class ExportarAvaliacoes extends Page
         return $user?->hasPermissionLike('exportar avaliacoes') ?? false;
     }
 
-    public function updatedEscopo(): void
+    public function definirModo(string $modo): void
     {
-        if (! in_array($this->escopo, ['aluno', 'turma', 'escola'], true)) {
-            $this->escopo = 'aluno';
-        }
-
-        $this->escola = null;
-        $this->turma = null;
-        $this->aluno = null;
-        $this->avaliacao = null;
-    }
-
-    public function updatedAluno(): void
-    {
-        $this->avaliacao = null;
-        $this->turma = $this->alunoAtual?->id_turma ? (int) $this->alunoAtual->id_turma : null;
-        $this->escola = $this->alunoAtual?->turma?->id_escola ? (int) $this->alunoAtual->turma->id_escola : null;
-    }
-
-    public function updatedAvaliacao(): void
-    {
-        if ($this->escopo === 'aluno') {
+        if (! in_array($modo, ['alunos', 'turmas'], true)) {
             return;
         }
 
-        $this->escola = null;
-        $this->turma = null;
+        $this->modoListagem = $modo;
+        $this->busca = '';
+        $this->fecharModais();
     }
 
-    public function updatedEscola(): void
+    public function abrirAluno(int $alunoId): void
     {
-        if ($this->escopo === 'turma') {
-            $this->turma = null;
+        $aluno = $this->buscarAlunoNoEscopo($alunoId);
+
+        if (! $aluno) {
+            return;
         }
+
+        $this->alunoSelecionadoId = (int) $aluno->id;
+        $this->turmaSelecionadaId = null;
+        $this->avaliacaoParaAlunoDaTurmaId = null;
+        $this->alunoDaTurmaSelecionadoId = null;
     }
 
-    public function getAvaliacoesDisponiveisProperty(): Collection
+    public function abrirTurma(int $turmaId): void
     {
-        $query = Avaliacao::query()
-            ->with(['tipo:id,nome', 'periodo:id,nome', 'turmas:id,nome,id_escola,id_serie'])
-            ->whereHas('turmas', fn (Builder $turmas): Builder => $this->aplicarEscopoTurmas($turmas));
+        $turma = $this->buscarTurmaNoEscopo($turmaId);
 
-        if ($this->escopo === 'aluno' && $this->alunoAtual) {
-            $query->whereHas('turmas', fn (Builder $turmas): Builder => $turmas->whereKey((int) $this->alunoAtual->id_turma));
+        if (! $turma) {
+            return;
         }
 
-        return $query
-            ->orderBy('data_inicio')
-            ->orderBy('data_fim')
-            ->orderBy('id')
-            ->get();
+        $this->turmaSelecionadaId = (int) $turma->id;
+        $this->alunoSelecionadoId = null;
+        $this->avaliacaoParaAlunoDaTurmaId = null;
+        $this->alunoDaTurmaSelecionadoId = null;
     }
 
-    public function getEscolasDisponiveisProperty(): Collection
+    public function abrirExportacaoAlunoDaTurma(int $avaliacaoId): void
     {
-        if (! $this->avaliacaoAtual) {
-            return collect();
+        if (! $this->turmaSelecionada || ! $this->avaliacoesTurmaSelecionada->contains('id', $avaliacaoId)) {
+            return;
         }
 
-        $escolasIds = $this->turmasDaAvaliacao()
-            ->pluck('id_escola')
-            ->map(fn ($id) => (int) $id)
-            ->unique()
-            ->values()
-            ->all();
-
-        if ($escolasIds === []) {
-            return collect();
-        }
-
-        return Escola::query()
-            ->whereIn('id', $escolasIds)
-            ->orderBy('nome')
-            ->get(['id', 'nome']);
+        $this->avaliacaoParaAlunoDaTurmaId = $avaliacaoId;
+        $this->alunoDaTurmaSelecionadoId = null;
     }
 
-    public function getTurmasDisponiveisProperty(): Collection
+    public function fecharModais(): void
     {
-        if (! $this->avaliacaoAtual) {
-            return collect();
-        }
-
-        return $this->turmasDaAvaliacao()
-            ->when($this->escola, fn (Collection $turmas): Collection => $turmas
-                ->filter(fn (Turma $turma): bool => (int) $turma->id_escola === (int) $this->escola)
-                ->values())
-            ->sortBy(fn (Turma $turma): string => mb_strtolower(implode('|', [
-                (string) ($turma->escola?->nome ?? ''),
-                (string) ($turma->serie?->nome ?? ''),
-                (string) $turma->nome,
-            ])))
-            ->values();
+        $this->alunoSelecionadoId = null;
+        $this->turmaSelecionadaId = null;
+        $this->avaliacaoParaAlunoDaTurmaId = null;
+        $this->alunoDaTurmaSelecionadoId = null;
     }
 
-    public function getAlunosDisponiveisProperty(): Collection
+    public function fecharModalAlunoDaTurma(): void
+    {
+        $this->avaliacaoParaAlunoDaTurmaId = null;
+        $this->alunoDaTurmaSelecionadoId = null;
+    }
+
+    public function getAlunosComAvaliacoesProperty(): Collection
     {
         $query = Aluno::query()
-            ->with(['turma:id,nome,id_escola,id_serie', 'turma.escola:id,nome', 'turma.serie:id,nome'])
-            ->whereHas('turma', fn (Builder $turmas): Builder => $this->aplicarEscopoTurmas($turmas));
+            ->with([
+                'turma:id,nome,id_escola,id_serie',
+                'turma.escola:id,nome',
+                'turma.serie:id,nome',
+                'turma.avaliacoes:id,nome,data_inicio,data_fim,tipo_avaliacao_id,periodo_avaliacao_id',
+            ])
+            ->whereHas('turma', fn (Builder $turmas): Builder => $this->aplicarEscopoTurmas($turmas))
+            ->whereHas('turma.avaliacoes');
 
-        $busca = trim($this->buscaAluno);
-
-        if ($busca !== '') {
-            $query->where(function (Builder $alunos) use ($busca): void {
-                $alunos
-                    ->where('nome', 'like', '%'.$busca.'%')
-                    ->orWhere('cgm', 'like', '%'.$busca.'%');
-            });
-        }
+        $this->aplicarBuscaAluno($query);
 
         return $query
             ->orderBy('nome')
-            ->limit(50)
+            ->limit(100)
             ->get(['id', 'nome', 'cgm', 'id_turma']);
     }
 
-    public function getAvaliacaoAtualProperty(): ?Avaliacao
+    public function getTurmasComAvaliacoesProperty(): Collection
     {
-        return $this->avaliacoesDisponiveis->firstWhere('id', (int) $this->avaliacao);
+        $query = Turma::query()
+            ->with([
+                'escola:id,nome',
+                'serie:id,nome',
+                'avaliacoes:id,nome,data_inicio,data_fim,tipo_avaliacao_id,periodo_avaliacao_id',
+            ])
+            ->withCount('alunos')
+            ->whereHas('avaliacoes');
+
+        $this->aplicarEscopoTurmas($query);
+        $this->aplicarBuscaTurma($query);
+
+        return $query
+            ->orderBy('id_escola')
+            ->orderBy('id_serie')
+            ->orderBy('nome')
+            ->limit(100)
+            ->get(['id', 'nome', 'id_escola', 'id_serie', 'turno']);
     }
 
-    public function getAlunoAtualProperty(): ?Aluno
+    public function getAlunoSelecionadoProperty(): ?Aluno
     {
-        if (! $this->aluno) {
-            return null;
-        }
-
-        return Aluno::query()
-            ->with(['turma:id,nome,id_escola,id_serie', 'turma.escola:id,nome', 'turma.serie:id,nome'])
-            ->whereKey((int) $this->aluno)
-            ->whereHas('turma', fn (Builder $turmas): Builder => $this->aplicarEscopoTurmas($turmas))
-            ->first();
-    }
-
-    public function getPodeExportarSelecaoProperty(): bool
-    {
-        if (! $this->avaliacaoAtual || ! in_array($this->escopo, ['aluno', 'turma', 'escola'], true)) {
-            return false;
-        }
-
-        return match ($this->escopo) {
-            'aluno' => $this->alunoAtual !== null,
-            'turma' => $this->turmasDisponiveis->contains('id', (int) $this->turma),
-            'escola' => $this->escolasDisponiveis->contains('id', (int) $this->escola),
-            default => false,
-        };
-    }
-
-    public function getPdfUrlProperty(): ?string
-    {
-        return $this->podeExportarSelecao
-            ? route('avaliacoes.documento.pdf', $this->parametrosExportacao())
+        return $this->alunoSelecionadoId
+            ? $this->buscarAlunoNoEscopo((int) $this->alunoSelecionadoId)
             : null;
     }
 
-    public function getCsvUrlProperty(): ?string
+    public function getTurmaSelecionadaProperty(): ?Turma
     {
-        return $this->podeExportarSelecao
-            ? route('avaliacoes.documento.csv', $this->parametrosExportacao())
+        return $this->turmaSelecionadaId
+            ? $this->buscarTurmaNoEscopo((int) $this->turmaSelecionadaId)
             : null;
     }
 
-    private function turmasDaAvaliacao(): Collection
+    public function getAvaliacoesAlunoSelecionadoProperty(): Collection
     {
-        if (! $this->avaliacaoAtual) {
+        if (! $this->alunoSelecionado?->turma) {
             return collect();
         }
 
-        return $this->avaliacaoAtual->turmas
-            ->filter(fn (Turma $turma): bool => $this->turmaEstaNoEscopoDoUsuario($turma))
-            ->values();
+        return $this->avaliacoesDaTurma((int) $this->alunoSelecionado->turma->id);
+    }
+
+    public function getAvaliacoesTurmaSelecionadaProperty(): Collection
+    {
+        if (! $this->turmaSelecionada) {
+            return collect();
+        }
+
+        return $this->avaliacoesDaTurma((int) $this->turmaSelecionada->id);
+    }
+
+    public function getAlunosDaTurmaSelecionadaProperty(): Collection
+    {
+        if (! $this->turmaSelecionada) {
+            return collect();
+        }
+
+        return Aluno::query()
+            ->where('id_turma', (int) $this->turmaSelecionada->id)
+            ->orderBy('nome')
+            ->get(['id', 'nome', 'cgm', 'id_turma']);
+    }
+
+    public function getAvaliacaoParaAlunoDaTurmaProperty(): ?Avaliacao
+    {
+        return $this->avaliacaoParaAlunoDaTurmaId
+            ? $this->avaliacoesTurmaSelecionada->firstWhere('id', (int) $this->avaliacaoParaAlunoDaTurmaId)
+            : null;
+    }
+
+    public function alunoExportPdfUrl(int $avaliacaoId, int $alunoId): string
+    {
+        return route('avaliacoes.documento.pdf', [
+            'avaliacao_id' => $avaliacaoId,
+            'escopo' => 'aluno',
+            'aluno_id' => $alunoId,
+        ]);
+    }
+
+    public function alunoExportCsvUrl(int $avaliacaoId, int $alunoId): string
+    {
+        return route('avaliacoes.documento.csv', [
+            'avaliacao_id' => $avaliacaoId,
+            'escopo' => 'aluno',
+            'aluno_id' => $alunoId,
+        ]);
+    }
+
+    public function turmaExportPdfUrl(int $avaliacaoId, int $turmaId): string
+    {
+        return route('avaliacoes.documento.pdf', [
+            'avaliacao_id' => $avaliacaoId,
+            'escopo' => 'turma',
+            'turma_id' => $turmaId,
+        ]);
+    }
+
+    public function turmaExportCsvUrl(int $avaliacaoId, int $turmaId): string
+    {
+        return route('avaliacoes.documento.csv', [
+            'avaliacao_id' => $avaliacaoId,
+            'escopo' => 'turma',
+            'turma_id' => $turmaId,
+        ]);
+    }
+
+    private function buscarAlunoNoEscopo(int $alunoId): ?Aluno
+    {
+        return Aluno::query()
+            ->with(['turma:id,nome,id_escola,id_serie', 'turma.escola:id,nome', 'turma.serie:id,nome'])
+            ->whereKey($alunoId)
+            ->whereHas('turma', fn (Builder $turmas): Builder => $this->aplicarEscopoTurmas($turmas))
+            ->whereHas('turma.avaliacoes')
+            ->first();
+    }
+
+    private function buscarTurmaNoEscopo(int $turmaId): ?Turma
+    {
+        $query = Turma::query()
+            ->with(['escola:id,nome', 'serie:id,nome'])
+            ->withCount('alunos')
+            ->whereKey($turmaId)
+            ->whereHas('avaliacoes');
+
+        $this->aplicarEscopoTurmas($query);
+
+        return $query->first();
+    }
+
+    private function avaliacoesDaTurma(int $turmaId): Collection
+    {
+        return Avaliacao::query()
+            ->whereHas('turmas', function (Builder $turmas) use ($turmaId): Builder {
+                return $this->aplicarEscopoTurmas($turmas->whereKey($turmaId));
+            })
+            ->with(['tipo:id,nome', 'periodo:id,nome'])
+            ->orderBy('data_inicio')
+            ->orderBy('data_fim')
+            ->orderBy('id')
+            ->get(['id', 'nome', 'data_inicio', 'data_fim', 'tipo_avaliacao_id', 'periodo_avaliacao_id']);
     }
 
     private function aplicarEscopoTurmas(Builder $query): Builder
@@ -242,37 +296,38 @@ class ExportarAvaliacoes extends Page
         return $query->whereIn('id_escola', $escolasIds);
     }
 
-    private function turmaEstaNoEscopoDoUsuario(Turma $turma): bool
+    private function aplicarBuscaAluno(Builder $query): void
     {
-        /** @var User|null $user */
-        $user = Auth::user();
+        $busca = trim($this->busca);
 
-        if (! $user || $user->hasPermissionLike('listar avaliacoes')) {
-            return true;
+        if ($busca === '') {
+            return;
         }
 
-        return in_array((int) $turma->id_escola, $user->idsEscolasVinculadas(), true);
+        $query->where(function (Builder $alunos) use ($busca): void {
+            $alunos
+                ->where('nome', 'like', '%'.$busca.'%')
+                ->orWhere('cgm', 'like', '%'.$busca.'%')
+                ->orWhereHas('turma.escola', fn (Builder $escolas): Builder => $escolas->where('nome', 'like', '%'.$busca.'%'))
+                ->orWhereHas('turma.serie', fn (Builder $series): Builder => $series->where('nome', 'like', '%'.$busca.'%'));
+        });
     }
 
-    /**
-     * @return array<string, int|string>
-     */
-    private function parametrosExportacao(): array
+    private function aplicarBuscaTurma(Builder $query): void
     {
-        $params = [
-            'avaliacao_id' => (int) $this->avaliacao,
-            'escopo' => $this->escopo,
-        ];
+        $busca = trim($this->busca);
 
-        if ($this->escopo === 'aluno') {
-            $params['aluno_id'] = (int) $this->aluno;
-        } elseif ($this->escopo === 'turma') {
-            $params['turma_id'] = (int) $this->turma;
-        } elseif ($this->escopo === 'escola') {
-            $params['escola_id'] = (int) $this->escola;
+        if ($busca === '') {
+            return;
         }
 
-        return $params;
+        $query->where(function (Builder $turmas) use ($busca): void {
+            $turmas
+                ->where('nome', 'like', '%'.$busca.'%')
+                ->orWhereHas('escola', fn (Builder $escolas): Builder => $escolas->where('nome', 'like', '%'.$busca.'%'))
+                ->orWhereHas('serie', fn (Builder $series): Builder => $series->where('nome', 'like', '%'.$busca.'%'))
+                ->orWhereHas('avaliacoes', fn (Builder $avaliacoes): Builder => $avaliacoes->where('nome', 'like', '%'.$busca.'%'));
+        });
     }
 
     public function getTitle(): string

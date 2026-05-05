@@ -22,7 +22,7 @@ class ExportarAvaliacoesPageTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_exportacao_respeita_escolas_vinculadas_quando_usuario_nao_lista_tudo(): void
+    public function test_listagem_por_turma_respeita_escolas_vinculadas_quando_usuario_nao_lista_tudo(): void
     {
         Permission::findOrCreate('Exportar Avaliações');
 
@@ -44,13 +44,12 @@ class ExportarAvaliacoesPageTest extends TestCase
 
         $component = Livewire::actingAs($usuario)
             ->test(ExportarAvaliacoes::class)
-            ->set('escopo', 'escola')
-            ->set('avaliacao', $avaliacao->id);
+            ->call('definirModo', 'turmas');
 
-        $escolas = $component->instance()->escolasDisponiveis;
+        $turmas = $component->instance()->turmasComAvaliacoes;
 
-        $this->assertTrue($escolas->contains('id', $escolaPermitida->id));
-        $this->assertFalse($escolas->contains('id', $escolaBloqueada->id));
+        $this->assertTrue($turmas->contains('id', $turmaPermitida->id));
+        $this->assertFalse($turmas->contains('id', $turmaBloqueada->id));
     }
 
     public function test_avaliacoes_do_aluno_aparecem_em_ordem_cronologica(): void
@@ -84,13 +83,50 @@ class ExportarAvaliacoesPageTest extends TestCase
 
         $component = Livewire::actingAs($usuario)
             ->test(ExportarAvaliacoes::class)
-            ->set('escopo', 'aluno')
-            ->set('aluno', $aluno->id);
+            ->call('abrirAluno', $aluno->id);
 
         $this->assertSame(
             [$avaliacaoAntiga->id, $avaliacaoMeio->id, $avaliacaoNova->id],
-            $component->instance()->avaliacoesDisponiveis->pluck('id')->all()
+            $component->instance()->avaliacoesAlunoSelecionado->pluck('id')->all()
         );
+    }
+
+    public function test_turma_abre_avaliacoes_e_modal_de_exportacao_por_aluno(): void
+    {
+        Permission::findOrCreate('Exportar Avaliações');
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo('Exportar Avaliações');
+
+        $escola = $this->criarEscola('Escola Turma Modal');
+        $usuario->escolas()->attach($escola->id);
+        $serie = $this->criarSerie('SER-MODAL', '4o Ano');
+        $turma = $this->criarTurma($escola, $serie, 'D');
+        $aluno = Aluno::query()->create([
+            'nome' => 'Aluno Modal',
+            'cgm' => 'CGM-MODAL',
+            'data_nascimento' => '2014-02-01',
+            'id_turma' => $turma->id,
+        ]);
+        $avaliacao = $this->criarAvaliacao('Avaliacao Modal', '2026-05-01');
+        $avaliacao->turmas()->sync([$turma->id]);
+
+        $component = Livewire::actingAs($usuario)
+            ->test(ExportarAvaliacoes::class)
+            ->call('abrirTurma', $turma->id);
+
+        $this->assertSame([$avaliacao->id], $component->instance()->avaliacoesTurmaSelecionada->pluck('id')->all());
+
+        $component->call('abrirExportacaoAlunoDaTurma', $avaliacao->id)
+            ->set('alunoDaTurmaSelecionadoId', $aluno->id);
+
+        $this->assertSame($avaliacao->id, $component->instance()->avaliacaoParaAlunoDaTurma?->id);
+        $this->assertTrue($component->instance()->alunosDaTurmaSelecionada->contains('id', $aluno->id));
+        $this->assertStringContainsString('escopo=aluno', $component->instance()->alunoExportPdfUrl($avaliacao->id, $aluno->id));
+        $this->assertStringContainsString('escopo=turma', $component->instance()->turmaExportPdfUrl($avaliacao->id, $turma->id));
     }
 
     private function criarAvaliacao(string $nome, string $dataInicio): Avaliacao
