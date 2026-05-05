@@ -520,6 +520,7 @@ class CriarPermissoes extends Command
             'Gestao de Cadastros Gerais' => $groups['cadastros_gerais'],
             'Relatorios e Painel' => $groups['relatorios_e_painel'],
             'Acessar Painel' => $groups['acesso_painel'],
+            'Professor' => $groups['visualizacao_turmas_alunos'],
             'Visualizar Turmas e Alunos' => $groups['visualizacao_turmas_alunos'],
         ];
     }

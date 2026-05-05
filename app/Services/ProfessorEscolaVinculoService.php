@@ -21,6 +21,10 @@ class ProfessorEscolaVinculoService
 
         $escolasIds = $this->buscarEscolasPedagogicasDoUsuario($userModel->id);
 
+        if ($escolasIds === []) {
+            $escolasIds = $this->buscarEscolasCadastraisDoUsuario($userModel->id);
+        }
+
         $userModel->escolas()->sync($escolasIds);
         $this->atualizarEscolaPrincipal($userModel, $escolasIds);
     }
@@ -60,6 +64,20 @@ class ProfessorEscolaVinculoService
             ->distinct()
             ->orderBy('t.id_escola')
             ->pluck('t.id_escola')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+    }
+
+    private function buscarEscolasCadastraisDoUsuario(int $userId): array
+    {
+        return Professor::query()
+            ->where('user_id', $userId)
+            ->whereNotNull('id_escola')
+            ->select('id_escola')
+            ->distinct()
+            ->orderBy('id_escola')
+            ->pluck('id_escola')
             ->map(fn ($id) => (int) $id)
             ->values()
             ->all();

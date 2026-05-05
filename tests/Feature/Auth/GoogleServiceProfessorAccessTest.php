@@ -9,6 +9,7 @@ use App\Models\Professor;
 use App\Models\Serie;
 use App\Models\Turma;
 use App\Models\TurmaComponenteProfessor;
+use App\Models\User;
 use App\Services\GoogleService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Socialite\Contracts\User as SocialiteUserContract;
@@ -54,6 +55,7 @@ class GoogleServiceProfessorAccessTest extends TestCase
         $this->assertSame($user->id, $professor->user_id);
         $this->assertTrue((bool) $user->email_approved);
         $this->assertTrue($user->hasRole('Acessar Painel'));
+        $this->assertTrue($user->hasRole('Professor'));
         $this->assertTrue($user->hasRole('Visualizar Turmas e Alunos'));
         $this->assertTrue($user->hasPermissionTo('Acessar Painel'));
         $this->assertTrue($user->hasPermissionTo('Listar Turmas'));
@@ -64,15 +66,17 @@ class GoogleServiceProfessorAccessTest extends TestCase
         $this->assertSame($escola->id, (int) $user->id_escola);
     }
 
-    public function test_professor_sem_vinculo_pedagogico_nao_recebe_liberacao_automatica(): void
+    public function test_professor_cadastrado_sem_vinculo_pedagogico_recebe_liberacao_automatica(): void
     {
         DominioEmail::query()->create([
             'dominio_email' => 'edu.umuarama.pr.gov.br',
             'status' => true,
         ]);
 
-        Professor::query()->create([
-            'id_escola' => $this->criarEscola('Escola Sem Vinculo')->id,
+        $escola = $this->criarEscola('Escola Sem Vinculo');
+
+        $professor = Professor::query()->create([
+            'id_escola' => $escola->id,
             'matricula' => 'PROFSEM',
             'nome' => 'Professor Sem Vinculo',
             'email' => 'sem.vinculo@edu.umuarama.pr.gov.br',
@@ -82,15 +86,69 @@ class GoogleServiceProfessorAccessTest extends TestCase
 
         $user = app(GoogleService::class)->registrarOuLogar($oauthUser);
 
+        $professor->refresh();
         $user->refresh();
 
-        $this->assertFalse((bool) $user->email_approved);
-        $this->assertFalse($user->hasRole('Acessar Painel'));
-        $this->assertFalse($user->hasRole('Visualizar Turmas e Alunos'));
-        $this->assertFalse($user->hasPermissionTo('Acessar Painel'));
-        $this->assertFalse($user->hasPermissionTo("Responder Avalia\u{00E7}\u{00F5}es"));
-        $this->assertFalse($user->canAccessAdminPanel());
-        $this->assertSame([], $user->escolas()->pluck('escolas.id')->all());
+        $this->assertSame($user->id, $professor->user_id);
+        $this->assertTrue((bool) $user->email_approved);
+        $this->assertTrue($user->hasRole('Acessar Painel'));
+        $this->assertTrue($user->hasRole('Professor'));
+        $this->assertTrue($user->hasRole('Visualizar Turmas e Alunos'));
+        $this->assertTrue($user->hasPermissionTo('Acessar Painel'));
+        $this->assertTrue($user->hasPermissionTo("Responder Avalia\u{00E7}\u{00F5}es"));
+        $this->assertTrue($user->canAccessAdminPanel());
+        $this->assertSame([$escola->id], $user->escolas()->pluck('escolas.id')->map(fn ($id) => (int) $id)->all());
+        $this->assertSame($escola->id, (int) $user->id_escola);
+    }
+
+    public function test_usuario_pendente_ja_existente_e_aprovado_com_dados_do_professor_no_login_google(): void
+    {
+        DominioEmail::query()->create([
+            'dominio_email' => 'edu.umuarama.pr.gov.br',
+            'status' => true,
+        ]);
+
+        $escola = $this->criarEscola('Escola Debora');
+        $turma = $this->criarTurma($escola, 'Turma Debora');
+        $componente = ComponenteCurricular::query()->create([
+            'codigo' => 'COMP-DEB',
+            'nome' => 'Lingua Portuguesa',
+        ]);
+
+        $userPendente = User::factory()->create([
+            'name' => 'Gabriel Capoia',
+            'email' => 'gabriel.capoia@edu.umuarama.pr.gov.br',
+            'email_approved' => false,
+            'email_verified_at' => null,
+        ]);
+
+        $professor = Professor::query()->create([
+            'id_escola' => $escola->id,
+            'matricula' => '101722',
+            'nome' => 'DEBORA SCANHOLATO DAS CHAGAS',
+            'email' => 'gabriel.capoia@edu.umuarama.pr.gov.br',
+        ]);
+
+        $turma->componentes()->attach($componente->id, [
+            'professor_id' => $professor->id,
+            'tem_professor' => true,
+        ]);
+
+        $oauthUser = $this->fakeOAuthUser('gabriel.capoia@edu.umuarama.pr.gov.br', 'Gabriel Capoia');
+
+        $user = app(GoogleService::class)->registrarOuLogar($oauthUser);
+
+        $professor->refresh();
+        $user->refresh();
+
+        $this->assertSame($userPendente->id, $user->id);
+        $this->assertSame($user->id, $professor->user_id);
+        $this->assertSame('DEBORA SCANHOLATO DAS CHAGAS', $user->name);
+        $this->assertTrue((bool) $user->email_approved);
+        $this->assertNotNull($user->email_verified_at);
+        $this->assertTrue($user->hasRole('Professor'));
+        $this->assertTrue($user->hasPermissionTo("Responder Avalia\u{00E7}\u{00F5}es"));
+        $this->assertTrue($user->canAccessAdminPanel());
     }
 
     public function test_professor_em_multiplas_escolas_tem_usuario_vinculado_a_todas_no_login(): void

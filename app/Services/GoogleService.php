@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\Permission;
 use App\Models\Professor;
 use App\Models\Role;
-use App\Models\TurmaComponenteProfessor;
 use App\Models\User;
 use DomainException;
 use Google\Client as GoogleClient;
@@ -18,6 +17,7 @@ use Spatie\Permission\PermissionRegistrar;
 class GoogleService
 {
     private const ROLE_ACESSAR_PAINEL = 'Acessar Painel';
+    private const ROLE_PROFESSOR = 'Professor';
     private const ROLE_VISUALIZAR_TURMAS_ALUNOS = 'Visualizar Turmas e Alunos';
     private const PERMISSION_ACESSAR_PAINEL = 'Acessar Painel';
     private const PERMISSION_RESPONDER_AVALIACOES = 'Responder Avaliações';
@@ -99,31 +99,28 @@ class GoogleService
         }
 
         $professorIds = $professoresElegiveis->pluck('id')->all();
+        $nomeProfessor = $professoresElegiveis
+            ->pluck('nome')
+            ->filter()
+            ->first();
 
-        $temVinculoPedagogico = TurmaComponenteProfessor::query()
-            ->whereIn('professor_id', $professorIds)
-            ->where('tem_professor', true)
-            ->exists();
-
-        // Impacto: o autoacesso so acontece com vinculo pedagogico ativo. Alterar este IF pode aprovar professor cadastrado, mas sem turma/componente vigente.
-        if (! $temVinculoPedagogico) {
-            $this->professorEscolaVinculoService->sincronizarPorUsuario($user);
-            return;
-        }
-
-        DB::transaction(function () use ($user, $professorIds): void {
+        DB::transaction(function () use ($user, $professorIds, $nomeProfessor): void {
             Professor::query()
                 ->whereIn('id', $professorIds)
                 ->update(['user_id' => $user->id]);
 
             $this->garantirAcessoProfessor($user);
 
-            if (! $user->email_approved) {
-                $user->forceFill([
-                    'email_approved' => true,
-                    'email_verified_at' => $user->email_verified_at ?? now(),
-                ])->save();
+            $dadosUsuario = [
+                'email_approved' => true,
+                'email_verified_at' => $user->email_verified_at ?? now(),
+            ];
+
+            if (filled($nomeProfessor)) {
+                $dadosUsuario['name'] = $nomeProfessor;
             }
+
+            $user->forceFill($dadosUsuario)->save();
         });
 
         $this->professorEscolaVinculoService->sincronizarPorUsuario($user);
@@ -152,8 +149,16 @@ class GoogleService
             self::PERMISSION_RESPONDER_AVALIACOES,
         ]);
 
+        $roleProfessor = Role::findOrCreate(self::ROLE_PROFESSOR, 'web');
+        $roleProfessor->syncPermissions([
+            'Listar Turmas',
+            'Listar Alunos',
+            self::PERMISSION_RESPONDER_AVALIACOES,
+        ]);
+
         $user->givePermissionTo(self::PERMISSION_ACESSAR_PAINEL);
         $user->assignRole($roleAcessoPainel);
+        $user->assignRole($roleProfessor);
         $user->assignRole($roleVisualizacaoProfessor);
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
