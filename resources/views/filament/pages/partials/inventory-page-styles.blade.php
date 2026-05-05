@@ -40,7 +40,7 @@
     .gi-modal {
         border: 1px solid var(--gray-200);
         background:
-            linear-gradient(180deg, var(--gray-50) 0%, #daedff 100%);
+            linear-gradient(180deg, var(--gray-50) 0%, #074f9b 100%);
         box-shadow:
             0 1px 2px rgba(15, 23, 42, 0.05),
             0 18px 40px rgba(15, 23, 42, 0.06);
