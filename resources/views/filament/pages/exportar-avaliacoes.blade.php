@@ -92,7 +92,7 @@
                     </div>
 
                     <div class="av-pagination">
-                        {{ $alunosComAvaliacoes->links() }}
+                        @include('filament.pages.partials.exportar-avaliacoes-pagination', ['paginator' => $alunosComAvaliacoes])
                     </div>
                 </section>
             @else
@@ -140,7 +140,7 @@
                     </div>
 
                     <div class="av-pagination">
-                        {{ $turmasComAvaliacoes->links() }}
+                        @include('filament.pages.partials.exportar-avaliacoes-pagination', ['paginator' => $turmasComAvaliacoes])
                     </div>
                 </section>
             @endif
@@ -327,39 +327,84 @@
             }
 
             .av-livewire-root .av-pagination {
-                overflow: hidden;
-                color: #334155;
+                padding-top: 14px;
+                border-top: 1px solid #e2e8f0;
+            }
+
+            .av-livewire-root .av-pager {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 12px;
+                align-items: center;
+                justify-content: space-between;
+            }
+
+            .av-livewire-root .av-pager--single {
+                justify-content: flex-start;
+            }
+
+            .av-livewire-root .av-pager-summary {
+                margin: 0;
+                color: #475569;
                 font-size: 13px;
+                font-weight: 600;
             }
 
-            .av-livewire-root .av-pagination nav {
-                display: grid;
-                gap: 8px;
+            .av-livewire-root .av-pager-list {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
                 align-items: center;
+                justify-content: flex-end;
             }
 
-            .av-livewire-root .av-pagination a,
-            .av-livewire-root .av-pagination span {
-                min-width: 0;
-            }
-
-            .av-livewire-root .av-pagination svg {
-                display: inline-block !important;
-                width: 16px !important;
-                min-width: 16px !important;
-                max-width: 16px !important;
-                height: 16px !important;
-                min-height: 16px !important;
-                max-height: 16px !important;
-                flex: 0 0 16px !important;
-                vertical-align: middle;
-            }
-
-            .av-livewire-root .av-pagination [rel="prev"],
-            .av-livewire-root .av-pagination [rel="next"] {
+            .av-livewire-root .av-pager-button,
+            .av-livewire-root .av-pager-ellipsis {
                 display: inline-flex;
-                gap: 4px;
                 align-items: center;
+                justify-content: center;
+                min-width: 34px;
+                height: 34px;
+                border-radius: 8px;
+                padding: 0 10px;
+                border: 1px solid #cbd5e1;
+                color: #1e3a8a;
+                background: #fff;
+                font-size: 13px;
+                font-weight: 700;
+                line-height: 1;
+                text-decoration: none;
+                box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+            }
+
+            .av-livewire-root button.av-pager-button {
+                cursor: pointer;
+            }
+
+            .av-livewire-root button.av-pager-button:hover {
+                border-color: #93c5fd;
+                color: #0b225c;
+                background: #eff6ff;
+            }
+
+            .av-livewire-root .av-pager-button.is-active {
+                border-color: #1e3a8a;
+                color: #fff;
+                background: #1e3a8a;
+            }
+
+            .av-livewire-root .av-pager-button.is-disabled {
+                color: #94a3b8;
+                background: #f8fafc;
+                cursor: not-allowed;
+            }
+
+            .av-livewire-root .av-pager-ellipsis {
+                min-width: 24px;
+                border-color: transparent;
+                color: #64748b;
+                background: transparent;
+                box-shadow: none;
             }
 
             .av-slide-overlay,
