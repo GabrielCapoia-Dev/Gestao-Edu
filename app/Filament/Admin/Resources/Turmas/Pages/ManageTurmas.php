@@ -10,6 +10,7 @@ use App\Services\TurmaService;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ManageRecords;
 use Filament\Schemas\Schema;
+use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 
 class ManageTurmas extends ManageRecords
@@ -17,6 +18,13 @@ class ManageTurmas extends ManageRecords
     protected static string $resource = TurmaResource::class;
 
     protected TurmaService $turmaService;
+
+    public function getHeader(): ?View
+    {
+        return view('filament.admin.resources.turmas.pages.manage-turmas-header', [
+            'actions' => $this->getCachedHeaderActions(),
+        ]);
+    }
 
     protected function getHeaderActions(): array
     {

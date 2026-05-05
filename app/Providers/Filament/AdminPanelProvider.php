@@ -103,6 +103,10 @@ class AdminPanelProvider extends PanelProvider
                     return '';
                 }
             )
+            ->renderHook(
+                PanelsRenderHook::HEAD_END,
+                fn (): \Illuminate\Contracts\View\View => view('filament.pages.partials.inventory-page-styles')
+            )
             ->plugins([
                 AuthDesignerPlugin::make()
                     ->login(

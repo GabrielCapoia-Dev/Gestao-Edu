@@ -876,4 +876,245 @@
     :root.dark .gi-overlay {
         background: rgba(2, 6, 23, 0.7);
     }
+
+    .inv-hero,
+    .gi-hero {
+        position: relative;
+        overflow: hidden;
+        isolation: isolate;
+        min-height: 10rem;
+        align-items: end;
+        border-color: rgba(191, 219, 254, 0.28);
+        background:
+            linear-gradient(105deg, #11366f 0%, #174f8f 54%, #2f72ad 100%);
+        box-shadow:
+            0 1px 2px rgba(15, 23, 42, 0.08),
+            0 18px 44px rgba(15, 23, 42, 0.12);
+    }
+
+    .inv-hero::before,
+    .gi-hero::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        opacity: 0.24;
+        background-image:
+            linear-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255, 255, 255, 0.12) 1px, transparent 1px);
+        background-size: 3.9rem 3.9rem;
+    }
+
+    .inv-hero::after,
+    .gi-hero::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        background:
+            linear-gradient(90deg, rgba(8, 25, 57, 0.2), transparent 54%),
+            radial-gradient(circle at 88% 8%, rgba(125, 184, 239, 0.34), transparent 28rem);
+    }
+
+    .inv-hero h1,
+    .gi-hero h1,
+    :root.dark .inv-hero h1,
+    :root.dark .gi-hero h1 {
+        color: #fff;
+        letter-spacing: 0;
+    }
+
+    .inv-hero p,
+    .gi-hero p,
+    :root.dark .inv-hero p,
+    :root.dark .gi-hero p {
+        color: rgba(229, 242, 255, 0.9);
+    }
+
+    .inv-eyebrow,
+    .gi-eyebrow {
+        color: rgba(232, 244, 255, 0.94);
+    }
+
+    .inv-hero .inv-action,
+    .gi-hero .gi-action,
+    .gi-hero .fi-btn {
+        border-color: rgba(219, 234, 254, 0.82);
+        background: rgba(255, 255, 255, 0.96);
+        color: #0f2d5c;
+        box-shadow: 0 8px 22px rgba(5, 20, 46, 0.16);
+    }
+
+    .inv-hero .inv-action--primary,
+    .gi-hero .gi-action--primary,
+    .gi-hero .fi-color-primary {
+        border-color: #0f4e9b;
+        background: #0f4e9b;
+        color: #fff;
+    }
+
+    .gi-hero .fi-ac {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        justify-content: flex-end;
+    }
+
+    :root.dark .inv-hero,
+    :root.dark .gi-hero {
+        border-color: rgba(96, 165, 250, 0.28);
+        background:
+            linear-gradient(105deg, #0b2349 0%, #0d3a72 54%, #17568b 100%);
+        box-shadow:
+            0 1px 2px rgba(0, 0, 0, 0.35),
+            0 18px 44px rgba(0, 0, 0, 0.28);
+    }
+
+    :root.dark .inv-eyebrow,
+    :root.dark .gi-eyebrow {
+        color: rgba(232, 244, 255, 0.94);
+    }
+
+    :root.dark .inv-hero .inv-action,
+    :root.dark .gi-hero .gi-action,
+    :root.dark .gi-hero .fi-btn {
+        border-color: rgba(219, 234, 254, 0.78);
+        background: rgba(255, 255, 255, 0.95);
+        color: #0f2d5c;
+    }
+
+    :root.dark .inv-hero .inv-action--primary,
+    :root.dark .gi-hero .gi-action--primary,
+    :root.dark .gi-hero .fi-color-primary {
+        border-color: #2563eb;
+        background: #1d4ed8;
+        color: #fff;
+    }
+
+    .fi-page-header-main-ctn > .fi-header {
+        position: relative;
+        overflow: hidden;
+        isolation: isolate;
+        align-items: end;
+        min-height: 10rem;
+        padding: 1.5rem;
+        border: 1px solid rgba(191, 219, 254, 0.28);
+        border-radius: 1rem;
+        background:
+            linear-gradient(105deg, #11366f 0%, #174f8f 54%, #2f72ad 100%);
+        box-shadow:
+            0 1px 2px rgba(15, 23, 42, 0.08),
+            0 18px 44px rgba(15, 23, 42, 0.12);
+    }
+
+    .fi-page-header-main-ctn > .fi-header::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        opacity: 0.24;
+        background-image:
+            linear-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255, 255, 255, 0.12) 1px, transparent 1px);
+        background-size: 3.9rem 3.9rem;
+    }
+
+    .fi-page-header-main-ctn > .fi-header::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        background:
+            linear-gradient(90deg, rgba(8, 25, 57, 0.2), transparent 54%),
+            radial-gradient(circle at 88% 8%, rgba(125, 184, 239, 0.34), transparent 28rem);
+    }
+
+    .fi-page-header-main-ctn > .fi-header .fi-header-heading {
+        color: #fff;
+        letter-spacing: 0;
+    }
+
+    .fi-page-header-main-ctn > .fi-header .fi-header-subheading,
+    .fi-page-header-main-ctn > .fi-header .fi-breadcrumbs,
+    .fi-page-header-main-ctn > .fi-header .fi-breadcrumbs a {
+        color: rgba(229, 242, 255, 0.9);
+    }
+
+    .fi-page-header-main-ctn > .fi-header .fi-btn {
+        border-color: rgba(219, 234, 254, 0.82);
+        background: rgba(255, 255, 255, 0.96);
+        color: #0f2d5c;
+        box-shadow: 0 8px 22px rgba(5, 20, 46, 0.16);
+    }
+
+    .fi-page-header-main-ctn > .fi-header .fi-color-primary {
+        border-color: #0f4e9b;
+        background: #0f4e9b;
+        color: #fff;
+    }
+
+    .fi-resource-list-records-page .fi-ta {
+        overflow: hidden;
+        border: 1px solid var(--gray-200);
+        border-radius: 1rem;
+        background: #fff;
+        box-shadow:
+            0 1px 2px rgba(15, 23, 42, 0.05),
+            0 18px 40px rgba(15, 23, 42, 0.08);
+    }
+
+    .fi-resource-list-records-page .fi-ta-header {
+        padding: 0.9rem;
+        background: #fff;
+    }
+
+    .fi-resource-list-records-page .fi-ta-header-toolbar {
+        gap: 0.75rem;
+    }
+
+    .fi-resource-list-records-page .fi-ta-table thead {
+        background: #15358a;
+    }
+
+    .fi-resource-list-records-page .fi-ta-table thead th,
+    .fi-resource-list-records-page .fi-ta-table thead th button,
+    .fi-resource-list-records-page .fi-ta-table thead label {
+        color: #fff;
+    }
+
+    .fi-resource-list-records-page .fi-ta-row:nth-child(even) {
+        background: #f6f8fc;
+    }
+
+    .fi-resource-list-records-page .fi-ta-search-field input {
+        border-radius: 0.65rem;
+    }
+
+    :root.dark .fi-page-header-main-ctn > .fi-header {
+        border-color: rgba(96, 165, 250, 0.28);
+        background:
+            linear-gradient(105deg, #0b2349 0%, #0d3a72 54%, #17568b 100%);
+    }
+
+    :root.dark .fi-page-header-main-ctn > .fi-header .fi-header-heading {
+        color: #fff;
+    }
+
+    :root.dark .fi-resource-list-records-page .fi-ta,
+    :root.dark .fi-resource-list-records-page .fi-ta-header {
+        border-color: var(--gray-800);
+        background: var(--gray-900);
+    }
+
+    :root.dark .fi-resource-list-records-page .fi-ta-row:nth-child(even) {
+        background: rgba(15, 23, 42, 0.68);
+    }
+
+    @media (max-width: 48rem) {
+        .inv-hero,
+        .gi-hero,
+        .fi-page-header-main-ctn > .fi-header {
+            min-height: auto;
+        }
+    }
 </style>
