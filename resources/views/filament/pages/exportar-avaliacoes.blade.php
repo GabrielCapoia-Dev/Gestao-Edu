@@ -326,6 +326,42 @@
                 margin-top: 16px;
             }
 
+            .av-livewire-root .av-pagination {
+                overflow: hidden;
+                color: #334155;
+                font-size: 13px;
+            }
+
+            .av-livewire-root .av-pagination nav {
+                display: grid;
+                gap: 8px;
+                align-items: center;
+            }
+
+            .av-livewire-root .av-pagination a,
+            .av-livewire-root .av-pagination span {
+                min-width: 0;
+            }
+
+            .av-livewire-root .av-pagination svg {
+                display: inline-block !important;
+                width: 16px !important;
+                min-width: 16px !important;
+                max-width: 16px !important;
+                height: 16px !important;
+                min-height: 16px !important;
+                max-height: 16px !important;
+                flex: 0 0 16px !important;
+                vertical-align: middle;
+            }
+
+            .av-livewire-root .av-pagination [rel="prev"],
+            .av-livewire-root .av-pagination [rel="next"] {
+                display: inline-flex;
+                gap: 4px;
+                align-items: center;
+            }
+
             .av-slide-overlay,
             .av-modal-overlay {
                 position: fixed;
