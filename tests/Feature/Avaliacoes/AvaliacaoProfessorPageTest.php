@@ -558,13 +558,14 @@ class AvaliacaoProfessorPageTest extends TestCase
             ->set('avaliacao', $avaliacao->id)
             ->set('turma', $turma->id)
             ->set("respostas.{$pauta->id}.{$aluno->id}.alternativa_id", $alternativa->id)
-            ->set("informacoesComplementares.{$aluno->id}", $informacoesComplementares)
+            ->set("informacoesComplementares.{$componente->id}.{$aluno->id}", $informacoesComplementares)
             ->call('salvarRespostas');
 
         $this->assertDatabaseHas('avaliacao_informacoes_complementares', [
             'avaliacao_id' => $avaliacao->id,
             'turma_id' => $turma->id,
             'aluno_id' => $aluno->id,
+            'componente_curricular_id' => $componente->id,
             'professor_id' => $professor->id,
             'informacoes_complementares' => $informacoesLimitadas,
         ]);

@@ -40,4 +40,9 @@ class AvaliacaoInformacaoComplementar extends Model
     {
         return $this->belongsTo(Professor::class, 'professor_id');
     }
+
+    public function componente(): BelongsTo
+    {
+        return $this->belongsTo(ComponenteCurricular::class, 'componente_curricular_id');
+    }
 }

@@ -24,17 +24,16 @@ class AvaliacoesProfessor extends Page
 {
     private const LIMITE_CARACTERES_TEXTO = 1500;
 
-    private const PERMISSAO_LISTAR_AVALIACOES = 'Listar Avaliações';
+    private const PERMISSAO_LISTAR_AVALIACOES = 'Listar AvaliaÃ§Ãµes';
 
-    private const PERMISSAO_RESPONDER_AVALIACOES = 'Responder Avaliações';
+    private const PERMISSAO_RESPONDER_AVALIACOES = 'Responder AvaliaÃ§Ãµes';
 
-    private const PERMISSAO_EXPORTAR_AVALIACOES = 'Exportar Avaliações';
 
     protected string $view = 'filament.pages.avaliacoes-professor';
 
-    protected static ?string $title = 'Avaliações';
+    protected static ?string $title = 'AvaliaÃ§Ãµes';
 
-    protected static ?string $navigationLabel = 'Minhas Avaliações';
+    protected static ?string $navigationLabel = 'Minhas AvaliaÃ§Ãµes';
 
     protected static ?string $slug = 'avaliacoes-professor';
 
@@ -42,7 +41,7 @@ class AvaliacoesProfessor extends Page
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ClipboardDocumentCheck;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Pedagógico';
+    protected static string|UnitEnum|null $navigationGroup = 'PedagÃ³gico';
 
     public ?int $avaliacao = null;
 
@@ -89,11 +88,8 @@ class AvaliacoesProfessor extends Page
             return false;
         }
 
-        return $user->hasAnyPermission([
-            self::PERMISSAO_LISTAR_AVALIACOES,
-            self::PERMISSAO_RESPONDER_AVALIACOES,
-            self::PERMISSAO_EXPORTAR_AVALIACOES,
-        ]);
+        return $user->hasPermissionLike('listar avaliacoes')
+            || $user->hasPermissionLike('responder avaliacoes');
     }
 
     public function podeResponder(): bool
@@ -101,15 +97,7 @@ class AvaliacoesProfessor extends Page
         /** @var User|null $user */
         $user = Auth::user();
 
-        return $user?->hasPermissionTo(self::PERMISSAO_RESPONDER_AVALIACOES) ?? false;
-    }
-
-    public function podeExportar(): bool
-    {
-        /** @var User|null $user */
-        $user = Auth::user();
-
-        return $user?->hasPermissionTo(self::PERMISSAO_EXPORTAR_AVALIACOES) ?? false;
+        return $user?->hasPermissionLike('responder avaliacoes') ?? false;
     }
 
     private function deveFiltrarPorProfessor(): bool
@@ -125,7 +113,7 @@ class AvaliacoesProfessor extends Page
             return false;
         }
 
-        if ($user->hasPermissionTo(self::PERMISSAO_LISTAR_AVALIACOES)) {
+        if ($user->hasPermissionLike('listar avaliacoes')) {
             return false;
         }
 
@@ -135,11 +123,6 @@ class AvaliacoesProfessor extends Page
     private function abortSeNaoPuderResponder(): void
     {
         abort_unless($this->podeResponder(), 403);
-    }
-
-    private function abortSeNaoPuderExportar(): void
-    {
-        abort_unless($this->podeExportar(), 403);
     }
 
     public function mount(): void
@@ -381,7 +364,7 @@ class AvaliacoesProfessor extends Page
 
         if (! $pauta) {
             Notification::make()
-                ->title('Pauta não encontrada para esta turma.')
+                ->title('Pauta nÃ£o encontrada para esta turma.')
                 ->warning()
                 ->send();
 
@@ -393,7 +376,7 @@ class AvaliacoesProfessor extends Page
 
         if (! $alternativa) {
             Notification::make()
-                ->title('Selecione uma alternativa válida para aplicar em massa.')
+                ->title('Selecione uma alternativa vÃ¡lida para aplicar em massa.')
                 ->warning()
                 ->send();
 
@@ -460,7 +443,7 @@ class AvaliacoesProfessor extends Page
         });
 
         $mensagemPendencia = count($alunosComPendencia) > 0
-            ? count($alunosComPendencia).' aluno(s) ainda precisam preencher observação para concluir o salvamento.'
+            ? count($alunosComPendencia).' aluno(s) ainda precisam preencher observaÃ§Ã£o para concluir o salvamento.'
             : null;
 
         Notification::make()
@@ -468,7 +451,7 @@ class AvaliacoesProfessor extends Page
             ->body(
                 $mensagemPendencia
                 ?? ((bool) ($alternativa['tem_observacao'] ?? false)
-                    ? 'Essa alternativa exige observação por aluno.'
+                    ? 'Essa alternativa exige observaÃ§Ã£o por aluno.'
                     : 'Respostas salvas automaticamente.')
             )
             ->success()
@@ -639,7 +622,7 @@ class AvaliacoesProfessor extends Page
 
         if ($this->pautasDisponiveis->isEmpty() || $this->alunosDaSerie->isEmpty()) {
             Notification::make()
-                ->title('Não há pautas ou alunos disponíveis para avaliação.')
+                ->title('NÃ£o hÃ¡ pautas ou alunos disponÃ­veis para avaliaÃ§Ã£o.')
                 ->warning()
                 ->send();
 
@@ -699,15 +682,15 @@ class AvaliacoesProfessor extends Page
             $mensagens = [];
 
             if ($faltandoResposta > 0) {
-                $mensagens[] = 'Preencha todas as combinações de aluno e pauta.';
+                $mensagens[] = 'Preencha todas as combinaÃ§Ãµes de aluno e pauta.';
             }
 
             if ($faltandoObservacao > 0) {
-                $mensagens[] = 'Algumas alternativas exigem observação obrigatória.';
+                $mensagens[] = 'Algumas alternativas exigem observaÃ§Ã£o obrigatÃ³ria.';
             }
 
             Notification::make()
-                ->title('Existem pendências no preenchimento.')
+                ->title('Existem pendÃªncias no preenchimento.')
                 ->body(implode(' ', $mensagens))
                 ->warning()
                 ->send();
@@ -724,135 +707,11 @@ class AvaliacoesProfessor extends Page
         });
 
         Notification::make()
-            ->title('Avaliação salva com sucesso.')
+            ->title('AvaliaÃ§Ã£o salva com sucesso.')
             ->success()
             ->send();
     }
 
-    public function exportarRespostas()
-    {
-        $this->abortSeNaoPuderExportar();
-
-        if (! $this->avaliacaoAtual || ! $this->serie) {
-            Notification::make()
-                ->title('Selecione uma avaliacao e uma serie para exportar.')
-                ->warning()
-                ->send();
-
-            return null;
-        }
-
-        $turmas = $this->turmasDaSerieDisponiveis;
-        $pautas = $this->pautasDisponiveis;
-        $alunos = $this->alunosDaSerie;
-
-        if ($turmas->isEmpty() || $pautas->isEmpty() || $alunos->isEmpty()) {
-            Notification::make()
-                ->title('Não há dados suficientes para exportação (turma/pautas/alunos).')
-                ->warning()
-                ->send();
-
-            return null;
-        }
-
-        $pautasIds = $pautas->pluck('id')->map(fn ($id) => (int) $id)->values()->all();
-        $alunosIds = $alunos->pluck('id')->map(fn ($id) => (int) $id)->values()->all();
-
-        $respostas = AvaliacaoResposta::query()
-            ->where('avaliacao_id', (int) $this->avaliacaoAtual->id)
-            ->whereIn('turma_id', $turmas->pluck('id')->map(fn ($id) => (int) $id)->all())
-            ->whereIn('pauta_id', $pautasIds)
-            ->whereIn('aluno_id', $alunosIds)
-            ->with(['alternativa:id,nome'])
-            ->get()
-            ->keyBy(fn (AvaliacaoResposta $resposta): string => $resposta->turma_id.'-'.$resposta->pauta_id.'-'.$resposta->aluno_id);
-
-        $informacoesComplementares = AvaliacaoInformacaoComplementar::query()
-            ->where('avaliacao_id', (int) $this->avaliacaoAtual->id)
-            ->whereIn('turma_id', $turmas->pluck('id')->map(fn ($id) => (int) $id)->all())
-            ->whereIn('aluno_id', $alunosIds)
-            ->get(['aluno_id', 'componente_curricular_id', 'informacoes_complementares'])
-            ->keyBy(fn ($registro) => ((int) $registro->componente_curricular_id).'-'.((int) $registro->aluno_id));
-
-        $avaliacaoId = (int) $this->avaliacaoAtual->id;
-        $serieId = (int) $this->serie;
-        $avaliacaoNome = (string) $this->avaliacaoAtual->nome;
-
-        $nomeArquivo = sprintf(
-            'avaliacao_%d_serie_%d_%s.csv',
-            $avaliacaoId,
-            $serieId,
-            now()->format('Ymd_His')
-        );
-
-        return response()->streamDownload(function () use ($avaliacaoId, $avaliacaoNome, $turmas, $respostas, $informacoesComplementares): void {
-            echo "\xEF\xBB\xBF";
-
-            $out = fopen('php://output', 'w');
-
-            if ($out === false) {
-                return;
-            }
-
-            $delimiter = ';';
-
-            fputcsv($out, [
-                'Avaliacao ID',
-                'Avaliacao Nome',
-                'Turma ID',
-                'Turma Nome',
-                'Aluno ID',
-                'Aluno Nome',
-                'Aluno CGM',
-                'Pauta ID',
-                'Pauta Texto',
-                'Componente',
-                'Alternativa ID',
-                'Alternativa',
-                'Observacao',
-                'Respondido Em',
-                'Professor ID',
-                'Informacoes Complementares (Aluno)',
-            ], $delimiter);
-
-            foreach ($turmas as $turma) {
-                $turmaId = (int) $turma->id;
-                $turmaNome = $this->nomeTurma($turma);
-
-                foreach ($this->alunosDaTurma($turmaId) as $aluno) {
-                    foreach ($this->pautasDaTurma($turmaId) as $pauta) {
-                        $chave = $turmaId.'-'.$pauta->id.'-'.$aluno->id;
-                        $resposta = $respostas->get($chave);
-                        $alternativa = $resposta?->alternativa;
-                        $info = $informacoesComplementares->get(((int) ($pauta->componente_curricular_id ?? 0)).'-'.((int) $aluno->id));
-
-                        fputcsv($out, [
-                            $avaliacaoId,
-                            $avaliacaoNome,
-                            $turmaId,
-                            $turmaNome,
-                            (int) $aluno->id,
-                            (string) $aluno->nome,
-                            (string) $aluno->cgm,
-                            (int) $pauta->id,
-                            (string) $pauta->texto,
-                            (string) ($pauta->componente?->nome ?? ''),
-                            $resposta?->alternativa_id ? (int) $resposta->alternativa_id : '',
-                            (string) ($alternativa?->nome ?? ''),
-                            (string) ($resposta?->observacao ?? ''),
-                            $resposta?->respondido_em?->toDateTimeString() ?? '',
-                            $resposta?->professor_id ? (int) $resposta->professor_id : '',
-                            (string) ($info?->informacoes_complementares ?? ''),
-                        ], $delimiter);
-                    }
-                }
-            }
-
-            fclose($out);
-        }, $nomeArquivo, [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-        ]);
-    }
 
     public function alternativaRequerObservacao(int $pautaId, ?int $alternativaId): bool
     {

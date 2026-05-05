@@ -459,6 +459,7 @@ class CriarPermissoes extends Command
                 'Listar Relatórios: Componentes com Professores Faltando',
                 'Listar Relatórios: Dashboard',
                 'Exportar Relatórios',
+                'Exportar Avaliações',
                 'Visualizar Notificações',
                 'Visualizar Painel Personalizado',
                 'Visualizar Tela de Inicio',

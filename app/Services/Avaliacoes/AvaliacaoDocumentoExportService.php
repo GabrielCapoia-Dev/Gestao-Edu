@@ -20,6 +20,7 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class AvaliacaoDocumentoExportService
@@ -63,16 +64,121 @@ class AvaliacaoDocumentoExportService
         $this->registrarLog(
             $avaliacao,
             $turmas,
-            $documentosComPaginas,
             $escopo,
             $params,
             $usuario,
+            'pdf',
+            $documentosComPaginas->count(),
             $quantidadePaginas
         );
 
         return response($conteudo, 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => sprintf('attachment; filename="%s"', addslashes($this->nomeArquivo($avaliacao, $escopo, $turmas, $documentosComPaginas))),
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     */
+    public function exportarCsv(array $params, ?User $usuario): StreamedResponse
+    {
+        $avaliacao = $this->buscarAvaliacao((int) ($params['avaliacao_id'] ?? 0));
+        $escopo = (string) ($params['escopo'] ?? 'turma');
+        $turmas = $this->resolverTurmas($avaliacao, $escopo, $params, $usuario);
+        $dados = $this->montarDadosCsv($avaliacao, $turmas, $escopo, $params);
+
+        if ($dados->isEmpty()) {
+            throw new NotFoundHttpException('Nenhum dado encontrado para exportacao.');
+        }
+
+        $quantidadeAlunos = $dados
+            ->flatMap(fn (array $turmaDados): Collection => $turmaDados['alunos'])
+            ->count();
+
+        $this->registrarLog(
+            $avaliacao,
+            $turmas,
+            $escopo,
+            $params,
+            $usuario,
+            'csv',
+            $quantidadeAlunos,
+            null
+        );
+
+        return response()->streamDownload(function () use ($avaliacao, $dados): void {
+            echo "\xEF\xBB\xBF";
+
+            $out = fopen('php://output', 'w');
+
+            if ($out === false) {
+                return;
+            }
+
+            $delimiter = ';';
+
+            fputcsv($out, [
+                'Avaliacao ID',
+                'Avaliacao Nome',
+                'Turma ID',
+                'Turma Nome',
+                'Aluno ID',
+                'Aluno Nome',
+                'Aluno CGM',
+                'Pauta ID',
+                'Pauta Texto',
+                'Componente',
+                'Alternativa ID',
+                'Alternativa',
+                'Observacao',
+                'Respondido Em',
+                'Professor ID',
+                'Informacoes Complementares (Componente)',
+            ], $delimiter);
+
+            foreach ($dados as $turmaDados) {
+                /** @var Turma $turma */
+                $turma = $turmaDados['turma'];
+                /** @var Collection<int, Aluno> $alunos */
+                $alunos = $turmaDados['alunos'];
+                /** @var Collection<int, Pauta> $pautas */
+                $pautas = $turmaDados['pautas'];
+                /** @var Collection<string, AvaliacaoResposta> $respostas */
+                $respostas = $turmaDados['respostas'];
+                /** @var Collection<string, AvaliacaoInformacaoComplementar> $informacoesComplementares */
+                $informacoesComplementares = $turmaDados['informacoes_complementares'];
+
+                foreach ($alunos as $aluno) {
+                    foreach ($pautas as $pauta) {
+                        $resposta = $respostas->get($pauta->id.'-'.$aluno->id);
+                        $info = $informacoesComplementares->get(((int) ($pauta->componente_curricular_id ?? 0)).'-'.((int) $aluno->id));
+
+                        fputcsv($out, [
+                            (int) $avaliacao->id,
+                            (string) $avaliacao->nome,
+                            (int) $turma->id,
+                            $this->nomeTurma($turma),
+                            (int) $aluno->id,
+                            (string) $aluno->nome,
+                            (string) $aluno->cgm,
+                            (int) $pauta->id,
+                            (string) $pauta->texto,
+                            (string) ($pauta->componente?->nome ?? ''),
+                            $resposta?->alternativa_id ? (int) $resposta->alternativa_id : '',
+                            (string) ($resposta?->alternativa?->nome ?? ''),
+                            (string) ($resposta?->observacao ?? ''),
+                            $resposta?->respondido_em?->toDateTimeString() ?? '',
+                            $resposta?->professor_id ? (int) $resposta->professor_id : '',
+                            (string) ($info?->informacoes_complementares ?? ''),
+                        ], $delimiter);
+                    }
+                }
+            }
+
+            fclose($out);
+        }, $this->nomeArquivoCsv($avaliacao, $escopo, $turmas), [
+            'Content-Type' => 'text/csv; charset=UTF-8',
         ]);
     }
 
@@ -139,7 +245,7 @@ class AvaliacaoDocumentoExportService
 
     private function aplicarEscopoUsuario(Builder $query, ?User $usuario): void
     {
-        if (! $usuario || $usuario->hasPermissionTo('Listar Avaliações')) {
+        if (! $usuario || $usuario->hasPermissionLike('listar avaliacoes')) {
             return;
         }
 
@@ -147,7 +253,11 @@ class AvaliacaoDocumentoExportService
 
         if ($escolasIds !== []) {
             $query->whereIn('id_escola', $escolasIds);
+
+            return;
         }
+
+        $query->whereRaw('1 = 0');
     }
 
     /**
@@ -167,7 +277,7 @@ class AvaliacaoDocumentoExportService
                 continue;
             }
 
-            $pautas = $this->pautasDaTurma($avaliacao, $turma, $usuario);
+            $pautas = $this->pautasDaTurma($avaliacao, $turma);
 
             if ($pautas->isEmpty()) {
                 continue;
@@ -213,56 +323,15 @@ class AvaliacaoDocumentoExportService
     /**
      * @return Collection<int, Pauta>
      */
-    private function pautasDaTurma(Avaliacao $avaliacao, Turma $turma, ?User $usuario): Collection
+    private function pautasDaTurma(Avaliacao $avaliacao, Turma $turma): Collection
     {
-        $componentesPermitidos = $this->componentesPermitidosNaTurma($turma, $usuario);
-
         return $avaliacao->pautas
             ->filter(fn (Pauta $pauta): bool => (is_null($pauta->serie_id) || (int) $pauta->serie_id === (int) $turma->id_serie))
-            ->filter(function (Pauta $pauta) use ($componentesPermitidos): bool {
-                if ($componentesPermitidos === null) {
-                    return true;
-                }
-
-                if (is_null($pauta->componente_curricular_id)) {
-                    return true;
-                }
-
-                return in_array((int) $pauta->componente_curricular_id, $componentesPermitidos, true);
-            })
             ->sortBy(fn (Pauta $pauta): string => mb_strtolower(implode('|', [
                 (string) ($pauta->componente?->nome ?? ''),
                 (string) $pauta->texto,
             ])))
             ->values();
-    }
-
-    /**
-     * @return array<int>|null
-     */
-    private function componentesPermitidosNaTurma(Turma $turma, ?User $usuario): ?array
-    {
-        if (! $usuario || $usuario->hasPermissionTo('Listar Avaliações')) {
-            return null;
-        }
-
-        $professoresIds = $usuario->professores()
-            ->pluck('id')
-            ->map(fn ($id) => (int) $id)
-            ->all();
-
-        if ($professoresIds === []) {
-            return null;
-        }
-
-        return TurmaComponenteProfessor::query()
-            ->where('turma_id', (int) $turma->id)
-            ->whereIn('professor_id', $professoresIds)
-            ->pluck('componente_curricular_id')
-            ->map(fn ($id) => (int) $id)
-            ->unique()
-            ->values()
-            ->all();
     }
 
     /**
@@ -374,19 +443,23 @@ class AvaliacaoDocumentoExportService
             ->where('avaliacao_id', (int) $avaliacao->id)
             ->where('turma_id', (int) $turma->id)
             ->where('aluno_id', (int) $aluno->id)
-            ->value('informacoes_complementares');
+            ->get(['aluno_id', 'componente_curricular_id', 'informacoes_complementares'])
+            ->keyBy(fn (AvaliacaoInformacaoComplementar $registro): string => ((int) ($registro->componente_curricular_id ?? 0)).'-'.((int) $registro->aluno_id));
+
+        $alunoId = (int) $aluno->id;
 
         $componentes = $pautas
             ->groupBy(fn (Pauta $pauta): string => $pauta->componente_curricular_id ? (string) $pauta->componente_curricular_id : 'geral')
-            ->map(function (Collection $pautasDoComponente) use ($turma, $respostas, $informacoesComplementares): array {
+            ->map(function (Collection $pautasDoComponente) use ($turma, $respostas, $informacoesComplementares, $alunoId): array {
                 /** @var Pauta $primeiraPauta */
                 $primeiraPauta = $pautasDoComponente->first();
                 $componenteId = $primeiraPauta->componente_curricular_id ? (int) $primeiraPauta->componente_curricular_id : null;
+                $informacaoComplementar = $informacoesComplementares->get(((int) ($componenteId ?? 0)).'-'.$alunoId);
 
                 return [
                     'nome' => $primeiraPauta->componente?->nome ?? 'Geral',
                     'professor' => $this->professorDoComponente($turma, $componenteId, $pautasDoComponente, $respostas),
-                    'informacoes_complementares' => trim((string) $informacoesComplementares),
+                    'informacoes_complementares' => trim((string) ($informacaoComplementar?->informacoes_complementares ?? '')),
                     'pautas' => $pautasDoComponente
                         ->values()
                         ->map(function (Pauta $pauta, int $index) use ($respostas): array {
@@ -501,6 +574,50 @@ class AvaliacaoDocumentoExportService
             ->toString();
     }
 
+    /**
+     * @param  Collection<int, Turma>  $turmas
+     * @param  array<string, mixed>  $params
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function montarDadosCsv(Avaliacao $avaliacao, Collection $turmas, string $escopo, array $params): Collection
+    {
+        return $turmas
+            ->map(function (Turma $turma) use ($avaliacao, $escopo, $params): ?array {
+                $alunos = $this->alunosDaTurma($turma, $escopo, $params);
+                $pautas = $this->pautasDaTurma($avaliacao, $turma);
+
+                if ($alunos->isEmpty() || $pautas->isEmpty()) {
+                    return null;
+                }
+
+                $respostas = AvaliacaoResposta::query()
+                    ->where('avaliacao_id', (int) $avaliacao->id)
+                    ->where('turma_id', (int) $turma->id)
+                    ->whereIn('pauta_id', $pautas->pluck('id')->map(fn ($id) => (int) $id)->all())
+                    ->whereIn('aluno_id', $alunos->pluck('id')->map(fn ($id) => (int) $id)->all())
+                    ->with(['alternativa:id,nome'])
+                    ->get()
+                    ->keyBy(fn (AvaliacaoResposta $resposta): string => $resposta->pauta_id.'-'.$resposta->aluno_id);
+
+                $informacoesComplementares = AvaliacaoInformacaoComplementar::query()
+                    ->where('avaliacao_id', (int) $avaliacao->id)
+                    ->where('turma_id', (int) $turma->id)
+                    ->whereIn('aluno_id', $alunos->pluck('id')->map(fn ($id) => (int) $id)->all())
+                    ->get(['aluno_id', 'componente_curricular_id', 'informacoes_complementares'])
+                    ->keyBy(fn (AvaliacaoInformacaoComplementar $registro): string => ((int) ($registro->componente_curricular_id ?? 0)).'-'.((int) $registro->aluno_id));
+
+                return [
+                    'turma' => $turma,
+                    'alunos' => $alunos,
+                    'pautas' => $pautas,
+                    'respostas' => $respostas,
+                    'informacoes_complementares' => $informacoesComplementares,
+                ];
+            })
+            ->filter()
+            ->values();
+    }
+
     private function rotuloTurma(Turma $turma): string
     {
         $nome = trim((string) $turma->nome);
@@ -510,6 +627,15 @@ class AvaliacaoDocumentoExportService
         }
 
         return preg_match('/^turma\b/i', $nome) === 1 ? $nome : 'Turma '.$nome;
+    }
+
+    private function nomeTurma(Turma $turma): string
+    {
+        return implode(' - ', array_filter([
+            $turma->escola?->nome,
+            $turma->serie?->nome,
+            $this->rotuloTurma($turma),
+        ]));
     }
 
     private function formatarTurno(Turma $turma): string
@@ -608,17 +734,17 @@ class AvaliacaoDocumentoExportService
 
     /**
      * @param  Collection<int, Turma>  $turmas
-     * @param  Collection<int, array<string, mixed>>  $documentos
      * @param  array<string, mixed>  $params
      */
     private function registrarLog(
         Avaliacao $avaliacao,
         Collection $turmas,
-        Collection $documentos,
         string $escopo,
         array $params,
         ?User $usuario,
-        int $quantidadePaginas
+        string $formato,
+        int $quantidadeAlunos,
+        ?int $quantidadePaginas
     ): void {
         /** @var Turma|null $primeiraTurma */
         $primeiraTurma = $turmas->first();
@@ -630,8 +756,8 @@ class AvaliacaoDocumentoExportService
             'aluno_id' => $escopo === 'aluno' ? (int) ($params['aluno_id'] ?? 0) : null,
             'user_id' => $usuario?->id,
             'escopo' => $escopo,
-            'formato' => 'pdf',
-            'quantidade_alunos' => $documentos->count(),
+            'formato' => $formato,
+            'quantidade_alunos' => $quantidadeAlunos,
             'quantidade_paginas' => $quantidadePaginas,
             'parametros' => [
                 'avaliacao' => $avaliacao->nome,
@@ -659,5 +785,25 @@ class AvaliacaoDocumentoExportService
         }
 
         return Str::slug(implode('-', array_filter($partes))).'.pdf';
+    }
+
+    /**
+     * @param  Collection<int, Turma>  $turmas
+     */
+    private function nomeArquivoCsv(Avaliacao $avaliacao, string $escopo, Collection $turmas): string
+    {
+        $partes = ['avaliacao', $avaliacao->id, $escopo];
+
+        if ($escopo === 'turma') {
+            $partes[] = $turmas->first()?->nome ?? 'turma';
+        } elseif ($escopo === 'escola') {
+            $partes[] = $turmas->first()?->escola?->nome ?? 'escola';
+        } else {
+            $partes[] = 'aluno';
+        }
+
+        $partes[] = now()->format('Ymd_His');
+
+        return Str::slug(implode('-', array_filter($partes))).'.csv';
     }
 }

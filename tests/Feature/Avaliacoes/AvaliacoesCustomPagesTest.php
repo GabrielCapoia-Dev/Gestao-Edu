@@ -16,6 +16,7 @@ class AvaliacoesCustomPagesTest extends TestCase
         Permission::findOrCreate('Listar Avaliações');
         Permission::findOrCreate('Listar Pautas');
         Permission::findOrCreate('Listar Alternativas');
+        Permission::findOrCreate('Exportar Avaliações');
 
         $usuario = User::factory()->create([
             'email_approved' => true,
@@ -25,6 +26,7 @@ class AvaliacoesCustomPagesTest extends TestCase
             'Listar Avaliações',
             'Listar Pautas',
             'Listar Alternativas',
+            'Exportar Avaliações',
         ]);
 
         $this->actingAs($usuario)
@@ -42,6 +44,24 @@ class AvaliacoesCustomPagesTest extends TestCase
         $this->actingAs($usuario)
             ->get(route('filament.admin.pages.avaliacoes-log-exportacoes'))
             ->assertOk();
+
+        $this->actingAs($usuario)
+            ->get(route('filament.admin.pages.avaliacoes-exportar'))
+            ->assertOk();
+    }
+
+    public function test_pagina_exportar_avaliacoes_exige_permissao_de_exportacao(): void
+    {
+        Permission::findOrCreate('Exportar Avaliações');
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+
+        $this->actingAs($usuario)
+            ->get(route('filament.admin.pages.avaliacoes-exportar'))
+            ->assertForbidden();
     }
 
     public function test_resources_antigos_de_avaliacoes_nao_sao_acessiveis(): void

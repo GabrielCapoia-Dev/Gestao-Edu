@@ -100,6 +100,9 @@ Route::prefix('admin')
         Route::get('/avaliacoes/documento/pdf', [AvaliacaoDocumentoExportController::class, 'exportar'])
             ->name('avaliacoes.documento.pdf');
 
+        Route::get('/avaliacoes/documento/csv', [AvaliacaoDocumentoExportController::class, 'exportarCsv'])
+            ->name('avaliacoes.documento.csv');
+
         Route::get(
             '/pedidos/arquivos/{pedidoArquivo}/download',
             [PedidoArquivoController::class, 'download']

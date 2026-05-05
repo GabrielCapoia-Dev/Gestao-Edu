@@ -179,17 +179,6 @@
 
                             @if ($turmaExpandida)
                                 <div class="av-turma-content">
-                                    @if ($this->podeExportar())
-                                        <div class="gi-toolbar">
-                                            <div></div>
-                                            <div class="gi-toolbar-right">
-                                                <a class="gi-action" data-av-export-pdf data-av-export-scope="turma" href="{{ route('avaliacoes.documento.pdf', ['avaliacao_id' => $avaliacao, 'escopo' => 'turma', 'turma_id' => $turmaId]) }}">
-                                                    Exportar PDF da turma
-                                                </a>
-                                            </div>
-                                        </div>
-                                    @endif
-
                                     @forelse ($this->pautasDaTurma($turmaId) as $pauta)
                                         @php($progressoPauta = $this->progressoPorPauta[$turmaId][$pauta->id] ?? ['preenchidas' => 0, 'total' => $alunosDaTurma->count(), 'percentual' => 0, 'concluida' => false])
                                         @php($pautaExpandida = $this->pautaEstaExpandida($turmaId, (int) $pauta->id))
@@ -241,13 +230,6 @@
                                                                         <td>
                                                                             <strong>{{ $aluno->nome }}</strong>
                                                                             <small>CGM: {{ $aluno->cgm }}</small>
-                                                                            @if ($this->podeExportar())
-                                                                                <small>
-                                                                                    <a data-av-export-pdf data-av-export-scope="aluno" href="{{ route('avaliacoes.documento.pdf', ['avaliacao_id' => $avaliacao, 'escopo' => 'aluno', 'turma_id' => $turmaId, 'aluno_id' => $aluno->id]) }}">
-                                                                                        PDF do aluno
-                                                                                    </a>
-                                                                                </small>
-                                                                            @endif
                                                                         </td>
                                                                         <td>
                                                                             <div class="av-input-wrap">
@@ -404,17 +386,6 @@
 
                             @if ($turmaExpandida)
                                 <div class="av-turma-content">
-                                    @if ($this->podeExportar())
-                                        <div class="gi-toolbar">
-                                            <div></div>
-                                            <div class="gi-toolbar-right">
-                                                <a class="gi-action" data-av-export-pdf data-av-export-scope="turma" href="{{ route('avaliacoes.documento.pdf', ['avaliacao_id' => $avaliacao, 'escopo' => 'turma', 'turma_id' => $turmaId]) }}">
-                                                    Exportar PDF da turma
-                                                </a>
-                                            </div>
-                                        </div>
-                                    @endif
-
                                     @forelse ($alunosDaTurma as $aluno)
                                         @php($progressoAluno = $this->progressoPorAluno[$aluno->id] ?? ['preenchidas' => 0, 'total' => $pautasDaTurma->count(), 'percentual' => 0, 'concluida' => false])
                                         @php($alunoExpandido = $this->alunoEstaExpandido($turmaId, (int) $aluno->id))
@@ -448,19 +419,9 @@
 
                                             @if ($alunoExpandido)
                                                 <div class="av-pauta-content">
-                                                    @if ($this->podeExportar())
-                                                        <div class="gi-toolbar">
-                                                            <div></div>
-                                                            <div class="gi-toolbar-right">
-                                                                <a class="gi-action" data-av-export-pdf data-av-export-scope="aluno" href="{{ route('avaliacoes.documento.pdf', ['avaliacao_id' => $avaliacao, 'escopo' => 'aluno', 'turma_id' => $turmaId, 'aluno_id' => $aluno->id]) }}">
-                                                                    Exportar PDF do aluno
-                                                                </a>
-                                                            </div>
-                                                        </div>
-                                                    @endif
-
                                                     @foreach ($this->pautasAgrupadasPorComponenteDaTurma($turmaId) as $componenteNome => $pautasDoComponente)
                                                         <section class="av-aluno-componente">
+                                                            @php($componenteId = (int) ($pautasDoComponente->first()?->componente_curricular_id ?? 0))
                                                             <h4>{{ $componenteNome }}</h4>
 
                                                             <div class="gi-table-wrap">
@@ -530,42 +491,10 @@
                                                                     </tbody>
                                                                 </table>
                                                             </div>
-                                                        </section>
-                                                    @endforeach
-                                                </div>
-                                            @endif
-                                        </section>
-                                    @empty
-                                        <section class="av-note av-note--warning">
-                                            Esta turma nao possui alunos cadastrados.
-                                        </section>
-                                    @endforelse
 
-                                    @foreach ($pautasDaTurma->groupBy('componente_curricular_id') as $componenteId => $pautasDoComponente)
-                                        <section class="av-aluno-componente av-complementary-section">
-                                        <h4>Informacoes complementares do componente</h4>
-                                        <p class="av-pauta-meta">
-                                            {{ $pautasDoComponente->first()?->componente?->nome ?? 'Sem componente' }} - campo opcional por componente para cada aluno desta turma.
-                                        </p>
-
-                                        <div class="gi-table-wrap">
-                                            <table class="gi-table">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Aluno</th>
-                                                        <th>Informacoes complementares</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    @foreach ($alunosDaTurma as $aluno)
-                                                        <tr wire:key="turma-{{ $turmaId }}-alunos-complemento-aluno-{{ $aluno->id }}">
-                                                            <td>
-                                                                <strong>{{ $aluno->nome }}</strong>
-                                                                <small>CGM: {{ $aluno->cgm }}</small>
-                                                            </td>
-                                                            <td>
-                                                                @php($componenteId = (int) $componenteId)
-                                                                @php($informacoesAtuais = (string) ($informacoesComplementares[$componenteId][$aluno->id] ?? ''))
+                                                            @php($informacoesAtuais = (string) ($informacoesComplementares[$componenteId][$aluno->id] ?? ''))
+                                                            <div class="av-complementary-section">
+                                                                <h4>Informacoes complementares do componente</h4>
                                                                 <div class="av-input-wrap" x-data="{ count: @js(mb_strlen($informacoesAtuais)) }" x-init="$nextTick(() => count = $refs.field.value.length)">
                                                                     <textarea
                                                                         x-ref="field"
@@ -585,14 +514,18 @@
                                                                         <small class="av-char-count" x-text="`${count}/1500`"></small>
                                                                     </div>
                                                                 </div>
-                                                            </td>
-                                                        </tr>
+                                                            </div>
+                                                        </section>
                                                     @endforeach
-                                                </tbody>
-                                            </table>
-                                        </div>
+                                                </div>
+                                            @endif
                                         </section>
-                                    @endforeach
+                                    @empty
+                                        <section class="av-note av-note--warning">
+                                            Esta turma nao possui alunos cadastrados.
+                                        </section>
+                                    @endforelse
+
                                 </div>
                             @endif
                         </section>
@@ -604,16 +537,6 @@
                 <div class="gi-toolbar">
                     <div></div>
                     <div class="gi-toolbar-right">
-                        @if ($this->podeExportar())
-                            <a class="gi-action" data-av-export-pdf data-av-export-scope="escola" href="{{ route('avaliacoes.documento.pdf', ['avaliacao_id' => $avaliacao, 'escopo' => 'escola', 'escola_id' => $escola]) }}">
-                                Exportar PDF da escola
-                            </a>
-
-                            <button type="button" class="gi-action" wire:click="exportarRespostas" wire:loading.attr="disabled" wire:target="exportarRespostas">
-                                Exportar CSV
-                            </button>
-                        @endif
-
                         <button type="button" class="gi-action gi-action--primary" wire:click="salvarRespostas" @disabled(! $this->podeResponder())>
                             Validar pendencias da serie
                         </button>
@@ -623,122 +546,6 @@
         @endif
     </div>
 
-    <div class="av-export-overlay" data-av-export-overlay hidden>
-        <section class="av-export-dialog" role="status" aria-live="polite">
-            <div class="av-export-head">
-                <div>
-                    <p>Exportacao de PDF</p>
-                    <h3 data-av-export-title>Preparando documento</h3>
-                </div>
-
-                <button type="button" data-av-export-close>Ocultar</button>
-            </div>
-
-            <div class="av-export-progress" aria-hidden="true">
-                <span data-av-export-bar style="width: 8%"></span>
-            </div>
-
-            <ol class="av-export-log" data-av-export-log></ol>
-        </section>
-    </div>
-
-    <iframe data-av-export-frame title="Download do PDF" hidden></iframe>
-
     @include('filament.pages.partials.avaliacoes-page-styles')
-
-    @once
-        <script>
-            (() => {
-                const root = document;
-                const overlay = root.querySelector('[data-av-export-overlay]');
-                const frame = root.querySelector('[data-av-export-frame]');
-                const title = root.querySelector('[data-av-export-title]');
-                const bar = root.querySelector('[data-av-export-bar]');
-                const log = root.querySelector('[data-av-export-log]');
-                const close = root.querySelector('[data-av-export-close]');
-                let timers = [];
-
-                if (! overlay || ! frame || ! title || ! bar || ! log) {
-                    return;
-                }
-
-                const labels = {
-                    aluno: 'Preparando PDF do aluno',
-                    turma: 'Preparando PDF da turma',
-                    escola: 'Preparando PDF da escola',
-                };
-
-                const messages = {
-                    aluno: [
-                        'Localizando avaliacao e estudante.',
-                        'Carregando respostas, observacoes e componente curricular.',
-                        'Montando cabecalho, legenda e assinatura.',
-                        'Gerando PDF e registrando log da exportacao.',
-                    ],
-                    turma: [
-                        'Localizando avaliacao e turma.',
-                        'Organizando alunos em ordem alfabetica.',
-                        'Carregando respostas, observacoes e professores.',
-                        'Gerando PDF e registrando log da exportacao.',
-                    ],
-                    escola: [
-                        'Localizando avaliacao e escola.',
-                        'Organizando turmas e alunos.',
-                        'Carregando respostas, observacoes e equipe gestora.',
-                        'Gerando PDF e registrando log da exportacao.',
-                    ],
-                };
-
-                const clearTimers = () => {
-                    timers.forEach((timer) => window.clearTimeout(timer));
-                    timers = [];
-                };
-
-                const addLog = (message) => {
-                    const item = document.createElement('li');
-                    item.textContent = message;
-                    log.appendChild(item);
-                };
-
-                const openProgress = (scope) => {
-                    clearTimers();
-                    log.innerHTML = '';
-                    title.textContent = labels[scope] || 'Preparando PDF';
-                    bar.style.width = '8%';
-                    overlay.hidden = false;
-
-                    const steps = messages[scope] || messages.turma;
-                    steps.forEach((message, index) => {
-                        timers.push(window.setTimeout(() => {
-                            addLog(message);
-                            bar.style.width = `${Math.min(92, 18 + (index * 22))}%`;
-                        }, index * 650));
-                    });
-
-                    timers.push(window.setTimeout(() => {
-                        addLog('Quando o arquivo estiver pronto, o download sera iniciado pelo navegador.');
-                        bar.style.width = '96%';
-                    }, (steps.length * 650) + 500));
-                };
-
-                document.addEventListener('click', (event) => {
-                    const link = event.target.closest('[data-av-export-pdf]');
-
-                    if (! link) {
-                        return;
-                    }
-
-                    event.preventDefault();
-                    openProgress(link.dataset.avExportScope || 'turma');
-                    frame.src = link.href;
-                });
-
-                close?.addEventListener('click', () => {
-                    overlay.hidden = true;
-                    clearTimers();
-                });
-            })();
-        </script>
-    @endonce
     </div>
 </x-filament-panels::page>

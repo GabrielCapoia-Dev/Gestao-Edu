@@ -6,6 +6,7 @@ use App\Models\Aluno;
 use App\Models\Alternativa;
 use App\Models\Avaliacao;
 use App\Models\AvaliacaoExportacao;
+use App\Models\AvaliacaoInformacaoComplementar;
 use App\Models\AvaliacaoResposta;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
@@ -181,6 +182,120 @@ class AvaliacaoDocumentoExportTest extends TestCase
 
         $this->assertSame(2, $logTurma->quantidade_alunos);
         $this->assertSame(2, $logTurma->quantidade_paginas);
+    }
+
+    public function test_csv_exporta_todos_os_componentes_do_aluno_mesmo_sem_ser_professor_do_componente(): void
+    {
+        Permission::findOrCreate('Exportar Avaliações');
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo('Exportar Avaliações');
+
+        $tipo = TipoAvaliacao::query()->create(['nome' => 'Parecer CSV', 'status' => true]);
+        $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Periodo CSV', 'status' => true]);
+        $escola = $this->criarEscola('Escola CSV');
+        $usuario->escolas()->attach($escola->id);
+        $serie = $this->criarSerie('SER-CSV', '5o Ano');
+        $turma = $this->criarTurma($escola, $serie, 'A');
+        $aluno = Aluno::query()->create([
+            'nome' => 'Aluno CSV',
+            'cgm' => 'CGM-CSV',
+            'data_nascimento' => '2014-01-01',
+            'id_turma' => $turma->id,
+        ]);
+
+        $matematica = ComponenteCurricular::query()->create(['codigo' => 'MAT-CSV', 'nome' => 'Matematica']);
+        $historia = ComponenteCurricular::query()->create(['codigo' => 'HIS-CSV', 'nome' => 'Historia']);
+        $professorMatematica = Professor::query()->create([
+            'id_escola' => $escola->id,
+            'matricula' => 'PROF-MAT-CSV',
+            'nome' => 'Professor Matematica CSV',
+            'email' => 'matematica.csv@edu.umuarama.pr.gov.br',
+        ]);
+        $turma->componentes()->attach($matematica->id, [
+            'professor_id' => $professorMatematica->id,
+            'tem_professor' => true,
+        ]);
+
+        $alternativa = Alternativa::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'nome' => 'Atende',
+            'tem_observacao' => false,
+            'status' => true,
+        ]);
+
+        $pautaMatematica = Pauta::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'texto' => 'Resolve problemas',
+            'serie_id' => $serie->id,
+            'componente_curricular_id' => $matematica->id,
+            'status' => true,
+        ]);
+        $pautaHistoria = Pauta::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'texto' => 'Relaciona fatos historicos',
+            'serie_id' => $serie->id,
+            'componente_curricular_id' => $historia->id,
+            'status' => true,
+        ]);
+        $pautaMatematica->alternativas()->attach($alternativa->id);
+        $pautaHistoria->alternativas()->attach($alternativa->id);
+
+        $avaliacao = Avaliacao::query()->create([
+            'nome' => 'Avaliacao CSV Completa',
+            'tipo_avaliacao_id' => $tipo->id,
+            'periodo_avaliacao_id' => $periodo->id,
+            'data_inicio' => '2026-02-01',
+            'data_fim' => '2026-12-20',
+            'status' => Avaliacao::STATUS_ATIVA,
+        ]);
+        $avaliacao->pautas()->sync([$pautaMatematica->id, $pautaHistoria->id]);
+        $avaliacao->turmas()->sync([$turma->id]);
+        $avaliacao->series()->sync([$serie->id]);
+        $avaliacao->componentes()->sync([$matematica->id, $historia->id]);
+        $avaliacao->escolas()->sync([$escola->id]);
+
+        foreach ([$pautaMatematica, $pautaHistoria] as $pauta) {
+            AvaliacaoResposta::query()->create([
+                'avaliacao_id' => $avaliacao->id,
+                'pauta_id' => $pauta->id,
+                'turma_id' => $turma->id,
+                'aluno_id' => $aluno->id,
+                'alternativa_id' => $alternativa->id,
+                'respondido_em' => now(),
+            ]);
+        }
+
+        AvaliacaoInformacaoComplementar::query()->create([
+            'avaliacao_id' => $avaliacao->id,
+            'turma_id' => $turma->id,
+            'aluno_id' => $aluno->id,
+            'componente_curricular_id' => $historia->id,
+            'informacoes_complementares' => 'Texto complementar de historia',
+        ]);
+
+        $response = $this->actingAs($usuario)->get(route('avaliacoes.documento.csv', [
+            'avaliacao_id' => $avaliacao->id,
+            'escopo' => 'aluno',
+            'aluno_id' => $aluno->id,
+        ]));
+
+        $response->assertOk();
+        $conteudo = $response->streamedContent();
+
+        $this->assertStringContainsString('Matematica', $conteudo);
+        $this->assertStringContainsString('Historia', $conteudo);
+        $this->assertStringContainsString('Texto complementar de historia', $conteudo);
+        $this->assertDatabaseHas('avaliacao_exportacoes', [
+            'avaliacao_id' => $avaliacao->id,
+            'user_id' => $usuario->id,
+            'escopo' => 'aluno',
+            'formato' => 'csv',
+            'quantidade_alunos' => 1,
+        ]);
     }
 
     private function criarEscola(string $nome): Escola
