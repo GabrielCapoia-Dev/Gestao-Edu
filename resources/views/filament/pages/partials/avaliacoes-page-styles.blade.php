@@ -465,20 +465,37 @@
         gap: 0.85rem;
     }
 
+    .av-turma-section.is-open {
+        border-color: color-mix(in oklab, var(--primary-200) 54%, var(--gray-300));
+        background:
+            linear-gradient(180deg, #eef3f9 0%, #e9eff6 100%);
+    }
+
     .av-turma-content {
         display: grid;
         gap: 0.85rem;
-        padding-top: 0.15rem;
+        padding: 0.85rem;
+        border: 1px solid color-mix(in oklab, var(--gray-200) 72%, var(--primary-100));
+        border-radius: var(--radius-xl);
+        background:
+            linear-gradient(180deg, #f8fafc 0%, #f3f6fb 100%);
     }
 
     .av-pauta-section--nested {
-        padding-top: 0.85rem;
-        border-top: 1px solid var(--gray-200);
+        padding: 0.85rem;
+        border: 1px solid color-mix(in oklab, var(--gray-200) 76%, var(--primary-100));
+        border-radius: var(--radius-lg);
+        background: #f1f5fa;
     }
 
     .av-pauta-section--nested:first-child {
-        padding-top: 0;
-        border-top: 0;
+        border-top: 1px solid color-mix(in oklab, var(--gray-200) 76%, var(--primary-100));
+    }
+
+    .av-pauta-section--nested.is-open {
+        border-color: color-mix(in oklab, var(--primary-200) 48%, var(--gray-300));
+        background: #eaf0f7;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.68);
     }
 
     .av-pauta-toggle {
@@ -582,7 +599,10 @@
     .av-pauta-content {
         display: grid;
         gap: 0.85rem;
-        padding-top: 0.15rem;
+        padding: 0.85rem;
+        border: 1px solid color-mix(in oklab, var(--gray-200) 70%, #fff);
+        border-radius: var(--radius-lg);
+        background: #fbfcfe;
     }
 
     .av-aluno-componente {
@@ -604,8 +624,10 @@
     }
 
     .av-complementary-section {
-        padding-top: 0.85rem;
-        border-top: 1px solid var(--gray-200);
+        padding: 0.85rem;
+        border: 1px solid color-mix(in oklab, var(--gray-200) 75%, var(--primary-100));
+        border-radius: var(--radius-lg);
+        background: #f8fafc;
     }
 
     .av-pauta-title {
@@ -1009,6 +1031,35 @@
     :root.dark .av-pauta-section--nested,
     :root.dark .av-complementary-section {
         border-color: var(--gray-800);
+    }
+
+    :root.dark .av-turma-section.is-open {
+        border-color: color-mix(in oklab, var(--primary-500) 34%, var(--gray-700));
+        background:
+            linear-gradient(180deg, color-mix(in oklab, var(--gray-800) 86%, var(--primary-950)) 0%, var(--gray-900) 100%);
+    }
+
+    :root.dark .av-turma-content {
+        border-color: color-mix(in oklab, var(--primary-700) 28%, var(--gray-800));
+        background:
+            linear-gradient(180deg, color-mix(in oklab, var(--gray-900) 88%, var(--primary-950)) 0%, var(--gray-950) 100%);
+    }
+
+    :root.dark .av-pauta-section--nested {
+        border-color: color-mix(in oklab, var(--primary-700) 25%, var(--gray-800));
+        background: color-mix(in oklab, var(--gray-900) 88%, var(--primary-950));
+    }
+
+    :root.dark .av-pauta-section--nested.is-open {
+        border-color: color-mix(in oklab, var(--primary-500) 34%, var(--gray-700));
+        background: color-mix(in oklab, var(--gray-800) 74%, var(--primary-950));
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    :root.dark .av-pauta-content,
+    :root.dark .av-complementary-section {
+        border-color: var(--gray-800);
+        background: var(--gray-950);
     }
 
     :root.dark .av-saving-indicator {
