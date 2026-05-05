@@ -19,9 +19,9 @@ class ExportarAvaliacoes extends Page
 {
     protected string $view = 'filament.pages.exportar-avaliacoes';
 
-    protected static ?string $title = 'Exportar AvaliaÃ§Ãµes';
+    protected static ?string $title = 'Exportar Avaliações';
 
-    protected static ?string $navigationLabel = 'Exportar AvaliaÃ§Ãµes';
+    protected static ?string $navigationLabel = 'Exportar Avaliações';
 
     protected static ?string $slug = 'avaliacoes-exportar';
 
@@ -29,7 +29,7 @@ class ExportarAvaliacoes extends Page
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ClipboardDocumentList;
 
-    protected static string|UnitEnum|null $navigationGroup = 'PedagÃ³gico';
+    protected static string|UnitEnum|null $navigationGroup = 'Pedagógico';
 
     public ?int $avaliacao = null;
 

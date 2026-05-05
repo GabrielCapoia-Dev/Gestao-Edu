@@ -24,16 +24,16 @@ class AvaliacoesProfessor extends Page
 {
     private const LIMITE_CARACTERES_TEXTO = 1500;
 
-    private const PERMISSAO_LISTAR_AVALIACOES = 'Listar AvaliaÃ§Ãµes';
+    private const PERMISSAO_LISTAR_AVALIACOES = 'Listar Avaliações';
 
-    private const PERMISSAO_RESPONDER_AVALIACOES = 'Responder AvaliaÃ§Ãµes';
+    private const PERMISSAO_RESPONDER_AVALIACOES = 'Responder Avaliações';
 
 
     protected string $view = 'filament.pages.avaliacoes-professor';
 
-    protected static ?string $title = 'AvaliaÃ§Ãµes';
+    protected static ?string $title = 'Avaliações';
 
-    protected static ?string $navigationLabel = 'Minhas AvaliaÃ§Ãµes';
+    protected static ?string $navigationLabel = 'Minhas Avaliações';
 
     protected static ?string $slug = 'avaliacoes-professor';
 
@@ -41,7 +41,7 @@ class AvaliacoesProfessor extends Page
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ClipboardDocumentCheck;
 
-    protected static string|UnitEnum|null $navigationGroup = 'PedagÃ³gico';
+    protected static string|UnitEnum|null $navigationGroup = 'Pedagógico';
 
     public ?int $avaliacao = null;
 
@@ -364,7 +364,7 @@ class AvaliacoesProfessor extends Page
 
         if (! $pauta) {
             Notification::make()
-                ->title('Pauta nÃ£o encontrada para esta turma.')
+                ->title('Pauta não encontrada para esta turma.')
                 ->warning()
                 ->send();
 
@@ -376,7 +376,7 @@ class AvaliacoesProfessor extends Page
 
         if (! $alternativa) {
             Notification::make()
-                ->title('Selecione uma alternativa vÃ¡lida para aplicar em massa.')
+                ->title('Selecione uma alternativa válida para aplicar em massa.')
                 ->warning()
                 ->send();
 
@@ -443,7 +443,7 @@ class AvaliacoesProfessor extends Page
         });
 
         $mensagemPendencia = count($alunosComPendencia) > 0
-            ? count($alunosComPendencia).' aluno(s) ainda precisam preencher observaÃ§Ã£o para concluir o salvamento.'
+            ? count($alunosComPendencia).' aluno(s) ainda precisam preencher observação para concluir o salvamento.'
             : null;
 
         Notification::make()
@@ -451,7 +451,7 @@ class AvaliacoesProfessor extends Page
             ->body(
                 $mensagemPendencia
                 ?? ((bool) ($alternativa['tem_observacao'] ?? false)
-                    ? 'Essa alternativa exige observaÃ§Ã£o por aluno.'
+                    ? 'Essa alternativa exige observação por aluno.'
                     : 'Respostas salvas automaticamente.')
             )
             ->success()
@@ -622,7 +622,7 @@ class AvaliacoesProfessor extends Page
 
         if ($this->pautasDisponiveis->isEmpty() || $this->alunosDaSerie->isEmpty()) {
             Notification::make()
-                ->title('NÃ£o hÃ¡ pautas ou alunos disponÃ­veis para avaliaÃ§Ã£o.')
+                ->title('Não há pautas ou alunos disponíveis para avaliação.')
                 ->warning()
                 ->send();
 
@@ -682,15 +682,15 @@ class AvaliacoesProfessor extends Page
             $mensagens = [];
 
             if ($faltandoResposta > 0) {
-                $mensagens[] = 'Preencha todas as combinaÃ§Ãµes de aluno e pauta.';
+                $mensagens[] = 'Preencha todas as combinações de aluno e pauta.';
             }
 
             if ($faltandoObservacao > 0) {
-                $mensagens[] = 'Algumas alternativas exigem observaÃ§Ã£o obrigatÃ³ria.';
+                $mensagens[] = 'Algumas alternativas exigem observação obrigatória.';
             }
 
             Notification::make()
-                ->title('Existem pendÃªncias no preenchimento.')
+                ->title('Existem pendências no preenchimento.')
                 ->body(implode(' ', $mensagens))
                 ->warning()
                 ->send();
@@ -707,7 +707,7 @@ class AvaliacoesProfessor extends Page
         });
 
         Notification::make()
-            ->title('AvaliaÃ§Ã£o salva com sucesso.')
+            ->title('Avaliação salva com sucesso.')
             ->success()
             ->send();
     }
