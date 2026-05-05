@@ -33,18 +33,18 @@ return new class extends Migration
             });
         }
 
-        if (Schema::hasIndex(self::TABLE, self::OLD_UNIQUE, 'unique')) {
-            Schema::table(self::TABLE, function (Blueprint $table): void {
-                $table->dropUnique(self::OLD_UNIQUE);
-            });
-        }
-
         if (! Schema::hasIndex(self::TABLE, self::NEW_UNIQUE, 'unique')) {
             Schema::table(self::TABLE, function (Blueprint $table): void {
                 $table->unique(
                     ['avaliacao_id', 'turma_id', 'aluno_id', 'componente_curricular_id'],
                     self::NEW_UNIQUE
                 );
+            });
+        }
+
+        if (Schema::hasIndex(self::TABLE, self::OLD_UNIQUE, 'unique')) {
+            Schema::table(self::TABLE, function (Blueprint $table): void {
+                $table->dropUnique(self::OLD_UNIQUE);
             });
         }
     }
