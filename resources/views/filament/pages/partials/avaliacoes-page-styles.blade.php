@@ -485,7 +485,6 @@
         padding: 0.85rem;
         border: 1px solid color-mix(in oklab, var(--gray-200) 76%, var(--primary-100));
         border-radius: var(--radius-lg);
-        background: #f1f5fa;
     }
 
     .av-pauta-section--nested:first-child {
