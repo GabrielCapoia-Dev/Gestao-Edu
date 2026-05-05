@@ -965,11 +965,16 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
 
     public function getTitle(): string
     {
-        return '';
+        return 'Gestão de Avaliações';
     }
 
     public function getHeading(): string
     {
-        return '';
+        return 'Gestão de Avaliações';
+    }
+
+    public function getSubheading(): string
+    {
+        return 'Monte avaliações por tipo, período e escopo pedagógico.';
     }
 }
