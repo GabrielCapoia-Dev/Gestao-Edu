@@ -10,12 +10,16 @@ use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Livewire\WithPagination;
 use UnitEnum;
 
 class ExportarAvaliacoes extends Page
 {
+    use WithPagination;
+
     protected string $view = 'filament.pages.exportar-avaliacoes';
 
     protected static ?string $title = 'Exportar Avaliações';
@@ -33,6 +37,8 @@ class ExportarAvaliacoes extends Page
     public string $modoListagem = 'alunos';
 
     public string $busca = '';
+
+    public int $perPage = 10;
 
     public ?int $alunoSelecionadoId = null;
 
@@ -58,7 +64,22 @@ class ExportarAvaliacoes extends Page
 
         $this->modoListagem = $modo;
         $this->busca = '';
+        $this->resetPage('exportarAvaliacoesPage');
         $this->fecharModais();
+    }
+
+    public function updatedBusca(): void
+    {
+        $this->resetPage('exportarAvaliacoesPage');
+    }
+
+    public function updatedPerPage(): void
+    {
+        if (! in_array($this->perPage, [5, 10, 25, 50, 100], true)) {
+            $this->perPage = 10;
+        }
+
+        $this->resetPage('exportarAvaliacoesPage');
     }
 
     public function abrirAluno(int $alunoId): void
@@ -113,11 +134,11 @@ class ExportarAvaliacoes extends Page
         $this->alunoDaTurmaSelecionadoId = null;
     }
 
-    public function getAlunosComAvaliacoesProperty(): Collection
+    public function getAlunosComAvaliacoesProperty(): LengthAwarePaginator
     {
         $query = Aluno::query()
             ->with([
-                'turma:id,nome,id_escola,id_serie',
+                'turma:id,nome,turno,id_escola,id_serie',
                 'turma.escola:id,nome',
                 'turma.serie:id,nome',
                 'turma.avaliacoes:id,nome,data_inicio,data_fim,tipo_avaliacao_id,periodo_avaliacao_id',
@@ -129,11 +150,10 @@ class ExportarAvaliacoes extends Page
 
         return $query
             ->orderBy('nome')
-            ->limit(100)
-            ->get(['id', 'nome', 'cgm', 'id_turma']);
+            ->paginate($this->perPage, ['id', 'nome', 'cgm', 'id_turma'], 'exportarAvaliacoesPage');
     }
 
-    public function getTurmasComAvaliacoesProperty(): Collection
+    public function getTurmasComAvaliacoesProperty(): LengthAwarePaginator
     {
         $query = Turma::query()
             ->with([
@@ -151,8 +171,21 @@ class ExportarAvaliacoes extends Page
             ->orderBy('id_escola')
             ->orderBy('id_serie')
             ->orderBy('nome')
-            ->limit(100)
-            ->get(['id', 'nome', 'id_escola', 'id_serie', 'turno']);
+            ->paginate($this->perPage, ['id', 'nome', 'id_escola', 'id_serie', 'turno'], 'exportarAvaliacoesPage');
+    }
+
+    public function turmaLabel(?Turma $turma): string
+    {
+        if (! $turma) {
+            return 'Turma';
+        }
+
+        return sprintf(
+            '%s - %s | %s',
+            $turma->serie?->nome ?: 'Série',
+            $turma->nome ?: 'Turma',
+            $turma->turno ?: 'Turno'
+        );
     }
 
     public function getAlunoSelecionadoProperty(): ?Aluno
@@ -245,7 +278,7 @@ class ExportarAvaliacoes extends Page
     private function buscarAlunoNoEscopo(int $alunoId): ?Aluno
     {
         return Aluno::query()
-            ->with(['turma:id,nome,id_escola,id_serie', 'turma.escola:id,nome', 'turma.serie:id,nome'])
+            ->with(['turma:id,nome,turno,id_escola,id_serie', 'turma.escola:id,nome', 'turma.serie:id,nome'])
             ->whereKey($alunoId)
             ->whereHas('turma', fn (Builder $turmas): Builder => $this->aplicarEscopoTurmas($turmas))
             ->whereHas('turma.avaliacoes')

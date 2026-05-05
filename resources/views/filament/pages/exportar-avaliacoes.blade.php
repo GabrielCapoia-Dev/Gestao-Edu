@@ -22,6 +22,17 @@
                             <input type="search" wire:model.live.debounce.350ms="busca" placeholder="Aluno, CGM, turma, escola ou avaliação">
                         </label>
 
+                        <label class="gi-field av-page-size">
+                            <span>Mostrar</span>
+                            <select wire:model.live="perPage">
+                                <option value="5">5</option>
+                                <option value="10">10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                        </label>
+
                         <div class="av-segmented-control" role="tablist">
                             <button type="button" class="{{ $modoListagem === 'alunos' ? 'is-active' : '' }}" wire:click="definirModo('alunos')">
                                 Por alunos
@@ -35,6 +46,7 @@
             </section>
 
             @if ($modoListagem === 'alunos')
+                @php($alunosComAvaliacoes = $this->alunosComAvaliacoes)
                 <section class="gi-panel">
                     <div class="gi-table-wrap">
                         <table class="gi-table">
@@ -47,7 +59,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @forelse ($this->alunosComAvaliacoes as $alunoItem)
+                                @forelse ($alunosComAvaliacoes as $alunoItem)
                                     @php($avaliacoesAluno = $alunoItem->turma?->avaliacoes?->sortBy([['data_inicio', 'asc'], ['data_fim', 'asc'], ['id', 'asc']]) ?? collect())
                                     <tr wire:key="exportar-aluno-{{ $alunoItem->id }}">
                                         <td>
@@ -55,8 +67,8 @@
                                             <small>CGM: {{ $alunoItem->cgm }}</small>
                                         </td>
                                         <td>
-                                            <strong>{{ $alunoItem->turma?->nome ?? 'Turma' }}</strong>
-                                            <small>{{ $alunoItem->turma?->serie?->nome }} | {{ $alunoItem->turma?->escola?->nome }}</small>
+                                            <strong>{{ $this->turmaLabel($alunoItem->turma) }}</strong>
+                                            <small>{{ $alunoItem->turma?->escola?->nome }}</small>
                                         </td>
                                         <td>
                                             <strong>{{ $avaliacoesAluno->count() }} avaliação(ões)</strong>
@@ -78,8 +90,13 @@
                             </tbody>
                         </table>
                     </div>
+
+                    <div class="av-pagination">
+                        {{ $alunosComAvaliacoes->links() }}
+                    </div>
                 </section>
             @else
+                @php($turmasComAvaliacoes = $this->turmasComAvaliacoes)
                 <section class="gi-panel">
                     <div class="gi-table-wrap">
                         <table class="gi-table">
@@ -93,12 +110,11 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @forelse ($this->turmasComAvaliacoes as $turmaItem)
+                                @forelse ($turmasComAvaliacoes as $turmaItem)
                                     @php($avaliacoesTurma = $turmaItem->avaliacoes?->sortBy([['data_inicio', 'asc'], ['data_fim', 'asc'], ['id', 'asc']]) ?? collect())
                                     <tr wire:key="exportar-turma-{{ $turmaItem->id }}">
                                         <td>
-                                            <strong>{{ $turmaItem->nome }}</strong>
-                                            <small>{{ $turmaItem->serie?->nome }} | {{ $turmaItem->turno }}</small>
+                                            <strong>{{ $this->turmaLabel($turmaItem) }}</strong>
                                         </td>
                                         <td>{{ $turmaItem->escola?->nome }}</td>
                                         <td>{{ $turmaItem->alunos_count }}</td>
@@ -121,6 +137,10 @@
                                 @endforelse
                             </tbody>
                         </table>
+                    </div>
+
+                    <div class="av-pagination">
+                        {{ $turmasComAvaliacoes->links() }}
                     </div>
                 </section>
             @endif
@@ -233,9 +253,77 @@
         @include('filament.pages.partials.avaliacoes-page-styles')
 
         <style>
+            .av-livewire-root .av-mode-actions {
+                display: grid;
+                grid-template-columns: minmax(260px, 1fr) 92px auto;
+                gap: 12px;
+                align-items: end;
+                justify-content: end;
+            }
+
+            .av-livewire-root .av-page-size {
+                width: 92px;
+            }
+
+            .av-livewire-root .av-segmented-control {
+                display: inline-grid;
+                grid-template-columns: repeat(2, minmax(96px, 1fr));
+                width: max-content;
+                min-width: 226px;
+                height: 42px;
+                padding: 3px;
+                overflow: hidden;
+                border: 1px solid #cbd5e1;
+                border-radius: 8px;
+                background: #eef2f7;
+                box-sizing: border-box;
+            }
+
+            .av-livewire-root .av-segmented-control button {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 100%;
+                min-width: 0;
+                height: 34px;
+                margin: 0;
+                border: 0;
+                border-radius: 6px;
+                padding: 0 10px;
+                appearance: none;
+                color: #334155;
+                background: transparent;
+                box-shadow: none;
+                font-size: 14px;
+                font-weight: 700;
+                line-height: 1;
+                white-space: nowrap;
+                cursor: pointer;
+            }
+
+            .av-livewire-root .av-segmented-control button.is-active {
+                color: #0b225c;
+                background: #fff;
+                box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+            }
+
+            .av-livewire-root .av-segmented-control button:focus,
+            .av-livewire-root .av-segmented-control button:focus-visible {
+                outline: 2px solid #93c5fd;
+                outline-offset: -2px;
+            }
+
+            .av-livewire-root .gi-table td strong {
+                word-break: normal;
+            }
+
             .av-table-actions {
                 text-align: right;
                 white-space: nowrap;
+            }
+
+            .av-pagination {
+                margin-top: 16px;
             }
 
             .av-slide-overlay,
@@ -353,6 +441,15 @@
             }
 
             @media (max-width: 720px) {
+                .av-livewire-root .av-mode-actions {
+                    grid-template-columns: 1fr;
+                }
+
+                .av-livewire-root .av-page-size,
+                .av-livewire-root .av-segmented-control {
+                    width: 100%;
+                }
+
                 .av-export-row {
                     grid-template-columns: 1fr;
                 }

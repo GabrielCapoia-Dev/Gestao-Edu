@@ -48,8 +48,43 @@ class ExportarAvaliacoesPageTest extends TestCase
 
         $turmas = $component->instance()->turmasComAvaliacoes;
 
-        $this->assertTrue($turmas->contains('id', $turmaPermitida->id));
-        $this->assertFalse($turmas->contains('id', $turmaBloqueada->id));
+        $this->assertTrue($turmas->getCollection()->contains('id', $turmaPermitida->id));
+        $this->assertFalse($turmas->getCollection()->contains('id', $turmaBloqueada->id));
+    }
+
+    public function test_listagem_permite_alterar_quantidade_por_pagina(): void
+    {
+        Permission::findOrCreate('Exportar Avaliações');
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo('Exportar Avaliações');
+
+        $escola = $this->criarEscola('Escola Paginacao');
+        $usuario->escolas()->attach($escola->id);
+        $serie = $this->criarSerie('SER-PAG', '1o Ano');
+        $avaliacao = $this->criarAvaliacao('Avaliacao Paginacao', '2026-02-01');
+
+        foreach (range(1, 7) as $indice) {
+            $turma = $this->criarTurma($escola, $serie, 'P'.$indice);
+            $avaliacao->turmas()->attach($turma->id);
+
+            Aluno::query()->create([
+                'nome' => 'Aluno Paginacao '.$indice,
+                'cgm' => 'CGM-PAG-'.$indice,
+                'data_nascimento' => '2015-02-01',
+                'id_turma' => $turma->id,
+            ]);
+        }
+
+        $component = Livewire::actingAs($usuario)
+            ->test(ExportarAvaliacoes::class)
+            ->set('perPage', 5);
+
+        $this->assertSame(5, $component->instance()->alunosComAvaliacoes->perPage());
+        $this->assertCount(5, $component->instance()->alunosComAvaliacoes->items());
     }
 
     public function test_avaliacoes_do_aluno_aparecem_em_ordem_cronologica(): void
