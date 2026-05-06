@@ -145,9 +145,12 @@ class PedidoGestaoForm
         if ($service->usuarioEhSetor($user, 'Obras')) {
             $nomes = array_merge($nomes, [
                 'Em Manutenção',
-                'Enviado para Empresa',
                 'Cancelado',
             ]);
+        }
+
+        if ($service->podeEnviarParaEmpresa($user)) {
+            $nomes[] = 'Enviado para Empresa';
         }
 
         return collect($nomes)
