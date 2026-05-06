@@ -44,6 +44,16 @@
             0 18px 40px rgba(15, 23, 42, 0.06);
     }
 
+    .inv-panel,
+    .gi-panel,
+    .inv-card,
+    .gi-card,
+    .inv-slideover,
+    .gi-slideover,
+    .gi-modal {
+        background: #fff;
+    }
+
     .inv-hero,
     .gi-hero {
         display: flex;
@@ -929,8 +939,8 @@
         color: rgba(229, 242, 255, 0.9);
     }
 
-    .inv-eyebrow,
-    .gi-eyebrow {
+    .inv-hero .inv-eyebrow,
+    .gi-hero .gi-eyebrow {
         color: rgba(232, 244, 255, 0.94);
     }
 
@@ -968,8 +978,8 @@
             0 18px 44px rgba(0, 0, 0, 0.28);
     }
 
-    :root.dark .inv-eyebrow,
-    :root.dark .gi-eyebrow {
+    :root.dark .inv-hero .inv-eyebrow,
+    :root.dark .gi-hero .gi-eyebrow {
         color: rgba(232, 244, 255, 0.94);
     }
 
