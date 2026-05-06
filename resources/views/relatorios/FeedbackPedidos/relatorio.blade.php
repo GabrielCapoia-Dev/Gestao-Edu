@@ -262,10 +262,12 @@
                     <tr>
                         <th style="width: 12%;">Protocolo</th>
                         <th style="width: 15%;">Escola</th>
-                        <th style="width: 12%;">Nota</th>
-                        <th style="width: 30%;">Descricao</th>
-                        <th style="width: 13%;">Data</th>
-                        <th style="width: 18%;">Tipo Manutencao</th>
+                        <th style="width: 10%;">Nota</th>
+                        <th style="width: 10%;">Reaberto</th>
+                        <th style="width: 23%;">Por problema</th>
+                        <th style="width: 15%;">Descricao</th>
+                        <th style="width: 10%;">Data</th>
+                        <th style="width: 15%;">Tipo Manutencao</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -277,6 +279,18 @@
                                 <span class="badge" style="background: {{ $cores[$feedback->valor] ?? '#6b7280' }};">
                                     {{ $feedback->valor }}/5
                                 </span>
+                            </td>
+                            <td>{{ $feedback->reabrir_pedido ? 'Sim' : 'Nao' }}</td>
+                            <td>
+                                @forelse($feedback->itens as $item)
+                                    <div style="margin-bottom:3px;">
+                                        {{ $item->problema?->texto_problema ?? 'Problema' }}:
+                                        {{ $item->valor }}/5 -
+                                        {{ $item->resultado?->label() ?? $item->resultado }}
+                                    </div>
+                                @empty
+                                    -
+                                @endforelse
                             </td>
                             <td class="text-truncate">{{ $feedback->descricao ?? '-' }}</td>
                             <td>{{ $feedback->created_at?->format('d/m/Y H:i') ?? '-' }}</td>

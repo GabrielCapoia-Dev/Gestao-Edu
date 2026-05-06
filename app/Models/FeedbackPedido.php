@@ -4,8 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Validation\ValidationException;
-use App\Models\PedidoArquivo;
 use App\Models\Enums\TipoArquivoPedido;
 
 class FeedbackPedido extends Model
@@ -18,10 +16,12 @@ class FeedbackPedido extends Model
         'pedido_id',
         'valor',
         'descricao',
+        'reabrir_pedido',
     ];
 
     protected $casts = [
         'valor' => 'integer',
+        'reabrir_pedido' => 'boolean',
     ];
 
     /*
@@ -33,6 +33,11 @@ class FeedbackPedido extends Model
     public function pedido()
     {
         return $this->belongsTo(Pedido::class);
+    }
+
+    public function itens()
+    {
+        return $this->hasMany(FeedbackPedidoItem::class);
     }
 
     /*

@@ -27,6 +27,7 @@ class PedidoRelatorioGeralController extends Controller
                 'tipo_status_id',
                 'tipo_manutencao_id',
                 'nivel_prioridade',
+                'tipo_registro',
             ]);
 
             return $this->service->gerar($filtros, Auth::user());

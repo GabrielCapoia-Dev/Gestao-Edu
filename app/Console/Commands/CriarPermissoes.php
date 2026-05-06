@@ -4,8 +4,8 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use App\Models\Role;
 use Spatie\Permission\Models\Permission;
-use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
 class CriarPermissoes extends Command
@@ -45,6 +45,8 @@ class CriarPermissoes extends Command
                 'name' => $roleName,
                 'guard_name' => 'web',
             ]);
+
+            $this->sincronizarSetorDaRole($role, $roleName);
 
             $role->syncPermissions($rolePermissions);
 
@@ -235,6 +237,9 @@ class CriarPermissoes extends Command
             'Filtrar Turmas por Escola',
             'Aplicar Permissoes',
             'Avaliar Pedidos',
+            'Encaminhar Pedidos para Setor',
+            'Enviar Pedidos para Empresa',
+            'Vincular Pedidos Adicionais',
             'Responder Avaliações',
             'Aprovar Pedidos de Inventário',
             'Gerar Romaneios de Inventário',
@@ -371,6 +376,9 @@ class CriarPermissoes extends Command
                 'Visualizar Notificação: Pedidos Emergenciais',
                 'Visualizar Notificação: Pedido Reaberto',
                 'Avaliar Pedidos',
+                'Encaminhar Pedidos para Setor',
+                'Enviar Pedidos para Empresa',
+                'Vincular Pedidos Adicionais',
             ]),
             'merenda' => $this->onlyPermissions($permissions, [
                 'Listar Pedidos: Merenda',
@@ -508,6 +516,34 @@ class CriarPermissoes extends Command
                 'pedidos',
                 'relatorios_e_painel',
             ]),
+            'Manutenção: Educação' => $this->onlyPermissions($permissions, [
+                'Listar Pedidos',
+                'Criar Pedidos',
+                'Editar Pedidos',
+                'Avaliar Pedidos',
+                'Encaminhar Pedidos para Setor',
+                'Vincular Pedidos Adicionais',
+                'Listar Tipo ManutenÃ§Ã£o',
+                'Visualizar HistÃ³rico de Pedidos',
+                'Visualizar Arquivos de Pedidos',
+                'Visualizar Pedidos por Status',
+                'Visualizar Feedback de Pedidos',
+                'Exportar Arquivos Pedido',
+                'Exportar RelatÃ³rios',
+            ]),
+            'Manutenção: Obras' => $this->onlyPermissions($permissions, [
+                'Listar Pedidos',
+                'Editar Pedidos',
+                'Enviar Pedidos para Empresa',
+                'Vincular Pedidos Adicionais',
+                'Listar Tipo ManutenÃ§Ã£o',
+                'Visualizar HistÃ³rico de Pedidos',
+                'Visualizar Arquivos de Pedidos',
+                'Visualizar Pedidos por Status',
+                'Visualizar Feedback de Pedidos',
+                'Exportar Arquivos Pedido',
+                'Exportar RelatÃ³rios',
+            ]),
             'Gestao de Merenda' => $groups['merenda'],
             'Gestao de Inventario' => $this->mergeGroups($groups, [
                 'inventario',
@@ -536,9 +572,53 @@ class CriarPermissoes extends Command
         return array_values(array_unique($merged));
     }
 
+    private function sincronizarSetorDaRole(Role $role, string $roleName): void
+    {
+        $setor = match ($roleName) {
+            'Manutenção: Educação' => $this->setorIdPorNome('Educação'),
+            'Manutenção: Obras' => $this->setorIdPorNome('Obras'),
+            default => null,
+        };
+
+        if ($setor || $role->setor_id) {
+            $role->forceFill(['setor_id' => $setor])->save();
+        }
+    }
+
+    private function setorIdPorNome(string $nome): ?int
+    {
+        $aliases = [$nome];
+
+        if (function_exists('mb_convert_encoding')) {
+            $aliases[] = mb_convert_encoding($nome, 'UTF-8', 'ISO-8859-1');
+
+            if (str_contains($nome, 'Ã') || str_contains($nome, 'Â')) {
+                $aliases[] = mb_convert_encoding($nome, 'ISO-8859-1', 'UTF-8');
+            }
+        }
+
+        return DB::table('setor')
+            ->whereIn('nome', array_values(array_unique($aliases)))
+            ->value('id');
+    }
+
     private function onlyPermissions(array $permissions, array $selectedPermissions): array
     {
-        return array_values(array_intersect($permissions, $selectedPermissions));
+        $aliases = [];
+
+        foreach ($selectedPermissions as $permission) {
+            $aliases[] = $permission;
+
+            if (function_exists('mb_convert_encoding')) {
+                $aliases[] = mb_convert_encoding($permission, 'UTF-8', 'ISO-8859-1');
+
+                if (str_contains($permission, 'Ã') || str_contains($permission, 'Â')) {
+                    $aliases[] = mb_convert_encoding($permission, 'ISO-8859-1', 'UTF-8');
+                }
+            }
+        }
+
+        return array_values(array_intersect($permissions, array_values(array_unique($aliases))));
     }
 
     private function normalizarPermissoesComMojibake(array $permissions): void

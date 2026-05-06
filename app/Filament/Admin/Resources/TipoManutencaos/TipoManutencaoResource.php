@@ -63,8 +63,7 @@ class TipoManutencaoResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()
-            ->where('ativo', true);
+        return parent::getEloquentQuery();
     }
 
     public static function mutateFormDataBeforeCreate(array $data): array

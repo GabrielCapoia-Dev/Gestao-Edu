@@ -3,26 +3,40 @@
 namespace App\Services;
 
 use App\Models\Enums\NivelEmergenciaPedido;
+use App\Models\Enums\ResultadoFeedbackPedido;
 use App\Models\Enums\TipoArquivoPedido;
+use App\Models\FeedbackPedido;
 use App\Models\Pedido;
 use App\Models\PedidoHistorico;
+use App\Models\PedidoProblema;
 use App\Models\Setor;
+use App\Models\TipoManutencao;
+use App\Models\TipoManutencaoOpcao;
 use App\Models\TipoStatus;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class PedidoService
 {
     /*
     |--------------------------------------------------------------------------
-    | PERMISSÕES
+    | PERMISSOES E ESCOPO
     |--------------------------------------------------------------------------
     */
 
     public function ehAdmin(?User $user): bool
     {
         return $user?->hasRole('Admin') ?? false;
+    }
+
+    public function podeListarTodos(?User $user): bool
+    {
+        return $this->ehAdmin($user)
+            || ($user?->hasPermissionTo('Listar Todos os Pedidos') ?? false);
     }
 
     public function podeGerenciarPedidos(?User $user): bool
@@ -35,36 +49,54 @@ class PedidoService
         return $user?->hasPermissionTo('Criar Pedidos') ?? false;
     }
 
-    /**
-     * Verifica se o usuário pode gerenciar um registro específico.
-     */
-    public function podeGerenciarRegistro(Pedido $pedido, ?User $user): bool
+    public function podeEnviarParaEmpresa(?User $user): bool
+    {
+        return ($user?->hasPermissionTo('Enviar Pedidos para Empresa') ?? false)
+            && $this->usuarioEhSetor($user, 'Obras');
+    }
+
+    public function podeVincularAdicionais(?User $user): bool
+    {
+        return $user?->hasPermissionTo('Vincular Pedidos Adicionais') ?? false;
+    }
+
+    public function usuarioEhSetor(?User $user, string $nomeSetor): bool
     {
         if (! $user) {
             return false;
         }
 
-        if (! $user->hasPermissionTo('Editar Pedidos')) {
+        if ($this->podeListarTodos($user)) {
+            return true;
+        }
+
+        return $user->pertenceAoSetorOperacionalNome($nomeSetor);
+    }
+
+    public function podeGerenciarRegistro(Pedido $pedido, ?User $user): bool
+    {
+        if (! $user || ! $user->hasPermissionTo('Editar Pedidos')) {
             return false;
         }
 
-        // Impacto: pedidos finalizados/cancelados nao devem voltar ao fluxo operacional por edicao direta; alterar aqui afeta historico, feedback e relatorios.
+        if ($pedido->is_pedido_adicional) {
+            return false;
+        }
+
         if ($pedido->tipoStatus?->finaliza_pedido || $pedido->tipoStatus?->cancela_pedido) {
             return false;
         }
 
-        if (! $user->setor) {
+        if ($this->podeListarTodos($user)) {
             return true;
         }
 
-        return $user->podeGerenciarSetor($pedido->setor);
-    }
+        $setorIds = $user->idsSetoresOperacionais();
 
-    /*
-    |--------------------------------------------------------------------------
-    | BADGE
-    |--------------------------------------------------------------------------
-    */
+        return $setorIds !== []
+            && filled($pedido->setor_id)
+            && in_array((int) $pedido->setor_id, $setorIds, true);
+    }
 
     public function contarPedidosNovos(?User $user): ?string
     {
@@ -72,92 +104,59 @@ class PedidoService
             return null;
         }
 
-        if ($user?->setor && ! $user->pertenceAoSetorGeral()) {
-            $statusBase = TipoStatus::where('ativo', true)
-                ->where('nome', 'Encaminhado ao Setor')
-                ->first();
-        } else {
-            $statusBase = TipoStatus::where('ativo', true)
-                ->where('finaliza_pedido', false)
-                ->where('cancela_pedido', false)
-                ->first();
-        }
+        $statusAberto = $this->statusPorNome('Em Aberto');
 
-        if (! $statusBase) {
+        if (! $statusAberto) {
             return null;
         }
 
-        $query = Pedido::where('ativo', true)
-            ->where('tipo_status_id', $statusBase->id);
+        $query = Pedido::query()
+            ->where('ativo', true)
+            ->where('is_pedido_adicional', false)
+            ->where('tipo_status_id', $statusAberto->id);
 
-        if (! $this->ehAdmin($user) && $user?->id_escola) {
-            $query->where('escola_id', $user->id_escola);
-        }
-
-        if ($user?->setor && ! $user->pertenceAoSetorGeral()) {
-            $query->where('setor_id', $user->setor_id);
-        }
+        $this->aplicarEscopo($query, $user);
 
         $count = $query->count();
 
         return $count > 0 ? (string) $count : null;
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | QUERY BASE POR PERFIL
-    |--------------------------------------------------------------------------
-    */
-
     public function queryPorPerfil(Builder $query, ?User $user): Builder
     {
-        if (! $user) {
-            return $query->whereRaw('1 = 0');
-        }
-
         $query->where('ativo', true);
 
-        if ($this->ehAdmin($user)) {
-            return $query;
-        }
-
-        if ($user->setor) {
-            if ($user->pertenceAoSetorGeral()) {
-                return $query;
-            }
-
-            return $query->where('setor_id', $user->setor_id);
-        }
-
-        if ($user->id_escola) {
-            $query->where('escola_id', $user->id_escola);
-        }
-
-        return $query;
+        return $this->aplicarEscopo($query, $user);
     }
 
     public function queryTabela(?User $user): Builder
     {
         $query = Pedido::query()
-            ->with('ultimoHistorico')
+            ->with(['ultimoHistorico', 'tipoStatus', 'tipoManutencao', 'setor', 'pedidoPrincipal'])
             ->where('ativo', true);
 
+        return $this->aplicarEscopo($query, $user);
+    }
+
+    public function queryTabTodos(?User $user): Builder
+    {
+        return $this->queryTabela($user)->orderByDesc('updated_at');
+    }
+
+    protected function aplicarEscopo(Builder $query, ?User $user): Builder
+    {
         if (! $user) {
-            return $query->nenhum();
+            return $query->whereRaw('1 = 0');
         }
 
-        // Impacto: esta permissao abre visao geral. Remover ou ampliar muda a separacao entre admin, setor e escola nas tabelas de pedidos.
-        if ($user->hasRole('Admin') || $user->hasPermissionTo('Listar Todos os Pedidos')) {
+        if ($this->podeListarTodos($user)) {
             return $query;
         }
 
-        // Impacto: usuario com setor ve pedidos do setor; usuario sem setor cai no escopo da escola. Alterar esta ordem troca o dono operacional do pedido.
-        if ($user->setor) {
-            if ($user->pertenceAoSetorGeral()) {
-                return $query;
-            }
+        $setorIds = $user->idsSetoresOperacionais();
 
-            return $query->where('setor_id', $user->setor_id);
+        if ($setorIds !== []) {
+            return $query->whereIn('setor_id', $setorIds);
         }
 
         if ($user->id_escola) {
@@ -167,83 +166,161 @@ class PedidoService
         return $query->nenhum();
     }
 
-    public function queryTabTodos(?User $user): Builder
-    {
-        $query = Pedido::query()
-            ->with('ultimoHistorico')
-            ->where('ativo', true);
-
-        if (! $user) {
-            return $query->nenhum();
-        }
-
-        if ($user->hasRole('Admin') || $user->hasPermissionTo('Listar Todos os Pedidos')) {
-            return $query->orderByDesc('updated_at');
-        }
-
-        if ($user->setor) {
-            if ($user->pertenceAoSetorGeral()) {
-                return $query->orderByDesc('updated_at');
-            }
-
-            return $query->where('setor_id', $user->setor_id)->orderByDesc('updated_at');
-        }
-
-        if ($user->id_escola) {
-            return $query->where('escola_id', $user->id_escola)->orderByDesc('updated_at');
-        }
-
-        return $query->nenhum();
-    }
-
     /*
     |--------------------------------------------------------------------------
-    | CRIAÇÃO
+    | CRIACAO
     |--------------------------------------------------------------------------
     */
 
     public function criarPedido(array $data, User $solicitante): Pedido
     {
-        $statusInicial = TipoStatus::where('nome', 'Em Aberto')->firstOrFail();
-        $setorInicial = Setor::setorGeral();
+        return DB::transaction(function () use ($data, $solicitante): Pedido {
+            $statusInicial = $this->statusPorNome('Em Aberto', true);
+            $setorInicial = Setor::setorGeral();
 
-        // Impacto: o setor geral e a porta de entrada do fluxo. Sem ele, assumir/encaminhar pedido e badge de novos chamados ficam sem referencia.
-        if (! $setorInicial) {
-            throw new \RuntimeException('Nenhum setor foi configurado para receber os pedidos iniciais.');
-        }
-
-        $pedido = Pedido::create([
-            'tipo_manutencao_id' => $data['tipo_manutencao_id'],
-            'descricao_pedido' => $data['descricao_pedido'],
-            'nome_solicitante' => $data['nome_solicitante'],
-            'nivel_prioridade' => NivelEmergenciaPedido::INDEFINIDO,
-            'solicitante_id' => $solicitante->id,
-            'escola_id' => $solicitante->id_escola,
-            'tipo_status_id' => $statusInicial->id,
-            'setor_id' => $setorInicial->id,
-            'data_solicitacao' => now(),
-            'ativo' => true,
-        ]);
-
-        if (filled($data['arquivos'])) {
-            foreach (array_filter($data['arquivos']) as $path) {
-                $this->salvarArquivoPedido(
-                    pedido: $pedido,
-                    path: $path,
-                    tipo: TipoArquivoPedido::FOTOS_PROBLEMA,
-                    usuarioId: $solicitante->id
-                );
+            if (! $setorInicial) {
+                throw new \RuntimeException('Nenhum setor foi configurado para receber os pedidos iniciais.');
             }
+
+            if (! TipoManutencao::query()->whereKey($data['tipo_manutencao_id'])->where('ativo', true)->exists()) {
+                throw new \RuntimeException('Tipo de manutencao indisponivel para novos pedidos.');
+            }
+
+            $pedido = Pedido::create([
+                'tipo_manutencao_id' => $data['tipo_manutencao_id'],
+                'descricao_pedido' => $data['descricao_pedido'],
+                'nome_solicitante' => $data['nome_solicitante'],
+                'nivel_prioridade' => NivelEmergenciaPedido::INDEFINIDO,
+                'solicitante_id' => $solicitante->id,
+                'escola_id' => $solicitante->id_escola,
+                'tipo_status_id' => $statusInicial->id,
+                'setor_id' => $setorInicial->id,
+                'data_solicitacao' => now(),
+                'data_identificacao_problema' => $data['data_identificacao_problema'] ?? now(),
+                'ativo' => true,
+            ]);
+
+            $this->criarProblemasDoPedido(
+                $pedido,
+                $data['tipo_manutencao_opcao_ids'] ?? [],
+                $data['descricao_pedido'] ?? null
+            );
+
+            if (filled($data['arquivos'] ?? null)) {
+                foreach (array_filter($data['arquivos']) as $path) {
+                    $this->salvarArquivoPedido(
+                        pedido: $pedido,
+                        path: $path,
+                        tipo: TipoArquivoPedido::FOTOS_PROBLEMA,
+                        usuarioId: $solicitante->id
+                    );
+                }
+            }
+
+            $this->registrarHistorico($pedido, null, $statusInicial->id, $solicitante, 'Pedido criado');
+
+            return $pedido;
+        });
+    }
+
+    public function criarPedidosAdicionais(Pedido $pedidoPrincipal, array $adicionais, User $usuario): Collection
+    {
+        return DB::transaction(function () use ($pedidoPrincipal, $adicionais, $usuario): Collection {
+            $statusAdicional = $this->statusPorNome('Pedido Adicional', true);
+            $criados = collect();
+
+            foreach ($adicionais as $data) {
+                if (blank($data['descricao_pedido'] ?? null) || blank($data['tipo_manutencao_id'] ?? null)) {
+                    continue;
+                }
+
+                if (! TipoManutencao::query()->whereKey($data['tipo_manutencao_id'])->where('ativo', true)->exists()) {
+                    continue;
+                }
+
+                $pedido = Pedido::create([
+                    'pedido_principal_id' => $pedidoPrincipal->id,
+                    'is_pedido_adicional' => true,
+                    'tipo_manutencao_id' => $data['tipo_manutencao_id'],
+                    'descricao_pedido' => $data['descricao_pedido'],
+                    'nome_solicitante' => $data['nome_solicitante'] ?? $usuario->name,
+                    'nivel_prioridade' => NivelEmergenciaPedido::INDEFINIDO,
+                    'solicitante_id' => $usuario->id,
+                    'escola_id' => $pedidoPrincipal->escola_id,
+                    'tipo_status_id' => $statusAdicional->id,
+                    'setor_id' => $pedidoPrincipal->setor_id,
+                    'empresa_contratada_id' => $pedidoPrincipal->empresa_contratada_id,
+                    'data_solicitacao' => now(),
+                    'data_identificacao_problema' => $data['data_identificacao_problema'] ?? now(),
+                    'ativo' => true,
+                ]);
+
+                $this->criarProblemasDoPedido(
+                    $pedido,
+                    $data['tipo_manutencao_opcao_ids'] ?? [],
+                    $data['descricao_pedido']
+                );
+
+                $this->registrarHistorico(
+                    $pedido,
+                    null,
+                    $statusAdicional->id,
+                    $usuario,
+                    "Pedido adicional vinculado ao protocolo {$pedidoPrincipal->numero_protocolo}."
+                );
+
+                $this->registrarHistorico(
+                    $pedidoPrincipal,
+                    $pedidoPrincipal->tipo_status_id,
+                    $pedidoPrincipal->tipo_status_id,
+                    $usuario,
+                    "Pedido adicional {$pedido->numero_protocolo} vinculado a esta solicitacao."
+                );
+
+                $criados->push($pedido);
+            }
+
+            return $criados;
+        });
+    }
+
+    protected function criarProblemasDoPedido(Pedido $pedido, array $opcaoIds, ?string $fallbackDescricao = null): void
+    {
+        $opcoes = TipoManutencaoOpcao::query()
+            ->whereIn('id', collect($opcaoIds)->filter()->map(fn ($id) => (int) $id)->all())
+            ->where('tipo_manutencao_id', $pedido->tipo_manutencao_id)
+            ->where('ativo', true)
+            ->get()
+            ->keyBy('id');
+
+        foreach ($opcaoIds as $opcaoId) {
+            $opcao = $opcoes->get((int) $opcaoId);
+
+            if (! $opcao) {
+                continue;
+            }
+
+            $pedido->problemas()->create([
+                'tipo_manutencao_id' => $pedido->tipo_manutencao_id,
+                'tipo_manutencao_opcao_id' => $opcao->id,
+                'texto_problema' => $opcao->texto,
+            ]);
         }
 
-        $this->registrarHistorico($pedido, null, $statusInicial->id, $solicitante, 'Pedido criado');
+        if ($pedido->problemas()->exists()) {
+            return;
+        }
 
-        return $pedido;
+        $pedido->problemas()->create([
+            'tipo_manutencao_id' => $pedido->tipo_manutencao_id,
+            'tipo_manutencao_opcao_id' => null,
+            'texto_problema' => Str::limit($fallbackDescricao ?: 'Problema informado no pedido', 255, ''),
+        ]);
     }
 
     /*
     |--------------------------------------------------------------------------
-    | ALTERAÇÃO DE STATUS
+    | ALTERACAO DE STATUS
     |--------------------------------------------------------------------------
     */
 
@@ -262,45 +339,60 @@ class PedidoService
 
         $this->registrarHistorico($pedido, $statusAnteriorId, $novoStatus->id, $usuario, $descricao);
 
-        // Impacto: data_entrega e usada por relatorios e avaliacao do atendimento; mudar este IF pode marcar entrega antes do fechamento real.
         if ($novoStatus->finaliza_pedido) {
             $pedido->update(['data_entrega' => now()]);
         }
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | ASSUMIR PEDIDO
-    |--------------------------------------------------------------------------
-    */
+    public function encaminharParaSetor(Pedido $pedido, Setor $setorDestino, User $usuario, ?string $descricao = null): void
+    {
+        DB::transaction(function () use ($pedido, $setorDestino, $usuario, $descricao): void {
+            $statusAnteriorId = $pedido->tipo_status_id;
+            $statusEncaminhado = $this->statusPorNome('Encaminhado ao Setor', true);
+            $statusAberto = $this->statusPorNome('Em Aberto', true);
+
+            $pedido->update([
+                'tipo_status_id' => $statusAberto->id,
+                'setor_id' => $setorDestino->id,
+                'responsavel_id' => $usuario->id,
+            ]);
+
+            $this->registrarHistorico(
+                $pedido,
+                $statusAnteriorId,
+                $statusEncaminhado->id,
+                $usuario,
+                $descricao ?: "Pedido encaminhado para o setor {$setorDestino->nome}."
+            );
+
+            $this->registrarHistorico(
+                $pedido,
+                $statusEncaminhado->id,
+                $statusAberto->id,
+                $usuario,
+                "Pedido recebido pelo setor {$setorDestino->nome} com status Em Aberto."
+            );
+        });
+    }
 
     public function assumirPedido(Pedido $pedido, User $usuario): void
     {
-        $statusEmAberto = TipoStatus::where('nome', 'Em Aberto')->first();
-        $statusEncaminhado = TipoStatus::where('nome', 'Encaminhado ao Setor')->first();
-        $statusAnalise = TipoStatus::where('nome', 'Em Análise')->first();
+        $statusEmAberto = $this->statusPorNome('Em Aberto');
+        $statusReaberto = $this->statusPorNome('Reaberto');
+        $statusAnalise = $this->statusPorNome('Em Análise');
 
         if (! $statusAnalise) {
             return;
         }
 
-        $podeIrParaAnalise = false;
-
-        if ($statusEmAberto && $pedido->tipo_status_id === $statusEmAberto->id) {
-            $podeIrParaAnalise = true;
-        }
+        $statusPermitidos = collect([$statusEmAberto?->id, $statusReaberto?->id])
+            ->filter()
+            ->all();
 
         if (
-            $statusEncaminhado
-            && $pedido->tipo_status_id === $statusEncaminhado->id
-            && $usuario->setor
-            && $usuario->podeGerenciarSetor($pedido->setor)
+            in_array((int) $pedido->tipo_status_id, $statusPermitidos, true)
+            && ($this->podeListarTodos($usuario) || $usuario->podeGerenciarSetor($pedido->setor))
         ) {
-            $podeIrParaAnalise = true;
-        }
-
-        // Impacto: apenas estes status entram automaticamente em analise. Ampliar esta regra pode reabrir fluxos ja encaminhados, concluidos ou cancelados.
-        if ($podeIrParaAnalise) {
             $this->alterarStatus(
                 $pedido,
                 $statusAnalise,
@@ -312,50 +404,125 @@ class PedidoService
 
     /*
     |--------------------------------------------------------------------------
-    | AVALIAR PEDIDO
+    | AVALIACAO
     |--------------------------------------------------------------------------
     */
 
-    public function avaliarPedido(Pedido $pedido, array $data, User $usuario): void
+    public function problemasParaAvaliacao(Pedido $pedido, bool $criarPadrao = true): Collection
     {
-        $nota = (int) $data['valor'];
-
-        $statusConcluido = TipoStatus::where('ativo', true)->where('nome', 'Concluído')->firstOrFail();
-        $statusReaberto = TipoStatus::where('ativo', true)->where('nome', 'Reaberto')->firstOrFail();
-
-        $pedido->feedbacks()->create([
-            'valor' => $nota,
-            'descricao' => $data['descricao'] ?? null,
-        ]);
-
-        if (! empty($data['fotos_conclusao'])) {
-            foreach ($data['fotos_conclusao'] as $path) {
-                $this->salvarArquivoPedido(
-                    pedido: $pedido,
-                    path: $path,
-                    tipo: TipoArquivoPedido::FOTOS_CONCLUSAO,
-                    usuarioId: $usuario->id,
-                    descricao: 'Fotos da conclusão do serviço'
-                );
-            }
+        if ($criarPadrao && ! $pedido->problemas()->exists()) {
+            $this->criarProblemasDoPedido($pedido, [], $pedido->descricao_pedido);
         }
 
-        // Impacto: nota 1 reabre automaticamente o pedido. Alterar esta regra afeta o ciclo de retrabalho e os indicadores de satisfacao.
-        $novoStatus = $nota === 1 ? $statusReaberto : $statusConcluido;
+        $pedidoIds = collect([$pedido->id])
+            ->merge($pedido->pedidosAdicionais()->pluck('id'))
+            ->values()
+            ->all();
 
-        $this->alterarStatus(
-            $pedido,
-            $novoStatus,
-            $usuario,
-            $nota === 1
-                ? 'Pedido reaberto automaticamente após avaliação com nota 1.'
-                : 'Pedido concluído e avaliado.'
-        );
+        return PedidoProblema::query()
+            ->with(['pedido.tipoManutencao'])
+            ->whereIn('pedido_id', $pedidoIds)
+            ->orderBy('pedido_id')
+            ->orderBy('id')
+            ->get();
+    }
+
+    public function avaliarPedido(Pedido $pedido, array $data, User $usuario): FeedbackPedido
+    {
+        return DB::transaction(function () use ($pedido, $data, $usuario): FeedbackPedido {
+            $adicionaisCriados = collect();
+
+            if (! empty($data['adicionar_adicionais']) && ! empty($data['pedidos_adicionais'])) {
+                $adicionaisCriados = $this->criarPedidosAdicionais($pedido, $data['pedidos_adicionais'], $usuario);
+                $pedido->refresh();
+            }
+
+            $problemas = $this->problemasParaAvaliacao($pedido);
+            $avaliacoes = collect($data['avaliacoes'] ?? []);
+            $dadosAdicionais = collect($data['pedidos_adicionais'] ?? [])->values();
+            $adicionalIndicePorPedidoId = $adicionaisCriados
+                ->values()
+                ->mapWithKeys(fn (Pedido $adicional, int $indice): array => [$adicional->id => $indice]);
+
+            $dadosDaAvaliacao = function (PedidoProblema $problema) use ($avaliacoes, $dadosAdicionais, $adicionalIndicePorPedidoId): array {
+                $avaliacao = $avaliacoes->get((string) $problema->id)
+                    ?? $avaliacoes->get($problema->id);
+
+                if (is_array($avaliacao) && $avaliacao !== []) {
+                    return $avaliacao;
+                }
+
+                $indiceAdicional = $adicionalIndicePorPedidoId->get($problema->pedido_id);
+
+                if ($indiceAdicional !== null) {
+                    return (array) $dadosAdicionais->get($indiceAdicional, []);
+                }
+
+                return [];
+            };
+
+            $notas = $problemas
+                ->map(fn (PedidoProblema $problema): int => (int) ($dadosDaAvaliacao($problema)['valor'] ?? 3))
+                ->map(fn (int $nota): int => max(1, min(5, $nota)));
+
+            $notaGeral = $notas->isNotEmpty()
+                ? (int) round($notas->avg())
+                : (int) ($data['valor'] ?? 3);
+
+            $reabrirPedido = (bool) ($data['reabrir_pedido'] ?? false);
+
+            $feedback = $pedido->feedbacks()->create([
+                'valor' => max(1, min(5, $notaGeral)),
+                'descricao' => $data['descricao'] ?? null,
+                'reabrir_pedido' => $reabrirPedido,
+            ]);
+
+            foreach ($problemas as $problema) {
+                $avaliacao = $dadosDaAvaliacao($problema);
+                $resultado = ResultadoFeedbackPedido::tryFrom($avaliacao['resultado'] ?? '')
+                    ?? ResultadoFeedbackPedido::Atendido;
+
+                $feedback->itens()->create([
+                    'pedido_id' => $problema->pedido_id,
+                    'pedido_problema_id' => $problema->id,
+                    'valor' => max(1, min(5, (int) ($avaliacao['valor'] ?? 3))),
+                    'resultado' => $resultado,
+                    'comentario' => $avaliacao['comentario'] ?? null,
+                ]);
+            }
+
+            if (! empty($data['fotos_conclusao'])) {
+                foreach ($data['fotos_conclusao'] as $path) {
+                    $this->salvarArquivoPedido(
+                        pedido: $pedido,
+                        path: $path,
+                        tipo: TipoArquivoPedido::FOTOS_CONCLUSAO,
+                        usuarioId: $usuario->id,
+                        descricao: 'Fotos da conclusão do serviço'
+                    );
+                }
+            }
+
+            $novoStatus = $reabrirPedido
+                ? $this->statusPorNome('Reaberto', true)
+                : $this->statusPorNome('Concluído', true);
+
+            $this->alterarStatus(
+                $pedido,
+                $novoStatus,
+                $usuario,
+                $reabrirPedido
+                    ? 'Pedido reaberto após avaliação do solicitante.'
+                    : 'Pedido concluído e avaliado por problema.'
+            );
+
+            return $feedback;
+        });
     }
 
     /*
     |--------------------------------------------------------------------------
-    | HISTÓRICO
+    | HISTORICO E UTILITARIOS
     |--------------------------------------------------------------------------
     */
 
@@ -376,11 +543,40 @@ class PedidoService
         ]);
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | ARQUIVOS
-    |--------------------------------------------------------------------------
-    */
+    public function statusPorNome(string $nome, bool $fail = false): ?TipoStatus
+    {
+        $query = TipoStatus::query()
+            ->whereIn('nome', $this->aliasesTexto($nome));
+
+        return $fail ? $query->firstOrFail() : $query->first();
+    }
+
+    public function setorPorNome(string $nome): ?Setor
+    {
+        return Setor::query()
+            ->where('ativo', true)
+            ->whereIn('nome', $this->aliasesTexto($nome))
+            ->first();
+    }
+
+    private function aliasesTexto(string $nome): array
+    {
+        $aliases = [$nome];
+
+        if (function_exists('mb_convert_encoding')) {
+            $aliases[] = mb_convert_encoding($nome, 'UTF-8', 'ISO-8859-1');
+
+            if (str_contains($nome, 'Ã') || str_contains($nome, 'Â')) {
+                $aliases[] = mb_convert_encoding($nome, 'ISO-8859-1', 'UTF-8');
+            }
+        }
+
+        return collect($aliases)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
 
     private function salvarArquivoPedido(
         Pedido $pedido,
@@ -389,7 +585,17 @@ class PedidoService
         int $usuarioId,
         ?string $descricao = null
     ): void {
-        $mime = Storage::mimeType("public/{$path}");
+        $mime = 'application/octet-stream';
+
+        try {
+            $mime = Storage::mimeType("public/{$path}") ?: $mime;
+        } catch (\Throwable) {
+            try {
+                $mime = Storage::disk('public')->mimeType($path) ?: $mime;
+            } catch (\Throwable) {
+                //
+            }
+        }
 
         $pedido->arquivos()->create([
             'usuario_id' => $usuarioId,

@@ -48,7 +48,7 @@ class TipoStatusSeeder extends Seeder
                 'cor' => '#e20ee9',
                 'finaliza_pedido' => false,
                 'cancela_pedido' => false,
-                'ativo' => true,
+                'ativo' => false,
             ],
 
             [
@@ -80,6 +80,14 @@ class TipoStatusSeeder extends Seeder
                 'cor' => '#d40000',
                 'finaliza_pedido' => false,
                 'cancela_pedido' => true,
+                'ativo' => true,
+            ],
+
+            [
+                'nome' => 'Pedido Adicional',
+                'cor' => '#64748b',
+                'finaliza_pedido' => false,
+                'cancela_pedido' => false,
                 'ativo' => true,
             ],
         ];

@@ -10,6 +10,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Group;
 use Filament\Support\Icons\Heroicon;
 use App\Models\Role;
+use App\Models\Setor;
 use Filament\Forms;
 use Filament\Resources\Resource;
 use App\Services\RoleService;
@@ -55,6 +56,19 @@ class RoleResource extends Resource
                     ->required()
                     ->disabled(fn($record, $context) => app(RoleService::class)->bloquearCampo($record, $context))
                     ->unique(ignoreRecord: true),
+
+                Components\Select::make('setor_id')
+                    ->columnSpanFull()
+                    ->label('Setor operacional')
+                    ->helperText('Use em niveis de manutencao para limitar automaticamente os pedidos visiveis por setor.')
+                    ->options(fn () => Setor::query()
+                        ->where('ativo', true)
+                        ->orderBy('nome')
+                        ->pluck('nome', 'id')
+                        ->toArray())
+                    ->searchable()
+                    ->preload()
+                    ->nullable(),
 
                 Section::make('Permissões')
                     ->description('Selecione as permissões para este nível de acesso.')
@@ -131,6 +145,12 @@ class RoleResource extends Resource
                 Tables\Columns\TextColumn::make('name')
                     ->label('Nivel de acesso')
                     ->searchable(),
+                Tables\Columns\TextColumn::make('setor.nome')
+                    ->label('Setor operacional')
+                    ->badge()
+                    ->placeholder('-')
+                    ->sortable()
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime('d/m/Y H:i:s')
                     ->sortable(),
@@ -175,6 +195,19 @@ class RoleResource extends Resource
                                     app(RoleService::class)->bloquearCampo($record, 'edit')
                                 )
                                 ->default($record->name),
+
+                            Forms\Components\Select::make('setor_id')
+                                ->label('Setor operacional')
+                                ->helperText('Limita o escopo operacional deste nivel quando usado em pedidos de manutencao.')
+                                ->options(fn () => Setor::query()
+                                    ->where('ativo', true)
+                                    ->orderBy('nome')
+                                    ->pluck('nome', 'id')
+                                    ->toArray())
+                                ->searchable()
+                                ->preload()
+                                ->nullable()
+                                ->default($record->setor_id),
 
                             Forms\Components\TextInput::make('search_permissions')
                                 ->label('Buscar permissões')
@@ -268,6 +301,12 @@ class RoleResource extends Resource
                         if ($record->name !== $novoNome) {
                             $alteracoes[] = "Nome alterado de '{$record->name}' para '{$novoNome}'";
                             $record->update(['name' => $novoNome]);
+                        }
+
+                        $novoSetorId = $data['setor_id'] ?? null;
+                        if ((int) ($record->setor_id ?? 0) !== (int) ($novoSetorId ?? 0)) {
+                            $record->update(['setor_id' => $novoSetorId]);
+                            $alteracoes[] = 'Setor operacional atualizado.';
                         }
 
                         /*

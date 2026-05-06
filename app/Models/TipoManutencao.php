@@ -64,8 +64,13 @@ class TipoManutencao extends Model
         return $this->hasMany(TipoManutencao::class, 'registro_anterior_id');
     }
 
-    // public function pedidos()
-    // {
-    //     return $this->hasMany(Pedido::class, 'tipo_manutencao_id');
-    // }
+    public function opcoes()
+    {
+        return $this->hasMany(TipoManutencaoOpcao::class);
+    }
+
+    public function opcoesAtivas()
+    {
+        return $this->hasMany(TipoManutencaoOpcao::class)->where('ativo', true);
+    }
 }

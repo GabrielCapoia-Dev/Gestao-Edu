@@ -3,12 +3,15 @@
 namespace App\Filament\Admin\Resources\Pedidos\Schemas;
 
 use App\Models\TipoManutencao;
+use App\Models\TipoManutencaoOpcao;
 use Filament\Schemas\Schema;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\DatePicker;
 
 
 class PedidoCriacaoForm
@@ -31,7 +34,32 @@ class PedidoCriacaoForm
                             )
                             ->required()
                             ->searchable()
-                            ->preload(),
+                            ->preload()
+                            ->live()
+                            ->afterStateUpdated(fn (callable $set) => $set('tipo_manutencao_opcao_ids', [])),
+
+                        Select::make('tipo_manutencao_opcao_ids')
+                            ->label('Problemas identificados')
+                            ->helperText('Selecione uma ou mais frases que melhor descrevem o problema.')
+                            ->options(fn (Get $get): array => filled($get('tipo_manutencao_id'))
+                                ? TipoManutencaoOpcao::query()
+                                    ->where('ativo', true)
+                                    ->where('tipo_manutencao_id', $get('tipo_manutencao_id'))
+                                    ->orderBy('texto')
+                                    ->pluck('texto', 'id')
+                                    ->toArray()
+                                : [])
+                            ->multiple()
+                            ->required()
+                            ->searchable()
+                            ->preload()
+                            ->columnSpanFull(),
+
+                        DatePicker::make('data_identificacao_problema')
+                            ->label('Data de identificação do problema')
+                            ->helperText('Informe quando o problema começou ou foi identificado.')
+                            ->required()
+                            ->maxDate(now()),
 
                         TextInput::make('nome_solicitante')
                             ->label('Nome de quem será o responsável pela solicitação')

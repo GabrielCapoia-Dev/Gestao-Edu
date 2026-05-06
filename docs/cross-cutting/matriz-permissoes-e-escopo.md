@@ -18,7 +18,7 @@ Este documento explica como o acesso e montado no projeto. A regra pratica e: qu
 | --- | --- | --- | --- | --- |
 | Painel admin | usuario autenticado | nao se aplica | `email_approved = true` | acesso ao painel pode ser negado mesmo apos login |
 | Usuarios | `Listar Usuarios`, `Criar Usuarios`, `Editar Usuarios`, `Excluir Usuarios` | `UserPolicy` | pode haver restricoes de tela e fluxo operacional | policy cobre capacidade ampla |
-| Pedidos de manutencao | `Listar Pedidos`, `Criar Pedidos`, `Editar Pedidos` | `PedidoPolicy` | `PedidoService` filtra por `id_escola`, `setor` e perfil | policy sozinha nao define visibilidade real |
+| Pedidos de manutencao | `Listar Pedidos`, `Criar Pedidos`, `Editar Pedidos` | `PedidoPolicy` | `PedidoService` filtra por `roles.setor_id`, `Listar Todos os Pedidos` e `id_escola` | policy sozinha nao define visibilidade real |
 | Pedidos de merenda | `Listar Pedidos: Merenda`, `Criar Pedidos: Merenda`, `Editar Pedidos: Merenda` | `PedidoMerendaPolicy` | sem escopo por escola no fluxo atual | risco ao evoluir inventario escolar |
 | Estoque matriz | permissoes de gestao e balanco | geralmente direta na tela/acao | sem `id_escola` hoje | fluxo centralizado na matriz |
 
@@ -29,6 +29,21 @@ Este documento explica como o acesso e montado no projeto. A regra pratica e: qu
 3. Defina o escopo real de leitura e escrita por `role`, `permission`, `id_escola` e `setor`.
 4. Proteja downloads ou endpoints fora do Filament com middleware explicito.
 5. Valide com pelo menos um perfil amplo e um perfil restrito.
+
+## Manutencao por setor operacional
+
+| Role/preset | Setor operacional | Permissoes esperadas | Escopo |
+| --- | --- | --- | --- |
+| `Manutencao: Educacao` | `Educacao` | listar/criar/editar/avaliar, encaminhar para setor, vincular adicionais, exportar | pedidos do setor Educacao; escolas continuam vendo seus pedidos |
+| `Manutencao: Obras` | `Obras` | listar/editar, enviar para empresa, vincular adicionais, exportar | pedidos do setor Obras |
+| Perfil global | nenhum ou qualquer setor | `Listar Todos os Pedidos` | todos os setores e escolas |
+
+Regras especificas:
+
+- `roles.setor_id` e a fonte principal de escopo operacional para manutencao.
+- `Setor` nao controla mais o fluxo por campos de encaminhamento; ele serve como agrupador ativo/inativo.
+- `Enviar Pedidos para Empresa` so funciona para usuario com setor operacional Obras.
+- `Pedido Adicional` deve ter filtro proprio e vinculo com o protocolo original; ele nao deve poluir a fila principal.
 
 ## Anti-padroes a evitar
 

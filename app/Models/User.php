@@ -221,19 +221,71 @@ class User extends Authenticatable implements FilamentUser
         return $this->belongsTo(Setor::class);
     }
 
-    public function podeGerenciarSetor(?Setor $setor = null): bool
+    public function idsSetoresOperacionais(): array
     {
-        // Impacto: PedidoService usa esta regra para decidir se usuario pode atuar em pedido de setor especifico; alterar delegacao muda o fluxo operacional de chamados.
-        if (! $this->setor) {
+        $ids = $this->roles()
+            ->whereNotNull('roles.setor_id')
+            ->pluck('roles.setor_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($ids === [] && filled($this->setor_id)) {
+            return [(int) $this->setor_id];
+        }
+
+        return $ids;
+    }
+
+    public function setorOperacional(): ?Setor
+    {
+        $setorId = $this->idsSetoresOperacionais()[0] ?? null;
+
+        return $setorId ? Setor::find($setorId) : null;
+    }
+
+    public function podeVerSetorOperacional(?Setor $setor): bool
+    {
+        if (! $setor) {
             return false;
         }
 
-        return $this->setor->podeGerenciarSetor($setor);
+        return in_array((int) $setor->id, $this->idsSetoresOperacionais(), true);
+    }
+
+    public function pertenceAoSetorOperacionalNome(string $nome): bool
+    {
+        $nomes = [$nome];
+
+        if (function_exists('mb_convert_encoding')) {
+            $nomes[] = mb_convert_encoding($nome, 'UTF-8', 'ISO-8859-1');
+
+            if (str_contains($nome, 'Ã') || str_contains($nome, 'Â')) {
+                $nomes[] = mb_convert_encoding($nome, 'ISO-8859-1', 'UTF-8');
+            }
+        }
+
+        return Setor::query()
+            ->whereIn('id', $this->idsSetoresOperacionais())
+            ->whereIn('nome', array_values(array_unique($nomes)))
+            ->exists();
+    }
+
+    public function podeGerenciarSetor(?Setor $setor = null): bool
+    {
+        // Impacto: PedidoService usa esta regra para decidir se usuario pode atuar em pedido de setor especifico; alterar delegacao muda o fluxo operacional de chamados.
+        if ($this->idsSetoresOperacionais() !== []) {
+            return $this->podeVerSetorOperacional($setor);
+        }
+
+        return false;
     }
 
     public function pertenceAoSetorGeral(): bool
     {
-        return $this->setor?->ehSetorGeral() ?? false;
+        return $this->pertenceAoSetorOperacionalNome('Educação')
+            || ($this->setor?->ehSetorGeral() ?? false);
     }
 
     public static function scopeAuthUser()

@@ -214,18 +214,25 @@ class PedidoRelatorioGeralService
                 'p.numero_protocolo',
                 'p.nivel_prioridade',
                 'p.data_solicitacao',
+                'p.data_identificacao_problema',
                 'p.data_prevista',
                 'p.data_entrega',
+                'p.is_pedido_adicional',
                 'e.nome as escola_nome',
                 'tm.nome as tipo_manutencao_nome',
                 'ts.nome as status_nome',
                 'ts.cor as status_cor',
                 'ec.nome as empresa_nome',
+                'principal.numero_protocolo as pedido_principal_protocolo',
+                DB::raw("(SELECT GROUP_CONCAT(pp.texto_problema SEPARATOR ', ') FROM pedido_problemas pp WHERE pp.pedido_id = p.id) as problemas"),
+                DB::raw("(SELECT COUNT(*) FROM pedidos pa WHERE pa.pedido_principal_id = p.id AND pa.ativo = 1) as adicionais_count"),
+                DB::raw("(SELECT GROUP_CONCAT(CONCAT(ppf.texto_problema, ': ', fpi.valor, '/5 - ', fpi.resultado) SEPARATOR ' | ') FROM feedback_pedido_itens fpi LEFT JOIN pedido_problemas ppf ON ppf.id = fpi.pedido_problema_id WHERE fpi.pedido_id = p.id) as resultados_feedback"),
             ])
             ->leftJoin('escolas as e', 'e.id', '=', 'p.escola_id')
             ->leftJoin('tipo_manutencao as tm', 'tm.id', '=', 'p.tipo_manutencao_id')
             ->leftJoin('tipo_status as ts', 'ts.id', '=', 'p.tipo_status_id')
             ->leftJoin('empresas_contratadas as ec', 'ec.id', '=', 'p.empresa_contratada_id')
+            ->leftJoin('pedidos as principal', 'principal.id', '=', 'p.pedido_principal_id')
             ->orderByDesc('p.data_solicitacao')
             ->get();
     }
@@ -258,6 +265,14 @@ class PedidoRelatorioGeralService
             $q->where('p.nivel_prioridade', $filtros['nivel_prioridade']);
         }
 
+        if (! empty($filtros['tipo_registro'])) {
+            match ($filtros['tipo_registro']) {
+                'principais' => $q->where('p.is_pedido_adicional', false),
+                'adicionais' => $q->where('p.is_pedido_adicional', true),
+                default => null,
+            };
+        }
+
         return $q;
     }
 
@@ -281,6 +296,14 @@ class PedidoRelatorioGeralService
 
         if (! empty($filtros['tipo_manutencao_id'])) {
             $r['tipo'] = TipoManutencao::find($filtros['tipo_manutencao_id'])?->nome ?? 'N/A';
+        }
+
+        if (! empty($filtros['tipo_registro'])) {
+            $r['tipo_registro'] = match ($filtros['tipo_registro']) {
+                'principais' => 'Pedidos principais',
+                'adicionais' => 'Pedidos adicionais',
+                default => 'Todos os registros',
+            };
         }
 
         return $r;

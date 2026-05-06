@@ -28,6 +28,11 @@ class PedidoRelatorioService
             'historicos.usuario',
             'historicos.setor',
             'arquivos',
+            'problemas',
+            'pedidosAdicionais.tipoManutencao',
+            'pedidosAdicionais.tipoStatus',
+            'pedidosAdicionais.problemas',
+            'ultimoFeedback.itens.problema',
         ]);
 
         $usuario = Auth::user();

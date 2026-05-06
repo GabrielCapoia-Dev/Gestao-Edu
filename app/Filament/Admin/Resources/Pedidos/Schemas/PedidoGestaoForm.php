@@ -3,14 +3,14 @@
 namespace App\Filament\Admin\Resources\Pedidos\Schemas;
 
 use App\Models\Enums\NivelEmergenciaPedido;
-use App\Models\Setor;
 use App\Models\TipoStatus;
+use App\Services\PedidoService;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
@@ -39,40 +39,19 @@ class PedidoGestaoForm
                         Select::make('novo_status_id')
                             ->label('Atualizar Status')
                             ->reactive()
-                            ->options(
-                                fn () => TipoStatus::query()
-                                    ->where('ativo', true)
-                                    ->whereNotIn('nome', ['Em Aberto', 'Em Análise', 'Concluído'])
-                                    ->orderBy('nome')
-                                    ->pluck('nome', 'id')
-                                    ->toArray()
-                            )
-                            ->afterStateUpdated(function ($state, callable $get, callable $set) {
-                                if (! $state) {
-                                    return;
+                            ->options(fn () => static::statusOptions())
+                            ->afterStateUpdated(function ($state, callable $set) {
+                                $status = $state ? TipoStatus::find($state) : null;
+
+                                if (! static::statusEh($status, 'Encaminhado ao Setor')) {
+                                    $set('setor_id', null);
                                 }
 
-                                $status = TipoStatus::find($state);
-
-                                if (! $status) {
-                                    return;
-                                }
-
-                                $setor = ($setorId = $get('setor_id'))
-                                    ? Setor::find($setorId)
-                                    : null;
-
-                                if ($status->nome === 'Encaminhado ao Setor' && ! $setor?->temSetoresDestino()) {
-                                    $set('novo_status_id', null);
-
-                                    Notification::make()
-                                        ->title('Status inválido')
-                                        ->body('Para encaminhar ao setor, selecione um setor com destino configurado.')
-                                        ->danger()
-                                        ->send();
+                                if (! static::statusEh($status, 'Enviado para Empresa')) {
+                                    $set('empresa_contratada_id', null);
                                 }
                             })
-                            ->helperText('Use este status quando o pedido precisar seguir para o próximo setor do fluxo.')
+                            ->helperText('Educação pode encaminhar para Obras; Obras pode enviar para empresa.')
                             ->placeholder('Padrão: Em Análise')
                             ->searchable()
                             ->nullable(),
@@ -88,38 +67,16 @@ class PedidoGestaoForm
                             ->native(false),
 
                         Select::make('setor_id')
-                            ->label('Setor')
+                            ->label('Setor destino')
                             ->relationship(
                                 name: 'setor',
                                 titleAttribute: 'nome',
-                                modifyQueryUsing: fn ($query) => $query->where('ativo', true)
+                                modifyQueryUsing: fn ($query) => $query
+                                    ->where('ativo', true)
+                                    ->orderBy('nome')
                             )
-                            ->reactive()
-                            ->afterStateUpdated(function ($state, callable $get, callable $set) {
-                                $statusId = $get('novo_status_id');
-
-                                if (! $statusId) {
-                                    return;
-                                }
-
-                                $status = TipoStatus::find($statusId);
-
-                                if (! $status) {
-                                    return;
-                                }
-
-                                $setor = $state ? Setor::find($state) : null;
-
-                                if ($status->nome === 'Encaminhado ao Setor' && ! $setor?->temSetoresDestino()) {
-                                    $set('novo_status_id', null);
-
-                                    Notification::make()
-                                        ->title('Status removido')
-                                        ->body('Encaminhado ao Setor exige um setor com encaminhamento configurado.')
-                                        ->warning()
-                                        ->send();
-                                }
-                            })
+                            ->visible(fn (Get $get) => static::statusEh(TipoStatus::find($get('novo_status_id')), 'Encaminhado ao Setor'))
+                            ->required(fn (Get $get) => static::statusEh(TipoStatus::find($get('novo_status_id')), 'Encaminhado ao Setor'))
                             ->searchable()
                             ->preload()
                             ->nullable(),
@@ -146,6 +103,10 @@ class PedidoGestaoForm
                                     ->where('ativo', true)
                                     ->doSetorDoUsuario(Auth::user())
                             )
+                            ->visible(fn (Get $get) => app(PedidoService::class)->podeEnviarParaEmpresa(Auth::user())
+                                && static::statusEh(TipoStatus::find($get('novo_status_id')), 'Enviado para Empresa'))
+                            ->required(fn (Get $get) => app(PedidoService::class)->podeEnviarParaEmpresa(Auth::user())
+                                && static::statusEh(TipoStatus::find($get('novo_status_id')), 'Enviado para Empresa'))
                             ->searchable()
                             ->preload()
                             ->nullable(),
@@ -164,5 +125,46 @@ class PedidoGestaoForm
                     ])
                     ->columns(2),
             ]);
+    }
+
+    private static function statusOptions(): array
+    {
+        $service = app(PedidoService::class);
+        $user = Auth::user();
+
+        $nomes = [];
+
+        if ($service->usuarioEhSetor($user, 'Educação')) {
+            $nomes = array_merge($nomes, [
+                'Em Manutenção',
+                'Encaminhado ao Setor',
+                'Cancelado',
+            ]);
+        }
+
+        if ($service->usuarioEhSetor($user, 'Obras')) {
+            $nomes = array_merge($nomes, [
+                'Em Manutenção',
+                'Enviado para Empresa',
+                'Cancelado',
+            ]);
+        }
+
+        return collect($nomes)
+            ->unique()
+            ->map(fn (string $nome) => $service->statusPorNome($nome))
+            ->filter(fn (?TipoStatus $status) => $status?->ativo)
+            ->sortBy('nome')
+            ->mapWithKeys(fn (TipoStatus $status) => [$status->id => $status->nome])
+            ->toArray();
+    }
+
+    private static function statusEh(?TipoStatus $status, string $nome): bool
+    {
+        if (! $status) {
+            return false;
+        }
+
+        return app(PedidoService::class)->statusPorNome($nome)?->is($status) ?? false;
     }
 }

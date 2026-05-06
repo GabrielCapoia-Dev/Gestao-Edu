@@ -2,37 +2,28 @@
 
 namespace App\Observers;
 
-use App\Models\Pedido;
-use App\Models\User;
 use App\Models\Enums\NivelEmergenciaPedido;
-use App\Notifications\SistemaNotification;
+use App\Models\Pedido;
 use App\Models\TipoStatus;
-use Illuminate\Support\Facades\Auth;
-
+use App\Models\User;
+use App\Notifications\SistemaNotification;
+use Illuminate\Support\Collection;
+use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 class PedidoObserver
 {
-    /**
-     * Handle the Pedido "created" event.
-     */
     public function created(Pedido $pedido): void
     {
         //
     }
 
-    /**
-     * Handle the Pedido "updated" event.
-     */
     public function updated(Pedido $pedido): void
     {
-
-        // Fluxo: quando um pedido vira emergencial, o observer reage ao update, busca usuarios com permissao especifica e dispara notificacao com link para edicao.
         if (
             $pedido->wasChanged('nivel_prioridade') &&
             $pedido->nivel_prioridade === NivelEmergenciaPedido::EMERGENCIAL
         ) {
-
-            $usuarios = User::permission('Visualizar Notificação: Pedidos Emergenciais')->get();
+            $usuarios = $this->usuariosComPermissao('Visualizar Notificação: Pedidos Emergenciais');
 
             foreach ($usuarios as $user) {
                 $user->notify(
@@ -45,90 +36,100 @@ class PedidoObserver
             }
         }
 
+        if (! $pedido->wasChanged('tipo_status_id')) {
+            return;
+        }
 
-        // Fluxo: a alteracao de status vem de PedidoService::alterarStatus(); aqui o resultado e comunicado ao solicitante e, no caso de reabertura, aos responsaveis.
-        if ($pedido->wasChanged('tipo_status_id')) {
+        $statusAtual = $pedido->tipoStatus;
+        $statusReaberto = $this->statusPorNome('Reaberto');
+        $solicitante = $pedido->solicitante;
 
-            $statusAtual = $pedido->tipoStatus;
-            $statusReaberto = TipoStatus::where('nome', 'Reaberto')->first();
-
-
-            // Impacto: pedido reaberto tem notificacao especial porque normalmente volta de uma avaliacao ruim; misturar com status comum reduziria visibilidade do retrabalho.
-            if (
-                $statusReaberto &&
-                $pedido->tipo_status_id === $statusReaberto->id
-            ) {
-
-                $usuarios = User::permission('Visualizar Notificação: Pedido Reaberto')->get();
-
-                $solicitante = $pedido->solicitante;
-
-                if ($solicitante) {
-
-                    $solicitante->notify(
-                        new SistemaNotification(
-                            titulo: 'Pedido Reaberto',
-                            mensagem: "Seu pedido {$pedido->numero_protocolo} foi reaberto e encaminhado ao setor responsável.",
-                            url: route('filament.admin.resources.pedidos.edit', $pedido),
-                        )
-                    );
-                }
-
-                foreach ($usuarios as $user) {
-
-                    if ($solicitante && $user->id === $solicitante->id) {
-                        continue;
-                    }
-
-                    $solicitante->notify(
-                        new SistemaNotification(
-                            titulo: 'Atualização no Pedido',
-                            mensagem: "O status do seu pedido {$pedido->numero_protocolo} foi atualizado para \n\"{$statusAtual->nome}\".",
-                            url: route('filament.admin.resources.pedidos.edit', $pedido),
-                        )
-                    );
-                }
-
-                return;
-            }
-
-            $solicitante = $pedido->solicitante;
-
-
-            if ($solicitante && $statusAtual) {
-
+        if ($statusReaberto && (int) $pedido->tipo_status_id === (int) $statusReaberto->id) {
+            if ($solicitante) {
                 $solicitante->notify(
                     new SistemaNotification(
-                        titulo: 'Atualização no Pedido',
-                        mensagem: "O status do seu pedido {$pedido->numero_protocolo} foi atualizado para \n\"{$statusAtual->nome}\".",
-                        url: route('filament.admin.resources.pedidos.index', $pedido),
+                        titulo: 'Pedido Reaberto',
+                        mensagem: "Seu pedido {$pedido->numero_protocolo} foi reaberto e encaminhado ao setor responsável.",
+                        url: route('filament.admin.resources.pedidos.edit', $pedido),
                     )
                 );
             }
+
+            foreach ($this->usuariosComPermissao('Visualizar Notificação: Pedido Reaberto') as $user) {
+                if ($solicitante && (int) $user->id === (int) $solicitante->id) {
+                    continue;
+                }
+
+                $user->notify(
+                    new SistemaNotification(
+                        titulo: 'Atualização no Pedido',
+                        mensagem: "O status do pedido {$pedido->numero_protocolo} foi atualizado para \"{$statusAtual?->nome}\".",
+                        url: route('filament.admin.resources.pedidos.edit', $pedido),
+                    )
+                );
+            }
+
+            return;
+        }
+
+        if ($solicitante && $statusAtual) {
+            $solicitante->notify(
+                new SistemaNotification(
+                    titulo: 'Atualização no Pedido',
+                    mensagem: "O status do seu pedido {$pedido->numero_protocolo} foi atualizado para \"{$statusAtual->nome}\".",
+                    url: route('filament.admin.resources.pedidos.index', $pedido),
+                )
+            );
         }
     }
 
-    /**
-     * Handle the Pedido "deleted" event.
-     */
     public function deleted(Pedido $pedido): void
     {
         //
     }
 
-    /**
-     * Handle the Pedido "restored" event.
-     */
     public function restored(Pedido $pedido): void
     {
         //
     }
 
-    /**
-     * Handle the Pedido "force deleted" event.
-     */
     public function forceDeleted(Pedido $pedido): void
     {
         //
+    }
+
+    private function usuariosComPermissao(string $permission): Collection
+    {
+        foreach ($this->aliasesTexto($permission) as $alias) {
+            try {
+                return User::permission($alias)->get();
+            } catch (PermissionDoesNotExist) {
+                continue;
+            }
+        }
+
+        return collect();
+    }
+
+    private function statusPorNome(string $nome): ?TipoStatus
+    {
+        return TipoStatus::query()
+            ->whereIn('nome', $this->aliasesTexto($nome))
+            ->first();
+    }
+
+    private function aliasesTexto(string $texto): array
+    {
+        $aliases = [$texto];
+
+        if (function_exists('mb_convert_encoding')) {
+            $aliases[] = mb_convert_encoding($texto, 'UTF-8', 'ISO-8859-1');
+
+            if (str_contains($texto, 'Ã') || str_contains($texto, 'Â')) {
+                $aliases[] = mb_convert_encoding($texto, 'ISO-8859-1', 'UTF-8');
+            }
+        }
+
+        return array_values(array_unique(array_filter($aliases)));
     }
 }

@@ -13,6 +13,7 @@ use Filament\Forms;
 use Livewire\Attributes\Computed;
 use Filament\Actions;
 use App\Models\Enums\NivelEmergenciaPedido;
+use App\Models\Enums\ResultadoFeedbackPedido;
 use BackedEnum;
 use UnitEnum;
 use Filament\Support\Icons\Heroicon;
@@ -51,7 +52,7 @@ class FeedbackPedido extends Page implements HasTable
         return $table
             ->query(
                 FeedbackPedidoModel::query()
-                    ->with(['pedido.escola', 'pedido.tipoManutencao'])
+                    ->with(['pedido.escola', 'pedido.tipoManutencao', 'itens.problema'])
             )
             ->paginated([5, 10, 25, 50, 100])
             ->defaultPaginationPageOption(5)
@@ -78,6 +79,22 @@ class FeedbackPedido extends Page implements HasTable
                 Tables\Columns\TextColumn::make('descricao')
                     ->limit(50)
                     ->wrap(),
+
+                Tables\Columns\TextColumn::make('itens_resumo')
+                    ->label('Por problema')
+                    ->state(fn (FeedbackPedidoModel $record): string => $record->itens
+                        ->map(fn ($item) => ($item->problema?->texto_problema ?? 'Problema') . ': ' . $item->valor . '/5')
+                        ->take(3)
+                        ->join(' | '))
+                    ->limit(90)
+                    ->wrap()
+                    ->placeholder('Sem itens'),
+
+                Tables\Columns\TextColumn::make('reabrir_pedido')
+                    ->label('Reaberto')
+                    ->badge()
+                    ->formatStateUsing(fn ($state) => $state ? 'Sim' : 'Não')
+                    ->color(fn ($state) => $state ? 'danger' : 'success'),
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Avaliado em')
@@ -153,6 +170,22 @@ class FeedbackPedido extends Page implements HasTable
                     ->query(function ($query, array $data) {
                         $this->updateChartFilters('empresa_contratada_id', $data['value'] ?? null);
                         return $query->when($data['value'] ?? null, fn($q) => $q->whereHas('pedido', fn($subquery) => $subquery->where('empresa_contratada_id', $data['value'])));
+                    }),
+
+                Tables\Filters\SelectFilter::make('resultado')
+                    ->label('Resultado por problema')
+                    ->options(
+                        collect(ResultadoFeedbackPedido::cases())
+                            ->mapWithKeys(fn (ResultadoFeedbackPedido $resultado) => [$resultado->value => $resultado->label()])
+                            ->toArray()
+                    )
+                    ->query(function ($query, array $data) {
+                        $value = $data['value'] ?? null;
+
+                        return $query->when(
+                            $value,
+                            fn ($q) => $q->whereHas('itens', fn ($itemQuery) => $itemQuery->where('resultado', $value))
+                        );
                     }),
 
                 Tables\Filters\Filter::make('mes')
@@ -274,6 +307,7 @@ class FeedbackPedido extends Page implements HasTable
                         'tipo_manutencao_id' => $params['tipo_manutencao_id'] = $value,
                         'escola_id' => $params['escola_id'] = $value,
                         'empresa_contratada_id' => $params['empresa_contratada_id'] = $value,
+                        'resultado' => $params['resultado'] = $value,
                         'mes' => $params['mes'] = $value,
                         'periodo' => $params['data_inicio'] = $value['inicio'] ?? null,
                         'periodo' => $params['data_fim'] = $value['fim'] ?? null,

@@ -127,6 +127,10 @@ $statusCor = '#' . ltrim($record->tipoStatus?->cor ?? '#9ca3af', '#');
             <span class="cab-value">{{ $record->data_solicitacao?->format('d/m/Y') ?? 'Não Informado' }}</span>
         </div>
         <div class="cab-field">
+            <span class="cab-label">Identificado em</span>
+            <span class="cab-value">{{ $record->data_identificacao_problema?->format('d/m/Y') ?? 'Nao Informado' }}</span>
+        </div>
+        <div class="cab-field">
             <span class="cab-label">Status</span>
             <span class="cab-badge" style="--badge-color: {{ $statusCor }}">
                 {{ $record->tipoStatus?->nome ?? 'Não Informado' }}

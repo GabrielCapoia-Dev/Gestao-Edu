@@ -3,38 +3,34 @@
 namespace App\Filament\Admin\Resources\Pedidos\Pages;
 
 use App\Filament\Admin\Resources\Pedidos\PedidoResource;
-use Filament\Actions\CreateAction;
-use Filament\Resources\Pages\ListRecords;
 use App\Models\Pedido;
 use App\Models\TipoStatus;
-use Filament\Actions;
-use Filament\Schemas\Components\Tabs\Tab;
-use Illuminate\Support\HtmlString;
-use Illuminate\Support\Facades\Auth;
-use App\Services\PedidoService;
-use Illuminate\Database\Eloquent\Builder;
 use App\Models\User;
+use App\Services\PedidoService;
+use Filament\Actions;
+use Filament\Resources\Pages\ListRecords;
+use Filament\Schemas\Components\Tabs\Tab;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\HtmlString;
 use Livewire\Attributes\On;
 
 class ListPedidos extends ListRecords
 {
     protected static string $resource = PedidoResource::class;
 
-    /**
-     * Listeners para atualizar badges quando filtros são aplicados/removidos
-     */
     #[On('filament_tables::filter.applied')]
     #[On('filament_tables::filter.removed')]
     public function refreshBadges(): void
     {
-        // Força recalcular os tabs quando filtro muda
         $this->dispatch('refreshComponent');
     }
 
     protected function getHeaderActions(): array
     {
-        /** @var \App\Models\User */
+        /** @var User|null $user */
         $user = Auth::user();
+
         return [
             Actions\CreateAction::make()
                 ->label('Novo Pedido'),
@@ -42,15 +38,15 @@ class ListPedidos extends ListRecords
             Actions\Action::make('feedbacks')
                 ->label('Feedbacks')
                 ->icon('heroicon-o-star')
-                ->visible(fn() => $user->hasPermissionTo('Visualizar Feedback de Pedidos'))
+                ->visible(fn () => $user?->hasPermissionTo('Visualizar Feedback de Pedidos') ?? false)
                 ->color('warning')
-                ->url(fn() => route('filament.admin.pages.feedback-pedidos'))
+                ->url(fn () => route('filament.admin.pages.feedback-pedidos')),
         ];
     }
 
     protected function getDefaultTableSortColumn(): ?string
     {
-        return 'created_at';
+        return 'updated_at';
     }
 
     protected function getDefaultTableSortDirection(): ?string
@@ -60,9 +56,7 @@ class ListPedidos extends ListRecords
 
     public function getTabs(): array
     {
-        $tabs = [];
-
-        /** @var \App\Models\User */
+        /** @var User|null $user */
         $user = Auth::user();
 
         if (! $user?->hasPermissionTo('Visualizar Pedidos por Status')) {
@@ -70,101 +64,87 @@ class ListPedidos extends ListRecords
         }
 
         $tableQuery = $this->getTableQuery();
+        $service = app(PedidoService::class);
 
-        // =========================
-        // TAB TODOS
-        // =========================
-        $tabs['todos'] = Tab::make('Todos')
-            ->modifyQueryUsing(function ($query) {
-                $query->reorder()->orderByDesc('updated_at');
-            })
-            ->badge(fn() => (clone $tableQuery)->count())
-            ->extraAttributes([
-                'style' => "
-            --tab-color: #6b7280;
-            background-color: #e5e7eb;
-            border: 1px solid #d1d5db;
-        ",
-            ]);
-        // =========================
-        // TABS POR STATUS
-        // =========================
-        $prioridade = $user?->setor?->nome === 'Obras'
-            ? 'Encaminhado ao Setor'
-            : 'Em Aberto';
-            
+        $tabs = [
+            'todos' => Tab::make('Todos')
+                ->modifyQueryUsing(fn ($query) => $query
+                    ->where('is_pedido_adicional', false)
+                    ->reorder()
+                    ->orderByDesc('updated_at'))
+                ->badge(fn () => (clone $tableQuery)->where('is_pedido_adicional', false)->count())
+                ->extraAttributes([
+                    'style' => '
+                        --tab-color: #6b7280;
+                        background-color: #e5e7eb;
+                        border: 1px solid #d1d5db;
+                    ',
+                ]),
+        ];
 
         $ordemStatus = [
             'Em Aberto',
             'Reaberto',
             'Em Análise',
+            'Em Manutenção',
             'Encaminhado ao Setor',
             'Enviado para Empresa',
-            'Em Andamento',
-            'Em Manutenção',
             'Cancelado',
             'Concluído',
+            'Pedido Adicional',
         ];
 
-        $statuses = TipoStatus::where('ativo', true)
+        $statusIdsOrdenados = collect($ordemStatus)
+            ->map(fn (string $nome) => $service->statusPorNome($nome))
+            ->filter()
+            ->pluck('id')
+            ->all();
+
+        $statuses = TipoStatus::query()
+            ->where('ativo', true)
             ->get()
-            ->sortBy(
-                fn($s) => array_search($s->nome, $ordemStatus) !== false
-                    ? array_search($s->nome, $ordemStatus)
-                    : 999
-            );
+            ->sortBy(fn (TipoStatus $status): int => array_search($status->id, $statusIdsOrdenados, true) !== false
+                ? array_search($status->id, $statusIdsOrdenados, true)
+                : 999);
+
+        $statusPedidoAdicional = $service->statusPorNome('Pedido Adicional');
 
         foreach ($statuses as $status) {
+            $ehPedidoAdicional = $statusPedidoAdicional?->is($status) ?? false;
 
-            if (
-                $user?->setor?->nome === 'Obras' &&
-                $status->nome === 'Em Aberto'
-            ) {
-                continue;
-            }
-
-            // 🔴 Contar com base na query com FILTROS
             $query = (clone $tableQuery)
-                ->where('tipo_status_id', $status->id);
-
-            if (
-                $status->nome === 'Em Aberto' &&
-                filled($user?->setor_id)
-            ) {
-                $query->where('setor_id', $user->setor_id);
-            }
+                ->where('tipo_status_id', $status->id)
+                ->when(
+                    $ehPedidoAdicional,
+                    fn (Builder $builder) => $builder->where('is_pedido_adicional', true),
+                    fn (Builder $builder) => $builder->where('is_pedido_adicional', false),
+                );
 
             $count = $query->count();
 
-            // 🔴 PULAR TABS COM ZERO
             if ($count === 0) {
                 continue;
             }
 
             $hex = substr(ltrim($status->cor, '#'), 0, 6);
 
-            $tabs[$status->id] = Tab::make($status->nome)
-                ->modifyQueryUsing(function ($query) use ($status, $user) {
-                    $query->where('tipo_status_id', $status->id);
-
-                    if (
-                        $status->nome === 'Em Aberto' &&
-                        filled($user?->setor_id)
-                    ) {
-                        $query->where('setor_id', $user->setor_id);
-                    }
-
-                    return $query;
+            $tabs[(string) $status->id] = Tab::make($status->nome)
+                ->modifyQueryUsing(function ($query) use ($status, $ehPedidoAdicional) {
+                    return $query
+                        ->where('tipo_status_id', $status->id)
+                        ->when(
+                            $ehPedidoAdicional,
+                            fn (Builder $builder) => $builder->where('is_pedido_adicional', true),
+                            fn (Builder $builder) => $builder->where('is_pedido_adicional', false),
+                        );
                 })
-
                 ->badge($count)
-
                 ->extraAttributes([
                     'style' => "
-                --tab-color: #{$hex};
-                background-color: #{$hex}20;
-                border: 1px solid #{$hex}50;
-            ",
+                        --tab-color: #{$hex};
+                        background-color: #{$hex}20;
+                        border: 1px solid #{$hex}50;
+                    ",
                 ]);
         }
 
@@ -173,36 +153,25 @@ class ListPedidos extends ListRecords
 
     public function getDefaultActiveTab(): ?string
     {
+        /** @var User|null $user */
         $user = Auth::user();
+        $service = app(PedidoService::class);
+        $statusAberto = $service->statusPorNome('Em Aberto');
 
-        if ($user?->setor?->nome === 'Obras') {
-            $id = TipoStatus::where('nome', 'Encaminhado ao Setor')->value('id');
-
-            $tem = Pedido::where('ativo', true)
-                ->where('tipo_status_id', $id)
-                ->exists();
-
-            return $tem ? (string) $id : 'todos';
-        }
-
-        $id = TipoStatus::where('nome', 'Em Aberto')->value('id');
-
-        if (!$id) {
+        if (! $statusAberto) {
             return 'todos';
         }
 
-        $query = Pedido::where('ativo', true)
-            ->where('tipo_status_id', $id);
+        $query = $service->queryTabela($user)
+            ->where('tipo_status_id', $statusAberto->id)
+            ->where('is_pedido_adicional', false);
 
-        if (filled($user?->setor_id)) {
-            $query->where('setor_id', $user->setor_id);
-        }
-
-        return $query->exists() ? (string) $id : 'todos';
+        return $query->exists() ? (string) $statusAberto->id : 'todos';
     }
+
     public function getTitle(): string|HtmlString
     {
-        /** @var \App\Models\User */
+        /** @var User|null $user */
         $user = Auth::user();
 
         if (! $user?->hasPermissionTo('Visualizar Pedidos por Status')) {
@@ -211,26 +180,23 @@ class ListPedidos extends ListRecords
 
         $activeTab = $this->activeTab;
 
-        if (!$activeTab || $activeTab === 'todos') {
-            $label = $activeTab === 'todos' ? 'Todos' : null;
-            return $label
-                ? new HtmlString(
-                    '<span style="
-                            display:inline-block;
-                            padding:2px 10px;
-                            border-radius:5px;
-                            font-weight:600;
-                            line-height:1.6;
-                            background-color:#e5e7eb;
-                            color:#374151;
-                            border:1px solid #d1d5db">' . $label . '</span>'
-                )
-                : 'Pedidos';
+        if (! $activeTab || $activeTab === 'todos') {
+            return new HtmlString(
+                '<span style="
+                    display:inline-block;
+                    padding:2px 10px;
+                    border-radius:5px;
+                    font-weight:600;
+                    line-height:1.6;
+                    background-color:#e5e7eb;
+                    color:#374151;
+                    border:1px solid #d1d5db">Todos</span>'
+            );
         }
 
         $status = TipoStatus::find($activeTab);
 
-        if (!$status) {
+        if (! $status) {
             return 'Pedidos';
         }
 
@@ -238,11 +204,11 @@ class ListPedidos extends ListRecords
 
         return new HtmlString(
             '<span style="'
-                . "display:inline-block;"
-                . "padding:2px 10px;"
-                . "border-radius:5px;"
-                . "font-weight:600;"
-                . "line-height:1.6;"
+                . 'display:inline-block;'
+                . 'padding:2px 10px;'
+                . 'border-radius:5px;'
+                . 'font-weight:600;'
+                . 'line-height:1.6;'
                 . "background-color:{$hex}20;"
                 . "color:{$hex};"
                 . "border:1px solid {$hex}50;"
@@ -254,7 +220,6 @@ class ListPedidos extends ListRecords
     {
         /** @var User|null $user */
         $user = Auth::user();
-
         $service = app(PedidoService::class);
 
         if (! $user?->hasPermissionTo('Visualizar Pedidos por Status')) {

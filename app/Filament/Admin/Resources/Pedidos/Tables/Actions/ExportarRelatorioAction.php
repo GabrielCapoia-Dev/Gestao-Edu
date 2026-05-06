@@ -72,12 +72,20 @@ class ExportarRelatorioAction
                         ->label('Tipo de Manutencao')
                         ->options(
                             TipoManutencao::query()
-                                ->where('ativo', true)
                                 ->orderBy('nome')
                                 ->pluck('nome', 'id')
                         )
                         ->searchable()
                         ->placeholder('Todos os tipos'),
+
+                    Select::make('tipo_registro')
+                        ->label('Tipo de registro')
+                        ->options([
+                            'principais' => 'Pedidos principais',
+                            'adicionais' => 'Pedidos adicionais',
+                            'todos' => 'Todos',
+                        ])
+                        ->placeholder('Todos'),
 
                     Select::make('tipo_status_id')
                         ->label('Status')

@@ -57,6 +57,8 @@ class FeedbackPedidoExportController extends Controller
             $query = FeedbackPedido::with([
                 'pedido.escola',
                 'pedido.tipoManutencao',
+                'pedido.empresaContratada',
+                'itens.problema',
             ]);
 
             $this->aplicarFiltros($query, $filters);
@@ -163,6 +165,10 @@ class FeedbackPedidoExportController extends Controller
             $filters['empresa_contratada_id'] = $request->input('empresa_contratada_id');
         }
 
+        if ($request->has('resultado')) {
+            $filters['resultado'] = $request->input('resultado');
+        }
+
         if ($request->has('mes')) {
             $filters['mes'] = $request->input('mes');
         }
@@ -199,6 +205,10 @@ class FeedbackPedidoExportController extends Controller
 
         if (isset($filters['empresa_contratada_id'])) {
             $resultado['empresa'] = EmpresaContratada::find($filters['empresa_contratada_id'])?->nome ?? 'N/A';
+        }
+
+        if (isset($filters['resultado'])) {
+            $resultado['resultado'] = (string) $filters['resultado'];
         }
 
         if (isset($filters['mes'])) {
@@ -253,6 +263,10 @@ class FeedbackPedidoExportController extends Controller
 
         if (isset($filters['empresa_contratada_id'])) {
             $query->whereHas('pedido', fn ($q) => $q->where('empresa_contratada_id', $filters['empresa_contratada_id']));
+        }
+
+        if (isset($filters['resultado'])) {
+            $query->whereHas('itens', fn ($q) => $q->where('resultado', $filters['resultado']));
         }
 
         if (isset($filters['mes'])) {

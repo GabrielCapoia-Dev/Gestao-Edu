@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use App\Models\Enums\TipoArquivoPedido;
 use App\Models\EmpresaContratada;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Str;
 
 class Pedido extends Model
 {
@@ -18,6 +19,8 @@ class Pedido extends Model
     protected $fillable = [
 
         'numero_protocolo', // Gerado automaticamente
+        'pedido_principal_id',
+        'is_pedido_adicional',
         'descricao_pedido', // Descrição do problema
 
         'nome_solicitante', // Nome do solicitante do problema
@@ -36,6 +39,7 @@ class Pedido extends Model
         'valor_custo', // Valor gasto no pedido
 
         'data_solicitacao',
+        'data_identificacao_problema',
         'data_prevista',
         'data_entrega',
 
@@ -46,10 +50,12 @@ class Pedido extends Model
 
     protected $casts = [
         'data_solicitacao' => 'date',
+        'data_identificacao_problema' => 'date',
         'data_prevista' => 'date',
         'data_entrega' => 'date',
         'valor_custo' => 'decimal:2',
         'ativo' => 'boolean',
+        'is_pedido_adicional' => 'boolean',
         'nivel_prioridade' => NivelEmergenciaPedido::class,
     ];
 
@@ -99,9 +105,11 @@ class Pedido extends Model
     {
         $ano = $ano ?? now()->year;
 
-        $ultimoNumero = self::whereYear('created_at', $ano)
-            ->selectRaw("MAX(CAST(SUBSTRING_INDEX(numero_protocolo, '/', -1) AS UNSIGNED)) as max_num")
-            ->value('max_num');
+        $ultimoNumero = self::query()
+            ->whereYear('created_at', $ano)
+            ->pluck('numero_protocolo')
+            ->map(fn (?string $protocolo): int => (int) Str::afterLast((string) $protocolo, '/'))
+            ->max();
 
         $proximo = ($ultimoNumero ?? 0) + 1;
 
@@ -129,6 +137,21 @@ class Pedido extends Model
     public function ultimoFeedback()
     {
         return $this->hasOne(FeedbackPedido::class)->latestOfMany();
+    }
+
+    public function pedidoPrincipal()
+    {
+        return $this->belongsTo(self::class, 'pedido_principal_id');
+    }
+
+    public function pedidosAdicionais()
+    {
+        return $this->hasMany(self::class, 'pedido_principal_id')->latest();
+    }
+
+    public function problemas()
+    {
+        return $this->hasMany(PedidoProblema::class);
     }
 
     public function tipoManutencao()

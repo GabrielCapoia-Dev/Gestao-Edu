@@ -2,14 +2,15 @@
 
 ## Objetivo
 
-Documentar o ciclo de vida de `Pedido`, incluindo criacao, protocolo, historico, anexos, avaliacao e notificacoes.
+Documentar o ciclo de vida de `Pedido`, incluindo criacao, setor operacional, problemas segmentados, adicionais, historico, anexos, avaliacao por problema e notificacoes.
 
 ## Onde isso vive no codigo
 
 - `app/Models/Pedido.php`
-- `app/Models/PedidoHistorico.php`
-- `app/Models/PedidoArquivo.php`
+- `app/Models/PedidoProblema.php`
+- `app/Models/TipoManutencaoOpcao.php`
 - `app/Models/FeedbackPedido.php`
+- `app/Models/FeedbackPedidoItem.php`
 - `app/Services/PedidoService.php`
 - `app/Observers/PedidoObserver.php`
 - `app/Filament/Admin/Resources/Pedidos`
@@ -18,41 +19,34 @@ Documentar o ciclo de vida de `Pedido`, incluindo criacao, protocolo, historico,
 ## Comportamento e regras principais
 
 - `Pedido` gera `numero_protocolo` automaticamente no `creating`, baseado no ano e no maior protocolo existente.
-- A criacao de pedido usa `PedidoService::criarPedido()`.
-- O status inicial esperado e `Em Aberto`.
-- O setor inicial esperado e `Educação`.
-- Arquivos enviados na criacao entram como `FOTOS_PROBLEMA`.
-- Toda mudanca relevante deve deixar rastreabilidade em `PedidoHistorico`.
-- O botao `Gerenciar` pode assumir o pedido e mover para `Em Análise` dependendo do status atual e do setor do usuario.
-- A avaliacao do pedido cria `FeedbackPedido`; nota `1` reabre automaticamente o pedido, outras notas concluem.
-- `PedidoArquivo` registra historico automaticamente ao criar, atualizar ou remover arquivo.
-- `PedidoObserver` dispara notificacoes quando prioridade vira emergencial e quando o status muda.
+- A criacao usa `PedidoService::criarPedido()`, exige `data_identificacao_problema` e salva uma ou mais frases/opcoes em `pedido_problemas`.
+- Tipo de manutencao e opcoes inativas nao entram em novos pedidos, mas continuam disponiveis para historico e relatorios.
+- O status inicial e `Em Aberto`; o setor inicial e `Educacao`.
+- O botao `Gerenciar` assume o pedido e move `Em Aberto` ou `Reaberto` para `Em Analise`, respeitando o setor operacional do usuario.
+- Educacao pode mover para `Em Manutencao`, `Cancelado` ou encaminhar para Obras.
+- Encaminhar para Obras grava historico `Encaminhado ao Setor`, mas deixa o status atual como `Em Aberto` no setor Obras.
+- Obras pode mover para `Em Manutencao`, `Enviado para Empresa` ou `Cancelado`; empresa responsavel so e exibida/grava para usuario do setor Obras.
+- `Em Andamento` fica inativo. `Concluido`, `Reaberto` e `Pedido Adicional` permanecem como status filtraveis.
+- Pedidos adicionais nascem com status `Pedido Adicional`, `is_pedido_adicional = true` e `pedido_principal_id`.
+- A avaliacao cria um `FeedbackPedido` agregado e itens em `feedback_pedido_itens`, um para cada problema do pedido principal e dos adicionais.
+- Nota `1` nao reabre automaticamente. A reabertura depende do botao global `Reabrir pedido`.
+- Se `Reabrir pedido` estiver marcado, o status final e `Reaberto`; caso contrario, `Concluido` e grava `data_entrega`.
 
-## Regra de negocio
+## Escopo de setor
 
-- Pedido pertence a uma escola, um solicitante e um setor atual.
-- O fluxo usa status nomeados e entendidos pelo negocio, como `Em Aberto`, `Em Análise`, `Em Manutenção`, `Concluído` e `Reaberto`.
-- Pedido concluido pode ser reaberto por avaliacao ruim.
-- Historico e anexos fazem parte do fluxo funcional, nao sao apenas auditoria tecnica.
-
-## Regra tecnica
-
-- Querys e visibilidade variam por perfil em `PedidoService`.
-- Parte importante do comportamento mora em actions e forms do Filament, nao apenas no service.
-- Notificações são gravadas em banco, não enfileiradas em jobs customizados.
-
-## Infraestrutura relacionada
-
-- Scheduler roda commands de notificacao de vencimento e atraso.
-- Downloads de arquivos de pedido passam por rota protegida e policy.
+- `Setor` e apenas agrupamento operacional (`nome` e `ativo`) para manutencao.
+- `roles.setor_id` define quais setores a role carrega.
+- `Listar Todos os Pedidos` continua liberando visao global.
+- Sem setor operacional, o usuario cai para escopo por escola (`id_escola`) quando aplicavel.
 
 ## Riscos e cuidados
 
-- O fluxo depende de nomes exatos de status e setores seedados.
-- Observer, service e table actions propagam efeitos colaterais diferentes; alterar so um ponto pode quebrar a consistencia.
-- Existe trecho suspeito no observer de reabertura notificando o solicitante dentro do loop de usuarios, o que merece cuidado em futuras alteracoes.
+- O fluxo depende de nomes seedados de status e setores; use `PedidoService::statusPorNome()` para lidar com aliases legados.
+- Observer, service e table actions disparam historico/notificacao; alterar so um ponto pode quebrar a consistencia.
+- Pedidos adicionais sao ocultos da fila principal por filtro/tab, mas devem aparecer no vinculo, relatorio e filtro proprio.
+- Relatorios precisam carregar data de identificacao, problemas, adicionais, protocolo original, empresa e resultados por problema.
 
 ## Quando consultar
 
-- Antes de mudar `Pedido`, `TipoStatus`, `PedidoArquivo`, `FeedbackPedido` ou a UI de manutencao
-- Antes de alterar notificacoes ou historico
+- Antes de mudar `Pedido`, `TipoStatus`, `Setor`, `TipoManutencao`, `FeedbackPedido` ou a UI de manutencao.
+- Antes de alterar notificacoes, historico, relatorios ou escopo por role/setor.

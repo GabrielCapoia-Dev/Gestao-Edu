@@ -51,7 +51,7 @@ class EmpresaContratada extends Model
                 $model->alterado_por = Auth::user()->name;
 
                 if (blank($model->setor_id)) {
-                    $model->setor_id = Auth::user()->setor_id;
+                    $model->setor_id = Auth::user()->idsSetoresOperacionais()[0] ?? Auth::user()->setor_id;
                 }
             }
         });
@@ -108,6 +108,11 @@ class EmpresaContratada extends Model
     public function scopeDoSetorDoUsuario(Builder $query, ?User $user = null): Builder
     {
         $user ??= Auth::user();
+        $setorIds = $user?->idsSetoresOperacionais() ?? [];
+
+        if ($setorIds !== []) {
+            return $query->whereIn('setor_id', $setorIds);
+        }
 
         return $query->when(
             filled($user?->setor_id),

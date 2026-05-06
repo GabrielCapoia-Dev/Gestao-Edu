@@ -9,7 +9,8 @@ Destacar os pontos mais sensiveis do fluxo de manutencao para reduzir regressao 
 - `app/Services/PedidoService.php`
 - `app/Observers/PedidoObserver.php`
 - `app/Models/Pedido.php`
-- `app/Models/PedidoArquivo.php`
+- `app/Models/PedidoProblema.php`
+- `app/Models/FeedbackPedidoItem.php`
 - `database/seeders/TipoStatusSeeder.php`
 - `database/seeders/SetorSeeder.php`
 
@@ -17,37 +18,43 @@ Destacar os pontos mais sensiveis do fluxo de manutencao para reduzir regressao 
 
 - O fluxo depende de strings seedadas:
   - `Em Aberto`
-  - `Em Análise`
+  - `Em Analise`
   - `Encaminhado ao Setor`
-  - `Em Manutenção`
-  - `Concluído`
+  - `Enviado para Empresa`
+  - `Em Manutencao`
+  - `Concluido`
   - `Reaberto`
-  - `Educação`
+  - `Pedido Adicional`
+  - `Educacao`
   - `Obras`
-- O badge e as querys de pedidos novos tambem dependem dessas strings e do perfil do usuario.
+- `Em Andamento` deve permanecer inativo e indisponivel para novos movimentos.
 - A conclusao do pedido nao e apenas trocar status:
   - pode gravar `data_entrega`
-  - pode criar feedback
+  - cria feedback agregado
+  - cria itens por problema
   - pode anexar fotos de conclusao
   - pode disparar notificacoes
-- A reabertura por nota `1` e regra de negocio, nao workaround de interface.
-- Alteracoes em arquivo geram historico automaticamente.
+- Nota `1` nao reabre pedido. Reabertura depende do campo/botao `reabrir_pedido`.
+- Encaminhamento Educacao -> Obras deve terminar com status atual `Em Aberto` no setor Obras e historico intermediario `Encaminhado ao Setor`.
+- `Pedido Adicional` nao passa pelo tramite completo e deve ficar vinculado ao pedido principal por `pedido_principal_id`.
+- Tipos e opcoes inativas nao aparecem em novos pedidos, mas nao podem ser removidos dos historicos.
 
 ## Impacto de mudancas
 
-- Renomear status ou setor sem revisar services, observer, seeders e filtros pode quebrar o fluxo.
-- Alterar protocolo pode afetar ordenacao, identificacao humana e relatios.
-- Mexer em `PedidoArquivo` altera rastreabilidade de historico.
-- Mexer em `avaliarPedido()` altera fechamento, reabertura e qualidade dos dados de feedback.
+- Renomear status ou setor sem revisar services, observer, seeders, filtros e docs pode quebrar o fluxo.
+- Alterar protocolo afeta ordenacao, identificacao humana, relatorios e vinculo de adicionais.
+- Mexer em `avaliarPedido()` altera fechamento, reabertura, fotos e qualidade dos dados de feedback.
+- Mexer em escopo por setor precisa considerar `roles.setor_id`, `Listar Todos os Pedidos` e fallback por escola.
 
 ## Pontos de atencao
 
 - O sistema mistura regra de dominio com comportamento de Filament.
-- Policies de `Pedido` sao amplas; o filtro real por escola/perfil depende tambem do service.
-- A falta de testes automatizados aumenta o risco de regressao silenciosa.
+- Policies cobrem capacidade ampla; o filtro real por escola/setor depende do `PedidoService`.
+- Relatorios e PDFs precisam ser atualizados junto com qualquer novo campo operacional.
+- Testes focados devem cobrir criacao, escopo, encaminhamento, empresa, adicionais e feedback por problema.
 
 ## Quando consultar
 
-- Antes de mexer em qualquer status
-- Antes de alterar notificacoes, feedback ou historico
-- Antes de refatorar `PedidoService` ou observer
+- Antes de mexer em qualquer status.
+- Antes de alterar notificacoes, feedback, relatorios ou historico.
+- Antes de refatorar `PedidoService`, observer ou forms/actions do Filament.

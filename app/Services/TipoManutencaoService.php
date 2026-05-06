@@ -11,13 +11,16 @@ use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Schema;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\Action;
+use Filament\Tables\Filters\TernaryFilter;
 
 
 class TipoManutencaoService
@@ -50,6 +53,26 @@ class TipoManutencaoService
                             Textarea::make('descricao')
                                 ->label('Descrição')
                                 ->columnSpanFull(),
+
+                            Toggle::make('ativo')
+                                ->label('Ativo para novos pedidos')
+                                ->default(true),
+
+                            Repeater::make('opcoes_data')
+                                ->label('Palavras-chave e frases prontas')
+                                ->helperText('Estas opcoes orientam a descricao do problema no pedido.')
+                                ->schema([
+                                    TextInput::make('texto')
+                                        ->label('Frase')
+                                        ->required()
+                                        ->maxLength(255),
+                                    Toggle::make('ativo')
+                                        ->label('Ativa')
+                                        ->default(true),
+                                ])
+                                ->defaultItems(1)
+                                ->columns(2)
+                                ->columnSpanFull(),
                         ]),
                 ]),
         ];
@@ -64,7 +87,15 @@ class TipoManutencaoService
         return $table
             ->paginated([5, 10, 25, 50, 100])
             ->defaultPaginationPageOption(5)
+            ->modifyQueryUsing(fn ($query) => $query->withCount('opcoes'))
             ->columns($this->colunasTabela())
+            ->filters([
+                TernaryFilter::make('ativo')
+                    ->label('Ativo para novos pedidos')
+                    ->placeholder('Todos')
+                    ->trueLabel('Ativos')
+                    ->falseLabel('Inativos'),
+            ])
             ->recordActions($this->acoesTabela($user))
             ->toolbarActions($this->acoesEmMassa($user))
             ->defaultSort('updated_at', 'desc')
@@ -83,6 +114,11 @@ class TipoManutencaoService
                 ->label('Descrição')
                 ->limit(50)
                 ->toggleable(),
+
+            TextColumn::make('opcoes_count')
+                ->label('Opcoes')
+                ->badge()
+                ->sortable(),
 
             IconColumn::make('ativo')
                 ->label('Ativo')
@@ -127,11 +163,24 @@ class TipoManutencaoService
                     return [
                         'nome' => $record->nome,
                         'descricao' => $record->descricao,
+                        'ativo' => $record->ativo,
+                        'opcoes_data' => $record->opcoes()
+                            ->orderBy('texto')
+                            ->get()
+                            ->map(fn ($opcao) => [
+                                'texto' => $opcao->texto,
+                                'ativo' => (bool) $opcao->ativo,
+                            ])
+                            ->values()
+                            ->all(),
                     ];
                 })
                 ->using(function (TipoManutencao $record, array $data): TipoManutencao {
 
-                    $camposVerificar = ['nome', 'descricao'];
+                    $opcoes = $data['opcoes_data'] ?? [];
+                    unset($data['opcoes_data']);
+
+                    $camposVerificar = ['nome', 'descricao', 'ativo'];
 
                     $alterou = false;
 
@@ -145,16 +194,40 @@ class TipoManutencaoService
                         }
                     }
 
+                    $opcoesAtuais = $record->opcoes()
+                        ->orderBy('texto')
+                        ->get(['texto', 'ativo'])
+                        ->map(fn ($opcao) => ['texto' => $opcao->texto, 'ativo' => (bool) $opcao->ativo])
+                        ->values()
+                        ->all();
+
+                    $novasOpcoes = collect($opcoes)
+                        ->filter(fn ($opcao) => filled($opcao['texto'] ?? null))
+                        ->map(fn ($opcao) => [
+                            'texto' => $opcao['texto'],
+                            'ativo' => (bool) ($opcao['ativo'] ?? true),
+                        ])
+                        ->sortBy('texto')
+                        ->values()
+                        ->all();
+
+                    if ($opcoesAtuais !== $novasOpcoes) {
+                        $alterou = true;
+                    }
+
                     if ($alterou) {
 
                         $record->update(['ativo' => false]);
 
-                        return TipoManutencao::create([
+                        $novo = TipoManutencao::create([
                             ...$data,
-                            'ativo' => true,
                             'registro_anterior_id' => $record->id,
                             'alterado_por' => Auth::user()?->name,
                         ]);
+
+                        $this->salvarOpcoes($novo, $novasOpcoes);
+
+                        return $novo;
                     }
 
                     return $record;
@@ -174,5 +247,20 @@ class TipoManutencaoService
         return [
             DeleteBulkAction::make(),
         ];
+    }
+
+    public function salvarOpcoes(TipoManutencao $tipoManutencao, array $opcoes): void
+    {
+        foreach ($opcoes as $opcao) {
+            if (blank($opcao['texto'] ?? null)) {
+                continue;
+            }
+
+            $tipoManutencao->opcoes()->create([
+                'texto' => $opcao['texto'],
+                'ativo' => (bool) ($opcao['ativo'] ?? true),
+                'alterado_por' => Auth::user()?->name,
+            ]);
+        }
     }
 }

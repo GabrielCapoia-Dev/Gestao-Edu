@@ -233,7 +233,7 @@
             <div class="card-value card-value-green">{{ $metricas->concluidos }}</div>
         </div>
         <div class="card card-blue">
-            <div class="card-label">Em Andamento</div>
+            <div class="card-label">Abertos/Ativos</div>
             <div class="card-value card-value-blue">{{ $metricas->abertos }}</div>
         </div>
         <div class="card card-red">
@@ -448,15 +448,16 @@
         <table class="listing-table">
             <thead>
                 <tr>
-                    <th style="width: 10%;">Protocolo</th>
-                    <th style="width: 20%;">Escola</th>
-                    <th style="width: 13%;">Tipo</th>
-                    <th style="width: 11%;">Status</th>
-                    <th style="width: 9%;">Prioridade</th>
+                    <th style="width: 9%;">Protocolo</th>
+                    <th style="width: 16%;">Escola</th>
+                    <th style="width: 11%;">Tipo</th>
+                    <th style="width: 10%;">Status</th>
+                    <th style="width: 8%;">Registro</th>
+                    <th style="width: 8%;">Identificado</th>
                     <th style="width: 8%;">Solicitado</th>
-                    <th style="width: 8%;">Previsto</th>
                     <th style="width: 8%;">Concluido</th>
-                    <th style="width: 13%;">Empresa</th>
+                    <th style="width: 12%;">Problemas</th>
+                    <th style="width: 10%;">Empresa</th>
                 </tr>
             </thead>
             <tbody>
@@ -475,7 +476,14 @@
                         }
                     @endphp
                     <tr>
-                        <td><strong>{{ $pedido->numero_protocolo }}</strong></td>
+                        <td>
+                            <strong>{{ $pedido->numero_protocolo }}</strong>
+                            @if($pedido->pedido_principal_protocolo)
+                                <br><span class="text-gray">Origem: {{ $pedido->pedido_principal_protocolo }}</span>
+                            @elseif((int) ($pedido->adicionais_count ?? 0) > 0)
+                                <br><span class="text-gray">{{ $pedido->adicionais_count }} adicional(is)</span>
+                            @endif
+                        </td>
                         <td>{{ $pedido->escola_nome ?? '-' }}</td>
                         <td>{{ $pedido->tipo_manutencao_nome ?? '-' }}</td>
                         <td>
@@ -483,17 +491,17 @@
                                 {{ $pedido->status_nome ?? '-' }}
                             </span>
                         </td>
-                        <td>
-                            <span class="badge" style="background: {{ $prioridadeCor }};">
-                                {{ $pedido->nivel_prioridade ?? 'Indet.' }}
-                            </span>
-                        </td>
+                        <td>{{ $pedido->is_pedido_adicional ? 'Adicional' : 'Principal' }}</td>
+                        <td>{{ $pedido->data_identificacao_problema ? \Carbon\Carbon::parse($pedido->data_identificacao_problema)->format('d/m/Y') : '-' }}</td>
                         <td>{{ $pedido->data_solicitacao ? \Carbon\Carbon::parse($pedido->data_solicitacao)->format('d/m/Y') : '-' }}</td>
-                        <td class="{{ $prazoCls }}">
-                            {{ $pedido->data_prevista ? \Carbon\Carbon::parse($pedido->data_prevista)->format('d/m/Y') : '-' }}
-                        </td>
                         <td class="{{ $pedido->data_entrega ? 'text-ok' : 'text-gray' }}">
                             {{ $pedido->data_entrega ? \Carbon\Carbon::parse($pedido->data_entrega)->format('d/m/Y') : '-' }}
+                        </td>
+                        <td style="font-size: 8px;">
+                            {{ $pedido->problemas ?? '-' }}
+                            @if($pedido->resultados_feedback)
+                                <br><span class="text-gray">{{ $pedido->resultados_feedback }}</span>
+                            @endif
                         </td>
                         <td style="font-size: 8px;">{{ $pedido->empresa_nome ?? '-' }}</td>
                     </tr>

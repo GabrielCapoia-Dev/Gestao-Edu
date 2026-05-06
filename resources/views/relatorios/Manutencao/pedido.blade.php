@@ -111,6 +111,21 @@
 
         <tr>
             <td class="espaco-line">
+                <strong>Identificacao do Problema:</strong><br>
+                {{ $pedido->data_identificacao_problema?->format('d/m/Y') ?? 'Nao Informado' }}
+            </td>
+            <td class="espaco-line">
+                <strong>Setor Atual:</strong><br>
+                {{ $pedido->setor?->nome ?? 'Nao Informado' }}
+            </td>
+            <td class="espaco-line">
+                <strong>Empresa:</strong><br>
+                {{ $pedido->empresaContratada?->nome ?? 'Nao Informado' }}
+            </td>
+        </tr>
+
+        <tr>
+            <td class="espaco-line">
                 <strong>Escola:</strong><br>
                 {{ $escola?->nome ?? 'Nao Informado' }}
             </td>
@@ -158,6 +173,17 @@
             </td>
         </tr>
 
+        @if($pedido->problemas->isNotEmpty())
+            <tr>
+                <td class="espaco-line" colspan="3">
+                    <strong>Problemas segmentados:</strong>
+                    <div class="descricao">
+                        {{ $pedido->problemas->pluck('texto_problema')->join(' | ') }}
+                    </div>
+                </td>
+            </tr>
+        @endif
+
         @if($feedback)
             <tr>
                 <td class="espaco-line" colspan="3">
@@ -174,11 +200,55 @@
                                 {{ $feedback->descricao }}
                             </div>
                         @endif
+
+                        @if($feedback->itens->isNotEmpty())
+                            <div style="margin-top: 8px;">
+                                <strong>Avaliacao por problema:</strong><br>
+                                @foreach($feedback->itens as $item)
+                                    <div style="margin-top: 4px;">
+                                        {{ $item->problema?->texto_problema ?? 'Problema' }}:
+                                        {{ $item->valor }}/5 -
+                                        {{ $item->resultado?->label() ?? $item->resultado }}
+                                        @if($item->comentario)
+                                            <br><span style="color:#4b5563;">{{ $item->comentario }}</span>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
                     </div>
                 </td>
             </tr>
         @endif
     </table>
+
+    @if($pedido->pedidosAdicionais->isNotEmpty())
+        <div class="divider"></div>
+        <div class="section-block espaco-line">
+            <div class="section-title-inline">Pedidos Adicionais Vinculados</div>
+
+            <table style="width:100%; border-collapse: collapse; font-size: 10px;">
+                <thead>
+                    <tr>
+                        <th style="border:1px solid #d1d5db; padding:5px;">Protocolo</th>
+                        <th style="border:1px solid #d1d5db; padding:5px;">Tipo</th>
+                        <th style="border:1px solid #d1d5db; padding:5px;">Problemas</th>
+                        <th style="border:1px solid #d1d5db; padding:5px;">Descricao</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($pedido->pedidosAdicionais as $adicional)
+                        <tr>
+                            <td style="border:1px solid #e5e7eb; padding:5px;">{{ $adicional->numero_protocolo }}</td>
+                            <td style="border:1px solid #e5e7eb; padding:5px;">{{ $adicional->tipoManutencao?->nome ?? '-' }}</td>
+                            <td style="border:1px solid #e5e7eb; padding:5px;">{{ $adicional->problemas->pluck('texto_problema')->join(' | ') ?: '-' }}</td>
+                            <td style="border:1px solid #e5e7eb; padding:5px;">{{ $adicional->descricao_pedido }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
 
     @php
         $fotosProblema = $pedido->arquivos()

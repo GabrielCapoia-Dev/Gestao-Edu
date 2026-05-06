@@ -3,13 +3,11 @@
 namespace App\Filament\Admin\Resources\Pedidos\Pages;
 
 use App\Filament\Admin\Resources\Pedidos\PedidoResource;
-use Filament\Actions\DeleteAction;
-use Filament\Resources\Pages\EditRecord;
 use App\Models\TipoStatus;
 use App\Services\PedidoService;
 use Filament\Actions;
+use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Auth;
-
 
 class EditPedido extends EditRecord
 {
@@ -18,6 +16,7 @@ class EditPedido extends EditRecord
     private ?string $observacaoStatus = null;
     private ?int $statusAnteriorId = null;
     private ?int $novoStatusId = null;
+    private ?int $statusEncaminhadoId = null;
 
     protected function getHeaderActions(): array
     {
@@ -25,44 +24,86 @@ class EditPedido extends EditRecord
             Actions\Action::make('download_pdf')
                 ->label('Baixar PDF')
                 ->icon('heroicon-o-arrow-down-tray')
-                ->url(fn() => route('pedidos.pdf', $this->record))
+                ->url(fn () => route('pedidos.pdf', $this->record))
                 ->openUrlInNewTab(),
         ];
     }
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        $this->statusAnteriorId   = $this->record->tipo_status_id;
-        $this->observacaoStatus   = $data['descricao_alteracao'] ?? null;
-        $this->novoStatusId       = $data['novo_status_id'] ?? null;
+        $service = app(PedidoService::class);
+        $user = Auth::user();
 
-        unset($data['descricao_alteracao']);
-        unset($data['novo_status_id']);
+        $this->statusAnteriorId = $this->record->tipo_status_id;
+        $this->observacaoStatus = $data['descricao_alteracao'] ?? null;
+        $this->novoStatusId = $data['novo_status_id'] ?? null;
+        $this->statusEncaminhadoId = null;
 
-        $statusEmAbertoId = TipoStatus::where('nome', 'Em Aberto')->value('id');
-        $statusEmAnaliseId     = TipoStatus::where('nome', 'Em Análise')->value('id');
+        unset($data['descricao_alteracao'], $data['novo_status_id']);
 
-        // 🔵 Se usuário escolheu manualmente → usa o escolhido
+        $statusAberto = $service->statusPorNome('Em Aberto');
+        $statusAnalise = $service->statusPorNome('Em Análise');
+        $statusEncaminhado = $service->statusPorNome('Encaminhado ao Setor');
+        $statusEnviadoEmpresa = $service->statusPorNome('Enviado para Empresa');
+
+        if ($this->novoStatusId && $statusEncaminhado?->id === (int) $this->novoStatusId) {
+            $this->statusEncaminhadoId = $statusEncaminhado->id;
+            $data['tipo_status_id'] = $statusAberto?->id;
+
+            return $data;
+        }
+
+        if (
+            $this->novoStatusId
+            && $statusEnviadoEmpresa?->id === (int) $this->novoStatusId
+            && ! $service->podeEnviarParaEmpresa($user)
+        ) {
+            unset($data['empresa_contratada_id']);
+            $this->novoStatusId = null;
+        }
+
         if ($this->novoStatusId) {
             $data['tipo_status_id'] = $this->novoStatusId;
+        } elseif ($this->statusAnteriorId === $statusAberto?->id) {
+            $data['tipo_status_id'] = $statusAnalise?->id;
         }
-        // 🔵 Se NÃO escolheu e estava Em Aberto → vira Em Analise
-        elseif ($this->statusAnteriorId === $statusEmAbertoId) {
-            $data['tipo_status_id'] = $statusEmAnaliseId;
+
+        if (! $this->novoStatusId || $statusEnviadoEmpresa?->id !== (int) $this->novoStatusId) {
+            unset($data['empresa_contratada_id']);
         }
-        // 🔵 Caso contrário → mantém o status atual
 
         return $data;
     }
 
-
     protected function afterSave(): void
     {
-        $record  = $this->record->refresh();
-        $user    = Auth::user();
+        $record = $this->record->refresh();
+        $user = Auth::user();
         $service = app(PedidoService::class);
 
         $statusNovoId = $record->tipo_status_id;
+
+        if ($this->statusEncaminhadoId) {
+            $setorNome = $record->setor?->nome ?? 'setor destino';
+
+            $service->registrarHistorico(
+                $record,
+                $this->statusAnteriorId,
+                $this->statusEncaminhadoId,
+                $user,
+                $this->observacaoStatus ?: "Pedido encaminhado para {$setorNome}."
+            );
+
+            $service->registrarHistorico(
+                $record,
+                $this->statusEncaminhadoId,
+                $statusNovoId,
+                $user,
+                "Pedido recebido por {$setorNome} com status Em Aberto."
+            );
+
+            return;
+        }
 
         $service->registrarHistorico(
             $record,
@@ -74,12 +115,10 @@ class EditPedido extends EditRecord
 
         $status = TipoStatus::find($statusNovoId);
 
-        if ($status?->finaliza_pedido && !$record->data_entrega) {
+        if ($status?->finaliza_pedido && ! $record->data_entrega) {
             $record->update(['data_entrega' => now()]);
         }
     }
-
-
 
     protected function getRedirectUrl(): string
     {

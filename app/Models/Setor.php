@@ -33,8 +33,6 @@ class Setor extends Model
             if (Auth::check()) {
                 $model->alterado_por = Auth::user()->name;
             }
-
-            $model->validarFluxoPedidos();
         });
     }
 
@@ -60,11 +58,27 @@ class Setor extends Model
 
     public static function setorGeral(): ?self
     {
+        $nomesEducacao = ['Educação'];
+
+        if (function_exists('mb_convert_encoding')) {
+            $nomesEducacao[] = mb_convert_encoding('Educação', 'UTF-8', 'ISO-8859-1');
+        }
+
+        $educacao = static::query()
+            ->ativos()
+            ->whereIn('nome', array_values(array_unique($nomesEducacao)))
+            ->first();
+
+        if ($educacao) {
+            return $educacao;
+        }
+
         return static::query()
             ->ativos()
             ->recebePedidosIniciais()
             ->latest('id')
-            ->first();
+            ->first()
+            ?? static::query()->ativos()->orderBy('id')->first();
     }
 
     public function ehSetorGeral(): bool

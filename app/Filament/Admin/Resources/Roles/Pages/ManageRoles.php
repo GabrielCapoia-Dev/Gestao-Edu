@@ -35,6 +35,7 @@ class ManageRoles extends ManageRecords
                 $role = Role::create([
                     'name' => $data['name'],
                     'guard_name' => 'web',
+                    'setor_id' => $data['setor_id'] ?? null,
                 ]);
 
                 $permissoesSelecionadas = collect($data)
@@ -131,7 +132,7 @@ class ManageRoles extends ManageRecords
     public function getDesktopRoles(): Collection
     {
         $roles = Role::query()
-            ->with(['permissions' => fn ($query) => $query->orderBy('name')])
+            ->with(['setor', 'permissions' => fn ($query) => $query->orderBy('name')])
             ->orderBy('name')
             ->get();
 
@@ -226,6 +227,7 @@ class ManageRoles extends ManageRecords
             'permissions' => $permissions,
             'grouped_permissions' => $groupedPermissions,
             'permission_count' => $permissions->count(),
+            'setor' => $role->setor?->nome,
             'summary' => $permissionsByPrefix->take(3)->map(
                 fn (int $total, string $group) => "{$group}: {$total}"
             )->values(),
