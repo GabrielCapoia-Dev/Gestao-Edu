@@ -2,88 +2,89 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    private const RESPOSTAS = 'avaliacao_respostas';
+
+    private const INFORMACOES = 'avaliacao_informacoes_complementares';
+
     public function up(): void
     {
-        Schema::table('avaliacao_respostas', function (Blueprint $table): void {
-            if (! Schema::hasColumn('avaliacao_respostas', 'bloqueada')) {
+        Schema::table(self::RESPOSTAS, function (Blueprint $table): void {
+            if (! Schema::hasColumn(self::RESPOSTAS, 'bloqueada')) {
                 $table->boolean('bloqueada')->default(false)->after('respondido_em');
             }
 
-            if (! Schema::hasColumn('avaliacao_respostas', 'resposta_origem_id')) {
-                $table->foreignId('resposta_origem_id')
+            if (! Schema::hasColumn(self::RESPOSTAS, 'resposta_origem_id')) {
+                $table->unsignedBigInteger('resposta_origem_id')
                     ->nullable()
-                    ->after('bloqueada')
-                    ->constrained('avaliacao_respostas')
-                    ->nullOnDelete();
+                    ->after('bloqueada');
             }
 
-            if (! Schema::hasColumn('avaliacao_respostas', 'aluno_origem_id')) {
-                $table->foreignId('aluno_origem_id')
+            if (! Schema::hasColumn(self::RESPOSTAS, 'aluno_origem_id')) {
+                $table->unsignedBigInteger('aluno_origem_id')
                     ->nullable()
-                    ->after('resposta_origem_id')
-                    ->constrained('alunos')
-                    ->nullOnDelete();
+                    ->after('resposta_origem_id');
             }
 
-            if (! Schema::hasColumn('avaliacao_respostas', 'turma_origem_id')) {
-                $table->foreignId('turma_origem_id')
+            if (! Schema::hasColumn(self::RESPOSTAS, 'turma_origem_id')) {
+                $table->unsignedBigInteger('turma_origem_id')
                     ->nullable()
-                    ->after('aluno_origem_id')
-                    ->constrained('turmas')
-                    ->nullOnDelete();
+                    ->after('aluno_origem_id');
             }
 
-            if (! Schema::hasColumn('avaliacao_respostas', 'bloqueio_tipo')) {
+            if (! Schema::hasColumn(self::RESPOSTAS, 'bloqueio_tipo')) {
                 $table->string('bloqueio_tipo', 32)->nullable()->after('turma_origem_id');
             }
         });
 
-        if (! Schema::hasIndex('avaliacao_respostas', 'idx_avresp_bloqueio_origem')) {
-            Schema::table('avaliacao_respostas', function (Blueprint $table): void {
+        $this->ensureForeign(self::RESPOSTAS, 'resposta_origem_id', self::RESPOSTAS, 'fk_avresp_resp_orig');
+        $this->ensureForeign(self::RESPOSTAS, 'aluno_origem_id', 'alunos', 'fk_avresp_aluno_orig');
+        $this->ensureForeign(self::RESPOSTAS, 'turma_origem_id', 'turmas', 'fk_avresp_turma_orig');
+
+        if (! Schema::hasIndex(self::RESPOSTAS, 'idx_avresp_bloqueio_origem')) {
+            Schema::table(self::RESPOSTAS, function (Blueprint $table): void {
                 $table->index(['bloqueada', 'aluno_origem_id'], 'idx_avresp_bloqueio_origem');
             });
         }
 
-        Schema::table('avaliacao_informacoes_complementares', function (Blueprint $table): void {
-            if (! Schema::hasColumn('avaliacao_informacoes_complementares', 'bloqueada')) {
+        Schema::table(self::INFORMACOES, function (Blueprint $table): void {
+            if (! Schema::hasColumn(self::INFORMACOES, 'bloqueada')) {
                 $table->boolean('bloqueada')->default(false)->after('informacoes_complementares');
             }
 
-            if (! Schema::hasColumn('avaliacao_informacoes_complementares', 'informacao_origem_id')) {
-                $table->foreignId('informacao_origem_id')
+            if (! Schema::hasColumn(self::INFORMACOES, 'informacao_origem_id')) {
+                $table->unsignedBigInteger('informacao_origem_id')
                     ->nullable()
-                    ->after('bloqueada')
-                    ->constrained('avaliacao_informacoes_complementares')
-                    ->nullOnDelete();
+                    ->after('bloqueada');
             }
 
-            if (! Schema::hasColumn('avaliacao_informacoes_complementares', 'aluno_origem_id')) {
-                $table->foreignId('aluno_origem_id')
+            if (! Schema::hasColumn(self::INFORMACOES, 'aluno_origem_id')) {
+                $table->unsignedBigInteger('aluno_origem_id')
                     ->nullable()
-                    ->after('informacao_origem_id')
-                    ->constrained('alunos')
-                    ->nullOnDelete();
+                    ->after('informacao_origem_id');
             }
 
-            if (! Schema::hasColumn('avaliacao_informacoes_complementares', 'turma_origem_id')) {
-                $table->foreignId('turma_origem_id')
+            if (! Schema::hasColumn(self::INFORMACOES, 'turma_origem_id')) {
+                $table->unsignedBigInteger('turma_origem_id')
                     ->nullable()
-                    ->after('aluno_origem_id')
-                    ->constrained('turmas')
-                    ->nullOnDelete();
+                    ->after('aluno_origem_id');
             }
 
-            if (! Schema::hasColumn('avaliacao_informacoes_complementares', 'bloqueio_tipo')) {
+            if (! Schema::hasColumn(self::INFORMACOES, 'bloqueio_tipo')) {
                 $table->string('bloqueio_tipo', 32)->nullable()->after('turma_origem_id');
             }
         });
 
-        if (! Schema::hasIndex('avaliacao_informacoes_complementares', 'idx_avic_bloqueio_origem')) {
-            Schema::table('avaliacao_informacoes_complementares', function (Blueprint $table): void {
+        $this->ensureForeign(self::INFORMACOES, 'informacao_origem_id', self::INFORMACOES, 'fk_avic_info_orig');
+        $this->ensureForeign(self::INFORMACOES, 'aluno_origem_id', 'alunos', 'fk_avic_aluno_orig');
+        $this->ensureForeign(self::INFORMACOES, 'turma_origem_id', 'turmas', 'fk_avic_turma_orig');
+
+        if (! Schema::hasIndex(self::INFORMACOES, 'idx_avic_bloqueio_origem')) {
+            Schema::table(self::INFORMACOES, function (Blueprint $table): void {
                 $table->index(['bloqueada', 'aluno_origem_id'], 'idx_avic_bloqueio_origem');
             });
         }
@@ -91,44 +92,87 @@ return new class extends Migration
 
     public function down(): void
     {
-        if (Schema::hasIndex('avaliacao_respostas', 'idx_avresp_bloqueio_origem')) {
-            Schema::table('avaliacao_respostas', function (Blueprint $table): void {
+        if (Schema::hasIndex(self::RESPOSTAS, 'idx_avresp_bloqueio_origem')) {
+            Schema::table(self::RESPOSTAS, function (Blueprint $table): void {
                 $table->dropIndex('idx_avresp_bloqueio_origem');
             });
         }
 
-        Schema::table('avaliacao_respostas', function (Blueprint $table): void {
-            foreach (['turma_origem_id', 'aluno_origem_id', 'resposta_origem_id'] as $column) {
-                if (Schema::hasColumn('avaliacao_respostas', $column)) {
-                    $table->dropConstrainedForeignId($column);
-                }
-            }
+        foreach (['turma_origem_id', 'aluno_origem_id', 'resposta_origem_id'] as $column) {
+            $this->dropForeignIfExists(self::RESPOSTAS, $column);
+        }
 
-            foreach (['bloqueio_tipo', 'bloqueada'] as $column) {
-                if (Schema::hasColumn('avaliacao_respostas', $column)) {
+        Schema::table(self::RESPOSTAS, function (Blueprint $table): void {
+            foreach (['bloqueio_tipo', 'turma_origem_id', 'aluno_origem_id', 'resposta_origem_id', 'bloqueada'] as $column) {
+                if (Schema::hasColumn(self::RESPOSTAS, $column)) {
                     $table->dropColumn($column);
                 }
             }
         });
 
-        if (Schema::hasIndex('avaliacao_informacoes_complementares', 'idx_avic_bloqueio_origem')) {
-            Schema::table('avaliacao_informacoes_complementares', function (Blueprint $table): void {
+        if (Schema::hasIndex(self::INFORMACOES, 'idx_avic_bloqueio_origem')) {
+            Schema::table(self::INFORMACOES, function (Blueprint $table): void {
                 $table->dropIndex('idx_avic_bloqueio_origem');
             });
         }
 
-        Schema::table('avaliacao_informacoes_complementares', function (Blueprint $table): void {
-            foreach (['turma_origem_id', 'aluno_origem_id', 'informacao_origem_id'] as $column) {
-                if (Schema::hasColumn('avaliacao_informacoes_complementares', $column)) {
-                    $table->dropConstrainedForeignId($column);
-                }
-            }
+        foreach (['turma_origem_id', 'aluno_origem_id', 'informacao_origem_id'] as $column) {
+            $this->dropForeignIfExists(self::INFORMACOES, $column);
+        }
 
-            foreach (['bloqueio_tipo', 'bloqueada'] as $column) {
-                if (Schema::hasColumn('avaliacao_informacoes_complementares', $column)) {
+        Schema::table(self::INFORMACOES, function (Blueprint $table): void {
+            foreach (['bloqueio_tipo', 'turma_origem_id', 'aluno_origem_id', 'informacao_origem_id', 'bloqueada'] as $column) {
+                if (Schema::hasColumn(self::INFORMACOES, $column)) {
                     $table->dropColumn($column);
                 }
             }
         });
+    }
+
+    private function ensureForeign(string $table, string $column, string $referencesTable, string $constraint): void
+    {
+        if (! Schema::hasColumn($table, $column) || $this->foreignKeyExists($table, $column)) {
+            return;
+        }
+
+        Schema::table($table, function (Blueprint $table) use ($column, $referencesTable, $constraint): void {
+            $table
+                ->foreign($column, $constraint)
+                ->references('id')
+                ->on($referencesTable)
+                ->nullOnDelete();
+        });
+    }
+
+    private function dropForeignIfExists(string $table, string $column): void
+    {
+        $constraint = $this->foreignKeyName($table, $column);
+
+        if (! $constraint) {
+            return;
+        }
+
+        Schema::table($table, function (Blueprint $table) use ($constraint): void {
+            $table->dropForeign($constraint);
+        });
+    }
+
+    private function foreignKeyExists(string $table, string $column): bool
+    {
+        return filled($this->foreignKeyName($table, $column));
+    }
+
+    private function foreignKeyName(string $table, string $column): ?string
+    {
+        if (! in_array(DB::connection()->getDriverName(), ['mysql', 'mariadb'], true)) {
+            return null;
+        }
+
+        return DB::table('information_schema.KEY_COLUMN_USAGE')
+            ->where('CONSTRAINT_SCHEMA', DB::connection()->getDatabaseName())
+            ->where('TABLE_NAME', $table)
+            ->where('COLUMN_NAME', $column)
+            ->whereNotNull('REFERENCED_TABLE_NAME')
+            ->value('CONSTRAINT_NAME');
     }
 };
