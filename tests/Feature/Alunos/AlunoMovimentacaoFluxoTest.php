@@ -1,0 +1,328 @@
+<?php
+
+namespace Tests\Feature\Alunos;
+
+use App\Exceptions\MatriculaAlunoBloqueadaException;
+use App\Models\Aluno;
+use App\Models\Alternativa;
+use App\Models\Avaliacao;
+use App\Models\AvaliacaoResposta;
+use App\Models\ComponenteCurricular;
+use App\Models\Escola;
+use App\Models\Pauta;
+use App\Models\PeriodoAvaliacao;
+use App\Models\Serie;
+use App\Models\TipoAvaliacao;
+use App\Models\Turma;
+use App\Models\User;
+use App\Notifications\SistemaNotification;
+use App\Services\AlunoMovimentacaoService;
+use App\Services\AlunoTransferenciaParecerService;
+use App\Services\Avaliacoes\AvaliacaoDocumentoExportService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification as NotificationFacade;
+use Spatie\Permission\Models\Permission;
+use Tests\TestCase;
+
+class AlunoMovimentacaoFluxoTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_bloqueia_matricula_com_cgm_ativo_e_notifica_responsaveis_com_link_por_permissao(): void
+    {
+        NotificationFacade::fake();
+
+        foreach ([
+            'Notificar Impedimento de Matricula por Falta de Transferencia',
+            'Gerenciar Impedimento de Matricula por Falta de Transferencia',
+            'Realizar Transferencia de Aluno',
+        ] as $permission) {
+            Permission::findOrCreate($permission);
+        }
+
+        $escolaOrigem = $this->criarEscola('Escola Origem');
+        $escolaDestino = $this->criarEscola('Escola Destino');
+        $turmaOrigem = $this->criarTurma($escolaOrigem, 'A');
+        $turmaDestino = $this->criarTurma($escolaDestino, 'B');
+
+        $alunoAtivo = Aluno::query()->create([
+            'nome' => 'Aluno Ativo',
+            'cgm' => 'CGM-ATIVO',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turmaOrigem->id,
+        ]);
+
+        $usuarioComLink = User::factory()->create([
+            'id_escola' => $escolaOrigem->id,
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuarioComLink->givePermissionTo([
+            'Notificar Impedimento de Matricula por Falta de Transferencia',
+            'Realizar Transferencia de Aluno',
+        ]);
+
+        $usuarioSemLink = User::factory()->create([
+            'id_escola' => $escolaOrigem->id,
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuarioSemLink->givePermissionTo('Notificar Impedimento de Matricula por Falta de Transferencia');
+
+        $gestor = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $gestor->givePermissionTo('Gerenciar Impedimento de Matricula por Falta de Transferencia');
+
+        try {
+            app(AlunoMovimentacaoService::class)->criarMatricula([
+                'nome' => 'Aluno Duplicado',
+                'cgm' => 'CGM-ATIVO',
+                'data_nascimento' => '2015-01-01',
+                'id_turma' => $turmaDestino->id,
+            ]);
+
+            $this->fail('A matricula duplicada deveria ser bloqueada.');
+        } catch (MatriculaAlunoBloqueadaException $exception) {
+            $this->assertStringContainsString('Aluno Ativo', $exception->getMessage());
+            $this->assertStringContainsString('Escola Origem', $exception->getMessage());
+        }
+
+        $this->assertDatabaseCount('alunos', 1);
+
+        NotificationFacade::assertSentTo(
+            $usuarioComLink,
+            SistemaNotification::class,
+            fn (SistemaNotification $notification): bool => $notification->url === route('filament.admin.pages.parecer-transferencia-aluno', ['aluno' => $alunoAtivo->id])
+        );
+
+        NotificationFacade::assertSentTo(
+            $usuarioSemLink,
+            SistemaNotification::class,
+            fn (SistemaNotification $notification): bool => $notification->url === null
+        );
+
+        NotificationFacade::assertSentTo($gestor, SistemaNotification::class);
+    }
+
+    public function test_matricula_novo_contexto_apos_transferencia_copia_respostas_bloqueadas(): void
+    {
+        [$escola, $serie, $turmaOrigem, $turmaDestino, $avaliacao, $pauta, $alternativa] = $this->criarCenarioAvaliacaoDuasTurmas();
+
+        $alunoTransferido = Aluno::query()->create([
+            'nome' => 'Aluno Historico',
+            'cgm' => 'CGM-HIST',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turmaOrigem->id,
+            'status' => Aluno::STATUS_TRANSFERIDO,
+        ]);
+
+        AvaliacaoResposta::query()->create([
+            'avaliacao_id' => $avaliacao->id,
+            'pauta_id' => $pauta->id,
+            'turma_id' => $turmaOrigem->id,
+            'aluno_id' => $alunoTransferido->id,
+            'alternativa_id' => $alternativa->id,
+            'observacao' => 'Resposta anterior',
+            'respondido_em' => now(),
+        ]);
+
+        $novoAluno = app(AlunoMovimentacaoService::class)->criarMatricula([
+            'nome' => 'Aluno Historico',
+            'cgm' => 'CGM-HIST',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turmaDestino->id,
+        ]);
+
+        $this->assertSame(Aluno::STATUS_MATRICULADO, $novoAluno->status);
+        $this->assertSame($alunoTransferido->id, $novoAluno->aluno_origem_id);
+
+        $this->assertDatabaseHas('avaliacao_respostas', [
+            'avaliacao_id' => $avaliacao->id,
+            'pauta_id' => $pauta->id,
+            'turma_id' => $turmaDestino->id,
+            'aluno_id' => $novoAluno->id,
+            'alternativa_id' => $alternativa->id,
+            'observacao' => 'Resposta anterior',
+            'bloqueada' => true,
+            'aluno_origem_id' => $alunoTransferido->id,
+            'turma_origem_id' => $turmaOrigem->id,
+            'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_TRANSFERENCIA,
+        ]);
+
+        $this->assertDatabaseHas('alunos', [
+            'id' => $alunoTransferido->id,
+            'cgm_matricula_ativa' => null,
+        ]);
+    }
+
+    public function test_remanejamento_marca_origem_e_cria_nova_matricula_com_respostas_bloqueadas(): void
+    {
+        [$escola, $serie, $turmaOrigem, $turmaDestino, $avaliacao, $pauta, $alternativa] = $this->criarCenarioAvaliacaoDuasTurmas();
+
+        $aluno = Aluno::query()->create([
+            'nome' => 'Aluno Remanejado',
+            'cgm' => 'CGM-REM',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turmaOrigem->id,
+        ]);
+
+        AvaliacaoResposta::query()->create([
+            'avaliacao_id' => $avaliacao->id,
+            'pauta_id' => $pauta->id,
+            'turma_id' => $turmaOrigem->id,
+            'aluno_id' => $aluno->id,
+            'alternativa_id' => $alternativa->id,
+            'respondido_em' => now(),
+        ]);
+
+        $novoAluno = app(AlunoMovimentacaoService::class)->remanejar($aluno, $turmaDestino->id);
+
+        $this->assertDatabaseHas('alunos', [
+            'id' => $aluno->id,
+            'status' => Aluno::STATUS_REMANEJADO,
+            'cgm_matricula_ativa' => null,
+        ]);
+
+        $this->assertDatabaseHas('alunos', [
+            'id' => $novoAluno->id,
+            'status' => Aluno::STATUS_MATRICULADO,
+            'cgm_matricula_ativa' => 'CGM-REM',
+            'aluno_origem_id' => $aluno->id,
+            'turma_origem_id' => $turmaOrigem->id,
+            'movimentacao_origem' => AlunoMovimentacaoService::MOVIMENTACAO_REMANEJAMENTO,
+        ]);
+
+        $this->assertDatabaseHas('avaliacao_respostas', [
+            'avaliacao_id' => $avaliacao->id,
+            'pauta_id' => $pauta->id,
+            'turma_id' => $turmaDestino->id,
+            'aluno_id' => $novoAluno->id,
+            'bloqueada' => true,
+            'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_REMANEJAMENTO,
+        ]);
+    }
+
+    public function test_gerar_parecer_de_transferencia_exporta_zip_e_marca_aluno_como_transferido(): void
+    {
+        Permission::findOrCreate('Realizar Transferencia de Aluno');
+
+        [$escola, $serie, $turmaOrigem, $turmaDestino, $avaliacao, $pauta, $alternativa] = $this->criarCenarioAvaliacaoDuasTurmas();
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo('Realizar Transferencia de Aluno');
+
+        $aluno = Aluno::query()->create([
+            'nome' => 'Aluno Transferencia',
+            'cgm' => 'CGM-TRF',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turmaOrigem->id,
+        ]);
+
+        AvaliacaoResposta::query()->create([
+            'avaliacao_id' => $avaliacao->id,
+            'pauta_id' => $pauta->id,
+            'turma_id' => $turmaOrigem->id,
+            'aluno_id' => $aluno->id,
+            'alternativa_id' => $alternativa->id,
+            'respondido_em' => now(),
+        ]);
+
+        $this->mock(AvaliacaoDocumentoExportService::class, function ($mock): void {
+            $mock
+                ->shouldReceive('gerarPdfAluno')
+                ->once()
+                ->andReturn([
+                    'filename' => 'parecer-transferencia-avaliacao.pdf',
+                    'contents' => '%PDF-1.4 teste',
+                ]);
+        });
+
+        $response = app(AlunoTransferenciaParecerService::class)->exportarETransferir($aluno, $usuario);
+        $zipPath = $response->getFile()->getPathname();
+        $zip = new \ZipArchive();
+
+        $this->assertSame('application/zip', $response->headers->get('content-type'));
+        $this->assertTrue($zip->open($zipPath) === true);
+        $this->assertSame(1, $zip->numFiles);
+        $this->assertSame('parecer-transferencia-avaliacao.pdf', $zip->getNameIndex(0));
+        $zip->close();
+        @unlink($zipPath);
+
+        $this->assertDatabaseHas('alunos', [
+            'id' => $aluno->id,
+            'status' => Aluno::STATUS_TRANSFERIDO,
+            'cgm_matricula_ativa' => null,
+        ]);
+    }
+
+    private function criarCenarioAvaliacaoDuasTurmas(): array
+    {
+        $escola = $this->criarEscola('Escola Avaliacao');
+        $serie = Serie::query()->create(['codigo' => 'SER'.uniqid(), 'nome' => '1o Ano '.uniqid()]);
+        $turmaOrigem = $this->criarTurma($escola, 'A', $serie);
+        $turmaDestino = $this->criarTurma($escola, 'B', $serie);
+
+        $tipo = TipoAvaliacao::query()->create(['nome' => 'Parecer '.uniqid(), 'status' => true]);
+        $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Periodo '.uniqid(), 'status' => true]);
+        $componente = ComponenteCurricular::query()->create(['codigo' => 'COMP'.uniqid(), 'nome' => 'Componente']);
+        $alternativa = Alternativa::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'nome' => 'Atende',
+            'tem_observacao' => false,
+            'vai_no_documento' => true,
+            'status' => true,
+        ]);
+        $pauta = Pauta::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'texto' => 'Pauta de teste',
+            'serie_id' => $serie->id,
+            'componente_curricular_id' => $componente->id,
+            'status' => true,
+        ]);
+        $pauta->alternativas()->attach($alternativa->id);
+
+        $avaliacao = Avaliacao::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'periodo_avaliacao_id' => $periodo->id,
+            'nome' => 'Avaliacao '.uniqid(),
+            'data_inicio' => now()->subDay()->toDateString(),
+            'data_fim' => now()->addDays(10)->toDateString(),
+            'status' => Avaliacao::STATUS_ATIVA,
+        ]);
+        $avaliacao->pautas()->attach($pauta->id);
+        $avaliacao->turmas()->attach([$turmaOrigem->id, $turmaDestino->id]);
+
+        return [$escola, $serie, $turmaOrigem, $turmaDestino, $avaliacao, $pauta, $alternativa];
+    }
+
+    private function criarEscola(string $nome): Escola
+    {
+        return Escola::query()->create([
+            'codigo' => strtoupper(substr(md5($nome.uniqid()), 0, 5)),
+            'nome' => $nome,
+            'email' => strtolower(str_replace(' ', '.', $nome)).'@teste.local',
+            'telefone' => '(44) 99999-9999',
+        ]);
+    }
+
+    private function criarTurma(Escola $escola, string $sufixo, ?Serie $serie = null): Turma
+    {
+        $serie ??= Serie::query()->create([
+            'codigo' => 'SER'.$sufixo.uniqid(),
+            'nome' => 'Serie '.$sufixo,
+        ]);
+
+        return Turma::query()->create([
+            'codigo' => 'TUR'.$sufixo.uniqid(),
+            'nome' => $sufixo,
+            'turno' => 'manha',
+            'id_serie' => $serie->id,
+            'id_escola' => $escola->id,
+        ]);
+    }
+}

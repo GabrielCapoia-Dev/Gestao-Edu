@@ -6,12 +6,15 @@ use App\Models\Aluno;
 use App\Models\Escola;
 use App\Models\Turma;
 use App\Models\User;
+use Filament\Actions\Action;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
@@ -39,8 +42,7 @@ class AlunoService
                     TextInput::make('cgm')
                         ->label('CGM')
                         ->required()
-                        ->maxLength(255)
-                        ->unique(ignoreRecord: true),
+                        ->maxLength(255),
 
                     DatePicker::make('data_nascimento')
                         ->label('Data de Nascimento')
@@ -54,6 +56,13 @@ class AlunoService
                         ->searchable()
                         ->preload()
                         ->required(),
+
+                    Select::make('status')
+                        ->label('Status')
+                        ->options(Aluno::statusOptions())
+                        ->disabled()
+                        ->dehydrated(false)
+                        ->visible(fn (?string $operation = null): bool => $operation !== 'create'),
                 ])
                 ->columns(2),
         ]);
@@ -95,6 +104,20 @@ class AlunoService
                 ->searchable()
                 ->sortable(),
 
+            TextColumn::make('status')
+                ->label('Status')
+                ->formatStateUsing(fn (?string $state): string => Aluno::statusOptions()[$state] ?? ucfirst((string) $state))
+                ->badge()
+                ->color(fn (?string $state): string => match ($state) {
+                    Aluno::STATUS_MATRICULADO => 'success',
+                    Aluno::STATUS_REMANEJADO => 'warning',
+                    Aluno::STATUS_TRANSFERIDO => 'info',
+                    Aluno::STATUS_APROVADO => 'success',
+                    Aluno::STATUS_RETIDO => 'danger',
+                    default => 'gray',
+                })
+                ->sortable(),
+
             TextColumn::make('data_nascimento')
                 ->label('Data de Nascimento')
                 ->date('d/m/Y')
@@ -126,6 +149,10 @@ class AlunoService
                 ->searchable()
                 ->preload(),
 
+            SelectFilter::make('status')
+                ->label('Status')
+                ->options(Aluno::statusOptions()),
+
             SelectFilter::make('id_escola')
                 ->label('Escola')
                 ->options($this->opcoesDeEscolas($user))
@@ -145,11 +172,59 @@ class AlunoService
     private function acoesTabela(?User $user): array
     {
         return [
+            Action::make('remanejar')
+                ->label('Remanejar')
+                ->icon('heroicon-o-arrows-right-left')
+                ->color('warning')
+                ->visible(fn (Aluno $record): bool => $record->estaMatriculado()
+                    && ($user?->hasPermissionLike('realizar remanejamento de aluno') ?? false))
+                ->modalHeading(fn (Aluno $record): string => 'Remanejar '.$record->nome)
+                ->modalSubmitActionLabel('Remanejar')
+                ->schema(fn (Aluno $record): array => [
+                    Select::make('turma_destino_id')
+                        ->label('Nova turma')
+                        ->options(fn () => $this->opcoesDeTurmasParaRemanejamento($record, $user))
+                        ->searchable()
+                        ->preload()
+                        ->required(),
+                    Textarea::make('motivo')
+                        ->label('Motivo')
+                        ->maxLength(1000)
+                        ->rows(3),
+                ])
+                ->action(function (Aluno $record, array $data): void {
+                    app(AlunoMovimentacaoService::class)->remanejar(
+                        $record,
+                        (int) $data['turma_destino_id'],
+                        Auth::user(),
+                        $data['motivo'] ?? null
+                    );
+
+                    Notification::make()
+                        ->title('Aluno remanejado com sucesso.')
+                        ->success()
+                        ->send();
+                }),
+
+            Action::make('parecer_transferencia')
+                ->label('Parecer de Transferencia')
+                ->icon('heroicon-o-document-arrow-down')
+                ->color('info')
+                ->visible(fn (Aluno $record): bool => $record->estaMatriculado()
+                    && (($user?->hasPermissionLike('realizar transferencia de aluno') ?? false)
+                        || ($user?->hasPermissionLike('realizar tranferencia de aluno') ?? false)
+                        || ($user?->hasPermissionLike('gerar parecer de transferencia') ?? false)))
+                ->url(fn (Aluno $record): string => route('filament.admin.pages.parecer-transferencia-aluno', [
+                    'aluno' => $record->id,
+                ])),
+
             EditAction::make()
-                ->visible(fn() => $this->userService->podeEditarAlunos($user)),
+                ->visible(fn(Aluno $record) => $record->estaMatriculado()
+                    && $this->userService->podeEditarAlunos($user)),
 
             DeleteAction::make()
-                ->visible(fn() => $this->userService->podeExcluirAlunos($user)),
+                ->visible(fn(Aluno $record) => $record->estaMatriculado()
+                    && $this->userService->podeExcluirAlunos($user)),
         ];
     }
 
@@ -157,6 +232,7 @@ class AlunoService
     {
         return [
             DeleteBulkAction::make()
+                ->authorizeIndividualRecords('delete')
                 ->visible(fn() => $user?->hasPermissionTo('Excluir Alunos em Massa') ?? false),
         ];
     }
@@ -198,5 +274,28 @@ class AlunoService
         }
 
         return $query->pluck('nome', 'id')->toArray();
+    }
+
+    private function opcoesDeTurmasParaRemanejamento(Aluno $aluno, ?User $user): array
+    {
+        $aluno->loadMissing('turma');
+
+        $query = Turma::query()
+            ->with(['serie:id,nome', 'escola:id,nome'])
+            ->where('id_escola', (int) $aluno->turma?->id_escola)
+            ->whereKeyNot((int) $aluno->id_turma)
+            ->orderBy('nome');
+
+        $this->userService->aplicarFiltroTurmasDoUsuario($query, $user);
+
+        return $query->get()
+            ->mapWithKeys(function (Turma $turma) {
+                return [$turma->id => trim(collect([
+                    $turma->serie?->nome,
+                    $turma->nome,
+                    $turma->turno,
+                ])->filter()->join(' - '))];
+            })
+            ->toArray();
     }
 }

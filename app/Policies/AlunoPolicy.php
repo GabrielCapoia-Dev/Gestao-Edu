@@ -26,12 +26,14 @@ class AlunoPolicy
     public function update(User $user, Aluno $aluno): bool
     {
         return $user->hasPermissionTo('Editar Alunos')
+            && $aluno->estaMatriculado()
             && $this->pertenceAoEscopoDoUsuario($user, $aluno);
     }
 
     public function delete(User $user, Aluno $aluno): bool
     {
         return $user->hasPermissionTo('Excluir Alunos')
+            && $aluno->estaMatriculado()
             && $this->pertenceAoEscopoDoUsuario($user, $aluno);
     }
 
@@ -59,4 +61,3 @@ class AlunoPolicy
         return true;
     }
 }
-

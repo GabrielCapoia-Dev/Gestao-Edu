@@ -73,6 +73,7 @@ class AlunoResource extends Resource
         /** @var Aluno $record */
         return [
             'CGM' => $record->cgm,
+            'Status' => $record->statusLabel(),
             'Turma' => $record->turma?->nome,
             'Série' => $record->turma?->serie?->nome,
         ];
@@ -97,4 +98,3 @@ class AlunoResource extends Resource
         ];
     }
 }
-

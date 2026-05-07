@@ -57,6 +57,8 @@ class AvaliacoesProfessor extends Page
 
     public array $informacoesComplementares = [];
 
+    public array $informacoesComplementaresBloqueadas = [];
+
     public array $alternativasPorPauta = [];
 
     public array $avaliacaoEmMassa = [];
@@ -239,6 +241,7 @@ class AvaliacoesProfessor extends Page
     {
         $this->respostas = [];
         $this->informacoesComplementares = [];
+        $this->informacoesComplementaresBloqueadas = [];
         $this->alternativasPorPauta = [];
         $this->avaliacaoEmMassa = [];
         $this->avaliacaoEmMassaGlobal = null;
@@ -327,6 +330,10 @@ class AvaliacoesProfessor extends Page
             $alunoId = $partes[2] ?? null;
 
             if (is_numeric($componenteId) && is_numeric($alunoId)) {
+                if ($this->informacaoComplementarEstaBloqueada((int) $componenteId, (int) $alunoId)) {
+                    return;
+                }
+
                 $this->autoSalvarInformacaoComplementar((int) $componenteId, (int) $alunoId);
             }
 
@@ -350,6 +357,10 @@ class AvaliacoesProfessor extends Page
         }
 
         if (! in_array($campo, ['alternativa_id', 'observacao'], true)) {
+            return;
+        }
+
+        if ($this->respostaEstaBloqueada((int) $pautaId, (int) $alunoId)) {
             return;
         }
 
@@ -386,6 +397,10 @@ class AvaliacoesProfessor extends Page
         $alunos = $this->alunosDaTurma($turmaId);
 
         foreach ($alunos as $aluno) {
+            if ($this->respostaEstaBloqueada((int) $pauta->id, (int) $aluno->id)) {
+                continue;
+            }
+
             $this->respostas[$pautaId][$aluno->id]['alternativa_id'] = $alternativaId;
         }
 
@@ -395,6 +410,10 @@ class AvaliacoesProfessor extends Page
         $agora = now();
 
         foreach ($alunos as $aluno) {
+            if ($this->respostaEstaBloqueada((int) $pauta->id, (int) $aluno->id)) {
+                continue;
+            }
+
             $observacaoInformada = $this->limitarTextoCampo($this->respostas[$pautaId][$aluno->id]['observacao'] ?? '');
             $temObservacao = (bool) ($alternativa['tem_observacao'] ?? false);
 
@@ -516,6 +535,12 @@ class AvaliacoesProfessor extends Page
                 foreach ($this->alunosDaTurma($turmaId) as $aluno) {
                     $alunoId = (int) $aluno->id;
 
+                    if ($this->respostaEstaBloqueada((int) $pauta->id, $alunoId)) {
+                        $totalIgnoradoPorPreenchimento++;
+
+                        continue;
+                    }
+
                     if ($this->respostaTemObservacao((int) $pauta->id, $alunoId)) {
                         $totalIgnoradoPorPreenchimento++;
 
@@ -556,6 +581,16 @@ class AvaliacoesProfessor extends Page
         }
 
         if ($payload === [] && $pendencias === []) {
+            if ($totalIgnoradoPorPreenchimento > 0) {
+                Notification::make()
+                    ->title('Nenhuma resposta alterada.')
+                    ->body('Respostas bloqueadas ou ja preenchidas foram mantidas.')
+                    ->warning()
+                    ->send();
+
+                return;
+            }
+
             Notification::make()
                 ->title('A alternativa selecionada nao esta disponivel nas pautas desta serie.')
                 ->warning()
@@ -640,6 +675,14 @@ class AvaliacoesProfessor extends Page
 
             foreach ($this->pautasDaTurma($turmaId) as $pauta) {
                 foreach ($this->alunosDaTurma($turmaId) as $aluno) {
+                    if ($this->respostaEstaBloqueada((int) $pauta->id, (int) $aluno->id)) {
+                        if (! $this->respostaEstaCompleta($pauta, (int) $aluno->id)) {
+                            $faltandoResposta++;
+                        }
+
+                        continue;
+                    }
+
                     $alternativaId = (int) ($this->respostas[$pauta->id][$aluno->id]['alternativa_id'] ?? 0);
                     $alternativa = $this->alternativaDaPauta((int) $pauta->id, $alternativaId);
 
@@ -866,8 +909,9 @@ class AvaliacoesProfessor extends Page
 
         return Aluno::query()
             ->whereIn('id_turma', $turmasIds)
+            ->where('status', Aluno::STATUS_MATRICULADO)
             ->orderBy('nome')
-            ->get(['id', 'nome', 'cgm', 'id_turma'])
+            ->get(['id', 'nome', 'cgm', 'id_turma', 'status'])
             ->groupBy('id_turma')
             ->map(fn (Collection $alunos): Collection => $alunos->values());
     }
@@ -1137,6 +1181,7 @@ class AvaliacoesProfessor extends Page
                     $respostas[$pauta->id][$aluno->id] = [
                         'alternativa_id' => $resposta?->alternativa_id,
                         'observacao' => $resposta?->observacao,
+                        'bloqueada' => (bool) ($resposta?->bloqueada ?? false),
                     ];
                 }
             }
@@ -1248,21 +1293,25 @@ class AvaliacoesProfessor extends Page
             ->where('avaliacao_id', (int) $this->avaliacao)
             ->whereIn('turma_id', $turmasIds)
             ->whereIn('aluno_id', $alunosIds)
-            ->get(['aluno_id', 'componente_curricular_id', 'informacoes_complementares'])
+            ->get(['aluno_id', 'componente_curricular_id', 'informacoes_complementares', 'bloqueada'])
             ->keyBy(fn ($registro) => ((int) $registro->componente_curricular_id).'-'.((int) $registro->aluno_id));
 
         $informacoes = [];
+        $bloqueadas = [];
 
         foreach ($this->pautasDisponiveis as $pauta) {
             $componenteId = (int) ($pauta->componente_curricular_id ?? 0);
 
             foreach ($alunosIds as $alunoId) {
                 $chave = $componenteId.'-'.$alunoId;
-                $informacoes[$componenteId][$alunoId] = (string) ($registros->get($chave)?->informacoes_complementares ?? '');
+                $registro = $registros->get($chave);
+                $informacoes[$componenteId][$alunoId] = (string) ($registro?->informacoes_complementares ?? '');
+                $bloqueadas[$componenteId][$alunoId] = (bool) ($registro?->bloqueada ?? false);
             }
         }
 
         $this->informacoesComplementares = $informacoes;
+        $this->informacoesComplementaresBloqueadas = $bloqueadas;
     }
 
     private function professorIdDaTurma(int $turmaId): ?int
@@ -1285,6 +1334,10 @@ class AvaliacoesProfessor extends Page
     private function autoSalvarResposta(int $pautaId, int $alunoId): void
     {
         $this->abortSeNaoPuderResponder();
+
+        if ($this->respostaEstaBloqueada($pautaId, $alunoId)) {
+            return;
+        }
 
         if (! $this->avaliacao || ! $this->serie) {
             return;
@@ -1354,6 +1407,10 @@ class AvaliacoesProfessor extends Page
     {
         $this->abortSeNaoPuderResponder();
 
+        if ($this->informacaoComplementarEstaBloqueada($componenteId, $alunoId)) {
+            return;
+        }
+
         if (! $this->avaliacao || ! $this->serie) {
             return;
         }
@@ -1398,6 +1455,10 @@ class AvaliacoesProfessor extends Page
     {
         $this->abortSeNaoPuderResponder();
 
+        if ($this->respostaEstaBloqueada($pautaId, $alunoId)) {
+            return;
+        }
+
         if (! $this->avaliacao || ! $this->serie) {
             return;
         }
@@ -1414,6 +1475,16 @@ class AvaliacoesProfessor extends Page
             ->where('turma_id', (int) $alunoDaTurma->id_turma)
             ->where('aluno_id', $alunoId)
             ->delete();
+    }
+
+    public function respostaEstaBloqueada(int $pautaId, int $alunoId): bool
+    {
+        return (bool) ($this->respostas[$pautaId][$alunoId]['bloqueada'] ?? false);
+    }
+
+    public function informacaoComplementarEstaBloqueada(int $componenteId, int $alunoId): bool
+    {
+        return (bool) ($this->informacoesComplementaresBloqueadas[$componenteId][$alunoId] ?? false);
     }
 
     private function respostaEstaCompleta(Pauta $pauta, int $alunoId): bool

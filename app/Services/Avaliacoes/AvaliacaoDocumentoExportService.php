@@ -126,6 +126,7 @@ class AvaliacaoDocumentoExportService
                 'Aluno ID',
                 'Aluno Nome',
                 'Aluno CGM',
+                'Aluno Status',
                 'Pauta ID',
                 'Pauta Texto',
                 'Componente',
@@ -162,6 +163,7 @@ class AvaliacaoDocumentoExportService
                             (int) $aluno->id,
                             (string) $aluno->nome,
                             (string) $aluno->cgm,
+                            $aluno->statusLabel(),
                             (int) $pauta->id,
                             (string) $pauta->texto,
                             (string) ($pauta->componente?->nome ?? ''),
@@ -180,6 +182,80 @@ class AvaliacaoDocumentoExportService
         }, $this->nomeArquivoCsv($avaliacao, $escopo, $turmas), [
             'Content-Type' => 'text/csv; charset=UTF-8',
         ]);
+    }
+
+    /**
+     * @return array{filename: string, contents: string}
+     */
+    public function gerarPdfAluno(int $avaliacaoId, Aluno $aluno, ?User $usuario, ?string $prefixoArquivo = null): array
+    {
+        $avaliacao = $this->buscarAvaliacao($avaliacaoId);
+        $aluno->loadMissing('turma.escola', 'turma.serie');
+
+        /** @var Turma|null $turma */
+        $turma = $aluno->turma;
+
+        if (! $turma) {
+            throw new NotFoundHttpException('Turma do aluno nao encontrada.');
+        }
+
+        if (! $turma->avaliacoes()->whereKey((int) $avaliacao->id)->exists()) {
+            throw new NotFoundHttpException('A avaliacao nao pertence a turma do aluno.');
+        }
+
+        $pautas = $this->pautasDaTurma($avaliacao, $turma);
+
+        if ($pautas->isEmpty()) {
+            throw new NotFoundHttpException('Nenhuma pauta encontrada para a avaliacao do aluno.');
+        }
+
+        $documento = $this->montarDocumentoAluno(
+            $avaliacao,
+            $turma,
+            $aluno,
+            $pautas,
+            $this->montarLegenda($this->alternativasPorPauta($avaliacao, $pautas)),
+            $this->gestoresDaTurma($turma),
+            $this->logoDataUri()
+        );
+
+        $documentosComPaginas = collect([array_replace($documento, [
+            'paginas_estimadas' => $this->contarPaginasDocumento($documento),
+            'precisa_pagina_em_branco' => false,
+        ])]);
+
+        $pdf = $this->criarPdf($documentosComPaginas);
+        $dompdf = $pdf->getDomPDF();
+        $dompdf->render();
+        $this->aplicarPaginacao($dompdf);
+
+        $conteudo = $pdf->output();
+
+        $this->registrarLog(
+            $avaliacao,
+            collect([$turma]),
+            'aluno',
+            [
+                'aluno_id' => (int) $aluno->id,
+                'turma_id' => (int) $turma->id,
+            ],
+            $usuario,
+            'pdf',
+            1,
+            $dompdf->getCanvas()->get_page_count()
+        );
+
+        $partes = array_filter([
+            $prefixoArquivo,
+            'avaliacao',
+            (string) $avaliacao->id,
+            $aluno->nome,
+        ]);
+
+        return [
+            'filename' => Str::slug(implode('-', $partes)).'.pdf',
+            'contents' => $conteudo,
+        ];
     }
 
     private function buscarAvaliacao(int $avaliacaoId): Avaliacao
@@ -317,7 +393,7 @@ class AvaliacaoDocumentoExportService
             $query->whereKey((int) ($params['aluno_id'] ?? 0));
         }
 
-        return $query->get(['id', 'nome', 'cgm', 'id_turma']);
+        return $query->get(['id', 'nome', 'cgm', 'id_turma', 'status']);
     }
 
     /**
@@ -487,6 +563,7 @@ class AvaliacaoDocumentoExportService
             'escola' => $turma->escola?->nome ?? '',
             'estudante' => (string) $aluno->nome,
             'cgm' => (string) $aluno->cgm,
+            'status' => $aluno->statusLabel(),
             'curso' => (string) ($turma->serie?->nome ?? ''),
             'turma' => $this->rotuloTurma($turma),
             'turno' => $this->formatarTurno($turma),

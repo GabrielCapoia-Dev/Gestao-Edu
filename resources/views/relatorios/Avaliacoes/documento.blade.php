@@ -190,6 +190,10 @@
                     <td class="right"><span class="label">ANO LETIVO:</span> {{ $documento['ano_letivo'] ?? '' }}</td>
                 </tr>
                 <tr>
+                    <td><span class="label">STATUS:</span> {{ $documento['status'] ?? '' }}</td>
+                    <td class="right"></td>
+                </tr>
+                <tr>
                     <td><span class="label">CURSO:</span> {{ $documento['curso'] ?? '' }}</td>
                     <td class="right"><span class="label">TURNO:</span> {{ $documento['turno'] ?? '' }}</td>
                 </tr>

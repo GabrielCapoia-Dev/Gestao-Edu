@@ -21,12 +21,21 @@ class AvaliacaoResposta extends Model
         'alternativa_id',
         'observacao',
         'respondido_em',
+        'bloqueada',
+        'resposta_origem_id',
+        'aluno_origem_id',
+        'turma_origem_id',
+        'bloqueio_tipo',
     ];
 
     protected function casts(): array
     {
         return [
             'respondido_em' => 'datetime',
+            'bloqueada' => 'boolean',
+            'resposta_origem_id' => 'integer',
+            'aluno_origem_id' => 'integer',
+            'turma_origem_id' => 'integer',
         ];
     }
 
@@ -58,5 +67,20 @@ class AvaliacaoResposta extends Model
     public function alternativa(): BelongsTo
     {
         return $this->belongsTo(Alternativa::class, 'alternativa_id');
+    }
+
+    public function respostaOrigem(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'resposta_origem_id');
+    }
+
+    public function alunoOrigem(): BelongsTo
+    {
+        return $this->belongsTo(Aluno::class, 'aluno_origem_id');
+    }
+
+    public function turmaOrigem(): BelongsTo
+    {
+        return $this->belongsTo(Turma::class, 'turma_origem_id');
     }
 }

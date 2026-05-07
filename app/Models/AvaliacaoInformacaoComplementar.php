@@ -19,7 +19,22 @@ class AvaliacaoInformacaoComplementar extends Model
         'componente_curricular_id',
         'professor_id',
         'informacoes_complementares',
+        'bloqueada',
+        'informacao_origem_id',
+        'aluno_origem_id',
+        'turma_origem_id',
+        'bloqueio_tipo',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'bloqueada' => 'boolean',
+            'informacao_origem_id' => 'integer',
+            'aluno_origem_id' => 'integer',
+            'turma_origem_id' => 'integer',
+        ];
+    }
 
     public function avaliacao(): BelongsTo
     {
@@ -44,5 +59,20 @@ class AvaliacaoInformacaoComplementar extends Model
     public function componente(): BelongsTo
     {
         return $this->belongsTo(ComponenteCurricular::class, 'componente_curricular_id');
+    }
+
+    public function informacaoOrigem(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'informacao_origem_id');
+    }
+
+    public function alunoOrigem(): BelongsTo
+    {
+        return $this->belongsTo(Aluno::class, 'aluno_origem_id');
+    }
+
+    public function turmaOrigem(): BelongsTo
+    {
+        return $this->belongsTo(Turma::class, 'turma_origem_id');
     }
 }

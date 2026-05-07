@@ -103,6 +103,11 @@ class CriarPermissoes extends Command
             'Listar Setores',
             'Criar Empresa Contratada',
             'Criar Alunos',
+            'Realizar Transferencia de Aluno',
+            'Realizar Remanejamento de Aluno',
+            'Gerar Parecer de Transferencia',
+            'Notificar Impedimento de Matricula por Falta de Transferencia',
+            'Gerenciar Impedimento de Matricula por Falta de Transferencia',
             'Criar Tipo Manutenção',
             'Criar Tipo Status',
             'Criar Pedidos',
@@ -296,6 +301,11 @@ class CriarPermissoes extends Command
                 'Exportar Alunos',
                 'Visualizar Detalhes de Aluno',
                 'Filtrar Alunos por Escola',
+                'Realizar Transferencia de Aluno',
+                'Realizar Remanejamento de Aluno',
+                'Gerar Parecer de Transferencia',
+                'Notificar Impedimento de Matricula por Falta de Transferencia',
+                'Gerenciar Impedimento de Matricula por Falta de Transferencia',
             ]),
             'professores_e_turmas' => $this->onlyPermissions($permissions, [
                 'Listar Escolas',
@@ -731,7 +741,24 @@ class CriarPermissoes extends Command
             }
         }
 
+        foreach ($this->aliasesManuais() as $legacyName => $correctName) {
+            if (in_array($correctName, $names, true)) {
+                $aliases[$legacyName] = $correctName;
+            }
+        }
+
         return $aliases;
+    }
+
+    private function aliasesManuais(): array
+    {
+        return [
+            "Realizar Transfer\u{00EA}ncia de Aluno" => 'Realizar Transferencia de Aluno',
+            'Realizar Tranferencia de Aluno' => 'Realizar Transferencia de Aluno',
+            "Gerar Parecer de Transfer\u{00EA}ncia" => 'Gerar Parecer de Transferencia',
+            "Notificar Impedimento de Matr\u{00ED}cula por Falta de Transfer\u{00EA}ncia" => 'Notificar Impedimento de Matricula por Falta de Transferencia',
+            "Gerenciar Impedimento de Matr\u{00ED}cula por Falta de Transfer\u{00EA}ncia" => 'Gerenciar Impedimento de Matricula por Falta de Transferencia',
+        ];
     }
 
     private function gerarAliasesComMojibake(string $name): array

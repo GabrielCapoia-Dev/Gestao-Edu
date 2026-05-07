@@ -65,6 +65,7 @@
                                         <td>
                                             <strong>{{ $alunoItem->nome }}</strong>
                                             <small>CGM: {{ $alunoItem->cgm }}</small>
+                                            <small>Status: {{ $alunoItem->statusLabel() }}</small>
                                         </td>
                                         <td>
                                             <strong>{{ $this->turmaLabel($alunoItem->turma) }}</strong>
