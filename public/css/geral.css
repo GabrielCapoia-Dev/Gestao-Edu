@@ -346,7 +346,7 @@
 }
 
 .fi-input[placeholder="Pesquisar"]::placeholder {
-    color: #ffffff !important;
+    color: rgb(44, 44, 44) !important;
     opacity: 1;
 }
 
