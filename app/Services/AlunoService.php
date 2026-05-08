@@ -6,6 +6,7 @@ use App\Exceptions\MatriculaAlunoBloqueadaException;
 use App\Models\Aluno;
 use App\Models\Avaliacao;
 use App\Models\Escola;
+use App\Models\Serie;
 use App\Models\Turma;
 use App\Models\User;
 use Filament\Actions\Action;
@@ -18,6 +19,8 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -34,8 +37,12 @@ class AlunoService
 
     public function configurarFormulario(Schema $schema, string $operation): Schema
     {
+        /** @var User|null $user */
+        $user = Auth::user();
+
         return $schema->components([
             Section::make('Dados do Aluno')
+                ->columnSpanFull()
                 ->schema([
                     TextInput::make('nome')
                         ->label('Nome')
@@ -53,12 +60,48 @@ class AlunoService
                         ->native(false)
                         ->displayFormat('d/m/Y'),
 
-                    Select::make('id_turma')
-                        ->label('Turma')
-                        ->options(fn() => $this->opcoesDeTurmas(Auth::user()))
+                    Select::make('id_escola')
+                        ->label('Escola')
+                        ->options(fn () => $this->opcoesDeEscolas($user))
+                        ->default(fn () => $this->escolaInicialFormularioAluno($user))
                         ->searchable()
                         ->preload()
-                        ->required(),
+                        ->required()
+                        ->live()
+                        ->afterStateUpdated(function (Set $set): void {
+                            $set('id_serie', null);
+                            $set('id_turma', null);
+                        })
+                        ->disabled(fn (): bool => $this->deveTravarEscolaAluno($user))
+                        ->dehydrated(false)
+                        ->columnSpanFull(),
+
+                    Select::make('id_serie')
+                        ->label('Série')
+                        ->options(fn (Get $get): array => $this->opcoesDeSeriesPorEscola((int) ($get('id_escola') ?? 0), $user))
+                        ->searchable()
+                        ->preload()
+                        ->required()
+                        ->live()
+                        ->afterStateUpdated(function (Set $set): void {
+                            $set('id_turma', null);
+                        })
+                        ->disabled(fn (Get $get): bool => blank($get('id_escola')))
+                        ->dehydrated(false)
+                        ->columnSpanFull(),
+
+                    Select::make('id_turma')
+                        ->label('Turma')
+                        ->options(fn (Get $get): array => $this->opcoesDeTurmasPorEscolaSerie(
+                            (int) ($get('id_escola') ?? 0),
+                            (int) ($get('id_serie') ?? 0),
+                            $user
+                        ))
+                        ->searchable()
+                        ->preload()
+                        ->required()
+                        ->disabled(fn (Get $get): bool => blank($get('id_escola')) || blank($get('id_serie')))
+                        ->columnSpanFull(),
 
                     Select::make('status')
                         ->label('Status')
@@ -229,7 +272,7 @@ class AlunoService
                 ->icon('heroicon-o-document-arrow-down')
                 ->color('info')
                 ->slideOver()
-                ->modalWidth('7xl')
+                ->modalWidth('5xl')
                 ->modalSubmitAction(false)
                 ->modalCancelActionLabel('Fechar')
                 ->modalHeading(fn (Aluno $record): string => 'Parecer de Transferencia')
@@ -249,9 +292,21 @@ class AlunoService
                         || ($user?->hasPermissionLike('gerar parecer de transferencia') ?? false))),
 
             EditAction::make()
-                ->slideOver()
-                ->modalWidth('3xl')
+                ->modalWidth('4xl')
+                ->fillForm(function (Aluno $record, array $data): array {
+                    $record->loadMissing('turma');
+
+                    return [
+                        ...$data,
+                        'id_escola' => $record->turma?->id_escola,
+                        'id_serie' => $record->turma?->id_serie,
+                        'id_turma' => $record->id_turma,
+                    ];
+                })
                 ->using(function (Aluno $record, array $data) use ($user): Aluno {
+                    unset($data['id_escola'], $data['id_serie']);
+                    $this->validarTurmaPermitida((int) ($data['id_turma'] ?? 0), $user);
+
                     try {
                         app(AlunoMovimentacaoService::class)->bloquearSeCgmAtivo(
                             (string) ($data['cgm'] ?? ''),
@@ -306,7 +361,7 @@ class AlunoService
             ->with(['serie:id,nome', 'escola:id,nome'])
             ->orderBy('nome');
 
-        $this->userService->aplicarFiltroTurmasDoUsuario($query, $user);
+        $this->aplicarFiltroTurmasFormularioAluno($query, $user);
 
         return $query->get()
             ->mapWithKeys(function (Turma $turma) {
@@ -325,7 +380,7 @@ class AlunoService
     {
         $query = Escola::query()->orderBy('nome');
 
-        if (! $user?->hasRole('Admin') && filled($user?->id_escola)) {
+        if (! $user?->hasRole('Admin') && filled($user?->id_escola) && ! $this->podeEditarEscolaAluno($user)) {
             $query->whereKey($user->id_escola);
         }
 
@@ -339,10 +394,11 @@ class AlunoService
         $query = Turma::query()
             ->with(['serie:id,nome', 'escola:id,nome'])
             ->where('id_escola', (int) $aluno->turma?->id_escola)
+            ->where('id_serie', (int) $aluno->turma?->id_serie)
             ->whereKeyNot((int) $aluno->id_turma)
             ->orderBy('nome');
 
-        $this->userService->aplicarFiltroTurmasDoUsuario($query, $user);
+        $this->aplicarFiltroTurmasFormularioAluno($query, $user);
 
         return $query->get()
             ->mapWithKeys(function (Turma $turma) {
@@ -353,6 +409,92 @@ class AlunoService
                 ])->filter()->join(' - '))];
             })
             ->toArray();
+    }
+
+    private function opcoesDeSeriesPorEscola(int $escolaId, ?User $user): array
+    {
+        if ($escolaId <= 0) {
+            return [];
+        }
+
+        $query = Turma::query()
+            ->with('serie:id,nome')
+            ->where('id_escola', $escolaId)
+            ->whereNotNull('id_serie');
+
+        $this->aplicarFiltroTurmasFormularioAluno($query, $user);
+
+        return $query
+            ->get()
+            ->pluck('serie')
+            ->filter(fn (?Serie $serie): bool => $serie !== null)
+            ->unique(fn (Serie $serie): int => (int) $serie->id)
+            ->sortBy(fn (Serie $serie): string => mb_strtolower((string) $serie->nome))
+            ->mapWithKeys(fn (Serie $serie): array => [(int) $serie->id => (string) $serie->nome])
+            ->all();
+    }
+
+    private function opcoesDeTurmasPorEscolaSerie(int $escolaId, int $serieId, ?User $user): array
+    {
+        if ($escolaId <= 0 || $serieId <= 0) {
+            return [];
+        }
+
+        $query = Turma::query()
+            ->with('serie:id,nome')
+            ->where('id_escola', $escolaId)
+            ->where('id_serie', $serieId)
+            ->orderBy('nome');
+
+        $this->aplicarFiltroTurmasFormularioAluno($query, $user);
+
+        return $query
+            ->get()
+            ->mapWithKeys(fn (Turma $turma): array => [
+                (int) $turma->id => trim(collect([
+                    $turma->serie?->nome,
+                    $turma->nome,
+                ])->filter()->join(' ')),
+            ])
+            ->all();
+    }
+
+    private function escolaInicialFormularioAluno(?User $user): ?int
+    {
+        return filled($user?->id_escola) ? (int) $user->id_escola : null;
+    }
+
+    private function deveTravarEscolaAluno(?User $user): bool
+    {
+        return filled($user?->id_escola) && ! $this->podeEditarEscolaAluno($user);
+    }
+
+    private function podeEditarEscolaAluno(?User $user): bool
+    {
+        return ($user?->hasPermissionTo('Editar Escola do Aluno') ?? false)
+            || ($user?->hasPermissionTo('Editar Escola da Turma') ?? false);
+    }
+
+    public function validarTurmaPermitida(int $turmaId, ?User $user): void
+    {
+        $query = Turma::query()->whereKey($turmaId);
+
+        $this->aplicarFiltroTurmasFormularioAluno($query, $user);
+
+        if (! $query->exists()) {
+            throw ValidationException::withMessages([
+                'data.id_turma' => 'Selecione uma turma permitida para o seu acesso.',
+            ]);
+        }
+    }
+
+    private function aplicarFiltroTurmasFormularioAluno(Builder $query, ?User $user): Builder
+    {
+        if ($this->podeEditarEscolaAluno($user)) {
+            return $query;
+        }
+
+        return $this->userService->aplicarFiltroTurmasDoUsuario($query, $user);
     }
 
     private function alunoTemAvaliacoes(Aluno $aluno): bool

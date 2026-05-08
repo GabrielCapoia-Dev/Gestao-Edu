@@ -184,6 +184,8 @@ class AlunoResourceScopeTest extends TestCase
                 'nome' => 'Aluno Criado No Modal',
                 'cgm' => 'CGM-MODAL-CRIACAO',
                 'data_nascimento' => '2015-01-01',
+                'id_escola' => $escola->id,
+                'id_serie' => $turma->id_serie,
                 'id_turma' => $turma->id,
             ])
             ->assertHasNoActionErrors();
@@ -192,6 +194,43 @@ class AlunoResourceScopeTest extends TestCase
             'nome' => 'Aluno Criado No Modal',
             'cgm' => 'CGM-MODAL-CRIACAO',
             'id_turma' => $turma->id,
+            'status' => Aluno::STATUS_MATRICULADO,
+        ]);
+    }
+
+    public function test_permissao_de_editar_escola_do_aluno_permite_matricular_em_outra_escola(): void
+    {
+        Permission::findOrCreate('Listar Alunos');
+        Permission::findOrCreate('Criar Alunos');
+        Permission::findOrCreate('Editar Escola do Aluno');
+
+        $escolaOrigem = $this->criarEscola('Escola Usuario');
+        $escolaDestino = $this->criarEscola('Escola Permitida');
+        $turmaDestino = $this->criarTurma($escolaDestino, 'Permitida');
+
+        $usuario = User::factory()->create([
+            'id_escola' => $escolaOrigem->id,
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo(['Listar Alunos', 'Criar Alunos', 'Editar Escola do Aluno']);
+
+        Livewire::actingAs($usuario)
+            ->test(ListAlunos::class)
+            ->callAction('create', [
+                'nome' => 'Aluno Outra Escola',
+                'cgm' => 'CGM-OUTRA-ESCOLA',
+                'data_nascimento' => '2015-02-01',
+                'id_escola' => $escolaDestino->id,
+                'id_serie' => $turmaDestino->id_serie,
+                'id_turma' => $turmaDestino->id,
+            ])
+            ->assertHasNoActionErrors();
+
+        $this->assertDatabaseHas('alunos', [
+            'nome' => 'Aluno Outra Escola',
+            'cgm' => 'CGM-OUTRA-ESCOLA',
+            'id_turma' => $turmaDestino->id,
             'status' => Aluno::STATUS_MATRICULADO,
         ]);
     }

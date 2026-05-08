@@ -209,6 +209,25 @@ class AlunoMovimentacaoFluxoTest extends TestCase
         ]);
     }
 
+    public function test_remanejamento_nao_permite_turma_de_outra_serie(): void
+    {
+        [$escola, $serie, $turmaOrigem] = $this->criarCenarioAvaliacaoDuasTurmas();
+        $outraSerie = Serie::query()->create(['codigo' => 'SER-OUTRA', 'nome' => '5o Ano']);
+        $turmaOutraSerie = $this->criarTurma($escola, 'Outra Serie', $outraSerie);
+
+        $aluno = Aluno::query()->create([
+            'nome' => 'Aluno Serie Bloqueada',
+            'cgm' => 'CGM-SERIE-BLOQ',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turmaOrigem->id,
+        ]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('mesma serie');
+
+        app(AlunoMovimentacaoService::class)->remanejar($aluno, $turmaOutraSerie->id);
+    }
+
     public function test_remanejamento_vincula_avaliacao_historica_na_turma_destino_e_preserva_dados_bloqueados(): void
     {
         [$escola, $serie, $turmaOrigem, $turmaDestino, $avaliacao, $pauta, $alternativa] = $this->criarCenarioAvaliacaoDuasTurmas();

@@ -20,9 +20,11 @@ class ListAlunos extends ListRecords
     {
         return [
             Actions\CreateAction::make()
-                ->slideOver()
-                ->modalWidth('3xl')
+                ->modalWidth('4xl')
                 ->using(function (array $data): Model {
+                    unset($data['id_escola'], $data['id_serie']);
+                    AlunoResource::alunoService()->validarTurmaPermitida((int) ($data['id_turma'] ?? 0), Auth::user());
+
                     try {
                         return app(AlunoMovimentacaoService::class)->criarMatricula($data, Auth::user());
                     } catch (MatriculaAlunoBloqueadaException $exception) {

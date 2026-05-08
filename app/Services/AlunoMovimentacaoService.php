@@ -83,8 +83,8 @@ class AlunoMovimentacaoService
     public function remanejar(Aluno $aluno, int $turmaDestinoId, ?User $usuario = null, ?string $motivo = null): Aluno
     {
         return DB::transaction(function () use ($aluno, $turmaDestinoId, $usuario, $motivo): Aluno {
-            $aluno->refresh()->loadMissing('turma.escola');
-            $turmaDestino = Turma::query()->with('escola')->findOrFail($turmaDestinoId);
+            $aluno->refresh()->loadMissing('turma.escola', 'turma.serie');
+            $turmaDestino = Turma::query()->with(['escola', 'serie'])->findOrFail($turmaDestinoId);
 
             if (! $aluno->estaMatriculado()) {
                 throw new RuntimeException('Somente alunos matriculados podem ser remanejados.');
@@ -96,6 +96,10 @@ class AlunoMovimentacaoService
 
             if ((int) $aluno->turma?->id_escola !== (int) $turmaDestino->id_escola) {
                 throw new RuntimeException('Remanejamento so pode ocorrer dentro da mesma escola.');
+            }
+
+            if ((int) $aluno->turma?->id_serie !== (int) $turmaDestino->id_serie) {
+                throw new RuntimeException('Remanejamento so pode ocorrer entre turmas da mesma serie.');
             }
 
             $aluno->forceFill([

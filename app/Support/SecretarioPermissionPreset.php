@@ -20,6 +20,7 @@ class SecretarioPermissionPreset
             'Criar Turmas',
             'Criar Professores',
             'Editar Alunos',
+            'Editar Escola do Aluno',
             'Editar Nome do Professor',
             'Editar Especializações de Professores',
             'Editar Turmas',
