@@ -7,6 +7,7 @@ use App\Filament\Admin\Pages\ParecerTransferenciaAluno;
 use App\Models\Aluno;
 use App\Models\Alternativa;
 use App\Models\Avaliacao;
+use App\Models\AvaliacaoInformacaoComplementar;
 use App\Models\AvaliacaoResposta;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
@@ -202,6 +203,90 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             'turma_id' => $turmaDestino->id,
             'aluno_id' => $novoAluno->id,
             'bloqueada' => true,
+            'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_REMANEJAMENTO,
+        ]);
+    }
+
+    public function test_remanejamento_vincula_avaliacao_historica_na_turma_destino_e_preserva_dados_bloqueados(): void
+    {
+        [$escola, $serie, $turmaOrigem, $turmaDestino, $avaliacao, $pauta, $alternativa] = $this->criarCenarioAvaliacaoDuasTurmas();
+        $avaliacao->turmas()->detach($turmaDestino->id);
+
+        $aluno = Aluno::query()->create([
+            'nome' => 'Aluno Historico Remanejado',
+            'cgm' => 'CGM-REM-HIST',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turmaOrigem->id,
+        ]);
+
+        $respostaOrigem = AvaliacaoResposta::query()->create([
+            'avaliacao_id' => $avaliacao->id,
+            'pauta_id' => $pauta->id,
+            'turma_id' => $turmaOrigem->id,
+            'aluno_id' => $aluno->id,
+            'alternativa_id' => $alternativa->id,
+            'observacao' => 'Resposta antes do remanejamento',
+            'respondido_em' => now(),
+        ]);
+
+        $informacaoOrigem = AvaliacaoInformacaoComplementar::query()->create([
+            'avaliacao_id' => $avaliacao->id,
+            'turma_id' => $turmaOrigem->id,
+            'aluno_id' => $aluno->id,
+            'componente_curricular_id' => $pauta->componente_curricular_id,
+            'informacoes_complementares' => 'Informacao complementar antes do remanejamento',
+        ]);
+
+        $novoAluno = app(AlunoMovimentacaoService::class)->remanejar($aluno, $turmaDestino->id);
+
+        $this->assertDatabaseHas('avaliacao_turma', [
+            'avaliacao_id' => $avaliacao->id,
+            'turma_id' => $turmaDestino->id,
+        ]);
+
+        $this->assertDatabaseHas('avaliacao_respostas', [
+            'id' => $respostaOrigem->id,
+            'turma_id' => $turmaOrigem->id,
+            'aluno_id' => $aluno->id,
+            'alternativa_id' => $alternativa->id,
+            'observacao' => 'Resposta antes do remanejamento',
+            'bloqueada' => true,
+            'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_REMANEJAMENTO,
+        ]);
+
+        $this->assertDatabaseHas('avaliacao_respostas', [
+            'avaliacao_id' => $avaliacao->id,
+            'pauta_id' => $pauta->id,
+            'turma_id' => $turmaDestino->id,
+            'aluno_id' => $novoAluno->id,
+            'alternativa_id' => $alternativa->id,
+            'observacao' => 'Resposta antes do remanejamento',
+            'bloqueada' => true,
+            'resposta_origem_id' => $respostaOrigem->id,
+            'aluno_origem_id' => $aluno->id,
+            'turma_origem_id' => $turmaOrigem->id,
+            'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_REMANEJAMENTO,
+        ]);
+
+        $this->assertDatabaseHas('avaliacao_informacoes_complementares', [
+            'id' => $informacaoOrigem->id,
+            'turma_id' => $turmaOrigem->id,
+            'aluno_id' => $aluno->id,
+            'informacoes_complementares' => 'Informacao complementar antes do remanejamento',
+            'bloqueada' => true,
+            'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_REMANEJAMENTO,
+        ]);
+
+        $this->assertDatabaseHas('avaliacao_informacoes_complementares', [
+            'avaliacao_id' => $avaliacao->id,
+            'turma_id' => $turmaDestino->id,
+            'aluno_id' => $novoAluno->id,
+            'componente_curricular_id' => $pauta->componente_curricular_id,
+            'informacoes_complementares' => 'Informacao complementar antes do remanejamento',
+            'bloqueada' => true,
+            'informacao_origem_id' => $informacaoOrigem->id,
+            'aluno_origem_id' => $aluno->id,
+            'turma_origem_id' => $turmaOrigem->id,
             'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_REMANEJAMENTO,
         ]);
     }
@@ -529,14 +614,11 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             ->assertSee('de 6')
             ->call('selecionarAluno', $aluno->id)
             ->assertSet('slideoverAberto', true)
-            ->assertSet("avaliacoesExpandidas.{$avaliacao->id}", true)
+            ->assertSet("avaliacoesExpandidas.{$avaliacao->id}", false)
             ->assertSee('Aluno Parecer Slideover')
-            ->assertSee('Pauta de teste')
+            ->assertDontSee('Pauta de teste')
             ->assertSee('Gerar Parecer de Transferencia')
             ->assertSee('100%')
-            ->call('alternarAvaliacaoParecer', $avaliacao->id)
-            ->assertSet("avaliacoesExpandidas.{$avaliacao->id}", false)
-            ->assertDontSee('Pauta de teste')
             ->call('alternarAvaliacaoParecer', $avaliacao->id)
             ->assertSet("avaliacoesExpandidas.{$avaliacao->id}", true)
             ->assertSee('Pauta de teste');

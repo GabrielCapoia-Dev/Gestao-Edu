@@ -105,6 +105,8 @@ class AlunoMovimentacaoService
                 'status_motivo' => $motivo ?: 'Aluno remanejado para outra turma da mesma escola.',
             ])->save();
 
+            $this->bloquearDadosAvaliativosOrigem($aluno, self::MOVIMENTACAO_REMANEJAMENTO);
+
             $novoAluno = Aluno::query()->create([
                 'nome' => $aluno->nome,
                 'cgm' => $aluno->cgm,
@@ -141,6 +143,8 @@ class AlunoMovimentacaoService
                 'status_motivo' => $motivo ?: 'Parecer de transferencia gerado.',
             ])->save();
 
+            $this->bloquearDadosAvaliativosOrigem($aluno, self::MOVIMENTACAO_TRANSFERENCIA);
+
             return $aluno;
         });
     }
@@ -158,6 +162,11 @@ class AlunoMovimentacaoService
             'status_motivo' => $motivo,
         ])->save();
 
+        $this->bloquearDadosAvaliativosOrigem(
+            $aluno,
+            $status === Aluno::STATUS_TRANSFERIDO ? self::MOVIMENTACAO_TRANSFERENCIA : self::MOVIMENTACAO_HISTORICO
+        );
+
         return $aluno;
     }
 
@@ -169,6 +178,8 @@ class AlunoMovimentacaoService
         if (! $destino->turma) {
             return;
         }
+
+        $this->sincronizarAvaliacoesHistoricasComTurmaDestino($origem, $destino);
 
         $pautasCache = [];
 
@@ -253,6 +264,62 @@ class AlunoMovimentacaoService
                     );
                 }
             });
+    }
+
+    private function bloquearDadosAvaliativosOrigem(Aluno $aluno, string $tipo): void
+    {
+        AvaliacaoResposta::query()
+            ->where('aluno_id', (int) $aluno->id)
+            ->update([
+                'bloqueada' => true,
+                'bloqueio_tipo' => $tipo,
+                'updated_at' => now(),
+            ]);
+
+        AvaliacaoInformacaoComplementar::query()
+            ->where('aluno_id', (int) $aluno->id)
+            ->update([
+                'bloqueada' => true,
+                'bloqueio_tipo' => $tipo,
+                'updated_at' => now(),
+            ]);
+    }
+
+    private function sincronizarAvaliacoesHistoricasComTurmaDestino(Aluno $origem, Aluno $destino): void
+    {
+        $turmaOrigemId = (int) $origem->id_turma;
+        $turmaDestinoId = (int) $destino->id_turma;
+
+        if ($turmaOrigemId <= 0 || $turmaDestinoId <= 0) {
+            return;
+        }
+
+        $avaliacoesIds = DB::table('avaliacao_turma')
+            ->where('turma_id', $turmaOrigemId)
+            ->pluck('avaliacao_id')
+            ->merge($origem->avaliacaoRespostas()->pluck('avaliacao_id'))
+            ->merge($origem->avaliacaoInformacoesComplementares()->pluck('avaliacao_id'))
+            ->map(fn ($id): int => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($avaliacoesIds->isEmpty()) {
+            return;
+        }
+
+        $agora = now();
+
+        DB::table('avaliacao_turma')->insertOrIgnore(
+            $avaliacoesIds
+                ->map(fn (int $avaliacaoId): array => [
+                    'avaliacao_id' => $avaliacaoId,
+                    'turma_id' => $turmaDestinoId,
+                    'created_at' => $agora,
+                    'updated_at' => $agora,
+                ])
+                ->all()
+        );
     }
 
     private function ultimaMatriculaHistorica(string $cgm): ?Aluno

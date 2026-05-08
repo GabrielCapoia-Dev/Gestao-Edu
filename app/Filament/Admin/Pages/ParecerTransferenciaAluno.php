@@ -190,7 +190,7 @@ class ParecerTransferenciaAluno extends Page
 
     public function avaliacaoEstaExpandida(int $avaliacaoId): bool
     {
-        return (bool) ($this->avaliacoesExpandidas[$avaliacaoId] ?? true);
+        return (bool) ($this->avaliacoesExpandidas[$avaliacaoId] ?? false);
     }
 
     public function gerarParecerTransferencia(AlunoTransferenciaParecerService $service): ?Response
@@ -750,7 +750,7 @@ class ParecerTransferenciaAluno extends Page
         $this->avaliacoesExpandidas = Avaliacao::query()
             ->whereHas('turmas', fn (Builder $turmas): Builder => $turmas->whereKey((int) $aluno->id_turma))
             ->pluck('id')
-            ->mapWithKeys(fn ($id): array => [(int) $id => true])
+            ->mapWithKeys(fn ($id): array => [(int) $id => false])
             ->all();
     }
 
