@@ -1061,14 +1061,44 @@
         color: #fff;
     }
 
+    .fi-ta-ctn:has(.fi-ta-header-toolbar),
+    .fi-ta-header-ctn,
+    .fi-ta-header-toolbar,
+    .fi-ta-header-toolbar > * {
+        overflow: visible;
+    }
+
+    .fi-ta-header-ctn {
+        position: relative;
+        z-index: 30;
+    }
+
+    .fi-ta-content-ctn,
+    .fi-pagination {
+        position: relative;
+        z-index: 1;
+    }
+
+    .fi-dropdown-panel,
+    .fi-popover-panel {
+        z-index: 90;
+    }
+
     .fi-resource-list-records-page .fi-ta {
-        overflow: hidden;
+        overflow: visible;
         border: 1px solid var(--gray-200);
         border-radius: 1rem;
         background: #fff;
         box-shadow:
             0 1px 2px rgba(15, 23, 42, 0.05),
             0 18px 40px rgba(15, 23, 42, 0.08);
+    }
+
+    .fi-resource-list-records-page .fi-ta-header,
+    .fi-resource-list-records-page .fi-ta-header-toolbar,
+    .fi-resource-list-records-page .fi-ta-header-toolbar > *,
+    .fi-resource-list-records-page .fi-ta-ctn {
+        overflow: visible;
     }
 
     .fi-resource-list-records-page .fi-ta-header {
