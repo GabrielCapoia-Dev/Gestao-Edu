@@ -8,10 +8,20 @@
             </div>
         </section>
 
-        <section class="gi-panel av-professor-control-panel">
+        <section class="gi-panel av-professor-control-panel parecer-filter-grid">
             <label class="gi-field">
                 <span>Buscar aluno</span>
                 <input type="search" wire:model.live.debounce.400ms="busca" placeholder="Nome, CGM, escola ou serie">
+            </label>
+
+            <label class="gi-field">
+                <span>Turma</span>
+                <select wire:model.live="turmaFiltro">
+                    <option value="">Todas as turmas</option>
+                    @foreach ($this->opcoesTurmas() as $turmaId => $turmaNome)
+                    <option value="{{ $turmaId }}">{{ $turmaNome }}</option>
+                    @endforeach
+                </select>
             </label>
         </section>
 
@@ -208,6 +218,7 @@
                                                 <th>Pauta</th>
                                                 <th>Alternativas</th>
                                                 <th>Resposta</th>
+                                                <th>Observacao</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -222,17 +233,46 @@
                                                         @disabled($pauta['bloqueada'])>
                                                         <option value="">Pendente</option>
                                                         @foreach ($pauta['alternativas'] as $alternativa)
-                                                        <option value="{{ $alternativa['id'] }}">{{ $alternativa['nome'] }}</option>
+                                                        <option value="{{ $alternativa['id'] }}">
+                                                            {{ $alternativa['nome'] }}{{ ($alternativa['tem_observacao'] ?? false) ? ' (exige observacao)' : '' }}
+                                                        </option>
                                                         @endforeach
                                                     </select>
                                                     @if ($pauta['bloqueada'])
                                                     <small>Bloqueada por historico</small>
                                                     @endif
                                                 </td>
+                                                <td class="parecer-observation-cell">
+                                                    @if ($pauta['requer_observacao'])
+                                                    <textarea
+                                                        maxlength="1500"
+                                                        placeholder="Observacao obrigatoria"
+                                                        class="parecer-response-textarea"
+                                                        wire:model.live.debounce.500ms="observacoesParecer.{{ $avaliacao['id'] }}.{{ $pauta['id'] }}"
+                                                        @disabled($pauta['bloqueada'])></textarea>
+                                                    <small class="av-field-hint av-field-hint--danger">Obrigatoria para esta alternativa.</small>
+                                                    @else
+                                                    <small class="av-field-hint">Somente alternativas com observacao habilitam este campo.</small>
+                                                    @endif
+                                                </td>
                                             </tr>
                                             @endforeach
                                         </tbody>
                                     </table>
+                                </div>
+
+                                @php($informacaoBloqueada = (bool) ($componente['informacao_bloqueada'] ?? false))
+                                <div class="parecer-complementary-section">
+                                    <h4>Informacoes complementares do componente</h4>
+                                    @if ($informacaoBloqueada)
+                                    <small class="av-field-hint">Informacoes bloqueadas por historico.</small>
+                                    @endif
+                                    <textarea
+                                        maxlength="1500"
+                                        placeholder="Informacoes complementares (opcional)"
+                                        class="parecer-response-textarea"
+                                        wire:model.live.debounce.600ms="informacoesComplementaresParecer.{{ $avaliacao['id'] }}.{{ $componente['id'] }}"
+                                        @disabled($informacaoBloqueada)></textarea>
                                 </div>
                             </section>
                             @endforeach
@@ -258,6 +298,12 @@
             .parecer-table-shell {
                 position: relative;
                 min-height: 12rem;
+            }
+
+            .parecer-filter-grid {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) minmax(16rem, 24rem);
+                gap: 1rem;
             }
 
             .parecer-pagination {
@@ -395,7 +441,52 @@
                 cursor: not-allowed;
             }
 
+            .parecer-observation-cell {
+                min-width: 16rem;
+            }
+
+            .parecer-response-textarea {
+                width: 100%;
+                min-height: 4.25rem;
+                resize: vertical;
+                border: 1px solid var(--gray-300);
+                border-radius: var(--radius-md);
+                background: #fff;
+                color: var(--gray-900);
+                font-size: var(--text-sm);
+                line-height: 1.45;
+                padding: 0.55rem 0.65rem;
+            }
+
+            .parecer-response-textarea:disabled {
+                background: var(--gray-100);
+                color: var(--gray-500);
+                cursor: not-allowed;
+            }
+
+            .parecer-complementary-section {
+                display: grid;
+                gap: 0.5rem;
+                margin-top: 0.75rem;
+                padding: 0.85rem;
+                border: 1px solid var(--gray-200);
+                border-radius: var(--radius-md);
+                background: var(--gray-50);
+            }
+
+            .parecer-complementary-section h4 {
+                margin: 0;
+                color: var(--gray-900);
+                font-size: var(--text-sm);
+                line-height: 1.25;
+                font-weight: var(--font-weight-semibold);
+            }
+
             @media (max-width: 48rem) {
+                .parecer-filter-grid {
+                    grid-template-columns: 1fr;
+                }
+
                 .parecer-slideover {
                     width: 100vw;
                 }

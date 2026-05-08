@@ -312,6 +312,136 @@ class AlunoMovimentacaoFluxoTest extends TestCase
         ]);
     }
 
+    public function test_parecer_transferencia_salva_observacao_obrigatoria_e_informacao_complementar(): void
+    {
+        Permission::findOrCreate('Realizar Transferencia de Aluno');
+
+        [$escola, $serie, $turmaOrigem, $turmaDestino, $avaliacao, $pauta, $alternativa] = $this->criarCenarioAvaliacaoDuasTurmas();
+        $alternativa->update(['tem_observacao' => true]);
+        $alternativa->refresh();
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo('Realizar Transferencia de Aluno');
+
+        $aluno = Aluno::query()->create([
+            'nome' => 'Aluno Parecer Observacao',
+            'cgm' => 'CGM-OBS',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turmaOrigem->id,
+        ]);
+
+        $this->mock(AvaliacaoDocumentoExportService::class, function ($mock): void {
+            $mock
+                ->shouldReceive('gerarPdfAluno')
+                ->once()
+                ->andReturn([
+                    'filename' => 'parecer-transferencia-avaliacao.pdf',
+                    'contents' => '%PDF-1.4 teste',
+                ]);
+        });
+
+        Livewire::actingAs($usuario)
+            ->test(ParecerTransferenciaAluno::class)
+            ->call('selecionarAluno', $aluno->id)
+            ->set("respostasParecer.{$avaliacao->id}.{$pauta->id}", (string) $alternativa->id)
+            ->set("observacoesParecer.{$avaliacao->id}.{$pauta->id}", 'Observacao obrigatoria registrada.')
+            ->set("informacoesComplementaresParecer.{$avaliacao->id}.{$pauta->componente_curricular_id}", 'Informacao complementar do componente.')
+            ->call('gerarParecerTransferencia');
+
+        $this->assertDatabaseHas('avaliacao_respostas', [
+            'avaliacao_id' => $avaliacao->id,
+            'pauta_id' => $pauta->id,
+            'turma_id' => $turmaOrigem->id,
+            'aluno_id' => $aluno->id,
+            'alternativa_id' => $alternativa->id,
+            'observacao' => 'Observacao obrigatoria registrada.',
+        ]);
+
+        $this->assertDatabaseHas('avaliacao_informacoes_complementares', [
+            'avaliacao_id' => $avaliacao->id,
+            'turma_id' => $turmaOrigem->id,
+            'aluno_id' => $aluno->id,
+            'componente_curricular_id' => $pauta->componente_curricular_id,
+            'informacoes_complementares' => 'Informacao complementar do componente.',
+        ]);
+    }
+
+    public function test_parecer_transferencia_nao_transfere_sem_observacao_obrigatoria(): void
+    {
+        Permission::findOrCreate('Realizar Transferencia de Aluno');
+
+        [$escola, $serie, $turmaOrigem, $turmaDestino, $avaliacao, $pauta, $alternativa] = $this->criarCenarioAvaliacaoDuasTurmas();
+        $alternativa->update(['tem_observacao' => true]);
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo('Realizar Transferencia de Aluno');
+
+        $aluno = Aluno::query()->create([
+            'nome' => 'Aluno Parecer Sem Observacao',
+            'cgm' => 'CGM-SEM-OBS',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turmaOrigem->id,
+        ]);
+
+        Livewire::actingAs($usuario)
+            ->test(ParecerTransferenciaAluno::class)
+            ->call('selecionarAluno', $aluno->id)
+            ->set("respostasParecer.{$avaliacao->id}.{$pauta->id}", (string) $alternativa->id)
+            ->call('gerarParecerTransferencia');
+
+        $this->assertDatabaseMissing('alunos', [
+            'id' => $aluno->id,
+            'status' => Aluno::STATUS_TRANSFERIDO,
+        ]);
+
+        $this->assertDatabaseMissing('avaliacao_respostas', [
+            'avaliacao_id' => $avaliacao->id,
+            'pauta_id' => $pauta->id,
+            'turma_id' => $turmaOrigem->id,
+            'aluno_id' => $aluno->id,
+            'alternativa_id' => $alternativa->id,
+        ]);
+    }
+
+    public function test_parecer_transferencia_filtro_por_turma(): void
+    {
+        Permission::findOrCreate('Gerar Parecer de Transferencia');
+
+        [$escola, $serie, $turmaOrigem, $turmaDestino] = $this->criarCenarioAvaliacaoDuasTurmas();
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo('Gerar Parecer de Transferencia');
+
+        Aluno::query()->create([
+            'nome' => 'Aluno Turma Origem',
+            'cgm' => 'CGM-FILTRO-1',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turmaOrigem->id,
+        ]);
+
+        Aluno::query()->create([
+            'nome' => 'Aluno Turma Destino',
+            'cgm' => 'CGM-FILTRO-2',
+            'data_nascimento' => '2015-01-02',
+            'id_turma' => $turmaDestino->id,
+        ]);
+
+        Livewire::actingAs($usuario)
+            ->test(ParecerTransferenciaAluno::class)
+            ->set('turmaFiltro', (string) $turmaDestino->id)
+            ->assertSee('Aluno Turma Destino')
+            ->assertDontSee('Aluno Turma Origem');
+    }
+
     public function test_parecer_transferencia_tem_paginacao_e_abre_slideover_com_avaliacoes(): void
     {
         Permission::findOrCreate('Gerar Parecer de Transferencia');
