@@ -31,6 +31,12 @@
         return Math.min(Math.max(value, min), max);
     };
 
+    const getPortalZIndex = () => {
+        return getComputedStyle(document.documentElement)
+            .getPropertyValue('--edu-select-dropdown-z')
+            .trim() || '2200';
+    };
+
     const getAvailablePosition = (buttonRect) => {
         const spaceBelow = window.innerHeight - buttonRect.bottom - viewportGap;
         const spaceAbove = buttonRect.top - viewportGap;
@@ -80,7 +86,7 @@
             maxHeight: `${height}px`,
             overflowY: 'auto',
             overflowX: 'hidden',
-            zIndex: '99999',
+            zIndex: getPortalZIndex(),
         });
     };
 

@@ -143,12 +143,14 @@ class AlunoService
                 ->label('Nome')
                 ->searchable()
                 ->sortable()
+                ->copyable()
                 ->wrap(),
 
             TextColumn::make('cgm')
                 ->label('CGM')
                 ->searchable()
-                ->sortable(),
+                ->sortable()
+                ->copyable(),
 
             TextColumn::make('status')
                 ->label('Status')
@@ -167,7 +169,8 @@ class AlunoService
             TextColumn::make('data_nascimento')
                 ->label('Data de Nascimento')
                 ->date('d/m/Y')
-                ->sortable(),
+                ->sortable()
+                ->copyable(),
 
             TextColumn::make('turma.serie.nome')
                 ->label('Série')
@@ -293,14 +296,17 @@ class AlunoService
 
             EditAction::make()
                 ->modalWidth('4xl')
-                ->fillForm(function (Aluno $record, array $data): array {
+                ->fillForm(function (Aluno $record): array {
                     $record->loadMissing('turma');
 
                     return [
-                        ...$data,
+                        'nome' => $record->nome,
+                        'cgm' => $record->cgm,
+                        'data_nascimento' => $record->data_nascimento?->format('Y-m-d'),
                         'id_escola' => $record->turma?->id_escola,
                         'id_serie' => $record->turma?->id_serie,
                         'id_turma' => $record->id_turma,
+                        'status' => $record->status,
                     ];
                 })
                 ->using(function (Aluno $record, array $data) use ($user): Aluno {

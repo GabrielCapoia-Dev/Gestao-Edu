@@ -1061,31 +1061,48 @@
         color: #fff;
     }
 
-    .fi-ta,
-    .fi-ta-ctn,
-    .fi-ta-main,
-    .fi-ta-header-ctn,
-    .fi-ta-header-toolbar,
-    .fi-ta-header-toolbar > *,
-    .fi-ta-actions,
-    .fi-dropdown {
+    .fi-resource-list-records-page .fi-ta,
+    .fi-resource-list-records-page .fi-ta-ctn,
+    .fi-resource-list-records-page .fi-ta-main,
+    .fi-resource-list-records-page .fi-ta-header-ctn,
+    .fi-resource-list-records-page .fi-ta-header-toolbar,
+    .fi-resource-list-records-page .fi-ta-header-toolbar > *,
+    .fi-resource-list-records-page .fi-ta-actions,
+    .fi-resource-list-records-page .fi-dropdown {
         overflow: visible !important;
     }
 
-    .fi-ta-header-ctn {
+    .fi-resource-list-records-page .fi-ta-header-ctn {
         position: relative;
-        z-index: 70;
+        z-index: 20;
     }
 
-    .fi-ta-content-ctn,
-    .fi-pagination {
+    .fi-resource-list-records-page .fi-ta-content-ctn,
+    .fi-resource-list-records-page .fi-pagination {
         position: relative;
         z-index: 1;
     }
 
     .fi-dropdown-panel,
     .fi-popover-panel {
-        z-index: 1000 !important;
+        z-index: 90 !important;
+    }
+
+    .fi-modal {
+        z-index: 2000 !important;
+    }
+
+    .fi-modal-close-overlay {
+        z-index: 2000 !important;
+    }
+
+    .fi-modal-window-ctn {
+        z-index: 2001 !important;
+    }
+
+    .fi-select-dropdown-portal,
+    .edu-select-dropdown-portal {
+        z-index: 2200 !important;
     }
 
     .fi-resource-list-records-page .fi-ta {

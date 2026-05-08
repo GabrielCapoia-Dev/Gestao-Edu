@@ -1017,7 +1017,7 @@
 */
 
 :root {
-    --edu-select-dropdown-z: 999999;
+    --edu-select-dropdown-z: 2200;
     --edu-select-max-height: 320px;
 }
 
@@ -1122,11 +1122,26 @@
 
 
 .fi-select-dropdown-portal {
-    background: var(--edu-white);
-    border: 1px solid var(--edu-neutral-200);
-    border-radius: 0.75rem;
-    box-shadow: var(--edu-shadow-lg);
+    position: fixed !important;
+    z-index: var(--edu-select-dropdown-z) !important;
+    background: var(--edu-white) !important;
+    border: 1px solid var(--edu-neutral-200) !important;
+    border-radius: 0.75rem !important;
+    box-shadow: var(--edu-shadow-lg) !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    max-height: var(--edu-select-max-height) !important;
+    max-width: calc(100vw - 1rem) !important;
+    overscroll-behavior: contain;
     scrollbar-gutter: stable;
+}
+
+.fi-select-dropdown-portal .fi-dropdown-list,
+.fi-select-dropdown-portal .fi-select-input-options-ctn {
+    width: 100% !important;
+    min-width: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
 }
 
 .fi-select-dropdown-portal .fi-select-input-search-ctn {
