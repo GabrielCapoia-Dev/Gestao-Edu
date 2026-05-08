@@ -65,6 +65,11 @@
     backdrop-filter: blur(12px);
 }
 
+.fi-ta-header {
+    background:
+        linear-gradient(105deg, #11366f 0%, #174f8f 54%, #2f72ad 100%);
+}
+
 .fi-logo {
     color: var(--edu-white);
     font-weight: 700;
