@@ -376,11 +376,20 @@ class AlunoMovimentacaoFluxoTest extends TestCase
                 ]);
         });
 
-        Livewire::actingAs($usuario)
+        $component = Livewire::actingAs($usuario)
             ->test(ParecerTransferenciaAluno::class)
             ->call('selecionarAluno', $aluno->id)
-            ->set("respostasParecer.{$avaliacao->id}.{$pauta->id}", (string) $alternativa->id)
-            ->call('gerarParecerTransferencia');
+            ->set("respostasParecer.{$avaliacao->id}.{$pauta->id}", (string) $alternativa->id);
+
+        $this->assertDatabaseHas('avaliacao_respostas', [
+            'avaliacao_id' => $avaliacao->id,
+            'pauta_id' => $pauta->id,
+            'turma_id' => $turmaOrigem->id,
+            'aluno_id' => $aluno->id,
+            'alternativa_id' => $alternativa->id,
+        ]);
+
+        $component->call('gerarParecerTransferencia');
 
         $this->assertDatabaseHas('avaliacao_respostas', [
             'avaliacao_id' => $avaliacao->id,
@@ -428,13 +437,12 @@ class AlunoMovimentacaoFluxoTest extends TestCase
                 ]);
         });
 
-        Livewire::actingAs($usuario)
+        $component = Livewire::actingAs($usuario)
             ->test(ParecerTransferenciaAluno::class)
             ->call('selecionarAluno', $aluno->id)
             ->set("respostasParecer.{$avaliacao->id}.{$pauta->id}", (string) $alternativa->id)
             ->set("observacoesParecer.{$avaliacao->id}.{$pauta->id}", 'Observacao obrigatoria registrada.')
-            ->set("informacoesComplementaresParecer.{$avaliacao->id}.{$pauta->componente_curricular_id}", 'Informacao complementar do componente.')
-            ->call('gerarParecerTransferencia');
+            ->set("informacoesComplementaresParecer.{$avaliacao->id}.{$pauta->componente_curricular_id}", 'Informacao complementar do componente.');
 
         $this->assertDatabaseHas('avaliacao_respostas', [
             'avaliacao_id' => $avaliacao->id,
@@ -452,6 +460,8 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             'componente_curricular_id' => $pauta->componente_curricular_id,
             'informacoes_complementares' => 'Informacao complementar do componente.',
         ]);
+
+        $component->call('gerarParecerTransferencia');
     }
 
     public function test_parecer_transferencia_nao_transfere_sem_observacao_obrigatoria(): void
@@ -485,12 +495,13 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             'status' => Aluno::STATUS_TRANSFERIDO,
         ]);
 
-        $this->assertDatabaseMissing('avaliacao_respostas', [
+        $this->assertDatabaseHas('avaliacao_respostas', [
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
             'turma_id' => $turmaOrigem->id,
             'aluno_id' => $aluno->id,
             'alternativa_id' => $alternativa->id,
+            'observacao' => null,
         ]);
     }
 

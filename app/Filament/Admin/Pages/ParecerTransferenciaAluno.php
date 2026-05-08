@@ -157,6 +157,31 @@ class ParecerTransferenciaAluno extends Page
         $this->resetPage();
     }
 
+    public function updated(string $name): void
+    {
+        if (str_starts_with($name, 'respostasParecer.') || str_starts_with($name, 'observacoesParecer.')) {
+            $partes = explode('.', $name);
+            $avaliacaoId = (int) ($partes[1] ?? 0);
+            $pautaId = (int) ($partes[2] ?? 0);
+
+            if ($avaliacaoId > 0 && $pautaId > 0) {
+                $this->autoSalvarRespostaParecer($avaliacaoId, $pautaId);
+            }
+
+            return;
+        }
+
+        if (str_starts_with($name, 'informacoesComplementaresParecer.')) {
+            $partes = explode('.', $name);
+            $avaliacaoId = (int) ($partes[1] ?? 0);
+            $componenteId = (int) ($partes[2] ?? 0);
+
+            if ($avaliacaoId > 0) {
+                $this->autoSalvarInformacaoComplementarParecer($avaliacaoId, $componenteId);
+            }
+        }
+    }
+
     public function selecionarAluno(int $alunoId): void
     {
         $aluno = $this->buscarAlunoNoEscopo($alunoId);
@@ -697,6 +722,109 @@ class ParecerTransferenciaAluno extends Page
         }
     }
 
+    private function autoSalvarRespostaParecer(int $avaliacaoId, int $pautaId): void
+    {
+        $aluno = $this->alunoSelecionado;
+
+        if (! $aluno?->turma) {
+            return;
+        }
+
+        try {
+            $this->persistirRespostaParecer($aluno, $avaliacaoId, $pautaId, false);
+        } catch (RuntimeException $exception) {
+            Notification::make()
+                ->title('Nao foi possivel salvar a resposta.')
+                ->body($exception->getMessage())
+                ->danger()
+                ->send();
+        }
+    }
+
+    private function persistirRespostaParecer(Aluno $aluno, int $avaliacaoId, int $pautaId, bool $validarObservacaoObrigatoria): void
+    {
+        if (! $aluno->turma) {
+            return;
+        }
+
+        /** @var Avaliacao|null $avaliacao */
+        $avaliacao = Avaliacao::query()
+            ->whereKey($avaliacaoId)
+            ->whereHas('turmas', fn (Builder $turmas): Builder => $turmas->whereKey((int) $aluno->id_turma))
+            ->with([
+                'pautas' => fn ($query) => $query
+                    ->whereKey($pautaId)
+                    ->where('status', true)
+                    ->with(['alternativas:id,nome,status,tem_observacao', 'componente:id,nome']),
+            ])
+            ->first();
+
+        if (! $avaliacao) {
+            return;
+        }
+
+        /** @var Pauta|null $pauta */
+        $pauta = $avaliacao->pautas
+            ->filter(fn (Pauta $pauta): bool => is_null($pauta->serie_id) || (int) $pauta->serie_id === (int) $aluno->turma?->id_serie)
+            ->firstWhere('id', $pautaId);
+
+        if (! $pauta) {
+            return;
+        }
+
+        $resposta = AvaliacaoResposta::query()
+            ->where('avaliacao_id', (int) $avaliacao->id)
+            ->where('pauta_id', (int) $pauta->id)
+            ->where('turma_id', (int) $aluno->id_turma)
+            ->where('aluno_id', (int) $aluno->id)
+            ->first();
+
+        if ($resposta?->bloqueada) {
+            return;
+        }
+
+        $alternativaId = (int) ($this->respostasParecer[(int) $avaliacao->id][(int) $pauta->id] ?? 0);
+
+        if ($alternativaId <= 0 && ! $resposta) {
+            return;
+        }
+
+        $alternativaSelecionada = null;
+
+        if ($alternativaId > 0) {
+            $alternativaSelecionada = ($this->alternativasPorPauta($avaliacao, collect([$pauta]))[(int) $pauta->id] ?? collect())
+                ->firstWhere('id', $alternativaId);
+
+            if (! $alternativaSelecionada) {
+                throw new RuntimeException('A alternativa selecionada nao pertence a pauta informada.');
+            }
+        }
+
+        $temObservacao = (bool) ($alternativaSelecionada?->tem_observacao ?? false);
+        $observacao = $temObservacao
+            ? $this->limitarTextoCampo($this->observacoesParecer[(int) $avaliacao->id][(int) $pauta->id] ?? $resposta?->observacao ?? '')
+            : null;
+
+        if ($temObservacao && $validarObservacaoObrigatoria && $observacao === '') {
+            throw new RuntimeException('Preencha a observacao obrigatoria das alternativas que exigem observacao.');
+        }
+
+        AvaliacaoResposta::query()->updateOrCreate(
+            [
+                'avaliacao_id' => (int) $avaliacao->id,
+                'pauta_id' => (int) $pauta->id,
+                'turma_id' => (int) $aluno->id_turma,
+                'aluno_id' => (int) $aluno->id,
+            ],
+            [
+                'professor_id' => $resposta?->professor_id,
+                'alternativa_id' => $alternativaId > 0 ? $alternativaId : null,
+                'observacao' => $observacao !== '' ? $observacao : null,
+                'respondido_em' => $alternativaId > 0 ? now() : null,
+            ]
+        );
+    }
+
     private function carregarInformacoesComplementaresParecer(Aluno $aluno): void
     {
         if (! $aluno->turma) {
@@ -834,6 +962,81 @@ class ParecerTransferenciaAluno extends Page
                 );
             }
         }
+    }
+
+    private function autoSalvarInformacaoComplementarParecer(int $avaliacaoId, int $componenteId): void
+    {
+        $aluno = $this->alunoSelecionado;
+
+        if (! $aluno?->turma) {
+            return;
+        }
+
+        $avaliacao = Avaliacao::query()
+            ->whereKey($avaliacaoId)
+            ->whereHas('turmas', fn (Builder $turmas): Builder => $turmas->whereKey((int) $aluno->id_turma))
+            ->with([
+                'pautas' => fn ($query) => $query
+                    ->where('status', true)
+                    ->with('componente:id,nome'),
+            ])
+            ->first();
+
+        if (! $avaliacao) {
+            return;
+        }
+
+        $componentesIds = $avaliacao->pautas
+            ->filter(fn (Pauta $pauta): bool => is_null($pauta->serie_id) || (int) $pauta->serie_id === (int) $aluno->turma?->id_serie)
+            ->pluck('componente_curricular_id')
+            ->map(fn ($id) => (int) ($id ?? 0))
+            ->unique()
+            ->values()
+            ->all();
+
+        if (! in_array($componenteId, $componentesIds, true)) {
+            return;
+        }
+
+        $registroQuery = AvaliacaoInformacaoComplementar::query()
+            ->where('avaliacao_id', (int) $avaliacao->id)
+            ->where('turma_id', (int) $aluno->id_turma)
+            ->where('aluno_id', (int) $aluno->id);
+
+        if ($componenteId > 0) {
+            $registroQuery->where('componente_curricular_id', $componenteId);
+        } else {
+            $registroQuery->whereNull('componente_curricular_id');
+        }
+
+        $registro = $registroQuery->first();
+
+        if ($registro?->bloqueada) {
+            return;
+        }
+
+        $informacoes = $this->limitarTextoCampo($this->informacoesComplementaresParecer[(int) $avaliacao->id][$componenteId] ?? '');
+
+        if ($informacoes === '') {
+            if ($registro) {
+                $registro->delete();
+            }
+
+            return;
+        }
+
+        AvaliacaoInformacaoComplementar::query()->updateOrCreate(
+            [
+                'avaliacao_id' => (int) $avaliacao->id,
+                'turma_id' => (int) $aluno->id_turma,
+                'aluno_id' => (int) $aluno->id,
+                'componente_curricular_id' => $componenteId > 0 ? $componenteId : null,
+            ],
+            [
+                'professor_id' => $registro?->professor_id,
+                'informacoes_complementares' => $informacoes,
+            ]
+        );
     }
 
     /**
