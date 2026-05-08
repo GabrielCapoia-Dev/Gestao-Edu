@@ -346,6 +346,59 @@ class AvaliacaoDocumentoExportTest extends TestCase
         $this->assertSame('Coordenadora Documento - 222/2026', $gestores['coordenacao']);
     }
 
+    public function test_documento_exibe_nao_avaliado_para_pauta_pendente(): void
+    {
+        $tipo = TipoAvaliacao::query()->create(['nome' => 'Parecer Pendente', 'status' => true]);
+        $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Periodo Pendente', 'status' => true]);
+        $escola = $this->criarEscola('Escola Pendente Documento');
+        $serie = $this->criarSerie('SER-PEND', '1o Ano');
+        $turma = $this->criarTurma($escola, $serie, 'A');
+        $componente = ComponenteCurricular::query()->create(['codigo' => 'COMP-PEND', 'nome' => 'Lingua Portuguesa']);
+        $pauta = Pauta::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'texto' => 'Pauta sem resposta',
+            'serie_id' => $serie->id,
+            'componente_curricular_id' => $componente->id,
+            'status' => true,
+        ]);
+        $avaliacao = Avaliacao::query()->create([
+            'nome' => 'Avaliacao com Pendencia',
+            'tipo_avaliacao_id' => $tipo->id,
+            'periodo_avaliacao_id' => $periodo->id,
+            'data_inicio' => '2026-02-01',
+            'data_fim' => '2026-12-20',
+            'status' => Avaliacao::STATUS_ATIVA,
+        ]);
+        $avaliacao->pautas()->attach($pauta->id);
+        $avaliacao->turmas()->attach($turma->id);
+
+        $aluno = Aluno::query()->create([
+            'nome' => 'Aluno Pendente Documento',
+            'cgm' => 'CGM-PEND-DOC',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turma->id,
+        ]);
+
+        $avaliacao->load('tipo');
+        $pauta->load(['componente', 'alternativas']);
+
+        $metodo = new ReflectionMethod(AvaliacaoDocumentoExportService::class, 'montarDocumentoAluno');
+        $metodo->setAccessible(true);
+
+        $documento = $metodo->invoke(
+            new AvaliacaoDocumentoExportService(),
+            $avaliacao,
+            $turma->load(['escola', 'serie']),
+            $aluno,
+            collect([$pauta]),
+            collect(),
+            ['diretor' => '', 'coordenacao' => ''],
+            ''
+        );
+
+        $this->assertSame('Não Avaliado', $documento['componentes'][0]['pautas'][0]['resultado']);
+    }
+
     private function criarEscola(string $nome): Escola
     {
         return Escola::query()->create([

@@ -545,7 +545,7 @@ class AvaliacaoDocumentoExportService
                             return [
                                 'ordem' => $index + 1,
                                 'texto' => (string) $pauta->texto,
-                                'resultado' => (string) ($resposta?->alternativa?->nome ?? ''),
+                                'resultado' => (string) ($resposta?->alternativa?->nome ?? 'Não Avaliado'),
                                 'observacao' => (string) ($resposta?->observacao ?? ''),
                             ];
                         })

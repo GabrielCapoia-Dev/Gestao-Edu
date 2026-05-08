@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Alunos;
 
+use App\Filament\Admin\Resources\Alunos\Pages\ListAlunos;
 use App\Models\Aluno;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
@@ -10,6 +11,7 @@ use App\Models\Serie;
 use App\Models\Turma;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
@@ -147,9 +149,9 @@ class AlunoResourceScopeTest extends TestCase
         ]);
         $usuarioSemPermissao->givePermissionTo('Listar Alunos');
 
-        $this->actingAs($usuarioSemPermissao)
-            ->get(route('filament.admin.resources.alunos.create'))
-            ->assertForbidden();
+        Livewire::actingAs($usuarioSemPermissao)
+            ->test(ListAlunos::class)
+            ->assertActionHidden('create');
 
         $usuarioComPermissao = User::factory()->create([
             'email_approved' => true,
@@ -157,9 +159,41 @@ class AlunoResourceScopeTest extends TestCase
         ]);
         $usuarioComPermissao->givePermissionTo(['Listar Alunos', 'Criar Alunos']);
 
-        $this->actingAs($usuarioComPermissao)
-            ->get(route('filament.admin.resources.alunos.create'))
-            ->assertOk();
+        Livewire::actingAs($usuarioComPermissao)
+            ->test(ListAlunos::class)
+            ->assertActionVisible('create');
+    }
+
+    public function test_criacao_de_aluno_pelo_modal_usa_fluxo_de_matricula(): void
+    {
+        Permission::findOrCreate('Listar Alunos');
+        Permission::findOrCreate('Criar Alunos');
+
+        $escola = $this->criarEscola('Escola Modal Criacao');
+        $turma = $this->criarTurma($escola, 'Modal');
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo(['Listar Alunos', 'Criar Alunos']);
+
+        Livewire::actingAs($usuario)
+            ->test(ListAlunos::class)
+            ->callAction('create', [
+                'nome' => 'Aluno Criado No Modal',
+                'cgm' => 'CGM-MODAL-CRIACAO',
+                'data_nascimento' => '2015-01-01',
+                'id_turma' => $turma->id,
+            ])
+            ->assertHasNoActionErrors();
+
+        $this->assertDatabaseHas('alunos', [
+            'nome' => 'Aluno Criado No Modal',
+            'cgm' => 'CGM-MODAL-CRIACAO',
+            'id_turma' => $turma->id,
+            'status' => Aluno::STATUS_MATRICULADO,
+        ]);
     }
 
     private function criarEscola(string $nome): Escola
@@ -188,4 +222,3 @@ class AlunoResourceScopeTest extends TestCase
         ]);
     }
 }
-

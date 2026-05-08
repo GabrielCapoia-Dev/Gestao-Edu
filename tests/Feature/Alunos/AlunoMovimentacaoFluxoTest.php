@@ -4,6 +4,8 @@ namespace Tests\Feature\Alunos;
 
 use App\Exceptions\MatriculaAlunoBloqueadaException;
 use App\Filament\Admin\Pages\ParecerTransferenciaAluno;
+use App\Filament\Admin\Resources\Alunos\Pages\ListAlunos;
+use App\Livewire\AlunoParecerTransferenciaModal;
 use App\Models\Aluno;
 use App\Models\Alternativa;
 use App\Models\Avaliacao;
@@ -633,6 +635,108 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             ->call('alternarAvaliacaoParecer', $avaliacao->id)
             ->assertSet("avaliacoesExpandidas.{$avaliacao->id}", true)
             ->assertSee('Pauta de teste');
+    }
+
+    public function test_modal_parecer_na_tela_de_alunos_autosalva_e_inicia_recolhido(): void
+    {
+        Permission::findOrCreate('Gerar Parecer de Transferencia');
+
+        [$escola, $serie, $turmaOrigem, $turmaDestino, $avaliacao, $pauta, $alternativa] = $this->criarCenarioAvaliacaoDuasTurmas();
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo('Gerar Parecer de Transferencia');
+
+        $aluno = Aluno::query()->create([
+            'nome' => 'Aluno Modal Parecer',
+            'cgm' => 'CGM-MODAL-PARECER',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turmaOrigem->id,
+        ]);
+
+        Livewire::actingAs($usuario)
+            ->test(AlunoParecerTransferenciaModal::class, ['alunoId' => $aluno->id])
+            ->assertSet("avaliacoesExpandidas.{$avaliacao->id}", false)
+            ->assertDontSee('Pauta de teste')
+            ->call('alternarAvaliacaoParecer', $avaliacao->id)
+            ->assertSet("avaliacoesExpandidas.{$avaliacao->id}", true)
+            ->assertSee('Pauta de teste')
+            ->set("respostasParecer.{$avaliacao->id}.{$pauta->id}", (string) $alternativa->id);
+
+        $this->assertDatabaseHas('avaliacao_respostas', [
+            'avaliacao_id' => $avaliacao->id,
+            'pauta_id' => $pauta->id,
+            'turma_id' => $turmaOrigem->id,
+            'aluno_id' => $aluno->id,
+            'alternativa_id' => $alternativa->id,
+        ]);
+    }
+
+    public function test_tela_de_alunos_lista_todos_e_parecer_aparece_para_historico_com_avaliacao(): void
+    {
+        Permission::findOrCreate('Listar Alunos');
+        Permission::findOrCreate('Gerar Parecer de Transferencia');
+
+        [$escola, $serie, $turmaOrigem, $turmaDestino, $avaliacao, $pauta, $alternativa] = $this->criarCenarioAvaliacaoDuasTurmas();
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo(['Listar Alunos', 'Gerar Parecer de Transferencia']);
+
+        $alunoRespondido = Aluno::query()->create([
+            'nome' => 'Aluno Respondido',
+            'cgm' => 'CGM-RESPONDIDO',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turmaOrigem->id,
+        ]);
+
+        AvaliacaoResposta::query()->create([
+            'avaliacao_id' => $avaliacao->id,
+            'pauta_id' => $pauta->id,
+            'turma_id' => $turmaOrigem->id,
+            'aluno_id' => $alunoRespondido->id,
+            'alternativa_id' => $alternativa->id,
+            'respondido_em' => now(),
+        ]);
+
+        $alunoHistorico = Aluno::query()->create([
+            'nome' => 'Aluno Historico Com Avaliacao',
+            'cgm' => 'CGM-HIST-LISTA',
+            'data_nascimento' => '2015-01-02',
+            'id_turma' => $turmaOrigem->id,
+            'status' => Aluno::STATUS_TRANSFERIDO,
+        ]);
+
+        $alunoPendenteSemProfessor = Aluno::query()->create([
+            'nome' => 'Aluno Pendente Sem Professor',
+            'cgm' => 'CGM-SEM-PROF',
+            'data_nascimento' => '2015-01-03',
+            'id_turma' => $turmaDestino->id,
+        ]);
+
+        $turmaSemAvaliacao = $this->criarTurma($escola, 'Sem Avaliacao Alunos', $serie);
+        $alunoSemAvaliacao = Aluno::query()->create([
+            'nome' => 'Aluno Sem Avaliacao Na Lista',
+            'cgm' => 'CGM-LISTA-SEM-AVAL',
+            'data_nascimento' => '2015-01-04',
+            'id_turma' => $turmaSemAvaliacao->id,
+        ]);
+
+        Livewire::actingAs($usuario)
+            ->test(ListAlunos::class)
+            ->assertCanSeeTableRecords([$alunoRespondido, $alunoHistorico, $alunoPendenteSemProfessor, $alunoSemAvaliacao])
+            ->assertTableActionVisible('parecer_transferencia', $alunoHistorico)
+            ->assertTableActionHidden('parecer_transferencia', $alunoSemAvaliacao)
+            ->mountTableAction('parecer_transferencia', $alunoHistorico)
+            ->assertSee('Aluno Historico Com Avaliacao')
+            ->unmountTableAction()
+            ->filterTable('sem_professor', '1')
+            ->assertCanSeeTableRecords([$alunoPendenteSemProfessor])
+            ->assertCanNotSeeTableRecords([$alunoRespondido]);
     }
 
     private function criarCenarioAvaliacaoDuasTurmas(): array

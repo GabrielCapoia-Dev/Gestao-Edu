@@ -2,8 +2,6 @@
 
 namespace App\Filament\Admin\Resources\Alunos;
 
-use App\Filament\Admin\Resources\Alunos\Pages\CreateAluno;
-use App\Filament\Admin\Resources\Alunos\Pages\EditAluno;
 use App\Filament\Admin\Resources\Alunos\Pages\ListAlunos;
 use App\Models\Aluno;
 use App\Services\AlunoService;
@@ -93,8 +91,6 @@ class AlunoResource extends Resource
     {
         return [
             'index' => ListAlunos::route('/'),
-            'create' => CreateAluno::route('/create'),
-            'edit' => EditAluno::route('/{record}/edit'),
         ];
     }
 }

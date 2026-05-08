@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use App\Exceptions\MatriculaAlunoBloqueadaException;
 use App\Models\Aluno;
+use App\Models\Avaliacao;
 use App\Models\Escola;
 use App\Models\Turma;
 use App\Models\User;
@@ -22,6 +24,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 
 class AlunoService
 {
@@ -153,6 +156,21 @@ class AlunoService
                 ->label('Status')
                 ->options(Aluno::statusOptions()),
 
+            SelectFilter::make('sem_professor')
+                ->label('Professor')
+                ->options([
+                    '1' => 'Pendentes sem professor',
+                ])
+                ->query(function (Builder $query, array $data) {
+                    if (($data['value'] ?? null) !== '1') {
+                        return $query;
+                    }
+
+                    $this->aplicarFiltroPendenciaSemProfessor($query);
+
+                    return $query;
+                }),
+
             SelectFilter::make('id_escola')
                 ->label('Escola')
                 ->options($this->opcoesDeEscolas($user))
@@ -210,15 +228,53 @@ class AlunoService
                 ->label('Parecer de Transferencia')
                 ->icon('heroicon-o-document-arrow-down')
                 ->color('info')
-                ->visible(fn (Aluno $record): bool => $record->estaMatriculado()
+                ->slideOver()
+                ->modalWidth('7xl')
+                ->modalSubmitAction(false)
+                ->modalCancelActionLabel('Fechar')
+                ->modalHeading(fn (Aluno $record): string => 'Parecer de Transferencia')
+                ->modalDescription(fn (Aluno $record): string => trim(collect([
+                    $record->nome,
+                    'CGM: '.$record->cgm,
+                    $record->turma?->escola?->nome,
+                    $record->turma?->serie?->nome.' - '.$record->turma?->nome,
+                    $record->statusLabel(),
+                ])->filter()->join(' | ')))
+                ->modalContent(fn (Aluno $record) => view('components.alunos.parecer-transferencia-modal', [
+                    'aluno' => $record,
+                ]))
+                ->visible(fn (Aluno $record): bool => $this->alunoTemAvaliacoes($record)
                     && (($user?->hasPermissionLike('realizar transferencia de aluno') ?? false)
                         || ($user?->hasPermissionLike('realizar tranferencia de aluno') ?? false)
-                        || ($user?->hasPermissionLike('gerar parecer de transferencia') ?? false)))
-                ->url(fn (Aluno $record): string => route('filament.admin.pages.parecer-transferencia-aluno', [
-                    'aluno' => $record->id,
-                ])),
+                        || ($user?->hasPermissionLike('gerar parecer de transferencia') ?? false))),
 
             EditAction::make()
+                ->slideOver()
+                ->modalWidth('3xl')
+                ->using(function (Aluno $record, array $data) use ($user): Aluno {
+                    try {
+                        app(AlunoMovimentacaoService::class)->bloquearSeCgmAtivo(
+                            (string) ($data['cgm'] ?? ''),
+                            (int) ($data['id_turma'] ?? 0),
+                            $user,
+                            $record
+                        );
+                    } catch (MatriculaAlunoBloqueadaException $exception) {
+                        Notification::make()
+                            ->title('Matricula impedida')
+                            ->body($exception->getMessage())
+                            ->danger()
+                            ->send();
+
+                        throw ValidationException::withMessages([
+                            'data.cgm' => $exception->getMessage(),
+                        ]);
+                    }
+
+                    $record->update($data);
+
+                    return $record;
+                })
                 ->visible(fn(Aluno $record) => $record->estaMatriculado()
                     && $this->userService->podeEditarAlunos($user)),
 
@@ -297,5 +353,52 @@ class AlunoService
                 ])->filter()->join(' - '))];
             })
             ->toArray();
+    }
+
+    private function alunoTemAvaliacoes(Aluno $aluno): bool
+    {
+        $aluno->loadMissing('turma');
+
+        return $aluno->turma?->avaliacoes()->exists() ?? false;
+    }
+
+    private function aplicarFiltroPendenciaSemProfessor(Builder $query): void
+    {
+        $query->whereExists(function ($pendencias): void {
+            $pendencias
+                ->selectRaw('1')
+                ->from('avaliacao_turma as at')
+                ->join('avaliacoes as av', 'av.id', '=', 'at.avaliacao_id')
+                ->join('avaliacao_pauta as ap', 'ap.avaliacao_id', '=', 'at.avaliacao_id')
+                ->join('pautas as p', 'p.id', '=', 'ap.pauta_id')
+                ->join('turmas as t', 't.id', '=', 'at.turma_id')
+                ->whereColumn('at.turma_id', 'alunos.id_turma')
+                ->where('av.status', Avaliacao::STATUS_ATIVA)
+                ->where('p.status', true)
+                ->whereNotNull('p.componente_curricular_id')
+                ->where(function ($series): void {
+                    $series
+                        ->whereNull('p.serie_id')
+                        ->orWhereColumn('p.serie_id', 't.id_serie');
+                })
+                ->whereNotExists(function ($professores): void {
+                    $professores
+                        ->selectRaw('1')
+                        ->from('turma_componente_professor as tcp')
+                        ->whereColumn('tcp.turma_id', 'at.turma_id')
+                        ->whereColumn('tcp.componente_curricular_id', 'p.componente_curricular_id')
+                        ->whereNotNull('tcp.professor_id');
+                })
+                ->whereNotExists(function ($respostas): void {
+                    $respostas
+                        ->selectRaw('1')
+                        ->from('avaliacao_respostas as ar')
+                        ->whereColumn('ar.avaliacao_id', 'at.avaliacao_id')
+                        ->whereColumn('ar.pauta_id', 'p.id')
+                        ->whereColumn('ar.turma_id', 'at.turma_id')
+                        ->whereColumn('ar.aluno_id', 'alunos.id')
+                        ->whereNotNull('ar.alternativa_id');
+                });
+        });
     }
 }
