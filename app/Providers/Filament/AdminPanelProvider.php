@@ -107,6 +107,10 @@ class AdminPanelProvider extends PanelProvider
                 PanelsRenderHook::HEAD_END,
                 fn (): \Illuminate\Contracts\View\View => view('filament.pages.partials.inventory-page-styles')
             )
+            ->renderHook(
+                PanelsRenderHook::HEAD_END,
+                fn (): \Illuminate\Contracts\View\View => view('filament.pages.partials.panel-layering-styles')
+            )
             ->plugins([
                 AuthDesignerPlugin::make()
                     ->login(
