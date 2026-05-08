@@ -1061,16 +1061,20 @@
         color: #fff;
     }
 
-    .fi-ta-ctn:has(.fi-ta-header-toolbar),
+    .fi-ta,
+    .fi-ta-ctn,
+    .fi-ta-main,
     .fi-ta-header-ctn,
     .fi-ta-header-toolbar,
-    .fi-ta-header-toolbar > * {
-        overflow: visible;
+    .fi-ta-header-toolbar > *,
+    .fi-ta-actions,
+    .fi-dropdown {
+        overflow: visible !important;
     }
 
     .fi-ta-header-ctn {
         position: relative;
-        z-index: 30;
+        z-index: 70;
     }
 
     .fi-ta-content-ctn,
@@ -1081,7 +1085,7 @@
 
     .fi-dropdown-panel,
     .fi-popover-panel {
-        z-index: 90;
+        z-index: 1000 !important;
     }
 
     .fi-resource-list-records-page .fi-ta {
