@@ -328,7 +328,9 @@
 .fi-ta-row:hover .fi-ta-cell {
     background: var(--edu-primary-50);
 }
-
+.fi-global-search .fi-input-wrp {
+    background: rgb(255 255 255 / 30%);
+}
 .fi-ta-row:last-child .fi-ta-cell {
     border-bottom: none;
 }
