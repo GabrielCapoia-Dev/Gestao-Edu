@@ -46,54 +46,43 @@
                 </div>
 
                 <div class="parecer-table-shell">
-                    <div class="parecer-loading-cover" wire:loading.delay.flex wire:target="busca,porPagina,selecionarAluno,nextPage,previousPage,gotoPage">
-                        <span class="parecer-spinner"></span>
-                        <span>Carregando informacoes...</span>
-                    </div>
-
                     <div class="gi-table-wrap">
-                    <table class="gi-table">
-                        <thead>
-                            <tr>
-                                <th>Aluno</th>
-                                <th>Escola</th>
-                                <th>Turma</th>
-                                <th>Status</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse ($alunos as $aluno)
-                            <tr wire:key="parecer-aluno-{{ $aluno->id }}">
-                                <td>
-                                    <strong>{{ $aluno->nome }}</strong>
-                                    <small>CGM: {{ $aluno->cgm }}</small>
-                                </td>
-                                <td>{{ $aluno->turma?->escola?->nome }}</td>
-                                <td>{{ $aluno->turma?->serie?->nome }} - {{ $aluno->turma?->nome }}</td>
-                                <td>{{ $aluno->statusLabel() }}</td>
-                                <td>
-                                    <button
-                                        type="button"
-                                        class="gi-action parecer-open-action"
-                                        wire:click="selecionarAluno({{ $aluno->id }})"
-                                        wire:loading.attr="disabled"
-                                        wire:target="selecionarAluno({{ $aluno->id }})">
-                                        <span wire:loading.remove wire:target="selecionarAluno({{ $aluno->id }})">Abrir</span>
-                                        <span class="parecer-inline-loading" wire:loading.inline-flex wire:target="selecionarAluno({{ $aluno->id }})">
-                                            <span class="parecer-spinner parecer-spinner--small"></span>
-                                            Abrindo
-                                        </span>
-                                    </button>
-                                </td>
-                            </tr>
-                            @empty
-                            <tr>
-                                <td colspan="5">Nenhum aluno matriculado encontrado.</td>
-                            </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
+                        <table class="gi-table">
+                            <thead>
+                                <tr>
+                                    <th>Aluno</th>
+                                    <th>Escola</th>
+                                    <th>Turma</th>
+                                    <th>Status</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse ($alunos as $aluno)
+                                <tr wire:key="parecer-aluno-{{ $aluno->id }}">
+                                    <td>
+                                        <strong>{{ $aluno->nome }}</strong>
+                                        <small>CGM: {{ $aluno->cgm }}</small>
+                                    </td>
+                                    <td>{{ $aluno->turma?->escola?->nome }}</td>
+                                    <td>{{ $aluno->turma?->serie?->nome }} - {{ $aluno->turma?->nome }}</td>
+                                    <td>{{ $aluno->statusLabel() }}</td>
+                                    <td>
+                                        <button
+                                            type="button"
+                                            class="gi-action parecer-open-action"
+                                            wire:click="selecionarAluno({{ $aluno->id }})">
+                                            Abrir
+                                        </button>
+                                    </td>
+                                </tr>
+                                @empty
+                                <tr>
+                                    <td colspan="5">Nenhum aluno matriculado encontrado.</td>
+                                </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
@@ -111,8 +100,6 @@
                         type="button"
                         class="gi-action"
                         wire:click="previousPage"
-                        wire:loading.attr="disabled"
-                        wire:target="previousPage,nextPage,gotoPage"
                         @disabled($alunos->onFirstPage())>
                         Anterior
                     </button>
@@ -129,9 +116,7 @@
                         <button
                             type="button"
                             class="parecer-page-button {{ $pagina === $paginaAtual ? 'is-active' : '' }}"
-                            wire:click="gotoPage({{ $pagina }})"
-                            wire:loading.attr="disabled"
-                            wire:target="previousPage,nextPage,gotoPage">
+                            wire:click="gotoPage({{ $pagina }})">
                             {{ $pagina }}
                         </button>
                         @endforeach
@@ -148,8 +133,6 @@
                         type="button"
                         class="gi-action"
                         wire:click="nextPage"
-                        wire:loading.attr="disabled"
-                        wire:target="previousPage,nextPage,gotoPage"
                         @disabled(! $alunos->hasMorePages())>
                         Proxima
                     </button>
@@ -185,20 +168,11 @@
                         wire:confirm="Caso deseje continuar, o aluno sera marcado como transferido e essa acao nao podera ser revertida. Deseja gerar o Parecer de Transferencia?"
                         wire:loading.attr="disabled"
                         wire:target="gerarParecerTransferencia">
-                        <span wire:loading.remove wire:target="gerarParecerTransferencia">Gerar Parecer de Transferencia</span>
-                        <span class="parecer-inline-loading" wire:loading.inline-flex wire:target="gerarParecerTransferencia">
-                            <span class="parecer-spinner parecer-spinner--small"></span>
-                            Gerando parecer...
-                        </span>
+                        Gerar Parecer de Transferencia
                     </button>
                 </div>
 
                 <div class="parecer-slideover-body">
-                    <div class="parecer-slideover-loading" wire:loading.delay.flex wire:target="gerarParecerTransferencia">
-                        <span class="parecer-spinner"></span>
-                        <span>Gerando documentos e marcando transferencia...</span>
-                    </div>
-
                     @forelse ($this->avaliacoesDoAluno as $avaliacao)
                     <section class="gi-panel av-turma-section" wire:key="parecer-avaliacao-{{ $avaliacao['id'] }}">
                         <div class="av-pauta-toggle">
@@ -276,66 +250,6 @@
             .parecer-table-shell {
                 position: relative;
                 min-height: 12rem;
-            }
-
-            .parecer-loading-cover,
-            .parecer-slideover-loading {
-                align-items: center;
-                justify-content: center;
-                gap: 0.65rem;
-                color: var(--primary-700);
-                font-size: var(--text-sm);
-                line-height: 1.45;
-                font-weight: var(--font-weight-medium);
-            }
-
-            .parecer-loading-cover {
-                position: absolute;
-                inset: 0;
-                z-index: 3;
-                border-radius: var(--radius-xl);
-                background: rgba(255, 255, 255, 0.78);
-                backdrop-filter: blur(2px);
-            }
-
-            .parecer-slideover-loading {
-                position: sticky;
-                top: 0;
-                z-index: 4;
-                min-height: 3rem;
-                border: 1px solid var(--primary-200);
-                border-radius: var(--radius-lg);
-                background: var(--primary-50);
-            }
-
-            .parecer-inline-loading {
-                align-items: center;
-                gap: 0.45rem;
-            }
-
-            .parecer-spinner {
-                width: 1.05rem;
-                height: 1.05rem;
-                border: 2px solid color-mix(in oklab, var(--primary-200) 74%, transparent);
-                border-top-color: var(--primary-700);
-                border-radius: 999px;
-                animation: parecer-spin 0.7s linear infinite;
-            }
-
-            .parecer-spinner--small {
-                width: 0.85rem;
-                height: 0.85rem;
-                border-width: 2px;
-            }
-
-            @keyframes parecer-spin {
-                from {
-                    transform: rotate(0deg);
-                }
-
-                to {
-                    transform: rotate(360deg);
-                }
             }
 
             .parecer-pagination {
