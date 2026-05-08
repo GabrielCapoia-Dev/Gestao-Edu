@@ -308,7 +308,7 @@
 }
 
 .fi-ta-table thead tr th {
-    background: linear-gradient(105deg, #11366f 0%, #174f8f 54%, #2f72ad 100%) !important;
+    background-color: #11366f !important;
     color: var(--edu-white) !important;
     font-size: 0.72rem;
     font-weight: 700;
