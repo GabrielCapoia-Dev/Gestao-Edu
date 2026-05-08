@@ -328,11 +328,26 @@
 .fi-ta-row:hover .fi-ta-cell {
     background: var(--edu-primary-50);
 }
+
 .fi-global-search .fi-input-wrp {
-    background: rgb(255 255 255 / 30%);
+    background: rgba(255, 255, 255, 0.795);
 }
+
 .fi-ta-row:last-child .fi-ta-cell {
     border-bottom: none;
+}
+
+.fi-global-search .fi-input-wrp-prefix svg {
+    color: rgb(44, 44, 44);
+}
+
+.fi-global-search .fi-input-wrp {
+    background: rgb(255 255 255 / 64%);
+}
+
+.fi-input[placeholder="Pesquisar"]::placeholder {
+    color: #ffffff !important;
+    opacity: 1;
 }
 
 .fi-ta-footer {
