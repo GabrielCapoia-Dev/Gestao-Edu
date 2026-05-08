@@ -46,7 +46,13 @@ class ParecerTransferenciaAluno extends Page
 
     public string $busca = '';
 
+    public string $escolaFiltro = '';
+
+    public string $serieFiltro = '';
+
     public string $turmaFiltro = '';
+
+    public string $semProfessorFiltro = '';
 
     public string $porPagina = '10';
 
@@ -61,6 +67,8 @@ class ParecerTransferenciaAluno extends Page
     public array $informacoesComplementaresParecer = [];
 
     public array $informacoesComplementaresBloqueadas = [];
+
+    public array $avaliacoesExpandidas = [];
 
     public static function canAccess(): bool
     {
@@ -89,6 +97,33 @@ class ParecerTransferenciaAluno extends Page
         $this->observacoesParecer = [];
         $this->informacoesComplementaresParecer = [];
         $this->informacoesComplementaresBloqueadas = [];
+        $this->avaliacoesExpandidas = [];
+        $this->resetPage();
+    }
+
+    public function updatedEscolaFiltro(): void
+    {
+        $this->turmaFiltro = '';
+        $this->alunoSelecionadoId = null;
+        $this->slideoverAberto = false;
+        $this->respostasParecer = [];
+        $this->observacoesParecer = [];
+        $this->informacoesComplementaresParecer = [];
+        $this->informacoesComplementaresBloqueadas = [];
+        $this->avaliacoesExpandidas = [];
+        $this->resetPage();
+    }
+
+    public function updatedSerieFiltro(): void
+    {
+        $this->turmaFiltro = '';
+        $this->alunoSelecionadoId = null;
+        $this->slideoverAberto = false;
+        $this->respostasParecer = [];
+        $this->observacoesParecer = [];
+        $this->informacoesComplementaresParecer = [];
+        $this->informacoesComplementaresBloqueadas = [];
+        $this->avaliacoesExpandidas = [];
         $this->resetPage();
     }
 
@@ -100,6 +135,19 @@ class ParecerTransferenciaAluno extends Page
         $this->observacoesParecer = [];
         $this->informacoesComplementaresParecer = [];
         $this->informacoesComplementaresBloqueadas = [];
+        $this->avaliacoesExpandidas = [];
+        $this->resetPage();
+    }
+
+    public function updatedSemProfessorFiltro(): void
+    {
+        $this->alunoSelecionadoId = null;
+        $this->slideoverAberto = false;
+        $this->respostasParecer = [];
+        $this->observacoesParecer = [];
+        $this->informacoesComplementaresParecer = [];
+        $this->informacoesComplementaresBloqueadas = [];
+        $this->avaliacoesExpandidas = [];
         $this->resetPage();
     }
 
@@ -120,6 +168,7 @@ class ParecerTransferenciaAluno extends Page
         $this->alunoSelecionadoId = (int) $aluno->id;
         $this->carregarRespostasParecer($aluno);
         $this->carregarInformacoesComplementaresParecer($aluno);
+        $this->carregarAvaliacoesExpandidas($aluno);
         $this->slideoverAberto = true;
     }
 
@@ -131,6 +180,17 @@ class ParecerTransferenciaAluno extends Page
         $this->observacoesParecer = [];
         $this->informacoesComplementaresParecer = [];
         $this->informacoesComplementaresBloqueadas = [];
+        $this->avaliacoesExpandidas = [];
+    }
+
+    public function alternarAvaliacaoParecer(int $avaliacaoId): void
+    {
+        $this->avaliacoesExpandidas[$avaliacaoId] = ! $this->avaliacaoEstaExpandida($avaliacaoId);
+    }
+
+    public function avaliacaoEstaExpandida(int $avaliacaoId): bool
+    {
+        return (bool) ($this->avaliacoesExpandidas[$avaliacaoId] ?? true);
     }
 
     public function gerarParecerTransferencia(AlunoTransferenciaParecerService $service): ?Response
@@ -176,18 +236,28 @@ class ParecerTransferenciaAluno extends Page
 
     public function getAlunosProperty(): LengthAwarePaginator
     {
-        $query = Aluno::query()
-            ->with(['turma.escola', 'turma.serie'])
-            ->whereHas('turma.avaliacoes')
-            ->where('status', Aluno::STATUS_MATRICULADO);
-
-        app(UserService::class)->aplicarFiltroAlunosDoUsuario($query, Auth::user());
+        $query = $this->queryAlunosParecer();
 
         $busca = trim($this->busca);
+        $escolaFiltro = (int) $this->escolaFiltro;
+        $serieFiltro = (int) $this->serieFiltro;
         $turmaFiltro = (int) $this->turmaFiltro;
+        $semProfessorFiltro = (string) $this->semProfessorFiltro;
+
+        if ($escolaFiltro > 0) {
+            $query->whereHas('turma', fn (Builder $turmas): Builder => $turmas->where('id_escola', $escolaFiltro));
+        }
+
+        if ($serieFiltro > 0) {
+            $query->whereHas('turma', fn (Builder $turmas): Builder => $turmas->where('id_serie', $serieFiltro));
+        }
 
         if ($turmaFiltro > 0) {
             $query->where('id_turma', $turmaFiltro);
+        }
+
+        if ($semProfessorFiltro === '1') {
+            $this->aplicarFiltroPendenciaSemProfessor($query);
         }
 
         if ($busca !== '') {
@@ -216,14 +286,50 @@ class ParecerTransferenciaAluno extends Page
         ];
     }
 
+    public function opcoesEscolas(): array
+    {
+        return $this->queryAlunosParecer()
+            ->get()
+            ->pluck('turma.escola')
+            ->filter()
+            ->unique(fn ($escola): int => (int) $escola->id)
+            ->sortBy(fn ($escola): string => mb_strtolower((string) $escola->nome))
+            ->mapWithKeys(fn ($escola): array => [(int) $escola->id => (string) $escola->nome])
+            ->all();
+    }
+
+    public function opcoesSeries(): array
+    {
+        $query = $this->queryAlunosParecer();
+        $escolaFiltro = (int) $this->escolaFiltro;
+
+        if ($escolaFiltro > 0) {
+            $query->whereHas('turma', fn (Builder $turmas): Builder => $turmas->where('id_escola', $escolaFiltro));
+        }
+
+        return $query
+            ->get()
+            ->pluck('turma.serie')
+            ->filter()
+            ->unique(fn ($serie): int => (int) $serie->id)
+            ->sortBy(fn ($serie): string => mb_strtolower((string) $serie->nome))
+            ->mapWithKeys(fn ($serie): array => [(int) $serie->id => (string) $serie->nome])
+            ->all();
+    }
+
     public function opcoesTurmas(): array
     {
-        $query = Aluno::query()
-            ->with(['turma.escola', 'turma.serie'])
-            ->whereHas('turma.avaliacoes')
-            ->where('status', Aluno::STATUS_MATRICULADO);
+        $query = $this->queryAlunosParecer();
+        $escolaFiltro = (int) $this->escolaFiltro;
+        $serieFiltro = (int) $this->serieFiltro;
 
-        app(UserService::class)->aplicarFiltroAlunosDoUsuario($query, Auth::user());
+        if ($escolaFiltro > 0) {
+            $query->whereHas('turma', fn (Builder $turmas): Builder => $turmas->where('id_escola', $escolaFiltro));
+        }
+
+        if ($serieFiltro > 0) {
+            $query->whereHas('turma', fn (Builder $turmas): Builder => $turmas->where('id_serie', $serieFiltro));
+        }
 
         return $query
             ->get()
@@ -276,6 +382,18 @@ class ParecerTransferenciaAluno extends Page
             ->map(fn (Avaliacao $avaliacao): array => $this->formatarAvaliacao($avaliacao, $aluno));
     }
 
+    private function queryAlunosParecer(): Builder
+    {
+        $query = Aluno::query()
+            ->with(['turma.escola', 'turma.serie'])
+            ->whereHas('turma.avaliacoes')
+            ->where('status', Aluno::STATUS_MATRICULADO);
+
+        app(UserService::class)->aplicarFiltroAlunosDoUsuario($query, Auth::user());
+
+        return $query;
+    }
+
     private function buscarAlunoNoEscopo(int $alunoId): ?Aluno
     {
         $query = Aluno::query()
@@ -287,6 +405,46 @@ class ParecerTransferenciaAluno extends Page
         app(UserService::class)->aplicarFiltroAlunosDoUsuario($query, Auth::user());
 
         return $query->first();
+    }
+
+    private function aplicarFiltroPendenciaSemProfessor(Builder $query): void
+    {
+        $query->whereExists(function ($pendencias): void {
+            $pendencias
+                ->selectRaw('1')
+                ->from('avaliacao_turma as at')
+                ->join('avaliacoes as av', 'av.id', '=', 'at.avaliacao_id')
+                ->join('avaliacao_pauta as ap', 'ap.avaliacao_id', '=', 'at.avaliacao_id')
+                ->join('pautas as p', 'p.id', '=', 'ap.pauta_id')
+                ->join('turmas as t', 't.id', '=', 'at.turma_id')
+                ->whereColumn('at.turma_id', 'alunos.id_turma')
+                ->where('av.status', Avaliacao::STATUS_ATIVA)
+                ->where('p.status', true)
+                ->whereNotNull('p.componente_curricular_id')
+                ->where(function ($series): void {
+                    $series
+                        ->whereNull('p.serie_id')
+                        ->orWhereColumn('p.serie_id', 't.id_serie');
+                })
+                ->whereNotExists(function ($professores): void {
+                    $professores
+                        ->selectRaw('1')
+                        ->from('turma_componente_professor as tcp')
+                        ->whereColumn('tcp.turma_id', 'at.turma_id')
+                        ->whereColumn('tcp.componente_curricular_id', 'p.componente_curricular_id')
+                        ->whereNotNull('tcp.professor_id');
+                })
+                ->whereNotExists(function ($respostas): void {
+                    $respostas
+                        ->selectRaw('1')
+                        ->from('avaliacao_respostas as ar')
+                        ->whereColumn('ar.avaliacao_id', 'at.avaliacao_id')
+                        ->whereColumn('ar.pauta_id', 'p.id')
+                        ->whereColumn('ar.turma_id', 'at.turma_id')
+                        ->whereColumn('ar.aluno_id', 'alunos.id')
+                        ->whereNotNull('ar.alternativa_id');
+                });
+        });
     }
 
     private function formatarAvaliacao(Avaliacao $avaliacao, Aluno $aluno): array
@@ -579,6 +737,21 @@ class ParecerTransferenciaAluno extends Page
 
         $this->informacoesComplementaresParecer = $informacoes;
         $this->informacoesComplementaresBloqueadas = $bloqueadas;
+    }
+
+    private function carregarAvaliacoesExpandidas(Aluno $aluno): void
+    {
+        if (! $aluno->turma) {
+            $this->avaliacoesExpandidas = [];
+
+            return;
+        }
+
+        $this->avaliacoesExpandidas = Avaliacao::query()
+            ->whereHas('turmas', fn (Builder $turmas): Builder => $turmas->whereKey((int) $aluno->id_turma))
+            ->pluck('id')
+            ->mapWithKeys(fn ($id): array => [(int) $id => true])
+            ->all();
     }
 
     private function salvarInformacoesComplementaresParecer(Aluno $aluno): void

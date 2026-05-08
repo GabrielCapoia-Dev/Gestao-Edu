@@ -15,12 +15,40 @@
             </label>
 
             <label class="gi-field">
+                <span>Escola</span>
+                <select wire:model.live="escolaFiltro">
+                    <option value="">Todas as escolas</option>
+                    @foreach ($this->opcoesEscolas() as $escolaId => $escolaNome)
+                    <option value="{{ $escolaId }}">{{ $escolaNome }}</option>
+                    @endforeach
+                </select>
+            </label>
+
+            <label class="gi-field">
+                <span>Serie</span>
+                <select wire:model.live="serieFiltro">
+                    <option value="">Todas as series</option>
+                    @foreach ($this->opcoesSeries() as $serieId => $serieNome)
+                    <option value="{{ $serieId }}">{{ $serieNome }}</option>
+                    @endforeach
+                </select>
+            </label>
+
+            <label class="gi-field">
                 <span>Turma</span>
                 <select wire:model.live="turmaFiltro">
                     <option value="">Todas as turmas</option>
                     @foreach ($this->opcoesTurmas() as $turmaId => $turmaNome)
                     <option value="{{ $turmaId }}">{{ $turmaNome }}</option>
                     @endforeach
+                </select>
+            </label>
+
+            <label class="gi-field">
+                <span>Professor</span>
+                <select wire:model.live="semProfessorFiltro">
+                    <option value="">Todos os alunos</option>
+                    <option value="1">Pendentes sem professor</option>
                 </select>
             </label>
         </section>
@@ -184,8 +212,13 @@
 
                 <div class="parecer-slideover-body">
                     @forelse ($this->avaliacoesDoAluno as $avaliacao)
-                    <section class="gi-panel av-turma-section" wire:key="parecer-avaliacao-{{ $avaliacao['id'] }}">
-                        <div class="av-pauta-toggle">
+                    @php($avaliacaoExpandida = $this->avaliacaoEstaExpandida((int) $avaliacao['id']))
+                    <section class="gi-panel av-turma-section {{ $avaliacaoExpandida ? 'is-open' : '' }}" wire:key="parecer-avaliacao-{{ $avaliacao['id'] }}">
+                        <button
+                            type="button"
+                            class="av-pauta-toggle parecer-evaluation-toggle"
+                            wire:click="alternarAvaliacaoParecer({{ $avaliacao['id'] }})"
+                            aria-expanded="{{ $avaliacaoExpandida ? 'true' : 'false' }}">
                             <div class="av-pauta-toggle-main">
                                 <h3 class="av-pauta-title">{{ $avaliacao['nome'] }}</h3>
                                 <p class="av-pauta-meta">
@@ -203,9 +236,13 @@
                                 <div class="av-progress-track av-progress-track--compact">
                                     <div class="av-progress-bar" style="width: {{ $avaliacao['percentual'] }}%"></div>
                                 </div>
+                                <div class="av-pauta-toggle-meta">
+                                    <span class="av-pauta-arrow {{ $avaliacaoExpandida ? 'is-open' : '' }}">v</span>
+                                </div>
                             </div>
-                        </div>
+                        </button>
 
+                        @if ($avaliacaoExpandida)
                         <div class="av-turma-content">
                             @foreach ($avaliacao['componentes'] as $componente)
                             <section class="av-aluno-componente">
@@ -277,6 +314,7 @@
                             </section>
                             @endforeach
                         </div>
+                        @endif
                     </section>
                     @empty
                     <section class="av-note av-note--warning">
@@ -302,7 +340,7 @@
 
             .parecer-filter-grid {
                 display: grid;
-                grid-template-columns: minmax(0, 1fr) minmax(16rem, 24rem);
+                grid-template-columns: minmax(16rem, 1.4fr) repeat(4, minmax(10rem, 1fr));
                 gap: 1rem;
             }
 
@@ -421,6 +459,18 @@
                 overflow-y: auto;
                 padding: 1rem 1.25rem 1.25rem;
                 background: var(--gray-50);
+            }
+
+            .parecer-evaluation-toggle {
+                width: 100%;
+                border: 0;
+                background: transparent;
+                cursor: pointer;
+                text-align: left;
+            }
+
+            .parecer-evaluation-toggle:hover .av-pauta-title {
+                color: var(--primary-700);
             }
 
             .parecer-response-select {

@@ -409,11 +409,11 @@ class AlunoMovimentacaoFluxoTest extends TestCase
         ]);
     }
 
-    public function test_parecer_transferencia_filtro_por_turma(): void
+    public function test_parecer_transferencia_filtra_por_escola_serie_turma_e_pendencia_sem_professor(): void
     {
         Permission::findOrCreate('Gerar Parecer de Transferencia');
 
-        [$escola, $serie, $turmaOrigem, $turmaDestino] = $this->criarCenarioAvaliacaoDuasTurmas();
+        [$escola, $serie, $turmaOrigem, $turmaDestino, $avaliacao, $pauta, $alternativa] = $this->criarCenarioAvaliacaoDuasTurmas();
 
         $usuario = User::factory()->create([
             'email_approved' => true,
@@ -421,7 +421,7 @@ class AlunoMovimentacaoFluxoTest extends TestCase
         ]);
         $usuario->givePermissionTo('Gerar Parecer de Transferencia');
 
-        Aluno::query()->create([
+        $alunoOrigem = Aluno::query()->create([
             'nome' => 'Aluno Turma Origem',
             'cgm' => 'CGM-FILTRO-1',
             'data_nascimento' => '2015-01-01',
@@ -435,9 +435,42 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             'id_turma' => $turmaDestino->id,
         ]);
 
+        AvaliacaoResposta::query()->create([
+            'avaliacao_id' => $avaliacao->id,
+            'pauta_id' => $pauta->id,
+            'turma_id' => $turmaOrigem->id,
+            'aluno_id' => $alunoOrigem->id,
+            'alternativa_id' => $alternativa->id,
+            'respondido_em' => now(),
+        ]);
+
+        $outraEscola = $this->criarEscola('Outra Escola Filtro');
+        $outraSerie = Serie::query()->create(['codigo' => 'SER-FILTRO', 'nome' => '2o Ano Filtro']);
+        $outraTurma = $this->criarTurma($outraEscola, 'C', $outraSerie);
+        $avaliacao->turmas()->attach($outraTurma->id);
+
+        Aluno::query()->create([
+            'nome' => 'Aluno Outra Escola',
+            'cgm' => 'CGM-FILTRO-3',
+            'data_nascimento' => '2015-01-03',
+            'id_turma' => $outraTurma->id,
+        ]);
+
         Livewire::actingAs($usuario)
             ->test(ParecerTransferenciaAluno::class)
+            ->set('escolaFiltro', (string) $outraEscola->id)
+            ->assertSee('Aluno Outra Escola')
+            ->assertDontSee('Aluno Turma Origem')
+            ->set('escolaFiltro', '')
+            ->set('serieFiltro', (string) $outraSerie->id)
+            ->assertSee('Aluno Outra Escola')
+            ->assertDontSee('Aluno Turma Destino')
+            ->set('serieFiltro', '')
             ->set('turmaFiltro', (string) $turmaDestino->id)
+            ->assertSee('Aluno Turma Destino')
+            ->assertDontSee('Aluno Turma Origem')
+            ->set('turmaFiltro', '')
+            ->set('semProfessorFiltro', '1')
             ->assertSee('Aluno Turma Destino')
             ->assertDontSee('Aluno Turma Origem');
     }
@@ -496,9 +529,17 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             ->assertSee('de 6')
             ->call('selecionarAluno', $aluno->id)
             ->assertSet('slideoverAberto', true)
+            ->assertSet("avaliacoesExpandidas.{$avaliacao->id}", true)
             ->assertSee('Aluno Parecer Slideover')
+            ->assertSee('Pauta de teste')
             ->assertSee('Gerar Parecer de Transferencia')
-            ->assertSee('100%');
+            ->assertSee('100%')
+            ->call('alternarAvaliacaoParecer', $avaliacao->id)
+            ->assertSet("avaliacoesExpandidas.{$avaliacao->id}", false)
+            ->assertDontSee('Pauta de teste')
+            ->call('alternarAvaliacaoParecer', $avaliacao->id)
+            ->assertSet("avaliacoesExpandidas.{$avaliacao->id}", true)
+            ->assertSee('Pauta de teste');
     }
 
     private function criarCenarioAvaliacaoDuasTurmas(): array
