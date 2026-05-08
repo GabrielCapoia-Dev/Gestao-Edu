@@ -17,10 +17,13 @@
 
         <div class="av-stack">
             <section class="gi-panel">
+                @php
+                    $alunos = $this->alunos;
+                @endphp
                 <div class="gi-toolbar">
                     <div>
                         <h3 class="av-pauta-title">Alunos matriculados</h3>
-                        <p class="av-pauta-meta">{{ $this->alunos->total() }} resultado(s)</p>
+                        <p class="av-pauta-meta">{{ $alunos->total() }} resultado(s)</p>
                     </div>
 
                     <label class="gi-field gi-field--small">
@@ -36,13 +39,19 @@
                 <div class="gi-toolbar">
                     <div>
                         <p class="av-pauta-meta">
-                            Mostrando {{ $this->alunos->firstItem() ?? 0 }}-{{ $this->alunos->lastItem() ?? 0 }}
-                            de {{ $this->alunos->total() }}
+                            Mostrando {{ $alunos->firstItem() ?? 0 }}-{{ $alunos->lastItem() ?? 0 }}
+                            de {{ $alunos->total() }}
                         </p>
                     </div>
                 </div>
 
-                <div class="gi-table-wrap">
+                <div class="parecer-table-shell">
+                    <div class="parecer-loading-cover" wire:loading.delay.flex wire:target="busca,porPagina,selecionarAluno,nextPage,previousPage,gotoPage">
+                        <span class="parecer-spinner"></span>
+                        <span>Carregando informacoes...</span>
+                    </div>
+
+                    <div class="gi-table-wrap">
                     <table class="gi-table">
                         <thead>
                             <tr>
@@ -54,7 +63,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse ($this->alunos as $aluno)
+                            @forelse ($alunos as $aluno)
                             <tr wire:key="parecer-aluno-{{ $aluno->id }}">
                                 <td>
                                     <strong>{{ $aluno->nome }}</strong>
@@ -64,8 +73,17 @@
                                 <td>{{ $aluno->turma?->serie?->nome }} - {{ $aluno->turma?->nome }}</td>
                                 <td>{{ $aluno->statusLabel() }}</td>
                                 <td>
-                                    <button type="button" class="gi-action" wire:click="selecionarAluno({{ $aluno->id }})">
-                                        Abrir
+                                    <button
+                                        type="button"
+                                        class="gi-action parecer-open-action"
+                                        wire:click="selecionarAluno({{ $aluno->id }})"
+                                        wire:loading.attr="disabled"
+                                        wire:target="selecionarAluno({{ $aluno->id }})">
+                                        <span wire:loading.remove wire:target="selecionarAluno({{ $aluno->id }})">Abrir</span>
+                                        <span class="parecer-inline-loading" wire:loading.inline-flex wire:target="selecionarAluno({{ $aluno->id }})">
+                                            <span class="parecer-spinner parecer-spinner--small"></span>
+                                            Abrindo
+                                        </span>
                                     </button>
                                 </td>
                             </tr>
@@ -76,15 +94,73 @@
                             @endforelse
                         </tbody>
                     </table>
+                    </div>
                 </div>
 
-                <div>
-                    {{ $this->alunos->links() }}
-                </div>
+                @if ($alunos->hasPages())
+                @php
+                    $paginaAtual = $alunos->currentPage();
+                    $ultimaPagina = $alunos->lastPage();
+                    $inicioJanela = max(1, $paginaAtual - 2);
+                    $fimJanela = min($ultimaPagina, $paginaAtual + 2);
+                    $paginas = $inicioJanela <= $fimJanela ? range($inicioJanela, $fimJanela) : [];
+                @endphp
+
+                <nav class="parecer-pagination" aria-label="Paginacao de alunos">
+                    <button
+                        type="button"
+                        class="gi-action"
+                        wire:click="previousPage"
+                        wire:loading.attr="disabled"
+                        wire:target="previousPage,nextPage,gotoPage"
+                        @disabled($alunos->onFirstPage())>
+                        Anterior
+                    </button>
+
+                    <div class="parecer-page-list">
+                        @if (! in_array(1, $paginas, true))
+                        <button type="button" class="parecer-page-button" wire:click="gotoPage(1)">1</button>
+                        @if ($inicioJanela > 2)
+                        <span class="parecer-page-ellipsis">...</span>
+                        @endif
+                        @endif
+
+                        @foreach ($paginas as $pagina)
+                        <button
+                            type="button"
+                            class="parecer-page-button {{ $pagina === $paginaAtual ? 'is-active' : '' }}"
+                            wire:click="gotoPage({{ $pagina }})"
+                            wire:loading.attr="disabled"
+                            wire:target="previousPage,nextPage,gotoPage">
+                            {{ $pagina }}
+                        </button>
+                        @endforeach
+
+                        @if (! in_array($ultimaPagina, $paginas, true))
+                        @if ($fimJanela < $ultimaPagina - 1)
+                        <span class="parecer-page-ellipsis">...</span>
+                        @endif
+                        <button type="button" class="parecer-page-button" wire:click="gotoPage({{ $ultimaPagina }})">{{ $ultimaPagina }}</button>
+                        @endif
+                    </div>
+
+                    <button
+                        type="button"
+                        class="gi-action"
+                        wire:click="nextPage"
+                        wire:loading.attr="disabled"
+                        wire:target="previousPage,nextPage,gotoPage"
+                        @disabled(! $alunos->hasMorePages())>
+                        Proxima
+                    </button>
+                </nav>
+                @endif
             </section>
 
             @if ($this->alunoSelecionado && $this->slideoverAberto)
-            @php($aluno = $this->alunoSelecionado)
+            @php
+                $aluno = $this->alunoSelecionado;
+            @endphp
             <div class="parecer-slideover-backdrop" wire:click="fecharSlideover"></div>
             <aside class="parecer-slideover" role="dialog" aria-modal="true" aria-label="Parecer de Transferencia">
                 <header class="parecer-slideover-header">
@@ -109,11 +185,20 @@
                         wire:confirm="Caso deseje continuar, o aluno sera marcado como transferido e essa acao nao podera ser revertida. Deseja gerar o Parecer de Transferencia?"
                         wire:loading.attr="disabled"
                         wire:target="gerarParecerTransferencia">
-                        Gerar Parecer de Transferencia
+                        <span wire:loading.remove wire:target="gerarParecerTransferencia">Gerar Parecer de Transferencia</span>
+                        <span class="parecer-inline-loading" wire:loading.inline-flex wire:target="gerarParecerTransferencia">
+                            <span class="parecer-spinner parecer-spinner--small"></span>
+                            Gerando parecer...
+                        </span>
                     </button>
                 </div>
 
                 <div class="parecer-slideover-body">
+                    <div class="parecer-slideover-loading" wire:loading.delay.flex wire:target="gerarParecerTransferencia">
+                        <span class="parecer-spinner"></span>
+                        <span>Gerando documentos e marcando transferencia...</span>
+                    </div>
+
                     @forelse ($this->avaliacoesDoAluno as $avaliacao)
                     <section class="gi-panel av-turma-section" wire:key="parecer-avaliacao-{{ $avaliacao['id'] }}">
                         <div class="av-pauta-toggle">
@@ -188,6 +273,123 @@
         @include('filament.pages.partials.avaliacoes-page-styles')
 
         <style>
+            .parecer-table-shell {
+                position: relative;
+                min-height: 12rem;
+            }
+
+            .parecer-loading-cover,
+            .parecer-slideover-loading {
+                align-items: center;
+                justify-content: center;
+                gap: 0.65rem;
+                color: var(--primary-700);
+                font-size: var(--text-sm);
+                line-height: 1.45;
+                font-weight: var(--font-weight-medium);
+            }
+
+            .parecer-loading-cover {
+                position: absolute;
+                inset: 0;
+                z-index: 3;
+                border-radius: var(--radius-xl);
+                background: rgba(255, 255, 255, 0.78);
+                backdrop-filter: blur(2px);
+            }
+
+            .parecer-slideover-loading {
+                position: sticky;
+                top: 0;
+                z-index: 4;
+                min-height: 3rem;
+                border: 1px solid var(--primary-200);
+                border-radius: var(--radius-lg);
+                background: var(--primary-50);
+            }
+
+            .parecer-inline-loading {
+                align-items: center;
+                gap: 0.45rem;
+            }
+
+            .parecer-spinner {
+                width: 1.05rem;
+                height: 1.05rem;
+                border: 2px solid color-mix(in oklab, var(--primary-200) 74%, transparent);
+                border-top-color: var(--primary-700);
+                border-radius: 999px;
+                animation: parecer-spin 0.7s linear infinite;
+            }
+
+            .parecer-spinner--small {
+                width: 0.85rem;
+                height: 0.85rem;
+                border-width: 2px;
+            }
+
+            @keyframes parecer-spin {
+                from {
+                    transform: rotate(0deg);
+                }
+
+                to {
+                    transform: rotate(360deg);
+                }
+            }
+
+            .parecer-pagination {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                justify-content: space-between;
+                gap: 0.75rem;
+                padding-top: 0.25rem;
+            }
+
+            .parecer-page-list {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                justify-content: center;
+                gap: 0.35rem;
+            }
+
+            .parecer-page-button,
+            .parecer-page-ellipsis {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 2.25rem;
+                height: 2.25rem;
+                padding: 0 0.65rem;
+                border-radius: var(--radius-md);
+                color: var(--gray-700);
+                font-size: var(--text-sm);
+                line-height: 1;
+                font-weight: var(--font-weight-medium);
+            }
+
+            .parecer-page-button {
+                border: 1px solid var(--gray-200);
+                background: #fff;
+                cursor: pointer;
+            }
+
+            .parecer-page-button.is-active {
+                border-color: var(--primary-600);
+                background: var(--primary-600);
+                color: #fff;
+            }
+
+            .parecer-page-ellipsis {
+                color: var(--gray-400);
+            }
+
+            .parecer-open-action {
+                min-width: 5.25rem;
+            }
+
             .parecer-slideover-backdrop {
                 position: fixed;
                 inset: 0;
