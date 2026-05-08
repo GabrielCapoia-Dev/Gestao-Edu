@@ -86,7 +86,7 @@
                                             </thead>
                                             <tbody>
                                                 @foreach ($componente['pautas'] as $pauta)
-                                                    @php($campoBloqueado = $somenteLeitura || (bool) $pauta['bloqueada'])
+                                                    @php($campoBloqueado = $somenteLeitura || ! (bool) ($pauta['editavel'] ?? true) || (bool) $pauta['bloqueada'])
                                                     <tr>
                                                         <td>{{ $pauta['texto'] }}</td>
                                                         <td>{{ collect($pauta['alternativas'])->pluck('nome')->join(', ') }}</td>
@@ -95,6 +95,8 @@
                                                                 <span class="parecer-readonly-value">{{ $pauta['resposta'] !== '' ? $pauta['resposta'] : 'Não Avaliado' }}</span>
                                                                 @if ($pauta['bloqueada'])
                                                                     <small>Bloqueada por historico</small>
+                                                                @elseif (! (bool) ($pauta['editavel'] ?? true))
+                                                                    <small>Componente restrito ao professor vinculado.</small>
                                                                 @endif
                                                             @else
                                                                 <select
@@ -129,13 +131,15 @@
                                         </table>
                                     </div>
 
-                                    @php($informacaoBloqueada = $somenteLeitura || (bool) ($componente['informacao_bloqueada'] ?? false))
+                                    @php($informacaoBloqueada = $somenteLeitura || ! (bool) ($componente['editavel'] ?? true) || (bool) ($componente['informacao_bloqueada'] ?? false))
                                     <div class="parecer-complementary-section">
                                         <h4>Informacoes complementares do componente</h4>
                                         @if ($informacaoBloqueada)
                                             <div class="parecer-readonly-box">{{ $componente['informacoes_complementares'] !== '' ? $componente['informacoes_complementares'] : '-' }}</div>
                                             @if ($componente['informacao_bloqueada'] ?? false)
                                                 <small class="av-field-hint">Informacoes bloqueadas por historico.</small>
+                                            @elseif (! (bool) ($componente['editavel'] ?? true))
+                                                <small class="av-field-hint">Componente restrito ao professor vinculado.</small>
                                             @endif
                                         @else
                                             <textarea

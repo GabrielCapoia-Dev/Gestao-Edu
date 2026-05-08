@@ -190,13 +190,15 @@
                     <td class="right"><span class="label">ANO LETIVO:</span> {{ $documento['ano_letivo'] ?? '' }}</td>
                 </tr>
                 <tr>
-                    <td><span class="label">STATUS:</span> {{ $documento['status'] ?? '' }}</td>
-                    <td class="right"></td>
-                </tr>
-                <tr>
                     <td><span class="label">CURSO:</span> {{ $documento['curso'] ?? '' }}</td>
                     <td class="right"><span class="label">TURNO:</span> {{ $documento['turno'] ?? '' }}</td>
                 </tr>
+                @if (! empty($documento['documento_tipo']))
+                <tr>
+                    <td></td>
+                    <td class="right"><span class="label">{{ $documento['documento_tipo'] }}</span></td>
+                </tr>
+                @endif
                 <tr>
                     <td colspan="2"><span class="label">DIRETOR(A):</span> {{ $documento['diretor'] ?? '' }}</td>
                 </tr>

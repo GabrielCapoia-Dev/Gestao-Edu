@@ -192,6 +192,10 @@ class AvaliacaoDocumentoExportService
         $avaliacao = $this->buscarAvaliacao($avaliacaoId);
         $aluno->loadMissing('turma.escola', 'turma.serie');
 
+        if (! $aluno->podeExportarDados()) {
+            throw new NotFoundHttpException('Alunos com transferencia pendente nao podem ser exportados.');
+        }
+
         /** @var Turma|null $turma */
         $turma = $aluno->turma;
 
@@ -216,7 +220,8 @@ class AvaliacaoDocumentoExportService
             $pautas,
             $this->montarLegenda($this->alternativasPorPauta($avaliacao, $pautas)),
             $this->gestoresDaTurma($turma),
-            $this->logoDataUri()
+            $this->logoDataUri(),
+            $prefixoArquivo === 'parecer-transferencia' ? 'Parecer de Transferencia' : null
         );
 
         $documentosComPaginas = collect([array_replace($documento, [
@@ -295,6 +300,10 @@ class AvaliacaoDocumentoExportService
 
             if (! $aluno) {
                 throw new NotFoundHttpException('Aluno nao encontrado.');
+            }
+
+            if (! $aluno->podeExportarDados()) {
+                throw new NotFoundHttpException('Alunos com transferencia pendente nao podem ser exportados.');
             }
 
             $query->whereKey((int) $aluno->id_turma);
@@ -387,6 +396,7 @@ class AvaliacaoDocumentoExportService
     {
         $query = Aluno::query()
             ->where('id_turma', (int) $turma->id)
+            ->where('status', '!=', Aluno::STATUS_PENDENTE)
             ->orderBy('nome');
 
         if ($escopo === 'aluno') {
@@ -504,7 +514,8 @@ class AvaliacaoDocumentoExportService
         Collection $pautas,
         Collection $legenda,
         array $gestores,
-        string $logoDataUri
+        string $logoDataUri,
+        ?string $documentoTipo = null
     ): array {
         $respostas = AvaliacaoResposta::query()
             ->where('avaliacao_id', (int) $avaliacao->id)
@@ -563,10 +574,10 @@ class AvaliacaoDocumentoExportService
             'escola' => $turma->escola?->nome ?? '',
             'estudante' => (string) $aluno->nome,
             'cgm' => (string) $aluno->cgm,
-            'status' => $aluno->statusLabel(),
             'curso' => (string) ($turma->serie?->nome ?? ''),
             'turma' => $this->rotuloTurma($turma),
             'turno' => $this->formatarTurno($turma),
+            'documento_tipo' => $documentoTipo,
             'ano_letivo' => (string) ($avaliacao->data_inicio?->format('Y') ?? now()->format('Y')),
             'diretor' => $gestores['diretor'],
             'coordenacao' => $gestores['coordenacao'],

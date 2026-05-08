@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Http\Middleware\BloquearProfessorPendenciaTransferencia;
 use App\Livewire\LoginPage;
 use App\Models\User;
 use Caresome\FilamentAuthDesigner\AuthDesignerPlugin;
@@ -83,6 +84,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+                BloquearProfessorPendenciaTransferencia::class,
             ])
             ->renderHook(
                 PanelsRenderHook::USER_MENU_BEFORE,

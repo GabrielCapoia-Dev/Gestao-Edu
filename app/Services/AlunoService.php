@@ -14,6 +14,7 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -44,21 +45,61 @@ class AlunoService
             Section::make('Dados do Aluno')
                 ->columnSpanFull()
                 ->schema([
-                    TextInput::make('nome')
-                        ->label('Nome')
-                        ->required()
-                        ->maxLength(255),
+                    Hidden::make('cgm_consultado')
+                        ->default(false)
+                        ->dehydrated(false),
+
+                    Hidden::make('cgm_encontrado_aluno_id')
+                        ->dehydrated(false),
 
                     TextInput::make('cgm')
                         ->label('CGM')
                         ->required()
-                        ->maxLength(255),
+                        ->maxLength(255)
+                        ->live(onBlur: true)
+                        ->afterStateUpdated(function (?string $state, Set $set, ?string $operation = null): void {
+                            $cgm = Aluno::normalizarCgm($state);
+                            $set('cgm', $cgm);
+
+                            if ($operation !== 'create') {
+                                return;
+                            }
+
+                            $set('cgm_consultado', $cgm !== '');
+                            $set('cgm_encontrado_aluno_id', null);
+
+                            if ($cgm === '') {
+                                return;
+                            }
+
+                            $alunoExistente = $this->alunoPorCgmParaFormulario($cgm);
+
+                            if (! $alunoExistente) {
+                                return;
+                            }
+
+                            $set('cgm_encontrado_aluno_id', (int) $alunoExistente->id);
+                            $set('nome', $alunoExistente->nome);
+                            $set('data_nascimento', $alunoExistente->data_nascimento?->format('Y-m-d'));
+                        })
+                        ->helperText(fn (Get $get, ?string $operation = null): ?string => $operation === 'create'
+                            ? $this->textoAjudaCgmCadastro($get)
+                            : null),
+
+                    TextInput::make('nome')
+                        ->label('Nome')
+                        ->required()
+                        ->maxLength(255)
+                        ->disabled(fn (Get $get, ?string $operation = null): bool => $operation === 'create'
+                            && ! $this->formularioAlunoLiberadoAposCgm($get)),
 
                     DatePicker::make('data_nascimento')
                         ->label('Data de Nascimento')
                         ->required()
                         ->native(false)
-                        ->displayFormat('d/m/Y'),
+                        ->displayFormat('d/m/Y')
+                        ->disabled(fn (Get $get, ?string $operation = null): bool => $operation === 'create'
+                            && ! $this->formularioAlunoLiberadoAposCgm($get)),
 
                     Select::make('id_escola')
                         ->label('Escola')
@@ -72,7 +113,9 @@ class AlunoService
                             $set('id_serie', null);
                             $set('id_turma', null);
                         })
-                        ->disabled(fn (): bool => $this->deveTravarEscolaAluno($user))
+                        ->disabled(fn (Get $get, ?string $operation = null): bool => ($operation === 'create'
+                            && ! $this->formularioAlunoLiberadoAposCgm($get))
+                            || $this->deveTravarEscolaAluno($user))
                         ->dehydrated(false)
                         ->columnSpanFull(),
 
@@ -86,7 +129,9 @@ class AlunoService
                         ->afterStateUpdated(function (Set $set): void {
                             $set('id_turma', null);
                         })
-                        ->disabled(fn (Get $get): bool => blank($get('id_escola')))
+                        ->disabled(fn (Get $get, ?string $operation = null): bool => ($operation === 'create'
+                            && ! $this->formularioAlunoLiberadoAposCgm($get))
+                            || blank($get('id_escola')))
                         ->dehydrated(false)
                         ->columnSpanFull(),
 
@@ -100,7 +145,10 @@ class AlunoService
                         ->searchable()
                         ->preload()
                         ->required()
-                        ->disabled(fn (Get $get): bool => blank($get('id_escola')) || blank($get('id_serie')))
+                        ->disabled(fn (Get $get, ?string $operation = null): bool => ($operation === 'create'
+                            && ! $this->formularioAlunoLiberadoAposCgm($get))
+                            || blank($get('id_escola'))
+                            || blank($get('id_serie')))
                         ->columnSpanFull(),
 
                     Select::make('status')
@@ -120,7 +168,11 @@ class AlunoService
             ->modifyQueryUsing(function (Builder $query) use ($user) {
                 $this->userService->aplicarFiltroAlunosDoUsuario($query, $user);
 
-                if (request()->filled('turma')) {
+                $pendenciaProfessor = app(AlunoTransferenciaPendenteService::class)->pendenciaAtivaParaProfessor($user);
+
+                if ($pendenciaProfessor) {
+                    $query->whereKey((int) $pendenciaProfessor->id);
+                } elseif (request()->filled('turma')) {
                     $query->where('id_turma', request()->integer('turma'));
                 }
 
@@ -158,6 +210,7 @@ class AlunoService
                 ->badge()
                 ->color(fn (?string $state): string => match ($state) {
                     Aluno::STATUS_MATRICULADO => 'success',
+                    Aluno::STATUS_PENDENTE => 'warning',
                     Aluno::STATUS_REMANEJADO => 'warning',
                     Aluno::STATUS_TRANSFERIDO => 'info',
                     Aluno::STATUS_APROVADO => 'success',
@@ -240,7 +293,8 @@ class AlunoService
                 ->label('Remanejar')
                 ->icon('heroicon-o-arrows-right-left')
                 ->color('warning')
-                ->visible(fn (Aluno $record): bool => $record->estaMatriculado()
+                ->visible(fn (Aluno $record): bool => ! $this->professorEstaBloqueado($user)
+                    && ($record->estaMatriculado() || $record->estaPendente())
                     && ($user?->hasPermissionLike('realizar remanejamento de aluno') ?? false))
                 ->modalHeading(fn (Aluno $record): string => 'Remanejar '.$record->nome)
                 ->modalSubmitActionLabel('Remanejar')
@@ -290,9 +344,10 @@ class AlunoService
                     'aluno' => $record,
                 ]))
                 ->visible(fn (Aluno $record): bool => $this->alunoTemAvaliacoes($record)
-                    && (($user?->hasPermissionLike('realizar transferencia de aluno') ?? false)
+                    && ($this->professorEstaRestritoAoAluno($user, $record)
+                    || (($user?->hasPermissionLike('realizar transferencia de aluno') ?? false)
                         || ($user?->hasPermissionLike('realizar tranferencia de aluno') ?? false)
-                        || ($user?->hasPermissionLike('gerar parecer de transferencia') ?? false))),
+                        || ($user?->hasPermissionLike('gerar parecer de transferencia') ?? false)))),
 
             EditAction::make()
                 ->modalWidth('4xl')
@@ -336,11 +391,13 @@ class AlunoService
 
                     return $record;
                 })
-                ->visible(fn(Aluno $record) => $record->estaMatriculado()
+                ->visible(fn(Aluno $record) => ! $this->professorEstaBloqueado($user)
+                    && $record->estaMatriculado()
                     && $this->userService->podeEditarAlunos($user)),
 
             DeleteAction::make()
-                ->visible(fn(Aluno $record) => $record->estaMatriculado()
+                ->visible(fn(Aluno $record) => ! $this->professorEstaBloqueado($user)
+                    && $record->estaMatriculado()
                     && $this->userService->podeExcluirAlunos($user)),
         ];
     }
@@ -350,7 +407,8 @@ class AlunoService
         return [
             DeleteBulkAction::make()
                 ->authorizeIndividualRecords('delete')
-                ->visible(fn() => $user?->hasPermissionTo('Excluir Alunos em Massa') ?? false),
+                ->visible(fn() => ! $this->professorEstaBloqueado($user)
+                    && ($user?->hasPermissionTo('Excluir Alunos em Massa') ?? false)),
         ];
     }
 
@@ -359,6 +417,41 @@ class AlunoService
         $query = Aluno::query();
 
         return $this->userService->aplicarFiltroAlunosDoUsuario($query, $user);
+    }
+
+    private function formularioAlunoLiberadoAposCgm(Get $get): bool
+    {
+        return filled($get('cgm')) && (bool) $get('cgm_consultado');
+    }
+
+    private function textoAjudaCgmCadastro(Get $get): string
+    {
+        if (! $this->formularioAlunoLiberadoAposCgm($get)) {
+            return 'Informe o CGM para liberar os demais campos.';
+        }
+
+        return filled($get('cgm_encontrado_aluno_id'))
+            ? 'Aluno encontrado no sistema. Confira os dados e selecione serie e turma de destino.'
+            : 'CGM nao encontrado. Preencha os dados do novo aluno.';
+    }
+
+    private function alunoPorCgmParaFormulario(string $cgm): ?Aluno
+    {
+        return Aluno::query()
+            ->where('cgm', Aluno::normalizarCgm($cgm))
+            ->latest('status_alterado_em')
+            ->latest('updated_at')
+            ->first();
+    }
+
+    private function professorEstaBloqueado(?User $user): bool
+    {
+        return app(AlunoTransferenciaPendenteService::class)->professorEstaBloqueado($user);
+    }
+
+    private function professorEstaRestritoAoAluno(?User $user, Aluno $aluno): bool
+    {
+        return app(AlunoTransferenciaPendenteService::class)->professorEstaRestritoAoAluno($user, $aluno);
     }
 
     public function opcoesDeTurmas(?User $user): array

@@ -7,11 +7,11 @@ use RuntimeException;
 
 class MatriculaAlunoBloqueadaException extends RuntimeException
 {
-    public function __construct(public readonly Aluno $alunoAtivo)
+    public function __construct(public readonly Aluno $alunoAtivo, ?string $message = null)
     {
         $alunoAtivo->loadMissing('turma.escola');
 
-        parent::__construct(sprintf(
+        parent::__construct($message ?: sprintf(
             'O aluno %s com CGM %s continua com o status de Matriculado na escola %s, sendo impossivel o aluno manter a matricula ativa em duas unidades diferentes, entre em contato com o gestor da unidade para iniciar o processo de transferencia.',
             $alunoAtivo->nome,
             $alunoAtivo->cgm,

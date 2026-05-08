@@ -33,14 +33,13 @@ class AlunoMovimentacaoFluxoTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_bloqueia_matricula_com_cgm_ativo_e_notifica_responsaveis_com_link_por_permissao(): void
+    public function test_cria_matricula_pendente_em_outra_escola_e_notifica_origem(): void
     {
         NotificationFacade::fake();
 
         foreach ([
-            'Notificar Impedimento de Matricula por Falta de Transferencia',
-            'Gerenciar Impedimento de Matricula por Falta de Transferencia',
-            'Realizar Transferencia de Aluno',
+            'Notificar Status Pendente',
+            'Gerar Parecer de Transferencia',
         ] as $permission) {
             Permission::findOrCreate($permission);
         }
@@ -57,58 +56,89 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             'id_turma' => $turmaOrigem->id,
         ]);
 
-        $usuarioComLink = User::factory()->create([
+        $usuarioNotificado = User::factory()->create([
             'id_escola' => $escolaOrigem->id,
             'email_approved' => true,
             'email_verified_at' => now(),
         ]);
-        $usuarioComLink->givePermissionTo([
-            'Notificar Impedimento de Matricula por Falta de Transferencia',
-            'Realizar Transferencia de Aluno',
-        ]);
+        $usuarioNotificado->givePermissionTo('Notificar Status Pendente');
 
-        $usuarioSemLink = User::factory()->create([
+        $usuarioSemPermissao = User::factory()->create([
             'id_escola' => $escolaOrigem->id,
             'email_approved' => true,
             'email_verified_at' => now(),
         ]);
-        $usuarioSemLink->givePermissionTo('Notificar Impedimento de Matricula por Falta de Transferencia');
 
-        $gestor = User::factory()->create([
-            'email_approved' => true,
-            'email_verified_at' => now(),
+        $alunoPendente = app(AlunoMovimentacaoService::class)->criarMatricula([
+            'nome' => 'Nome digitado sera ignorado',
+            'cgm' => 'CGM-ATIVO',
+            'data_nascimento' => '2016-02-02',
+            'id_turma' => $turmaDestino->id,
         ]);
-        $gestor->givePermissionTo('Gerenciar Impedimento de Matricula por Falta de Transferencia');
+
+        $this->assertDatabaseCount('alunos', 2);
+        $this->assertSame(Aluno::STATUS_PENDENTE, $alunoPendente->status);
+        $this->assertSame($alunoAtivo->id, $alunoPendente->pendencia_origem_aluno_id);
+        $this->assertSame('Aluno Ativo', $alunoPendente->nome);
+        $this->assertNull($alunoPendente->cgm_matricula_ativa);
+        $this->assertSame($escolaDestino->id.'|CGM-ATIVO', $alunoPendente->cgm_unidade_matricula_ativa);
+
+        NotificationFacade::assertSentTo(
+            $usuarioNotificado,
+            SistemaNotification::class,
+            fn (SistemaNotification $notification): bool => $notification->url === route('filament.admin.pages.parecer-transferencia-aluno', ['aluno' => $alunoAtivo->id])
+                && ($notification->metadata['tipo'] ?? null) === 'aluno_transferencia_pendente'
+        );
+
+        NotificationFacade::assertNotSentTo($usuarioSemPermissao, SistemaNotification::class);
+    }
+
+    public function test_bloqueia_matricula_com_cgm_na_mesma_unidade_ou_ja_pendente(): void
+    {
+        $escolaOrigem = $this->criarEscola('Escola Origem Bloqueio');
+        $escolaDestino = $this->criarEscola('Escola Destino Bloqueio');
+        $escolaTerceira = $this->criarEscola('Escola Terceira Bloqueio');
+        $turmaOrigem = $this->criarTurma($escolaOrigem, 'A');
+        $turmaOrigemB = $this->criarTurma($escolaOrigem, 'B', $turmaOrigem->serie);
+        $turmaDestino = $this->criarTurma($escolaDestino, 'C');
+        $turmaTerceira = $this->criarTurma($escolaTerceira, 'D');
+
+        Aluno::query()->create([
+            'nome' => 'Aluno Ativo',
+            'cgm' => 'CGM-BLOQ',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turmaOrigem->id,
+        ]);
 
         try {
             app(AlunoMovimentacaoService::class)->criarMatricula([
                 'nome' => 'Aluno Duplicado',
-                'cgm' => 'CGM-ATIVO',
+                'cgm' => 'CGM-BLOQ',
                 'data_nascimento' => '2015-01-01',
-                'id_turma' => $turmaDestino->id,
+                'id_turma' => $turmaOrigemB->id,
             ]);
 
-            $this->fail('A matricula duplicada deveria ser bloqueada.');
+            $this->fail('A matricula duplicada na mesma unidade deveria ser bloqueada.');
         } catch (MatriculaAlunoBloqueadaException $exception) {
-            $this->assertStringContainsString('Aluno Ativo', $exception->getMessage());
-            $this->assertStringContainsString('Escola Origem', $exception->getMessage());
+            $this->assertSame('Este CGM ja esta cadastrado nesta unidade.', $exception->getMessage());
         }
 
-        $this->assertDatabaseCount('alunos', 1);
+        app(AlunoMovimentacaoService::class)->criarMatricula([
+            'nome' => 'Aluno Pendente',
+            'cgm' => 'CGM-BLOQ',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turmaDestino->id,
+        ]);
 
-        NotificationFacade::assertSentTo(
-            $usuarioComLink,
-            SistemaNotification::class,
-            fn (SistemaNotification $notification): bool => $notification->url === route('filament.admin.pages.parecer-transferencia-aluno', ['aluno' => $alunoAtivo->id])
-        );
+        $this->expectException(MatriculaAlunoBloqueadaException::class);
+        $this->expectExceptionMessage('matricula pendente');
 
-        NotificationFacade::assertSentTo(
-            $usuarioSemLink,
-            SistemaNotification::class,
-            fn (SistemaNotification $notification): bool => $notification->url === null
-        );
-
-        NotificationFacade::assertSentTo($gestor, SistemaNotification::class);
+        app(AlunoMovimentacaoService::class)->criarMatricula([
+            'nome' => 'Aluno Terceira Escola',
+            'cgm' => 'CGM-BLOQ',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turmaTerceira->id,
+        ]);
     }
 
     public function test_matricula_novo_contexto_apos_transferencia_copia_respostas_bloqueadas(): void
@@ -314,7 +344,7 @@ class AlunoMovimentacaoFluxoTest extends TestCase
 
     public function test_gerar_parecer_de_transferencia_exporta_zip_e_marca_aluno_como_transferido(): void
     {
-        Permission::findOrCreate('Realizar Transferencia de Aluno');
+        Permission::findOrCreate('Gerar Parecer de Transferencia');
 
         [$escola, $serie, $turmaOrigem, $turmaDestino, $avaliacao, $pauta, $alternativa] = $this->criarCenarioAvaliacaoDuasTurmas();
 
@@ -322,7 +352,7 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             'email_approved' => true,
             'email_verified_at' => now(),
         ]);
-        $usuario->givePermissionTo('Realizar Transferencia de Aluno');
+        $usuario->givePermissionTo('Gerar Parecer de Transferencia');
 
         $aluno = Aluno::query()->create([
             'nome' => 'Aluno Transferencia',
@@ -339,6 +369,19 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             'alternativa_id' => $alternativa->id,
             'respondido_em' => now(),
         ]);
+
+        $escolaPendente = $this->criarEscola('Escola Destino Pendente');
+        $turmaPendente = $this->criarTurma($escolaPendente, 'Pendente', $serie);
+        $avaliacao->turmas()->attach($turmaPendente->id);
+
+        $alunoPendente = app(AlunoMovimentacaoService::class)->criarMatricula([
+            'nome' => 'Aluno Transferencia',
+            'cgm' => 'CGM-TRF',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turmaPendente->id,
+        ]);
+
+        $this->assertSame(Aluno::STATUS_PENDENTE, $alunoPendente->status);
 
         $this->mock(AvaliacaoDocumentoExportService::class, function ($mock): void {
             $mock
@@ -366,11 +409,30 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             'status' => Aluno::STATUS_TRANSFERIDO,
             'cgm_matricula_ativa' => null,
         ]);
+
+        $this->assertDatabaseHas('alunos', [
+            'id' => $alunoPendente->id,
+            'status' => Aluno::STATUS_MATRICULADO,
+            'cgm_matricula_ativa' => 'CGM-TRF',
+            'pendencia_origem_aluno_id' => null,
+            'aluno_origem_id' => $aluno->id,
+        ]);
+
+        $this->assertDatabaseHas('avaliacao_respostas', [
+            'avaliacao_id' => $avaliacao->id,
+            'pauta_id' => $pauta->id,
+            'turma_id' => $turmaPendente->id,
+            'aluno_id' => $alunoPendente->id,
+            'alternativa_id' => $alternativa->id,
+            'bloqueada' => true,
+            'aluno_origem_id' => $aluno->id,
+            'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_TRANSFERENCIA,
+        ]);
     }
 
     public function test_parecer_transferencia_salva_resposta_marcada_no_slideover_antes_de_transferir(): void
     {
-        Permission::findOrCreate('Realizar Transferencia de Aluno');
+        Permission::findOrCreate('Gerar Parecer de Transferencia');
 
         [$escola, $serie, $turmaOrigem, $turmaDestino, $avaliacao, $pauta, $alternativa] = $this->criarCenarioAvaliacaoDuasTurmas();
 
@@ -378,7 +440,7 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             'email_approved' => true,
             'email_verified_at' => now(),
         ]);
-        $usuario->givePermissionTo('Realizar Transferencia de Aluno');
+        $usuario->givePermissionTo('Gerar Parecer de Transferencia');
 
         $aluno = Aluno::query()->create([
             'nome' => 'Aluno Parecer Resposta',
@@ -429,7 +491,7 @@ class AlunoMovimentacaoFluxoTest extends TestCase
 
     public function test_parecer_transferencia_salva_observacao_obrigatoria_e_informacao_complementar(): void
     {
-        Permission::findOrCreate('Realizar Transferencia de Aluno');
+        Permission::findOrCreate('Gerar Parecer de Transferencia');
 
         [$escola, $serie, $turmaOrigem, $turmaDestino, $avaliacao, $pauta, $alternativa] = $this->criarCenarioAvaliacaoDuasTurmas();
         $alternativa->update(['tem_observacao' => true]);
@@ -439,7 +501,7 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             'email_approved' => true,
             'email_verified_at' => now(),
         ]);
-        $usuario->givePermissionTo('Realizar Transferencia de Aluno');
+        $usuario->givePermissionTo('Gerar Parecer de Transferencia');
 
         $aluno = Aluno::query()->create([
             'nome' => 'Aluno Parecer Observacao',
@@ -487,7 +549,7 @@ class AlunoMovimentacaoFluxoTest extends TestCase
 
     public function test_parecer_transferencia_nao_transfere_sem_observacao_obrigatoria(): void
     {
-        Permission::findOrCreate('Realizar Transferencia de Aluno');
+        Permission::findOrCreate('Gerar Parecer de Transferencia');
 
         [$escola, $serie, $turmaOrigem, $turmaDestino, $avaliacao, $pauta, $alternativa] = $this->criarCenarioAvaliacaoDuasTurmas();
         $alternativa->update(['tem_observacao' => true]);
@@ -496,7 +558,7 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             'email_approved' => true,
             'email_verified_at' => now(),
         ]);
-        $usuario->givePermissionTo('Realizar Transferencia de Aluno');
+        $usuario->givePermissionTo('Gerar Parecer de Transferencia');
 
         $aluno = Aluno::query()->create([
             'nome' => 'Aluno Parecer Sem Observacao',

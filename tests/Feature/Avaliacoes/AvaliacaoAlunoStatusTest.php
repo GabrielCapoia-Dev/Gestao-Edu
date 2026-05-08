@@ -25,7 +25,7 @@ class AvaliacaoAlunoStatusTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_avaliacao_lista_apenas_matriculados_e_nao_sobrescreve_resposta_bloqueada_em_massa(): void
+    public function test_avaliacao_lista_matriculados_e_pendentes_sem_sobrescrever_resposta_bloqueada_em_massa(): void
     {
         Permission::findOrCreate('Responder Avaliações');
 
@@ -44,6 +44,14 @@ class AvaliacaoAlunoStatusTest extends TestCase
             'data_nascimento' => '2015-01-02',
             'id_turma' => $turma->id,
             'status' => Aluno::STATUS_TRANSFERIDO,
+        ]);
+
+        $alunoPendente = Aluno::query()->create([
+            'nome' => 'Aluno Pendente',
+            'cgm' => 'CGM-PEND',
+            'data_nascimento' => '2015-01-03',
+            'id_turma' => $turma->id,
+            'status' => Aluno::STATUS_PENDENTE,
         ]);
 
         AvaliacaoResposta::query()->create([
@@ -66,6 +74,7 @@ class AvaliacaoAlunoStatusTest extends TestCase
             ->call('alternarTurma', $turma->id)
             ->call('alternarPauta', $turma->id, $pauta->id)
             ->assertSee('Aluno Bloqueado')
+            ->assertSee('Aluno Pendente')
             ->assertDontSee('Aluno Transferido')
             ->set('avaliacaoEmMassaGlobal', $alternativaMassa->id)
             ->call('aplicarEmMassaNaSerie');
@@ -84,6 +93,14 @@ class AvaliacaoAlunoStatusTest extends TestCase
             'pauta_id' => $pauta->id,
             'turma_id' => $turma->id,
             'aluno_id' => $alunoTransferido->id,
+            'alternativa_id' => $alternativaMassa->id,
+        ]);
+
+        $this->assertDatabaseHas('avaliacao_respostas', [
+            'avaliacao_id' => $avaliacao->id,
+            'pauta_id' => $pauta->id,
+            'turma_id' => $turma->id,
+            'aluno_id' => $alunoPendente->id,
             'alternativa_id' => $alternativaMassa->id,
         ]);
     }

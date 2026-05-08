@@ -10,6 +10,7 @@ use App\Models\AvaliacaoResposta;
 use App\Models\Pauta;
 use App\Models\User;
 use App\Services\AlunoTransferenciaParecerService;
+use App\Services\AlunoTransferenciaPendenteService;
 use App\Services\UserService;
 use Filament\Notifications\Notification;
 use Illuminate\Contracts\View\View;
@@ -120,6 +121,15 @@ class AlunoParecerTransferenciaModal extends Component
             return null;
         }
 
+        if (! $this->podeGerarParecer) {
+            Notification::make()
+                ->title('Sem permissao para gerar o parecer.')
+                ->warning()
+                ->send();
+
+            return null;
+        }
+
         try {
             /** @var User $usuario */
             $usuario = Auth::user();
@@ -167,9 +177,7 @@ class AlunoParecerTransferenciaModal extends Component
         $user = Auth::user();
 
         return ($this->alunoSelecionado?->estaMatriculado() ?? false)
-            && (($user?->hasPermissionLike('realizar transferencia de aluno') ?? false)
-                || ($user?->hasPermissionLike('realizar tranferencia de aluno') ?? false)
-                || ($user?->hasPermissionLike('gerar parecer de transferencia') ?? false));
+            && ($user?->hasPermissionLike('gerar parecer de transferencia') ?? false);
     }
 
     public function getAvaliacoesDoAlunoProperty(): Collection
@@ -267,18 +275,20 @@ class AlunoParecerTransferenciaModal extends Component
             'percentual' => $percentual,
             'componentes' => $pautas
                 ->groupBy(fn (Pauta $pauta): int => (int) ($pauta->componente_curricular_id ?? 0))
-                ->map(function (Collection $pautasDoComponente) use ($avaliacao, $respostas, $alternativasPorPauta): array {
+                ->map(function (Collection $pautasDoComponente) use ($avaliacao, $aluno, $respostas, $alternativasPorPauta): array {
                     /** @var Pauta|null $primeiraPauta */
                     $primeiraPauta = $pautasDoComponente->first();
                     $componenteId = (int) ($primeiraPauta?->componente_curricular_id ?? 0);
+                    $componenteEditavel = $this->podeEditarComponenteParecer($aluno, $componenteId > 0 ? $componenteId : null);
 
                     return [
                         'id' => $componenteId,
                         'nome' => (string) ($primeiraPauta?->componente?->nome ?? 'Geral'),
+                        'editavel' => $componenteEditavel,
                         'informacoes_complementares' => (string) ($this->informacoesComplementaresParecer[(int) $avaliacao->id][$componenteId] ?? ''),
                         'informacao_bloqueada' => (bool) ($this->informacoesComplementaresBloqueadas[(int) $avaliacao->id][$componenteId] ?? false),
                         'pautas' => $pautasDoComponente
-                            ->map(function (Pauta $pauta) use ($avaliacao, $respostas, $alternativasPorPauta): array {
+                            ->map(function (Pauta $pauta) use ($avaliacao, $componenteEditavel, $respostas, $alternativasPorPauta): array {
                                 $resposta = $respostas->get((int) $pauta->id);
                                 $alternativaId = $this->alternativaSelecionadaId(
                                     (int) $avaliacao->id,
@@ -311,6 +321,7 @@ class AlunoParecerTransferenciaModal extends Component
                                     ),
                                     'requer_observacao' => $requerObservacao,
                                     'bloqueada' => (bool) ($resposta?->bloqueada ?? false),
+                                    'editavel' => $componenteEditavel,
                                 ];
                             })
                             ->values()
@@ -434,6 +445,10 @@ class AlunoParecerTransferenciaModal extends Component
             return;
         }
 
+        if (! $this->podeEditarComponenteParecer($aluno, $pauta->componente_curricular_id ? (int) $pauta->componente_curricular_id : null)) {
+            return;
+        }
+
         $resposta = AvaliacaoResposta::query()
             ->where('avaliacao_id', (int) $avaliacao->id)
             ->where('pauta_id', (int) $pauta->id)
@@ -479,7 +494,8 @@ class AlunoParecerTransferenciaModal extends Component
                 'aluno_id' => (int) $aluno->id,
             ],
             [
-                'professor_id' => $resposta?->professor_id,
+                'professor_id' => $this->professorIdParaComponenteParecer($aluno, $pauta->componente_curricular_id ? (int) $pauta->componente_curricular_id : null)
+                    ?? $resposta?->professor_id,
                 'alternativa_id' => $alternativaId > 0 ? $alternativaId : null,
                 'observacao' => $observacao !== '' ? $observacao : null,
                 'respondido_em' => $alternativaId > 0 ? now() : null,
@@ -610,6 +626,10 @@ class AlunoParecerTransferenciaModal extends Component
             return;
         }
 
+        if (! $this->podeEditarComponenteParecer($aluno, $componenteId > 0 ? $componenteId : null)) {
+            return;
+        }
+
         $registroQuery = AvaliacaoInformacaoComplementar::query()
             ->where('avaliacao_id', (int) $avaliacao->id)
             ->where('turma_id', (int) $aluno->id_turma)
@@ -645,7 +665,8 @@ class AlunoParecerTransferenciaModal extends Component
                 'componente_curricular_id' => $componenteId > 0 ? $componenteId : null,
             ],
             [
-                'professor_id' => $registro?->professor_id,
+                'professor_id' => $this->professorIdParaComponenteParecer($aluno, $componenteId > 0 ? $componenteId : null)
+                    ?? $registro?->professor_id,
                 'informacoes_complementares' => $informacoes,
             ]
         );
@@ -746,5 +767,17 @@ class AlunoParecerTransferenciaModal extends Component
     private function limitarTextoCampo(mixed $valor): string
     {
         return mb_substr(trim((string) $valor), 0, 1500);
+    }
+
+    private function podeEditarComponenteParecer(Aluno $aluno, ?int $componenteId): bool
+    {
+        return app(AlunoTransferenciaPendenteService::class)
+            ->professorPodeResponderComponente(Auth::user(), $aluno, $componenteId);
+    }
+
+    private function professorIdParaComponenteParecer(Aluno $aluno, ?int $componenteId): ?int
+    {
+        return app(AlunoTransferenciaPendenteService::class)
+            ->professorIdParaComponente(Auth::user(), $aluno, $componenteId);
     }
 }

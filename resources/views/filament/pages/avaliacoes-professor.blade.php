@@ -228,12 +228,16 @@
                                         <tbody>
                                             @foreach ($alunosDaTurma as $aluno)
                                             @php($respostaBloqueada = $this->respostaEstaBloqueada((int) $pauta->id, (int) $aluno->id))
+                                            @php($referenciaOrigem = $respostas[$pauta->id][$aluno->id]['origem_referencia'] ?? null)
                                             <tr wire:key="turma-{{ $turmaId }}-pauta-{{ $pauta->id }}-aluno-{{ $aluno->id }}">
                                                 <td>
                                                     <strong>{{ $aluno->nome }}</strong>
                                                     <small>CGM: {{ $aluno->cgm }}</small>
                                                     @if ($respostaBloqueada)
                                                     <small>Resposta bloqueada por historico.</small>
+                                                    @endif
+                                                    @if ($referenciaOrigem)
+                                                    <small>Origem: {{ $referenciaOrigem['alternativa'] !== '' ? $referenciaOrigem['alternativa'] : 'Nao avaliado' }}{{ $referenciaOrigem['observacao'] !== '' ? ' | '.$referenciaOrigem['observacao'] : '' }}</small>
                                                     @endif
                                                 </td>
                                                 <td>
@@ -391,11 +395,15 @@
                                                 @foreach ($pautasDoComponente as $pauta)
                                                 @php($alternativasPauta = $this->alternativasDaPauta((int) $pauta->id))
                                                 @php($respostaBloqueada = $this->respostaEstaBloqueada((int) $pauta->id, (int) $aluno->id))
+                                                @php($referenciaOrigem = $respostas[$pauta->id][$aluno->id]['origem_referencia'] ?? null)
                                                 <tr wire:key="turma-{{ $turmaId }}-aluno-{{ $aluno->id }}-pauta-{{ $pauta->id }}">
                                                     <td>
                                                         <strong>{{ $pauta->texto }}</strong>
                                                         @if ($respostaBloqueada)
                                                         <small>Resposta bloqueada por historico.</small>
+                                                        @endif
+                                                        @if ($referenciaOrigem)
+                                                        <small>Origem: {{ $referenciaOrigem['alternativa'] !== '' ? $referenciaOrigem['alternativa'] : 'Nao avaliado' }}{{ $referenciaOrigem['observacao'] !== '' ? ' | '.$referenciaOrigem['observacao'] : '' }}</small>
                                                         @endif
                                                     </td>
                                                     <td>

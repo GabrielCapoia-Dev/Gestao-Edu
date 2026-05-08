@@ -15,6 +15,7 @@ class SecretarioPermissionPreset
             'Realizar Transferencia de Aluno',
             'Realizar Remanejamento de Aluno',
             'Gerar Parecer de Transferencia',
+            'Notificar Status Pendente',
             'Notificar Impedimento de Matricula por Falta de Transferencia',
             'Criar Pedidos',
             'Criar Turmas',

@@ -11,6 +11,8 @@ class Aluno extends Model
 
     public const STATUS_MATRICULADO = 'matriculado';
 
+    public const STATUS_PENDENTE = 'pendente';
+
     public const STATUS_REMANEJADO = 'remanejado';
 
     public const STATUS_TRANSFERIDO = 'transferido';
@@ -25,6 +27,7 @@ class Aluno extends Model
         'nome',
         'cgm',
         'cgm_matricula_ativa',
+        'cgm_unidade_matricula_ativa',
         'data_nascimento',
         'id_turma',
         'status',
@@ -34,6 +37,7 @@ class Aluno extends Model
         'aluno_origem_id',
         'turma_origem_id',
         'movimentacao_origem',
+        'pendencia_origem_aluno_id',
     ];
 
     protected function casts(): array
@@ -42,6 +46,7 @@ class Aluno extends Model
             'nome' => 'string',
             'cgm' => 'string',
             'cgm_matricula_ativa' => 'string',
+            'cgm_unidade_matricula_ativa' => 'string',
             'data_nascimento' => 'date',
             'id_turma' => 'integer',
             'status' => 'string',
@@ -49,6 +54,7 @@ class Aluno extends Model
             'status_alterado_por' => 'integer',
             'aluno_origem_id' => 'integer',
             'turma_origem_id' => 'integer',
+            'pendencia_origem_aluno_id' => 'integer',
         ];
     }
 
@@ -59,6 +65,12 @@ class Aluno extends Model
             $aluno->status = $aluno->status ?: self::STATUS_MATRICULADO;
             $aluno->cgm_matricula_ativa = $aluno->status === self::STATUS_MATRICULADO
                 ? $aluno->cgm
+                : null;
+            $aluno->cgm_unidade_matricula_ativa = $aluno->estaAtivoNaUnidade()
+                ? self::chaveCgmUnidade(
+                    (int) Turma::query()->whereKey((int) $aluno->id_turma)->value('id_escola'),
+                    $aluno->cgm
+                )
                 : null;
 
             if (! $aluno->status_alterado_em) {
@@ -71,6 +83,7 @@ class Aluno extends Model
     {
         return [
             self::STATUS_MATRICULADO => 'Matriculado',
+            self::STATUS_PENDENTE => 'Pendente',
             self::STATUS_REMANEJADO => 'Remanejado',
             self::STATUS_TRANSFERIDO => 'Transferido',
             self::STATUS_APROVADO => 'Aprovado',
@@ -92,6 +105,17 @@ class Aluno extends Model
         return trim((string) $cgm);
     }
 
+    public static function chaveCgmUnidade(int $escolaId, ?string $cgm): ?string
+    {
+        $cgm = self::normalizarCgm($cgm);
+
+        if ($escolaId <= 0 || $cgm === '') {
+            return null;
+        }
+
+        return $escolaId.'|'.$cgm;
+    }
+
     public function statusLabel(): string
     {
         return self::statusOptions()[$this->status] ?? ucfirst((string) $this->status);
@@ -100,6 +124,21 @@ class Aluno extends Model
     public function estaMatriculado(): bool
     {
         return $this->status === self::STATUS_MATRICULADO;
+    }
+
+    public function estaPendente(): bool
+    {
+        return $this->status === self::STATUS_PENDENTE;
+    }
+
+    public function estaAtivoNaUnidade(): bool
+    {
+        return in_array($this->status, [self::STATUS_MATRICULADO, self::STATUS_PENDENTE], true);
+    }
+
+    public function podeExportarDados(): bool
+    {
+        return ! $this->estaPendente();
     }
 
     public function turma()
@@ -115,6 +154,16 @@ class Aluno extends Model
     public function alunoOrigem()
     {
         return $this->belongsTo(self::class, 'aluno_origem_id');
+    }
+
+    public function pendenciaOrigem()
+    {
+        return $this->belongsTo(self::class, 'pendencia_origem_aluno_id');
+    }
+
+    public function pendenciasDestino()
+    {
+        return $this->hasMany(self::class, 'pendencia_origem_aluno_id');
     }
 
     public function turmaOrigem()

@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Pages\Relatorios;
 
 use App\Models\Alternativa;
+use App\Models\Aluno;
 use App\Models\Avaliacao;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
@@ -1379,9 +1380,11 @@ class DashboardAvaliacoes extends Page implements HasForms
 
         $query = DB::table('avaliacao_respostas as ar')
             ->join('turmas as t', 't.id', '=', 'ar.turma_id')
+            ->join('alunos as aln', 'aln.id', '=', 'ar.aluno_id')
             ->join('pautas as p', 'p.id', '=', 'ar.pauta_id')
             ->join('alternativas as alt', 'alt.id', '=', 'ar.alternativa_id')
             ->whereIn('ar.avaliacao_id', $avaliacaoIds)
+            ->where('aln.status', '!=', Aluno::STATUS_PENDENTE)
             ->where('p.status', true)
             ->where(function (QueryBuilder $query): void {
                 $query->whereNull('p.serie_id')
@@ -1433,6 +1436,7 @@ class DashboardAvaliacoes extends Page implements HasForms
             ->join('avaliacao_pauta as ap', 'ap.avaliacao_id', '=', 'at.avaliacao_id')
             ->join('pautas as p', 'p.id', '=', 'ap.pauta_id')
             ->whereIn('at.avaliacao_id', $avaliacaoIds)
+            ->where('aln.status', '!=', Aluno::STATUS_PENDENTE)
             ->where('p.status', true)
             ->where(function (QueryBuilder $query): void {
                 $query->whereNull('p.serie_id')

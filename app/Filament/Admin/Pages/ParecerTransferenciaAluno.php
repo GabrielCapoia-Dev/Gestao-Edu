@@ -11,6 +11,7 @@ use App\Models\Pauta;
 use App\Models\Turma;
 use App\Models\User;
 use App\Services\AlunoTransferenciaParecerService;
+use App\Services\AlunoTransferenciaPendenteService;
 use App\Services\UserService;
 use BackedEnum;
 use Filament\Notifications\Notification;
@@ -233,6 +234,15 @@ class ParecerTransferenciaAluno extends Page
             return null;
         }
 
+        if (! $this->podeGerarParecer) {
+            Notification::make()
+                ->title('Sem permissao para gerar o parecer.')
+                ->warning()
+                ->send();
+
+            return null;
+        }
+
         try {
             /** @var User $usuario */
             $usuario = Auth::user();
@@ -384,6 +394,15 @@ class ParecerTransferenciaAluno extends Page
             : null;
     }
 
+    public function getPodeGerarParecerProperty(): bool
+    {
+        /** @var User|null $user */
+        $user = Auth::user();
+
+        return ($this->alunoSelecionado?->estaMatriculado() ?? false)
+            && ($user?->hasPermissionLike('gerar parecer de transferencia') ?? false);
+    }
+
     public function getAvaliacoesDoAlunoProperty(): Collection
     {
         $aluno = $this->alunoSelecionado;
@@ -532,18 +551,20 @@ class ParecerTransferenciaAluno extends Page
             'percentual' => $percentual,
             'componentes' => $pautas
                 ->groupBy(fn (Pauta $pauta): int => (int) ($pauta->componente_curricular_id ?? 0))
-                ->map(function (Collection $pautasDoComponente) use ($avaliacao, $respostas, $alternativasPorPauta): array {
+                ->map(function (Collection $pautasDoComponente) use ($avaliacao, $aluno, $respostas, $alternativasPorPauta): array {
                     /** @var Pauta|null $primeiraPauta */
                     $primeiraPauta = $pautasDoComponente->first();
                     $componenteId = (int) ($primeiraPauta?->componente_curricular_id ?? 0);
+                    $componenteEditavel = $this->podeEditarComponenteParecer($aluno, $componenteId > 0 ? $componenteId : null);
 
                     return [
                         'id' => $componenteId,
                         'nome' => (string) ($primeiraPauta?->componente?->nome ?? 'Geral'),
+                        'editavel' => $componenteEditavel,
                         'informacoes_complementares' => (string) ($this->informacoesComplementaresParecer[(int) $avaliacao->id][$componenteId] ?? ''),
                         'informacao_bloqueada' => (bool) ($this->informacoesComplementaresBloqueadas[(int) $avaliacao->id][$componenteId] ?? false),
                         'pautas' => $pautasDoComponente
-                            ->map(function (Pauta $pauta) use ($avaliacao, $respostas, $alternativasPorPauta): array {
+                            ->map(function (Pauta $pauta) use ($avaliacao, $componenteEditavel, $respostas, $alternativasPorPauta): array {
                                 $resposta = $respostas->get((int) $pauta->id);
                                 $alternativaId = $this->alternativaSelecionadaId(
                                     (int) $avaliacao->id,
@@ -576,6 +597,7 @@ class ParecerTransferenciaAluno extends Page
                                     ),
                                     'requer_observacao' => $requerObservacao,
                                     'bloqueada' => (bool) ($resposta?->bloqueada ?? false),
+                                    'editavel' => $componenteEditavel,
                                 ];
                             })
                             ->values()
@@ -659,6 +681,7 @@ class ParecerTransferenciaAluno extends Page
             $pautas = $avaliacao->pautas
                 ->filter(fn (Pauta $pauta): bool => is_null($pauta->serie_id) || (int) $pauta->serie_id === (int) $aluno->turma?->id_serie)
                 ->values();
+            $pautasPorId = $pautas->keyBy('id');
             $pautasIds = $pautas->pluck('id')->map(fn ($id) => (int) $id)->all();
             $alternativasPorPauta = $this->alternativasPorPauta($avaliacao, $pautas);
 
@@ -666,6 +689,13 @@ class ParecerTransferenciaAluno extends Page
                 $pautaId = (int) $pautaId;
 
                 if (! in_array($pautaId, $pautasIds, true)) {
+                    continue;
+                }
+
+                /** @var Pauta|null $pauta */
+                $pauta = $pautasPorId->get($pautaId);
+
+                if (! $pauta || ! $this->podeEditarComponenteParecer($aluno, $pauta->componente_curricular_id ? (int) $pauta->componente_curricular_id : null)) {
                     continue;
                 }
 
@@ -714,7 +744,8 @@ class ParecerTransferenciaAluno extends Page
                         'aluno_id' => (int) $aluno->id,
                     ],
                     [
-                        'professor_id' => $resposta?->professor_id,
+                        'professor_id' => $this->professorIdParaComponenteParecer($aluno, $pauta->componente_curricular_id ? (int) $pauta->componente_curricular_id : null)
+                            ?? $resposta?->professor_id,
                         'alternativa_id' => $alternativaId > 0 ? $alternativaId : null,
                         'observacao' => $observacao,
                         'respondido_em' => $alternativaId > 0 ? now() : null,
@@ -774,6 +805,10 @@ class ParecerTransferenciaAluno extends Page
             return;
         }
 
+        if (! $this->podeEditarComponenteParecer($aluno, $pauta->componente_curricular_id ? (int) $pauta->componente_curricular_id : null)) {
+            return;
+        }
+
         $resposta = AvaliacaoResposta::query()
             ->where('avaliacao_id', (int) $avaliacao->id)
             ->where('pauta_id', (int) $pauta->id)
@@ -819,7 +854,8 @@ class ParecerTransferenciaAluno extends Page
                 'aluno_id' => (int) $aluno->id,
             ],
             [
-                'professor_id' => $resposta?->professor_id,
+                'professor_id' => $this->professorIdParaComponenteParecer($aluno, $pauta->componente_curricular_id ? (int) $pauta->componente_curricular_id : null)
+                    ?? $resposta?->professor_id,
                 'alternativa_id' => $alternativaId > 0 ? $alternativaId : null,
                 'observacao' => $observacao !== '' ? $observacao : null,
                 'respondido_em' => $alternativaId > 0 ? now() : null,
@@ -923,6 +959,10 @@ class ParecerTransferenciaAluno extends Page
                     continue;
                 }
 
+                if (! $this->podeEditarComponenteParecer($aluno, $componenteId > 0 ? $componenteId : null)) {
+                    continue;
+                }
+
                 $registroQuery = AvaliacaoInformacaoComplementar::query()
                     ->where('avaliacao_id', (int) $avaliacao->id)
                     ->where('turma_id', (int) $aluno->id_turma)
@@ -958,7 +998,8 @@ class ParecerTransferenciaAluno extends Page
                         'componente_curricular_id' => $componenteId > 0 ? $componenteId : null,
                     ],
                     [
-                        'professor_id' => $registro?->professor_id,
+                        'professor_id' => $this->professorIdParaComponenteParecer($aluno, $componenteId > 0 ? $componenteId : null)
+                            ?? $registro?->professor_id,
                         'informacoes_complementares' => $informacoes,
                     ]
                 );
@@ -1000,6 +1041,10 @@ class ParecerTransferenciaAluno extends Page
             return;
         }
 
+        if (! $this->podeEditarComponenteParecer($aluno, $componenteId > 0 ? $componenteId : null)) {
+            return;
+        }
+
         $registroQuery = AvaliacaoInformacaoComplementar::query()
             ->where('avaliacao_id', (int) $avaliacao->id)
             ->where('turma_id', (int) $aluno->id_turma)
@@ -1035,7 +1080,8 @@ class ParecerTransferenciaAluno extends Page
                 'componente_curricular_id' => $componenteId > 0 ? $componenteId : null,
             ],
             [
-                'professor_id' => $registro?->professor_id,
+                'professor_id' => $this->professorIdParaComponenteParecer($aluno, $componenteId > 0 ? $componenteId : null)
+                    ?? $registro?->professor_id,
                 'informacoes_complementares' => $informacoes,
             ]
         );
@@ -1136,6 +1182,18 @@ class ParecerTransferenciaAluno extends Page
     private function limitarTextoCampo(mixed $valor): string
     {
         return mb_substr(trim((string) $valor), 0, 1500);
+    }
+
+    private function podeEditarComponenteParecer(Aluno $aluno, ?int $componenteId): bool
+    {
+        return app(AlunoTransferenciaPendenteService::class)
+            ->professorPodeResponderComponente(Auth::user(), $aluno, $componenteId);
+    }
+
+    private function professorIdParaComponenteParecer(Aluno $aluno, ?int $componenteId): ?int
+    {
+        return app(AlunoTransferenciaPendenteService::class)
+            ->professorIdParaComponente(Auth::user(), $aluno, $componenteId);
     }
 
     public function getTitle(): string

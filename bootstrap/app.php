@@ -30,6 +30,11 @@ return Application::configure(basePath: dirname(__DIR__))
             ->command('app:notificar-balancos-estoque-vencidos')
             ->hourly();
     })
+    ->withSchedule(function (Schedule $schedule) {
+        $schedule
+            ->command('app:notificar-alunos-pendentes-transferencia')
+            ->dailyAt('08:00');
+    })
     ->withExceptions(function (Exceptions $exceptions) {
         //
     })->create();

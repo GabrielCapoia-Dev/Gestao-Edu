@@ -146,7 +146,8 @@ class ExportarAvaliacoes extends Page
                 'turma.avaliacoes:id,nome,data_inicio,data_fim,tipo_avaliacao_id,periodo_avaliacao_id',
             ])
             ->whereHas('turma', fn (Builder $turmas): Builder => $this->aplicarEscopoTurmas($turmas))
-            ->whereHas('turma.avaliacoes');
+            ->whereHas('turma.avaliacoes')
+            ->where('status', '!=', Aluno::STATUS_PENDENTE);
 
         $this->aplicarBuscaAluno($query);
 
@@ -163,7 +164,9 @@ class ExportarAvaliacoes extends Page
                 'serie:id,nome',
                 'avaliacoes:id,nome,data_inicio,data_fim,tipo_avaliacao_id,periodo_avaliacao_id',
             ])
-            ->withCount('alunos')
+            ->withCount([
+                'alunos' => fn (Builder $alunos): Builder => $alunos->where('status', '!=', Aluno::STATUS_PENDENTE),
+            ])
             ->whereHas('avaliacoes');
 
         $this->aplicarEscopoTurmas($query);
@@ -230,6 +233,7 @@ class ExportarAvaliacoes extends Page
 
         return Aluno::query()
             ->where('id_turma', (int) $this->turmaSelecionada->id)
+            ->where('status', '!=', Aluno::STATUS_PENDENTE)
             ->orderBy('nome')
             ->get(['id', 'nome', 'cgm', 'id_turma', 'status']);
     }
@@ -284,6 +288,7 @@ class ExportarAvaliacoes extends Page
             ->whereKey($alunoId)
             ->whereHas('turma', fn (Builder $turmas): Builder => $this->aplicarEscopoTurmas($turmas))
             ->whereHas('turma.avaliacoes')
+            ->where('status', '!=', Aluno::STATUS_PENDENTE)
             ->first();
     }
 
@@ -291,7 +296,9 @@ class ExportarAvaliacoes extends Page
     {
         $query = Turma::query()
             ->with(['escola:id,nome', 'serie:id,nome'])
-            ->withCount('alunos')
+            ->withCount([
+                'alunos' => fn (Builder $alunos): Builder => $alunos->where('status', '!=', Aluno::STATUS_PENDENTE),
+            ])
             ->whereKey($turmaId)
             ->whereHas('avaliacoes');
 

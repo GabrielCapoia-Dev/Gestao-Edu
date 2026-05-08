@@ -199,6 +199,7 @@
                 </header>
 
                 <div class="parecer-slideover-actions">
+                    @if ($this->podeGerarParecer)
                     <button
                         type="button"
                         class="gi-action gi-action--primary"
@@ -208,6 +209,7 @@
                         wire:target="gerarParecerTransferencia">
                         Gerar Parecer de Transferencia
                     </button>
+                    @endif
                 </div>
 
                 <div class="parecer-slideover-body">
@@ -260,6 +262,7 @@
                                         </thead>
                                         <tbody>
                                             @foreach ($componente['pautas'] as $pauta)
+                                            @php($campoBloqueado = ! (bool) ($pauta['editavel'] ?? true) || (bool) $pauta['bloqueada'])
                                             <tr>
                                                 <td>{{ $pauta['texto'] }}</td>
                                                 <td>{{ collect($pauta['alternativas'])->pluck('nome')->join(', ') }}</td>
@@ -267,7 +270,7 @@
                                                     <select
                                                         class="parecer-response-select"
                                                         wire:model.live="respostasParecer.{{ $avaliacao['id'] }}.{{ $pauta['id'] }}"
-                                                        @disabled($pauta['bloqueada'])>
+                                                        @disabled($campoBloqueado)>
                                                         <option value="">Pendente</option>
                                                         @foreach ($pauta['alternativas'] as $alternativa)
                                                         <option value="{{ $alternativa['id'] }}">
@@ -277,6 +280,8 @@
                                                     </select>
                                                     @if ($pauta['bloqueada'])
                                                     <small>Bloqueada por historico</small>
+                                                    @elseif (! (bool) ($pauta['editavel'] ?? true))
+                                                    <small>Componente restrito ao professor vinculado.</small>
                                                     @endif
                                                 </td>
                                                 <td class="parecer-observation-cell">
@@ -286,7 +291,7 @@
                                                         placeholder="Observacao obrigatoria"
                                                         class="parecer-response-textarea"
                                                         wire:model.live.debounce.500ms="observacoesParecer.{{ $avaliacao['id'] }}.{{ $pauta['id'] }}"
-                                                        @disabled($pauta['bloqueada'])></textarea>
+                                                        @disabled($campoBloqueado)></textarea>
                                                     <small class="av-field-hint av-field-hint--danger">Obrigatoria para esta alternativa.</small>
                                                     @else
                                                     <small class="av-field-hint">Somente alternativas com observacao habilitam este campo.</small>
@@ -298,11 +303,15 @@
                                     </table>
                                 </div>
 
-                                @php($informacaoBloqueada = (bool) ($componente['informacao_bloqueada'] ?? false))
+                                @php($informacaoBloqueada = ! (bool) ($componente['editavel'] ?? true) || (bool) ($componente['informacao_bloqueada'] ?? false))
                                 <div class="parecer-complementary-section">
                                     <h4>Informacoes complementares do componente</h4>
                                     @if ($informacaoBloqueada)
+                                    @if ($componente['informacao_bloqueada'] ?? false)
                                     <small class="av-field-hint">Informacoes bloqueadas por historico.</small>
+                                    @elseif (! (bool) ($componente['editavel'] ?? true))
+                                    <small class="av-field-hint">Componente restrito ao professor vinculado.</small>
+                                    @endif
                                     @endif
                                     <textarea
                                         maxlength="1500"

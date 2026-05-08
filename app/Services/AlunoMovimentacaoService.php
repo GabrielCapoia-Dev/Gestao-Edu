@@ -29,40 +29,94 @@ class AlunoMovimentacaoService
             $cgm = Aluno::normalizarCgm((string) ($data['cgm'] ?? ''));
             $turmaId = (int) ($data['id_turma'] ?? 0);
 
-            $this->bloquearSeCgmAtivo($cgm, $turmaId, $usuario);
+            $origemPendente = $this->bloquearSeCgmAtivo(
+                cgm: $cgm,
+                turmaDestinoId: $turmaId,
+                usuario: $usuario,
+                permitirPendencia: true
+            );
 
-            $origem = $this->ultimaMatriculaHistorica($cgm);
+            $origemHistorica = $origemPendente ? null : $this->ultimaMatriculaHistorica($cgm);
+            $status = $origemPendente ? Aluno::STATUS_PENDENTE : Aluno::STATUS_MATRICULADO;
 
             $aluno = Aluno::query()->create([
                 ...$data,
+                'nome' => $origemPendente?->nome ?? $data['nome'] ?? null,
                 'cgm' => $cgm,
-                'status' => Aluno::STATUS_MATRICULADO,
+                'data_nascimento' => $origemPendente?->data_nascimento ?? $data['data_nascimento'] ?? null,
+                'status' => $status,
                 'status_alterado_em' => now(),
                 'status_alterado_por' => $usuario?->id,
-                'status_motivo' => $data['status_motivo'] ?? 'Matricula criada no sistema.',
-                'aluno_origem_id' => $origem?->id,
-                'turma_origem_id' => $origem?->id_turma,
-                'movimentacao_origem' => $origem ? $this->tipoOrigemPorStatus($origem) : null,
+                'status_motivo' => $data['status_motivo'] ?? ($origemPendente
+                    ? 'Matricula criada como pendente por transferencia nao finalizada na escola de origem.'
+                    : 'Matricula criada no sistema.'),
+                'aluno_origem_id' => $origemHistorica?->id,
+                'turma_origem_id' => $origemHistorica?->id_turma,
+                'movimentacao_origem' => $origemHistorica ? $this->tipoOrigemPorStatus($origemHistorica) : null,
+                'pendencia_origem_aluno_id' => $origemPendente?->id,
             ]);
 
-            if ($origem) {
+            if ($origemHistorica) {
                 $this->copiarDadosAvaliativosBloqueados(
-                    origem: $origem,
+                    origem: $origemHistorica,
                     destino: $aluno,
-                    tipo: $this->tipoOrigemPorStatus($origem)
+                    tipo: $this->tipoOrigemPorStatus($origemHistorica)
                 );
+            }
+
+            if ($aluno->estaPendente()) {
+                app(AlunoTransferenciaPendenteService::class)->notificarPendencia($aluno, $usuario, true);
             }
 
             return $aluno;
         });
     }
 
-    public function bloquearSeCgmAtivo(string $cgm, int $turmaDestinoId, ?User $usuario = null, ?Aluno $ignorar = null): void
+    public function bloquearSeCgmAtivo(
+        string $cgm,
+        int $turmaDestinoId,
+        ?User $usuario = null,
+        ?Aluno $ignorar = null,
+        bool $permitirPendencia = false
+    ): ?Aluno
     {
         $cgm = Aluno::normalizarCgm($cgm);
 
         if ($cgm === '') {
-            return;
+            return null;
+        }
+
+        $turmaDestino = Turma::query()->find($turmaDestinoId);
+        $escolaDestinoId = (int) ($turmaDestino?->id_escola ?? 0);
+        $chaveUnidade = Aluno::chaveCgmUnidade($escolaDestinoId, $cgm);
+
+        if ($chaveUnidade) {
+            $ativoNaMesmaUnidade = Aluno::query()
+                ->with('turma.escola')
+                ->where('cgm_unidade_matricula_ativa', $chaveUnidade)
+                ->when($ignorar, fn (Builder $query): Builder => $query->whereKeyNot((int) $ignorar->id))
+                ->first();
+
+            if ($ativoNaMesmaUnidade) {
+                throw new MatriculaAlunoBloqueadaException(
+                    $ativoNaMesmaUnidade,
+                    'Este CGM ja esta cadastrado nesta unidade.'
+                );
+            }
+        }
+
+        $pendente = Aluno::query()
+            ->with('turma.escola')
+            ->where('cgm', $cgm)
+            ->where('status', Aluno::STATUS_PENDENTE)
+            ->when($ignorar, fn (Builder $query): Builder => $query->whereKeyNot((int) $ignorar->id))
+            ->first();
+
+        if ($pendente) {
+            throw new MatriculaAlunoBloqueadaException(
+                $pendente,
+                'Este CGM ja possui uma matricula pendente em outra unidade. Resolva a pendencia antes de criar uma nova matricula.'
+            );
         }
 
         $ativo = Aluno::query()
@@ -72,7 +126,11 @@ class AlunoMovimentacaoService
             ->first();
 
         if (! $ativo) {
-            return;
+            return null;
+        }
+
+        if ($permitirPendencia) {
+            return $ativo;
         }
 
         $this->notificarImpedimentoMatricula($ativo, $turmaDestinoId, $usuario);
@@ -85,9 +143,11 @@ class AlunoMovimentacaoService
         return DB::transaction(function () use ($aluno, $turmaDestinoId, $usuario, $motivo): Aluno {
             $aluno->refresh()->loadMissing('turma.escola', 'turma.serie');
             $turmaDestino = Turma::query()->with(['escola', 'serie'])->findOrFail($turmaDestinoId);
+            $statusDestino = $aluno->estaPendente() ? Aluno::STATUS_PENDENTE : Aluno::STATUS_MATRICULADO;
+            $pendenciaOrigemId = $aluno->pendencia_origem_aluno_id;
 
-            if (! $aluno->estaMatriculado()) {
-                throw new RuntimeException('Somente alunos matriculados podem ser remanejados.');
+            if (! $aluno->estaMatriculado() && ! $aluno->estaPendente()) {
+                throw new RuntimeException('Somente alunos matriculados ou pendentes podem ser remanejados.');
             }
 
             if ((int) $aluno->id_turma === (int) $turmaDestino->id) {
@@ -116,13 +176,14 @@ class AlunoMovimentacaoService
                 'cgm' => $aluno->cgm,
                 'data_nascimento' => $aluno->data_nascimento,
                 'id_turma' => (int) $turmaDestino->id,
-                'status' => Aluno::STATUS_MATRICULADO,
+                'status' => $statusDestino,
                 'status_alterado_em' => now(),
                 'status_alterado_por' => $usuario?->id,
                 'status_motivo' => $motivo ?: 'Matricula criada por remanejamento.',
                 'aluno_origem_id' => (int) $aluno->id,
                 'turma_origem_id' => (int) $aluno->id_turma,
                 'movimentacao_origem' => self::MOVIMENTACAO_REMANEJAMENTO,
+                'pendencia_origem_aluno_id' => $pendenciaOrigemId,
             ]);
 
             $this->copiarDadosAvaliativosBloqueados($aluno, $novoAluno, self::MOVIMENTACAO_REMANEJAMENTO);
@@ -148,6 +209,7 @@ class AlunoMovimentacaoService
             ])->save();
 
             $this->bloquearDadosAvaliativosOrigem($aluno, self::MOVIMENTACAO_TRANSFERENCIA);
+            $this->resolverPendenciasDeTransferencia($aluno, $usuario);
 
             return $aluno;
         });
@@ -331,7 +393,7 @@ class AlunoMovimentacaoService
         return Aluno::query()
             ->with('turma')
             ->where('cgm', Aluno::normalizarCgm($cgm))
-            ->where('status', '!=', Aluno::STATUS_MATRICULADO)
+            ->whereNotIn('status', [Aluno::STATUS_MATRICULADO, Aluno::STATUS_PENDENTE])
             ->latest('status_alterado_em')
             ->latest('updated_at')
             ->first();
@@ -342,6 +404,29 @@ class AlunoMovimentacaoService
         return $origem->status === Aluno::STATUS_TRANSFERIDO
             ? self::MOVIMENTACAO_TRANSFERENCIA
             : self::MOVIMENTACAO_HISTORICO;
+    }
+
+    private function resolverPendenciasDeTransferencia(Aluno $origem, ?User $usuario): void
+    {
+        Aluno::query()
+            ->where('pendencia_origem_aluno_id', (int) $origem->id)
+            ->where('status', Aluno::STATUS_PENDENTE)
+            ->orderBy('id')
+            ->get()
+            ->each(function (Aluno $pendente) use ($origem, $usuario): void {
+                $this->copiarDadosAvaliativosBloqueados($origem, $pendente, self::MOVIMENTACAO_TRANSFERENCIA);
+
+                $pendente->forceFill([
+                    'status' => Aluno::STATUS_MATRICULADO,
+                    'status_alterado_em' => now(),
+                    'status_alterado_por' => $usuario?->id,
+                    'status_motivo' => 'Pendencia de transferencia resolvida pelo parecer da escola de origem.',
+                    'aluno_origem_id' => (int) $origem->id,
+                    'turma_origem_id' => (int) $origem->id_turma,
+                    'movimentacao_origem' => self::MOVIMENTACAO_TRANSFERENCIA,
+                    'pendencia_origem_aluno_id' => null,
+                ])->save();
+            });
     }
 
     private function respostaPodeIrParaTurma(AvaliacaoResposta $resposta, Aluno $destino, array &$pautasCache): bool

@@ -106,6 +106,7 @@ class CriarPermissoes extends Command
             'Realizar Transferencia de Aluno',
             'Realizar Remanejamento de Aluno',
             'Gerar Parecer de Transferencia',
+            'Notificar Status Pendente',
             'Notificar Impedimento de Matricula por Falta de Transferencia',
             'Gerenciar Impedimento de Matricula por Falta de Transferencia',
             'Criar Tipo Manutenção',
@@ -305,6 +306,7 @@ class CriarPermissoes extends Command
                 'Realizar Transferencia de Aluno',
                 'Realizar Remanejamento de Aluno',
                 'Gerar Parecer de Transferencia',
+                'Notificar Status Pendente',
                 'Notificar Impedimento de Matricula por Falta de Transferencia',
                 'Gerenciar Impedimento de Matricula por Falta de Transferencia',
             ]),
@@ -757,6 +759,7 @@ class CriarPermissoes extends Command
             "Realizar Transfer\u{00EA}ncia de Aluno" => 'Realizar Transferencia de Aluno',
             'Realizar Tranferencia de Aluno' => 'Realizar Transferencia de Aluno',
             "Gerar Parecer de Transfer\u{00EA}ncia" => 'Gerar Parecer de Transferencia',
+            "Notificar Status Pendente" => 'Notificar Status Pendente',
             "Notificar Impedimento de Matr\u{00ED}cula por Falta de Transfer\u{00EA}ncia" => 'Notificar Impedimento de Matricula por Falta de Transferencia',
             "Gerenciar Impedimento de Matr\u{00ED}cula por Falta de Transfer\u{00EA}ncia" => 'Gerenciar Impedimento de Matricula por Falta de Transferencia',
         ];

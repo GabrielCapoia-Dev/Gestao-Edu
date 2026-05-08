@@ -909,9 +909,9 @@ class AvaliacoesProfessor extends Page
 
         return Aluno::query()
             ->whereIn('id_turma', $turmasIds)
-            ->where('status', Aluno::STATUS_MATRICULADO)
+            ->whereIn('status', [Aluno::STATUS_MATRICULADO, Aluno::STATUS_PENDENTE])
             ->orderBy('nome')
-            ->get(['id', 'nome', 'cgm', 'id_turma', 'status'])
+            ->get(['id', 'nome', 'cgm', 'id_turma', 'status', 'pendencia_origem_aluno_id'])
             ->groupBy('id_turma')
             ->map(fn (Collection $alunos): Collection => $alunos->values());
     }
@@ -1165,6 +1165,22 @@ class AvaliacoesProfessor extends Page
             ->get()
             ->keyBy(fn (AvaliacaoResposta $resposta): string => $resposta->pauta_id.'-'.$resposta->aluno_id);
 
+        $pendenciasPorAluno = $alunos
+            ->where('status', Aluno::STATUS_PENDENTE)
+            ->pluck('pendencia_origem_aluno_id', 'id')
+            ->filter();
+        $referenciasOrigem = collect();
+
+        if ($pendenciasPorAluno->isNotEmpty()) {
+            $referenciasOrigem = AvaliacaoResposta::query()
+                ->where('avaliacao_id', (int) $this->avaliacao)
+                ->whereIn('pauta_id', $pautas->pluck('id')->all())
+                ->whereIn('aluno_id', $pendenciasPorAluno->values()->all())
+                ->with('alternativa:id,nome')
+                ->get()
+                ->keyBy(fn (AvaliacaoResposta $resposta): string => $resposta->pauta_id.'-'.$resposta->aluno_id);
+        }
+
         $respostas = [];
         $avaliacaoEmMassa = [];
 
@@ -1177,11 +1193,19 @@ class AvaliacoesProfessor extends Page
                 foreach ($this->alunosDaTurma($turmaId) as $aluno) {
                     $chave = $pauta->id.'-'.$aluno->id;
                     $resposta = $respostasExistentes->get($chave);
+                    $origemId = (int) ($pendenciasPorAluno->get((int) $aluno->id) ?? 0);
+                    $referenciaOrigem = $origemId > 0
+                        ? $referenciasOrigem->get($pauta->id.'-'.$origemId)
+                        : null;
 
                     $respostas[$pauta->id][$aluno->id] = [
                         'alternativa_id' => $resposta?->alternativa_id,
                         'observacao' => $resposta?->observacao,
                         'bloqueada' => (bool) ($resposta?->bloqueada ?? false),
+                        'origem_referencia' => $referenciaOrigem ? [
+                            'alternativa' => (string) ($referenciaOrigem->alternativa?->nome ?? ''),
+                            'observacao' => (string) ($referenciaOrigem->observacao ?? ''),
+                        ] : null,
                     ];
                 }
             }
