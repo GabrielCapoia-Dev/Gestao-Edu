@@ -3,6 +3,7 @@
 namespace Tests\Feature\Alunos;
 
 use App\Exceptions\MatriculaAlunoBloqueadaException;
+use App\Filament\Admin\Pages\ParecerTransferenciaAluno;
 use App\Models\Aluno;
 use App\Models\Alternativa;
 use App\Models\Avaliacao;
@@ -21,6 +22,7 @@ use App\Services\AlunoTransferenciaParecerService;
 use App\Services\Avaliacoes\AvaliacaoDocumentoExportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification as NotificationFacade;
+use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
@@ -258,6 +260,56 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             'status' => Aluno::STATUS_TRANSFERIDO,
             'cgm_matricula_ativa' => null,
         ]);
+    }
+
+    public function test_parecer_transferencia_tem_paginacao_e_abre_slideover_com_avaliacoes(): void
+    {
+        Permission::findOrCreate('Gerar Parecer de Transferencia');
+
+        [$escola, $serie, $turmaOrigem, $turmaDestino, $avaliacao, $pauta, $alternativa] = $this->criarCenarioAvaliacaoDuasTurmas();
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo('Gerar Parecer de Transferencia');
+
+        $aluno = Aluno::query()->create([
+            'nome' => 'Aluno Parecer Slideover',
+            'cgm' => 'CGM-SLIDE',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turmaOrigem->id,
+        ]);
+
+        for ($i = 1; $i <= 5; $i++) {
+            Aluno::query()->create([
+                'nome' => 'Aluno Paginacao '.$i,
+                'cgm' => 'CGM-PAG-'.$i,
+                'data_nascimento' => '2015-01-0'.$i,
+                'id_turma' => $turmaOrigem->id,
+            ]);
+        }
+
+        AvaliacaoResposta::query()->create([
+            'avaliacao_id' => $avaliacao->id,
+            'pauta_id' => $pauta->id,
+            'turma_id' => $turmaOrigem->id,
+            'aluno_id' => $aluno->id,
+            'alternativa_id' => $alternativa->id,
+            'respondido_em' => now(),
+        ]);
+
+        Livewire::actingAs($usuario)
+            ->test(ParecerTransferenciaAluno::class)
+            ->set('porPagina', '5')
+            ->assertSee('6 resultado(s)')
+            ->assertSee('Mostrando')
+            ->assertSee('de 6')
+            ->call('selecionarAluno', $aluno->id)
+            ->assertSet('slideoverAberto', true)
+            ->assertSee('Aluno Parecer Slideover')
+            ->assertSee('Gerar Parecer de Transferencia')
+            ->assertSee('100%');
     }
 
     private function criarCenarioAvaliacaoDuasTurmas(): array

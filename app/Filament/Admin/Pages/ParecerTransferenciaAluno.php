@@ -14,15 +14,19 @@ use BackedEnum;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Livewire\WithPagination;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\Response;
 use UnitEnum;
 
 class ParecerTransferenciaAluno extends Page
 {
+    use WithPagination;
+
     protected string $view = 'filament.pages.parecer-transferencia-aluno';
 
     protected static ?string $title = 'Parecer de Transferencia';
@@ -39,7 +43,11 @@ class ParecerTransferenciaAluno extends Page
 
     public string $busca = '';
 
+    public string $porPagina = '10';
+
     public ?int $alunoSelecionadoId = null;
+
+    public bool $slideoverAberto = false;
 
     public static function canAccess(): bool
     {
@@ -63,6 +71,14 @@ class ParecerTransferenciaAluno extends Page
     public function updatedBusca(): void
     {
         $this->alunoSelecionadoId = null;
+        $this->slideoverAberto = false;
+        $this->resetPage();
+    }
+
+    public function updatedPorPagina(): void
+    {
+        $this->porPagina = (string) $this->quantidadePorPagina();
+        $this->resetPage();
     }
 
     public function selecionarAluno(int $alunoId): void
@@ -74,6 +90,13 @@ class ParecerTransferenciaAluno extends Page
         }
 
         $this->alunoSelecionadoId = (int) $aluno->id;
+        $this->slideoverAberto = true;
+    }
+
+    public function fecharSlideover(): void
+    {
+        $this->slideoverAberto = false;
+        $this->alunoSelecionadoId = null;
     }
 
     public function gerarParecerTransferencia(AlunoTransferenciaParecerService $service): ?Response
@@ -90,7 +113,20 @@ class ParecerTransferenciaAluno extends Page
         }
 
         try {
-            return $service->exportarETransferir($aluno, Auth::user());
+            /** @var User $usuario */
+            $usuario = Auth::user();
+            $response = $service->exportarETransferir($aluno, $usuario);
+
+            Notification::make()
+                ->title('Parecer de Transferencia gerado.')
+                ->body('O aluno foi marcado como Transferido.')
+                ->success()
+                ->send();
+
+            $this->fecharSlideover();
+            $this->resetPage();
+
+            return $response;
         } catch (RuntimeException $exception) {
             Notification::make()
                 ->title('Nao foi possivel gerar o parecer.')
@@ -102,7 +138,7 @@ class ParecerTransferenciaAluno extends Page
         }
     }
 
-    public function getAlunosProperty(): Collection
+    public function getAlunosProperty(): LengthAwarePaginator
     {
         $query = Aluno::query()
             ->with(['turma.escola', 'turma.serie'])
@@ -124,8 +160,18 @@ class ParecerTransferenciaAluno extends Page
 
         return $query
             ->orderBy('nome')
-            ->limit(40)
-            ->get();
+            ->paginate($this->quantidadePorPagina());
+    }
+
+    public function opcoesPorPagina(): array
+    {
+        return [
+            5 => '5',
+            10 => '10',
+            25 => '25',
+            50 => '50',
+            100 => '100',
+        ];
     }
 
     public function getAlunoSelecionadoProperty(): ?Aluno
@@ -241,5 +287,12 @@ class ParecerTransferenciaAluno extends Page
     public function getHeading(): string
     {
         return '';
+    }
+
+    private function quantidadePorPagina(): int
+    {
+        $quantidade = (int) $this->porPagina;
+
+        return in_array($quantidade, [5, 10, 25, 50, 100], true) ? $quantidade : 10;
     }
 }

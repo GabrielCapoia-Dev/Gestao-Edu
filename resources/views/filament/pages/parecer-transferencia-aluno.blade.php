@@ -20,7 +20,25 @@
                 <div class="gi-toolbar">
                     <div>
                         <h3 class="av-pauta-title">Alunos matriculados</h3>
-                        <p class="av-pauta-meta">{{ $this->alunos->count() }} resultado(s)</p>
+                        <p class="av-pauta-meta">{{ $this->alunos->total() }} resultado(s)</p>
+                    </div>
+
+                    <label class="gi-field gi-field--small">
+                        <span>Por pagina</span>
+                        <select wire:model.live="porPagina">
+                            @foreach ($this->opcoesPorPagina() as $valor => $label)
+                            <option value="{{ $valor }}">{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+                </div>
+
+                <div class="gi-toolbar">
+                    <div>
+                        <p class="av-pauta-meta">
+                            Mostrando {{ $this->alunos->firstItem() ?? 0 }}-{{ $this->alunos->lastItem() ?? 0 }}
+                            de {{ $this->alunos->total() }}
+                        </p>
                     </div>
                 </div>
 
@@ -59,21 +77,31 @@
                         </tbody>
                     </table>
                 </div>
+
+                <div>
+                    {{ $this->alunos->links() }}
+                </div>
             </section>
 
-            @if ($this->alunoSelecionado)
+            @if ($this->alunoSelecionado && $this->slideoverAberto)
             @php($aluno = $this->alunoSelecionado)
-            <section class="gi-panel">
-                <div class="gi-toolbar">
+            <div class="parecer-slideover-backdrop" wire:click="fecharSlideover"></div>
+            <aside class="parecer-slideover" role="dialog" aria-modal="true" aria-label="Parecer de Transferencia">
+                <header class="parecer-slideover-header">
                     <div>
-                        <h3 class="av-pauta-title">{{ $aluno->nome }}</h3>
-                        <p class="av-pauta-meta">
+                        <p class="gi-eyebrow">Parecer de Transferencia</p>
+                        <h3>{{ $aluno->nome }}</h3>
+                        <p>
                             CGM: {{ $aluno->cgm }} |
                             {{ $aluno->turma?->escola?->nome }} |
                             {{ $aluno->turma?->serie?->nome }} - {{ $aluno->turma?->nome }}
                         </p>
                     </div>
 
+                    <button type="button" class="gi-action" wire:click="fecharSlideover">Fechar</button>
+                </header>
+
+                <div class="parecer-slideover-actions">
                     <button
                         type="button"
                         class="gi-action gi-action--primary"
@@ -84,77 +112,161 @@
                         Gerar Parecer de Transferencia
                     </button>
                 </div>
-            </section>
 
-            @forelse ($this->avaliacoesDoAluno as $avaliacao)
-            <section class="gi-panel av-turma-section" wire:key="parecer-avaliacao-{{ $avaliacao['id'] }}">
-                <div class="av-pauta-toggle">
-                    <div class="av-pauta-toggle-main">
-                        <h3 class="av-pauta-title">{{ $avaliacao['nome'] }}</h3>
-                        <p class="av-pauta-meta">
-                            {{ $avaliacao['tipo'] }} |
-                            {{ $avaliacao['periodo'] }} |
-                            {{ $avaliacao['periodo_datas'] }}
-                        </p>
-                    </div>
+                <div class="parecer-slideover-body">
+                    @forelse ($this->avaliacoesDoAluno as $avaliacao)
+                    <section class="gi-panel av-turma-section" wire:key="parecer-avaliacao-{{ $avaliacao['id'] }}">
+                        <div class="av-pauta-toggle">
+                            <div class="av-pauta-toggle-main">
+                                <h3 class="av-pauta-title">{{ $avaliacao['nome'] }}</h3>
+                                <p class="av-pauta-meta">
+                                    {{ $avaliacao['tipo'] }} |
+                                    {{ $avaliacao['periodo'] }} |
+                                    {{ $avaliacao['periodo_datas'] }}
+                                </p>
+                            </div>
 
-                    <div class="av-pauta-toggle-side">
-                        <div class="av-pauta-progress-head">
-                            <span>{{ $avaliacao['preenchidas'] }}/{{ $avaliacao['total'] }}</span>
-                            <span>{{ $avaliacao['percentual'] }}%</span>
+                            <div class="av-pauta-toggle-side">
+                                <div class="av-pauta-progress-head">
+                                    <span>{{ $avaliacao['preenchidas'] }}/{{ $avaliacao['total'] }}</span>
+                                    <span>{{ $avaliacao['percentual'] }}%</span>
+                                </div>
+                                <div class="av-progress-track av-progress-track--compact">
+                                    <div class="av-progress-bar" style="width: {{ $avaliacao['percentual'] }}%"></div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="av-progress-track av-progress-track--compact">
-                            <div class="av-progress-bar" style="width: {{ $avaliacao['percentual'] }}%"></div>
-                        </div>
-                    </div>
-                </div>
 
-                <div class="av-turma-content">
-                    @foreach ($avaliacao['componentes'] as $componente)
-                    <section class="av-aluno-componente">
-                        <h4>{{ $componente['nome'] }}</h4>
+                        <div class="av-turma-content">
+                            @foreach ($avaliacao['componentes'] as $componente)
+                            <section class="av-aluno-componente">
+                                <h4>{{ $componente['nome'] }}</h4>
 
-                        <div class="gi-table-wrap">
-                            <table class="gi-table">
-                                <thead>
-                                    <tr>
-                                        <th>Pauta</th>
-                                        <th>Alternativas</th>
-                                        <th>Resposta</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach ($componente['pautas'] as $pauta)
-                                    <tr>
-                                        <td>{{ $pauta['texto'] }}</td>
-                                        <td>{{ implode(', ', $pauta['alternativas']) }}</td>
-                                        <td>
-                                            {{ $pauta['resposta'] ?: 'Pendente' }}
-                                            @if ($pauta['bloqueada'])
-                                            <small>Bloqueada por historico</small>
-                                            @endif
-                                        </td>
-                                    </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
+                                <div class="gi-table-wrap">
+                                    <table class="gi-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Pauta</th>
+                                                <th>Alternativas</th>
+                                                <th>Resposta</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach ($componente['pautas'] as $pauta)
+                                            <tr>
+                                                <td>{{ $pauta['texto'] }}</td>
+                                                <td>{{ implode(', ', $pauta['alternativas']) }}</td>
+                                                <td>
+                                                    {{ $pauta['resposta'] ?: 'Pendente' }}
+                                                    @if ($pauta['bloqueada'])
+                                                    <small>Bloqueada por historico</small>
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </section>
+                            @endforeach
                         </div>
                     </section>
-                    @endforeach
+                    @empty
+                    <section class="av-note av-note--warning">
+                        Nenhuma avaliacao vinculada a turma atual do aluno.
+                    </section>
+                    @endforelse
                 </div>
-            </section>
-            @empty
-            <section class="av-note av-note--warning">
-                Nenhuma avaliacao vinculada a turma atual do aluno.
-            </section>
-            @endforelse
+            </aside>
             @else
             <section class="av-note">
-                Selecione um aluno para visualizar as avaliacoes.
+                Clique em Abrir para visualizar as avaliacoes em painel lateral.
             </section>
             @endif
         </div>
 
         @include('filament.pages.partials.avaliacoes-page-styles')
+
+        <style>
+            .parecer-slideover-backdrop {
+                position: fixed;
+                inset: 0;
+                z-index: 40;
+                background: rgba(15, 23, 42, 0.38);
+            }
+
+            .parecer-slideover {
+                position: fixed;
+                inset: 0 0 0 auto;
+                z-index: 41;
+                display: grid;
+                grid-template-rows: auto auto minmax(0, 1fr);
+                width: min(56rem, 100vw);
+                background: #fff;
+                box-shadow: -24px 0 60px rgba(15, 23, 42, 0.22);
+            }
+
+            .parecer-slideover-header,
+            .parecer-slideover-actions {
+                padding: 1.15rem 1.25rem;
+                border-bottom: 1px solid var(--gray-200);
+            }
+
+            .parecer-slideover-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+
+            .parecer-slideover-header h3,
+            .parecer-slideover-header p {
+                margin: 0;
+            }
+
+            .parecer-slideover-header h3 {
+                color: var(--gray-950);
+                font-size: var(--text-xl);
+                line-height: 1.25;
+                font-weight: var(--font-weight-bold);
+            }
+
+            .parecer-slideover-header p:not(.gi-eyebrow) {
+                margin-top: 0.35rem;
+                color: var(--gray-500);
+                font-size: var(--text-sm);
+                line-height: 1.5;
+            }
+
+            .parecer-slideover-actions {
+                display: flex;
+                justify-content: flex-end;
+                gap: 0.75rem;
+            }
+
+            .parecer-slideover-body {
+                display: grid;
+                align-content: start;
+                gap: 1rem;
+                overflow-y: auto;
+                padding: 1rem 1.25rem 1.25rem;
+                background: var(--gray-50);
+            }
+
+            @media (max-width: 48rem) {
+                .parecer-slideover {
+                    width: 100vw;
+                }
+
+                .parecer-slideover-header {
+                    flex-direction: column;
+                }
+
+                .parecer-slideover-header .gi-action,
+                .parecer-slideover-actions .gi-action {
+                    width: 100%;
+                }
+            }
+        </style>
     </div>
 </x-filament-panels::page>
