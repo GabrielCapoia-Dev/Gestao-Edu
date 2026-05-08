@@ -10,6 +10,7 @@ use App\Models\Pauta;
 use App\Models\PeriodoAvaliacao;
 use App\Models\Serie;
 use App\Models\TipoAvaliacao;
+use App\Models\Turma;
 use App\Models\User;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -821,12 +822,10 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
             return collect();
         }
 
-        $escolasIds = DB::table('turma_componente_professor as tcp')
-            ->join('turmas as t', 't.id', '=', 'tcp.turma_id')
-            ->whereIn('t.id_serie', $seriesIds)
-            ->whereIn('tcp.componente_curricular_id', $componentesIds)
+        $escolasIds = Turma::query()
+            ->whereIn('id_serie', $seriesIds)
             ->distinct()
-            ->pluck('t.id_escola')
+            ->pluck('id_escola')
             ->map(fn ($id) => (int) $id)
             ->values()
             ->all();
@@ -847,13 +846,11 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
             return [];
         }
 
-        return DB::table('turma_componente_professor as tcp')
-            ->join('turmas as t', 't.id', '=', 'tcp.turma_id')
-            ->whereIn('t.id_serie', $seriesIds)
-            ->whereIn('tcp.componente_curricular_id', $componentesIds)
-            ->whereIn('t.id_escola', $escolasIds)
+        return Turma::query()
+            ->whereIn('id_serie', $seriesIds)
+            ->whereIn('id_escola', $escolasIds)
             ->distinct()
-            ->pluck('t.id')
+            ->pluck('id')
             ->map(fn ($id) => (int) $id)
             ->values()
             ->all();

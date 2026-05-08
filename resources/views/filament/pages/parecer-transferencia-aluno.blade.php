@@ -214,9 +214,17 @@
                                             @foreach ($componente['pautas'] as $pauta)
                                             <tr>
                                                 <td>{{ $pauta['texto'] }}</td>
-                                                <td>{{ implode(', ', $pauta['alternativas']) }}</td>
+                                                <td>{{ collect($pauta['alternativas'])->pluck('nome')->join(', ') }}</td>
                                                 <td>
-                                                    {{ $pauta['resposta'] ?: 'Pendente' }}
+                                                    <select
+                                                        class="parecer-response-select"
+                                                        wire:model.live="respostasParecer.{{ $avaliacao['id'] }}.{{ $pauta['id'] }}"
+                                                        @disabled($pauta['bloqueada'])>
+                                                        <option value="">Pendente</option>
+                                                        @foreach ($pauta['alternativas'] as $alternativa)
+                                                        <option value="{{ $alternativa['id'] }}">{{ $alternativa['nome'] }}</option>
+                                                        @endforeach
+                                                    </select>
                                                     @if ($pauta['bloqueada'])
                                                     <small>Bloqueada por historico</small>
                                                     @endif
@@ -317,7 +325,7 @@
                 z-index: 41;
                 display: grid;
                 grid-template-rows: auto auto minmax(0, 1fr);
-                width: min(56rem, 100vw);
+                width: min(72rem, 100vw);
                 background: #fff;
                 box-shadow: -24px 0 60px rgba(15, 23, 42, 0.22);
             }
@@ -367,6 +375,24 @@
                 overflow-y: auto;
                 padding: 1rem 1.25rem 1.25rem;
                 background: var(--gray-50);
+            }
+
+            .parecer-response-select {
+                width: min(12.5rem, 100%);
+                min-height: 2.25rem;
+                border: 1px solid var(--gray-300);
+                border-radius: var(--radius-md);
+                background: #fff;
+                color: var(--gray-900);
+                font-size: var(--text-sm);
+                line-height: 1.25;
+                padding: 0.4rem 0.65rem;
+            }
+
+            .parecer-response-select:disabled {
+                background: var(--gray-100);
+                color: var(--gray-500);
+                cursor: not-allowed;
             }
 
             @media (max-width: 48rem) {

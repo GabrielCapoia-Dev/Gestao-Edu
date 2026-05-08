@@ -262,6 +262,56 @@ class AlunoMovimentacaoFluxoTest extends TestCase
         ]);
     }
 
+    public function test_parecer_transferencia_salva_resposta_marcada_no_slideover_antes_de_transferir(): void
+    {
+        Permission::findOrCreate('Realizar Transferencia de Aluno');
+
+        [$escola, $serie, $turmaOrigem, $turmaDestino, $avaliacao, $pauta, $alternativa] = $this->criarCenarioAvaliacaoDuasTurmas();
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo('Realizar Transferencia de Aluno');
+
+        $aluno = Aluno::query()->create([
+            'nome' => 'Aluno Parecer Resposta',
+            'cgm' => 'CGM-RESP',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turmaOrigem->id,
+        ]);
+
+        $this->mock(AvaliacaoDocumentoExportService::class, function ($mock): void {
+            $mock
+                ->shouldReceive('gerarPdfAluno')
+                ->once()
+                ->andReturn([
+                    'filename' => 'parecer-transferencia-avaliacao.pdf',
+                    'contents' => '%PDF-1.4 teste',
+                ]);
+        });
+
+        Livewire::actingAs($usuario)
+            ->test(ParecerTransferenciaAluno::class)
+            ->call('selecionarAluno', $aluno->id)
+            ->set("respostasParecer.{$avaliacao->id}.{$pauta->id}", (string) $alternativa->id)
+            ->call('gerarParecerTransferencia');
+
+        $this->assertDatabaseHas('avaliacao_respostas', [
+            'avaliacao_id' => $avaliacao->id,
+            'pauta_id' => $pauta->id,
+            'turma_id' => $turmaOrigem->id,
+            'aluno_id' => $aluno->id,
+            'alternativa_id' => $alternativa->id,
+        ]);
+
+        $this->assertDatabaseHas('alunos', [
+            'id' => $aluno->id,
+            'status' => Aluno::STATUS_TRANSFERIDO,
+            'cgm_matricula_ativa' => null,
+        ]);
+    }
+
     public function test_parecer_transferencia_tem_paginacao_e_abre_slideover_com_avaliacoes(): void
     {
         Permission::findOrCreate('Gerar Parecer de Transferencia');
@@ -290,6 +340,14 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             ]);
         }
 
+        $turmaSemAvaliacao = $this->criarTurma($escola, 'Sem Avaliacao', $serie);
+        Aluno::query()->create([
+            'nome' => 'Aluno Sem Avaliacao',
+            'cgm' => 'CGM-SEM-AVAL',
+            'data_nascimento' => '2015-01-07',
+            'id_turma' => $turmaSemAvaliacao->id,
+        ]);
+
         AvaliacaoResposta::query()->create([
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
@@ -303,6 +361,7 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             ->test(ParecerTransferenciaAluno::class)
             ->set('porPagina', '5')
             ->assertSee('6 resultado(s)')
+            ->assertDontSee('Aluno Sem Avaliacao')
             ->assertSee('Mostrando')
             ->assertSee('de 6')
             ->call('selecionarAluno', $aluno->id)

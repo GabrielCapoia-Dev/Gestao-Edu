@@ -3,6 +3,7 @@
 namespace Tests\Feature\Avaliacoes;
 
 use App\Filament\Admin\Pages\GestaoAvaliacoes;
+use App\Models\Aluno;
 use App\Models\Alternativa;
 use App\Models\Avaliacao;
 use App\Models\ComponenteCurricular;
@@ -67,7 +68,19 @@ class GestaoAvaliacoesPageTest extends TestCase
         ]);
 
         $turmaA->componentes()->attach($componenteMat->id, ['professor_id' => null, 'tem_professor' => false]);
-        $turmaB->componentes()->attach($componenteMat->id, ['professor_id' => null, 'tem_professor' => false]);
+
+        Aluno::query()->create([
+            'nome' => 'Aluno com componente sem professor',
+            'cgm' => 'CGM-AVAL-1',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turmaA->id,
+        ]);
+        Aluno::query()->create([
+            'nome' => 'Aluno sem vinculo de professor',
+            'cgm' => 'CGM-AVAL-2',
+            'data_nascimento' => '2015-01-02',
+            'id_turma' => $turmaB->id,
+        ]);
 
         Alternativa::query()->create([
             'tipo_avaliacao_id' => $tipo->id,
