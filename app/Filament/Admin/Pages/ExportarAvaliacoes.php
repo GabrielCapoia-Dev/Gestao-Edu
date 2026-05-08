@@ -26,6 +26,8 @@ class ExportarAvaliacoes extends Page
 
     protected static ?string $navigationLabel = 'Exportar Avaliações';
 
+    protected static ?string $navigationParentItem = 'Turmas';
+
     protected static ?string $slug = 'avaliacoes-exportar';
 
     protected static ?int $navigationSort = 24;

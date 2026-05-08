@@ -45,6 +45,8 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     protected static ?string $navigationLabel = 'Dashboard Avaliações';
 
+    protected static ?string $navigationParentItem = 'Avaliações';
+
     protected static ?string $slug = 'dashboard-avaliacoes';
 
     protected static ?int $navigationSort = 26;
