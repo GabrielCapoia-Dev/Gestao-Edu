@@ -33,7 +33,7 @@ class AlunoTransferenciaPendenteService
                 continue;
             }
 
-            if ($this->professorVinculadoAoAluno($user, $origem)) {
+            if ($this->professorTemPendenciasAvaliativas($user, $origem)) {
                 return $origem;
             }
         }
@@ -186,9 +186,49 @@ class AlunoTransferenciaPendenteService
             ->values();
     }
 
-    private function professorVinculadoAoAluno(User $user, Aluno $aluno): bool
+    private function professorTemPendenciasAvaliativas(User $user, Aluno $aluno): bool
     {
-        return $this->componentesPermitidosParaProfessor($user, $aluno) !== [];
+        $componentesIds = $this->componentesPermitidosParaProfessor($user, $aluno);
+
+        if ($componentesIds === [] || ! $aluno->id_turma) {
+            return false;
+        }
+
+        $aluno->loadMissing('turma');
+        $serieId = (int) ($aluno->turma?->id_serie ?? 0);
+
+        return DB::table('avaliacao_turma as at')
+            ->join('avaliacao_pauta as ap', 'ap.avaliacao_id', '=', 'at.avaliacao_id')
+            ->join('pautas as p', 'p.id', '=', 'ap.pauta_id')
+            ->leftJoin('avaliacao_respostas as ar', function ($join) use ($aluno): void {
+                $join
+                    ->on('ar.avaliacao_id', '=', 'at.avaliacao_id')
+                    ->on('ar.pauta_id', '=', 'p.id')
+                    ->on('ar.turma_id', '=', 'at.turma_id')
+                    ->where('ar.aluno_id', (int) $aluno->id);
+            })
+            ->leftJoin('alternativas as alt', 'alt.id', '=', 'ar.alternativa_id')
+            ->where('at.turma_id', (int) $aluno->id_turma)
+            ->where('p.status', true)
+            ->whereIn('p.componente_curricular_id', $componentesIds)
+            ->where(function ($series) use ($serieId): void {
+                $series->whereNull('p.serie_id');
+
+                if ($serieId > 0) {
+                    $series->orWhere('p.serie_id', $serieId);
+                }
+            })
+            ->where(function ($pendencias): void {
+                $pendencias
+                    ->whereNull('ar.id')
+                    ->orWhereNull('ar.alternativa_id')
+                    ->orWhere(function ($observacoesObrigatorias): void {
+                        $observacoesObrigatorias
+                            ->where('alt.tem_observacao', true)
+                            ->whereRaw("TRIM(COALESCE(ar.observacao, '')) = ''");
+                    });
+            })
+            ->exists();
     }
 
     private function professorIdsDoUsuario(User $user): array
@@ -210,6 +250,7 @@ class AlunoTransferenciaPendenteService
             ->join('avaliacao_pauta as ap', 'ap.avaliacao_id', '=', 'at.avaliacao_id')
             ->join('pautas as p', 'p.id', '=', 'ap.pauta_id')
             ->where('at.turma_id', (int) $aluno->id_turma)
+            ->where('p.status', true)
             ->whereNotNull('p.componente_curricular_id')
             ->where(function ($query) use ($aluno): void {
                 $query
