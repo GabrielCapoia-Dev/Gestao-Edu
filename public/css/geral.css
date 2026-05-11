@@ -350,6 +350,16 @@
     opacity: 1;
 }
 
+.gestao-edu{
+    color: #074f9b;
+    font-size: 32px;
+
+}
+
+.fi-simple-header-heading{
+    font-size: 20px;
+}
+
 .fi-ta-footer {
     background: var(--edu-white);
     border-top: 1px solid var(--edu-neutral-100);
