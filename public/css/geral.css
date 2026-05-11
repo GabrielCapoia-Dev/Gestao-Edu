@@ -354,6 +354,7 @@
 .fi-sidebar .gestao-edu,
 .fi-main-sidebar .gestao-edu {
     color: var(--edu-white);
+    font-size: 30px;
 }
 
 /* Apenas tela de login */
@@ -361,7 +362,7 @@
     color: #0f4e9b !important;
     font-weight: 800;
     letter-spacing: -0.02em;
-    font-size: 44px;
+    font-size: 30px;
 }
 
 .fi-simple-header-heading {
