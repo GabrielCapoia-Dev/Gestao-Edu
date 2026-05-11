@@ -191,19 +191,19 @@ class AlunoParecerTransferenciaModal extends Component
         $turma = $aluno->turma;
 
         return Avaliacao::query()
-            ->whereHas('turmas', fn (Builder $turmas): Builder => $turmas->whereKey((int) $turma->id))
+            ->whereHas('turmas', fn(Builder $turmas): Builder => $turmas->whereKey((int) $turma->id))
             ->with([
                 'tipo:id,nome',
                 'periodo:id,nome',
-                'pautas' => fn ($query) => $query
+                'pautas' => fn($query) => $query
                     ->where('status', true)
                     ->with(['componente:id,nome', 'alternativas:id,nome,status,tem_observacao']),
             ])
             ->orderBy('data_inicio')
             ->orderBy('id')
             ->get()
-            ->map(fn (Avaliacao $avaliacao): array => $this->formatarAvaliacao($avaliacao, $aluno))
-            ->filter(fn (array $avaliacao): bool => (int) ($avaliacao['total'] ?? 0) > 0)
+            ->map(fn(Avaliacao $avaliacao): array => $this->formatarAvaliacao($avaliacao, $aluno))
+            ->filter(fn(array $avaliacao): bool => (int) ($avaliacao['total'] ?? 0) > 0)
             ->values();
     }
 
@@ -223,13 +223,13 @@ class AlunoParecerTransferenciaModal extends Component
     {
         $turma = $aluno->turma;
         $pautas = $avaliacao->pautas
-            ->filter(fn (Pauta $pauta): bool => is_null($pauta->serie_id) || (int) $pauta->serie_id === (int) $turma?->id_serie)
+            ->filter(fn(Pauta $pauta): bool => is_null($pauta->serie_id) || (int) $pauta->serie_id === (int) $turma?->id_serie)
             ->values();
         $componentesVisiveis = $this->componentesVisiveisParecer($aluno);
 
         if (is_array($componentesVisiveis)) {
             $pautas = $pautas
-                ->filter(fn (Pauta $pauta): bool => $pauta->componente_curricular_id !== null
+                ->filter(fn(Pauta $pauta): bool => $pauta->componente_curricular_id !== null
                     && in_array((int) $pauta->componente_curricular_id, $componentesVisiveis, true))
                 ->values();
         }
@@ -284,7 +284,7 @@ class AlunoParecerTransferenciaModal extends Component
             'total' => $total,
             'percentual' => $percentual,
             'componentes' => $pautas
-                ->groupBy(fn (Pauta $pauta): int => (int) ($pauta->componente_curricular_id ?? 0))
+                ->groupBy(fn(Pauta $pauta): int => (int) ($pauta->componente_curricular_id ?? 0))
                 ->map(function (Collection $pautasDoComponente) use ($avaliacao, $aluno, $respostas, $alternativasPorPauta): array {
                     /** @var Pauta|null $primeiraPauta */
                     $primeiraPauta = $pautasDoComponente->first();
@@ -315,7 +315,7 @@ class AlunoParecerTransferenciaModal extends Component
                                     'id' => (int) $pauta->id,
                                     'texto' => (string) $pauta->texto,
                                     'alternativas' => $alternativas
-                                        ->map(fn (Alternativa $alternativa): array => [
+                                        ->map(fn(Alternativa $alternativa): array => [
                                             'id' => (int) $alternativa->id,
                                             'nome' => (string) $alternativa->nome,
                                             'tem_observacao' => (bool) $alternativa->tem_observacao,
@@ -353,9 +353,9 @@ class AlunoParecerTransferenciaModal extends Component
         }
 
         $avaliacoesIds = Avaliacao::query()
-            ->whereHas('turmas', fn (Builder $turmas): Builder => $turmas->whereKey((int) $aluno->id_turma))
+            ->whereHas('turmas', fn(Builder $turmas): Builder => $turmas->whereKey((int) $aluno->id_turma))
             ->pluck('id')
-            ->map(fn ($id) => (int) $id)
+            ->map(fn($id) => (int) $id)
             ->all();
 
         if ($avaliacoesIds === []) {
@@ -433,9 +433,9 @@ class AlunoParecerTransferenciaModal extends Component
         /** @var Avaliacao|null $avaliacao */
         $avaliacao = Avaliacao::query()
             ->whereKey($avaliacaoId)
-            ->whereHas('turmas', fn (Builder $turmas): Builder => $turmas->whereKey((int) $aluno->id_turma))
+            ->whereHas('turmas', fn(Builder $turmas): Builder => $turmas->whereKey((int) $aluno->id_turma))
             ->with([
-                'pautas' => fn ($query) => $query
+                'pautas' => fn($query) => $query
                     ->whereKey($pautaId)
                     ->where('status', true)
                     ->with(['alternativas:id,nome,status,tem_observacao', 'componente:id,nome']),
@@ -448,7 +448,7 @@ class AlunoParecerTransferenciaModal extends Component
 
         /** @var Pauta|null $pauta */
         $pauta = $avaliacao->pautas
-            ->filter(fn (Pauta $pauta): bool => is_null($pauta->serie_id) || (int) $pauta->serie_id === (int) $aluno->turma?->id_serie)
+            ->filter(fn(Pauta $pauta): bool => is_null($pauta->serie_id) || (int) $pauta->serie_id === (int) $aluno->turma?->id_serie)
             ->firstWhere('id', $pautaId);
 
         if (! $pauta) {
@@ -523,9 +523,9 @@ class AlunoParecerTransferenciaModal extends Component
         }
 
         $avaliacoesIds = Avaliacao::query()
-            ->whereHas('turmas', fn (Builder $turmas): Builder => $turmas->whereKey((int) $aluno->id_turma))
+            ->whereHas('turmas', fn(Builder $turmas): Builder => $turmas->whereKey((int) $aluno->id_turma))
             ->pluck('id')
-            ->map(fn ($id) => (int) $id)
+            ->map(fn($id) => (int) $id)
             ->all();
 
         if ($avaliacoesIds === []) {
@@ -564,9 +564,9 @@ class AlunoParecerTransferenciaModal extends Component
         }
 
         $this->avaliacoesExpandidas = Avaliacao::query()
-            ->whereHas('turmas', fn (Builder $turmas): Builder => $turmas->whereKey((int) $aluno->id_turma))
+            ->whereHas('turmas', fn(Builder $turmas): Builder => $turmas->whereKey((int) $aluno->id_turma))
             ->pluck('id')
-            ->mapWithKeys(fn ($id): array => [(int) $id => false])
+            ->mapWithKeys(fn($id): array => [(int) $id => false])
             ->all();
     }
 
@@ -612,9 +612,9 @@ class AlunoParecerTransferenciaModal extends Component
 
         $avaliacao = Avaliacao::query()
             ->whereKey($avaliacaoId)
-            ->whereHas('turmas', fn (Builder $turmas): Builder => $turmas->whereKey((int) $aluno->id_turma))
+            ->whereHas('turmas', fn(Builder $turmas): Builder => $turmas->whereKey((int) $aluno->id_turma))
             ->with([
-                'pautas' => fn ($query) => $query
+                'pautas' => fn($query) => $query
                     ->where('status', true)
                     ->with('componente:id,nome'),
             ])
@@ -625,9 +625,9 @@ class AlunoParecerTransferenciaModal extends Component
         }
 
         $componentesIds = $avaliacao->pautas
-            ->filter(fn (Pauta $pauta): bool => is_null($pauta->serie_id) || (int) $pauta->serie_id === (int) $aluno->turma?->id_serie)
+            ->filter(fn(Pauta $pauta): bool => is_null($pauta->serie_id) || (int) $pauta->serie_id === (int) $aluno->turma?->id_serie)
             ->pluck('componente_curricular_id')
-            ->map(fn ($id) => (int) ($id ?? 0))
+            ->map(fn($id) => (int) ($id ?? 0))
             ->unique()
             ->values()
             ->all();
@@ -688,7 +688,7 @@ class AlunoParecerTransferenciaModal extends Component
      */
     private function alternativasPorPauta(Avaliacao $avaliacao, Collection $pautas): array
     {
-        $pautasIds = $pautas->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $pautasIds = $pautas->pluck('id')->map(fn($id) => (int) $id)->all();
 
         if ($pautasIds === []) {
             return [];
@@ -699,7 +699,7 @@ class AlunoParecerTransferenciaModal extends Component
             ->whereIn('pauta_id', $pautasIds)
             ->get(['pauta_id', 'alternativa_id'])
             ->groupBy('pauta_id')
-            ->map(fn (Collection $rows): array => $rows->pluck('alternativa_id')->map(fn ($id) => (int) $id)->all());
+            ->map(fn(Collection $rows): array => $rows->pluck('alternativa_id')->map(fn($id) => (int) $id)->all());
 
         $overrideAlternativas = Alternativa::query()
             ->whereIn('id', $overrides->flatten()->unique()->values()->all())
@@ -722,7 +722,7 @@ class AlunoParecerTransferenciaModal extends Component
 
             if ($overrideIds !== []) {
                 $porPauta[$pautaId] = collect($overrideIds)
-                    ->map(fn (int $id) => $overrideAlternativas->get($id))
+                    ->map(fn(int $id) => $overrideAlternativas->get($id))
                     ->filter()
                     ->values();
 
@@ -731,7 +731,7 @@ class AlunoParecerTransferenciaModal extends Component
 
             $alternativas = $pauta->alternativas
                 ->where('status', true)
-                ->sortBy(fn (Alternativa $alternativa): string => mb_strtolower((string) $alternativa->nome))
+                ->sortBy(fn(Alternativa $alternativa): string => mb_strtolower((string) $alternativa->nome))
                 ->values();
 
             if ($alternativas->isEmpty()) {
@@ -795,5 +795,59 @@ class AlunoParecerTransferenciaModal extends Component
     {
         return app(AlunoTransferenciaPendenteService::class)
             ->professorIdParaComponente(Auth::user(), $aluno, $componenteId);
+    }
+
+
+    public function updatedRespostasParecer(mixed $value, ?string $key = null): void
+    {
+        if ($key === null || $key === '') {
+            return;
+        }
+
+        [$avaliacaoId, $pautaId] = $this->idsDoCampoAninhado($key);
+
+        if ($avaliacaoId > 0 && $pautaId > 0) {
+            $this->autoSalvarRespostaParecer($avaliacaoId, $pautaId);
+        }
+    }
+
+    public function updatedObservacoesParecer(mixed $value, ?string $key = null): void
+    {
+        if ($key === null || $key === '') {
+            return;
+        }
+
+        [$avaliacaoId, $pautaId] = $this->idsDoCampoAninhado($key);
+
+        if ($avaliacaoId > 0 && $pautaId > 0) {
+            $this->autoSalvarRespostaParecer($avaliacaoId, $pautaId);
+        }
+    }
+
+    public function updatedInformacoesComplementaresParecer(mixed $value, ?string $key = null): void
+    {
+        if ($key === null || $key === '') {
+            return;
+        }
+
+        [$avaliacaoId, $componenteId] = $this->idsDoCampoAninhado($key);
+
+        if ($avaliacaoId > 0) {
+            $this->autoSalvarInformacaoComplementarParecer($avaliacaoId, $componenteId);
+        }
+    }
+
+    private function idsDoCampoAninhado(?string $key): array
+    {
+        if ($key === null || $key === '') {
+            return [0, 0];
+        }
+
+        $partes = explode('.', $key);
+
+        return [
+            (int) ($partes[0] ?? 0),
+            (int) ($partes[1] ?? 0),
+        ];
     }
 }
