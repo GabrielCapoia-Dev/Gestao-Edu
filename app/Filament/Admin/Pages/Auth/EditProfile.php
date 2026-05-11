@@ -66,12 +66,14 @@ class EditProfile extends BaseEditProfile
         return $schema
             ->components([
                 Section::make('Foto de perfil')
+                    ->description('Use uma imagem quadrada para manter o avatar bem enquadrado.')
                     ->schema([
                         $this->getProfilePhotoFormComponent(),
                     ])
                     ->extraAttributes(['class' => 'edu-profile-photo-section']),
 
                 Section::make('Dados da conta')
+                    ->description('Mantenha seu nome e e-mail atualizados no sistema.')
                     ->schema([
                         Grid::make([
                             'default' => 1,
@@ -83,7 +85,8 @@ class EditProfile extends BaseEditProfile
                     ])
                     ->extraAttributes(['class' => 'edu-profile-account-section']),
 
-                Section::make('Senha')
+                Section::make('Seguranca da conta')
+                    ->description('Preencha somente se quiser alterar sua senha.')
                     ->schema([
                         Grid::make([
                             'default' => 1,
