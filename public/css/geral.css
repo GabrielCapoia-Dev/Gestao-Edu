@@ -120,16 +120,41 @@
     height: 32px;
     padding: 0;
     background: var(--edu-white);
-    border: 2px solid #111827;
+    border: 1px solid #0D2247;
+    border-radius: 50%;
+    overflow: hidden;
+    transition: background 0.2s, border-color 0.2s, transform 0.2s;
+}
+.notif-bell-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    background: var(--edu-white);
+    border: 1px solid #0D2247;
     border-radius: 50%;
     overflow: hidden;
     transition: background 0.2s, border-color 0.2s, transform 0.2s;
 }
 
+.notif-bell-btn svg {
+    color: #0D2247;
+    width: 24px;
+    height: 24px;
+}
+
+.notif-bell-btn:hover {
+    background: var(--edu-neutral-100);
+    border-color: #0D2247;
+    transform: translateY(-2px);
+}
+
 .fi-topbar .fi-user-menu-trigger:hover {
     background: var(--edu-neutral-100);
-    border-color: #000000;
-    transform: translateY(-1px);
+    border-color: #0D2247;
+    transform: translateY(-2px);
 }
 
 .fi-topbar .fi-user-avatar {
@@ -384,6 +409,256 @@
 
 .fi-simple-header-heading {
     font-size: 20px;
+}
+
+.fi-auth-layout.media-cover:has(.edu-profile-page) {
+    padding: clamp(1rem, 4vw, 3rem);
+}
+
+.fi-auth-layout.media-cover:has(.edu-profile-page) .fi-auth-media-overlay {
+    background:
+        linear-gradient(135deg, rgba(9, 30, 66, 0.34) 0%, rgba(14, 116, 144, 0.18) 48%, rgba(15, 23, 42, 0.46) 100%),
+        rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(1px);
+}
+
+.fi-auth-layout.media-cover:has(.edu-profile-page) .fi-auth-content-section {
+    max-width: min(980px, calc(100vw - 2rem));
+}
+
+.fi-auth-card:has(.edu-profile-page) {
+    padding: 0 !important;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow:
+        0 24px 70px rgba(15, 34, 97, 0.24),
+        0 2px 8px rgba(15, 23, 42, 0.10);
+}
+
+.edu-profile-page {
+    display: grid;
+    grid-template-columns: minmax(240px, 0.78fr) minmax(0, 1.22fr);
+    min-height: 540px;
+    color: var(--edu-neutral-900);
+}
+
+.edu-profile-summary {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 1.75rem;
+    overflow: hidden;
+    padding: 2rem;
+    background:
+        linear-gradient(160deg, #0f2261 0%, #11366f 55%, #0f766e 100%);
+    color: var(--edu-white);
+}
+
+.edu-profile-summary-pattern {
+    position: absolute;
+    inset: 0;
+    opacity: 0.18;
+    background-image:
+        linear-gradient(rgba(255, 255, 255, 0.16) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.16) 1px, transparent 1px);
+    background-size: 42px 42px;
+}
+
+.edu-profile-avatar-wrap {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    width: 118px;
+    height: 118px;
+    place-items: center;
+    border: 4px solid rgba(255, 255, 255, 0.78);
+    border-radius: 50%;
+    background: var(--edu-white);
+    box-shadow: 0 18px 42px rgba(4, 11, 30, 0.34);
+}
+
+.edu-profile-avatar {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.edu-profile-avatar-initials {
+    position: absolute;
+    z-index: 1;
+    color: #111827;
+    font-size: 2rem;
+    font-weight: 800;
+}
+
+.edu-profile-summary-text,
+.edu-profile-meta {
+    position: relative;
+    z-index: 1;
+}
+
+.edu-profile-kicker,
+.edu-profile-form-heading span {
+    display: inline-flex;
+    width: fit-content;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0;
+    text-transform: uppercase;
+}
+
+.edu-profile-kicker {
+    margin-bottom: 0.75rem;
+    padding: 0.32rem 0.72rem;
+    background: rgba(255, 255, 255, 0.16);
+    color: rgba(255, 255, 255, 0.92);
+}
+
+.edu-profile-summary h1 {
+    max-width: 17rem;
+    margin: 0;
+    color: var(--edu-white);
+    font-size: 2rem;
+    font-weight: 800;
+    line-height: 1.05;
+}
+
+.edu-profile-summary p {
+    margin-top: 0.7rem;
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 0.92rem;
+    word-break: break-word;
+}
+
+.edu-profile-meta {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.edu-profile-meta div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.edu-profile-meta dt {
+    color: rgba(255, 255, 255, 0.64);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.edu-profile-meta dd {
+    color: var(--edu-white);
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.edu-profile-form-panel {
+    padding: clamp(1.5rem, 4vw, 2.5rem);
+}
+
+.edu-profile-form-heading {
+    margin-bottom: 1.5rem;
+}
+
+.edu-profile-form-heading span {
+    margin-bottom: 0.7rem;
+    padding: 0.28rem 0.68rem;
+    background: var(--edu-primary-50);
+    color: var(--edu-primary-800);
+}
+
+.edu-profile-form-heading h2 {
+    color: var(--edu-neutral-900);
+    font-size: 1.65rem;
+    font-weight: 800;
+    line-height: 1.1;
+}
+
+.edu-profile-form-panel .fi-sc {
+    gap: 1rem;
+}
+
+.edu-profile-form-panel .fi-section {
+    border-color: rgba(15, 34, 97, 0.10);
+    border-radius: 8px;
+    box-shadow: none;
+}
+
+.edu-profile-form-panel .fi-section-header {
+    padding: 1rem 1.1rem 0.45rem;
+    border-bottom: none;
+}
+
+.edu-profile-form-panel .fi-section-content {
+    padding: 0.85rem 1.1rem 1.1rem;
+}
+
+.edu-profile-photo-section .fi-section-content {
+    display: flex;
+    align-items: center;
+}
+
+.edu-profile-photo-section .fi-fo-field-wrp {
+    width: 100%;
+}
+
+.edu-profile-photo-section .fi-fo-field-wrp-content {
+    align-items: center;
+}
+
+.edu-profile-photo-section .fi-file-upload {
+    max-width: 190px;
+}
+
+.edu-profile-form-panel .fi-input-wrp {
+    background: rgba(248, 250, 252, 0.9);
+}
+
+.edu-profile-form-panel .fi-btn-color-primary {
+    border-radius: 10px;
+    background: var(--edu-primary-800);
+    box-shadow: 0 10px 22px rgba(16, 43, 134, 0.22);
+}
+
+@media (max-width: 760px) {
+    .fi-auth-layout.media-cover:has(.edu-profile-page) {
+        align-items: flex-start;
+        padding: 1rem;
+    }
+
+    .edu-profile-page {
+        grid-template-columns: 1fr;
+        min-height: 0;
+    }
+
+    .edu-profile-summary {
+        padding: 1.5rem;
+    }
+
+    .edu-profile-avatar-wrap {
+        width: 96px;
+        height: 96px;
+    }
+
+    .edu-profile-summary h1 {
+        font-size: 1.55rem;
+    }
+
+    .edu-profile-form-panel {
+        padding: 1.25rem;
+    }
 }
 
 .fi-ta-footer {

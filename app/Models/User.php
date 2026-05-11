@@ -17,6 +17,7 @@ use Illuminate\Support\Str;
 use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 use Spatie\Permission\Traits\HasRoles;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class User extends Authenticatable implements FilamentUser, HasAvatar
 {
@@ -175,8 +176,8 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
 
     public function getFilamentAvatarUrl(): ?string
     {
-        if ($this->hasGoogleOauth() && filled($this->avatar_url)) {
-            return $this->avatar_url;
+        if (filled($this->avatar_url)) {
+            return $this->resolveAvatarUrl((string) $this->avatar_url);
         }
 
         $name = str($this->name)
@@ -187,6 +188,15 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
             ->join(' ');
 
         return 'https://ui-avatars.com/api/?name=' . rawurlencode($name ?: 'U') . '&color=000000&background=FFFFFF';
+    }
+
+    protected function resolveAvatarUrl(string $avatarUrl): string
+    {
+        if (Str::startsWith($avatarUrl, ['http://', 'https://', 'data:image/', '/'])) {
+            return $avatarUrl;
+        }
+
+        return Storage::disk('public')->url($avatarUrl);
     }
 
     public function googleAccessTokenExpired(): bool

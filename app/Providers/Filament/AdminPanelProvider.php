@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Http\Middleware\BloquearProfessorPendenciaTransferencia;
+use App\Filament\Admin\Pages\Auth\EditProfile as CustomEditProfile;
 use App\Livewire\LoginPage;
 use App\Models\User;
 use Caresome\FilamentAuthDesigner\AuthDesignerPlugin;
@@ -125,9 +126,11 @@ class AdminPanelProvider extends PanelProvider
                             ->themeToggle()
                     )
                     ->profile(
-                        fn ($config) => $config
-                            ->media(asset('images/background.png'))
+                        fn (AuthPageConfig $config) => $config
+                            ->media(asset('images/background.jpg'))
                             ->mediaPosition(MediaPosition::Cover)
+                            ->blur(1)
+                            ->usingPage(CustomEditProfile::class)
                     ),
             ]);
     }
