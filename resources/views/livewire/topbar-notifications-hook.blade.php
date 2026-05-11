@@ -15,17 +15,18 @@
         justify-content: center;
         width: 32px;
         height: 32px;
-        border: 1px solid rgba(255, 255, 255, .14);
+        border: 2px solid #111827;
         border-radius: 50%;
-        background-color: #081124;
-        color: #f3f4f6;
+        background-color: #ffffff;
+        color: #111827;
         text-decoration: none;
-        transition: background-color .18s ease, transform .18s ease, border-color .18s ease;
+        transition: background-color .18s ease, transform .18s ease, border-color .18s ease, color .18s ease;
     }
 
     .notif-bell-btn:hover {
-        background-color: #0f1f3d;
-        border-color: rgba(255, 255, 255, .28);
+        background-color: #f3f4f6;
+        border-color: #000000;
+        color: #000000;
         transform: translateY(-1px);
     }
 

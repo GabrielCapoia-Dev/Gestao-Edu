@@ -101,6 +101,23 @@ class GoogleServiceProfessorAccessTest extends TestCase
         $this->assertSame($escola->id, (int) $user->id_escola);
     }
 
+    public function test_login_google_salva_foto_do_perfil_para_avatar_do_filament(): void
+    {
+        DominioEmail::query()->create([
+            'dominio_email' => 'edu.umuarama.pr.gov.br',
+            'status' => true,
+        ]);
+
+        $avatarUrl = 'https://lh3.googleusercontent.com/a/profile-photo';
+        $oauthUser = $this->fakeOAuthUser('foto@edu.umuarama.pr.gov.br', 'Usuario Foto', $avatarUrl);
+
+        $user = app(GoogleService::class)->registrarOuLogar($oauthUser);
+        $user->refresh();
+
+        $this->assertSame($avatarUrl, $user->avatar_url);
+        $this->assertSame($avatarUrl, $user->getFilamentAvatarUrl());
+    }
+
     public function test_usuario_pendente_ja_existente_e_aprovado_com_dados_do_professor_no_login_google(): void
     {
         DominioEmail::query()->create([
@@ -303,9 +320,9 @@ class GoogleServiceProfessorAccessTest extends TestCase
         ]);
     }
 
-    private function fakeOAuthUser(string $email, string $name): SocialiteUserContract
+    private function fakeOAuthUser(string $email, string $name, ?string $avatar = null): SocialiteUserContract
     {
-        return new class($email, $name) implements SocialiteUserContract {
+        return new class($email, $name, $avatar) implements SocialiteUserContract {
             public string $token = 'fake-token';
             public ?string $refreshToken = 'fake-refresh-token';
             public int $expiresIn = 3600;
@@ -313,6 +330,7 @@ class GoogleServiceProfessorAccessTest extends TestCase
             public function __construct(
                 private readonly string $email,
                 private readonly string $name,
+                private readonly ?string $avatar,
             ) {}
 
             public function getId()
@@ -337,7 +355,7 @@ class GoogleServiceProfessorAccessTest extends TestCase
 
             public function getAvatar()
             {
-                return null;
+                return $this->avatar;
             }
         };
     }

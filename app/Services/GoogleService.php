@@ -171,6 +171,7 @@ class GoogleService
     {
         $refresh = $oauthUser->refreshToken ?? $user->google_refresh_token;
         $googleEmail = Professor::normalizarEmail((string) ($oauthUser->getEmail() ?: $user->google_email));
+        $avatarUrl = $oauthUser->getAvatar();
 
         $expiresIn = $oauthUser->expiresIn ?? 3600;
         $expiresAt = now()->addSeconds(max(60, (int) $expiresIn - 60));
@@ -178,6 +179,7 @@ class GoogleService
         $user->forceFill([
             'google_id' => $oauthUser->getId() ?: $user->google_id,
             'google_email' => $googleEmail !== '' ? $googleEmail : $user->google_email,
+            'avatar_url' => filled($avatarUrl) ? $avatarUrl : $user->avatar_url,
             'google_token' => $oauthUser->token,
             'google_refresh_token' => $refresh,
             'google_token_expires_in' => $expiresAt,

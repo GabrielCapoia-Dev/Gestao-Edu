@@ -112,14 +112,31 @@
     color: rgba(255, 255, 255, 0.40);
 }
 
-.fi-user-menu-trigger {
-    border: 2px solid rgba(255, 255, 255, 0.25);
+.fi-topbar .fi-user-menu-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    background: var(--edu-white);
+    border: 2px solid #111827;
     border-radius: 50%;
-    transition: border-color 0.2s;
+    overflow: hidden;
+    transition: background 0.2s, border-color 0.2s, transform 0.2s;
 }
 
-.fi-user-menu-trigger:hover {
-    border-color: var(--edu-primary-300);
+.fi-topbar .fi-user-menu-trigger:hover {
+    background: var(--edu-neutral-100);
+    border-color: #000000;
+    transform: translateY(-1px);
+}
+
+.fi-topbar .fi-user-avatar {
+    width: 100%;
+    height: 100%;
+    background: var(--edu-white);
+    border-radius: 50%;
 }
 
 /* ═══════════════════════════════════════════════
@@ -354,7 +371,7 @@
 .fi-sidebar .gestao-edu,
 .fi-main-sidebar .gestao-edu {
     color: var(--edu-white);
-    font-size: 30px;
+    font-size: 28px;
 }
 
 /* Apenas tela de login */
@@ -789,16 +806,18 @@
     justify-content: center;
     width: 32px;
     height: 32px;
-    background-color: #f7eedb;
-    color: var(--edu-neutral-100);
+    background-color: var(--edu-white);
+    color: #111827;
     border-radius: 50%;
-    transition: background-color 0.2s ease;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
     cursor: pointer;
-    border: none;
+    border: 2px solid #111827;
 }
 
 .notification-bell:hover {
-    background-color: var(--edu-neutral-900);
+    background-color: var(--edu-neutral-100);
+    color: #000000;
+    border-color: #000000;
 }
 
 .notification-bell:focus-visible {

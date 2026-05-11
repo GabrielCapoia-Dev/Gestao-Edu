@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Filament\Facades\Filament;
+use Filament\Models\Contracts\HasAvatar;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Notifications\Notification;
 use Filament\Panel;
@@ -17,7 +18,7 @@ use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 use Spatie\Permission\Traits\HasRoles;
 use Illuminate\Support\Facades\Auth;
 
-class User extends Authenticatable implements FilamentUser
+class User extends Authenticatable implements FilamentUser, HasAvatar
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory;
@@ -41,6 +42,7 @@ class User extends Authenticatable implements FilamentUser
         'password',
         'google_id',
         'google_email',
+        'avatar_url',
         'google_token',
         'google_refresh_token',
         'google_token_expires_in',
@@ -169,6 +171,22 @@ class User extends Authenticatable implements FilamentUser
     public function hasGoogleOauth(): bool
     {
         return filled($this->google_token) || filled($this->google_refresh_token);
+    }
+
+    public function getFilamentAvatarUrl(): ?string
+    {
+        if ($this->hasGoogleOauth() && filled($this->avatar_url)) {
+            return $this->avatar_url;
+        }
+
+        $name = str($this->name)
+            ->trim()
+            ->explode(' ')
+            ->map(fn (string $segment): string => filled($segment) ? mb_substr($segment, 0, 1) : '')
+            ->filter()
+            ->join(' ');
+
+        return 'https://ui-avatars.com/api/?name=' . rawurlencode($name ?: 'U') . '&color=000000&background=FFFFFF';
     }
 
     public function googleAccessTokenExpired(): bool
