@@ -34,7 +34,7 @@ class EditProfile extends BaseEditProfile
         return str($this->getUser()->name)
             ->trim()
             ->explode(' ')
-            ->map(fn (string $segment): string => filled($segment) ? mb_substr($segment, 0, 1) : '')
+            ->map(fn(string $segment): string => filled($segment) ? mb_substr($segment, 0, 1) : '')
             ->filter()
             ->take(2)
             ->join('');
@@ -65,16 +65,11 @@ class EditProfile extends BaseEditProfile
     {
         return $schema
             ->components([
-                Section::make('Foto de perfil')
+                Section::make('Dados da Conta')
                     ->description('Use uma imagem quadrada para manter o avatar bem enquadrado.')
                     ->schema([
                         $this->getProfilePhotoFormComponent(),
-                    ])
-                    ->extraAttributes(['class' => 'edu-profile-photo-section']),
 
-                Section::make('Dados da conta')
-                    ->description('Mantenha seu nome e e-mail atualizados no sistema.')
-                    ->schema([
                         Grid::make([
                             'default' => 1,
                             'md' => 2,
@@ -83,7 +78,7 @@ class EditProfile extends BaseEditProfile
                             $this->getEmailFormComponent(),
                         ]),
                     ])
-                    ->extraAttributes(['class' => 'edu-profile-account-section']),
+                    ->extraAttributes(['class' => 'edu-profile-photo-section']),
 
                 Section::make('Seguranca da conta')
                     ->description('Preencha somente se quiser alterar sua senha.')
