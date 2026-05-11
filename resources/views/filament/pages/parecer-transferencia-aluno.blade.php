@@ -184,6 +184,13 @@
             @endphp
             <div class="parecer-slideover-backdrop" wire:click="fecharSlideover"></div>
             <aside class="parecer-slideover" role="dialog" aria-modal="true" aria-label="Parecer de Transferencia">
+                <div class="parecer-loading-overlay" wire:loading.flex>
+                    <div class="parecer-loading-card" role="status" aria-live="polite">
+                        <span class="parecer-loading-spinner"></span>
+                        <span>Processando...</span>
+                    </div>
+                </div>
+
                 <header class="parecer-slideover-header">
                     <div>
                         <p class="gi-eyebrow">Parecer de Transferencia</p>
@@ -195,7 +202,7 @@
                         </p>
                     </div>
 
-                    <button type="button" class="gi-action" wire:click="fecharSlideover">Fechar</button>
+                    <button type="button" class="gi-action" wire:click="fecharSlideover" wire:loading.attr="disabled">Fechar</button>
                 </header>
 
                 <div class="parecer-slideover-actions">
@@ -220,6 +227,7 @@
                             type="button"
                             class="av-pauta-toggle parecer-evaluation-toggle"
                             wire:click="alternarAvaliacaoParecer({{ $avaliacao['id'] }})"
+                            wire:loading.attr="disabled"
                             aria-expanded="{{ $avaliacaoExpandida ? 'true' : 'false' }}">
                             <div class="av-pauta-toggle-main">
                                 <h3 class="av-pauta-title">{{ $avaliacao['nome'] }}</h3>
@@ -421,6 +429,49 @@
                 width: min(72rem, 100vw);
                 background: #fff;
                 box-shadow: -24px 0 60px rgba(15, 23, 42, 0.22);
+            }
+
+            .parecer-loading-overlay {
+                position: absolute;
+                inset: 0;
+                z-index: 3;
+                display: none;
+                align-items: center;
+                justify-content: center;
+                background: rgba(15, 23, 42, 0.42);
+                cursor: wait;
+            }
+
+            .parecer-loading-card {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 0.75rem;
+                min-width: 12rem;
+                border: 1px solid rgba(255, 255, 255, 0.45);
+                border-radius: var(--radius-md);
+                background: #fff;
+                color: var(--gray-900);
+                font-size: var(--text-sm);
+                font-weight: var(--font-weight-semibold);
+                line-height: 1;
+                padding: 0.9rem 1rem;
+                box-shadow: 0 24px 60px rgba(15, 23, 42, 0.24);
+            }
+
+            .parecer-loading-spinner {
+                width: 1.25rem;
+                height: 1.25rem;
+                border: 3px solid var(--gray-200);
+                border-top-color: var(--primary-600);
+                border-radius: 999px;
+                animation: parecer-spin 0.72s linear infinite;
+            }
+
+            @keyframes parecer-spin {
+                to {
+                    transform: rotate(360deg);
+                }
             }
 
             .parecer-slideover-header,

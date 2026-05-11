@@ -2,8 +2,8 @@
 
 namespace App\Filament\Admin\Pages;
 
-use App\Models\Aluno;
 use App\Models\Alternativa;
+use App\Models\Aluno;
 use App\Models\Avaliacao;
 use App\Models\AvaliacaoInformacaoComplementar;
 use App\Models\AvaliacaoResposta;
@@ -425,7 +425,9 @@ class ParecerTransferenciaAluno extends Page
             ->orderBy('data_inicio')
             ->orderBy('id')
             ->get()
-            ->map(fn (Avaliacao $avaliacao): array => $this->formatarAvaliacao($avaliacao, $aluno));
+            ->map(fn (Avaliacao $avaliacao): array => $this->formatarAvaliacao($avaliacao, $aluno))
+            ->filter(fn (array $avaliacao): bool => (int) ($avaliacao['total'] ?? 0) > 0)
+            ->values();
     }
 
     private function queryAlunosParecer(): Builder
@@ -499,6 +501,14 @@ class ParecerTransferenciaAluno extends Page
         $pautas = $avaliacao->pautas
             ->filter(fn (Pauta $pauta): bool => is_null($pauta->serie_id) || (int) $pauta->serie_id === (int) $turma?->id_serie)
             ->values();
+        $componentesVisiveis = $this->componentesVisiveisParecer($aluno);
+
+        if (is_array($componentesVisiveis)) {
+            $pautas = $pautas
+                ->filter(fn (Pauta $pauta): bool => $pauta->componente_curricular_id !== null
+                    && in_array((int) $pauta->componente_curricular_id, $componentesVisiveis, true))
+                ->values();
+        }
 
         $respostas = AvaliacaoResposta::query()
             ->where('avaliacao_id', (int) $avaliacao->id)
@@ -1188,6 +1198,12 @@ class ParecerTransferenciaAluno extends Page
     {
         return app(AlunoTransferenciaPendenteService::class)
             ->professorPodeResponderComponente(Auth::user(), $aluno, $componenteId);
+    }
+
+    private function componentesVisiveisParecer(Aluno $aluno): ?array
+    {
+        return app(AlunoTransferenciaPendenteService::class)
+            ->componentesVisiveisParaParecer(Auth::user(), $aluno);
     }
 
     private function professorIdParaComponenteParecer(Aluno $aluno, ?int $componenteId): ?int

@@ -55,7 +55,7 @@ class AlunoTransferenciaPendenteService
 
     public function professorPodeResponderComponente(?User $user, Aluno $aluno, ?int $componenteId): bool
     {
-        if (! $this->professorEstaRestritoAoAluno($user, $aluno)) {
+        if ($this->usuarioTemVisibilidadeTotalParecer($user)) {
             return true;
         }
 
@@ -64,6 +64,22 @@ class AlunoTransferenciaPendenteService
         }
 
         return in_array((int) $componenteId, $this->componentesPermitidosParaProfessor($user, $aluno), true);
+    }
+
+    public function componentesVisiveisParaParecer(?User $user, Aluno $aluno): ?array
+    {
+        if ($this->usuarioTemVisibilidadeTotalParecer($user)) {
+            return null;
+        }
+
+        return $this->componentesPermitidosParaProfessor($user, $aluno);
+    }
+
+    public function usuarioTemVisibilidadeTotalParecer(?User $user): bool
+    {
+        return ($user?->hasPermissionLike('gerar parecer de transferencia') ?? false)
+            || ($user?->hasPermissionLike('realizar transferencia de aluno') ?? false)
+            || ($user?->hasPermissionLike('realizar tranferencia de aluno') ?? false);
     }
 
     public function componentesPermitidosParaProfessor(?User $user, Aluno $aluno): array

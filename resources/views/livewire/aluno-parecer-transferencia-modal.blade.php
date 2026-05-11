@@ -4,6 +4,13 @@
         $somenteLeitura = $this->parecerSomenteLeitura;
     @endphp
 
+    <div class="parecer-loading-overlay" wire:loading.flex>
+        <div class="parecer-loading-card" role="status" aria-live="polite">
+            <span class="parecer-loading-spinner"></span>
+            <span>Processando...</span>
+        </div>
+    </div>
+
     @if ($aluno)
         <header class="parecer-modal-header">
             <div>
@@ -44,6 +51,7 @@
                         type="button"
                         class="av-pauta-toggle parecer-evaluation-toggle"
                         wire:click="alternarAvaliacaoParecer({{ $avaliacao['id'] }})"
+                        wire:loading.attr="disabled"
                         aria-expanded="{{ $avaliacaoExpandida ? 'true' : 'false' }}">
                         <div class="av-pauta-toggle-main">
                             <h3 class="av-pauta-title">{{ $avaliacao['nome'] }}</h3>
@@ -170,8 +178,52 @@
 
     <style>
         .parecer-modal-root {
+            position: relative;
             display: grid;
             gap: 1rem;
+        }
+
+        .parecer-loading-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 80;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(15, 23, 42, 0.42);
+            cursor: wait;
+        }
+
+        .parecer-loading-card {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+            min-width: 12rem;
+            justify-content: center;
+            border: 1px solid rgba(255, 255, 255, 0.45);
+            border-radius: var(--radius-md);
+            background: #fff;
+            color: var(--gray-900);
+            font-size: var(--text-sm);
+            font-weight: var(--font-weight-semibold);
+            line-height: 1;
+            padding: 0.9rem 1rem;
+            box-shadow: 0 24px 60px rgba(15, 23, 42, 0.24);
+        }
+
+        .parecer-loading-spinner {
+            width: 1.25rem;
+            height: 1.25rem;
+            border: 3px solid var(--gray-200);
+            border-top-color: var(--primary-600);
+            border-radius: 999px;
+            animation: parecer-spin 0.72s linear infinite;
+        }
+
+        @keyframes parecer-spin {
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         .parecer-modal-header h3,

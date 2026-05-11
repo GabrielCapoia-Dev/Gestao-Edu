@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Alunos;
 
+use App\Livewire\AlunoParecerTransferenciaModal;
 use App\Models\Alternativa;
 use App\Models\Aluno;
 use App\Models\Avaliacao;
@@ -17,6 +18,8 @@ use App\Models\Turma;
 use App\Models\User;
 use App\Services\AlunoTransferenciaPendenteService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
+use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 class AlunoTransferenciaPendenteServiceTest extends TestCase
@@ -77,6 +80,58 @@ class AlunoTransferenciaPendenteServiceTest extends TestCase
         $resposta->update(['observacao' => 'Observacao preenchida corretamente.']);
 
         $this->assertFalse($service->professorEstaBloqueado($cenario['usuario_matematica']));
+    }
+
+    public function test_modal_parecer_exibe_apenas_pautas_do_componente_do_professor_sem_permissao_total(): void
+    {
+        $cenario = $this->criarCenarioTransferenciaPendente();
+
+        Livewire::actingAs($cenario['usuario_matematica'])
+            ->test(AlunoParecerTransferenciaModal::class, ['alunoId' => $cenario['aluno_origem']->id])
+            ->call('alternarAvaliacaoParecer', $cenario['avaliacao']->id)
+            ->assertSee('Pauta Matematica')
+            ->assertSee('Matematica')
+            ->assertDontSee('Pauta Historia')
+            ->assertDontSee('Historia');
+    }
+
+    public function test_modal_parecer_mantem_professor_limitado_aos_componentes_dele_mesmo_apos_concluir_pendencia(): void
+    {
+        $cenario = $this->criarCenarioTransferenciaPendente();
+
+        AvaliacaoResposta::query()->create([
+            'avaliacao_id' => $cenario['avaliacao']->id,
+            'pauta_id' => $cenario['pauta_matematica']->id,
+            'turma_id' => $cenario['turma_origem']->id,
+            'aluno_id' => $cenario['aluno_origem']->id,
+            'professor_id' => $cenario['professor_matematica']->id,
+            'alternativa_id' => $cenario['alternativa']->id,
+            'respondido_em' => now(),
+        ]);
+
+        Livewire::actingAs($cenario['usuario_matematica'])
+            ->test(AlunoParecerTransferenciaModal::class, ['alunoId' => $cenario['aluno_origem']->id])
+            ->call('alternarAvaliacaoParecer', $cenario['avaliacao']->id)
+            ->assertSee('Pauta Matematica')
+            ->assertDontSee('Pauta Historia');
+    }
+
+    public function test_modal_parecer_exibe_todas_as_pautas_para_usuario_com_permissao_de_gerar_parecer(): void
+    {
+        Permission::findOrCreate('Gerar Parecer de Transferencia');
+
+        $cenario = $this->criarCenarioTransferenciaPendente();
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo('Gerar Parecer de Transferencia');
+
+        Livewire::actingAs($usuario)
+            ->test(AlunoParecerTransferenciaModal::class, ['alunoId' => $cenario['aluno_origem']->id])
+            ->call('alternarAvaliacaoParecer', $cenario['avaliacao']->id)
+            ->assertSee('Pauta Matematica')
+            ->assertSee('Pauta Historia');
     }
 
     private function criarCenarioTransferenciaPendente(): array
