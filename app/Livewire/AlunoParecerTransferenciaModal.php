@@ -49,29 +49,41 @@ class AlunoParecerTransferenciaModal extends Component
         return view('livewire.aluno-parecer-transferencia-modal');
     }
 
-    public function updated(string $name): void
+    public function updatedRespostasParecer(mixed $value, string $key): void
     {
-        if (str_starts_with($name, 'respostasParecer.') || str_starts_with($name, 'observacoesParecer.')) {
-            $partes = explode('.', $name);
-            $avaliacaoId = (int) ($partes[1] ?? 0);
-            $pautaId = (int) ($partes[2] ?? 0);
+        [$avaliacaoId, $pautaId] = $this->idsDoCampoAninhado($key);
 
-            if ($avaliacaoId > 0 && $pautaId > 0) {
-                $this->autoSalvarRespostaParecer($avaliacaoId, $pautaId);
-            }
-
-            return;
+        if ($avaliacaoId > 0 && $pautaId > 0) {
+            $this->autoSalvarRespostaParecer($avaliacaoId, $pautaId);
         }
+    }
 
-        if (str_starts_with($name, 'informacoesComplementaresParecer.')) {
-            $partes = explode('.', $name);
-            $avaliacaoId = (int) ($partes[1] ?? 0);
-            $componenteId = (int) ($partes[2] ?? 0);
+    public function updatedObservacoesParecer(mixed $value, string $key): void
+    {
+        [$avaliacaoId, $pautaId] = $this->idsDoCampoAninhado($key);
 
-            if ($avaliacaoId > 0) {
-                $this->autoSalvarInformacaoComplementarParecer($avaliacaoId, $componenteId);
-            }
+        if ($avaliacaoId > 0 && $pautaId > 0) {
+            $this->autoSalvarRespostaParecer($avaliacaoId, $pautaId);
         }
+    }
+
+    public function updatedInformacoesComplementaresParecer(mixed $value, string $key): void
+    {
+        [$avaliacaoId, $componenteId] = $this->idsDoCampoAninhado($key);
+
+        if ($avaliacaoId > 0) {
+            $this->autoSalvarInformacaoComplementarParecer($avaliacaoId, $componenteId);
+        }
+    }
+
+    private function idsDoCampoAninhado(string $key): array
+    {
+        $partes = explode('.', $key);
+
+        return [
+            (int) ($partes[0] ?? 0),
+            (int) ($partes[1] ?? 0),
+        ];
     }
 
     public function selecionarAluno(int $alunoId): void
