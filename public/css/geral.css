@@ -412,6 +412,10 @@
         0 2px 8px rgba(15, 23, 42, 0.10);
 }
 
+.edu-profile-shell {
+    width: 100%;
+}
+
 .edu-profile-page {
     display: grid;
     grid-template-columns: minmax(240px, 0.78fr) minmax(0, 1.22fr);
