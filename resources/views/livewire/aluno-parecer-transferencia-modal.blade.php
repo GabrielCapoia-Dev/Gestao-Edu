@@ -109,7 +109,8 @@
                                                             @else
                                                                 <select
                                                                     class="parecer-response-select"
-                                                                    wire:model.live="respostasParecer.{{ $avaliacao['id'] }}.{{ $pauta['id'] }}">
+                                                                    wire:model="respostasParecer.{{ $avaliacao['id'] }}.{{ $pauta['id'] }}"
+                                                                    wire:change="salvarRespostaParecerCampo({{ $avaliacao['id'] }}, {{ $pauta['id'] }}, $event.target.value)">
                                                                     <option value="">Pendente</option>
                                                                     @foreach ($pauta['alternativas'] as $alternativa)
                                                                         <option value="{{ $alternativa['id'] }}">
@@ -127,7 +128,8 @@
                                                                     maxlength="1500"
                                                                     placeholder="Observacao obrigatoria"
                                                                     class="parecer-response-textarea"
-                                                                    wire:model.live.debounce.500ms="observacoesParecer.{{ $avaliacao['id'] }}.{{ $pauta['id'] }}"></textarea>
+                                                                    wire:model="observacoesParecer.{{ $avaliacao['id'] }}.{{ $pauta['id'] }}"
+                                                                    wire:input.debounce.700ms="salvarObservacaoParecerCampo({{ $avaliacao['id'] }}, {{ $pauta['id'] }}, $event.target.value)"></textarea>
                                                                 <small class="av-field-hint av-field-hint--danger">Obrigatoria para esta alternativa.</small>
                                                             @else
                                                                 <small class="av-field-hint">Somente alternativas com observacao habilitam este campo.</small>
@@ -154,7 +156,8 @@
                                                 maxlength="1500"
                                                 placeholder="Informacoes complementares (opcional)"
                                                 class="parecer-response-textarea"
-                                                wire:model.live.debounce.600ms="informacoesComplementaresParecer.{{ $avaliacao['id'] }}.{{ $componente['id'] }}"></textarea>
+                                                wire:model="informacoesComplementaresParecer.{{ $avaliacao['id'] }}.{{ $componente['id'] }}"
+                                                wire:input.debounce.900ms="salvarInformacaoComplementarParecerCampo({{ $avaliacao['id'] }}, {{ $componente['id'] }}, $event.target.value)"></textarea>
                                         @endif
                                     </div>
                                 </section>

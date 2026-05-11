@@ -51,8 +51,12 @@ class AlunoParecerTransferenciaModal extends Component
 
     public function updated($name, $value = null): void
     {
-        if (str_starts_with((string) $name, 'respostasParecer.') || str_starts_with((string) $name, 'observacoesParecer.')) {
-            $partes = explode('.', (string) $name);
+        if (! is_string($name) || $name === '') {
+            return;
+        }
+
+        if (str_starts_with($name, 'respostasParecer.') || str_starts_with($name, 'observacoesParecer.')) {
+            $partes = explode('.', $name);
             $avaliacaoId = (int) ($partes[1] ?? 0);
             $pautaId = (int) ($partes[2] ?? 0);
 
@@ -63,8 +67,8 @@ class AlunoParecerTransferenciaModal extends Component
             return;
         }
 
-        if (str_starts_with((string) $name, 'informacoesComplementaresParecer.')) {
-            $partes = explode('.', (string) $name);
+        if (str_starts_with($name, 'informacoesComplementaresParecer.')) {
+            $partes = explode('.', $name);
             $avaliacaoId = (int) ($partes[1] ?? 0);
             $componenteId = (int) ($partes[2] ?? 0);
 
@@ -72,6 +76,39 @@ class AlunoParecerTransferenciaModal extends Component
                 $this->autoSalvarInformacaoComplementarParecer($avaliacaoId, $componenteId);
             }
         }
+    }
+
+    public function salvarRespostaParecerCampo(int $avaliacaoId, int $pautaId, mixed $alternativaId): void
+    {
+        if ($avaliacaoId <= 0 || $pautaId <= 0) {
+            return;
+        }
+
+        $this->respostasParecer[$avaliacaoId][$pautaId] = (string) ($alternativaId ?? '');
+
+        $this->autoSalvarRespostaParecer($avaliacaoId, $pautaId);
+    }
+
+    public function salvarObservacaoParecerCampo(int $avaliacaoId, int $pautaId, mixed $observacao): void
+    {
+        if ($avaliacaoId <= 0 || $pautaId <= 0) {
+            return;
+        }
+
+        $this->observacoesParecer[$avaliacaoId][$pautaId] = $this->limitarTextoCampo($observacao);
+
+        $this->autoSalvarRespostaParecer($avaliacaoId, $pautaId);
+    }
+
+    public function salvarInformacaoComplementarParecerCampo(int $avaliacaoId, int $componenteId, mixed $informacoes): void
+    {
+        if ($avaliacaoId <= 0) {
+            return;
+        }
+
+        $this->informacoesComplementaresParecer[$avaliacaoId][$componenteId] = $this->limitarTextoCampo($informacoes);
+
+        $this->autoSalvarInformacaoComplementarParecer($avaliacaoId, $componenteId);
     }
 
     public function selecionarAluno(int $alunoId): void
