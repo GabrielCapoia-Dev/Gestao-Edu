@@ -26,4 +26,3 @@ yarn-error.log
 /public/js/filament
 /public/css/filament
 /public/fonts/filament
-/docker/nginx/conf.d/default.conf
