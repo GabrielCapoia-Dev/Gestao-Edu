@@ -13,6 +13,7 @@ use App\Http\Controllers\NotificationCenterController;
 use App\Http\Controllers\PedidoArquivoController;
 use App\Http\Controllers\PedidoMerendaEmpenhoController;
 use App\Http\Controllers\PedidoRelatorioGeralController;
+use App\Http\Controllers\UserPresenceController;
 use App\Models\Pedido;
 use App\Models\User;
 use App\Notifications\SistemaNotification;
@@ -77,6 +78,9 @@ Route::prefix('admin')
 
         Route::get('/notifications/unread-count', [NotificationCenterController::class, 'unreadCount'])
             ->name('notifications.unreadCount');
+
+        Route::post('/presence/heartbeat', [UserPresenceController::class, 'heartbeat'])
+            ->name('presence.heartbeat');
 
         Route::post('/notifications/send', [NotificationCenterController::class, 'send'])
             ->name('notifications.send');

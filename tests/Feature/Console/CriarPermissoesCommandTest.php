@@ -40,6 +40,7 @@ class CriarPermissoesCommandTest extends TestCase
         $this->assertFalse($pedidosRole->hasPermissionTo('Aplicar Permissoes'));
 
         $this->assertTrue($accessRole->hasPermissionTo('Aplicar Permissoes'));
+        $this->assertTrue($accessRole->hasPermissionTo('Visualizar Usuarios Online'));
         $this->assertTrue($accessRole->hasPermissionTo('Editar Usuários'));
         $this->assertFalse($accessRole->hasPermissionTo('Editar Pedidos'));
 

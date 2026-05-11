@@ -54,6 +54,9 @@ use App\Models\TurmaComponenteProfessor;
 use App\Policies\FuncaoAdministrativaPolicy;
 use App\Policies\ItemPolicy;
 use App\Policies\SetorPolicy;
+use App\Services\UserPresenceService;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Support\Facades\Event;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -95,6 +98,12 @@ class AppServiceProvider extends ServiceProvider
         // ── Gates ──────────────────────────────────────────────────────────────
         Gate::define('admin-only', fn ($user) => $user->hasRole('Admin'));
 
+        Event::listen(Login::class, function (Login $event): void {
+            if ($event->user instanceof User) {
+                app(UserPresenceService::class)->touch($event->user, markLogin: true);
+            }
+        });
+
         // ── Assets ─────────────────────────────────────────────────────────────
         $assetVersion = function (string $path): int {
             $modifiedAt = file_exists(public_path($path))
@@ -117,5 +126,6 @@ class AppServiceProvider extends ServiceProvider
             PanelsRenderHook::BODY_END,
             fn () => view('components.open-url-listener'),
         );
+
     }
 }

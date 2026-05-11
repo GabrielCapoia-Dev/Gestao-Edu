@@ -6,6 +6,7 @@ use App\Http\Middleware\BloquearProfessorPendenciaTransferencia;
 use App\Filament\Admin\Pages\Auth\EditProfile as CustomEditProfile;
 use App\Livewire\LoginPage;
 use App\Models\User;
+use App\Services\UserPresenceService;
 use Caresome\FilamentAuthDesigner\AuthDesignerPlugin;
 use Caresome\FilamentAuthDesigner\Data\AuthPageConfig;
 use Caresome\FilamentAuthDesigner\Enums\MediaPosition;
@@ -91,20 +92,21 @@ class AdminPanelProvider extends PanelProvider
                 PanelsRenderHook::USER_MENU_BEFORE,
                 function () {
                     $user = User::authUser();
-                    $permission = collect([
+                    $notificationPermission = collect([
                         'Visualizar Notificações',
                     ])->first(fn (string $name): bool => Permission::query()->where('name', $name)->exists());
 
-                    if (
-                        $user
-                        && filled($permission)
-                        && $user->hasPermissionTo($permission)
-                    ) {
-                        return view('livewire.topbar-notifications-hook');
-                    }
-
-                    return '';
+                    return view('filament.partials.topbar-user-menu-before', [
+                        'showOnlineUsers' => $user?->hasPermissionTo(UserPresenceService::PERMISSION) ?? false,
+                        'showNotifications' => $user
+                            && filled($notificationPermission)
+                            && $user->hasPermissionTo($notificationPermission),
+                    ]);
                 }
+            )
+            ->renderHook(
+                PanelsRenderHook::BODY_END,
+                fn (): \Illuminate\Contracts\View\View => view('components.user-presence-heartbeat')
             )
             ->renderHook(
                 PanelsRenderHook::HEAD_END,
