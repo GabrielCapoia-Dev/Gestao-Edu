@@ -66,19 +66,31 @@ class EditProfile extends BaseEditProfile
         return $schema
             ->components([
                 Section::make('Dados da Conta')
-                    ->description('Use uma imagem quadrada para manter o avatar bem enquadrado.')
+                    ->description('Atualize sua foto, nome e e-mail de acesso.')
                     ->schema([
-                        $this->getProfilePhotoFormComponent(),
-
                         Grid::make([
                             'default' => 1,
-                            'md' => 2,
+                            'lg' => 12,
                         ])->schema([
-                            $this->getNameFormComponent(),
-                            $this->getEmailFormComponent(),
+                            $this->getProfilePhotoFormComponent()
+                                ->columnSpan([
+                                    'default' => 1,
+                                    'lg' => 3,
+                                ]),
+
+                            Grid::make([
+                                'default' => 1,
+                                'md' => 2,
+                            ])->schema([
+                                $this->getNameFormComponent(),
+                                $this->getEmailFormComponent(),
+                            ])->columnSpan([
+                                'default' => 1,
+                                'lg' => 9,
+                            ]),
                         ]),
                     ])
-                    ->extraAttributes(['class' => 'edu-profile-photo-section']),
+                    ->extraAttributes(['class' => 'edu-profile-account-section']),
 
                 Section::make('Seguranca da conta')
                     ->description('Preencha somente se quiser alterar sua senha.')
@@ -108,8 +120,7 @@ class EditProfile extends BaseEditProfile
             ->visibility('public')
             ->maxSize(2048)
             ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
-            ->helperText('JPG, PNG ou WebP, ate 2 MB.')
-            ->columnSpanFull();
+            ->helperText('JPG, PNG ou WebP, ate 2 MB.');
     }
 
     protected function getNameFormComponent(): Component
