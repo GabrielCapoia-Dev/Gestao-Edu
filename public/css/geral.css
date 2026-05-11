@@ -125,31 +125,6 @@
     overflow: hidden;
     transition: background 0.2s, border-color 0.2s, transform 0.2s;
 }
-.notif-bell-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    padding: 0;
-    background: var(--edu-white);
-    border: 1px solid #0D2247;
-    border-radius: 50%;
-    overflow: hidden;
-    transition: background 0.2s, border-color 0.2s, transform 0.2s;
-}
-
-.notif-bell-btn svg {
-    color: #0D2247;
-    width: 24px;
-    height: 24px;
-}
-
-.notif-bell-btn:hover {
-    background: var(--edu-neutral-100);
-    border-color: #0D2247;
-    transform: translateY(-2px);
-}
 
 .fi-topbar .fi-user-menu-trigger:hover {
     background: var(--edu-neutral-100);
