@@ -74,10 +74,6 @@
     letter-spacing: 0.02em;
 }
 
-.gestao-edu {
-    color: var(--edu-white);
-}
-
 .fi-topbar .fi-icon-btn {
     color: rgba(255, 255, 255, 0.55);
     transition: color 0.2s, background 0.2s;
@@ -350,13 +346,24 @@
     opacity: 1;
 }
 
-.gestao-edu{
-    color: #074f9b;
-    font-size: 32px;
-
+.gestao-edu {
+    color: inherit;
 }
 
-.fi-simple-header-heading{
+.fi-topbar .gestao-edu,
+.fi-sidebar .gestao-edu,
+.fi-main-sidebar .gestao-edu {
+    color: var(--edu-white);
+}
+
+/* Apenas tela de login */
+.fi-auth-layout .gestao-edu {
+    color: #0f4e9b !important;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+.fi-simple-header-heading {
     font-size: 20px;
 }
 
