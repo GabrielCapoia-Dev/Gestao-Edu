@@ -1,13 +1,6 @@
 <x-filament-panels::page>
     <div class="av-livewire-root">
         <div class="gi-page av-page">
-            <section class="gi-hero">
-                <div>
-                    <p class="gi-eyebrow">Professor</p>
-                    <h1>Minhas Avaliacoes</h1>
-                    <p>Selecione avaliacao e serie para registrar respostas por aluno. Cada alteracao e salva automaticamente.</p>
-                </div>
-            </section>
 
             <section class="gi-panel av-professor-control-panel">
                 <div class="av-form-grid av-form-grid--two">
