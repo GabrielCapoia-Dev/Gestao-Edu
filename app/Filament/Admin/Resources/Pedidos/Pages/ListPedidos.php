@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
 use Livewire\Attributes\On;
+use Illuminate\Contracts\View\View;
 
 class ListPedidos extends ListRecords
 {
@@ -24,6 +25,66 @@ class ListPedidos extends ListRecords
     public function refreshBadges(): void
     {
         $this->dispatch('refreshComponent');
+    }
+
+
+    public function getHeader(): ?View
+    {
+        return view('filament.admin.resources.turmas.pages.manage-turmas-header', [
+            'actions' => $this->getCachedHeaderActions(),
+
+            'eyebrow' => 'Manutenção',
+            'title' => $this->getStatusTitle(),
+            'description' => 'Gerencie os pedidos de manutenção, acompanhe seus status e mantenha um histórico detalhado para cada um.',
+        ]);
+    }
+
+    private function getStatusTitle(): string|HtmlString
+    {
+        /** @var User|null $user */
+        $user = Auth::user();
+
+        if (! $user?->hasPermissionTo('Visualizar Pedidos por Status')) {
+            return 'Pedidos';
+        }
+
+        $activeTab = $this->activeTab;
+
+        if (! $activeTab || $activeTab === 'todos') {
+            return new HtmlString(
+                '<span style="
+                display:inline-block;
+                padding:2px 10px;
+                border-radius:5px;
+                font-weight:600;
+                line-height:1.6;
+                background-color:#e5e7eb;
+                color:#374151;
+                border:1px solid #d1d5db;
+            ">Todos</span>'
+            );
+        }
+
+        $status = TipoStatus::find($activeTab);
+
+        if (! $status) {
+            return 'Pedidos';
+        }
+
+        $hex = '#' . ltrim($status->cor, '#');
+
+        return new HtmlString(
+            '<span style="'
+                . 'display:inline-block;'
+                . 'padding:2px 10px;'
+                . 'border-radius:5px;'
+                . 'font-weight:600;'
+                . 'line-height:1.6;'
+                . "background-color:{$hex}20;"
+                . "color:{$hex};"
+                . "border:1px solid {$hex}50;"
+                . '">' . e($status->nome) . '</span>'
+        );
     }
 
     protected function getHeaderActions(): array
@@ -38,9 +99,9 @@ class ListPedidos extends ListRecords
             Actions\Action::make('feedbacks')
                 ->label('Feedbacks')
                 ->icon('heroicon-o-star')
-                ->visible(fn () => $user?->hasPermissionTo('Visualizar Feedback de Pedidos') ?? false)
+                ->visible(fn() => $user?->hasPermissionTo('Visualizar Feedback de Pedidos') ?? false)
                 ->color('warning')
-                ->url(fn () => route('filament.admin.pages.feedback-pedidos')),
+                ->url(fn() => route('filament.admin.pages.feedback-pedidos')),
         ];
     }
 
@@ -68,11 +129,11 @@ class ListPedidos extends ListRecords
 
         $tabs = [
             'todos' => Tab::make('Todos')
-                ->modifyQueryUsing(fn ($query) => $query
+                ->modifyQueryUsing(fn($query) => $query
                     ->where('is_pedido_adicional', false)
                     ->reorder()
                     ->orderByDesc('updated_at'))
-                ->badge(fn () => (clone $tableQuery)->where('is_pedido_adicional', false)->count())
+                ->badge(fn() => (clone $tableQuery)->where('is_pedido_adicional', false)->count())
                 ->extraAttributes([
                     'style' => '
                         --tab-color: #6b7280;
@@ -95,7 +156,7 @@ class ListPedidos extends ListRecords
         ];
 
         $statusIdsOrdenados = collect($ordemStatus)
-            ->map(fn (string $nome) => $service->statusPorNome($nome))
+            ->map(fn(string $nome) => $service->statusPorNome($nome))
             ->filter()
             ->pluck('id')
             ->all();
@@ -103,7 +164,7 @@ class ListPedidos extends ListRecords
         $statuses = TipoStatus::query()
             ->where('ativo', true)
             ->get()
-            ->sortBy(fn (TipoStatus $status): int => array_search($status->id, $statusIdsOrdenados, true) !== false
+            ->sortBy(fn(TipoStatus $status): int => array_search($status->id, $statusIdsOrdenados, true) !== false
                 ? array_search($status->id, $statusIdsOrdenados, true)
                 : 999);
 
@@ -116,8 +177,8 @@ class ListPedidos extends ListRecords
                 ->where('tipo_status_id', $status->id)
                 ->when(
                     $ehPedidoAdicional,
-                    fn (Builder $builder) => $builder->where('is_pedido_adicional', true),
-                    fn (Builder $builder) => $builder->where('is_pedido_adicional', false),
+                    fn(Builder $builder) => $builder->where('is_pedido_adicional', true),
+                    fn(Builder $builder) => $builder->where('is_pedido_adicional', false),
                 );
 
             $count = $query->count();
@@ -134,8 +195,8 @@ class ListPedidos extends ListRecords
                         ->where('tipo_status_id', $status->id)
                         ->when(
                             $ehPedidoAdicional,
-                            fn (Builder $builder) => $builder->where('is_pedido_adicional', true),
-                            fn (Builder $builder) => $builder->where('is_pedido_adicional', false),
+                            fn(Builder $builder) => $builder->where('is_pedido_adicional', true),
+                            fn(Builder $builder) => $builder->where('is_pedido_adicional', false),
                         );
                 })
                 ->badge($count)
