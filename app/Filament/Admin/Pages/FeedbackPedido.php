@@ -33,7 +33,7 @@ class FeedbackPedido extends Page implements HasTable
 
     public function getHeader(): ?\Illuminate\Contracts\View\View
     {
-        return view('filament.admin.pages.gestao-avaliacoes-header', [
+        return view('filament.admin.resources.turmas.pages.manage-turmas-header', [
             'actions' => $this->getCachedHeaderActions(),
 
             'eyebrow' => 'Manutenção',

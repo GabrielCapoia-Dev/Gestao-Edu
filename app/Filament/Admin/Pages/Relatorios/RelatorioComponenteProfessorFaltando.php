@@ -65,7 +65,7 @@ class RelatorioComponenteProfessorFaltando extends Page
 
     public function getHeader(): ?\Illuminate\Contracts\View\View
     {
-        return view('filament.admin.pages.gestao-avaliacoes-header', [
+        return view('filament.admin.resources.turmas.pages.manage-turmas-header', [
             'actions' => $this->getCachedHeaderActions(),
 
             'eyebrow' => 'Relatórios',
