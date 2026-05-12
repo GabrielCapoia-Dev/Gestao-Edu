@@ -1,25 +1,6 @@
 <x-filament-panels::page>
     <div class="relatorios-root">
 
-        {{-- HERO --}}
-        <div class="rel-hero">
-            <div class="rel-hero-grid"></div>
-            <div class="rel-hero-glow"></div>
-            <div class="rel-hero-inner">
-                <div class="rel-eyebrow">
-                    <span class="pulse-dot"></span>
-                    Dados atualizados em tempo real
-                </div>
-                <h1 class="rel-title">
-                    Central de<br>
-                    <span class="rel-title-accent">Relatórios</span>
-                </h1>
-                <p class="rel-subtitle">
-                    Visualize, filtre e exporte os dados do sistema. Selecione um relatório abaixo para começar.
-                </p>
-            </div>
-        </div>
-
         {{-- KPIs LINHA 1: contagens gerais --}}
         <div class="rel-kpi-grid">
             <div class="rel-kpi-card">

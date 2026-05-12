@@ -8,6 +8,7 @@ use App\Models\InventarioEstoque;
 use App\Services\Inventario\InventarioContextService;
 use App\Services\Inventario\InventarioDataService;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
@@ -73,13 +74,58 @@ class GestaoInventario extends Page
 
     public function getHeader(): ?\Illuminate\Contracts\View\View
     {
+        $inventarioAtual = $this->inventarioAtual;
+
         return view('filament.admin.pages.partials.page-header', [
             'actions' => $this->getCachedHeaderActions(),
-
-            'eyebrow' => 'Alimentação Escolar',
-            'title' => "Gestão de Inventário",
-            'description' => 'Acompanhe o inventário de itens, visualize movimentações e registre baixas de forma eficiente.',
+            'eyebrow' => 'Inventário Escolar',
+            'title' => $inventarioAtual?->escola?->nome ?? 'Inventário não selecionado',
+            'description' => $inventarioAtual
+                ? 'Gestão operacional do inventário da escola, com exportações, histórico e baixas.'
+                : 'Selecione um inventário disponível para visualizar os dados.',
         ]);
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('pedidosEscola')
+                ->label('Pedidos da escola')
+                ->icon('heroicon-o-clipboard-document-list')
+                ->color('primary')
+                ->url(route('filament.admin.resources.pedidos-inventario.index')),
+
+            Action::make('balancos')
+                ->label('Balanços')
+                ->icon('heroicon-o-clipboard-document-check')
+                ->color('gray')
+                ->url(route('filament.admin.resources.balancos-inventario.index')),
+
+            Action::make('exportarPdf')
+                ->label('Exportar PDF')
+                ->icon('heroicon-o-document-text')
+                ->color('gray')
+                ->visible(fn (): bool => $this->inventarioAtual !== null && $this->podeExportar)
+                ->url(fn (): string => $this->inventarioAtual
+                    ? route('gestao-inventario.relatorio.pdf', [
+                        'inventario' => $this->inventarioAtual->id,
+                        'async' => 1,
+                    ] + $this->filtrosExportacao)
+                    : '#')
+                ->openUrlInNewTab(),
+
+            Action::make('exportarXlsx')
+                ->label('Exportar XLSX')
+                ->icon('heroicon-o-table-cells')
+                ->color('gray')
+                ->visible(fn (): bool => $this->inventarioAtual !== null && $this->podeExportar)
+                ->url(fn (): string => $this->inventarioAtual
+                    ? route('gestao-inventario.relatorio.xlsx', [
+                        'inventario' => $this->inventarioAtual->id,
+                        'async' => 1,
+                    ] + $this->filtrosExportacao)
+                    : '#'),
+        ];
     }
 
     public static function canAccess(): bool

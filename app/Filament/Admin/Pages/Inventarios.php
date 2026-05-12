@@ -47,10 +47,9 @@ class Inventarios extends Page
     {
         return view('filament.admin.pages.partials.page-header', [
             'actions' => $this->getCachedHeaderActions(),
-
-            'eyebrow' => 'Alimentação Escolar',
-            'title' => 'Inventários',
-            'description' => 'Acompanhe e gerencie os inventários das escolas, visualize resumos, métricas e movimentações, e exporte relatórios detalhados para análise.',
+            'eyebrow' => 'Panorama da rede',
+            'title' => 'Panorama Geral dos Inventários',
+            'description' => 'Visão macro dos estoques das escolas, com foco em valor estimado, baixas e movimentações recentes.',
         ]);
     }
 
@@ -180,8 +179,14 @@ class Inventarios extends Page
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('pedidosInternos')
+                ->label('Pedidos internos')
+                ->icon('heroicon-o-clipboard-document-list')
+                ->color('primary')
+                ->url(route('filament.admin.resources.pedidos-inventario.index')),
+
             Action::make('movimentacoes')
-                ->label('Movimentacoes')
+                ->label('Histórico geral')
                 ->icon('heroicon-o-arrows-right-left')
                 ->color('gray')
                 ->action(fn () => $this->abrirSlideOver()),

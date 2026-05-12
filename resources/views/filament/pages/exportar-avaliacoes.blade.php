@@ -1,13 +1,6 @@
 <x-filament-panels::page>
     <div class="av-livewire-root">
         <div class="gi-page av-page">
-            <section class="gi-hero">
-                <div>
-                    <p class="gi-eyebrow">Pedagógico</p>
-                    <h1>Exportar Avaliações</h1>
-                    <p>Localize alunos ou turmas com avaliações e gere documentos completos.</p>
-                </div>
-            </section>
 
             <section class="gi-panel">
                 <div class="gi-toolbar">

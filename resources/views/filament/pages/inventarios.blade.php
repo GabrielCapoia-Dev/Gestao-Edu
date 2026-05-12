@@ -1,21 +1,5 @@
 <x-filament-panels::page>
     <div class="inv-page">
-        <section class="inv-hero">
-            <div>
-                <p class="inv-eyebrow">Panorama da rede</p>
-                <h1>Panorama Geral dos Inventários</h1>
-                <p>Visão macro dos estoques das escolas, com foco em valor estimado, baixas e movimentações recentes.</p>
-            </div>
-
-            <div class="inv-actions">
-                <a href="{{ route('filament.admin.resources.pedidos-inventario.index') }}" class="inv-action inv-action--primary">
-                    Pedidos internos
-                </a>
-                <button type="button" wire:click="abrirSlideOver" class="inv-action inv-action--ghost">
-                    Historico geral
-                </button>
-            </div>
-        </section>
 
         <section class="inv-cards">
             <article class="inv-card">

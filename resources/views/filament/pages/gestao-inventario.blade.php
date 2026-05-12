@@ -2,30 +2,6 @@
     @php($inventarioAtual = $this->inventarioAtual)
 
     <div class="gi-page">
-        <section class="gi-hero">
-            <div>
-                <p class="gi-eyebrow">Inventário Escolar</p>
-                <h1>{{ $inventarioAtual?->escola?->nome ?? 'Inventário não selecionado' }}</h1>
-                <p>{{ $inventarioAtual ? 'Gestão operacional do inventário da escola, com exportações, histórico e baixas.' : 'Selecione um inventário disponível para visualizar os dados.' }}</p>
-            </div>
-
-            <div class="gi-actions">
-                <a href="{{ route('filament.admin.resources.pedidos-inventario.index') }}" class="gi-action gi-action--primary">
-                    Pedidos da escola
-                </a>
-                <a href="{{ route('filament.admin.resources.balancos-inventario.index') }}" class="gi-action gi-action--ghost">
-                    Balanços
-                </a>
-                @if ($inventarioAtual && $this->podeExportar)
-                    <a href="{{ route('gestao-inventario.relatorio.pdf', ['inventario' => $inventarioAtual->id, 'async' => 1] + $this->filtrosExportacao) }}" class="gi-action gi-action--ghost" target="_blank">
-                        Exportar PDF
-                    </a>
-                    <a href="{{ route('gestao-inventario.relatorio.xlsx', ['inventario' => $inventarioAtual->id, 'async' => 1] + $this->filtrosExportacao) }}" class="gi-action gi-action--ghost">
-                        Exportar XLSX
-                    </a>
-                @endif
-            </div>
-        </section>
 
         @if ($inventarioAtual)
             <section class="gi-cards">

@@ -60,6 +60,15 @@ class RelatoriosDashboard extends Page
             ->toArray();
     }
 
+    public function getHeader(): ?\Illuminate\Contracts\View\View
+    {
+        return view('filament.admin.pages.partials.page-header', [
+            'eyebrow' => 'Dados atualizados em tempo real',
+            'title' => 'Central de Relatórios',
+            'description' => 'Visualize, filtre e exporte os dados do sistema. Selecione um relatório abaixo para começar.',
+        ]);
+    }
+
 
     public static function canAccess(): bool
     {

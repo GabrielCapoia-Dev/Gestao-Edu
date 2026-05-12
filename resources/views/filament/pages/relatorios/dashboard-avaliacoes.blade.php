@@ -1,30 +1,6 @@
 <x-filament-panels::page>
     <div class="av-livewire-root">
     <div class="dav-page">
-        <section class="dav-hero">
-            <div class="dav-hero-grid"></div>
-            <div class="dav-hero-glow"></div>
-
-            <div class="dav-hero-content">
-                <p class="dav-eyebrow">Relatórios Pedagógicos</p>
-                <h1>Dashboard Dinâmico de Avaliações</h1>
-                <p>
-                    Acompanhe preenchimento, cobertura por escola e distribuição de alternativas com filtros em tempo real.
-                </p>
-                <small>Atualizado em {{ $ultimaAtualizacao ?: '-' }}</small>
-            </div>
-
-            @if ($this->podeExportar)
-                <div class="dav-hero-actions">
-                    <button type="button" class="dav-action" wire:click="exportarPdf">
-                        Exportar PDF
-                    </button>
-                    <button type="button" class="dav-action dav-action--primary" wire:click="exportarXlsx">
-                        Exportar XLSX
-                    </button>
-                </div>
-            @endif
-        </section>
 
         <section class="dav-panel">
             <div class="dav-panel-head">

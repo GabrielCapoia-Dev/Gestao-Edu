@@ -1,12 +1,5 @@
 <x-filament-panels::page>
     <div class="gi-page av-page">
-        <section class="gi-hero">
-            <div>
-                <p class="gi-eyebrow">Alunos</p>
-                <h1>Parecer de Transferencia</h1>
-                <p>Localize o aluno matriculado, revise as avaliacoes registradas e gere os documentos para transferencia.</p>
-            </div>
-        </section>
 
         <section class="gi-panel av-professor-control-panel parecer-filter-grid">
             <label class="gi-field">

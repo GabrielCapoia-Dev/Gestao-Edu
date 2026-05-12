@@ -1181,40 +1181,6 @@
         }
     </style>
 
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
-        <h1 style="font-size:1.25rem;font-weight:600"></h1>
-
-        <div style="display:flex;gap:.5rem">
-            <x-filament::button
-                tag="a"
-                :href="route('filament.admin.resources.pedidos-merenda.index')"
-                color="gray"
-                icon="heroicon-o-list-bullet">
-                Pedidos
-            </x-filament::button>
-            <x-filament::button
-                tag="a"
-                :href="route('filament.admin.resources.pedidos-merenda.create')"
-                icon="heroicon-o-plus">
-                Novo Pedido
-            </x-filament::button>
-            <x-filament::button
-                tag="a"
-                :href="route('filament.admin.resources.baixas-estoque.index')"
-                color="warning"
-                icon="heroicon-o-arrow-trending-down">
-                Baixas
-            </x-filament::button>
-            <x-filament::button
-                tag="a"
-                :href="route('filament.admin.resources.historico-baixas-estoque.index')"
-                color="gray"
-                icon="heroicon-o-clipboard-document-list">
-                Listagem de Baixas
-            </x-filament::button>
-        </div>
-    </div>
-
     {{-- ============================================================= --}}
     {{-- CARDS DO TOPO                                                  --}}
     {{-- ============================================================= --}}
@@ -1256,25 +1222,6 @@
             @endif
         </div>
     </div>
-
-    @if ($this->podeExportar)
-    <div style="display:flex;justify-content:flex-end;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem">
-        <x-filament::button
-            tag="a"
-            :href="route('gestao-estoque.relatorio.pdf', array_merge($this->filtrosExportacao, ['async' => 1]))"
-            color="gray"
-            icon="heroicon-o-document-text">
-            Exportar PDF
-        </x-filament::button>
-        <x-filament::button
-            tag="a"
-            :href="route('gestao-estoque.relatorio.xlsx', array_merge($this->filtrosExportacao, ['async' => 1]))"
-            color="success"
-            icon="heroicon-o-table-cells">
-            Exportar XLSX
-        </x-filament::button>
-    </div>
-    @endif
 
     {{-- ============================================================= --}}
     {{-- PAINEL: ABAS + TABELA                                         --}}

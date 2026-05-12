@@ -240,10 +240,32 @@ class DashboardAvaliacoes extends Page implements HasForms
             ->statePath('filtros');
     }
 
+    public function getHeader(): ?\Illuminate\Contracts\View\View
+    {
+        return view('filament.admin.pages.partials.page-header', [
+            'actions' => $this->getCachedHeaderActions(),
+            'eyebrow' => 'Relatórios Pedagógicos',
+            'title' => 'Dashboard Dinâmico de Avaliações',
+            'description' => 'Acompanhe preenchimento, cobertura por escola e distribuição de alternativas com filtros em tempo real. Atualizado em ' . ($this->ultimaAtualizacao ?: '-'),
+        ]);
+    }
+
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('exportarPdf')
+                ->label('Exportar PDF')
+                ->icon('heroicon-o-document-text')
+                ->color('gray')
+                ->visible(fn (): bool => $this->podeExportar)
+                ->action(fn (): mixed => $this->exportarPdf()),
 
+            Action::make('exportarXlsx')
+                ->label('Exportar XLSX')
+                ->icon('heroicon-o-table-cells')
+                ->color('primary')
+                ->visible(fn (): bool => $this->podeExportar)
+                ->action(fn (): mixed => $this->exportarXlsx()),
         ];
     }
 

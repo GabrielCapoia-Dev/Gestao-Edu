@@ -7,6 +7,7 @@ use App\Models\Estoque;
 use App\Models\EstoqueMovimentacao;
 use App\Services\Estoque\GestaoEstoqueDataService;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Collection;
@@ -253,7 +254,51 @@ class GestaoEstoque extends Page
 
     protected function getHeaderActions(): array
     {
-        return [];
+        return [
+            Action::make('pedidos')
+                ->label('Pedidos')
+                ->icon('heroicon-o-list-bullet')
+                ->color('gray')
+                ->url(route('filament.admin.resources.pedidos-merenda.index')),
+
+            Action::make('novoPedido')
+                ->label('Novo Pedido')
+                ->icon('heroicon-o-plus')
+                ->color('primary')
+                ->url(route('filament.admin.resources.pedidos-merenda.create')),
+
+            Action::make('baixas')
+                ->label('Baixas')
+                ->icon('heroicon-o-arrow-trending-down')
+                ->color('warning')
+                ->url(route('filament.admin.resources.baixas-estoque.index')),
+
+            Action::make('listagemBaixas')
+                ->label('Listagem de Baixas')
+                ->icon('heroicon-o-clipboard-document-list')
+                ->color('gray')
+                ->url(route('filament.admin.resources.historico-baixas-estoque.index')),
+
+            Action::make('exportarPdf')
+                ->label('Exportar PDF')
+                ->icon('heroicon-o-document-text')
+                ->color('gray')
+                ->visible(fn (): bool => $this->podeExportar)
+                ->url(fn (): string => route('gestao-estoque.relatorio.pdf', array_merge(
+                    $this->filtrosExportacao,
+                    ['async' => 1],
+                ))),
+
+            Action::make('exportarXlsx')
+                ->label('Exportar XLSX')
+                ->icon('heroicon-o-table-cells')
+                ->color('success')
+                ->visible(fn (): bool => $this->podeExportar)
+                ->url(fn (): string => route('gestao-estoque.relatorio.xlsx', array_merge(
+                    $this->filtrosExportacao,
+                    ['async' => 1],
+                ))),
+        ];
     }
 
     protected function dataService(): GestaoEstoqueDataService
