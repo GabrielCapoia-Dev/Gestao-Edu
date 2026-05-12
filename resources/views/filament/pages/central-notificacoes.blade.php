@@ -2,23 +2,6 @@
     <div
         class="notification-center"
         data-notification-center>
-        <div class="nc-header">
-            <div class="nc-header__main">
-                <div class="nc-header__actions">
-                    <button type="button" class="nc-action nc-action--ghost" data-action="mark-all-read" hidden>
-                        <x-heroicon-o-check-badge />
-                        <span>Marcar todas como lidas</span>
-                    </button>
-
-                    @if($canCreateNotifications)
-                    <button type="button" class="nc-action nc-action--primary" data-action="open-create">
-                        <x-heroicon-o-megaphone />
-                        <span>Nova notificação</span>
-                    </button>
-                    @endif
-                </div>
-            </div>
-        </div>
 
         <div class="nc-stats">
             <button type="button" class="nc-stat is-active" data-mode="todas">

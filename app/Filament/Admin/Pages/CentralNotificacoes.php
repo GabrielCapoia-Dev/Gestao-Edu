@@ -5,8 +5,10 @@ namespace App\Filament\Admin\Pages;
 use App\Models\User;
 use App\Services\NotificationCenterService;
 use BackedEnum;
+use Filament\Actions;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 
 class CentralNotificacoes extends Page
@@ -29,17 +31,46 @@ class CentralNotificacoes extends Page
         return app(NotificationCenterService::class)->canView($user);
     }
 
-    public function getHeader(): ?\Illuminate\Contracts\View\View
+    public function getHeader(): ?View
     {
         return view('filament.admin.resources.turmas.pages.manage-turmas-header', [
             'actions' => $this->getCachedHeaderActions(),
 
             'eyebrow' => 'Notificações',
-            'title' => "Central de Notificações",
+            'title' => 'Central de Notificações',
             'description' => 'Gerencie as notificações, adicione novas e mantenha um registro atualizado das informações.',
         ]);
     }
 
+    protected function getHeaderActions(): array
+    {
+        $service = app(NotificationCenterService::class);
+
+        /** @var User|null $user */
+        $user = Auth::user();
+
+        return [
+            Actions\Action::make('marcar_todas_como_lidas')
+                ->label('Marcar todas como lidas')
+                ->icon('heroicon-o-check-badge')
+                ->color('gray')
+                ->url('#')
+                ->extraAttributes([
+                    'data-action' => 'mark-all-read',
+                    'hidden' => 'hidden',
+                ]),
+
+            Actions\Action::make('nova_notificacao')
+                ->label('Nova notificação')
+                ->icon('heroicon-o-megaphone')
+                ->color('primary')
+                ->visible(fn () => $service->canCreate($user))
+                ->url('#')
+                ->extraAttributes([
+                    'data-action' => 'open-create',
+                ]),
+        ];
+    }
 
     protected function getViewData(): array
     {
