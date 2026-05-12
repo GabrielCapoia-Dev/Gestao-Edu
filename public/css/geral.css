@@ -483,7 +483,6 @@
 .fi-ta {
     border-radius: 0.75rem;
     box-shadow: var(--edu-shadow-table);
-    background-image: url('/images/fundo_completo.svg');
     overflow: hidden;
 }
 
