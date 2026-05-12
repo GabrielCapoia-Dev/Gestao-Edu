@@ -37,6 +37,25 @@ services:
     networks:
       - laravel_gestao-edu
 
+  queue:
+    image: laravel-app-gestao-edu
+    container_name: laravel-queue-gestao-edu
+    working_dir: /var/www
+    env_file:
+      - .env
+    entrypoint: []
+    command: >
+      sh -c "chown -R www-data:www-data storage bootstrap/cache
+      && exec su -s /bin/sh www-data -c 'php artisan queue:work database --queue=$${EXPORTS_QUEUE:-exports},default --sleep=3 --timeout=$${EXPORTS_JOB_TIMEOUT:-900} --tries=2 --memory=256'"
+    volumes:
+      - .:/var/www
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - laravel_gestao-edu
+
   db:
     image: mysql:8.0
     container_name: laravel-db-gestao-edu

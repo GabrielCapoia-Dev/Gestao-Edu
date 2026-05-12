@@ -38,6 +38,14 @@ class MinhasExportacoes extends Page implements HasTable
 
     protected static string|UnitEnum|null $navigationGroup = 'Relatorios';
 
+    public ?string $autoDownload = null;
+
+    public bool $autoDownloadDispatched = false;
+
+    protected $queryString = [
+        'autoDownload' => ['except' => null, 'as' => 'download'],
+    ];
+
     public static function canAccess(): bool
     {
         /** @var User|null $user */
@@ -145,6 +153,48 @@ class MinhasExportacoes extends Page implements HasTable
             ])
             ->defaultSort('created_at', 'desc')
             ->poll('2s');
+    }
+
+    public function pollAutoDownload(): void
+    {
+        if (! $this->autoDownload || $this->autoDownloadDispatched) {
+            return;
+        }
+
+        $exportRequest = ExportRequest::query()->find($this->autoDownload);
+
+        if (! $exportRequest || ! (Auth::user()?->can('view', $exportRequest) ?? false)) {
+            $this->autoDownloadDispatched = true;
+            $this->autoDownload = null;
+
+            return;
+        }
+
+        if ($exportRequest->isFinished() && (Auth::user()?->can('download', $exportRequest) ?? false)) {
+            $this->autoDownloadDispatched = true;
+            $this->autoDownload = null;
+
+            Notification::make()
+                ->title('Arquivo pronto')
+                ->body('O download sera iniciado automaticamente. O arquivo continua disponivel para baixar novamente nesta tela.')
+                ->success()
+                ->send();
+
+            $this->dispatch('download-url', url: route('exports.download', $exportRequest));
+
+            return;
+        }
+
+        if ($exportRequest->isFailed()) {
+            $this->autoDownloadDispatched = true;
+            $this->autoDownload = null;
+
+            Notification::make()
+                ->title('Falha na exportacao')
+                ->body($exportRequest->error_message ?: 'Nao foi possivel gerar o arquivo solicitado.')
+                ->danger()
+                ->send();
+        }
     }
 
     private function query(): Builder

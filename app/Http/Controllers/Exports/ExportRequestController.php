@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Exports;
 use App\Http\Controllers\Controller;
 use App\Models\ExportRequest;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -15,9 +16,20 @@ class ExportRequestController extends Controller
         $this->authorize('download', $exportRequest);
 
         abort_unless($exportRequest->file_disk && $exportRequest->file_path, 404);
-        abort_unless(Storage::disk($exportRequest->file_disk)->exists($exportRequest->file_path), 404);
 
-        return Storage::disk($exportRequest->file_disk)->download(
+        $disk = Storage::disk($exportRequest->file_disk);
+
+        if (! $disk->exists($exportRequest->file_path)) {
+            Log::warning('Arquivo de exportacao pronto nao encontrado no disco.', [
+                'export_request_id' => $exportRequest->getKey(),
+                'disk' => $exportRequest->file_disk,
+                'path' => $exportRequest->file_path,
+            ]);
+
+            abort(404);
+        }
+
+        return $disk->download(
             $exportRequest->file_path,
             $exportRequest->file_name ?: 'exportacao',
             array_filter(['Content-Type' => $exportRequest->mime])
