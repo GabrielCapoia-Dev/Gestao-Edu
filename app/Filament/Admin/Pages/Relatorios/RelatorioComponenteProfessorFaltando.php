@@ -63,6 +63,17 @@ class RelatorioComponenteProfessorFaltando extends Page
     public array $turmas = [];
     public int $totalTurmasFaltando = 0;
 
+    public function getHeader(): ?\Illuminate\Contracts\View\View
+    {
+        return view('filament.admin.pages.gestao-avaliacoes-header', [
+            'actions' => $this->getCachedHeaderActions(),
+
+            'eyebrow' => 'Relatórios',
+            'title' => "Relatório de Componentes com Professores Faltando",
+            'description' => 'Visualize o relatório detalhado de componentes com falta de professores, com opções de filtragem e exportação.',
+        ]);
+    }
+
     public static function canAccess(): bool
     {
         /** @var \App\Models\User $user */
@@ -79,11 +90,11 @@ class RelatorioComponenteProfessorFaltando extends Page
                 ->icon('heroicon-o-arrow-down-tray')
                 ->color('warning')
                 ->requiresConfirmation()
-                ->visible(fn (): bool => Auth::user()?->hasPermissionTo('Exportar Relatórios') ?? false)
+                ->visible(fn(): bool => Auth::user()?->hasPermissionTo('Exportar Relatórios') ?? false)
                 ->modalHeading('Exportar Relatório Geral')
-                ->modalDescription(fn (): string => $this->getExportModalDescription())
+                ->modalDescription(fn(): string => $this->getExportModalDescription())
                 ->modalSubmitActionLabel('Exportar XLSX')
-                ->action(fn () => $this->exportarRelatorioGeral()),
+                ->action(fn() => $this->exportarRelatorioGeral()),
         ];
     }
 
@@ -105,7 +116,7 @@ class RelatorioComponenteProfessorFaltando extends Page
             ->offset(($this->page - 1) * $this->perPage)
             ->limit($this->perPage)
             ->get()
-            ->map(fn (object $registro): array => (array) $registro)
+            ->map(fn(object $registro): array => (array) $registro)
             ->all();
     }
 
@@ -117,7 +128,7 @@ class RelatorioComponenteProfessorFaltando extends Page
             ->offset(($this->pageTurmas - 1) * $this->perPageTurmas)
             ->limit($this->perPageTurmas)
             ->get()
-            ->map(fn (object $turma): array => (array) $turma)
+            ->map(fn(object $turma): array => (array) $turma)
             ->all();
     }
 

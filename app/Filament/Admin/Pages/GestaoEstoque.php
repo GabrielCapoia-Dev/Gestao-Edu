@@ -51,6 +51,17 @@ class GestaoEstoque extends Page
 
     public int $totalMovimentacoesItem = 0;
 
+    public function getHeader(): ?\Illuminate\Contracts\View\View
+    {
+        return view('filament.admin.pages.gestao-estoque-header', [
+            'actions' => $this->getCachedHeaderActions(),
+
+            'eyebrow' => 'Alimentação Escolar',
+            'title' => "Gestão de Estoque",
+            'description' => 'Acompanhe o estoque de itens, visualize alertas para itens com baixo saldo e gerencie as movimentações de forma eficiente.',
+        ]);
+    }
+
     public static function canAccess(): bool
     {
         /** @var \App\Models\User|null $user */

@@ -43,6 +43,17 @@ class Inventarios extends Page
 
     public array $movimentacoes = [];
 
+    public function getHeader(): ?\Illuminate\Contracts\View\View
+    {
+        return view('filament.admin.pages.inventarios-header', [
+            'actions' => $this->getCachedHeaderActions(),
+
+            'eyebrow' => 'Alimentação Escolar',
+            'title' => 'Inventários',
+            'description' => 'Acompanhe e gerencie os inventários das escolas, visualize resumos, métricas e movimentações, e exporte relatórios detalhados para análise.',
+        ]);
+    }
+
     public static function canAccess(): bool
     {
         $user = Auth::user();

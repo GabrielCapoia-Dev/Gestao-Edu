@@ -73,6 +73,17 @@ class ParecerTransferenciaAluno extends Page
 
     public array $avaliacoesExpandidas = [];
 
+    public function getHeader(): ?\Illuminate\Contracts\View\View
+    {
+        return view('filament.admin.pages.parecer-transferencia-aluno-header', [
+            'actions' => $this->getCachedHeaderActions(),
+
+            'eyebrow' => 'Pedagógico',
+            'title' => 'Parecer de Transferência de Aluno',
+            'description' => 'Gerencie os pareceres de transferência dos alunos, acompanhe as informações necessárias para a transferência e mantenha um histórico detalhado para cada um.',
+        ]);
+    }
+
     public static function canAccess(): bool
     {
         /** @var User|null $user */
@@ -282,11 +293,11 @@ class ParecerTransferenciaAluno extends Page
         $semProfessorFiltro = (string) $this->semProfessorFiltro;
 
         if ($escolaFiltro > 0) {
-            $query->whereHas('turma', fn (Builder $turmas): Builder => $turmas->where('id_escola', $escolaFiltro));
+            $query->whereHas('turma', fn(Builder $turmas): Builder => $turmas->where('id_escola', $escolaFiltro));
         }
 
         if ($serieFiltro > 0) {
-            $query->whereHas('turma', fn (Builder $turmas): Builder => $turmas->where('id_serie', $serieFiltro));
+            $query->whereHas('turma', fn(Builder $turmas): Builder => $turmas->where('id_serie', $serieFiltro));
         }
 
         if ($turmaFiltro > 0) {
@@ -300,10 +311,10 @@ class ParecerTransferenciaAluno extends Page
         if ($busca !== '') {
             $query->where(function (Builder $alunos) use ($busca): void {
                 $alunos
-                    ->where('nome', 'like', '%'.$busca.'%')
-                    ->orWhere('cgm', 'like', '%'.$busca.'%')
-                    ->orWhereHas('turma.escola', fn (Builder $escolas): Builder => $escolas->where('nome', 'like', '%'.$busca.'%'))
-                    ->orWhereHas('turma.serie', fn (Builder $series): Builder => $series->where('nome', 'like', '%'.$busca.'%'));
+                    ->where('nome', 'like', '%' . $busca . '%')
+                    ->orWhere('cgm', 'like', '%' . $busca . '%')
+                    ->orWhereHas('turma.escola', fn(Builder $escolas): Builder => $escolas->where('nome', 'like', '%' . $busca . '%'))
+                    ->orWhereHas('turma.serie', fn(Builder $series): Builder => $series->where('nome', 'like', '%' . $busca . '%'));
             });
         }
 
@@ -329,9 +340,9 @@ class ParecerTransferenciaAluno extends Page
             ->get()
             ->pluck('turma.escola')
             ->filter()
-            ->unique(fn ($escola): int => (int) $escola->id)
-            ->sortBy(fn ($escola): string => mb_strtolower((string) $escola->nome))
-            ->mapWithKeys(fn ($escola): array => [(int) $escola->id => (string) $escola->nome])
+            ->unique(fn($escola): int => (int) $escola->id)
+            ->sortBy(fn($escola): string => mb_strtolower((string) $escola->nome))
+            ->mapWithKeys(fn($escola): array => [(int) $escola->id => (string) $escola->nome])
             ->all();
     }
 
@@ -341,16 +352,16 @@ class ParecerTransferenciaAluno extends Page
         $escolaFiltro = (int) $this->escolaFiltro;
 
         if ($escolaFiltro > 0) {
-            $query->whereHas('turma', fn (Builder $turmas): Builder => $turmas->where('id_escola', $escolaFiltro));
+            $query->whereHas('turma', fn(Builder $turmas): Builder => $turmas->where('id_escola', $escolaFiltro));
         }
 
         return $query
             ->get()
             ->pluck('turma.serie')
             ->filter()
-            ->unique(fn ($serie): int => (int) $serie->id)
-            ->sortBy(fn ($serie): string => mb_strtolower((string) $serie->nome))
-            ->mapWithKeys(fn ($serie): array => [(int) $serie->id => (string) $serie->nome])
+            ->unique(fn($serie): int => (int) $serie->id)
+            ->sortBy(fn($serie): string => mb_strtolower((string) $serie->nome))
+            ->mapWithKeys(fn($serie): array => [(int) $serie->id => (string) $serie->nome])
             ->all();
     }
 
@@ -361,24 +372,24 @@ class ParecerTransferenciaAluno extends Page
         $serieFiltro = (int) $this->serieFiltro;
 
         if ($escolaFiltro > 0) {
-            $query->whereHas('turma', fn (Builder $turmas): Builder => $turmas->where('id_escola', $escolaFiltro));
+            $query->whereHas('turma', fn(Builder $turmas): Builder => $turmas->where('id_escola', $escolaFiltro));
         }
 
         if ($serieFiltro > 0) {
-            $query->whereHas('turma', fn (Builder $turmas): Builder => $turmas->where('id_serie', $serieFiltro));
+            $query->whereHas('turma', fn(Builder $turmas): Builder => $turmas->where('id_serie', $serieFiltro));
         }
 
         return $query
             ->get()
             ->pluck('turma')
-            ->filter(fn (?Turma $turma): bool => $turma !== null)
-            ->unique(fn (Turma $turma): int => (int) $turma->id)
-            ->sortBy(fn (Turma $turma): string => mb_strtolower(trim(implode(' ', [
+            ->filter(fn(?Turma $turma): bool => $turma !== null)
+            ->unique(fn(Turma $turma): int => (int) $turma->id)
+            ->sortBy(fn(Turma $turma): string => mb_strtolower(trim(implode(' ', [
                 (string) ($turma->escola?->nome ?? ''),
                 (string) ($turma->serie?->nome ?? ''),
                 (string) $turma->nome,
             ]))))
-            ->mapWithKeys(fn (Turma $turma): array => [
+            ->mapWithKeys(fn(Turma $turma): array => [
                 (int) $turma->id => trim(implode(' | ', array_filter([
                     $turma->escola?->nome,
                     trim(implode(' - ', array_filter([$turma->serie?->nome, $turma->nome]))),
@@ -414,19 +425,19 @@ class ParecerTransferenciaAluno extends Page
         $turma = $aluno->turma;
 
         return Avaliacao::query()
-            ->whereHas('turmas', fn (Builder $turmas): Builder => $turmas->whereKey((int) $turma->id))
+            ->whereHas('turmas', fn(Builder $turmas): Builder => $turmas->whereKey((int) $turma->id))
             ->with([
                 'tipo:id,nome',
                 'periodo:id,nome',
-                'pautas' => fn ($query) => $query
+                'pautas' => fn($query) => $query
                     ->where('status', true)
                     ->with(['componente:id,nome', 'alternativas:id,nome,status,tem_observacao']),
             ])
             ->orderBy('data_inicio')
             ->orderBy('id')
             ->get()
-            ->map(fn (Avaliacao $avaliacao): array => $this->formatarAvaliacao($avaliacao, $aluno))
-            ->filter(fn (array $avaliacao): bool => (int) ($avaliacao['total'] ?? 0) > 0)
+            ->map(fn(Avaliacao $avaliacao): array => $this->formatarAvaliacao($avaliacao, $aluno))
+            ->filter(fn(array $avaliacao): bool => (int) ($avaliacao['total'] ?? 0) > 0)
             ->values();
     }
 
@@ -499,13 +510,13 @@ class ParecerTransferenciaAluno extends Page
     {
         $turma = $aluno->turma;
         $pautas = $avaliacao->pautas
-            ->filter(fn (Pauta $pauta): bool => is_null($pauta->serie_id) || (int) $pauta->serie_id === (int) $turma?->id_serie)
+            ->filter(fn(Pauta $pauta): bool => is_null($pauta->serie_id) || (int) $pauta->serie_id === (int) $turma?->id_serie)
             ->values();
         $componentesVisiveis = $this->componentesVisiveisParecer($aluno);
 
         if (is_array($componentesVisiveis)) {
             $pautas = $pautas
-                ->filter(fn (Pauta $pauta): bool => $pauta->componente_curricular_id !== null
+                ->filter(fn(Pauta $pauta): bool => $pauta->componente_curricular_id !== null
                     && in_array((int) $pauta->componente_curricular_id, $componentesVisiveis, true))
                 ->values();
         }
@@ -560,7 +571,7 @@ class ParecerTransferenciaAluno extends Page
             'total' => $total,
             'percentual' => $percentual,
             'componentes' => $pautas
-                ->groupBy(fn (Pauta $pauta): int => (int) ($pauta->componente_curricular_id ?? 0))
+                ->groupBy(fn(Pauta $pauta): int => (int) ($pauta->componente_curricular_id ?? 0))
                 ->map(function (Collection $pautasDoComponente) use ($avaliacao, $aluno, $respostas, $alternativasPorPauta): array {
                     /** @var Pauta|null $primeiraPauta */
                     $primeiraPauta = $pautasDoComponente->first();
@@ -591,7 +602,7 @@ class ParecerTransferenciaAluno extends Page
                                     'id' => (int) $pauta->id,
                                     'texto' => (string) $pauta->texto,
                                     'alternativas' => $alternativas
-                                        ->map(fn (Alternativa $alternativa): array => [
+                                        ->map(fn(Alternativa $alternativa): array => [
                                             'id' => (int) $alternativa->id,
                                             'nome' => (string) $alternativa->nome,
                                             'tem_observacao' => (bool) $alternativa->tem_observacao,
@@ -629,9 +640,9 @@ class ParecerTransferenciaAluno extends Page
         }
 
         $avaliacoesIds = Avaliacao::query()
-            ->whereHas('turmas', fn (Builder $turmas): Builder => $turmas->whereKey((int) $aluno->id_turma))
+            ->whereHas('turmas', fn(Builder $turmas): Builder => $turmas->whereKey((int) $aluno->id_turma))
             ->pluck('id')
-            ->map(fn ($id) => (int) $id)
+            ->map(fn($id) => (int) $id)
             ->all();
 
         if ($avaliacoesIds === []) {
@@ -671,9 +682,9 @@ class ParecerTransferenciaAluno extends Page
         }
 
         $avaliacoes = Avaliacao::query()
-            ->whereHas('turmas', fn (Builder $turmas): Builder => $turmas->whereKey((int) $aluno->id_turma))
+            ->whereHas('turmas', fn(Builder $turmas): Builder => $turmas->whereKey((int) $aluno->id_turma))
             ->with([
-                'pautas' => fn ($query) => $query
+                'pautas' => fn($query) => $query
                     ->where('status', true)
                     ->with(['alternativas:id,nome,status,tem_observacao', 'componente:id,nome']),
             ])
@@ -689,10 +700,10 @@ class ParecerTransferenciaAluno extends Page
             }
 
             $pautas = $avaliacao->pautas
-                ->filter(fn (Pauta $pauta): bool => is_null($pauta->serie_id) || (int) $pauta->serie_id === (int) $aluno->turma?->id_serie)
+                ->filter(fn(Pauta $pauta): bool => is_null($pauta->serie_id) || (int) $pauta->serie_id === (int) $aluno->turma?->id_serie)
                 ->values();
             $pautasPorId = $pautas->keyBy('id');
-            $pautasIds = $pautas->pluck('id')->map(fn ($id) => (int) $id)->all();
+            $pautasIds = $pautas->pluck('id')->map(fn($id) => (int) $id)->all();
             $alternativasPorPauta = $this->alternativasPorPauta($avaliacao, $pautas);
 
             foreach ($respostasPorPauta as $pautaId => $alternativaId) {
@@ -793,9 +804,9 @@ class ParecerTransferenciaAluno extends Page
         /** @var Avaliacao|null $avaliacao */
         $avaliacao = Avaliacao::query()
             ->whereKey($avaliacaoId)
-            ->whereHas('turmas', fn (Builder $turmas): Builder => $turmas->whereKey((int) $aluno->id_turma))
+            ->whereHas('turmas', fn(Builder $turmas): Builder => $turmas->whereKey((int) $aluno->id_turma))
             ->with([
-                'pautas' => fn ($query) => $query
+                'pautas' => fn($query) => $query
                     ->whereKey($pautaId)
                     ->where('status', true)
                     ->with(['alternativas:id,nome,status,tem_observacao', 'componente:id,nome']),
@@ -808,7 +819,7 @@ class ParecerTransferenciaAluno extends Page
 
         /** @var Pauta|null $pauta */
         $pauta = $avaliacao->pautas
-            ->filter(fn (Pauta $pauta): bool => is_null($pauta->serie_id) || (int) $pauta->serie_id === (int) $aluno->turma?->id_serie)
+            ->filter(fn(Pauta $pauta): bool => is_null($pauta->serie_id) || (int) $pauta->serie_id === (int) $aluno->turma?->id_serie)
             ->firstWhere('id', $pautaId);
 
         if (! $pauta) {
@@ -883,9 +894,9 @@ class ParecerTransferenciaAluno extends Page
         }
 
         $avaliacoesIds = Avaliacao::query()
-            ->whereHas('turmas', fn (Builder $turmas): Builder => $turmas->whereKey((int) $aluno->id_turma))
+            ->whereHas('turmas', fn(Builder $turmas): Builder => $turmas->whereKey((int) $aluno->id_turma))
             ->pluck('id')
-            ->map(fn ($id) => (int) $id)
+            ->map(fn($id) => (int) $id)
             ->all();
 
         if ($avaliacoesIds === []) {
@@ -924,9 +935,9 @@ class ParecerTransferenciaAluno extends Page
         }
 
         $this->avaliacoesExpandidas = Avaliacao::query()
-            ->whereHas('turmas', fn (Builder $turmas): Builder => $turmas->whereKey((int) $aluno->id_turma))
+            ->whereHas('turmas', fn(Builder $turmas): Builder => $turmas->whereKey((int) $aluno->id_turma))
             ->pluck('id')
-            ->mapWithKeys(fn ($id): array => [(int) $id => false])
+            ->mapWithKeys(fn($id): array => [(int) $id => false])
             ->all();
     }
 
@@ -937,9 +948,9 @@ class ParecerTransferenciaAluno extends Page
         }
 
         $avaliacoes = Avaliacao::query()
-            ->whereHas('turmas', fn (Builder $turmas): Builder => $turmas->whereKey((int) $aluno->id_turma))
+            ->whereHas('turmas', fn(Builder $turmas): Builder => $turmas->whereKey((int) $aluno->id_turma))
             ->with([
-                'pautas' => fn ($query) => $query
+                'pautas' => fn($query) => $query
                     ->where('status', true)
                     ->with('componente:id,nome'),
             ])
@@ -955,9 +966,9 @@ class ParecerTransferenciaAluno extends Page
             }
 
             $componentesIds = $avaliacao->pautas
-                ->filter(fn (Pauta $pauta): bool => is_null($pauta->serie_id) || (int) $pauta->serie_id === (int) $aluno->turma?->id_serie)
+                ->filter(fn(Pauta $pauta): bool => is_null($pauta->serie_id) || (int) $pauta->serie_id === (int) $aluno->turma?->id_serie)
                 ->pluck('componente_curricular_id')
-                ->map(fn ($id) => (int) ($id ?? 0))
+                ->map(fn($id) => (int) ($id ?? 0))
                 ->unique()
                 ->values()
                 ->all();
@@ -1027,9 +1038,9 @@ class ParecerTransferenciaAluno extends Page
 
         $avaliacao = Avaliacao::query()
             ->whereKey($avaliacaoId)
-            ->whereHas('turmas', fn (Builder $turmas): Builder => $turmas->whereKey((int) $aluno->id_turma))
+            ->whereHas('turmas', fn(Builder $turmas): Builder => $turmas->whereKey((int) $aluno->id_turma))
             ->with([
-                'pautas' => fn ($query) => $query
+                'pautas' => fn($query) => $query
                     ->where('status', true)
                     ->with('componente:id,nome'),
             ])
@@ -1040,9 +1051,9 @@ class ParecerTransferenciaAluno extends Page
         }
 
         $componentesIds = $avaliacao->pautas
-            ->filter(fn (Pauta $pauta): bool => is_null($pauta->serie_id) || (int) $pauta->serie_id === (int) $aluno->turma?->id_serie)
+            ->filter(fn(Pauta $pauta): bool => is_null($pauta->serie_id) || (int) $pauta->serie_id === (int) $aluno->turma?->id_serie)
             ->pluck('componente_curricular_id')
-            ->map(fn ($id) => (int) ($id ?? 0))
+            ->map(fn($id) => (int) ($id ?? 0))
             ->unique()
             ->values()
             ->all();
@@ -1103,7 +1114,7 @@ class ParecerTransferenciaAluno extends Page
      */
     private function alternativasPorPauta(Avaliacao $avaliacao, Collection $pautas): array
     {
-        $pautasIds = $pautas->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $pautasIds = $pautas->pluck('id')->map(fn($id) => (int) $id)->all();
 
         if ($pautasIds === []) {
             return [];
@@ -1114,7 +1125,7 @@ class ParecerTransferenciaAluno extends Page
             ->whereIn('pauta_id', $pautasIds)
             ->get(['pauta_id', 'alternativa_id'])
             ->groupBy('pauta_id')
-            ->map(fn (Collection $rows): array => $rows->pluck('alternativa_id')->map(fn ($id) => (int) $id)->all());
+            ->map(fn(Collection $rows): array => $rows->pluck('alternativa_id')->map(fn($id) => (int) $id)->all());
 
         $overrideAlternativas = Alternativa::query()
             ->whereIn('id', $overrides->flatten()->unique()->values()->all())
@@ -1137,7 +1148,7 @@ class ParecerTransferenciaAluno extends Page
 
             if ($overrideIds !== []) {
                 $porPauta[$pautaId] = collect($overrideIds)
-                    ->map(fn (int $id) => $overrideAlternativas->get($id))
+                    ->map(fn(int $id) => $overrideAlternativas->get($id))
                     ->filter()
                     ->values();
 
@@ -1146,7 +1157,7 @@ class ParecerTransferenciaAluno extends Page
 
             $alternativas = $pauta->alternativas
                 ->where('status', true)
-                ->sortBy(fn (Alternativa $alternativa): string => mb_strtolower((string) $alternativa->nome))
+                ->sortBy(fn(Alternativa $alternativa): string => mb_strtolower((string) $alternativa->nome))
                 ->values();
 
             if ($alternativas->isEmpty()) {

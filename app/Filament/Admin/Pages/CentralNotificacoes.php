@@ -29,6 +29,18 @@ class CentralNotificacoes extends Page
         return app(NotificationCenterService::class)->canView($user);
     }
 
+    public function getHeader(): ?\Illuminate\Contracts\View\View
+    {
+        return view('filament.admin.pages.gestao-avaliacoes-header', [
+            'actions' => $this->getCachedHeaderActions(),
+
+            'eyebrow' => 'Notificações',
+            'title' => "Central de Notificações",
+            'description' => 'Gerencie as notificações, adicione novas e mantenha um registro atualizado das informações.',
+        ]);
+    }
+
+
     protected function getViewData(): array
     {
         $service = app(NotificationCenterService::class);

@@ -50,6 +50,19 @@ class ExportarAvaliacoes extends Page
 
     public ?int $alunoDaTurmaSelecionadoId = null;
 
+    public function getHeader(): ?\Illuminate\Contracts\View\View
+       {
+        return view('filament.admin.pages.gestao-avaliacoes-header', [
+            'actions' => $this->getCachedHeaderActions(),
+
+            'eyebrow' => 'Pedagógico',
+            'title' => "Exportar Avaliações",
+            'description' => 'Exporte as avaliações, mantenha um registro atualizado das informações.',
+        ]);
+    }
+
+
+
     public static function canAccess(): bool
     {
         /** @var User|null $user */

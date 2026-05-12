@@ -81,6 +81,18 @@ class AvaliacoesProfessor extends Page
 
     public array $professorPorTurma = [];
 
+    public function getHeader(): ?\Illuminate\Contracts\View\View
+    {
+        return view('filament.admin.pages.gestao-avaliacoes-header', [
+            'actions' => $this->getCachedHeaderActions(),
+
+            'eyebrow' => 'Pedagógico',
+            'title' => "Minhas Avaliações",
+            'description' => 'Preencha suas avaliações, gerencie as respostas e mantenha um registro atualizado das informações.',
+        ]);
+    }
+
+
     public static function canAccess(): bool
     {
         /** @var User|null $user */
@@ -462,16 +474,16 @@ class AvaliacoesProfessor extends Page
         });
 
         $mensagemPendencia = count($alunosComPendencia) > 0
-            ? count($alunosComPendencia).' aluno(s) ainda precisam preencher observação para concluir o salvamento.'
+            ? count($alunosComPendencia) . ' aluno(s) ainda precisam preencher observação para concluir o salvamento.'
             : null;
 
         Notification::make()
             ->title('Alternativa aplicada para toda a turma nesta pauta.')
             ->body(
                 $mensagemPendencia
-                ?? ((bool) ($alternativa['tem_observacao'] ?? false)
-                    ? 'Essa alternativa exige observação por aluno.'
-                    : 'Respostas salvas automaticamente.')
+                    ?? ((bool) ($alternativa['tem_observacao'] ?? false)
+                        ? 'Essa alternativa exige observação por aluno.'
+                        : 'Respostas salvas automaticamente.')
             )
             ->success()
             ->send();
@@ -558,7 +570,7 @@ class AvaliacoesProfessor extends Page
                     }
 
                     if ($temObservacao && $observacaoInformada === '') {
-                        $pendencias[$turmaId.':'.$pauta->id][] = $alunoId;
+                        $pendencias[$turmaId . ':' . $pauta->id][] = $alunoId;
 
                         continue;
                     }
@@ -621,18 +633,18 @@ class AvaliacoesProfessor extends Page
         });
 
         $totalPendencias = collect($pendencias)->flatten()->count();
-        $mensagens = [$totalAplicado.' resposta(s) salvas automaticamente.'];
+        $mensagens = [$totalAplicado . ' resposta(s) salvas automaticamente.'];
 
         if ($totalPendencias > 0) {
-            $mensagens[] = $totalPendencias.' resposta(s) precisam de observacao obrigatoria.';
+            $mensagens[] = $totalPendencias . ' resposta(s) precisam de observacao obrigatoria.';
         }
 
         if ($pautasIgnoradas > 0) {
-            $mensagens[] = $pautasIgnoradas.' pauta(s) nao possuem esta alternativa.';
+            $mensagens[] = $pautasIgnoradas . ' pauta(s) nao possuem esta alternativa.';
         }
 
         if ($totalIgnoradoPorPreenchimento > 0) {
-            $mensagens[] = $totalIgnoradoPorPreenchimento.' resposta(s) com observacao foram mantidas.';
+            $mensagens[] = $totalIgnoradoPorPreenchimento . ' resposta(s) com observacao foram mantidas.';
         }
 
         Notification::make()
@@ -774,9 +786,9 @@ class AvaliacoesProfessor extends Page
 
         return collect($this->alternativasPorPauta)
             ->flatten(1)
-            ->filter(fn (array $alternativa): bool => isset($alternativa['id'], $alternativa['nome']))
-            ->unique(fn (array $alternativa): int => (int) $alternativa['id'])
-            ->sortBy(fn (array $alternativa): string => (string) $alternativa['nome'])
+            ->filter(fn(array $alternativa): bool => isset($alternativa['id'], $alternativa['nome']))
+            ->unique(fn(array $alternativa): int => (int) $alternativa['id'])
+            ->sortBy(fn(array $alternativa): string => (string) $alternativa['nome'])
             ->values();
     }
 
@@ -793,27 +805,27 @@ class AvaliacoesProfessor extends Page
 
         $avaliacoes = $avaliacoesQuery
             ->with([
-                'tipo' => fn ($query) => $query
+                'tipo' => fn($query) => $query
                     ->with([
-                        'alternativas' => fn ($alternativas) => $alternativas->where('status', true),
+                        'alternativas' => fn($alternativas) => $alternativas->where('status', true),
                     ]),
-                'pautas' => fn ($query) => $query
+                'pautas' => fn($query) => $query
                     ->where('status', true)
                     ->with([
                         'componente:id,nome',
-                        'tipo' => fn ($tipoQuery) => $tipoQuery
+                        'tipo' => fn($tipoQuery) => $tipoQuery
                             ->with([
-                                'alternativas' => fn ($alternativas) => $alternativas->where('status', true),
+                                'alternativas' => fn($alternativas) => $alternativas->where('status', true),
                             ]),
-                        'alternativas' => fn ($alternativas) => $alternativas->where('status', true),
+                        'alternativas' => fn($alternativas) => $alternativas->where('status', true),
                     ]),
-                'turmas' => fn ($query) => $query->with(['escola:id,nome', 'serie:id,nome']),
+                'turmas' => fn($query) => $query->with(['escola:id,nome', 'serie:id,nome']),
             ])
             ->orderBy('data_inicio')
             ->get();
 
         return $avaliacoes
-            ->filter(fn (Avaliacao $avaliacao) => $this->filtrarTurmasDaAvaliacao($avaliacao)->isNotEmpty())
+            ->filter(fn(Avaliacao $avaliacao) => $this->filtrarTurmasDaAvaliacao($avaliacao)->isNotEmpty())
             ->values();
     }
 
@@ -848,7 +860,7 @@ class AvaliacoesProfessor extends Page
         $this->carregarAlternativasPorPauta($pautas);
 
         return $pautas
-            ->filter(fn (Pauta $pauta): bool => $this->alternativasDaPauta((int) $pauta->id) !== [])
+            ->filter(fn(Pauta $pauta): bool => $this->alternativasDaPauta((int) $pauta->id) !== [])
             ->values();
     }
 
@@ -858,15 +870,15 @@ class AvaliacoesProfessor extends Page
             ->pluck('serie')
             ->filter()
             ->unique('id')
-            ->sortBy(fn ($serie): string => (string) $serie->nome)
+            ->sortBy(fn($serie): string => (string) $serie->nome)
             ->values();
     }
 
     public function getSeriesPorEscolaDisponiveisProperty(): Collection
     {
         return $this->turmasDisponiveis
-            ->filter(fn (Turma $turma): bool => $turma->serie !== null && $turma->escola !== null)
-            ->groupBy(fn (Turma $turma): string => $this->chaveSerieEscola((int) $turma->id_escola, (int) $turma->id_serie))
+            ->filter(fn(Turma $turma): bool => $turma->serie !== null && $turma->escola !== null)
+            ->groupBy(fn(Turma $turma): string => $this->chaveSerieEscola((int) $turma->id_escola, (int) $turma->id_serie))
             ->map(function (Collection $turmas): array {
                 /** @var Turma $turma */
                 $turma = $turmas->first();
@@ -879,7 +891,7 @@ class AvaliacoesProfessor extends Page
                     'serie_nome' => (string) ($turma->serie?->nome ?? 'Serie sem nome'),
                 ];
             })
-            ->sortBy(fn (array $escopo): string => mb_strtolower($escopo['escola_nome'].'|'.$escopo['serie_nome']))
+            ->sortBy(fn(array $escopo): string => mb_strtolower($escopo['escola_nome'] . '|' . $escopo['serie_nome']))
             ->values();
     }
 
@@ -890,7 +902,7 @@ class AvaliacoesProfessor extends Page
         }
 
         return $this->turmasDisponiveis
-            ->filter(fn (Turma $turma): bool => (int) $turma->id_serie === (int) $this->serie
+            ->filter(fn(Turma $turma): bool => (int) $turma->id_serie === (int) $this->serie
                 && (! $this->escola || (int) $turma->id_escola === (int) $this->escola))
             ->values();
     }
@@ -899,7 +911,7 @@ class AvaliacoesProfessor extends Page
     {
         $turmasIds = $this->turmasDaSerieDisponiveis
             ->pluck('id')
-            ->map(fn ($id) => (int) $id)
+            ->map(fn($id) => (int) $id)
             ->values()
             ->all();
 
@@ -913,7 +925,7 @@ class AvaliacoesProfessor extends Page
             ->orderBy('nome')
             ->get(['id', 'nome', 'cgm', 'id_turma', 'status', 'pendencia_origem_aluno_id'])
             ->groupBy('id_turma')
-            ->map(fn (Collection $alunos): Collection => $alunos->values());
+            ->map(fn(Collection $alunos): Collection => $alunos->values());
     }
 
     public function getAlunosDaTurmaProperty(): Collection
@@ -924,7 +936,7 @@ class AvaliacoesProfessor extends Page
     public function getAlunosDaSerieProperty(): Collection
     {
         return $this->alunosPorTurma
-            ->flatMap(fn (Collection $alunos): Collection => $alunos)
+            ->flatMap(fn(Collection $alunos): Collection => $alunos)
             ->values();
     }
 
@@ -942,7 +954,7 @@ class AvaliacoesProfessor extends Page
         }
 
         return $this->pautasDisponiveis
-            ->filter(fn (Pauta $pauta): bool => $this->pautaEhDaSerieDaTurma($pauta, $turma)
+            ->filter(fn(Pauta $pauta): bool => $this->pautaEhDaSerieDaTurma($pauta, $turma)
                 && $this->pautaEhRelevanteParaTurma($pauta, $turma))
             ->values();
     }
@@ -1041,13 +1053,13 @@ class AvaliacoesProfessor extends Page
     public function getPautasAgrupadasPorComponenteProperty(): Collection
     {
         return $this->pautasDisponiveis
-            ->groupBy(fn (Pauta $pauta): string => $pauta->componente?->nome ?? 'Geral (sem componente especifico)');
+            ->groupBy(fn(Pauta $pauta): string => $pauta->componente?->nome ?? 'Geral (sem componente especifico)');
     }
 
     public function pautasAgrupadasPorComponenteDaTurma(int $turmaId): Collection
     {
         return $this->pautasDaTurma($turmaId)
-            ->groupBy(fn (Pauta $pauta): string => $pauta->componente?->nome ?? 'Geral (sem componente especifico)');
+            ->groupBy(fn(Pauta $pauta): string => $pauta->componente?->nome ?? 'Geral (sem componente especifico)');
     }
 
     private function sincronizarVinculosProfessor(): void
@@ -1061,7 +1073,7 @@ class AvaliacoesProfessor extends Page
 
         $this->professorIds = $user->professores()
             ->pluck('id')
-            ->map(fn ($id) => (int) $id)
+            ->map(fn($id) => (int) $id)
             ->all();
 
         if ($this->professorIds === []) {
@@ -1077,7 +1089,7 @@ class AvaliacoesProfessor extends Page
             ->map(function (Collection $items): array {
                 return $items->pluck('componente_curricular_id')
                     ->filter()
-                    ->map(fn ($id) => (int) $id)
+                    ->map(fn($id) => (int) $id)
                     ->unique()
                     ->values()
                     ->all();
@@ -1086,15 +1098,15 @@ class AvaliacoesProfessor extends Page
 
         $this->professorPorTurma = $vinculos
             ->groupBy('turma_id')
-            ->map(fn (Collection $items): int => (int) $items->pluck('professor_id')->first())
+            ->map(fn(Collection $items): int => (int) $items->pluck('professor_id')->first())
             ->toArray();
     }
 
     private function filtrarTurmasDaAvaliacao(Avaliacao $avaliacao): Collection
     {
         return $avaliacao->turmas
-            ->filter(fn (Turma $turma): bool => $this->filtrarPautasDaTurma($avaliacao->pautas, $turma)->isNotEmpty())
-            ->sortBy(fn (Turma $turma): string => mb_strtolower(implode('|', [
+            ->filter(fn(Turma $turma): bool => $this->filtrarPautasDaTurma($avaliacao->pautas, $turma)->isNotEmpty())
+            ->sortBy(fn(Turma $turma): string => mb_strtolower(implode('|', [
                 (string) ($turma->serie?->nome ?? ''),
                 (string) ($turma->escola?->nome ?? ''),
                 (string) ($turma->nome ?? ''),
@@ -1105,7 +1117,7 @@ class AvaliacoesProfessor extends Page
     private function filtrarPautasDaTurma(Collection $pautas, Turma $turma): Collection
     {
         return $pautas
-            ->filter(fn (Pauta $pauta): bool => $this->pautaEhDaSerieDaTurma($pauta, $turma)
+            ->filter(fn(Pauta $pauta): bool => $this->pautaEhDaSerieDaTurma($pauta, $turma)
                 && $this->pautaEhRelevanteParaTurma($pauta, $turma))
             ->values();
     }
@@ -1145,7 +1157,7 @@ class AvaliacoesProfessor extends Page
         $alunos = $this->alunosDaSerie;
         $turmasIds = $this->turmasDaSerieDisponiveis
             ->pluck('id')
-            ->map(fn ($id) => (int) $id)
+            ->map(fn($id) => (int) $id)
             ->values()
             ->all();
 
@@ -1163,7 +1175,7 @@ class AvaliacoesProfessor extends Page
             ->whereIn('pauta_id', $pautas->pluck('id')->all())
             ->whereIn('aluno_id', $alunos->pluck('id')->all())
             ->get()
-            ->keyBy(fn (AvaliacaoResposta $resposta): string => $resposta->pauta_id.'-'.$resposta->aluno_id);
+            ->keyBy(fn(AvaliacaoResposta $resposta): string => $resposta->pauta_id . '-' . $resposta->aluno_id);
 
         $pendenciasPorAluno = $alunos
             ->where('status', Aluno::STATUS_PENDENTE)
@@ -1178,7 +1190,7 @@ class AvaliacoesProfessor extends Page
                 ->whereIn('aluno_id', $pendenciasPorAluno->values()->all())
                 ->with('alternativa:id,nome')
                 ->get()
-                ->keyBy(fn (AvaliacaoResposta $resposta): string => $resposta->pauta_id.'-'.$resposta->aluno_id);
+                ->keyBy(fn(AvaliacaoResposta $resposta): string => $resposta->pauta_id . '-' . $resposta->aluno_id);
         }
 
         $respostas = [];
@@ -1191,11 +1203,11 @@ class AvaliacoesProfessor extends Page
                 $avaliacaoEmMassa[$turmaId][$pauta->id] = null;
 
                 foreach ($this->alunosDaTurma($turmaId) as $aluno) {
-                    $chave = $pauta->id.'-'.$aluno->id;
+                    $chave = $pauta->id . '-' . $aluno->id;
                     $resposta = $respostasExistentes->get($chave);
                     $origemId = (int) ($pendenciasPorAluno->get((int) $aluno->id) ?? 0);
                     $referenciaOrigem = $origemId > 0
-                        ? $referenciasOrigem->get($pauta->id.'-'.$origemId)
+                        ? $referenciasOrigem->get($pauta->id . '-' . $origemId)
                         : null;
 
                     $respostas[$pauta->id][$aluno->id] = [
@@ -1223,18 +1235,18 @@ class AvaliacoesProfessor extends Page
             return;
         }
 
-        $pautasIds = $pautas->pluck('id')->map(fn ($id) => (int) $id)->values()->all();
+        $pautasIds = $pautas->pluck('id')->map(fn($id) => (int) $id)->values()->all();
 
         $overrides = DB::table('avaliacao_pauta_alternativa')
             ->where('avaliacao_id', (int) $this->avaliacaoAtual->id)
             ->whereIn('pauta_id', $pautasIds)
             ->get(['pauta_id', 'alternativa_id'])
             ->groupBy('pauta_id')
-            ->map(fn (Collection $rows): array => $rows->pluck('alternativa_id')->map(fn ($id) => (int) $id)->unique()->values()->all());
+            ->map(fn(Collection $rows): array => $rows->pluck('alternativa_id')->map(fn($id) => (int) $id)->unique()->values()->all());
 
         $overridesAlternativasIds = $overrides
             ->flatten(1)
-            ->map(fn ($id) => (int) $id)
+            ->map(fn($id) => (int) $id)
             ->unique()
             ->values()
             ->all();
@@ -1258,7 +1270,7 @@ class AvaliacoesProfessor extends Page
 
             if ($overrideIds !== []) {
                 $alternativas = collect($overrideIds)
-                    ->map(fn ($alternativaId) => $alternativasOverride->get((int) $alternativaId))
+                    ->map(fn($alternativaId) => $alternativasOverride->get((int) $alternativaId))
                     ->filter()
                     ->values();
             }
@@ -1278,7 +1290,7 @@ class AvaliacoesProfessor extends Page
             }
 
             $this->alternativasPorPauta[$pautaId] = $alternativas
-                ->map(fn (Alternativa $alternativa): array => [
+                ->map(fn(Alternativa $alternativa): array => [
                     'id' => (int) $alternativa->id,
                     'nome' => (string) $alternativa->nome,
                     'tem_observacao' => (bool) $alternativa->tem_observacao,
@@ -1298,12 +1310,12 @@ class AvaliacoesProfessor extends Page
 
         $alunosIds = $this->alunosDaSerie
             ->pluck('id')
-            ->map(fn ($id) => (int) $id)
+            ->map(fn($id) => (int) $id)
             ->values()
             ->all();
         $turmasIds = $this->turmasDaSerieDisponiveis
             ->pluck('id')
-            ->map(fn ($id) => (int) $id)
+            ->map(fn($id) => (int) $id)
             ->values()
             ->all();
 
@@ -1318,7 +1330,7 @@ class AvaliacoesProfessor extends Page
             ->whereIn('turma_id', $turmasIds)
             ->whereIn('aluno_id', $alunosIds)
             ->get(['aluno_id', 'componente_curricular_id', 'informacoes_complementares', 'bloqueada'])
-            ->keyBy(fn ($registro) => ((int) $registro->componente_curricular_id).'-'.((int) $registro->aluno_id));
+            ->keyBy(fn($registro) => ((int) $registro->componente_curricular_id) . '-' . ((int) $registro->aluno_id));
 
         $informacoes = [];
         $bloqueadas = [];
@@ -1327,7 +1339,7 @@ class AvaliacoesProfessor extends Page
             $componenteId = (int) ($pauta->componente_curricular_id ?? 0);
 
             foreach ($alunosIds as $alunoId) {
-                $chave = $componenteId.'-'.$alunoId;
+                $chave = $componenteId . '-' . $alunoId;
                 $registro = $registros->get($chave);
                 $informacoes[$componenteId][$alunoId] = (string) ($registro?->informacoes_complementares ?? '');
                 $bloqueadas[$componenteId][$alunoId] = (bool) ($registro?->bloqueada ?? false);
@@ -1352,7 +1364,7 @@ class AvaliacoesProfessor extends Page
         }
 
         return collect($this->alternativasDaPauta($pautaId))
-            ->first(fn (array $alternativa): bool => (int) ($alternativa['id'] ?? 0) === (int) $alternativaId);
+            ->first(fn(array $alternativa): bool => (int) ($alternativa['id'] ?? 0) === (int) $alternativaId);
     }
 
     private function autoSalvarResposta(int $pautaId, int $alunoId): void
@@ -1556,7 +1568,7 @@ class AvaliacoesProfessor extends Page
         }
 
         return $this->turmasDaSerieDisponiveis
-            ->filter(fn (Turma $turma): bool => (int) $turma->id === $turmaId)
+            ->filter(fn(Turma $turma): bool => (int) $turma->id === $turmaId)
             ->values();
     }
 
@@ -1579,7 +1591,7 @@ class AvaliacoesProfessor extends Page
 
         return preg_match('/^turma\b/i', $nome) === 1
             ? $nome
-            : 'Turma '.$nome;
+            : 'Turma ' . $nome;
     }
 
     private function serieDaTurma(int $turmaId): ?int
@@ -1601,10 +1613,10 @@ class AvaliacoesProfessor extends Page
     private function escolaDaSerie(int $serieId): ?int
     {
         $escolasIds = $this->turmasDisponiveis
-            ->filter(fn (Turma $turma): bool => (int) $turma->id_serie === $serieId)
+            ->filter(fn(Turma $turma): bool => (int) $turma->id_serie === $serieId)
             ->pluck('id_escola')
             ->filter()
-            ->map(fn ($id) => (int) $id)
+            ->map(fn($id) => (int) $id)
             ->unique()
             ->values();
 
@@ -1652,7 +1664,7 @@ class AvaliacoesProfessor extends Page
         }
 
         return $this->seriesPorEscolaDisponiveis
-            ->contains(fn (array $escopo): bool => (int) $escopo['serie_id'] === (int) $this->serie
+            ->contains(fn(array $escopo): bool => (int) $escopo['serie_id'] === (int) $this->serie
                 && (int) $escopo['escola_id'] === (int) $this->escola);
     }
 
@@ -1677,12 +1689,12 @@ class AvaliacoesProfessor extends Page
 
     private function chaveExpansao(int $turmaId, int $itemId): string
     {
-        return $turmaId.':'.$itemId;
+        return $turmaId . ':' . $itemId;
     }
 
     private function chaveSerieEscola(int $escolaId, int $serieId): string
     {
-        return $escolaId.':'.$serieId;
+        return $escolaId . ':' . $serieId;
     }
 
     private function normalizarQueryId(mixed $valor): ?int

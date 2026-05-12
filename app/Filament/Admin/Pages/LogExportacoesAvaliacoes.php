@@ -37,6 +37,17 @@ class LogExportacoesAvaliacoes extends Page implements HasTable
 
     protected static string|UnitEnum|null $navigationGroup = 'Pedagógico';
 
+    public function getHeader(): ?\Illuminate\Contracts\View\View
+    {
+        return view('filament.admin.pages.log-exportacoes-avaliacoes-header', [
+            'actions' => $this->getCachedHeaderActions(),
+
+            'eyebrow' => 'Pedagógico',
+            'title' => 'Log de Exportações de Avaliações',
+            'description' => 'Acompanhe o histórico de exportações de avaliações, incluindo detalhes sobre quando foram exportadas, por quem e quais avaliações foram envolvidas.',
+        ]);
+    }
+
     public static function canAccess(): bool
     {
         /** @var User|null $user */

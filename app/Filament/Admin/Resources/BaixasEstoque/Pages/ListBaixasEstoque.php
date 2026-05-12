@@ -10,6 +10,17 @@ class ListBaixasEstoque extends ListRecords
 {
     protected static string $resource = BaixasEstoqueResource::class;
 
+    public function getHeader(): ?\Illuminate\Contracts\View\View
+    {
+        return view('filament.admin.resources.turmas.pages.manage-turmas-header', [
+            'actions' => $this->getCachedHeaderActions(),
+
+            'eyebrow' => 'Alimentação Escolar',
+            'title' => "Baixas de Estoque",
+            'description' => 'Relatório de Baixas de Estoque realizadas no período selecionado.',
+        ]);
+    }
+
     protected function getHeaderActions(): array
     {
         return [

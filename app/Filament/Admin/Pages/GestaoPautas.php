@@ -58,6 +58,17 @@ class GestaoPautas extends Page implements HasForms, HasTable
 
     public string $modalAbaPautas = 'configuracao';
 
+    public function getHeader(): ?\Illuminate\Contracts\View\View
+    {
+        return view('filament.admin.resources.turmas.pages.manage-turmas-header', [
+            'actions' => $this->getCachedHeaderActions(),
+
+            'eyebrow' => 'Pedagógico',
+            'title' => "Pautas",
+            'description' => 'Gerencie as pautas de avaliação, configure critérios de avaliação e mantenha um registro detalhado para cada uma.',
+        ]);
+    }
+
     public array $form = [
         'tipo_avaliacao_id' => null,
         'textos' => [
@@ -86,8 +97,8 @@ class GestaoPautas extends Page implements HasForms, HasTable
                 ->label('Nova pauta')
                 ->icon(Heroicon::Plus)
                 ->color('primary')
-                ->visible(fn (): bool => Auth::user()?->hasPermissionTo('Criar Pautas') ?? false)
-                ->action(fn () => $this->abrirModalCriacao()),
+                ->visible(fn(): bool => Auth::user()?->hasPermissionTo('Criar Pautas') ?? false)
+                ->action(fn() => $this->abrirModalCriacao()),
         ];
     }
 
@@ -105,7 +116,7 @@ class GestaoPautas extends Page implements HasForms, HasTable
                 Select::make('alternativas_ids')
                     ->label('Alternativas existentes')
                     ->helperText('Selecione uma ou mais alternativas já cadastradas para vincular nesta pauta.')
-                    ->options(fn (): array => $this->alternativasSelectOptions)
+                    ->options(fn(): array => $this->alternativasSelectOptions)
                     ->multiple()
                     ->native(false)
                     ->searchable()
@@ -177,7 +188,7 @@ class GestaoPautas extends Page implements HasForms, HasTable
                 SelectFilter::make('tipo_avaliacao_id')
                     ->label('Tipo')
                     ->options(
-                        fn (): array => TipoAvaliacao::query()
+                        fn(): array => TipoAvaliacao::query()
                             ->where('status', true)
                             ->orderBy('nome')
                             ->pluck('nome', 'id')
@@ -187,7 +198,7 @@ class GestaoPautas extends Page implements HasForms, HasTable
                 SelectFilter::make('serie_id')
                     ->label('Série')
                     ->options(
-                        fn (): array => Serie::query()
+                        fn(): array => Serie::query()
                             ->orderBy('nome')
                             ->pluck('nome', 'id')
                             ->toArray()
@@ -196,7 +207,7 @@ class GestaoPautas extends Page implements HasForms, HasTable
                 SelectFilter::make('componente_curricular_id')
                     ->label('Componente')
                     ->options(
-                        fn (): array => ComponenteCurricular::query()
+                        fn(): array => ComponenteCurricular::query()
                             ->orderBy('nome')
                             ->pluck('nome', 'id')
                             ->toArray()
@@ -212,47 +223,47 @@ class GestaoPautas extends Page implements HasForms, HasTable
                 Action::make('editar')
                     ->label('Editar')
                     ->icon(Heroicon::PencilSquare)
-                    ->visible(fn (): bool => Auth::user()?->hasPermissionTo('Editar Pautas') ?? false)
-                    ->action(fn (Pauta $record) => $this->abrirModalEdicao($record->getKey())),
+                    ->visible(fn(): bool => Auth::user()?->hasPermissionTo('Editar Pautas') ?? false)
+                    ->action(fn(Pauta $record) => $this->abrirModalEdicao($record->getKey())),
 
                 Action::make('excluir')
                     ->label('Excluir')
                     ->icon(Heroicon::Trash)
                     ->color('danger')
-                    ->visible(fn (): bool => Auth::user()?->hasPermissionTo('Excluir Pautas') ?? false)
+                    ->visible(fn(): bool => Auth::user()?->hasPermissionTo('Excluir Pautas') ?? false)
                     ->requiresConfirmation()
-                    ->action(fn (Pauta $record) => $this->excluirPauta($record->getKey())),
+                    ->action(fn(Pauta $record) => $this->excluirPauta($record->getKey())),
             ])
             ->groupedBulkActions([
                 BulkAction::make('aplicarCampos')
                     ->label('Aplicar campos')
                     ->icon(Heroicon::AdjustmentsHorizontal)
-                    ->visible(fn (): bool => Auth::user()?->hasPermissionTo('Editar Pautas') ?? false)
+                    ->visible(fn(): bool => Auth::user()?->hasPermissionTo('Editar Pautas') ?? false)
                     ->form([
                         Select::make('tipo_avaliacao_id')
                             ->label('Tipo')
-                            ->options(fn (): array => $this->tiposOptions)
+                            ->options(fn(): array => $this->tiposOptions)
                             ->searchable()
                             ->preload(),
                         Select::make('serie_id')
                             ->label('Série')
-                            ->options(fn (): array => $this->seriesOptions)
+                            ->options(fn(): array => $this->seriesOptions)
                             ->searchable()
                             ->preload(),
                         Select::make('componente_curricular_id')
                             ->label('Componente')
-                            ->options(fn (): array => $this->componentesOptions)
+                            ->options(fn(): array => $this->componentesOptions)
                             ->searchable()
                             ->preload(),
                     ])
                     ->action(function (array $data, $records): void {
-                        $ids = collect($records)->map(fn (Pauta $record): int => (int) $record->getKey())->values();
+                        $ids = collect($records)->map(fn(Pauta $record): int => (int) $record->getKey())->values();
 
                         $updates = collect([
                             'tipo_avaliacao_id' => $data['tipo_avaliacao_id'] ?? null,
                             'serie_id' => $data['serie_id'] ?? null,
                             'componente_curricular_id' => $data['componente_curricular_id'] ?? null,
-                        ])->filter(fn ($value): bool => filled($value))->all();
+                        ])->filter(fn($value): bool => filled($value))->all();
 
                         if ($updates === []) {
                             throw ValidationException::withMessages([
@@ -305,7 +316,7 @@ class GestaoPautas extends Page implements HasForms, HasTable
         $tipoAvaliacaoId = (int) ($this->form['tipo_avaliacao_id'] ?? 0);
 
         return Alternativa::query()
-            ->when($tipoAvaliacaoId > 0, fn ($query) => $query->where('tipo_avaliacao_id', $tipoAvaliacaoId))
+            ->when($tipoAvaliacaoId > 0, fn($query) => $query->where('tipo_avaliacao_id', $tipoAvaliacaoId))
             ->orderBy('nome')
             ->get(['id', 'nome', 'tem_observacao', 'vai_no_documento', 'status']);
     }
@@ -331,7 +342,7 @@ class GestaoPautas extends Page implements HasForms, HasTable
                 $label = $alternativa->nome;
 
                 if ($sufixos !== []) {
-                    $label .= ' ('.implode(', ', $sufixos).')';
+                    $label .= ' (' . implode(', ', $sufixos) . ')';
                 }
 
                 return [(int) $alternativa->id => $label];
@@ -390,7 +401,7 @@ class GestaoPautas extends Page implements HasForms, HasTable
             'serie_id' => $pauta->serie_id,
             'componente_curricular_id' => $pauta->componente_curricular_id,
             'status' => (bool) $pauta->status,
-            'alternativas_ids' => $pauta->alternativas->pluck('id')->map(fn ($id) => (int) $id)->all(),
+            'alternativas_ids' => $pauta->alternativas->pluck('id')->map(fn($id) => (int) $id)->all(),
         ];
         $this->novasAlternativas = [];
         $this->modalAbaPautas = 'configuracao';
@@ -509,7 +520,7 @@ class GestaoPautas extends Page implements HasForms, HasTable
             ]);
         } catch (ValidationException $exception) {
             $this->modalAbaPautas = collect($exception->validator->errors()->keys())->contains(
-                fn (string $key): bool => str_starts_with($key, 'form.textos')
+                fn(string $key): bool => str_starts_with($key, 'form.textos')
             )
                 ? 'textos'
                 : 'configuracao';
@@ -518,8 +529,8 @@ class GestaoPautas extends Page implements HasForms, HasTable
         }
 
         $textosPautas = collect($validated['form']['textos'] ?? [])
-            ->map(fn (array $item): string => trim((string) ($item['texto'] ?? '')))
-            ->filter(fn (string $texto): bool => $texto !== '')
+            ->map(fn(array $item): string => trim((string) ($item['texto'] ?? '')))
+            ->filter(fn(string $texto): bool => $texto !== '')
             ->values();
 
         if ($textosPautas->isEmpty()) {
@@ -537,7 +548,7 @@ class GestaoPautas extends Page implements HasForms, HasTable
 
         $alternativasSelecionadas = collect($validated['form']['alternativas_ids'] ?? [])
             ->filter()
-            ->map(fn ($id) => (int) $id)
+            ->map(fn($id) => (int) $id)
             ->values();
 
         $novasAlternativasComNome = collect($validated['novasAlternativas'] ?? [])
@@ -558,7 +569,7 @@ class GestaoPautas extends Page implements HasForms, HasTable
                     'status' => (bool) ($item['status'] ?? true),
                 ];
             })
-            ->filter(fn (array $item): bool => $item['nome'] !== '')
+            ->filter(fn(array $item): bool => $item['nome'] !== '')
             ->values();
 
         $alternativasIncompativeisComTipo = Alternativa::query()

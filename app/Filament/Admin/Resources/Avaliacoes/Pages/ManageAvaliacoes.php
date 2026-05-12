@@ -10,6 +10,17 @@ class ManageAvaliacoes extends ManageRecords
 {
     protected static string $resource = AvaliacaoResource::class;
 
+    public function getHeader(): ?\Illuminate\Contracts\View\View
+    {
+        return view('filament.admin.resources.turmas.pages.manage-turmas-header', [
+            'actions' => $this->getCachedHeaderActions(),
+
+            'eyebrow' => 'Pedagógico',
+            'title' => "Avaliações",
+            'description' => 'Gerencie as avaliações, adicione novas e mantenha um registro atualizado das informações.',
+        ]);
+    }
+
     protected function getHeaderActions(): array
     {
         return [

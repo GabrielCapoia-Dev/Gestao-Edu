@@ -29,6 +29,16 @@ class GestaoMargens extends Page
     public string $sortCol = 'nome';
     public string $sortDir = 'asc';
 
+    public function getHeader(): ?\Illuminate\Contracts\View\View
+    {
+        return view('filament.admin.pages.gestao-margens-header', [
+            'actions' => $this->getCachedHeaderActions(),
+
+            'eyebrow' => 'Alimentação Escolar',
+            'title' => "Gestão de Margens",
+            'description' => 'Acompanhe a margem de cada item contratado, visualize alertas para itens com baixo saldo e gerencie os contratos de forma eficiente.',
+        ]);
+    }
 
     public function sortBy(string $coluna): void
     {

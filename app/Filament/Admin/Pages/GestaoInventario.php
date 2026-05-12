@@ -71,6 +71,17 @@ class GestaoInventario extends Page
 
     public string $baixaDescricao = '';
 
+    public function getHeader(): ?\Illuminate\Contracts\View\View
+    {
+        return view('filament.admin.pages.gestao-inventario-header', [
+            'actions' => $this->getCachedHeaderActions(),
+
+            'eyebrow' => 'Alimentação Escolar',
+            'title' => "Gestão de Inventário",
+            'description' => 'Acompanhe o inventário de itens, visualize movimentações e registre baixas de forma eficiente.',
+        ]);
+    }
+
     public static function canAccess(): bool
     {
         /** @var \App\Models\User|null $user */

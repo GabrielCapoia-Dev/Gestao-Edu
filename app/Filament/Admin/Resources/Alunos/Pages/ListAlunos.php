@@ -15,13 +15,27 @@ use Filament\Schemas\Components\Html;
 use Filament\Schemas\Components\RenderHook;
 use Filament\Schemas\Schema;
 use Filament\View\PanelsRenderHook;
+use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
+use Override;
 
 class ListAlunos extends ListRecords
 {
     protected static string $resource = AlunoResource::class;
+
+    #[Override]
+    public function getHeader(): ?View
+    {
+        return view('filament.admin.resources.alunos.pages.list-alunos-header', [
+            'actions' => $this->getCachedHeaderActions(),
+
+            'eyebrow' => 'Pedagógico',
+            'title' => 'Alunos',
+            'description' => 'Gerencie os alunos, adicione novos e mantenha um registro atualizado das informações.',
+        ]);
+    }
 
     public function mount(): void
     {

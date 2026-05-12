@@ -61,6 +61,17 @@ class GestaoAlternativas extends Page implements HasTable
         'status' => true,
     ];
 
+    public function getHeader(): ?\Illuminate\Contracts\View\View
+    {
+        return view('filament.admin.pages.gestao-avaliacoes-header', [
+            'actions' => $this->getCachedHeaderActions(),
+
+            'eyebrow' => 'Pedagógico',
+            'title' => "Alternativas",
+            'description' => 'Gerencie as alternativas, adicione novas e mantenha um registro atualizado das informações.',
+        ]);
+    }
+
     public static function canAccess(): bool
     {
         /** @var User|null $user */
@@ -76,8 +87,8 @@ class GestaoAlternativas extends Page implements HasTable
                 ->label('Nova alternativa')
                 ->icon(Heroicon::Plus)
                 ->color('primary')
-                ->visible(fn (): bool => Auth::user()?->hasPermissionTo('Criar Alternativas') ?? false)
-                ->action(fn () => $this->abrirModalCriacao()),
+                ->visible(fn(): bool => Auth::user()?->hasPermissionTo('Criar Alternativas') ?? false)
+                ->action(fn() => $this->abrirModalCriacao()),
         ];
     }
 
@@ -147,10 +158,11 @@ class GestaoAlternativas extends Page implements HasTable
             ->filters([
                 SelectFilter::make('tipo_avaliacao_id')
                     ->label('Tipo')
-                    ->options(fn (): array => TipoAvaliacao::query()
-                        ->orderBy('nome')
-                        ->pluck('nome', 'id')
-                        ->toArray()
+                    ->options(
+                        fn(): array => TipoAvaliacao::query()
+                            ->orderBy('nome')
+                            ->pluck('nome', 'id')
+                            ->toArray()
                     ),
 
                 TernaryFilter::make('status')
@@ -175,30 +187,31 @@ class GestaoAlternativas extends Page implements HasTable
                 Action::make('editar')
                     ->label('Editar')
                     ->icon(Heroicon::PencilSquare)
-                    ->visible(fn (): bool => Auth::user()?->hasPermissionTo('Editar Alternativas') ?? false)
-                    ->action(fn (Alternativa $record) => $this->abrirModalEdicao($record->getKey())),
+                    ->visible(fn(): bool => Auth::user()?->hasPermissionTo('Editar Alternativas') ?? false)
+                    ->action(fn(Alternativa $record) => $this->abrirModalEdicao($record->getKey())),
 
                 Action::make('excluir')
                     ->label('Excluir')
                     ->icon(Heroicon::Trash)
                     ->color('danger')
-                    ->visible(fn (): bool => Auth::user()?->hasPermissionTo('Excluir Alternativas') ?? false)
+                    ->visible(fn(): bool => Auth::user()?->hasPermissionTo('Excluir Alternativas') ?? false)
                     ->requiresConfirmation()
-                    ->action(fn (Alternativa $record) => $this->excluirAlternativa($record->getKey())),
+                    ->action(fn(Alternativa $record) => $this->excluirAlternativa($record->getKey())),
             ])
             ->groupedBulkActions([
                 BulkAction::make('definirTipo')
                     ->label('Definir tipo')
                     ->icon(Heroicon::Tag)
-                    ->visible(fn (): bool => Auth::user()?->hasPermissionTo('Editar Alternativas') ?? false)
+                    ->visible(fn(): bool => Auth::user()?->hasPermissionTo('Editar Alternativas') ?? false)
                     ->form([
                         Select::make('tipo_avaliacao_id')
                             ->label('Tipo')
-                            ->options(fn (): array => TipoAvaliacao::query()
-                                ->where('status', true)
-                                ->orderBy('nome')
-                                ->pluck('nome', 'id')
-                                ->toArray()
+                            ->options(
+                                fn(): array => TipoAvaliacao::query()
+                                    ->where('status', true)
+                                    ->orderBy('nome')
+                                    ->pluck('nome', 'id')
+                                    ->toArray()
                             )
                             ->searchable()
                             ->preload(),
@@ -207,7 +220,7 @@ class GestaoAlternativas extends Page implements HasTable
                             ->maxLength(255),
                     ])
                     ->action(function (array $data, $records): void {
-                        $ids = collect($records)->map(fn (Alternativa $record): int => (int) $record->getKey())->all();
+                        $ids = collect($records)->map(fn(Alternativa $record): int => (int) $record->getKey())->all();
 
                         $novoTipoNome = Str::of((string) ($data['novo_tipo_nome'] ?? ''))->trim()->toString();
                         $tipoAvaliacaoId = (int) ($data['tipo_avaliacao_id'] ?? 0);

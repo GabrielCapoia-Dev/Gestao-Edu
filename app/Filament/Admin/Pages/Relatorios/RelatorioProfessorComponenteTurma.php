@@ -36,7 +36,16 @@ class RelatorioProfessorComponenteTurma extends Page implements HasTable
     protected static ?string $slug = 'relatorio-professor-componente-turma';
     protected static bool $shouldRegisterNavigation = false;
 
+    public function getHeader(): ?\Illuminate\Contracts\View\View
+    {
+        return view('filament.admin.pages.gestao-avaliacoes-header', [
+            'actions' => $this->getCachedHeaderActions(),
 
+            'eyebrow' => 'Relatórios',
+            'title' => "Relatório de Professor por Componente e Turma",
+            'description' => 'Visualize o relatório detalhado de professores por componente curricular e turma, com opções de filtragem e exportação.',
+        ]);
+    }
 
     public static function canAccess(): bool
     {

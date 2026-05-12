@@ -55,6 +55,17 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
 
     public ?int $avaliacaoIdEditando = null;
 
+    public function getHeader(): ?\Illuminate\Contracts\View\View
+    {
+        return view('filament.admin.pages.gestao-avaliacoes-header', [
+            'actions' => $this->getCachedHeaderActions(),
+
+            'eyebrow' => 'Pedagógico',
+            'title' => "Avaliações",
+            'description' => 'Gerencie as avaliações, adicione novas e mantenha um registro atualizado das informações.',
+        ]);
+    }
+
     public array $form = [
         'nome' => '',
         'tipo_avaliacao_id' => null,
@@ -85,8 +96,8 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
                 ->label('Nova avaliação')
                 ->icon(Heroicon::Plus)
                 ->color('primary')
-                ->visible(fn (): bool => Auth::user()?->hasPermissionTo('Criar Avaliações') ?? false)
-                ->action(fn () => $this->abrirModalCriacao()),
+                ->visible(fn(): bool => Auth::user()?->hasPermissionTo('Criar Avaliações') ?? false)
+                ->action(fn() => $this->abrirModalCriacao()),
         ];
     }
 
@@ -134,14 +145,14 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
-                    ->color(fn (string $state): string => match ($state) {
+                    ->color(fn(string $state): string => match ($state) {
                         Avaliacao::STATUS_ATIVA => 'success',
                         Avaliacao::STATUS_INATIVA => 'gray',
                         Avaliacao::STATUS_ENCERRADA => 'warning',
                         Avaliacao::STATUS_CANCELADA => 'danger',
                         default => 'gray',
                     })
-                    ->formatStateUsing(fn (string $state): string => Avaliacao::statusOptions()[$state] ?? $state),
+                    ->formatStateUsing(fn(string $state): string => Avaliacao::statusOptions()[$state] ?? $state),
 
                 TextColumn::make('updated_at')
                     ->label('Atualizada em')
@@ -156,26 +167,26 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
 
                 SelectFilter::make('tipo_avaliacao_id')
                     ->label('Tipo')
-                    ->options(fn (): array => TipoAvaliacao::query()->orderBy('nome')->pluck('nome', 'id')->toArray()),
+                    ->options(fn(): array => TipoAvaliacao::query()->orderBy('nome')->pluck('nome', 'id')->toArray()),
 
                 SelectFilter::make('periodo_avaliacao_id')
                     ->label('Período')
-                    ->options(fn (): array => PeriodoAvaliacao::query()->orderBy('nome')->pluck('nome', 'id')->toArray()),
+                    ->options(fn(): array => PeriodoAvaliacao::query()->orderBy('nome')->pluck('nome', 'id')->toArray()),
             ])
             ->actions([
                 Action::make('editar')
                     ->label('Editar')
                     ->icon(Heroicon::PencilSquare)
-                    ->visible(fn (): bool => Auth::user()?->hasPermissionTo('Editar Avaliações') ?? false)
-                    ->action(fn (Avaliacao $record) => $this->abrirModalEdicao($record->getKey())),
+                    ->visible(fn(): bool => Auth::user()?->hasPermissionTo('Editar Avaliações') ?? false)
+                    ->action(fn(Avaliacao $record) => $this->abrirModalEdicao($record->getKey())),
 
                 Action::make('excluir')
                     ->label('Excluir')
                     ->icon(Heroicon::Trash)
                     ->color('danger')
-                    ->visible(fn (): bool => Auth::user()?->hasPermissionTo('Excluir Avaliações') ?? false)
+                    ->visible(fn(): bool => Auth::user()?->hasPermissionTo('Excluir Avaliações') ?? false)
                     ->requiresConfirmation()
-                    ->action(fn (Avaliacao $record) => $this->excluirAvaliacao($record->getKey())),
+                    ->action(fn(Avaliacao $record) => $this->excluirAvaliacao($record->getKey())),
             ])
             ->defaultSort('updated_at', 'desc');
     }
@@ -195,36 +206,36 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
                 Select::make('series_ids')
                     ->label('Séries')
                     ->helperText('Selecione uma ou mais séries.')
-                    ->options(fn (): array => $this->seriesOptions)
+                    ->options(fn(): array => $this->seriesOptions)
                     ->multiple()
                     ->required()
                     ->native(false)
                     ->searchable()
                     ->preload()
                     ->live()
-                    ->afterStateUpdated(fn () => $this->updatedFormSeriesIds()),
+                    ->afterStateUpdated(fn() => $this->updatedFormSeriesIds()),
                 Select::make('componentes_ids')
                     ->label('Componentes')
                     ->helperText('Após selecionar as séries, escolha os componentes.')
-                    ->options(fn (): array => $this->componentesOptions)
+                    ->options(fn(): array => $this->componentesOptions)
                     ->multiple()
                     ->required()
                     ->native(false)
                     ->searchable()
                     ->preload()
                     ->live()
-                    ->afterStateUpdated(fn () => $this->updatedFormComponentesIds()),
+                    ->afterStateUpdated(fn() => $this->updatedFormComponentesIds()),
                 Select::make('escolas_ids')
                     ->label('Escolas')
                     ->helperText('Selecione escolas elegíveis ou marque "Todas as escolas elegíveis".')
-                    ->options(fn (): array => $this->escolasOptions)
+                    ->options(fn(): array => $this->escolasOptions)
                     ->multiple()
                     ->required()
                     ->native(false)
                     ->searchable()
                     ->preload()
                     ->live()
-                    ->afterStateUpdated(fn () => $this->updatedFormEscolasIds()),
+                    ->afterStateUpdated(fn() => $this->updatedFormEscolasIds()),
             ])
             ->columns(3)
             ->statePath('form');
@@ -233,11 +244,11 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
     public function alternativasOverrideForm(Schema $schema): Schema
     {
         $components = $this->pautasCarregadas
-            ->map(fn (Pauta $pauta): Select => Select::make("alternativas_override.{$pauta->id}")
+            ->map(fn(Pauta $pauta): Select => Select::make("alternativas_override.{$pauta->id}")
                 ->key($this->alternativasOverrideComponentKey((int) $pauta->id))
                 ->label('Alternativas de override')
                 ->helperText('Selecione uma ou mais alternativas para esta pauta apenas nesta avaliacao.')
-                ->options(fn (): array => $this->alternativasAtivasOptions)
+                ->options(fn(): array => $this->alternativasAtivasOptions)
                 ->multiple()
                 ->native(false)
                 ->searchable()
@@ -266,7 +277,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
     {
         $this->form['series_ids'] = collect($this->form['series_ids'] ?? [])
             ->filter()
-            ->map(fn ($id) => (int) $id)
+            ->map(fn($id) => (int) $id)
             ->unique()
             ->values()
             ->all();
@@ -281,7 +292,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
     {
         $this->form['componentes_ids'] = collect($this->form['componentes_ids'] ?? [])
             ->filter()
-            ->map(fn ($id) => (int) $id)
+            ->map(fn($id) => (int) $id)
             ->unique()
             ->values()
             ->all();
@@ -331,7 +342,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
     public function getComponentesOptionsProperty(): array
     {
         $seriesIds = collect($this->form['series_ids'] ?? [])
-            ->map(fn ($id) => (int) $id)
+            ->map(fn($id) => (int) $id)
             ->filter()
             ->unique()
             ->values()
@@ -354,8 +365,8 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
     public function getEscolasOptionsProperty(): array
     {
         $escolasElegiveis = $this->buscarEscolasElegiveis(
-            collect($this->form['series_ids'] ?? [])->map(fn ($id) => (int) $id)->all(),
-            collect($this->form['componentes_ids'] ?? [])->map(fn ($id) => (int) $id)->all()
+            collect($this->form['series_ids'] ?? [])->map(fn($id) => (int) $id)->all(),
+            collect($this->form['componentes_ids'] ?? [])->map(fn($id) => (int) $id)->all()
         );
 
         if ($escolasElegiveis->isEmpty()) {
@@ -364,15 +375,15 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
 
         return ['todas' => 'Todas as escolas elegíveis'] + $escolasElegiveis
             ->pluck('nome', 'id')
-            ->mapWithKeys(fn ($nome, $id): array => [(string) $id => $nome])
+            ->mapWithKeys(fn($nome, $id): array => [(string) $id => $nome])
             ->all();
     }
 
     public function getPautasCarregadasProperty(): Collection
     {
         $tipoAvaliacaoId = (int) ($this->form['tipo_avaliacao_id'] ?? 0);
-        $seriesIds = collect($this->form['series_ids'] ?? [])->map(fn ($id) => (int) $id)->filter()->values()->all();
-        $componentesIds = collect($this->form['componentes_ids'] ?? [])->map(fn ($id) => (int) $id)->filter()->values()->all();
+        $seriesIds = collect($this->form['series_ids'] ?? [])->map(fn($id) => (int) $id)->filter()->values()->all();
+        $componentesIds = collect($this->form['componentes_ids'] ?? [])->map(fn($id) => (int) $id)->filter()->values()->all();
 
         if ($tipoAvaliacaoId <= 0 || $seriesIds === [] || $componentesIds === []) {
             return collect();
@@ -392,7 +403,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
                 $label = $alternativa->nome;
 
                 if ($alternativa->tipo?->nome) {
-                    $label .= ' | '.$alternativa->tipo->nome;
+                    $label .= ' | ' . $alternativa->tipo->nome;
                 }
 
                 if ($alternativa->tem_observacao) {
@@ -459,9 +470,9 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
             'data_inicio' => optional($avaliacao->data_inicio)->format('Y-m-d') ?? '',
             'data_fim' => optional($avaliacao->data_fim)->format('Y-m-d') ?? '',
             'status' => (string) $avaliacao->status,
-            'series_ids' => $avaliacao->series->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
-            'componentes_ids' => $avaliacao->componentes->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
-            'escolas_ids' => $avaliacao->escolas->pluck('id')->map(fn ($id) => (string) $id)->values()->all(),
+            'series_ids' => $avaliacao->series->pluck('id')->map(fn($id) => (int) $id)->values()->all(),
+            'componentes_ids' => $avaliacao->componentes->pluck('id')->map(fn($id) => (int) $id)->values()->all(),
+            'escolas_ids' => $avaliacao->escolas->pluck('id')->map(fn($id) => (string) $id)->values()->all(),
             'pautas_override_habilitado' => [],
             'alternativas_override' => [],
         ];
@@ -512,7 +523,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
             'form.novo_periodo_nome' => ['nullable', 'string', 'max:255'],
             'form.data_inicio' => ['required', 'date'],
             'form.data_fim' => ['required', 'date', 'after_or_equal:form.data_inicio'],
-            'form.status' => ['required', 'in:'.implode(',', $statusOptions)],
+            'form.status' => ['required', 'in:' . implode(',', $statusOptions)],
             'form.series_ids' => ['required', 'array', 'min:1'],
             'form.series_ids.*' => ['integer', 'exists:series,id'],
             'form.componentes_ids' => ['required', 'array', 'min:1'],
@@ -540,8 +551,8 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
         }
 
         $tipoAvaliacaoId = (int) $validated['form']['tipo_avaliacao_id'];
-        $seriesIds = collect($validated['form']['series_ids'])->map(fn ($id) => (int) $id)->unique()->values()->all();
-        $componentesIds = collect($validated['form']['componentes_ids'])->map(fn ($id) => (int) $id)->unique()->values()->all();
+        $seriesIds = collect($validated['form']['series_ids'])->map(fn($id) => (int) $id)->unique()->values()->all();
+        $componentesIds = collect($validated['form']['componentes_ids'])->map(fn($id) => (int) $id)->unique()->values()->all();
 
         $escolasElegiveis = $this->buscarEscolasElegiveis($seriesIds, $componentesIds);
 
@@ -553,7 +564,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
 
         $escolasIds = $this->resolverEscolasIdsSelecionadas(
             (array) ($validated['form']['escolas_ids'] ?? []),
-            $escolasElegiveis->pluck('id')->map(fn ($id) => (int) $id)->all()
+            $escolasElegiveis->pluck('id')->map(fn($id) => (int) $id)->all()
         );
 
         if ($escolasIds === []) {
@@ -582,14 +593,14 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
             ->where('status', true)
             ->where('tipo_avaliacao_id', $tipoAvaliacaoId)
             ->pluck('id')
-            ->map(fn ($id) => (int) $id)
+            ->map(fn($id) => (int) $id)
             ->values()
             ->all();
 
         $alternativasAtivasIds = Alternativa::query()
             ->where('status', true)
             ->pluck('id')
-            ->map(fn ($id) => (int) $id)
+            ->map(fn($id) => (int) $id)
             ->values()
             ->all();
 
@@ -603,7 +614,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
             if (! $overrideHabilitado) {
                 if ($alternativasTipoIds === []) {
                     $this->addError(
-                        'form.pautas_override_habilitado.'.$pautaId,
+                        'form.pautas_override_habilitado.' . $pautaId,
                         'O tipo selecionado não possui alternativas ativas. Defina um override nesta pauta.'
                     );
 
@@ -615,14 +626,14 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
 
             $alternativasOverrideIds = collect($this->form['alternativas_override'][$pautaId] ?? [])
                 ->filter()
-                ->map(fn ($id) => (int) $id)
+                ->map(fn($id) => (int) $id)
                 ->unique()
                 ->values()
                 ->all();
 
             if ($alternativasOverrideIds === []) {
                 $this->addError(
-                    'form.alternativas_override.'.$pautaId,
+                    'form.alternativas_override.' . $pautaId,
                     'Selecione pelo menos uma alternativa para o override desta pauta.'
                 );
 
@@ -636,7 +647,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
 
             if (count($alternativasValidas) !== count($alternativasOverrideIds)) {
                 $this->addError(
-                    'form.alternativas_override.'.$pautaId,
+                    'form.alternativas_override.' . $pautaId,
                     'O override contém alternativas inválidas ou inativas.'
                 );
 
@@ -686,7 +697,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
             ]);
             $avaliacao->save();
 
-            $avaliacao->pautas()->sync($pautasCarregadas->pluck('id')->map(fn ($id) => (int) $id)->all());
+            $avaliacao->pautas()->sync($pautasCarregadas->pluck('id')->map(fn($id) => (int) $id)->all());
             $avaliacao->turmas()->sync($turmasIds);
             $avaliacao->series()->sync($seriesIds);
             $avaliacao->componentes()->sync($componentesIds);
@@ -749,7 +760,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
     {
         $pautasIds = $this->pautasCarregadas
             ->pluck('id')
-            ->map(fn ($id) => (int) $id)
+            ->map(fn($id) => (int) $id)
             ->values()
             ->all();
 
@@ -768,7 +779,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
             $this->form['pautas_override_habilitado'][$id] = true;
             $this->form['alternativas_override'][$id] = collect($rows)
                 ->pluck('alternativa_id')
-                ->map(fn ($alternativaId) => (int) $alternativaId)
+                ->map(fn($alternativaId) => (int) $alternativaId)
                 ->unique()
                 ->values()
                 ->all();
@@ -815,8 +826,8 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
 
     private function buscarEscolasElegiveis(array $seriesIds, array $componentesIds): Collection
     {
-        $seriesIds = collect($seriesIds)->filter()->map(fn ($id) => (int) $id)->unique()->values()->all();
-        $componentesIds = collect($componentesIds)->filter()->map(fn ($id) => (int) $id)->unique()->values()->all();
+        $seriesIds = collect($seriesIds)->filter()->map(fn($id) => (int) $id)->unique()->values()->all();
+        $componentesIds = collect($componentesIds)->filter()->map(fn($id) => (int) $id)->unique()->values()->all();
 
         if ($seriesIds === [] || $componentesIds === []) {
             return collect();
@@ -826,7 +837,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
             ->whereIn('id_serie', $seriesIds)
             ->distinct()
             ->pluck('id_escola')
-            ->map(fn ($id) => (int) $id)
+            ->map(fn($id) => (int) $id)
             ->values()
             ->all();
 
@@ -851,7 +862,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
             ->whereIn('id_escola', $escolasIds)
             ->distinct()
             ->pluck('id')
-            ->map(fn ($id) => (int) $id)
+            ->map(fn($id) => (int) $id)
             ->values()
             ->all();
     }
@@ -860,7 +871,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
     {
         $escolasSelecionadas = collect($escolasSelecionadas)
             ->filter()
-            ->map(fn ($value) => (string) $value)
+            ->map(fn($value) => (string) $value)
             ->unique()
             ->values()
             ->all();
@@ -874,8 +885,8 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
         }
 
         return collect($escolasSelecionadas)
-            ->map(fn ($id) => (int) $id)
-            ->filter(fn ($id) => $id > 0)
+            ->map(fn($id) => (int) $id)
+            ->filter(fn($id) => $id > 0)
             ->intersect($escolasElegiveisIds)
             ->unique()
             ->values()
@@ -885,13 +896,13 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
     private function sincronizarComponentesSelecionadosComFiltros(): void
     {
         $componentesDisponiveis = collect(array_keys($this->componentesOptions))
-            ->map(fn ($id) => (int) $id)
+            ->map(fn($id) => (int) $id)
             ->values()
             ->all();
 
         $this->form['componentes_ids'] = collect($this->form['componentes_ids'] ?? [])
             ->filter()
-            ->map(fn ($id) => (int) $id)
+            ->map(fn($id) => (int) $id)
             ->intersect($componentesDisponiveis)
             ->unique()
             ->values()
@@ -901,13 +912,13 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
     private function sincronizarEscolasSelecionadasComFiltros(): void
     {
         $escolasDisponiveis = collect(array_keys($this->escolasOptions))
-            ->map(fn ($id) => (string) $id)
+            ->map(fn($id) => (string) $id)
             ->values()
             ->all();
 
         $escolasSelecionadas = collect($this->form['escolas_ids'] ?? [])
             ->filter()
-            ->map(fn ($value) => (string) $value)
+            ->map(fn($value) => (string) $value)
             ->intersect($escolasDisponiveis)
             ->unique()
             ->values();
@@ -925,21 +936,21 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
     {
         $pautasIds = $this->pautasCarregadas
             ->pluck('id')
-            ->map(fn ($id) => (int) $id)
+            ->map(fn($id) => (int) $id)
             ->values()
             ->all();
 
         $overridesAtivos = collect($this->form['pautas_override_habilitado'] ?? [])
-            ->filter(fn ($_value, $key) => in_array((int) $key, $pautasIds, true))
-            ->map(fn ($value) => (bool) $value)
+            ->filter(fn($_value, $key) => in_array((int) $key, $pautasIds, true))
+            ->map(fn($value) => (bool) $value)
             ->all();
 
         $alternativasOverrides = collect($this->form['alternativas_override'] ?? [])
-            ->filter(fn ($_value, $key) => in_array((int) $key, $pautasIds, true))
+            ->filter(fn($_value, $key) => in_array((int) $key, $pautasIds, true))
             ->map(function ($ids): array {
                 return collect($ids ?? [])
                     ->filter()
-                    ->map(fn ($id) => (int) $id)
+                    ->map(fn($id) => (int) $id)
                     ->unique()
                     ->values()
                     ->all();

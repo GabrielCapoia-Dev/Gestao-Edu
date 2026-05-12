@@ -31,6 +31,17 @@ class FeedbackPedido extends Page implements HasTable
     protected static ?string $navigationParentItem = 'Pedidos';
     public static ?string $navigationLabel = 'Feedback de Pedidos';
 
+    public function getHeader(): ?\Illuminate\Contracts\View\View
+    {
+        return view('filament.admin.pages.gestao-avaliacoes-header', [
+            'actions' => $this->getCachedHeaderActions(),
+
+            'eyebrow' => 'Manutenção',
+            'title' => "Feedback de Pedidos",
+            'description' => 'Gerencie o feedback dos pedidos, gerando relatórios detalhados para cada pedido.',
+        ]);
+    }
+
 
     public array $chartFilters = [];
 
@@ -82,8 +93,8 @@ class FeedbackPedido extends Page implements HasTable
 
                 Tables\Columns\TextColumn::make('itens_resumo')
                     ->label('Por problema')
-                    ->state(fn (FeedbackPedidoModel $record): string => $record->itens
-                        ->map(fn ($item) => ($item->problema?->texto_problema ?? 'Problema') . ': ' . $item->valor . '/5')
+                    ->state(fn(FeedbackPedidoModel $record): string => $record->itens
+                        ->map(fn($item) => ($item->problema?->texto_problema ?? 'Problema') . ': ' . $item->valor . '/5')
                         ->take(3)
                         ->join(' | '))
                     ->limit(90)
@@ -93,8 +104,8 @@ class FeedbackPedido extends Page implements HasTable
                 Tables\Columns\TextColumn::make('reabrir_pedido')
                     ->label('Reaberto')
                     ->badge()
-                    ->formatStateUsing(fn ($state) => $state ? 'Sim' : 'Não')
-                    ->color(fn ($state) => $state ? 'danger' : 'success'),
+                    ->formatStateUsing(fn($state) => $state ? 'Sim' : 'Não')
+                    ->color(fn($state) => $state ? 'danger' : 'success'),
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Avaliado em')
@@ -176,7 +187,7 @@ class FeedbackPedido extends Page implements HasTable
                     ->label('Resultado por problema')
                     ->options(
                         collect(ResultadoFeedbackPedido::cases())
-                            ->mapWithKeys(fn (ResultadoFeedbackPedido $resultado) => [$resultado->value => $resultado->label()])
+                            ->mapWithKeys(fn(ResultadoFeedbackPedido $resultado) => [$resultado->value => $resultado->label()])
                             ->toArray()
                     )
                     ->query(function ($query, array $data) {
@@ -184,7 +195,7 @@ class FeedbackPedido extends Page implements HasTable
 
                         return $query->when(
                             $value,
-                            fn ($q) => $q->whereHas('itens', fn ($itemQuery) => $itemQuery->where('resultado', $value))
+                            fn($q) => $q->whereHas('itens', fn($itemQuery) => $itemQuery->where('resultado', $value))
                         );
                     }),
 

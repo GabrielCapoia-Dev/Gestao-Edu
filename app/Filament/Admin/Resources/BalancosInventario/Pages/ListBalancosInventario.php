@@ -19,6 +19,17 @@ class ListBalancosInventario extends ListRecords
 {
     protected static string $resource = BalancoInventarioResource::class;
 
+    public function getHeader(): ?\Illuminate\Contracts\View\View
+    {
+        return view('filament.admin.resources.turmas.pages.manage-turmas-header', [
+            'actions' => $this->getCachedHeaderActions(),
+
+            'eyebrow' => 'Alimentação Escolar',
+            'title' => 'Balanços de Inventário',
+            'description' => 'Gerencie os balanços de inventário, agende novos balanços e mantenha um registro atualizado das informações.',
+        ]);
+    }
+
     protected function getHeaderActions(): array
     {
         return [

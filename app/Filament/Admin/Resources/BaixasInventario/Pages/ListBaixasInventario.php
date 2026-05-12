@@ -10,6 +10,18 @@ class ListBaixasInventario extends ListRecords
 {
     protected static string $resource = BaixasInventarioResource::class;
 
+            public function getHeader(): ?\Illuminate\Contracts\View\View
+    {
+        return view('filament.admin.resources.turmas.pages.manage-turmas-header', [
+            'actions' => $this->getCachedHeaderActions(),
+
+            'eyebrow' => 'Alimentação Escolar',
+            'title' => "Baixas de Inventário",
+            'description' => 'Relatório de Baixas de Inventário realizadas no período selecionado.',
+        ]);
+    }
+
+
     protected function getHeaderActions(): array
     {
         return [

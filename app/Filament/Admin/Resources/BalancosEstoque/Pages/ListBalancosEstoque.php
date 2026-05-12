@@ -13,6 +13,17 @@ class ListBalancosEstoque extends ListRecords
 {
     protected static string $resource = BalancoEstoqueResource::class;
 
+    public function getHeader(): ?\Illuminate\Contracts\View\View
+    {
+        return view('filament.admin.resources.turmas.pages.manage-turmas-header', [
+            'actions' => $this->getCachedHeaderActions(),
+
+            'eyebrow' => 'Alimentação Escolar',
+            'title' => 'Balanços de Estoque',
+            'description' => 'Gerencie os balanços de estoque, agende novos balanços e mantenha um registro atualizado das informações.',
+        ]);
+    }
+
     protected function getHeaderActions(): array
     {
         return [
