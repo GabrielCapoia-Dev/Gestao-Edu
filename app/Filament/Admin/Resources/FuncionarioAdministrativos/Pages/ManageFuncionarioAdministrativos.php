@@ -10,10 +10,22 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Actions\Action;
 use App\Models\FuncaoAdministrativa;
+use Illuminate\Contracts\View\View;
 
 class ManageFuncionarioAdministrativos extends ManageRecords
 {
     protected static string $resource = FuncionarioAdministrativoResource::class;
+
+    public function getHeader(): ?View
+{
+    return view('filament.admin.resources.turmas.pages.manage-turmas-header', [
+        'actions' => $this->getCachedHeaderActions(),
+
+        'eyebrow' => 'Pedagógico',
+        'title' => "Equipe Gestora",
+        'description' => 'Gerencie a Equipe Gestora vinculados à escola, atribua funções e mantenha um registro atualizado da equipe.',
+    ]);
+}
 
     protected function getHeaderActions(): array
     {
