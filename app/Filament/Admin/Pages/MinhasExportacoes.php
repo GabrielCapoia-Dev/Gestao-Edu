@@ -48,7 +48,7 @@ class MinhasExportacoes extends Page implements HasTable
 
     public function getHeader(): ?\Illuminate\Contracts\View\View
     {
-        return view('filament.admin.pages.log-exportacoes-avaliacoes-header', [
+        return view('filament.admin.resources.turmas.pages.manage-turmas-header', [
             'actions' => $this->getCachedHeaderActions(),
             'eyebrow' => 'Relatorios',
             'title' => 'Minhas Exportacoes',
