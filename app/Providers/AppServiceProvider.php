@@ -38,6 +38,8 @@ use App\Models\Pedido;
 use App\Policies\PedidoPolicy;
 use App\Models\PedidoArquivo;
 use App\Policies\PedidoArquivoPolicy;
+use App\Models\ExportRequest;
+use App\Policies\ExportRequestPolicy;
 use App\Observers\PedidoObserver;
 use App\Observers\ProfessorObserver;
 use App\Observers\TurmaComponenteProfessorObserver;
@@ -81,6 +83,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(TipoManutencao::class, TipoManutencaoPolicy::class);
         Gate::policy(Pedido::class, PedidoPolicy::class);
         Gate::policy(PedidoArquivo::class, PedidoArquivoPolicy::class);
+        Gate::policy(ExportRequest::class, ExportRequestPolicy::class);
         Gate::policy(EquipeGestora::class, EquipeGestoraPolicy::class);
         Gate::policy(ComponenteCurricular::class, ComponenteCurricularPolicy::class);
         Gate::policy(FuncaoAdministrativa::class, FuncaoAdministrativaPolicy::class);

@@ -6,6 +6,7 @@ use App\Http\Controllers\BaixasEstoqueRelatorioController;
 use App\Http\Controllers\BalancoEstoqueRelatorioController;
 use App\Http\Controllers\BalancoInventarioRelatorioController;
 use App\Http\Controllers\EstoqueRelatorioController;
+use App\Http\Controllers\Exports\ExportRequestController;
 use App\Http\Controllers\FeedbackPedidoExportController;
 use App\Http\Controllers\InventarioRelatorioController;
 use App\Http\Controllers\InventarioRomaneioController;
@@ -65,6 +66,7 @@ Route::post('/test/notify', function () {
 })->name('test.notify');
 
 Route::get('/pedidos/relatorio-geral', [PedidoRelatorioGeralController::class, 'exportar'])
+    ->middleware('auth')
     ->name('pedidos.relatorio-geral');
 
 Route::get('/oauth/redirect/google', [GoogleAuthController::class, 'redirect'])->name('google.redirect');
@@ -93,6 +95,14 @@ Route::prefix('admin')
 
         Route::post('/notifications/{id}/mark-unread', [NotificationCenterController::class, 'markUnread'])
             ->name('notifications.markUnread');
+
+        Route::get('/exports/{exportRequest}/download', [ExportRequestController::class, 'download'])
+            ->name('exports.download')
+            ->middleware('can:download,exportRequest');
+
+        Route::post('/exports/{exportRequest}/cancel', [ExportRequestController::class, 'cancel'])
+            ->name('exports.cancel')
+            ->middleware('can:cancel,exportRequest');
 
         Route::get('/pedidos/{pedido}/pdf', function (Pedido $pedido, PedidoRelatorioService $service) {
             return $service->gerar($pedido);

@@ -273,10 +273,8 @@ class DashboardAvaliacoes extends Page implements HasForms
             return false;
         }
 
-        return $user->can('Exportar Relatórios')
-            || $user->can('Exportar Relatorios')
-            || $user->can('Listar Avaliações')
-            || $user->can('Listar Avaliacoes');
+        return $user->hasPermissionLike('exportar relatorios')
+            || $user->hasPermissionLike('exportar avaliacoes');
     }
 
     public function getStatusOptionsProperty(): array

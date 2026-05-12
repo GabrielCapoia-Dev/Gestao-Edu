@@ -168,7 +168,11 @@ class RelatorioProfessorComponenteTurma extends Page implements HasTable
         }
         // Gerar arquivo
         $filename = 'relatorio_turmas_' . now()->format('Y-m-d_H-i-s') . '.xlsx';
-        $path = storage_path("app/public/{$filename}");
+        $path = tempnam(sys_get_temp_dir(), 'relatorio_turmas_');
+
+        if ($path === false) {
+            throw new \RuntimeException('Nao foi possivel criar o arquivo temporario do relatorio.');
+        }
 
         $writer = new Xlsx($spreadsheet);
         $writer->save($path);

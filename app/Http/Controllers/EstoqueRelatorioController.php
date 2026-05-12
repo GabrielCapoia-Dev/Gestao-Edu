@@ -3,43 +3,69 @@
 namespace App\Http\Controllers;
 
 use App\Models\Estoque;
+use App\Services\Exports\ExportRequestService;
 use App\Services\Relatorios\EstoqueRelatorioService;
+use Filament\Notifications\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 class EstoqueRelatorioController extends Controller
 {
     public function __construct(
         protected EstoqueRelatorioService $service,
+        protected ExportRequestService $exports,
     ) {}
 
-    public function exportarPdf(Request $request)
+    public function exportarPdf(Request $request): Response
     {
         $this->autorizarExportacao();
+
+        if ($request->boolean('async')) {
+            return $this->queueExport('estoque_geral', 'pdf', $request->all(), 'Relatorio geral de estoque', $request);
+        }
+
         $this->prepararExecucao();
 
         return $this->service->gerarPdfGeral($request->all(), Auth::user());
     }
 
-    public function exportarXlsx(Request $request)
+    public function exportarXlsx(Request $request): Response
     {
         $this->autorizarExportacao();
+
+        if ($request->boolean('async')) {
+            return $this->queueExport('estoque_geral', 'xlsx', $request->all(), 'Relatorio geral de estoque', $request);
+        }
+
         $this->prepararExecucao();
 
         return $this->service->gerarXlsxGeral($request->all(), Auth::user());
     }
 
-    public function exportarItemPdf(Estoque $estoque)
+    public function exportarItemPdf(Request $request, Estoque $estoque): Response
     {
         $this->autorizarExportacao();
+
+        if ($request->boolean('async')) {
+            return $this->queueExport('estoque_item', 'pdf', ['estoque_id' => $estoque->getKey()], 'Relatorio individual de estoque', $request);
+        }
+
         $this->prepararExecucao();
 
         return $this->service->gerarPdfItem($estoque, Auth::user());
     }
 
-    public function exportarItemXlsx(Estoque $estoque)
+    public function exportarItemXlsx(Request $request, Estoque $estoque): Response
     {
         $this->autorizarExportacao();
+
+        if ($request->boolean('async')) {
+            return $this->queueExport('estoque_item', 'xlsx', ['estoque_id' => $estoque->getKey()], 'Relatorio individual de estoque', $request);
+        }
+
         $this->prepararExecucao();
 
         return $this->service->gerarXlsxItem($estoque, Auth::user());
@@ -54,5 +80,52 @@ class EstoqueRelatorioController extends Controller
     protected function autorizarExportacao(): void
     {
         abort_unless(Auth::user()?->hasPermissionTo('Exportar Relatórios'), 403);
+    }
+
+    /**
+     * @param array<string, mixed> $filters
+     */
+    private function queueExport(
+        string $type,
+        string $format,
+        array $filters,
+        string $label,
+        Request $request,
+    ): Response {
+        unset($filters['async']);
+
+        try {
+            $exportRequest = $this->exports->queue(
+                user: Auth::user(),
+                type: $type,
+                format: $format,
+                filters: $filters,
+                label: $label,
+                metadata: ['route' => $request->route()?->getName()],
+            );
+
+            Notification::make()
+                ->title($exportRequest->wasRecentlyCreated ? 'Exportacao enviada para a fila' : 'Exportacao ja esta em andamento')
+                ->body('Acompanhe o progresso em Minhas Exportacoes.')
+                ->success()
+                ->send();
+
+            return redirect()->route('filament.admin.pages.minhas-exportacoes');
+        } catch (Throwable $e) {
+            Log::error('Falha ao enfileirar exportacao de estoque.', [
+                'exception' => $e,
+                'user_id' => Auth::id(),
+                'type' => $type,
+                'format' => $format,
+            ]);
+
+            Notification::make()
+                ->title('Nao foi possivel iniciar a exportacao')
+                ->body('Tente novamente em alguns instantes.')
+                ->danger()
+                ->send();
+
+            return redirect()->back();
+        }
     }
 }

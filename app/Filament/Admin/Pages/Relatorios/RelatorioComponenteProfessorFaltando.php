@@ -296,7 +296,11 @@ class RelatorioComponenteProfessorFaltando extends Page
         $spreadsheet->setActiveSheetIndex(0);
 
         $filename = 'relatorio_componentes_falta_professores_' . now()->format('Y-m-d_H-i-s') . '.xlsx';
-        $path = storage_path("app/public/{$filename}");
+        $path = tempnam(sys_get_temp_dir(), 'relatorio_componentes_');
+
+        if ($path === false) {
+            throw new \RuntimeException('Nao foi possivel criar o arquivo temporario do relatorio.');
+        }
 
         (new Xlsx($spreadsheet))->save($path);
 

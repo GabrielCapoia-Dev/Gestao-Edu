@@ -35,6 +35,11 @@ return Application::configure(basePath: dirname(__DIR__))
             ->command('app:notificar-alunos-pendentes-transferencia')
             ->dailyAt('08:00');
     })
+    ->withSchedule(function (Schedule $schedule) {
+        $schedule
+            ->command('exports:prune')
+            ->dailyAt('02:30');
+    })
     ->withExceptions(function (Exceptions $exceptions) {
         //
     })->create();

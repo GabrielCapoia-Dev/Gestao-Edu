@@ -304,6 +304,8 @@ class Inventarios extends Page
             'ano' => $periodo === 'mensal' ? (int) ($data['ano'] ?? now()->year) : null,
         ], fn (mixed $value): bool => ! ($value === null || $value === '' || $value === []));
 
+        $params['async'] = 1;
+
         return $this->redirect(route("inventarios.relatorio.envios.{$formato}", $params), navigate: false);
     }
     public function getTitle(): string

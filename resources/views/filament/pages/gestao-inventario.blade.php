@@ -17,10 +17,10 @@
                     Balanços
                 </a>
                 @if ($inventarioAtual && $this->podeExportar)
-                    <a href="{{ route('gestao-inventario.relatorio.pdf', ['inventario' => $inventarioAtual->id] + $this->filtrosExportacao) }}" class="gi-action gi-action--ghost" target="_blank">
+                    <a href="{{ route('gestao-inventario.relatorio.pdf', ['inventario' => $inventarioAtual->id, 'async' => 1] + $this->filtrosExportacao) }}" class="gi-action gi-action--ghost" target="_blank">
                         Exportar PDF
                     </a>
-                    <a href="{{ route('gestao-inventario.relatorio.xlsx', ['inventario' => $inventarioAtual->id] + $this->filtrosExportacao) }}" class="gi-action gi-action--ghost">
+                    <a href="{{ route('gestao-inventario.relatorio.xlsx', ['inventario' => $inventarioAtual->id, 'async' => 1] + $this->filtrosExportacao) }}" class="gi-action gi-action--ghost">
                         Exportar XLSX
                     </a>
                 @endif
@@ -112,7 +112,7 @@
                                             <button type="button" wire:click="abrirSlideOver({{ $item['inventario_estoque_id'] }})">Movimentacoes</button>
                                             <button type="button" wire:click="abrirModalBaixa({{ $item['inventario_estoque_id'] }})" @disabled((float) $item['quantidade'] <= 0)>Baixa</button>
                                             @if ($this->podeExportar)
-                                                <a href="{{ route('gestao-inventario.item-relatorio.pdf', ['estoque' => $item['inventario_estoque_id']]) }}" target="_blank">Relatorio</a>
+                                                <a href="{{ route('gestao-inventario.item-relatorio.pdf', ['estoque' => $item['inventario_estoque_id'], 'async' => 1]) }}" target="_blank">Relatorio</a>
                                             @endif
                                         </div>
                                     </td>

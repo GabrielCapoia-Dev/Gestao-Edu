@@ -282,6 +282,7 @@ class ExportarAvaliacoes extends Page
             'avaliacao_id' => $avaliacaoId,
             'escopo' => 'turma',
             'turma_id' => $turmaId,
+            'async' => 1,
         ]);
     }
 
@@ -291,6 +292,7 @@ class ExportarAvaliacoes extends Page
             'avaliacao_id' => $avaliacaoId,
             'escopo' => 'turma',
             'turma_id' => $turmaId,
+            'async' => 1,
         ]);
     }
 

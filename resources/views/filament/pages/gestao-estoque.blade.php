@@ -1261,14 +1261,14 @@
     <div style="display:flex;justify-content:flex-end;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem">
         <x-filament::button
             tag="a"
-            :href="route('gestao-estoque.relatorio.pdf', $this->filtrosExportacao)"
+            :href="route('gestao-estoque.relatorio.pdf', array_merge($this->filtrosExportacao, ['async' => 1]))"
             color="gray"
             icon="heroicon-o-document-text">
             Exportar PDF
         </x-filament::button>
         <x-filament::button
             tag="a"
-            :href="route('gestao-estoque.relatorio.xlsx', $this->filtrosExportacao)"
+            :href="route('gestao-estoque.relatorio.xlsx', array_merge($this->filtrosExportacao, ['async' => 1]))"
             color="success"
             icon="heroicon-o-table-cells">
             Exportar XLSX
@@ -1619,14 +1619,14 @@
             <div class="ge-modal-ft">
                 @if ($this->podeExportar && $estoqueSelecionadoId)
                 <a
-                    href="{{ route('gestao-estoque.item-relatorio.pdf', ['estoque' => $estoqueSelecionadoId]) }}"
+                    href="{{ route('gestao-estoque.item-relatorio.pdf', ['estoque' => $estoqueSelecionadoId, 'async' => 1]) }}"
                     class="ge-btn-fechar"
                     style="margin-bottom:.5rem;text-decoration:none">
                     <x-filament::icon icon="heroicon-o-document-text" />
                     Exportar PDF Completo
                 </a>
                 <a
-                    href="{{ route('gestao-estoque.item-relatorio.xlsx', ['estoque' => $estoqueSelecionadoId]) }}"
+                    href="{{ route('gestao-estoque.item-relatorio.xlsx', ['estoque' => $estoqueSelecionadoId, 'async' => 1]) }}"
                     class="ge-btn-fechar"
                     style="margin-bottom:.5rem;text-decoration:none">
                     <x-filament::icon icon="heroicon-o-table-cells" />
