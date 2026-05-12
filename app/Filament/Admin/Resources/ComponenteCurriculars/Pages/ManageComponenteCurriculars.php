@@ -13,7 +13,7 @@ class ManageComponenteCurriculars extends ManageRecords
 
     public function getHeader(): ?View
     {
-        return view('filament.admin.resources.turmas.pages.manage-turmas-header', [
+        return view('filament.admin.pages.partials.page-header', [
             'actions' => $this->getCachedHeaderActions(),
 
             'eyebrow' => 'Pedagógico',

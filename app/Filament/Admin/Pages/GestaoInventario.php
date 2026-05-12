@@ -73,7 +73,7 @@ class GestaoInventario extends Page
 
     public function getHeader(): ?\Illuminate\Contracts\View\View
     {
-        return view('filament.admin.pages.gestao-inventario-header', [
+        return view('filament.admin.pages.partials.page-header', [
             'actions' => $this->getCachedHeaderActions(),
 
             'eyebrow' => 'Alimentação Escolar',

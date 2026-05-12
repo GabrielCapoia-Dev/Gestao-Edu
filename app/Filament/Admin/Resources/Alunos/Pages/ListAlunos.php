@@ -28,7 +28,7 @@ class ListAlunos extends ListRecords
     #[Override]
     public function getHeader(): ?View
     {
-        return view('filament.admin.resources.alunos.pages.list-alunos-header', [
+        return view('filament.admin.pages.partials.page-header', [
             'actions' => $this->getCachedHeaderActions(),
 
             'eyebrow' => 'Pedagógico',

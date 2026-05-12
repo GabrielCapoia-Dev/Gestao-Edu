@@ -63,7 +63,7 @@ class GestaoAlternativas extends Page implements HasTable
 
     public function getHeader(): ?\Illuminate\Contracts\View\View
     {
-        return view('filament.admin.resources.turmas.pages.manage-turmas-header', [
+        return view('filament.admin.pages.partials.page-header', [
             'actions' => $this->getCachedHeaderActions(),
 
             'eyebrow' => 'Pedagógico',
