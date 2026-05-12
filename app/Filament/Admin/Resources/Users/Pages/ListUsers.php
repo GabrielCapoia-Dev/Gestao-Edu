@@ -8,6 +8,7 @@ use App\Services\UserService;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 
 class ListUsers extends ListRecords
@@ -16,12 +17,23 @@ class ListUsers extends ListRecords
 
     protected string $view = 'filament.admin.resources.users.pages.list-users';
 
-    protected function getHeaderActions(): array
+    public function getHeader(): ?View
     {
-        return [
-            CreateAction::make(),
-        ];
+        return view('filament.admin.resources.turmas.pages.manage-turmas-header', [
+            'actions' => $this->getCachedHeaderActions(),
+
+            'eyebrow' => 'Acesso',
+            'title' => 'Usuarios',
+            'description' => 'Gerencie os usuarios e permissões de acesso.',
+        ]);
     }
+
+    // protected function getHeaderActions(): array
+    // {
+    //     return [
+    //         CreateAction::make(),
+    //     ];
+    // }
 
     public function mount(): void
     {

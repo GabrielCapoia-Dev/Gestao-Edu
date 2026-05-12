@@ -1,9 +1,16 @@
+@php
+    $eyebrow ??= '';
+    $title ??= '';
+    $description ??= '';
+    $actions ??= [];
+@endphp
+
 <div class="gi-page">
     <section class="gi-hero">
         <div>
-            <p class="gi-eyebrow">Pedagogico</p>
-            <h1>Turmas</h1>
-            <p>Organize series, turnos e vinculos de alunos e professores por unidade escolar.</p>
+            <p class="gi-eyebrow">{{ $eyebrow }}</p>
+            <h1>{{ $title }}</h1>
+            <p>{{ $description }}</p>
         </div>
 
         @if (filled($actions))

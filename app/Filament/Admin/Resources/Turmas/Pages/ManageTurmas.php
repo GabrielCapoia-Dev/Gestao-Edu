@@ -23,6 +23,10 @@ class ManageTurmas extends ManageRecords
     {
         return view('filament.admin.resources.turmas.pages.manage-turmas-header', [
             'actions' => $this->getCachedHeaderActions(),
+
+            'eyebrow' => 'Pedagógico',
+            'title' => 'Turmas',
+            'description' => 'Organize séries, turnos e vínculos de alunos e professores por unidade escolar.',
         ]);
     }
 
@@ -45,7 +49,7 @@ class ManageTurmas extends ManageRecords
                 })
                 ->modalHeading('Criar Série')
                 ->schema(
-                    fn () => SerieResource::form(Schema::make())
+                    fn() => SerieResource::form(Schema::make())
                         ->getComponents()
                 )
                 ->createAnother(false)
