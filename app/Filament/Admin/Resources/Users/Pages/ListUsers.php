@@ -28,12 +28,12 @@ class ListUsers extends ListRecords
         ]);
     }
 
-    // protected function getHeaderActions(): array
-    // {
-    //     return [
-    //         CreateAction::make(),
-    //     ];
-    // }
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make(),
+        ];
+    }
 
     public function mount(): void
     {
