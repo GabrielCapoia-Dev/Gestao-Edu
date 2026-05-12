@@ -11,6 +11,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Permission;
+use Illuminate\Contracts\View\View;
 use Spatie\Permission\PermissionRegistrar;
 
 class ManageRoles extends ManageRecords
@@ -22,6 +23,18 @@ class ManageRoles extends ManageRecords
     public string $search = '';
 
     public array $expandedRoles = [];
+
+
+    public function getHeader(): ?View
+    {
+        return view('filament.admin.resources.turmas.pages.manage-turmas-header', [
+            'actions' => $this->getCachedHeaderActions(),
+
+            'eyebrow' => 'Acesso',
+            'title' => 'Niveis de Acesso',
+            'description' => 'Gerencie os niveis de acesso para organizar as permissoes dos usuarios.',
+        ]);
+    }
 
     protected function getHeaderActions(): array
     {
@@ -39,9 +52,9 @@ class ManageRoles extends ManageRecords
                 ]);
 
                 $permissoesSelecionadas = collect($data)
-                    ->filter(fn ($_ , $key) => str_starts_with($key, 'permissions_'))
-                    ->flatMap(fn ($permissions) => is_array($permissions) ? $permissions : [$permissions])
-                    ->filter(fn ($permission) => filled($permission))
+                    ->filter(fn($_, $key) => str_starts_with($key, 'permissions_'))
+                    ->flatMap(fn($permissions) => is_array($permissions) ? $permissions : [$permissions])
+                    ->filter(fn($permission) => filled($permission))
                     ->unique()
                     ->values()
                     ->all();
@@ -132,14 +145,14 @@ class ManageRoles extends ManageRecords
     public function getDesktopRoles(): Collection
     {
         $roles = Role::query()
-            ->with(['setor', 'permissions' => fn ($query) => $query->orderBy('name')])
+            ->with(['setor', 'permissions' => fn($query) => $query->orderBy('name')])
             ->orderBy('name')
             ->get();
 
         $search = Str::of($this->search)->trim()->lower()->toString();
 
         if (blank($search)) {
-            return $roles->map(fn (Role $role): array => $this->mapRoleToCard($role));
+            return $roles->map(fn(Role $role): array => $this->mapRoleToCard($role));
         }
 
         return $roles
@@ -155,7 +168,7 @@ class ManageRoles extends ManageRecords
                     );
                 });
             })
-            ->map(fn (Role $role): array => $this->mapRoleToCard($role))
+            ->map(fn(Role $role): array => $this->mapRoleToCard($role))
             ->values();
     }
 
@@ -208,7 +221,7 @@ class ManageRoles extends ManageRecords
                     'items' => $group
                         ->sort()
                         ->values()
-                        ->map(fn (string $permission): array => [
+                        ->map(fn(string $permission): array => [
                             'label' => $permission,
                             'icon' => $this->resolvePermissionIcon($permission),
                         ]),
@@ -217,8 +230,8 @@ class ManageRoles extends ManageRecords
             ->values();
 
         $permissionsByPrefix = $role->permissions
-            ->groupBy(fn ($permission) => Str::of($permission->name)->before(' ')->headline())
-            ->map(fn ($group) => $group->count())
+            ->groupBy(fn($permission) => Str::of($permission->name)->before(' ')->headline())
+            ->map(fn($group) => $group->count())
             ->sortDesc();
 
         return [
@@ -229,7 +242,7 @@ class ManageRoles extends ManageRecords
             'permission_count' => $permissions->count(),
             'setor' => $role->setor?->nome,
             'summary' => $permissionsByPrefix->take(3)->map(
-                fn (int $total, string $group) => "{$group}: {$total}"
+                fn(int $total, string $group) => "{$group}: {$total}"
             )->values(),
             'palette' => $this->resolvePalette($role),
             'actions' => $this->canManageRole($role),

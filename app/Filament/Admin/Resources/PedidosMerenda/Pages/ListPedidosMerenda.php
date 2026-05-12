@@ -12,6 +12,8 @@ use Filament\Resources\Pages\Page;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Contracts\View\View;
+
 
 class ListPedidosMerenda extends Page
 {
@@ -46,6 +48,18 @@ class ListPedidosMerenda extends Page
     public ?int $pedidoSelecionadoId = null;
 
     protected int $porPaginaParcial = 3;
+
+
+    public function getHeader(): ?View
+    {
+        return view('filament.admin.resources.turmas.pages.manage-turmas-header', [
+            'actions' => $this->getCachedHeaderActions(),
+
+            'eyebrow' => 'Alimentação Escolar',
+            'title' => 'Pedidos de Merenda',
+            'description' => 'Gerencie os pedidos de merenda para organizar as demandas de alimentação para unidades escolares.',
+        ]);
+    }
 
     public function mount(): void
     {
@@ -95,7 +109,7 @@ class ListPedidosMerenda extends Page
         if (! $value) {
             $this->statusSelecionados = array_values(array_filter(
                 $this->statusSelecionados,
-                fn (string $status) => $status !== StatusPedidoMerenda::Cancelado->value
+                fn(string $status) => $status !== StatusPedidoMerenda::Cancelado->value
             ));
         }
 
@@ -147,7 +161,7 @@ class ListPedidosMerenda extends Page
         }
 
         return $this->pedidos
-            ->filter(fn (PedidoMerenda $pedido) => in_array($pedido->status, $status, true))
+            ->filter(fn(PedidoMerenda $pedido) => in_array($pedido->status, $status, true))
             ->values();
     }
 
@@ -166,7 +180,7 @@ class ListPedidosMerenda extends Page
         return $this->pedidosParciaisBase
             ->flatMap(function (PedidoMerenda $pedido) {
                 return $pedido->itens
-                    ->filter(fn (PedidoMerendaItem $item) => (float) $item->quantidade_entregue > 0 && (float) $item->quantidade_pendente > 0)
+                    ->filter(fn(PedidoMerendaItem $item) => (float) $item->quantidade_entregue > 0 && (float) $item->quantidade_pendente > 0)
                     ->map(function (PedidoMerendaItem $item) use ($pedido) {
                         $contratoItem = $item->contratoItem;
 
@@ -236,7 +250,7 @@ class ListPedidosMerenda extends Page
                 'titulo' => 'Empresas envolvidas',
                 'valor' => $pedidos
                     ->flatMap->itens
-                    ->map(fn (PedidoMerendaItem $item) => $item->contratoItem?->contrato?->empresaContratada?->nome)
+                    ->map(fn(PedidoMerendaItem $item) => $item->contratoItem?->contrato?->empresaContratada?->nome)
                     ->filter()
                     ->unique()
                     ->count(),
@@ -433,20 +447,20 @@ class ListPedidosMerenda extends Page
                         ->where('id', 'like', $busca)
                         ->orWhere('observacoes', 'like', $busca)
                         ->orWhere('criado_por', 'like', $busca)
-                        ->orWhereHas('itens.contratoItem.item', fn (Builder $itemQuery) => $itemQuery->where('nome', 'like', $busca))
-                        ->orWhereHas('itens.contratoItem.contrato', fn (Builder $contratoQuery) => $contratoQuery->where('numero_contrato', 'like', $busca))
+                        ->orWhereHas('itens.contratoItem.item', fn(Builder $itemQuery) => $itemQuery->where('nome', 'like', $busca))
+                        ->orWhereHas('itens.contratoItem.contrato', fn(Builder $contratoQuery) => $contratoQuery->where('numero_contrato', 'like', $busca))
                         ->orWhereHas(
                             'itens.contratoItem.contrato.empresaContratada',
-                            fn (Builder $empresaQuery) => $empresaQuery->where('nome', 'like', $busca)
+                            fn(Builder $empresaQuery) => $empresaQuery->where('nome', 'like', $busca)
                         );
                 });
             })
-            ->when($this->criadoPor, fn (Builder $query) => $query->where('criado_por', $this->criadoPor))
-            ->when($this->dataInicio, fn (Builder $query) => $query->whereDate('created_at', '>=', $this->dataInicio))
-            ->when($this->dataFim, fn (Builder $query) => $query->whereDate('created_at', '<=', $this->dataFim))
+            ->when($this->criadoPor, fn(Builder $query) => $query->where('criado_por', $this->criadoPor))
+            ->when($this->dataInicio, fn(Builder $query) => $query->whereDate('created_at', '>=', $this->dataInicio))
+            ->when($this->dataFim, fn(Builder $query) => $query->whereDate('created_at', '<=', $this->dataFim))
             ->when(
                 $this->statusSelecionados !== [],
-                fn (Builder $query) => $query->whereIn('status', $this->statusSelecionados)
+                fn(Builder $query) => $query->whereIn('status', $this->statusSelecionados)
             );
     }
 
