@@ -12,6 +12,7 @@ use Filament\Resources\Pages\Page;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Filament\Actions\CreateAction;
 use Illuminate\Contracts\View\View;
 
 
@@ -509,6 +510,10 @@ class ListPedidosMerenda extends Page
 
     protected function getHeaderActions(): array
     {
-        return [];
+        return [
+            CreateAction::make()
+                ->label('Novo Pedido')
+                ->icon('heroicon-o-plus'),
+        ];
     }
 }

@@ -1,19 +1,5 @@
 <x-filament-panels::page>
     <div class="pm-page">
-        <section class="pm-hero">
-            <div>
-                <p class="pm-eyebrow">Merenda Escolar</p>
-                <h1>Panorama dos Pedidos de Merenda</h1>
-                <p>Visao clara do fluxo de pedidos, mantendo o acompanhamento por etapa com menos ruido visual.</p>
-            </div>
-
-            <div class="pm-actions">
-                <a href="{{ \App\Filament\Admin\Resources\PedidosMerenda\PedidosMerendaResource::getUrl('create') }}" class="pm-action pm-action--primary">
-                    Novo pedido
-                </a>
-            </div>
-        </section>
-
         <section class="pm-cards">
             @foreach ($this->resumoCards as $card)
                 <article class="pm-card">
