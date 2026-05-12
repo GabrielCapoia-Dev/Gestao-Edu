@@ -827,7 +827,7 @@
                 const pagination = root.querySelector('[data-pagination]');
                 const paginationLabel = root.querySelector('[data-pagination-label]');
                 const paginationPage = root.querySelector('[data-pagination-page]');
-                const markAllButton = root.querySelector('[data-action="mark-all-read"]');
+                const markAllButton = document.querySelector('[data-nc-action="mark-all-read"]');
                 const audio = root.querySelector('[data-notification-sound]');
                 const modal = root.querySelector('[data-create-modal]');
                 const form = root.querySelector('[data-create-form]');
@@ -958,7 +958,9 @@
                         renderPagination(data.pagination ?? {});
                         handleSoundSignal(data.stats ?? {}, silent);
                         setStatus('', false, false);
-                        markAllButton.hidden = !(data.stats?.ativas > 0);
+                        if (markAllButton) {
+                            markAllButton.style.display = Number(data.stats?.ativas ?? 0) > 0 ? 'inline-flex' : 'none';
+                        }
                         updateModeButtons();
                         updateBadge(data.stats?.ativas ?? 0);
                     } catch (error) {
@@ -1195,19 +1197,30 @@
                     }
                 };
 
-                root.addEventListener('click', async (event) => {
-                    const target = event.target.closest('[data-mode], [data-tab-mode], [data-action]');
+                document.addEventListener('click', async (event) => {
+                    const target = event.target.closest('[data-mode], [data-tab-mode], [data-action], [data-nc-action]');
 
                     if (!target) {
                         return;
+                    }
+
+                    const action = target.dataset.ncAction || target.dataset.action;
+
+                    const isInsideNotificationCenter = root.contains(target);
+                    const isHeaderAction = ['mark-all-read', 'open-create'].includes(action);
+
+                    if (!isInsideNotificationCenter && !isHeaderAction) {
+                        return;
+                    }
+
+                    if (isHeaderAction) {
+                        event.preventDefault();
                     }
 
                     if (target.dataset.mode || target.dataset.tabMode) {
                         setMode(target.dataset.mode || target.dataset.tabMode);
                         return;
                     }
-
-                    const action = target.dataset.action;
 
                     if (action === 'clear-filters') {
                         state.busca = '';

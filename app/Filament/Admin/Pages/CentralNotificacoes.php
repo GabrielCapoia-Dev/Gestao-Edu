@@ -56,18 +56,18 @@ class CentralNotificacoes extends Page
                 ->color('gray')
                 ->url('#')
                 ->extraAttributes([
-                    'data-action' => 'mark-all-read',
-                    'hidden' => 'hidden',
+                    'data-nc-action' => 'mark-all-read',
+                    'style' => 'display:none;',
                 ]),
 
             Actions\Action::make('nova_notificacao')
                 ->label('Nova notificação')
                 ->icon('heroicon-o-megaphone')
                 ->color('primary')
-                ->visible(fn () => $service->canCreate($user))
+                ->visible(fn() => $service->canCreate($user))
                 ->url('#')
                 ->extraAttributes([
-                    'data-action' => 'open-create',
+                    'data-nc-action' => 'open-create',
                 ]),
         ];
     }
