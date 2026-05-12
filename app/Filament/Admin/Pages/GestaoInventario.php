@@ -73,6 +73,7 @@ class GestaoInventario extends Page
 
     public static function canAccess(): bool
     {
+        /** @var \App\Models\User|null $user */
         $user = Auth::user();
 
         return ($user?->hasPermissionTo('Listar Gestão de Inventário') ?? false)

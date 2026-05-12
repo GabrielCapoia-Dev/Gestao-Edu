@@ -34,7 +34,10 @@ class HistoricoBaixasInventarioResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return (Auth::user()?->hasPermissionTo('Listar Gestão de Inventário') ?? false)
+        /** @var \App\Models\User|null $user */
+        $user = Auth::user();
+
+        return ($user?->hasPermissionTo('Listar Gestão de Inventário') ?? false)
             && static::resolverInventarioId() !== null;
     }
 

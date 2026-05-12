@@ -11,10 +11,22 @@ use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Contracts\View\View;
 
 class ListInventarioPedidos extends ListRecords
 {
     protected static string $resource = InventarioPedidoResource::class;
+
+    public function getHeader(): ?View
+{
+    return view('filament.admin.resources.turmas.pages.manage-turmas-header', [
+        'actions' => $this->getCachedHeaderActions(),
+
+        'eyebrow' => 'Alimentação Escolar',
+        'title' => "Pedidos de Inventário",
+        'description' => 'Gerencie os pedidos de inventário, acompanhe seus status e mantenha um histórico detalhado para cada um.',
+    ]);
+}
 
     protected function getHeaderActions(): array
     {
