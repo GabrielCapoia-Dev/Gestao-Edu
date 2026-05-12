@@ -152,7 +152,7 @@ class MinhasExportacoes extends Page implements HasTable
                     ->visible(fn (ExportRequest $record): bool => Auth::user()?->can('cancel', $record) ?? false),
             ])
             ->defaultSort('created_at', 'desc')
-            ->poll('2s');
+            ->poll('5s');
     }
 
     public function pollAutoDownload(): void

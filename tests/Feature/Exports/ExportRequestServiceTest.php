@@ -87,7 +87,7 @@ class ExportRequestServiceTest extends TestCase
         $this->actingAs($user)
             ->get(route('filament.admin.pages.minhas-exportacoes', ['download' => $exportRequest->getKey()]))
             ->assertOk()
-            ->assertSee('wire:poll.2s="pollAutoDownload"', false);
+            ->assertSee('wire:poll.3s="pollAutoDownload"', false);
     }
 
     public function test_rota_de_download_entrega_arquivo_pronto(): void

@@ -1,7 +1,7 @@
 <x-filament-panels::page>
     <div class="av-livewire-root">
         @if ($autoDownload && ! $autoDownloadDispatched)
-            <div wire:poll.2s="pollAutoDownload"></div>
+            <div wire:poll.3s="pollAutoDownload"></div>
         @endif
 
         {{ $this->table }}
