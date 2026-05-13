@@ -7,9 +7,12 @@ use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Enums\Width;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rules\Password as PasswordRule;
+use Symfony\Component\Routing\Exception\RouteNotFoundException;
 
 class ForcePasswordChange extends Page
 {
@@ -24,6 +27,17 @@ class ForcePasswordChange extends Page
     public string $password = '';
 
     public string $password_confirmation = '';
+
+    public static function getUrl(array $parameters = [], bool $isAbsolute = true, ?string $panel = null, ?Model $tenant = null): string
+    {
+        try {
+            return parent::getUrl($parameters, $isAbsolute, $panel, $tenant);
+        } catch (RouteNotFoundException) {
+            return $isAbsolute
+                ? URL::to('/admin/alterar-senha-obrigatoria')
+                : '/admin/alterar-senha-obrigatoria';
+        }
+    }
 
     public function mount(): void
     {

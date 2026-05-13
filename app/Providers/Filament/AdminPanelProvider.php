@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Admin\Pages\Auth\EditProfile as CustomEditProfile;
+use App\Filament\Admin\Pages\ForcePasswordChange;
 use App\Http\Middleware\BloquearProfessorPendenciaTransferencia;
 use App\Http\Middleware\EnsurePasswordIsChanged;
 use App\Livewire\LoginPage;
@@ -71,7 +72,9 @@ class AdminPanelProvider extends PanelProvider
             ->discoverResources(in: app_path('Filament/Admin/Resources'), for: 'App\\Filament\\Admin\\Resources')
             ->discoverPages(in: app_path('Filament/Admin/Pages'), for: 'App\\Filament\\Admin\\Pages')
             ->discoverClusters(in: app_path('Filament/Admin/Clusters'), for: 'App\\Filament\\Admin\\Clusters')
-            ->pages([])
+            ->pages([
+                ForcePasswordChange::class,
+            ])
             ->discoverWidgets(in: app_path('Filament/Admin/Widgets'), for: 'App\\Filament\\Admin\\Widgets')
             ->widgets([])
             ->middleware([
