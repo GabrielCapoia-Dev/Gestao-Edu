@@ -2,19 +2,21 @@
 
 namespace App\Services;
 
+use App\Jobs\SendManualNotificationBatchJob;
 use App\Models\Escola;
 use App\Models\NotificacaoEnvio;
 use App\Models\Professor;
 use App\Models\Role;
 use App\Models\Turma;
 use App\Models\User;
-use App\Notifications\SistemaNotification;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Spatie\Permission\Models\Permission;
+use Throwable;
 
 class NotificationCenterService
 {
@@ -244,8 +246,8 @@ class NotificationCenterService
             ];
         }
 
-        DB::transaction(function () use ($autor, $data, $destinatarios, $destinoLabel, $destinoIds): void {
-            $envio = NotificacaoEnvio::query()->create([
+        $envio = DB::transaction(function () use ($autor, $data, $destinatarios, $destinoLabel, $destinoIds): NotificacaoEnvio {
+            return NotificacaoEnvio::query()->create([
                 'user_id' => $autor->id,
                 'titulo' => $data['titulo'],
                 'mensagem' => $data['mensagem'],
@@ -260,29 +262,33 @@ class NotificationCenterService
                     'destino_ids' => $destinoIds,
                     'destino_tipo' => $data['destino_tipo'] ?? 'todos',
                 ],
+                'status' => NotificacaoEnvio::STATUS_QUEUED,
+                'queued_at' => now(),
+            ]);
+        });
+
+        try {
+            SendManualNotificationBatchJob::dispatch((string) $envio->id);
+        } catch (Throwable $exception) {
+            $envio->forceFill([
+                'status' => NotificacaoEnvio::STATUS_FAILED,
+                'failed_at' => now(),
+                'error_message' => mb_substr($exception->getMessage(), 0, 2000),
+            ])->save();
+
+            Log::error('Falha ao enfileirar lote manual de notificacoes.', [
+                'notificacao_envio_id' => $envio->id,
+                'exception' => $exception,
             ]);
 
-            $destinatarios->each(function (User $destinatario) use ($autor, $data, $destinoLabel, $envio): void {
-                $destinatario->notify(new SistemaNotification(
-                    titulo: $data['titulo'],
-                    mensagem: $data['mensagem'],
-                    url: filled($data['url'] ?? null) ? $data['url'] : null,
-                    label: filled($data['label'] ?? null) ? $data['label'] : 'Ver detalhes',
-                    prioridade: $data['prioridade'] ?? 'normal',
-                    escopo: $destinoLabel,
-                    metadata: [
-                        'envio_id' => (string) $envio->id,
-                        'enviado_por_id' => $autor->id,
-                        'enviado_por_nome' => $autor->name,
-                        'manual' => true,
-                    ],
-                ));
-            });
-        });
+            throw $exception;
+        }
 
         return [
             'count' => $destinatarios->count(),
             'destino_label' => $destinoLabel,
+            'queued' => true,
+            'envio_id' => (string) $envio->id,
         ];
     }
 

@@ -34,6 +34,29 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - laravel_gestao-edu
+
+  queue-notifications:
+    image: laravel-app-gestao-edu
+    container_name: laravel-queue-notifications-gestao-edu
+    working_dir: /var/www
+    env_file:
+      - .env
+    entrypoint: []
+    command: >
+      sh -c "mkdir -p storage/logs bootstrap/cache
+      && chown -R www-data:www-data storage/logs bootstrap/cache
+      && exec su -s /bin/sh www-data -c 'php artisan queue:work database --queue=$${NOTIFICATIONS_QUEUE:-notifications},default --sleep=$${NOTIFICATIONS_QUEUE_SLEEP:-3} --rest=$${NOTIFICATIONS_QUEUE_REST:-0} --timeout=$${NOTIFICATIONS_QUEUE_TIMEOUT:-60} --tries=$${NOTIFICATIONS_QUEUE_TRIES:-3} --memory=$${NOTIFICATIONS_QUEUE_MEMORY_MB:-128}'"
+    volumes:
+      - .:/var/www
+    depends_on:
+      db:
+        condition: service_healthy
+    cpus: "${NOTIFICATIONS_QUEUE_CPUS:-0.25}"
+    mem_limit: "${NOTIFICATIONS_QUEUE_MEM_LIMIT:-256m}"
+    restart: unless-stopped
     networks:
       - laravel_gestao-edu
 

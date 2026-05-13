@@ -1,0 +1,14 @@
+<?php
+
+return [
+    'queue' => env('NOTIFICATIONS_QUEUE', 'notifications'),
+
+    'tries' => (int) env('NOTIFICATIONS_QUEUE_TRIES', 3),
+
+    'timeout' => (int) env('NOTIFICATIONS_QUEUE_TIMEOUT', 60),
+
+    'backoff' => array_values(array_filter(array_map(
+        static fn (string $seconds): int => max(1, (int) trim($seconds)),
+        explode(',', (string) env('NOTIFICATIONS_QUEUE_BACKOFF', '10,60,300'))
+    ))),
+];

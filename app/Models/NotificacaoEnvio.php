@@ -10,6 +10,14 @@ class NotificacaoEnvio extends Model
 {
     use HasUuids;
 
+    public const STATUS_QUEUED = 'queued';
+
+    public const STATUS_PROCESSING = 'processing';
+
+    public const STATUS_PROCESSED = 'processed';
+
+    public const STATUS_FAILED = 'failed';
+
     protected $table = 'notificacao_envios';
 
     protected $fillable = [
@@ -24,6 +32,12 @@ class NotificacaoEnvio extends Model
         'destinatarios_count',
         'destinatarios_ids',
         'filtros',
+        'status',
+        'queued_at',
+        'processing_started_at',
+        'processed_at',
+        'failed_at',
+        'error_message',
     ];
 
     protected function casts(): array
@@ -31,6 +45,10 @@ class NotificacaoEnvio extends Model
         return [
             'destinatarios_ids' => 'array',
             'filtros' => 'array',
+            'queued_at' => 'datetime',
+            'processing_started_at' => 'datetime',
+            'processed_at' => 'datetime',
+            'failed_at' => 'datetime',
         ];
     }
 
