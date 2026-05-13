@@ -2,8 +2,9 @@
 
 namespace App\Providers\Filament;
 
-use App\Http\Middleware\BloquearProfessorPendenciaTransferencia;
 use App\Filament\Admin\Pages\Auth\EditProfile as CustomEditProfile;
+use App\Http\Middleware\BloquearProfessorPendenciaTransferencia;
+use App\Http\Middleware\EnsurePasswordIsChanged;
 use App\Livewire\LoginPage;
 use App\Models\User;
 use App\Services\UserPresenceService;
@@ -86,6 +87,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+                EnsurePasswordIsChanged::class,
                 BloquearProfessorPendenciaTransferencia::class,
             ])
             ->renderHook(

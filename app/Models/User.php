@@ -43,6 +43,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
         'last_login_at',
         'last_seen_at',
         'password',
+        'must_change_password',
         'google_id',
         'google_email',
         'avatar_url',
@@ -64,6 +65,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
             'last_login_at' => 'datetime',
             'last_seen_at' => 'datetime',
             'password' => 'hashed',
+            'must_change_password' => 'boolean',
             'google_token_expires_in' => 'datetime',
         ];
     }

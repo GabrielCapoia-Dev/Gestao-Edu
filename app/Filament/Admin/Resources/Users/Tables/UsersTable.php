@@ -18,6 +18,8 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password as PasswordRule;
 use Spatie\Permission\PermissionRegistrar;
 
 class UsersTable
@@ -295,6 +297,63 @@ class UsersTable
                             $ignorados > 0
                                 ? "{$afetados} usuario(s) atualizados. {$ignorados} admin(s) ignorado(s)."
                                 : "{$afetados} usuario(s) atualizados."
+                        )
+                        ->success()
+                        ->send();
+                }),
+
+            Action::make('setar_senha_padrao')
+                ->label('Setar Senha Padrao')
+                ->icon('heroicon-o-key')
+                ->color('danger')
+                ->accessSelectedRecords()
+                ->visible(fn() => $service->ehAdmin($user) || $user->hasPermissionTo('Editar Usuários'))
+                ->closeModalByClickingAway(false)
+                ->closeModalByEscaping(false)
+                ->modalCloseButton(false)
+                ->modalSubmitActionLabel('Setar senha')
+                ->modalCancelAction(fn(Action $action) => $action->label('Fechar'))
+                ->modalHeading('Setar Senha Padrao')
+                ->modalDescription('A senha sera aplicada aos usuarios selecionados. No proximo acesso, eles serao obrigados a cadastrar uma nova senha.')
+                ->modalIcon('heroicon-o-key')
+                ->schema(fn() => [
+                    TextInput::make('nova_senha')
+                        ->label('Nova senha')
+                        ->default('Mudar@1234')
+                        ->password()
+                        ->revealable()
+                        ->required()
+                        ->rules([PasswordRule::min(8)->mixedCase()->numbers()->symbols()]),
+                ])
+                ->action(function ($records, array $data) use ($user) {
+                    $senha = (string) ($data['nova_senha'] ?? '');
+                    $afetados = 0;
+                    $ignorados = 0;
+
+                    foreach ($records as $record) {
+                        if (! $record instanceof User) {
+                            continue;
+                        }
+
+                        if ($record->id === 1 || $record->id === $user->id || $record->hasRole('Admin')) {
+                            $ignorados++;
+                            continue;
+                        }
+
+                        $record->forceFill([
+                            'password' => Hash::make($senha),
+                            'must_change_password' => true,
+                        ])->save();
+
+                        $afetados++;
+                    }
+
+                    Notification::make()
+                        ->title('Senha padrao aplicada')
+                        ->body(
+                            $ignorados > 0
+                                ? "{$afetados} usuario(s) atualizados. {$ignorados} usuario(s) ignorado(s)."
+                                : "{$afetados} usuario(s) atualizados. Eles deverao redefinir a senha no proximo acesso."
                         )
                         ->success()
                         ->send();
