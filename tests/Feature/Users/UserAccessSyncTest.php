@@ -2,11 +2,14 @@
 
 namespace Tests\Feature\Users;
 
+use App\Filament\Admin\Resources\Users\Pages\EditUser;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\UserService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Gate;
+use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -108,5 +111,31 @@ class UserAccessSyncTest extends TestCase
             [$permissionPainel->name],
             $user->getDirectPermissions()->pluck('name')->all()
         );
+    }
+
+    public function test_edit_form_loads_existing_roles_into_access_levels_field(): void
+    {
+        Gate::before(fn () => true);
+
+        $admin = User::factory()->create();
+        $this->actingAs($admin);
+
+        $roleInventario = Role::create([
+            'name' => 'Inventario',
+            'guard_name' => 'web',
+        ]);
+
+        $roleEstoque = Role::create([
+            'name' => 'Estoque',
+            'guard_name' => 'web',
+        ]);
+
+        $user = User::factory()->create();
+        $user->syncRoles([$roleInventario, $roleEstoque]);
+
+        Livewire::test(EditUser::class, ['record' => $user->getKey()])
+            ->assertFormSet([
+                'roles' => [$roleInventario->id, $roleEstoque->id],
+            ]);
     }
 }

@@ -63,6 +63,13 @@ class UserForm
                 ->preload()
                 ->required()
                 ->default(fn(?User $record) => $record?->roles->pluck('id')->all() ?? [])
+                ->afterStateHydrated(function (callable $set, ?User $record): void {
+                    if (! $record) {
+                        return;
+                    }
+
+                    $set('roles', $record->roles()->pluck('roles.id')->all());
+                })
                 ->dehydrated(true)
                 ->disabled(
                     fn(string $context, ?User $record) =>
