@@ -2,10 +2,11 @@
 
 namespace Tests\Feature\Manutencao;
 
+use App\Filament\Admin\Resources\Pedidos\Pages\ListPedidos;
 use App\Models\EmpresaContratada;
-use App\Models\Escola;
 use App\Models\Enums\NivelEmergenciaPedido;
 use App\Models\Enums\ResultadoFeedbackPedido;
+use App\Models\Escola;
 use App\Models\Pedido;
 use App\Models\Role;
 use App\Models\Setor;
@@ -15,6 +16,7 @@ use App\Models\TipoStatus;
 use App\Models\User;
 use App\Services\PedidoService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
@@ -24,11 +26,17 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
     use RefreshDatabase;
 
     private PedidoService $service;
+
     private Setor $educacao;
+
     private Setor $obras;
+
     private Escola $escola;
+
     private TipoManutencao $tipo;
+
     private TipoManutencaoOpcao $opcaoLuz;
+
     private TipoManutencaoOpcao $opcaoDisjuntor;
 
     protected function setUp(): void
@@ -201,6 +209,31 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
         $this->assertCount(2, $feedback->itens()->get());
     }
 
+    public function test_cria_status_de_pedido_adicional_quando_base_antiga_nao_possui_o_status(): void
+    {
+        TipoStatus::query()->where('nome', 'Pedido Adicional')->delete();
+
+        $usuario = $this->usuarioComRoleSetor('Manutenção: Educação', $this->educacao, [
+            'Vincular Pedidos Adicionais',
+        ]);
+
+        $pedido = $this->pedido(status: 'Em Manutenção', setor: $this->educacao, escola: $this->escola);
+
+        $criados = $this->service->criarPedidosAdicionais($pedido, [[
+            'tipo_manutencao_id' => $this->tipo->id,
+            'tipo_manutencao_opcao_ids' => [$this->opcaoDisjuntor->id],
+            'data_identificacao_problema' => '2026-05-02',
+            'descricao_pedido' => 'Disjuntor trocado durante a visita.',
+        ]], $usuario);
+
+        $this->assertCount(1, $criados);
+        $this->assertDatabaseHas('tipo_status', [
+            'nome' => 'Pedido Adicional',
+            'ativo' => true,
+        ]);
+        $this->assertSame('Pedido Adicional', $criados->first()->tipoStatus->nome);
+    }
+
     public function test_botao_reabrir_pedido_define_status_reaberto_mesmo_com_nota_alta(): void
     {
         $usuario = $this->usuarioComRoleSetor('Manutenção: Educação', $this->educacao, ['Avaliar Pedidos']);
@@ -223,6 +256,97 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
         ], $usuario);
 
         $this->assertSame('Reaberto', $pedido->refresh()->tipoStatus->nome);
+    }
+
+    public function test_vincular_adicionais_na_tabela_cria_registros_sem_redirecionar(): void
+    {
+        $usuario = $this->usuarioComRoleSetor('Manutenção: Educação', $this->educacao, [
+            'Listar Pedidos',
+            'Editar Pedidos',
+            'Vincular Pedidos Adicionais',
+        ]);
+
+        $pedido = $this->pedido(status: 'Em Manutenção', setor: $this->educacao, escola: $this->escola);
+
+        $itemKey = null;
+
+        $component = Livewire::actingAs($usuario)
+            ->test(ListPedidos::class)
+            ->assertTableActionVisible('vincular_adicionais', $pedido)
+            ->mountTableAction('vincular_adicionais', $pedido)
+            ->assertSchemaStateSet(function (array $state) use (&$itemKey): array {
+                $itemKey = array_key_first($state['pedidos_adicionais'] ?? []);
+
+                return [];
+            });
+
+        $this->assertNotNull($itemKey);
+
+        $component
+            ->setTableActionData([
+                'pedidos_adicionais' => [
+                    $itemKey => [
+                        'tipo_manutencao_id' => $this->tipo->id,
+                        'tipo_manutencao_opcao_ids' => [$this->opcaoDisjuntor->id],
+                        'data_identificacao_problema' => '2026-05-02',
+                        'descricao_pedido' => 'Disjuntor trocado durante a visita.',
+                        'valor' => 5,
+                        'resultado' => ResultadoFeedbackPedido::Atendido->value,
+                    ],
+                ],
+            ])
+            ->callMountedTableAction()
+            ->assertHasNoTableActionErrors()
+            ->assertNoRedirect();
+
+        $this->assertDatabaseHas('pedidos', [
+            'pedido_principal_id' => $pedido->id,
+            'is_pedido_adicional' => true,
+            'descricao_pedido' => 'Disjuntor trocado durante a visita.',
+        ]);
+    }
+
+    public function test_avaliar_pedido_com_adicional_na_tabela_conclui_sem_redirecionar(): void
+    {
+        $usuario = $this->usuarioComRoleSetor('Manutenção: Educação', $this->educacao, [
+            'Listar Pedidos',
+            'Avaliar Pedidos',
+            'Vincular Pedidos Adicionais',
+        ]);
+
+        $pedido = $this->pedido(status: 'Em Manutenção', setor: $this->educacao, escola: $this->escola);
+        $problema = $pedido->problemas()->create([
+            'tipo_manutencao_id' => $this->tipo->id,
+            'tipo_manutencao_opcao_id' => $this->opcaoLuz->id,
+            'texto_problema' => $this->opcaoLuz->texto,
+        ]);
+
+        Livewire::actingAs($usuario)
+            ->test(ListPedidos::class)
+            ->assertTableActionVisible('finalizar', $pedido)
+            ->callTableAction('finalizar', $pedido, [
+                'adicionar_adicionais' => true,
+                'pedidos_adicionais' => [[
+                    'tipo_manutencao_id' => $this->tipo->id,
+                    'tipo_manutencao_opcao_ids' => [$this->opcaoDisjuntor->id],
+                    'data_identificacao_problema' => '2026-05-02',
+                    'descricao_pedido' => 'Disjuntor trocado durante a visita.',
+                    'valor' => 5,
+                    'resultado' => ResultadoFeedbackPedido::Atendido->value,
+                ]],
+                'avaliacoes' => [
+                    $problema->id => [
+                        'valor' => 5,
+                        'resultado' => ResultadoFeedbackPedido::Atendido->value,
+                    ],
+                ],
+                'reabrir_pedido' => false,
+                'descricao' => 'Serviço atendido.',
+            ])
+            ->assertHasNoTableActionErrors()
+            ->assertNoRedirect();
+
+        $this->assertSame('Concluído', $pedido->refresh()->tipoStatus->nome);
     }
 
     private function seedStatus(): void

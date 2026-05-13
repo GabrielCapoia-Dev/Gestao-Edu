@@ -226,7 +226,7 @@ class PedidoService
     public function criarPedidosAdicionais(Pedido $pedidoPrincipal, array $adicionais, User $usuario): Collection
     {
         return DB::transaction(function () use ($pedidoPrincipal, $adicionais, $usuario): Collection {
-            $statusAdicional = $this->statusPorNome('Pedido Adicional', true);
+            $statusAdicional = $this->statusPedidoAdicional();
             $criados = collect();
 
             foreach ($adicionais as $data) {
@@ -397,7 +397,7 @@ class PedidoService
                 $pedido,
                 $statusAnalise,
                 $usuario,
-                'Pedido assumido para análise por ' . $usuario->name . '.'
+                'Pedido assumido para análise por '.$usuario->name.'.'
             );
         }
     }
@@ -549,6 +549,30 @@ class PedidoService
             ->whereIn('nome', $this->aliasesTexto($nome));
 
         return $fail ? $query->firstOrFail() : $query->first();
+    }
+
+    private function statusPedidoAdicional(): TipoStatus
+    {
+        $status = $this->statusPorNome('Pedido Adicional');
+
+        if ($status) {
+            $status->forceFill([
+                'cor' => $status->cor ?: '#64748b',
+                'finaliza_pedido' => false,
+                'cancela_pedido' => false,
+                'ativo' => true,
+            ])->save();
+
+            return $status->refresh();
+        }
+
+        return TipoStatus::query()->create([
+            'nome' => 'Pedido Adicional',
+            'cor' => '#64748b',
+            'finaliza_pedido' => false,
+            'cancela_pedido' => false,
+            'ativo' => true,
+        ]);
     }
 
     public function setorPorNome(string $nome): ?Setor
