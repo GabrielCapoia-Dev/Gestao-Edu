@@ -429,17 +429,19 @@
             }
 
             .nc-list {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+                display: flex;
+                flex-direction: column;
                 gap: 8px;
             }
 
             .nc-card {
                 display: grid;
-                grid-template-columns: minmax(0, 1fr) auto;
-                gap: 10px;
+                grid-template-columns: minmax(0, 1fr) minmax(180px, auto);
+                align-items: center;
+                gap: 14px;
+                width: 100%;
                 min-height: 78px;
-                padding: 10px 12px;
+                padding: 12px 14px;
                 border-left-width: 4px;
             }
 
@@ -502,7 +504,7 @@
                 align-self: center;
                 justify-content: flex-end;
                 flex-wrap: wrap;
-                max-width: 230px;
+                max-width: 360px;
             }
 
             .nc-badge {
