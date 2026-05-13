@@ -64,7 +64,7 @@ class CentralNotificacoes extends Page
                 ->label('Nova notificação')
                 ->icon('heroicon-o-megaphone')
                 ->color('primary')
-                ->visible(fn() => $service->canCreate($user))
+                ->visible(fn () => $service->canCreate($user))
                 ->url('#')
                 ->extraAttributes([
                     'data-nc-action' => 'open-create',
@@ -86,10 +86,12 @@ class CentralNotificacoes extends Page
             'recipientOptions' => $service->formOptions(),
             'endpoints' => [
                 'index' => route('notifications.center'),
+                'unreadCount' => route('notifications.unreadCount'),
                 'send' => route('notifications.send'),
                 'markAllRead' => route('notifications.markAllRead'),
                 'markReadBase' => url('/admin/notifications'),
             ],
+            'pollIntervalMs' => (int) config('notifications.center_poll_interval_ms', 30000),
             'soundUrl' => asset('sons/som-notificacao.MP3'),
         ];
     }

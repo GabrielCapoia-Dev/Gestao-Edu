@@ -2,63 +2,65 @@
 
 namespace App\Providers;
 
-use App\Models\DominioEmail;
-use App\Models\Escola;
-use App\Models\Permission;
 use App\Models\Alternativa;
 use App\Models\Aluno;
 use App\Models\Avaliacao;
+use App\Models\ComponenteCurricular;
+use App\Models\DominioEmail;
+use App\Models\EquipeGestora;
+use App\Models\Escola;
+use App\Models\ExportRequest;
+use App\Models\FuncaoAdministrativa;
+use App\Models\Item;
 use App\Models\Pauta;
+use App\Models\Pedido;
+use App\Models\PedidoArquivo;
+use App\Models\Permission;
 use App\Models\Professor;
 use App\Models\Role;
 use App\Models\Serie;
-use App\Models\Turma;
-use App\Models\User;
-use App\Policies\AlternativaPolicy;
-use App\Policies\AvaliacaoPolicy;
-use App\Policies\DominioEmailPolicy;
-use App\Policies\EscolaPolicy;
-use App\Policies\PermissionPolicy;
-use App\Policies\PautaPolicy;
-use App\Policies\RolePolicy;
-use App\Policies\SeriePolicy;
-use App\Policies\TurmaPolicy;
-use App\Policies\UserPolicy;
-use App\Policies\AlunoPolicy;
-use App\Policies\ProfessorPolicy;
-use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\ServiceProvider;
-use Filament\Support\Assets\Css;
-use Filament\Support\Assets\Js;
-use Filament\Support\Facades\FilamentAsset;
-use App\Models\ComponenteCurricular;
+use App\Models\Setor;
 use App\Models\TipoManutencao;
-use App\Policies\TipoManutencaoPolicy;
-use App\Models\Pedido;
-use App\Policies\PedidoPolicy;
-use App\Models\PedidoArquivo;
-use App\Policies\PedidoArquivoPolicy;
-use App\Models\ExportRequest;
-use App\Policies\ExportRequestPolicy;
+use App\Models\Turma;
+use App\Models\TurmaComponenteProfessor;
+use App\Models\User;
 use App\Observers\PedidoObserver;
 use App\Observers\ProfessorObserver;
 use App\Observers\TurmaComponenteProfessorObserver;
-use Filament\View\PanelsRenderHook;
-use Filament\Support\Facades\FilamentView;
-use Illuminate\Support\Facades\URL;
-use App\Models\EquipeGestora;
-use App\Policies\EquipeGestoraPolicy;
+use App\Policies\AlternativaPolicy;
+use App\Policies\AlunoPolicy;
+use App\Policies\AvaliacaoPolicy;
 use App\Policies\ComponenteCurricularPolicy;
-use App\Models\FuncaoAdministrativa;
-use App\Models\Item;
-use App\Models\Setor;
-use App\Models\TurmaComponenteProfessor;
+use App\Policies\DominioEmailPolicy;
+use App\Policies\EquipeGestoraPolicy;
+use App\Policies\EscolaPolicy;
+use App\Policies\ExportRequestPolicy;
 use App\Policies\FuncaoAdministrativaPolicy;
 use App\Policies\ItemPolicy;
+use App\Policies\PautaPolicy;
+use App\Policies\PedidoArquivoPolicy;
+use App\Policies\PedidoPolicy;
+use App\Policies\PermissionPolicy;
+use App\Policies\ProfessorPolicy;
+use App\Policies\RolePolicy;
+use App\Policies\SeriePolicy;
 use App\Policies\SetorPolicy;
+use App\Policies\TipoManutencaoPolicy;
+use App\Policies\TurmaPolicy;
+use App\Policies\UserPolicy;
+use App\Services\NotificationCenterService;
 use App\Services\UserPresenceService;
+use Filament\Support\Assets\Css;
+use Filament\Support\Assets\Js;
+use Filament\Support\Facades\FilamentAsset;
+use Filament\Support\Facades\FilamentView;
+use Filament\View\PanelsRenderHook;
 use Illuminate\Auth\Events\Login;
+use Illuminate\Notifications\Events\NotificationSent;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -107,6 +109,12 @@ class AppServiceProvider extends ServiceProvider
             }
         });
 
+        Event::listen(NotificationSent::class, function (NotificationSent $event): void {
+            if ($event->channel === 'database' && $event->notifiable instanceof User) {
+                app(NotificationCenterService::class)->forgetUnreadCountCache($event->notifiable);
+            }
+        });
+
         // ── Assets ─────────────────────────────────────────────────────────────
         $assetVersion = function (string $path): int {
             $modifiedAt = file_exists(public_path($path))
@@ -120,8 +128,8 @@ class AppServiceProvider extends ServiceProvider
         $geralCss = 'css/geral.css';
 
         FilamentAsset::register([
-            Js::make('filament-modal-select-fix', asset($selectFixJs) . '?v=' . $assetVersion($selectFixJs)),
-            Css::make('geral', asset($geralCss) . '?v=' . $assetVersion($geralCss)),
+            Js::make('filament-modal-select-fix', asset($selectFixJs).'?v='.$assetVersion($selectFixJs)),
+            Css::make('geral', asset($geralCss).'?v='.$assetVersion($geralCss)),
         ]);
 
         // ── Render Hooks ───────────────────────────────────────────────────────

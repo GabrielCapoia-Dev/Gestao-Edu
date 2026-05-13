@@ -38,12 +38,7 @@ class NotificationCenterController extends Controller
 
         abort_unless($this->service->canView($user), 403);
 
-        $stats = $this->service->stats($user);
-
-        return response()->json([
-            'unread' => $stats['ativas'] ?? 0,
-            'change_token' => $stats['change_token'] ?? null,
-        ]);
+        return response()->json($this->service->unreadCountPayload($user));
     }
 
     public function markRead(Request $request, string $id): JsonResponse

@@ -59,6 +59,7 @@
     class="notif-wrapper"
     data-notification-topbar
     data-count-url="{{ route('notifications.unreadCount') }}"
+    data-poll-interval="{{ (int) config('notifications.topbar_poll_interval_ms', 60000) }}"
 >
     <a
         href="{{ $centralUrl }}"
@@ -122,6 +123,10 @@
                 return;
             }
 
+            if (document.querySelector('[data-notification-center]')) {
+                return;
+            }
+
             try {
                 const response = await fetch(topbar.dataset.countUrl, {
                     credentials: 'same-origin',
@@ -164,7 +169,14 @@
             soundReady = true;
         }, { once: true });
 
+        const pollInterval = Math.max(30000, Number(document.querySelector('[data-notification-topbar]')?.dataset.pollInterval ?? 60000));
+
         refresh();
-        setInterval(refresh, 10000);
+        setInterval(refresh, pollInterval);
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                refresh();
+            }
+        });
     })();
 </script>

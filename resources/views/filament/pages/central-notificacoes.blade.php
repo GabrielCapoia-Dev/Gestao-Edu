@@ -808,6 +808,7 @@
                 const config = @js([
                     'endpoints' => $endpoints,
                     'canCreate' => $canCreateNotifications,
+                    'pollIntervalMs' => $pollIntervalMs,
                     'soundUrl' => $soundUrl,
                 ]);
 
@@ -835,6 +836,7 @@
                 let searchTimer = null;
                 let loadVersion = 0;
                 let lastChangeToken = null;
+                let lastUnreadPollToken = null;
                 let soundReady = false;
                 let suppressNextSound = false;
 
@@ -867,6 +869,17 @@
                             unread: count
                         },
                     }));
+                };
+
+                const rememberUnreadCounter = (counter, fallbackUnread = 0) => {
+                    const unread = Number(counter?.unread ?? fallbackUnread ?? 0);
+                    const token = counter?.change_token ?? null;
+
+                    updateBadge(unread);
+
+                    if (token) {
+                        lastUnreadPollToken = token;
+                    }
                 };
 
                 const playNotificationSound = () => {
@@ -962,12 +975,39 @@
                             markAllButton.style.display = Number(data.stats?.ativas ?? 0) > 0 ? 'inline-flex' : 'none';
                         }
                         updateModeButtons();
-                        updateBadge(data.stats?.ativas ?? 0);
+                        rememberUnreadCounter(data.unread_counter ?? null, data.stats?.ativas ?? 0);
                     } catch (error) {
                         if (version !== loadVersion) {
                             return;
                         }
 
+                        setStatus(error.message, false, true);
+                    }
+                };
+
+                const refreshIfChanged = async () => {
+                    if (document.visibilityState !== 'visible') {
+                        return;
+                    }
+
+                    try {
+                        const data = await request(config.endpoints.unreadCount);
+                        const token = data.change_token ?? null;
+
+                        updateBadge(Number(data.unread ?? 0));
+
+                        if (lastUnreadPollToken === null) {
+                            lastUnreadPollToken = token;
+                            return;
+                        }
+
+                        if (token && token !== lastUnreadPollToken) {
+                            lastUnreadPollToken = token;
+                            await load({
+                                silent: true
+                            });
+                        }
+                    } catch (error) {
                         setStatus(error.message, false, true);
                     }
                 };
@@ -1309,12 +1349,14 @@
                 load();
 
                 setInterval(() => {
+                    refreshIfChanged();
+                }, Math.max(15000, Number(config.pollIntervalMs ?? 30000)));
+
+                document.addEventListener('visibilitychange', () => {
                     if (document.visibilityState === 'visible') {
-                        load({
-                            silent: true
-                        });
+                        refreshIfChanged();
                     }
-                }, 10000);
+                });
             })();
         </script>
     </div>

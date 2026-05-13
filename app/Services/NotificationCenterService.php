@@ -13,6 +13,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Spatie\Permission\Models\Permission;
@@ -133,6 +134,7 @@ class NotificationCenterService
             return [
                 'mode' => $mode,
                 'stats' => $stats,
+                'unread_counter' => $this->unreadCountPayload($user),
                 'items' => $records->map(fn (NotificacaoEnvio $envio): array => $this->formatarEnvio($envio))->values(),
                 'pagination' => $pagination,
                 'can_create' => $this->canCreate($user),
@@ -151,6 +153,7 @@ class NotificationCenterService
         return [
             'mode' => $mode,
             'stats' => $stats,
+            'unread_counter' => $this->unreadCountPayload($user),
             'items' => $records->map(fn (object $notification): array => $this->formatarNotificacao($notification))->values(),
             'pagination' => $pagination,
             'can_create' => $this->canCreate($user),
@@ -198,41 +201,73 @@ class NotificationCenterService
         ];
     }
 
+    public function unreadCountPayload(User $user): array
+    {
+        $ttl = max(1, (int) config('notifications.unread_count_cache_ttl', 30));
+
+        return Cache::remember(
+            $this->unreadCountCacheKey($user),
+            now()->addSeconds($ttl),
+            fn (): array => $this->freshUnreadCountPayload($user)
+        );
+    }
+
     public function unreadCount(User $user): int
     {
-        return $this->notificationBaseQuery($user)
-            ->whereNull('read_at')
-            ->count();
+        return (int) $this->unreadCountPayload($user)['unread'];
     }
 
     public function markRead(User $user, string $id): int
     {
-        return $this->notificationBaseQuery($user)
+        $updated = $this->notificationBaseQuery($user)
             ->where('id', $id)
             ->update([
                 'read_at' => now(),
                 'updated_at' => now(),
             ]);
+
+        if ($updated > 0) {
+            $this->forgetUnreadCountCache($user);
+        }
+
+        return $updated;
     }
 
     public function markUnread(User $user, string $id): int
     {
-        return $this->notificationBaseQuery($user)
+        $updated = $this->notificationBaseQuery($user)
             ->where('id', $id)
             ->update([
                 'read_at' => null,
                 'updated_at' => now(),
             ]);
+
+        if ($updated > 0) {
+            $this->forgetUnreadCountCache($user);
+        }
+
+        return $updated;
     }
 
     public function markAllRead(User $user): int
     {
-        return $this->notificationBaseQuery($user)
+        $updated = $this->notificationBaseQuery($user)
             ->whereNull('read_at')
             ->update([
                 'read_at' => now(),
                 'updated_at' => now(),
             ]);
+
+        if ($updated > 0) {
+            $this->forgetUnreadCountCache($user);
+        }
+
+        return $updated;
+    }
+
+    public function forgetUnreadCountCache(User|int|string $user): void
+    {
+        Cache::forget($this->unreadCountCacheKey($user));
     }
 
     public function send(User $autor, array $data): array
@@ -297,6 +332,30 @@ class NotificationCenterService
         return DB::table('notifications')
             ->where('notifiable_id', $user->id)
             ->where('notifiable_type', User::class);
+    }
+
+    private function freshUnreadCountPayload(User $user): array
+    {
+        $row = $this->notificationBaseQuery($user)
+            ->whereNull('read_at')
+            ->selectRaw('count(*) as unread')
+            ->selectRaw('max(created_at) as latest_unread_created_at')
+            ->first();
+
+        $unread = (int) ($row->unread ?? 0);
+        $latestUnreadCreatedAt = (string) ($row->latest_unread_created_at ?? '');
+
+        return [
+            'unread' => $unread,
+            'change_token' => sha1($user->id.'|'.$unread.'|'.$latestUnreadCreatedAt),
+        ];
+    }
+
+    private function unreadCountCacheKey(User|int|string $user): string
+    {
+        $userId = $user instanceof User ? $user->getKey() : $user;
+
+        return 'notifications:unread-count:user:'.$userId;
     }
 
     private function notificationQuery(User $user, array $filters, string $mode): QueryBuilder
