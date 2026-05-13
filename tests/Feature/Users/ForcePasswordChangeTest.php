@@ -4,6 +4,7 @@ namespace Tests\Feature\Users;
 
 use App\Filament\Admin\Pages\ForcePasswordChange;
 use App\Filament\Admin\Resources\Users\Pages\ListUsers;
+use App\Livewire\LoginPage;
 use App\Models\Permission;
 use App\Models\User;
 use Filament\Facades\Filament;
@@ -71,6 +72,35 @@ class ForcePasswordChangeTest extends TestCase
             ->get(ForcePasswordChange::getUrl())
             ->assertOk()
             ->assertSee('Redefina sua senha');
+    }
+
+    public function test_login_with_default_password_redirects_immediately_to_force_page(): void
+    {
+        $user = User::factory()->create([
+            'email_approved' => true,
+            'password' => Hash::make('Mudar@1234'),
+            'must_change_password' => true,
+        ]);
+
+        Livewire::test(LoginPage::class)
+            ->fillForm([
+                'email' => $user->email,
+                'password' => 'Mudar@1234',
+            ])
+            ->call('authenticate')
+            ->assertRedirect(ForcePasswordChange::getUrl());
+    }
+
+    public function test_user_marked_to_change_password_cannot_access_custom_admin_routes(): void
+    {
+        $user = User::factory()->create([
+            'email_approved' => true,
+            'must_change_password' => true,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('notifications.center'))
+            ->assertRedirect(ForcePasswordChange::getUrl());
     }
 
     public function test_force_page_updates_password_and_clears_required_change_flag(): void

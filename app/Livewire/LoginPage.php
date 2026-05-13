@@ -2,9 +2,11 @@
 
 namespace App\Livewire;
 
+use App\Filament\Admin\Pages\ForcePasswordChange;
 use Caresome\FilamentAuthDesigner\Pages\Auth\Login as BaseLogin;
-use Filament\Forms;
 use Filament\Actions;
+use Filament\Facades\Filament;
+use Filament\Forms;
 use Filament\Schemas\Schema;
 
 
@@ -13,6 +15,24 @@ class LoginPage extends BaseLogin
 
 
     protected static string $layout = 'components.layouts.login-page';
+
+
+    public function mount(): void
+    {
+        if (Filament::auth()->check()) {
+            $user = Filament::auth()->user();
+
+            if ($user?->must_change_password) {
+                redirect()->to(ForcePasswordChange::getUrl());
+
+                return;
+            }
+
+            redirect()->intended(Filament::getUrl());
+        }
+
+        $this->form->fill();
+    }
 
 
     public function form(Schema $schema): Schema

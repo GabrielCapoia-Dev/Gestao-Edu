@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Filament\Admin\Pages\ForcePasswordChange;
 use App\Http\Controllers\Controller;
 use App\Services\GoogleService;
 use Filament\Facades\Filament;
@@ -91,6 +92,10 @@ class GoogleAuthController extends Controller
                 ->body('Bem-vindo de volta!')
                 ->success()
                 ->send();
+
+            if ($user->must_change_password) {
+                return redirect()->to(ForcePasswordChange::getUrl());
+            }
 
             return redirect()->intended($redirectTo ?: $panel->getUrl());
         } catch (Throwable $e) {

@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Http\Responses\PasswordChangeLoginResponse;
 use App\Models\Alternativa;
 use App\Models\Aluno;
 use App\Models\Avaliacao;
@@ -50,6 +51,7 @@ use App\Policies\TurmaPolicy;
 use App\Policies\UserPolicy;
 use App\Services\NotificationCenterService;
 use App\Services\UserPresenceService;
+use Filament\Auth\Http\Responses\Contracts\LoginResponse as LoginResponseContract;
 use Filament\Support\Assets\Css;
 use Filament\Support\Assets\Js;
 use Filament\Support\Facades\FilamentAsset;
@@ -64,7 +66,10 @@ use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
-    public function register(): void {}
+    public function register(): void
+    {
+        $this->app->bind(LoginResponseContract::class, PasswordChangeLoginResponse::class);
+    }
 
     public function boot(): void
     {

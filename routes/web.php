@@ -10,6 +10,7 @@ use App\Http\Controllers\Exports\ExportRequestController;
 use App\Http\Controllers\FeedbackPedidoExportController;
 use App\Http\Controllers\InventarioRelatorioController;
 use App\Http\Controllers\InventarioRomaneioController;
+use App\Http\Middleware\EnsurePasswordIsChanged;
 use App\Http\Controllers\NotificationCenterController;
 use App\Http\Controllers\PedidoArquivoController;
 use App\Http\Controllers\PedidoMerendaEmpenhoController;
@@ -73,7 +74,7 @@ Route::get('/oauth/redirect/google', [GoogleAuthController::class, 'redirect'])-
 Route::get('/oauth/callback/google', [GoogleAuthController::class, 'callback'])->name('google.callback');
 
 Route::prefix('admin')
-    ->middleware(['web', 'auth'])
+    ->middleware(['web', 'auth', EnsurePasswordIsChanged::class])
     ->group(function () {
         Route::get('/notifications/center', [NotificationCenterController::class, 'index'])
             ->name('notifications.center');
@@ -177,7 +178,7 @@ Route::post('/notifications/{id}/read', function ($id) {
 });
 
 Route::prefix('admin/feedback-pedidos')
-    ->middleware(['auth'])
+    ->middleware(['auth', EnsurePasswordIsChanged::class])
     ->group(function () {
 
         // Relatorio geral (cards + graficos + matriz + tabela)

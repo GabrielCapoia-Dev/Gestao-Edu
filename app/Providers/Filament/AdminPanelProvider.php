@@ -89,7 +89,7 @@ class AdminPanelProvider extends PanelProvider
                 Authenticate::class,
                 EnsurePasswordIsChanged::class,
                 BloquearProfessorPendenciaTransferencia::class,
-            ])
+            ], isPersistent: true)
             ->renderHook(
                 PanelsRenderHook::USER_MENU_BEFORE,
                 function () {
