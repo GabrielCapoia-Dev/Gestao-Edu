@@ -121,7 +121,7 @@ class FuncionarioAdministrativoResource extends Resource
                             ->label('E-mail')
                             ->state(fn(?Professor $record) => $record?->email ?? 'Não informado'),
                     ])
-                    ->columns(2)
+                    ->columnSpanFull()
                     ->visible(fn(?Professor $record) => $record !== null),
 
 
