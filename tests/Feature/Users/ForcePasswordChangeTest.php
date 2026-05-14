@@ -122,19 +122,20 @@ class ForcePasswordChangeTest extends TestCase
             ->set('password_confirmation', 'SenhaNova@1234')
             ->call('salvar')
             ->assertHasNoErrors()
-            ->assertRedirect(Filament::getUrl());
+            ->assertRedirect(Filament::getLoginUrl());
 
         $user->refresh();
 
         $this->assertFalse($user->must_change_password);
         $this->assertTrue(Hash::check('SenhaNova@1234', $user->password));
 
-        $response = $this->actingAs($user)->get('/admin');
-
-        $this->assertStringNotContainsString(
-            'alterar-senha-obrigatoria',
-            (string) $response->headers->get('Location')
-        );
+        Livewire::test(LoginPage::class)
+            ->fillForm([
+                'email' => $user->email,
+                'password' => 'SenhaNova@1234',
+            ])
+            ->call('authenticate')
+            ->assertRedirect(Filament::getUrl());
     }
 
     public function test_force_page_reports_password_mismatch_clearly(): void

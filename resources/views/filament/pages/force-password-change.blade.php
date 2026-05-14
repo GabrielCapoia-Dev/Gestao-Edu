@@ -610,7 +610,7 @@
         <div class="force-password-success-card">
             <span class="force-password-success-spinner" aria-hidden="true"></span>
             <strong>Senha redefinida</strong>
-            <span>Carregando a tela de inicio...</span>
+            <span>Voltando para a tela de login...</span>
         </div>
     </div>
 </section>

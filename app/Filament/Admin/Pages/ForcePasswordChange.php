@@ -93,18 +93,21 @@ class ForcePasswordChange extends Page
             'must_change_password' => false,
         ])->save();
 
-        $user->refresh();
-        Auth::setUser($user);
-        session()->regenerate();
-
         Notification::make()
             ->title('Senha redefinida')
-            ->body('Acesse o sistema com sua nova senha a partir de agora.')
+            ->body('Entre novamente usando a nova senha.')
             ->success()
             ->send();
 
         $this->reset('password', 'password_confirmation');
 
-        return redirect()->to(Filament::getUrl());
+        Filament::auth()->logout();
+
+        if (request()->hasSession()) {
+            request()->session()->invalidate();
+            request()->session()->regenerateToken();
+        }
+
+        return redirect()->to(Filament::getLoginUrl());
     }
 }
