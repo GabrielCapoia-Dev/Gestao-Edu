@@ -16,6 +16,8 @@ use Symfony\Component\Routing\Exception\RouteNotFoundException;
 
 class ForcePasswordChange extends Page
 {
+    protected static string $layout = 'filament-panels::components.layout.simple';
+
     protected static ?string $slug = 'alterar-senha-obrigatoria';
 
     protected static bool $shouldRegisterNavigation = false;
