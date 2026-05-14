@@ -33,6 +33,10 @@ class EnsurePasswordIsChanged
             return true;
         }
 
+        if ($request->is('admin/alterar-senha-obrigatoria')) {
+            return true;
+        }
+
         if (str_contains($routeName, 'filament.admin.auth.logout')) {
             return true;
         }

@@ -8,7 +8,6 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Enums\Width;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rules\Password as PasswordRule;
@@ -43,7 +42,7 @@ class ForcePasswordChange extends Page
 
     public function mount(): void
     {
-        if (! (Auth::user()?->must_change_password ?? false)) {
+        if (! (Filament::auth()->user()?->must_change_password ?? false)) {
             $this->redirect(Filament::getUrl());
         }
     }
@@ -82,7 +81,7 @@ class ForcePasswordChange extends Page
             ],
         );
 
-        $user = Auth::user();
+        $user = Filament::auth()->user();
 
         if (! $user instanceof User) {
             return redirect()->to(Filament::getLoginUrl());
@@ -91,7 +90,7 @@ class ForcePasswordChange extends Page
         $user->forceFill([
             'password' => Hash::make($data['password']),
             'must_change_password' => false,
-        ])->save();
+        ])->saveOrFail();
 
         Notification::make()
             ->title('Senha redefinida')

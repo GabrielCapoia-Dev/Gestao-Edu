@@ -465,7 +465,6 @@
     x-data="{
         password: '',
         confirmation: '',
-        submitting: false,
         hasMin() { return this.password.length >= 8 },
         hasUpper() { return /[A-Z]/.test(this.password) },
         hasLower() { return /[a-z]/.test(this.password) },
@@ -479,24 +478,9 @@
         showMismatch() {
             return this.confirmation.length > 0 && this.password !== this.confirmation
         },
-        async submitPasswordChange() {
-            if (this.submitting) {
-                return
-            }
-
-            this.submitting = true
-
-            try {
-                await this.$wire.set('password', this.password)
-                await this.$wire.set('password_confirmation', this.confirmation)
-                await this.$wire.salvar()
-            } finally {
-                this.submitting = false
-            }
-        },
     }"
 >
-    <form x-on:submit.prevent="submitPasswordChange()" class="force-password-card">
+    <form wire:submit.prevent="salvar" class="force-password-card">
         <div class="force-password-panel">
             <div class="force-password-brand">
                 <span class="force-password-brand-mark">G</span>
@@ -531,8 +515,10 @@
                     <input
                         id="password"
                         type="password"
-                        x-model="password"
-                        x-bind:disabled="submitting"
+                        wire:model.defer="password"
+                        x-on:input="password = $event.target.value"
+                        wire:loading.attr="disabled"
+                        wire:target="salvar"
                         autocomplete="new-password"
                         class="force-password-input"
                     />
@@ -569,8 +555,10 @@
                     <input
                         id="password_confirmation"
                         type="password"
-                        x-model="confirmation"
-                        x-bind:disabled="submitting"
+                        wire:model.defer="password_confirmation"
+                        x-on:input="confirmation = $event.target.value"
+                        wire:loading.attr="disabled"
+                        wire:target="salvar"
                         autocomplete="new-password"
                         class="force-password-input"
                     />
@@ -586,10 +574,11 @@
                     <button
                         type="submit"
                         class="force-password-submit"
-                        x-bind:disabled="submitting"
+                        wire:loading.attr="disabled"
+                        wire:target="salvar"
                     >
-                        <span x-show="! submitting">Salvar nova senha</span>
-                        <span class="force-password-submit-content" x-cloak x-show="submitting">
+                        <span wire:loading.remove wire:target="salvar">Salvar nova senha</span>
+                        <span class="force-password-submit-content" wire:loading wire:target="salvar">
                             <span class="force-password-submit-spinner" aria-hidden="true"></span>
                             Redefinindo...
                         </span>
@@ -601,9 +590,8 @@
 
     <div
         class="force-password-success"
-        x-cloak
-        x-show="submitting"
-        x-transition.opacity
+        wire:loading.flex
+        wire:target="salvar"
         role="status"
         aria-live="assertive"
     >

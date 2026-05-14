@@ -96,6 +96,21 @@ class ForcePasswordChangeTest extends TestCase
             ->assertRedirect(ForcePasswordChange::getUrl());
     }
 
+    public function test_user_without_required_password_change_is_not_redirected_to_force_page(): void
+    {
+        $user = User::factory()->create([
+            'email_approved' => true,
+            'must_change_password' => false,
+        ]);
+
+        $response = $this->actingAs($user)->get('/admin');
+
+        $this->assertStringNotContainsString(
+            'alterar-senha-obrigatoria',
+            (string) $response->headers->get('Location')
+        );
+    }
+
     public function test_user_marked_to_change_password_cannot_access_custom_admin_routes(): void
     {
         $user = User::factory()->create([
@@ -128,6 +143,7 @@ class ForcePasswordChangeTest extends TestCase
 
         $this->assertFalse($user->must_change_password);
         $this->assertTrue(Hash::check('SenhaNova@1234', $user->password));
+        $this->assertGuest();
 
         Livewire::test(LoginPage::class)
             ->fillForm([
