@@ -490,7 +490,7 @@
     }"
     x-on:password-redefined.window="startRedirect($event.detail.redirectUrl)"
 >
-    <form wire:submit="salvar" class="force-password-card">
+    <form wire:submit.prevent="salvar" class="force-password-card">
         <div class="force-password-panel">
             <div class="force-password-brand">
                 <span class="force-password-brand-mark">G</span>
@@ -526,7 +526,7 @@
                         id="password"
                         type="password"
                         wire:model.defer="password"
-                        x-model="password"
+                        x-on:input="password = $event.target.value"
                         x-bind:disabled="finishing"
                         autocomplete="new-password"
                         class="force-password-input"
@@ -565,7 +565,7 @@
                         id="password_confirmation"
                         type="password"
                         wire:model.defer="password_confirmation"
-                        x-model="confirmation"
+                        x-on:input="confirmation = $event.target.value"
                         x-bind:disabled="finishing"
                         autocomplete="new-password"
                         class="force-password-input"
