@@ -190,6 +190,74 @@
         line-height: 1.45;
     }
 
+    .force-password-requirements {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px 12px;
+        margin: 14px 0 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .force-password-requirement {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+        min-height: 28px;
+        color: #526173;
+        font-size: 13px;
+        line-height: 1.25;
+        transition: color 160ms ease;
+    }
+
+    .force-password-requirement-icon {
+        width: 18px;
+        height: 18px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
+        border: 1px solid #c8d5e6;
+        border-radius: 999px;
+        background: #ffffff;
+        transition: border-color 160ms ease, background 160ms ease;
+    }
+
+    .force-password-requirement-icon::after {
+        content: "";
+        width: 6px;
+        height: 6px;
+        border-radius: 999px;
+        background: #9aa9bb;
+        transition: background 160ms ease, transform 160ms ease;
+    }
+
+    .force-password-requirement.is-valid {
+        color: #176b3a;
+    }
+
+    .force-password-requirement.is-valid .force-password-requirement-icon {
+        border-color: #9fd8b5;
+        background: #edf9f2;
+    }
+
+    .force-password-requirement.is-valid .force-password-requirement-icon::after {
+        background: #176b3a;
+        transform: scale(1.2);
+    }
+
+    .force-password-match-message {
+        margin: 8px 0 0;
+        color: #b42318;
+        font-size: 13px;
+        line-height: 1.45;
+    }
+
+    .force-password-match-message.is-valid {
+        color: #176b3a;
+    }
+
     .force-password-actions {
         display: flex;
         justify-content: flex-end;
@@ -232,6 +300,80 @@
         opacity: 0.72;
         transform: none;
         box-shadow: none;
+    }
+
+    .force-password-submit-content {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .force-password-submit-spinner,
+    .force-password-success-spinner {
+        width: 16px;
+        height: 16px;
+        display: inline-block;
+        border: 2px solid rgba(255, 255, 255, 0.45);
+        border-top-color: #ffffff;
+        border-radius: 999px;
+        animation: force-password-spin 700ms linear infinite;
+    }
+
+    .force-password-success {
+        position: fixed;
+        inset: 0;
+        z-index: 80;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: rgba(8, 17, 36, 0.38);
+        backdrop-filter: blur(2px);
+    }
+
+    .force-password-success-card {
+        width: min(360px, 100%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        border: 1px solid #d8e2ef;
+        border-radius: 8px;
+        background: #ffffff;
+        color: #101827;
+        padding: 28px;
+        text-align: center;
+        box-shadow: 0 24px 60px rgba(8, 17, 36, 0.22);
+    }
+
+    .force-password-success-card strong {
+        color: #0f2261;
+        font-size: 18px;
+        line-height: 1.25;
+    }
+
+    .force-password-success-card span:last-child {
+        color: #526173;
+        font-size: 14px;
+        line-height: 1.45;
+    }
+
+    .force-password-success-spinner {
+        width: 30px;
+        height: 30px;
+        border-color: rgba(26, 107, 199, 0.22);
+        border-top-color: #1a6bc7;
+    }
+
+    [x-cloak] {
+        display: none !important;
+    }
+
+    @keyframes force-password-spin {
+        to {
+            transform: rotate(360deg);
+        }
     }
 
     @media (max-width: 900px) {
@@ -310,10 +452,44 @@
         .force-password-submit {
             width: 100%;
         }
+
+        .force-password-requirements {
+            grid-template-columns: 1fr;
+        }
     }
 </style>
 
-<section class="force-password-page" aria-labelledby="force-password-title">
+<section
+    class="force-password-page"
+    aria-labelledby="force-password-title"
+    x-data="{
+        password: '',
+        confirmation: '',
+        finishing: false,
+        redirectTimer: null,
+        hasMin() { return this.password.length >= 8 },
+        hasUpper() { return /[A-Z]/.test(this.password) },
+        hasLower() { return /[a-z]/.test(this.password) },
+        hasNumber() { return /[0-9]/.test(this.password) },
+        hasSymbol() { return /[^A-Za-z0-9]/.test(this.password) },
+        passwordsMatch() {
+            return this.password.length > 0
+                && this.confirmation.length > 0
+                && this.password === this.confirmation
+        },
+        showMismatch() {
+            return this.confirmation.length > 0 && this.password !== this.confirmation
+        },
+        startRedirect(url) {
+            this.finishing = true
+            window.clearTimeout(this.redirectTimer)
+            this.redirectTimer = window.setTimeout(() => {
+                window.location.href = url
+            }, 1300)
+        },
+    }"
+    x-on:password-redefined.window="startRedirect($event.detail.redirectUrl)"
+>
     <form wire:submit="salvar" class="force-password-card">
         <div class="force-password-panel">
             <div class="force-password-brand">
@@ -350,12 +526,37 @@
                         id="password"
                         type="password"
                         wire:model.defer="password"
+                        x-model="password"
+                        x-bind:disabled="finishing"
                         autocomplete="new-password"
                         class="force-password-input"
                     />
                     @error('password')
                         <p class="force-password-error">{{ $message }}</p>
                     @enderror
+
+                    <ul class="force-password-requirements" aria-label="Requisitos da senha" aria-live="polite">
+                        <li class="force-password-requirement" x-bind:class="{ 'is-valid': hasMin() }">
+                            <span class="force-password-requirement-icon" aria-hidden="true"></span>
+                            Minimo de 8 caracteres
+                        </li>
+                        <li class="force-password-requirement" x-bind:class="{ 'is-valid': hasUpper() }">
+                            <span class="force-password-requirement-icon" aria-hidden="true"></span>
+                            Letras maiusculas
+                        </li>
+                        <li class="force-password-requirement" x-bind:class="{ 'is-valid': hasLower() }">
+                            <span class="force-password-requirement-icon" aria-hidden="true"></span>
+                            Letras minusculas
+                        </li>
+                        <li class="force-password-requirement" x-bind:class="{ 'is-valid': hasNumber() }">
+                            <span class="force-password-requirement-icon" aria-hidden="true"></span>
+                            Numeros
+                        </li>
+                        <li class="force-password-requirement" x-bind:class="{ 'is-valid': hasSymbol() }">
+                            <span class="force-password-requirement-icon" aria-hidden="true"></span>
+                            Caracteres especiais
+                        </li>
+                    </ul>
                 </div>
 
                 <div class="force-password-field">
@@ -364,9 +565,17 @@
                         id="password_confirmation"
                         type="password"
                         wire:model.defer="password_confirmation"
+                        x-model="confirmation"
+                        x-bind:disabled="finishing"
                         autocomplete="new-password"
                         class="force-password-input"
                     />
+                    <p class="force-password-match-message" x-cloak x-show="showMismatch()">
+                        As senhas devem ser iguais.
+                    </p>
+                    <p class="force-password-match-message is-valid" x-cloak x-show="passwordsMatch()">
+                        As senhas estao iguais.
+                    </p>
                 </div>
 
                 <div class="force-password-actions">
@@ -374,11 +583,31 @@
                         type="submit"
                         class="force-password-submit"
                         wire:loading.attr="disabled"
+                        x-bind:disabled="finishing"
                     >
-                        Salvar nova senha
+                        <span wire:loading.remove wire:target="salvar">Salvar nova senha</span>
+                        <span class="force-password-submit-content" wire:loading wire:target="salvar">
+                            <span class="force-password-submit-spinner" aria-hidden="true"></span>
+                            Redefinindo...
+                        </span>
                     </button>
                 </div>
             </div>
         </div>
     </form>
+
+    <div
+        class="force-password-success"
+        x-cloak
+        x-show="finishing"
+        x-transition.opacity
+        role="status"
+        aria-live="assertive"
+    >
+        <div class="force-password-success-card">
+            <span class="force-password-success-spinner" aria-hidden="true"></span>
+            <strong>Senha redefinida</strong>
+            <span>Carregando a tela de inicio...</span>
+        </div>
+    </div>
 </section>

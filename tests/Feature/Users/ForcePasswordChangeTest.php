@@ -71,7 +71,12 @@ class ForcePasswordChangeTest extends TestCase
         $this->actingAs($user)
             ->get(ForcePasswordChange::getUrl())
             ->assertOk()
-            ->assertSee('Redefina sua senha');
+            ->assertSee('Redefina sua senha')
+            ->assertSee('Letras maiusculas')
+            ->assertSee('Letras minusculas')
+            ->assertSee('Numeros')
+            ->assertSee('Caracteres especiais')
+            ->assertSee('As senhas devem ser iguais');
     }
 
     public function test_login_with_default_password_redirects_immediately_to_force_page(): void
@@ -117,12 +122,30 @@ class ForcePasswordChangeTest extends TestCase
             ->set('password_confirmation', 'SenhaNova@1234')
             ->call('salvar')
             ->assertHasNoErrors()
-            ->assertRedirect(Filament::getUrl());
+            ->assertSet('passwordRedefined', true)
+            ->assertDispatched('password-redefined', fn (string $event, array $params): bool => ($params['redirectUrl'] ?? null) === Filament::getUrl());
 
         $user->refresh();
 
         $this->assertFalse($user->must_change_password);
         $this->assertTrue(Hash::check('SenhaNova@1234', $user->password));
+    }
+
+    public function test_force_page_reports_password_mismatch_clearly(): void
+    {
+        $user = User::factory()->create([
+            'email_approved' => true,
+            'password' => Hash::make('Mudar@1234'),
+            'must_change_password' => true,
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(ForcePasswordChange::class)
+            ->set('password', 'SenhaNova@1234')
+            ->set('password_confirmation', 'SenhaDiferente@1234')
+            ->call('salvar')
+            ->assertHasErrors(['password' => 'confirmed'])
+            ->assertSee('As senhas devem ser iguais.');
     }
 
     private function userWithPermissions(array $permissions): User
