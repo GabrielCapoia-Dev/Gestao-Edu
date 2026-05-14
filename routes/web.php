@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\GoogleAuthController;
+use App\Http\Controllers\Auth\ForcePasswordChangeController;
 use App\Http\Controllers\AvaliacaoDocumentoExportController;
 use App\Http\Controllers\BaixasEstoqueRelatorioController;
 use App\Http\Controllers\BalancoEstoqueRelatorioController;
@@ -76,6 +77,9 @@ Route::get('/oauth/callback/google', [GoogleAuthController::class, 'callback'])-
 Route::prefix('admin')
     ->middleware(['web', 'auth', EnsurePasswordIsChanged::class])
     ->group(function () {
+        Route::post('/alterar-senha-obrigatoria/salvar', [ForcePasswordChangeController::class, 'update'])
+            ->name('auth.force-password.update');
+
         Route::get('/notifications/center', [NotificationCenterController::class, 'index'])
             ->name('notifications.center');
 

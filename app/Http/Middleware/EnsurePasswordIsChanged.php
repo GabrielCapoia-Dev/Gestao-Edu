@@ -33,7 +33,11 @@ class EnsurePasswordIsChanged
             return true;
         }
 
-        if ($request->is('admin/alterar-senha-obrigatoria')) {
+        if ($routeName === 'auth.force-password.update') {
+            return true;
+        }
+
+        if ($request->is('admin/alterar-senha-obrigatoria') || $request->is('admin/alterar-senha-obrigatoria/salvar')) {
             return true;
         }
 

@@ -465,6 +465,7 @@
     x-data="{
         password: '',
         confirmation: '',
+        submitting: false,
         hasMin() { return this.password.length >= 8 },
         hasUpper() { return /[A-Z]/.test(this.password) },
         hasLower() { return /[a-z]/.test(this.password) },
@@ -480,7 +481,9 @@
         },
     }"
 >
-    <form wire:submit.prevent="salvar" class="force-password-card">
+    <form method="POST" action="{{ route('auth.force-password.update') }}" x-on:submit="submitting = true" class="force-password-card">
+        @csrf
+
         <div class="force-password-panel">
             <div class="force-password-brand">
                 <span class="force-password-brand-mark">G</span>
@@ -514,12 +517,12 @@
                     <label for="password" class="force-password-label">Nova senha</label>
                     <input
                         id="password"
+                        name="password"
                         type="password"
-                        wire:model.defer="password"
-                        x-on:input="password = $event.target.value"
-                        wire:loading.attr="disabled"
-                        wire:target="salvar"
+                        x-model="password"
+                        x-bind:readonly="submitting"
                         autocomplete="new-password"
+                        required
                         class="force-password-input"
                     />
                     @error('password')
@@ -554,12 +557,12 @@
                     <label for="password_confirmation" class="force-password-label">Confirmar senha</label>
                     <input
                         id="password_confirmation"
+                        name="password_confirmation"
                         type="password"
-                        wire:model.defer="password_confirmation"
-                        x-on:input="confirmation = $event.target.value"
-                        wire:loading.attr="disabled"
-                        wire:target="salvar"
+                        x-model="confirmation"
+                        x-bind:readonly="submitting"
                         autocomplete="new-password"
+                        required
                         class="force-password-input"
                     />
                     <p class="force-password-match-message" x-cloak x-show="showMismatch()">
@@ -574,11 +577,10 @@
                     <button
                         type="submit"
                         class="force-password-submit"
-                        wire:loading.attr="disabled"
-                        wire:target="salvar"
+                        x-bind:disabled="submitting"
                     >
-                        <span wire:loading.remove wire:target="salvar">Salvar nova senha</span>
-                        <span class="force-password-submit-content" wire:loading wire:target="salvar">
+                        <span x-show="! submitting">Salvar nova senha</span>
+                        <span class="force-password-submit-content" x-cloak x-show="submitting">
                             <span class="force-password-submit-spinner" aria-hidden="true"></span>
                             Redefinindo...
                         </span>
@@ -590,14 +592,15 @@
 
     <div
         class="force-password-success"
-        wire:loading.flex
-        wire:target="salvar"
+        x-cloak
+        x-show="submitting"
+        x-transition.opacity
         role="status"
         aria-live="assertive"
     >
         <div class="force-password-success-card">
             <span class="force-password-success-spinner" aria-hidden="true"></span>
-            <strong>Senha redefinida</strong>
+            <strong>Redefinindo senha</strong>
             <span>Voltando para a tela de login...</span>
         </div>
     </div>

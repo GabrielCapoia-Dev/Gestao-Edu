@@ -131,13 +131,13 @@ class ForcePasswordChangeTest extends TestCase
             'must_change_password' => true,
         ]);
 
-        Livewire::actingAs($user)
-            ->test(ForcePasswordChange::class)
-            ->set('password', 'SenhaNova@1234')
-            ->set('password_confirmation', 'SenhaNova@1234')
-            ->call('salvar')
-            ->assertHasNoErrors()
-            ->assertRedirect(Filament::getLoginUrl());
+        $this->actingAs($user)
+            ->post(route('auth.force-password.update'), [
+                'password' => 'SenhaNova@1234',
+                'password_confirmation' => 'SenhaNova@1234',
+            ])
+            ->assertRedirect(Filament::getLoginUrl())
+            ->assertSessionHasNoErrors();
 
         $user->refresh();
 
@@ -162,13 +162,19 @@ class ForcePasswordChangeTest extends TestCase
             'must_change_password' => true,
         ]);
 
-        Livewire::actingAs($user)
-            ->test(ForcePasswordChange::class)
-            ->set('password', 'SenhaNova@1234')
-            ->set('password_confirmation', 'SenhaDiferente@1234')
-            ->call('salvar')
-            ->assertHasErrors(['password' => 'confirmed'])
-            ->assertSee('As senhas devem ser iguais.');
+        $this->actingAs($user)
+            ->from(ForcePasswordChange::getUrl())
+            ->post(route('auth.force-password.update'), [
+                'password' => 'SenhaNova@1234',
+                'password_confirmation' => 'SenhaDiferente@1234',
+            ])
+            ->assertRedirect(ForcePasswordChange::getUrl())
+            ->assertSessionHasErrors(['password']);
+
+        $user->refresh();
+
+        $this->assertTrue($user->must_change_password);
+        $this->assertTrue(Hash::check('Mudar@1234', $user->password));
     }
 
     private function userWithPermissions(array $permissions): User
