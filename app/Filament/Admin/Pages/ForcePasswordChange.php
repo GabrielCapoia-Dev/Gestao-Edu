@@ -24,7 +24,7 @@ class ForcePasswordChange extends Page
 
     protected string $view = 'filament.pages.force-password-change';
 
-    protected Width | string | null $maxContentWidth = Width::Medium;
+    protected Width | string | null $maxContentWidth = Width::Full;
 
     public string $password = '';
 

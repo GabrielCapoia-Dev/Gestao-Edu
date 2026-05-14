@@ -2,30 +2,19 @@
 
 namespace App\Services;
 
-use Filament\Forms\Form;
-use Filament\Tables\Table;
-use Filament\Tables\Columns\TextColumn;
-use Illuminate\Support\Facades\Auth;
-use App\Models\Escola;
-use App\Models\IgnoredUser;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Gate;
-use Spatie\Permission\Models\Permission;
+use App\Models\ComponenteCurricular;
+use App\Models\Serie;
 use App\Models\User;
-use App\Services\UserService;
-use Filament\Forms\Components\CheckboxList;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
-use Filament\Schemas\Components;
-use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Schema;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules\Password as PasswordRule;
+use Filament\Actions\BulkAction;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Actions\DeleteAction;
-
+use Filament\Forms\Components\Select;
+use Filament\Notifications\Notification;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 
 class SerieService
 {
@@ -91,15 +80,14 @@ class SerieService
         return [
             EditAction::make(),
             DeleteAction::make()
-                ->before(function (User $record, DeleteAction $action) use ($user) {
-                    if (! $this->userService->podeDeletar($user, $record)) {
+                ->before(function (DeleteAction $action) use ($user) {
+                    if (! $this->userService->ehAdmin($user)) {
                         $action->failure();
                         $action->halt();
                     }
                 })
                 ->visible(
-                    fn() =>
-                    $this->userService->ehAdmin(Auth::user())
+                    fn () => $this->userService->ehAdmin(Auth::user())
                 ),
         ];
     }
@@ -107,13 +95,79 @@ class SerieService
     private function acoesEmMassa(?User $user): array
     {
         return [
+            BulkAction::make('adicionar_componentes_curriculares')
+                ->label('Adicionar componentes')
+                ->icon('heroicon-o-plus-circle')
+                ->visible(fn (): bool => $user?->hasPermissionTo('Editar Séries') ?? false)
+                ->form([
+                    Select::make('componentes_curriculares')
+                        ->label('Componentes curriculares')
+                        ->options(fn (): array => ComponenteCurricular::query()
+                            ->orderBy('nome')
+                            ->pluck('nome', 'id')
+                            ->toArray())
+                        ->multiple()
+                        ->searchable()
+                        ->preload()
+                        ->required()
+                        ->helperText('Os componentes selecionados serão adicionados às séries sem remover os vínculos atuais.'),
+                ])
+                ->requiresConfirmation()
+                ->modalHeading('Adicionar componentes às séries selecionadas')
+                ->modalDescription('Escolha um ou mais componentes curriculares para vincular a todas as séries selecionadas.')
+                ->action(function (array $data, $records): void {
+                    $componentesIds = collect($data['componentes_curriculares'] ?? [])
+                        ->map(fn ($id): int => (int) $id)
+                        ->filter()
+                        ->unique()
+                        ->values();
+
+                    if ($componentesIds->isEmpty()) {
+                        throw ValidationException::withMessages([
+                            'componentes_curriculares' => 'Selecione ao menos um componente curricular.',
+                        ]);
+                    }
+
+                    $componentesValidosIds = ComponenteCurricular::query()
+                        ->whereKey($componentesIds->all())
+                        ->pluck('id')
+                        ->map(fn ($id): int => (int) $id)
+                        ->all();
+
+                    if ($componentesValidosIds === []) {
+                        throw ValidationException::withMessages([
+                            'componentes_curriculares' => 'Selecione componentes curriculares válidos.',
+                        ]);
+                    }
+
+                    $seriesAtualizadas = 0;
+
+                    foreach ($records as $record) {
+                        if (! $record instanceof Serie) {
+                            continue;
+                        }
+
+                        $record->componentesCurriculares()->syncWithoutDetaching($componentesValidosIds);
+                        $record->touch();
+
+                        $seriesAtualizadas++;
+                    }
+
+                    Notification::make()
+                        ->title('Componentes adicionados')
+                        ->body("{$seriesAtualizadas} série(s) atualizada(s) sem remover vínculos existentes.")
+                        ->success()
+                        ->send();
+                })
+                ->deselectRecordsAfterCompletion(),
+
             DeleteBulkAction::make()
                 ->before(function ($records, $action) use ($user) {
                     if (! $this->userService->podeDeletarEmLote($user, $records)) {
                         $action->halt();
                     }
                 })
-                ->visible(fn() => $this->userService->ehAdmin(Auth::user())),
+                ->visible(fn () => $this->userService->ehAdmin(Auth::user())),
         ];
     }
 }
