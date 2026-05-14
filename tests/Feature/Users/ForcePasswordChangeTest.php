@@ -122,13 +122,19 @@ class ForcePasswordChangeTest extends TestCase
             ->set('password_confirmation', 'SenhaNova@1234')
             ->call('salvar')
             ->assertHasNoErrors()
-            ->assertSet('passwordRedefined', true)
-            ->assertDispatched('password-redefined', fn (string $event, array $params): bool => ($params['redirectUrl'] ?? null) === Filament::getUrl());
+            ->assertRedirect(Filament::getUrl());
 
         $user->refresh();
 
         $this->assertFalse($user->must_change_password);
         $this->assertTrue(Hash::check('SenhaNova@1234', $user->password));
+
+        $response = $this->actingAs($user)->get('/admin');
+
+        $this->assertStringNotContainsString(
+            'alterar-senha-obrigatoria',
+            (string) $response->headers->get('Location')
+        );
     }
 
     public function test_force_page_reports_password_mismatch_clearly(): void
