@@ -32,7 +32,7 @@ class FuncaoAdministrativaResource extends Resource
     public static ?string $pluralModelLabel = 'Funções Administrativas';
     public static ?string $slug = 'funcoes-administrativas';
 
-    protected static ?string $navigationParentItem = 'Equipe Gestora';
+    protected static ?string $navigationParentItem = 'Professores';
 
 
     public static function canAccess(): bool

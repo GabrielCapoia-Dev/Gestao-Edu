@@ -53,6 +53,7 @@ class FuncionarioAdministrativoResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::Briefcase;
     public static ?string $modelLabel = 'Equipe Gestora';
+    protected static ?string $navigationParentItem = 'Professores';
     protected static string|UnitEnum|null $navigationGroup = 'Pedagógico';
 
     public static ?string $pluralModelLabel = 'Equipe Gestora';
