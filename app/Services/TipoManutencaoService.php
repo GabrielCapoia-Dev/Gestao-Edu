@@ -20,7 +20,6 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\Action;
-use Filament\Tables\Filters\TernaryFilter;
 
 
 class TipoManutencaoService
@@ -87,15 +86,10 @@ class TipoManutencaoService
         return $table
             ->paginated([5, 10, 25, 50, 100])
             ->defaultPaginationPageOption(5)
-            ->modifyQueryUsing(fn ($query) => $query->withCount('opcoes'))
+            ->modifyQueryUsing(fn ($query) => $query
+                ->where('ativo', true)
+                ->withCount('opcoes'))
             ->columns($this->colunasTabela())
-            ->filters([
-                TernaryFilter::make('ativo')
-                    ->label('Ativo para novos pedidos')
-                    ->placeholder('Todos')
-                    ->trueLabel('Ativos')
-                    ->falseLabel('Inativos'),
-            ])
             ->recordActions($this->acoesTabela($user))
             ->toolbarActions($this->acoesEmMassa($user))
             ->defaultSort('updated_at', 'desc')

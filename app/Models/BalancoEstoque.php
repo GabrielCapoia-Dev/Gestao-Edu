@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasUuidCodigo;
 use App\Models\Enums\BalancoEstoqueStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class BalancoEstoque extends Model
 {
+    use HasUuidCodigo;
+
     protected $table = 'balancos_estoque';
 
     protected $fillable = [
@@ -32,19 +35,6 @@ class BalancoEstoque extends Model
         'concluido_em' => 'datetime',
         'cancelado_em' => 'datetime',
     ];
-
-    protected static function booted(): void
-    {
-        static::created(function (self $balanco): void {
-            if (filled($balanco->codigo)) {
-                return;
-            }
-
-            $balanco->forceFill([
-                'codigo' => 'BAL-' . str_pad((string) $balanco->getKey(), 6, '0', STR_PAD_LEFT),
-            ])->saveQuietly();
-        });
-    }
 
     public function criadoPor(): BelongsTo
     {

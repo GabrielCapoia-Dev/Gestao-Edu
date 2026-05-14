@@ -37,10 +37,12 @@ class ComponenteCurricularResource extends Resource
                     ->schema([
                         TextInput::make('codigo')
                             ->label('Código')
-                            ->required()
-                            ->unique(ignoreRecord: true)
+                            ->disabled()
+                            ->dehydrated(false)
+                            ->visible(fn (?string $operation): bool => $operation !== 'create')
+                            ->helperText('Gerado automaticamente ao criar o componente.')
                             ->maxLength(255)
-                            ->placeholder('Ex: matematica'),
+                            ->columnSpanFull(),
 
                         TextInput::make('nome')
                             ->label('Nome')

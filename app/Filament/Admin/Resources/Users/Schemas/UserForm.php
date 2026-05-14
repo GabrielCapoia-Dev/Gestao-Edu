@@ -27,7 +27,7 @@ class UserForm
 
         return $schema->components([
 
-            TextInput::make('codigo')->label('Código')->disabled()->dehydrated()->numeric()->visible(false)->minValue(100),
+            TextInput::make('codigo')->label('Código')->disabled()->dehydrated(false)->visible(false),
             TextInput::make('name')->label('Nome:')->required()->minLength(3)->maxLength(100)->rule('regex:/^[\p{L}\p{N}]+(?: [\p{L}\p{N}]+)*$/u')->validationMessages(['regex' => 'Use apenas letras, sem caracteres especiais.',]),
             TextInput::make('email')->label('E-mail')->unique(ignoreRecord: true)->email()->required(),
 

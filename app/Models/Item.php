@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasUuidCodigo;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Enums\UnidadeMedida;
 use App\Models\Enums\TipoItem;
@@ -10,6 +11,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Item extends Model
 {
+    use HasUuidCodigo;
+
     protected $table = 'itens';
 
     protected $fillable = [
@@ -29,17 +32,6 @@ class Item extends Model
         'unidade_medida' => UnidadeMedida::class,
         'ativo'          => 'boolean',
     ];
-
-    protected static function booted(): void
-    {
-        static::creating(function (self $item): void {
-            if (filled($item->codigo)) {
-                return;
-            }
-
-            $item->codigo = self::gerarProximoCodigo();
-        });
-    }
 
     // 🔥 relação correta agora
     public function contratoItens(): HasMany
@@ -79,13 +71,6 @@ class Item extends Model
 
     public static function gerarProximoCodigo(): string
     {
-        $ultimoCodigo = self::query()
-            ->where('codigo', 'like', 'ITM-%')
-            ->orderByDesc('codigo')
-            ->value('codigo');
-
-        $ultimoNumero = (int) preg_replace('/\D/', '', (string) $ultimoCodigo);
-
-        return 'ITM-' . str_pad((string) ($ultimoNumero + 1), 6, '0', STR_PAD_LEFT);
+        return static::gerarCodigoUuid();
     }
 }

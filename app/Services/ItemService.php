@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\Enums\TipoItem;
 use App\Models\Enums\UnidadeMedida;
-use App\Models\Item;
 use App\Models\User;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -12,7 +11,6 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -115,31 +113,16 @@ class ItemService
         return $schema
             ->components([
                 Section::make('Identificacao do Item')
-                    ->description('Configure o codigo e o nome principal usados em buscas, contratos e importacoes.')
+                    ->description('O codigo UUID e gerado automaticamente e usado em buscas, contratos e importacoes.')
                     ->schema([
-                        Grid::make(2)
-                            ->schema([
-                                Toggle::make('gerar_codigo_automaticamente')
-                                    ->label('Gerar codigo automaticamente')
-                                    ->default(true)
-                                    ->dehydrated(false)
-                                    ->live()
-                                    ->inline(false)
-                                    ->helperText('Ative para o sistema sugerir e salvar o proximo codigo disponivel.'),
-
-                                TextInput::make('codigo')
-                                    ->label('Codigo')
-                                    ->helperText('Se preferir, informe um codigo proprio para o item.')
-                                    ->maxLength(50)
-                                    ->required(fn ($get) => ! $get('gerar_codigo_automaticamente'))
-                                    ->unique(ignoreRecord: true)
-                                    ->default(fn () => Item::gerarProximoCodigo())
-                                    ->disabled(fn ($get) => (bool) $get('gerar_codigo_automaticamente'))
-                                    ->dehydrated(fn ($get) => ! $get('gerar_codigo_automaticamente'))
-                                    ->formatStateUsing(fn ($state) => filled($state) ? $state : Item::gerarProximoCodigo())
-                                    ->prefix('ID')
-                                    ->live(),
-                            ]),
+                        TextInput::make('codigo')
+                            ->label('Codigo')
+                            ->disabled()
+                            ->dehydrated(false)
+                            ->visible(fn (?string $operation): bool => $operation !== 'create')
+                            ->helperText('Gerado automaticamente ao criar o item.')
+                            ->maxLength(255)
+                            ->columnSpanFull(),
 
                         TextInput::make('nome')
                             ->label('Nome')

@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasUuidCodigo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class ComponenteCurricular extends Model
 {
     use HasFactory;
+    use HasUuidCodigo;
 
     protected $table = 'componentes_curriculares';
 

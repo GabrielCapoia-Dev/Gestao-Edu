@@ -30,6 +30,8 @@ class ForcePasswordChange extends Page
 
     public string $password_confirmation = '';
 
+    public bool $passwordRedefined = false;
+
     public static function getUrl(array $parameters = [], bool $isAbsolute = true, ?string $panel = null, ?Model $tenant = null): string
     {
         try {
@@ -60,6 +62,8 @@ class ForcePasswordChange extends Page
 
     public function salvar()
     {
+        $this->passwordRedefined = false;
+
         $data = $this->validate(
             [
                 'password' => [
@@ -70,10 +74,15 @@ class ForcePasswordChange extends Page
             ],
             [
                 'password.required' => 'Informe a nova senha.',
-                'password.confirmed' => 'A confirmacao da senha nao confere.',
+                'password.confirmed' => 'As senhas devem ser iguais.',
+                'password.min' => 'A senha deve ter pelo menos 8 caracteres.',
+                'password.mixed' => 'Use letras maiusculas e minusculas.',
+                'password.numbers' => 'Use pelo menos um numero.',
+                'password.symbols' => 'Use pelo menos um caractere especial.',
             ],
             [
-                'password' => 'nova senha',
+                'password' => 'senha',
+                'password_confirmation' => 'confirmacao da senha',
             ],
         );
 
@@ -96,6 +105,8 @@ class ForcePasswordChange extends Page
             ->success()
             ->send();
 
-        return redirect()->to(Filament::getUrl());
+        $this->reset('password', 'password_confirmation');
+        $this->passwordRedefined = true;
+        $this->dispatch('password-redefined', redirectUrl: Filament::getUrl());
     }
 }

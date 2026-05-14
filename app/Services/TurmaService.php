@@ -317,7 +317,7 @@ class TurmaService
                             }),
 
                         Hidden::make('codigo')
-                            ->default(fn () => 'TUR'.str_pad(Turma::max('id') + 1, 3, '0', STR_PAD_LEFT)),
+                            ->dehydrated(false),
                     ])
                     ->columns(2),
 

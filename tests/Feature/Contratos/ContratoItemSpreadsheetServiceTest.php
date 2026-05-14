@@ -19,6 +19,8 @@ class ContratoItemSpreadsheetServiceTest extends TestCase
 {
     use RefreshDatabase;
 
+    private const UUID_REGEX = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i';
+
     public function test_item_recebe_codigo_automaticamente_quando_nao_informado(): void
     {
         $item = Item::query()->create([
@@ -28,7 +30,7 @@ class ContratoItemSpreadsheetServiceTest extends TestCase
             'ativo' => true,
         ]);
 
-        $this->assertSame('ITM-000001', $item->codigo);
+        $this->assertMatchesRegularExpression(self::UUID_REGEX, $item->codigo);
     }
 
     public function test_importa_planilha_e_cria_itens_no_contrato(): void

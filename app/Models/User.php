@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasUuidCodigo;
 use Filament\Facades\Filament;
 use Filament\Models\Contracts\HasAvatar;
 use Filament\Models\Contracts\FilamentUser;
@@ -23,6 +24,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory;
+    use HasUuidCodigo;
     use Notifiable;
     use HasRoles {
         hasPermissionTo as protected traitHasPermissionTo;
@@ -149,19 +151,6 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
 
     protected static function booted()
     {
-        static::creating(function (User $user) {
-            // Fluxo: novo usuario recebe codigo sequencial a partir de 100; mudar essa regra afeta exibicoes/identificadores que usam codigo em vez de id.
-            if (is_null($user->codigo)) {
-                $ultimoCodigo = User::max('codigo');
-
-                if (empty($ultimoCodigo) || $ultimoCodigo < 100) {
-                    $user->codigo = 100;
-                } else {
-                    $user->codigo = $ultimoCodigo + 1;
-                }
-            }
-        });
-
         static::updating(function (User $user) {
             // Impacto: aprovar e-mail tambem marca verificacao. Remover isso pode deixar usuario aprovado sem email_verified_at, afetando regras futuras de acesso.
             if (

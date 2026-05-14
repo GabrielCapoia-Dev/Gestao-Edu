@@ -6,13 +6,11 @@ use App\Models\User;
 use App\Models\Escola;
 use Filament\Forms\Components\TextInput;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Filament\Schemas\Schema;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\Action;
-use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Grid;
 use Filament\Tables\Columns\TextColumn;
@@ -220,17 +218,11 @@ class EscolaService
 
                             TextInput::make('codigo')
                                 ->label('Código')
-                                ->required()
-                                ->maxLength(3)
-                                ->minLength(3)
-                                ->disabled(function (Get $get, $record, ?string $operation) {
-                                    // No EDIT
-                                    if ($operation !== 'create') {
-                                        return false;
-                                    }
-
-                                    return !app(EscolaService::class)->podeEditarCodigoEscola(Auth::user());
-                                }),
+                                ->disabled()
+                                ->dehydrated(false)
+                                ->visible(fn (?string $operation): bool => $operation !== 'create')
+                                ->helperText('Gerado automaticamente ao criar a escola.')
+                                ->maxLength(255),
 
                             TextInput::make('nome')
                                 ->label('Nome')

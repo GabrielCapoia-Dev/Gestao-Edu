@@ -53,10 +53,12 @@ class SerieResource extends Resource
                     ->schema([
                         TextInput::make('codigo')
                             ->label('Código')
-                            ->required()
+                            ->disabled()
+                            ->dehydrated(false)
+                            ->visible(fn (?string $operation): bool => $operation !== 'create')
+                            ->helperText('Gerado automaticamente ao criar a série.')
                             ->maxLength(255)
-                            ->unique(ignoreRecord: true)
-                            ->placeholder('Ex: SER001'),
+                            ->columnSpanFull(),
 
                         TextInput::make('nome')
                             ->label('Nome')
