@@ -165,6 +165,15 @@ class EditProfile extends BaseEditProfile
             ->icon('heroicon-o-check');
     }
 
+    protected function getCancelFormAction(): Action
+    {
+        return Action::make('back')
+            ->label('Voltar ao Inicio')
+            ->icon('heroicon-o-home')
+            ->color('gray')
+            ->action(fn () => $this->redirect(Filament::getUrl()));
+    }
+
     public function getFormActionsAlignment(): string | Alignment
     {
         return Alignment::End;
