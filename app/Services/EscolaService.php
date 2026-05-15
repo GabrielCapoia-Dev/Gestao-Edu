@@ -46,11 +46,6 @@ class EscolaService
     {
         return [
 
-            TextColumn::make('codigo')
-                ->label('Código')
-                ->sortable()
-                ->searchable(),
-
             TextColumn::make('nome')
                 ->label('Nome')
                 ->wrap()
@@ -217,14 +212,6 @@ class EscolaService
                     ->schema([
                         Grid::make(2)->schema([
 
-                            TextInput::make('codigo')
-                                ->label('Código')
-                                ->disabled()
-                                ->dehydrated(false)
-                                ->visible(fn (?string $operation): bool => $operation !== 'create')
-                                ->helperText('Gerado automaticamente ao criar a escola.')
-                                ->maxLength(255),
-
                             TextInput::make('nome')
                                 ->label('Nome')
                                 ->required()
@@ -233,12 +220,12 @@ class EscolaService
 
                             TextInput::make('email')
                                 ->label('Email')
+                                ->required()
                                 ->email()
                                 ->maxLength(150),
 
                             TextInput::make('telefone')
                                 ->label('Telefone')
-                                ->required()
                                 ->mask('(99)99999-9999')
                                 ->rules(['regex:/^\(\d{2}\)\d{5}-\d{4}$/'])
                                 ->validationMessages([
@@ -257,7 +244,6 @@ class EscolaService
                                     ->maxLength(100)
                                     ->columnSpan(6)
                                     ->disabled(fn(Get $get) => blank($get('cep')))
-                                    ->required()
                                     ->minLength(3)
                                     ->rule('regex:/^\p{L}+(?:\s\p{L}+)*$/u')
                                     ->validationMessages([
@@ -279,7 +265,6 @@ class EscolaService
                                     ->validationMessages([
                                         'regex' => 'O CEP deve estar no formato 00000-000',
                                     ])
-                                    ->required()
                                     ->reactive()
                                     ->afterStateUpdated(function ($state, callable $set) {
                                         $cep = preg_replace('/[^0-9]/', '', $state);
@@ -309,14 +294,12 @@ class EscolaService
                                     ->rule('regex:/^\p{L}+(?:\s\p{L}+)*$/u')
                                     ->validationMessages([
                                         'regex' => 'Use apenas letras e um espaço simples entre palavras.',
-                                    ])
-                                    ->required(),
+                                    ]),
 
                                 TextInput::make('cidade')
                                     ->label('Cidade')
                                     ->maxLength(100)
                                     ->columnSpan(3)
-                                    ->required()
                                     ->minLength(3)
                                     ->rule('regex:/^\p{L}+(?:\s\p{L}+)*$/u')
                                     ->validationMessages([
@@ -328,7 +311,6 @@ class EscolaService
                                     ->maxLength(2)
                                     ->placeholder('PR, SP, RJ...')
                                     ->columnSpan(2)
-                                    ->required()
                                     ->rule('regex:/^\p{L}+(?:\s\p{L}+)*$/u')
                                     ->validationMessages([
                                         'regex' => 'Use apenas letras e um espaço simples entre palavras.',
