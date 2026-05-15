@@ -15,6 +15,7 @@
     <link rel="icon" href="{{ asset('pwa/icon-192.png') }}" sizes="192x192">
     <link rel="apple-touch-icon" href="{{ asset('pwa/apple-touch-icon.png') }}">
     <link rel="stylesheet" href="{{ asset('css/mobile-app.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/action-loading.css') }}?v={{ filemtime(public_path('css/action-loading.css')) }}">
     @stack('head')
 </head>
 <body class="mobile-app-body">
@@ -73,6 +74,7 @@
         };
     </script>
     <script src="{{ asset('js/mobile-pwa.js') }}" defer></script>
+    <script src="{{ asset('js/app/action-loading.js') }}?v={{ filemtime(public_path('js/app/action-loading.js')) }}" defer></script>
     @stack('scripts')
 </body>
 </html>

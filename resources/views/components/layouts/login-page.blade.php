@@ -486,6 +486,7 @@
         }
     </style>
     @livewireStyles
+    <link rel="stylesheet" href="{{ asset('css/action-loading.css') }}?v={{ filemtime(public_path('css/action-loading.css')) }}">
 
 </head>
 
@@ -642,6 +643,7 @@
         document.head.appendChild(style);
     </script>
     @livewireScripts
+    <script src="{{ asset('js/app/action-loading.js') }}?v={{ filemtime(public_path('js/app/action-loading.js')) }}" defer></script>
 
 </body>
 

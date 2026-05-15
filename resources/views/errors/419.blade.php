@@ -460,6 +460,7 @@
             }
         }
     </style>
+    <link rel="stylesheet" href="{{ asset('css/action-loading.css') }}?v={{ filemtime(public_path('css/action-loading.css')) }}">
 </head>
 
 <body>
@@ -508,6 +509,7 @@
         <small>&copy; {{ date('Y') }} Prefeitura Municipal de Umuarama — Sistema de Gestão Escolar</small>
     </footer>
 
+    <script src="{{ asset('js/app/action-loading.js') }}?v={{ filemtime(public_path('js/app/action-loading.js')) }}" defer></script>
 </body>
 
 </html>
