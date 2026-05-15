@@ -1068,4 +1068,172 @@
     :root.dark .av-progress-track {
         background: var(--gray-800);
     }
+
+    @media (max-width: 40rem) {
+        .av-professor-page {
+            gap: 0.75rem;
+        }
+
+        .av-professor-page .gi-panel {
+            gap: 0.75rem;
+            padding: 0.75rem;
+            border-radius: var(--radius-lg);
+        }
+
+        .av-professor-page .av-professor-control-panel {
+            box-shadow:
+                0 1px 2px rgba(15, 23, 42, 0.05),
+                0 8px 20px rgba(15, 23, 42, 0.05);
+        }
+
+        .av-professor-page .av-form-grid,
+        .av-professor-page .av-stack,
+        .av-professor-page .av-turma-section,
+        .av-professor-page .av-pauta-section,
+        .av-professor-page .av-input-wrap {
+            gap: 0.65rem;
+        }
+
+        .av-professor-page .gi-field select,
+        .av-professor-page .av-table-input {
+            min-height: 2.55rem;
+            padding: 0.625rem 0.75rem;
+        }
+
+        .av-professor-page .av-textarea-input {
+            min-height: 5rem;
+        }
+
+        .av-professor-page .av-progress-head,
+        .av-professor-page .av-pauta-progress-head,
+        .av-professor-page .av-pauta-toggle-meta,
+        .av-professor-page .av-field-meta {
+            flex-wrap: wrap;
+        }
+
+        .av-professor-page .av-mode-actions {
+            gap: 0.65rem;
+        }
+
+        .av-professor-page .av-segmented-control button {
+            min-height: 2.15rem;
+            padding: 0.45rem 0.5rem;
+            font-size: var(--text-xs);
+            line-height: 1.35;
+            white-space: normal;
+        }
+
+        .av-professor-page .av-bulk-control .gi-action,
+        .av-professor-page .gi-toolbar-right .gi-action {
+            width: 100%;
+        }
+
+        .av-professor-page .av-turma-content,
+        .av-professor-page .av-pauta-section--nested,
+        .av-professor-page .av-pauta-content,
+        .av-professor-page .av-complementary-section {
+            gap: 0.65rem;
+            padding: 0.65rem;
+            border-radius: var(--radius-lg);
+        }
+
+        .av-professor-page .av-pauta-toggle {
+            gap: 0.65rem;
+        }
+
+        .av-professor-page .av-pauta-title {
+            font-size: var(--text-sm);
+            line-height: 1.35;
+            overflow-wrap: anywhere;
+        }
+
+        .av-professor-page .av-pauta-meta,
+        .av-professor-page .gi-table td strong,
+        .av-professor-page .gi-table td small {
+            overflow-wrap: anywhere;
+        }
+
+        .av-professor-page .av-pauta-check {
+            max-width: 100%;
+            white-space: normal;
+        }
+
+        .av-professor-page .av-pauta-arrow {
+            width: 1.65rem;
+            height: 1.65rem;
+            flex: 0 0 auto;
+        }
+
+        .av-professor-page .gi-table-wrap {
+            overflow: visible;
+            border: 0;
+            border-radius: 0;
+            background: transparent;
+        }
+
+        .av-professor-page .gi-table {
+            display: block;
+            width: 100%;
+            min-width: 0;
+        }
+
+        .av-professor-page .gi-table thead {
+            display: none;
+        }
+
+        .av-professor-page .gi-table tbody {
+            display: grid;
+            width: 100%;
+            gap: 0.65rem;
+        }
+
+        .av-professor-page .gi-table tr {
+            display: grid;
+            width: 100%;
+            gap: 0.65rem;
+            padding: 0.75rem;
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius-lg);
+            background: #fff;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+        }
+
+        .av-professor-page .gi-table td {
+            display: grid;
+            width: 100%;
+            min-width: 0;
+            gap: 0.35rem;
+            padding: 0;
+            border: 0;
+        }
+
+        .av-professor-page .gi-table td::before {
+            content: attr(data-label);
+            color: var(--gray-500);
+            font-size: var(--text-xs);
+            line-height: var(--text-xs--line-height);
+            font-weight: var(--font-weight-semibold);
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+
+        .av-professor-page .gi-table td[data-label="Alternativa"] {
+            gap: 0.45rem;
+        }
+
+        :root.dark .av-professor-page .gi-table-wrap {
+            border-color: transparent;
+            background: transparent;
+        }
+
+        :root.dark .av-professor-page .gi-table tr {
+            border-color: var(--gray-800);
+            background: var(--gray-900);
+            box-shadow: none;
+        }
+
+        :root.dark .av-professor-page .gi-table td::before {
+            color: var(--gray-400);
+        }
+    }
 </style>

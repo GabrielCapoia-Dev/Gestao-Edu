@@ -1,6 +1,6 @@
 <x-filament-panels::page>
     <div class="av-livewire-root">
-        <div class="gi-page av-page">
+        <div class="gi-page av-page av-professor-page">
 
             <section class="gi-panel av-professor-control-panel">
                 <div class="av-form-grid av-form-grid--two">
@@ -223,7 +223,7 @@
                                             @php($respostaBloqueada = $this->respostaEstaBloqueada((int) $pauta->id, (int) $aluno->id))
                                             @php($referenciaOrigem = $respostas[$pauta->id][$aluno->id]['origem_referencia'] ?? null)
                                             <tr wire:key="turma-{{ $turmaId }}-pauta-{{ $pauta->id }}-aluno-{{ $aluno->id }}">
-                                                <td>
+                                                <td data-label="Aluno">
                                                     <strong>{{ $aluno->nome }}</strong>
                                                     <small>CGM: {{ $aluno->cgm }}</small>
                                                     @if ($respostaBloqueada)
@@ -233,7 +233,7 @@
                                                     <small>Origem: {{ $referenciaOrigem['alternativa'] !== '' ? $referenciaOrigem['alternativa'] : 'Nao avaliado' }}{{ $referenciaOrigem['observacao'] !== '' ? ' | '.$referenciaOrigem['observacao'] : '' }}</small>
                                                     @endif
                                                 </td>
-                                                <td>
+                                                <td data-label="Alternativa">
                                                     <div class="av-input-wrap">
                                                         <select class="av-table-input" wire:model.live="respostas.{{ $pauta->id }}.{{ $aluno->id }}.alternativa_id" @disabled(! $this->podeResponder() || $respostaBloqueada)>
                                                             <option value="">Selecione</option>
@@ -250,7 +250,7 @@
                                                         </span>
                                                     </div>
                                                 </td>
-                                                <td>
+                                                <td data-label="Observacao da pauta">
                                                     @php($alternativaSelecionadaId = (int) ($respostas[$pauta->id][$aluno->id]['alternativa_id'] ?? 0))
                                                     @php($requerObservacao = $this->alternativaRequerObservacao((int) $pauta->id, $alternativaSelecionadaId))
 
@@ -390,7 +390,7 @@
                                                 @php($respostaBloqueada = $this->respostaEstaBloqueada((int) $pauta->id, (int) $aluno->id))
                                                 @php($referenciaOrigem = $respostas[$pauta->id][$aluno->id]['origem_referencia'] ?? null)
                                                 <tr wire:key="turma-{{ $turmaId }}-aluno-{{ $aluno->id }}-pauta-{{ $pauta->id }}">
-                                                    <td>
+                                                    <td data-label="Pauta">
                                                         <strong>{{ $pauta->texto }}</strong>
                                                         @if ($respostaBloqueada)
                                                         <small>Resposta bloqueada por historico.</small>
@@ -399,7 +399,7 @@
                                                         <small>Origem: {{ $referenciaOrigem['alternativa'] !== '' ? $referenciaOrigem['alternativa'] : 'Nao avaliado' }}{{ $referenciaOrigem['observacao'] !== '' ? ' | '.$referenciaOrigem['observacao'] : '' }}</small>
                                                         @endif
                                                     </td>
-                                                    <td>
+                                                    <td data-label="Alternativa">
                                                         <div class="av-input-wrap">
                                                             <select class="av-table-input" wire:model.live="respostas.{{ $pauta->id }}.{{ $aluno->id }}.alternativa_id" @disabled(! $this->podeResponder() || $respostaBloqueada)>
                                                                 <option value="">Selecione</option>
@@ -416,7 +416,7 @@
                                                             </span>
                                                         </div>
                                                     </td>
-                                                    <td>
+                                                    <td data-label="Observacao da pauta">
                                                         @php($alternativaSelecionadaId = (int) ($respostas[$pauta->id][$aluno->id]['alternativa_id'] ?? 0))
                                                         @php($requerObservacao = $this->alternativaRequerObservacao((int) $pauta->id, $alternativaSelecionadaId))
 
