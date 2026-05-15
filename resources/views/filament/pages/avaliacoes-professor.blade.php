@@ -83,7 +83,7 @@
             <section class="gi-panel av-professor-control-panel">
                 <div class="gi-toolbar">
                     <div>
-                        <h3 class="av-pauta-title">Modo de visualizacao</h3>
+                        <h3 class="av-pauta-title">Ações da Avaliação</h3>
                         <p class="av-pauta-meta">Escolha como deseja preencher esta avaliacao.</p>
                     </div>
 
