@@ -4,15 +4,16 @@ namespace App\Filament\Admin\Resources\Pedidos\Schemas;
 
 use App\Models\TipoManutencao;
 use App\Models\TipoManutencaoOpcao;
-use Filament\Schemas\Schema;
+use App\Support\PedidoFotoUpload;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\DatePicker;
-
+use Filament\Schemas\Components\View;
+use Filament\Schemas\Schema;
 
 class PedidoCriacaoForm
 {
@@ -77,18 +78,24 @@ class PedidoCriacaoForm
                             ->placeholder('Descreva o problema de forma detalhada, informando quando o problema começou, onde ocorreu, e caso saiba, informe qual foi o motivo')
                             ->columnSpanFull(),
 
-                        FileUpload::make('arquivos')
-                            ->label('Fotos do Problema')
-                            ->multiple()
-                            ->required()
-                            ->image()
-                            ->maxFiles(10)
-                            ->maxSize(5120)
-                            ->directory('pedidos')
-                            ->disk('public')
-                            ->visibility('public')
-                            ->acceptedFileTypes(['image/jpeg', 'image/jpg', 'image/png', 'image/webp'])
+                        PedidoFotoUpload::configure(
+                            FileUpload::make('arquivos')
+                                ->label('Fotos do Problema')
+                                ->multiple()
+                                ->required()
+                                ->maxFiles(10)
+                                ->directory('pedidos')
+                                ->disk('public')
+                                ->visibility('public'),
+                            'pedido-fotos-problema'
+                        )
                             ->helperText('Até 10 imagens (JPEG, JPG, PNG ou WEBP) - máximo 5MB cada')
+                            ->columnSpanFull(),
+
+                        View::make('components.forms.camera-file-upload-tools')
+                            ->viewData([
+                                'target' => 'pedido-fotos-problema',
+                            ])
                             ->columnSpanFull(),
 
                     ])

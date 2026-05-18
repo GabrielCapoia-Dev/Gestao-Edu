@@ -12,6 +12,7 @@ use App\Models\TipoManutencaoOpcao;
 use App\Models\User;
 use App\Services\PedidoService;
 use App\Services\UserSetorAccessService;
+use App\Support\PedidoFotoUpload;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Forms\Components\DatePicker;
@@ -23,6 +24,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\View;
 use Filament\Support\Colors\Color;
 use Filament\Tables\Columns\Layout\Split;
 use Filament\Tables\Columns\Layout\Stack;
@@ -496,18 +498,24 @@ class PedidosTable
 
             Section::make('Fotos da Conclusão')
                 ->schema([
-                    FileUpload::make('fotos_conclusao')
-                        ->label('Adicionar Fotos')
-                        ->multiple()
-                        ->image()
-                        ->maxFiles(10)
-                        ->storeFileNamesIn('nome_original')
-                        ->maxSize(5120)
-                        ->directory('pedidos/conclusao')
-                        ->disk('public')
-                        ->visibility('public')
-                        ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                    PedidoFotoUpload::configure(
+                        FileUpload::make('fotos_conclusao')
+                            ->label('Adicionar Fotos')
+                            ->multiple()
+                            ->maxFiles(10)
+                            ->storeFileNamesIn('nome_original')
+                            ->directory('pedidos/conclusao')
+                            ->disk('public')
+                            ->visibility('public'),
+                        'pedido-fotos-conclusao'
+                    )
                         ->helperText('Formatos aceitos: JPG, PNG, WebP. Arquivos .jfif não são suportados.')
+                        ->columnSpanFull(),
+
+                    View::make('components.forms.camera-file-upload-tools')
+                        ->viewData([
+                            'target' => 'pedido-fotos-conclusao',
+                        ])
                         ->columnSpanFull(),
                 ]),
         ];
