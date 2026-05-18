@@ -87,8 +87,8 @@ class PedidoCriacaoForm
                             ->directory('pedidos')
                             ->disk('public')
                             ->visibility('public')
-                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
-                            ->helperText('Até 10 imagens (JPEG, PNG ou WEBP) - máximo 5MB cada')
+                            ->acceptedFileTypes(['image/jpeg', 'image/jpg', 'image/png', 'image/webp'])
+                            ->helperText('Até 10 imagens (JPEG, JPG, PNG ou WEBP) - máximo 5MB cada')
                             ->columnSpanFull(),
 
                     ])
