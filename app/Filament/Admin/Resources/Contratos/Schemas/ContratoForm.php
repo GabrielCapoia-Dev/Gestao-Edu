@@ -2,12 +2,15 @@
 
 namespace App\Filament\Admin\Resources\Contratos\Schemas;
 
+use App\Models\EmpresaContratada;
 use App\Models\Item;
+use App\Services\UserSetorAccessService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -40,6 +43,27 @@ class ContratoForm
                                     ->where('ativo', true)
                                     ->doSetorDoUsuario(Auth::user())
                             )
+                            ->live()
+                            ->afterStateUpdated(function ($state, callable $set): void {
+                                $set('setor_id', EmpresaContratada::query()->whereKey($state)->value('setor_id'));
+                            })
+                            ->searchable()
+                            ->preload()
+                            ->required()
+                            ->columnSpan(1),
+
+                        Select::make('setor_id')
+                            ->label('Setor do contrato')
+                            ->options(function (Get $get): array {
+                                $empresaSetorId = filled($get('id_empresa_contratada'))
+                                    ? EmpresaContratada::query()
+                                        ->whereKey($get('id_empresa_contratada'))
+                                        ->value('setor_id')
+                                    : null;
+
+                                return app(UserSetorAccessService::class)->optionsForSelect(Auth::user(), $empresaSetorId);
+                            })
+                            ->default(fn () => app(UserSetorAccessService::class)->primarySetorId(Auth::user()))
                             ->searchable()
                             ->preload()
                             ->required()

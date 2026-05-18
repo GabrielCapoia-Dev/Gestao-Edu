@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\EmpresaContratada;
+use App\Models\Setor;
 use Illuminate\Database\Seeder;
 
 class EmpresaContratadaSeeder extends Seeder
@@ -172,7 +173,11 @@ class EmpresaContratadaSeeder extends Seeder
             ],
         ];
 
+        $setorRootId = Setor::setorGeral()?->id;
+
         foreach ($empresas as $empresa) {
+            $empresa['setor_id'] ??= $setorRootId;
+
             EmpresaContratada::firstOrCreate(['cnpj' => $empresa['cnpj']], $empresa);
         }
 

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Models\Escola;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Http;
@@ -60,6 +61,11 @@ class EscolaService
                 ->label('Telefone')
                 ->toggleable(),
 
+            TextColumn::make('setor.nome_completo')
+                ->label('Setor')
+                ->toggleable()
+                ->placeholder('-'),
+
             TextColumn::make('cidade')
                 ->label('Cidade')
                 ->toggleable(),
@@ -112,6 +118,7 @@ class EscolaService
                         'nome' => $record->nome,
                         'email' => $record->email,
                         'telefone' => $record->telefone,
+                        'setor_id' => $record->setor_id,
                         'logradouro' => $record->logradouro,
                         'numero' => $record->numero,
                         'bairro' => $record->bairro,
@@ -127,6 +134,7 @@ class EscolaService
                         'nome',
                         'email',
                         'telefone',
+                        'setor_id',
                         'logradouro',
                         'numero',
                         'bairro',
@@ -232,6 +240,14 @@ class EscolaService
                                     'regex' => 'O telefone deve estar no formato (99)99999-9999',
                                 ])
                                 ->maxLength(14),
+
+                            Select::make('setor_id')
+                                ->label('Setor')
+                                ->options(fn () => app(UserSetorAccessService::class)->optionsForSelect(auth()->user()))
+                                ->default(fn () => app(UserSetorAccessService::class)->primarySetorId(auth()->user()))
+                                ->searchable()
+                                ->preload()
+                                ->required(),
                         ]),
                     ]),
                 Section::make('Endereço')
@@ -336,8 +352,20 @@ class EscolaService
     /** Opções de escolas conforme perfil: Admin vê todas; secretário só a sua. */
     public function opcoesDeEscolasParaUsuario(?User $user): array
     {
-        if (app(UserService::class)->ehAdmin($user) || empty($user?->id_escola)) {
+        $access = app(UserSetorAccessService::class);
+
+        if ($access->hasGlobalAccess($user)) {
             return $this->opcoesDeEscolas();
+        }
+
+        $setorIds = $access->visibleSetorIds($user);
+
+        if ($setorIds !== []) {
+            return Escola::query()
+                ->whereIn('setor_id', $setorIds)
+                ->orderBy('nome')
+                ->pluck('nome', 'id')
+                ->toArray();
         }
 
         return Escola::query()

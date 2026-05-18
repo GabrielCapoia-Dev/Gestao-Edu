@@ -13,6 +13,7 @@ class Inventario extends Model
 
     protected $fillable = [
         'escola_id',
+        'setor_id',
         'nome',
         'ativo',
         'criado_por_id',
@@ -24,6 +25,16 @@ class Inventario extends Model
 
     protected static function booted(): void
     {
+        static::saving(function (self $inventario): void {
+            if (filled($inventario->setor_id) || blank($inventario->escola_id)) {
+                return;
+            }
+
+            $inventario->setor_id = Escola::query()
+                ->whereKey($inventario->escola_id)
+                ->value('setor_id');
+        });
+
         static::creating(function (self $inventario): void {
             if (filled($inventario->nome) || ! $inventario->escola_id) {
                 return;
@@ -40,6 +51,11 @@ class Inventario extends Model
     public function escola(): BelongsTo
     {
         return $this->belongsTo(Escola::class);
+    }
+
+    public function setor(): BelongsTo
+    {
+        return $this->belongsTo(Setor::class);
     }
 
     public function criadoPor(): BelongsTo

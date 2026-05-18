@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Models\Setor;
 use App\Models\User;
+use App\Services\UserSetorAccessService;
 
 class SetorPolicy
 {
@@ -14,7 +15,8 @@ class SetorPolicy
 
     public function view(User $user, Setor $model): bool
     {
-        return $user->hasPermissionTo('Listar Setores');
+        return $user->hasPermissionTo('Listar Setores')
+            && app(UserSetorAccessService::class)->canAccessSetor($user, $model->id);
     }
 
     public function create(User $user): bool
@@ -24,12 +26,14 @@ class SetorPolicy
 
     public function update(User $user, Setor $model): bool
     {
-        return $user->hasPermissionTo('Editar Setores');
+        return $user->hasPermissionTo('Editar Setores')
+            && app(UserSetorAccessService::class)->canAccessSetor($user, $model->id);
     }
 
     public function delete(User $user, Setor $model): bool
     {
-        return $user->hasPermissionTo('Excluir Setores');
+        return $user->hasPermissionTo('Excluir Setores')
+            && app(UserSetorAccessService::class)->canAccessSetor($user, $model->id);
     }
 
     public function deleteAny(User $user): bool

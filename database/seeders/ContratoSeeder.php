@@ -43,6 +43,7 @@ class ContratoSeeder extends Seeder
                     ['numero_contrato' => $numeroContrato],
                     [
                         'id_empresa_contratada' => $empresa->id,
+                        'setor_id'              => $empresa->setor_id,
                         'data_inicio'           => Carbon::now()->subMonths(rand(1, 6)),
                         'data_vencimento'       => Carbon::now()->addMonths(rand(6, 18)),
                         'observacoes'           => "Contrato de fornecimento de merenda - {$empresa->nome}",

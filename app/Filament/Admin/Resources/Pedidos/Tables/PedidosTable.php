@@ -11,6 +11,7 @@ use App\Models\TipoManutencao;
 use App\Models\TipoManutencaoOpcao;
 use App\Models\User;
 use App\Services\PedidoService;
+use App\Services\UserSetorAccessService;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Forms\Components\DatePicker;
@@ -98,7 +99,7 @@ class PedidosTable
             SelectFilter::make('setor_id')
                 ->label('Setor')
                 ->columnSpan(3)
-                ->relationship('setor', 'nome')
+                ->options(fn () => app(UserSetorAccessService::class)->optionsForSelect(auth()->user()))
                 ->searchable()
                 ->preload(),
 
@@ -205,7 +206,7 @@ class PedidosTable
                         ->badge()
                         ->formatStateUsing(function (Pedido $record) {
                             $status = $record->tipoStatus?->nome ?? 'Sem status';
-                            $setor = $record->setor?->nome;
+                            $setor = $record->setor?->nome_completo;
 
                             return $setor ? "{$status} - {$setor}" : $status;
                         })

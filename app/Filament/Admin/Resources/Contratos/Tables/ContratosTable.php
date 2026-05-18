@@ -2,12 +2,14 @@
 
 namespace App\Filament\Admin\Resources\Contratos\Tables;
 
+use App\Services\UserSetorAccessService;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 
@@ -26,6 +28,13 @@ class ContratosTable
                     ->label('Empresa Contratada')
                     ->searchable()
                     ->sortable(),
+
+                TextColumn::make('setor.nome')
+                    ->label('Setor')
+                    ->formatStateUsing(fn ($record): ?string => $record->setor?->nome_completo)
+                    ->searchable()
+                    ->sortable()
+                    ->placeholder('-'),
 
                 TextColumn::make('data_inicio')
                     ->label('Início')
@@ -54,6 +63,12 @@ class ContratosTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                SelectFilter::make('setor_id')
+                    ->label('Setor')
+                    ->options(fn () => app(UserSetorAccessService::class)->optionsForSelect(auth()->user()))
+                    ->searchable()
+                    ->preload(),
+
                 TernaryFilter::make('ativo')
                     ->label('Status')
                     ->trueLabel('Apenas ativos')

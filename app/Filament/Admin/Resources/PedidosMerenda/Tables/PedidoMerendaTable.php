@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\PedidosMerenda\Tables;
 use App\Models\Enums\StatusPedidoMerenda;
 use App\Models\PedidoMerenda;
 use App\Models\PedidoMerendaItem;
+use App\Services\UserSetorAccessService;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\DatePicker;
@@ -16,13 +17,15 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class PedidoMerendaTable
 {
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->withCount('itens'))
+            ->modifyQueryUsing(fn (Builder $query) => app(UserSetorAccessService::class)
+                ->applySetorScope($query->withCount('itens'), Auth::user()))
             ->paginated([10, 25, 50, 100])
             ->defaultPaginationPageOption(10)
             ->defaultSort('created_at', 'desc')
@@ -72,6 +75,11 @@ class PedidoMerendaTable
                 ->sortable()
                 ->placeholder('-'),
 
+            TextColumn::make('setor.nome_completo')
+                ->label('Setor')
+                ->placeholder('-')
+                ->toggleable(),
+
             TextColumn::make('created_at')
                 ->label('Criado em')
                 ->dateTime('d/m/Y H:i')
@@ -102,6 +110,13 @@ class PedidoMerendaTable
                     ->orderBy('criado_por')
                     ->pluck('criado_por', 'criado_por')
                     ->toArray()),
+
+            SelectFilter::make('setor_id')
+                ->label('Setor')
+                ->columnSpan(3)
+                ->options(fn () => app(UserSetorAccessService::class)->optionsForSelect(Auth::user()))
+                ->searchable()
+                ->preload(),
 
             Filter::make('periodo_criacao')
                 ->label('Periodo de criacao')
@@ -252,6 +267,8 @@ class PedidoMerendaTable
 
     public static function processarCancelamento(PedidoMerenda $pedido): void
     {
+        app(UserSetorAccessService::class)->assertCanUseSetor(Auth::user(), $pedido->setor_id);
+
         $itens = $pedido->itens()->with('contratoItem')->get();
 
         DB::transaction(function () use ($pedido, $itens) {

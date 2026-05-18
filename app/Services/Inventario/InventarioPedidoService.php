@@ -10,6 +10,7 @@ use App\Models\InventarioPedido;
 use App\Models\InventarioRomaneio;
 use App\Models\Item;
 use App\Models\User;
+use App\Services\UserSetorAccessService;
 use DomainException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -39,9 +40,22 @@ class InventarioPedidoService
             return $query->whereRaw('1 = 0');
         }
 
-        // Impacto: gestor geral enxerga todos os pedidos; usuario de escola fica restrito ao proprio inventario. Alterar este IF muda o isolamento entre unidades.
-        if ($this->contextService->ehGestorGeral($user)) {
+        $access = app(UserSetorAccessService::class);
+
+        if ($access->hasGlobalAccess($user)) {
             return $query;
+        }
+
+        $setorIds = $access->visibleSetorIds($user);
+
+        if ($setorIds !== []) {
+            return $query->whereHas('inventario', function (Builder $inventario) use ($setorIds): void {
+                $inventario->whereIn('setor_id', $setorIds)
+                    ->orWhere(function (Builder $legacy) use ($setorIds): void {
+                        $legacy->whereNull('setor_id')
+                            ->whereHas('escola', fn (Builder $escola): Builder => $escola->whereIn('setor_id', $setorIds));
+                    });
+            });
         }
 
         $inventario = $this->contextService->inventarioDoUsuario($user);
@@ -99,6 +113,11 @@ class InventarioPedidoService
     {
         if (! $this->contextService->ehGestorGeral($user)) {
             throw new DomainException('Somente o gestor geral pode analisar pedidos de inventario.');
+        }
+
+        if (! app(UserSetorAccessService::class)->hasGlobalAccess($user)
+            && ! app(UserSetorAccessService::class)->canAccessSetor($user, $pedido->inventario?->setor_id)) {
+            throw new DomainException('O usuario nao tem permissao para analisar este pedido de inventario.');
         }
 
         if (! $pedido->isPendente()) {
@@ -177,11 +196,24 @@ class InventarioPedidoService
             throw new DomainException('Selecione ao menos um pedido aprovado para gerar o romaneio.');
         }
 
-        $pedidos = InventarioPedido::query()
+        $pedidosQuery = InventarioPedido::query()
             ->with(['itens.item', 'escola', 'inventario'])
             ->whereIn('id', $pedidoIds)
-            ->where('status', InventarioPedidoStatus::Aprovado)
-            ->get();
+            ->where('status', InventarioPedidoStatus::Aprovado);
+
+        if (! app(UserSetorAccessService::class)->hasGlobalAccess($user)) {
+            $setorIds = app(UserSetorAccessService::class)->visibleSetorIds($user);
+
+            $pedidosQuery->whereHas('inventario', function (Builder $inventario) use ($setorIds): void {
+                $inventario->whereIn('setor_id', $setorIds)
+                    ->orWhere(function (Builder $legacy) use ($setorIds): void {
+                        $legacy->whereNull('setor_id')
+                            ->whereHas('escola', fn (Builder $escola): Builder => $escola->whereIn('setor_id', $setorIds));
+                    });
+            });
+        }
+
+        $pedidos = $pedidosQuery->get();
 
         if ($pedidos->count() !== $pedidoIds->count()) {
             throw new DomainException('Todos os pedidos selecionados precisam estar com status aprovado.');
@@ -235,7 +267,11 @@ class InventarioPedidoService
             throw new DomainException('Somente pedidos em andamento podem ser conferidos.');
         }
 
-        if (! $this->contextService->ehGestorGeral($user) && (int) $pedido->escola_id !== (int) $user->id_escola) {
+        if (
+            ! app(UserSetorAccessService::class)->hasGlobalAccess($user)
+            && (int) $pedido->escola_id !== (int) $user->id_escola
+            && ! app(UserSetorAccessService::class)->canAccessSetor($user, $pedido->inventario?->setor_id)
+        ) {
             throw new DomainException('O usuario nao tem permissao para conferir este pedido.');
         }
 

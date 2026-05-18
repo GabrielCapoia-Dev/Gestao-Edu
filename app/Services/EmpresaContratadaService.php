@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\EmpresaContratada;
-use App\Models\Setor;
 use Filament\Forms\Form;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
@@ -18,6 +17,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Builder;
 use App\Models\User;
 use App\Services\UserService;
+use App\Services\UserSetorAccessService;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Utilities\Get;
@@ -82,16 +82,8 @@ class EmpresaContratadaService
 
                         Select::make('setor_id')
                             ->label('Setor')
-                            ->options(fn () => Setor::query()
-                                ->ativos()
-                                ->when(
-                                    filled(Auth::user()?->setor_id),
-                                    fn (Builder $query): Builder => $query->whereKey(Auth::user()->setor_id)
-                                )
-                                ->orderBy('nome')
-                                ->pluck('nome', 'id')
-                                ->toArray())
-                            ->default(fn () => Auth::user()?->setor_id)
+                            ->options(fn () => app(UserSetorAccessService::class)->optionsForSelect(Auth::user()))
+                            ->default(fn () => app(UserSetorAccessService::class)->primarySetorId(Auth::user()))
                             ->searchable()
                             ->preload()
                             ->required(),
@@ -165,6 +157,7 @@ class EmpresaContratadaService
 
             TextColumn::make('setor.nome')
                 ->label('Setor')
+                ->formatStateUsing(fn (EmpresaContratada $record): ?string => $record->setor?->nome_completo)
                 ->searchable()
                 ->sortable(),
 
@@ -304,11 +297,7 @@ class EmpresaContratadaService
                 ->form([
                     Select::make('setor_id')
                         ->label('Novo setor')
-                        ->options(fn () => Setor::query()
-                            ->ativos()
-                            ->orderBy('nome')
-                            ->pluck('nome', 'id')
-                            ->toArray())
+                        ->options(fn () => app(UserSetorAccessService::class)->optionsForSelect(Auth::user()))
                         ->searchable()
                         ->preload()
                         ->required(),
@@ -317,6 +306,8 @@ class EmpresaContratadaService
                 ->modalHeading('Alterar setor das empresas selecionadas')
                 ->modalDescription('As empresas selecionadas passarão a aparecer nas listagens e seletores do novo setor.')
                 ->action(function (array $data, $records): void {
+                    app(UserSetorAccessService::class)->assertCanUseSetor(Auth::user(), $data['setor_id'] ?? null);
+
                     foreach ($records as $record) {
                         $record->update([
                             'setor_id' => $data['setor_id'],

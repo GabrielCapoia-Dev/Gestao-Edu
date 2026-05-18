@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\Users\Schemas;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\UserService;
+use App\Services\UserSetorAccessService;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -202,11 +203,7 @@ class UserForm
                 ->schema([
                     Select::make('setor_id')
                         ->label('Setor')
-                        ->relationship(
-                            name: 'setor',
-                            titleAttribute: 'nome',
-                            modifyQueryUsing: fn($query) => $query->where('ativo', true)
-                        )
+                        ->options(fn () => app(UserSetorAccessService::class)->optionsForSelect($user))
                         ->searchable()
                         ->preload()
                         ->nullable()

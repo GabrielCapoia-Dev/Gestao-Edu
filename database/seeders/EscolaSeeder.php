@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Escola;
+use App\Models\Setor;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
@@ -151,6 +152,7 @@ class EscolaSeeder extends Seeder
 
         $indexEndereco = 0;
         $totalEnderecos = count($enderecos);
+        $root = Setor::setorGeral();
 
         // Mantemos um set em memória para garantir unicidade durante o seed
         $codigosUsados = Escola::pluck('codigo')->filter()->map(fn($c) => Str::upper($c))->all();
@@ -167,6 +169,7 @@ class EscolaSeeder extends Seeder
                 ['nome' => $nome],
                 [
                     'codigo' => $codigo,
+                    'setor_id' => $this->setorParaEscola($nome, $root)?->id,
                     'email' => Str::slug($codigo) . '@escola.pr.gov.br',
                     'telefone' => '(44) 3621-' . rand(1000, 9999),
                     'logradouro' => $endereco['logradouro'],
@@ -191,6 +194,7 @@ class EscolaSeeder extends Seeder
                 ['nome' => $nome],
                 [
                     'codigo' => $codigo,
+                    'setor_id' => $this->setorParaEscola($nome, $root)?->id,
                     'email' => Str::slug($codigo) . '@escola.pr.gov.br',
                     'telefone' => '(44) 3621-' . rand(1000, 9999),
                     'logradouro' => $endereco['logradouro'],
@@ -245,6 +249,27 @@ class EscolaSeeder extends Seeder
 
         // último recurso (improvável): hash curto
         return $codigo . substr(Str::upper(Str::random(2)), 0, 2);
+    }
+
+    private function setorParaEscola(string $nome, ?Setor $root): ?Setor
+    {
+        if (! $root) {
+            return null;
+        }
+
+        return Setor::query()->firstOrCreate(
+            [
+                'parent_id' => $root->id,
+                'nome' => $nome,
+            ],
+            [
+                'status' => 'Ativo',
+                'ativo' => true,
+                'recebe_pedidos_iniciais' => false,
+                'encaminha_pedido_para_setor_ids' => [],
+                'alterado_por' => 'Seeder',
+            ]
+        );
     }
 
     /**

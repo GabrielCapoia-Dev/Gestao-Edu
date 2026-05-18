@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasUuidCodigo;
+use App\Services\UserSetorAccessService;
 use Filament\Facades\Filament;
 use Filament\Models\Contracts\HasAvatar;
 use Filament\Models\Contracts\FilamentUser;
@@ -246,24 +247,17 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
 
     public function idsSetoresOperacionais(): array
     {
-        $ids = $this->roles()
-            ->whereNotNull('roles.setor_id')
-            ->pluck('roles.setor_id')
-            ->map(fn ($id) => (int) $id)
-            ->unique()
-            ->values()
-            ->all();
+        return app(UserSetorAccessService::class)->visibleSetorIds($this);
+    }
 
-        if ($ids === [] && filled($this->setor_id)) {
-            return [(int) $this->setor_id];
-        }
-
-        return $ids;
+    public function setorPrincipalId(): ?int
+    {
+        return app(UserSetorAccessService::class)->primarySetorId($this);
     }
 
     public function setorOperacional(): ?Setor
     {
-        $setorId = $this->idsSetoresOperacionais()[0] ?? null;
+        $setorId = $this->setorPrincipalId();
 
         return $setorId ? Setor::find($setorId) : null;
     }
@@ -274,7 +268,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
             return false;
         }
 
-        return in_array((int) $setor->id, $this->idsSetoresOperacionais(), true);
+        return app(UserSetorAccessService::class)->canAccessSetor($this, (int) $setor->id);
     }
 
     public function pertenceAoSetorOperacionalNome(string $nome): bool
@@ -289,26 +283,27 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
             }
         }
 
+        $ids = $this->idsSetoresOperacionais();
+
+        if ($ids === []) {
+            return false;
+        }
+
         return Setor::query()
-            ->whereIn('id', $this->idsSetoresOperacionais())
+            ->whereIn('id', $ids)
             ->whereIn('nome', array_values(array_unique($nomes)))
             ->exists();
     }
 
     public function podeGerenciarSetor(?Setor $setor = null): bool
     {
-        // Impacto: PedidoService usa esta regra para decidir se usuario pode atuar em pedido de setor especifico; alterar delegacao muda o fluxo operacional de chamados.
-        if ($this->idsSetoresOperacionais() !== []) {
-            return $this->podeVerSetorOperacional($setor);
-        }
-
-        return false;
+        return $this->podeVerSetorOperacional($setor);
     }
 
     public function pertenceAoSetorGeral(): bool
     {
-        return $this->pertenceAoSetorOperacionalNome('Educação')
-            || ($this->setor?->ehSetorGeral() ?? false);
+        return app(UserSetorAccessService::class)->hasGlobalAccess($this)
+            || ($this->setorOperacional()?->ehSetorGeral() ?? false);
     }
 
     public static function scopeAuthUser()

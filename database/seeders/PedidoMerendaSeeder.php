@@ -15,7 +15,7 @@ class PedidoMerendaSeeder extends Seeder
     public function run(): void
     {
         $contratos = Contrato::where('ativo', true)
-            ->with('contratoItens')
+            ->with(['contratoItens', 'empresaContratada'])
             ->get();
 
         if ($contratos->isEmpty()) {
@@ -55,6 +55,7 @@ class PedidoMerendaSeeder extends Seeder
                     : StatusPedidoMerenda::Aguardando;
 
                 $pedido = PedidoMerenda::create([
+                    'setor_id'    => $contrato->setor_id ?: $contrato->empresaContratada?->setor_id,
                     'status'      => $status,
                     'observacoes' => "Pedido gerado via seeder - Contrato {$contrato->numero_contrato}",
                     'criado_por'  => 'Seeder',

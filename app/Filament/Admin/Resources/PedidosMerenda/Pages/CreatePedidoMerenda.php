@@ -7,6 +7,7 @@ use App\Models\ContratoItem;
 use App\Models\Item;
 use App\Models\PedidoMerenda;
 use App\Models\PedidoMerendaItem;
+use App\Services\UserSetorAccessService;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\Page;
 use Illuminate\Database\Eloquent\Builder;
@@ -73,7 +74,7 @@ class CreatePedidoMerenda extends Page
             ->with(['contrato.empresaContratada'])
             ->whereHas('contrato', fn (Builder $query): Builder => $query
                 ->where('ativo', true)
-                ->whereHas('empresaContratada', fn (Builder $empresa): Builder => $empresa->doSetorDoUsuario(Auth::user())))
+                ->where(fn (Builder $contrato): Builder => static::aplicarEscopoContrato($contrato)))
             ->where('item_id', $value)
             ->whereRaw('(quantidade_total - quantidade_utilizada - quantidade_reservada) > 0')
             ->orderByDesc('updated_at')
@@ -180,8 +181,33 @@ class CreatePedidoMerenda extends Page
         }
 
         DB::transaction(function () {
+            $contratoItemIds = collect($this->itensPedido)
+                ->pluck('contrato_item_id')
+                ->filter()
+                ->map(fn ($id): int => (int) $id)
+                ->unique()
+                ->values();
+
+            $setores = ContratoItem::query()
+                ->with('contrato.empresaContratada')
+                ->whereIn('id', $contratoItemIds)
+                ->get()
+                ->map(fn (ContratoItem $contratoItem): ?int => $contratoItem->contrato?->setor_id ?: $contratoItem->contrato?->empresaContratada?->setor_id)
+                ->filter()
+                ->unique()
+                ->values();
+
+            $setorId = $setores->count() === 1
+                ? $setores->first()
+                : app(UserSetorAccessService::class)->primarySetorId(Auth::user());
+
+            if (filled($setorId)) {
+                app(UserSetorAccessService::class)->assertCanUseSetor(Auth::user(), (int) $setorId);
+            }
+
             $pedido = PedidoMerenda::create([
                 'observacoes' => $this->observacoes,
+                'setor_id' => $setorId,
             ]);
 
             foreach ($this->itensPedido as $entry) {
@@ -211,7 +237,7 @@ class CreatePedidoMerenda extends Page
             ->whereHas('contratoItens', function ($query) {
                 $query->whereHas('contrato', fn (Builder $contrato): Builder => $contrato
                     ->where('ativo', true)
-                    ->whereHas('empresaContratada', fn (Builder $empresa): Builder => $empresa->doSetorDoUsuario(Auth::user())))
+                    ->where(fn (Builder $contrato): Builder => static::aplicarEscopoContrato($contrato)))
                     ->whereRaw('(quantidade_total - quantidade_utilizada - quantidade_reservada) > 0');
             })
             ->when(filled($this->buscaItemDisponivel), function ($query) {
@@ -307,5 +333,29 @@ class CreatePedidoMerenda extends Page
     protected function getHeaderActions(): array
     {
         return [];
+    }
+
+    protected static function aplicarEscopoContrato(Builder $query): Builder
+    {
+        $access = app(UserSetorAccessService::class);
+        $user = Auth::user();
+
+        if ($access->hasGlobalAccess($user)) {
+            return $query;
+        }
+
+        $setorIds = $access->visibleSetorIds($user);
+
+        if ($setorIds === []) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->where(function (Builder $builder) use ($setorIds): void {
+            $builder->whereIn('setor_id', $setorIds)
+                ->orWhere(function (Builder $legacy) use ($setorIds): void {
+                    $legacy->whereNull('setor_id')
+                        ->whereHas('empresaContratada', fn (Builder $empresa): Builder => $empresa->whereIn('setor_id', $setorIds));
+                });
+        });
     }
 }

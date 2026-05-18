@@ -284,12 +284,20 @@ class UserService
 
     public function opcoesDeEscolasParaCampo(?User $currentUser): array
     {
-        if ($this->ehAdmin($currentUser)) {
+        $access = app(UserSetorAccessService::class);
+
+        if ($access->hasGlobalAccess($currentUser)) {
             return Escola::query()->orderBy('nome')->pluck('nome', 'id')->toArray();
         }
 
-        if (filled($currentUser?->id_escola)) {
-            return Escola::query()->whereKey($currentUser->id_escola)->pluck('nome', 'id')->toArray();
+        $setorIds = $access->visibleSetorIds($currentUser);
+
+        if ($setorIds !== []) {
+            return Escola::query()
+                ->whereIn('setor_id', $setorIds)
+                ->orderBy('nome')
+                ->pluck('nome', 'id')
+                ->toArray();
         }
 
         return [];
@@ -473,8 +481,21 @@ class UserService
 
     public function listarUsuariosQuery(Builder $base, ?User $user): Builder
     {
-        if (! $this->ehAdmin($user)) {
+        $access = app(UserSetorAccessService::class);
+
+        if (! $access->hasGlobalAccess($user)) {
             $base->whereDoesntHave('roles', fn ($q) => $q->where('name', 'Admin'));
+
+            $setorIds = $access->visibleSetorIds($user);
+
+            if ($setorIds === []) {
+                return $base->whereRaw('1 = 0');
+            }
+
+            $base->where(function (Builder $query) use ($setorIds): void {
+                $query->whereIn('setor_id', $setorIds)
+                    ->orWhereHas('escola', fn (Builder $escola): Builder => $escola->whereIn('setor_id', $setorIds));
+            });
         }
 
         return $base;

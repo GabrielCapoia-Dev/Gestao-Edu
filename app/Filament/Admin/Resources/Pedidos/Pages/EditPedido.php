@@ -3,8 +3,10 @@
 namespace App\Filament\Admin\Resources\Pedidos\Pages;
 
 use App\Filament\Admin\Resources\Pedidos\PedidoResource;
+use App\Models\EmpresaContratada;
 use App\Models\TipoStatus;
 use App\Services\PedidoService;
+use App\Services\UserSetorAccessService;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Auth;
@@ -47,6 +49,7 @@ class EditPedido extends EditRecord
         $statusEnviadoEmpresa = $service->statusPorNome('Enviado para Empresa');
 
         if ($this->novoStatusId && $statusEncaminhado?->id === (int) $this->novoStatusId) {
+            app(UserSetorAccessService::class)->assertCanUseSetor($user, $data['setor_id'] ?? null);
             $this->statusEncaminhadoId = $statusEncaminhado->id;
             $data['tipo_status_id'] = $statusAberto?->id;
 
@@ -60,6 +63,18 @@ class EditPedido extends EditRecord
         ) {
             unset($data['empresa_contratada_id']);
             $this->novoStatusId = null;
+        }
+
+        if (
+            $this->novoStatusId
+            && $statusEnviadoEmpresa?->id === (int) $this->novoStatusId
+            && filled($data['empresa_contratada_id'] ?? null)
+        ) {
+            $empresaSetorId = EmpresaContratada::query()
+                ->whereKey($data['empresa_contratada_id'])
+                ->value('setor_id');
+
+            app(UserSetorAccessService::class)->assertCanUseSetor($user, $empresaSetorId);
         }
 
         if ($this->novoStatusId) {

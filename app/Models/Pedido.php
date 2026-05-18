@@ -35,6 +35,7 @@ class Pedido extends Model
         'responsavel_id', // Primeiro responsável
 
         'setor_id', // Setor atual
+        'setor_origem_id', // Setor que originou o pedido
         'empresa_contratada_id', // Empresa externa (se houver)
         'valor_custo', // Valor gasto no pedido
 
@@ -87,6 +88,13 @@ class Pedido extends Model
                     : now()->year;
 
                 $pedido->numero_protocolo = self::gerarProtocolo($ano);
+            }
+
+            if (blank($pedido->setor_origem_id)) {
+                $pedido->setor_origem_id = ($pedido->escola_id
+                    ? Escola::query()->whereKey($pedido->escola_id)->value('setor_id')
+                    : null)
+                    ?: User::query()->whereKey($pedido->solicitante_id)->value('setor_id');
             }
         });
     }
@@ -182,6 +190,11 @@ class Pedido extends Model
     public function setor()
     {
         return $this->belongsTo(Setor::class);
+    }
+
+    public function setorOrigem()
+    {
+        return $this->belongsTo(Setor::class, 'setor_origem_id');
     }
 
     public function historicos()

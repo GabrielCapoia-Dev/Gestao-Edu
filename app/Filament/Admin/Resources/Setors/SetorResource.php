@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\Setors;
 use App\Filament\Admin\Resources\Setors\Pages\ManageSetors;
 use App\Models\Setor;
 use App\Services\SetorService;
+use App\Services\UserSetorAccessService;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -56,7 +57,7 @@ class SetorResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()
-            ->where('ativo', true);
+        return app(UserSetorAccessService::class)
+            ->applySetorScope(parent::getEloquentQuery()->where('ativo', true), Auth::user(), 'id');
     }
 }

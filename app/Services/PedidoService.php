@@ -14,6 +14,7 @@ use App\Models\TipoManutencao;
 use App\Models\TipoManutencaoOpcao;
 use App\Models\TipoStatus;
 use App\Models\User;
+use App\Services\UserSetorAccessService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -51,8 +52,7 @@ class PedidoService
 
     public function podeEnviarParaEmpresa(?User $user): bool
     {
-        return ($user?->hasPermissionTo('Enviar Pedidos para Empresa') ?? false)
-            && $this->usuarioEhSetor($user, 'Obras');
+        return $user?->hasPermissionTo('Enviar Pedidos para Empresa') ?? false;
     }
 
     public function podeVincularAdicionais(?User $user): bool
@@ -62,15 +62,7 @@ class PedidoService
 
     public function usuarioEhSetor(?User $user, string $nomeSetor): bool
     {
-        if (! $user) {
-            return false;
-        }
-
-        if ($this->podeListarTodos($user)) {
-            return true;
-        }
-
-        return $user->pertenceAoSetorOperacionalNome($nomeSetor);
+        return false;
     }
 
     public function podeGerenciarRegistro(Pedido $pedido, ?User $user): bool
@@ -91,11 +83,10 @@ class PedidoService
             return true;
         }
 
-        $setorIds = $user->idsSetoresOperacionais();
+        $access = app(UserSetorAccessService::class);
 
-        return $setorIds !== []
-            && filled($pedido->setor_id)
-            && in_array((int) $pedido->setor_id, $setorIds, true);
+        return $access->canAccessSetor($user, $pedido->setor_id)
+            || $access->canAccessSetor($user, $pedido->setor_origem_id);
     }
 
     public function contarPedidosNovos(?User $user): ?string
@@ -149,14 +140,19 @@ class PedidoService
             return $query->whereRaw('1 = 0');
         }
 
-        if ($this->podeListarTodos($user)) {
+        $access = app(UserSetorAccessService::class);
+
+        if ($this->podeListarTodos($user) || $access->hasGlobalAccess($user)) {
             return $query;
         }
 
-        $setorIds = $user->idsSetoresOperacionais();
+        $setorIds = $access->visibleSetorIds($user);
 
         if ($setorIds !== []) {
-            return $query->whereIn('setor_id', $setorIds);
+            return $query->where(function (Builder $builder) use ($setorIds): void {
+                $builder->whereIn('setor_id', $setorIds)
+                    ->orWhereIn('setor_origem_id', $setorIds);
+            });
         }
 
         if ($user->id_escola) {
@@ -177,6 +173,8 @@ class PedidoService
         return DB::transaction(function () use ($data, $solicitante): Pedido {
             $statusInicial = $this->statusPorNome('Em Aberto', true);
             $setorInicial = Setor::setorGeral();
+            $setorOrigemId = app(UserSetorAccessService::class)->primarySetorId($solicitante)
+                ?: ($solicitante->id_escola ? \App\Models\Escola::query()->whereKey($solicitante->id_escola)->value('setor_id') : null);
 
             if (! $setorInicial) {
                 throw new \RuntimeException('Nenhum setor foi configurado para receber os pedidos iniciais.');
@@ -195,6 +193,7 @@ class PedidoService
                 'escola_id' => $solicitante->id_escola,
                 'tipo_status_id' => $statusInicial->id,
                 'setor_id' => $setorInicial->id,
+                'setor_origem_id' => $setorOrigemId,
                 'data_solicitacao' => now(),
                 'data_identificacao_problema' => $data['data_identificacao_problema'] ?? now(),
                 'ativo' => true,
@@ -249,6 +248,7 @@ class PedidoService
                     'escola_id' => $pedidoPrincipal->escola_id,
                     'tipo_status_id' => $statusAdicional->id,
                     'setor_id' => $pedidoPrincipal->setor_id,
+                    'setor_origem_id' => $pedidoPrincipal->setor_origem_id,
                     'empresa_contratada_id' => $pedidoPrincipal->empresa_contratada_id,
                     'data_solicitacao' => now(),
                     'data_identificacao_problema' => $data['data_identificacao_problema'] ?? now(),
@@ -347,6 +347,12 @@ class PedidoService
     public function encaminharParaSetor(Pedido $pedido, Setor $setorDestino, User $usuario, ?string $descricao = null): void
     {
         DB::transaction(function () use ($pedido, $setorDestino, $usuario, $descricao): void {
+            if (! $usuario->hasPermissionTo('Encaminhar Pedidos para Setor')) {
+                throw new \RuntimeException('Usuario sem permissao para encaminhar pedidos para setor.');
+            }
+
+            app(UserSetorAccessService::class)->assertCanUseSetor($usuario, (int) $setorDestino->id);
+
             $statusAnteriorId = $pedido->tipo_status_id;
             $statusEncaminhado = $this->statusPorNome('Encaminhado ao Setor', true);
             $statusAberto = $this->statusPorNome('Em Aberto', true);
@@ -573,14 +579,6 @@ class PedidoService
             'cancela_pedido' => false,
             'ativo' => true,
         ]);
-    }
-
-    public function setorPorNome(string $nome): ?Setor
-    {
-        return Setor::query()
-            ->where('ativo', true)
-            ->whereIn('nome', $this->aliasesTexto($nome))
-            ->first();
     }
 
     private function aliasesTexto(string $nome): array

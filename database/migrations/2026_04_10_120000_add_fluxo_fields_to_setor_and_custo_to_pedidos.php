@@ -27,7 +27,6 @@ return new class extends Migration
 
         $setorGeralId = DB::table('setor')
             ->where('ativo', true)
-            ->orderByRaw("case when nome = 'Educação' then 0 else 1 end")
             ->orderBy('id')
             ->value('id');
 

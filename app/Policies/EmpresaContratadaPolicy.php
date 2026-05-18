@@ -4,7 +4,7 @@ namespace App\Policies;
 
 use App\Models\EmpresaContratada;
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
+use App\Services\UserSetorAccessService;
 
 class EmpresaContratadaPolicy
 {
@@ -53,11 +53,7 @@ class EmpresaContratadaPolicy
 
     private function pertenceAoSetorDoUsuario(User $user, EmpresaContratada $empresaContratada): bool
     {
-        if (blank($user->setor_id)) {
-            return true;
-        }
-
-        return (int) $empresaContratada->setor_id === (int) $user->setor_id;
+        return app(UserSetorAccessService::class)->canAccessSetor($user, $empresaContratada->setor_id);
     }
 
     // /**

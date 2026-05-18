@@ -48,7 +48,6 @@ class ManageRoles extends ManageRecords
                 $role = Role::create([
                     'name' => $data['name'],
                     'guard_name' => 'web',
-                    'setor_id' => $data['setor_id'] ?? null,
                 ]);
 
                 $permissoesSelecionadas = collect($data)
@@ -240,7 +239,7 @@ class ManageRoles extends ManageRecords
             'permissions' => $permissions,
             'grouped_permissions' => $groupedPermissions,
             'permission_count' => $permissions->count(),
-            'setor' => $role->setor?->nome,
+            'setor' => $role->setor?->nome_completo,
             'summary' => $permissionsByPrefix->take(3)->map(
                 fn(int $total, string $group) => "{$group}: {$total}"
             )->values(),

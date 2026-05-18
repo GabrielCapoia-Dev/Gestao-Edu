@@ -4,10 +4,12 @@ namespace App\Services;
 
 use App\Models\Setor;
 use App\Models\User;
+use App\Services\UserSetorAccessService;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -26,7 +28,7 @@ class SetorService
             ->columns($this->colunasTabela())
             ->recordActions($this->acoesTabela())
             ->toolbarActions($this->acoesEmMassa())
-            ->defaultSort('updated_at', 'desc')
+            ->defaultSort('path')
             ->striped();
     }
 
@@ -34,8 +36,19 @@ class SetorService
     {
         return [
             TextColumn::make('nome')
-                ->label('Nome')
+                ->label('Caminho')
+                ->formatStateUsing(fn (Setor $record): string => $record->nome_completo)
                 ->searchable()
+                ->sortable(),
+
+            TextColumn::make('parent.nome')
+                ->label('Setor pai')
+                ->formatStateUsing(fn (Setor $record): ?string => $record->parent?->nome_completo)
+                ->placeholder('-')
+                ->toggleable(),
+
+            TextColumn::make('depth')
+                ->label('Nivel')
                 ->sortable(),
 
             TextColumn::make('status')
@@ -84,10 +97,39 @@ class SetorService
                             ->minLength(3)
                             ->maxLength(255),
 
+                        Select::make('parent_id')
+                            ->label('Setor pai')
+                            ->options(function (?Setor $record): array {
+                                $options = app(UserSetorAccessService::class)->optionsForSelect(auth()->user());
+
+                                if (! $record?->exists) {
+                                    return $options;
+                                }
+
+                                foreach ($record->selfAndDescendantIds() as $blockedId) {
+                                    unset($options[$blockedId]);
+                                }
+
+                                return $options;
+                            })
+                            ->searchable()
+                            ->preload()
+                            ->nullable(),
+
                         TextInput::make('status')
                             ->label('Status textual')
                             ->default('Ativo')
                             ->maxLength(255),
+
+                        TextInput::make('sort_order')
+                            ->label('Ordenacao')
+                            ->numeric()
+                            ->default(0),
+
+                        Toggle::make('is_default_root')
+                            ->label('Setor raiz padrao')
+                            ->helperText('Define o setor raiz configuravel usado como fallback em fluxos legados.')
+                            ->default(false),
 
                         Toggle::make('ativo')
                             ->label('Ativo')

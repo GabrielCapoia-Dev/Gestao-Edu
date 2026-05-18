@@ -99,10 +99,12 @@ class DatabaseSeeder extends Seeder
 
     private function seedDominios(): void
     {
+        $setorPadrao = (string) config('app.default_setor_root_name', env('SETOR_DEFAULT_ROOT_NAME', 'Geral'));
+
         $dominios = [
-            ['dominio' => 'gmail.com', 'setor' => 'Geral'],
-            ['dominio' => 'edu.umuarama.pr.gov.br', 'setor' => 'Educação'],
-            ['dominio' => 'umuarama.pr.gov.br', 'setor' => 'Administrativo'],
+            ['dominio' => 'gmail.com', 'setor' => $setorPadrao],
+            ['dominio' => 'edu.umuarama.pr.gov.br', 'setor' => $setorPadrao],
+            ['dominio' => 'umuarama.pr.gov.br', 'setor' => $setorPadrao],
         ];
 
         foreach ($dominios as $item) {

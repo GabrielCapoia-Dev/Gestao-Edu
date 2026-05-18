@@ -1,0 +1,143 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Escola;
+use App\Models\Setor;
+use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
+
+class UserSetorAccessService
+{
+    public const GLOBAL_SCOPE_PERMISSION = 'Acessar Escopo Global de Setores';
+
+    public function __construct(private readonly SetorHierarchyService $hierarchy)
+    {
+    }
+
+    public function hasGlobalAccess(?User $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        return $user->hasRole('Admin')
+            || $user->hasPermissionTo(self::GLOBAL_SCOPE_PERMISSION)
+            || Gate::forUser($user)->allows('admin-only');
+    }
+
+    public function primarySetorId(?User $user): ?int
+    {
+        if (! $user) {
+            return null;
+        }
+
+        if (filled($user->setor_id)) {
+            return (int) $user->setor_id;
+        }
+
+        if (filled($user->id_escola)) {
+            $setorId = Escola::query()
+                ->whereKey($user->id_escola)
+                ->value('setor_id');
+
+            if (filled($setorId)) {
+                return (int) $setorId;
+            }
+        }
+
+        $roleSetores = $user->roles()
+            ->whereNotNull('roles.setor_id')
+            ->pluck('roles.setor_id')
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->values();
+
+        return $roleSetores->count() === 1 ? $roleSetores->first() : null;
+    }
+
+    public function visibleSetorIds(?User $user): array
+    {
+        if (! $user) {
+            return [];
+        }
+
+        if ($this->hasGlobalAccess($user)) {
+            return Setor::query()
+                ->where('ativo', true)
+                ->orderBy('path')
+                ->orderBy('id')
+                ->pluck('id')
+                ->map(fn ($id): int => (int) $id)
+                ->all();
+        }
+
+        return $this->hierarchy->selfAndDescendantIds($this->primarySetorId($user));
+    }
+
+    public function canAccessSetor(?User $user, ?int $setorId): bool
+    {
+        if (! $user || blank($setorId)) {
+            return false;
+        }
+
+        if ($this->hasGlobalAccess($user)) {
+            return true;
+        }
+
+        return in_array((int) $setorId, $this->visibleSetorIds($user), true);
+    }
+
+    public function applySetorScope(Builder $query, ?User $user, string $column = 'setor_id'): Builder
+    {
+        if (! $user) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        if ($this->hasGlobalAccess($user)) {
+            return $query;
+        }
+
+        $ids = $this->visibleSetorIds($user);
+
+        if ($ids === []) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereIn($column, $ids);
+    }
+
+    public function visibleSetorQuery(?User $user): Builder
+    {
+        return $this->applySetorScope(Setor::query()->where('ativo', true), $user, 'id');
+    }
+
+    public function optionsForSelect(?User $user, ?int $rootSetorId = null): array
+    {
+        $ids = $this->visibleSetorIds($user);
+
+        if ($rootSetorId) {
+            $allowedUnderRoot = $this->hierarchy->selfAndDescendantIds($rootSetorId);
+            $ids = array_values(array_intersect($ids, $allowedUnderRoot));
+        }
+
+        if ($ids === []) {
+            return [];
+        }
+
+        return $this->hierarchy->labelsForOptions($ids);
+    }
+
+    public function assertCanUseSetor(?User $user, ?int $setorId): void
+    {
+        if ($this->canAccessSetor($user, $setorId)) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'setor_id' => 'Voce nao tem permissao para usar este setor.',
+        ]);
+    }
+}

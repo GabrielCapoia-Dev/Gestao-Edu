@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Enums\StatusPedidoMerenda;
+use App\Services\UserSetorAccessService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 
@@ -11,6 +12,7 @@ class PedidoMerenda extends Model
     protected $table = 'pedidos_merenda';
 
     protected $fillable = [
+        'setor_id',
         'status',
         'observacoes',
         'criado_por',
@@ -25,6 +27,14 @@ class PedidoMerenda extends Model
         static::creating(function ($model) {
             if (Auth::check()) {
                 $model->criado_por = Auth::user()->name;
+
+                if (blank($model->setor_id)) {
+                    $model->setor_id = app(UserSetorAccessService::class)->primarySetorId(Auth::user());
+                }
+
+                if (filled($model->setor_id)) {
+                    app(UserSetorAccessService::class)->assertCanUseSetor(Auth::user(), (int) $model->setor_id);
+                }
             }
         });
     }
@@ -38,6 +48,11 @@ class PedidoMerenda extends Model
     public function itens()
     {
         return $this->hasMany(PedidoMerendaItem::class, 'pedido_merenda_id');
+    }
+
+    public function setor()
+    {
+        return $this->belongsTo(Setor::class);
     }
 
     /*

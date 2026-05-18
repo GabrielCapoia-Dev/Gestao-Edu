@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Services\SetorHierarchyService;
+use App\Services\UserSetorAccessService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
@@ -12,6 +14,11 @@ class Setor extends Model
     protected $table = 'setor';
 
     protected $fillable = [
+        'parent_id',
+        'path',
+        'depth',
+        'sort_order',
+        'is_default_root',
         'nome',
         'status',
         'recebe_pedidos_iniciais',
@@ -23,17 +30,48 @@ class Setor extends Model
 
     protected $casts = [
         'ativo' => 'boolean',
+        'depth' => 'integer',
+        'sort_order' => 'integer',
+        'is_default_root' => 'boolean',
         'recebe_pedidos_iniciais' => 'boolean',
         'encaminha_pedido_para_setor_ids' => 'array',
     ];
 
-    protected static function booted()
+    protected static function booted(): void
     {
-        static::saving(function ($model) {
+        static::saving(function (Setor $model): void {
+            if ($model->is_default_root) {
+                $model->parent_id = null;
+                $model->recebe_pedidos_iniciais = true;
+            }
+
+            $model->validarFluxoPedidos();
+            app(SetorHierarchyService::class)->assertValidParent($model, $model->parent_id);
+
             if (Auth::check()) {
                 $model->alterado_por = Auth::user()->name;
+
+                if (filled($model->parent_id)) {
+                    app(UserSetorAccessService::class)->assertCanUseSetor(Auth::user(), (int) $model->parent_id);
+                }
             }
         });
+
+        static::saved(function (Setor $model): void {
+            app(SetorHierarchyService::class)->refreshNode($model);
+        });
+    }
+
+    public function parent()
+    {
+        return $this->belongsTo(self::class, 'parent_id');
+    }
+
+    public function children()
+    {
+        return $this->hasMany(self::class, 'parent_id')
+            ->orderBy('sort_order')
+            ->orderBy('nome');
     }
 
     public function registroAnterior()
@@ -46,6 +84,26 @@ class Setor extends Model
         return $this->hasMany(self::class, 'registro_anterior_id');
     }
 
+    public function descendantsQuery(bool $includeSelf = false): Builder
+    {
+        return app(SetorHierarchyService::class)->descendantsQuery($this, $includeSelf);
+    }
+
+    public function selfAndDescendantIds(): array
+    {
+        return app(SetorHierarchyService::class)->selfAndDescendantIds($this);
+    }
+
+    public function ancestorIds(bool $includeSelf = true): array
+    {
+        return app(SetorHierarchyService::class)->ancestorIds($this, $includeSelf);
+    }
+
+    public function isAncestorOf(self|int|null $setor, bool $includeSelf = true): bool
+    {
+        return app(SetorHierarchyService::class)->isAncestorOf($this, $setor, $includeSelf);
+    }
+
     public function scopeAtivos($query)
     {
         return $query->where('ativo', true);
@@ -56,34 +114,27 @@ class Setor extends Model
         return $query->where('recebe_pedidos_iniciais', true);
     }
 
+    public function scopeRoot(Builder $query): Builder
+    {
+        return $query->whereNull('parent_id');
+    }
+
+    public function scopeOrderedTree(Builder $query): Builder
+    {
+        return $query
+            ->orderBy('path')
+            ->orderBy('sort_order')
+            ->orderBy('nome');
+    }
+
     public static function setorGeral(): ?self
     {
-        $nomesEducacao = ['Educação'];
-
-        if (function_exists('mb_convert_encoding')) {
-            $nomesEducacao[] = mb_convert_encoding('Educação', 'UTF-8', 'ISO-8859-1');
-        }
-
-        $educacao = static::query()
-            ->ativos()
-            ->whereIn('nome', array_values(array_unique($nomesEducacao)))
-            ->first();
-
-        if ($educacao) {
-            return $educacao;
-        }
-
-        return static::query()
-            ->ativos()
-            ->recebePedidosIniciais()
-            ->latest('id')
-            ->first()
-            ?? static::query()->ativos()->orderBy('id')->first();
+        return app(SetorHierarchyService::class)->defaultRoot();
     }
 
     public function ehSetorGeral(): bool
     {
-        return (bool) $this->recebe_pedidos_iniciais;
+        return (bool) ($this->is_default_root || $this->recebe_pedidos_iniciais || blank($this->parent_id));
     }
 
     public function podeGerenciarSetor(?self $setor): bool
@@ -92,11 +143,12 @@ class Setor extends Model
             return false;
         }
 
-        if ($this->ehSetorGeral()) {
-            return true;
-        }
+        return $this->isAncestorOf($setor);
+    }
 
-        return $this->is($setor);
+    public function getNomeCompletoAttribute(): string
+    {
+        return app(SetorHierarchyService::class)->fullPathLabel($this) ?? $this->nome;
     }
 
     public function getSetoresDestinoAttribute()
@@ -113,7 +165,7 @@ class Setor extends Model
 
         return static::query()
             ->whereIn('id', $ids)
-            ->orderBy('nome')
+            ->orderedTree()
             ->get();
     }
 
@@ -135,29 +187,12 @@ class Setor extends Model
         if ($this->recebe_pedidos_iniciais) {
             $this->encaminha_pedido_para_setor_ids = [];
 
-            $outroSetorGeralExiste = static::query()
-                ->where('recebe_pedidos_iniciais', true)
-                ->when($this->exists, fn (Builder $query) => $query->whereKeyNot($this->getKey()))
-                ->exists();
-
-            if ($outroSetorGeralExiste) {
-                throw ValidationException::withMessages([
-                    'recebe_pedidos_iniciais' => 'Somente um setor pode receber os pedidos iniciais.',
-                ]);
-            }
-
             return;
-        }
-
-        if ($ids === []) {
-            throw ValidationException::withMessages([
-                'encaminha_pedido_para_setor_ids' => 'Selecione ao menos um setor para encaminhamento.',
-            ]);
         }
 
         if ($this->exists && in_array((int) $this->getKey(), $ids, true)) {
             throw ValidationException::withMessages([
-                'encaminha_pedido_para_setor_ids' => 'Um setor não pode encaminhar pedidos para ele mesmo.',
+                'encaminha_pedido_para_setor_ids' => 'Um setor nao pode encaminhar pedidos para ele mesmo.',
             ]);
         }
 

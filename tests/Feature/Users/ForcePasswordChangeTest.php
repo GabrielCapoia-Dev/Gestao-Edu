@@ -7,6 +7,7 @@ use App\Filament\Admin\Resources\Users\Pages\ListUsers;
 use App\Livewire\LoginPage;
 use App\Models\Permission;
 use App\Models\User;
+use App\Services\UserSetorAccessService;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -30,6 +31,7 @@ class ForcePasswordChangeTest extends TestCase
         $admin = $this->userWithPermissions([
             'Listar Usuários',
             'Editar Usuários',
+            UserSetorAccessService::GLOBAL_SCOPE_PERMISSION,
         ]);
 
         $firstUser = User::factory()->create([

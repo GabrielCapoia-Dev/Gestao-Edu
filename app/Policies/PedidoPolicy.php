@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Models\User;
 use App\Models\Pedido;
+use App\Services\UserSetorAccessService;
 
 class PedidoPolicy
 
@@ -21,7 +22,8 @@ class PedidoPolicy
      */
     public function view(User $user, Pedido $model): bool
     {
-        return $user->hasPermissionTo('Listar Pedidos');
+        return $user->hasPermissionTo('Listar Pedidos')
+            && $this->podeAcessarPedido($user, $model);
 
     }
 
@@ -39,7 +41,8 @@ class PedidoPolicy
      */
     public function update(User $user, Pedido $model): bool
     {
-        return $user->hasPermissionTo('Editar Pedidos');
+        return $user->hasPermissionTo('Editar Pedidos')
+            && $this->podeAcessarPedido($user, $model);
     }
 
     /**
@@ -47,7 +50,20 @@ class PedidoPolicy
      */
     public function delete(User $user, Pedido $model): bool
     {
-        return $user->hasPermissionTo('Excluir Pedidos');
+        return $user->hasPermissionTo('Excluir Pedidos')
+            && $this->podeAcessarPedido($user, $model);
+    }
+
+    private function podeAcessarPedido(User $user, Pedido $model): bool
+    {
+        $access = app(UserSetorAccessService::class);
+
+        if ($access->hasGlobalAccess($user) || $user->hasPermissionTo('Listar Todos os Pedidos')) {
+            return true;
+        }
+
+        return $access->canAccessSetor($user, $model->setor_id)
+            || $access->canAccessSetor($user, $model->setor_origem_id);
     }
 
     // /**
@@ -66,4 +82,3 @@ class PedidoPolicy
     //     return false;
     // }
 }
-

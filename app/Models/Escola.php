@@ -16,6 +16,7 @@ class Escola extends Model
 
     protected $fillable = [
         'codigo',
+        'setor_id',
         'nome',
         'email',
         'telefone',
@@ -60,6 +61,11 @@ class Escola extends Model
     public function turmas(): HasMany
     {
         return $this->hasMany(Turma::class, 'id_escola');
+    }
+
+    public function setor(): BelongsTo
+    {
+        return $this->belongsTo(Setor::class);
     }
 
     public function avaliacoes(): BelongsToMany

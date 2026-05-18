@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\Pedidos\Schemas;
 use App\Models\Enums\NivelEmergenciaPedido;
 use App\Models\TipoStatus;
 use App\Services\PedidoService;
+use App\Services\UserSetorAccessService;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -51,7 +52,7 @@ class PedidoGestaoForm
                                     $set('empresa_contratada_id', null);
                                 }
                             })
-                            ->helperText('Educação pode encaminhar para Obras; Obras pode enviar para empresa.')
+                            ->helperText('As opcoes disponiveis dependem das permissoes e do escopo de setor do usuario.')
                             ->placeholder('Padrão: Em Análise')
                             ->searchable()
                             ->nullable(),
@@ -68,13 +69,7 @@ class PedidoGestaoForm
 
                         Select::make('setor_id')
                             ->label('Setor destino')
-                            ->relationship(
-                                name: 'setor',
-                                titleAttribute: 'nome',
-                                modifyQueryUsing: fn ($query) => $query
-                                    ->where('ativo', true)
-                                    ->orderBy('nome')
-                            )
+                            ->options(fn () => app(UserSetorAccessService::class)->optionsForSelect(Auth::user()))
                             ->visible(fn (Get $get) => static::statusEh(TipoStatus::find($get('novo_status_id')), 'Encaminhado ao Setor'))
                             ->required(fn (Get $get) => static::statusEh(TipoStatus::find($get('novo_status_id')), 'Encaminhado ao Setor'))
                             ->searchable()
@@ -134,19 +129,15 @@ class PedidoGestaoForm
 
         $nomes = [];
 
-        if ($service->usuarioEhSetor($user, 'Educação')) {
+        if ($user?->hasPermissionTo('Editar Pedidos')) {
             $nomes = array_merge($nomes, [
                 'Em Manutenção',
-                'Encaminhado ao Setor',
                 'Cancelado',
             ]);
         }
 
-        if ($service->usuarioEhSetor($user, 'Obras')) {
-            $nomes = array_merge($nomes, [
-                'Em Manutenção',
-                'Cancelado',
-            ]);
+        if ($user?->hasPermissionTo('Encaminhar Pedidos para Setor')) {
+            $nomes[] = 'Encaminhado ao Setor';
         }
 
         if ($service->podeEnviarParaEmpresa($user)) {

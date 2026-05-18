@@ -237,6 +237,7 @@ class CriarPermissoes extends Command
             'Visualizar Notificação: Balanço de Estoque',
             'Visualizar Tela de Inicio',
             'Acessar Painel',
+            'Acessar Escopo Global de Setores',
             'Baixar App',
             'Filtrar Alunos por Escola',
             'Filtrar Professores por Escola',
@@ -289,6 +290,7 @@ class CriarPermissoes extends Command
                 'Editar Setor do Usuário',
                 'Visualizar Setor do Usuário',
                 'Visualizar Usuarios Online',
+                'Acessar Escopo Global de Setores',
                 'Listar Setores',
                 'Criar Setores',
                 'Editar Setores',
@@ -531,7 +533,7 @@ class CriarPermissoes extends Command
                 'pedidos',
                 'relatorios_e_painel',
             ]),
-            'Manutenção: Educação' => $this->onlyPermissions($permissions, [
+            'Manutenção: Triagem' => $this->onlyPermissions($permissions, [
                 'Listar Pedidos',
                 'Criar Pedidos',
                 'Editar Pedidos',
@@ -546,7 +548,7 @@ class CriarPermissoes extends Command
                 'Exportar Arquivos Pedido',
                 'Exportar RelatÃ³rios',
             ]),
-            'Manutenção: Obras' => $this->onlyPermissions($permissions, [
+            'Manutenção: Execução' => $this->onlyPermissions($permissions, [
                 'Listar Pedidos',
                 'Editar Pedidos',
                 'Enviar Pedidos para Empresa',
@@ -589,32 +591,8 @@ class CriarPermissoes extends Command
 
     private function sincronizarSetorDaRole(Role $role, string $roleName): void
     {
-        $setor = match ($roleName) {
-            'Manutenção: Educação' => $this->setorIdPorNome('Educação'),
-            'Manutenção: Obras' => $this->setorIdPorNome('Obras'),
-            default => null,
-        };
-
-        if ($setor || $role->setor_id) {
-            $role->forceFill(['setor_id' => $setor])->save();
-        }
-    }
-
-    private function setorIdPorNome(string $nome): ?int
-    {
-        $aliases = [$nome];
-
-        if (function_exists('mb_convert_encoding')) {
-            $aliases[] = mb_convert_encoding($nome, 'UTF-8', 'ISO-8859-1');
-
-            if (str_contains($nome, 'Ã') || str_contains($nome, 'Â')) {
-                $aliases[] = mb_convert_encoding($nome, 'ISO-8859-1', 'UTF-8');
-            }
-        }
-
-        return DB::table('setor')
-            ->whereIn('nome', array_values(array_unique($aliases)))
-            ->value('id');
+        // roles.setor_id permanece apenas como legado/fallback temporario.
+        // O escopo operacional novo vem de users.setor_id e da arvore de setores.
     }
 
     private function onlyPermissions(array $permissions, array $selectedPermissions): array
@@ -764,6 +742,8 @@ class CriarPermissoes extends Command
             "Notificar Status Pendente" => 'Notificar Status Pendente',
             "Notificar Impedimento de Matr\u{00ED}cula por Falta de Transfer\u{00EA}ncia" => 'Notificar Impedimento de Matricula por Falta de Transferencia',
             "Gerenciar Impedimento de Matr\u{00ED}cula por Falta de Transfer\u{00EA}ncia" => 'Gerenciar Impedimento de Matricula por Falta de Transferencia',
+            'Manutenção: Educação' => 'Manutenção: Triagem',
+            'Manutenção: Obras' => 'Manutenção: Execução',
         ];
     }
 

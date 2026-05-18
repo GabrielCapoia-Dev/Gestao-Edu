@@ -15,6 +15,7 @@ use App\Models\InventarioEstoque;
 use App\Models\InventarioPedido;
 use App\Models\Item;
 use App\Models\PedidoMerenda;
+use App\Models\Setor;
 use App\Models\User;
 use App\Services\Estoque\BalancoEstoqueService;
 use App\Services\Inventario\BalancoInventarioService;
@@ -166,7 +167,7 @@ class EstoqueInventarioOrganicoSeeder extends Seeder
 
     protected function bootstrapUsuarios(): void
     {
-        $setorEducacaoId = \App\Models\Setor::query()->where('nome', 'Educação')->value('id');
+        $setorRootId = Setor::setorGeral()?->id;
         $adminRole = Role::query()->where('name', 'Admin')->first();
         $secretarioRole = Role::query()->where('name', 'Secretário')->first();
 
@@ -174,7 +175,7 @@ class EstoqueInventarioOrganicoSeeder extends Seeder
             ['email' => 'gestor.logistica@gestaoedu.local'],
             [
                 'name' => 'Marina Teles',
-                'setor_id' => $setorEducacaoId,
+                'setor_id' => $setorRootId,
                 'password' => Hash::make('Senha@123'),
                 'email_approved' => true,
                 'email_verified_at' => now(),
@@ -185,7 +186,7 @@ class EstoqueInventarioOrganicoSeeder extends Seeder
             ['email' => 'almoxarife.matriz@gestaoedu.local'],
             [
                 'name' => 'Rafael Duarte',
-                'setor_id' => $setorEducacaoId,
+                'setor_id' => $setorRootId,
                 'password' => Hash::make('Senha@123'),
                 'email_approved' => true,
                 'email_verified_at' => now(),
@@ -196,7 +197,7 @@ class EstoqueInventarioOrganicoSeeder extends Seeder
             ['email' => 'conferencia.matriz@gestaoedu.local'],
             [
                 'name' => 'Luciana Prado',
-                'setor_id' => $setorEducacaoId,
+                'setor_id' => $setorRootId,
                 'password' => Hash::make('Senha@123'),
                 'email_approved' => true,
                 'email_verified_at' => now(),
@@ -230,7 +231,7 @@ class EstoqueInventarioOrganicoSeeder extends Seeder
             ->where('ativo', true)
             ->orderBy('nome')
             ->get()
-            ->mapWithKeys(function (Escola $escola) use ($setorEducacaoId, $secretarioRole, $schoolPermissions): array {
+            ->mapWithKeys(function (Escola $escola) use ($setorRootId, $secretarioRole, $schoolPermissions): array {
                 $email = 'gestor.' . strtolower($escola->codigo) . '@gestaoedu.local';
                 $nomeCurto = Str::of($escola->nome)
                     ->replace('CMEI - ', '')
@@ -241,7 +242,7 @@ class EstoqueInventarioOrganicoSeeder extends Seeder
                     ['email' => $email],
                     [
                         'id_escola' => $escola->getKey(),
-                        'setor_id' => $setorEducacaoId,
+                        'setor_id' => $escola->setor_id ?: $setorRootId,
                         'name' => 'Gestão ' . $nomeCurto,
                         'password' => Hash::make('Senha@123'),
                         'email_approved' => true,
@@ -261,6 +262,8 @@ class EstoqueInventarioOrganicoSeeder extends Seeder
 
     protected function garantirCoberturaContratual(): void
     {
+        $setorRootId = Setor::setorGeral()?->id;
+
         $empresa = EmpresaContratada::query()->firstOrCreate(
             ['cnpj' => '98.765.432/0001-10'],
             [
@@ -274,16 +277,22 @@ class EstoqueInventarioOrganicoSeeder extends Seeder
                 'bairro' => 'Centro',
                 'cidade' => 'Umuarama',
                 'estado' => 'PR',
+                'setor_id' => $setorRootId,
                 'ativo' => true,
                 'alterado_por' => $this->gestorGeral->name,
             ],
         );
+
+        if (blank($empresa->setor_id) && $setorRootId) {
+            $empresa->forceFill(['setor_id' => $setorRootId])->saveQuietly();
+        }
 
         $contratoAtivo = $this->operarEmContexto($this->gestorGeral, $this->inicioHistorico->copy()->addDays(2), function () use ($empresa): Contrato {
             return Contrato::query()->firstOrCreate(
                 ['numero_contrato' => 'MER-ORG-' . now()->format('Y')],
                 [
                     'id_empresa_contratada' => $empresa->getKey(),
+                    'setor_id' => $empresa->setor_id,
                     'data_inicio' => now()->subMonths(7)->startOfMonth()->toDateString(),
                     'data_vencimento' => now()->addMonths(8)->endOfMonth()->toDateString(),
                     'observacoes' => 'Contrato guarda-chuva para abastecimento organico da rede.',
@@ -291,6 +300,10 @@ class EstoqueInventarioOrganicoSeeder extends Seeder
                 ],
             );
         });
+
+        if (blank($contratoAtivo->setor_id) && $empresa->setor_id) {
+            $contratoAtivo->forceFill(['setor_id' => $empresa->setor_id])->saveQuietly();
+        }
 
         foreach ($this->itens as $item) {
             ContratoItem::query()->firstOrCreate(
@@ -397,6 +410,7 @@ class EstoqueInventarioOrganicoSeeder extends Seeder
                 ['escola_id' => $escola->getKey()],
                 [
                     'nome' => 'Inventario - ' . $escola->nome,
+                    'setor_id' => $escola->setor_id,
                     'ativo' => true,
                     'criado_por_id' => $this->gestorGeral->getKey(),
                 ],

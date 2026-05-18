@@ -4,6 +4,7 @@ namespace App\Services\Inventario;
 
 use App\Models\Inventario;
 use App\Models\User;
+use App\Services\UserSetorAccessService;
 use Illuminate\Database\Eloquent\Builder;
 
 class InventarioContextService
@@ -14,8 +15,8 @@ class InventarioContextService
             return false;
         }
 
-        // Impacto: esta regra define o escopo global do inventario. Alterar "blank(id_escola)" afeta listagens, romaneios e permissoes de gestores sem escola vinculada.
-        return $user->hasRole('Admin') || blank($user->id_escola);
+        return app(UserSetorAccessService::class)->hasGlobalAccess($user)
+            || blank($user->id_escola);
     }
 
     public function inventarioDoUsuario(?User $user): ?Inventario
@@ -36,13 +37,16 @@ class InventarioContextService
             return null;
         }
 
-        // Impacto: gestor geral precisa escolher inventario; usuario de escola nunca deve receber inventarioId arbitrario da request.
-        if ($this->ehGestorGeral($user)) {
+        if (app(UserSetorAccessService::class)->hasGlobalAccess($user)) {
             if ($inventarioId) {
                 return Inventario::query()->with('escola')->find($inventarioId);
             }
 
             return null;
+        }
+
+        if ($inventarioId) {
+            return $this->queryInventariosVisiveis($user)->find($inventarioId);
         }
 
         return $this->inventarioDoUsuario($user);
@@ -56,12 +60,31 @@ class InventarioContextService
             return $query->whereRaw('1 = 0');
         }
 
-        if ($this->ehGestorGeral($user)) {
+        $access = app(UserSetorAccessService::class);
+
+        if ($access->hasGlobalAccess($user)) {
             return $query;
         }
 
-        if (filled($user->id_escola)) {
-            return $query->where('escola_id', $user->id_escola);
+        $setorIds = $access->visibleSetorIds($user);
+        $legacyEscolaId = filled($user->id_escola) ? (int) $user->id_escola : null;
+
+        if ($setorIds !== []) {
+            return $query->where(function (Builder $builder) use ($setorIds, $legacyEscolaId): void {
+                $builder->whereIn('setor_id', $setorIds)
+                    ->orWhere(function (Builder $legacy) use ($setorIds): void {
+                        $legacy->whereNull('setor_id')
+                            ->whereHas('escola', fn (Builder $escola): Builder => $escola->whereIn('setor_id', $setorIds));
+                    });
+
+                if ($legacyEscolaId !== null) {
+                    $builder->orWhere('escola_id', $legacyEscolaId);
+                }
+            });
+        }
+
+        if ($legacyEscolaId !== null) {
+            return $query->where('escola_id', $legacyEscolaId);
         }
 
         return $query->whereRaw('1 = 0');

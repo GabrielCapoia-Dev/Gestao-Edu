@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use App\Services\UserSetorAccessService;
 
 class EmpresaContratada extends Model
 {
@@ -51,7 +52,11 @@ class EmpresaContratada extends Model
                 $model->alterado_por = Auth::user()->name;
 
                 if (blank($model->setor_id)) {
-                    $model->setor_id = Auth::user()->idsSetoresOperacionais()[0] ?? Auth::user()->setor_id;
+                    $model->setor_id = app(UserSetorAccessService::class)->primarySetorId(Auth::user());
+                }
+
+                if (filled($model->setor_id)) {
+                    app(UserSetorAccessService::class)->assertCanUseSetor(Auth::user(), (int) $model->setor_id);
                 }
             }
         });
@@ -107,16 +112,6 @@ class EmpresaContratada extends Model
 
     public function scopeDoSetorDoUsuario(Builder $query, ?User $user = null): Builder
     {
-        $user ??= Auth::user();
-        $setorIds = $user?->idsSetoresOperacionais() ?? [];
-
-        if ($setorIds !== []) {
-            return $query->whereIn('setor_id', $setorIds);
-        }
-
-        return $query->when(
-            filled($user?->setor_id),
-            fn (Builder $query): Builder => $query->where('setor_id', $user->setor_id)
-        );
+        return app(UserSetorAccessService::class)->applySetorScope($query, $user ?? Auth::user());
     }
 }

@@ -48,12 +48,14 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
         $this->service = app(PedidoService::class);
         $this->seedStatus();
 
-        $this->educacao = Setor::create(['nome' => 'Educação', 'ativo' => true, 'status' => 'Ativo']);
-        $this->obras = Setor::create(['nome' => 'Obras', 'ativo' => true, 'status' => 'Ativo']);
+        $this->educacao = Setor::create(['nome' => 'Educação', 'ativo' => true, 'status' => 'Ativo', 'is_default_root' => true]);
+        $this->obras = Setor::create(['nome' => 'Obras', 'parent_id' => $this->educacao->id, 'ativo' => true, 'status' => 'Ativo']);
+        $escolaSetor = Setor::create(['nome' => 'Escola Teste Setor', 'parent_id' => $this->educacao->id, 'ativo' => true, 'status' => 'Ativo']);
 
         $this->escola = Escola::create([
             'codigo' => '001',
             'nome' => 'Escola Teste',
+            'setor_id' => $escolaSetor->id,
             'ativo' => true,
         ]);
 
@@ -111,14 +113,14 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
     {
         $pedidoEducacao = $this->pedido(status: 'Em Aberto', setor: $this->educacao, escola: $this->escola);
 
-        $outraEscola = Escola::create(['codigo' => '002', 'nome' => 'Outra Escola', 'ativo' => true]);
+        $outraEscola = Escola::create(['codigo' => '002', 'nome' => 'Outra Escola', 'setor_id' => $this->obras->id, 'ativo' => true]);
         $pedidoObras = $this->pedido(status: 'Em Aberto', setor: $this->obras, escola: $outraEscola);
 
         $educacaoUser = $this->usuarioComRoleSetor('Manutenção: Educação', $this->educacao, ['Listar Pedidos']);
         $globalUser = $this->usuarioComPermissoes(['Listar Todos os Pedidos']);
         $escolaUser = User::factory()->create(['id_escola' => $this->escola->id, 'email_approved' => true]);
 
-        $this->assertSame([$pedidoEducacao->id], $this->service->queryTabela($educacaoUser)->pluck('id')->all());
+        $this->assertEqualsCanonicalizing([$pedidoEducacao->id, $pedidoObras->id], $this->service->queryTabela($educacaoUser)->pluck('id')->all());
         $this->assertEqualsCanonicalizing([$pedidoEducacao->id, $pedidoObras->id], $this->service->queryTabela($globalUser)->pluck('id')->all());
         $this->assertSame([$pedidoEducacao->id], $this->service->queryTabela($escolaUser)->pluck('id')->all());
     }
@@ -157,8 +159,9 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
             'ativo' => true,
         ]);
 
-        $this->assertFalse($this->service->podeEnviarParaEmpresa($educacaoUser));
+        $this->assertTrue($this->service->podeEnviarParaEmpresa($educacaoUser));
         $this->assertTrue($this->service->podeEnviarParaEmpresa($obrasUser));
+        $this->assertSame(['Empresa Obras'], EmpresaContratada::query()->doSetorDoUsuario($educacaoUser)->pluck('nome')->all());
         $this->assertSame(['Empresa Obras'], EmpresaContratada::query()->doSetorDoUsuario($obrasUser)->pluck('nome')->all());
     }
 
@@ -384,6 +387,7 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
             'escola_id' => $escola->id,
             'solicitante_id' => User::factory()->create(['id_escola' => $escola->id])->id,
             'setor_id' => $setor->id,
+            'setor_origem_id' => $escola->setor_id,
             'data_solicitacao' => now(),
             'data_identificacao_problema' => now(),
             'ativo' => true,

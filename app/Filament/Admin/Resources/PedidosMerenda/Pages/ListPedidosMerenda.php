@@ -7,11 +7,13 @@ use App\Models\Enums\StatusPedidoMerenda;
 use App\Models\Estoque;
 use App\Models\PedidoMerenda;
 use App\Models\PedidoMerendaItem;
+use App\Services\UserSetorAccessService;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\Page;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use Filament\Actions\CreateAction;
 use Illuminate\Contracts\View\View;
 
@@ -140,6 +142,7 @@ class ListPedidosMerenda extends Page
                 'itens.contratoItem.item',
                 'itens.contratoItem.contrato.empresaContratada',
             ])
+            ->tap(fn (Builder $query) => app(UserSetorAccessService::class)->applySetorScope($query, Auth::user()))
             ->find($this->pedidoSelecionadoId);
     }
 
@@ -263,6 +266,7 @@ class ListPedidosMerenda extends Page
     public function getCriadoresDisponiveisProperty(): array
     {
         return PedidoMerenda::query()
+            ->tap(fn (Builder $query) => app(UserSetorAccessService::class)->applySetorScope($query, Auth::user()))
             ->whereNotNull('criado_por')
             ->orderBy('criado_por')
             ->pluck('criado_por')
@@ -386,6 +390,7 @@ class ListPedidosMerenda extends Page
     {
         $pedido = PedidoMerenda::query()
             ->with('itens.contratoItem')
+            ->tap(fn (Builder $query) => app(UserSetorAccessService::class)->applySetorScope($query, Auth::user()))
             ->findOrFail($pedidoId);
 
         DB::transaction(function () use ($pedido) {
@@ -437,6 +442,7 @@ class ListPedidosMerenda extends Page
     protected function buildPedidosQuery(): Builder
     {
         return PedidoMerenda::query()
+            ->tap(fn (Builder $query) => app(UserSetorAccessService::class)->applySetorScope($query, Auth::user()))
             ->withCount('itens')
             ->withSum('itens as quantidade_total_pedida', 'quantidade_pedida')
             ->withSum('itens as quantidade_total_entregue', 'quantidade_entregue')

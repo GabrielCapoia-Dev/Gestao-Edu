@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Models\User;
 use App\Models\Contrato;
+use App\Services\UserSetorAccessService;
 
 class ContratoPolicy
 
@@ -21,7 +22,8 @@ class ContratoPolicy
      */
     public function view(User $user, Contrato $model): bool
     {
-        return $user->hasPermissionTo('Listar Contratos');
+        return $user->hasPermissionTo('Listar Contratos')
+            && $this->podeAcessarContrato($user, $model);
 
     }
 
@@ -39,7 +41,8 @@ class ContratoPolicy
      */
     public function update(User $user, Contrato $model): bool
     {
-        return $user->hasPermissionTo('Editar Contratos');
+        return $user->hasPermissionTo('Editar Contratos')
+            && $this->podeAcessarContrato($user, $model);
     }
 
     /**
@@ -47,7 +50,15 @@ class ContratoPolicy
      */
     public function delete(User $user, Contrato $model): bool
     {
-        return $user->hasPermissionTo('Excluir Contratos');
+        return $user->hasPermissionTo('Excluir Contratos')
+            && $this->podeAcessarContrato($user, $model);
+    }
+
+    private function podeAcessarContrato(User $user, Contrato $model): bool
+    {
+        $setorId = $model->setor_id ?: $model->empresaContratada?->setor_id;
+
+        return app(UserSetorAccessService::class)->canAccessSetor($user, $setorId);
     }
 
     // /**
@@ -66,4 +77,3 @@ class ContratoPolicy
     //     return false;
     // }
 }
-

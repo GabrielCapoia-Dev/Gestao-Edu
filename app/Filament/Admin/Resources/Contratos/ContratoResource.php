@@ -9,6 +9,7 @@ use App\Filament\Admin\Resources\Contratos\RelationManagers\ItensRelationManager
 use App\Filament\Admin\Resources\Contratos\Schemas\ContratoForm;
 use App\Filament\Admin\Resources\Contratos\Tables\ContratosTable;
 use App\Models\Contrato;
+use App\Services\UserSetorAccessService;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -44,8 +45,29 @@ class ContratoResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()
-            ->whereHas('empresaContratada', fn (Builder $query): Builder => $query->doSetorDoUsuario(Auth::user()));
+        $query = parent::getEloquentQuery()
+            ->with(['setor', 'empresaContratada']);
+
+        $access = app(UserSetorAccessService::class);
+        $user = Auth::user();
+
+        if ($access->hasGlobalAccess($user)) {
+            return $query;
+        }
+
+        $setorIds = $access->visibleSetorIds($user);
+
+        if ($setorIds === []) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->where(function (Builder $builder) use ($setorIds): void {
+            $builder->whereIn('setor_id', $setorIds)
+                ->orWhere(function (Builder $legacy) use ($setorIds): void {
+                    $legacy->whereNull('setor_id')
+                        ->whereHas('empresaContratada', fn (Builder $empresa): Builder => $empresa->whereIn('setor_id', $setorIds));
+                });
+        });
     }
 
     public static function getRelations(): array

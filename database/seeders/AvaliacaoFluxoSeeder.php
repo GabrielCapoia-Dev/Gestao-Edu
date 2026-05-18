@@ -14,6 +14,7 @@ use App\Models\Pauta;
 use App\Models\Professor;
 use App\Models\Role;
 use App\Models\Serie;
+use App\Models\Setor;
 use App\Models\TipoAvaliacao;
 use App\Models\Turma;
 use App\Models\User;
@@ -29,15 +30,18 @@ class AvaliacaoFluxoSeeder extends Seeder
         app(PermissionRegistrar::class)->forgetCachedPermissions();
         Artisan::call('permissoes:criar');
 
+        $setorRoot = Setor::setorGeral();
+
         DominioEmail::firstOrCreate(
             ['dominio_email' => 'edu.umuarama.pr.gov.br'],
-            ['setor' => 'Educacao', 'status' => true]
+            ['setor' => $setorRoot?->nome ?? 'Geral', 'status' => true]
         );
 
         $escolaCentro = Escola::updateOrCreate(
             ['codigo' => 'ESCAVC'],
             [
                 'nome' => 'Escola Municipal Centro Avaliacoes',
+                'setor_id' => $setorRoot?->id,
                 'email' => 'escola.centro@edu.umuarama.pr.gov.br',
                 'telefone' => '(44) 3900-1001',
             ]
@@ -47,6 +51,7 @@ class AvaliacaoFluxoSeeder extends Seeder
             ['codigo' => 'ESCAVJ'],
             [
                 'nome' => 'Escola Municipal Jardim Avaliacoes',
+                'setor_id' => $setorRoot?->id,
                 'email' => 'escola.jardim@edu.umuarama.pr.gov.br',
                 'telefone' => '(44) 3900-1002',
             ]
