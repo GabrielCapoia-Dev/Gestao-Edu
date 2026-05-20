@@ -76,6 +76,25 @@
             color: #b91c1c;
         }
 
+        .pedido-camera-shortcut__message--success {
+            color: #16a34a;
+        }
+
+        .pedido-camera-shortcut__spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid #cbd5e1;
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: pedido-camera-spin 0.6s linear infinite;
+            margin-right: 0.35rem;
+        }
+
+        @keyframes pedido-camera-spin {
+            to { transform: rotate(360deg); }
+        }
+
         .dark .pedido-camera-shortcut__button {
             background: #111827;
             border-color: #334155;
@@ -93,6 +112,10 @@
 
         .dark .pedido-camera-shortcut__message--error {
             color: #fca5a5;
+        }
+
+        .dark .pedido-camera-shortcut__message--success {
+            color: #4ade80;
         }
 
         @media (max-width: 640px) {
@@ -115,11 +138,9 @@
         type="file"
         accept="image/jpeg,image/jpg,image/png,image/webp"
         capture="environment"
-        multiple
         class="pedido-camera-shortcut__input"
         tabindex="-1"
         aria-hidden="true"
-        x-on:click="resetNativeInput($event)"
         x-on:change="handleCameraFiles($event)"
     />
 
@@ -128,17 +149,27 @@
         role="button"
         tabindex="0"
         class="pedido-camera-shortcut__button"
+        x-on:click="clearMessages()"
         x-on:keydown.enter.prevent="$refs.cameraInput.click()"
         x-on:keydown.space.prevent="$refs.cameraInput.click()"
     >
         <x-heroicon-o-camera />
-        Tirar foto
+        <span x-text="loading ? 'Processando...' : 'Tirar foto'"></span>
     </label>
 
-    <template x-if="message">
+    <template x-if="loading">
+        <span class="pedido-camera-shortcut__message">
+            <span class="pedido-camera-shortcut__spinner"></span>
+        </span>
+    </template>
+
+    <template x-if="message && !loading">
         <span
             class="pedido-camera-shortcut__message"
-            :class="{ 'pedido-camera-shortcut__message--error': hasError }"
+            :class="{
+                'pedido-camera-shortcut__message--error': hasError,
+                'pedido-camera-shortcut__message--success': !hasError
+            }"
             x-text="message"
         ></span>
     </template>
@@ -150,16 +181,22 @@
             acceptedExtensions: ['jpeg', 'jpg', 'png', 'webp'],
             hasError: false,
             message: '',
+            loading: false,
 
-            resetNativeInput(event) {
-                event.target.value = '';
+            clearMessages() {
                 this.message = '';
                 this.hasError = false;
             },
 
             getUploadElement() {
                 const targetSelector = `[data-camera-upload-target="${target}"]`;
-                const root = this.$root || document;
+
+                const modal = document.querySelector('[role="dialog"] [data-camera-upload-target]');
+                if (modal) {
+                    const result = modal.closest('[role="dialog"]')?.querySelector(targetSelector);
+                    if (result) return result;
+                }
+
                 const scopes = [
                     '[data-repeater-item]',
                     '.fi-fo-repeater-item',
@@ -169,12 +206,9 @@
                 ];
 
                 for (const scopeSelector of scopes) {
-                    const scope = root.closest?.(scopeSelector);
+                    const scope = this.$root.closest?.(scopeSelector);
                     const scopedUpload = scope?.querySelector(targetSelector);
-
-                    if (scopedUpload) {
-                        return scopedUpload;
-                    }
+                    if (scopedUpload) return scopedUpload;
                 }
 
                 return document.querySelector(targetSelector);
@@ -182,14 +216,11 @@
 
             getUploadData() {
                 const uploadElement = this.getUploadElement();
-
                 return uploadElement && window.Alpine ? window.Alpine.$data(uploadElement) : null;
             },
 
             makeUploadErrorMessage(file) {
-                if (!file) {
-                    return null;
-                }
+                if (!file) return null;
 
                 const extension = (file.name.split('.').pop() || '').toLowerCase();
                 const mimeType = (file.type || '').toLowerCase();
@@ -197,39 +228,42 @@
                     || (mimeType && !acceptedMimeTypes.includes(mimeType));
                 const hasInvalidSize = file.size > maxSizeBytes;
 
-                if (!hasInvalidFormat && !hasInvalidSize) {
-                    return null;
-                }
+                if (!hasInvalidFormat && !hasInvalidSize) return null;
 
                 if (hasInvalidFormat && hasInvalidSize) {
-                    return `A foto "${file.name}" não foi enviada: formato incorreto e tamanho acima de 5 MB.`;
+                    return `Formato incorreto e tamanho acima de 5 MB.`;
                 }
-
                 if (hasInvalidFormat) {
-                    return `A foto "${file.name}" não foi enviada: use JPEG, JPG, PNG ou WEBP.`;
+                    return `Formato não aceito. Use JPEG, JPG, PNG ou WEBP.`;
                 }
+                return `Tamanho acima de 5 MB.`;
+            },
 
-                return `A foto "${file.name}" não foi enviada: tamanho acima de 5 MB.`;
+            async addFileToPond(file, uploadData) {
+                for (let attempt = 0; attempt < 5; attempt++) {
+                    if (uploadData?.pond) {
+                        await uploadData.pond.addFile(file);
+                        return true;
+                    }
+                    await new Promise(r => setTimeout(r, 300));
+                    uploadData = this.getUploadData();
+                }
+                return false;
             },
 
             async handleCameraFiles(event) {
                 const files = Array.from(event.target.files || []);
                 event.target.value = '';
 
-                if (files.length === 0) {
-                    return;
-                }
+                if (files.length === 0) return;
+
+                this.loading = true;
+                this.message = 'Processando foto...';
+                this.hasError = false;
 
                 const uploadData = this.getUploadData();
-
-                if (!uploadData?.pond) {
-                    this.hasError = true;
-                    this.message = 'Campo de fotos ainda não está pronto. Tente novamente.';
-
-                    return;
-                }
-
                 let uploaded = 0;
+                let failed = 0;
 
                 for (const file of files) {
                     const validationMessage = this.makeUploadErrorMessage(file);
@@ -237,23 +271,48 @@
                     if (validationMessage) {
                         this.hasError = true;
                         this.message = validationMessage;
-
-                        continue;
+                        this.loading = false;
+                        return;
                     }
 
                     try {
-                        await uploadData.pond.addFile(file);
-                        uploaded++;
+                        const reader = new FileReader();
+                        const dataUrl = await new Promise((resolve, reject) => {
+                            reader.onload = () => resolve(reader.result);
+                            reader.onerror = reject;
+                            reader.readAsDataURL(file);
+                        });
+
+                        const added = await this.addFileToPond(dataUrl, uploadData);
+
+                        if (added) {
+                            uploaded++;
+                        } else {
+                            const fallbackAdded = await this.addFileToPond(file, uploadData);
+                            if (fallbackAdded) {
+                                uploaded++;
+                            } else {
+                                failed++;
+                            }
+                        }
                     } catch (error) {
-                        this.hasError = true;
-                        this.message = 'Não foi possível carregar uma das fotos. Confira o formato e o tamanho.';
+                        failed++;
                     }
                 }
 
-                if (uploaded > 0 && !this.hasError) {
+                this.loading = false;
+
+                if (uploaded > 0 && failed === 0) {
+                    this.hasError = false;
                     this.message = uploaded === 1
-                        ? 'Foto adicionada ao campo acima.'
-                        : `${uploaded} fotos adicionadas ao campo acima.`;
+                        ? 'Foto adicionada com sucesso!'
+                        : `${uploaded} fotos adicionadas com sucesso!`;
+                } else if (uploaded > 0 && failed > 0) {
+                    this.hasError = true;
+                    this.message = `${uploaded} foto(s) adicionada(s), ${failed} falha(s).`;
+                } else if (failed > 0) {
+                    this.hasError = true;
+                    this.message = 'Não foi possível carregar a foto. Tente novamente.';
                 }
             },
         };
