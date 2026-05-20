@@ -21,6 +21,10 @@
         $tabs['adicionais'] = 'Adicionais';
     }
 
+    $exportImagesUrl = \Illuminate\Support\Facades\Route::has('pedidos.imagens.export')
+        ? route('pedidos.imagens.export', $pedido)
+        : null;
+
     $statusCor = '#' . ltrim($pedido->tipoStatus?->cor ?? '#64748b', '#');
     $prioridade = $pedido->nivel_prioridade?->value ?? 'Indeterminado';
 @endphp
@@ -281,8 +285,8 @@
 
         <div class="pedido-view__actions">
             <a class="pedido-view__action" href="{{ route('pedidos.pdf', $pedido) }}" target="_blank">Exportar PDF</a>
-            @if($imagens->flatten(1)->isNotEmpty())
-                <a class="pedido-view__action" href="{{ route('pedidos.imagens.export', $pedido) }}" target="_blank">Exportar imagens</a>
+            @if($imagens->flatten(1)->isNotEmpty() && $exportImagesUrl)
+                <a class="pedido-view__action" href="{{ $exportImagesUrl }}" target="_blank">Exportar imagens</a>
             @endif
         </div>
     </div>
