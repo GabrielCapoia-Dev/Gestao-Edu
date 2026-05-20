@@ -98,6 +98,12 @@ class PedidoCriacaoForm
                             ])
                             ->columnSpanFull(),
 
+                        View::make('components.forms.photo-preview-gallery')
+                            ->viewData([
+                                'target' => 'pedido-fotos-problema',
+                            ])
+                            ->columnSpanFull(),
+
                     ])
                     ->columns(1),
             ]);

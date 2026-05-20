@@ -533,6 +533,12 @@ class PedidosTable
                             'target' => 'pedido-fotos-conclusao',
                         ])
                         ->columnSpanFull(),
+
+                    View::make('components.forms.photo-preview-gallery')
+                        ->viewData([
+                            'target' => 'pedido-fotos-conclusao',
+                        ])
+                        ->columnSpanFull(),
                 ])
                 ->visible(fn (Get $get) => ! (bool) $get('reabrir_pedido')),
         ];
@@ -643,6 +649,12 @@ class PedidosTable
                     ->columnSpanFull(),
 
                 View::make('components.forms.camera-file-upload-tools')
+                    ->viewData([
+                        'target' => 'pedido-fotos-adicional',
+                    ])
+                    ->columnSpanFull(),
+
+                View::make('components.forms.photo-preview-gallery')
                     ->viewData([
                         'target' => 'pedido-fotos-adicional',
                     ])
