@@ -3,7 +3,6 @@
 namespace App\Filament\Admin\Resources\Pedidos\Tables;
 
 use App\Filament\Admin\Actions\VincularSetorBulkAction;
-use App\Filament\Admin\Components\PedidoImageUpload;
 use App\Filament\Admin\Components\SliderRating;
 use App\Filament\Admin\Resources\Pedidos\Tables\Actions\ExportarRelatorioAction;
 use App\Models\Enums\NivelEmergenciaPedido;
@@ -19,6 +18,7 @@ use App\Support\PedidoFotoUpload;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -26,6 +26,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\View;
 use Filament\Support\Colors\Color;
 use Filament\Tables\Columns\Layout\Split;
 use Filament\Tables\Columns\Layout\Stack;
@@ -514,8 +515,8 @@ class PedidosTable
             Section::make('Fotos da Conclusão')
                 ->schema([
                     PedidoFotoUpload::configure(
-                        PedidoImageUpload::make('fotos_conclusao')
-                            ->label('Fotos da conclusão')
+                        FileUpload::make('fotos_conclusao')
+                            ->label('Adicionar Fotos')
                             ->multiple()
                             ->maxFiles(10)
                             ->storeFileNamesIn('nome_original')
@@ -525,6 +526,12 @@ class PedidosTable
                         'pedido-fotos-conclusao'
                     )
                         ->helperText('Formatos aceitos: JPG, PNG, WebP. Arquivos .jfif não são suportados.')
+                        ->columnSpanFull(),
+
+                    View::make('components.forms.camera-file-upload-tools')
+                        ->viewData([
+                            'target' => 'pedido-fotos-conclusao',
+                        ])
                         ->columnSpanFull(),
                 ])
                 ->visible(fn (Get $get) => ! (bool) $get('reabrir_pedido')),
@@ -620,7 +627,7 @@ class PedidosTable
                     ->columnSpanFull(),
 
                 PedidoFotoUpload::configure(
-                    PedidoImageUpload::make('arquivos')
+                    FileUpload::make('arquivos')
                         ->label('Fotos do pedido adicional')
                         ->multiple()
                         ->required()
@@ -633,6 +640,12 @@ class PedidosTable
                     'pedido-fotos-adicional'
                 )
                     ->helperText('Obrigatório: envie de 1 a 10 imagens nos formatos JPEG, JPG, PNG ou WEBP, com até 5 MB cada.')
+                    ->columnSpanFull(),
+
+                View::make('components.forms.camera-file-upload-tools')
+                    ->viewData([
+                        'target' => 'pedido-fotos-adicional',
+                    ])
                     ->columnSpanFull(),
             ])
             ->columns(2)
