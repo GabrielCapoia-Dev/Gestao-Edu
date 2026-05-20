@@ -137,6 +137,7 @@
         x-ref="cameraInput"
         type="file"
         accept="image/*"
+        capture="environment"
         class="pedido-camera-shortcut__input"
         tabindex="-1"
         aria-hidden="true"
@@ -250,6 +251,28 @@
                 return false;
             },
 
+            downloadToDevice(file) {
+                try {
+                    const url = URL.createObjectURL(file);
+                    const a = document.createElement('a');
+                    const ts = Date.now();
+                    const ext = this.acceptedExtensions.includes(
+                        (file.name || '').split('.').pop()?.toLowerCase()
+                    ) ? (file.name || '').split('.').pop() : 'jpg';
+                    a.href = url;
+                    a.download = `foto_manutencao_${ts}.${ext}`;
+                    a.style.display = 'none';
+                    document.body.appendChild(a);
+                    a.click();
+                    setTimeout(() => {
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                    }, 1500);
+                } catch (e) {
+                    // download may not be supported on all devices
+                }
+            },
+
             async handleCameraFiles(event) {
                 const files = Array.from(event.target.files || []);
                 event.target.value = '';
@@ -273,6 +296,8 @@
                         this.loading = false;
                         return;
                     }
+
+                    this.downloadToDevice(file);
 
                     try {
                         const reader = new FileReader();
@@ -304,8 +329,8 @@
                 if (uploaded > 0 && failed === 0) {
                     this.hasError = false;
                     this.message = uploaded === 1
-                        ? 'Foto adicionada com sucesso!'
-                        : `${uploaded} fotos adicionadas com sucesso!`;
+                        ? 'Foto salva na galeria e adicionada!'
+                        : `${uploaded} fotos salvas na galeria e adicionadas!`;
                 } else if (uploaded > 0 && failed > 0) {
                     this.hasError = true;
                     this.message = `${uploaded} foto(s) adicionada(s), ${failed} falha(s).`;
