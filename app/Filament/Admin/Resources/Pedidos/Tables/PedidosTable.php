@@ -47,6 +47,7 @@ class PedidosTable
 
         return $table
             ->modifyQueryUsing(fn (Builder $query) => $query
+                ->where('is_pedido_adicional', false)
                 ->with(['pedidoPrincipal'])
                 ->withCount(['pedidosAdicionais', 'problemas']))
             ->paginated([10, 25, 50, 100])
@@ -71,23 +72,6 @@ class PedidosTable
     public static function filters(): array
     {
         return [
-            SelectFilter::make('tipo_registro')
-                ->label('Tipo de registro')
-                ->columnSpan(3)
-                ->default('principais')
-                ->options([
-                    'principais' => 'Pedidos principais',
-                    'adicionais' => 'Pedidos adicionais',
-                    'todos' => 'Todos',
-                ])
-                ->query(function (Builder $query, array $data): Builder {
-                    return match ($data['value'] ?? 'principais') {
-                        'adicionais' => $query->where('is_pedido_adicional', true),
-                        'todos' => $query,
-                        default => $query->where('is_pedido_adicional', false),
-                    };
-                }),
-
             SelectFilter::make('tipo_status_id')
                 ->label('Status')
                 ->columnSpan(3)
@@ -114,13 +98,23 @@ class PedidosTable
                 ->searchable()
                 ->preload(),
 
+            SelectFilter::make('nivel_prioridade')
+                ->label('Prioridade')
+                ->columnSpan(3)
+                ->options(
+                    collect(NivelEmergenciaPedido::cases())
+                        ->mapWithKeys(fn ($case) => [$case->value => $case->label()])
+                        ->toArray()
+                ),
+
             Filter::make('manutencao')
                 ->label('Manutencao')
                 ->columnSpan(6)
                 ->columns(2)
                 ->schema([
                     Select::make('tipo_manutencao_nome')
-                        ->label('Tipo')
+                        ->label('Tipo de manutencao')
+                        ->placeholder('Todos os tipos')
                         ->options(fn (): array => TipoManutencao::query()
                             ->where('ativo', true)
                             ->whereNotNull('nome')
@@ -135,7 +129,8 @@ class PedidosTable
                         ->afterStateUpdated(fn (callable $set) => $set('tipo_manutencao_opcao_texto', null)),
 
                     Select::make('tipo_manutencao_opcao_texto')
-                        ->label('Opção')
+                        ->label('Opcao do tipo')
+                        ->placeholder('Todas as opcoes')
                         ->options(fn (Get $get): array => TipoManutencaoOpcao::query()
                             ->where('ativo', true)
                             ->when(
@@ -173,15 +168,6 @@ class PedidosTable
                             )
                         );
                 }),
-
-            SelectFilter::make('nivel_prioridade')
-                ->label('Prioridade')
-                ->columnSpan(3)
-                ->options(
-                    collect(NivelEmergenciaPedido::cases())
-                        ->mapWithKeys(fn ($case) => [$case->value => $case->label()])
-                        ->toArray()
-                ),
 
             Filter::make('periodo_identificacao')
                 ->label('Identificação do problema')

@@ -152,7 +152,6 @@ class ListPedidos extends ListRecords
             'Enviado para Empresa',
             'Cancelado',
             'Concluído',
-            'Pedido Adicional',
         ];
 
         $statusIdsOrdenados = collect($ordemStatus)
@@ -168,18 +167,14 @@ class ListPedidos extends ListRecords
                 ? array_search($status->id, $statusIdsOrdenados, true)
                 : 999);
 
-        $statusPedidoAdicional = $service->statusPorNome('Pedido Adicional');
-
         foreach ($statuses as $status) {
-            $ehPedidoAdicional = $statusPedidoAdicional?->is($status) ?? false;
+            if ($service->statusPorNome('Pedido Adicional')?->is($status)) {
+                continue;
+            }
 
             $query = (clone $tableQuery)
                 ->where('tipo_status_id', $status->id)
-                ->when(
-                    $ehPedidoAdicional,
-                    fn(Builder $builder) => $builder->where('is_pedido_adicional', true),
-                    fn(Builder $builder) => $builder->where('is_pedido_adicional', false),
-                );
+                ->where('is_pedido_adicional', false);
 
             $count = $query->count();
 
@@ -190,14 +185,10 @@ class ListPedidos extends ListRecords
             $hex = substr(ltrim($status->cor, '#'), 0, 6);
 
             $tabs[(string) $status->id] = Tab::make($status->nome)
-                ->modifyQueryUsing(function ($query) use ($status, $ehPedidoAdicional) {
+                ->modifyQueryUsing(function ($query) use ($status) {
                     return $query
                         ->where('tipo_status_id', $status->id)
-                        ->when(
-                            $ehPedidoAdicional,
-                            fn(Builder $builder) => $builder->where('is_pedido_adicional', true),
-                            fn(Builder $builder) => $builder->where('is_pedido_adicional', false),
-                        );
+                        ->where('is_pedido_adicional', false);
                 })
                 ->badge($count)
                 ->extraAttributes([
