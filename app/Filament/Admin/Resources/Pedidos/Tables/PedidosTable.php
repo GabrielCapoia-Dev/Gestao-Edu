@@ -114,12 +114,65 @@ class PedidosTable
                 ->searchable()
                 ->preload(),
 
-            SelectFilter::make('tipo_manutencao_id')
-                ->label('Tipo')
-                ->columnSpan(3)
-                ->relationship('tipoManutencao', 'nome')
-                ->searchable()
-                ->preload(),
+            Filter::make('manutencao')
+                ->label('Manutencao')
+                ->columnSpan(6)
+                ->columns(2)
+                ->schema([
+                    Select::make('tipo_manutencao_nome')
+                        ->label('Tipo')
+                        ->options(fn (): array => TipoManutencao::query()
+                            ->where('ativo', true)
+                            ->whereNotNull('nome')
+                            ->orderBy('nome')
+                            ->pluck('nome')
+                            ->unique()
+                            ->mapWithKeys(fn (string $nome): array => [$nome => $nome])
+                            ->toArray())
+                        ->searchable()
+                        ->preload()
+                        ->live()
+                        ->afterStateUpdated(fn (callable $set) => $set('tipo_manutencao_opcao_texto', null)),
+
+                    Select::make('tipo_manutencao_opcao_texto')
+                        ->label('Opção')
+                        ->options(fn (Get $get): array => TipoManutencaoOpcao::query()
+                            ->where('ativo', true)
+                            ->when(
+                                filled($get('tipo_manutencao_nome')),
+                                fn (Builder $query) => $query->whereIn(
+                                    'tipo_manutencao_id',
+                                    TipoManutencao::query()
+                                        ->where('nome', $get('tipo_manutencao_nome'))
+                                        ->pluck('id')
+                                )
+                            )
+                            ->orderBy('texto')
+                            ->pluck('texto')
+                            ->unique()
+                            ->mapWithKeys(fn (string $texto): array => [$texto => $texto])
+                            ->toArray())
+                        ->visible(fn (Get $get): bool => filled($get('tipo_manutencao_nome')))
+                        ->searchable()
+                        ->preload(),
+                ])
+                ->query(function (Builder $query, array $data): Builder {
+                    return $query
+                        ->when(
+                            filled($data['tipo_manutencao_nome'] ?? null),
+                            fn (Builder $builder) => $builder->whereHas(
+                                'tipoManutencao',
+                                fn (Builder $tipoQuery) => $tipoQuery->where('nome', $data['tipo_manutencao_nome'])
+                            )
+                        )
+                        ->when(
+                            filled($data['tipo_manutencao_opcao_texto'] ?? null),
+                            fn (Builder $builder) => $builder->whereHas(
+                                'problemas',
+                                fn (Builder $problemaQuery) => $problemaQuery->where('texto_problema', $data['tipo_manutencao_opcao_texto'])
+                            )
+                        );
+                }),
 
             SelectFilter::make('nivel_prioridade')
                 ->label('Prioridade')
