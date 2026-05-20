@@ -53,20 +53,31 @@ class PedidoArquivo extends Model
 
 
 
-            if (! $arquivo->usuario_id) {
+            if (! $arquivo->usuario_id && $user) {
                 $arquivo->usuario_id = $user->id;
             }
 
             if ($arquivo->caminho) {
                 $arquivo->nome_original = basename($arquivo->caminho);
-                $arquivo->mime_type = Storage::mimeType("public/{$arquivo->caminho}");
+                $arquivo->mime_type = 'application/octet-stream';
+
+                try {
+                    $arquivo->mime_type = Storage::mimeType("public/{$arquivo->caminho}") ?: $arquivo->mime_type;
+                } catch (\Throwable) {
+                    try {
+                        $arquivo->mime_type = Storage::disk('public')->mimeType($arquivo->caminho) ?: $arquivo->mime_type;
+                    } catch (\Throwable) {
+                        //
+                    }
+                }
             }
         });
         static::created(function ($arquivo) {
 
             PedidoHistorico::registrarAlteracaoArquivo(
                 $arquivo->pedido,
-                "Arquivo adicionado: {$arquivo->nome_original}"
+                "Arquivo adicionado: {$arquivo->nome_original}",
+                $arquivo->usuario_id
             );
         });
 
@@ -109,7 +120,8 @@ class PedidoArquivo extends Model
             if ($descricao) {
                 PedidoHistorico::registrarAlteracaoArquivo(
                     $arquivo->pedido,
-                    $descricao
+                    $descricao,
+                    $arquivo->usuario_id
                 );
             }
         });
@@ -118,7 +130,8 @@ class PedidoArquivo extends Model
 
             PedidoHistorico::registrarAlteracaoArquivo(
                 $arquivo->pedido,
-                "Arquivo removido: {$arquivo->nome_original}"
+                "Arquivo removido: {$arquivo->nome_original}",
+                $arquivo->usuario_id
             );
         });
     }

@@ -183,22 +183,25 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
             'texto_problema' => $this->opcaoLuz->texto,
         ]);
 
+        $adicional = $this->service->criarPedidosAdicionais($pedido, [[
+            'tipo_manutencao_id' => $this->tipo->id,
+            'tipo_manutencao_opcao_ids' => [$this->opcaoDisjuntor->id],
+            'data_identificacao_problema' => '2026-05-02',
+            'descricao_pedido' => 'Disjuntor trocado durante a visita.',
+            'arquivos' => $this->fotosAdicional(),
+        ]], $usuario)->first();
+
         $feedback = $this->service->avaliarPedido($pedido, [
-            'adicionar_adicionais' => true,
-            'pedidos_adicionais' => [[
-                'tipo_manutencao_id' => $this->tipo->id,
-                'tipo_manutencao_opcao_ids' => [$this->opcaoDisjuntor->id],
-                'data_identificacao_problema' => '2026-05-02',
-                'descricao_pedido' => 'Disjuntor trocado durante a visita.',
-                'valor' => 5,
-                'resultado' => ResultadoFeedbackPedido::Atendido->value,
-                'comentario' => 'Adicional atendido.',
-            ]],
             'avaliacoes' => [
                 $pedido->problemas()->first()->id => [
                     'valor' => 1,
                     'resultado' => ResultadoFeedbackPedido::NaoAtendido->value,
                     'comentario' => 'Ainda sem luz.',
+                ],
+                $adicional->problemas()->first()->id => [
+                    'valor' => 5,
+                    'resultado' => ResultadoFeedbackPedido::Atendido->value,
+                    'comentario' => 'Adicional atendido.',
                 ],
             ],
             'reabrir_pedido' => false,
@@ -206,8 +209,6 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
         ], $usuario);
 
         $pedido->refresh();
-        $adicional = $pedido->pedidosAdicionais()->first();
-
         $this->assertSame('Concluído', $pedido->tipoStatus->nome);
         $this->assertNotNull($pedido->data_entrega);
         $this->assertNotNull($adicional);
@@ -232,6 +233,7 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
             'tipo_manutencao_opcao_ids' => [$this->opcaoDisjuntor->id],
             'data_identificacao_problema' => '2026-05-02',
             'descricao_pedido' => 'Disjuntor trocado durante a visita.',
+            'arquivos' => $this->fotosAdicional(),
         ]], $usuario);
 
         $this->assertCount(1, $criados);
@@ -266,6 +268,9 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
         ], $usuario);
 
         $this->assertSame('Reaberto', $pedido->refresh()->tipoStatus->nome);
+        $this->assertDatabaseMissing('feedback_pedido_itens', [
+            'pedido_id' => $pedido->id,
+        ]);
     }
 
     public function test_vincular_adicionais_na_tabela_cria_registros_sem_redirecionar(): void
@@ -300,9 +305,7 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
                         'tipo_manutencao_opcao_ids' => [$this->opcaoDisjuntor->id],
                         'data_identificacao_problema' => '2026-05-02',
                         'descricao_pedido' => 'Disjuntor trocado durante a visita.',
-                        'valor' => 5,
-                        'resultado' => ResultadoFeedbackPedido::Atendido->value,
-                        'comentario' => 'Adicional atendido.',
+                        'arquivos' => $this->fotosAdicional(),
                     ],
                 ],
             ])
@@ -331,26 +334,28 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
             'tipo_manutencao_opcao_id' => $this->opcaoLuz->id,
             'texto_problema' => $this->opcaoLuz->texto,
         ]);
+        $adicional = $this->service->criarPedidosAdicionais($pedido, [[
+            'tipo_manutencao_id' => $this->tipo->id,
+            'tipo_manutencao_opcao_ids' => [$this->opcaoDisjuntor->id],
+            'data_identificacao_problema' => '2026-05-02',
+            'descricao_pedido' => 'Disjuntor trocado durante a visita.',
+            'arquivos' => $this->fotosAdicional(),
+        ]], $usuario)->first();
 
         Livewire::actingAs($usuario)
             ->test(ListPedidos::class)
             ->assertTableActionVisible('finalizar', $pedido)
             ->callTableAction('finalizar', $pedido, [
-                'adicionar_adicionais' => true,
-                'pedidos_adicionais' => [[
-                    'tipo_manutencao_id' => $this->tipo->id,
-                    'tipo_manutencao_opcao_ids' => [$this->opcaoDisjuntor->id],
-                    'data_identificacao_problema' => '2026-05-02',
-                    'descricao_pedido' => 'Disjuntor trocado durante a visita.',
-                    'valor' => 5,
-                    'resultado' => ResultadoFeedbackPedido::Atendido->value,
-                    'comentario' => 'Adicional atendido.',
-                ]],
                 'avaliacoes' => [
                     $problema->id => [
                         'valor' => 5,
                         'resultado' => ResultadoFeedbackPedido::Atendido->value,
                         'comentario' => 'Problema atendido.',
+                    ],
+                    $adicional->problemas()->first()->id => [
+                        'valor' => 5,
+                        'resultado' => ResultadoFeedbackPedido::Atendido->value,
+                        'comentario' => 'Adicional atendido.',
                     ],
                 ],
                 'reabrir_pedido' => false,
@@ -403,6 +408,25 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
         ]], $usuario);
     }
 
+    public function test_pedido_adicional_exige_ao_menos_uma_foto(): void
+    {
+        $usuario = $this->usuarioComRoleSetor('Manutenção: Educação', $this->educacao, [
+            'Vincular Pedidos Adicionais',
+        ]);
+
+        $pedido = $this->pedido(status: 'Em Manutenção', setor: $this->educacao, escola: $this->escola);
+
+        $this->expectException(ValidationException::class);
+
+        $this->service->criarPedidosAdicionais($pedido, [[
+            'tipo_manutencao_id' => $this->tipo->id,
+            'tipo_manutencao_opcao_ids' => [$this->opcaoDisjuntor->id],
+            'data_identificacao_problema' => '2026-05-02',
+            'descricao_pedido' => 'Disjuntor trocado durante a visita.',
+            'arquivos' => [],
+        ]], $usuario);
+    }
+
     public function test_relation_manager_de_adicionais_aparece_somente_no_pedido_principal(): void
     {
         $usuario = $this->usuarioComRoleSetor('Manutenção: Educação', $this->educacao, ['Editar Pedidos']);
@@ -414,6 +438,7 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
             'tipo_manutencao_opcao_ids' => [$this->opcaoDisjuntor->id],
             'data_identificacao_problema' => '2026-05-02',
             'descricao_pedido' => 'Disjuntor trocado durante a visita.',
+            'arquivos' => $this->fotosAdicional(),
         ]], $usuario)->first();
 
         $this->assertContains(PedidosAdicionaisRelationManager::class, PedidoResource::getRelations());
@@ -461,6 +486,11 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
             'data_identificacao_problema' => now(),
             'ativo' => true,
         ]);
+    }
+
+    private function fotosAdicional(): array
+    {
+        return ['pedidos/adicionais/foto-adicional.jpg'];
     }
 
     private function usuarioComRoleSetor(string $roleName, Setor $setor, array $permissions): User

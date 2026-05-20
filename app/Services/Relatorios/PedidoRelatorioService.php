@@ -34,6 +34,7 @@ class PedidoRelatorioService
             'pedidosAdicionais.tipoManutencao',
             'pedidosAdicionais.tipoStatus',
             'pedidosAdicionais.problemas',
+            'pedidosAdicionais.arquivos.usuario',
             'pedidosAdicionais.feedbackItens.problema',
             'ultimoFeedback.itens.problema',
         ]);

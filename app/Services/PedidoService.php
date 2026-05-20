@@ -260,6 +260,16 @@ class PedidoService
                     $data['descricao_pedido']
                 );
 
+                foreach (array_filter((array) ($data['arquivos'] ?? [])) as $path) {
+                    $this->salvarArquivoPedido(
+                        pedido: $pedido,
+                        path: $path,
+                        tipo: TipoArquivoPedido::FOTOS_PROBLEMA,
+                        usuarioId: $usuario->id,
+                        descricao: 'Fotos do pedido adicional'
+                    );
+                }
+
                 $this->registrarHistorico(
                     $pedido,
                     null,
@@ -432,37 +442,33 @@ class PedidoService
             ->get();
     }
 
-    public function avaliarPedido(Pedido $pedido, array $data, User $usuario): FeedbackPedido
+    public function avaliarPedido(Pedido $pedido, array $data, User $usuario): ?FeedbackPedido
     {
         $this->validarAvaliacaoPedido($pedido, $data);
 
-        return DB::transaction(function () use ($pedido, $data, $usuario): FeedbackPedido {
-            $adicionaisCriados = collect();
+        return DB::transaction(function () use ($pedido, $data, $usuario): ?FeedbackPedido {
+            $reabrirPedido = (bool) ($data['reabrir_pedido'] ?? false);
 
-            if (! empty($data['adicionar_adicionais']) && ! empty($data['pedidos_adicionais'])) {
-                $adicionaisCriados = $this->criarPedidosAdicionais($pedido, $data['pedidos_adicionais'], $usuario);
-                $pedido->refresh();
+            if ($reabrirPedido) {
+                $this->alterarStatus(
+                    $pedido,
+                    $this->statusPorNome('Reaberto', true),
+                    $usuario,
+                    $data['descricao'] ?: 'Pedido reaberto para nova execução.'
+                );
+
+                return null;
             }
 
             $problemas = $this->problemasParaAvaliacao($pedido);
             $avaliacoes = collect($data['avaliacoes'] ?? []);
-            $dadosAdicionais = collect($data['pedidos_adicionais'] ?? [])->values();
-            $adicionalIndicePorPedidoId = $adicionaisCriados
-                ->values()
-                ->mapWithKeys(fn (Pedido $adicional, int $indice): array => [$adicional->id => $indice]);
 
-            $dadosDaAvaliacao = function (PedidoProblema $problema) use ($avaliacoes, $dadosAdicionais, $adicionalIndicePorPedidoId): array {
+            $dadosDaAvaliacao = function (PedidoProblema $problema) use ($avaliacoes): array {
                 $avaliacao = $avaliacoes->get((string) $problema->id)
                     ?? $avaliacoes->get($problema->id);
 
                 if (is_array($avaliacao) && $avaliacao !== []) {
                     return $avaliacao;
-                }
-
-                $indiceAdicional = $adicionalIndicePorPedidoId->get($problema->pedido_id);
-
-                if ($indiceAdicional !== null) {
-                    return (array) $dadosAdicionais->get($indiceAdicional, []);
                 }
 
                 return [];
@@ -476,12 +482,10 @@ class PedidoService
                 ? (int) round($notas->avg())
                 : (int) ($data['valor'] ?? 3);
 
-            $reabrirPedido = (bool) ($data['reabrir_pedido'] ?? false);
-
             $feedback = $pedido->feedbacks()->create([
                 'valor' => max(1, min(5, $notaGeral)),
                 'descricao' => $data['descricao'] ?? null,
-                'reabrir_pedido' => $reabrirPedido,
+                'reabrir_pedido' => false,
             ]);
 
             foreach ($problemas as $problema) {
@@ -510,17 +514,11 @@ class PedidoService
                 }
             }
 
-            $novoStatus = $reabrirPedido
-                ? $this->statusPorNome('Reaberto', true)
-                : $this->statusPorNome('Concluído', true);
-
             $this->alterarStatus(
                 $pedido,
-                $novoStatus,
+                $this->statusPorNome('Concluído', true),
                 $usuario,
-                $reabrirPedido
-                    ? 'Pedido reaberto após avaliação do solicitante.'
-                    : 'Pedido concluído e avaliado por problema.'
+                'Pedido concluído e avaliado por problema.'
             );
 
             return $feedback;
@@ -609,16 +607,16 @@ class PedidoService
             $errors['descricao'] = 'Descreva a avaliacao geral do pedido.';
         }
 
-        if (! empty($data['adicionar_adicionais'])) {
-            $errors = array_merge($errors, $this->errosPedidosAdicionais($data['pedidos_adicionais'] ?? [], true));
-        }
+        $reabrirPedido = (bool) ($data['reabrir_pedido'] ?? false);
 
-        foreach ($this->problemasParaAvaliacao($pedido, false) as $problema) {
-            $avaliacao = collect($data['avaliacoes'] ?? [])->get((string) $problema->id)
-                ?? collect($data['avaliacoes'] ?? [])->get($problema->id);
+        if (! $reabrirPedido) {
+            foreach ($this->problemasParaAvaliacao($pedido, false) as $problema) {
+                $avaliacao = collect($data['avaliacoes'] ?? [])->get((string) $problema->id)
+                    ?? collect($data['avaliacoes'] ?? [])->get($problema->id);
 
-            if (blank($avaliacao['comentario'] ?? null)) {
-                $errors["avaliacoes.{$problema->id}.comentario"] = 'Descreva a avaliacao deste problema.';
+                if (blank($avaliacao['comentario'] ?? null)) {
+                    $errors["avaliacoes.{$problema->id}.comentario"] = 'Descreva a avaliacao deste problema.';
+                }
             }
         }
 
@@ -647,6 +645,10 @@ class PedidoService
 
             if (blank($data['descricao_pedido'] ?? null)) {
                 $errors["pedidos_adicionais.{$index}.descricao_pedido"] = 'Descreva o pedido adicional.';
+            }
+
+            if (count(array_filter((array) ($data['arquivos'] ?? []))) === 0) {
+                $errors["pedidos_adicionais.{$index}.arquivos"] = 'Envie ao menos uma foto do pedido adicional.';
             }
 
             if ($exigirAvaliacao && blank($data['comentario'] ?? null)) {

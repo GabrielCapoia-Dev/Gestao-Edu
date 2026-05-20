@@ -265,6 +265,43 @@
                     @endforeach
                 </tbody>
             </table>
+
+            @php
+                $extensoesImagemAdicional = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'];
+            @endphp
+
+            @foreach($pedido->pedidosAdicionais as $adicional)
+                @php
+                    $imagensAdicional = ($adicional->arquivos ?? collect())->filter(function ($arquivo) use ($extensoesImagemAdicional) {
+                        $mime = mb_strtolower((string) $arquivo->mime_type);
+                        $ext = mb_strtolower(pathinfo((string) $arquivo->caminho, PATHINFO_EXTENSION));
+
+                        return str_starts_with($mime, 'image/') || in_array($ext, $extensoesImagemAdicional, true);
+                    });
+                @endphp
+
+                @if($imagensAdicional->isNotEmpty())
+                    <div class="section-title-inline" style="margin-top: 10px;">
+                        Fotos do Adicional {{ $adicional->numero_protocolo }}
+                    </div>
+
+                    <table class="photo-table">
+                        @foreach($imagensAdicional->chunk(3) as $grupo)
+                            <tr>
+                                @foreach($grupo as $arquivo)
+                                    <td>
+                                        <img src="{{ public_path('storage/' . $arquivo->caminho) }}" alt="Foto do adicional {{ $adicional->numero_protocolo }}">
+                                    </td>
+                                @endforeach
+
+                                @for($i = $grupo->count(); $i < 3; $i++)
+                                    <td></td>
+                                @endfor
+                            </tr>
+                        @endforeach
+                    </table>
+                @endif
+            @endforeach
         </div>
     @endif
 

@@ -143,6 +143,38 @@
             gap: 0.5rem;
         }
 
+        .pedido-adicionais-modal__imagens {
+            display: grid;
+            gap: 0.65rem;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .pedido-adicionais-modal__imagem {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .pedido-adicionais-modal__imagem img {
+            aspect-ratio: 4 / 3;
+            display: block;
+            height: auto;
+            object-fit: cover;
+            width: 100%;
+        }
+
+        .pedido-adicionais-modal__imagem-caption {
+            color: #475569;
+            display: block;
+            font-size: 0.72rem;
+            line-height: 1rem;
+            overflow: hidden;
+            padding: 0.45rem 0.55rem;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
         .pedido-adicionais-modal__avaliacao {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
@@ -178,7 +210,8 @@
         }
 
         .dark .pedido-adicionais-modal__summary,
-        .dark .pedido-adicionais-modal__avaliacao {
+        .dark .pedido-adicionais-modal__avaliacao,
+        .dark .pedido-adicionais-modal__imagem {
             background: #111827;
             border-color: #334155;
         }
@@ -202,7 +235,8 @@
         }
 
         .dark .pedido-adicionais-modal__value,
-        .dark .pedido-adicionais-modal__descricao {
+        .dark .pedido-adicionais-modal__descricao,
+        .dark .pedido-adicionais-modal__imagem-caption {
             color: #e5e7eb;
         }
 
@@ -241,6 +275,10 @@
             .pedido-adicionais-modal__field--wide {
                 grid-column: span 1;
             }
+
+            .pedido-adicionais-modal__imagens {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 @endonce
@@ -273,6 +311,9 @@
             @php
                 $statusCor = '#' . ltrim($adicional->tipoStatus?->cor ?? '#64748b', '#');
                 $avaliacoes = $adicional->feedbackItens ?? collect();
+                $imagens = ($adicional->arquivos ?? collect())
+                    ->filter(fn ($arquivo) => str_starts_with((string) $arquivo->mime_type, 'image/')
+                        || preg_match('/\.(jpe?g|png|webp)$/i', (string) $arquivo->caminho));
                 $notaMedia = $avaliacoes->isNotEmpty()
                     ? number_format((float) $avaliacoes->avg('valor'), 1, ',', '.')
                     : null;
@@ -358,6 +399,34 @@
                             <span class="pedido-adicionais-modal__value">Nenhum problema segmentado.</span>
                         @endforelse
                     </div>
+                </div>
+
+                <div class="pedido-adicionais-modal__section">
+                    <span class="pedido-adicionais-modal__label">Fotos do adicional</span>
+
+                    @if($imagens->isNotEmpty())
+                        <div class="pedido-adicionais-modal__imagens">
+                            @foreach($imagens as $imagem)
+                                <a
+                                    href="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($imagem->caminho) }}"
+                                    target="_blank"
+                                    rel="noopener"
+                                    class="pedido-adicionais-modal__imagem"
+                                >
+                                    <img
+                                        src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($imagem->caminho) }}"
+                                        alt="{{ $imagem->nome_original ?? 'Foto do adicional' }}"
+                                        loading="lazy"
+                                    />
+                                    <span class="pedido-adicionais-modal__imagem-caption">
+                                        {{ $imagem->nome_original ?? basename($imagem->caminho) }}
+                                    </span>
+                                </a>
+                            @endforeach
+                        </div>
+                    @else
+                        <span class="pedido-adicionais-modal__value">Nenhuma foto registrada para este adicional.</span>
+                    @endif
                 </div>
 
                 <div class="pedido-adicionais-modal__section">

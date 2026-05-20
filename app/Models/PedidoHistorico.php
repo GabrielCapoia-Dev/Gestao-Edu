@@ -26,13 +26,14 @@ class PedidoHistorico extends Model
 
     public static function registrarAlteracaoArquivo(
         Pedido $pedido,
-        string $descricao
+        string $descricao,
+        ?int $usuarioId = null
     ): self {
         return self::create([
             'pedido_id'          => $pedido->id,
             'status_anterior_id' => null,
             'status_novo_id'     => $pedido->tipo_status_id,
-            'usuario_id'         => Auth::id(),
+            'usuario_id'         => $usuarioId ?? Auth::id() ?? $pedido->responsavel_id ?? $pedido->solicitante_id,
             'setor_id'           => $pedido->setor_id,
             'descricao_alteracao' => $descricao,
         ]);

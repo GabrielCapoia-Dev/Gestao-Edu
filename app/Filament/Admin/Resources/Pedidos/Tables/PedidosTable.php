@@ -355,6 +355,7 @@ class PedidosTable
                             'setor',
                             'empresaContratada',
                             'solicitante',
+                            'arquivos.usuario',
                             'feedbackItens.problema',
                         ])
                         ->get();
@@ -398,7 +399,7 @@ class PedidosTable
                     && ! $record->is_pedido_adicional
                     && ($user?->hasPermissionTo('Avaliar Pedidos') ?? false))
                 ->modalHeading('Avaliar Pedido')
-                ->modalDescription('Antes de seguir para avaliação e conclusão do pedido, confirme se deseja adicionar serviços extras realizados nesta solicitação.')
+                ->modalDescription('Registre a avaliação do atendimento ou reabra o pedido para que ele volte ao fluxo operacional.')
                 ->modalSubmitActionLabel('Confirmar Avaliação')
                 ->modalCancelActionLabel('Cancelar')
                 ->modalWidth('6xl')
@@ -493,23 +494,13 @@ class PedidosTable
     private static function avaliacaoSchema(Pedido $record, PedidoService $service): array
     {
         return [
-            Section::make('Serviços adicionais')
-                ->schema([
-                    Toggle::make('adicionar_adicionais')
-                        ->label('Adicionar novos pedidos a esta solicitação antes de avaliar')
-                        ->helperText('Use quando o prestador realizou serviços além do que estava descrito no pedido original.')
-                        ->live(),
-
-                    static::pedidosAdicionaisRepeater(false, true)
-                        ->visible(fn (Get $get) => (bool) $get('adicionar_adicionais')),
-                ]),
-
             Section::make('Avaliação geral')
                 ->schema([
                     Toggle::make('reabrir_pedido')
                         ->label('Reabrir pedido')
-                        ->helperText('A nota 1 não reabre automaticamente. Use este botão quando o pedido precisar voltar para execução.')
-                        ->inline(false),
+                        ->helperText('Caso o problema não tenha sido solucionado marque essa opção para reabrir o pedido')
+                        ->inline(false)
+                        ->live(),
 
                     Textarea::make('descricao')
                         ->label('Comentário geral')
@@ -542,7 +533,8 @@ class PedidosTable
                             'target' => 'pedido-fotos-conclusao',
                         ])
                         ->columnSpanFull(),
-                ]),
+                ])
+                ->visible(fn (Get $get) => ! (bool) $get('reabrir_pedido')),
         ];
     }
 
@@ -580,12 +572,13 @@ class PedidosTable
                             ->maxLength(1000)
                             ->columnSpanFull(),
                     ])
-                    ->columns(2);
+                    ->columns(2)
+                    ->visible(fn (Get $get) => ! (bool) $get('reabrir_pedido'));
             })
             ->all();
     }
 
-    private static function pedidosAdicionaisRepeater(bool $required, bool $exigirAvaliacao = false): Repeater
+    private static function pedidosAdicionaisRepeater(bool $required): Repeater
     {
         return Repeater::make('pedidos_adicionais')
             ->label('Pedidos adicionais')
@@ -633,26 +626,26 @@ class PedidosTable
                     ->maxLength(1000)
                     ->columnSpanFull(),
 
-                SliderRating::make('valor')
-                    ->label('Nota do adicional')
-                    ->default(5)
-                    ->required(),
+                PedidoFotoUpload::configure(
+                    FileUpload::make('arquivos')
+                        ->label('Fotos do pedido adicional')
+                        ->multiple()
+                        ->required()
+                        ->minFiles(1)
+                        ->maxFiles(10)
+                        ->storeFileNamesIn('nome_original')
+                        ->directory('pedidos/adicionais')
+                        ->disk('public')
+                        ->visibility('public'),
+                    'pedido-fotos-adicional'
+                )
+                    ->helperText('Obrigatório: envie de 1 a 10 imagens nos formatos JPEG, JPG, PNG ou WEBP, com até 5 MB cada.')
+                    ->columnSpanFull(),
 
-                Select::make('resultado')
-                    ->label('Resultado do adicional')
-                    ->options(
-                        collect(ResultadoFeedbackPedido::cases())
-                            ->mapWithKeys(fn (ResultadoFeedbackPedido $resultado) => [$resultado->value => $resultado->label()])
-                            ->toArray()
-                    )
-                    ->default(ResultadoFeedbackPedido::Atendido->value)
-                    ->required()
-                    ->native(false),
-
-                Textarea::make('comentario')
-                    ->label('Comentário do adicional')
-                    ->required($exigirAvaliacao)
-                    ->maxLength(1000)
+                View::make('components.forms.camera-file-upload-tools')
+                    ->viewData([
+                        'target' => 'pedido-fotos-adicional',
+                    ])
                     ->columnSpanFull(),
             ])
             ->columns(2)
