@@ -15,6 +15,13 @@ class EscolaServiceTest extends TestCase
 
     public function test_atualizacao_com_historico_cria_nova_versao_da_escola(): void
     {
+        $setorId = DB::table('setor')->insertGetId([
+            'nome' => 'Setor Teste',
+            'ativo' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
         $escola = Escola::query()->create([
             'codigo' => 'ESC043',
             'nome' => 'CEI - Anjo da Guarda',
@@ -24,9 +31,9 @@ class EscolaServiceTest extends TestCase
 
         $novaVersao = app(EscolaService::class)->atualizarComHistorico($escola, [
             'nome' => 'CEI - Anjo da Guarda',
-            'email' => 'cei.anjodaguarda.novo@edu.umuarama.pr.gov.br',
+            'email' => 'cei.anjodaguarda@edu.umuarama.pr.gov.br',
             'telefone' => null,
-            'setor_id' => null,
+            'setor_id' => $setorId,
             'logradouro' => null,
             'numero' => null,
             'bairro' => null,
@@ -39,6 +46,8 @@ class EscolaServiceTest extends TestCase
         $this->assertFalse($escola->fresh()->ativo);
         $this->assertTrue($novaVersao->ativo);
         $this->assertSame('ESC043', $novaVersao->codigo);
+        $this->assertSame('cei.anjodaguarda@edu.umuarama.pr.gov.br', $novaVersao->email);
+        $this->assertSame($setorId, $novaVersao->setor_id);
         $this->assertSame($escola->id, $novaVersao->registro_anterior_id);
         $this->assertSame(2, Escola::query()->where('codigo', 'ESC043')->count());
     }
