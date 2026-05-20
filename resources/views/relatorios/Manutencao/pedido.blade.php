@@ -88,6 +88,24 @@
         border-radius: 4px;
         page-break-inside: avoid;
     }
+
+    .history-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 9.5px;
+    }
+
+    .history-table th,
+    .history-table td {
+        border: 1px solid #e5e7eb;
+        padding: 5px;
+        vertical-align: top;
+    }
+
+    .history-table th {
+        background: #f3f4f6;
+        font-weight: bold;
+    }
 @endsection
 
 @section('content')
@@ -251,24 +269,64 @@
     @endif
 
     @php
-        $fotosProblema = $pedido->fotos;
-        $fotosConclusao = $pedido->fotosConclusao;
-        $temFotos = $fotosProblema->isNotEmpty() || $fotosConclusao->isNotEmpty();
+        $historicosOrdenados = $pedido->historicos
+            ->sortByDesc(fn ($item) => (($item->created_at?->timestamp ?? 0) * 10) + ($item->status_anterior_id ? 1 : 0));
+
+        $extensoesImagem = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'];
+        $imagensPorTipo = $pedido->arquivos
+            ->filter(function ($arquivo) use ($extensoesImagem) {
+                $mime = mb_strtolower((string) $arquivo->mime_type);
+                $ext = mb_strtolower(pathinfo((string) $arquivo->caminho, PATHINFO_EXTENSION));
+
+                return str_starts_with($mime, 'image/') || in_array($ext, $extensoesImagem, true);
+            })
+            ->groupBy(fn ($arquivo) => $arquivo->tipo_arquivo?->label() ?? 'Imagens');
     @endphp
 
-    @if($temFotos)
+    @if($historicosOrdenados->isNotEmpty())
+        <div class="divider"></div>
+        <div class="section-block espaco-line">
+            <div class="section-title-inline">Historico de Alteracoes</div>
+
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Status anterior</th>
+                        <th>Novo status</th>
+                        <th>Setor</th>
+                        <th>Alterado por</th>
+                        <th>Descricao</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($historicosOrdenados as $item)
+                        <tr>
+                            <td>{{ $item->created_at?->format('d/m/Y H:i:s') }}</td>
+                            <td>{{ $item->statusAnterior?->nome ?? '-' }}</td>
+                            <td>{{ $item->statusNovo?->nome ?? '-' }}</td>
+                            <td>{{ $item->setor?->nome ?? '-' }}</td>
+                            <td>{{ $item->usuario?->name ?? 'Sistema' }}</td>
+                            <td>{{ $item->descricao_alteracao ?? '-' }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
+
+    @if($imagensPorTipo->isNotEmpty())
         <div class="divider"></div>
 
-        @if($fotosProblema->isNotEmpty())
+        @foreach($imagensPorTipo as $tipoArquivo => $arquivos)
             <div class="section-block espaco-line">
-                <div class="section-title-inline">Fotos do Problema</div>
-
+                <div class="section-title-inline">{{ $tipoArquivo }}</div>
                 <table class="photo-table">
-                    @foreach($fotosProblema->chunk(3) as $grupo)
+                    @foreach($arquivos->chunk(3) as $grupo)
                         <tr>
                             @foreach($grupo as $arquivo)
                                 <td>
-                                    <img src="{{ public_path('storage/' . $arquivo->caminho) }}" alt="Foto do problema">
+                                    <img src="{{ public_path('storage/' . $arquivo->caminho) }}" alt="{{ $tipoArquivo }}">
                                 </td>
                             @endforeach
 
@@ -279,28 +337,6 @@
                     @endforeach
                 </table>
             </div>
-        @endif
-
-        @if($fotosConclusao->isNotEmpty())
-            <div class="section-block espaco-line">
-                <div class="section-title-inline">Fotos da Conclusao</div>
-
-                <table class="photo-table">
-                    @foreach($fotosConclusao->chunk(3) as $grupo)
-                        <tr>
-                            @foreach($grupo as $arquivo)
-                                <td>
-                                    <img src="{{ public_path('storage/' . $arquivo->caminho) }}" alt="Foto da conclusao">
-                                </td>
-                            @endforeach
-
-                            @for($i = $grupo->count(); $i < 3; $i++)
-                                <td></td>
-                            @endfor
-                        </tr>
-                    @endforeach
-                </table>
-            </div>
-        @endif
+        @endforeach
     @endif
 @endsection

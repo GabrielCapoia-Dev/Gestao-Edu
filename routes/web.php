@@ -113,6 +113,9 @@ Route::prefix('admin')
             return $service->gerar($pedido);
         })->name('pedidos.pdf');
 
+        Route::get('/pedidos/{pedido}/imagens.zip', [PedidoArquivoController::class, 'exportImages'])
+            ->name('pedidos.imagens.export');
+
         Route::get('/pedidos-merenda/{pedidoMerenda}/empenho', [PedidoMerendaEmpenhoController::class, 'exportar'])
             ->name('pedidos-merenda.exportar-empenho');
 

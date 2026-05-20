@@ -2,12 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Pedido;
 use App\Models\PedidoArquivo;
+use App\Services\PedidoService;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Filesystem\FilesystemAdapter;
+use ZipArchive;
 
 class PedidoArquivoController extends Controller
 {
+    private const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'];
+
     protected function pedidosDisk(): FilesystemAdapter
     {
         return Storage::disk('public');
@@ -33,6 +38,55 @@ class PedidoArquivoController extends Controller
         return $disk->download($path, $filename);
     }
 
+    public function exportImages(Pedido $pedido)
+    {
+        abort_unless(auth()->user()?->hasPermissionTo('Exportar Arquivos Pedido'), 403);
+
+        abort_unless(
+            app(PedidoService::class)
+                ->queryPorPerfil(Pedido::query()->whereKey($pedido->getKey()), auth()->user())
+                ->exists(),
+            403
+        );
+
+        $pedido->load('arquivos');
+
+        $disk = $this->pedidosDisk();
+        $imagens = $pedido->arquivos
+            ->filter(fn (PedidoArquivo $arquivo): bool => $this->isImage($arquivo) && $disk->exists($arquivo->caminho));
+
+        abort_if($imagens->isEmpty(), 404);
+
+        $tmp = tempnam(sys_get_temp_dir(), 'pedido-imagens-');
+        $zip = new ZipArchive;
+        $zip->open($tmp, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+
+        foreach ($imagens as $arquivo) {
+            $tipo = str($arquivo->tipo_arquivo?->label() ?? 'Imagens')
+                ->ascii()
+                ->replaceMatches('/[^A-Za-z0-9\- ]+/', '')
+                ->trim()
+                ->value() ?: 'Imagens';
+
+            $zip->addFile(
+                $disk->path($arquivo->caminho),
+                "{$tipo}/{$arquivo->nome_original}"
+            );
+        }
+
+        $zip->close();
+
+        $nomeArquivo = str($pedido->numero_protocolo)
+            ->replace('/', '-')
+            ->prepend('Pedido-')
+            ->append('-imagens.zip')
+            ->value();
+
+        return response()
+            ->download($tmp, $nomeArquivo, ['Content-Type' => 'application/zip'])
+            ->deleteFileAfterSend(true);
+    }
+
     protected function makeFilename(PedidoArquivo $arquivo): string
     {
         $pedido = $arquivo->pedido;
@@ -49,5 +103,14 @@ class PedidoArquivoController extends Controller
         $ext = pathinfo($arquivo->caminho, PATHINFO_EXTENSION);
 
         return "{$protocolo}-{$tipo}.{$ext}";
+    }
+
+    private function isImage(PedidoArquivo $arquivo): bool
+    {
+        $mime = mb_strtolower((string) $arquivo->mime_type);
+        $ext = mb_strtolower(pathinfo((string) $arquivo->caminho, PATHINFO_EXTENSION));
+
+        return str_starts_with($mime, 'image/')
+            || in_array($ext, self::IMAGE_EXTENSIONS, true);
     }
 }

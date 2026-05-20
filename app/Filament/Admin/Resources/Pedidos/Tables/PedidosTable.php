@@ -317,39 +317,36 @@ class PedidosTable
     public static function actions(?User $user, PedidoService $service): array
     {
         return [
-            Action::make('historico')
-                ->label('Histórico')
-                ->icon('heroicon-o-clock')
+            Action::make('visualizar')
+                ->label('Visualizar')
+                ->icon('heroicon-o-eye')
                 ->color('info')
                 ->slideOver()
-                ->modalWidth('5xl')
+                ->modalWidth('7xl')
                 ->modalSubmitAction(false)
                 ->modalCancelActionLabel('Fechar')
                 ->visible(fn () => $user?->hasPermissionTo('Visualizar Histórico de Pedidos') ?? false)
                 ->modalContent(function (Pedido $record) {
+                    $record->load([
+                        'tipoManutencao',
+                        'tipoStatus',
+                        'escola',
+                        'setor',
+                        'empresaContratada',
+                        'solicitante',
+                        'responsavel',
+                        'problemas',
+                        'arquivos.usuario',
+                        'ultimoFeedback.itens.problema',
+                    ]);
+
                     $historico = $record->historicos()
                         ->with(['statusAnterior', 'statusNovo', 'usuario', 'setor'])
                         ->orderByDesc('created_at')
+                        ->orderByRaw('CASE WHEN status_anterior_id IS NOT NULL THEN 1 ELSE 0 END DESC')
                         ->get();
 
-                    return view('components.pedido.historico', [
-                        'pedido' => $record,
-                        'historico' => $historico,
-                    ]);
-                }),
-
-            Action::make('adicionais')
-                ->label('Adicionais')
-                ->icon('heroicon-o-link')
-                ->color('gray')
-                ->slideOver()
-                ->modalWidth('5xl')
-                ->modalSubmitAction(false)
-                ->modalCancelActionLabel('Fechar')
-                ->visible(fn (Pedido $record) => ! $record->is_pedido_adicional && $record->pedidosAdicionais()->exists())
-                ->modalContent(fn (Pedido $record) => view('components.pedido.pedidos-adicionais', [
-                    'pedido' => $record,
-                    'adicionais' => $record->pedidosAdicionais()
+                    $adicionais = $record->pedidosAdicionais()
                         ->with([
                             'tipoManutencao',
                             'problemas',
@@ -360,8 +357,14 @@ class PedidosTable
                             'solicitante',
                             'feedbackItens.problema',
                         ])
-                        ->get(),
-                ])),
+                        ->get();
+
+                    return view('components.pedido.visualizar', [
+                        'pedido' => $record,
+                        'historico' => $historico,
+                        'adicionais' => $adicionais,
+                    ]);
+                }),
 
             Action::make('vincular_adicionais')
                 ->label('Vincular Adicionais')

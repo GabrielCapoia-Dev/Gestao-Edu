@@ -27,12 +27,14 @@ class PedidoRelatorioService
             'historicos.statusNovo',
             'historicos.usuario',
             'historicos.setor',
+            'arquivos.usuario',
             'fotos',
             'fotosConclusao',
             'problemas',
             'pedidosAdicionais.tipoManutencao',
             'pedidosAdicionais.tipoStatus',
             'pedidosAdicionais.problemas',
+            'pedidosAdicionais.feedbackItens.problema',
             'ultimoFeedback.itens.problema',
         ]);
 
