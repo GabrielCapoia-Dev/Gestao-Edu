@@ -20,6 +20,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class PedidoService
 {
@@ -224,15 +225,13 @@ class PedidoService
 
     public function criarPedidosAdicionais(Pedido $pedidoPrincipal, array $adicionais, User $usuario): Collection
     {
+        $this->validarPedidosAdicionais($adicionais, exigirAvaliacao: false);
+
         return DB::transaction(function () use ($pedidoPrincipal, $adicionais, $usuario): Collection {
             $statusAdicional = $this->statusPedidoAdicional();
             $criados = collect();
 
             foreach ($adicionais as $data) {
-                if (blank($data['descricao_pedido'] ?? null) || blank($data['tipo_manutencao_id'] ?? null)) {
-                    continue;
-                }
-
                 if (! TipoManutencao::query()->whereKey($data['tipo_manutencao_id'])->where('ativo', true)->exists()) {
                     continue;
                 }
@@ -435,6 +434,8 @@ class PedidoService
 
     public function avaliarPedido(Pedido $pedido, array $data, User $usuario): FeedbackPedido
     {
+        $this->validarAvaliacaoPedido($pedido, $data);
+
         return DB::transaction(function () use ($pedido, $data, $usuario): FeedbackPedido {
             $adicionaisCriados = collect();
 
@@ -598,6 +599,62 @@ class PedidoService
             ->unique()
             ->values()
             ->all();
+    }
+
+    private function validarAvaliacaoPedido(Pedido $pedido, array $data): void
+    {
+        $errors = [];
+
+        if (blank($data['descricao'] ?? null)) {
+            $errors['descricao'] = 'Descreva a avaliacao geral do pedido.';
+        }
+
+        if (! empty($data['adicionar_adicionais'])) {
+            $errors = array_merge($errors, $this->errosPedidosAdicionais($data['pedidos_adicionais'] ?? [], true));
+        }
+
+        foreach ($this->problemasParaAvaliacao($pedido, false) as $problema) {
+            $avaliacao = collect($data['avaliacoes'] ?? [])->get((string) $problema->id)
+                ?? collect($data['avaliacoes'] ?? [])->get($problema->id);
+
+            if (blank($avaliacao['comentario'] ?? null)) {
+                $errors["avaliacoes.{$problema->id}.comentario"] = 'Descreva a avaliacao deste problema.';
+            }
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+    }
+
+    private function validarPedidosAdicionais(array $adicionais, bool $exigirAvaliacao): void
+    {
+        $errors = $this->errosPedidosAdicionais($adicionais, $exigirAvaliacao);
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+    }
+
+    private function errosPedidosAdicionais(array $adicionais, bool $exigirAvaliacao): array
+    {
+        $errors = [];
+
+        foreach (array_values($adicionais) as $index => $data) {
+            if (blank($data['tipo_manutencao_id'] ?? null)) {
+                $errors["pedidos_adicionais.{$index}.tipo_manutencao_id"] = 'Informe o tipo de manutencao do pedido adicional.';
+            }
+
+            if (blank($data['descricao_pedido'] ?? null)) {
+                $errors["pedidos_adicionais.{$index}.descricao_pedido"] = 'Descreva o pedido adicional.';
+            }
+
+            if ($exigirAvaliacao && blank($data['comentario'] ?? null)) {
+                $errors["pedidos_adicionais.{$index}.comentario"] = 'Descreva a avaliacao do pedido adicional.';
+            }
+        }
+
+        return $errors;
     }
 
     private function salvarArquivoPedido(

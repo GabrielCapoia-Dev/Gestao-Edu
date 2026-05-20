@@ -106,10 +106,6 @@ class PedidoGestaoForm
                             ->preload()
                             ->nullable(),
 
-                        DatePicker::make('data_entrega')
-                            ->label('Data de Entrega')
-                            ->nullable(),
-
                         Textarea::make('descricao_alteracao')
                             ->label('Descrição da Alteração')
                             ->placeholder('Descreva o que foi feito ou observado...')

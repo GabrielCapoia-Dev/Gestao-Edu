@@ -2,8 +2,8 @@
 
 namespace App\Support;
 
-use Closure;
 use Filament\Forms\Components\FileUpload;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 class PedidoFotoUpload
@@ -42,9 +42,12 @@ class PedidoFotoUpload
             ] : []);
     }
 
-    public static function validationRule(): Closure
+    public static function validationRule(): ValidationRule
     {
-        return function (string $attribute, mixed $value, Closure $fail): void {
+        return new class implements ValidationRule
+        {
+            public function validate(string $attribute, mixed $value, \Closure $fail): void
+            {
             if (! $value instanceof TemporaryUploadedFile) {
                 return;
             }
@@ -53,10 +56,10 @@ class PedidoFotoUpload
             $mimeType = mb_strtolower((string) ($value->getMimeType() ?: $value->getClientMimeType()));
             $size = (int) $value->getSize();
 
-            $hasInvalidFormat = ! in_array($extension, self::ACCEPTED_EXTENSIONS, true)
-                || ! in_array($mimeType, self::ACCEPTED_MIME_TYPES, true);
+            $hasInvalidFormat = ! in_array($extension, PedidoFotoUpload::ACCEPTED_EXTENSIONS, true)
+                || ! in_array($mimeType, PedidoFotoUpload::ACCEPTED_MIME_TYPES, true);
 
-            $hasInvalidSize = $size > self::MAX_SIZE_BYTES;
+            $hasInvalidSize = $size > PedidoFotoUpload::MAX_SIZE_BYTES;
 
             if (! $hasInvalidFormat && ! $hasInvalidSize) {
                 return;
@@ -77,6 +80,7 @@ class PedidoFotoUpload
             }
 
             $fail("A foto \"{$fileName}\" não foi enviada: tamanho acima de 5 MB. Envie uma imagem com até 5 MB.");
+            }
         };
     }
 

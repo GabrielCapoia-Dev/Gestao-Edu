@@ -142,6 +142,11 @@ class Pedido extends Model
         return $this->hasMany(FeedbackPedido::class);
     }
 
+    public function feedbackItens()
+    {
+        return $this->hasMany(FeedbackPedidoItem::class);
+    }
+
     public function ultimoFeedback()
     {
         return $this->hasOne(FeedbackPedido::class)->latestOfMany();
@@ -214,6 +219,13 @@ class Pedido extends Model
         return $this->hasMany(PedidoArquivo::class)
             ->where('tipo_arquivo', TipoArquivoPedido::FOTOS_PROBLEMA);
     }
+
+    public function fotosConclusao()
+    {
+        return $this->hasMany(PedidoArquivo::class)
+            ->where('tipo_arquivo', TipoArquivoPedido::FOTOS_CONCLUSAO);
+    }
+
     public function arquivos_sem_fotos_problema()
     {
         return $this->hasMany(PedidoArquivo::class)

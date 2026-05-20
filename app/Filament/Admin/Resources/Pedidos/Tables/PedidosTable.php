@@ -47,7 +47,7 @@ class PedidosTable
 
         return $table
             ->modifyQueryUsing(fn (Builder $query) => $query
-                ->with(['problemas', 'pedidoPrincipal'])
+                ->with(['pedidoPrincipal'])
                 ->withCount(['pedidosAdicionais', 'problemas']))
             ->paginated([10, 25, 50, 100])
             ->defaultPaginationPageOption(10)
@@ -173,19 +173,8 @@ class PedidosTable
 
                     TextColumn::make('tipoManutencao.nome')
                         ->label('Tipo')
-                        ->sortable(),
-
-                    TextColumn::make('problemas_resumo')
-                        ->label('Problemas')
-                        ->state(fn (Pedido $record): string => $record->problemas
-                            ->pluck('texto_problema')
-                            ->take(3)
-                            ->join(' | '))
-                        ->limit(90)
-                        ->wrap()
-                        ->color('gray')
-                        ->size('sm')
-                        ->placeholder('Sem problemas segmentados'),
+                        ->sortable()
+                        ->color('gray'),
                 ])->space(1),
 
                 Stack::make([
@@ -195,12 +184,12 @@ class PedidosTable
                         ->alignCenter()
                         ->sortable(),
 
-                    TextColumn::make('nome_solicitante')
-                        ->label('Solicitante')
-                        ->icon('heroicon-o-user')
+                    TextColumn::make('pedidos_adicionais_count')
+                        ->label('Adicionais')
+                        ->badge()
                         ->alignCenter()
-                        ->color('gray')
-                        ->size('sm'),
+                        ->color(fn (Pedido $record): string => (int) ($record->pedidos_adicionais_count ?? 0) > 0 ? 'info' : 'gray')
+                        ->state(fn (Pedido $record): string => (int) ($record->pedidos_adicionais_count ?? 0).' adicional(is)'),
                 ])->space(1),
 
                 Stack::make([
@@ -229,32 +218,9 @@ class PedidosTable
                             }
                         )),
 
-                    TextColumn::make('responsavel.name')
-                        ->label('Responsável')
-                        ->alignCenter()
-                        ->icon('heroicon-o-user-circle')
-                        ->color('gray')
-                        ->size('sm')
-                        ->placeholder('Sem responsável'),
                 ])->space(1),
 
                 Stack::make([
-                    TextColumn::make('data_solicitacao')
-                        ->label('Solicitado em')
-                        ->icon('heroicon-o-calendar')
-                        ->date('d/m/Y')
-                        ->alignCenter()
-                        ->sortable(),
-
-                    TextColumn::make('data_identificacao_problema')
-                        ->label('Identificado em')
-                        ->icon('heroicon-o-exclamation-triangle')
-                        ->date('d/m/Y')
-                        ->alignCenter()
-                        ->sortable()
-                        ->color('warning')
-                        ->placeholder('Não informado'),
-
                     TextColumn::make('data_prevista')
                         ->label('Previsto para')
                         ->icon('heroicon-o-clock')
@@ -286,29 +252,16 @@ class PedidosTable
                         })
                         ->size('sm')
                         ->placeholder('Sem previsão'),
-                ])->space(1),
 
-                Stack::make([
-                    TextColumn::make('descricao_pedido')
-                        ->label('Descrição')
-                        ->limit(70)
-                        ->wrap()
-                        ->color('gray')
-                        ->size('sm'),
-
-                    TextColumn::make('pedidos_adicionais_count')
-                        ->label('Adicionais')
-                        ->badge()
-                        ->color('info')
-                        ->state(fn (Pedido $record): int => (int) ($record->pedidos_adicionais_count ?? 0)),
-
-                    TextColumn::make('ultimoHistorico.descricao_alteracao')
-                        ->label('Última Alteração')
-                        ->limit(60)
-                        ->wrap()
-                        ->color('primary')
+                    TextColumn::make('data_entrega')
+                        ->label('Concluido em')
+                        ->icon('heroicon-o-check-circle')
+                        ->sortable()
+                        ->alignCenter()
+                        ->date('d/m/Y')
+                        ->color('success')
                         ->size('sm')
-                        ->placeholder('Sem alterações'),
+                        ->placeholder('Em andamento'),
                 ])->space(1),
 
                 TextColumn::make('updated_at')
@@ -496,7 +449,7 @@ class PedidosTable
                         ->helperText('Use quando o prestador realizou serviços além do que estava descrito no pedido original.')
                         ->live(),
 
-                    static::pedidosAdicionaisRepeater(false)
+                    static::pedidosAdicionaisRepeater(false, true)
                         ->visible(fn (Get $get) => (bool) $get('adicionar_adicionais')),
                 ]),
 
@@ -509,6 +462,7 @@ class PedidosTable
 
                     Textarea::make('descricao')
                         ->label('Comentário geral')
+                        ->required()
                         ->maxLength(1000)
                         ->columnSpanFull(),
                 ])
@@ -571,6 +525,7 @@ class PedidosTable
 
                         Textarea::make("avaliacoes.{$problema->id}.comentario")
                             ->label('Comentário do problema')
+                            ->required()
                             ->maxLength(1000)
                             ->columnSpanFull(),
                     ])
@@ -579,7 +534,7 @@ class PedidosTable
             ->all();
     }
 
-    private static function pedidosAdicionaisRepeater(bool $required): Repeater
+    private static function pedidosAdicionaisRepeater(bool $required, bool $exigirAvaliacao = false): Repeater
     {
         return Repeater::make('pedidos_adicionais')
             ->label('Pedidos adicionais')
@@ -645,6 +600,7 @@ class PedidosTable
 
                 Textarea::make('comentario')
                     ->label('Comentário do adicional')
+                    ->required($exigirAvaliacao)
                     ->maxLength(1000)
                     ->columnSpanFull(),
             ])

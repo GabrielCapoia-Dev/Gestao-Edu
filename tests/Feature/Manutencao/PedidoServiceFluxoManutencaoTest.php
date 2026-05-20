@@ -3,6 +3,9 @@
 namespace Tests\Feature\Manutencao;
 
 use App\Filament\Admin\Resources\Pedidos\Pages\ListPedidos;
+use App\Filament\Admin\Resources\Pedidos\Pages\EditPedido;
+use App\Filament\Admin\Resources\Pedidos\PedidoResource;
+use App\Filament\Admin\Resources\Pedidos\RelationManagers\PedidosAdicionaisRelationManager;
 use App\Models\EmpresaContratada;
 use App\Models\Enums\NivelEmergenciaPedido;
 use App\Models\Enums\ResultadoFeedbackPedido;
@@ -16,6 +19,7 @@ use App\Models\TipoStatus;
 use App\Models\User;
 use App\Services\PedidoService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
@@ -188,6 +192,7 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
                 'descricao_pedido' => 'Disjuntor trocado durante a visita.',
                 'valor' => 5,
                 'resultado' => ResultadoFeedbackPedido::Atendido->value,
+                'comentario' => 'Adicional atendido.',
             ]],
             'avaliacoes' => [
                 $pedido->problemas()->first()->id => [
@@ -253,9 +258,11 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
                 $pedido->problemas()->first()->id => [
                     'valor' => 5,
                     'resultado' => ResultadoFeedbackPedido::ParcialmenteAtendido->value,
+                    'comentario' => 'Servico precisa voltar para ajuste.',
                 ],
             ],
             'reabrir_pedido' => true,
+            'descricao' => 'Pedido deve ser reaberto para nova execucao.',
         ], $usuario);
 
         $this->assertSame('Reaberto', $pedido->refresh()->tipoStatus->nome);
@@ -295,6 +302,7 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
                         'descricao_pedido' => 'Disjuntor trocado durante a visita.',
                         'valor' => 5,
                         'resultado' => ResultadoFeedbackPedido::Atendido->value,
+                        'comentario' => 'Adicional atendido.',
                     ],
                 ],
             ])
@@ -336,11 +344,13 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
                     'descricao_pedido' => 'Disjuntor trocado durante a visita.',
                     'valor' => 5,
                     'resultado' => ResultadoFeedbackPedido::Atendido->value,
+                    'comentario' => 'Adicional atendido.',
                 ]],
                 'avaliacoes' => [
                     $problema->id => [
                         'valor' => 5,
                         'resultado' => ResultadoFeedbackPedido::Atendido->value,
+                        'comentario' => 'Problema atendido.',
                     ],
                 ],
                 'reabrir_pedido' => false,
@@ -350,6 +360,65 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
             ->assertNoRedirect();
 
         $this->assertSame('Concluído', $pedido->refresh()->tipoStatus->nome);
+    }
+
+    public function test_avaliacao_exige_descricao_geral_e_comentario_por_problema(): void
+    {
+        $usuario = $this->usuarioComRoleSetor('Manutenção: Educação', $this->educacao, ['Avaliar Pedidos']);
+        $pedido = $this->pedido(status: 'Em Manutenção', setor: $this->educacao, escola: $this->escola);
+        $problema = $pedido->problemas()->create([
+            'tipo_manutencao_id' => $this->tipo->id,
+            'tipo_manutencao_opcao_id' => $this->opcaoLuz->id,
+            'texto_problema' => $this->opcaoLuz->texto,
+        ]);
+
+        $this->expectException(ValidationException::class);
+
+        $this->service->avaliarPedido($pedido, [
+            'avaliacoes' => [
+                $problema->id => [
+                    'valor' => 5,
+                    'resultado' => ResultadoFeedbackPedido::Atendido->value,
+                ],
+            ],
+            'reabrir_pedido' => false,
+        ], $usuario);
+    }
+
+    public function test_pedido_adicional_exige_descricao(): void
+    {
+        $usuario = $this->usuarioComRoleSetor('Manutenção: Educação', $this->educacao, [
+            'Vincular Pedidos Adicionais',
+        ]);
+
+        $pedido = $this->pedido(status: 'Em Manutenção', setor: $this->educacao, escola: $this->escola);
+
+        $this->expectException(ValidationException::class);
+
+        $this->service->criarPedidosAdicionais($pedido, [[
+            'tipo_manutencao_id' => $this->tipo->id,
+            'tipo_manutencao_opcao_ids' => [$this->opcaoDisjuntor->id],
+            'data_identificacao_problema' => '2026-05-02',
+            'descricao_pedido' => '',
+        ]], $usuario);
+    }
+
+    public function test_relation_manager_de_adicionais_aparece_somente_no_pedido_principal(): void
+    {
+        $usuario = $this->usuarioComRoleSetor('Manutenção: Educação', $this->educacao, ['Editar Pedidos']);
+        $this->actingAs($usuario);
+
+        $pedido = $this->pedido(status: 'Em Manutenção', setor: $this->educacao, escola: $this->escola);
+        $adicional = $this->service->criarPedidosAdicionais($pedido, [[
+            'tipo_manutencao_id' => $this->tipo->id,
+            'tipo_manutencao_opcao_ids' => [$this->opcaoDisjuntor->id],
+            'data_identificacao_problema' => '2026-05-02',
+            'descricao_pedido' => 'Disjuntor trocado durante a visita.',
+        ]], $usuario)->first();
+
+        $this->assertContains(PedidosAdicionaisRelationManager::class, PedidoResource::getRelations());
+        $this->assertTrue(PedidosAdicionaisRelationManager::canViewForRecord($pedido, EditPedido::class));
+        $this->assertFalse(PedidosAdicionaisRelationManager::canViewForRecord($adicional, EditPedido::class));
     }
 
     private function seedStatus(): void

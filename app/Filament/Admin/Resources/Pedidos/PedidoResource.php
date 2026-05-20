@@ -7,6 +7,7 @@ use App\Filament\Admin\Resources\Pedidos\Pages\EditPedido;
 use App\Filament\Admin\Resources\Pedidos\Pages\ListPedidos;
 use App\Filament\Admin\Resources\Pedidos\RelationManagers\ArquivosRelationManager;
 use App\Filament\Admin\Resources\Pedidos\RelationManagers\HistoricosRelationManager;
+use App\Filament\Admin\Resources\Pedidos\RelationManagers\PedidosAdicionaisRelationManager;
 use App\Filament\Admin\Resources\Pedidos\Schemas\PedidoCriacaoForm;
 use App\Filament\Admin\Resources\Pedidos\Schemas\PedidoGestaoForm;
 use App\Filament\Admin\Resources\Pedidos\Tables\PedidosTable;
@@ -82,7 +83,9 @@ class PedidoResource extends Resource
         /** @var User $user */
         $user = Auth::user();
 
-        $relations = [];
+        $relations = [
+            PedidosAdicionaisRelationManager::class,
+        ];
 
         if ($user?->hasPermissionTo('Visualizar Histórico de Pedidos')) {
             $relations[] = HistoricosRelationManager::class;

@@ -251,14 +251,8 @@
     @endif
 
     @php
-        $fotosProblema = $pedido->arquivos()
-            ->where('tipo_arquivo', 'fotos_problema')
-            ->get();
-
-        $fotosConclusao = $pedido->arquivos()
-            ->where('tipo_arquivo', 'fotos_conclusao')
-            ->get();
-
+        $fotosProblema = $pedido->fotos;
+        $fotosConclusao = $pedido->fotosConclusao;
         $temFotos = $fotosProblema->isNotEmpty() || $fotosConclusao->isNotEmpty();
     @endphp
 
