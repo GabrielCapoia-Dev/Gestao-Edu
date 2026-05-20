@@ -16,7 +16,70 @@
         .pedido-camera-upload {
             display: grid;
             gap: 0.75rem;
-            margin: -0.35rem 0 0.5rem;
+            margin: 0 0 0.5rem;
+        }
+
+        .pedido-camera-upload-host--hidden {
+            height: 0 !important;
+            margin: 0 !important;
+            min-height: 0 !important;
+            opacity: 0 !important;
+            overflow: hidden !important;
+            pointer-events: none !important;
+            position: absolute !important;
+            width: 1px !important;
+        }
+
+        .pedido-camera-upload__dropzone {
+            align-items: center;
+            background: #ffffff;
+            border: 1px dashed #cbd5e1;
+            border-radius: 10px;
+            color: #475569;
+            cursor: pointer;
+            display: grid;
+            gap: 0.45rem;
+            justify-items: center;
+            min-height: 6rem;
+            padding: 1rem;
+            text-align: center;
+            transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+        }
+
+        .pedido-camera-upload__dropzone:hover,
+        .pedido-camera-upload__dropzone--dragging {
+            background: #f8fafc;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.10);
+        }
+
+        .pedido-camera-upload__dropzone-icon {
+            align-items: center;
+            background: #eff6ff;
+            border-radius: 999px;
+            color: #1d4ed8;
+            display: inline-flex;
+            height: 2.25rem;
+            justify-content: center;
+            width: 2.25rem;
+        }
+
+        .pedido-camera-upload__dropzone-icon svg {
+            height: 1.25rem !important;
+            width: 1.25rem !important;
+        }
+
+        .pedido-camera-upload__dropzone-title {
+            color: #1f2937;
+            font-size: 0.92rem;
+            font-weight: 700;
+            line-height: 1.25rem;
+        }
+
+        .pedido-camera-upload__dropzone-text {
+            color: #64748b;
+            font-size: 0.78rem;
+            line-height: 1.15rem;
         }
 
         .pedido-camera-upload__native-input {
@@ -213,15 +276,31 @@
         }
 
         .dark .pedido-camera-upload__button,
-        .dark .pedido-camera-upload__preview {
+        .dark .pedido-camera-upload__preview,
+        .dark .pedido-camera-upload__dropzone {
             background: #111827;
             border-color: #334155;
             color: #e5e7eb;
         }
 
-        .dark .pedido-camera-upload__button:hover {
+        .dark .pedido-camera-upload__button:hover,
+        .dark .pedido-camera-upload__dropzone:hover,
+        .dark .pedido-camera-upload__dropzone--dragging {
             background: #1f2937;
             border-color: #475569;
+        }
+
+        .dark .pedido-camera-upload__dropzone-icon {
+            background: #172554;
+            color: #bfdbfe;
+        }
+
+        .dark .pedido-camera-upload__dropzone-title {
+            color: #f8fafc;
+        }
+
+        .dark .pedido-camera-upload__dropzone-text {
+            color: #94a3b8;
         }
 
         .dark .pedido-camera-upload__media {
@@ -263,7 +342,6 @@
 <div
     x-data="pedidoCameraUpload(@js($target), @js($maxSizeBytes), @js($acceptedMimeTypes), @js($maxFiles))"
     x-init="init()"
-    x-show="hasCamera"
     x-cloak
     class="pedido-camera-upload fi-camera-upload-tools"
 >
@@ -293,6 +371,28 @@
         x-on:change="handleFiles($event, 'gallery')"
     />
 
+    <label
+        for="{{ $galleryInputId }}"
+        class="pedido-camera-upload__dropzone"
+        :class="{ 'pedido-camera-upload__dropzone--dragging': isDragging }"
+        x-on:dragenter.prevent="isDragging = true"
+        x-on:dragover.prevent="isDragging = true"
+        x-on:dragleave.prevent="isDragging = false"
+        x-on:drop.prevent="handleDrop($event)"
+    >
+        <span class="pedido-camera-upload__dropzone-icon">
+            <x-heroicon-o-cloud-arrow-up />
+        </span>
+
+        <span class="pedido-camera-upload__dropzone-title">
+            Arraste as fotos aqui ou clique para selecionar
+        </span>
+
+        <span class="pedido-camera-upload__dropzone-text">
+            JPEG, JPG, PNG ou WEBP. Até {{ $maxFiles }} imagens de 5 MB.
+        </span>
+    </label>
+
     <div class="pedido-camera-upload__actions">
         <label
             for="{{ $cameraInputId }}"
@@ -301,6 +401,7 @@
             x-on:keydown.enter.prevent="$refs.cameraInput.click()"
             x-on:keydown.space.prevent="$refs.cameraInput.click()"
             class="pedido-camera-upload__button"
+            x-show="hasCamera"
         >
             <x-heroicon-o-camera class="h-5 w-5" />
             Tirar foto
@@ -381,15 +482,17 @@
 </div>
 
 <script>
-    window.pedidoCameraUpload = window.pedidoCameraUpload || function (target, maxSizeBytes, acceptedMimeTypes, maxFiles) {
+    window.pedidoCameraUpload = function (target, maxSizeBytes, acceptedMimeTypes, maxFiles) {
         return {
             acceptedExtensions: ['jpeg', 'jpg', 'png', 'webp'],
             hasCamera: false,
+            isDragging: false,
             items: [],
             nextItemId: 1,
 
             async init() {
                 this.configureUploadValidationMessage();
+                this.concealNativeUpload();
 
                 if (!this.supportsNativeCapture()) {
                     this.hasCamera = this.isLikelyCameraDevice();
@@ -455,7 +558,28 @@
                 configure();
             },
 
-            getUploadData() {
+            concealNativeUpload() {
+                let attempts = 0;
+
+                const conceal = () => {
+                    const uploadElement = this.getUploadElement();
+
+                    if (!uploadElement) {
+                        if (attempts < 50) {
+                            attempts++;
+                            setTimeout(conceal, 100);
+                        }
+
+                        return;
+                    }
+
+                    uploadElement.classList.add('pedido-camera-upload-host--hidden');
+                };
+
+                conceal();
+            },
+
+            getUploadElement() {
                 const targetSelector = `[data-camera-upload-target="${target}"]`;
                 const root = this.$root || document;
                 const scopes = [
@@ -471,11 +595,15 @@
                     const scopedUpload = scope?.querySelector(targetSelector);
 
                     if (scopedUpload) {
-                        return window.Alpine ? window.Alpine.$data(scopedUpload) : null;
+                        return scopedUpload;
                     }
                 }
 
-                const uploadElement = document.querySelector(targetSelector);
+                return document.querySelector(targetSelector);
+            },
+
+            getUploadData() {
+                const uploadElement = this.getUploadElement();
 
                 return uploadElement && window.Alpine ? window.Alpine.$data(uploadElement) : null;
             },
@@ -550,6 +678,20 @@
 
                 for (const file of files) {
                     await this.queueFile(file, source);
+                }
+            },
+
+            async handleDrop(event) {
+                this.isDragging = false;
+
+                const files = Array.from(event.dataTransfer?.files || []);
+
+                if (files.length === 0) {
+                    return;
+                }
+
+                for (const file of files) {
+                    await this.queueFile(file, 'drop');
                 }
             },
 
