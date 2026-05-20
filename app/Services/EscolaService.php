@@ -2,22 +2,23 @@
 
 namespace App\Services;
 
-use App\Models\User;
+use App\Filament\Admin\Actions\VincularSetorBulkAction;
 use App\Models\Escola;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
-use Filament\Tables\Table;
-use Illuminate\Support\Facades\Http;
-use Filament\Schemas\Schema;
+use App\Models\User;
+use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
-use Filament\Actions\Action;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Notifications\Notification;
+use Filament\Tables\Table;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 
 class EscolaService
 {
@@ -87,7 +88,6 @@ class EscolaService
         ];
     }
 
-
     private function acoesTabela(?User $user): array
     {
         return [
@@ -128,51 +128,7 @@ class EscolaService
                         'complemento' => $record->complemento,
                     ];
                 })
-                ->using(function (Escola $record, array $data): Escola {
-
-                    $camposVerificar = [
-                        'nome',
-                        'email',
-                        'telefone',
-                        'setor_id',
-                        'logradouro',
-                        'numero',
-                        'bairro',
-                        'cep',
-                        'cidade',
-                        'estado',
-                        'complemento',
-                    ];
-
-                    $alterou = false;
-
-                    foreach ($camposVerificar as $campo) {
-
-                        $original = $record->{$campo};
-                        $novo = $data[$campo] ?? null;
-
-                        if ($original != $novo) {
-                            $alterou = true;
-                            break;
-                        }
-                    }
-
-                    if ($alterou) {
-
-                        // Desativa registro atual
-                        $record->update(['ativo' => false]);
-
-                        // Cria nova versão
-                        return Escola::create([
-                            ...$data,
-                            'codigo' => $record->codigo, // mantém código original
-                            'ativo' => true,
-                            'registro_anterior_id' => $record->id,
-                        ]);
-                    }
-
-                    return $record;
-                }),
+                ->using(fn (Escola $record, array $data): Escola => $this->atualizarComHistorico($record, $data)),
 
             DeleteAction::make()
                 ->successNotification(null)
@@ -204,10 +160,73 @@ class EscolaService
         ];
     }
 
-
     private function acoesEmMassa(?User $user): array
     {
-        return [];
+        return [
+            VincularSetorBulkAction::make(
+                permission: 'Editar Escolas',
+                recordsLabel: 'escolas selecionadas',
+                updateRecord: function (Escola $record, int $setorId): void {
+                    $this->atualizarComHistorico($record, [
+                        'nome' => $record->nome,
+                        'email' => $record->email,
+                        'telefone' => $record->telefone,
+                        'setor_id' => $setorId,
+                        'logradouro' => $record->logradouro,
+                        'numero' => $record->numero,
+                        'bairro' => $record->bairro,
+                        'cep' => $record->cep,
+                        'cidade' => $record->cidade,
+                        'estado' => $record->estado,
+                        'complemento' => $record->complemento,
+                    ]);
+                },
+            ),
+        ];
+    }
+
+    public function atualizarComHistorico(Escola $record, array $data): Escola
+    {
+        $camposVerificar = [
+            'nome',
+            'email',
+            'telefone',
+            'setor_id',
+            'logradouro',
+            'numero',
+            'bairro',
+            'cep',
+            'cidade',
+            'estado',
+            'complemento',
+        ];
+
+        $alterou = false;
+
+        foreach ($camposVerificar as $campo) {
+            $original = $record->{$campo};
+            $novo = $data[$campo] ?? null;
+
+            if ($original != $novo) {
+                $alterou = true;
+                break;
+            }
+        }
+
+        if (! $alterou) {
+            return $record;
+        }
+
+        return DB::transaction(function () use ($record, $data): Escola {
+            $record->update(['ativo' => false]);
+
+            return Escola::create([
+                ...$data,
+                'codigo' => $record->codigo,
+                'ativo' => true,
+                'registro_anterior_id' => $record->id,
+            ]);
+        });
     }
 
     public static function configurarFormulario(Schema $schema): Schema
@@ -259,7 +278,7 @@ class EscolaService
                                     ->label('Logradouro')
                                     ->maxLength(100)
                                     ->columnSpan(6)
-                                    ->disabled(fn(Get $get) => blank($get('cep')))
+                                    ->disabled(fn (Get $get) => blank($get('cep')))
                                     ->minLength(3)
                                     ->rule('regex:/^\p{L}+(?:\s\p{L}+)*$/u')
                                     ->validationMessages([
@@ -284,11 +303,13 @@ class EscolaService
                                     ->reactive()
                                     ->afterStateUpdated(function ($state, callable $set) {
                                         $cep = preg_replace('/[^0-9]/', '', $state);
-                                        if (strlen($cep) !== 8) return;
+                                        if (strlen($cep) !== 8) {
+                                            return;
+                                        }
 
                                         try {
                                             $response = Http::timeout(5)->get("https://viacep.com.br/ws/{$cep}/json/");
-                                            if ($response->successful() && !$response->json('erro')) {
+                                            if ($response->successful() && ! $response->json('erro')) {
                                                 $data = $response->json();
                                                 $set('logradouro', $data['logradouro'] ?? '');
                                                 $set('bairro', $data['bairro'] ?? '');

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\PedidosMerenda\Tables;
 
+use App\Filament\Admin\Actions\VincularSetorBulkAction;
 use App\Models\Enums\StatusPedidoMerenda;
 use App\Models\PedidoMerenda;
 use App\Models\PedidoMerendaItem;
@@ -16,8 +17,8 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class PedidoMerendaTable
 {
@@ -33,7 +34,13 @@ class PedidoMerendaTable
             ->filters(static::filters(), layout: FiltersLayout::AboveContent)
             ->filtersFormColumns(12)
             ->striped()
-            ->recordActions(static::recordActions());
+            ->recordActions(static::recordActions())
+            ->groupedBulkActions([
+                VincularSetorBulkAction::make(
+                    permission: 'Editar Pedidos: Merenda',
+                    recordsLabel: 'pedidos selecionados',
+                ),
+            ]);
     }
 
     public static function columns(): array
@@ -84,7 +91,7 @@ class PedidoMerendaTable
                 ->label('Criado em')
                 ->dateTime('d/m/Y H:i')
                 ->sortable()
-                ->description(fn (PedidoMerenda $record) => 'Atualizado em ' . $record->updated_at?->format('d/m/Y H:i')),
+                ->description(fn (PedidoMerenda $record) => 'Atualizado em '.$record->updated_at?->format('d/m/Y H:i')),
         ];
     }
 

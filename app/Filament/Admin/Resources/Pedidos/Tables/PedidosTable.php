@@ -2,11 +2,13 @@
 
 namespace App\Filament\Admin\Resources\Pedidos\Tables;
 
+use App\Filament\Admin\Actions\VincularSetorBulkAction;
 use App\Filament\Admin\Components\SliderRating;
 use App\Filament\Admin\Resources\Pedidos\Tables\Actions\ExportarRelatorioAction;
 use App\Models\Enums\NivelEmergenciaPedido;
 use App\Models\Enums\ResultadoFeedbackPedido;
 use App\Models\Pedido;
+use App\Models\Setor;
 use App\Models\TipoManutencao;
 use App\Models\TipoManutencaoOpcao;
 use App\Models\User;
@@ -379,7 +381,7 @@ class PedidosTable
                     $criados = $service->criarPedidosAdicionais($record, $data['pedidos_adicionais'] ?? [], $user);
 
                     Notification::make()
-                        ->title($criados->count() . ' pedido(s) adicional(is) vinculado(s).')
+                        ->title($criados->count().' pedido(s) adicional(is) vinculado(s).')
                         ->success()
                         ->send();
                 }),
@@ -425,6 +427,24 @@ class PedidosTable
     public static function bulkActions(?User $user, PedidoService $service): array
     {
         return [
+            VincularSetorBulkAction::make(
+                permission: 'Encaminhar Pedidos para Setor',
+                recordsLabel: 'pedidos selecionados',
+                updateRecord: function (Pedido $record, int $setorId) use ($user, $service): bool {
+                    if (! $user || ! $service->podeGerenciarRegistro($record, $user)) {
+                        return false;
+                    }
+
+                    $service->encaminharParaSetor(
+                        $record,
+                        Setor::query()->findOrFail($setorId),
+                        $user,
+                    );
+
+                    return true;
+                },
+            ),
+
             BulkAction::make('cancelar')
                 ->label('Cancelar pedidos')
                 ->icon('heroicon-o-x-circle')
@@ -459,7 +479,7 @@ class PedidosTable
                     }
 
                     Notification::make()
-                        ->title($cancelados . ' pedido(s) cancelado(s).')
+                        ->title($cancelados.' pedido(s) cancelado(s).')
                         ->warning()
                         ->send();
                 }),

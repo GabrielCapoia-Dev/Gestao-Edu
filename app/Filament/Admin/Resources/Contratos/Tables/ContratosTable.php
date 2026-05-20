@@ -2,10 +2,10 @@
 
 namespace App\Filament\Admin\Resources\Contratos\Tables;
 
+use App\Filament\Admin\Actions\VincularSetorBulkAction;
 use App\Services\UserSetorAccessService;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -80,6 +80,10 @@ class ContratosTable
                 DeleteAction::make(),
             ])
             ->toolbarActions([
+                VincularSetorBulkAction::make(
+                    permission: 'Editar Contratos',
+                    recordsLabel: 'contratos selecionados',
+                ),
                 DeleteBulkAction::make(),
             ])
             ->defaultSort('created_at', 'desc');

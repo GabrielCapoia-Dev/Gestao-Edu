@@ -2,32 +2,25 @@
 
 namespace App\Services;
 
+use App\Filament\Admin\Actions\VincularSetorBulkAction;
 use App\Models\EmpresaContratada;
-use Filament\Forms\Form;
-use Filament\Forms\Components\Toggle;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Grid;
-use Filament\Tables\Columns\IconColumn;
-use Filament\Notifications\Notification;
-use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Filters\TernaryFilter;
-use Filament\Tables\Table;
-use Filament\Tables\Columns\TextColumn;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Database\Eloquent\Builder;
-use App\Models\User;
-use App\Services\UserService;
-use App\Services\UserSetorAccessService;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
-use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Schema;
-use Filament\Actions\BulkAction;
+use Filament\Actions\Action;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\Action;
-
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
+use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\TernaryFilter;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 
 class EmpresaContratadaService
 {
@@ -220,7 +213,7 @@ class EmpresaContratadaService
                         'complemento',
                         'bairro',
                         'cidade',
-                        'estado'
+                        'estado',
                     ];
 
                     $alterou = false;
@@ -291,38 +284,14 @@ class EmpresaContratadaService
     private function acoesEmMassa(): array
     {
         return [
-            BulkAction::make('alterar_setor')
-                ->label('Alterar setor')
-                ->visible(fn (): bool => Auth::user()?->hasPermissionTo('Editar Empresa Contratada') ?? false)
-                ->form([
-                    Select::make('setor_id')
-                        ->label('Novo setor')
-                        ->options(fn () => app(UserSetorAccessService::class)->optionsForSelect(Auth::user()))
-                        ->searchable()
-                        ->preload()
-                        ->required(),
-                ])
-                ->requiresConfirmation()
-                ->modalHeading('Alterar setor das empresas selecionadas')
-                ->modalDescription('As empresas selecionadas passarão a aparecer nas listagens e seletores do novo setor.')
-                ->action(function (array $data, $records): void {
-                    app(UserSetorAccessService::class)->assertCanUseSetor(Auth::user(), $data['setor_id'] ?? null);
-
-                    foreach ($records as $record) {
-                        $record->update([
-                            'setor_id' => $data['setor_id'],
-                            'alterado_por' => Auth::user()?->name,
-                        ]);
-                    }
-
-                    Notification::make()
-                        ->title('Setor atualizado')
-                        ->body('As empresas selecionadas foram vinculadas ao novo setor.')
-                        ->success()
-                        ->send();
-                })
-                ->deselectRecordsAfterCompletion(),
-
+            VincularSetorBulkAction::make(
+                permission: 'Editar Empresa Contratada',
+                recordsLabel: 'empresas selecionadas',
+                updateRecord: fn (EmpresaContratada $record, int $setorId) => $record->update([
+                    'setor_id' => $setorId,
+                    'alterado_por' => Auth::user()?->name,
+                ]),
+            ),
             DeleteBulkAction::make()
                 ->successNotification(null)
                 ->using(function ($records, Action $action) {

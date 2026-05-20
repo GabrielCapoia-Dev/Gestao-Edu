@@ -2,25 +2,27 @@
 
 namespace App\Filament\Admin\Resources\Roles;
 
+use App\Filament\Admin\Actions\VincularSetorBulkAction;
+use App\Filament\Admin\Resources\Roles\Pages\ManageRoles;
+use App\Models\Role;
+use App\Services\RoleService;
+use App\Services\UserService;
+use App\Services\UserSetorAccessService;
 use BackedEnum;
 use Filament\Actions;
 use Filament\Forms\Components;
-use Filament\Schemas\Schema;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Group;
-use Filament\Support\Icons\Heroicon;
-use App\Models\Role;
-use App\Services\UserSetorAccessService;
-use Filament\Forms;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use App\Services\RoleService;
-use App\Services\UserService;
+use Filament\Schemas\Components\Group;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
 use Spatie\Permission\Models\Permission;
-use Filament\Schemas\Components\Utilities\Get;
-use App\Filament\Admin\Resources\Roles\Pages\ManageRoles;
+use Spatie\Permission\PermissionRegistrar;
 use UnitEnum;
 
 class RoleResource extends Resource
@@ -34,9 +36,11 @@ class RoleResource extends Resource
     public static ?string $modelLabel = 'Nivel de acesso';
 
     public static ?string $label = 'Niveis de acesso';
-    protected static string | UnitEnum | null $navigationGroup = 'Acesso';
+
+    protected static string|UnitEnum|null $navigationGroup = 'Acesso';
 
     public static ?string $pluralLabel = 'Niveis de acesso';
+
     public static ?string $navigationLabel = 'Niveis de acesso';
 
     public static ?string $pluralModelLabel = 'Niveis de acesso';
@@ -44,7 +48,6 @@ class RoleResource extends Resource
     public static ?string $slug = 'niveis-de-acesso';
 
     protected static ?string $recordTitleAttribute = 'name';
-
 
     public static function form(Schema $schema): Schema
     {
@@ -54,7 +57,7 @@ class RoleResource extends Resource
                     ->columnSpanFull()
                     ->label('Nivel de acesso')
                     ->required()
-                    ->disabled(fn($record, $context) => app(RoleService::class)->bloquearCampo($record, $context))
+                    ->disabled(fn ($record, $context) => app(RoleService::class)->bloquearCampo($record, $context))
                     ->unique(ignoreRecord: true),
 
                 Components\Select::make('setor_id')
@@ -129,7 +132,7 @@ class RoleResource extends Resource
                                 }
 
                                 return $schema;
-                            })
+                            }),
                     ]),
             ]);
     }
@@ -166,35 +169,32 @@ class RoleResource extends Resource
                         function () {
                             /** @var App\Models\User */
                             $user = Auth::user();
+
                             return $user->hasPermissionTo('Aplicar Permissoes') && $user->hasPermissionTo('Editar Níveis de Acesso');
                         }
                     )
                     ->disabled(
-                        fn($record) =>
-                        app(RoleService::class)->bloquearCampoEdit($record, 'edit')
+                        fn ($record) => app(RoleService::class)->bloquearCampoEdit($record, 'edit')
                     )
                     ->modalHeading(
-                        fn($record) =>
-                        "Editar nível de acesso"
+                        fn ($record) => 'Editar nível de acesso'
                     )
                     ->modalDescription(
-                        fn($record) =>
-                        $record->name
+                        fn ($record) => $record->name
                     )
                     ->schema(function (Role $record) {
 
                         return [
 
-                            Forms\Components\TextInput::make('name')
+                            Components\TextInput::make('name')
                                 ->label('Nível de acesso')
                                 ->required()
                                 ->disabled(
-                                    fn($record) =>
-                                    app(RoleService::class)->bloquearCampo($record, 'edit')
+                                    fn ($record) => app(RoleService::class)->bloquearCampo($record, 'edit')
                                 )
                                 ->default($record->name),
 
-                            Forms\Components\Select::make('setor_id')
+                            Components\Select::make('setor_id')
                                 ->label('Setor legado')
                                 ->helperText('Mantido apenas para compatibilidade. O escopo operacional novo vem do usuario.')
                                 ->options(fn () => app(UserSetorAccessService::class)->optionsForSelect(Auth::user()))
@@ -205,30 +205,28 @@ class RoleResource extends Resource
                                 ->disabled()
                                 ->dehydrated(false),
 
-                            Forms\Components\TextInput::make('search_permissions')
+                            Components\TextInput::make('search_permissions')
                                 ->label('Buscar permissões')
                                 ->live(debounce: 30)
                                 ->dehydrated(false)
                                 ->extraInputAttributes([
-                                    'onkeydown' => 'if(event.key === "Enter") event.preventDefault()'
+                                    'onkeydown' => 'if(event.key === "Enter") event.preventDefault()',
                                 ]),
 
-                            Forms\Components\Hidden::make('permissions_state')
+                            Components\Hidden::make('permissions_state')
                                 ->default(
-                                    fn(Role $record) =>
-                                    $record->permissions->pluck('name')->toArray()
+                                    fn (Role $record) => $record->permissions->pluck('name')->toArray()
                                 )
                                 ->dehydrated(true),
 
-
                             Group::make()
-                                ->schema(function (Get $get) use ($record) {
+                                ->schema(function (Get $get) {
 
                                     $todasPermissoes = Permission::orderBy('name')->get();
                                     $busca = strtolower($get('search_permissions') ?? '');
 
                                     $porGrupo = $todasPermissoes->groupBy(
-                                        fn($p) => explode(' ', $p->name)[0]
+                                        fn ($p) => explode(' ', $p->name)[0]
                                     );
 
                                     $schema = [];
@@ -238,10 +236,8 @@ class RoleResource extends Resource
                                         $filtradas = $permissoes
                                             ->when(
                                                 $busca,
-                                                fn($collection) =>
-                                                $collection->filter(
-                                                    fn($perm) =>
-                                                    str_contains(strtolower($perm->name), $busca)
+                                                fn ($collection) => $collection->filter(
+                                                    fn ($perm) => str_contains(strtolower($perm->name), $busca)
                                                 )
                                             );
 
@@ -251,33 +247,31 @@ class RoleResource extends Resource
                                         }
 
                                         $schema[] =
-                                            Forms\Components\CheckboxList::make("permissions_{$grupo}")
-                                            ->label($grupo)
-                                            ->options(
-                                                $filtradas->pluck('name', 'name')->toArray()
-                                            )
-                                            ->columns(3)
-                                            ->default(
-                                                fn(Get $get) =>
-                                                collect($get('permissions_state') ?? [])
-                                                    ->intersect($permissoes->pluck('name'))
-                                                    ->values()
-                                                    ->toArray()
-                                            )
-                                            ->afterStateUpdated(function ($state, Get $get, callable $set) use ($permissoes) {
+                                            Components\CheckboxList::make("permissions_{$grupo}")
+                                                ->label($grupo)
+                                                ->options(
+                                                    $filtradas->pluck('name', 'name')->toArray()
+                                                )
+                                                ->columns(3)
+                                                ->default(
+                                                    fn (Get $get) => collect($get('permissions_state') ?? [])
+                                                        ->intersect($permissoes->pluck('name'))
+                                                        ->values()
+                                                        ->toArray()
+                                                )
+                                                ->afterStateUpdated(function ($state, Get $get, callable $set) use ($permissoes) {
 
-                                                $atual = collect($get('permissions_state') ?? []);
+                                                    $atual = collect($get('permissions_state') ?? []);
 
-                                                // remove permissões desse grupo
-                                                $atual = $atual->diff($permissoes->pluck('name'));
+                                                    // remove permissões desse grupo
+                                                    $atual = $atual->diff($permissoes->pluck('name'));
 
-                                                // adiciona as novas selecionadas
-                                                $atual = $atual->merge($state ?? []);
+                                                    // adiciona as novas selecionadas
+                                                    $atual = $atual->merge($state ?? []);
 
-                                                $set('permissions_state', $atual->unique()->values()->toArray());
-                                            });
+                                                    $set('permissions_state', $atual->unique()->values()->toArray());
+                                                });
                                     }
-
 
                                     return $schema;
                                 }),
@@ -305,7 +299,7 @@ class RoleResource extends Resource
                      |--------------------------------------------------------------------------
                      */
                         $permissoesSelecionadas = collect($data ?? [])
-                            ->filter(fn($_, $key) => str_starts_with($key, 'permissions_'))
+                            ->filter(fn ($_, $key) => str_starts_with($key, 'permissions_'))
                             ->flatten()
                             ->unique()
                             ->values();
@@ -322,12 +316,12 @@ class RoleResource extends Resource
                      */
                         if ($paraRemover->isNotEmpty()) {
                             $record->revokePermissionTo($paraRemover->toArray());
-                            $alteracoes[] = 'Permissões removidas: ' . $paraRemover->implode(', ');
+                            $alteracoes[] = 'Permissões removidas: '.$paraRemover->implode(', ');
                         }
 
                         if ($paraAdicionar->isNotEmpty()) {
                             $record->givePermissionTo($paraAdicionar->toArray());
-                            $alteracoes[] = 'Permissões adicionadas: ' . $paraAdicionar->implode(', ');
+                            $alteracoes[] = 'Permissões adicionadas: '.$paraAdicionar->implode(', ');
                         }
 
                         /*
@@ -336,7 +330,7 @@ class RoleResource extends Resource
                       |--------------------------------------------------------------------------
                       */
                         if ($paraRemover->isNotEmpty()) {
-                            \Filament\Notifications\Notification::make()
+                            Notification::make()
                                 ->title('Permissões removidas')
                                 ->body($paraRemover->implode(', '))
                                 ->danger()
@@ -346,7 +340,7 @@ class RoleResource extends Resource
                         }
 
                         if ($paraAdicionar->isNotEmpty()) {
-                            \Filament\Notifications\Notification::make()
+                            Notification::make()
                                 ->title('Permissões adicionadas')
                                 ->body($paraAdicionar->implode(', '))
                                 ->success()
@@ -356,7 +350,7 @@ class RoleResource extends Resource
                         }
 
                         if ($paraRemover->isEmpty() && $paraAdicionar->isEmpty()) {
-                            \Filament\Notifications\Notification::make()
+                            Notification::make()
                                 ->title('Nenhuma alteração foi realizada')
                                 ->info()
                                 ->send();
@@ -365,19 +359,37 @@ class RoleResource extends Resource
 
                 Actions\DeleteAction::make()
                     ->disabled(
-                        fn($record) =>
-                        app(RoleService::class)->bloquearExclusao($record)
+                        fn ($record) => app(RoleService::class)->bloquearExclusao($record)
                     ),
             ])
 
             ->groupedBulkActions([
+                VincularSetorBulkAction::make(
+                    permission: null,
+                    recordsLabel: 'níveis selecionados',
+                    updateRecord: function (Role $record, int $setorId): void {
+                        $record->update(['setor_id' => $setorId]);
+                        app(PermissionRegistrar::class)->forgetCachedPermissions();
+                    },
+                    visible: function (): bool {
+                        $user = Auth::user();
+
+                        return (bool) (
+                            $user?->hasPermissionTo('Aplicar Permissoes')
+                            && $user?->hasPermissionTo('Editar Níveis de Acesso')
+                        );
+                    },
+                    name: 'vincular_setor_legado',
+                ),
+
                 Actions\DeleteBulkAction::make()
                     ->visible(function () {
                         $user = Auth::user();
+
                         return app(UserService::class)->ehAdmin($user);
-                    })
+                    }),
             ])
-            ->checkIfRecordIsSelectableUsing(fn($record) => app(RoleService::class)->bloquearSelecaoBulkActions($record));
+            ->checkIfRecordIsSelectableUsing(fn ($record) => app(RoleService::class)->bloquearSelecaoBulkActions($record));
     }
 
     public static function getPages(): array

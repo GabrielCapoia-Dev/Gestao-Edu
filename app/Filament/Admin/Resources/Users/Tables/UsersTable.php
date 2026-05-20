@@ -2,22 +2,24 @@
 
 namespace App\Filament\Admin\Resources\Users\Tables;
 
+use App\Filament\Admin\Actions\VincularSetorBulkAction;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\UserService;
 use Filament\Actions\Action;
-use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password as PasswordRule;
 use Spatie\Permission\PermissionRegistrar;
@@ -26,15 +28,15 @@ class UsersTable
 {
     public static function configure(Table $table): Table
     {
-        /** @var \App\Models\User */
+        /** @var User */
         $user = Auth::user();
         $service = app(UserService::class);
 
         return $table
-            ->modifyQueryUsing(fn(Builder $query) => $service->listarUsuariosQuery($query, $user))
+            ->modifyQueryUsing(fn (Builder $query) => $service->listarUsuariosQuery($query, $user))
             ->paginated([5, 10, 25, 50, 100])
             ->defaultPaginationPageOption(5)
-            ->checkIfRecordIsSelectableUsing(fn(User $record) => $service->podeSelecionarRegistro($user, $record))
+            ->checkIfRecordIsSelectableUsing(fn (User $record) => $service->podeSelecionarRegistro($user, $record))
             ->columns(self::columns($service, $user))
             ->recordActions(self::recordActions($service, $user))
             ->groupedBulkActions(self::bulkActions($service, $user))
@@ -50,27 +52,27 @@ class UsersTable
     {
         return [
 
-            \Filament\Tables\Columns\TextColumn::make('setor.nome')
+            TextColumn::make('setor.nome')
                 ->label('Setor')
                 ->sortable()
                 ->toggleable()
-                ->visible(fn() => $service->podeVisualizarSetor($user)),
+                ->visible(fn () => $service->podeVisualizarSetor($user)),
 
-            \Filament\Tables\Columns\TextColumn::make('escola.nome')
+            TextColumn::make('escola.nome')
                 ->label('Escola')
                 ->wrap()
                 ->sortable()
                 ->grow(false)
                 ->searchable(),
 
-            \Filament\Tables\Columns\TextColumn::make('name')
+            TextColumn::make('name')
                 ->label('Nome de usuário')
                 ->wrap()
                 ->sortable()
                 ->grow(false)
                 ->searchable(),
 
-            \Filament\Tables\Columns\TextColumn::make('email')
+            TextColumn::make('email')
                 ->label('E-mail')
                 ->wrap()
                 ->copyable()
@@ -78,16 +80,15 @@ class UsersTable
                 ->grow(false)
                 ->searchable(),
 
-            \Filament\Tables\Columns\ToggleColumn::make('email_approved')
+            ToggleColumn::make('email_approved')
                 ->label('Verificação')
                 ->sortable()
                 ->alignCenter()
                 ->grow(false)
                 ->disabled(
-                    fn(User $record) =>
-                    $service->desabilitarToggleAprovacaoEmail(Auth::user(), $record)
+                    fn (User $record) => $service->desabilitarToggleAprovacaoEmail(Auth::user(), $record)
                 )
-                ->visible(fn() => $service->podeVerToggleAprovacaoEmail(Auth::user(), null, 'table'))
+                ->visible(fn () => $service->podeVerToggleAprovacaoEmail(Auth::user(), null, 'table'))
                 ->inline(false)
                 ->onColor('success')
                 ->offColor('danger')
@@ -95,7 +96,7 @@ class UsersTable
                 ->offIcon('heroicon-s-x-mark')
                 ->columnSpan(1),
 
-            \Filament\Tables\Columns\TextColumn::make('email_verified_at')
+            TextColumn::make('email_verified_at')
                 ->label('Verificado em')
                 ->grow(false)
                 ->sortable()
@@ -104,22 +105,23 @@ class UsersTable
                     if (! $record->email_approved) {
                         return '--/--/-- --:--:--';
                     }
+
                     return $state ? $state->format('d/m/Y H:i:s') : '-';
                 }),
 
-            \Filament\Tables\Columns\TextColumn::make('roles')
+            TextColumn::make('roles')
                 ->label('Niveis de acesso')
                 ->grow(false)
                 ->wrap()
-                ->getStateUsing(fn(User $record) => $record->roles->pluck('name')->join(', ') ?: '-')
+                ->getStateUsing(fn (User $record) => $record->roles->pluck('name')->join(', ') ?: '-')
                 ->toggleable(isToggledHiddenByDefault: false),
 
-            \Filament\Tables\Columns\TextColumn::make('created_at')
+            TextColumn::make('created_at')
                 ->label('Criado em')
                 ->sortable()
                 ->toggleable(isToggledHiddenByDefault: true),
 
-            \Filament\Tables\Columns\TextColumn::make('updated_at')
+            TextColumn::make('updated_at')
                 ->label('Atualizado em')
                 ->sortable()
                 ->toggleable(isToggledHiddenByDefault: true),
@@ -140,14 +142,19 @@ class UsersTable
                 ->color('warning')
                 ->slideOver()
                 ->modalSubmitActionLabel('Salvar')
-                ->modalSubmitAction(fn(Action $action) => $action->color('primary'))
-                ->visible(function (User $record) use ($service, $user) {
-                    if ($record->id === $user->id) return false;
-                    if ($record->hasRole('Admin')) return false;
+                ->modalSubmitAction(fn (Action $action) => $action->color('primary'))
+                ->visible(function (User $record) use ($user) {
+                    if ($record->id === $user->id) {
+                        return false;
+                    }
+                    if ($record->hasRole('Admin')) {
+                        return false;
+                    }
+
                     return $user->hasPermissionTo('Aplicar Permissoes');
                 })
-                ->modalHeading(fn(User $record) => 'Permissões do usuário')
-                ->modalDescription(fn(User $record) => "{$record->name} • {$record->email}")
+                ->modalHeading(fn (User $record) => 'Permissões do usuário')
+                ->modalDescription(fn (User $record) => "{$record->name} • {$record->email}")
                 ->modalIcon('heroicon-o-key')
                 ->schema(function (User $record) use ($service, $user) {
                     return [
@@ -168,7 +175,7 @@ class UsersTable
                 })
                 ->action(function (User $record, array $data) {
                     $permissoesSelecionadas = collect($data)
-                        ->filter(fn($_, $key) => str_starts_with($key, 'permissions_'))
+                        ->filter(fn ($_, $key) => str_starts_with($key, 'permissions_'))
                         ->flatten()
                         ->unique()
                         ->values();
@@ -176,7 +183,7 @@ class UsersTable
                     $permissoesAtuais = $record->getDirectPermissions()->pluck('name');
 
                     $permissoesDaRole = $record->roles
-                        ->flatMap(fn($role) => $role->permissions)
+                        ->flatMap(fn ($role) => $role->permissions)
                         ->pluck('name')
                         ->toArray();
 
@@ -195,25 +202,25 @@ class UsersTable
                     }
 
                     if ($paraRemover->isNotEmpty()) {
-                        \Filament\Notifications\Notification::make()
+                        Notification::make()
                             ->title('Permissões removidas')
-                            ->body($paraRemover->map(fn($p) => "• {$p}")->implode('<br>'))
+                            ->body($paraRemover->map(fn ($p) => "• {$p}")->implode('<br>'))
                             ->danger()
                             ->icon('heroicon-s-x-mark')
                             ->send();
                     }
 
                     if ($paraAdicionar->isNotEmpty()) {
-                        \Filament\Notifications\Notification::make()
+                        Notification::make()
                             ->title('Permissões adicionadas')
-                            ->body($paraAdicionar->map(fn($p) => "• {$p}")->implode('<br>'))
+                            ->body($paraAdicionar->map(fn ($p) => "• {$p}")->implode('<br>'))
                             ->success()
                             ->icon('heroicon-s-check')
                             ->send();
                     }
 
                     if ($paraRemover->isEmpty() && $paraAdicionar->isEmpty()) {
-                        \Filament\Notifications\Notification::make()
+                        Notification::make()
                             ->title('Nenhuma alteração foi realizada')
                             ->info()
                             ->send();
@@ -222,15 +229,15 @@ class UsersTable
 
             EditAction::make(),
 
-            \Filament\Actions\DeleteAction::make()
-                ->before(function (User $record, \Filament\Actions\DeleteAction $action) use ($service, $user) {
+            DeleteAction::make()
+                ->before(function (User $record, DeleteAction $action) use ($service, $user) {
                     if (! $service->podeDeletar($user, $record)) {
                         $action->failure();
                         $action->halt();
                     }
                 })
-                ->disabled(fn(User $record) => ($record->id === 1) || (Auth::id() === $record->id))
-                ->visible(fn() => $service->ehAdmin(Auth::user())),
+                ->disabled(fn (User $record) => ($record->id === 1) || (Auth::id() === $record->id))
+                ->visible(fn () => $service->ehAdmin(Auth::user())),
         ];
     }
 
@@ -248,15 +255,15 @@ class UsersTable
                 ->color('success')
                 ->accessSelectedRecords()
                 ->slideOver()
-                ->visible(fn() => $service->podeVerToggleAprovacaoEmail(Auth::user(), null, 'table'))
+                ->visible(fn () => $service->podeVerToggleAprovacaoEmail(Auth::user(), null, 'table'))
                 ->closeModalByClickingAway(false)
                 ->closeModalByEscaping(false)
                 ->modalCloseButton(false)
-                ->modalCancelAction(fn(Action $action) => $action->label('Fechar'))
+                ->modalCancelAction(fn (Action $action) => $action->label('Fechar'))
                 ->modalHeading('Verificacao de acesso em massa')
                 ->modalDescription('Aprove ou desaprove o acesso dos usuarios selecionados. O Admin do sistema sempre sera ignorado.')
                 ->modalIcon('heroicon-o-check-badge')
-                ->schema(fn() => [
+                ->schema(fn () => [
                     Select::make('acao_verificacao')
                         ->label('Acao')
                         ->options([
@@ -281,6 +288,7 @@ class UsersTable
 
                         if ($record->id === 1 || $record->hasRole('Admin')) {
                             $ignorados++;
+
                             continue;
                         }
 
@@ -307,16 +315,16 @@ class UsersTable
                 ->icon('heroicon-o-key')
                 ->color('danger')
                 ->accessSelectedRecords()
-                ->visible(fn() => $service->ehAdmin($user) || $user->hasPermissionTo('Editar Usuários'))
+                ->visible(fn () => $service->ehAdmin($user) || $user->hasPermissionTo('Editar Usuários'))
                 ->closeModalByClickingAway(false)
                 ->closeModalByEscaping(false)
                 ->modalCloseButton(false)
                 ->modalSubmitActionLabel('Setar senha')
-                ->modalCancelAction(fn(Action $action) => $action->label('Fechar'))
+                ->modalCancelAction(fn (Action $action) => $action->label('Fechar'))
                 ->modalHeading('Setar Senha Padrao')
                 ->modalDescription('A senha sera aplicada aos usuarios selecionados. No proximo acesso, eles serao obrigados a cadastrar uma nova senha.')
                 ->modalIcon('heroicon-o-key')
-                ->schema(fn() => [
+                ->schema(fn () => [
                     TextInput::make('nova_senha')
                         ->label('Nova senha')
                         ->default('Mudar@1234')
@@ -337,6 +345,7 @@ class UsersTable
 
                         if ($record->id === 1 || $record->id === $user->id || $record->hasRole('Admin')) {
                             $ignorados++;
+
                             continue;
                         }
 
@@ -365,15 +374,15 @@ class UsersTable
                 ->color('primary')
                 ->accessSelectedRecords()
                 ->slideOver()
-                ->visible(fn() => $user->hasPermissionTo('Aplicar Permissoes'))
+                ->visible(fn () => $user->hasPermissionTo('Aplicar Permissoes'))
                 ->closeModalByClickingAway(false)
                 ->closeModalByEscaping(false)
                 ->modalCloseButton(false)
-                ->modalCancelAction(fn(Action $action) => $action->label('Fechar'))
+                ->modalCancelAction(fn (Action $action) => $action->label('Fechar'))
                 ->modalHeading('Editar niveis em massa')
                 ->modalDescription('Adicione, substitua ou remova niveis de acesso dos usuarios selecionados.')
                 ->modalIcon('heroicon-o-shield-check')
-                ->schema(fn() => [
+                ->schema(fn () => [
                     Select::make('modo_roles')
                         ->label('Como aplicar')
                         ->options([
@@ -388,7 +397,7 @@ class UsersTable
                     Select::make('roles')
                         ->label('Niveis de acesso')
                         ->helperText('Selecione um ou mais niveis para os usuarios escolhidos.')
-                        ->options(fn() => $service->opcoesDeRolesParaSelect($user))
+                        ->options(fn () => $service->opcoesDeRolesParaSelect($user))
                         ->multiple()
                         ->searchable()
                         ->preload()
@@ -410,7 +419,7 @@ class UsersTable
                             continue;
                         }
 
-                        $roleIdsAtuais = $record->roles()->pluck('id')->map(fn($roleId) => (int) $roleId);
+                        $roleIdsAtuais = $record->roles()->pluck('id')->map(fn ($roleId) => (int) $roleId);
 
                         $novosRoleIds = match ($modo) {
                             'replace' => collect($roleIds)->values(),
@@ -440,15 +449,15 @@ class UsersTable
                 ->color('warning')
                 ->accessSelectedRecords()
                 ->slideOver()
-                ->visible(fn() => $user->hasPermissionTo('Aplicar Permissoes'))
+                ->visible(fn () => $user->hasPermissionTo('Aplicar Permissoes'))
                 ->closeModalByClickingAway(false)
                 ->closeModalByEscaping(false)
                 ->modalCloseButton(false)
-                ->modalCancelAction(fn(Action $action) => $action->label('Fechar'))
+                ->modalCancelAction(fn (Action $action) => $action->label('Fechar'))
                 ->modalHeading('Editar permissões em massa')
                 ->modalDescription('As permissões selecionadas serão aplicadas aos usuários escolhidos.')
                 ->modalIcon('heroicon-o-key')
-                ->schema(fn() => [
+                ->schema(fn () => [
                     Select::make('modo_permissoes')
                         ->label('Como aplicar')
                         ->options([
@@ -462,7 +471,7 @@ class UsersTable
 
                     Components\Section::make('Permissões')
                         ->collapsible()
-                        ->schema(fn(Get $get) => [
+                        ->schema(fn (Get $get) => [
                             TextInput::make('buscar_permissao')
                                 ->label('Pesquisar permissão')
                                 ->placeholder('Ex: listar, editar, excluir...')
@@ -493,7 +502,7 @@ class UsersTable
                         $record->load('roles.permissions');
 
                         $permissoesHerdadas = $record->roles
-                            ->flatMap(fn($role) => $role->permissions->pluck('name'))
+                            ->flatMap(fn ($role) => $role->permissions->pluck('name'))
                             ->unique()
                             ->values();
 
@@ -536,13 +545,18 @@ class UsersTable
                         ->send();
                 }),
 
+            VincularSetorBulkAction::make(
+                permission: 'Editar Setor do Usuário',
+                recordsLabel: 'usuÃ¡rios selecionados',
+            ),
+
             DeleteBulkAction::make()
                 ->before(function ($records, $action) use ($service, $user) {
                     if (! $service->podeDeletarEmLote($user, $records)) {
                         $action->halt();
                     }
                 })
-                ->visible(fn() => $service->ehAdmin(Auth::user())),
+                ->visible(fn () => $service->ehAdmin(Auth::user())),
         ];
     }
 }
