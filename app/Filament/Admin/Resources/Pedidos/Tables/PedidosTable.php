@@ -304,14 +304,23 @@ class PedidosTable
                 ->icon('heroicon-o-link')
                 ->color('gray')
                 ->slideOver()
-                ->modalWidth('4xl')
+                ->modalWidth('5xl')
                 ->modalSubmitAction(false)
                 ->modalCancelActionLabel('Fechar')
                 ->visible(fn (Pedido $record) => ! $record->is_pedido_adicional && $record->pedidosAdicionais()->exists())
                 ->modalContent(fn (Pedido $record) => view('components.pedido.pedidos-adicionais', [
                     'pedido' => $record,
                     'adicionais' => $record->pedidosAdicionais()
-                        ->with(['tipoManutencao', 'problemas', 'tipoStatus'])
+                        ->with([
+                            'tipoManutencao',
+                            'problemas',
+                            'tipoStatus',
+                            'escola',
+                            'setor',
+                            'empresaContratada',
+                            'solicitante',
+                            'feedbackItens.problema',
+                        ])
                         ->get(),
                 ])),
 

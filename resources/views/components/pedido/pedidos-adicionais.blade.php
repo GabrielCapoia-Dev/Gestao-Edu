@@ -1,191 +1,399 @@
 @once
     <style>
         .pedido-adicionais-modal {
+            display: grid;
+            gap: 0.875rem;
+        }
+
+        .pedido-adicionais-modal__summary {
+            align-items: center;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
             display: flex;
-            flex-direction: column;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            justify-content: space-between;
+            padding: 0.875rem 1rem;
+        }
+
+        .pedido-adicionais-modal__summary-title {
+            color: #0f172a;
+            font-size: 0.9rem;
+            font-weight: 750;
+            line-height: 1.25rem;
+        }
+
+        .pedido-adicionais-modal__summary-text {
+            color: #64748b;
+            font-size: 0.78rem;
+            line-height: 1.2rem;
+            margin-top: 0.1rem;
+        }
+
+        .pedido-adicionais-modal__list {
+            display: grid;
             gap: 0.875rem;
         }
 
         .pedido-adicionais-modal__card {
-            border: 1px solid #e5e7eb;
             background: #ffffff;
-            border-radius: 0.875rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+            display: grid;
+            gap: 0.875rem;
             padding: 1rem;
-            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
-            transition:
-                border-color 180ms ease,
-                box-shadow 180ms ease,
-                transform 180ms ease;
-        }
-
-        .pedido-adicionais-modal__card:hover {
-            border-color: #cbd5e1;
-            box-shadow: 0 14px 32px rgba(15, 23, 42, 0.10);
-            transform: translateY(-1px);
         }
 
         .pedido-adicionais-modal__header {
-            display: flex;
             align-items: flex-start;
-            justify-content: space-between;
-            gap: 0.875rem;
+            display: flex;
             flex-wrap: wrap;
+            gap: 0.75rem;
+            justify-content: space-between;
         }
 
         .pedido-adicionais-modal__protocolo {
-            font-size: 0.925rem;
-            font-weight: 700;
             color: #111827;
+            font-size: 0.98rem;
+            font-weight: 750;
             line-height: 1.25rem;
         }
 
         .pedido-adicionais-modal__tipo {
-            margin-top: 0.15rem;
-            font-size: 0.825rem;
             color: #64748b;
+            font-size: 0.8rem;
             line-height: 1.15rem;
+            margin-top: 0.15rem;
         }
 
-        .pedido-adicionais-modal__status {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 999px;
-            padding: 0.35rem 0.65rem;
-            font-size: 0.72rem;
-            font-weight: 700;
-            color: #ffffff;
-            line-height: 1;
-            min-height: 1.6rem;
-            box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.14);
-        }
-
-        .pedido-adicionais-modal__descricao {
-            margin-top: 0.9rem;
-            font-size: 0.875rem;
-            line-height: 1.45rem;
-            color: #374151;
-            white-space: pre-line;
-        }
-
+        .pedido-adicionais-modal__badges,
         .pedido-adicionais-modal__problemas {
             display: flex;
             flex-wrap: wrap;
             gap: 0.45rem;
-            margin-top: 0.9rem;
         }
 
-        .pedido-adicionais-modal__problema {
-            display: inline-flex;
+        .pedido-adicionais-modal__badge {
             align-items: center;
+            background: color-mix(in srgb, var(--badge-color) 12%, #ffffff);
+            border: 1px solid color-mix(in srgb, var(--badge-color) 34%, #ffffff);
             border-radius: 999px;
-            background: #f1f5f9;
-            color: #475569;
-            padding: 0.35rem 0.65rem;
-            font-size: 0.75rem;
-            font-weight: 600;
+            color: var(--badge-color);
+            display: inline-flex;
+            font-size: 0.72rem;
+            font-weight: 750;
             line-height: 1rem;
+            min-height: 1.6rem;
+            padding: 0.28rem 0.62rem;
+        }
+
+        .pedido-adicionais-modal__grid {
+            display: grid;
+            gap: 0.7rem;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
+        .pedido-adicionais-modal__field {
+            min-width: 0;
+        }
+
+        .pedido-adicionais-modal__field--wide {
+            grid-column: span 2;
+        }
+
+        .pedido-adicionais-modal__label {
+            color: #64748b;
+            display: block;
+            font-size: 0.66rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            line-height: 1rem;
+            margin-bottom: 0.15rem;
+            text-transform: uppercase;
+        }
+
+        .pedido-adicionais-modal__value {
+            color: #1f2937;
+            display: block;
+            font-size: 0.83rem;
+            line-height: 1.35rem;
+            overflow-wrap: anywhere;
+        }
+
+        .pedido-adicionais-modal__section {
+            border-top: 1px solid #e5e7eb;
+            display: grid;
+            gap: 0.45rem;
+            padding-top: 0.75rem;
+        }
+
+        .pedido-adicionais-modal__descricao {
+            border-left: 3px solid #cbd5e1;
+            color: #374151;
+            font-size: 0.86rem;
+            line-height: 1.45rem;
+            padding-left: 0.75rem;
+            white-space: pre-line;
+        }
+
+        .pedido-adicionais-modal__avaliacoes {
+            display: grid;
+            gap: 0.5rem;
+        }
+
+        .pedido-adicionais-modal__avaliacao {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            display: grid;
+            gap: 0.25rem;
+            padding: 0.65rem 0.75rem;
+        }
+
+        .pedido-adicionais-modal__avaliacao-top {
+            align-items: center;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.45rem;
+            justify-content: space-between;
+        }
+
+        .pedido-adicionais-modal__avaliacao-title {
+            color: #111827;
+            font-size: 0.82rem;
+            font-weight: 700;
+            line-height: 1.25rem;
         }
 
         .pedido-adicionais-modal__empty {
-            border: 1px dashed #cbd5e1;
-            border-radius: 0.875rem;
-            padding: 1.5rem;
-            color: #64748b;
             background: #f8fafc;
+            border: 1px dashed #cbd5e1;
+            border-radius: 8px;
+            color: #64748b;
             font-size: 0.875rem;
+            padding: 1.5rem;
             text-align: center;
         }
 
-        .dark .pedido-adicionais-modal__card {
-            border-color: #374151;
+        .dark .pedido-adicionais-modal__summary,
+        .dark .pedido-adicionais-modal__avaliacao {
             background: #111827;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+            border-color: #334155;
         }
 
-        .dark .pedido-adicionais-modal__card:hover {
-            border-color: #4b5563;
-            box-shadow: 0 14px 32px rgba(0, 0, 0, 0.34);
+        .dark .pedido-adicionais-modal__card {
+            background: #0f172a;
+            border-color: #334155;
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
         }
 
-        .dark .pedido-adicionais-modal__protocolo {
+        .dark .pedido-adicionais-modal__summary-title,
+        .dark .pedido-adicionais-modal__protocolo,
+        .dark .pedido-adicionais-modal__avaliacao-title {
             color: #ffffff;
         }
 
-        .dark .pedido-adicionais-modal__tipo {
-            color: #cbd5e1;
+        .dark .pedido-adicionais-modal__summary-text,
+        .dark .pedido-adicionais-modal__tipo,
+        .dark .pedido-adicionais-modal__label {
+            color: #94a3b8;
         }
 
+        .dark .pedido-adicionais-modal__value,
         .dark .pedido-adicionais-modal__descricao {
             color: #e5e7eb;
         }
 
-        .dark .pedido-adicionais-modal__problema {
-            background: #1f2937;
-            color: #e5e7eb;
+        .dark .pedido-adicionais-modal__section {
+            border-color: #334155;
+        }
+
+        .dark .pedido-adicionais-modal__badge {
+            background: color-mix(in srgb, var(--badge-color) 24%, #111827);
+            border-color: color-mix(in srgb, var(--badge-color) 58%, #111827);
+            color: #ffffff;
         }
 
         .dark .pedido-adicionais-modal__empty {
-            border-color: #374151;
             background: #111827;
-            color: #9ca3af;
+            border-color: #334155;
+            color: #94a3b8;
+        }
+
+        @media (max-width: 900px) {
+            .pedido-adicionais-modal__grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
         }
 
         @media (max-width: 640px) {
-            .pedido-adicionais-modal__card {
+            .pedido-adicionais-modal__card,
+            .pedido-adicionais-modal__summary {
                 padding: 0.875rem;
             }
 
-            .pedido-adicionais-modal__header {
-                gap: 0.65rem;
+            .pedido-adicionais-modal__grid {
+                grid-template-columns: 1fr;
             }
 
-            .pedido-adicionais-modal__status {
-                width: 100%;
+            .pedido-adicionais-modal__field--wide {
+                grid-column: span 1;
             }
         }
     </style>
 @endonce
 
+@php
+    $pedido?->loadMissing(['tipoManutencao', 'tipoStatus']);
+@endphp
+
 <div class="pedido-adicionais-modal">
-    @forelse ($adicionais as $adicional)
-        <div class="pedido-adicionais-modal__card">
-            <div class="pedido-adicionais-modal__header">
-                <div>
-                    <div class="pedido-adicionais-modal__protocolo">
-                        {{ $adicional->numero_protocolo }}
+    <div class="pedido-adicionais-modal__summary">
+        <div>
+            <div class="pedido-adicionais-modal__summary-title">
+                Pedido principal {{ $pedido->numero_protocolo ?? '-' }}
+            </div>
+            <div class="pedido-adicionais-modal__summary-text">
+                {{ $adicionais->count() }} pedido(s) adicional(is) vinculado(s)
+                @if($pedido->tipoManutencao?->nome)
+                    | {{ $pedido->tipoManutencao->nome }}
+                @endif
+            </div>
+        </div>
+
+        <span class="pedido-adicionais-modal__badge" style="--badge-color: #475569">
+            {{ $pedido->tipoStatus?->nome ?? 'Status nao informado' }}
+        </span>
+    </div>
+
+    <div class="pedido-adicionais-modal__list">
+        @forelse ($adicionais as $adicional)
+            @php
+                $statusCor = '#' . ltrim($adicional->tipoStatus?->cor ?? '#64748b', '#');
+                $avaliacoes = $adicional->feedbackItens ?? collect();
+                $notaMedia = $avaliacoes->isNotEmpty()
+                    ? number_format((float) $avaliacoes->avg('valor'), 1, ',', '.')
+                    : null;
+            @endphp
+
+            <div class="pedido-adicionais-modal__card">
+                <div class="pedido-adicionais-modal__header">
+                    <div>
+                        <div class="pedido-adicionais-modal__protocolo">
+                            {{ $adicional->numero_protocolo }}
+                        </div>
+
+                        <div class="pedido-adicionais-modal__tipo">
+                            {{ $adicional->tipoManutencao?->nome ?? 'Tipo nao informado' }}
+                        </div>
                     </div>
 
-                    <div class="pedido-adicionais-modal__tipo">
-                        {{ $adicional->tipoManutencao?->nome ?? 'Tipo não informado' }}
-                    </div>
-                </div>
-
-                <span
-                    class="pedido-adicionais-modal__status"
-                    style="background-color: {{ $adicional->tipoStatus?->cor ?? '#64748b' }}"
-                >
-                    {{ $adicional->tipoStatus?->nome ?? 'Pedido Adicional' }}
-                </span>
-            </div>
-
-            <div class="pedido-adicionais-modal__descricao">
-                {{ $adicional->descricao_pedido }}
-            </div>
-
-            @if ($adicional->problemas->isNotEmpty())
-                <div class="pedido-adicionais-modal__problemas">
-                    @foreach ($adicional->problemas as $problema)
-                        <span class="pedido-adicionais-modal__problema">
-                            {{ $problema->texto_problema }}
+                    <div class="pedido-adicionais-modal__badges">
+                        <span class="pedido-adicionais-modal__badge" style="--badge-color: {{ $statusCor }}">
+                            {{ $adicional->tipoStatus?->nome ?? 'Pedido Adicional' }}
                         </span>
-                    @endforeach
+
+                        @if($notaMedia)
+                            <span class="pedido-adicionais-modal__badge" style="--badge-color: #047857">
+                                Nota {{ $notaMedia }}/5
+                            </span>
+                        @endif
+                    </div>
                 </div>
-            @endif
-        </div>
-    @empty
-        <div class="pedido-adicionais-modal__empty">
-            Nenhum pedido adicional vinculado.
-        </div>
-    @endforelse
+
+                <div class="pedido-adicionais-modal__grid">
+                    <div class="pedido-adicionais-modal__field">
+                        <span class="pedido-adicionais-modal__label">Solicitado em</span>
+                        <span class="pedido-adicionais-modal__value">{{ $adicional->data_solicitacao?->format('d/m/Y') ?? '-' }}</span>
+                    </div>
+
+                    <div class="pedido-adicionais-modal__field">
+                        <span class="pedido-adicionais-modal__label">Identificado em</span>
+                        <span class="pedido-adicionais-modal__value">{{ $adicional->data_identificacao_problema?->format('d/m/Y') ?? '-' }}</span>
+                    </div>
+
+                    <div class="pedido-adicionais-modal__field">
+                        <span class="pedido-adicionais-modal__label">Criado em</span>
+                        <span class="pedido-adicionais-modal__value">{{ $adicional->created_at?->format('d/m/Y H:i') ?? '-' }}</span>
+                    </div>
+
+                    <div class="pedido-adicionais-modal__field">
+                        <span class="pedido-adicionais-modal__label">Solicitante</span>
+                        <span class="pedido-adicionais-modal__value">{{ $adicional->nome_solicitante ?? $adicional->solicitante?->name ?? '-' }}</span>
+                    </div>
+
+                    <div class="pedido-adicionais-modal__field pedido-adicionais-modal__field--wide">
+                        <span class="pedido-adicionais-modal__label">Escola</span>
+                        <span class="pedido-adicionais-modal__value">{{ $adicional->escola?->nome ?? '-' }}</span>
+                    </div>
+
+                    <div class="pedido-adicionais-modal__field">
+                        <span class="pedido-adicionais-modal__label">Setor atual</span>
+                        <span class="pedido-adicionais-modal__value">{{ $adicional->setor?->nome_completo ?? $adicional->setor?->nome ?? '-' }}</span>
+                    </div>
+
+                    <div class="pedido-adicionais-modal__field">
+                        <span class="pedido-adicionais-modal__label">Empresa</span>
+                        <span class="pedido-adicionais-modal__value">{{ $adicional->empresaContratada?->nome ?? '-' }}</span>
+                    </div>
+                </div>
+
+                <div class="pedido-adicionais-modal__section">
+                    <span class="pedido-adicionais-modal__label">Descricao do adicional</span>
+                    <div class="pedido-adicionais-modal__descricao">
+                        {{ $adicional->descricao_pedido ?: 'Sem descricao informada.' }}
+                    </div>
+                </div>
+
+                <div class="pedido-adicionais-modal__section">
+                    <span class="pedido-adicionais-modal__label">Problemas atendidos</span>
+                    <div class="pedido-adicionais-modal__problemas">
+                        @forelse ($adicional->problemas as $problema)
+                            <span class="pedido-adicionais-modal__badge" style="--badge-color: #475569">
+                                {{ $problema->texto_problema }}
+                            </span>
+                        @empty
+                            <span class="pedido-adicionais-modal__value">Nenhum problema segmentado.</span>
+                        @endforelse
+                    </div>
+                </div>
+
+                <div class="pedido-adicionais-modal__section">
+                    <span class="pedido-adicionais-modal__label">Avaliacao registrada</span>
+
+                    @if($avaliacoes->isNotEmpty())
+                        <div class="pedido-adicionais-modal__avaliacoes">
+                            @foreach($avaliacoes as $item)
+                                <div class="pedido-adicionais-modal__avaliacao">
+                                    <div class="pedido-adicionais-modal__avaliacao-top">
+                                        <span class="pedido-adicionais-modal__avaliacao-title">
+                                            {{ $item->problema?->texto_problema ?? 'Problema avaliado' }}
+                                        </span>
+                                        <span class="pedido-adicionais-modal__badge" style="--badge-color: #047857">
+                                            {{ $item->valor }}/5
+                                            @if($item->resultado)
+                                                - {{ $item->resultado?->label() ?? $item->resultado }}
+                                            @endif
+                                        </span>
+                                    </div>
+
+                                    @if($item->comentario)
+                                        <span class="pedido-adicionais-modal__value">{{ $item->comentario }}</span>
+                                    @endif
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <span class="pedido-adicionais-modal__value">Ainda sem avaliacao registrada para este adicional.</span>
+                    @endif
+                </div>
+            </div>
+        @empty
+            <div class="pedido-adicionais-modal__empty">
+                Nenhum pedido adicional vinculado.
+            </div>
+        @endforelse
+    </div>
 </div>
