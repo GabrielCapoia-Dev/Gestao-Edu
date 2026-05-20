@@ -2,17 +2,16 @@
 
 namespace App\Filament\Admin\Resources\Pedidos\Schemas;
 
+use App\Filament\Admin\Components\PedidoImageUpload;
 use App\Models\TipoManutencao;
 use App\Models\TipoManutencaoOpcao;
 use App\Support\PedidoFotoUpload;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 
 class PedidoCriacaoForm
@@ -79,7 +78,7 @@ class PedidoCriacaoForm
                             ->columnSpanFull(),
 
                         PedidoFotoUpload::configure(
-                            FileUpload::make('arquivos')
+                            PedidoImageUpload::make('arquivos')
                                 ->label('Fotos do Problema')
                                 ->multiple()
                                 ->required()
@@ -90,12 +89,6 @@ class PedidoCriacaoForm
                             'pedido-fotos-problema'
                         )
                             ->helperText('Até 10 imagens (JPEG, JPG, PNG ou WEBP) - máximo 5MB cada')
-                            ->columnSpanFull(),
-
-                        View::make('components.forms.camera-file-upload-tools')
-                            ->viewData([
-                                'target' => 'pedido-fotos-problema',
-                            ])
                             ->columnSpanFull(),
 
                     ])
