@@ -191,7 +191,7 @@ class FeedbackPedidoAnalyticsService
             ->distinct()
             ->orderBy('nivel_prioridade')
             ->pluck('nivel_prioridade', 'nivel_prioridade')
-            ->mapWithKeys(fn (string $value, string $key): array => [$key => $value])
+            ->mapWithKeys(fn (mixed $value, mixed $key): array => [$key instanceof \BackedEnum ? $key->value : $key => $value instanceof \BackedEnum ? $value->value : $value])
             ->toArray();
     }
 
@@ -285,7 +285,7 @@ class FeedbackPedidoAnalyticsService
             ->distinct()
             ->orderBy('resultado')
             ->pluck('resultado', 'resultado')
-            ->mapWithKeys(fn (string $value, string $key): array => [$key => ResultadoFeedbackPedido::tryFrom($value)?->label() ?? str_replace('_', ' ', ucfirst($value))])
+            ->mapWithKeys(fn (mixed $value, mixed $key): array => [$key instanceof \BackedEnum ? $key->value : $key => $value instanceof \BackedEnum ? $value->label() : (ResultadoFeedbackPedido::tryFrom($value)?->label() ?? str_replace('_', ' ', ucfirst($value)))])
             ->toArray();
     }
 
