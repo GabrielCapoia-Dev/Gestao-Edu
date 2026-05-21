@@ -54,6 +54,7 @@ class FeedbackPedidoExportController extends Controller
                     'valor',
                     'nivel_prioridade',
                     'tipo_manutencao_id',
+                    'tipo_manutencao_opcao_id',
                     'escola_id',
                     'empresa_contratada_id',
                     'resultado',

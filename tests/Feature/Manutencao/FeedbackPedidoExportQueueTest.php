@@ -10,12 +10,14 @@ use App\Models\ExportRequest;
 use App\Models\FeedbackPedido;
 use App\Models\Pedido;
 use App\Models\TipoManutencao;
+use App\Models\TipoManutencaoOpcao;
 use App\Models\TipoStatus;
 use App\Models\User;
 use App\Services\Exports\Handlers\FeedbackPedidoExportHandler;
 use App\Services\Relatorios\ChartRenderService;
 use App\Services\Relatorios\FeedbackPedidoAnalyticsService;
 use App\Services\Relatorios\FeedbackPedidoRelatorioService;
+use App\Services\UserSetorAccessService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
@@ -46,6 +48,7 @@ class FeedbackPedidoExportQueueTest extends TestCase
                 'data_inicio' => '2026-05-01',
                 'data_fim' => '2026-05-31',
                 'valor' => 5,
+                'tipo_manutencao_opcao_id' => 1,
             ]))
             ->assertRedirect();
 
@@ -56,6 +59,7 @@ class FeedbackPedidoExportQueueTest extends TestCase
         $this->assertSame('2026-05-01', $exportRequest->filters['data_inicio']);
         $this->assertSame('2026-05-31', $exportRequest->filters['data_fim']);
         $this->assertSame(FeedbackPedidoAnalyticsService::REPORT_GERAL, $exportRequest->filters['report_type']);
+        $this->assertSame('1', (string) $exportRequest->filters['tipo_manutencao_opcao_id']);
 
         Queue::assertPushed(ProcessExportRequestJob::class, 1);
     }
@@ -99,11 +103,53 @@ class FeedbackPedidoExportQueueTest extends TestCase
             'empresa_contratada_id' => $dados['empresa']->id,
             'escola_id' => $dados['escola']->id,
             'tipo_manutencao_id' => $dados['tipo']->id,
+            'tipo_manutencao_opcao_id' => $dados['opcao']->id,
             'valor' => 5,
             'resultado' => ResultadoFeedbackPedido::Atendido->value,
         ]);
 
         $this->assertSame([$dados['feedback']->id], $query->pluck('id')->all());
+    }
+
+    public function test_options_de_filtro_sao_baseadas_em_pedidos_avaliados(): void
+    {
+        $dados = $this->criarFeedbacksParaFiltro();
+        $user = $this->usuarioComPermissoes();
+        Permission::findOrCreate(UserSetorAccessService::GLOBAL_SCOPE_PERMISSION, 'web');
+        $user->givePermissionTo(UserSetorAccessService::GLOBAL_SCOPE_PERMISSION);
+
+        $empresaSemPedido = EmpresaContratada::query()->create(['nome' => 'Empresa Sem Pedido', 'cnpj' => '11.111.111/0001-11', 'ativo' => true]);
+        $tipoSemPedido = TipoManutencao::query()->create(['nome' => 'Tipo Sem Pedido', 'ativo' => true]);
+        $escolaSemPedido = Escola::query()->create(['codigo' => '999', 'nome' => 'Escola Sem Pedido', 'ativo' => true]);
+        $statusSemFeedback = TipoStatus::query()->create(['nome' => 'Aberto Sem Feedback', 'ativo' => true, 'finaliza_pedido' => false]);
+        $pedidoSemFeedback = $this->pedido($user, $dados['escola'], $dados['tipo'], $statusSemFeedback, $dados['empresa']);
+        $pedidoSemFeedback->forceFill(['data_solicitacao' => '2026-04-01'])->save();
+
+        $this->actingAs($user);
+
+        $service = app(FeedbackPedidoAnalyticsService::class);
+
+        $this->assertArrayHasKey($dados['empresa']->id, $service->empresaOptions());
+        $this->assertArrayNotHasKey($empresaSemPedido->id, $service->empresaOptions());
+        $this->assertArrayHasKey($dados['tipo']->id, $service->tipoManutencaoOptions());
+        $this->assertArrayNotHasKey($tipoSemPedido->id, $service->tipoManutencaoOptions());
+        $this->assertArrayHasKey($dados['escola']->id, $service->escolaOptions());
+        $this->assertArrayNotHasKey($escolaSemPedido->id, $service->escolaOptions());
+        $this->assertArrayHasKey($dados['opcao']->id, $service->tipoManutencaoOpcaoOptions($dados['tipo']->id));
+        $this->assertSame('2026-04-01', $service->firstPedidoDate());
+    }
+
+    public function test_periodo_filtra_pela_data_do_pedido(): void
+    {
+        $dados = $this->criarFeedbacksParaFiltro();
+
+        $foraDoPeriodo = app(FeedbackPedidoAnalyticsService::class)->query([
+            'data_inicio' => '2026-05-02',
+            'data_fim' => '2026-05-31',
+            'tipo_manutencao_opcao_id' => $dados['opcao']->id,
+        ]);
+
+        $this->assertSame([], $foraDoPeriodo->pluck('id')->all());
     }
 
     public function test_handler_salva_pdf_privado_da_exportacao_de_feedback(): void
@@ -181,6 +227,11 @@ class FeedbackPedidoExportQueueTest extends TestCase
         $escola = Escola::query()->create(['codigo' => '001', 'nome' => 'Escola Central', 'ativo' => true]);
         $outraEscola = Escola::query()->create(['codigo' => '002', 'nome' => 'Escola Norte', 'ativo' => true]);
         $tipo = TipoManutencao::query()->create(['nome' => 'Eletrica', 'ativo' => true]);
+        $opcao = TipoManutencaoOpcao::query()->create([
+            'tipo_manutencao_id' => $tipo->id,
+            'texto' => 'Sem energia',
+            'ativo' => true,
+        ]);
         $outroTipo = TipoManutencao::query()->create(['nome' => 'Hidraulica', 'ativo' => true]);
         $status = TipoStatus::query()->create(['nome' => 'Concluido', 'ativo' => true, 'finaliza_pedido' => true]);
         $empresa = EmpresaContratada::query()->create(['nome' => 'Empresa A', 'cnpj' => '12.345.678/0001-90', 'ativo' => true]);
@@ -189,6 +240,7 @@ class FeedbackPedidoExportQueueTest extends TestCase
         $pedido = $this->pedido($user, $escola, $tipo, $status, $empresa);
         $problema = $pedido->problemas()->create([
             'tipo_manutencao_id' => $tipo->id,
+            'tipo_manutencao_opcao_id' => $opcao->id,
             'texto_problema' => 'Sem energia',
         ]);
 
@@ -216,7 +268,7 @@ class FeedbackPedidoExportQueueTest extends TestCase
         ]);
         $outroFeedback->forceFill(['created_at' => '2026-05-12 10:00:00'])->save();
 
-        return compact('empresa', 'escola', 'tipo', 'feedback');
+        return compact('empresa', 'escola', 'tipo', 'opcao', 'feedback');
     }
 
     private function pedido(User $user, Escola $escola, TipoManutencao $tipo, TipoStatus $status, EmpresaContratada $empresa): Pedido

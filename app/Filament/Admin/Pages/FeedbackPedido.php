@@ -2,12 +2,8 @@
 
 namespace App\Filament\Admin\Pages;
 
-use App\Models\EmpresaContratada;
 use App\Models\Enums\NivelEmergenciaPedido;
-use App\Models\Enums\ResultadoFeedbackPedido;
-use App\Models\Escola;
 use App\Models\FeedbackPedido as FeedbackPedidoModel;
-use App\Models\TipoManutencao;
 use App\Models\User;
 use App\Services\Exports\ExportRequestService;
 use App\Services\Relatorios\FeedbackPedidoAnalyticsService;
@@ -16,6 +12,7 @@ use Filament\Actions;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables;
 use Filament\Tables\Concerns\InteractsWithTable;
@@ -131,44 +128,67 @@ class FeedbackPedido extends Page implements HasTable
     {
         return [
             Tables\Filters\Filter::make('periodo')
-                ->label('Periodo da avaliacao')
+                ->label('Periodo do pedido')
+                ->visible(fn (): bool => filled($this->firstPedidoDate()))
                 ->columnSpan(4)
                 ->columns(2)
                 ->schema([
                     Forms\Components\DatePicker::make('data_inicio')
-                        ->label('Inicio'),
+                        ->label('Inicio')
+                        ->minDate(fn (): ?string => $this->firstPedidoDate())
+                        ->maxDate(now()->toDateString()),
                     Forms\Components\DatePicker::make('data_fim')
-                        ->label('Fim'),
+                        ->label('Fim')
+                        ->minDate(fn (): ?string => $this->firstPedidoDate())
+                        ->maxDate(now()->toDateString()),
                 ])
                 ->query(fn (Builder $query, array $data): Builder => $this->analytics()->applyFilters($query, $data)),
 
             Tables\Filters\SelectFilter::make('valor')
                 ->label('Nota')
                 ->columnSpan(2)
-                ->options($this->notaOptions()),
+                ->visible(fn (): bool => $this->notaOptions() !== [])
+                ->options(fn (): array => $this->notaOptions()),
 
             Tables\Filters\SelectFilter::make('nivel_prioridade')
                 ->label('Prioridade')
                 ->columnSpan(2)
-                ->options($this->prioridadeOptions())
+                ->visible(fn (): bool => $this->prioridadeOptions() !== [])
+                ->options(fn (): array => $this->prioridadeOptions())
                 ->query(fn (Builder $query, array $data): Builder => $this->analytics()->applyFilters($query, [
                     'nivel_prioridade' => $data['value'] ?? null,
                 ])),
 
-            Tables\Filters\SelectFilter::make('tipo_manutencao_id')
-                ->label('Tipo')
-                ->columnSpan(2)
-                ->options(fn (): array => TipoManutencao::query()->orderBy('nome')->pluck('nome', 'id')->toArray())
-                ->searchable()
-                ->preload()
-                ->query(fn (Builder $query, array $data): Builder => $this->analytics()->applyFilters($query, [
-                    'tipo_manutencao_id' => $data['value'] ?? null,
-                ])),
+            Tables\Filters\Filter::make('manutencao')
+                ->label('Manutencao')
+                ->visible(fn (): bool => $this->tipoManutencaoOptions() !== [])
+                ->columnSpan(4)
+                ->columns(2)
+                ->schema([
+                    Forms\Components\Select::make('tipo_manutencao_id')
+                        ->label('Tipo')
+                        ->placeholder('Todos os tipos')
+                        ->options(fn (): array => $this->tipoManutencaoOptions())
+                        ->searchable()
+                        ->preload()
+                        ->live()
+                        ->afterStateUpdated(fn (callable $set): mixed => $set('tipo_manutencao_opcao_id', null)),
+
+                    Forms\Components\Select::make('tipo_manutencao_opcao_id')
+                        ->label('Opcao do tipo')
+                        ->placeholder('Todas as opcoes')
+                        ->options(fn (Get $get): array => $this->tipoManutencaoOpcaoOptions($get('tipo_manutencao_id')))
+                        ->visible(fn (Get $get): bool => filled($get('tipo_manutencao_id')) && $this->tipoManutencaoOpcaoOptions($get('tipo_manutencao_id')) !== [])
+                        ->searchable()
+                        ->preload(),
+                ])
+                ->query(fn (Builder $query, array $data): Builder => $this->analytics()->applyFilters($query, $data)),
 
             Tables\Filters\SelectFilter::make('escola_id')
                 ->label('Escola')
                 ->columnSpan(2)
-                ->options(fn (): array => Escola::query()->orderBy('nome')->pluck('nome', 'id')->toArray())
+                ->visible(fn (): bool => $this->escolaOptions() !== [])
+                ->options(fn (): array => $this->escolaOptions())
                 ->searchable()
                 ->preload()
                 ->query(fn (Builder $query, array $data): Builder => $this->analytics()->applyFilters($query, [
@@ -178,11 +198,8 @@ class FeedbackPedido extends Page implements HasTable
             Tables\Filters\SelectFilter::make('empresa_contratada_id')
                 ->label('Empresa')
                 ->columnSpan(2)
-                ->options(fn (): array => EmpresaContratada::query()
-                    ->doSetorDoUsuario(Auth::user())
-                    ->orderBy('nome')
-                    ->pluck('nome', 'id')
-                    ->toArray())
+                ->visible(fn (): bool => $this->empresaOptions() !== [])
+                ->options(fn (): array => $this->empresaOptions())
                 ->searchable()
                 ->preload()
                 ->query(fn (Builder $query, array $data): Builder => $this->analytics()->applyFilters($query, [
@@ -192,7 +209,8 @@ class FeedbackPedido extends Page implements HasTable
             Tables\Filters\SelectFilter::make('resultado')
                 ->label('Resultado')
                 ->columnSpan(2)
-                ->options($this->resultadoOptions())
+                ->visible(fn (): bool => $this->resultadoOptions() !== [])
+                ->options(fn (): array => $this->resultadoOptions())
                 ->query(fn (Builder $query, array $data): Builder => $this->analytics()->applyFilters($query, [
                     'resultado' => $data['value'] ?? null,
                 ])),
@@ -200,10 +218,8 @@ class FeedbackPedido extends Page implements HasTable
             Tables\Filters\SelectFilter::make('reabrir_pedido')
                 ->label('Reaberto')
                 ->columnSpan(2)
-                ->options([
-                    '1' => 'Sim',
-                    '0' => 'Nao',
-                ])
+                ->visible(fn (): bool => $this->reabertoOptions() !== [])
+                ->options(fn (): array => $this->reabertoOptions())
                 ->query(fn (Builder $query, array $data): Builder => $this->analytics()->applyFilters($query, [
                     'reabrir_pedido' => $data['value'] ?? null,
                 ])),
@@ -250,7 +266,7 @@ class FeedbackPedido extends Page implements HasTable
                 ->icon('heroicon-o-arrow-down-tray')
                 ->visible(fn (): bool => User::authUser()?->hasPermissionLike('exportar relatorios') ?? false)
                 ->modalHeading('Gerar relatorio de feedback')
-                ->modalDescription('Informe obrigatoriamente o periodo da avaliacao. O PDF sera enviado para Minhas Exportacoes.')
+                ->modalDescription('Informe obrigatoriamente o periodo do pedido. O PDF sera enviado para Minhas Exportacoes.')
                 ->form($this->exportForm())
                 ->action(function (array $data): void {
                     $this->queueExport($data);
@@ -273,61 +289,76 @@ class FeedbackPedido extends Page implements HasTable
 
             Forms\Components\DatePicker::make('data_inicio')
                 ->label('Data de inicio')
+                ->minDate(fn (): ?string => $this->firstPedidoDate())
+                ->maxDate(now()->toDateString())
                 ->required(),
 
             Forms\Components\DatePicker::make('data_fim')
                 ->label('Data de fim')
+                ->minDate(fn (): ?string => $this->firstPedidoDate())
+                ->maxDate(now()->toDateString())
+                ->default(now()->toDateString())
                 ->required(),
 
             Forms\Components\Select::make('valor')
                 ->label('Nota')
-                ->options($this->notaOptions())
+                ->visible(fn (): bool => $this->notaOptions() !== [])
+                ->options(fn (): array => $this->notaOptions())
                 ->native(false)
                 ->nullable(),
 
             Forms\Components\Select::make('nivel_prioridade')
                 ->label('Prioridade')
-                ->options($this->prioridadeOptions())
+                ->visible(fn (): bool => $this->prioridadeOptions() !== [])
+                ->options(fn (): array => $this->prioridadeOptions())
                 ->native(false)
                 ->nullable(),
 
             Forms\Components\Select::make('tipo_manutencao_id')
                 ->label('Tipo de manutencao')
-                ->options(fn (): array => TipoManutencao::query()->orderBy('nome')->pluck('nome', 'id')->toArray())
+                ->visible(fn (): bool => $this->tipoManutencaoOptions() !== [])
+                ->options(fn (): array => $this->tipoManutencaoOptions())
+                ->searchable()
+                ->preload()
+                ->live()
+                ->afterStateUpdated(fn (callable $set): mixed => $set('tipo_manutencao_opcao_id', null))
+                ->nullable(),
+
+            Forms\Components\Select::make('tipo_manutencao_opcao_id')
+                ->label('Opcao do tipo')
+                ->options(fn (Get $get): array => $this->tipoManutencaoOpcaoOptions($get('tipo_manutencao_id')))
+                ->visible(fn (Get $get): bool => filled($get('tipo_manutencao_id')) && $this->tipoManutencaoOpcaoOptions($get('tipo_manutencao_id')) !== [])
                 ->searchable()
                 ->preload()
                 ->nullable(),
 
             Forms\Components\Select::make('escola_id')
                 ->label('Escola')
-                ->options(fn (): array => Escola::query()->orderBy('nome')->pluck('nome', 'id')->toArray())
+                ->visible(fn (): bool => $this->escolaOptions() !== [])
+                ->options(fn (): array => $this->escolaOptions())
                 ->searchable()
                 ->preload()
                 ->nullable(),
 
             Forms\Components\Select::make('empresa_contratada_id')
                 ->label('Empresa contratada')
-                ->options(fn (): array => EmpresaContratada::query()
-                    ->doSetorDoUsuario(Auth::user())
-                    ->orderBy('nome')
-                    ->pluck('nome', 'id')
-                    ->toArray())
+                ->visible(fn (): bool => $this->empresaOptions() !== [])
+                ->options(fn (): array => $this->empresaOptions())
                 ->searchable()
                 ->preload()
                 ->nullable(),
 
             Forms\Components\Select::make('resultado')
                 ->label('Resultado por problema')
-                ->options($this->resultadoOptions())
+                ->visible(fn (): bool => $this->resultadoOptions() !== [])
+                ->options(fn (): array => $this->resultadoOptions())
                 ->native(false)
                 ->nullable(),
 
             Forms\Components\Select::make('reabrir_pedido')
                 ->label('Reaberto')
-                ->options([
-                    '1' => 'Sim',
-                    '0' => 'Nao',
-                ])
+                ->visible(fn (): bool => $this->reabertoOptions() !== [])
+                ->options(fn (): array => $this->reabertoOptions())
                 ->native(false)
                 ->nullable(),
         ];
@@ -385,13 +416,7 @@ class FeedbackPedido extends Page implements HasTable
      */
     private function notaOptions(): array
     {
-        return [
-            '1' => '1 estrela',
-            '2' => '2 estrelas',
-            '3' => '3 estrelas',
-            '4' => '4 estrelas',
-            '5' => '5 estrelas',
-        ];
+        return $this->analytics()->noteOptions();
     }
 
     /**
@@ -399,9 +424,44 @@ class FeedbackPedido extends Page implements HasTable
      */
     private function prioridadeOptions(): array
     {
-        return collect(NivelEmergenciaPedido::cases())
-            ->mapWithKeys(fn ($case): array => [$case->value => $case->label()])
+        $labels = collect(NivelEmergenciaPedido::cases())
+            ->mapWithKeys(fn ($case): array => [$case->value => $case->label()]);
+
+        return collect($this->analytics()->priorityOptions())
+            ->mapWithKeys(fn (string $value, string $key): array => [$key => $labels[$key] ?? $value])
             ->toArray();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function tipoManutencaoOptions(): array
+    {
+        return $this->analytics()->tipoManutencaoOptions();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function tipoManutencaoOpcaoOptions(null|int|string $tipoManutencaoId = null): array
+    {
+        return $this->analytics()->tipoManutencaoOpcaoOptions($tipoManutencaoId);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function escolaOptions(): array
+    {
+        return $this->analytics()->escolaOptions();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function empresaOptions(): array
+    {
+        return $this->analytics()->empresaOptions();
     }
 
     /**
@@ -409,9 +469,20 @@ class FeedbackPedido extends Page implements HasTable
      */
     private function resultadoOptions(): array
     {
-        return collect(ResultadoFeedbackPedido::cases())
-            ->mapWithKeys(fn (ResultadoFeedbackPedido $resultado): array => [$resultado->value => $resultado->label()])
-            ->toArray();
+        return $this->analytics()->resultadoOptions();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function reabertoOptions(): array
+    {
+        return $this->analytics()->reabertoOptions();
+    }
+
+    private function firstPedidoDate(): ?string
+    {
+        return $this->analytics()->firstPedidoDate();
     }
 
     public function getTitle(): string

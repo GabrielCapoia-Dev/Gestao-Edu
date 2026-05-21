@@ -43,7 +43,7 @@
                     </div>
                 </header>
 
-                <div class="fb-ranking">
+                <div class="fb-ranking {{ count($empresas) > 5 ? 'fb-ranking--scroll' : '' }}">
                     @forelse ($empresas as $empresa)
                         <div class="fb-rank-row">
                             <div>
@@ -67,7 +67,7 @@
                     </div>
                 </header>
 
-                <div class="fb-ranking">
+                <div class="fb-ranking {{ count($escolas) > 5 ? 'fb-ranking--scroll' : '' }}">
                     @forelse ($escolas as $escola)
                         <div class="fb-rank-row">
                             <div>
@@ -241,6 +241,30 @@
             display: grid;
             gap: .8rem;
             padding: 1rem 1.1rem;
+        }
+
+        .fb-ranking--scroll {
+            max-height: 27rem;
+            overflow-y: auto;
+            padding-right: .85rem;
+            scrollbar-gutter: stable;
+        }
+
+        .fb-ranking--scroll::-webkit-scrollbar {
+            width: .55rem;
+        }
+
+        .fb-ranking--scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .fb-ranking--scroll::-webkit-scrollbar-thumb {
+            border-radius: 999px;
+            background: #cbd5e1;
+        }
+
+        .dark .fb-ranking--scroll::-webkit-scrollbar-thumb {
+            background: #475569;
         }
 
         .fb-rank-row {

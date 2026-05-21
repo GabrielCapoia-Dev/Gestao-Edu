@@ -5,10 +5,16 @@ namespace App\Services\Relatorios;
 use App\Models\EmpresaContratada;
 use App\Models\Escola;
 use App\Models\FeedbackPedido;
+use App\Models\FeedbackPedidoItem;
+use App\Models\Enums\ResultadoFeedbackPedido;
+use App\Models\Pedido;
+use App\Models\PedidoProblema;
 use App\Models\TipoManutencao;
+use App\Models\TipoManutencaoOpcao;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use InvalidArgumentException;
 
 class FeedbackPedidoAnalyticsService
@@ -71,6 +77,7 @@ class FeedbackPedidoAnalyticsService
             'valor',
             'nivel_prioridade',
             'tipo_manutencao_id',
+            'tipo_manutencao_opcao_id',
             'escola_id',
             'empresa_contratada_id',
             'resultado',
@@ -137,15 +144,164 @@ class FeedbackPedidoAnalyticsService
         $filters = $this->normalizeFilters($filters);
 
         return $query
-            ->when($filters['data_inicio'] ?? null, fn (Builder $builder, string $date): Builder => $builder->whereDate('created_at', '>=', $date))
-            ->when($filters['data_fim'] ?? null, fn (Builder $builder, string $date): Builder => $builder->whereDate('created_at', '<=', $date))
+            ->when($filters['data_inicio'] ?? null, fn (Builder $builder, string $date): Builder => $builder->whereHas('pedido', fn (Builder $pedido): Builder => $pedido->whereDate('data_solicitacao', '>=', $date)))
+            ->when($filters['data_fim'] ?? null, fn (Builder $builder, string $date): Builder => $builder->whereHas('pedido', fn (Builder $pedido): Builder => $pedido->whereDate('data_solicitacao', '<=', $date)))
             ->when($filters['valor'] ?? null, fn (Builder $builder, mixed $value): Builder => $builder->where('valor', $value))
             ->when(array_key_exists('reabrir_pedido', $filters), fn (Builder $builder): Builder => $builder->where('reabrir_pedido', (bool) $filters['reabrir_pedido']))
             ->when($filters['nivel_prioridade'] ?? null, fn (Builder $builder, mixed $value): Builder => $builder->whereHas('pedido', fn (Builder $pedido): Builder => $pedido->where('nivel_prioridade', $value)))
             ->when($filters['tipo_manutencao_id'] ?? null, fn (Builder $builder, mixed $value): Builder => $builder->whereHas('pedido', fn (Builder $pedido): Builder => $pedido->where('tipo_manutencao_id', $value)))
+            ->when($filters['tipo_manutencao_opcao_id'] ?? null, fn (Builder $builder, mixed $value): Builder => $builder->whereHas('itens.problema', fn (Builder $problema): Builder => $problema->where('tipo_manutencao_opcao_id', $value)))
             ->when($filters['escola_id'] ?? null, fn (Builder $builder, mixed $value): Builder => $builder->whereHas('pedido', fn (Builder $pedido): Builder => $pedido->where('escola_id', $value)))
             ->when($filters['empresa_contratada_id'] ?? null, fn (Builder $builder, mixed $value): Builder => $builder->whereHas('pedido', fn (Builder $pedido): Builder => $pedido->where('empresa_contratada_id', $value)))
             ->when($filters['resultado'] ?? null, fn (Builder $builder, mixed $value): Builder => $builder->whereHas('itens', fn (Builder $item): Builder => $item->where('resultado', $value)));
+    }
+
+    public function firstPedidoDate(): ?string
+    {
+        $date = Pedido::query()
+            ->min('data_solicitacao');
+
+        return $date ? Carbon::parse($date)->toDateString() : null;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function noteOptions(): array
+    {
+        return FeedbackPedido::query()
+            ->whereHas('pedido')
+            ->select('valor')
+            ->distinct()
+            ->orderBy('valor')
+            ->pluck('valor', 'valor')
+            ->mapWithKeys(fn (int|string $value, int|string $key): array => [(string) $key => "{$value} estrela" . ((int) $value === 1 ? '' : 's')])
+            ->toArray();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function priorityOptions(): array
+    {
+        return Pedido::query()
+            ->whereHas('feedbacks')
+            ->whereNotNull('nivel_prioridade')
+            ->select('nivel_prioridade')
+            ->distinct()
+            ->orderBy('nivel_prioridade')
+            ->pluck('nivel_prioridade', 'nivel_prioridade')
+            ->mapWithKeys(fn (string $value, string $key): array => [$key => $value])
+            ->toArray();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function tipoManutencaoOptions(): array
+    {
+        $ids = Pedido::query()
+            ->whereHas('feedbacks')
+            ->whereNotNull('tipo_manutencao_id')
+            ->select('tipo_manutencao_id')
+            ->distinct()
+            ->pluck('tipo_manutencao_id');
+
+        return TipoManutencao::query()
+            ->whereIn('id', $ids)
+            ->orderBy('nome')
+            ->pluck('nome', 'id')
+            ->toArray();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function tipoManutencaoOpcaoOptions(null|int|string $tipoManutencaoId = null): array
+    {
+        $ids = PedidoProblema::query()
+            ->whereNotNull('tipo_manutencao_opcao_id')
+            ->whereHas('pedido.feedbacks')
+            ->when($tipoManutencaoId, fn (Builder $query, mixed $tipoId): Builder => $query->where('tipo_manutencao_id', $tipoId))
+            ->select('tipo_manutencao_opcao_id')
+            ->distinct()
+            ->pluck('tipo_manutencao_opcao_id');
+
+        return TipoManutencaoOpcao::query()
+            ->whereIn('id', $ids)
+            ->orderBy('texto')
+            ->pluck('texto', 'id')
+            ->toArray();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function escolaOptions(): array
+    {
+        $ids = Pedido::query()
+            ->whereHas('feedbacks')
+            ->whereNotNull('escola_id')
+            ->select('escola_id')
+            ->distinct()
+            ->pluck('escola_id');
+
+        return Escola::query()
+            ->whereIn('id', $ids)
+            ->orderBy('nome')
+            ->pluck('nome', 'id')
+            ->toArray();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function empresaOptions(): array
+    {
+        $ids = Pedido::query()
+            ->whereHas('feedbacks')
+            ->whereNotNull('empresa_contratada_id')
+            ->select('empresa_contratada_id')
+            ->distinct()
+            ->pluck('empresa_contratada_id');
+
+        return EmpresaContratada::query()
+            ->whereIn('id', $ids)
+            ->doSetorDoUsuario(Auth::user())
+            ->orderBy('nome')
+            ->pluck('nome', 'id')
+            ->toArray();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function resultadoOptions(): array
+    {
+        return FeedbackPedidoItem::query()
+            ->whereHas('feedback.pedido')
+            ->whereNotNull('resultado')
+            ->select('resultado')
+            ->distinct()
+            ->orderBy('resultado')
+            ->pluck('resultado', 'resultado')
+            ->mapWithKeys(fn (string $value, string $key): array => [$key => ResultadoFeedbackPedido::tryFrom($value)?->label() ?? str_replace('_', ' ', ucfirst($value))])
+            ->toArray();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function reabertoOptions(): array
+    {
+        return FeedbackPedido::query()
+            ->whereHas('pedido')
+            ->select('reabrir_pedido')
+            ->distinct()
+            ->orderBy('reabrir_pedido')
+            ->pluck('reabrir_pedido')
+            ->mapWithKeys(fn (bool|int|string $value): array => [(string) (int) $value => $value ? 'Sim' : 'Nao'])
+            ->toArray();
     }
 
     /**
@@ -330,6 +486,10 @@ class FeedbackPedidoAnalyticsService
 
         if (isset($filters['tipo_manutencao_id'])) {
             $formatted['Tipo de manutencao'] = TipoManutencao::query()->find($filters['tipo_manutencao_id'])?->nome ?? 'N/A';
+        }
+
+        if (isset($filters['tipo_manutencao_opcao_id'])) {
+            $formatted['Opcao do tipo'] = TipoManutencaoOpcao::query()->find($filters['tipo_manutencao_opcao_id'])?->texto ?? 'N/A';
         }
 
         if (isset($filters['escola_id'])) {

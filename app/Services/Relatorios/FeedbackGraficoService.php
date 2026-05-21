@@ -177,6 +177,10 @@ class FeedbackGraficoService
             $query->whereHas('pedido', fn($q) => $q->where('tipo_manutencao_id', $tipoManutencao));
         }
 
+        if ($opcao = $filtros['tipo_manutencao_opcao_id'] ?? null) {
+            $query->whereHas('itens.problema', fn($q) => $q->where('tipo_manutencao_opcao_id', $opcao));
+        }
+
         if ($escola = $filtros['escola_id'] ?? null) {
             $query->whereHas('pedido', fn($q) => $q->where('escola_id', $escola));
         }
