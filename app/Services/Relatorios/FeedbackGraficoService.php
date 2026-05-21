@@ -122,7 +122,7 @@ class FeedbackGraficoService
             return [
                 'type' => 'bar',
                 'data' => [
-                    'labels' => array_map(fn($n) => "⭐ $n", $dados['labels']),
+                    'labels' => array_map(fn($n) => "Nota $n", $dados['labels']),
                     'datasets' => [
                         [
                             'label' => 'Quantidade',
@@ -196,6 +196,22 @@ class FeedbackGraficoService
             if ($periodo['fim'] ?? null) {
                 $query->whereDate('created_at', '<=', $periodo['fim']);
             }
+        }
+
+        if ($inicio = $filtros['data_inicio'] ?? null) {
+            $query->whereDate('created_at', '>=', $inicio);
+        }
+
+        if ($fim = $filtros['data_fim'] ?? null) {
+            $query->whereDate('created_at', '<=', $fim);
+        }
+
+        if (array_key_exists('reabrir_pedido', $filtros)) {
+            $query->where('reabrir_pedido', (bool) $filtros['reabrir_pedido']);
+        }
+
+        if ($resultado = $filtros['resultado'] ?? null) {
+            $query->whereHas('itens', fn($q) => $q->where('resultado', $resultado));
         }
     }
 }

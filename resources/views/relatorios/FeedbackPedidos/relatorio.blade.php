@@ -222,10 +222,34 @@
         color: #1f2937;
         page-break-inside: avoid;
     }
+
+    .ranking-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 12px;
+        font-size: 9px;
+    }
+
+    .ranking-table th {
+        background: #f3f4f6;
+        border: 1px solid #d1d5db;
+        color: #374151;
+        padding: 6px;
+        text-align: left;
+    }
+
+    .ranking-table td {
+        border: 1px solid #e5e7eb;
+        padding: 6px;
+    }
+
+    .ranking-table tbody tr:nth-child(odd) {
+        background: #f9fafb;
+    }
 @endsection
 
 @section('content')
-    @if(in_array($tipoRelatorio ?? 'geral', ['geral', 'graficos'], true))
+    @if(in_array($tipoRelatorio ?? 'geral', ['geral', 'graficos', 'geral_satisfacao', 'satisfacao_escolas'], true))
         <div class="cards-container">
             <div class="card">
                 <div class="card-label">Media Geral</div>
@@ -249,7 +273,38 @@
         <div class="divider"></div>
     @endif
 
-    @if(in_array($tipoRelatorio ?? 'geral', ['geral', 'listagem'], true))
+    @if(($tipoRelatorio ?? null) === 'satisfacao_escolas' && ! empty($rankingEscolas ?? []))
+        <div class="section-title">Satisfacao por Escola</div>
+
+        <table class="ranking-table">
+            <thead>
+                <tr>
+                    <th>Escola</th>
+                    <th>Total</th>
+                    <th>Media</th>
+                    <th>Satisfacao</th>
+                    <th>Reabertos</th>
+                    <th>Criticas</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($rankingEscolas as $row)
+                    <tr>
+                        <td><strong>{{ $row['nome'] }}</strong></td>
+                        <td>{{ $row['total'] }}</td>
+                        <td>{{ $row['media'] }}/5</td>
+                        <td>{{ $row['satisfacao'] }}%</td>
+                        <td>{{ $row['reabertos'] }}</td>
+                        <td>{{ $row['criticas'] }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+
+        <div class="divider"></div>
+    @endif
+
+    @if(in_array($tipoRelatorio ?? 'geral', ['geral', 'listagem', 'geral_satisfacao', 'listagem_filtrada'], true))
         <div class="section-title">Detalhes das Avaliacoes</div>
 
         @if($feedbacks->isEmpty())
@@ -302,7 +357,7 @@
         @endif
     @endif
 
-    @if(in_array($tipoRelatorio ?? 'geral', ['geral', 'graficos'], true) && ($graficoMediaMensal || $graficoPorNota))
+    @if(in_array($tipoRelatorio ?? 'geral', ['geral', 'graficos', 'geral_satisfacao', 'satisfacao_escolas'], true) && ($graficoMediaMensal || $graficoPorNota))
         <div class="divider" style="margin-top: 20px;"></div>
         <div class="section-title">Analise Visual</div>
 
@@ -323,7 +378,7 @@
         </div>
     @endif
 
-    @if(in_array($tipoRelatorio ?? 'geral', ['geral', 'graficos'], true) && ! empty($matrizesAgrupadas))
+    @if(in_array($tipoRelatorio ?? 'geral', ['geral', 'graficos', 'geral_satisfacao', 'satisfacao_escolas'], true) && ! empty($matrizesAgrupadas))
         <div class="divider" style="margin-top: 20px;"></div>
         <div class="section-title">Matriz de Avaliacoes por Mes</div>
 

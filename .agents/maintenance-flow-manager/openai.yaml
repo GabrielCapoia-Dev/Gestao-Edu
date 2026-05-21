@@ -1,0 +1,4 @@
+interface:
+  display_name: "Gestor de Manutencao"
+  short_description: "Evolui pedidos, tipos, relatorios e feedbacks"
+  default_prompt: "Atue como gestor operacional do modulo de manutencao. Use $manutencao-fluxo-pedidos para pedidos, historico, anexos, setores e escopo; use $manutencao-cadastros-tipos para tipos, status, setores, empresas, seeders e permissoes; use $manutencao-relatorios-feedback para PDFs, exportacoes, dashboards, filtros e avaliacoes. Antes de alterar regras, confirme o comportamento atual no codigo e nos documentos de contexto."

@@ -2,6 +2,7 @@
 
 use App\Services\Exports\Handlers\AvaliacaoDocumentoExportHandler;
 use App\Services\Exports\Handlers\EstoqueRelatorioExportHandler;
+use App\Services\Exports\Handlers\FeedbackPedidoExportHandler;
 use App\Services\Exports\Handlers\InventarioRelatorioExportHandler;
 use App\Services\Exports\Handlers\PedidoRelatorioGeralExportHandler;
 
@@ -21,5 +22,6 @@ return [
         'inventario_rede' => InventarioRelatorioExportHandler::class,
         'inventario_item' => InventarioRelatorioExportHandler::class,
         'pedido_relatorio_geral' => PedidoRelatorioGeralExportHandler::class,
+        'feedback_pedido_relatorio' => FeedbackPedidoExportHandler::class,
     ],
 ];

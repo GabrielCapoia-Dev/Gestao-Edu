@@ -155,6 +155,27 @@
                 <table class="cards-container">
                     <tr>
                         <td>
+                            <div class="card-label">Avaliacoes</div>
+                            <div class="card-value">{{ $empresaData['total'] ?? 0 }}</div>
+                        </td>
+                        <td>
+                            <div class="card-label">Media</div>
+                            <div class="card-value">{{ $empresaData['media'] ?? 0 }}/5</div>
+                        </td>
+                        <td>
+                            <div class="card-label">Reabertos</div>
+                            <div class="card-value">{{ $empresaData['reabertos'] ?? 0 }}</div>
+                        </td>
+                        <td>
+                            <div class="card-label">Criticas</div>
+                            <div class="card-value">{{ $empresaData['criticas'] ?? 0 }}</div>
+                        </td>
+                    </tr>
+                </table>
+
+                <table class="cards-container">
+                    <tr>
+                        <td>
                             <div class="card-label">CNPJ</div>
                             <div class="card-value">{{ $empresa->cnpj }}</div>
                         </td>

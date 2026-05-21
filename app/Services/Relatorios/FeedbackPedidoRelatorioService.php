@@ -4,6 +4,7 @@ namespace App\Services\Relatorios;
 
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
+use App\Models\User;
 
 class FeedbackPedidoRelatorioService
 {
@@ -26,11 +27,15 @@ class FeedbackPedidoRelatorioService
         string $tipo = 'geral',
         array $matrizesEmpresa = [],
         array $reportFilters = [],
+        ?User $usuarioExportacao = null,
+        array $rankingEmpresas = [],
+        array $rankingEscolas = [],
+        array $distribuicaoNotas = [],
     ) {
         ini_set('memory_limit', '512M');
 
-        $usuario = Auth::user();
-        $view = $tipo === 'terceirizada'
+        $usuario = $usuarioExportacao ?? Auth::user();
+        $view = $tipo === FeedbackPedidoAnalyticsService::REPORT_EMPRESAS || $tipo === 'terceirizada'
             ? 'relatorios.FeedbackPedidos.relatorio-terceirizada'
             : 'relatorios.FeedbackPedidos.relatorio';
 
@@ -50,6 +55,9 @@ class FeedbackPedidoRelatorioService
             'reportTitle' => $this->tituloPorTipo($tipo),
             'reportSubtitle' => $this->subtituloPorTipo($tipo),
             'reportFilters' => $reportFilters,
+            'rankingEmpresas' => $rankingEmpresas,
+            'rankingEscolas' => $rankingEscolas,
+            'distribuicaoNotas' => $distribuicaoNotas,
         ], 'Feedback-Pedidos-' . now()->format('d-m-Y-His') . '.pdf');
     }
 
@@ -117,17 +125,21 @@ class FeedbackPedidoRelatorioService
 
     protected function tituloPorTipo(string $tipo): string
     {
-        return $tipo === 'terceirizada'
-            ? 'Relatorio de Avaliacao de Empresas Terceirizadas'
-            : 'Relatorio de Feedback de Pedidos';
+        return match ($tipo) {
+            'terceirizada', FeedbackPedidoAnalyticsService::REPORT_EMPRESAS => 'Relatorio de Desempenho das Empresas',
+            FeedbackPedidoAnalyticsService::REPORT_ESCOLAS => 'Relatorio de Satisfacao das Escolas',
+            FeedbackPedidoAnalyticsService::REPORT_LISTAGEM => 'Relatorio Filtrado de Feedback de Pedidos',
+            default => 'Relatorio Geral de Satisfacao dos Pedidos',
+        };
     }
 
     protected function subtituloPorTipo(string $tipo): ?string
     {
         return match ($tipo) {
-            'listagem' => 'Listagem consolidada das avaliacoes registradas',
-            'graficos' => 'Visao grafica e estatistica das avaliacoes',
-            'terceirizada' => 'Consolidado de satisfacao por empresa terceirizada',
+            'listagem', FeedbackPedidoAnalyticsService::REPORT_LISTAGEM => 'Listagem consolidada das avaliacoes registradas no periodo informado',
+            'graficos', FeedbackPedidoAnalyticsService::REPORT_GERAL => 'Visao grafica e estatistica das avaliacoes no periodo informado',
+            'terceirizada', FeedbackPedidoAnalyticsService::REPORT_EMPRESAS => 'Consolidado de satisfacao por empresa contratada',
+            FeedbackPedidoAnalyticsService::REPORT_ESCOLAS => 'Consolidado de satisfacao por escola solicitante',
             default => 'Resumo geral com indicadores, listagem e analise visual',
         };
     }

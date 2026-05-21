@@ -2,55 +2,54 @@
 
 namespace App\Filament\Admin\Pages;
 
-use Filament\Pages\Page;
-use Filament\Tables;
-use Filament\Tables\Table;
-use Filament\Tables\Contracts\HasTable;
-use Filament\Tables\Concerns\InteractsWithTable;
-use App\Models\FeedbackPedido as FeedbackPedidoModel;
-use App\Models\User;
-use Filament\Forms;
-use Livewire\Attributes\Computed;
-use Filament\Actions;
+use App\Models\EmpresaContratada;
 use App\Models\Enums\NivelEmergenciaPedido;
 use App\Models\Enums\ResultadoFeedbackPedido;
+use App\Models\Escola;
+use App\Models\FeedbackPedido as FeedbackPedidoModel;
+use App\Models\TipoManutencao;
+use App\Models\User;
+use App\Services\Exports\ExportRequestService;
+use App\Services\Relatorios\FeedbackPedidoAnalyticsService;
 use BackedEnum;
-use UnitEnum;
+use Filament\Actions;
+use Filament\Forms;
+use Filament\Notifications\Notification;
+use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables;
+use Filament\Tables\Concerns\InteractsWithTable;
+use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
-
+use Throwable;
+use UnitEnum;
 
 class FeedbackPedido extends Page implements HasTable
 {
     use InteractsWithTable;
 
     protected static ?string $slug = 'feedback-pedidos';
+
     protected string $view = 'filament.pages.feedback-pedido';
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::Star;
+
     protected static string|UnitEnum|null $navigationGroup = 'Manutencao';
+
     protected static ?string $navigationParentItem = 'Pedidos';
+
     public static ?string $navigationLabel = 'Feedback de Pedidos';
 
     public function getHeader(): ?\Illuminate\Contracts\View\View
     {
         return view('filament.admin.pages.partials.page-header', [
             'actions' => $this->getCachedHeaderActions(),
-
-            'eyebrow' => 'Manutenção',
-            'title' => "Feedback de Pedidos",
-            'description' => 'Gerencie o feedback dos pedidos, gerando relatórios detalhados para cada pedido.',
+            'eyebrow' => 'Manutencao',
+            'title' => 'Feedback de Pedidos',
+            'description' => 'Acompanhe satisfacao das escolas, desempenho das empresas e relatorios de feedback em fila.',
         ]);
-    }
-
-
-    public array $chartFilters = [];
-
-    protected function getFooterWidgets(): array
-    {
-        return [
-            \App\Filament\Widgets\FeedbackMediaMensalChart::class,
-            \App\Filament\Widgets\FeedbackQuantidadePorNotaChart::class,
-        ];
     }
 
     public static function canAccess(): bool
@@ -61,40 +60,48 @@ class FeedbackPedido extends Page implements HasTable
     public function table(Table $table): Table
     {
         return $table
-            ->query(
-                FeedbackPedidoModel::query()
-                    ->with(['pedido.escola', 'pedido.tipoManutencao', 'itens.problema'])
-            )
+            ->query($this->analytics()->baseQuery())
             ->paginated([5, 10, 25, 50, 100])
-            ->defaultPaginationPageOption(5)
+            ->defaultPaginationPageOption(10)
             ->columns([
                 Tables\Columns\TextColumn::make('pedido.numero_protocolo')
                     ->label('Protocolo')
+                    ->searchable()
                     ->sortable()
-                    ->searchable(),
+                    ->weight('bold'),
 
                 Tables\Columns\TextColumn::make('pedido.escola.nome')
                     ->label('Escola')
-                    ->sortable(),
+                    ->searchable()
+                    ->sortable()
+                    ->wrap(),
+
+                Tables\Columns\TextColumn::make('pedido.empresaContratada.nome')
+                    ->label('Empresa')
+                    ->placeholder('Sem empresa')
+                    ->toggleable()
+                    ->wrap(),
+
+                Tables\Columns\TextColumn::make('pedido.tipoManutencao.nome')
+                    ->label('Tipo')
+                    ->toggleable()
+                    ->wrap(),
 
                 Tables\Columns\TextColumn::make('valor')
                     ->label('Nota')
                     ->badge()
-                    ->color(fn($state) => match (true) {
-                        $state >= 4 => 'success',
-                        $state >= 3 => 'warning',
-                        default     => 'danger',
+                    ->color(fn ($state): string => match (true) {
+                        (int) $state >= 4 => 'success',
+                        (int) $state >= 3 => 'warning',
+                        default => 'danger',
                     })
+                    ->formatStateUsing(fn ($state): string => "{$state}/5")
                     ->sortable(),
-
-                Tables\Columns\TextColumn::make('descricao')
-                    ->limit(50)
-                    ->wrap(),
 
                 Tables\Columns\TextColumn::make('itens_resumo')
                     ->label('Por problema')
-                    ->state(fn(FeedbackPedidoModel $record): string => $record->itens
-                        ->map(fn($item) => ($item->problema?->texto_problema ?? 'Problema') . ': ' . $item->valor . '/5')
+                    ->state(fn (FeedbackPedidoModel $record): string => $record->itens
+                        ->map(fn ($item): string => ($item->problema?->texto_problema ?? 'Problema') . ': ' . $item->valor . '/5')
                         ->take(3)
                         ->join(' | '))
                     ->limit(90)
@@ -104,232 +111,309 @@ class FeedbackPedido extends Page implements HasTable
                 Tables\Columns\TextColumn::make('reabrir_pedido')
                     ->label('Reaberto')
                     ->badge()
-                    ->formatStateUsing(fn($state) => $state ? 'Sim' : 'Não')
-                    ->color(fn($state) => $state ? 'danger' : 'success'),
+                    ->formatStateUsing(fn ($state): string => $state ? 'Sim' : 'Nao')
+                    ->color(fn ($state): string => $state ? 'danger' : 'success'),
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Avaliado em')
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
             ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('valor')
-                    ->label('Nota')
-                    ->options([
-                        '1' => '1 estrela',
-                        '2' => '2 estrelas',
-                        '3' => '3 estrelas',
-                        '4' => '4 estrelas',
-                        '5' => '5 estrelas',
-                    ])
-                    ->query(function ($query, array $data) {
-                        $this->updateChartFilters('valor', $data['value'] ?? null);
-                        return $query->when($data['value'] ?? null, fn($q) => $q->where('valor', $data['value']));
-                    }),
-
-                Tables\Filters\SelectFilter::make('pedido.nivel_prioridade')
-                    ->label('Nivel de Prioridade')
-                    ->options(
-                        collect(NivelEmergenciaPedido::cases())
-                            ->mapWithKeys(fn($case) => [
-                                $case->value => $case->label(),
-                            ])
-                            ->toArray()
-                    )
-                    ->query(function ($query, array $data) {
-                        $value = $data['value'] ?? null;
-
-                        $this->updateChartFilters('nivel_prioridade', $value);
-
-                        return $query->when(
-                            $value,
-                            fn($q) => $q->whereHas(
-                                'pedido',
-                                fn($subquery) => $subquery->where('nivel_prioridade', $value)
-                            )
-                        );
-                    }),
-
-                Tables\Filters\SelectFilter::make('pedido.tipo_manutencao_id')
-                    ->label('Tipo de Manutencao')
-                    ->options(
-                        \App\Models\TipoManutencao::pluck('nome', 'id')->toArray()
-                    )
-                    ->query(function ($query, array $data) {
-                        $this->updateChartFilters('tipo_manutencao_id', $data['value'] ?? null);
-                        return $query->when($data['value'] ?? null, fn($q) => $q->whereHas('pedido', fn($subquery) => $subquery->where('tipo_manutencao_id', $data['value'])));
-                    }),
-
-                Tables\Filters\SelectFilter::make('pedido.escola_id')
-                    ->label('Escola')
-                    ->options(
-                        \App\Models\Escola::pluck('nome', 'id')->toArray()
-                    )
-                    ->query(function ($query, array $data) {
-                        $this->updateChartFilters('escola_id', $data['value'] ?? null);
-                        return $query->when($data['value'] ?? null, fn($q) => $q->whereHas('pedido', fn($subquery) => $subquery->where('escola_id', $data['value'])));
-                    }),
-
-                Tables\Filters\SelectFilter::make('pedido.empresa_contratada_id')
-                    ->label('Empresa Contratada')
-                    ->options(
-                        \App\Models\EmpresaContratada::query()
-                            ->doSetorDoUsuario(Auth::user())
-                            ->pluck('nome', 'id')
-                            ->toArray()
-                    )
-                    ->query(function ($query, array $data) {
-                        $this->updateChartFilters('empresa_contratada_id', $data['value'] ?? null);
-                        return $query->when($data['value'] ?? null, fn($q) => $q->whereHas('pedido', fn($subquery) => $subquery->where('empresa_contratada_id', $data['value'])));
-                    }),
-
-                Tables\Filters\SelectFilter::make('resultado')
-                    ->label('Resultado por problema')
-                    ->options(
-                        collect(ResultadoFeedbackPedido::cases())
-                            ->mapWithKeys(fn(ResultadoFeedbackPedido $resultado) => [$resultado->value => $resultado->label()])
-                            ->toArray()
-                    )
-                    ->query(function ($query, array $data) {
-                        $value = $data['value'] ?? null;
-
-                        return $query->when(
-                            $value,
-                            fn($q) => $q->whereHas('itens', fn($itemQuery) => $itemQuery->where('resultado', $value))
-                        );
-                    }),
-
-                Tables\Filters\Filter::make('mes')
-                    ->label('Mes')
-                    ->form([
-                        Forms\Components\Select::make('mes')
-                            ->label('Mes')
-                            ->options([
-                                '01' => 'Janeiro',
-                                '02' => 'Fevereiro',
-                                '03' => 'Marco',
-                                '04' => 'Abril',
-                                '05' => 'Maio',
-                                '06' => 'Junho',
-                                '07' => 'Julho',
-                                '08' => 'Agosto',
-                                '09' => 'Setembro',
-                                '10' => 'Outubro',
-                                '11' => 'Novembro',
-                                '12' => 'Dezembro',
-                            ])
-                            ->native(false),
-                    ])
-                    ->query(function ($query, array $data) {
-                        $this->updateChartFilters('mes', $data['mes'] ?? null);
-                        return $query->when($data['mes'] ?? null, fn($q) => $q->whereMonth('created_at', $data['mes']));
-                    }),
-            ])
+            ->filters($this->tableFilters(), layout: Tables\Enums\FiltersLayout::AboveContent)
+            ->filtersFormColumns(12)
             ->defaultSort('created_at', 'desc');
     }
 
-    public function updateChartFilters(string $filterKey, mixed $value): void
+    /**
+     * @return array<int, mixed>
+     */
+    public function tableFilters(): array
     {
-        // Disparar evento de loading
-        $this->dispatch('chart-loading-start');
+        return [
+            Tables\Filters\Filter::make('periodo')
+                ->label('Periodo da avaliacao')
+                ->columnSpan(4)
+                ->columns(2)
+                ->schema([
+                    Forms\Components\DatePicker::make('data_inicio')
+                        ->label('Inicio'),
+                    Forms\Components\DatePicker::make('data_fim')
+                        ->label('Fim'),
+                ])
+                ->query(fn (Builder $query, array $data): Builder => $this->analytics()->applyFilters($query, $data)),
 
-        if ($value === null) {
-            unset($this->chartFilters[$filterKey]);
-        } else {
-            $this->chartFilters[$filterKey] = $value;
-        }
+            Tables\Filters\SelectFilter::make('valor')
+                ->label('Nota')
+                ->columnSpan(2)
+                ->options($this->notaOptions()),
 
-        $this->dispatch('update-chart-filters', filters: $this->chartFilters);
+            Tables\Filters\SelectFilter::make('nivel_prioridade')
+                ->label('Prioridade')
+                ->columnSpan(2)
+                ->options($this->prioridadeOptions())
+                ->query(fn (Builder $query, array $data): Builder => $this->analytics()->applyFilters($query, [
+                    'nivel_prioridade' => $data['value'] ?? null,
+                ])),
 
-        // Disparar evento de fim de loading
-        $this->dispatch('chart-loading-end');
+            Tables\Filters\SelectFilter::make('tipo_manutencao_id')
+                ->label('Tipo')
+                ->columnSpan(2)
+                ->options(fn (): array => TipoManutencao::query()->orderBy('nome')->pluck('nome', 'id')->toArray())
+                ->searchable()
+                ->preload()
+                ->query(fn (Builder $query, array $data): Builder => $this->analytics()->applyFilters($query, [
+                    'tipo_manutencao_id' => $data['value'] ?? null,
+                ])),
+
+            Tables\Filters\SelectFilter::make('escola_id')
+                ->label('Escola')
+                ->columnSpan(2)
+                ->options(fn (): array => Escola::query()->orderBy('nome')->pluck('nome', 'id')->toArray())
+                ->searchable()
+                ->preload()
+                ->query(fn (Builder $query, array $data): Builder => $this->analytics()->applyFilters($query, [
+                    'escola_id' => $data['value'] ?? null,
+                ])),
+
+            Tables\Filters\SelectFilter::make('empresa_contratada_id')
+                ->label('Empresa')
+                ->columnSpan(2)
+                ->options(fn (): array => EmpresaContratada::query()
+                    ->doSetorDoUsuario(Auth::user())
+                    ->orderBy('nome')
+                    ->pluck('nome', 'id')
+                    ->toArray())
+                ->searchable()
+                ->preload()
+                ->query(fn (Builder $query, array $data): Builder => $this->analytics()->applyFilters($query, [
+                    'empresa_contratada_id' => $data['value'] ?? null,
+                ])),
+
+            Tables\Filters\SelectFilter::make('resultado')
+                ->label('Resultado')
+                ->columnSpan(2)
+                ->options($this->resultadoOptions())
+                ->query(fn (Builder $query, array $data): Builder => $this->analytics()->applyFilters($query, [
+                    'resultado' => $data['value'] ?? null,
+                ])),
+
+            Tables\Filters\SelectFilter::make('reabrir_pedido')
+                ->label('Reaberto')
+                ->columnSpan(2)
+                ->options([
+                    '1' => 'Sim',
+                    '0' => 'Nao',
+                ])
+                ->query(fn (Builder $query, array $data): Builder => $this->analytics()->applyFilters($query, [
+                    'reabrir_pedido' => $data['value'] ?? null,
+                ])),
+        ];
     }
 
-    public function getTotalAvaliacoes(): int
+    /**
+     * @return array{total:int,media:float,satisfacao:int,reabertos:int,criticas:int}
+     */
+    public function getMetricas(): array
     {
-        return $this->getFilteredTableQuery()->count();
+        return $this->analytics()->metrics(clone $this->getFilteredTableQuery());
     }
 
-    public function getMediaGeral(): float
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function getRankingEmpresas(): array
     {
-        return round(
-            $this->getFilteredTableQuery()->avg('valor') ?? 0,
-            2
-        );
+        return $this->analytics()->rankingEmpresas($this->feedbacksFiltrados());
     }
 
-    public function getPercentualSatisfacao(): int
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function getRankingEscolas(): array
     {
-        $query = $this->getFilteredTableQuery();
+        return $this->analytics()->rankingEscolas($this->feedbacksFiltrados());
+    }
 
-        $total = (clone $query)->count();
-
-        if ($total === 0) {
-            return 0;
-        }
-
-        $positivos = (clone $query)
-            ->where('valor', '>=', 3)
-            ->count();
-
-        return round(($positivos / $total) * 100);
+    /**
+     * @return array<int, int>
+     */
+    public function getDistribuicaoNotas(): array
+    {
+        return $this->analytics()->noteDistribution(clone $this->getFilteredTableQuery());
     }
 
     protected function getHeaderActions(): array
     {
         return [
-            Actions\Action::make('export_geral')
-                ->label('Relatorio Geral')
-                ->visible(fn() => User::authUser()?->hasPermissionLike('exportar relatorios') ?? false)
-                ->url(fn() => $this->gerarUrlExportacao('geral'))
-                ->openUrlInNewTab(),
-
-            Actions\Action::make('export_listagem')
-                ->label('Listagem')
-                ->visible(fn() => User::authUser()?->hasPermissionLike('exportar relatorios') ?? false)
-                ->url(fn() => $this->gerarUrlExportacao('listagem'))
-                ->openUrlInNewTab(),
-
-            Actions\Action::make('export_graficos')
-                ->label('Graficos')
-                ->visible(fn() => User::authUser()?->hasPermissionLike('exportar relatorios') ?? false)
-                ->url(fn() => $this->gerarUrlExportacao('graficos'))
-                ->openUrlInNewTab(),
-
-            Actions\Action::make('export_terceirizada')
-                ->label('Terceirizada')
-                ->visible(fn() => User::authUser()?->hasPermissionLike('exportar relatorios') ?? false)
-                ->url(fn() => $this->gerarUrlExportacao('terceirizada'))
-                ->openUrlInNewTab(),
+            Actions\Action::make('exportar_feedback')
+                ->label('Gerar relatorio')
+                ->icon('heroicon-o-arrow-down-tray')
+                ->visible(fn (): bool => User::authUser()?->hasPermissionLike('exportar relatorios') ?? false)
+                ->modalHeading('Gerar relatorio de feedback')
+                ->modalDescription('Informe obrigatoriamente o periodo da avaliacao. O PDF sera enviado para Minhas Exportacoes.')
+                ->form($this->exportForm())
+                ->action(function (array $data): void {
+                    $this->queueExport($data);
+                }),
         ];
     }
 
-    private function gerarUrlExportacao(string $tipo): string
+    /**
+     * @return array<int, mixed>
+     */
+    private function exportForm(): array
     {
-        $params = [];
+        return [
+            Forms\Components\Select::make('report_type')
+                ->label('Tipo de relatorio')
+                ->options($this->analytics()->reportTypeOptions())
+                ->default(FeedbackPedidoAnalyticsService::REPORT_GERAL)
+                ->required()
+                ->native(false),
 
-        // Adicionar filtros a URL
-        if (!empty($this->chartFilters)) {
-            foreach ($this->chartFilters as $key => $value) {
-                if ($value !== null) {
-                    match ($key) {
-                        'valor' => $params['valor'] = $value,
-                        'nivel_prioridade' => $params['nivel_prioridade'] = $value,
-                        'tipo_manutencao_id' => $params['tipo_manutencao_id'] = $value,
-                        'escola_id' => $params['escola_id'] = $value,
-                        'empresa_contratada_id' => $params['empresa_contratada_id'] = $value,
-                        'resultado' => $params['resultado'] = $value,
-                        'mes' => $params['mes'] = $value,
-                        'periodo' => $params['data_inicio'] = $value['inicio'] ?? null,
-                        'periodo' => $params['data_fim'] = $value['fim'] ?? null,
-                        default => null,
-                    };
-                }
-            }
-        }
+            Forms\Components\DatePicker::make('data_inicio')
+                ->label('Data de inicio')
+                ->required(),
 
-        return route('feedback-pedidos.export-' . $tipo, array_filter($params));
+            Forms\Components\DatePicker::make('data_fim')
+                ->label('Data de fim')
+                ->required(),
+
+            Forms\Components\Select::make('valor')
+                ->label('Nota')
+                ->options($this->notaOptions())
+                ->native(false)
+                ->nullable(),
+
+            Forms\Components\Select::make('nivel_prioridade')
+                ->label('Prioridade')
+                ->options($this->prioridadeOptions())
+                ->native(false)
+                ->nullable(),
+
+            Forms\Components\Select::make('tipo_manutencao_id')
+                ->label('Tipo de manutencao')
+                ->options(fn (): array => TipoManutencao::query()->orderBy('nome')->pluck('nome', 'id')->toArray())
+                ->searchable()
+                ->preload()
+                ->nullable(),
+
+            Forms\Components\Select::make('escola_id')
+                ->label('Escola')
+                ->options(fn (): array => Escola::query()->orderBy('nome')->pluck('nome', 'id')->toArray())
+                ->searchable()
+                ->preload()
+                ->nullable(),
+
+            Forms\Components\Select::make('empresa_contratada_id')
+                ->label('Empresa contratada')
+                ->options(fn (): array => EmpresaContratada::query()
+                    ->doSetorDoUsuario(Auth::user())
+                    ->orderBy('nome')
+                    ->pluck('nome', 'id')
+                    ->toArray())
+                ->searchable()
+                ->preload()
+                ->nullable(),
+
+            Forms\Components\Select::make('resultado')
+                ->label('Resultado por problema')
+                ->options($this->resultadoOptions())
+                ->native(false)
+                ->nullable(),
+
+            Forms\Components\Select::make('reabrir_pedido')
+                ->label('Reaberto')
+                ->options([
+                    '1' => 'Sim',
+                    '0' => 'Nao',
+                ])
+                ->native(false)
+                ->nullable(),
+        ];
     }
+
+    private function queueExport(array $data): void
+    {
+        try {
+            $filters = $this->analytics()->normalizeFilters($data);
+            $this->analytics()->assertReportFilters($filters);
+
+            $exportRequest = app(ExportRequestService::class)->queue(
+                user: Auth::user(),
+                type: 'feedback_pedido_relatorio',
+                format: 'pdf',
+                filters: $filters,
+                label: 'Feedback - ' . $this->analytics()->reportTypeLabel($filters['report_type'] ?? null),
+                metadata: ['route' => 'filament.admin.pages.feedback-pedidos'],
+            );
+
+            Notification::make()
+                ->title($exportRequest->wasRecentlyCreated ? 'Exportacao enviada para a fila' : 'Exportacao ja esta em andamento')
+                ->body('Acompanhe o progresso em Minhas Exportacoes.')
+                ->success()
+                ->send();
+
+            $this->redirectRoute('filament.admin.pages.minhas-exportacoes', [
+                'download' => $exportRequest->getKey(),
+            ]);
+        } catch (Throwable $exception) {
+            Notification::make()
+                ->title('Nao foi possivel iniciar a exportacao')
+                ->body($exception->getMessage())
+                ->danger()
+                ->send();
+        }
+    }
+
+    private function analytics(): FeedbackPedidoAnalyticsService
+    {
+        return app(FeedbackPedidoAnalyticsService::class);
+    }
+
+    private function feedbacksFiltrados(): \Illuminate\Database\Eloquent\Collection
+    {
+        return (clone $this->getFilteredTableQuery())
+            ->with(['pedido.escola', 'pedido.empresaContratada'])
+            ->orderByDesc('created_at')
+            ->limit(500)
+            ->get();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function notaOptions(): array
+    {
+        return [
+            '1' => '1 estrela',
+            '2' => '2 estrelas',
+            '3' => '3 estrelas',
+            '4' => '4 estrelas',
+            '5' => '5 estrelas',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function prioridadeOptions(): array
+    {
+        return collect(NivelEmergenciaPedido::cases())
+            ->mapWithKeys(fn ($case): array => [$case->value => $case->label()])
+            ->toArray();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function resultadoOptions(): array
+    {
+        return collect(ResultadoFeedbackPedido::cases())
+            ->mapWithKeys(fn (ResultadoFeedbackPedido $resultado): array => [$resultado->value => $resultado->label()])
+            ->toArray();
+    }
+
     public function getTitle(): string
     {
         return '';

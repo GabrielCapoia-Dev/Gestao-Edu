@@ -25,6 +25,10 @@ Esta pasta agrupa os perfis de agentes usados para produzir e revisar a document
 - `documentation-cross-reviewer`
 - `documentation-system-consolidator`
 
+## Agentes operacionais
+
+- `maintenance-flow-manager`: agente para evoluir o modulo de manutencao. Usa `$manutencao-fluxo-pedidos`, `$manutencao-cadastros-tipos` e `$manutencao-relatorios-feedback` para orientar mudancas em pedidos, cadastros, relatorios e feedbacks.
+
 ## Perfil legado
 
 - `estoque-inventario-analyst`: agente exploratorio mantido, agora ajustado para conversar com a estrutura documental nova

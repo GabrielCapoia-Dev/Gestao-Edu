@@ -1,0 +1,4 @@
+interface:
+  display_name: "Manutencao: Relatorios"
+  short_description: "Orienta PDFs, exportacoes, graficos e feedbacks"
+  default_prompt: "Use $manutencao-relatorios-feedback para analisar relatorios e feedbacks de manutencao, confirmar queries no codigo e orientar mudancas em PDFs, exportacoes, dashboards, filtros e avaliacoes."
