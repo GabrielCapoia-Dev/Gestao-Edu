@@ -191,12 +191,6 @@
             getUploadElement() {
                 const targetSelector = `[data-camera-upload-target="${target}"]`;
 
-                const modal = document.querySelector('[role="dialog"] [data-camera-upload-target]');
-                if (modal) {
-                    const result = modal.closest('[role="dialog"]')?.querySelector(targetSelector);
-                    if (result) return result;
-                }
-
                 const scopes = [
                     '[data-repeater-item]',
                     '.fi-fo-repeater-item',
@@ -211,12 +205,20 @@
                     if (scopedUpload) return scopedUpload;
                 }
 
+                const dialog = this.$root.closest?.('[role="dialog"]');
+                const dialogUpload = dialog?.querySelector(targetSelector);
+                if (dialogUpload) return dialogUpload;
+
                 return document.querySelector(targetSelector);
             },
 
             getUploadData() {
                 const uploadElement = this.getUploadElement();
                 return uploadElement && window.Alpine ? window.Alpine.$data(uploadElement) : null;
+            },
+
+            getCurrentFileCount(uploadData) {
+                return uploadData?.pond?.getFiles?.().length ?? 0;
             },
 
             makeUploadErrorMessage(file) {
@@ -251,28 +253,6 @@
                 return false;
             },
 
-            downloadToDevice(file) {
-                try {
-                    const url = URL.createObjectURL(file);
-                    const a = document.createElement('a');
-                    const ts = Date.now();
-                    const ext = this.acceptedExtensions.includes(
-                        (file.name || '').split('.').pop()?.toLowerCase()
-                    ) ? (file.name || '').split('.').pop() : 'jpg';
-                    a.href = url;
-                    a.download = `foto_manutencao_${ts}.${ext}`;
-                    a.style.display = 'none';
-                    document.body.appendChild(a);
-                    a.click();
-                    setTimeout(() => {
-                        document.body.removeChild(a);
-                        URL.revokeObjectURL(url);
-                    }, 1500);
-                } catch (e) {
-                    // download may not be supported on all devices
-                }
-            },
-
             async handleCameraFiles(event) {
                 const files = Array.from(event.target.files || []);
                 event.target.value = '';
@@ -284,6 +264,20 @@
                 this.hasError = false;
 
                 const uploadData = this.getUploadData();
+                if (!uploadData?.pond) {
+                    this.loading = false;
+                    this.hasError = true;
+                    this.message = 'Nao foi possivel encontrar o campo de upload. Tente novamente.';
+                    return;
+                }
+
+                if (this.getCurrentFileCount(uploadData) + files.length > 10) {
+                    this.loading = false;
+                    this.hasError = true;
+                    this.message = 'Limite de 10 fotos por upload.';
+                    return;
+                }
+
                 let uploaded = 0;
                 let failed = 0;
 
@@ -297,28 +291,9 @@
                         return;
                     }
 
-                    this.downloadToDevice(file);
-
                     try {
-                        const reader = new FileReader();
-                        const dataUrl = await new Promise((resolve, reject) => {
-                            reader.onload = () => resolve(reader.result);
-                            reader.onerror = reject;
-                            reader.readAsDataURL(file);
-                        });
-
-                        const added = await this.addFileToPond(dataUrl, uploadData);
-
-                        if (added) {
-                            uploaded++;
-                        } else {
-                            const fallbackAdded = await this.addFileToPond(file, uploadData);
-                            if (fallbackAdded) {
-                                uploaded++;
-                            } else {
-                                failed++;
-                            }
-                        }
+                        const added = await this.addFileToPond(file, uploadData);
+                        added ? uploaded++ : failed++;
                     } catch (error) {
                         failed++;
                     }
@@ -329,14 +304,14 @@
                 if (uploaded > 0 && failed === 0) {
                     this.hasError = false;
                     this.message = uploaded === 1
-                        ? 'Foto salva na galeria e adicionada!'
-                        : `${uploaded} fotos salvas na galeria e adicionadas!`;
+                        ? 'Foto adicionada ao upload!'
+                        : `${uploaded} fotos adicionadas ao upload!`;
                 } else if (uploaded > 0 && failed > 0) {
                     this.hasError = true;
                     this.message = `${uploaded} foto(s) adicionada(s), ${failed} falha(s).`;
                 } else if (failed > 0) {
                     this.hasError = true;
-                    this.message = 'Não foi possível carregar a foto. Tente novamente.';
+                    this.message = 'Nao foi possivel carregar a foto. Tente novamente.';
                 }
             },
         };

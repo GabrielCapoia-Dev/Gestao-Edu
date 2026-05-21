@@ -271,9 +271,32 @@
             pond: null,
             _listenersAttached: false,
 
+            getUploadElement() {
+                const targetSelector = `[data-camera-upload-target="${target}"]`;
+                const scopes = [
+                    '[data-repeater-item]',
+                    '.fi-fo-repeater-item',
+                    '.fi-fo-repeater-item-content',
+                    '.fi-section-content',
+                    'fieldset',
+                ];
+
+                for (const scopeSelector of scopes) {
+                    const scope = this.$root.closest?.(scopeSelector);
+                    const scopedUpload = scope?.querySelector(targetSelector);
+                    if (scopedUpload) return scopedUpload;
+                }
+
+                const dialog = this.$root.closest?.('[role="dialog"]');
+                const dialogUpload = dialog?.querySelector(targetSelector);
+                if (dialogUpload) return dialogUpload;
+
+                return document.querySelector(targetSelector);
+            },
+
             init() {
                 const tryConnect = () => {
-                    const uploadElement = document.querySelector(`[data-camera-upload-target="${target}"]`);
+                    const uploadElement = this.getUploadElement();
                     if (!uploadElement) { setTimeout(tryConnect, 250); return; }
 
                     const uploadData = window.Alpine.$data(uploadElement);
