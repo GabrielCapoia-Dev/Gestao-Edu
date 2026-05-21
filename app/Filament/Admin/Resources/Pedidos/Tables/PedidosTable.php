@@ -321,6 +321,7 @@ class PedidosTable
                 ->color('info')
                 ->slideOver()
                 ->modalWidth('7xl')
+                ->extraModalWindowAttributes(['class' => 'pedido-view-modal-window'], merge: true)
                 ->modalSubmitAction(false)
                 ->modalCancelActionLabel('Fechar')
                 ->visible(fn () => $user?->hasPermissionTo('Visualizar Histórico de Pedidos') ?? false)

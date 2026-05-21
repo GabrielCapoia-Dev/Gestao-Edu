@@ -36,6 +36,11 @@
             gap: 1rem;
         }
 
+        .pedido-view-modal-window {
+            max-width: 50vw !important;
+            width: 50vw !important;
+        }
+
         .pedido-view__head {
             align-items: flex-start;
             display: flex;
@@ -258,6 +263,13 @@
             .pedido-view__grid,
             .pedido-view__images {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .pedido-view-modal-window {
+                max-width: calc(100vw - 2rem) !important;
+                width: calc(100vw - 2rem) !important;
             }
         }
 
