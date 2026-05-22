@@ -28,6 +28,10 @@ class ListAlunos extends ListRecords
 {
     protected static string $resource = AlunoResource::class;
 
+    private const PERMISSION_EXPORTAR_MODELO_IMPORTACAO = 'Exportar Modelo de Importacao de Alunos';
+
+    private const PERMISSION_IMPORTAR_ALUNOS_PLANILHA = 'Importar Alunos por Planilha';
+
     #[Override]
     public function getHeader(): ?View
     {
@@ -69,7 +73,7 @@ class ListAlunos extends ListRecords
                 ->label('Exportar Modelo')
                 ->icon('heroicon-o-arrow-down-tray')
                 ->color('gray')
-                ->visible(fn (): bool => Auth::user()?->hasPermissionTo('Criar Alunos') ?? false)
+                ->visible(fn (): bool => Auth::user()?->hasPermissionTo(self::PERMISSION_EXPORTAR_MODELO_IMPORTACAO) ?? false)
                 ->action(fn () => $this->spreadsheetService()->exportarModelo()),
 
             Actions\Action::make('importarMatriculados')
@@ -77,7 +81,7 @@ class ListAlunos extends ListRecords
                 ->icon('heroicon-o-arrow-up-tray')
                 ->color('primary')
                 ->visible(fn (): bool => ! app(AlunoTransferenciaPendenteService::class)->professorEstaBloqueado(Auth::user())
-                    && (Auth::user()?->hasPermissionTo('Criar Alunos') ?? false))
+                    && (Auth::user()?->hasPermissionTo(self::PERMISSION_IMPORTAR_ALUNOS_PLANILHA) ?? false))
                 ->schema([
                     FileUpload::make('arquivo')
                         ->label('Arquivo da planilha')

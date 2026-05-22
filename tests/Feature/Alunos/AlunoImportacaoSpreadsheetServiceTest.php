@@ -153,6 +153,7 @@ class AlunoImportacaoSpreadsheetServiceTest extends TestCase
 
         Permission::findOrCreate('Criar Alunos');
         Permission::findOrCreate('Listar Alunos');
+        Permission::findOrCreate('Importar Alunos por Planilha');
 
         Escola::query()->create([
             'nome' => 'Escola Municipal Teste',
@@ -168,7 +169,7 @@ class AlunoImportacaoSpreadsheetServiceTest extends TestCase
             'email_approved' => true,
             'email_verified_at' => now(),
         ]);
-        $user->givePermissionTo(['Criar Alunos', 'Listar Alunos']);
+        $user->givePermissionTo(['Criar Alunos', 'Listar Alunos', 'Importar Alunos por Planilha']);
 
         Livewire::actingAs($user)
             ->test(ListAlunos::class)
@@ -182,8 +183,38 @@ class AlunoImportacaoSpreadsheetServiceTest extends TestCase
         Queue::assertPushed(ImportAlunosMatriculadosJob::class, function (ImportAlunosMatriculadosJob $job) use ($caminho, $user): bool {
             return $job->caminhoArquivo === $caminho
                 && $job->usuarioId === $user->id
-                && $job->disk === 'local';
+                && $job->disk === 'local'
+                && $job->connection === 'database'
+                && $job->queue === 'imports';
         });
+    }
+
+    public function test_acoes_de_modelo_e_importacao_respeitam_permissoes_especificas(): void
+    {
+        Permission::findOrCreate('Listar Alunos');
+        Permission::findOrCreate('Exportar Modelo de Importacao de Alunos');
+        Permission::findOrCreate('Importar Alunos por Planilha');
+
+        $user = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $user->givePermissionTo('Listar Alunos');
+
+        Livewire::actingAs($user)
+            ->test(ListAlunos::class)
+            ->assertActionHidden('exportarModeloImportacao')
+            ->assertActionHidden('importarMatriculados');
+
+        $user->givePermissionTo([
+            'Exportar Modelo de Importacao de Alunos',
+            'Importar Alunos por Planilha',
+        ]);
+
+        Livewire::actingAs($user->fresh())
+            ->test(ListAlunos::class)
+            ->assertActionVisible('exportarModeloImportacao')
+            ->assertActionVisible('importarMatriculados');
     }
 
     public function test_job_de_importacao_processa_planilha_em_segundo_plano(): void

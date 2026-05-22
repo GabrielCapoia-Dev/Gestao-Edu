@@ -31,7 +31,8 @@ class ImportAlunosMatriculadosJob implements ShouldQueue
         public readonly ?int $usuarioId,
         public readonly string $disk = 'local',
     ) {
-        $this->onQueue('imports');
+        $this->onConnection('database');
+        $this->onQueue((string) config('imports.queue', 'imports'));
     }
 
     public function handle(AlunoImportacaoSpreadsheetService $service): void
