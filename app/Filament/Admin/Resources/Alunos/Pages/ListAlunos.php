@@ -6,8 +6,10 @@ use App\Exceptions\MatriculaAlunoBloqueadaException;
 use App\Filament\Admin\Resources\Alunos\AlunoResource;
 use App\Models\Aluno;
 use App\Services\AlunoMovimentacaoService;
+use App\Services\Alunos\AlunoImportacaoSpreadsheetService;
 use App\Services\AlunoTransferenciaPendenteService;
 use Filament\Actions;
+use Filament\Forms\Components\FileUpload;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\EmbeddedTable;
@@ -19,6 +21,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
 use Override;
 
 class ListAlunos extends ListRecords
@@ -62,6 +65,57 @@ class ListAlunos extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            Actions\Action::make('exportarModeloImportacao')
+                ->label('Exportar Modelo')
+                ->icon('heroicon-o-arrow-down-tray')
+                ->color('gray')
+                ->visible(fn (): bool => Auth::user()?->hasPermissionTo('Criar Alunos') ?? false)
+                ->action(fn () => $this->spreadsheetService()->exportarModelo()),
+
+            Actions\Action::make('importarMatriculados')
+                ->label('Importar Matriculados')
+                ->icon('heroicon-o-arrow-up-tray')
+                ->color('primary')
+                ->visible(fn (): bool => ! app(AlunoTransferenciaPendenteService::class)->professorEstaBloqueado(Auth::user())
+                    && (Auth::user()?->hasPermissionTo('Criar Alunos') ?? false))
+                ->schema([
+                    FileUpload::make('arquivo')
+                        ->label('Arquivo da planilha')
+                        ->disk('local')
+                        ->directory('imports/alunos')
+                        ->visibility('private')
+                        ->storeFiles()
+                        ->preserveFilenames()
+                        ->acceptedFileTypes([
+                            'application/vnd.ms-excel',
+                            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                        ])
+                        ->maxSize(10240)
+                        ->required()
+                        ->helperText('Use a aba Matriculados com Escola, Seriacao, Turma, Turno, CGM, Nome do Aluno e Data de Nascimento.'),
+                ])
+                ->action(function (array $data): void {
+                    try {
+                        $resultado = $this->spreadsheetService()->importar(
+                            $data['arquivo'],
+                            Auth::user()
+                        );
+
+                        Notification::make()
+                            ->title('Importacao concluida')
+                            ->body("{$resultado['total_importado']} aluno(s) importado(s). Series criadas: {$resultado['series_criadas']}. Turmas criadas: {$resultado['turmas_criadas']}. Pendentes: {$resultado['total_pendente']}. CGMs duplicados ignorados: {$resultado['duplicados_ignorados']}.")
+                            ->success()
+                            ->send();
+                    } catch (InvalidArgumentException|ValidationException $exception) {
+                        Notification::make()
+                            ->title('Nao foi possivel importar a planilha')
+                            ->body($exception->getMessage())
+                            ->danger()
+                            ->persistent()
+                            ->send();
+                    }
+                }),
+
             Actions\CreateAction::make()
                 ->modalWidth('4xl')
                 ->visible(fn (): bool => ! app(AlunoTransferenciaPendenteService::class)->professorEstaBloqueado(Auth::user()))
@@ -118,5 +172,10 @@ class ListAlunos extends ListRecords
     {$mensagem}
 </div>
 HTML;
+    }
+
+    private function spreadsheetService(): AlunoImportacaoSpreadsheetService
+    {
+        return app(AlunoImportacaoSpreadsheetService::class);
     }
 }
