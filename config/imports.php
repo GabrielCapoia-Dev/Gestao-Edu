@@ -1,5 +1,5 @@
 <?php
 
 return [
-    'queue' => env('IMPORTS_QUEUE', 'imports'),
+    'queue' => env('IMPORTS_QUEUE', env('EXPORTS_QUEUE', 'exports')),
 ];

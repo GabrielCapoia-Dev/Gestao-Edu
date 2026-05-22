@@ -192,7 +192,7 @@ class AlunoImportacaoSpreadsheetServiceTest extends TestCase
                 && $job->disk === 'local'
                 && filled($job->processRequestId)
                 && $job->connection === 'database'
-                && $job->queue === 'imports';
+                && $job->queue === 'exports';
         });
     }
 

@@ -198,7 +198,11 @@ HTML;
             'format' => 'processo',
             'label' => 'Importacao de alunos por planilha',
             'filters' => ['arquivo' => basename($arquivo)],
-            'metadata' => ['process_kind' => 'importacao_alunos'],
+            'metadata' => [
+                'process_kind' => 'importacao_alunos',
+                'arquivo_path' => $arquivo,
+                'disk' => 'local',
+            ],
             'fingerprint' => hash('sha256', 'alunos_importacao|'.Auth::id().'|'.$arquivo.'|'.Str::uuid()),
             'status' => ExportRequest::STATUS_QUEUED,
             'status_message' => 'Aguardando processamento.',

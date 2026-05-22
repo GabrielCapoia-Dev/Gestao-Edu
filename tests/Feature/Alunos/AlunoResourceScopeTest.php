@@ -288,7 +288,7 @@ class AlunoResourceScopeTest extends TestCase
                 && $job->usuarioId === $usuario->id
                 && filled($job->processRequestId)
                 && $job->connection === 'database'
-                && $job->queue === 'imports';
+                && $job->queue === 'exports';
         });
     }
 
