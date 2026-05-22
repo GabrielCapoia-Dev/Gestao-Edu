@@ -33,7 +33,7 @@ class ReportsController extends Controller
                 'totalProfessores' => Professor::count(),
                 'totalTurmas' => Turma::count(),
                 'totalComponentes' => ComponenteCurricular::count(),
-                'totalEscolas' => Escola::count(),
+                'totalEscolas' => Escola::where('ativo', true)->count(),
                 'vinculos' => TurmaComponenteProfessor::count(),
                 'semProfessor' => TurmaComponenteProfessor::whereNull('professor_id')->count(),
                 'comProfessor' => TurmaComponenteProfessor::whereNotNull('professor_id')->count(),
@@ -77,7 +77,7 @@ class ReportsController extends Controller
         return view('mobile.reports.professor-componente-turma', [
             'filters' => $filters,
             'records' => $records,
-            'escolas' => Escola::orderBy('nome')->get(['id', 'nome']),
+            'escolas' => Escola::where('ativo', true)->orderBy('nome')->get(['id', 'nome']),
             'series' => Serie::orderBy('nome')->get(['id', 'nome']),
             'stats' => [
                 'total' => (clone $baseQuery)->count(),
@@ -107,13 +107,13 @@ class ReportsController extends Controller
 
         return view('mobile.reports.componentes-faltando', [
             'filters' => $filters,
-            'escolas' => Escola::orderBy('nome')->get(['id', 'nome']),
+            'escolas' => Escola::where('ativo', true)->orderBy('nome')->get(['id', 'nome']),
             'series' => Serie::orderBy('nome')->get(['id', 'nome']),
             'stats' => [
                 'totalProfessores' => Professor::count(),
                 'totalTurmas' => Turma::count(),
                 'totalComponentes' => ComponenteCurricular::count(),
-                'totalEscolas' => Escola::count(),
+                'totalEscolas' => Escola::where('ativo', true)->count(),
                 'vinculos' => (clone $baseVinculos)->count(),
                 'comProfessor' => (clone $baseVinculos)->whereNotNull('tcp.professor_id')->count(),
                 'semProfessor' => (clone $baseVinculos)->whereNull('tcp.professor_id')->count(),

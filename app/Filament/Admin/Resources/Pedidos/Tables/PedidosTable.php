@@ -92,7 +92,7 @@ class PedidosTable
             SelectFilter::make('escola_id')
                 ->label('Escola')
                 ->columnSpan(3)
-                ->relationship('escola', 'nome')
+                ->relationship('escola', 'nome', modifyQueryUsing: fn ($query) => $query->where('ativo', true))
                 ->searchable()
                 ->preload(),
 

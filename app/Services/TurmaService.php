@@ -186,7 +186,7 @@ class TurmaService
 
             SelectFilter::make('id_escola')
                 ->label('Escola')
-                ->relationship('escola', 'nome')
+                ->relationship('escola', 'nome', modifyQueryUsing: fn ($query) => $query->where('ativo', true))
                 ->searchable()
                 ->visible(function () use ($user) {
                     return $user->hasPermissionTo('Filtrar Turmas por Escola');
@@ -240,7 +240,7 @@ class TurmaService
                     ->schema([
                         Select::make('id_escola')
                             ->label('Escola')
-                            ->relationship('escola', 'nome')
+                            ->relationship('escola', 'nome', modifyQueryUsing: fn ($query) => $query->where('ativo', true))
                             ->searchable()
                             ->required()
                             ->live()

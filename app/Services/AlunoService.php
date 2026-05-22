@@ -571,7 +571,7 @@ class AlunoService
 
     public function opcoesDeEscolas(?User $user): array
     {
-        $query = Escola::query()->orderBy('nome');
+        $query = Escola::query()->where('ativo', true)->orderBy('nome');
 
         if (! $user?->hasRole('Admin') && filled($user?->id_escola) && ! $this->podeEditarEscolaAluno($user)) {
             $query->whereKey($user->id_escola);

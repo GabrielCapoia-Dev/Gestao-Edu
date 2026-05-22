@@ -573,6 +573,7 @@ class DashboardAvaliacoes extends Page implements HasForms
         }
 
         return Escola::query()
+            ->where('ativo', true)
             ->whereIn('id', $escolasIds)
             ->orderBy('nome')
             ->pluck('nome', 'id')
@@ -1779,6 +1780,7 @@ class DashboardAvaliacoes extends Page implements HasForms
 
         $escolasFiltradas = $this->filtros['escolas_ids'] !== []
             ? Escola::query()
+                ->where('ativo', true)
                 ->whereIn('id', $this->filtros['escolas_ids'])
                 ->orderBy('nome')
                 ->get(['id', 'nome'])

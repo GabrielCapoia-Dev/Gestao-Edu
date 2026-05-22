@@ -401,6 +401,7 @@ class AlunoImportacaoSpreadsheetService
     private function escolasPorNome(): Collection
     {
         return Escola::query()
+            ->where('ativo', true)
             ->get()
             ->keyBy(fn (Escola $escola): string => $this->normalizarTexto($escola->nome));
     }

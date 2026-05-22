@@ -403,6 +403,7 @@ class EscolaService
 
         if ($setorIds !== []) {
             return Escola::query()
+                ->where('ativo', true)
                 ->whereIn('setor_id', $setorIds)
                 ->orderBy('nome')
                 ->pluck('nome', 'id')
@@ -410,6 +411,7 @@ class EscolaService
         }
 
         return Escola::query()
+            ->where('ativo', true)
             ->whereKey($user->id_escola)
             ->pluck('nome', 'id')
             ->toArray();
@@ -419,6 +421,7 @@ class EscolaService
     public function opcoesDeEscolas(): array
     {
         return Escola::query()
+            ->where('ativo', true)
             ->orderBy('nome')
             ->pluck('nome', 'id')
             ->toArray();

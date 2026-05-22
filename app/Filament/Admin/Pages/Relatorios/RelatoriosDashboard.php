@@ -39,7 +39,7 @@ class RelatoriosDashboard extends Page
         $this->totalProfessores = Professor::count();
         $this->totalTurmas      = Turma::count();
         $this->totalComponentes = ComponenteCurricular::count();
-        $this->totalEscolas     = Escola::count();
+        $this->totalEscolas     = Escola::where('ativo', true)->count();
 
         $this->vinculos     = TurmaComponenteProfessor::count();
         $this->semProfessor = $this->contarTurmasComProfessorFaltando();

@@ -103,7 +103,7 @@ class RelatorioComponenteProfessorFaltando extends Page
         $this->totalProfessores = Professor::count();
         $this->totalTurmas = Turma::count();
         $this->totalComponentes = ComponenteCurricular::count();
-        $this->totalEscolas = Escola::count();
+        $this->totalEscolas = Escola::where('ativo', true)->count();
 
         $this->recarregarPagina();
     }
@@ -232,7 +232,7 @@ class RelatorioComponenteProfessorFaltando extends Page
 
     public function getEscolasProperty(): \Illuminate\Support\Collection
     {
-        return Escola::orderBy('nome')->get();
+        return Escola::where('ativo', true)->orderBy('nome')->get();
     }
 
     public function getSeriesProperty(): \Illuminate\Support\Collection

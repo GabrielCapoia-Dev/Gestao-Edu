@@ -247,6 +247,7 @@ class FeedbackPedidoAnalyticsService
             ->pluck('escola_id');
 
         return Escola::query()
+            ->where('ativo', true)
             ->whereIn('id', $ids)
             ->orderBy('nome')
             ->pluck('nome', 'id')

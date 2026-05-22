@@ -113,6 +113,7 @@ class NotificationCenterService
                     ->all()),
 
                 'escolas' => $this->cacheRemember('notifications:form-options:escolas', $ttl, fn (): array => Escola::query()
+                    ->where('ativo', true)
                     ->orderBy('nome')
                     ->get(['id', 'nome'])
                     ->map(fn (Escola $escola): array => [

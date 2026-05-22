@@ -287,13 +287,14 @@ class UserService
         $access = app(UserSetorAccessService::class);
 
         if ($access->hasGlobalAccess($currentUser)) {
-            return Escola::query()->orderBy('nome')->pluck('nome', 'id')->toArray();
+            return Escola::query()->where('ativo', true)->orderBy('nome')->pluck('nome', 'id')->toArray();
         }
 
         $setorIds = $access->visibleSetorIds($currentUser);
 
         if ($setorIds !== []) {
             return Escola::query()
+                ->where('ativo', true)
                 ->whereIn('setor_id', $setorIds)
                 ->orderBy('nome')
                 ->pluck('nome', 'id')

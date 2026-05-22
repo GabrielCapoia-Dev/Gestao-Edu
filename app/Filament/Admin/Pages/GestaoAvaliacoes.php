@@ -846,6 +846,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
         }
 
         return Escola::query()
+            ->where('ativo', true)
             ->whereIn('id', $escolasIds)
             ->orderBy('nome')
             ->get(['id', 'nome']);
