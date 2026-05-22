@@ -52,9 +52,15 @@ class NotificationCenterController extends Controller
 
     private function logSlow(string $route, float $start, array $context): void
     {
-        $elapsed = (microtime(true) - $start) * 1000;
+        if (! (bool) config('performance.instrumentation.enabled', false)) {
+            return;
+        }
 
-        if ($elapsed > 1000) {
+        $elapsed = (microtime(true) - $start) * 1000;
+        $thresholds = config('performance.slow_threshold_ms', []);
+        $threshold = (int) ($thresholds[$route] ?? data_get($thresholds, $route, 0));
+
+        if ($threshold > 0 && $elapsed > $threshold) {
             Log::warning("Rota lenta: {$route}", [
                 'elapsed_ms' => round($elapsed, 2),
                 ...$context,

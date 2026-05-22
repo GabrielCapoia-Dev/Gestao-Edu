@@ -182,14 +182,12 @@ class TurmaService
             SelectFilter::make('id_serie')
                 ->label('Série')
                 ->relationship('serie', 'nome')
-                ->searchable()
-                ->preload(),
+                ->searchable(),
 
             SelectFilter::make('id_escola')
                 ->label('Escola')
                 ->relationship('escola', 'nome')
                 ->searchable()
-                ->preload()
                 ->visible(function () use ($user) {
                     return $user->hasPermissionTo('Filtrar Turmas por Escola');
                 }),
@@ -244,7 +242,6 @@ class TurmaService
                             ->label('Escola')
                             ->relationship('escola', 'nome')
                             ->searchable()
-                            ->preload()
                             ->required()
                             ->live()
                             ->placeholder('Selecione a escola')
@@ -255,9 +252,8 @@ class TurmaService
 
                         Select::make('id_serie')
                             ->label('Série')
-                            ->options(Serie::pluck('nome', 'id'))
+                            ->options(fn (): array => Serie::query()->orderBy('nome')->pluck('nome', 'id')->toArray())
                             ->searchable()
-                            ->preload()
                             ->required()
                             ->live()
                             ->afterStateUpdated(function ($state, Set $set) {

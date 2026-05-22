@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 class ExportRequest extends Model
@@ -78,6 +79,18 @@ class ExportRequest extends Model
                 $exportRequest->{$exportRequest->getKeyName()} = (string) Str::uuid();
             }
         });
+
+        static::saved(fn (ExportRequest $exportRequest): mixed => static::forgetActiveExportsCache($exportRequest));
+        static::deleted(fn (ExportRequest $exportRequest): mixed => static::forgetActiveExportsCache($exportRequest));
+    }
+
+    private static function forgetActiveExportsCache(ExportRequest $exportRequest): void
+    {
+        Cache::forget('exports:active:any');
+
+        if (filled($exportRequest->user_id)) {
+            Cache::forget('user:'.((int) $exportRequest->user_id).':active_exports');
+        }
     }
 
     public function user(): BelongsTo

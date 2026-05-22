@@ -103,7 +103,28 @@ class EscolaService
                 ->modalContent(function (Escola $record) {
 
                     $historico = Escola::where('codigo', $record->codigo)
+                        ->select([
+                            'id',
+                            'codigo',
+                            'nome',
+                            'email',
+                            'telefone',
+                            'setor_id',
+                            'logradouro',
+                            'numero',
+                            'bairro',
+                            'cep',
+                            'cidade',
+                            'estado',
+                            'complemento',
+                            'ativo',
+                            'registro_anterior_id',
+                            'created_at',
+                            'updated_at',
+                        ])
+                        ->with('setor:id,nome,parent_id,path')
                         ->orderByDesc('created_at')
+                        ->limit(30)
                         ->get();
 
                     return view('components.escola.historico', [
@@ -265,7 +286,6 @@ class EscolaService
                                 ->options(fn () => app(UserSetorAccessService::class)->optionsForSelect(auth()->user()))
                                 ->default(fn () => app(UserSetorAccessService::class)->primarySetorId(auth()->user()))
                                 ->searchable()
-                                ->preload()
                                 ->required(),
                         ]),
                     ]),

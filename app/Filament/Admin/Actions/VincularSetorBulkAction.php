@@ -29,7 +29,6 @@ class VincularSetorBulkAction
                     ->label('Setor')
                     ->options(fn () => app(UserSetorAccessService::class)->optionsForSelect(Auth::user()))
                     ->searchable()
-                    ->preload()
                     ->required(),
             ])
             ->requiresConfirmation()

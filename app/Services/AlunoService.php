@@ -128,7 +128,6 @@ class AlunoService
                         ->options(fn () => $this->opcoesDeEscolas($user))
                         ->default(fn () => $this->escolaInicialFormularioAluno($user))
                         ->searchable()
-                        ->preload()
                         ->required()
                         ->live()
                         ->afterStateUpdated(function (Set $set): void {
@@ -145,7 +144,6 @@ class AlunoService
                         ->label('Série')
                         ->options(fn (Get $get): array => $this->opcoesDeSeriesPorEscola((int) ($get('id_escola') ?? 0), $user))
                         ->searchable()
-                        ->preload()
                         ->required()
                         ->live()
                         ->afterStateUpdated(function (Set $set): void {
@@ -165,7 +163,6 @@ class AlunoService
                             $user
                         ))
                         ->searchable()
-                        ->preload()
                         ->required()
                         ->disabled(fn (Get $get, ?string $operation = null): bool => ($operation === 'create'
                             && ! $this->formularioAlunoLiberadoAposCgm($get))
@@ -285,9 +282,8 @@ class AlunoService
         return [
             SelectFilter::make('id_turma')
                 ->label('Turma')
-                ->options($this->opcoesDeTurmas($user))
-                ->searchable()
-                ->preload(),
+                ->options(fn (): array => $this->opcoesDeTurmas($user))
+                ->searchable(),
 
             SelectFilter::make('status')
                 ->label('Status')
@@ -310,9 +306,8 @@ class AlunoService
 
             SelectFilter::make('id_escola')
                 ->label('Escola')
-                ->options($this->opcoesDeEscolas($user))
+                ->options(fn (): array => $this->opcoesDeEscolas($user))
                 ->searchable()
-                ->preload()
                 ->query(function (Builder $query, array $data) {
                     if (blank($data['value'] ?? null)) {
                         return $query;
@@ -341,7 +336,6 @@ class AlunoService
                         ->label('Nova turma')
                         ->options(fn () => $this->opcoesDeTurmasParaRemanejamento($record, $user))
                         ->searchable()
-                        ->preload()
                         ->required(),
                     Textarea::make('motivo')
                         ->label('Motivo')

@@ -1,7 +1,14 @@
 <x-filament-panels::page>
     <div class="av-livewire-root">
-        @if ($autoDownload && ! $autoDownloadDispatched)
-            <div wire:poll.{{ (int) config('performance.livewire_polling.exports_auto_download', 10) }}s="pollAutoDownload"></div>
+        @php
+            $pendingAutoDownload = $autoDownload ?: request()->query('download');
+        @endphp
+
+        @if ($pendingAutoDownload && ! $autoDownloadDispatched)
+            <div
+                x-init="$wire.set('autoDownload', @js((string) $pendingAutoDownload))"
+                wire:poll.visible.{{ (int) config('performance.livewire_polling.exports_auto_download', 10) }}s="pollAutoDownload"
+            ></div>
         @endif
 
         {{ $this->table }}

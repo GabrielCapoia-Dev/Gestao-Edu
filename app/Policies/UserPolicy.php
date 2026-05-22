@@ -11,8 +11,7 @@ class UserPolicy
     public function viewAny(User $user): bool
     {
         return $user->hasPermissionTo('Listar Usuarios')
-            || $user->hasPermissionTo('Listar Usuários')
-            || $user->hasPermissionTo('Listar UsuÃ¡rios');
+            || $user->hasPermissionTo('Listar Usuários');
     }
 
     public function view(User $user, User $model): bool
@@ -24,23 +23,20 @@ class UserPolicy
     public function create(User $user): bool
     {
         return $user->hasPermissionTo('Criar Usuarios')
-            || $user->hasPermissionTo('Criar Usuários')
-            || $user->hasPermissionTo('Criar UsuÃ¡rios');
+            || $user->hasPermissionTo('Criar Usuários');
     }
 
     public function update(User $user, User $model): bool
     {
         return ($user->hasPermissionTo('Editar Usuarios')
-                || $user->hasPermissionTo('Editar Usuários')
-                || $user->hasPermissionTo('Editar UsuÃ¡rios'))
+                || $user->hasPermissionTo('Editar Usuários'))
             && $this->podeAcessarUsuario($user, $model);
     }
 
     public function delete(User $user, User $model): bool
     {
         return ($user->hasPermissionTo('Excluir Usuarios')
-                || $user->hasPermissionTo('Excluir Usuários')
-                || $user->hasPermissionTo('Excluir UsuÃ¡rios'))
+                || $user->hasPermissionTo('Excluir Usuários'))
             && $this->podeAcessarUsuario($user, $model);
     }
 

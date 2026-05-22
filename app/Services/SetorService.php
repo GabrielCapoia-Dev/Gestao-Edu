@@ -113,7 +113,6 @@ class SetorService
                                 return $options;
                             })
                             ->searchable()
-                            ->preload()
                             ->nullable(),
 
                         TextInput::make('status')

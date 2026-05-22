@@ -1,4 +1,4 @@
-<div class="online-users-wrapper" wire:poll.{{ (int) config('performance.livewire_polling.online_users', 30) }}s="$refresh">
+<div class="online-users-wrapper" wire:poll.visible.{{ (int) config('performance.livewire_polling.online_users', 30) }}s="$refresh">
     <button
         type="button"
         class="online-users-card"
@@ -47,7 +47,7 @@
                 </section>
 
                 <section>
-                    <h3>Offline por ultimo login</h3>
+                    <h3>Ultimos acessos offline</h3>
 
                     @forelse ($offlineUsers as $user)
                         <div class="online-user-row is-offline" wire:key="offline-user-{{ $user->id }}">

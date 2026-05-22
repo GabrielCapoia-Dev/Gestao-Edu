@@ -21,8 +21,10 @@ class UserPresenceController extends Controller
         }
 
         $elapsed = (microtime(true) - $start) * 1000;
+        $thresholds = config('performance.slow_threshold_ms', []);
+        $threshold = (int) ($thresholds['presence.heartbeat'] ?? data_get($thresholds, 'presence.heartbeat', 0));
 
-        if ($elapsed > 500 && app()->isLocal()) {
+        if ((bool) config('performance.instrumentation.enabled', false) && $threshold > 0 && $elapsed > $threshold) {
             Log::warning('Heartbeat lento', [
                 'user_id' => $user?->id,
                 'elapsed_ms' => round($elapsed, 2),

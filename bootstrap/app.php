@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\PerformanceInstrumentation;
 use App\Http\Middleware\ValidaUser;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
@@ -16,6 +17,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'valida.user' => ValidaUser::class,
         ]);
+
+        $middleware->appendToGroup('web', PerformanceInstrumentation::class);
     })
     ->withSchedule(function (Schedule $schedule) {
         $schedule

@@ -547,7 +547,7 @@ class UsersTable
 
             VincularSetorBulkAction::make(
                 permission: 'Editar Setor do Usuário',
-                recordsLabel: 'usuÃ¡rios selecionados',
+                recordsLabel: 'usuarios selecionados',
             ),
 
             DeleteBulkAction::make()

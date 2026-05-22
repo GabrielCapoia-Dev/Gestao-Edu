@@ -66,8 +66,7 @@ class ContratosTable
                 SelectFilter::make('setor_id')
                     ->label('Setor')
                     ->options(fn () => app(UserSetorAccessService::class)->optionsForSelect(auth()->user()))
-                    ->searchable()
-                    ->preload(),
+                    ->searchable(),
 
                 TernaryFilter::make('ativo')
                     ->label('Status')

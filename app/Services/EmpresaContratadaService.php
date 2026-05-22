@@ -78,7 +78,6 @@ class EmpresaContratadaService
                             ->options(fn () => app(UserSetorAccessService::class)->optionsForSelect(Auth::user()))
                             ->default(fn () => app(UserSetorAccessService::class)->primarySetorId(Auth::user()))
                             ->searchable()
-                            ->preload()
                             ->required(),
 
                     ]),

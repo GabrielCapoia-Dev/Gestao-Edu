@@ -66,9 +66,37 @@ class UserPresenceServiceTest extends TestCase
 
         $this->assertSame(['Online A', 'Online B'], $presence->onlineUsers()->pluck('name')->all());
         $this->assertSame(
-            ['Offline Antigo', 'Offline Recente', 'Offline Nunca'],
+            ['Offline Recente', 'Offline Antigo', 'Offline Nunca'],
             $presence->offlineUsers()->pluck('name')->all()
         );
+
+        Carbon::setTestNow();
+    }
+
+    public function test_touch_throttles_repeated_heartbeats_for_same_user(): void
+    {
+        config()->set('performance.presence_touch_min_interval_seconds', 20);
+
+        Carbon::setTestNow('2026-05-11 11:00:00');
+
+        $user = User::factory()->create();
+        $presence = app(UserPresenceService::class);
+
+        $presence->touch($user);
+
+        $this->assertSame('2026-05-11 11:00:00', $user->refresh()->last_seen_at?->format('Y-m-d H:i:s'));
+
+        Carbon::setTestNow('2026-05-11 11:00:05');
+
+        $presence->touch($user);
+
+        $this->assertSame('2026-05-11 11:00:00', $user->refresh()->last_seen_at?->format('Y-m-d H:i:s'));
+
+        Carbon::setTestNow('2026-05-11 11:00:21');
+
+        $presence->touch($user);
+
+        $this->assertSame('2026-05-11 11:00:21', $user->refresh()->last_seen_at?->format('Y-m-d H:i:s'));
 
         Carbon::setTestNow();
     }

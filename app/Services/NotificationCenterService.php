@@ -217,12 +217,25 @@ class NotificationCenterService
     public function unreadCountPayload(User $user): array
     {
         $ttl = max(1, (int) config('notifications.unread_count_cache_ttl', 30));
+        $key = $this->unreadCountCacheKey($user);
 
-        return Cache::remember(
-            $this->unreadCountCacheKey($user),
-            now()->addSeconds($ttl),
-            fn (): array => $this->freshUnreadCountPayload($user)
-        );
+        $cached = Cache::get($key);
+
+        if (is_array($cached) && array_key_exists('unread', $cached)) {
+            return $cached;
+        }
+
+        try {
+            return Cache::lock($key.':lock', 5)->block(1, function () use ($key, $ttl, $user): array {
+                return Cache::remember(
+                    $key,
+                    now()->addSeconds($ttl),
+                    fn (): array => $this->freshUnreadCountPayload($user)
+                );
+            });
+        } catch (Throwable) {
+            return $this->freshUnreadCountPayload($user);
+        }
     }
 
     public function unreadCount(User $user): int

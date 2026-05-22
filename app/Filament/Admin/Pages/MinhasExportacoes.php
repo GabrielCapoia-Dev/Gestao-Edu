@@ -47,6 +47,13 @@ class MinhasExportacoes extends Page implements HasTable
         'autoDownload' => ['except' => null, 'as' => 'download'],
     ];
 
+    public function mount(): void
+    {
+        if (request()->filled('download')) {
+            $this->autoDownload = (string) request()->query('download');
+        }
+    }
+
     public static function canAccess(): bool
     {
         /** @var User|null $user */
@@ -153,9 +160,9 @@ class MinhasExportacoes extends Page implements HasTable
                     ->visible(fn (ExportRequest $record): bool => Auth::user()?->can('cancel', $record) ?? false),
             ])
             ->defaultSort('created_at', 'desc')
-            ->poll(fn (): string => $this->hasActiveExports()
+            ->poll(fn (): ?string => $this->hasActiveExports()
                 ? ((int) config('performance.livewire_polling.exports_table', 15)).'s'
-                : '60s');
+                : null);
     }
 
     public function pollAutoDownload(): void
@@ -202,11 +209,14 @@ class MinhasExportacoes extends Page implements HasTable
 
     public function hasActiveExports(): bool
     {
-        $cacheKey = 'user:'.((int) Auth::id()).':active_exports';
+        /** @var User|null $user */
+        $user = Auth::user();
+        $isAdmin = $user?->hasRole('Admin') ?? false;
+        $cacheKey = $isAdmin ? 'exports:active:any' : 'user:'.((int) $user?->id).':active_exports';
 
-        return Cache::remember($cacheKey, now()->addSeconds(10), function (): bool {
+        return Cache::remember($cacheKey, now()->addSeconds((int) config('performance.cache_ttl.active_exports', 10)), function () use ($isAdmin, $user): bool {
             return ExportRequest::query()
-                ->where('user_id', (int) Auth::id())
+                ->when(! $isAdmin, fn (Builder $query): Builder => $query->where('user_id', (int) $user?->id))
                 ->whereIn('status', [ExportRequest::STATUS_QUEUED, ExportRequest::STATUS_RUNNING])
                 ->exists();
         });
@@ -217,7 +227,7 @@ class MinhasExportacoes extends Page implements HasTable
         /** @var User|null $user */
         $user = Auth::user();
 
-        $query = ExportRequest::query()->with('user:id,name,email');
+        $query = ExportRequest::query();
 
         if (! $user?->hasRole('Admin')) {
             $query->where('user_id', (int) $user?->id);

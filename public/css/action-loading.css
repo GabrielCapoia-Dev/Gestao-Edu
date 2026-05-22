@@ -129,6 +129,34 @@ a.edu-action-loading-target.is-edu-loading:not(.fi-icon-btn)::after,
     animation: edu-action-pulse 0.75s ease-in-out infinite;
 }
 
+.notif-bell-btn.edu-action-loading-target.is-edu-loading,
+.fi-topbar .fi-user-menu-trigger.edu-action-loading-target.is-edu-loading {
+    position: relative;
+    opacity: 1;
+}
+
+.notif-bell-btn.edu-action-loading-target.is-edu-loading > *,
+.fi-topbar .fi-user-menu-trigger.edu-action-loading-target.is-edu-loading > * {
+    opacity: 0;
+}
+
+a.notif-bell-btn.edu-action-loading-target.is-edu-loading:not(.fi-icon-btn)::after,
+.fi-topbar .fi-user-menu-trigger.edu-action-loading-target.is-edu-loading::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    display: block;
+    width: 1rem;
+    height: 1rem;
+    margin: -0.5rem 0 0 -0.5rem;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 999px;
+    opacity: 0.88;
+    animation: edu-action-spin 0.7s linear infinite;
+}
+
 .edu-action-loading-target.is-edu-loading[aria-disabled="true"] {
     pointer-events: none;
 }

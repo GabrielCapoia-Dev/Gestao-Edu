@@ -14,30 +14,48 @@ class UserPresenceService
 
     public function touch(User $user, bool $markLogin = false): void
     {
+        $now = now();
+        $cacheKey = 'presence:touch:user:'.$user->getKey();
+        $minInterval = max(5, (int) config('performance.presence_touch_min_interval_seconds', 20));
+
+        if (! $markLogin && Cache::has($cacheKey)) {
+            return;
+        }
+
         $data = [
-            'last_seen_at' => now(),
+            'last_seen_at' => $now,
         ];
 
         if ($markLogin) {
-            $data['last_login_at'] = now();
+            $data['last_login_at'] = $now;
         }
 
         User::query()
             ->whereKey($user->getKey())
             ->update($data);
 
-        $this->forgetCache();
+        Cache::put($cacheKey, true, now()->addSeconds($minInterval));
+
+        if ($markLogin) {
+            $this->forgetCache();
+        }
     }
 
     public function onlineCount(): int
     {
-        return $this->onlineUsers()->count();
+        return (int) $this->remember('presence:online-count', fn (): int => $this->onlineQuery()->count(), 'online_count');
+    }
+
+    public function totalUsersCount(): int
+    {
+        return (int) $this->remember('presence:users-count', fn (): int => User::query()->count(), 'users_count');
     }
 
     public function onlineUsers(): Collection
     {
         return $this->remember('presence:online', fn (): Collection => $this->onlineQuery()
             ->orderBy('name')
+            ->limit(max(5, (int) config('performance.online_users_limit', 25)))
             ->get(['id', 'name', 'email', 'last_login_at', 'last_seen_at']));
     }
 
@@ -50,8 +68,9 @@ class UserPresenceService
                     ->orWhere('last_seen_at', '<', $this->onlineCutoff());
             })
             ->orderByRaw('last_login_at IS NULL')
-            ->orderBy('last_login_at')
+            ->orderByDesc('last_login_at')
             ->orderBy('name')
+            ->limit(max(5, (int) config('performance.offline_users_limit', 25)))
             ->get(['id', 'name', 'email', 'last_login_at', 'last_seen_at']));
     }
 
@@ -64,11 +83,13 @@ class UserPresenceService
     {
         Cache::forget('presence:online');
         Cache::forget('presence:offline');
+        Cache::forget('presence:online-count');
+        Cache::forget('presence:users-count');
     }
 
-    protected function remember(string $key, \Closure $callback): mixed
+    protected function remember(string $key, \Closure $callback, string $ttlKey = 'online_users'): mixed
     {
-        $ttl = (int) config('performance.cache_ttl.online_users', 15);
+        $ttl = (int) config("performance.cache_ttl.{$ttlKey}", 15);
 
         return Cache::remember($key, now()->addSeconds($ttl), $callback);
     }

@@ -48,7 +48,6 @@ class ContratoForm
                                 $set('setor_id', EmpresaContratada::query()->whereKey($state)->value('setor_id'));
                             })
                             ->searchable()
-                            ->preload()
                             ->required()
                             ->columnSpan(1),
 
@@ -65,7 +64,6 @@ class ContratoForm
                             })
                             ->default(fn () => app(UserSetorAccessService::class)->primarySetorId(Auth::user()))
                             ->searchable()
-                            ->preload()
                             ->required()
                             ->columnSpan(1),
 

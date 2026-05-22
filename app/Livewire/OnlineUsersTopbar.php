@@ -29,14 +29,20 @@ class OnlineUsersTopbar extends Component
     public function render()
     {
         $presence = app(UserPresenceService::class);
-        $onlineUsers = $presence->onlineUsers();
-        $offlineUsers = $presence->offlineUsers();
+        $onlineCount = $presence->onlineCount();
+        $onlineUsers = collect();
+        $offlineUsers = collect();
+
+        if ($this->open) {
+            $onlineUsers = $presence->onlineUsers();
+            $offlineUsers = $presence->offlineUsers();
+        }
 
         return view('livewire.online-users-topbar', [
             'onlineUsers' => $onlineUsers,
             'offlineUsers' => $offlineUsers,
-            'onlineCount' => $onlineUsers->count(),
-            'totalUsers' => $onlineUsers->count() + $offlineUsers->count(),
+            'onlineCount' => $onlineCount,
+            'totalUsers' => $this->open ? $presence->totalUsersCount() : $onlineCount,
         ]);
     }
 
