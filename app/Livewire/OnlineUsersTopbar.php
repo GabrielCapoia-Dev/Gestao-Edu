@@ -14,17 +14,6 @@ class OnlineUsersTopbar extends Component
     public function mount(): void
     {
         abort_unless(auth()->user()?->hasPermissionTo(UserPresenceService::PERMISSION), 403);
-
-        $this->refreshPresence();
-    }
-
-    public function refreshPresence(): void
-    {
-        $user = auth()->user();
-
-        if ($user instanceof User) {
-            app(UserPresenceService::class)->touch($user);
-        }
     }
 
     public function togglePanel(): void

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Services\NotificationCenterService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -16,29 +17,49 @@ class NotificationCenterController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        $start = microtime(true);
         $user = $request->user();
 
         abort_unless($this->service->canView($user), 403);
 
-        return response()->json(
-            $this->service->payload($user, $request->only([
-                'modo',
-                'busca',
-                'periodo',
-                'prioridade',
-                'page',
-                'per_page',
-            ]))
-        );
+        $result = $this->service->payload($user, $request->only([
+            'modo',
+            'busca',
+            'periodo',
+            'prioridade',
+            'page',
+            'per_page',
+        ]));
+
+        $this->logSlow('notifications.center', $start, ['user_id' => $user?->id]);
+
+        return response()->json($result);
     }
 
     public function unreadCount(Request $request): JsonResponse
     {
+        $start = microtime(true);
         $user = $request->user();
 
         abort_unless($this->service->canView($user), 403);
 
-        return response()->json($this->service->unreadCountPayload($user));
+        $result = $this->service->unreadCountPayload($user);
+
+        $this->logSlow('notifications.unreadCount', $start, ['user_id' => $user?->id]);
+
+        return response()->json($result);
+    }
+
+    private function logSlow(string $route, float $start, array $context): void
+    {
+        $elapsed = (microtime(true) - $start) * 1000;
+
+        if ($elapsed > 1000) {
+            Log::warning("Rota lenta: {$route}", [
+                'elapsed_ms' => round($elapsed, 2),
+                ...$context,
+            ]);
+        }
     }
 
     public function markRead(Request $request, string $id): JsonResponse

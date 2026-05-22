@@ -40,8 +40,10 @@ class AlunoResource extends Resource
 
     public static function canAccess(): bool
     {
-        return static::alunoService()->queryVisivel(Auth::user())->exists()
-            || (Auth::user()?->hasPermissionTo('Listar Alunos') ?? false);
+        $user = Auth::user();
+
+        return ($user?->hasPermissionTo('Listar Alunos') ?? false)
+            || static::alunoService()->queryVisivel($user)->exists();
     }
 
     public static function canGloballySearch(): bool

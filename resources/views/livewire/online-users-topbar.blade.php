@@ -1,4 +1,4 @@
-<div class="online-users-wrapper" wire:poll.5s="refreshPresence">
+<div class="online-users-wrapper" wire:poll.{{ (int) config('performance.livewire_polling.online_users', 30) }}s="$refresh">
     <button
         type="button"
         class="online-users-card"

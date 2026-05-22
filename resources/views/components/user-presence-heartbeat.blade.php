@@ -9,6 +9,7 @@
 
             const endpoint = @json(route('presence.heartbeat'));
             const csrfToken = @json(csrf_token());
+            let intervalId = null;
 
             const ping = async () => {
                 if (document.visibilityState !== 'visible') {
@@ -32,14 +33,32 @@
                 }
             };
 
+            const stop = () => {
+                if (intervalId !== null) {
+                    clearInterval(intervalId);
+                    intervalId = null;
+                }
+            };
+
+            const start = () => {
+                if (intervalId !== null) {
+                    return;
+                }
+
+                intervalId = setInterval(ping, {{ (int) config('performance.heartbeat_interval_seconds', 30) * 1000 }});
+            };
+
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'visible') {
+                    start();
                     ping();
+                } else {
+                    stop();
                 }
             });
 
             ping();
-            setInterval(ping, 10000);
+            start();
         })();
     </script>
 @endauth

@@ -55,64 +55,77 @@ class NotificationCenterService
 
     public function formOptions(): array
     {
-        return [
-            'usuarios' => User::query()
-                ->orderBy('name')
-                ->limit(1000)
-                ->get(['id', 'name', 'email'])
-                ->map(fn (User $user): array => [
-                    'id' => (string) $user->id,
-                    'label' => trim("{$user->name} · {$user->email}"),
-                ])
-                ->values()
-                ->all(),
-            'roles' => Role::query()
-                ->orderBy('name')
-                ->get(['id', 'name'])
-                ->map(fn (Role $role): array => [
-                    'id' => (string) $role->id,
-                    'label' => $role->name,
-                ])
-                ->values()
-                ->all(),
-            'escolas' => Escola::query()
-                ->orderBy('nome')
-                ->get(['id', 'nome'])
-                ->map(fn (Escola $escola): array => [
-                    'id' => (string) $escola->id,
-                    'label' => $escola->nome,
-                ])
-                ->values()
-                ->all(),
-            'turmas' => Turma::query()
-                ->with(['escola:id,nome', 'serie:id,nome'])
-                ->orderBy('nome')
-                ->get()
-                ->map(function (Turma $turma): array {
-                    $partes = array_filter([
-                        $turma->escola?->nome,
-                        $turma->serie?->nome,
-                        $turma->nome,
-                        $turma->turno,
-                    ]);
+        $ttl = now()->addMinutes(5);
 
-                    return [
-                        'id' => (string) $turma->id,
-                        'label' => implode(' · ', $partes),
-                    ];
-                })
-                ->values()
-                ->all(),
-            'permissoes' => Permission::query()
-                ->orderBy('name')
-                ->pluck('name')
-                ->map(fn (string $permission): array => [
-                    'id' => $permission,
-                    'label' => $permission,
-                ])
-                ->values()
-                ->all(),
-        ];
+        return Cache::remember('notifications:form-options', $ttl, function () use ($ttl): array {
+            return [
+                'usuarios' => $this->cacheRemember('notifications:form-options:usuarios', $ttl, fn (): array => User::query()
+                    ->orderBy('name')
+                    ->limit(1000)
+                    ->get(['id', 'name', 'email'])
+                    ->map(fn (User $user): array => [
+                        'id' => (string) $user->id,
+                        'label' => trim("{$user->name} · {$user->email}"),
+                    ])
+                    ->values()
+                    ->all()),
+
+                'roles' => $this->cacheRemember('notifications:form-options:roles', $ttl, fn (): array => Role::query()
+                    ->orderBy('name')
+                    ->get(['id', 'name'])
+                    ->map(fn (Role $role): array => [
+                        'id' => (string) $role->id,
+                        'label' => $role->name,
+                    ])
+                    ->values()
+                    ->all()),
+
+                'escolas' => $this->cacheRemember('notifications:form-options:escolas', $ttl, fn (): array => Escola::query()
+                    ->orderBy('nome')
+                    ->get(['id', 'nome'])
+                    ->map(fn (Escola $escola): array => [
+                        'id' => (string) $escola->id,
+                        'label' => $escola->nome,
+                    ])
+                    ->values()
+                    ->all()),
+
+                'turmas' => $this->cacheRemember('notifications:form-options:turmas', $ttl, fn (): array => Turma::query()
+                    ->with(['escola:id,nome', 'serie:id,nome'])
+                    ->orderBy('nome')
+                    ->get()
+                    ->map(function (Turma $turma): array {
+                        $partes = array_filter([
+                            $turma->escola?->nome,
+                            $turma->serie?->nome,
+                            $turma->nome,
+                            $turma->turno,
+                        ]);
+
+                        return [
+                            'id' => (string) $turma->id,
+                            'label' => implode(' · ', $partes),
+                        ];
+                    })
+                    ->values()
+                    ->all()),
+
+                'permissoes' => $this->cacheRemember('notifications:form-options:permissoes', $ttl, fn (): array => Permission::query()
+                    ->orderBy('name')
+                    ->pluck('name')
+                    ->map(fn (string $permission): array => [
+                        'id' => $permission,
+                        'label' => $permission,
+                    ])
+                    ->values()
+                    ->all()),
+            ];
+        });
+    }
+
+    private function cacheRemember(string $key, \DateTimeInterface|\DateInterval|int $ttl, \Closure $callback): mixed
+    {
+        return Cache::remember($key, $ttl, $callback);
     }
 
     public function payload(User $user, array $filters): array

@@ -18,6 +18,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Number;
+use Illuminate\Support\Facades\Cache;
 use UnitEnum;
 
 class MinhasExportacoes extends Page implements HasTable
@@ -152,7 +153,9 @@ class MinhasExportacoes extends Page implements HasTable
                     ->visible(fn (ExportRequest $record): bool => Auth::user()?->can('cancel', $record) ?? false),
             ])
             ->defaultSort('created_at', 'desc')
-            ->poll('5s');
+            ->poll(fn (): string => $this->hasActiveExports()
+                ? ((int) config('performance.livewire_polling.exports_table', 15)).'s'
+                : '60s');
     }
 
     public function pollAutoDownload(): void
@@ -195,6 +198,18 @@ class MinhasExportacoes extends Page implements HasTable
                 ->danger()
                 ->send();
         }
+    }
+
+    public function hasActiveExports(): bool
+    {
+        $cacheKey = 'user:'.((int) Auth::id()).':active_exports';
+
+        return Cache::remember($cacheKey, now()->addSeconds(10), function (): bool {
+            return ExportRequest::query()
+                ->where('user_id', (int) Auth::id())
+                ->whereIn('status', [ExportRequest::STATUS_QUEUED, ExportRequest::STATUS_RUNNING])
+                ->exists();
+        });
     }
 
     private function query(): Builder
