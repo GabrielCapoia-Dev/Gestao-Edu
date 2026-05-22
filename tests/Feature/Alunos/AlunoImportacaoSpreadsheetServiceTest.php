@@ -27,8 +27,8 @@ class AlunoImportacaoSpreadsheetServiceTest extends TestCase
         ]);
 
         $caminho = $this->criarPlanilhaNoStorage('local', [
-            ['Escola', 'Seriacao', 'Turma', 'Turno', 'Curso', 'CGM', 'Nome do Aluno', 'Data de Nasc'],
-            ['CMEI - Cecilia Meireles', 'INFANTIL 4', 'A', 'Manha', 'EDUC INFANTIL', '1035708266', 'ALANA GRAZIELY DA SILVA SARAIVA', 44600],
+            ['Escola', 'Seriacao', 'Turma', 'Turno', 'Curso', 'CGM', 'Nome do Aluno', 'Data de Nasc', 'Idade', 'Sexo', 'Telefone', 'RG', 'Situacao', 'Data Matricula'],
+            ['CMEI - Cecilia Meireles', 'INFANTIL 4', 'A', 'Manha', 'EDUC INFANTIL', '1035708266', 'ALANA GRAZIELY DA SILVA SARAIVA', 44600, '4', 'F', null, null, 'Matriculado', 46058],
         ]);
 
         $resultado = app(AlunoImportacaoSpreadsheetService::class)->importar($caminho, null, 'local');
@@ -52,11 +52,18 @@ class AlunoImportacaoSpreadsheetServiceTest extends TestCase
             'nome' => 'ALANA GRAZIELY DA SILVA SARAIVA',
             'id_turma' => $turma->id,
             'status' => Aluno::STATUS_MATRICULADO,
+            'sexo' => 'F',
         ]);
+
+        $aluno = Aluno::query()->where('cgm', '1035708266')->firstOrFail();
 
         $this->assertSame(
             '2022-02-08',
-            Aluno::query()->where('cgm', '1035708266')->firstOrFail()->data_nascimento?->toDateString()
+            $aluno->data_nascimento?->toDateString()
+        );
+        $this->assertSame(
+            '2026-02-05',
+            $aluno->data_matricula?->toDateString()
         );
     }
 
@@ -70,9 +77,9 @@ class AlunoImportacaoSpreadsheetServiceTest extends TestCase
         ]);
 
         $caminho = $this->criarPlanilhaNoStorage('local', [
-            ['Escola', 'Seriacao', 'Turma', 'Turno', 'CGM', 'Nome do Aluno', 'Data de Nascimento'],
-            ['Escola Municipal Teste', '1 Ano', 'A', 'Tarde', '123', 'Aluno Um', '01/02/2018'],
-            ['Escola Municipal Teste', '1 Ano', 'B', 'Tarde', '123', 'Aluno Dois', '02/02/2018'],
+            ['Escola', 'Seriacao', 'Turma', 'Turno', 'CGM', 'Nome do Aluno', 'Data de Nascimento', 'Sexo', 'Data Matricula'],
+            ['Escola Municipal Teste', '1 Ano', 'A', 'Tarde', '123', 'Aluno Um', '01/02/2018', 'M', '05/02/2026'],
+            ['Escola Municipal Teste', '1 Ano', 'B', 'Tarde', '123', 'Aluno Dois', '02/02/2018', 'M', '05/02/2026'],
         ]);
 
         $resultado = app(AlunoImportacaoSpreadsheetService::class)->importar($caminho, null, 'local');

@@ -10,8 +10,8 @@ use App\Models\Serie;
 use App\Models\Turma;
 use App\Models\User;
 use Filament\Actions\Action;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
@@ -81,6 +81,8 @@ class AlunoService
                             $set('cgm_encontrado_aluno_id', (int) $alunoExistente->id);
                             $set('nome', $alunoExistente->nome);
                             $set('data_nascimento', $alunoExistente->data_nascimento?->format('Y-m-d'));
+                            $set('sexo', $alunoExistente->sexo);
+                            $set('data_matricula', $alunoExistente->data_matricula?->format('Y-m-d'));
                         })
                         ->helperText(fn (Get $get, ?string $operation = null): ?string => $operation === 'create'
                             ? $this->textoAjudaCgmCadastro($get)
@@ -96,6 +98,23 @@ class AlunoService
                     DatePicker::make('data_nascimento')
                         ->label('Data de Nascimento')
                         ->required()
+                        ->native(false)
+                        ->displayFormat('d/m/Y')
+                        ->disabled(fn (Get $get, ?string $operation = null): bool => $operation === 'create'
+                            && ! $this->formularioAlunoLiberadoAposCgm($get)),
+
+                    Select::make('sexo')
+                        ->label('Sexo')
+                        ->options([
+                            'F' => 'Feminino',
+                            'M' => 'Masculino',
+                        ])
+                        ->native(false)
+                        ->disabled(fn (Get $get, ?string $operation = null): bool => $operation === 'create'
+                            && ! $this->formularioAlunoLiberadoAposCgm($get)),
+
+                    DatePicker::make('data_matricula')
+                        ->label('Data de Matricula')
                         ->native(false)
                         ->displayFormat('d/m/Y')
                         ->disabled(fn (Get $get, ?string $operation = null): bool => $operation === 'create'
@@ -225,6 +244,22 @@ class AlunoService
                 ->sortable()
                 ->copyable(),
 
+            TextColumn::make('sexo')
+                ->label('Sexo')
+                ->formatStateUsing(fn (?string $state): string => match ($state) {
+                    'F' => 'Feminino',
+                    'M' => 'Masculino',
+                    default => (string) $state,
+                })
+                ->badge()
+                ->toggleable(),
+
+            TextColumn::make('data_matricula')
+                ->label('Data de Matricula')
+                ->date('d/m/Y')
+                ->sortable()
+                ->toggleable(),
+
             TextColumn::make('turma.serie.nome')
                 ->label('Série')
                 ->sortable()
@@ -280,9 +315,9 @@ class AlunoService
                         return $query;
                     }
 
-                    return $query->whereHas('turma', fn(Builder $q) => $q->where('id_escola', $data['value']));
+                    return $query->whereHas('turma', fn (Builder $q) => $q->where('id_escola', $data['value']));
                 })
-                ->visible(fn() => $user?->hasPermissionTo('Filtrar Alunos por Escola') ?? false),
+                ->visible(fn () => $user?->hasPermissionTo('Filtrar Alunos por Escola') ?? false),
         ];
     }
 
@@ -358,6 +393,8 @@ class AlunoService
                         'nome' => $record->nome,
                         'cgm' => $record->cgm,
                         'data_nascimento' => $record->data_nascimento?->format('Y-m-d'),
+                        'sexo' => $record->sexo,
+                        'data_matricula' => $record->data_matricula?->format('Y-m-d'),
                         'id_escola' => $record->turma?->id_escola,
                         'id_serie' => $record->turma?->id_serie,
                         'id_turma' => $record->id_turma,
@@ -391,12 +428,12 @@ class AlunoService
 
                     return $record;
                 })
-                ->visible(fn(Aluno $record) => ! $this->professorEstaBloqueado($user)
+                ->visible(fn (Aluno $record) => ! $this->professorEstaBloqueado($user)
                     && $record->estaMatriculado()
                     && $this->userService->podeEditarAlunos($user)),
 
             DeleteAction::make()
-                ->visible(fn(Aluno $record) => ! $this->professorEstaBloqueado($user)
+                ->visible(fn (Aluno $record) => ! $this->professorEstaBloqueado($user)
                     && $record->estaMatriculado()
                     && $this->userService->podeExcluirAlunos($user)),
         ];
@@ -407,7 +444,7 @@ class AlunoService
         return [
             DeleteBulkAction::make()
                 ->authorizeIndividualRecords('delete')
-                ->visible(fn() => ! $this->professorEstaBloqueado($user)
+                ->visible(fn () => ! $this->professorEstaBloqueado($user)
                     && ($user?->hasPermissionTo('Excluir Alunos em Massa') ?? false)),
         ];
     }

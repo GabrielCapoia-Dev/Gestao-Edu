@@ -41,6 +41,8 @@ class AlunoImportacaoSpreadsheetService
         'cgm' => ['cgm'],
         'nome' => ['nome do aluno', 'aluno', 'nome'],
         'data_nascimento' => ['data de nasc', 'data de nascimento', 'nascimento'],
+        'sexo' => ['sexo'],
+        'data_matricula' => ['data matricula', 'data de matricula'],
     ];
 
     public function __construct(
@@ -61,6 +63,8 @@ class AlunoImportacaoSpreadsheetService
         $sheet->setCellValue('E1', 'CGM');
         $sheet->setCellValue('F1', 'Nome do Aluno');
         $sheet->setCellValue('G1', 'Data de Nascimento');
+        $sheet->setCellValue('H1', 'Sexo');
+        $sheet->setCellValue('I1', 'Data Matricula');
 
         $sheet->fromArray([
             'CMEI - Cecilia Meireles',
@@ -70,12 +74,14 @@ class AlunoImportacaoSpreadsheetService
             '1035708266',
             'NOME DO ALUNO',
             '07/02/2022',
+            'F',
+            '15/02/2026',
         ], null, 'A2');
 
-        $this->estilizarCabecalho($sheet, 'A1:G1');
+        $this->estilizarCabecalho($sheet, 'A1:I1');
         $sheet->freezePane('A2');
 
-        foreach (range(1, 7) as $indice) {
+        foreach (range(1, 9) as $indice) {
             $sheet->getColumnDimension(Coordinate::stringFromColumnIndex($indice))->setAutoSize(true);
         }
 
@@ -114,6 +120,8 @@ class AlunoImportacaoSpreadsheetService
                         'nome' => $linha['nome'],
                         'cgm' => $linha['cgm'],
                         'data_nascimento' => $linha['data_nascimento'],
+                        'sexo' => $linha['sexo'],
+                        'data_matricula' => $linha['data_matricula'],
                         'id_turma' => (int) $turma->id,
                         'status_motivo' => 'Matricula criada por importacao de planilha.',
                     ], $usuario);
@@ -158,7 +166,7 @@ class AlunoImportacaoSpreadsheetService
             public function readCell(string $columnAddress, int $row, string $worksheetName = ''): bool
             {
                 return $worksheetName === AlunoImportacaoSpreadsheetService::SHEET_NAME
-                    && Coordinate::columnIndexFromString($columnAddress) <= 8;
+                    && Coordinate::columnIndexFromString($columnAddress) <= 14;
             }
         });
 
@@ -187,6 +195,8 @@ class AlunoImportacaoSpreadsheetService
                 'cgm' => $this->normalizarCgm($row[$headers['cgm']] ?? null),
                 'nome' => $this->normalizarValor($row[$headers['nome']] ?? null),
                 'data_nascimento' => $this->normalizarData($row[$headers['data_nascimento']] ?? null),
+                'sexo' => $this->normalizarSexo($row[$headers['sexo']] ?? null),
+                'data_matricula' => $this->normalizarData($row[$headers['data_matricula']] ?? null),
             ])
             ->reject(fn (array $linha): bool => collect([
                 $linha['escola'],
@@ -196,6 +206,8 @@ class AlunoImportacaoSpreadsheetService
                 $linha['cgm'],
                 $linha['nome'],
                 $linha['data_nascimento'],
+                $linha['sexo'],
+                $linha['data_matricula'],
             ])->every(fn ($valor): bool => blank($valor)))
             ->values();
 
@@ -224,6 +236,14 @@ class AlunoImportacaoSpreadsheetService
 
             if (! $linha['data_nascimento']) {
                 $erros[] = "Linha {$numeroLinha}: informe uma Data de Nascimento valida.";
+            }
+
+            if (! $linha['sexo']) {
+                $erros[] = "Linha {$numeroLinha}: informe Sexo como M ou F.";
+            }
+
+            if (! $linha['data_matricula']) {
+                $erros[] = "Linha {$numeroLinha}: informe uma Data de Matricula valida.";
             }
 
             $chaveEscola = $this->normalizarTexto($linha['escola']);
@@ -291,7 +311,7 @@ class AlunoImportacaoSpreadsheetService
         }
 
         throw new InvalidArgumentException(
-            'Cabecalho invalido. Use as colunas: Escola, Seriacao, Turma, Turno, CGM, Nome do Aluno e Data de Nascimento.'
+            'Cabecalho invalido. Use as colunas: Escola, Seriacao, Turma, Turno, CGM, Nome do Aluno, Data de Nascimento, Sexo e Data Matricula.'
         );
     }
 
@@ -396,6 +416,17 @@ class AlunoImportacaoSpreadsheetService
         $cgm = preg_replace('/\.0$/', '', $cgm);
 
         return $cgm !== '' ? $cgm : null;
+    }
+
+    private function normalizarSexo(mixed $valor): ?string
+    {
+        $sexo = $this->normalizarTexto($valor);
+
+        return match ($sexo) {
+            'm', 'masculino' => 'M',
+            'f', 'feminino' => 'F',
+            default => null,
+        };
     }
 
     private function normalizarData(mixed $valor): ?string

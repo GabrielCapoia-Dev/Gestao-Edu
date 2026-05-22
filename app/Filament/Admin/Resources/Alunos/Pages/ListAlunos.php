@@ -92,7 +92,7 @@ class ListAlunos extends ListRecords
                         ])
                         ->maxSize(10240)
                         ->required()
-                        ->helperText('Use a aba Matriculados com Escola, Seriacao, Turma, Turno, CGM, Nome do Aluno e Data de Nascimento.'),
+                        ->helperText('Use a aba Matriculados com Escola, Seriacao, Turma, Turno, CGM, Nome do Aluno, Data de Nascimento, Sexo e Data Matricula.'),
                 ])
                 ->action(function (array $data): void {
                     try {
