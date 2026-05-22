@@ -45,6 +45,17 @@ class AlunoImportacaoSpreadsheetService
         'data_matricula' => ['data matricula', 'data de matricula'],
     ];
 
+    private const REQUIRED_HEADERS = [
+        'escola',
+        'seriacao',
+        'turma',
+        'turno',
+        'cgm',
+        'nome',
+        'data_nascimento',
+        'sexo',
+    ];
+
     public function __construct(
         private readonly AlunoMovimentacaoService $movimentacaoService,
         private readonly AlunoService $alunoService
@@ -196,7 +207,7 @@ class AlunoImportacaoSpreadsheetService
                 'nome' => $this->normalizarValor($row[$headers['nome']] ?? null),
                 'data_nascimento' => $this->normalizarData($row[$headers['data_nascimento']] ?? null),
                 'sexo' => $this->normalizarSexo($row[$headers['sexo']] ?? null),
-                'data_matricula' => $this->normalizarData($row[$headers['data_matricula']] ?? null),
+                'data_matricula' => $this->normalizarData(isset($headers['data_matricula']) ? ($row[$headers['data_matricula']] ?? null) : null),
             ])
             ->reject(fn (array $linha): bool => collect([
                 $linha['escola'],
@@ -240,10 +251,6 @@ class AlunoImportacaoSpreadsheetService
 
             if (! $linha['sexo']) {
                 $erros[] = "Linha {$numeroLinha}: informe Sexo como M ou F.";
-            }
-
-            if (! $linha['data_matricula']) {
-                $erros[] = "Linha {$numeroLinha}: informe uma Data de Matricula valida.";
             }
 
             $chaveEscola = $this->normalizarTexto($linha['escola']);
@@ -305,13 +312,13 @@ class AlunoImportacaoSpreadsheetService
                 }
             }
 
-            if (count($mapa) === count(self::HEADER_ALIASES)) {
+            if (collect(self::REQUIRED_HEADERS)->every(fn (string $campo): bool => isset($mapa[$campo]))) {
                 return [$numeroLinha, $mapa];
             }
         }
 
         throw new InvalidArgumentException(
-            'Cabecalho invalido. Use as colunas: Escola, Seriacao, Turma, Turno, CGM, Nome do Aluno, Data de Nascimento, Sexo e Data Matricula.'
+            'Cabecalho invalido. Use as colunas: Escola, Seriacao, Turma, Turno, CGM, Nome do Aluno, Data de Nascimento e Sexo. Data Matricula e opcional.'
         );
     }
 

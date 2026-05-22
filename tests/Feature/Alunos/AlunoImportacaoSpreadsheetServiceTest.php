@@ -93,6 +93,52 @@ class AlunoImportacaoSpreadsheetServiceTest extends TestCase
         ]);
     }
 
+    public function test_importa_aluno_sem_data_de_matricula(): void
+    {
+        Storage::fake('local');
+
+        Escola::query()->create([
+            'nome' => 'Escola Municipal Teste',
+            'ativo' => true,
+        ]);
+
+        $caminho = $this->criarPlanilhaNoStorage('local', [
+            ['Escola', 'Seriacao', 'Turma', 'Turno', 'CGM', 'Nome do Aluno', 'Data de Nascimento', 'Sexo', 'Data Matricula'],
+            ['Escola Municipal Teste', '1 Ano', 'A', 'Tarde', '456', 'Aluno Sem Data', '01/02/2018', 'F', null],
+        ]);
+
+        $resultado = app(AlunoImportacaoSpreadsheetService::class)->importar($caminho, null, 'local');
+
+        $this->assertSame(1, $resultado['total_importado']);
+
+        $aluno = Aluno::query()->where('cgm', '456')->firstOrFail();
+
+        $this->assertNull($aluno->data_matricula);
+    }
+
+    public function test_importa_aluno_sem_coluna_de_data_de_matricula(): void
+    {
+        Storage::fake('local');
+
+        Escola::query()->create([
+            'nome' => 'Escola Municipal Teste',
+            'ativo' => true,
+        ]);
+
+        $caminho = $this->criarPlanilhaNoStorage('local', [
+            ['Escola', 'Seriacao', 'Turma', 'Turno', 'CGM', 'Nome do Aluno', 'Data de Nascimento', 'Sexo'],
+            ['Escola Municipal Teste', '1 Ano', 'A', 'Tarde', '789', 'Aluno Sem Coluna', '01/02/2018', 'M'],
+        ]);
+
+        $resultado = app(AlunoImportacaoSpreadsheetService::class)->importar($caminho, null, 'local');
+
+        $this->assertSame(1, $resultado['total_importado']);
+
+        $aluno = Aluno::query()->where('cgm', '789')->firstOrFail();
+
+        $this->assertNull($aluno->data_matricula);
+    }
+
     private function criarPlanilhaNoStorage(string $disk, array $linhas): string
     {
         $spreadsheet = new Spreadsheet;
