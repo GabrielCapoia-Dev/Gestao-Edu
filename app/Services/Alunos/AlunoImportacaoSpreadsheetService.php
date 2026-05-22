@@ -132,10 +132,10 @@ class AlunoImportacaoSpreadsheetService
                 $chunkResultado = DB::transaction(function () use ($chunk, $usuario): array {
                     $series = $this->seriesPorNome();
                     $turmas = $this->turmasPorChave();
-                    $importados = 0;
-                    $pendentes = 0;
-                    $turmasCriadas = 0;
                     $seriesCriadas = 0;
+                    $turmasCriadas = 0;
+                    $turmasPermitidas = [];
+                    $dadosMatriculas = [];
 
                     foreach ($chunk as $linha) {
                         [$serie, $serieCriada] = $this->resolverSerie($linha['seriacao'], $series);
@@ -144,28 +144,29 @@ class AlunoImportacaoSpreadsheetService
                         $seriesCriadas += $serieCriada ? 1 : 0;
                         $turmasCriadas += $turmaCriada ? 1 : 0;
 
-                        $this->alunoService->validarTurmaPermitida((int) $turma->id, $usuario);
+                        $turmaId = (int) $turma->id;
 
-                        $aluno = $this->movimentacaoService->criarMatricula([
+                        if (! isset($turmasPermitidas[$turmaId])) {
+                            $this->alunoService->validarTurmaPermitida($turmaId, $usuario);
+                            $turmasPermitidas[$turmaId] = true;
+                        }
+
+                        $dadosMatriculas[] = [
                             'nome' => $linha['nome'],
                             'cgm' => $linha['cgm'],
                             'data_nascimento' => $linha['data_nascimento'],
                             'sexo' => $linha['sexo'],
                             'data_matricula' => $linha['data_matricula'],
-                            'id_turma' => (int) $turma->id,
+                            'id_turma' => $turmaId,
                             'status_motivo' => 'Matricula criada por importacao de planilha.',
-                        ], $usuario);
-
-                        $importados++;
-
-                        if ($aluno->status === Aluno::STATUS_PENDENTE) {
-                            $pendentes++;
-                        }
+                        ];
                     }
 
+                    $loteResultado = $this->movimentacaoService->criarMatriculaEmLote($dadosMatriculas, $usuario);
+
                     return [
-                        'total_importado' => $importados,
-                        'total_pendente' => $pendentes,
+                        'total_importado' => $loteResultado['total_importado'],
+                        'total_pendente' => $loteResultado['total_pendente'],
                         'series_criadas' => $seriesCriadas,
                         'turmas_criadas' => $turmasCriadas,
                     ];

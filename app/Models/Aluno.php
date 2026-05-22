@@ -70,11 +70,13 @@ class Aluno extends Model
             $aluno->cgm_matricula_ativa = $aluno->status === self::STATUS_MATRICULADO
                 ? $aluno->cgm
                 : null;
+
+            $escolaId = ! $aluno->relationLoaded('turma') || ! $aluno->turma
+                ? (int) Turma::query()->whereKey((int) $aluno->id_turma)->value('id_escola')
+                : (int) $aluno->turma->id_escola;
+
             $aluno->cgm_unidade_matricula_ativa = $aluno->estaAtivoNaUnidade()
-                ? self::chaveCgmUnidade(
-                    (int) Turma::query()->whereKey((int) $aluno->id_turma)->value('id_escola'),
-                    $aluno->cgm
-                )
+                ? self::chaveCgmUnidade($escolaId, $aluno->cgm)
                 : null;
 
             if (! $aluno->status_alterado_em) {

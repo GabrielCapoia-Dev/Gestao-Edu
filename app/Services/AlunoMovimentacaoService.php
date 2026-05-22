@@ -72,6 +72,106 @@ class AlunoMovimentacaoService
         });
     }
 
+    public function criarMatriculaEmLote(array $linhas, ?User $usuario = null): array
+    {
+        $turmaIds = array_unique(array_map(fn (array $l): int => (int) ($l['id_turma'] ?? 0), $linhas));
+        $cgms = array_values(array_unique(array_map(
+            fn (array $l): string => Aluno::normalizarCgm((string) ($l['cgm'] ?? '')),
+            $linhas
+        )));
+
+        $turmas = Turma::query()->whereIn('id', $turmaIds)->get()->keyBy('id');
+
+        $alunosCadastrados = Aluno::query()
+            ->with('turma')
+            ->whereIn('cgm', $cgms)
+            ->whereIn('status', [Aluno::STATUS_MATRICULADO, Aluno::STATUS_PENDENTE])
+            ->get();
+
+        $pendentesIndex = $alunosCadastrados
+            ->where('status', Aluno::STATUS_PENDENTE)
+            ->keyBy('cgm');
+
+        $ativosIndex = $alunosCadastrados
+            ->filter(fn (Aluno $a): bool => $a->cgm_matricula_ativa !== null)
+            ->keyBy('cgm_matricula_ativa');
+
+        $importados = 0;
+        $criadosPendentes = 0;
+        $alunosNotificar = [];
+
+        foreach ($linhas as $linha) {
+            $cgm = Aluno::normalizarCgm((string) ($linha['cgm'] ?? ''));
+            $turmaId = (int) ($linha['id_turma'] ?? 0);
+            $turma = $turmas->get($turmaId);
+
+            $escolaId = (int) ($turma?->id_escola ?? 0);
+            $chaveUnidade = Aluno::chaveCgmUnidade($escolaId, $cgm);
+
+            if ($chaveUnidade !== null && $alunosCadastrados->first(fn (Aluno $a): bool => $a->cgm_unidade_matricula_ativa === $chaveUnidade)) {
+                throw new MatriculaAlunoBloqueadaException(
+                    $alunosCadastrados->first(fn (Aluno $a): bool => $a->cgm_unidade_matricula_ativa === $chaveUnidade),
+                    'Este CGM ja esta cadastrado nesta unidade.'
+                );
+            }
+
+            if (isset($pendentesIndex[$cgm])) {
+                throw new MatriculaAlunoBloqueadaException(
+                    $pendentesIndex[$cgm],
+                    'Este CGM ja possui uma matricula pendente em outra unidade. Resolva a pendencia antes de criar uma nova matricula.'
+                );
+            }
+
+            $origemPendente = $ativosIndex[$cgm] ?? null;
+            $origemHistorica = $origemPendente ? null : $this->ultimaMatriculaHistorica($cgm);
+            $status = $origemPendente ? Aluno::STATUS_PENDENTE : Aluno::STATUS_MATRICULADO;
+
+            $aluno = new Aluno([
+                ...$linha,
+                'nome' => $origemPendente?->nome ?? $linha['nome'],
+                'cgm' => $cgm,
+                'data_nascimento' => $origemPendente?->data_nascimento ?? $linha['data_nascimento'] ?? null,
+                'status' => $status,
+                'status_alterado_em' => now(),
+                'status_alterado_por' => $usuario?->id,
+                'status_motivo' => $linha['status_motivo'] ?? ($origemPendente
+                    ? 'Matricula criada como pendente por transferencia nao finalizada na escola de origem.'
+                    : 'Matricula criada no sistema.'),
+                'aluno_origem_id' => $origemHistorica?->id,
+                'turma_origem_id' => $origemHistorica?->id_turma,
+                'movimentacao_origem' => $origemHistorica ? $this->tipoOrigemPorStatus($origemHistorica) : null,
+                'pendencia_origem_aluno_id' => $origemPendente?->id,
+            ]);
+
+            $aluno->setRelation('turma', $turma);
+            $aluno->save();
+
+            $importados++;
+
+            if ($aluno->estaPendente()) {
+                $criadosPendentes++;
+                $alunosNotificar[] = $aluno;
+            }
+
+            if ($origemHistorica) {
+                $this->copiarDadosAvaliativosBloqueados(
+                    origem: $origemHistorica,
+                    destino: $aluno,
+                    tipo: $this->tipoOrigemPorStatus($origemHistorica)
+                );
+            }
+        }
+
+        foreach ($alunosNotificar as $alunoPendente) {
+            app(AlunoTransferenciaPendenteService::class)->notificarPendencia($alunoPendente, $usuario, true);
+        }
+
+        return [
+            'total_importado' => $importados,
+            'total_pendente' => $criadosPendentes,
+        ];
+    }
+
     public function bloquearSeCgmAtivo(
         string $cgm,
         int $turmaDestinoId,
