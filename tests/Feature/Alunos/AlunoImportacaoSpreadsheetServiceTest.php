@@ -2,15 +2,22 @@
 
 namespace Tests\Feature\Alunos;
 
+use App\Filament\Admin\Resources\Alunos\Pages\ListAlunos;
+use App\Jobs\ImportAlunosMatriculadosJob;
 use App\Models\Aluno;
 use App\Models\Escola;
 use App\Models\Serie;
 use App\Models\Turma;
+use App\Models\User;
 use App\Services\Alunos\AlunoImportacaoSpreadsheetService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Livewire;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 class AlunoImportacaoSpreadsheetServiceTest extends TestCase
@@ -139,6 +146,80 @@ class AlunoImportacaoSpreadsheetServiceTest extends TestCase
         $this->assertNull($aluno->data_matricula);
     }
 
+    public function test_acao_de_importacao_enfileira_processamento_sem_importar_no_request(): void
+    {
+        Queue::fake();
+        Storage::fake('local');
+
+        Permission::findOrCreate('Criar Alunos');
+        Permission::findOrCreate('Listar Alunos');
+
+        Escola::query()->create([
+            'nome' => 'Escola Municipal Teste',
+            'ativo' => true,
+        ]);
+
+        $caminho = $this->criarPlanilhaNoStorage('local', [
+            ['Escola', 'Seriacao', 'Turma', 'Turno', 'CGM', 'Nome do Aluno', 'Data de Nascimento', 'Sexo'],
+            ['Escola Municipal Teste', '1 Ano', 'A', 'Tarde', '321', 'Aluno Em Fila', '01/02/2018', 'M'],
+        ]);
+
+        $user = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $user->givePermissionTo(['Criar Alunos', 'Listar Alunos']);
+
+        Livewire::actingAs($user)
+            ->test(ListAlunos::class)
+            ->callAction('importarMatriculados', [
+                'arquivo' => [$caminho],
+            ])
+            ->assertHasNoActionErrors();
+
+        $this->assertDatabaseCount('alunos', 0);
+
+        Queue::assertPushed(ImportAlunosMatriculadosJob::class, function (ImportAlunosMatriculadosJob $job) use ($caminho, $user): bool {
+            return $job->caminhoArquivo === $caminho
+                && $job->usuarioId === $user->id
+                && $job->disk === 'local';
+        });
+    }
+
+    public function test_job_de_importacao_processa_planilha_em_segundo_plano(): void
+    {
+        Notification::fake();
+        Storage::fake('local');
+
+        Escola::query()->create([
+            'nome' => 'Escola Municipal Teste',
+            'ativo' => true,
+        ]);
+
+        $caminho = $this->criarPlanilhaNoStorage('local', [
+            ['Escola', 'Seriacao', 'Turma', 'Turno', 'CGM', 'Nome do Aluno', 'Data de Nascimento', 'Sexo'],
+            ['Escola Municipal Teste', '1 Ano', 'A', 'Tarde', '654', 'Aluno Processado', '01/02/2018', 'F'],
+        ]);
+
+        $user = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+
+        app(ImportAlunosMatriculadosJob::class, [
+            'caminhoArquivo' => $caminho,
+            'usuarioId' => $user->id,
+            'disk' => 'local',
+        ])->handle(app(AlunoImportacaoSpreadsheetService::class));
+
+        $this->assertDatabaseHas('alunos', [
+            'cgm' => '654',
+            'nome' => 'Aluno Processado',
+        ]);
+
+        Notification::assertSentTo($user, \App\Notifications\SistemaNotification::class);
+    }
+
     private function criarPlanilhaNoStorage(string $disk, array $linhas): string
     {
         $spreadsheet = new Spreadsheet;
@@ -152,11 +233,13 @@ class AlunoImportacaoSpreadsheetServiceTest extends TestCase
         $arquivoTemporario = tempnam(sys_get_temp_dir(), 'alunos_importacao_test_');
 
         (new Xlsx($spreadsheet))->save($arquivoTemporario);
+        $spreadsheet->disconnectWorksheets();
 
         $caminho = 'imports/tests/'.basename($arquivoTemporario).'.xlsx';
         Storage::disk($disk)->put($caminho, file_get_contents($arquivoTemporario));
 
         @unlink($arquivoTemporario);
+        gc_collect_cycles();
 
         return $caminho;
     }

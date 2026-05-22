@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources\Alunos\Pages;
 
 use App\Exceptions\MatriculaAlunoBloqueadaException;
 use App\Filament\Admin\Resources\Alunos\AlunoResource;
+use App\Jobs\ImportAlunosMatriculadosJob;
 use App\Models\Aluno;
 use App\Services\AlunoMovimentacaoService;
 use App\Services\Alunos\AlunoImportacaoSpreadsheetService;
@@ -21,7 +22,6 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
-use InvalidArgumentException;
 use Override;
 
 class ListAlunos extends ListRecords
@@ -92,28 +92,21 @@ class ListAlunos extends ListRecords
                         ])
                         ->maxSize(10240)
                         ->required()
-                        ->helperText('Use a aba Matriculados com Escola, Seriacao, Turma, Turno, CGM, Nome do Aluno, Data de Nascimento, Sexo e Data Matricula.'),
+                        ->helperText('Use a aba Matriculados com Escola, Seriacao, Turma, Turno, CGM, Nome do Aluno, Data de Nascimento e Sexo. Data Matricula e opcional.'),
                 ])
                 ->action(function (array $data): void {
-                    try {
-                        $resultado = $this->spreadsheetService()->importar(
-                            $data['arquivo'],
-                            Auth::user()
-                        );
+                    $arquivo = $this->normalizarArquivoImportacao($data['arquivo'] ?? null);
 
-                        Notification::make()
-                            ->title('Importacao concluida')
-                            ->body("{$resultado['total_importado']} aluno(s) importado(s). Series criadas: {$resultado['series_criadas']}. Turmas criadas: {$resultado['turmas_criadas']}. Pendentes: {$resultado['total_pendente']}. CGMs duplicados ignorados: {$resultado['duplicados_ignorados']}.")
-                            ->success()
-                            ->send();
-                    } catch (InvalidArgumentException|ValidationException $exception) {
-                        Notification::make()
-                            ->title('Nao foi possivel importar a planilha')
-                            ->body($exception->getMessage())
-                            ->danger()
-                            ->persistent()
-                            ->send();
-                    }
+                    ImportAlunosMatriculadosJob::dispatch(
+                        $arquivo,
+                        Auth::id(),
+                    )->afterCommit();
+
+                    Notification::make()
+                        ->title('Importacao enviada para processamento')
+                        ->body('A planilha sera processada em segundo plano. Voce pode continuar usando o sistema e recebera uma notificacao quando terminar.')
+                        ->success()
+                        ->send();
                 }),
 
             Actions\CreateAction::make()
@@ -177,5 +170,14 @@ HTML;
     private function spreadsheetService(): AlunoImportacaoSpreadsheetService
     {
         return app(AlunoImportacaoSpreadsheetService::class);
+    }
+
+    private function normalizarArquivoImportacao(mixed $arquivo): string
+    {
+        if (is_array($arquivo)) {
+            $arquivo = reset($arquivo);
+        }
+
+        return (string) $arquivo;
     }
 }

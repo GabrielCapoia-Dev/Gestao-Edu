@@ -71,7 +71,7 @@ services:
     command: >
       sh -c "mkdir -p storage/app/private/exports storage/logs bootstrap/cache
       && chown -R www-data:www-data storage/app/private/exports storage/logs bootstrap/cache
-      && exec su -s /bin/sh www-data -c 'nice -n $${EXPORTS_QUEUE_NICE:-10} php artisan queue:work database --queue=$${EXPORTS_QUEUE:-exports},default --sleep=$${EXPORTS_QUEUE_SLEEP:-5} --rest=$${EXPORTS_QUEUE_REST:-1} --timeout=$${EXPORTS_JOB_TIMEOUT:-900} --tries=2 --memory=$${EXPORTS_QUEUE_MEMORY_MB:-384}'"
+      && exec su -s /bin/sh www-data -c 'nice -n $${EXPORTS_QUEUE_NICE:-10} php artisan queue:work database --queue=$${IMPORTS_QUEUE:-imports},$${EXPORTS_QUEUE:-exports},default --sleep=$${EXPORTS_QUEUE_SLEEP:-5} --rest=$${EXPORTS_QUEUE_REST:-1} --timeout=$${EXPORTS_JOB_TIMEOUT:-900} --tries=2 --memory=$${EXPORTS_QUEUE_MEMORY_MB:-384}'"
     volumes:
       - .:/var/www
     depends_on:
