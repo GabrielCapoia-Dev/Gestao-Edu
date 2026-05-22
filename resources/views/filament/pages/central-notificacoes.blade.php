@@ -103,90 +103,6 @@
             <source src="{{ $soundUrl }}" type="audio/mpeg">
         </audio>
 
-        @if($canCreateNotifications)
-        <div class="nc-modal" data-create-modal hidden aria-hidden="true">
-            <div class="nc-modal__backdrop" data-action="close-create"></div>
-            <form class="nc-modal__panel" data-create-form>
-                <div class="nc-modal__header">
-                    <div>
-                        <p class="nc-kicker">Disparo manual</p>
-                        <h3>Nova notificação</h3>
-                    </div>
-                    <button type="button" class="nc-icon-btn" data-action="close-create" aria-label="Fechar">
-                        <x-heroicon-o-x-mark />
-                    </button>
-                </div>
-
-                <div class="nc-form-grid">
-                    <label class="nc-field nc-field--full">
-                        <span>Título</span>
-                        <input type="text" name="titulo" maxlength="120" required>
-                    </label>
-
-                    <label class="nc-field nc-field--full">
-                        <span>Mensagem</span>
-                        <textarea name="mensagem" rows="4" maxlength="1500" required></textarea>
-                    </label>
-
-                    <label class="nc-field">
-                        <span>Prioridade</span>
-                        <select name="prioridade" required>
-                            @foreach($priorityOptions as $value => $label)
-                            <option value="{{ $value }}" @selected($value==='normal' )>{{ $label }}</option>
-                            @endforeach
-                        </select>
-                    </label>
-
-                    <label class="nc-field">
-                        <span>Enviar para</span>
-                        <select name="destino_tipo" data-destination-select required>
-                            @foreach($destinationTypeOptions as $value => $label)
-                            <option value="{{ $value }}">{{ $label }}</option>
-                            @endforeach
-                        </select>
-                    </label>
-
-                    <label class="nc-field nc-field--full">
-                        <span>Link de ação</span>
-                        <input type="text" name="url" maxlength="2048" placeholder="https://...">
-                    </label>
-
-                    <label class="nc-field nc-field--full">
-                        <span>Texto do botão</span>
-                        <input type="text" name="label" maxlength="80" placeholder="Ver detalhes">
-                    </label>
-
-                    @foreach([
-                    'usuarios' => 'Usuários',
-                    'roles' => 'Níveis de acesso',
-                    'escolas' => 'Escolas',
-                    'turmas' => 'Turmas',
-                    'permissoes' => 'Permissões',
-                    ] as $group => $label)
-                    <label class="nc-field nc-field--full" data-recipient-group="{{ $group }}" hidden>
-                        <span>{{ $label }}</span>
-                        <select multiple size="7" data-recipient-select="{{ $group }}">
-                            @foreach($recipientOptions[$group] ?? [] as $option)
-                            <option value="{{ $option['id'] }}">{{ $option['label'] }}</option>
-                            @endforeach
-                        </select>
-                    </label>
-                    @endforeach
-                </div>
-
-                <div class="nc-form-error" data-form-error hidden></div>
-
-                <div class="nc-modal__footer">
-                    <button type="button" class="nc-action nc-action--ghost" data-action="close-create">Cancelar</button>
-                    <button type="submit" class="nc-action nc-action--primary">
-                        <x-heroicon-o-paper-airplane />
-                        <span>Enviar notificação</span>
-                    </button>
-                </div>
-            </form>
-        </div>
-        @endif
-
         <style>
             .notification-center,
             .notification-center * {
@@ -832,9 +748,6 @@
                 const paginationPage = root.querySelector('[data-pagination-page]');
                 const markAllButton = document.querySelector('[data-nc-action="mark-all-read"]');
                 const audio = root.querySelector('[data-notification-sound]');
-                const modal = root.querySelector('[data-create-modal]');
-                const form = root.querySelector('[data-create-form]');
-                const formError = root.querySelector('[data-form-error]');
                 let searchTimer = null;
                 let loadVersion = 0;
                 let lastChangeToken = null;
@@ -1159,86 +1072,6 @@
                     }
                 };
 
-                const syncRecipientGroups = () => {
-                    const value = root.querySelector('[data-destination-select]')?.value ?? 'todos';
-                    const map = {
-                        usuarios: 'usuarios',
-                        roles: 'roles',
-                        escolas: 'escolas',
-                        professores_turmas: 'turmas',
-                        permissoes: 'permissoes',
-                    };
-
-                    root.querySelectorAll('[data-recipient-group]').forEach((group) => {
-                        group.hidden = group.dataset.recipientGroup !== map[value];
-                    });
-                };
-
-                const closeCreateModal = () => {
-                    if (!modal) {
-                        return;
-                    }
-
-                    modal.hidden = true;
-                    modal.setAttribute('aria-hidden', 'true');
-                    formError.hidden = true;
-                };
-
-                const openCreateModal = () => {
-                    if (!modal) {
-                        return;
-                    }
-
-                    modal.hidden = false;
-                    modal.setAttribute('aria-hidden', 'false');
-                    syncRecipientGroups();
-                    modal.querySelector('input[name="titulo"]')?.focus();
-                };
-
-                const selectedValues = (name) => Array.from(root.querySelector(`[data-recipient-select="${name}"]`)?.selectedOptions ?? [])
-                    .map((option) => option.value);
-
-                const submitCreate = async (event) => {
-                    event.preventDefault();
-
-                    const submit = form.querySelector('button[type="submit"]');
-                    const formData = new FormData(form);
-                    const data = {
-                        titulo: formData.get('titulo'),
-                        mensagem: formData.get('mensagem'),
-                        prioridade: formData.get('prioridade'),
-                        destino_tipo: formData.get('destino_tipo'),
-                        url: formData.get('url'),
-                        label: formData.get('label'),
-                        usuarios_ids: selectedValues('usuarios'),
-                        roles_ids: selectedValues('roles'),
-                        escolas_ids: selectedValues('escolas'),
-                        turmas_ids: selectedValues('turmas'),
-                        permissoes: selectedValues('permissoes'),
-                    };
-
-                    submit.disabled = true;
-                    formError.hidden = true;
-
-                    try {
-                        await request(config.endpoints.send, {
-                            method: 'POST',
-                            body: JSON.stringify(data),
-                        });
-
-                        form.reset();
-                        closeCreateModal();
-                        state.modo = 'todas';
-                        state.page = 1;
-                        await load();
-                    } catch (error) {
-                        formError.textContent = error.message;
-                        formError.hidden = false;
-                    } finally {
-                        submit.disabled = false;
-                    }
-                };
-
                 document.addEventListener('click', async (event) => {
                     const target = event.target.closest('[data-mode], [data-tab-mode], [data-action], [data-nc-action]');
 
@@ -1249,7 +1082,7 @@
                     const action = target.dataset.ncAction || target.dataset.action;
 
                     const isInsideNotificationCenter = root.contains(target);
-                    const isHeaderAction = ['mark-all-read', 'open-create'].includes(action);
+                    const isHeaderAction = ['mark-all-read'].includes(action);
 
                     if (!isInsideNotificationCenter && !isHeaderAction) {
                         return;
@@ -1303,10 +1136,6 @@
                         } finally {
                             target.disabled = false;
                         }
-                    } else if (action === 'open-create') {
-                        openCreateModal();
-                    } else if (action === 'close-create') {
-                        closeCreateModal();
                     }
                 });
 
@@ -1327,9 +1156,6 @@
                     });
                 });
 
-                root.querySelector('[data-destination-select]')?.addEventListener('change', syncRecipientGroups);
-                form?.addEventListener('submit', submitCreate);
-
                 window.addEventListener('pointerdown', () => {
                     soundReady = true;
                 }, {
@@ -1342,10 +1168,12 @@
                     once: true
                 });
 
-                window.addEventListener('keydown', (event) => {
-                    if (event.key === 'Escape') {
-                        closeCreateModal();
-                    }
+                window.addEventListener('notification-center-refresh', () => {
+                    state.modo = 'todas';
+                    state.page = 1;
+                    load({
+                        silent: true
+                    });
                 });
 
                 load();

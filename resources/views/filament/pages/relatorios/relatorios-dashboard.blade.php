@@ -74,10 +74,10 @@
                     </svg>
                 </div>
                 <div class="rel-kpi-body">
-                    <span class="rel-kpi-label">Com professor</span>
+                    <span class="rel-kpi-label">Turmas com professor</span>
                     <span class="rel-kpi-value rel-kpi-value--green">{{ $this->comProfessor }}</span>
-                    @if($this->vinculos > 0)
-                    <span class="rel-kpi-sub">{{ round(($this->comProfessor / $this->vinculos) * 100) }}% dos vínculos</span>
+                    @if($this->totalTurmas > 0)
+                    <span class="rel-kpi-sub">{{ round(($this->comProfessor / $this->totalTurmas) * 100) }}% das turmas com todos os componentes cobertos</span>
                     @endif
                 </div>
             </div>
@@ -89,10 +89,10 @@
                     </svg>
                 </div>
                 <div class="rel-kpi-body">
-                    <span class="rel-kpi-label">Sem professor</span>
+                    <span class="rel-kpi-label">Turmas com falta</span>
                     <span class="rel-kpi-value rel-kpi-value--red">{{ $this->semProfessor }}</span>
-                    @if($this->vinculos > 0)
-                    <span class="rel-kpi-sub">{{ round(($this->semProfessor / $this->vinculos) * 100) }}% dos vínculos</span>
+                    @if($this->totalTurmas > 0)
+                    <span class="rel-kpi-sub">{{ round(($this->semProfessor / $this->totalTurmas) * 100) }}% das turmas com professor faltando em algum componente</span>
                     @endif
                 </div>
             </div>
@@ -113,9 +113,9 @@
                         <tr>
                             <th>#</th>
                             <th>Componente</th>
-                            <th>Total</th>
+                            <th>Turmas</th>
                             <th>Com professor</th>
-                            <th>Sem professor</th>
+                            <th>Faltam professores</th>
                             <th>Cobertura</th>
                         </tr>
                     </thead>
@@ -151,6 +151,42 @@
         </div>
         @endif
 
+        {{-- TABELA ESCOLAS POR COMPONENTE --}}
+        @if(count($this->faltasPorEscolaComponente) > 0)
+        <div class="rel-table-card mb-rel">
+            <div class="rel-table-header">
+                <div>
+                    <h3 class="rel-table-title">Escolas com professores faltando por componente</h3>
+                    <p class="rel-table-sub">Top 10 combinações escola/componente com maior necessidade de professor</p>
+                </div>
+            </div>
+            <div class="rel-table-wrap">
+                <table class="rel-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Escola</th>
+                            <th>Componente</th>
+                            <th>Professores faltando</th>
+                            <th>Turmas afetadas</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($this->faltasPorEscolaComponente as $i => $item)
+                        <tr>
+                            <td class="rel-table-rank">{{ $i + 1 }}</td>
+                            <td class="rel-table-name">{{ $item->escola_nome }}</td>
+                            <td>{{ $item->componente_nome }}</td>
+                            <td><span class="rel-badge rel-badge--red">{{ $item->professores_faltando }}</span></td>
+                            <td><span class="rel-badge rel-badge--slate">{{ $item->turmas_afetadas }}</span></td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        @endif
+
         {{-- RELATÓRIOS --}}
         <div class="rel-section">
             <p class="rel-section-label">Relatórios disponíveis</p>
@@ -174,7 +210,7 @@
                         <div style="display:flex;gap:0.4rem;flex-wrap:wrap">
                             <span class="rel-card-tag rel-card-tag--blue">Exportável</span>
                             @if($this->semProfessor > 0)
-                            <span class="rel-card-tag rel-card-tag--red">{{ $this->semProfessor }} sem professor</span>
+                            <span class="rel-card-tag rel-card-tag--red">{{ $this->semProfessor }} turmas com falta</span>
                             @endif
                         </div>
                         <span class="rel-card-arrow">→</span>

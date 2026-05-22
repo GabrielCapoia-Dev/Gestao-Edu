@@ -123,7 +123,7 @@ class NotificationCenterController extends Controller
             'url' => ['nullable', 'string', 'max:2048'],
             'label' => ['nullable', 'string', 'max:80'],
             'prioridade' => ['required', Rule::in(array_keys($this->service->prioridadeOptions()))],
-            'destino_tipo' => ['required', Rule::in(array_keys($this->service->destinoTipoOptions()))],
+            'destino_tipo' => ['required', Rule::in(array_keys($this->service->destinoTipoOptions($user)))],
             'usuarios_ids' => ['array'],
             'usuarios_ids.*' => ['integer'],
             'roles_ids' => ['array'],
@@ -134,6 +134,8 @@ class NotificationCenterController extends Controller
             'turmas_ids.*' => ['integer'],
             'permissoes' => ['array'],
             'permissoes.*' => ['string'],
+            'setores_ids' => ['array'],
+            'setores_ids.*' => ['integer'],
         ]);
 
         $result = $this->service->send($user, $data);

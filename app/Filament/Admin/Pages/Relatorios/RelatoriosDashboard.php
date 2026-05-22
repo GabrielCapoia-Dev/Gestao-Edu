@@ -32,6 +32,7 @@ class RelatoriosDashboard extends Page
     public int $semProfessor        = 0;
     public int $comProfessor        = 0;
     public array $topComponentes    = [];
+    public array $faltasPorEscolaComponente = [];
 
     public function mount(): void
     {
@@ -41,10 +42,10 @@ class RelatoriosDashboard extends Page
         $this->totalEscolas     = Escola::count();
 
         $this->vinculos     = TurmaComponenteProfessor::count();
-        $this->semProfessor = TurmaComponenteProfessor::whereNull('professor_id')->count();
-        $this->comProfessor = TurmaComponenteProfessor::whereNotNull('professor_id')->count();
+        $this->semProfessor = $this->contarTurmasComProfessorFaltando();
+        $this->comProfessor = $this->contarTurmasComTodosComponentesComProfessor();
 
-        // Top componentes com mais vínculos (com ou sem professor)
+        // Top componentes com maior deficit de professores.
         $this->topComponentes = DB::table('turma_componente_professor as tcp')
             ->join('componentes_curriculares as cc', 'cc.id', '=', 'tcp.componente_curricular_id')
             ->select(
@@ -54,10 +55,55 @@ class RelatoriosDashboard extends Page
                 DB::raw('SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) as sem_professor')
             )
             ->groupBy('cc.id', 'cc.nome')
+            ->havingRaw('SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) > 0')
             ->orderByDesc('sem_professor')
             ->limit(5)
             ->get()
             ->toArray();
+
+        $this->faltasPorEscolaComponente = DB::table('turma_componente_professor as tcp')
+            ->join('turmas', 'turmas.id', '=', 'tcp.turma_id')
+            ->join('escolas', 'escolas.id', '=', 'turmas.id_escola')
+            ->join('componentes_curriculares as cc', 'cc.id', '=', 'tcp.componente_curricular_id')
+            ->whereNull('tcp.professor_id')
+            ->select(
+                'escolas.nome as escola_nome',
+                'cc.nome as componente_nome',
+                DB::raw('COUNT(*) as professores_faltando'),
+                DB::raw('COUNT(DISTINCT turmas.id) as turmas_afetadas')
+            )
+            ->groupBy('escolas.id', 'escolas.nome', 'cc.id', 'cc.nome')
+            ->orderByDesc('professores_faltando')
+            ->orderBy('escolas.nome')
+            ->orderBy('cc.nome')
+            ->limit(10)
+            ->get()
+            ->toArray();
+    }
+
+    protected function contarTurmasComProfessorFaltando(): int
+    {
+        return $this->countSubquery(
+            DB::table('turma_componente_professor as tcp')
+                ->select('tcp.turma_id')
+                ->groupBy('tcp.turma_id')
+                ->havingRaw('SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) > 0')
+        );
+    }
+
+    protected function contarTurmasComTodosComponentesComProfessor(): int
+    {
+        return $this->countSubquery(
+            DB::table('turma_componente_professor as tcp')
+                ->select('tcp.turma_id')
+                ->groupBy('tcp.turma_id')
+                ->havingRaw('SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) = 0')
+        );
+    }
+
+    protected function countSubquery(\Illuminate\Database\Query\Builder $query): int
+    {
+        return DB::query()->fromSub($query, 'sub')->count();
     }
 
     public function getHeader(): ?\Illuminate\Contracts\View\View

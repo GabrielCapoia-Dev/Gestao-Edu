@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\NotificationCenterService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
+use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 class ManualNotificationQueueTest extends TestCase
@@ -22,6 +23,10 @@ class ManualNotificationQueueTest extends TestCase
             'email_approved' => true,
             'email_verified_at' => now(),
         ]);
+        $autor->givePermissionTo(Permission::firstOrCreate([
+            'name' => NotificationCenterService::DESTINATION_PERMISSIONS['usuarios'],
+            'guard_name' => 'web',
+        ]));
         $destinatario = User::factory()->create([
             'email_approved' => true,
             'email_verified_at' => now(),

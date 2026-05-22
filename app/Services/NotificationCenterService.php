@@ -7,6 +7,7 @@ use App\Models\Escola;
 use App\Models\NotificacaoEnvio;
 use App\Models\Professor;
 use App\Models\Role;
+use App\Models\Setor;
 use App\Models\Turma;
 use App\Models\User;
 use Carbon\Carbon;
@@ -16,11 +17,22 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Permission;
 use Throwable;
 
 class NotificationCenterService
 {
+    public const DESTINATION_PERMISSIONS = [
+        'todos' => 'Enviar Notificações: Todos os Usuários',
+        'usuarios' => 'Enviar Notificações: Usuários Específicos',
+        'roles' => 'Enviar Notificações: Níveis de Acesso',
+        'escolas' => 'Enviar Notificações: Usuários por Escola',
+        'professores_turmas' => 'Enviar Notificações: Professores por Turma',
+        'permissoes' => 'Enviar Notificações: Usuários por Permissão',
+        'setores' => 'Enviar Notificações: Setor Específico',
+    ];
+
     public function canView(?User $user): bool
     {
         return $user?->hasPermissionTo('Visualizar Notificações') ?? false;
@@ -41,23 +53,43 @@ class NotificationCenterService
         ];
     }
 
-    public function destinoTipoOptions(): array
+    public function destinoTipoOptions(?User $user = null): array
     {
-        return [
+        $options = [
             'todos' => 'Todos os usuários',
             'usuarios' => 'Usuários específicos',
             'roles' => 'Níveis de acesso',
             'escolas' => 'Usuários por escola',
             'professores_turmas' => 'Professores por turma',
             'permissoes' => 'Usuários por permissão',
+            'setores' => 'Setor específico',
         ];
+
+        if (! $user) {
+            return $options;
+        }
+
+        return collect($options)
+            ->filter(fn (string $label, string $tipo): bool => $this->canSendToDestination($user, $tipo))
+            ->all();
     }
 
-    public function formOptions(): array
+    public function canSendToDestination(?User $user, string $tipo): bool
+    {
+        $permission = self::DESTINATION_PERMISSIONS[$tipo] ?? null;
+
+        if (! $user || ! $permission) {
+            return false;
+        }
+
+        return $user->hasRole('Admin') || $user->hasPermissionTo($permission);
+    }
+
+    public function formOptions(?User $user = null): array
     {
         $ttl = now()->addMinutes(5);
 
-        return Cache::remember('notifications:form-options', $ttl, function () use ($ttl): array {
+        $globalOptions = Cache::remember('notifications:form-options', $ttl, function () use ($ttl): array {
             return [
                 'usuarios' => $this->cacheRemember('notifications:form-options:usuarios', $ttl, fn (): array => User::query()
                     ->orderBy('name')
@@ -65,7 +97,7 @@ class NotificationCenterService
                     ->get(['id', 'name', 'email'])
                     ->map(fn (User $user): array => [
                         'id' => (string) $user->id,
-                        'label' => trim("{$user->name} · {$user->email}"),
+                        'label' => trim("{$user->name} - {$user->email}"),
                     ])
                     ->values()
                     ->all()),
@@ -121,6 +153,25 @@ class NotificationCenterService
                     ->all()),
             ];
         });
+
+        $globalOptions['setores'] = collect(app(UserSetorAccessService::class)->optionsForSelect($user))
+            ->map(fn (string $label, int|string $id): array => [
+                'id' => (string) $id,
+                'label' => $label,
+            ])
+            ->values()
+            ->all();
+
+        return $globalOptions;
+    }
+
+    public function formSelectOptions(?User $user = null): array
+    {
+        return collect($this->formOptions($user))
+            ->map(fn (array $options): array => collect($options)
+                ->mapWithKeys(fn (array $option): array => [$option['id'] => $option['label']])
+                ->all())
+            ->all();
     }
 
     private function cacheRemember(string $key, \DateTimeInterface|\DateInterval|int $ttl, \Closure $callback): mixed
@@ -298,7 +349,15 @@ class NotificationCenterService
 
     public function send(User $autor, array $data): array
     {
-        [$destinatarios, $destinoLabel, $destinoIds] = $this->resolverDestinatarios($data);
+        $tipo = $data['destino_tipo'] ?? 'todos';
+
+        if (! $this->canSendToDestination($autor, $tipo)) {
+            throw ValidationException::withMessages([
+                'destino_tipo' => 'Você não tem permissão para usar esta opção de envio.',
+            ]);
+        }
+
+        [$destinatarios, $destinoLabel, $destinoIds] = $this->resolverDestinatarios($data, $autor);
 
         if ($destinatarios->isEmpty()) {
             return [
@@ -461,7 +520,7 @@ class NotificationCenterService
         }
     }
 
-    private function resolverDestinatarios(array $data): array
+    private function resolverDestinatarios(array $data, User $autor): array
     {
         $tipo = $data['destino_tipo'] ?? 'todos';
         $ids = collect();
@@ -505,6 +564,22 @@ class NotificationCenterService
             } else {
                 $query->permission($ids->all());
             }
+        } elseif ($tipo === 'setores') {
+            $ids = $this->idsSelecionados($data['setores_ids'] ?? []);
+            $setorAccess = app(UserSetorAccessService::class);
+            $setoresPermitidos = collect($setorAccess->visibleSetorIds($autor));
+
+            if ($ids->isEmpty() || $ids->diff($setoresPermitidos)->isNotEmpty()) {
+                throw ValidationException::withMessages([
+                    'setores_ids' => 'Selecione apenas setores permitidos para o seu usuário.',
+                ]);
+            }
+
+            $query->where(function (EloquentBuilder $usuarios) use ($ids): void {
+                $usuarios
+                    ->whereIn('setor_id', $ids)
+                    ->orWhereHas('escola', fn (EloquentBuilder $escola) => $escola->whereIn('setor_id', $ids));
+            });
         }
 
         $destinatarios = $query
@@ -538,6 +613,7 @@ class NotificationCenterService
             'escolas' => $this->resumirNomes(Escola::query()->whereIn('id', $ids)->orderBy('nome')->pluck('nome'), 'Escolas'),
             'professores_turmas' => $this->resumirNomes(Turma::query()->whereIn('id', $ids)->orderBy('nome')->pluck('nome'), 'Professores por turma'),
             'permissoes' => $this->resumirNomes($ids, 'Usuários por permissão'),
+            'setores' => $this->resumirNomes(Setor::query()->whereIn('id', $ids)->orderBy('nome')->pluck('nome'), 'Setores'),
             default => 'Todos os usuários',
         };
     }
