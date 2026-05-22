@@ -280,10 +280,17 @@ class AlunoService
     private function filtrosTabela(?User $user): array
     {
         return [
-            SelectFilter::make('id_turma')
-                ->label('Turma')
-                ->options(fn (): array => $this->opcoesDeTurmas($user))
-                ->searchable(),
+            SelectFilter::make('id_serie')
+                ->label('Série')
+                ->options(fn (): array => $this->opcoesDeSeries($user))
+                ->searchable()
+                ->query(function (Builder $query, array $data) {
+                    if (blank($data['value'] ?? null)) {
+                        return $query;
+                    }
+
+                    return $query->whereHas('turma', fn (Builder $q) => $q->where('id_serie', $data['value']));
+                }),
 
             SelectFilter::make('status')
                 ->label('Status')
@@ -528,6 +535,17 @@ class AlunoService
     private function professorEstaRestritoAoAluno(?User $user, Aluno $aluno): bool
     {
         return app(AlunoTransferenciaPendenteService::class)->professorEstaRestritoAoAluno($user, $aluno);
+    }
+
+    public function opcoesDeSeries(?User $user): array
+    {
+        $query = Serie::query()
+            ->whereHas('turmas', function (Builder $q) use ($user): void {
+                $this->aplicarFiltroTurmasFormularioAluno($q, $user);
+            })
+            ->orderBy('nome');
+
+        return $query->pluck('nome', 'id')->toArray();
     }
 
     public function opcoesDeTurmas(?User $user): array
