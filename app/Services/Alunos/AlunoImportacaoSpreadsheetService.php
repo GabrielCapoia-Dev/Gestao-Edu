@@ -5,6 +5,7 @@ namespace App\Services\Alunos;
 use App\Exceptions\MatriculaAlunoBloqueadaException;
 use App\Models\Aluno;
 use App\Models\Escola;
+use App\Models\ExportRequest;
 use App\Models\Serie;
 use App\Models\Turma;
 use App\Models\User;
@@ -32,6 +33,8 @@ use Symfony\Component\HttpFoundation\Response;
 class AlunoImportacaoSpreadsheetService
 {
     public const SHEET_NAME = 'Matriculados';
+
+    public const CHUNK_SIZE = 100;
 
     private const HEADER_ALIASES = [
         'escola' => ['escola'],
@@ -102,56 +105,90 @@ class AlunoImportacaoSpreadsheetService
         );
     }
 
-    public function importar(string $caminhoArquivo, ?User $usuario = null, string $disk = 'local'): array
-    {
+    public function importar(
+        string $caminhoArquivo,
+        ?User $usuario = null,
+        string $disk = 'local',
+        ?string $processRequestId = null,
+    ): array {
         $caminhoCompleto = Storage::disk($disk)->path($caminhoArquivo);
 
         try {
             $validacao = $this->validarLinhas($this->carregarLinhas($caminhoCompleto));
             $linhas = $validacao['linhas'];
+            $totalLinhas = count($linhas);
 
-            $resultado = DB::transaction(function () use ($linhas, $usuario, $validacao): array {
-                $series = $this->seriesPorNome();
-                $turmas = $this->turmasPorChave();
-                $importados = 0;
-                $pendentes = 0;
-                $turmasCriadas = 0;
-                $seriesCriadas = 0;
+            $resultado = [
+                'total_importado' => 0,
+                'total_pendente' => 0,
+                'series_criadas' => 0,
+                'turmas_criadas' => 0,
+                'duplicados_ignorados' => $validacao['duplicados_ignorados'],
+            ];
 
-                foreach ($linhas as $linha) {
-                    [$serie, $serieCriada] = $this->resolverSerie($linha['seriacao'], $series);
-                    [$turma, $turmaCriada] = $this->resolverTurma($linha, $serie, $turmas);
+            $processado = 0;
 
-                    $seriesCriadas += $serieCriada ? 1 : 0;
-                    $turmasCriadas += $turmaCriada ? 1 : 0;
+            foreach (array_chunk($linhas, self::CHUNK_SIZE) as $chunk) {
+                $chunkResultado = DB::transaction(function () use ($chunk, $usuario): array {
+                    $series = $this->seriesPorNome();
+                    $turmas = $this->turmasPorChave();
+                    $importados = 0;
+                    $pendentes = 0;
+                    $turmasCriadas = 0;
+                    $seriesCriadas = 0;
 
-                    $this->alunoService->validarTurmaPermitida((int) $turma->id, $usuario);
+                    foreach ($chunk as $linha) {
+                        [$serie, $serieCriada] = $this->resolverSerie($linha['seriacao'], $series);
+                        [$turma, $turmaCriada] = $this->resolverTurma($linha, $serie, $turmas);
 
-                    $aluno = $this->movimentacaoService->criarMatricula([
-                        'nome' => $linha['nome'],
-                        'cgm' => $linha['cgm'],
-                        'data_nascimento' => $linha['data_nascimento'],
-                        'sexo' => $linha['sexo'],
-                        'data_matricula' => $linha['data_matricula'],
-                        'id_turma' => (int) $turma->id,
-                        'status_motivo' => 'Matricula criada por importacao de planilha.',
-                    ], $usuario);
+                        $seriesCriadas += $serieCriada ? 1 : 0;
+                        $turmasCriadas += $turmaCriada ? 1 : 0;
 
-                    $importados++;
+                        $this->alunoService->validarTurmaPermitida((int) $turma->id, $usuario);
 
-                    if ($aluno->status === Aluno::STATUS_PENDENTE) {
-                        $pendentes++;
+                        $aluno = $this->movimentacaoService->criarMatricula([
+                            'nome' => $linha['nome'],
+                            'cgm' => $linha['cgm'],
+                            'data_nascimento' => $linha['data_nascimento'],
+                            'sexo' => $linha['sexo'],
+                            'data_matricula' => $linha['data_matricula'],
+                            'id_turma' => (int) $turma->id,
+                            'status_motivo' => 'Matricula criada por importacao de planilha.',
+                        ], $usuario);
+
+                        $importados++;
+
+                        if ($aluno->status === Aluno::STATUS_PENDENTE) {
+                            $pendentes++;
+                        }
                     }
-                }
 
-                return [
-                    'total_importado' => $importados,
-                    'total_pendente' => $pendentes,
-                    'series_criadas' => $seriesCriadas,
-                    'turmas_criadas' => $turmasCriadas,
-                    'duplicados_ignorados' => $validacao['duplicados_ignorados'],
-                ];
-            });
+                    return [
+                        'total_importado' => $importados,
+                        'total_pendente' => $pendentes,
+                        'series_criadas' => $seriesCriadas,
+                        'turmas_criadas' => $turmasCriadas,
+                    ];
+                });
+
+                $resultado['total_importado'] += $chunkResultado['total_importado'];
+                $resultado['total_pendente'] += $chunkResultado['total_pendente'];
+                $resultado['series_criadas'] += $chunkResultado['series_criadas'];
+                $resultado['turmas_criadas'] += $chunkResultado['turmas_criadas'];
+
+                $processado += count($chunk);
+
+                if ($processRequestId) {
+                    ExportRequest::query()
+                        ->whereKey($processRequestId)
+                        ->update([
+                            'progress_current' => $processado,
+                            'progress_total' => $totalLinhas,
+                            'status_message' => "Processando alunos... {$processado} de {$totalLinhas}.",
+                            'updated_at' => now(),
+                        ]);
+                }
+            }
 
             return $resultado;
         } catch (MatriculaAlunoBloqueadaException $exception) {

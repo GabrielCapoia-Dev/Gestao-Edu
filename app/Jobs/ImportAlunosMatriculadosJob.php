@@ -49,7 +49,7 @@ class ImportAlunosMatriculadosJob implements ShouldQueue
         try {
             $processo?->markRunning('Importando alunos da planilha.');
 
-            $resultado = $service->importar($this->caminhoArquivo, $usuario, $this->disk);
+            $resultado = $service->importar($this->caminhoArquivo, $usuario, $this->disk, $this->processRequestId);
             $mensagem = "{$resultado['total_importado']} aluno(s) importado(s). Series criadas: {$resultado['series_criadas']}. Turmas criadas: {$resultado['turmas_criadas']}. Pendentes: {$resultado['total_pendente']}. CGMs duplicados ignorados: {$resultado['duplicados_ignorados']}.";
 
             $processo?->refresh()->markProcessFinished($mensagem);
