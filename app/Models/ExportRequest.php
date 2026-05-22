@@ -184,9 +184,16 @@ class ExportRequest extends Model
             return;
         }
 
+        $this->markCancelled('Cancelado pelo usuario.');
+    }
+
+    public function markCancelled(?string $message = null): void
+    {
         $this->forceFill([
+            'status' => self::STATUS_CANCELLED,
             'cancel_requested_at' => now(),
-            'status_message' => 'Cancelamento solicitado.',
+            'status_message' => $message ?? 'Cancelado.',
+            'finished_at' => now(),
         ])->save();
     }
 }

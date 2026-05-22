@@ -108,6 +108,36 @@ class ExportRequestServiceTest extends TestCase
             ->assertHeader('content-disposition');
     }
 
+    public function test_cancelamento_de_export_request_cancela_imediatamente(): void
+    {
+        $user = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+
+        $exportRequest = ExportRequest::query()->create([
+            'user_id' => $user->id,
+            'type' => 'alunos_importacao_planilha',
+            'format' => 'processo',
+            'label' => 'Importacao de alunos por planilha',
+            'filters' => [],
+            'metadata' => [],
+            'fingerprint' => fake()->uuid(),
+            'status' => ExportRequest::STATUS_QUEUED,
+            'status_message' => 'Aguardando processamento.',
+            'progress_current' => 0,
+            'progress_total' => 100,
+        ]);
+
+        $exportRequest->requestCancellation();
+
+        $exportRequest->refresh();
+
+        $this->assertSame(ExportRequest::STATUS_CANCELLED, $exportRequest->status);
+        $this->assertSame('Cancelado pelo usuario.', $exportRequest->status_message);
+        $this->assertNotNull($exportRequest->finished_at);
+    }
+
     private function finishedExportRequest(User $user): ExportRequest
     {
         $exportRequest = ExportRequest::query()->create([

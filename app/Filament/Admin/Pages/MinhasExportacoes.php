@@ -145,8 +145,8 @@ class MinhasExportacoes extends Page implements HasTable
                         $record->requestCancellation();
 
                         Notification::make()
-                            ->title('Cancelamento solicitado')
-                            ->warning()
+                            ->title('Processo cancelado')
+                            ->success()
                             ->send();
                     })
                     ->visible(fn (ExportRequest $record): bool => Auth::user()?->can('cancel', $record) ?? false),

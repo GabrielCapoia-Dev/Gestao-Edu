@@ -43,6 +43,10 @@ class DeleteAlunosEmMassaJob implements ShouldQueue
         $usuario = $this->usuario();
         $processo = $this->processo();
 
+        if ($processo?->status === ExportRequest::STATUS_CANCELLED) {
+            return;
+        }
+
         if (! $usuario) {
             return;
         }
