@@ -3,6 +3,7 @@
 namespace Tests\Feature\Alunos;
 
 use App\Filament\Admin\Resources\Alunos\Pages\ListAlunos;
+use App\Jobs\DeleteAlunosEmMassaJob;
 use App\Models\Aluno;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
@@ -11,6 +12,8 @@ use App\Models\Serie;
 use App\Models\Turma;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
@@ -233,6 +236,100 @@ class AlunoResourceScopeTest extends TestCase
             'id_turma' => $turmaDestino->id,
             'status' => Aluno::STATUS_MATRICULADO,
         ]);
+    }
+
+    public function test_exclusao_em_massa_de_alunos_e_enfileirada(): void
+    {
+        Queue::fake();
+
+        Permission::findOrCreate('Listar Alunos');
+        Permission::findOrCreate('Excluir Alunos');
+        Permission::findOrCreate('Excluir Alunos em Massa');
+
+        $escola = $this->criarEscola('Escola Bulk Delete');
+        $turma = $this->criarTurma($escola, 'Bulk');
+
+        $alunoA = Aluno::query()->create([
+            'nome' => 'Aluno Bulk A',
+            'cgm' => 'BULK-A',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turma->id,
+        ]);
+        $alunoB = Aluno::query()->create([
+            'nome' => 'Aluno Bulk B',
+            'cgm' => 'BULK-B',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turma->id,
+        ]);
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo(['Listar Alunos', 'Excluir Alunos', 'Excluir Alunos em Massa']);
+
+        Livewire::actingAs($usuario)
+            ->test(ListAlunos::class)
+            ->mountTableBulkAction('delete', [$alunoA, $alunoB])
+            ->callMountedTableBulkAction()
+            ->assertHasNoTableBulkActionErrors();
+
+        $this->assertDatabaseHas('alunos', ['id' => $alunoA->id]);
+        $this->assertDatabaseHas('alunos', ['id' => $alunoB->id]);
+        $this->assertDatabaseHas('export_requests', [
+            'user_id' => $usuario->id,
+            'type' => 'alunos_exclusao_massa',
+            'format' => 'processo',
+            'status' => 'queued',
+        ]);
+
+        Queue::assertPushed(DeleteAlunosEmMassaJob::class, function (DeleteAlunosEmMassaJob $job) use ($alunoA, $alunoB, $usuario): bool {
+            return $job->alunoIds === [$alunoA->id, $alunoB->id]
+                && $job->usuarioId === $usuario->id
+                && filled($job->processRequestId)
+                && $job->connection === 'database'
+                && $job->queue === 'imports';
+        });
+    }
+
+    public function test_job_de_exclusao_em_massa_remove_alunos_em_segundo_plano(): void
+    {
+        Notification::fake();
+
+        Permission::findOrCreate('Excluir Alunos');
+        Permission::findOrCreate('Excluir Alunos em Massa');
+
+        $escola = $this->criarEscola('Escola Job Delete');
+        $turma = $this->criarTurma($escola, 'Job');
+
+        $alunoA = Aluno::query()->create([
+            'nome' => 'Aluno Job A',
+            'cgm' => 'JOB-A',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turma->id,
+        ]);
+        $alunoB = Aluno::query()->create([
+            'nome' => 'Aluno Job B',
+            'cgm' => 'JOB-B',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turma->id,
+        ]);
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo(['Excluir Alunos', 'Excluir Alunos em Massa']);
+
+        app(DeleteAlunosEmMassaJob::class, [
+            'alunoIds' => [$alunoA->id, $alunoB->id],
+            'usuarioId' => $usuario->id,
+        ])->handle();
+
+        $this->assertDatabaseMissing('alunos', ['id' => $alunoA->id]);
+        $this->assertDatabaseMissing('alunos', ['id' => $alunoB->id]);
+
+        Notification::assertSentTo($usuario, \App\Notifications\SistemaNotification::class);
     }
 
     private function criarEscola(string $nome): Escola

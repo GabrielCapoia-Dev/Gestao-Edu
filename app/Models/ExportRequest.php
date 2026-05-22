@@ -155,11 +155,24 @@ class ExportRequest extends Model
         ])->save();
     }
 
+    public function markProcessFinished(?string $message = null): void
+    {
+        $this->forceFill([
+            'status' => self::STATUS_FINISHED,
+            'status_message' => $message ?? 'Processamento concluido.',
+            'progress_current' => 100,
+            'progress_total' => 100,
+            'error_message' => null,
+            'finished_at' => now(),
+            'expires_at' => $this->expires_at ?? now()->addDays((int) config('exports.expiration_days', 7)),
+        ])->save();
+    }
+
     public function markFailed(string $message): void
     {
         $this->forceFill([
             'status' => self::STATUS_FAILED,
-            'status_message' => 'Falha ao gerar arquivo.',
+            'status_message' => $this->format === 'processo' ? 'Falha no processamento.' : 'Falha ao gerar arquivo.',
             'error_message' => Str::limit($message, 4000, ''),
             'finished_at' => now(),
         ])->save();

@@ -11,7 +11,9 @@ class ExportRequestPolicy
     {
         return $user->hasRole('Admin')
             || $user->hasPermissionLike('exportar')
-            || $user->hasPermissionLike('relatorios');
+            || $user->hasPermissionLike('relatorios')
+            || $user->hasPermissionLike('importar alunos')
+            || $user->hasPermissionLike('excluir alunos');
     }
 
     public function view(User $user, ExportRequest $exportRequest): bool

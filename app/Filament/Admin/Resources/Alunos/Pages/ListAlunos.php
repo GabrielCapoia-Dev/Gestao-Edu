@@ -6,6 +6,7 @@ use App\Exceptions\MatriculaAlunoBloqueadaException;
 use App\Filament\Admin\Resources\Alunos\AlunoResource;
 use App\Jobs\ImportAlunosMatriculadosJob;
 use App\Models\Aluno;
+use App\Models\ExportRequest;
 use App\Services\AlunoMovimentacaoService;
 use App\Services\Alunos\AlunoImportacaoSpreadsheetService;
 use App\Services\AlunoTransferenciaPendenteService;
@@ -21,6 +22,7 @@ use Filament\View\PanelsRenderHook;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Override;
 
@@ -100,15 +102,18 @@ class ListAlunos extends ListRecords
                 ])
                 ->action(function (array $data): void {
                     $arquivo = $this->normalizarArquivoImportacao($data['arquivo'] ?? null);
+                    $processo = $this->criarProcessoImportacao($arquivo);
 
                     ImportAlunosMatriculadosJob::dispatch(
                         $arquivo,
                         Auth::id(),
+                        'local',
+                        $processo->getKey(),
                     )->afterCommit();
 
                     Notification::make()
                         ->title('Importacao enviada para processamento')
-                        ->body('A planilha sera processada em segundo plano. Voce pode continuar usando o sistema e recebera uma notificacao quando terminar.')
+                        ->body('Acompanhe o andamento em Minhas Exportacoes. Voce pode continuar usando o sistema.')
                         ->success()
                         ->send();
                 }),
@@ -183,5 +188,23 @@ HTML;
         }
 
         return (string) $arquivo;
+    }
+
+    private function criarProcessoImportacao(string $arquivo): ExportRequest
+    {
+        return ExportRequest::query()->create([
+            'user_id' => Auth::id(),
+            'type' => 'alunos_importacao_planilha',
+            'format' => 'processo',
+            'label' => 'Importacao de alunos por planilha',
+            'filters' => ['arquivo' => basename($arquivo)],
+            'metadata' => ['process_kind' => 'importacao_alunos'],
+            'fingerprint' => hash('sha256', 'alunos_importacao|'.Auth::id().'|'.$arquivo.'|'.Str::uuid()),
+            'status' => ExportRequest::STATUS_QUEUED,
+            'status_message' => 'Aguardando processamento.',
+            'progress_current' => 0,
+            'progress_total' => 100,
+            'expires_at' => now()->addDays((int) config('exports.expiration_days', 7)),
+        ]);
     }
 }

@@ -3,15 +3,17 @@
 namespace App\Services;
 
 use App\Exceptions\MatriculaAlunoBloqueadaException;
+use App\Jobs\DeleteAlunosEmMassaJob;
 use App\Models\Aluno;
 use App\Models\Avaliacao;
 use App\Models\Escola;
+use App\Models\ExportRequest;
 use App\Models\Serie;
 use App\Models\Turma;
 use App\Models\User;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\BulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
@@ -28,6 +30,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class AlunoService
@@ -442,10 +445,34 @@ class AlunoService
     private function acoesEmMassa(?User $user): array
     {
         return [
-            DeleteBulkAction::make()
-                ->authorizeIndividualRecords('delete')
+            BulkAction::make('delete')
+                ->label('Excluir selecionados')
+                ->icon('heroicon-o-trash')
+                ->color('danger')
+                ->requiresConfirmation()
+                ->modalHeading('Excluir alunos selecionados')
+                ->modalDescription('A exclusao sera enviada para processamento em segundo plano. Voce podera continuar usando o sistema.')
+                ->modalSubmitActionLabel('Enviar para exclusao')
+                ->fetchSelectedRecords(false)
                 ->visible(fn () => ! $this->professorEstaBloqueado($user)
-                    && ($user?->hasPermissionTo('Excluir Alunos em Massa') ?? false)),
+                    && ($user?->hasPermissionTo('Excluir Alunos em Massa') ?? false))
+                ->action(function ($recordsQuery): void {
+                    $ids = $recordsQuery
+                        ->pluck('alunos.id')
+                        ->map(fn ($id): int => (int) $id)
+                        ->values()
+                        ->all();
+                    $processo = $this->criarProcessoExclusaoEmMassa($ids);
+
+                    DeleteAlunosEmMassaJob::dispatch($ids, Auth::id(), $processo->getKey())->afterCommit();
+
+                    Notification::make()
+                        ->title('Exclusao enviada para processamento')
+                        ->body(count($ids).' aluno(s) foram enviados para exclusao em segundo plano. Acompanhe em Minhas Exportacoes.')
+                        ->success()
+                        ->send();
+                })
+                ->deselectRecordsAfterCompletion(),
         ];
     }
 
@@ -454,6 +481,24 @@ class AlunoService
         $query = Aluno::query();
 
         return $this->userService->aplicarFiltroAlunosDoUsuario($query, $user);
+    }
+
+    private function criarProcessoExclusaoEmMassa(array $ids): ExportRequest
+    {
+        return ExportRequest::query()->create([
+            'user_id' => Auth::id(),
+            'type' => 'alunos_exclusao_massa',
+            'format' => 'processo',
+            'label' => 'Exclusao de alunos em massa',
+            'filters' => ['total' => count($ids)],
+            'metadata' => ['process_kind' => 'exclusao_alunos_massa'],
+            'fingerprint' => hash('sha256', 'alunos_exclusao|'.Auth::id().'|'.json_encode($ids).'|'.Str::uuid()),
+            'status' => ExportRequest::STATUS_QUEUED,
+            'status_message' => 'Aguardando processamento.',
+            'progress_current' => 0,
+            'progress_total' => max(1, count($ids)),
+            'expires_at' => now()->addDays((int) config('exports.expiration_days', 7)),
+        ]);
     }
 
     private function formularioAlunoLiberadoAposCgm(Get $get): bool

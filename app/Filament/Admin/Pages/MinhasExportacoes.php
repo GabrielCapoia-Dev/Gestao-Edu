@@ -60,7 +60,7 @@ class MinhasExportacoes extends Page implements HasTable
             'actions' => $this->getCachedHeaderActions(),
             'eyebrow' => 'Relatorios',
             'title' => 'Minhas Exportacoes',
-            'description' => 'Acompanhe exportacoes em fila, andamento, prontas para download ou com falha.',
+            'description' => 'Acompanhe exportacoes e processamentos em segundo plano.',
         ]);
     }
 
@@ -72,15 +72,15 @@ class MinhasExportacoes extends Page implements HasTable
             ->defaultPaginationPageOption(10)
             ->columns([
                 TextColumn::make('label')
-                    ->label('Exportacao')
-                    ->placeholder('Exportacao')
+                    ->label('Solicitacao')
+                    ->placeholder('Solicitacao')
                     ->searchable()
                     ->wrap(),
 
                 TextColumn::make('format')
-                    ->label('Formato')
+                    ->label('Tipo')
                     ->badge()
-                    ->formatStateUsing(fn (?string $state): string => strtoupper((string) $state)),
+                    ->formatStateUsing(fn (?string $state): string => $state === 'processo' ? 'PROCESSO' : strtoupper((string) $state)),
 
                 TextColumn::make('status')
                     ->label('Status')

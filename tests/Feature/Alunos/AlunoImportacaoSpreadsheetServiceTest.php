@@ -179,11 +179,18 @@ class AlunoImportacaoSpreadsheetServiceTest extends TestCase
             ->assertHasNoActionErrors();
 
         $this->assertDatabaseCount('alunos', 0);
+        $this->assertDatabaseHas('export_requests', [
+            'user_id' => $user->id,
+            'type' => 'alunos_importacao_planilha',
+            'format' => 'processo',
+            'status' => 'queued',
+        ]);
 
         Queue::assertPushed(ImportAlunosMatriculadosJob::class, function (ImportAlunosMatriculadosJob $job) use ($caminho, $user): bool {
             return $job->caminhoArquivo === $caminho
                 && $job->usuarioId === $user->id
                 && $job->disk === 'local'
+                && filled($job->processRequestId)
                 && $job->connection === 'database'
                 && $job->queue === 'imports';
         });
