@@ -31,7 +31,15 @@ class RelatoriosDashboard extends Page
     public int $vinculos            = 0;
     public int $semProfessor        = 0;
     public int $comProfessor        = 0;
-    public array $topComponentes    = [];
+
+    public int $perPageComponentes = 5;
+    public int $pageComponentes = 1;
+    public int $totalComponentesRegistros = 0;
+    public array $topComponentes = [];
+
+    public int $perPageEscolas = 5;
+    public int $pageEscolas = 1;
+    public int $totalEscolasRegistros = 0;
     public array $faltasPorEscolaComponente = [];
 
     public function mount(): void
@@ -45,8 +53,13 @@ class RelatoriosDashboard extends Page
         $this->semProfessor = $this->contarTurmasComProfessorFaltando();
         $this->comProfessor = $this->contarTurmasComTodosComponentesComProfessor();
 
-        // Top componentes com maior deficit de professores.
-        $this->topComponentes = DB::table('turma_componente_professor as tcp')
+        $this->carregarComponentes();
+        $this->carregarEscolas();
+    }
+
+    protected function componentesQuery(bool $applyOrdering = true): \Illuminate\Database\Query\Builder
+    {
+        $query = DB::table('turma_componente_professor as tcp')
             ->join('componentes_curriculares as cc', 'cc.id', '=', 'tcp.componente_curricular_id')
             ->select(
                 'cc.nome',
@@ -55,13 +68,18 @@ class RelatoriosDashboard extends Page
                 DB::raw('SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) as sem_professor')
             )
             ->groupBy('cc.id', 'cc.nome')
-            ->havingRaw('SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) > 0')
-            ->orderByDesc('sem_professor')
-            ->limit(5)
-            ->get()
-            ->toArray();
+            ->havingRaw('SUM(CASE WHEN tcp.professor_id IS NULL THEN 1 ELSE 0 END) > 0');
 
-        $this->faltasPorEscolaComponente = DB::table('turma_componente_professor as tcp')
+        if ($applyOrdering) {
+            $query->orderByDesc('sem_professor');
+        }
+
+        return $query;
+    }
+
+    protected function escolasQuery(bool $applyOrdering = true): \Illuminate\Database\Query\Builder
+    {
+        $query = DB::table('turma_componente_professor as tcp')
             ->join('turmas', 'turmas.id', '=', 'tcp.turma_id')
             ->join('escolas', 'escolas.id', '=', 'turmas.id_escola')
             ->join('componentes_curriculares as cc', 'cc.id', '=', 'tcp.componente_curricular_id')
@@ -72,13 +90,71 @@ class RelatoriosDashboard extends Page
                 DB::raw('COUNT(*) as professores_faltando'),
                 DB::raw('COUNT(DISTINCT turmas.id) as turmas_afetadas')
             )
-            ->groupBy('escolas.id', 'escolas.nome', 'cc.id', 'cc.nome')
-            ->orderByDesc('professores_faltando')
-            ->orderBy('escolas.nome')
-            ->orderBy('cc.nome')
-            ->limit(10)
+            ->groupBy('escolas.id', 'escolas.nome', 'cc.id', 'cc.nome');
+
+        if ($applyOrdering) {
+            $query->orderByDesc('professores_faltando')
+                ->orderBy('escolas.nome')
+                ->orderBy('cc.nome');
+        }
+
+        return $query;
+    }
+
+    public function carregarComponentes(): void
+    {
+        $this->totalComponentesRegistros = $this->countSubquery($this->componentesQuery(false));
+
+        $this->topComponentes = $this->componentesQuery()
+            ->offset(($this->pageComponentes - 1) * $this->perPageComponentes)
+            ->limit($this->perPageComponentes)
             ->get()
             ->toArray();
+    }
+
+    public function carregarEscolas(): void
+    {
+        $this->totalEscolasRegistros = $this->countSubquery($this->escolasQuery(false));
+
+        $this->faltasPorEscolaComponente = $this->escolasQuery()
+            ->offset(($this->pageEscolas - 1) * $this->perPageEscolas)
+            ->limit($this->perPageEscolas)
+            ->get()
+            ->toArray();
+    }
+
+    public function updatedPerPageComponentes(): void
+    {
+        $this->pageComponentes = 1;
+        $this->carregarComponentes();
+    }
+
+    public function updatedPerPageEscolas(): void
+    {
+        $this->pageEscolas = 1;
+        $this->carregarEscolas();
+    }
+
+    public function irParaPaginaComponentes(int $pagina): void
+    {
+        $this->pageComponentes = $pagina;
+        $this->carregarComponentes();
+    }
+
+    public function irParaPaginaEscolas(int $pagina): void
+    {
+        $this->pageEscolas = $pagina;
+        $this->carregarEscolas();
+    }
+
+    public function getTotalPaginasComponentesProperty(): int
+    {
+        return max(1, (int) ceil($this->totalComponentesRegistros / $this->perPageComponentes));
+    }
+
+    public function getTotalPaginasEscolasProperty(): int
+    {
+        return max(1, (int) ceil($this->totalEscolasRegistros / $this->perPageEscolas));
     }
 
     protected function contarTurmasComProfessorFaltando(): int

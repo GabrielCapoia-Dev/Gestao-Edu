@@ -98,13 +98,21 @@
             </div>
         </div>
 
-        {{-- TABELA TOP COMPONENTES --}}
-        @if(count($this->topComponentes) > 0)
+        {{-- TABELA COMPONENTES --}}
         <div class="rel-table-card mb-rel">
             <div class="rel-table-header">
                 <div>
                     <h3 class="rel-table-title">Componentes com maior falta de docentes</h3>
-                    <p class="rel-table-sub">Top 5 componentes curriculares com mais turmas sem professor</p>
+                    <p class="rel-table-sub">{{ $this->totalComponentesRegistros }} {{ $this->totalComponentesRegistros === 1 ? 'componente encontrado' : 'componentes encontrados' }}</p>
+                </div>
+                <div class="rel-filter-group">
+                    <select wire:model.live="perPageComponentes" class="rel-filter-select rel-filter-select--sm">
+                        <option value="5">5 por página</option>
+                        <option value="10">10 por página</option>
+                        <option value="25">25 por página</option>
+                        <option value="50">50 por página</option>
+                        <option value="100">100 por página</option>
+                    </select>
                 </div>
             </div>
             <div class="rel-table-wrap">
@@ -120,10 +128,10 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($this->topComponentes as $i => $comp)
-                        @php $pct = $comp->total > 0 ? round(($comp->com_professor / $comp->total) * 100) : 0; @endphp
+                        @forelse($this->topComponentes as $i => $comp)
+                        @php $pct = $comp->total > 0 ? round(($comp->com_professor / $comp->total) * 100) : 0; $rank = (($this->pageComponentes - 1) * $this->perPageComponentes) + $i + 1; @endphp
                         <tr>
-                            <td class="rel-table-rank">{{ $i + 1 }}</td>
+                            <td class="rel-table-rank">{{ $rank }}</td>
                             <td class="rel-table-name">{{ $comp->nome }}</td>
                             <td><span class="rel-badge rel-badge--slate">{{ $comp->total }}</span></td>
                             <td><span class="rel-badge rel-badge--green">{{ $comp->com_professor }}</span></td>
@@ -144,20 +152,46 @@
                                 </div>
                             </td>
                         </tr>
-                        @endforeach
+                        @empty
+                        <tr>
+                            <td colspan="6" class="rel-empty">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
+                                <p>Nenhum componente encontrado.</p>
+                            </td>
+                        </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
+            @if($this->totalPaginasComponentes > 1)
+            <div class="rel-pagination">
+                <span class="rel-pagination-info">Mostrando {{ (($this->pageComponentes - 1) * $this->perPageComponentes) + 1 }}-{{ min($this->pageComponentes * $this->perPageComponentes, $this->totalComponentesRegistros) }} de {{ $this->totalComponentesRegistros }}</span>
+                <div class="rel-pagination-btns">
+                    <button wire:click="irParaPaginaComponentes({{ $this->pageComponentes - 1 }})" @if($this->pageComponentes <= 1) disabled @endif class="rel-page-btn">←</button>
+                    @for($p = 1; $p <= $this->totalPaginasComponentes; $p++)
+                        <button wire:click="irParaPaginaComponentes({{ $p }})" class="rel-page-btn {{ $p === $this->pageComponentes ? 'rel-page-btn--active' : '' }}">{{ $p }}</button>
+                    @endfor
+                    <button wire:click="irParaPaginaComponentes({{ $this->pageComponentes + 1 }})" @if($this->pageComponentes >= $this->totalPaginasComponentes) disabled @endif class="rel-page-btn">→</button>
+                </div>
+            </div>
+            @endif
         </div>
-        @endif
 
         {{-- TABELA ESCOLAS POR COMPONENTE --}}
-        @if(count($this->faltasPorEscolaComponente) > 0)
         <div class="rel-table-card mb-rel">
             <div class="rel-table-header">
                 <div>
                     <h3 class="rel-table-title">Escolas com professores faltando por componente</h3>
-                    <p class="rel-table-sub">Top 10 combinações escola/componente com maior necessidade de professor</p>
+                    <p class="rel-table-sub">{{ $this->totalEscolasRegistros }} {{ $this->totalEscolasRegistros === 1 ? 'combinação encontrada' : 'combinações encontradas' }}</p>
+                </div>
+                <div class="rel-filter-group">
+                    <select wire:model.live="perPageEscolas" class="rel-filter-select rel-filter-select--sm">
+                        <option value="5">5 por página</option>
+                        <option value="10">10 por página</option>
+                        <option value="25">25 por página</option>
+                        <option value="50">50 por página</option>
+                        <option value="100">100 por página</option>
+                    </select>
                 </div>
             </div>
             <div class="rel-table-wrap">
@@ -172,20 +206,39 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($this->faltasPorEscolaComponente as $i => $item)
+                        @forelse($this->faltasPorEscolaComponente as $i => $item)
+                        @php $rank = (($this->pageEscolas - 1) * $this->perPageEscolas) + $i + 1; @endphp
                         <tr>
-                            <td class="rel-table-rank">{{ $i + 1 }}</td>
+                            <td class="rel-table-rank">{{ $rank }}</td>
                             <td class="rel-table-name">{{ $item->escola_nome }}</td>
                             <td>{{ $item->componente_nome }}</td>
                             <td><span class="rel-badge rel-badge--red">{{ $item->professores_faltando }}</span></td>
                             <td><span class="rel-badge rel-badge--slate">{{ $item->turmas_afetadas }}</span></td>
                         </tr>
-                        @endforeach
+                        @empty
+                        <tr>
+                            <td colspan="5" class="rel-empty">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
+                                <p>Nenhuma combinação encontrada.</p>
+                            </td>
+                        </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
+            @if($this->totalPaginasEscolas > 1)
+            <div class="rel-pagination">
+                <span class="rel-pagination-info">Mostrando {{ (($this->pageEscolas - 1) * $this->perPageEscolas) + 1 }}-{{ min($this->pageEscolas * $this->perPageEscolas, $this->totalEscolasRegistros) }} de {{ $this->totalEscolasRegistros }}</span>
+                <div class="rel-pagination-btns">
+                    <button wire:click="irParaPaginaEscolas({{ $this->pageEscolas - 1 }})" @if($this->pageEscolas <= 1) disabled @endif class="rel-page-btn">←</button>
+                    @for($p = 1; $p <= $this->totalPaginasEscolas; $p++)
+                        <button wire:click="irParaPaginaEscolas({{ $p }})" class="rel-page-btn {{ $p === $this->pageEscolas ? 'rel-page-btn--active' : '' }}">{{ $p }}</button>
+                    @endfor
+                    <button wire:click="irParaPaginaEscolas({{ $this->pageEscolas + 1 }})" @if($this->pageEscolas >= $this->totalPaginasEscolas) disabled @endif class="rel-page-btn">→</button>
+                </div>
+            </div>
+            @endif
         </div>
-        @endif
 
         {{-- RELATÓRIOS --}}
         <div class="rel-section">
@@ -970,6 +1023,124 @@
 
         .dark .rel-card--purple {
             --ic: rgba(124, 58, 237, .18);
+        }
+
+        /* ── FILTER (per-page) ──────────────────── */
+        .rel-filter-group {
+            display: flex;
+        }
+
+        .rel-filter-select {
+            height: 36px;
+            padding: 0 .7rem;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: .82rem;
+            color: #374151;
+            background: #fff;
+            outline: none;
+            min-width: 130px;
+            transition: border-color .15s, box-shadow .15s;
+        }
+
+        .rel-filter-select:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 2px rgb(99 102 241/.12);
+        }
+
+        .dark .rel-filter-select {
+            background: rgb(17 24 39);
+            border-color: rgba(255, 255, 255, .1);
+            color: #f3f4f6;
+        }
+
+        .rel-filter-select--sm {
+            min-width: 130px;
+        }
+
+        /* ── PAGINATION ─────────────────────────── */
+        .rel-pagination {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: .75rem 1.25rem;
+            border-top: 1px solid #f3f4f6;
+            flex-wrap: wrap;
+            gap: .5rem;
+        }
+
+        .dark .rel-pagination {
+            border-top-color: rgba(255, 255, 255, .05);
+        }
+
+        .rel-pagination-info {
+            font-size: .76rem;
+            color: #6b7280;
+        }
+
+        .rel-pagination-btns {
+            display: flex;
+            gap: .2rem;
+        }
+
+        .rel-page-btn {
+            min-width: 30px;
+            height: 30px;
+            padding: 0 .45rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 5px;
+            background: #fff;
+            font-size: .78rem;
+            color: #374151;
+            cursor: pointer;
+            transition: background .12s, border-color .12s;
+        }
+
+        .rel-page-btn:hover:not(:disabled) {
+            background: #f3f4f6;
+            border-color: #d1d5db;
+        }
+
+        .rel-page-btn:disabled {
+            opacity: .35;
+            cursor: not-allowed;
+        }
+
+        .rel-page-btn--active {
+            background: #1e3a5f;
+            border-color: #1e3a5f;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .dark .rel-page-btn {
+            background: rgb(17 24 39);
+            border-color: rgba(255, 255, 255, .1);
+            color: #d1d5db;
+        }
+
+        .dark .rel-page-btn--active {
+            background: #1e3a5f;
+            border-color: #1e3a5f;
+            color: #fff;
+        }
+
+        .rel-empty {
+            text-align: center;
+            padding: 2.5rem 1rem !important;
+            color: #9ca3af;
+        }
+
+        .rel-empty svg {
+            width: 32px;
+            height: 32px;
+            margin: 0 auto .5rem;
+            display: block;
+        }
+
+        .rel-empty p {
+            margin: 0;
+            font-size: .82rem;
         }
 
         /* ── RESPONSIVE ───────────────────────── */
