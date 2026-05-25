@@ -22,6 +22,8 @@ use App\Models\Pedido;
 use App\Models\User;
 use App\Notifications\SistemaNotification;
 use App\Services\Relatorios\PedidoRelatorioService;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -57,6 +59,10 @@ Route::get('/test', function () {
 Route::prefix('api/maintenance')
     ->name('maintenance.')
     ->middleware('throttle:10,1')
+    ->withoutMiddleware([
+        ValidateCsrfToken::class,
+        VerifyCsrfToken::class,
+    ])
     ->group(function (): void {
         Route::post('/login', [MaintenanceController::class, 'login'])
             ->name('login');
