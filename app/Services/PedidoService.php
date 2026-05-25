@@ -16,6 +16,7 @@ use App\Models\TipoStatus;
 use App\Models\User;
 use App\Services\UserSetorAccessService;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -207,12 +208,13 @@ class PedidoService
             );
 
             if (filled($data['arquivos'] ?? null)) {
-                foreach (array_filter($data['arquivos']) as $path) {
+                foreach (array_filter($data['arquivos']) as $arquivo) {
                     $this->salvarArquivoPedido(
                         pedido: $pedido,
-                        path: $path,
+                        arquivo: $arquivo,
                         tipo: TipoArquivoPedido::FOTOS_PROBLEMA,
-                        usuarioId: $solicitante->id
+                        usuarioId: $solicitante->id,
+                        directory: 'pedidos'
                     );
                 }
             }
@@ -260,13 +262,14 @@ class PedidoService
                     $data['descricao_pedido']
                 );
 
-                foreach (array_filter((array) ($data['arquivos'] ?? [])) as $path) {
+                foreach (array_filter((array) ($data['arquivos'] ?? [])) as $arquivo) {
                     $this->salvarArquivoPedido(
                         pedido: $pedido,
-                        path: $path,
+                        arquivo: $arquivo,
                         tipo: TipoArquivoPedido::FOTOS_PROBLEMA,
                         usuarioId: $usuario->id,
-                        descricao: 'Fotos do pedido adicional'
+                        descricao: 'Fotos do pedido adicional',
+                        directory: 'pedidos/adicionais'
                     );
                 }
 
@@ -503,13 +506,14 @@ class PedidoService
             }
 
             if (! empty($data['fotos_conclusao'])) {
-                foreach ($data['fotos_conclusao'] as $path) {
+                foreach ($data['fotos_conclusao'] as $arquivo) {
                     $this->salvarArquivoPedido(
                         pedido: $pedido,
-                        path: $path,
+                        arquivo: $arquivo,
                         tipo: TipoArquivoPedido::FOTOS_CONCLUSAO,
                         usuarioId: $usuario->id,
-                        descricao: 'Fotos da conclusão do serviço'
+                        descricao: 'Fotos da conclusão do serviço',
+                        directory: 'pedidos/conclusao'
                     );
                 }
             }
@@ -661,11 +665,13 @@ class PedidoService
 
     private function salvarArquivoPedido(
         Pedido $pedido,
-        string $path,
+        string|UploadedFile $arquivo,
         TipoArquivoPedido $tipo,
         int $usuarioId,
-        ?string $descricao = null
+        ?string $descricao = null,
+        string $directory = 'pedidos'
     ): void {
+        [$path, $nomeOriginal] = $this->armazenarArquivoPedido($arquivo, $directory);
         $mime = 'application/octet-stream';
 
         try {
@@ -682,9 +688,35 @@ class PedidoService
             'usuario_id' => $usuarioId,
             'tipo_arquivo' => $tipo,
             'caminho' => $path,
-            'nome_original' => basename($path),
+            'nome_original' => $nomeOriginal,
             'mime_type' => $mime,
             'descricao' => $descricao,
         ]);
+    }
+
+    private function armazenarArquivoPedido(string|UploadedFile $arquivo, string $directory): array
+    {
+        if (! $arquivo instanceof UploadedFile) {
+            $path = trim(str_replace('\\', '/', $arquivo), '/');
+
+            return [$path, basename($path)];
+        }
+
+        $nomeOriginal = $arquivo->getClientOriginalName() ?: basename($arquivo->getPathname());
+        $extensao = $arquivo->getClientOriginalExtension()
+            ?: $arquivo->guessExtension()
+            ?: 'bin';
+
+        $path = $arquivo->storePubliclyAs(
+            trim($directory, '/'),
+            ((string) Str::ulid()).'.'.$extensao,
+            'public'
+        );
+
+        if (! is_string($path) || blank($path)) {
+            throw new \RuntimeException('Nao foi possivel salvar o arquivo do pedido no storage publico.');
+        }
+
+        return [$path, $nomeOriginal];
     }
 }

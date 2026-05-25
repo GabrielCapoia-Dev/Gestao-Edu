@@ -19,6 +19,8 @@ use App\Models\TipoStatus;
 use App\Models\User;
 use App\Services\PedidoService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
@@ -111,6 +113,31 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
             'Sem luz na unidade',
             'Disjuntor queimado',
         ], $pedido->problemas()->orderBy('id')->pluck('texto_problema')->all());
+    }
+
+    public function test_criacao_de_pedido_salva_fotos_no_storage_publico(): void
+    {
+        Storage::fake('public');
+
+        $usuario = User::factory()->create([
+            'id_escola' => $this->escola->id,
+            'email_approved' => true,
+        ]);
+
+        $pedido = $this->service->criarPedido([
+            'tipo_manutencao_id' => $this->tipo->id,
+            'tipo_manutencao_opcao_ids' => [$this->opcaoLuz->id],
+            'data_identificacao_problema' => '2026-05-01',
+            'descricao_pedido' => 'Foto enviada na abertura do pedido.',
+            'nome_solicitante' => 'Direcao',
+            'arquivos' => [UploadedFile::fake()->image('problema.jpg')],
+        ], $usuario);
+
+        $arquivo = $pedido->arquivos()->firstOrFail();
+
+        $this->assertSame('fotos_problema', $arquivo->tipo_arquivo->value);
+        $this->assertStringStartsWith('pedidos/', $arquivo->caminho);
+        Storage::disk('public')->assertExists($arquivo->caminho);
     }
 
     public function test_escopo_por_role_de_setor_escola_e_permissao_global(): void
@@ -365,6 +392,46 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
             ->assertNoRedirect();
 
         $this->assertSame('Concluído', $pedido->refresh()->tipoStatus->nome);
+    }
+
+    public function test_avaliacao_de_pedido_salva_fotos_de_conclusao_no_storage_publico(): void
+    {
+        Storage::fake('public');
+
+        $usuario = $this->usuarioComRoleSetor('Manutenção: Educação', $this->educacao, [
+            'Listar Pedidos',
+            'Avaliar Pedidos',
+        ]);
+
+        $pedido = $this->pedido(status: 'Em Manutenção', setor: $this->educacao, escola: $this->escola);
+        $problema = $pedido->problemas()->create([
+            'tipo_manutencao_id' => $this->tipo->id,
+            'tipo_manutencao_opcao_id' => $this->opcaoLuz->id,
+            'texto_problema' => $this->opcaoLuz->texto,
+        ]);
+
+        Livewire::actingAs($usuario)
+            ->test(ListPedidos::class)
+            ->callTableAction('finalizar', $pedido, [
+                'avaliacoes' => [
+                    $problema->id => [
+                        'valor' => 5,
+                        'resultado' => ResultadoFeedbackPedido::Atendido->value,
+                        'comentario' => 'Problema atendido.',
+                    ],
+                ],
+                'reabrir_pedido' => false,
+                'descricao' => 'Servico atendido com foto.',
+                'fotos_conclusao' => [UploadedFile::fake()->image('conclusao.jpg')],
+            ])
+            ->assertHasNoTableActionErrors()
+            ->assertNoRedirect();
+
+        $arquivo = $pedido->refresh()->fotosConclusao()->firstOrFail();
+
+        $this->assertStringStartsWith('pedidos/conclusao/', $arquivo->caminho);
+        $this->assertSame(basename($arquivo->caminho), $arquivo->nome_original);
+        Storage::disk('public')->assertExists($arquivo->caminho);
     }
 
     public function test_avaliacao_exige_descricao_geral_e_comentario_por_problema(): void

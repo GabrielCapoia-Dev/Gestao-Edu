@@ -83,6 +83,7 @@ class PedidoCriacaoForm
                             ->maxFiles(10)
                             ->directory('pedidos')
                             ->disk('public')
+                            ->storeFiles()
                             ->visibility('public')
                             ->columnSpanFull(),
 

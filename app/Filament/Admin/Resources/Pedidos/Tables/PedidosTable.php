@@ -520,6 +520,7 @@ class PedidosTable
                         ->storeFileNamesIn('nome_original')
                         ->directory('pedidos/conclusao')
                         ->disk('public')
+                        ->storeFiles()
                         ->visibility('public')
                         ->columnSpanFull(),
 
@@ -625,6 +626,7 @@ class PedidosTable
                     ->storeFileNamesIn('nome_original')
                     ->directory('pedidos/adicionais')
                     ->disk('public')
+                    ->storeFiles()
                     ->visibility('public')
                     ->columnSpanFull(),
 
