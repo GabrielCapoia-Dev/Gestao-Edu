@@ -316,11 +316,13 @@ class RoleResource extends Resource
                      */
                         if ($paraRemover->isNotEmpty()) {
                             $record->revokePermissionTo($paraRemover->toArray());
+                            app(PermissionRegistrar::class)->forgetCachedPermissions();
                             $alteracoes[] = 'Permissões removidas: '.$paraRemover->implode(', ');
                         }
 
                         if ($paraAdicionar->isNotEmpty()) {
                             $record->givePermissionTo($paraAdicionar->toArray());
+                            app(PermissionRegistrar::class)->forgetCachedPermissions();
                             $alteracoes[] = 'Permissões adicionadas: '.$paraAdicionar->implode(', ');
                         }
 

@@ -526,7 +526,52 @@ class CriarPermissoes extends Command
     {
         return [
             'Admin' => $permissions,
-
+            'Secretário' => $this->mergeGroups($groups, [
+                'acesso_painel',
+                'professores_e_turmas',
+                'alunos',
+                'relatorios_e_painel',
+            ]),
+            'Administrativo' => $this->mergeGroups($groups, [
+                'acesso_painel',
+                'administrativo',
+            ]),
+            'Gestao de Inventario' => $this->mergeGroups($groups, [
+                'acesso_painel',
+                'inventario',
+            ]),
+            'Gestao de Pedidos' => $this->mergeGroups($groups, [
+                'acesso_painel',
+                'pedidos',
+            ]),
+            'Gestao de Usuarios e Acessos' => $this->mergeGroups($groups, [
+                'acesso_painel',
+                'acesso',
+            ]),
+            'Gestao Pedagogica' => $this->mergeGroups($groups, [
+                'acesso_painel',
+                'professores_e_turmas',
+                'alunos',
+                'relatorios_e_painel',
+            ]),
+            'Acessar Painel' => $groups['acesso_painel'],
+            'Visualizar Turmas e Alunos' => $groups['visualizacao_turmas_alunos'],
+            'Pedagógico: Gerenciar Turmas' => $this->onlyPermissions($permissions, [
+                'Visualizar Tela de Inicio',
+                'Listar Turmas',
+                'Criar Turmas',
+                'Editar Turmas',
+                'Editar Dados da Turma',
+                'Editar Escola da Turma',
+                'Excluir Turmas',
+                'Excluir Turmas em Massa',
+                'Exportar Turmas',
+                'Filtrar Turmas por Escola',
+                'Listar Séries',
+                'Criar Séries',
+                'Editar Séries',
+                'Excluir Séries',
+            ]),
         ];
     }
 

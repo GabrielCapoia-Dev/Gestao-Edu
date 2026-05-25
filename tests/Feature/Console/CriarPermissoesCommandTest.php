@@ -30,6 +30,7 @@ class CriarPermissoesCommandTest extends TestCase
         $pedagogicaRole = Role::findByName('Gestao Pedagogica', 'web');
         $painelRole = Role::findByName('Acessar Painel', 'web');
         $professorViewRole = Role::findByName('Visualizar Turmas e Alunos', 'web');
+        $turmasRole = Role::findByName('Pedagógico: Gerenciar Turmas', 'web');
 
         $this->assertTrue($inventarioRole->hasPermissionTo('Listar Gestão de Inventário'));
         $this->assertTrue($inventarioRole->hasPermissionTo('Aprovar Pedidos de Inventário'));
@@ -55,6 +56,13 @@ class CriarPermissoesCommandTest extends TestCase
         $this->assertTrue($professorViewRole->hasPermissionTo('Listar Alunos'));
         $this->assertTrue($professorViewRole->hasPermissionTo('Responder Avaliações'));
         $this->assertFalse($professorViewRole->hasPermissionTo('Editar Turmas'));
+
+        $this->assertTrue($turmasRole->hasPermissionTo('Listar Turmas'));
+        $this->assertTrue($turmasRole->hasPermissionTo('Criar Turmas'));
+        $this->assertTrue($turmasRole->hasPermissionTo('Editar Turmas'));
+        $this->assertTrue($turmasRole->hasPermissionTo('Editar Dados da Turma'));
+        $this->assertTrue($turmasRole->hasPermissionTo('Filtrar Turmas por Escola'));
+        $this->assertFalse($turmasRole->hasPermissionTo('Listar Pedidos'));
     }
 
     public function test_it_normalizes_legacy_mojibake_permission_and_role_names(): void
