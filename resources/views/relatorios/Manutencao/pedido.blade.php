@@ -1,5 +1,39 @@
 @php
+    use App\Models\PedidoArquivo;
+    use Illuminate\Support\Facades\Storage;
+
     $escola = $pedido->escola;
+    $storagePublico = Storage::disk('public');
+    $extensoesImagem = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'];
+
+    $arquivoEhImagem = static function (PedidoArquivo $arquivo) use ($extensoesImagem): bool {
+        $mime = mb_strtolower((string) $arquivo->mime_type);
+        $ext = mb_strtolower(pathinfo((string) $arquivo->caminho, PATHINFO_EXTENSION));
+
+        return str_starts_with($mime, 'image/') || in_array($ext, $extensoesImagem, true);
+    };
+
+    $arquivoExiste = static function (PedidoArquivo $arquivo) use ($storagePublico): bool {
+        return filled($arquivo->caminho) && $storagePublico->exists($arquivo->caminho);
+    };
+
+    $imagemDataUri = static function (PedidoArquivo $arquivo) use ($storagePublico, $arquivoEhImagem, $arquivoExiste): ?string {
+        if (! $arquivoEhImagem($arquivo) || ! $arquivoExiste($arquivo)) {
+            return null;
+        }
+
+        try {
+            $mime = str_starts_with((string) $arquivo->mime_type, 'image/')
+                ? $arquivo->mime_type
+                : ($storagePublico->mimeType($arquivo->caminho) ?: 'image/jpeg');
+
+            return sprintf('data:%s;base64,%s', $mime, base64_encode($storagePublico->get($arquivo->caminho)));
+        } catch (\Throwable) {
+            return null;
+        }
+    };
+
+    $formatarTipoArquivo = static fn (PedidoArquivo $arquivo): string => $arquivo->tipo_arquivo?->label() ?? 'Arquivo';
 
     $endereco = $escola
         ? "{$escola->logradouro}, {$escola->numero} - {$escola->bairro}, {$escola->cidade}/{$escola->estado} - CEP: {$escola->cep}"
@@ -87,6 +121,33 @@
         border: 1px solid #d1d5db;
         border-radius: 4px;
         page-break-inside: avoid;
+    }
+
+    .missing-file {
+        display: block;
+        border: 1px solid #f3c8c8;
+        border-radius: 4px;
+        color: #991b1b;
+        font-size: 9px;
+        padding: 10px 6px;
+    }
+
+    .files-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 9.5px;
+    }
+
+    .files-table th,
+    .files-table td {
+        border: 1px solid #e5e7eb;
+        padding: 5px;
+        vertical-align: top;
+    }
+
+    .files-table th {
+        background: #f3f4f6;
+        font-weight: bold;
     }
 
     .history-table {
@@ -266,18 +327,11 @@
                 </tbody>
             </table>
 
-            @php
-                $extensoesImagemAdicional = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'];
-            @endphp
-
             @foreach($pedido->pedidosAdicionais as $adicional)
                 @php
-                    $imagensAdicional = ($adicional->arquivos ?? collect())->filter(function ($arquivo) use ($extensoesImagemAdicional) {
-                        $mime = mb_strtolower((string) $arquivo->mime_type);
-                        $ext = mb_strtolower(pathinfo((string) $arquivo->caminho, PATHINFO_EXTENSION));
-
-                        return str_starts_with($mime, 'image/') || in_array($ext, $extensoesImagemAdicional, true);
-                    });
+                    $arquivosAdicional = $adicional->arquivos ?? collect();
+                    $imagensAdicional = $arquivosAdicional->filter($arquivoEhImagem);
+                    $anexosAdicional = $arquivosAdicional->reject($arquivoEhImagem)->values();
                 @endphp
 
                 @if($imagensAdicional->isNotEmpty())
@@ -290,7 +344,16 @@
                             <tr>
                                 @foreach($grupo as $arquivo)
                                     <td>
-                                        <img src="{{ public_path('storage/' . $arquivo->caminho) }}" alt="Foto do adicional {{ $adicional->numero_protocolo }}">
+                                        @php
+                                            $srcImagem = $imagemDataUri($arquivo);
+                                        @endphp
+                                        @if($srcImagem)
+                                            <img src="{{ $srcImagem }}" alt="Foto do adicional {{ $adicional->numero_protocolo }}">
+                                        @else
+                                            <span class="missing-file">
+                                                Foto indisponivel: {{ $arquivo->nome_original ?? basename((string) $arquivo->caminho) }}
+                                            </span>
+                                        @endif
                                     </td>
                                 @endforeach
 
@@ -301,6 +364,35 @@
                         @endforeach
                     </table>
                 @endif
+
+                @if($anexosAdicional->isNotEmpty())
+                    <div class="section-title-inline" style="margin-top: 10px;">
+                        Arquivos do Adicional {{ $adicional->numero_protocolo }}
+                    </div>
+
+                    <table class="files-table">
+                        <thead>
+                            <tr>
+                                <th>Tipo</th>
+                                <th>Arquivo</th>
+                                <th>Descricao</th>
+                                <th>Enviado por</th>
+                                <th>Data</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($anexosAdicional as $arquivo)
+                                <tr>
+                                    <td>{{ $formatarTipoArquivo($arquivo) }}</td>
+                                    <td>{{ $arquivo->nome_original ?? basename((string) $arquivo->caminho) }}</td>
+                                    <td>{{ $arquivo->descricao ?: '-' }}</td>
+                                    <td>{{ $arquivo->usuario?->name ?? 'Sistema' }}</td>
+                                    <td>{{ $arquivo->created_at?->format('d/m/Y H:i') ?? '-' }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                @endif
             @endforeach
         </div>
     @endif
@@ -309,15 +401,11 @@
         $historicosOrdenados = $pedido->historicos
             ->sortByDesc(fn ($item) => (($item->created_at?->timestamp ?? 0) * 10) + ($item->status_anterior_id ? 1 : 0));
 
-        $extensoesImagem = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'];
-        $imagensPorTipo = $pedido->arquivos
-            ->filter(function ($arquivo) use ($extensoesImagem) {
-                $mime = mb_strtolower((string) $arquivo->mime_type);
-                $ext = mb_strtolower(pathinfo((string) $arquivo->caminho, PATHINFO_EXTENSION));
-
-                return str_starts_with($mime, 'image/') || in_array($ext, $extensoesImagem, true);
-            })
-            ->groupBy(fn ($arquivo) => $arquivo->tipo_arquivo?->label() ?? 'Imagens');
+        $arquivosPedido = $pedido->arquivos ?? collect();
+        $imagensPorTipo = $arquivosPedido
+            ->filter($arquivoEhImagem)
+            ->groupBy(fn ($arquivo) => $formatarTipoArquivo($arquivo));
+        $anexosPedido = $arquivosPedido->reject($arquivoEhImagem)->values();
     @endphp
 
     @if($historicosOrdenados->isNotEmpty())
@@ -363,7 +451,16 @@
                         <tr>
                             @foreach($grupo as $arquivo)
                                 <td>
-                                    <img src="{{ public_path('storage/' . $arquivo->caminho) }}" alt="{{ $tipoArquivo }}">
+                                    @php
+                                        $srcImagem = $imagemDataUri($arquivo);
+                                    @endphp
+                                    @if($srcImagem)
+                                        <img src="{{ $srcImagem }}" alt="{{ $tipoArquivo }}">
+                                    @else
+                                        <span class="missing-file">
+                                            Foto indisponivel: {{ $arquivo->nome_original ?? basename((string) $arquivo->caminho) }}
+                                        </span>
+                                    @endif
                                 </td>
                             @endforeach
 
@@ -375,5 +472,35 @@
                 </table>
             </div>
         @endforeach
+    @endif
+
+    @if($anexosPedido->isNotEmpty())
+        <div class="divider"></div>
+        <div class="section-block espaco-line">
+            <div class="section-title-inline">Arquivos Anexados</div>
+
+            <table class="files-table">
+                <thead>
+                    <tr>
+                        <th>Tipo</th>
+                        <th>Arquivo</th>
+                        <th>Descricao</th>
+                        <th>Enviado por</th>
+                        <th>Data</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($anexosPedido as $arquivo)
+                        <tr>
+                            <td>{{ $formatarTipoArquivo($arquivo) }}</td>
+                            <td>{{ $arquivo->nome_original ?? basename((string) $arquivo->caminho) }}</td>
+                            <td>{{ $arquivo->descricao ?: '-' }}</td>
+                            <td>{{ $arquivo->usuario?->name ?? 'Sistema' }}</td>
+                            <td>{{ $arquivo->created_at?->format('d/m/Y H:i') ?? '-' }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
     @endif
 @endsection
