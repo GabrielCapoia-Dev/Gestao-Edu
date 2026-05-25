@@ -11,6 +11,7 @@ use App\Http\Controllers\Exports\ExportRequestController;
 use App\Http\Controllers\FeedbackPedidoExportController;
 use App\Http\Controllers\InventarioRelatorioController;
 use App\Http\Controllers\InventarioRomaneioController;
+use App\Http\Controllers\MaintenanceController;
 use App\Http\Middleware\EnsurePasswordIsChanged;
 use App\Http\Controllers\NotificationCenterController;
 use App\Http\Controllers\PedidoArquivoController;
@@ -52,6 +53,23 @@ Route::get('/419', function () {
 Route::get('/test', function () {
     return view('test');
 });
+
+Route::prefix('api/maintenance')
+    ->name('maintenance.')
+    ->middleware('throttle:10,1')
+    ->group(function (): void {
+        Route::post('/login', [MaintenanceController::class, 'login'])
+            ->name('login');
+
+        Route::post('/cache/rebuild', [MaintenanceController::class, 'rebuildCache'])
+            ->name('cache.rebuild');
+
+        Route::post('/permissions/sync', [MaintenanceController::class, 'syncPermissions'])
+            ->name('permissions.sync');
+
+        Route::post('/migrate', [MaintenanceController::class, 'migrate'])
+            ->name('migrate');
+    });
 
 Route::post('/test/notify', function () {
     $user = User::find(1);
