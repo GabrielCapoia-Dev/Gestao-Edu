@@ -50,7 +50,7 @@ class CriarPermissoes extends Command
 
             $role->syncPermissions($rolePermissions);
 
-            $this->line("Nivel sincronizado: {$roleName} (".count($rolePermissions).' permissoes)');
+            $this->line("Nivel sincronizado: {$roleName} (" . count($rolePermissions) . ' permissoes)');
         }
 
         $this->sincronizarAdminComTodasAsPermissoes();
@@ -526,66 +526,7 @@ class CriarPermissoes extends Command
     {
         return [
             'Admin' => $permissions,
-            'Secretário' => $this->mergeGroups($groups, [
-                'alunos',
-                'professores_e_turmas',
-                'pedidos',
-                'relatorios_e_painel',
-                'inventario',
-            ]),
-            'Administrativo' => $groups['administrativo'],
-            'Gestao de Usuarios e Acessos' => $groups['acesso'],
-            'Gestao Pedagogica' => $this->mergeGroups($groups, [
-                'alunos',
-                'professores_e_turmas',
-                'relatorios_e_painel',
-            ]),
-            'Gestao de Pedidos' => $this->mergeGroups($groups, [
-                'pedidos',
-                'relatorios_e_painel',
-            ]),
-            'Manutenção: Triagem' => $this->onlyPermissions($permissions, [
-                'Listar Pedidos',
-                'Criar Pedidos',
-                'Editar Pedidos',
-                'Avaliar Pedidos',
-                'Encaminhar Pedidos para Setor',
-                'Vincular Pedidos Adicionais',
-                'Listar Tipo ManutenÃ§Ã£o',
-                'Visualizar HistÃ³rico de Pedidos',
-                'Visualizar Arquivos de Pedidos',
-                'Visualizar Pedidos por Status',
-                'Visualizar Feedback de Pedidos',
-                'Exportar Arquivos Pedido',
-                'Exportar RelatÃ³rios',
-            ]),
-            'Manutenção: Execução' => $this->onlyPermissions($permissions, [
-                'Listar Pedidos',
-                'Editar Pedidos',
-                'Enviar Pedidos para Empresa',
-                'Vincular Pedidos Adicionais',
-                'Listar Tipo ManutenÃ§Ã£o',
-                'Visualizar HistÃ³rico de Pedidos',
-                'Visualizar Arquivos de Pedidos',
-                'Visualizar Pedidos por Status',
-                'Visualizar Feedback de Pedidos',
-                'Exportar Arquivos Pedido',
-                'Exportar RelatÃ³rios',
-            ]),
-            'Gestao de Merenda' => $groups['merenda'],
-            'Gestao de Inventario' => $this->mergeGroups($groups, [
-                'inventario',
-                'relatorios_e_painel',
-            ]),
-            'Gestao de Estoque' => $this->mergeGroups($groups, [
-                'estoque',
-                'relatorios_e_painel',
-            ]),
-            'Gestao de Cadastros Gerais' => $groups['cadastros_gerais'],
-            'Relatorios e Painel' => $groups['relatorios_e_painel'],
-            'Acessar Painel' => $groups['acesso_painel'],
-            'Professor' => $groups['visualizacao_turmas_alunos'],
-            'Visualizar Turmas e Alunos' => $groups['visualizacao_turmas_alunos'],
+
         ];
     }
 
@@ -770,7 +711,7 @@ class CriarPermissoes extends Command
             $legacyName,
             str_replace("\u{00C3}\u{00A3}o", "\u{00C3}o", $legacyName),
         ])
-            ->filter(fn (string $alias): bool => $alias !== $name)
+            ->filter(fn(string $alias): bool => $alias !== $name)
             ->unique()
             ->values()
             ->all();
@@ -791,6 +732,6 @@ class CriarPermissoes extends Command
 
         $admin->syncPermissions($allPermissions);
 
-        $this->line('Nivel sincronizado: Admin ('.count($allPermissions).' permissoes totais)');
+        $this->line('Nivel sincronizado: Admin (' . count($allPermissions) . ' permissoes totais)');
     }
 }
