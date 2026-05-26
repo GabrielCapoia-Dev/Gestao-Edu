@@ -197,6 +197,11 @@ return [
          * file. Using 'default' here means to use the `default` set in cache.php.
          */
 
-        'store' => 'default',
+        /*
+         * Keep permission cache request-local by default so permission changes in
+         * the database are reflected on the next request, without depending on
+         * writable server-side cache files.
+         */
+        'store' => env('PERMISSION_CACHE_STORE', 'array'),
     ],
 ];
