@@ -33,6 +33,7 @@ php artisan storage:link --force 2>/dev/null || true
 
 # ── Limpa caches antigos ───────────────────────────────────────────────────
 php artisan config:clear
+php artisan permission:cache-reset
 php artisan route:clear
 php artisan event:clear
 php artisan view:clear

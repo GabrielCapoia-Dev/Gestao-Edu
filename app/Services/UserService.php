@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Schema;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -533,6 +534,17 @@ class UserService
     public function aplicarFiltroPorEscolaDoUsuario(Builder $query, ?User $user): Builder
     {
         if ($user && ! $this->ehAdmin($user) && ! empty($user->id_escola)) {
+            $model = $query->getModel();
+            $table = $model->getTable();
+
+            if (Schema::hasColumn($table, 'id_escola')) {
+                return $query->where("{$table}.id_escola", $user->id_escola);
+            }
+
+            if (! method_exists($model, 'turma')) {
+                return $query;
+            }
+
             $query->whereHas('turma', function (Builder $turmaQuery) use ($user) {
                 $turmaQuery->where('id_escola', $user->id_escola);
             });
