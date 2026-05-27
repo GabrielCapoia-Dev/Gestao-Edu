@@ -1,6 +1,7 @@
 FROM php:8.4-fpm
 
 RUN apt-get update && apt-get install -y \
+    $PHPIZE_DEPS \
     git \
     curl \
     zip \
@@ -18,6 +19,9 @@ RUN apt-get update && apt-get install -y \
     libicu-dev \
     && docker-php-ext-install \
     intl pdo pdo_mysql zip mbstring exif pcntl bcmath gd opcache \
+    && pecl install redis \
+    && docker-php-ext-enable redis \
+    && apt-get purge -y --auto-remove $PHPIZE_DEPS \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # ── Node.js 22 ─────────────────────────────────────────────────────────────
@@ -25,13 +29,30 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y nodejs \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# ── OPcache (validate_timestamps=1 para dev — respeita alterações) ─────────
+# OPcache tuned for production. Deploys should restart the container so the
+# opcode cache is rebuilt with the new code.
 RUN echo "opcache.enable=1"                    >> /usr/local/etc/php/conf.d/opcache.ini \
     && echo "opcache.memory_consumption=256"      >> /usr/local/etc/php/conf.d/opcache.ini \
     && echo "opcache.interned_strings_buffer=16"  >> /usr/local/etc/php/conf.d/opcache.ini \
     && echo "opcache.max_accelerated_files=20000" >> /usr/local/etc/php/conf.d/opcache.ini \
-    && echo "opcache.validate_timestamps=1"       >> /usr/local/etc/php/conf.d/opcache.ini \
-    && echo "opcache.revalidate_freq=0"           >> /usr/local/etc/php/conf.d/opcache.ini
+    && echo "opcache.validate_timestamps=0"       >> /usr/local/etc/php/conf.d/opcache.ini \
+    && echo "opcache.revalidate_freq=60"          >> /usr/local/etc/php/conf.d/opcache.ini \
+    && echo "opcache.save_comments=1"             >> /usr/local/etc/php/conf.d/opcache.ini \
+    && echo "opcache.jit=0"                       >> /usr/local/etc/php/conf.d/opcache.ini
+
+# PHP-FPM pool sized for a 4 vCPU / 8 GB VPS that also runs MySQL and Redis.
+RUN { \
+        echo ""; \
+        echo "; Gestao Edu production pool overrides"; \
+        echo "pm = dynamic"; \
+        echo "pm.max_children = 24"; \
+        echo "pm.start_servers = 6"; \
+        echo "pm.min_spare_servers = 4"; \
+        echo "pm.max_spare_servers = 12"; \
+        echo "pm.max_requests = 500"; \
+        echo "request_terminate_timeout = 120s"; \
+        echo "catch_workers_output = yes"; \
+    } >> /usr/local/etc/php-fpm.d/www.conf
 
 # ── PHP uploads / memory ───────────────────────────────────────────────────
 RUN echo "upload_max_filesize=10M"   >  /usr/local/etc/php/conf.d/uploads.ini \

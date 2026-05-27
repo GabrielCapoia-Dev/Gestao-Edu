@@ -13,8 +13,15 @@ chmod -R 775 \
 
 # ── Dependências PHP ───────────────────────────────────────────────────────
 if [ ! -f "vendor/autoload.php" ]; then
-    composer install --no-interaction --prefer-dist --optimize-autoloader
+    if [ "$APP_ENV" = "production" ]; then
+        composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+    else
+        composer install --no-interaction --prefer-dist --optimize-autoloader
+    fi
 fi
+
+# Keep Composer's optimized autoloader current after a deployment/mount update.
+composer dump-autoload --no-interaction --optimize
 
 # ── APP_KEY ────────────────────────────────────────────────────────────────
 if [ -z "$APP_KEY" ] || [ "$APP_KEY" = "base64:" ]; then
@@ -42,6 +49,7 @@ php artisan view:clear
 php artisan config:cache
 php artisan route:cache
 php artisan event:cache
+php artisan view:cache
 php artisan filament:cache-components
 php artisan filament:assets
 

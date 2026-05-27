@@ -1,3 +1,32 @@
+x-production-env: &production-env
+  APP_ENV: production
+  APP_DEBUG: "false"
+  LOG_LEVEL: warning
+  CACHE_DRIVER: redis
+  CACHE_STORE: redis
+  SESSION_DRIVER: redis
+  SESSION_CONNECTION: default
+  SESSION_STORE: redis
+  QUEUE_CONNECTION: redis
+  REDIS_CLIENT: phpredis
+  REDIS_HOST: redis
+  REDIS_PORT: 6379
+  REDIS_DB: 0
+  REDIS_CACHE_DB: 1
+  REDIS_QUEUE_CONNECTION: default
+  REDIS_QUEUE_RETRY_AFTER: 1200
+  PERMISSION_CACHE_STORE: redis
+  PERF_HEARTBEAT_INTERVAL: 45
+  PERF_PRESENCE_TOUCH_MIN_INTERVAL: 35
+  PERF_POLL_ONLINE_USERS: 45
+  PERF_POLL_EXPORTS_TABLE: 30
+  PERF_POLL_EXPORTS_AUTO_DOWNLOAD: 20
+  PERF_CACHE_ONLINE_USERS: 30
+  PERF_CACHE_ONLINE_COUNT: 30
+  PERF_CACHE_USERS_COUNT: 300
+  PERF_CACHE_NOTIFICATION_FORM_OPTIONS: 600
+  PERF_CACHE_ACTIVE_EXPORTS: 30
+
 services:
 
   app:
@@ -9,6 +38,8 @@ services:
     working_dir: /var/www
     env_file:
       - .env
+    environment:
+      <<: *production-env
     ports:
       - "${DOCKER_HTTP_PORT}:80"
       - "${DOCKER_HTTPS_PORT}:443"
@@ -19,6 +50,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - laravel_gestao-edu
 
@@ -28,12 +61,16 @@ services:
     working_dir: /var/www
     env_file:
       - .env
+    environment:
+      <<: *production-env
     entrypoint: []
     command: sh -c "while true; do php artisan schedule:run; sleep 60; done"
     volumes:
       - .:/var/www
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     restart: unless-stopped
     networks:
@@ -45,15 +82,19 @@ services:
     working_dir: /var/www
     env_file:
       - .env
+    environment:
+      <<: *production-env
     entrypoint: []
     command: >
       sh -c "mkdir -p storage/logs bootstrap/cache
       && chown -R www-data:www-data storage/logs bootstrap/cache
-      && exec su -s /bin/sh www-data -c 'php artisan queue:work database --queue=$${NOTIFICATIONS_QUEUE:-notifications},default --sleep=$${NOTIFICATIONS_QUEUE_SLEEP:-3} --rest=$${NOTIFICATIONS_QUEUE_REST:-0} --timeout=$${NOTIFICATIONS_QUEUE_TIMEOUT:-60} --tries=$${NOTIFICATIONS_QUEUE_TRIES:-3} --memory=$${NOTIFICATIONS_QUEUE_MEMORY_MB:-128}'"
+      && exec su -s /bin/sh www-data -c 'php artisan queue:work $${QUEUE_CONNECTION:-redis} --queue=$${NOTIFICATIONS_QUEUE:-notifications},default --sleep=$${NOTIFICATIONS_QUEUE_SLEEP:-3} --rest=$${NOTIFICATIONS_QUEUE_REST:-0} --timeout=$${NOTIFICATIONS_QUEUE_TIMEOUT:-60} --tries=$${NOTIFICATIONS_QUEUE_TRIES:-3} --memory=$${NOTIFICATIONS_QUEUE_MEMORY_MB:-128}'"
     volumes:
       - .:/var/www
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     cpus: "${NOTIFICATIONS_QUEUE_CPUS:-0.25}"
     mem_limit: "${NOTIFICATIONS_QUEUE_MEM_LIMIT:-256m}"
@@ -67,15 +108,19 @@ services:
     working_dir: /var/www
     env_file:
       - .env
+    environment:
+      <<: *production-env
     entrypoint: []
     command: >
       sh -c "mkdir -p storage/app/private/exports storage/logs bootstrap/cache
       && chown -R www-data:www-data storage/app/private/exports storage/logs bootstrap/cache
-      && exec su -s /bin/sh www-data -c 'nice -n $${EXPORTS_QUEUE_NICE:-10} php artisan queue:work database --queue=$${IMPORTS_QUEUE:-imports},$${EXPORTS_QUEUE:-exports},default --sleep=$${EXPORTS_QUEUE_SLEEP:-5} --rest=$${EXPORTS_QUEUE_REST:-1} --timeout=$${EXPORTS_JOB_TIMEOUT:-900} --tries=2 --memory=$${EXPORTS_QUEUE_MEMORY_MB:-384}'"
+      && exec su -s /bin/sh www-data -c 'nice -n $${EXPORTS_QUEUE_NICE:-10} php artisan queue:work $${QUEUE_CONNECTION:-redis} --queue=$${IMPORTS_QUEUE:-imports},$${EXPORTS_QUEUE:-exports},default --sleep=$${EXPORTS_QUEUE_SLEEP:-5} --rest=$${EXPORTS_QUEUE_REST:-1} --timeout=$${EXPORTS_JOB_TIMEOUT:-900} --tries=2 --memory=$${EXPORTS_QUEUE_MEMORY_MB:-384}'"
     volumes:
       - .:/var/www
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     cpus: "${EXPORTS_QUEUE_CPUS:-0.50}"
     mem_limit: "${EXPORTS_QUEUE_MEM_LIMIT:-512m}"
@@ -105,6 +150,21 @@ services:
     networks:
       - laravel_gestao-edu
 
+  redis:
+    image: redis:7-alpine
+    container_name: laravel-redis-gestao-edu
+    command: redis-server --appendonly yes --maxmemory-policy noeviction
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+    networks:
+      - laravel_gestao-edu
+
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
     container_name: laravel-phpmyadmin-gestao-edu
@@ -120,7 +180,8 @@ services:
     networks:
       - laravel_gestao-edu
 
-volumes: {}
+volumes:
+  redis_data:
 
 networks:
   laravel_gestao-edu:

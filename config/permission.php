@@ -198,10 +198,9 @@ return [
          */
 
         /*
-         * Keep permission cache request-local by default so permission changes in
-         * the database are reflected on the next request, without depending on
-         * writable server-side cache files.
+         * Use the default cache store by default so permission checks do not
+         * reload the full role/permission graph on every PHP-FPM request.
          */
-        'store' => env('PERMISSION_CACHE_STORE', 'array'),
+        'store' => env('PERMISSION_CACHE_STORE', 'default'),
     ],
 ];
