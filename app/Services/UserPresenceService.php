@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Throwable;
 
 class UserPresenceService
 {
@@ -18,7 +19,7 @@ class UserPresenceService
         $cacheKey = 'presence:touch:user:'.$user->getKey();
         $minInterval = max(5, (int) config('performance.presence_touch_min_interval_seconds', 20));
 
-        if (! $markLogin && Cache::has($cacheKey)) {
+        if (! $markLogin && $this->cacheHas($cacheKey)) {
             return;
         }
 
@@ -34,7 +35,7 @@ class UserPresenceService
             ->whereKey($user->getKey())
             ->update($data);
 
-        Cache::put($cacheKey, true, now()->addSeconds($minInterval));
+        $this->cachePut($cacheKey, true, now()->addSeconds($minInterval));
 
         if ($markLogin) {
             $this->forgetCache();
@@ -81,17 +82,48 @@ class UserPresenceService
 
     public function forgetCache(): void
     {
-        Cache::forget('presence:online');
-        Cache::forget('presence:offline');
-        Cache::forget('presence:online-count');
-        Cache::forget('presence:users-count');
+        $this->cacheForget('presence:online');
+        $this->cacheForget('presence:offline');
+        $this->cacheForget('presence:online-count');
+        $this->cacheForget('presence:users-count');
     }
 
     protected function remember(string $key, \Closure $callback, string $ttlKey = 'online_users'): mixed
     {
         $ttl = (int) config("performance.cache_ttl.{$ttlKey}", 15);
 
-        return Cache::remember($key, now()->addSeconds($ttl), $callback);
+        try {
+            return Cache::remember($key, now()->addSeconds($ttl), $callback);
+        } catch (Throwable) {
+            return $callback();
+        }
+    }
+
+    protected function cacheHas(string $key): bool
+    {
+        try {
+            return Cache::has($key);
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
+    protected function cachePut(string $key, mixed $value, mixed $ttl): void
+    {
+        try {
+            Cache::put($key, $value, $ttl);
+        } catch (Throwable) {
+            //
+        }
+    }
+
+    protected function cacheForget(string $key): void
+    {
+        try {
+            Cache::forget($key);
+        } catch (Throwable) {
+            //
+        }
     }
 
     protected function onlineQuery(): Builder
