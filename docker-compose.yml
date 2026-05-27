@@ -8,7 +8,7 @@ x-production-env: &production-env
   SESSION_CONNECTION: default
   SESSION_STORE: redis
   QUEUE_CONNECTION: redis
-  REDIS_CLIENT: phpredis
+  REDIS_CLIENT: predis
   REDIS_HOST: redis
   REDIS_PORT: 6379
   REDIS_DB: 0

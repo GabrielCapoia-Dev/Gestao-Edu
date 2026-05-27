@@ -12,16 +12,13 @@ chmod -R 775 \
     /var/www/bootstrap/cache
 
 # ── Dependências PHP ───────────────────────────────────────────────────────
-if [ ! -f "vendor/autoload.php" ]; then
-    if [ "$APP_ENV" = "production" ]; then
-        composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
-    else
-        composer install --no-interaction --prefer-dist --optimize-autoloader
-    fi
+# Run on every boot so dependency changes from a deploy are applied even when
+# vendor/ is persisted through the bind mount.
+if [ "$APP_ENV" = "production" ]; then
+    composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+else
+    composer install --no-interaction --prefer-dist --optimize-autoloader
 fi
-
-# Keep Composer's optimized autoloader current after a deployment/mount update.
-composer dump-autoload --no-interaction --optimize
 
 # ── APP_KEY ────────────────────────────────────────────────────────────────
 if [ -z "$APP_KEY" ] || [ "$APP_KEY" = "base64:" ]; then
