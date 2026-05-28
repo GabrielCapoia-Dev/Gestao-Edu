@@ -110,7 +110,7 @@
 
         .edu-icon {
             --size: 64px;
-            --alpha: .18;
+            --alpha: .24;
             --rot: 0deg;
             position: absolute;
             width: var(--size);
@@ -132,7 +132,7 @@
 
         .force-icon-book {
             --size: clamp(54px, 7vw, 88px);
-            --alpha: .16;
+            --alpha: .24;
             --rot: -12deg;
             right: 12%;
             top: 13%;
@@ -140,7 +140,7 @@
 
         .force-icon-calendar {
             --size: clamp(42px, 5vw, 70px);
-            --alpha: .18;
+            --alpha: .30;
             --rot: 7deg;
             left: 10%;
             bottom: 12%;
@@ -148,7 +148,7 @@
 
         .force-icon-check {
             --size: clamp(50px, 6vw, 82px);
-            --alpha: .19;
+            --alpha: .34;
             --rot: 0deg;
             right: 8%;
             bottom: 20%;
@@ -156,7 +156,7 @@
 
         .force-icon-key {
             --size: clamp(40px, 4.8vw, 64px);
-            --alpha: .15;
+            --alpha: .22;
             --rot: 18deg;
             left: 52%;
             top: 33%;
@@ -164,10 +164,42 @@
 
         .force-icon-ruler {
             --size: clamp(42px, 5vw, 66px);
-            --alpha: .14;
+            --alpha: .18;
             --rot: -8deg;
             left: 18%;
             top: 28%;
+        }
+
+        .force-icon-book-alt {
+            --size: clamp(38px, 4.8vw, 62px);
+            --alpha: .16;
+            --rot: 9deg;
+            left: 12%;
+            top: 12%;
+        }
+
+        .force-icon-calendar-alt {
+            --size: clamp(34px, 4vw, 56px);
+            --alpha: .20;
+            --rot: -9deg;
+            right: 34%;
+            bottom: 10%;
+        }
+
+        .force-icon-check-alt {
+            --size: clamp(36px, 4.5vw, 58px);
+            --alpha: .28;
+            --rot: -6deg;
+            left: 44%;
+            bottom: 28%;
+        }
+
+        .force-icon-key-alt {
+            --size: clamp(32px, 4vw, 52px);
+            --alpha: .15;
+            --rot: -20deg;
+            right: 26%;
+            top: 24%;
         }
 
         .brand {
@@ -200,7 +232,7 @@
         }
 
         .brand-title {
-            color: var(--ink);
+            color: var(--primary);
             font-size: 20px;
             font-weight: 800;
         }
@@ -222,7 +254,7 @@
 
         .panel h1 {
             margin: 0 0 14px;
-            color: var(--ink);
+            color: var(--primary);
             font-size: clamp(38px, 5vw, 64px);
             line-height: .98;
             letter-spacing: 0;
@@ -230,7 +262,7 @@
 
         .panel p {
             margin: 0;
-            color: var(--muted);
+            color: var(--primary-700);
             font-size: clamp(15px, 1.4vw, 18px);
             line-height: 1.65;
         }
@@ -673,6 +705,10 @@
                     <span class="edu-icon force-icon-check"><svg><use href="#edu-icon-check"></use></svg></span>
                     <span class="edu-icon force-icon-key"><svg><use href="#edu-icon-key"></use></svg></span>
                     <span class="edu-icon force-icon-ruler"><svg><use href="#edu-icon-ruler"></use></svg></span>
+                    <span class="edu-icon force-icon-book-alt"><svg><use href="#edu-icon-book"></use></svg></span>
+                    <span class="edu-icon force-icon-calendar-alt"><svg><use href="#edu-icon-calendar"></use></svg></span>
+                    <span class="edu-icon force-icon-check-alt"><svg><use href="#edu-icon-check"></use></svg></span>
+                    <span class="edu-icon force-icon-key-alt"><svg><use href="#edu-icon-key"></use></svg></span>
                 </div>
 
                 <div class="brand">
