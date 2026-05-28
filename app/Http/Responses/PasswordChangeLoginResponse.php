@@ -2,7 +2,6 @@
 
 namespace App\Http\Responses;
 
-use App\Filament\Admin\Pages\ForcePasswordChange;
 use App\Models\User;
 use Filament\Auth\Http\Responses\Contracts\LoginResponse as Responsable;
 use Filament\Facades\Filament;
@@ -16,7 +15,7 @@ class PasswordChangeLoginResponse implements Responsable
         $user = Filament::auth()->user() ?: $request->user();
 
         if ($user instanceof User && $user->must_change_password) {
-            return redirect()->to(ForcePasswordChange::getUrl());
+            return redirect()->route('auth.force-password.edit');
         }
 
         return redirect()->intended(Filament::getUrl());

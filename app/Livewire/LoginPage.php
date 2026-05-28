@@ -2,7 +2,6 @@
 
 namespace App\Livewire;
 
-use App\Filament\Admin\Pages\ForcePasswordChange;
 use Caresome\FilamentAuthDesigner\Pages\Auth\Login as BaseLogin;
 use Filament\Actions;
 use Filament\Facades\Filament;
@@ -23,7 +22,7 @@ class LoginPage extends BaseLogin
             $user = Filament::auth()->user();
 
             if ($user?->must_change_password) {
-                redirect()->to(ForcePasswordChange::getUrl());
+                redirect()->route('auth.force-password.edit');
 
                 return;
             }

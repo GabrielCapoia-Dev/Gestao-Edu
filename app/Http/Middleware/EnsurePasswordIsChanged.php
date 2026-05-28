@@ -2,7 +2,6 @@
 
 namespace App\Http\Middleware;
 
-use App\Filament\Admin\Pages\ForcePasswordChange;
 use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
@@ -22,14 +21,14 @@ class EnsurePasswordIsChanged
             return $next($request);
         }
 
-        return redirect()->to(ForcePasswordChange::getUrl());
+        return redirect()->route('auth.force-password.edit');
     }
 
     private function rotaPermitida(Request $request): bool
     {
         $routeName = (string) ($request->route()?->getName() ?? '');
 
-        if ($routeName === ForcePasswordChange::getRouteName()) {
+        if ($routeName === 'auth.force-password.edit') {
             return true;
         }
 

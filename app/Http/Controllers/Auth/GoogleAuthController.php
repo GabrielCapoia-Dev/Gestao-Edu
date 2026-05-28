@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Auth;
 
-use App\Filament\Admin\Pages\ForcePasswordChange;
 use App\Http\Controllers\Controller;
 use App\Services\GoogleService;
 use Filament\Facades\Filament;
@@ -94,7 +93,7 @@ class GoogleAuthController extends Controller
                 ->send();
 
             if ($user->must_change_password) {
-                return redirect()->to(ForcePasswordChange::getUrl());
+                return redirect()->route('auth.force-password.edit');
             }
 
             return redirect()->intended($redirectTo ?: $panel->getUrl());

@@ -48,7 +48,22 @@ php artisan route:cache
 php artisan event:cache
 php artisan view:cache
 php artisan filament:cache-components
+php artisan livewire:publish --assets
 php artisan filament:assets
+
+if command -v gzip >/dev/null 2>&1; then
+    for asset_dir in public/css public/js public/vendor/livewire; do
+        [ -d "$asset_dir" ] || continue
+
+        find "$asset_dir" -type f \( \
+            -name '*.css' -o \
+            -name '*.js' -o \
+            -name '*.json' -o \
+            -name '*.map' -o \
+            -name '*.svg' \
+        \) -exec gzip -kf {} \;
+    done
+fi
 
 
 # ── Inicia php-fpm em background e nginx em foreground ─────────────────────

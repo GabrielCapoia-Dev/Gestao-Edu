@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\GoogleAuthController;
+use App\Http\Controllers\Auth\AdminLoginController;
 use App\Http\Controllers\Auth\ForcePasswordChangeController;
 use App\Http\Controllers\AvaliacaoDocumentoExportController;
 use App\Http\Controllers\BaixasEstoqueRelatorioController;
@@ -97,10 +98,16 @@ Route::get('/pedidos/relatorio-geral', [PedidoRelatorioGeralController::class, '
 
 Route::get('/oauth/redirect/google', [GoogleAuthController::class, 'redirect'])->name('google.redirect');
 Route::get('/oauth/callback/google', [GoogleAuthController::class, 'callback'])->name('google.callback');
+Route::post('/admin/login', [AdminLoginController::class, 'store'])
+    ->middleware('web')
+    ->name('admin.login.store');
 
 Route::prefix('admin')
     ->middleware(['web', 'auth', EnsurePasswordIsChanged::class])
     ->group(function () {
+        Route::get('/alterar-senha-obrigatoria', [ForcePasswordChangeController::class, 'edit'])
+            ->name('auth.force-password.edit');
+
         Route::post('/alterar-senha-obrigatoria/salvar', [ForcePasswordChangeController::class, 'update'])
             ->name('auth.force-password.update');
 

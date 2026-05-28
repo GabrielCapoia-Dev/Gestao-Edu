@@ -2,7 +2,6 @@
 
 namespace App\Http\Middleware;
 
-use App\Filament\Admin\Pages\ForcePasswordChange;
 use App\Models\Aluno;
 use App\Services\AlunoTransferenciaPendenteService;
 use Closure;
@@ -38,7 +37,7 @@ class BloquearProfessorPendenciaTransferencia
             return true;
         }
 
-        if ($routeName === ForcePasswordChange::getRouteName()) {
+        if ($routeName === 'auth.force-password.edit') {
             return true;
         }
 

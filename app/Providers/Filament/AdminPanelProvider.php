@@ -3,16 +3,14 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Admin\Pages\Auth\EditProfile as CustomEditProfile;
-use App\Filament\Admin\Pages\ForcePasswordChange;
+use App\Http\Controllers\Auth\AdminLoginController;
 use App\Http\Middleware\BloquearProfessorPendenciaTransferencia;
 use App\Http\Middleware\EnsurePasswordIsChanged;
-use App\Livewire\LoginPage;
 use App\Models\User;
 use App\Services\UserPresenceService;
 use Caresome\FilamentAuthDesigner\AuthDesignerPlugin;
 use Caresome\FilamentAuthDesigner\Data\AuthPageConfig;
 use Caresome\FilamentAuthDesigner\Enums\MediaPosition;
-use Caresome\FilamentAuthDesigner\View\AuthDesignerRenderHook;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -36,7 +34,7 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->default()
             ->path('admin')
-            ->login()
+            ->login([AdminLoginController::class, 'show'])
             ->profile()
             ->darkMode(false)
             ->colors([
@@ -72,9 +70,7 @@ class AdminPanelProvider extends PanelProvider
             ->discoverResources(in: app_path('Filament/Admin/Resources'), for: 'App\\Filament\\Admin\\Resources')
             ->discoverPages(in: app_path('Filament/Admin/Pages'), for: 'App\\Filament\\Admin\\Pages')
             ->discoverClusters(in: app_path('Filament/Admin/Clusters'), for: 'App\\Filament\\Admin\\Clusters')
-            ->pages([
-                ForcePasswordChange::class,
-            ])
+            ->pages([])
             ->discoverWidgets(in: app_path('Filament/Admin/Widgets'), for: 'App\\Filament\\Admin\\Widgets')
             ->widgets([])
             ->middleware([
@@ -123,15 +119,6 @@ class AdminPanelProvider extends PanelProvider
             )
             ->plugins([
                 AuthDesignerPlugin::make()
-                    ->login(
-                        fn (AuthPageConfig $config) => $config
-                            ->media(asset('images/background.webp'))
-                            ->mediaPosition(MediaPosition::Left)
-                            ->renderHook(AuthDesignerRenderHook::MediaOverlay, fn () => view('background-page'))
-                            ->usingPage(LoginPage::class)
-                            ->mediaSize('70%')
-                            ->themeToggle()
-                    )
                     ->profile(
                         fn (AuthPageConfig $config) => $config
                             ->media(asset('images/background.jpg'))

@@ -10,11 +10,31 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password as PasswordRule;
+use Illuminate\View\View;
 
 class ForcePasswordChangeController extends Controller
 {
+    public function edit(Request $request): View | RedirectResponse
+    {
+        $this->setAdminPanel();
+
+        $user = Filament::auth()->user() ?: $request->user();
+
+        if (! $user instanceof User) {
+            return redirect()->to(Filament::getLoginUrl());
+        }
+
+        if (! $user->must_change_password) {
+            return redirect()->to(Filament::getUrl());
+        }
+
+        return view('auth.force-password-change');
+    }
+
     public function update(Request $request): RedirectResponse
     {
+        $this->setAdminPanel();
+
         $user = Filament::auth()->user() ?: $request->user();
 
         if (! $user instanceof User) {
@@ -64,5 +84,10 @@ class ForcePasswordChangeController extends Controller
         return redirect()
             ->to(Filament::getLoginUrl())
             ->with('status', 'Senha redefinida. Entre novamente usando a nova senha.');
+    }
+
+    private function setAdminPanel(): void
+    {
+        Filament::setCurrentPanel(Filament::getPanel('admin'));
     }
 }
