@@ -9,6 +9,7 @@
         :root {
             color-scheme: light;
             --primary: #074f9b;
+            --primary-800: #053a72;
             --primary-700: #063f7c;
             --primary-100: #dcecff;
             --primary-50: #f0f7ff;
@@ -42,9 +43,10 @@
             margin: 0;
             color: var(--text);
             background:
-                radial-gradient(circle at 12% 14%, rgba(7, 79, 155, .10), transparent 26%),
-                radial-gradient(circle at 84% 78%, rgba(244, 185, 66, .18), transparent 28%),
-                linear-gradient(135deg, #ffffff 0%, #f4f9ff 48%, #eef6ff 100%);
+                radial-gradient(circle at 10% 12%, rgba(7, 79, 155, .22), transparent 27%),
+                radial-gradient(circle at 66% 8%, rgba(7, 79, 155, .10), transparent 28%),
+                radial-gradient(circle at 84% 84%, rgba(244, 185, 66, .16), transparent 30%),
+                linear-gradient(135deg, #fafdff 0%, #edf6ff 46%, #ffffff 100%);
         }
 
         button,
@@ -72,21 +74,29 @@
             content: "";
             position: absolute;
             inset: 28px;
-            border: 1px solid rgba(7, 79, 155, .10);
+            z-index: 0;
+            border: 1px solid rgba(7, 79, 155, .14);
             border-radius: 24px;
-            background: rgba(255, 255, 255, .42);
+            background:
+                linear-gradient(118deg, rgba(255, 255, 255, .88) 0%, rgba(247, 251, 255, .78) 46%, rgba(222, 239, 255, .66) 100%),
+                linear-gradient(135deg, rgba(7, 79, 155, .12), rgba(255, 255, 255, .28));
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, .80), 0 24px 80px rgba(7, 79, 155, .10);
             pointer-events: none;
         }
 
         .brand-panel::after {
             content: "";
             position: absolute;
-            top: 18%;
-            right: 7%;
-            width: 190px;
-            height: 190px;
-            border-radius: 999px;
-            border: 28px solid rgba(7, 79, 155, .08);
+            right: -132px;
+            bottom: -170px;
+            z-index: 0;
+            width: 430px;
+            height: 430px;
+            border-radius: 44% 56% 38% 62%;
+            border: 1px solid rgba(7, 79, 155, .12);
+            background:
+                radial-gradient(circle at 44% 42%, rgba(255, 255, 255, .86), transparent 34%),
+                linear-gradient(145deg, rgba(7, 79, 155, .16), rgba(7, 79, 155, .03));
             animation: floatSeal 9s ease-in-out infinite;
             pointer-events: none;
         }
@@ -95,7 +105,92 @@
         .hero,
         .module-grid {
             position: relative;
+            z-index: 2;
+        }
+
+        .brand-visual {
+            position: absolute;
+            top: 45%;
+            right: clamp(44px, 7vw, 112px);
             z-index: 1;
+            width: min(30vw, 360px);
+            min-width: 250px;
+            aspect-ratio: 1;
+            border-radius: 999px;
+            pointer-events: none;
+            animation: fadeUp .62s .16s ease both;
+        }
+
+        .visual-ring {
+            position: absolute;
+            inset: 12%;
+            border-radius: 999px;
+            border: 26px solid rgba(7, 79, 155, .10);
+            background: radial-gradient(circle, rgba(255, 255, 255, .58) 0 43%, rgba(7, 79, 155, .05) 44% 100%);
+            box-shadow: inset 0 0 0 1px rgba(7, 79, 155, .08);
+        }
+
+        .visual-card {
+            position: absolute;
+            display: grid;
+            gap: 5px;
+            min-width: 118px;
+            padding: 12px;
+            border: 1px solid rgba(7, 79, 155, .14);
+            border-radius: 14px;
+            background: rgba(255, 255, 255, .82);
+            box-shadow: 0 20px 44px rgba(7, 79, 155, .10);
+            color: var(--primary);
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .visual-card::before {
+            content: "";
+            width: 34px;
+            height: 8px;
+            border-radius: 999px;
+            background: linear-gradient(90deg, var(--primary), #67a9e8);
+        }
+
+        .visual-card::after {
+            content: "";
+            width: 72px;
+            height: 6px;
+            border-radius: 999px;
+            background: rgba(7, 79, 155, .12);
+        }
+
+        .visual-card-a {
+            top: 12%;
+            right: 4%;
+        }
+
+        .visual-card-b {
+            left: -3%;
+            bottom: 18%;
+        }
+
+        .visual-dot {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border-radius: 999px;
+            background: var(--primary);
+            box-shadow: 0 0 0 9px rgba(7, 79, 155, .10);
+        }
+
+        .visual-dot-a {
+            left: 24%;
+            top: 14%;
+        }
+
+        .visual-dot-b {
+            right: 22%;
+            bottom: 10%;
+            background: var(--amber);
+            box-shadow: 0 0 0 9px rgba(244, 185, 66, .20);
         }
 
         .brand-header {
@@ -173,7 +268,7 @@
         }
 
         .hero {
-            max-width: 700px;
+            max-width: 640px;
             padding: clamp(42px, 8vw, 90px) 0 34px;
             animation: fadeUp .58s .08s ease both;
         }
@@ -222,11 +317,11 @@
         }
 
         .module {
-            min-height: 104px;
+            min-height: 100px;
             padding: 16px;
             border: 1px solid rgba(7, 79, 155, .12);
             border-radius: 16px;
-            background: rgba(255, 255, 255, .76);
+            background: rgba(255, 255, 255, .82);
             box-shadow: 0 16px 38px rgba(7, 79, 155, .08);
             transition: transform .2s ease, box-shadow .2s ease;
         }
@@ -275,7 +370,7 @@
             align-items: center;
             justify-content: center;
             padding: clamp(24px, 5vw, 52px);
-            background: rgba(255, 255, 255, .74);
+            background: linear-gradient(180deg, rgba(255, 255, 255, .90), rgba(247, 251, 255, .86));
             border-left: 1px solid rgba(7, 79, 155, .10);
             backdrop-filter: blur(14px);
         }
@@ -569,6 +664,10 @@
                 display: none;
             }
 
+            .brand-visual {
+                display: none;
+            }
+
             .auth-panel {
                 align-items: flex-start;
                 min-height: 100vh;
@@ -585,6 +684,17 @@
 
             .mobile-brand {
                 display: flex;
+            }
+        }
+
+        @media (max-width: 1220px) {
+            .brand-visual {
+                right: 26px;
+                opacity: .55;
+            }
+
+            .hero {
+                max-width: 590px;
             }
         }
 
@@ -641,6 +751,14 @@
                 </span>
             </div>
 
+            <div class="brand-visual" aria-hidden="true">
+                <span class="visual-ring"></span>
+                <span class="visual-card visual-card-a">Avaliacoes</span>
+                <span class="visual-card visual-card-b">Relatorios</span>
+                <span class="visual-dot visual-dot-a"></span>
+                <span class="visual-dot visual-dot-b"></span>
+            </div>
+
             <div class="hero">
                 <span class="eyebrow">Prefeitura Municipal de Umuarama</span>
                 <h1>Gestao escolar simples, clara e conectada.</h1>
@@ -648,7 +766,34 @@
             </div>
 
             <div class="module-grid" aria-hidden="true">
-
+                <div class="module">
+                    <div class="module-top">
+                        <span class="module-dot">A</span>
+                        <small>Alunos</small>
+                    </div>
+                    <strong>Matriculas e turmas</strong>
+                </div>
+                <div class="module">
+                    <div class="module-top">
+                        <span class="module-dot">P</span>
+                        <small>Pedagogico</small>
+                    </div>
+                    <strong>Avaliacoes e pautas</strong>
+                </div>
+                <div class="module">
+                    <div class="module-top">
+                        <span class="module-dot">M</span>
+                        <small>Merenda</small>
+                    </div>
+                    <strong>Pedidos e estoque</strong>
+                </div>
+                <div class="module">
+                    <div class="module-top">
+                        <span class="module-dot">R</span>
+                        <small>Relatorios</small>
+                    </div>
+                    <strong>Indicadores da rede</strong>
+                </div>
             </div>
         </section>
 
