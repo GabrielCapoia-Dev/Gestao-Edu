@@ -592,6 +592,9 @@
                 <p>Um painel para apoiar a rotina da Secretaria de Educacao com acesso rapido a escolas, avaliacoes, merenda, pedidos e relatorios.</p>
             </div>
 
+            <div class="module-grid" aria-hidden="true">
+
+            </div>
         </section>
 
         <section class="auth-panel" aria-labelledby="login-title">
