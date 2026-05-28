@@ -592,36 +592,6 @@
                 <p>Um painel para apoiar a rotina da Secretaria de Educacao com acesso rapido a escolas, avaliacoes, merenda, pedidos e relatorios.</p>
             </div>
 
-            <div class="module-grid" aria-hidden="true">
-                <div class="module">
-                    <div class="module-top">
-                        <span class="module-dot">E</span>
-                        <small>Rede</small>
-                    </div>
-                    <strong>Escolas</strong>
-                </div>
-                <div class="module">
-                    <div class="module-top">
-                        <span class="module-dot">A</span>
-                        <small>Ensino</small>
-                    </div>
-                    <strong>Avaliacoes</strong>
-                </div>
-                <div class="module">
-                    <div class="module-top">
-                        <span class="module-dot">M</span>
-                        <small>Operacao</small>
-                    </div>
-                    <strong>Merenda</strong>
-                </div>
-                <div class="module">
-                    <div class="module-top">
-                        <span class="module-dot">R</span>
-                        <small>Analise</small>
-                    </div>
-                    <strong>Relatorios</strong>
-                </div>
-            </div>
         </section>
 
         <section class="auth-panel" aria-labelledby="login-title">
