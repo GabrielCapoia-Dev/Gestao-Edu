@@ -131,19 +131,19 @@
         }
 
         .force-icon-book {
-            --size: clamp(54px, 7vw, 88px);
-            --alpha: .24;
+            --size: clamp(58px, 7vw, 92px);
+            --alpha: .32;
             --rot: -12deg;
-            right: 12%;
-            top: 13%;
+            right: 16%;
+            top: 10%;
         }
 
         .force-icon-calendar {
             --size: clamp(42px, 5vw, 70px);
-            --alpha: .30;
+            --alpha: .28;
             --rot: 7deg;
-            left: 10%;
-            bottom: 12%;
+            right: 39%;
+            top: 14%;
         }
 
         .force-icon-check {
@@ -156,26 +156,26 @@
 
         .force-icon-key {
             --size: clamp(40px, 4.8vw, 64px);
-            --alpha: .22;
+            --alpha: .19;
             --rot: 18deg;
-            left: 52%;
-            top: 33%;
+            right: 46%;
+            top: 30%;
         }
 
         .force-icon-ruler {
             --size: clamp(42px, 5vw, 66px);
-            --alpha: .18;
+            --alpha: .22;
             --rot: -8deg;
-            left: 18%;
-            top: 28%;
+            right: 24%;
+            top: 27%;
         }
 
         .force-icon-book-alt {
             --size: clamp(38px, 4.8vw, 62px);
-            --alpha: .16;
+            --alpha: .20;
             --rot: 9deg;
-            left: 12%;
-            top: 12%;
+            right: 55%;
+            top: 7%;
         }
 
         .force-icon-calendar-alt {
@@ -190,16 +190,56 @@
             --size: clamp(36px, 4.5vw, 58px);
             --alpha: .28;
             --rot: -6deg;
-            left: 44%;
-            bottom: 28%;
+            right: 32%;
+            top: 42%;
         }
 
         .force-icon-key-alt {
             --size: clamp(32px, 4vw, 52px);
-            --alpha: .15;
+            --alpha: .32;
             --rot: -20deg;
-            right: 26%;
-            top: 24%;
+            right: 7%;
+            top: 22%;
+        }
+
+        .force-icon-books {
+            --size: clamp(42px, 5vw, 72px);
+            --alpha: .23;
+            --rot: 7deg;
+            right: 9%;
+            top: 36%;
+        }
+
+        .force-icon-book-top {
+            --size: clamp(34px, 4vw, 54px);
+            --alpha: .17;
+            --rot: -8deg;
+            right: 29%;
+            top: 22%;
+        }
+
+        .force-icon-calendar-top {
+            --size: clamp(32px, 3.8vw, 50px);
+            --alpha: .24;
+            --rot: 9deg;
+            right: 3%;
+            top: 8%;
+        }
+
+        .force-icon-check-top {
+            --size: clamp(34px, 4vw, 56px);
+            --alpha: .27;
+            --rot: -6deg;
+            right: 27%;
+            top: 17%;
+        }
+
+        .force-icon-ruler-top {
+            --size: clamp(30px, 3.6vw, 48px);
+            --alpha: .18;
+            --rot: 12deg;
+            right: 52%;
+            top: 35%;
         }
 
         .brand {
@@ -692,6 +732,10 @@
             <path d="M14 48L31 16l19 32H14z"></path>
             <path d="M31 27v21M24 41h14"></path>
         </symbol>
+        <symbol id="edu-icon-books" viewBox="0 0 64 64">
+            <path d="M18 16h12v38H18zM34 20h12v34H34z"></path>
+            <path d="M21 25h6M37 29h6M21 47h6M37 47h6"></path>
+        </symbol>
     </svg>
 
     <main class="page">
@@ -709,6 +753,11 @@
                     <span class="edu-icon force-icon-calendar-alt"><svg><use href="#edu-icon-calendar"></use></svg></span>
                     <span class="edu-icon force-icon-check-alt"><svg><use href="#edu-icon-check"></use></svg></span>
                     <span class="edu-icon force-icon-key-alt"><svg><use href="#edu-icon-key"></use></svg></span>
+                    <span class="edu-icon force-icon-books"><svg><use href="#edu-icon-books"></use></svg></span>
+                    <span class="edu-icon force-icon-book-top"><svg><use href="#edu-icon-book"></use></svg></span>
+                    <span class="edu-icon force-icon-calendar-top"><svg><use href="#edu-icon-calendar"></use></svg></span>
+                    <span class="edu-icon force-icon-check-top"><svg><use href="#edu-icon-check"></use></svg></span>
+                    <span class="edu-icon force-icon-ruler-top"><svg><use href="#edu-icon-ruler"></use></svg></span>
                 </div>
 
                 <div class="brand">

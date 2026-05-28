@@ -139,48 +139,48 @@
         }
 
         .icon-book {
-            --size: clamp(56px, 6vw, 92px);
-            --alpha: .22;
+            --size: clamp(62px, 6.4vw, 100px);
+            --alpha: .32;
             --rot: -10deg;
-            top: 13%;
-            right: 29%;
+            top: 10%;
+            right: 28%;
         }
 
         .icon-calendar {
-            --size: clamp(44px, 5vw, 76px);
-            --alpha: .30;
+            --size: clamp(50px, 5.4vw, 82px);
+            --alpha: .36;
             --rot: -6deg;
             right: 8%;
-            top: 16%;
+            top: 13%;
         }
 
         .icon-check {
             --size: clamp(52px, 5.8vw, 86px);
             --alpha: .34;
             --rot: 0deg;
-            right: 16%;
-            bottom: 25%;
+            right: 17%;
+            bottom: 27%;
         }
 
         .icon-key {
             --size: clamp(44px, 4.8vw, 72px);
             --alpha: .24;
             --rot: 22deg;
-            right: 35%;
+            right: 34%;
             bottom: 12%;
         }
 
         .icon-ruler {
-            --size: clamp(46px, 4.6vw, 68px);
-            --alpha: .20;
+            --size: clamp(40px, 4.2vw, 62px);
+            --alpha: .23;
             --rot: 11deg;
-            left: 58%;
+            right: 42%;
             top: 8%;
         }
 
         .icon-books {
             --size: clamp(56px, 6vw, 90px);
-            --alpha: .26;
+            --alpha: .28;
             --rot: 8deg;
             right: 5%;
             bottom: 6%;
@@ -188,50 +188,82 @@
 
         .icon-book-alt {
             --size: clamp(42px, 4.6vw, 70px);
-            --alpha: .14;
+            --alpha: .17;
             --rot: 12deg;
-            left: 38%;
-            bottom: 19%;
+            right: 45%;
+            bottom: 20%;
         }
 
         .icon-calendar-alt {
             --size: clamp(38px, 4.2vw, 62px);
-            --alpha: .18;
+            --alpha: .22;
             --rot: 8deg;
-            left: 70%;
+            right: 25%;
             bottom: 8%;
         }
 
         .icon-check-alt {
             --size: clamp(34px, 3.8vw, 56px);
-            --alpha: .28;
+            --alpha: .31;
             --rot: -8deg;
-            left: 55%;
-            bottom: 34%;
+            right: 31%;
+            bottom: 38%;
         }
 
         .icon-key-alt {
             --size: clamp(34px, 3.8vw, 54px);
-            --alpha: .16;
+            --alpha: .19;
             --rot: -18deg;
-            left: 46%;
-            top: 28%;
+            right: 21%;
+            top: 24%;
         }
 
         .icon-ruler-alt {
             --size: clamp(34px, 3.4vw, 50px);
-            --alpha: .23;
+            --alpha: .28;
             --rot: -13deg;
-            right: 28%;
+            right: 36%;
             top: 28%;
         }
 
         .icon-books-alt {
             --size: clamp(42px, 4.5vw, 64px);
-            --alpha: .19;
+            --alpha: .23;
             --rot: -7deg;
-            right: 41%;
-            top: 45%;
+            right: 10%;
+            top: 35%;
+        }
+
+        .icon-book-top {
+            --size: clamp(36px, 3.7vw, 58px);
+            --alpha: .27;
+            --rot: 8deg;
+            right: 18%;
+            top: 7%;
+        }
+
+        .icon-calendar-top {
+            --size: clamp(34px, 3.4vw, 52px);
+            --alpha: .18;
+            --rot: 10deg;
+            right: 4%;
+            top: 28%;
+        }
+
+        .icon-check-top {
+            --size: clamp(38px, 3.8vw, 60px);
+            --alpha: .24;
+            --rot: -7deg;
+            right: 51%;
+            top: 18%;
+        }
+
+        .icon-key-top {
+            --size: clamp(30px, 3vw, 46px);
+            --alpha: .34;
+            --rot: 18deg;
+            right: 34%;
+            top: 20%;
         }
 
         .brand-header {
@@ -879,6 +911,10 @@
                 <span class="edu-icon icon-key-alt"><svg><use href="#edu-icon-key"></use></svg></span>
                 <span class="edu-icon icon-ruler-alt"><svg><use href="#edu-icon-ruler"></use></svg></span>
                 <span class="edu-icon icon-books-alt"><svg><use href="#edu-icon-books"></use></svg></span>
+                <span class="edu-icon icon-book-top"><svg><use href="#edu-icon-book"></use></svg></span>
+                <span class="edu-icon icon-calendar-top"><svg><use href="#edu-icon-calendar"></use></svg></span>
+                <span class="edu-icon icon-check-top"><svg><use href="#edu-icon-check"></use></svg></span>
+                <span class="edu-icon icon-key-top"><svg><use href="#edu-icon-key"></use></svg></span>
             </div>
 
             <div class="brand-header">
