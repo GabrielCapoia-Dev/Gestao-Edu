@@ -93,30 +93,81 @@
             color: var(--ink);
         }
 
-        .panel::before {
-            content: "";
+        .icon-sprite {
             position: absolute;
-            right: -78px;
-            top: 96px;
-            width: 260px;
-            height: 260px;
-            border-radius: 999px;
-            border: 24px solid rgba(7, 79, 155, .09);
-            background: radial-gradient(circle, rgba(255, 255, 255, .74) 0 43%, rgba(7, 79, 155, .04) 44% 100%);
+            width: 0;
+            height: 0;
+            overflow: hidden;
+        }
+
+        .edu-icons {
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            overflow: hidden;
             pointer-events: none;
         }
 
-        .panel::after {
-            content: "";
+        .edu-icon {
+            --size: 64px;
+            --alpha: .18;
+            --rot: 0deg;
             position: absolute;
-            left: -92px;
-            bottom: -132px;
-            width: 330px;
-            height: 330px;
-            border-radius: 42% 58% 36% 64%;
-            background: linear-gradient(145deg, rgba(7, 79, 155, .14), rgba(7, 79, 155, .03));
-            border: 1px solid rgba(7, 79, 155, .10);
-            pointer-events: none;
+            width: var(--size);
+            height: var(--size);
+            color: rgba(7, 79, 155, var(--alpha));
+            transform: rotate(var(--rot));
+            filter: drop-shadow(0 18px 28px rgba(7, 79, 155, .08));
+        }
+
+        .edu-icon svg {
+            width: 100%;
+            height: 100%;
+            fill: none;
+            stroke: currentColor;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-width: 1.8;
+        }
+
+        .force-icon-book {
+            --size: clamp(54px, 7vw, 88px);
+            --alpha: .16;
+            --rot: -12deg;
+            right: 12%;
+            top: 13%;
+        }
+
+        .force-icon-calendar {
+            --size: clamp(42px, 5vw, 70px);
+            --alpha: .18;
+            --rot: 7deg;
+            left: 10%;
+            bottom: 12%;
+        }
+
+        .force-icon-check {
+            --size: clamp(50px, 6vw, 82px);
+            --alpha: .19;
+            --rot: 0deg;
+            right: 8%;
+            bottom: 20%;
+        }
+
+        .force-icon-key {
+            --size: clamp(40px, 4.8vw, 64px);
+            --alpha: .15;
+            --rot: 18deg;
+            left: 52%;
+            top: 33%;
+        }
+
+        .force-icon-ruler {
+            --size: clamp(42px, 5vw, 66px);
+            --alpha: .14;
+            --rot: -8deg;
+            left: 18%;
+            top: 28%;
         }
 
         .brand {
@@ -409,11 +460,6 @@
                 border-bottom: 1px solid rgba(7, 79, 155, .10);
             }
 
-            .panel::before {
-                right: -120px;
-                top: -52px;
-            }
-
             .panel h1 {
                 font-size: 32px;
             }
@@ -471,6 +517,113 @@
             }
         }
 
+        @media (max-width: 360px), (max-height: 600px) {
+            .card {
+                border-radius: 14px;
+            }
+
+            .panel,
+            .form-wrap {
+                padding: 12px;
+            }
+
+            .brand-mark {
+                width: 38px;
+                height: 38px;
+                border-radius: 11px;
+                font-size: 20px;
+            }
+
+            .brand-title {
+                font-size: 17px;
+            }
+
+            .brand-subtitle {
+                margin-top: 2px;
+                font-size: 10px;
+            }
+
+            .panel {
+                gap: 10px;
+            }
+
+            .panel h1 {
+                margin-bottom: 6px;
+                font-size: 26px;
+            }
+
+            .panel p,
+            .intro {
+                font-size: 12px;
+                line-height: 1.35;
+            }
+
+            .form-wrap h2 {
+                font-size: 22px;
+            }
+
+            .field label {
+                margin-bottom: 4px;
+                font-size: 12px;
+            }
+
+            .field input,
+            .submit {
+                min-height: 40px;
+            }
+
+            .requirements {
+                gap: 3px;
+                margin-bottom: 9px;
+                font-size: 11px;
+            }
+
+            .match {
+                min-height: 14px;
+                margin-bottom: 8px;
+                font-size: 11px;
+            }
+
+            .edu-icon {
+                opacity: .65;
+            }
+        }
+
+        @media (max-height: 560px) {
+            .panel-content p,
+            .intro {
+                display: none;
+            }
+
+            .panel {
+                gap: 8px;
+            }
+
+            .panel h1 {
+                margin-bottom: 0;
+                font-size: 24px;
+            }
+
+            .form-wrap h2 {
+                margin-bottom: 10px;
+                font-size: 21px;
+            }
+
+            .field {
+                margin-bottom: 7px;
+            }
+
+            .requirements {
+                gap: 2px;
+                margin-bottom: 8px;
+                font-size: 11px;
+            }
+
+            .match {
+                margin-bottom: 7px;
+            }
+        }
+
         @media (prefers-reduced-motion: reduce) {
             *,
             *::before,
@@ -484,11 +637,44 @@
     </style>
 </head>
 <body>
+    <svg class="icon-sprite" aria-hidden="true" focusable="false">
+        <symbol id="edu-icon-book" viewBox="0 0 64 64">
+            <path d="M14 17c7-3 13-2 18 2v34c-5-4-11-5-18-2V17z"></path>
+            <path d="M50 17c-7-3-13-2-18 2v34c5-4 11-5 18-2V17z"></path>
+            <path d="M32 19v34"></path>
+        </symbol>
+        <symbol id="edu-icon-calendar" viewBox="0 0 64 64">
+            <rect x="13" y="16" width="38" height="36" rx="6"></rect>
+            <path d="M22 12v8M42 12v8M13 26h38"></path>
+            <path d="M22 35h6M36 35h6M22 44h6"></path>
+        </symbol>
+        <symbol id="edu-icon-check" viewBox="0 0 64 64">
+            <rect x="14" y="14" width="36" height="36" rx="7"></rect>
+            <path d="M23 33l7 7 13-16"></path>
+        </symbol>
+        <symbol id="edu-icon-key" viewBox="0 0 64 64">
+            <circle cx="24" cy="32" r="9"></circle>
+            <path d="M33 32h19M43 32v7M50 32v5"></path>
+        </symbol>
+        <symbol id="edu-icon-ruler" viewBox="0 0 64 64">
+            <path d="M14 48L31 16l19 32H14z"></path>
+            <path d="M31 27v21M24 41h14"></path>
+        </symbol>
+    </svg>
+
     <main class="page">
         <form class="card" method="POST" action="{{ route('auth.force-password.update') }}" id="force-password-form">
             @csrf
 
             <section class="panel" aria-labelledby="force-password-title">
+                <div class="edu-icons" aria-hidden="true">
+                    <span class="edu-icon force-icon-book"><svg><use href="#edu-icon-book"></use></svg></span>
+                    <span class="edu-icon force-icon-calendar"><svg><use href="#edu-icon-calendar"></use></svg></span>
+                    <span class="edu-icon force-icon-check"><svg><use href="#edu-icon-check"></use></svg></span>
+                    <span class="edu-icon force-icon-key"><svg><use href="#edu-icon-key"></use></svg></span>
+                    <span class="edu-icon force-icon-ruler"><svg><use href="#edu-icon-ruler"></use></svg></span>
+                </div>
+
                 <div class="brand">
                     <span class="brand-mark" aria-hidden="true">G</span>
                     <span>

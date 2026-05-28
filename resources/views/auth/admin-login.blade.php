@@ -95,70 +95,95 @@
             pointer-events: none;
         }
 
-        .brand-panel::after {
-            content: "";
-            position: absolute;
-            right: -132px;
-            bottom: -170px;
-            z-index: 0;
-            width: 430px;
-            height: 430px;
-            border-radius: 44% 56% 38% 62%;
-            border: 1px solid rgba(7, 79, 155, .12);
-            background:
-                radial-gradient(circle at 44% 42%, rgba(255, 255, 255, .86), transparent 34%),
-                linear-gradient(145deg, rgba(7, 79, 155, .16), rgba(7, 79, 155, .03));
-            animation: floatSeal 9s ease-in-out infinite;
-            pointer-events: none;
-        }
-
         .brand-header,
         .hero {
             position: relative;
             z-index: 2;
         }
 
-        .brand-visual {
+        .icon-sprite {
             position: absolute;
-            top: 45%;
-            right: clamp(44px, 7vw, 112px);
+            width: 0;
+            height: 0;
+            overflow: hidden;
+        }
+
+        .edu-icons {
+            position: absolute;
+            inset: 28px;
             z-index: 1;
-            width: min(27vw, 340px);
-            min-width: 220px;
-            aspect-ratio: 1;
-            border-radius: 999px;
+            overflow: hidden;
             pointer-events: none;
-            animation: fadeUp .62s .16s ease both;
         }
 
-        .visual-ring {
+        .edu-icon {
+            --size: 64px;
+            --alpha: .22;
+            --rot: 0deg;
             position: absolute;
-            inset: 12%;
-            border-radius: 999px;
-            border: 26px solid rgba(7, 79, 155, .10);
-            background: radial-gradient(circle, rgba(255, 255, 255, .58) 0 43%, rgba(7, 79, 155, .05) 44% 100%);
-            box-shadow: inset 0 0 0 1px rgba(7, 79, 155, .08);
+            width: var(--size);
+            height: var(--size);
+            color: rgba(7, 79, 155, var(--alpha));
+            transform: rotate(var(--rot));
+            filter: drop-shadow(0 18px 28px rgba(7, 79, 155, .08));
         }
 
-        .visual-dot {
-            position: absolute;
-            width: 16px;
-            height: 16px;
-            border-radius: 999px;
-            background: var(--primary);
-            box-shadow: 0 0 0 9px rgba(7, 79, 155, .10);
+        .edu-icon svg {
+            width: 100%;
+            height: 100%;
+            fill: none;
+            stroke: currentColor;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-width: 1.8;
         }
 
-        .visual-dot-a {
-            left: 24%;
-            top: 14%;
+        .icon-book {
+            --size: clamp(56px, 6vw, 92px);
+            --alpha: .17;
+            --rot: -10deg;
+            top: 13%;
+            right: 29%;
         }
 
-        .visual-dot-b {
-            right: 22%;
-            bottom: 10%;
-            background: var(--amber);
-            box-shadow: 0 0 0 9px rgba(244, 185, 66, .20);
+        .icon-calendar {
+            --size: clamp(44px, 5vw, 76px);
+            --alpha: .18;
+            --rot: -6deg;
+            right: 8%;
+            top: 16%;
+        }
+
+        .icon-check {
+            --size: clamp(52px, 5.8vw, 86px);
+            --alpha: .20;
+            --rot: 0deg;
+            right: 16%;
+            bottom: 25%;
+        }
+
+        .icon-key {
+            --size: clamp(44px, 4.8vw, 72px);
+            --alpha: .16;
+            --rot: 22deg;
+            right: 35%;
+            bottom: 12%;
+        }
+
+        .icon-ruler {
+            --size: clamp(46px, 4.6vw, 68px);
+            --alpha: .14;
+            --rot: 11deg;
+            left: 58%;
+            top: 8%;
+        }
+
+        .icon-books {
+            --size: clamp(56px, 6vw, 90px);
+            --alpha: .13;
+            --rot: 8deg;
+            right: 5%;
+            bottom: 6%;
         }
 
         .brand-header {
@@ -563,25 +588,12 @@
             }
         }
 
-        @keyframes floatSeal {
-            0%, 100% {
-                transform: translateY(0);
-            }
-            50% {
-                transform: translateY(12px);
-            }
-        }
-
         @media (max-width: 980px) {
             .auth-shell {
                 grid-template-columns: 1fr;
             }
 
             .brand-panel {
-                display: none;
-            }
-
-            .brand-visual {
                 display: none;
             }
 
@@ -607,9 +619,8 @@
         }
 
         @media (max-width: 1220px) {
-            .brand-visual {
-                right: 26px;
-                opacity: .38;
+            .edu-icon {
+                opacity: .62;
             }
 
             .hero {
@@ -619,16 +630,61 @@
 
         @media (max-width: 480px) {
             .auth-panel {
-                padding: 14px;
+                padding: 10px;
             }
 
             .login-card {
-                padding: 20px;
+                padding: 18px;
                 border-radius: 16px;
             }
 
+            .mobile-brand {
+                margin-bottom: 16px;
+            }
+
+            .brand-mark {
+                width: 42px;
+                height: 42px;
+                border-radius: 12px;
+                font-size: 21px;
+            }
+
+            .brand-name {
+                font-size: 18px;
+            }
+
+            .brand-subtitle {
+                margin-top: 3px;
+                font-size: 11px;
+            }
+
             .login-title {
-                font-size: 26px;
+                font-size: 25px;
+            }
+
+            .intro {
+                margin-bottom: 14px;
+                font-size: 13px;
+            }
+
+            .field {
+                margin-bottom: 11px;
+            }
+
+            .field label {
+                margin-bottom: 6px;
+            }
+
+            .options {
+                margin-bottom: 14px;
+            }
+
+            .divider {
+                margin: 16px 0;
+            }
+
+            .footnote {
+                margin-top: 14px;
             }
 
             .submit,
@@ -636,7 +692,85 @@
             .field input[type="email"],
             .field input[type="password"],
             .field input[type="text"] {
-                min-height: 46px;
+                min-height: 43px;
+            }
+        }
+
+        @media (max-width: 360px), (max-height: 600px) {
+            .login-card {
+                padding: 14px;
+                border-radius: 14px;
+            }
+
+            .brand-mark {
+                width: 38px;
+                height: 38px;
+                border-radius: 11px;
+                font-size: 20px;
+            }
+
+            .mobile-brand {
+                margin-bottom: 12px;
+            }
+
+            .login-title {
+                font-size: 23px;
+            }
+
+            .intro {
+                margin-bottom: 10px;
+            }
+
+            .field {
+                margin-bottom: 9px;
+            }
+
+            .field input[type="email"],
+            .field input[type="password"],
+            .field input[type="text"],
+            .submit,
+            .google {
+                min-height: 40px;
+            }
+
+            .options,
+            .divider,
+            .footnote {
+                margin-top: 10px;
+                margin-bottom: 10px;
+            }
+        }
+
+        @media (max-height: 520px) {
+            .mobile-brand {
+                margin-bottom: 8px;
+            }
+
+            .intro,
+            .footnote {
+                display: none;
+            }
+
+            .login-title {
+                margin-bottom: 10px;
+                font-size: 21px;
+            }
+
+            .field label {
+                margin-bottom: 4px;
+                font-size: 12px;
+            }
+
+            .field {
+                margin-bottom: 7px;
+            }
+
+            .options {
+                margin: 8px 0 10px;
+            }
+
+            .divider {
+                margin: 10px 0;
             }
         }
 
@@ -653,8 +787,46 @@
     </style>
 </head>
 <body>
+    <svg class="icon-sprite" aria-hidden="true" focusable="false">
+        <symbol id="edu-icon-book" viewBox="0 0 64 64">
+            <path d="M14 17c7-3 13-2 18 2v34c-5-4-11-5-18-2V17z"></path>
+            <path d="M50 17c-7-3-13-2-18 2v34c5-4 11-5 18-2V17z"></path>
+            <path d="M32 19v34"></path>
+        </symbol>
+        <symbol id="edu-icon-calendar" viewBox="0 0 64 64">
+            <rect x="13" y="16" width="38" height="36" rx="6"></rect>
+            <path d="M22 12v8M42 12v8M13 26h38"></path>
+            <path d="M22 35h6M36 35h6M22 44h6"></path>
+        </symbol>
+        <symbol id="edu-icon-check" viewBox="0 0 64 64">
+            <rect x="14" y="14" width="36" height="36" rx="7"></rect>
+            <path d="M23 33l7 7 13-16"></path>
+        </symbol>
+        <symbol id="edu-icon-key" viewBox="0 0 64 64">
+            <circle cx="24" cy="32" r="9"></circle>
+            <path d="M33 32h19M43 32v7M50 32v5"></path>
+        </symbol>
+        <symbol id="edu-icon-ruler" viewBox="0 0 64 64">
+            <path d="M14 48L31 16l19 32H14z"></path>
+            <path d="M31 27v21M24 41h14"></path>
+        </symbol>
+        <symbol id="edu-icon-books" viewBox="0 0 64 64">
+            <path d="M18 16h12v38H18zM34 20h12v34H34z"></path>
+            <path d="M21 25h6M37 29h6M21 47h6M37 47h6"></path>
+        </symbol>
+    </svg>
+
     <main class="auth-shell">
         <section class="brand-panel" aria-label="Gestao Edu">
+            <div class="edu-icons" aria-hidden="true">
+                <span class="edu-icon icon-book"><svg><use href="#edu-icon-book"></use></svg></span>
+                <span class="edu-icon icon-calendar"><svg><use href="#edu-icon-calendar"></use></svg></span>
+                <span class="edu-icon icon-check"><svg><use href="#edu-icon-check"></use></svg></span>
+                <span class="edu-icon icon-key"><svg><use href="#edu-icon-key"></use></svg></span>
+                <span class="edu-icon icon-ruler"><svg><use href="#edu-icon-ruler"></use></svg></span>
+                <span class="edu-icon icon-books"><svg><use href="#edu-icon-books"></use></svg></span>
+            </div>
+
             <div class="brand-header">
                 <div class="brand-lockup">
                     <span class="brand-mark" aria-hidden="true">G</span>
@@ -668,12 +840,6 @@
                     <span class="status-dot" aria-hidden="true"></span>
                     Sistema ativo
                 </span>
-            </div>
-
-            <div class="brand-visual" aria-hidden="true">
-                <span class="visual-ring"></span>
-                <span class="visual-dot visual-dot-a"></span>
-                <span class="visual-dot visual-dot-b"></span>
             </div>
 
             <div class="hero">
