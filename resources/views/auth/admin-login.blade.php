@@ -34,13 +34,18 @@
         }
 
         html {
+            height: 100%;
             min-height: 100%;
             background: var(--paper);
+            overflow: hidden;
         }
 
         body {
+            height: 100vh;
+            height: 100svh;
             min-height: 100vh;
             margin: 0;
+            overflow: hidden;
             color: var(--text);
             background:
                 radial-gradient(circle at 10% 12%, rgba(7, 79, 155, .22), transparent 27%),
@@ -55,18 +60,24 @@
         }
 
         .auth-shell {
-            min-height: 100vh;
+            height: 100vh;
+            height: 100svh;
+            min-height: 0;
             display: grid;
-            grid-template-columns: minmax(420px, 1fr) minmax(360px, 480px);
+            grid-template-columns: minmax(0, 1fr) minmax(360px, 480px);
+            overflow: hidden;
         }
 
         .brand-panel {
             position: relative;
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
-            min-height: 100vh;
-            padding: clamp(30px, 5vw, 58px);
+            justify-content: flex-start;
+            gap: clamp(46px, 10vh, 112px);
+            height: 100vh;
+            height: 100svh;
+            min-height: 0;
+            padding: clamp(24px, 4vw, 52px);
             overflow: hidden;
         }
 
@@ -102,8 +113,7 @@
         }
 
         .brand-header,
-        .hero,
-        .module-grid {
+        .hero {
             position: relative;
             z-index: 2;
         }
@@ -113,8 +123,8 @@
             top: 45%;
             right: clamp(44px, 7vw, 112px);
             z-index: 1;
-            width: min(30vw, 360px);
-            min-width: 250px;
+            width: min(27vw, 340px);
+            min-width: 220px;
             aspect-ratio: 1;
             border-radius: 999px;
             pointer-events: none;
@@ -128,48 +138,6 @@
             border: 26px solid rgba(7, 79, 155, .10);
             background: radial-gradient(circle, rgba(255, 255, 255, .58) 0 43%, rgba(7, 79, 155, .05) 44% 100%);
             box-shadow: inset 0 0 0 1px rgba(7, 79, 155, .08);
-        }
-
-        .visual-card {
-            position: absolute;
-            display: grid;
-            gap: 5px;
-            min-width: 118px;
-            padding: 12px;
-            border: 1px solid rgba(7, 79, 155, .14);
-            border-radius: 14px;
-            background: rgba(255, 255, 255, .82);
-            box-shadow: 0 20px 44px rgba(7, 79, 155, .10);
-            color: var(--primary);
-            font-size: 11px;
-            font-weight: 800;
-            text-transform: uppercase;
-        }
-
-        .visual-card::before {
-            content: "";
-            width: 34px;
-            height: 8px;
-            border-radius: 999px;
-            background: linear-gradient(90deg, var(--primary), #67a9e8);
-        }
-
-        .visual-card::after {
-            content: "";
-            width: 72px;
-            height: 6px;
-            border-radius: 999px;
-            background: rgba(7, 79, 155, .12);
-        }
-
-        .visual-card-a {
-            top: 12%;
-            right: 4%;
-        }
-
-        .visual-card-b {
-            left: -3%;
-            bottom: 18%;
         }
 
         .visual-dot {
@@ -269,7 +237,7 @@
 
         .hero {
             max-width: 640px;
-            padding: clamp(42px, 8vw, 90px) 0 34px;
+            padding: 0;
             animation: fadeUp .58s .08s ease both;
         }
 
@@ -296,7 +264,7 @@
             max-width: 660px;
             margin: 0;
             color: var(--ink);
-            font-size: clamp(40px, 6.5vw, 76px);
+            font-size: clamp(38px, 5.6vw, 70px);
             line-height: .98;
             letter-spacing: 0;
         }
@@ -309,67 +277,15 @@
             line-height: 1.65;
         }
 
-        .module-grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(170px, 240px));
-            gap: 14px;
-            animation: fadeUp .62s .14s ease both;
-        }
-
-        .module {
-            min-height: 100px;
-            padding: 16px;
-            border: 1px solid rgba(7, 79, 155, .12);
-            border-radius: 16px;
-            background: rgba(255, 255, 255, .82);
-            box-shadow: 0 16px 38px rgba(7, 79, 155, .08);
-            transition: transform .2s ease, box-shadow .2s ease;
-        }
-
-        .module:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 22px 44px rgba(7, 79, 155, .12);
-        }
-
-        .module-top {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-        }
-
-        .module-dot {
-            width: 34px;
-            height: 34px;
-            display: grid;
-            place-items: center;
-            border-radius: 11px;
-            background: var(--primary-50);
-            color: var(--primary);
-            font-size: 18px;
-            font-weight: 900;
-        }
-
-        .module small {
-            color: var(--muted);
-            font-size: 11px;
-            font-weight: 800;
-            text-transform: uppercase;
-        }
-
-        .module strong {
-            display: block;
-            margin-top: 18px;
-            color: var(--ink);
-            font-size: 16px;
-        }
-
         .auth-panel {
-            min-height: 100vh;
+            height: 100vh;
+            height: 100svh;
+            min-height: 0;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: clamp(24px, 5vw, 52px);
+            padding: clamp(16px, 4vh, 40px) clamp(20px, 5vw, 52px);
+            overflow: hidden;
             background: linear-gradient(180deg, rgba(255, 255, 255, .90), rgba(247, 251, 255, .86));
             border-left: 1px solid rgba(7, 79, 155, .10);
             backdrop-filter: blur(14px);
@@ -377,7 +293,8 @@
 
         .login-card {
             width: min(100%, 386px);
-            padding: 30px;
+            max-height: calc(100svh - 32px);
+            padding: clamp(22px, 3vh, 30px);
             border: 1px solid rgba(7, 79, 155, .12);
             border-radius: 18px;
             background: var(--white);
@@ -669,9 +586,11 @@
             }
 
             .auth-panel {
-                align-items: flex-start;
-                min-height: 100vh;
-                padding: 34px 20px;
+                align-items: center;
+                height: 100vh;
+                height: 100svh;
+                min-height: 0;
+                padding: 18px 20px;
                 border-left: 0;
                 background: transparent;
             }
@@ -690,7 +609,7 @@
         @media (max-width: 1220px) {
             .brand-visual {
                 right: 26px;
-                opacity: .55;
+                opacity: .38;
             }
 
             .hero {
@@ -700,11 +619,11 @@
 
         @media (max-width: 480px) {
             .auth-panel {
-                padding: 22px 14px;
+                padding: 14px;
             }
 
             .login-card {
-                padding: 22px;
+                padding: 20px;
                 border-radius: 16px;
             }
 
@@ -753,8 +672,6 @@
 
             <div class="brand-visual" aria-hidden="true">
                 <span class="visual-ring"></span>
-                <span class="visual-card visual-card-a">Avaliacoes</span>
-                <span class="visual-card visual-card-b">Relatorios</span>
                 <span class="visual-dot visual-dot-a"></span>
                 <span class="visual-dot visual-dot-b"></span>
             </div>
@@ -765,36 +682,6 @@
                 <p>Um painel para apoiar a rotina da Secretaria de Educacao com acesso rapido a escolas, avaliacoes, merenda, pedidos e relatorios.</p>
             </div>
 
-            <div class="module-grid" aria-hidden="true">
-                <div class="module">
-                    <div class="module-top">
-                        <span class="module-dot">A</span>
-                        <small>Alunos</small>
-                    </div>
-                    <strong>Matriculas e turmas</strong>
-                </div>
-                <div class="module">
-                    <div class="module-top">
-                        <span class="module-dot">P</span>
-                        <small>Pedagogico</small>
-                    </div>
-                    <strong>Avaliacoes e pautas</strong>
-                </div>
-                <div class="module">
-                    <div class="module-top">
-                        <span class="module-dot">M</span>
-                        <small>Merenda</small>
-                    </div>
-                    <strong>Pedidos e estoque</strong>
-                </div>
-                <div class="module">
-                    <div class="module-top">
-                        <span class="module-dot">R</span>
-                        <small>Relatorios</small>
-                    </div>
-                    <strong>Indicadores da rede</strong>
-                </div>
-            </div>
         </section>
 
         <section class="auth-panel" aria-labelledby="login-title">

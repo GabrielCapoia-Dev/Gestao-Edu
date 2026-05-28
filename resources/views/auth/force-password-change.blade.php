@@ -32,9 +32,18 @@
             box-sizing: border-box;
         }
 
+        html {
+            height: 100%;
+            overflow: hidden;
+            background: var(--paper);
+        }
+
         body {
+            height: 100vh;
+            height: 100svh;
             min-height: 100vh;
             margin: 0;
+            overflow: hidden;
             background:
                 radial-gradient(circle at 12% 10%, rgba(7, 79, 155, .20), transparent 28%),
                 radial-gradient(circle at 86% 82%, rgba(244, 185, 66, .15), transparent 30%),
@@ -44,14 +53,20 @@
         }
 
         .page {
-            min-height: 100vh;
+            --page-pad: clamp(14px, 3vw, 34px);
+            height: 100vh;
+            height: 100svh;
+            min-height: 0;
             display: grid;
             place-items: center;
-            padding: clamp(20px, 4vw, 46px);
+            overflow: hidden;
+            padding: var(--page-pad);
         }
 
         .card {
             width: min(1080px, 100%);
+            height: min(620px, calc(100svh - var(--page-pad) - var(--page-pad)));
+            max-height: calc(100svh - var(--page-pad) - var(--page-pad));
             display: grid;
             grid-template-columns: minmax(340px, .95fr) minmax(340px, .82fr);
             overflow: hidden;
@@ -67,9 +82,9 @@
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            gap: 42px;
-            min-height: 620px;
-            padding: clamp(34px, 5vw, 52px);
+            gap: clamp(24px, 5vh, 42px);
+            min-height: 0;
+            padding: clamp(28px, 4vw, 46px);
             overflow: hidden;
             border-right: 1px solid rgba(7, 79, 155, .10);
             background:
@@ -173,7 +188,8 @@
             display: flex;
             flex-direction: column;
             justify-content: center;
-            padding: clamp(34px, 5vw, 52px);
+            min-height: 0;
+            padding: clamp(28px, 4vw, 46px);
             background: var(--white);
         }
 
@@ -186,14 +202,14 @@
         }
 
         .intro {
-            margin: 0 0 26px;
+            margin: 0 0 22px;
             color: var(--muted);
             font-size: 14px;
             line-height: 1.55;
         }
 
         .field {
-            margin-bottom: 16px;
+            margin-bottom: 14px;
         }
 
         .field label {
@@ -290,8 +306,8 @@
 
         .requirements {
             display: grid;
-            gap: 7px;
-            margin: 0 0 18px;
+            gap: 6px;
+            margin: 0 0 16px;
             padding: 0;
             list-style: none;
             color: var(--muted);
@@ -322,7 +338,7 @@
 
         .match {
             min-height: 18px;
-            margin: -6px 0 18px;
+            margin: -6px 0 16px;
             color: var(--danger);
             font-size: 13px;
         }
@@ -373,20 +389,22 @@
 
         @media (max-width: 820px) {
             .page {
-                padding: 16px;
+                --page-pad: 12px;
             }
 
             .card {
                 grid-template-columns: 1fr;
+                grid-template-rows: auto minmax(0, 1fr);
             }
 
             .panel,
             .form-wrap {
-                padding: 28px;
+                padding: 20px;
             }
 
             .panel {
                 min-height: auto;
+                gap: 18px;
                 border-right: 0;
                 border-bottom: 1px solid rgba(7, 79, 155, .10);
             }
@@ -397,13 +415,23 @@
             }
 
             .panel h1 {
-                font-size: 36px;
+                font-size: 32px;
+            }
+
+            .panel p {
+                font-size: 14px;
+                line-height: 1.45;
+            }
+
+            .form-wrap {
+                justify-content: start;
+                overflow: hidden;
             }
         }
 
         @media (max-width: 480px) {
             .page {
-                padding: 14px;
+                --page-pad: 10px;
             }
 
             .card {
@@ -412,11 +440,34 @@
 
             .panel,
             .form-wrap {
-                padding: 24px;
+                padding: 16px;
             }
 
             .form-wrap h2 {
-                font-size: 26px;
+                font-size: 24px;
+            }
+
+            .intro {
+                margin-bottom: 14px;
+                font-size: 13px;
+            }
+
+            .field {
+                margin-bottom: 10px;
+            }
+
+            .field input {
+                min-height: 44px;
+            }
+
+            .requirements {
+                gap: 4px;
+                margin-bottom: 12px;
+                font-size: 12px;
+            }
+
+            .match {
+                margin-bottom: 12px;
             }
         }
 
