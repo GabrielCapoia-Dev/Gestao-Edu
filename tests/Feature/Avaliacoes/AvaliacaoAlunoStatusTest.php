@@ -25,7 +25,7 @@ class AvaliacaoAlunoStatusTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_avaliacao_lista_matriculados_e_pendentes_sem_sobrescrever_resposta_bloqueada_em_massa(): void
+    public function test_avaliacao_lista_pendente_bloqueado_sem_sobrescrever_resposta_bloqueada_em_massa(): void
     {
         Permission::findOrCreate('Responder Avaliações');
 
@@ -46,13 +46,7 @@ class AvaliacaoAlunoStatusTest extends TestCase
             'status' => Aluno::STATUS_TRANSFERIDO,
         ]);
 
-        $alunoPendente = Aluno::query()->create([
-            'nome' => 'Aluno Pendente',
-            'cgm' => 'CGM-PEND',
-            'data_nascimento' => '2015-01-03',
-            'id_turma' => $turma->id,
-            'status' => Aluno::STATUS_PENDENTE,
-        ]);
+        $alunoPendente = $this->criarAlunoPendenteTransferencia($turma, $serie, 'CGM-PEND');
 
         AvaliacaoResposta::query()->create([
             'avaliacao_id' => $avaliacao->id,
@@ -64,7 +58,7 @@ class AvaliacaoAlunoStatusTest extends TestCase
             'bloqueada' => true,
             'aluno_origem_id' => $alunoTransferido->id,
             'turma_origem_id' => $turma->id,
-            'bloqueio_tipo' => 'transferencia',
+            'bloqueio_tipo' => 'remanejamento',
         ]);
 
         Livewire::actingAs($usuario)
@@ -96,12 +90,66 @@ class AvaliacaoAlunoStatusTest extends TestCase
             'alternativa_id' => $alternativaMassa->id,
         ]);
 
-        $this->assertDatabaseHas('avaliacao_respostas', [
+        $this->assertDatabaseMissing('avaliacao_respostas', [
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
             'turma_id' => $turma->id,
             'aluno_id' => $alunoPendente->id,
             'alternativa_id' => $alternativaMassa->id,
+        ]);
+    }
+
+    public function test_aluno_pendente_transferencia_fica_bloqueado_e_nao_conta_no_progresso(): void
+    {
+        Permission::findOrCreate('Responder Avaliações');
+
+        [$usuario, $escola, $serie, $turma, $avaliacao, $pauta, $alternativaOriginal, $alternativaMassa, $componente] = $this->criarCenarioProfessor();
+
+        $alunoRegular = Aluno::query()->create([
+            'nome' => 'Aluno Regular',
+            'cgm' => 'CGM-REG',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turma->id,
+        ]);
+        $alunoPendente = $this->criarAlunoPendenteTransferencia($turma, $serie, 'CGM-PEND-BLOCK');
+
+        $component = Livewire::actingAs($usuario)
+            ->test(AvaliacoesProfessor::class)
+            ->set('avaliacao', $avaliacao->id)
+            ->set('serieEscola', $escola->id.':'.$serie->id)
+            ->call('alternarTurma', $turma->id)
+            ->call('alternarPauta', $turma->id, $pauta->id)
+            ->assertSee($alunoPendente->nome)
+            ->assertSee('Aluno pendente de transferencia');
+
+        $this->assertSame(['preenchidas' => 0, 'total' => 1], $component->instance()->getProgressoProperty());
+        $this->assertSame(0, $component->instance()->getProgressoPorAlunoProperty()[$alunoPendente->id]['total']);
+
+        $component
+            ->set("respostas.{$pauta->id}.{$alunoPendente->id}.alternativa_id", $alternativaMassa->id)
+            ->set("informacoesComplementares.{$componente->id}.{$alunoPendente->id}", 'Texto bloqueado')
+            ->set('avaliacaoEmMassaGlobal', $alternativaMassa->id)
+            ->call('aplicarEmMassaNaSerie')
+            ->set("respostas.{$pauta->id}.{$alunoRegular->id}.alternativa_id", $alternativaOriginal->id)
+            ->call('salvarRespostas');
+
+        $this->assertDatabaseMissing('avaliacao_respostas', [
+            'avaliacao_id' => $avaliacao->id,
+            'pauta_id' => $pauta->id,
+            'turma_id' => $turma->id,
+            'aluno_id' => $alunoPendente->id,
+        ]);
+        $this->assertDatabaseMissing('avaliacao_informacoes_complementares', [
+            'avaliacao_id' => $avaliacao->id,
+            'turma_id' => $turma->id,
+            'aluno_id' => $alunoPendente->id,
+        ]);
+        $this->assertDatabaseHas('avaliacao_respostas', [
+            'avaliacao_id' => $avaliacao->id,
+            'pauta_id' => $pauta->id,
+            'turma_id' => $turma->id,
+            'aluno_id' => $alunoRegular->id,
+            'alternativa_id' => $alternativaOriginal->id,
         ]);
     }
 
@@ -179,6 +227,38 @@ class AvaliacaoAlunoStatusTest extends TestCase
         $avaliacao->componentes()->sync([$componente->id]);
         $avaliacao->escolas()->sync([$escola->id]);
 
-        return [$usuario, $escola, $serie, $turma, $avaliacao, $pauta, $alternativaOriginal, $alternativaMassa];
+        return [$usuario, $escola, $serie, $turma, $avaliacao, $pauta, $alternativaOriginal, $alternativaMassa, $componente];
+    }
+
+    private function criarAlunoPendenteTransferencia(Turma $turmaDestino, Serie $serie, string $cgm): Aluno
+    {
+        $escolaOrigem = Escola::query()->create([
+            'codigo' => 'ORIG'.uniqid(),
+            'nome' => 'Escola Origem Status '.uniqid(),
+            'email' => 'origem.status'.uniqid().'@teste.local',
+            'telefone' => '(44) 99999-9999',
+        ]);
+        $turmaOrigem = Turma::query()->create([
+            'codigo' => 'TOR'.uniqid(),
+            'nome' => 'Origem',
+            'turno' => 'manha',
+            'id_serie' => $serie->id,
+            'id_escola' => $escolaOrigem->id,
+        ]);
+        $alunoOrigem = Aluno::query()->create([
+            'nome' => 'Aluno Pendente',
+            'cgm' => $cgm,
+            'data_nascimento' => '2015-01-03',
+            'id_turma' => $turmaOrigem->id,
+        ]);
+
+        return Aluno::query()->create([
+            'nome' => 'Aluno Pendente',
+            'cgm' => $cgm,
+            'data_nascimento' => '2015-01-03',
+            'id_turma' => $turmaDestino->id,
+            'status' => Aluno::STATUS_PENDENTE,
+            'pendencia_origem_aluno_id' => $alunoOrigem->id,
+        ]);
     }
 }

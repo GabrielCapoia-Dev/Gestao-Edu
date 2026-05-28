@@ -348,11 +348,12 @@ class AlunoMovimentacaoService
         $this->sincronizarAvaliacoesHistoricasComTurmaDestino($origem, $destino);
 
         $pautasCache = [];
+        $bloquearCopia = $this->copiaAvaliativaDeveFicarBloqueada($tipo);
 
         $origem->avaliacaoRespostas()
             ->whereNotNull('alternativa_id')
             ->orderBy('id')
-            ->chunkById(200, function (Collection $respostas) use ($destino, $tipo, &$pautasCache): void {
+            ->chunkById(200, function (Collection $respostas) use ($destino, $tipo, $bloquearCopia, &$pautasCache): void {
                 foreach ($respostas as $resposta) {
                     if (! $this->respostaPodeIrParaTurma($resposta, $destino, $pautasCache)) {
                         continue;
@@ -381,7 +382,7 @@ class AlunoMovimentacaoService
                             'alternativa_id' => $resposta->alternativa_id,
                             'observacao' => $resposta->observacao,
                             'respondido_em' => $resposta->respondido_em,
-                            'bloqueada' => true,
+                            'bloqueada' => $bloquearCopia,
                             'resposta_origem_id' => $resposta->resposta_origem_id ?: $resposta->id,
                             'aluno_origem_id' => $resposta->aluno_origem_id ?: $resposta->aluno_id,
                             'turma_origem_id' => $resposta->turma_origem_id ?: $resposta->turma_id,
@@ -394,7 +395,7 @@ class AlunoMovimentacaoService
         $origem->avaliacaoInformacoesComplementares()
             ->whereNotNull('informacoes_complementares')
             ->orderBy('id')
-            ->chunkById(200, function (Collection $registros) use ($destino, $tipo): void {
+            ->chunkById(200, function (Collection $registros) use ($destino, $tipo, $bloquearCopia): void {
                 foreach ($registros as $registro) {
                     if (! $this->turmaParticipaDaAvaliacao((int) $destino->id_turma, (int) $registro->avaliacao_id)) {
                         continue;
@@ -421,7 +422,7 @@ class AlunoMovimentacaoService
                         [
                             'professor_id' => $registro->professor_id,
                             'informacoes_complementares' => $registro->informacoes_complementares,
-                            'bloqueada' => true,
+                            'bloqueada' => $bloquearCopia,
                             'informacao_origem_id' => $registro->informacao_origem_id ?: $registro->id,
                             'aluno_origem_id' => $registro->aluno_origem_id ?: $registro->aluno_id,
                             'turma_origem_id' => $registro->turma_origem_id ?: $registro->turma_id,
@@ -430,6 +431,11 @@ class AlunoMovimentacaoService
                     );
                 }
             });
+    }
+
+    private function copiaAvaliativaDeveFicarBloqueada(string $tipo): bool
+    {
+        return $tipo !== self::MOVIMENTACAO_TRANSFERENCIA;
     }
 
     private function bloquearDadosAvaliativosOrigem(Aluno $aluno, string $tipo): void

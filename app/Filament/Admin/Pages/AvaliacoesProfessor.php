@@ -342,7 +342,10 @@ class AvaliacoesProfessor extends Page
             $alunoId = $partes[2] ?? null;
 
             if (is_numeric($componenteId) && is_numeric($alunoId)) {
-                if ($this->informacaoComplementarEstaBloqueada((int) $componenteId, (int) $alunoId)) {
+                if (
+                    $this->alunoEstaBloqueadoParaAvaliacao((int) $alunoId)
+                    || $this->informacaoComplementarEstaBloqueada((int) $componenteId, (int) $alunoId)
+                ) {
                     return;
                 }
 
@@ -372,7 +375,10 @@ class AvaliacoesProfessor extends Page
             return;
         }
 
-        if ($this->respostaEstaBloqueada((int) $pautaId, (int) $alunoId)) {
+        if (
+            $this->alunoEstaBloqueadoParaAvaliacao((int) $alunoId)
+            || $this->respostaEstaBloqueada((int) $pautaId, (int) $alunoId)
+        ) {
             return;
         }
 
@@ -409,7 +415,10 @@ class AvaliacoesProfessor extends Page
         $alunos = $this->alunosDaTurma($turmaId);
 
         foreach ($alunos as $aluno) {
-            if ($this->respostaEstaBloqueada((int) $pauta->id, (int) $aluno->id)) {
+            if (
+                $this->alunoEstaBloqueadoParaAvaliacao($aluno)
+                || $this->respostaEstaBloqueada((int) $pauta->id, (int) $aluno->id)
+            ) {
                 continue;
             }
 
@@ -422,7 +431,10 @@ class AvaliacoesProfessor extends Page
         $agora = now();
 
         foreach ($alunos as $aluno) {
-            if ($this->respostaEstaBloqueada((int) $pauta->id, (int) $aluno->id)) {
+            if (
+                $this->alunoEstaBloqueadoParaAvaliacao($aluno)
+                || $this->respostaEstaBloqueada((int) $pauta->id, (int) $aluno->id)
+            ) {
                 continue;
             }
 
@@ -452,6 +464,16 @@ class AvaliacoesProfessor extends Page
                 'created_at' => $agora,
                 'updated_at' => $agora,
             ];
+        }
+
+        if ($payload === [] && $alunosComPendencia === []) {
+            Notification::make()
+                ->title('Nenhuma resposta alterada.')
+                ->body('Alunos pendentes de transferencia ou respostas bloqueadas foram mantidos.')
+                ->warning()
+                ->send();
+
+            return;
         }
 
         DB::transaction(function () use ($payload, $alunosComPendencia, $pautaId, $turmaId): void {
@@ -517,6 +539,7 @@ class AvaliacoesProfessor extends Page
         $pendencias = [];
         $totalAplicado = 0;
         $totalIgnoradoPorPreenchimento = 0;
+        $alunosPendentesTransferenciaIgnorados = [];
         $pautasIgnoradas = 0;
         $agora = now();
 
@@ -546,6 +569,12 @@ class AvaliacoesProfessor extends Page
 
                 foreach ($this->alunosDaTurma($turmaId) as $aluno) {
                     $alunoId = (int) $aluno->id;
+
+                    if ($this->alunoEstaBloqueadoParaAvaliacao($aluno)) {
+                        $alunosPendentesTransferenciaIgnorados[$alunoId] = true;
+
+                        continue;
+                    }
 
                     if ($this->respostaEstaBloqueada((int) $pauta->id, $alunoId)) {
                         $totalIgnoradoPorPreenchimento++;
@@ -593,6 +622,16 @@ class AvaliacoesProfessor extends Page
         }
 
         if ($payload === [] && $pendencias === []) {
+            if ($alunosPendentesTransferenciaIgnorados !== []) {
+                Notification::make()
+                    ->title('Nenhuma resposta alterada.')
+                    ->body('Alunos pendentes de transferencia foram mantidos bloqueados.')
+                    ->warning()
+                    ->send();
+
+                return;
+            }
+
             if ($totalIgnoradoPorPreenchimento > 0) {
                 Notification::make()
                     ->title('Nenhuma resposta alterada.')
@@ -647,6 +686,10 @@ class AvaliacoesProfessor extends Page
             $mensagens[] = $totalIgnoradoPorPreenchimento . ' resposta(s) com observacao foram mantidas.';
         }
 
+        if ($alunosPendentesTransferenciaIgnorados !== []) {
+            $mensagens[] = count($alunosPendentesTransferenciaIgnorados) . ' aluno(s) pendente(s) de transferencia foram ignorados.';
+        }
+
         Notification::make()
             ->title('Avaliacao em massa aplicada.')
             ->body(implode(' ', $mensagens))
@@ -687,6 +730,10 @@ class AvaliacoesProfessor extends Page
 
             foreach ($this->pautasDaTurma($turmaId) as $pauta) {
                 foreach ($this->alunosDaTurma($turmaId) as $aluno) {
+                    if ($this->alunoEstaBloqueadoParaAvaliacao($aluno)) {
+                        continue;
+                    }
+
                     if ($this->respostaEstaBloqueada((int) $pauta->id, (int) $aluno->id)) {
                         if (! $this->respostaEstaCompleta($pauta, (int) $aluno->id)) {
                             $faltandoResposta++;
@@ -753,13 +800,15 @@ class AvaliacoesProfessor extends Page
             return;
         }
 
-        DB::transaction(function () use ($payload): void {
-            AvaliacaoResposta::query()->upsert(
-                $payload,
-                ['avaliacao_id', 'pauta_id', 'turma_id', 'aluno_id'],
-                ['professor_id', 'alternativa_id', 'observacao', 'respondido_em', 'updated_at']
-            );
-        });
+        if ($payload !== []) {
+            DB::transaction(function () use ($payload): void {
+                AvaliacaoResposta::query()->upsert(
+                    $payload,
+                    ['avaliacao_id', 'pauta_id', 'turma_id', 'aluno_id'],
+                    ['professor_id', 'alternativa_id', 'observacao', 'respondido_em', 'updated_at']
+                );
+            });
+        }
 
         Notification::make()
             ->title('Avaliação salva com sucesso.')
@@ -945,6 +994,24 @@ class AvaliacoesProfessor extends Page
         return $this->alunosPorTurma->get($turmaId, collect());
     }
 
+    public function alunoEstaBloqueadoParaAvaliacao(Aluno|int $aluno): bool
+    {
+        if (is_int($aluno)) {
+            $aluno = $this->alunoDaSerieSelecionada($aluno);
+        }
+
+        return $aluno instanceof Aluno
+            && $aluno->status === Aluno::STATUS_PENDENTE
+            && (int) $aluno->pendencia_origem_aluno_id > 0;
+    }
+
+    private function alunosRespondiveisDaTurma(int $turmaId): Collection
+    {
+        return $this->alunosDaTurma($turmaId)
+            ->reject(fn(Aluno $aluno): bool => $this->alunoEstaBloqueadoParaAvaliacao($aluno))
+            ->values();
+    }
+
     public function pautasDaTurma(int $turmaId): Collection
     {
         $turma = $this->turmasDaSerieDisponiveis->firstWhere('id', $turmaId);
@@ -982,7 +1049,7 @@ class AvaliacoesProfessor extends Page
         foreach ($this->turmasDaSerieDisponiveis as $turma) {
             $turmaId = (int) $turma->id;
             $pautas = $this->pautasDaTurma($turmaId);
-            $alunos = $this->alunosDaTurma($turmaId);
+            $alunos = $this->alunosRespondiveisDaTurma($turmaId);
             $total = $pautas->count() * $alunos->count();
             $preenchidas = 0;
 
@@ -1006,7 +1073,7 @@ class AvaliacoesProfessor extends Page
 
         foreach ($this->turmasDaSerieDisponiveis as $turma) {
             $turmaId = (int) $turma->id;
-            $alunos = $this->alunosDaTurma($turmaId);
+            $alunos = $this->alunosRespondiveisDaTurma($turmaId);
 
             foreach ($this->pautasDaTurma($turmaId) as $pauta) {
                 $total = $alunos->count();
@@ -1034,6 +1101,12 @@ class AvaliacoesProfessor extends Page
             $pautas = $this->pautasDaTurma($turmaId);
 
             foreach ($this->alunosDaTurma($turmaId) as $aluno) {
+                if ($this->alunoEstaBloqueadoParaAvaliacao($aluno)) {
+                    $progresso[$aluno->id] = $this->montarResumoProgresso(0, 0);
+
+                    continue;
+                }
+
                 $total = $pautas->count();
                 $preenchidas = 0;
 
@@ -1385,6 +1458,10 @@ class AvaliacoesProfessor extends Page
             return;
         }
 
+        if ($this->alunoEstaBloqueadoParaAvaliacao($alunoDaTurma)) {
+            return;
+        }
+
         $turmaId = (int) $alunoDaTurma->id_turma;
         $pauta = $this->pautasDaTurma($turmaId)->firstWhere('id', $pautaId);
 
@@ -1457,6 +1534,10 @@ class AvaliacoesProfessor extends Page
             return;
         }
 
+        if ($this->alunoEstaBloqueadoParaAvaliacao($alunoDaTurma)) {
+            return;
+        }
+
         $turmaId = (int) $alunoDaTurma->id_turma;
         $informacoes = $this->limitarTextoCampo($this->informacoesComplementares[$componenteId][$alunoId] ?? '');
 
@@ -1502,6 +1583,10 @@ class AvaliacoesProfessor extends Page
         $alunoDaTurma = $this->alunoDaSerieSelecionada($alunoId);
 
         if (! $alunoDaTurma) {
+            return;
+        }
+
+        if ($this->alunoEstaBloqueadoParaAvaliacao($alunoDaTurma)) {
             return;
         }
 

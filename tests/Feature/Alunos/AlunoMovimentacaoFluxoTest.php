@@ -141,7 +141,7 @@ class AlunoMovimentacaoFluxoTest extends TestCase
         ]);
     }
 
-    public function test_matricula_novo_contexto_apos_transferencia_copia_respostas_bloqueadas(): void
+    public function test_matricula_novo_contexto_apos_transferencia_copia_respostas_editaveis(): void
     {
         [$escola, $serie, $turmaOrigem, $turmaDestino, $avaliacao, $pauta, $alternativa] = $this->criarCenarioAvaliacaoDuasTurmas();
 
@@ -180,7 +180,7 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             'aluno_id' => $novoAluno->id,
             'alternativa_id' => $alternativa->id,
             'observacao' => 'Resposta anterior',
-            'bloqueada' => true,
+            'bloqueada' => false,
             'aluno_origem_id' => $alunoTransferido->id,
             'turma_origem_id' => $turmaOrigem->id,
             'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_TRANSFERENCIA,
@@ -361,13 +361,20 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             'id_turma' => $turmaOrigem->id,
         ]);
 
-        AvaliacaoResposta::query()->create([
+        $respostaOrigem = AvaliacaoResposta::query()->create([
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
             'turma_id' => $turmaOrigem->id,
             'aluno_id' => $aluno->id,
             'alternativa_id' => $alternativa->id,
             'respondido_em' => now(),
+        ]);
+        $informacaoOrigem = AvaliacaoInformacaoComplementar::query()->create([
+            'avaliacao_id' => $avaliacao->id,
+            'turma_id' => $turmaOrigem->id,
+            'aluno_id' => $aluno->id,
+            'componente_curricular_id' => $pauta->componente_curricular_id,
+            'informacoes_complementares' => 'Informacao complementar antes da transferencia',
         ]);
 
         $escolaPendente = $this->criarEscola('Escola Destino Pendente');
@@ -419,14 +426,129 @@ class AlunoMovimentacaoFluxoTest extends TestCase
         ]);
 
         $this->assertDatabaseHas('avaliacao_respostas', [
+            'id' => $respostaOrigem->id,
+            'turma_id' => $turmaOrigem->id,
+            'aluno_id' => $aluno->id,
+            'bloqueada' => true,
+            'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_TRANSFERENCIA,
+        ]);
+
+        $this->assertDatabaseHas('avaliacao_respostas', [
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
             'turma_id' => $turmaPendente->id,
             'aluno_id' => $alunoPendente->id,
             'alternativa_id' => $alternativa->id,
-            'bloqueada' => true,
+            'bloqueada' => false,
             'aluno_origem_id' => $aluno->id,
             'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_TRANSFERENCIA,
+        ]);
+
+        $this->assertDatabaseHas('avaliacao_informacoes_complementares', [
+            'id' => $informacaoOrigem->id,
+            'turma_id' => $turmaOrigem->id,
+            'aluno_id' => $aluno->id,
+            'bloqueada' => true,
+            'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_TRANSFERENCIA,
+        ]);
+
+        $this->assertDatabaseHas('avaliacao_informacoes_complementares', [
+            'avaliacao_id' => $avaliacao->id,
+            'turma_id' => $turmaPendente->id,
+            'aluno_id' => $alunoPendente->id,
+            'componente_curricular_id' => $pauta->componente_curricular_id,
+            'informacoes_complementares' => 'Informacao complementar antes da transferencia',
+            'bloqueada' => false,
+            'aluno_origem_id' => $aluno->id,
+            'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_TRANSFERENCIA,
+        ]);
+    }
+
+    public function test_backfill_desbloqueia_registros_legados_copiados_por_transferencia(): void
+    {
+        [$escola, $serie, $turmaOrigem, $turmaDestino, $avaliacao, $pauta, $alternativa] = $this->criarCenarioAvaliacaoDuasTurmas();
+
+        $alunoOrigem = Aluno::query()->create([
+            'nome' => 'Aluno Origem Legado',
+            'cgm' => 'CGM-LEG',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turmaOrigem->id,
+            'status' => Aluno::STATUS_TRANSFERIDO,
+        ]);
+        $alunoDestino = Aluno::query()->create([
+            'nome' => 'Aluno Destino Legado',
+            'cgm' => 'CGM-LEG',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turmaDestino->id,
+            'status' => Aluno::STATUS_MATRICULADO,
+            'aluno_origem_id' => $alunoOrigem->id,
+            'turma_origem_id' => $turmaOrigem->id,
+            'movimentacao_origem' => AlunoMovimentacaoService::MOVIMENTACAO_TRANSFERENCIA,
+        ]);
+        $alunoRemanejado = Aluno::query()->create([
+            'nome' => 'Aluno Remanejado Legado',
+            'cgm' => 'CGM-LEG-REM',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turmaDestino->id,
+            'status' => Aluno::STATUS_MATRICULADO,
+            'aluno_origem_id' => $alunoOrigem->id,
+            'turma_origem_id' => $turmaOrigem->id,
+            'movimentacao_origem' => AlunoMovimentacaoService::MOVIMENTACAO_REMANEJAMENTO,
+        ]);
+
+        AvaliacaoResposta::query()->create([
+            'avaliacao_id' => $avaliacao->id,
+            'pauta_id' => $pauta->id,
+            'turma_id' => $turmaDestino->id,
+            'aluno_id' => $alunoDestino->id,
+            'alternativa_id' => $alternativa->id,
+            'respondido_em' => now(),
+            'bloqueada' => true,
+            'aluno_origem_id' => $alunoOrigem->id,
+            'turma_origem_id' => $turmaOrigem->id,
+            'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_TRANSFERENCIA,
+        ]);
+        AvaliacaoInformacaoComplementar::query()->create([
+            'avaliacao_id' => $avaliacao->id,
+            'turma_id' => $turmaDestino->id,
+            'aluno_id' => $alunoDestino->id,
+            'componente_curricular_id' => $pauta->componente_curricular_id,
+            'informacoes_complementares' => 'Complementar legado',
+            'bloqueada' => true,
+            'aluno_origem_id' => $alunoOrigem->id,
+            'turma_origem_id' => $turmaOrigem->id,
+            'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_TRANSFERENCIA,
+        ]);
+        AvaliacaoResposta::query()->create([
+            'avaliacao_id' => $avaliacao->id,
+            'pauta_id' => $pauta->id,
+            'turma_id' => $turmaDestino->id,
+            'aluno_id' => $alunoRemanejado->id,
+            'alternativa_id' => $alternativa->id,
+            'respondido_em' => now(),
+            'bloqueada' => true,
+            'aluno_origem_id' => $alunoOrigem->id,
+            'turma_origem_id' => $turmaOrigem->id,
+            'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_REMANEJAMENTO,
+        ]);
+
+        $migration = include database_path('migrations/2026_05_28_000001_unlock_transferencia_copied_avaliacao_records.php');
+        $migration->up();
+
+        $this->assertDatabaseHas('avaliacao_respostas', [
+            'aluno_id' => $alunoDestino->id,
+            'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_TRANSFERENCIA,
+            'bloqueada' => false,
+        ]);
+        $this->assertDatabaseHas('avaliacao_informacoes_complementares', [
+            'aluno_id' => $alunoDestino->id,
+            'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_TRANSFERENCIA,
+            'bloqueada' => false,
+        ]);
+        $this->assertDatabaseHas('avaliacao_respostas', [
+            'aluno_id' => $alunoRemanejado->id,
+            'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_REMANEJAMENTO,
+            'bloqueada' => true,
         ]);
     }
 

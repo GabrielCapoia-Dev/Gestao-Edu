@@ -220,12 +220,16 @@
                                         </thead>
                                         <tbody>
                                             @foreach ($alunosDaTurma as $aluno)
+                                            @php($alunoBloqueadoTransferencia = $this->alunoEstaBloqueadoParaAvaliacao($aluno))
                                             @php($respostaBloqueada = $this->respostaEstaBloqueada((int) $pauta->id, (int) $aluno->id))
                                             @php($referenciaOrigem = $respostas[$pauta->id][$aluno->id]['origem_referencia'] ?? null)
                                             <tr wire:key="turma-{{ $turmaId }}-pauta-{{ $pauta->id }}-aluno-{{ $aluno->id }}">
                                                 <td data-label="Aluno">
                                                     <strong>{{ $aluno->nome }}</strong>
                                                     <small>CGM: {{ $aluno->cgm }}</small>
+                                                    @if ($alunoBloqueadoTransferencia)
+                                                    <small>Aluno pendente de transferencia. Avaliacao bloqueada ate o parecer da escola de origem.</small>
+                                                    @endif
                                                     @if ($respostaBloqueada)
                                                     <small>Resposta bloqueada por historico.</small>
                                                     @endif
@@ -235,7 +239,7 @@
                                                 </td>
                                                 <td data-label="Alternativa">
                                                     <div class="av-input-wrap">
-                                                        <select class="av-table-input" wire:model.live="respostas.{{ $pauta->id }}.{{ $aluno->id }}.alternativa_id" @disabled(! $this->podeResponder() || $respostaBloqueada)>
+                                                        <select class="av-table-input" wire:model.live="respostas.{{ $pauta->id }}.{{ $aluno->id }}.alternativa_id" @disabled(! $this->podeResponder() || $respostaBloqueada || $alunoBloqueadoTransferencia)>
                                                             <option value="">Selecione</option>
                                                             @foreach ($alternativasPauta as $alternativa)
                                                             <option value="{{ $alternativa['id'] }}">
@@ -264,7 +268,7 @@
                                                             placeholder="Observacao obrigatoria"
                                                             class="av-table-input av-textarea-input"
                                                             wire:model.live.debounce.500ms="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao"
-                                                            @disabled(! $this->podeResponder() || $respostaBloqueada)></textarea>
+                                                            @disabled(! $this->podeResponder() || $respostaBloqueada || $alunoBloqueadoTransferencia)></textarea>
 
                                                         <span class="av-saving-indicator" wire:loading.flex wire:target="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao">
                                                             <span class="av-spinner"></span>
@@ -340,12 +344,16 @@
                         @forelse ($alunosDaTurma as $aluno)
                         @php($progressoAluno = $this->progressoPorAluno[$aluno->id] ?? ['preenchidas' => 0, 'total' => $pautasDaTurma->count(), 'percentual' => 0, 'concluida' => false])
                         @php($alunoExpandido = $this->alunoEstaExpandido($turmaId, (int) $aluno->id))
+                        @php($alunoBloqueadoTransferencia = $this->alunoEstaBloqueadoParaAvaliacao($aluno))
 
                         <section wire:key="turma-{{ $turmaId }}-aluno-{{ $aluno->id }}" class="av-pauta-section av-pauta-section--nested {{ $alunoExpandido ? 'is-open' : '' }}">
                             <button type="button" class="av-pauta-toggle" wire:click="alternarAluno({{ $turmaId }}, {{ $aluno->id }})">
                                 <div class="av-pauta-toggle-main">
                                     <h3 class="av-pauta-title">{{ $aluno->nome }}</h3>
                                     <p class="av-pauta-meta">CGM: {{ $aluno->cgm }}</p>
+                                    @if ($alunoBloqueadoTransferencia)
+                                    <p class="av-pauta-meta">Aluno pendente de transferencia. Avaliacao bloqueada ate o parecer da escola de origem.</p>
+                                    @endif
                                 </div>
 
                                 <div class="av-pauta-toggle-side">
@@ -401,7 +409,7 @@
                                                     </td>
                                                     <td data-label="Alternativa">
                                                         <div class="av-input-wrap">
-                                                            <select class="av-table-input" wire:model.live="respostas.{{ $pauta->id }}.{{ $aluno->id }}.alternativa_id" @disabled(! $this->podeResponder() || $respostaBloqueada)>
+                                                            <select class="av-table-input" wire:model.live="respostas.{{ $pauta->id }}.{{ $aluno->id }}.alternativa_id" @disabled(! $this->podeResponder() || $respostaBloqueada || $alunoBloqueadoTransferencia)>
                                                                 <option value="">Selecione</option>
                                                                 @foreach ($alternativasPauta as $alternativa)
                                                                 <option value="{{ $alternativa['id'] }}">
@@ -430,7 +438,7 @@
                                                                 placeholder="Observacao obrigatoria"
                                                                 class="av-table-input av-textarea-input"
                                                                 wire:model.live.debounce.500ms="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao"
-                                                                @disabled(! $this->podeResponder() || $respostaBloqueada)></textarea>
+                                                                @disabled(! $this->podeResponder() || $respostaBloqueada || $alunoBloqueadoTransferencia)></textarea>
 
                                                             <span class="av-saving-indicator" wire:loading.flex wire:target="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao">
                                                                 <span class="av-spinner"></span>
@@ -455,6 +463,9 @@
                                     @php($informacaoBloqueada = $this->informacaoComplementarEstaBloqueada($componenteId, (int) $aluno->id))
                                     <div class="av-complementary-section">
                                         <h4>Informacoes complementares do componente</h4>
+                                        @if ($alunoBloqueadoTransferencia)
+                                        <small class="av-field-hint">Informacoes bloqueadas enquanto a transferencia estiver pendente.</small>
+                                        @endif
                                         @if ($informacaoBloqueada)
                                         <small class="av-field-hint">Informacoes bloqueadas por historico.</small>
                                         @endif
@@ -466,7 +477,7 @@
                                                 placeholder="Informacoes complementares (opcional)"
                                                 class="av-table-input av-textarea-input"
                                                 wire:model.live.debounce.600ms="informacoesComplementares.{{ $componenteId }}.{{ $aluno->id }}"
-                                                @disabled(! $this->podeResponder() || $informacaoBloqueada)></textarea>
+                                                @disabled(! $this->podeResponder() || $informacaoBloqueada || $alunoBloqueadoTransferencia)></textarea>
 
                                             <span class="av-saving-indicator" wire:loading.flex wire:target="informacoesComplementares.{{ $componenteId }}.{{ $aluno->id }}">
                                                 <span class="av-spinner"></span>
