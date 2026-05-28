@@ -622,6 +622,7 @@
             }
         }
     </style>
+    @filamentStyles
 </head>
 <body>
     <main class="auth-shell">
@@ -752,5 +753,8 @@
             });
         })();
     </script>
+
+    <livewire:notifications />
+    @filamentScripts(withCore: true)
 </body>
 </html>
