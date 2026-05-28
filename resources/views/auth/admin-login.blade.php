@@ -8,21 +8,24 @@
     <style>
         :root {
             color-scheme: light;
-            --ink: #101828;
-            --ink-2: #1d2939;
-            --blue: #2563eb;
-            --teal: #0f766e;
-            --teal-2: #14b8a6;
-            --amber: #f59e0b;
-            --rose: #be123c;
-            --paper: #f8fafc;
-            --panel: #ffffff;
-            --line: #d9e2ee;
+            --primary: #074f9b;
+            --primary-700: #063f7c;
+            --primary-100: #dcecff;
+            --primary-50: #f0f7ff;
+            --sky: #eaf4ff;
+            --mint: #dff8ef;
+            --green: #11845b;
+            --amber: #f4b942;
+            --amber-100: #fff4cf;
+            --ink: #102033;
+            --text: #344054;
             --muted: #667085;
-            --muted-2: #98a2b3;
+            --line: #d8e4f2;
+            --paper: #f8fbff;
+            --white: #ffffff;
             --danger: #b42318;
             --success: #067647;
-            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+            font-family: Arial, Helvetica, sans-serif;
         }
 
         * {
@@ -37,12 +40,11 @@
         body {
             min-height: 100vh;
             margin: 0;
+            color: var(--text);
             background:
-                linear-gradient(90deg, rgba(37, 99, 235, .08) 1px, transparent 1px),
-                linear-gradient(180deg, rgba(15, 118, 110, .07) 1px, transparent 1px),
-                #f7f9fc;
-            background-size: 52px 52px;
-            color: var(--ink-2);
+                radial-gradient(circle at 12% 14%, rgba(7, 79, 155, .10), transparent 26%),
+                radial-gradient(circle at 84% 78%, rgba(244, 185, 66, .18), transparent 28%),
+                linear-gradient(135deg, #ffffff 0%, #f4f9ff 48%, #eef6ff 100%);
         }
 
         button,
@@ -51,65 +53,64 @@
         }
 
         .auth-shell {
-            position: relative;
             min-height: 100vh;
             display: grid;
-            grid-template-columns: minmax(420px, 1fr) minmax(360px, 520px);
-            overflow: hidden;
+            grid-template-columns: minmax(420px, 1fr) minmax(360px, 480px);
         }
 
         .brand-panel {
             position: relative;
-            min-height: 100vh;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            padding: clamp(32px, 5vw, 64px);
+            min-height: 100vh;
+            padding: clamp(30px, 5vw, 58px);
             overflow: hidden;
-            background:
-                linear-gradient(135deg, rgba(20, 184, 166, .18), transparent 36%),
-                linear-gradient(215deg, rgba(245, 158, 11, .16), transparent 34%),
-                var(--ink);
-            color: #ffffff;
-            isolation: isolate;
         }
 
         .brand-panel::before {
             content: "";
             position: absolute;
-            inset: -20%;
-            z-index: -2;
-            background:
-                repeating-linear-gradient(90deg, rgba(255, 255, 255, .055) 0 1px, transparent 1px 64px),
-                repeating-linear-gradient(0deg, rgba(255, 255, 255, .045) 0 1px, transparent 1px 64px);
-            transform: rotate(-8deg);
-            animation: gridDrift 18s linear infinite;
+            inset: 28px;
+            border: 1px solid rgba(7, 79, 155, .10);
+            border-radius: 24px;
+            background: rgba(255, 255, 255, .42);
+            pointer-events: none;
         }
 
         .brand-panel::after {
             content: "";
             position: absolute;
-            inset: 0;
-            z-index: -1;
-            background:
-                linear-gradient(115deg, transparent 0 32%, rgba(255, 255, 255, .08) 44%, transparent 58%),
-                linear-gradient(0deg, rgba(16, 24, 40, .42), transparent 45%);
-            animation: lightSweep 8s ease-in-out infinite;
+            top: 18%;
+            right: 7%;
+            width: 190px;
+            height: 190px;
+            border-radius: 999px;
+            border: 28px solid rgba(7, 79, 155, .08);
+            animation: floatSeal 9s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        .brand-header,
+        .hero,
+        .module-grid {
+            position: relative;
+            z-index: 1;
         }
 
         .brand-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 20px;
-            animation: fadeUp .6s ease both;
+            gap: 18px;
+            animation: fadeUp .5s ease both;
         }
 
-        .brand-lockup {
+        .brand-lockup,
+        .mobile-brand {
             display: flex;
             align-items: center;
-            gap: 14px;
-            min-width: 0;
+            gap: 13px;
         }
 
         .brand-mark {
@@ -118,29 +119,30 @@
             display: grid;
             place-items: center;
             flex: 0 0 auto;
-            border-radius: 12px;
-            background: #ffffff;
-            color: var(--ink);
+            border-radius: 14px;
+            background: var(--primary);
+            color: var(--white);
             font-size: 24px;
             font-weight: 900;
-            box-shadow: 0 14px 38px rgba(0, 0, 0, .25);
+            box-shadow: 0 14px 32px rgba(7, 79, 155, .18);
         }
 
         .brand-name,
-        .brand-kicker {
+        .brand-subtitle {
             display: block;
-            line-height: 1.1;
+            line-height: 1.12;
         }
 
         .brand-name {
-            font-size: 19px;
+            color: var(--ink);
+            font-size: 20px;
             font-weight: 800;
             letter-spacing: 0;
         }
 
-        .brand-kicker {
+        .brand-subtitle {
             margin-top: 5px;
-            color: rgba(255, 255, 255, .68);
+            color: var(--muted);
             font-size: 12px;
             font-weight: 700;
             text-transform: uppercase;
@@ -152,12 +154,12 @@
             align-items: center;
             gap: 8px;
             padding: 0 12px;
-            border: 1px solid rgba(255, 255, 255, .18);
+            border: 1px solid rgba(17, 132, 91, .18);
             border-radius: 999px;
-            background: rgba(255, 255, 255, .08);
-            color: rgba(255, 255, 255, .82);
+            background: var(--mint);
+            color: var(--green);
             font-size: 12px;
-            font-weight: 700;
+            font-weight: 800;
             white-space: nowrap;
         }
 
@@ -165,23 +167,23 @@
             width: 8px;
             height: 8px;
             border-radius: 999px;
-            background: var(--teal-2);
-            box-shadow: 0 0 0 0 rgba(20, 184, 166, .55);
+            background: var(--green);
+            box-shadow: 0 0 0 0 rgba(17, 132, 91, .28);
             animation: pulse 2.4s ease-out infinite;
         }
 
-        .brand-main {
-            max-width: 720px;
-            padding: 72px 0;
-            animation: fadeUp .7s .08s ease both;
+        .hero {
+            max-width: 700px;
+            padding: clamp(42px, 8vw, 90px) 0 34px;
+            animation: fadeUp .58s .08s ease both;
         }
 
         .eyebrow {
             display: inline-flex;
             align-items: center;
             gap: 10px;
-            margin-bottom: 22px;
-            color: rgba(255, 255, 255, .72);
+            margin-bottom: 18px;
+            color: var(--primary);
             font-size: 13px;
             font-weight: 800;
             text-transform: uppercase;
@@ -190,75 +192,81 @@
         .eyebrow::before {
             content: "";
             width: 34px;
-            height: 2px;
-            border-radius: 99px;
+            height: 3px;
+            border-radius: 999px;
             background: var(--amber);
         }
 
-        .brand-main h1 {
-            max-width: 680px;
+        .hero h1 {
+            max-width: 660px;
             margin: 0;
-            font-size: clamp(42px, 7vw, 86px);
-            line-height: .94;
+            color: var(--ink);
+            font-size: clamp(40px, 6.5vw, 76px);
+            line-height: .98;
             letter-spacing: 0;
         }
 
-        .brand-main p {
-            max-width: 540px;
-            margin: 24px 0 0;
-            color: rgba(255, 255, 255, .74);
-            font-size: clamp(15px, 1.5vw, 18px);
+        .hero p {
+            max-width: 560px;
+            margin: 22px 0 0;
+            color: var(--muted);
+            font-size: clamp(15px, 1.4vw, 18px);
             line-height: 1.65;
         }
 
-        .signal-board {
-            width: min(560px, 100%);
+        .module-grid {
             display: grid;
-            gap: 12px;
-            animation: fadeUp .7s .16s ease both;
+            grid-template-columns: repeat(2, minmax(170px, 240px));
+            gap: 14px;
+            animation: fadeUp .62s .14s ease both;
         }
 
-        .signal-row {
-            display: grid;
-            grid-template-columns: 88px 1fr 48px;
+        .module {
+            min-height: 104px;
+            padding: 16px;
+            border: 1px solid rgba(7, 79, 155, .12);
+            border-radius: 16px;
+            background: rgba(255, 255, 255, .76);
+            box-shadow: 0 16px 38px rgba(7, 79, 155, .08);
+            transition: transform .2s ease, box-shadow .2s ease;
+        }
+
+        .module:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 22px 44px rgba(7, 79, 155, .12);
+        }
+
+        .module-top {
+            display: flex;
             align-items: center;
+            justify-content: space-between;
             gap: 12px;
-            padding: 13px 14px;
-            border: 1px solid rgba(255, 255, 255, .13);
-            border-radius: 10px;
-            background: rgba(255, 255, 255, .075);
-            backdrop-filter: blur(10px);
         }
 
-        .signal-label,
-        .signal-value {
-            color: rgba(255, 255, 255, .78);
-            font-size: 12px;
+        .module-dot {
+            width: 34px;
+            height: 34px;
+            display: grid;
+            place-items: center;
+            border-radius: 11px;
+            background: var(--primary-50);
+            color: var(--primary);
+            font-size: 18px;
+            font-weight: 900;
+        }
+
+        .module small {
+            color: var(--muted);
+            font-size: 11px;
             font-weight: 800;
             text-transform: uppercase;
         }
 
-        .signal-value {
-            color: rgba(255, 255, 255, .92);
-            text-align: right;
-        }
-
-        .signal-track {
-            position: relative;
-            height: 8px;
-            overflow: hidden;
-            border-radius: 99px;
-            background: rgba(255, 255, 255, .12);
-        }
-
-        .signal-track span {
-            position: absolute;
-            inset: 0 auto 0 0;
-            width: var(--width);
-            border-radius: inherit;
-            background: linear-gradient(90deg, var(--teal-2), var(--amber));
-            transform-origin: left center;
-            animation: scaleIn .9s ease both;
+        .module strong {
+            display: block;
+            margin-top: 18px;
+            color: var(--ink);
+            font-size: 16px;
         }
 
         .auth-panel {
@@ -266,41 +274,37 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: clamp(24px, 5vw, 56px);
-            background:
-                linear-gradient(180deg, rgba(255, 255, 255, .92), rgba(248, 250, 252, .98));
+            padding: clamp(24px, 5vw, 52px);
+            background: rgba(255, 255, 255, .74);
+            border-left: 1px solid rgba(7, 79, 155, .10);
+            backdrop-filter: blur(14px);
         }
 
         .login-card {
-            width: min(100%, 390px);
-            animation: cardIn .58s .12s cubic-bezier(.2, .8, .2, 1) both;
+            width: min(100%, 386px);
+            padding: 30px;
+            border: 1px solid rgba(7, 79, 155, .12);
+            border-radius: 18px;
+            background: var(--white);
+            box-shadow: 0 24px 60px rgba(7, 79, 155, .12);
+            animation: cardIn .48s .1s ease both;
         }
 
         .mobile-brand {
             display: none;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 28px;
-        }
-
-        .mobile-brand .brand-mark {
-            width: 42px;
-            height: 42px;
-            color: #ffffff;
-            background: var(--ink);
-            box-shadow: none;
+            margin-bottom: 24px;
         }
 
         .login-title {
             margin: 0 0 8px;
-            color: var(--ink);
-            font-size: 31px;
-            line-height: 1.1;
+            color: var(--primary);
+            font-size: 30px;
+            line-height: 1.12;
             letter-spacing: 0;
         }
 
         .intro {
-            margin: 0 0 28px;
+            margin: 0 0 26px;
             color: var(--muted);
             font-size: 14px;
             line-height: 1.55;
@@ -310,7 +314,7 @@
             margin-bottom: 18px;
             padding: 12px 14px;
             border: 1px solid #abefc6;
-            border-radius: 10px;
+            border-radius: 12px;
             background: #ecfdf3;
             color: var(--success);
             font-size: 13px;
@@ -318,8 +322,7 @@
         }
 
         .field {
-            position: relative;
-            margin-bottom: 18px;
+            margin-bottom: 17px;
         }
 
         .field label {
@@ -330,42 +333,33 @@
             font-weight: 800;
         }
 
-        .input-wrap {
-            position: relative;
-        }
-
         .field input[type="email"],
         .field input[type="password"] {
             width: 100%;
             min-height: 48px;
             padding: 12px 14px;
             border: 1px solid var(--line);
-            border-radius: 10px;
-            background: rgba(255, 255, 255, .92);
+            border-radius: 12px;
+            background: #fbfdff;
             color: var(--ink);
             font-size: 15px;
             outline: none;
-            transition:
-                border-color .18s ease,
-                box-shadow .18s ease,
-                transform .18s ease,
-                background .18s ease;
+            transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
         }
 
         .field input::placeholder {
-            color: var(--muted-2);
+            color: #98a2b3;
         }
 
         .field input:hover {
-            border-color: #bdc8d7;
-            background: #ffffff;
+            background: var(--white);
+            border-color: #b8cce3;
         }
 
         .field input:focus {
-            border-color: var(--blue);
-            background: #ffffff;
-            box-shadow: 0 0 0 4px rgba(37, 99, 235, .12);
-            transform: translateY(-1px);
+            background: var(--white);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(7, 79, 155, .12);
         }
 
         .error {
@@ -396,7 +390,7 @@
             width: 17px;
             height: 17px;
             margin: 0;
-            accent-color: var(--teal);
+            accent-color: var(--primary);
         }
 
         .submit,
@@ -406,49 +400,26 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            border-radius: 10px;
+            border-radius: 12px;
             font-size: 14px;
             font-weight: 800;
             text-decoration: none;
             cursor: pointer;
-            transition:
-                transform .18s ease,
-                box-shadow .18s ease,
-                border-color .18s ease,
-                background .18s ease;
+            transition: transform .18s ease, box-shadow .18s ease, background .18s ease, border-color .18s ease;
         }
 
         .submit {
-            position: relative;
-            overflow: hidden;
             border: 0;
-            background: var(--ink);
-            color: #ffffff;
-            box-shadow: 0 18px 38px rgba(16, 24, 40, .22);
-        }
-
-        .submit::after {
-            content: "";
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            left: -42%;
-            width: 34%;
-            transform: skewX(-18deg);
-            background: rgba(255, 255, 255, .18);
-            transition: left .42s ease;
+            background: var(--primary);
+            color: var(--white);
+            box-shadow: 0 16px 34px rgba(7, 79, 155, .24);
         }
 
         .submit:hover,
         .submit:focus-visible {
             transform: translateY(-2px);
-            background: #172033;
-            box-shadow: 0 22px 48px rgba(16, 24, 40, .28);
-        }
-
-        .submit:hover::after,
-        .submit:focus-visible::after {
-            left: 112%;
+            background: var(--primary-700);
+            box-shadow: 0 20px 44px rgba(7, 79, 155, .30);
         }
 
         .divider {
@@ -458,7 +429,7 @@
             margin: 24px 0;
             color: var(--muted);
             font-size: 12px;
-            font-weight: 700;
+            font-weight: 800;
             text-transform: uppercase;
         }
 
@@ -472,20 +443,20 @@
 
         .google {
             border: 1px solid var(--line);
-            background: #ffffff;
-            color: var(--ink-2);
+            background: var(--white);
+            color: var(--primary);
         }
 
         .google:hover,
         .google:focus-visible {
             transform: translateY(-2px);
-            border-color: #b7c3d3;
-            background: #fbfdff;
-            box-shadow: 0 14px 32px rgba(16, 24, 40, .10);
+            border-color: #b8cce3;
+            background: var(--primary-50);
+            box-shadow: 0 14px 28px rgba(7, 79, 155, .10);
         }
 
         .footnote {
-            margin: 24px 0 0;
+            margin: 22px 0 0;
             color: var(--muted);
             font-size: 12px;
             line-height: 1.45;
@@ -495,7 +466,7 @@
         @keyframes fadeUp {
             from {
                 opacity: 0;
-                transform: translateY(18px);
+                transform: translateY(14px);
             }
             to {
                 opacity: 1;
@@ -506,7 +477,7 @@
         @keyframes cardIn {
             from {
                 opacity: 0;
-                transform: translateY(16px) scale(.985);
+                transform: translateY(12px) scale(.99);
             }
             to {
                 opacity: 1;
@@ -516,42 +487,22 @@
 
         @keyframes pulse {
             0% {
-                box-shadow: 0 0 0 0 rgba(20, 184, 166, .55);
+                box-shadow: 0 0 0 0 rgba(17, 132, 91, .28);
             }
             70% {
-                box-shadow: 0 0 0 9px rgba(20, 184, 166, 0);
+                box-shadow: 0 0 0 9px rgba(17, 132, 91, 0);
             }
             100% {
-                box-shadow: 0 0 0 0 rgba(20, 184, 166, 0);
+                box-shadow: 0 0 0 0 rgba(17, 132, 91, 0);
             }
         }
 
-        @keyframes scaleIn {
-            from {
-                transform: scaleX(.2);
-            }
-            to {
-                transform: scaleX(1);
-            }
-        }
-
-        @keyframes gridDrift {
-            from {
-                transform: translate3d(0, 0, 0) rotate(-8deg);
-            }
-            to {
-                transform: translate3d(64px, 64px, 0) rotate(-8deg);
-            }
-        }
-
-        @keyframes lightSweep {
+        @keyframes floatSeal {
             0%, 100% {
-                opacity: .54;
-                transform: translateX(-4%);
+                transform: translateY(0);
             }
             50% {
-                opacity: .9;
-                transform: translateX(4%);
+                transform: translateY(12px);
             }
         }
 
@@ -565,9 +516,17 @@
             }
 
             .auth-panel {
-                min-height: 100vh;
                 align-items: flex-start;
-                padding: 42px 22px;
+                min-height: 100vh;
+                padding: 34px 20px;
+                border-left: 0;
+                background: transparent;
+            }
+
+            .login-card {
+                max-width: 430px;
+                margin: 0 auto;
+                padding: 26px;
             }
 
             .mobile-brand {
@@ -576,20 +535,17 @@
         }
 
         @media (max-width: 480px) {
-            body {
-                background-size: 40px 40px;
-            }
-
             .auth-panel {
-                padding: 28px 18px;
+                padding: 22px 14px;
             }
 
             .login-card {
-                width: 100%;
+                padding: 22px;
+                border-radius: 16px;
             }
 
             .login-title {
-                font-size: 27px;
+                font-size: 26px;
             }
 
             .submit,
@@ -620,37 +576,50 @@
                     <span class="brand-mark" aria-hidden="true">G</span>
                     <span>
                         <span class="brand-name">Gestao Edu</span>
-                        <span class="brand-kicker">Umuarama - PR</span>
+                        <span class="brand-subtitle">Secretaria de Educacao</span>
                     </span>
                 </div>
 
                 <span class="status-pill">
                     <span class="status-dot" aria-hidden="true"></span>
-                    Acesso seguro
+                    Sistema ativo
                 </span>
             </div>
 
-            <div class="brand-main">
-                <span class="eyebrow">Secretaria Municipal de Educacao</span>
-                <h1>Central de gestao escolar</h1>
-                <p>Entre para acompanhar rotinas administrativas, pedagogicas e operacionais em um unico painel.</p>
+            <div class="hero">
+                <span class="eyebrow">Prefeitura Municipal de Umuarama</span>
+                <h1>Gestao escolar simples, clara e conectada.</h1>
+                <p>Um painel para apoiar a rotina da Secretaria de Educacao com acesso rapido a escolas, avaliacoes, merenda, pedidos e relatorios.</p>
             </div>
 
-            <div class="signal-board" aria-hidden="true">
-                <div class="signal-row">
-                    <span class="signal-label">Painel</span>
-                    <span class="signal-track"><span style="--width: 88%"></span></span>
-                    <span class="signal-value">Online</span>
+            <div class="module-grid" aria-hidden="true">
+                <div class="module">
+                    <div class="module-top">
+                        <span class="module-dot">E</span>
+                        <small>Rede</small>
+                    </div>
+                    <strong>Escolas</strong>
                 </div>
-                <div class="signal-row">
-                    <span class="signal-label">Dados</span>
-                    <span class="signal-track"><span style="--width: 74%"></span></span>
-                    <span class="signal-value">Ativo</span>
+                <div class="module">
+                    <div class="module-top">
+                        <span class="module-dot">A</span>
+                        <small>Ensino</small>
+                    </div>
+                    <strong>Avaliacoes</strong>
                 </div>
-                <div class="signal-row">
-                    <span class="signal-label">Sessao</span>
-                    <span class="signal-track"><span style="--width: 62%"></span></span>
-                    <span class="signal-value">Web</span>
+                <div class="module">
+                    <div class="module-top">
+                        <span class="module-dot">M</span>
+                        <small>Operacao</small>
+                    </div>
+                    <strong>Merenda</strong>
+                </div>
+                <div class="module">
+                    <div class="module-top">
+                        <span class="module-dot">R</span>
+                        <small>Analise</small>
+                    </div>
+                    <strong>Relatorios</strong>
                 </div>
             </div>
         </section>
@@ -660,13 +629,13 @@
                 <div class="mobile-brand">
                     <span class="brand-mark" aria-hidden="true">G</span>
                     <span>
-                        <span class="brand-name" style="color: var(--ink)">Gestao Edu</span>
-                        <span class="brand-kicker" style="color: var(--muted)">Umuarama - PR</span>
+                        <span class="brand-name">Gestao Edu</span>
+                        <span class="brand-subtitle">Secretaria de Educacao</span>
                     </span>
                 </div>
 
-                <h2 class="login-title" id="login-title">Bem-vindo de volta</h2>
-                <p class="intro">Acesse o painel com seu email institucional.</p>
+                <h2 class="login-title" id="login-title">Acessar o sistema</h2>
+                <p class="intro">Entre com seu email institucional para continuar.</p>
 
                 @if (session('status'))
                     <div class="alert">{{ session('status') }}</div>
@@ -677,18 +646,16 @@
 
                     <div class="field">
                         <label for="email">Email</label>
-                        <div class="input-wrap">
-                            <input
-                                id="email"
-                                name="email"
-                                type="email"
-                                value="{{ old('email') }}"
-                                autocomplete="username"
-                                placeholder="seu.email@edu.umuarama.pr.gov.br"
-                                required
-                                autofocus
-                            >
-                        </div>
+                        <input
+                            id="email"
+                            name="email"
+                            type="email"
+                            value="{{ old('email') }}"
+                            autocomplete="username"
+                            placeholder="seu.email@edu.umuarama.pr.gov.br"
+                            required
+                            autofocus
+                        >
                         @error('email')
                             <p class="error">{{ $message }}</p>
                         @enderror
@@ -696,16 +663,14 @@
 
                     <div class="field">
                         <label for="password">Senha</label>
-                        <div class="input-wrap">
-                            <input
-                                id="password"
-                                name="password"
-                                type="password"
-                                autocomplete="current-password"
-                                placeholder="Digite sua senha"
-                                required
-                            >
-                        </div>
+                        <input
+                            id="password"
+                            name="password"
+                            type="password"
+                            autocomplete="current-password"
+                            placeholder="Digite sua senha"
+                            required
+                        >
                         @error('password')
                             <p class="error">{{ $message }}</p>
                         @enderror
