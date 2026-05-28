@@ -334,7 +334,8 @@
         }
 
         .field input[type="email"],
-        .field input[type="password"] {
+        .field input[type="password"],
+        .field input[type="text"] {
             width: 100%;
             min-height: 48px;
             padding: 12px 14px;
@@ -360,6 +361,59 @@
             background: var(--white);
             border-color: var(--primary);
             box-shadow: 0 0 0 4px rgba(7, 79, 155, .12);
+        }
+
+        .password-field {
+            position: relative;
+        }
+
+        .password-field input {
+            padding-right: 48px;
+        }
+
+        .password-toggle {
+            position: absolute;
+            top: 50%;
+            right: 8px;
+            width: 36px;
+            height: 36px;
+            display: grid;
+            place-items: center;
+            padding: 0;
+            border: 0;
+            border-radius: 10px;
+            background: transparent;
+            color: var(--primary);
+            cursor: pointer;
+            transform: translateY(-50%);
+            transition: background .18s ease, color .18s ease, box-shadow .18s ease;
+        }
+
+        .password-toggle:hover,
+        .password-toggle:focus-visible {
+            background: var(--primary-50);
+            color: var(--primary-700);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(7, 79, 155, .10);
+        }
+
+        .password-toggle svg {
+            width: 19px;
+            height: 19px;
+            fill: none;
+            stroke: currentColor;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-width: 2;
+        }
+
+        .password-toggle .eye-off,
+        .password-toggle.is-visible .eye {
+            display: none;
+        }
+
+        .password-toggle.is-visible .eye-off {
+            display: block;
         }
 
         .error {
@@ -551,7 +605,8 @@
             .submit,
             .google,
             .field input[type="email"],
-            .field input[type="password"] {
+            .field input[type="password"],
+            .field input[type="text"] {
                 min-height: 46px;
             }
         }
@@ -636,14 +691,28 @@
 
                     <div class="field">
                         <label for="password">Senha</label>
-                        <input
-                            id="password"
-                            name="password"
-                            type="password"
-                            autocomplete="current-password"
-                            placeholder="Digite sua senha"
-                            required
-                        >
+                        <div class="password-field">
+                            <input
+                                id="password"
+                                name="password"
+                                type="password"
+                                autocomplete="current-password"
+                                placeholder="Digite sua senha"
+                                required
+                            >
+                            <button class="password-toggle" type="button" data-password-toggle="password" aria-label="Mostrar senha" aria-pressed="false">
+                                <svg class="eye" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                                <svg class="eye-off" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M3 3l18 18"></path>
+                                    <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8"></path>
+                                    <path d="M7.1 7.1C4.2 8.8 2.5 12 2.5 12s3.5 6 9.5 6c1.5 0 2.9-.4 4.1-1"></path>
+                                    <path d="M12 6c6 0 9.5 6 9.5 6a15.2 15.2 0 0 1-2.6 3.2"></path>
+                                </svg>
+                            </button>
+                        </div>
                         @error('password')
                             <p class="error">{{ $message }}</p>
                         @enderror
@@ -667,5 +736,21 @@
             </div>
         </section>
     </main>
+    <script>
+        (function () {
+            document.querySelectorAll('[data-password-toggle]').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    var input = document.getElementById(button.getAttribute('data-password-toggle'));
+                    if (! input) return;
+
+                    var visible = input.type === 'password';
+                    input.type = visible ? 'text' : 'password';
+                    button.classList.toggle('is-visible', visible);
+                    button.setAttribute('aria-pressed', visible ? 'true' : 'false');
+                    button.setAttribute('aria-label', visible ? 'Ocultar senha' : 'Mostrar senha');
+                });
+            });
+        })();
+    </script>
 </body>
 </html>
