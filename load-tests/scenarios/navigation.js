@@ -235,22 +235,22 @@ function defaultProfilePages() {
 
   return {
     default: common,
+
     staff: common.concat([
       { name: 'usuarios', path: '/admin/usuarios' },
       { name: 'pedidos', path: '/admin/pedidos' },
       { name: 'estoque', path: '/admin/gestao-estoque' },
-      { name: 'inventario', path: '/admin/gestao-inventario' },
       { name: 'relatorios', path: '/admin/relatorios-dashboard' },
     ]),
+
     school: common.concat([
       { name: 'alunos', path: '/admin/alunos' },
       { name: 'turmas', path: '/admin/turmas' },
-      { name: 'inventario', path: '/admin/gestao-inventario' },
     ]),
+
     cmei: common.concat([
       { name: 'alunos', path: '/admin/alunos' },
       { name: 'turmas', path: '/admin/turmas' },
-      { name: 'inventario', path: '/admin/gestao-inventario' },
     ]),
   };
 }
