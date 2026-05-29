@@ -3,7 +3,12 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "k6:up": "docker compose -f docker-compose.k6.yml up -d influxdb grafana",
+        "k6:smoke": "docker compose -f docker-compose.k6.yml run --rm k6",
+        "k6:load": "docker compose -f docker-compose.k6.yml run --rm -e K6_PROFILE=conservative k6",
+        "k6:medium": "docker compose -f docker-compose.k6.yml run --rm -e K6_PROFILE=medium k6",
+        "k6:down": "docker compose -f docker-compose.k6.yml down"
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",

@@ -28,3 +28,6 @@ yarn-error.log
 /public/fonts/filament
 /public/**/*.gz
 .tmp
+/load-tests/.env.local
+/load-tests/data/users.local.csv
+/load-tests/results/
