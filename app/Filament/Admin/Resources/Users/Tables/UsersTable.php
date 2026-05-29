@@ -33,7 +33,8 @@ class UsersTable
         $service = app(UserService::class);
 
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $service->listarUsuariosQuery($query, $user))
+            ->modifyQueryUsing(fn (Builder $query) => $service->listarUsuariosQuery($query, $user)
+                ->with(['roles:id,name', 'escola:id,nome,setor_id', 'setor:id,nome']))
             ->paginated([5, 10, 25, 50, 100])
             ->defaultPaginationPageOption(5)
             ->checkIfRecordIsSelectableUsing(fn (User $record) => $service->podeSelecionarRegistro($user, $record))

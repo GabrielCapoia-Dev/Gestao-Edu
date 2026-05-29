@@ -12,6 +12,7 @@ use App\Models\Turma;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
 use App\Models\TurmaComponenteProfessor;
+use Illuminate\Support\Facades\Cache;
 
 class RelatoriosDashboard extends Page
 {
@@ -44,14 +45,23 @@ class RelatoriosDashboard extends Page
 
     public function mount(): void
     {
-        $this->totalProfessores = Professor::count();
-        $this->totalTurmas      = Turma::count();
-        $this->totalComponentes = ComponenteCurricular::count();
-        $this->totalEscolas     = Escola::where('ativo', true)->count();
+        $metricas = Cache::remember('relatorios-dashboard:metricas', now()->addSeconds($this->cacheTtl()), fn (): array => [
+            'totalProfessores' => Professor::count(),
+            'totalTurmas' => Turma::count(),
+            'totalComponentes' => ComponenteCurricular::count(),
+            'totalEscolas' => Escola::where('ativo', true)->count(),
+            'vinculos' => TurmaComponenteProfessor::count(),
+            'semProfessor' => $this->contarTurmasComProfessorFaltando(),
+            'comProfessor' => $this->contarTurmasComTodosComponentesComProfessor(),
+        ]);
 
-        $this->vinculos     = TurmaComponenteProfessor::count();
-        $this->semProfessor = $this->contarTurmasComProfessorFaltando();
-        $this->comProfessor = $this->contarTurmasComTodosComponentesComProfessor();
+        $this->totalProfessores = $metricas['totalProfessores'];
+        $this->totalTurmas = $metricas['totalTurmas'];
+        $this->totalComponentes = $metricas['totalComponentes'];
+        $this->totalEscolas = $metricas['totalEscolas'];
+        $this->vinculos = $metricas['vinculos'];
+        $this->semProfessor = $metricas['semProfessor'];
+        $this->comProfessor = $metricas['comProfessor'];
 
         $this->carregarComponentes();
         $this->carregarEscolas();
@@ -103,24 +113,40 @@ class RelatoriosDashboard extends Page
 
     public function carregarComponentes(): void
     {
-        $this->totalComponentesRegistros = $this->countSubquery($this->componentesQuery(false));
+        $payload = Cache::remember(
+            "relatorios-dashboard:componentes:{$this->pageComponentes}:{$this->perPageComponentes}",
+            now()->addSeconds($this->cacheTtl()),
+            fn (): array => [
+                'total' => $this->countSubquery($this->componentesQuery(false)),
+                'rows' => $this->componentesQuery()
+                    ->offset(($this->pageComponentes - 1) * $this->perPageComponentes)
+                    ->limit($this->perPageComponentes)
+                    ->get()
+                    ->toArray(),
+            ],
+        );
 
-        $this->topComponentes = $this->componentesQuery()
-            ->offset(($this->pageComponentes - 1) * $this->perPageComponentes)
-            ->limit($this->perPageComponentes)
-            ->get()
-            ->toArray();
+        $this->totalComponentesRegistros = $payload['total'];
+        $this->topComponentes = $payload['rows'];
     }
 
     public function carregarEscolas(): void
     {
-        $this->totalEscolasRegistros = $this->countSubquery($this->escolasQuery(false));
+        $payload = Cache::remember(
+            "relatorios-dashboard:escolas:{$this->pageEscolas}:{$this->perPageEscolas}",
+            now()->addSeconds($this->cacheTtl()),
+            fn (): array => [
+                'total' => $this->countSubquery($this->escolasQuery(false)),
+                'rows' => $this->escolasQuery()
+                    ->offset(($this->pageEscolas - 1) * $this->perPageEscolas)
+                    ->limit($this->perPageEscolas)
+                    ->get()
+                    ->toArray(),
+            ],
+        );
 
-        $this->faltasPorEscolaComponente = $this->escolasQuery()
-            ->offset(($this->pageEscolas - 1) * $this->perPageEscolas)
-            ->limit($this->perPageEscolas)
-            ->get()
-            ->toArray();
+        $this->totalEscolasRegistros = $payload['total'];
+        $this->faltasPorEscolaComponente = $payload['rows'];
     }
 
     public function updatedPerPageComponentes(): void
@@ -180,6 +206,11 @@ class RelatoriosDashboard extends Page
     protected function countSubquery(\Illuminate\Database\Query\Builder $query): int
     {
         return DB::query()->fromSub($query, 'sub')->count();
+    }
+
+    protected function cacheTtl(): int
+    {
+        return max(1, (int) config('performance.cache_ttl.reports_dashboard', 60));
     }
 
     public function getHeader(): ?\Illuminate\Contracts\View\View

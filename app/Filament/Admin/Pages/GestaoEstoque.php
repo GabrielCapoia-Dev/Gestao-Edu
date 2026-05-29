@@ -4,7 +4,6 @@ namespace App\Filament\Admin\Pages;
 
 use App\Models\Enums\TipoItem;
 use App\Models\Estoque;
-use App\Models\EstoqueMovimentacao;
 use App\Services\Estoque\GestaoEstoqueDataService;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -109,42 +108,7 @@ class GestaoEstoque extends Page
 
     public function getCardsProperty(): array
     {
-        $itens = $this->dataService()->itens();
-        $totalItens = $itens->count();
-        $itensZerados = $itens->where('status', 'zerado')->count();
-        $itensCriticos = $itens->where('status', 'critico')->count();
-        $totalMovimentacoes = EstoqueMovimentacao::count();
-
-        return [
-            [
-                'titulo' => 'Itens no Estoque',
-                'valor' => $totalItens,
-                'icone' => 'heroicon-o-cube',
-                'cor' => 'blue',
-                'descricao' => 'itens cadastrados',
-            ],
-            [
-                'titulo' => 'Estoque Baixo',
-                'valor' => $itensCriticos,
-                'icone' => 'heroicon-o-exclamation-triangle',
-                'cor' => 'amber',
-                'descricao' => 'itens com <= 10 unidades',
-            ],
-            [
-                'titulo' => 'Itens Zerados',
-                'valor' => $itensZerados,
-                'icone' => 'heroicon-o-x-circle',
-                'cor' => 'red',
-                'descricao' => 'sem saldo em estoque',
-            ],
-            [
-                'titulo' => 'Movimentações',
-                'valor' => $totalMovimentacoes,
-                'icone' => 'heroicon-o-arrow-path',
-                'cor' => 'green',
-                'descricao' => 'entradas e saídas registradas',
-            ],
-        ];
+        return $this->dataService()->cards();
     }
 
     public function getAbasProperty(): array
@@ -166,29 +130,17 @@ class GestaoEstoque extends Page
 
     public function getItensFiltradosBaseProperty(): Collection
     {
-        return $this->dataService()->itens($this->filtrosExportacao);
+        return $this->itensPaginados()->itens;
     }
 
     public function getItensFiltradosProperty(): Collection
     {
-        return $this->itensFiltradosBase
-            ->slice(($this->paginaAtual - 1) * $this->porPagina, $this->porPagina)
-            ->values();
+        return $this->itensPaginados()->itens;
     }
 
     public function getPaginacaoProperty(): array
     {
-        $total = $this->itensFiltradosBase->count();
-        $totalPaginas = $total > 0 ? (int) ceil($total / $this->porPagina) : 1;
-
-        return [
-            'total' => $total,
-            'porPagina' => $this->porPagina,
-            'paginaAtual' => $this->paginaAtual,
-            'totalPaginas' => $totalPaginas,
-            'de' => $total === 0 ? 0 : ($this->paginaAtual - 1) * $this->porPagina + 1,
-            'ate' => min($this->paginaAtual * $this->porPagina, $total),
-        ];
+        return $this->itensPaginados()->paginacao;
     }
 
     public function getFiltrosExportacaoProperty(): array
@@ -217,8 +169,7 @@ class GestaoEstoque extends Page
 
     public function mudarPagina(int $pagina): void
     {
-        $total = $this->itensFiltradosBase->count();
-        $totalPaginas = max(1, (int) ceil($total / $this->porPagina));
+        $totalPaginas = max(1, (int) $this->paginacao['totalPaginas']);
 
         $this->paginaAtual = max(1, min($pagina, $totalPaginas));
     }
@@ -305,6 +256,16 @@ class GestaoEstoque extends Page
     {
         return app(GestaoEstoqueDataService::class);
     }
+
+    protected function itensPaginados(): object
+    {
+        return $this->dataService()->itensPaginados(
+            $this->filtrosExportacao,
+            $this->paginaAtual,
+            $this->porPagina,
+        );
+    }
+
     public function getTitle(): string
     {
         return '';

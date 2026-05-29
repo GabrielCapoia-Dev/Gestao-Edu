@@ -31,6 +31,8 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
         hasPermissionTo as protected traitHasPermissionTo;
     }
 
+    private ?bool $ehProfessorCache = null;
+
     /**
      * The attributes that are mass assignable.
      *
@@ -237,7 +239,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
 
     public function ehProfessor(): bool
     {
-        return $this->professores()->exists();
+        return $this->ehProfessorCache ??= $this->professores()->exists();
     }
 
     public function setor()

@@ -3,7 +3,9 @@
 namespace App\Http\Middleware;
 
 use Closure;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
@@ -17,6 +19,21 @@ class PerformanceInstrumentation
         }
 
         $start = microtime(true);
+        $queryCount = 0;
+        $queryTime = 0.0;
+        $slowestQuery = null;
+
+        DB::listen(function (QueryExecuted $query) use (&$queryCount, &$queryTime, &$slowestQuery): void {
+            $queryCount++;
+            $queryTime += (float) $query->time;
+
+            if ($slowestQuery === null || (float) $query->time > $slowestQuery['time_ms']) {
+                $slowestQuery = [
+                    'time_ms' => round((float) $query->time, 2),
+                    'sql' => $this->sanitizeSql((string) $query->sql),
+                ];
+            }
+        });
 
         /** @var Response $response */
         $response = $next($request);
@@ -25,18 +42,28 @@ class PerformanceInstrumentation
         $routeName = (string) ($request->route()?->getName() ?? '');
         $threshold = $this->thresholdFor($request, $routeName);
 
-        if ($threshold <= 0 || $elapsed < $threshold) {
+        if (! $this->shouldLog($elapsed, $threshold)) {
             return $response;
         }
 
-        Log::warning('Requisicao lenta instrumentada', [
+        $user = $request->user();
+
+        Log::warning('Requisicao instrumentada', [
             'method' => $request->method(),
             'path' => $request->path(),
             'route' => $routeName ?: null,
+            'status' => $response->getStatusCode(),
             'elapsed_ms' => round($elapsed, 2),
+            'query_count' => $queryCount,
+            'query_time_ms' => round($queryTime, 2),
+            'slowest_query' => $slowestQuery,
+            'memory_peak_mb' => round(memory_get_peak_usage(true) / 1024 / 1024, 2),
             'response_bytes' => $this->responseBytes($response),
             'livewire_components' => $this->livewireComponents($request),
-            'user_id' => $request->user()?->getAuthIdentifier(),
+            'user_id' => $user?->getAuthIdentifier(),
+            'user_roles' => $user && method_exists($user, 'getRoleNames')
+                ? $user->getRoleNames()->values()->all()
+                : [],
         ]);
 
         return $response;
@@ -62,7 +89,16 @@ class PerformanceInstrumentation
             return (int) ($thresholds['livewire.update'] ?? data_get($thresholds, 'livewire.update', 1500));
         }
 
-        return 0;
+        return (int) config('performance.instrumentation.slow_request_ms', 2000);
+    }
+
+    private function shouldLog(float $elapsed, int $threshold): bool
+    {
+        if ((bool) config('performance.instrumentation.log_all', false)) {
+            return true;
+        }
+
+        return $threshold > 0 && $elapsed >= $threshold;
     }
 
     private function responseBytes(Response $response): ?int
@@ -92,5 +128,15 @@ class PerformanceInstrumentation
             ->filter()
             ->values()
             ->all();
+    }
+
+    private function sanitizeSql(string $sql): string
+    {
+        $sql = preg_replace("/'[^']*'/", "'?'", $sql) ?? $sql;
+        $sql = preg_replace('/"[^"]*"/', '"?"', $sql) ?? $sql;
+        $sql = preg_replace('/\b\d+(?:\.\d+)?\b/', '?', $sql) ?? $sql;
+        $sql = preg_replace('/\s+/', ' ', $sql) ?? $sql;
+
+        return Str::limit(trim($sql), 500, '...');
     }
 }

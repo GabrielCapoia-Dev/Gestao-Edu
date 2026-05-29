@@ -46,7 +46,7 @@ class PedidosTable
         return $table
             ->modifyQueryUsing(fn (Builder $query) => $query
                 ->where('is_pedido_adicional', false)
-                ->with(['pedidoPrincipal'])
+                ->with(['pedidoPrincipal', 'tipoManutencao', 'tipoStatus', 'escola', 'setor'])
                 ->withCount(['pedidosAdicionais', 'problemas']))
             ->paginated([10, 25, 50, 100])
             ->defaultPaginationPageOption(10)

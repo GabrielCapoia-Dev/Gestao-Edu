@@ -13,6 +13,15 @@ class UserSetorAccessService
 {
     public const GLOBAL_SCOPE_PERMISSION = 'Acessar Escopo Global de Setores';
 
+    /** @var array<int, bool> */
+    private array $globalAccessByUser = [];
+
+    /** @var array<int, int|null> */
+    private array $primarySetorByUser = [];
+
+    /** @var array<int, array<int, int>> */
+    private array $visibleSetoresByUser = [];
+
     public function __construct(private readonly SetorHierarchyService $hierarchy)
     {
     }
@@ -23,7 +32,9 @@ class UserSetorAccessService
             return false;
         }
 
-        return $user->hasRole('Admin')
+        $userId = (int) $user->getKey();
+
+        return $this->globalAccessByUser[$userId] ??= $user->hasRole('Admin')
             || $user->hasPermissionTo(self::GLOBAL_SCOPE_PERMISSION)
             || Gate::forUser($user)->allows('admin-only');
     }
@@ -34,8 +45,14 @@ class UserSetorAccessService
             return null;
         }
 
+        $userId = (int) $user->getKey();
+
+        if (array_key_exists($userId, $this->primarySetorByUser)) {
+            return $this->primarySetorByUser[$userId];
+        }
+
         if (filled($user->setor_id)) {
-            return (int) $user->setor_id;
+            return $this->primarySetorByUser[$userId] = (int) $user->setor_id;
         }
 
         if (filled($user->id_escola)) {
@@ -44,7 +61,7 @@ class UserSetorAccessService
                 ->value('setor_id');
 
             if (filled($setorId)) {
-                return (int) $setorId;
+                return $this->primarySetorByUser[$userId] = (int) $setorId;
             }
         }
 
@@ -55,7 +72,7 @@ class UserSetorAccessService
             ->unique()
             ->values();
 
-        return $roleSetores->count() === 1 ? $roleSetores->first() : null;
+        return $this->primarySetorByUser[$userId] = $roleSetores->count() === 1 ? $roleSetores->first() : null;
     }
 
     public function visibleSetorIds(?User $user): array
@@ -64,8 +81,14 @@ class UserSetorAccessService
             return [];
         }
 
+        $userId = (int) $user->getKey();
+
+        if (array_key_exists($userId, $this->visibleSetoresByUser)) {
+            return $this->visibleSetoresByUser[$userId];
+        }
+
         if ($this->hasGlobalAccess($user)) {
-            return Setor::query()
+            return $this->visibleSetoresByUser[$userId] = Setor::query()
                 ->where('ativo', true)
                 ->orderBy('path')
                 ->orderBy('id')
@@ -74,7 +97,7 @@ class UserSetorAccessService
                 ->all();
         }
 
-        return $this->hierarchy->selfAndDescendantIds($this->primarySetorId($user));
+        return $this->visibleSetoresByUser[$userId] = $this->hierarchy->selfAndDescendantIds($this->primarySetorId($user));
     }
 
     public function canAccessSetor(?User $user, ?int $setorId): bool

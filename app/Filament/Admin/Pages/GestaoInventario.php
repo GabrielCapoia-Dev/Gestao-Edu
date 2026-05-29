@@ -198,37 +198,7 @@ class GestaoInventario extends Page
             return [];
         }
 
-        $itens = $this->dataService()->itens($this->inventarioAtual, $this->filtrosExportacao);
-        $movimentacoes = $this->dataService()->movimentacoesDoInventario($this->inventarioAtual);
-        $baixas = $this->dataService()->baixasDoInventario($this->inventarioAtual);
-        $metricas = $this->dataService()->metricasGerais($itens, $movimentacoes, $baixas);
-
-        return [
-            [
-                'titulo' => 'Itens no inventario',
-                'valor' => $metricas->total_itens,
-                'descricao' => 'itens atualmente cadastrados',
-                'cor' => 'blue',
-            ],
-            [
-                'titulo' => 'Valor estimado',
-                'valor' => 'R$ ' . number_format((float) $metricas->valor_total, 2, ',', '.'),
-                'descricao' => 'referencia calculada pelos contratos',
-                'cor' => 'emerald',
-            ],
-            [
-                'titulo' => 'Estoque baixo',
-                'valor' => $metricas->itens_criticos,
-                'descricao' => 'itens com saldo ate 10 unidades',
-                'cor' => 'amber',
-            ],
-            [
-                'titulo' => 'Baixas registradas',
-                'valor' => $metricas->total_baixas,
-                'descricao' => number_format((float) $metricas->quantidade_baixada, 3, ',', '.') . ' unidades baixadas',
-                'cor' => 'rose',
-            ],
-        ];
+        return $this->dataService()->cards($this->inventarioAtual, $this->filtrosExportacao);
     }
 
     public function getAbasProperty(): array
@@ -258,29 +228,17 @@ class GestaoInventario extends Page
             return collect();
         }
 
-        return $this->dataService()->itens($this->inventarioAtual, $this->filtrosExportacao);
+        return $this->itensPaginados()->itens;
     }
 
     public function getItensFiltradosProperty(): Collection
     {
-        return $this->itensFiltradosBase
-            ->slice(($this->paginaAtual - 1) * $this->porPagina, $this->porPagina)
-            ->values();
+        return $this->itensPaginados()->itens;
     }
 
     public function getPaginacaoProperty(): array
     {
-        $total = $this->itensFiltradosBase->count();
-        $totalPaginas = $total > 0 ? (int) ceil($total / $this->porPagina) : 1;
-
-        return [
-            'total' => $total,
-            'porPagina' => $this->porPagina,
-            'paginaAtual' => $this->paginaAtual,
-            'totalPaginas' => $totalPaginas,
-            'de' => $total === 0 ? 0 : ($this->paginaAtual - 1) * $this->porPagina + 1,
-            'ate' => min($this->paginaAtual * $this->porPagina, $total),
-        ];
+        return $this->itensPaginados()->paginacao;
     }
 
     public function getFiltrosExportacaoProperty(): array
@@ -306,8 +264,7 @@ class GestaoInventario extends Page
 
     public function mudarPagina(int $pagina): void
     {
-        $total = $this->itensFiltradosBase->count();
-        $totalPaginas = max(1, (int) ceil($total / $this->porPagina));
+        $totalPaginas = max(1, (int) $this->paginacao['totalPaginas']);
 
         $this->paginaAtual = max(1, min($pagina, $totalPaginas));
     }
@@ -411,6 +368,30 @@ class GestaoInventario extends Page
     protected function dataService(): InventarioDataService
     {
         return app(InventarioDataService::class);
+    }
+
+    protected function itensPaginados(): object
+    {
+        if (! $this->inventarioAtual) {
+            return (object) [
+                'itens' => collect(),
+                'paginacao' => [
+                    'total' => 0,
+                    'porPagina' => $this->porPagina,
+                    'paginaAtual' => 1,
+                    'totalPaginas' => 1,
+                    'de' => 0,
+                    'ate' => 0,
+                ],
+            ];
+        }
+
+        return $this->dataService()->itensPaginados(
+            $this->inventarioAtual,
+            $this->filtrosExportacao,
+            $this->paginaAtual,
+            $this->porPagina,
+        );
     }
 
     protected function contextService(): InventarioContextService

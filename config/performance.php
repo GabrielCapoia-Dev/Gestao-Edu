@@ -63,10 +63,14 @@ return [
         'users_count' => (int) env('PERF_CACHE_USERS_COUNT', 60),
         'notification_form_options' => (int) env('PERF_CACHE_NOTIFICATION_FORM_OPTIONS', 300),
         'active_exports' => (int) env('PERF_CACHE_ACTIVE_EXPORTS', 10),
+        'inventory_dashboard' => (int) env('PERF_CACHE_INVENTORY_DASHBOARD', 60),
+        'reports_dashboard' => (int) env('PERF_CACHE_REPORTS_DASHBOARD', 60),
     ],
 
     'instrumentation' => [
         'enabled' => filter_var(env('PERF_INSTRUMENTATION_ENABLED', false), FILTER_VALIDATE_BOOL),
         'livewire_enabled' => filter_var(env('PERF_LIVEWIRE_INSTRUMENTATION_ENABLED', false), FILTER_VALIDATE_BOOL),
+        'log_all' => filter_var(env('PERF_INSTRUMENTATION_LOG_ALL', false), FILTER_VALIDATE_BOOL),
+        'slow_request_ms' => (int) env('PERF_SLOW_REQUEST_MS', 2000),
     ],
 ];

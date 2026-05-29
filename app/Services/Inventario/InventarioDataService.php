@@ -12,6 +12,7 @@ use App\Models\InventarioEstoque;
 use App\Models\InventarioMovimentacao;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 class InventarioDataService
 {
@@ -83,13 +84,119 @@ class InventarioDataService
         return $this->ordenarItens($itens, $filtros['sortCol'], $filtros['sortDir']);
     }
 
+    public function itensPaginados(Inventario $inventario, array $filtros = [], int $pagina = 1, int $porPagina = 8): object
+    {
+        $filtros = $this->normalizarFiltros($filtros);
+        $pagina = max(1, $pagina);
+        $porPagina = max(1, $porPagina);
+
+        if ($filtros['sortCol'] === 'valor_total') {
+            $itens = $this->itens($inventario, $filtros);
+            $total = $itens->count();
+            $totalPaginas = $total > 0 ? (int) ceil($total / $porPagina) : 1;
+            $pagina = min($pagina, $totalPaginas);
+
+            return (object) [
+                'itens' => $itens->slice(($pagina - 1) * $porPagina, $porPagina)->values(),
+                'paginacao' => $this->paginacaoArray($total, $pagina, $porPagina),
+            ];
+        }
+
+        $query = InventarioEstoque::query()
+            ->join('itens as item_filtro', 'item_filtro.id', '=', 'inventario_estoques.item_id')
+            ->with('item')
+            ->where('inventario_estoques.inventario_id', $inventario->getKey())
+            ->select('inventario_estoques.*');
+
+        if ($filtros['categoria'] !== 'todas') {
+            $query->where('item_filtro.tipo_item', $filtros['categoria']);
+        }
+
+        if ($filtros['busca'] !== '') {
+            $termo = '%'.$filtros['busca'].'%';
+
+            $query->where(function ($builder) use ($termo): void {
+                $builder
+                    ->where('item_filtro.nome', 'like', $termo)
+                    ->orWhere('item_filtro.descricao', 'like', $termo)
+                    ->orWhere('item_filtro.tipo_item', 'like', $termo);
+            });
+        }
+
+        $total = (clone $query)->count('inventario_estoques.id');
+        $totalPaginas = $total > 0 ? (int) ceil($total / $porPagina) : 1;
+        $pagina = min($pagina, $totalPaginas);
+
+        match ($filtros['sortCol']) {
+            'quantidade' => $query->orderBy('inventario_estoques.quantidade', $filtros['sortDir']),
+            'tipo_item' => $query->orderBy('item_filtro.tipo_item', $filtros['sortDir'])->orderBy('item_filtro.nome'),
+            'atualizado' => $query->orderBy('inventario_estoques.updated_at', $filtros['sortDir']),
+            default => $query->orderBy('item_filtro.nome', $filtros['sortDir']),
+        };
+
+        $precos = $this->precosReferencia();
+        $itens = $query
+            ->forPage($pagina, $porPagina)
+            ->get()
+            ->filter(fn (InventarioEstoque $estoque): bool => $estoque->item !== null)
+            ->map(fn (InventarioEstoque $estoque): array => $this->mapearEstoque($estoque, $precos))
+            ->values();
+
+        return (object) [
+            'itens' => $itens,
+            'paginacao' => $this->paginacaoArray($total, $pagina, $porPagina),
+        ];
+    }
+
     public function categoriasDisponiveis(Inventario $inventario): Collection
     {
-        return $this->itens($inventario)
-            ->pluck('tipo_item')
+        return Cache::remember('inventario:categorias:'.$inventario->getKey(), now()->addSeconds($this->cacheTtl()), fn (): Collection => InventarioEstoque::query()
+            ->join('itens', 'itens.id', '=', 'inventario_estoques.item_id')
+            ->where('inventario_estoques.inventario_id', $inventario->getKey())
+            ->distinct()
+            ->orderBy('itens.tipo_item')
+            ->pluck('itens.tipo_item')
             ->filter()
-            ->unique()
-            ->values();
+            ->values());
+    }
+
+    public function cards(Inventario $inventario, array $filtros = []): array
+    {
+        $cacheKey = 'inventario:cards:'.$inventario->getKey().':'.md5(json_encode($this->normalizarFiltros($filtros)));
+
+        return Cache::remember($cacheKey, now()->addSeconds($this->cacheTtl()), function () use ($inventario, $filtros): array {
+            $itens = $this->itens($inventario, $filtros);
+            $movimentacoes = $this->movimentacoesDoInventario($inventario);
+            $baixas = $this->baixasDoInventario($inventario);
+            $metricas = $this->metricasGerais($itens, $movimentacoes, $baixas);
+
+            return [
+                [
+                    'titulo' => 'Itens no inventario',
+                    'valor' => $metricas->total_itens,
+                    'descricao' => 'itens atualmente cadastrados',
+                    'cor' => 'blue',
+                ],
+                [
+                    'titulo' => 'Valor estimado',
+                    'valor' => 'R$ ' . number_format((float) $metricas->valor_total, 2, ',', '.'),
+                    'descricao' => 'referencia calculada pelos contratos',
+                    'cor' => 'emerald',
+                ],
+                [
+                    'titulo' => 'Estoque baixo',
+                    'valor' => $metricas->itens_criticos,
+                    'descricao' => 'itens com saldo ate 10 unidades',
+                    'cor' => 'amber',
+                ],
+                [
+                    'titulo' => 'Baixas registradas',
+                    'valor' => $metricas->total_baixas,
+                    'descricao' => number_format((float) $metricas->quantidade_baixada, 3, ',', '.') . ' unidades baixadas',
+                    'cor' => 'rose',
+                ],
+            ];
+        });
     }
 
     public function movimentacoesPorEstoque(int|InventarioEstoque $estoque): Collection
@@ -759,6 +866,48 @@ class InventarioDataService
                 SORT_NATURAL | SORT_FLAG_CASE
             )
             ->values();
+    }
+
+    protected function mapearEstoque(InventarioEstoque $estoque, Collection $precos): array
+    {
+        $item = $estoque->item;
+        $quantidade = (float) $estoque->quantidade;
+        $valorUnitario = (float) ($precos->get($item->getKey()) ?? 0);
+
+        return [
+            'inventario_estoque_id' => $estoque->id,
+            'item_id' => $item->id,
+            'nome' => $item->nome,
+            'descricao' => $item->descricao,
+            'unidade' => strtoupper($item->unidade_medida->value),
+            'tipo_item' => $item->tipo_item->value,
+            'tipo_label' => $item->tipo_item->label(),
+            'quantidade' => $quantidade,
+            'status' => $this->resolverStatus($quantidade),
+            'valor_unitario_referencia' => round($valorUnitario, 2),
+            'valor_total' => round($quantidade * $valorUnitario, 2),
+            'atualizado' => $estoque->updated_at?->format('d/m/Y H:i'),
+            'atualizado_raw' => $estoque->updated_at,
+        ];
+    }
+
+    protected function paginacaoArray(int $total, int $pagina, int $porPagina): array
+    {
+        $totalPaginas = $total > 0 ? (int) ceil($total / $porPagina) : 1;
+
+        return [
+            'total' => $total,
+            'porPagina' => $porPagina,
+            'paginaAtual' => $pagina,
+            'totalPaginas' => $totalPaginas,
+            'de' => $total === 0 ? 0 : ($pagina - 1) * $porPagina + 1,
+            'ate' => min($pagina * $porPagina, $total),
+        ];
+    }
+
+    protected function cacheTtl(): int
+    {
+        return max(1, (int) config('performance.cache_ttl.inventory_dashboard', 60));
     }
 
     protected function precosReferencia(): Collection

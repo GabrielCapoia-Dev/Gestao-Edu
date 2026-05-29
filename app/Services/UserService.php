@@ -20,6 +20,9 @@ class UserService
 {
     protected $user;
 
+    /** @var array<int, array<int, int>> */
+    private array $professorIdsByUser = [];
+
     public function __construct()
     {
         /** @var User */
@@ -561,7 +564,7 @@ class UserService
 
         // Impacto: professor ve turmas pelo vinculo componente-professor, nao por id_escola. Trocar para escola amplia ou restringe indevidamente avaliacoes e alunos visiveis.
         if ($user->ehProfessor()) {
-            $professoresIds = $user->professores->pluck('id')->toArray();
+            $professoresIds = $this->professorIds($user);
 
             return $query->whereHas('componentes', function ($q) use ($professoresIds) {
                 $q->whereIn('turma_componente_professor.professor_id', $professoresIds);
@@ -583,7 +586,7 @@ class UserService
 
         // Impacto: este filtro protege alunos por turmas lecionadas. Alterar para filtrar so por escola pode expor alunos de turmas sem vinculo com o professor.
         if ($user->ehProfessor()) {
-            $professoresIds = $user->professores()->pluck('id')->toArray();
+            $professoresIds = $this->professorIds($user);
 
             return $query->whereHas('turma.componentes', function ($q) use ($professoresIds) {
                 $q->whereIn('turma_componente_professor.professor_id', $professoresIds);
@@ -602,5 +605,22 @@ class UserService
     public function aplicarFiltroPorEscolaDoUsuarioEmTurma(Builder $query, ?User $user): Builder
     {
         return $this->aplicarFiltroTurmasDoUsuario($query, $user);
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function professorIds(User $user): array
+    {
+        $userId = (int) $user->getKey();
+
+        if (! array_key_exists($userId, $this->professorIdsByUser)) {
+            $this->professorIdsByUser[$userId] = $user->professores()
+                ->pluck('id')
+                ->map(fn ($id): int => (int) $id)
+                ->all();
+        }
+
+        return $this->professorIdsByUser[$userId];
     }
 }

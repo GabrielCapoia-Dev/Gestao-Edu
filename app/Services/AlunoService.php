@@ -195,7 +195,15 @@ class AlunoService
                     $query->where('id_turma', request()->integer('turma'));
                 }
 
-                $query->with(['turma.escola', 'turma.serie']);
+                $query
+                    ->with(['turma.escola', 'turma.serie'])
+                    ->select('alunos.*')
+                    ->selectSub(function ($subquery): void {
+                        $subquery
+                            ->from('avaliacao_turma')
+                            ->selectRaw('count(*) > 0')
+                            ->whereColumn('avaliacao_turma.turma_id', 'alunos.id_turma');
+                    }, 'turma_tem_avaliacoes');
             })
             ->paginated([5, 10, 25, 50, 100])
             ->defaultPaginationPageOption(10)
@@ -692,6 +700,10 @@ class AlunoService
 
     private function alunoTemAvaliacoes(Aluno $aluno): bool
     {
+        if (array_key_exists('turma_tem_avaliacoes', $aluno->getAttributes())) {
+            return (bool) $aluno->getAttribute('turma_tem_avaliacoes');
+        }
+
         $aluno->loadMissing('turma');
 
         return $aluno->turma?->avaliacoes()->exists() ?? false;

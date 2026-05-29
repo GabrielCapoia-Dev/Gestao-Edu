@@ -8,6 +8,7 @@ use App\Models\Enums\TipoMovimentacao;
 use App\Models\Estoque;
 use App\Models\EstoqueMovimentacao;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 class GestaoEstoqueDataService
 {
@@ -72,13 +73,113 @@ class GestaoEstoqueDataService
         return $this->ordenarItens($itens, $filtros['sortCol'], $filtros['sortDir']);
     }
 
+    public function itensPaginados(array $filtros = [], int $pagina = 1, int $porPagina = 5): object
+    {
+        $filtros = $this->normalizarFiltros($filtros);
+        $pagina = max(1, $pagina);
+        $porPagina = max(1, $porPagina);
+
+        $query = Estoque::query()
+            ->join('itens as item_filtro', 'item_filtro.id', '=', 'estoque.item_id')
+            ->with('item')
+            ->select('estoque.*');
+
+        if ($filtros['categoria'] !== 'todas') {
+            $query->where('item_filtro.tipo_item', $filtros['categoria']);
+        }
+
+        if ($filtros['busca'] !== '') {
+            $termo = '%'.$filtros['busca'].'%';
+
+            $query->where(function ($builder) use ($termo): void {
+                $builder
+                    ->where('item_filtro.nome', 'like', $termo)
+                    ->orWhere('item_filtro.descricao', 'like', $termo)
+                    ->orWhere('item_filtro.tipo_item', 'like', $termo);
+            });
+        }
+
+        $total = (clone $query)->count('estoque.id');
+        $totalPaginas = $total > 0 ? (int) ceil($total / $porPagina) : 1;
+        $pagina = min($pagina, $totalPaginas);
+
+        match ($filtros['sortCol']) {
+            'quantidade' => $query->orderBy('estoque.quantidade', $filtros['sortDir']),
+            'tipo_item' => $query->orderBy('item_filtro.tipo_item', $filtros['sortDir'])->orderBy('item_filtro.nome'),
+            'atualizado' => $query->orderBy('estoque.updated_at', $filtros['sortDir']),
+            default => $query->orderBy('item_filtro.nome', $filtros['sortDir']),
+        };
+
+        $itens = $query
+            ->forPage($pagina, $porPagina)
+            ->get()
+            ->filter(fn (Estoque $estoque): bool => $estoque->item !== null)
+            ->map(fn (Estoque $estoque): array => $this->mapearEstoque($estoque))
+            ->values();
+
+        return (object) [
+            'itens' => $itens,
+            'paginacao' => [
+                'total' => $total,
+                'porPagina' => $porPagina,
+                'paginaAtual' => $pagina,
+                'totalPaginas' => $totalPaginas,
+                'de' => $total === 0 ? 0 : ($pagina - 1) * $porPagina + 1,
+                'ate' => min($pagina * $porPagina, $total),
+            ],
+        ];
+    }
+
     public function categoriasDisponiveis(): Collection
     {
-        return $this->itens()
-            ->pluck('tipo_item')
+        return Cache::remember('gestao-estoque:categorias', now()->addSeconds($this->cacheTtl()), fn (): Collection => Estoque::query()
+            ->join('itens', 'itens.id', '=', 'estoque.item_id')
+            ->distinct()
+            ->orderBy('itens.tipo_item')
+            ->pluck('itens.tipo_item')
             ->filter()
-            ->unique()
-            ->values();
+            ->values());
+    }
+
+    public function cards(): array
+    {
+        return Cache::remember('gestao-estoque:cards', now()->addSeconds($this->cacheTtl()), function (): array {
+            $totalItens = Estoque::query()->whereHas('item')->count();
+            $itensZerados = Estoque::query()->whereHas('item')->where('quantidade', '<=', 0)->count();
+            $itensCriticos = Estoque::query()->whereHas('item')->where('quantidade', '>', 0)->where('quantidade', '<=', 10)->count();
+            $totalMovimentacoes = EstoqueMovimentacao::count();
+
+            return [
+                [
+                    'titulo' => 'Itens no Estoque',
+                    'valor' => $totalItens,
+                    'icone' => 'heroicon-o-cube',
+                    'cor' => 'blue',
+                    'descricao' => 'itens cadastrados',
+                ],
+                [
+                    'titulo' => 'Estoque Baixo',
+                    'valor' => $itensCriticos,
+                    'icone' => 'heroicon-o-exclamation-triangle',
+                    'cor' => 'amber',
+                    'descricao' => 'itens com <= 10 unidades',
+                ],
+                [
+                    'titulo' => 'Itens Zerados',
+                    'valor' => $itensZerados,
+                    'icone' => 'heroicon-o-x-circle',
+                    'cor' => 'red',
+                    'descricao' => 'sem saldo em estoque',
+                ],
+                [
+                    'titulo' => 'Movimentações',
+                    'valor' => $totalMovimentacoes,
+                    'icone' => 'heroicon-o-arrow-path',
+                    'cor' => 'green',
+                    'descricao' => 'entradas e saídas registradas',
+                ],
+            ];
+        });
     }
 
     public function movimentacoesPorEstoque(int|Estoque $estoque): Collection
@@ -250,6 +351,31 @@ class GestaoEstoqueDataService
         };
 
         return $ordenado->values();
+    }
+
+    protected function mapearEstoque(Estoque $estoque): array
+    {
+        $item = $estoque->item;
+        $quantidade = (float) $estoque->quantidade;
+
+        return [
+            'estoque_id' => $estoque->id,
+            'item_id' => $item->id,
+            'nome' => $item->nome,
+            'descricao' => $item->descricao,
+            'unidade' => strtoupper($item->unidade_medida->value),
+            'tipo_item' => $item->tipo_item->value,
+            'tipo_label' => $item->tipo_item->label(),
+            'quantidade' => $quantidade,
+            'status' => $this->resolverStatus($quantidade),
+            'atualizado' => $estoque->updated_at?->format('d/m/Y H:i'),
+            'atualizado_raw' => $estoque->updated_at,
+        ];
+    }
+
+    protected function cacheTtl(): int
+    {
+        return max(1, (int) config('performance.cache_ttl.inventory_dashboard', 60));
     }
 
     protected function resolverStatus(float $quantidade): string

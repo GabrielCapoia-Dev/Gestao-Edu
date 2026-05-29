@@ -12,11 +12,17 @@ Crie ou mantenha estes arquivos fora do Git:
 - `load-tests/.env.local`: overrides opcionais de URL, portas e perfil.
 - `load-tests/results/`: saidas locais de execucoes.
 
-Formato do CSV:
+Formato do CSV. O campo `profile` define qual fluxo de telas o usuario percorre:
 
 ```csv
 email,password,profile
 escola.exemplo@edu.umuarama.pr.gov.br,Mudar@1234,school
+```
+
+Para gerar uma massa local de 300 usuarios de carga no ambiente de teste:
+
+```bash
+php artisan loadtest:users --count=300 --output=load-tests/data/users.local.csv
 ```
 
 ## Comandos
@@ -45,6 +51,14 @@ Rodar carga media, com rampa ate 50 usuarios virtuais:
 npm run k6:medium
 ```
 
+Rodar rampas maiores:
+
+```bash
+npm run k6:100
+npm run k6:150
+npm run k6:300
+```
+
 Abrir o Grafana em `http://localhost:3001`, usando `admin` / `admin`, e acessar o dashboard `Gestao Edu - K6 Overview`.
 
 Encerrar a stack local:
@@ -59,8 +73,9 @@ Variaveis principais:
 
 - `K6_BASE_URL`: URL alvo. Padrao: `https://edu.hubdetestes.online`.
 - `K6_USERS_FILE`: caminho do CSV dentro do container. Padrao: `/scripts/data/users.local.csv`.
-- `K6_PROFILE`: `smoke`, `conservative` ou `medium`.
-- `K6_NAV_PATHS`: override das telas no formato `nome:/rota;nome:/rota`.
+- `K6_PROFILE`: `smoke`, `conservative`, `medium`, `large`, `xlarge` ou `target300`.
+- `K6_NAV_PATHS`: override global das telas no formato `nome:/rota;nome:/rota`.
+- `K6_PROFILE_PATHS`: override por perfil no formato `school=dashboard:/admin/dashboard,alunos:/admin/alunos;staff=dashboard:/admin/dashboard,usuarios:/admin/usuarios`.
 - `K6_INCLUDE_HEARTBEAT`: `true` para simular o POST de presenca.
 - `K6_PAGE_DELAY_MIN` e `K6_PAGE_DELAY_MAX`: pausa entre telas.
 
@@ -72,7 +87,8 @@ docker compose -f docker-compose.k6.yml run --rm -e K6_NAV_PATHS="dashboard:/adm
 
 ## Observacoes
 
-- O script trata `403` como permissao esperada para usuario nao-admin e registra a taxa em `gestao_page_forbidden`.
-- O sucesso de paginas significa resposta esperada: `2xx/3xx` ou `403` por permissao.
+- Cada VU faz login uma vez e reutiliza a sessao nas iteracoes seguintes.
+- Cada perfil navega apenas nas telas configuradas para ele.
+- `403` agora falha o roteiro, porque indica que o perfil esta tentando acessar uma tela fora do fluxo real.
 - Erros de login, `419`, `500`, falhas de rede e lentidao acima do baseline continuam fazendo o teste falhar.
 - O baseline padrao falha se `p95` das paginas passar de 2 segundos ou se falhas HTTP inesperadas passarem de 1%.
