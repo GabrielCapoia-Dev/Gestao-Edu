@@ -3,6 +3,9 @@ set -e
 
 cd /var/www
 
+READY_FILE="/var/www/bootstrap/cache/runtime-ready"
+rm -f "$READY_FILE"
+
 # ── Permissões (aplicadas após o volume ser montado) ───────────────────────
 chown -R www-data:www-data \
     /var/www/storage \
@@ -50,6 +53,10 @@ php artisan view:cache
 php artisan filament:cache-components
 php artisan livewire:publish --assets
 php artisan filament:assets
+
+date -u +"%Y-%m-%dT%H:%M:%SZ" > "$READY_FILE"
+chown www-data:www-data "$READY_FILE"
+chmod 664 "$READY_FILE"
 
 if command -v gzip >/dev/null 2>&1; then
     for asset_dir in public/css public/js public/vendor/livewire; do
