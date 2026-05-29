@@ -96,7 +96,11 @@ services:
     command: >
       sh -c "mkdir -p storage/logs bootstrap/cache
       && chown -R www-data:www-data storage/logs bootstrap/cache
-      && exec su -s /bin/sh www-data -c 'php artisan queue:work $${QUEUE_CONNECTION:-redis} --queue=$${NOTIFICATIONS_QUEUE:-notifications},default --sleep=$${NOTIFICATIONS_QUEUE_SLEEP:-3} --rest=$${NOTIFICATIONS_QUEUE_REST:-0} --timeout=$${NOTIFICATIONS_QUEUE_TIMEOUT:-60} --tries=$${NOTIFICATIONS_QUEUE_TRIES:-3} --memory=$${NOTIFICATIONS_QUEUE_MEMORY_MB:-128}'"
+      && notification_memory=$${NOTIFICATIONS_QUEUE_MEMORY_MB:-384}
+      && case \"$$notification_memory\" in ''|*[!0-9]*) notification_memory=384 ;; esac
+      && if [ \"$$notification_memory\" -lt 384 ]; then notification_memory=384; fi
+      && export NOTIFICATIONS_QUEUE_MEMORY_MB_EFFECTIVE=\"$$notification_memory\"
+      && exec su -s /bin/sh www-data -c 'php artisan queue:work $${QUEUE_CONNECTION:-redis} --queue=$${NOTIFICATIONS_QUEUE:-notifications},default --sleep=$${NOTIFICATIONS_QUEUE_SLEEP:-3} --rest=$${NOTIFICATIONS_QUEUE_REST:-0} --timeout=$${NOTIFICATIONS_QUEUE_TIMEOUT:-60} --tries=$${NOTIFICATIONS_QUEUE_TRIES:-3} --memory=$${NOTIFICATIONS_QUEUE_MEMORY_MB_EFFECTIVE}'"
     volumes:
       - .:/var/www
     depends_on:
@@ -107,7 +111,7 @@ services:
       redis:
         condition: service_healthy
     cpus: "${NOTIFICATIONS_QUEUE_CPUS:-0.25}"
-    mem_limit: "${NOTIFICATIONS_QUEUE_MEM_LIMIT:-256m}"
+    mem_limit: "512m"
     restart: unless-stopped
     networks:
       - laravel_gestao-edu
