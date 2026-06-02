@@ -39,6 +39,7 @@ services:
       K6_USERS_FILE: "${K6_USERS_FILE:-/scripts/data/users.local.csv}"
       K6_PROFILE: "${K6_PROFILE:-smoke}"
       K6_NAV_PATHS: "${K6_NAV_PATHS:-}"
+      K6_PROFILE_PATHS: "${K6_PROFILE_PATHS:-}"
       K6_INCLUDE_HEARTBEAT: "${K6_INCLUDE_HEARTBEAT:-false}"
       K6_PAGE_DELAY_MIN: "${K6_PAGE_DELAY_MIN:-1}"
       K6_PAGE_DELAY_MAX: "${K6_PAGE_DELAY_MAX:-4}"

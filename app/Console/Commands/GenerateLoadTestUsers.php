@@ -2,6 +2,8 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Escola;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
@@ -14,12 +16,20 @@ class GenerateLoadTestUsers extends Command
         {--count=300 : Total de usuarios de carga}
         {--password=Mudar@1234 : Senha gravada para todos os usuarios}
         {--output=load-tests/data/users.local.csv : Caminho do CSV exportado}
-        {--prefix=loadtest : Prefixo dos emails gerados}
+        {--prefix=loadtest-secretario : Prefixo dos emails gerados}
         {--domain=loadtest.local : Dominio dos emails gerados}
-        {--profile-counts= : Distribuicao manual, ex: staff:70,school:120,cmei:110}
+        {--profile=secretario : Perfil gravado no CSV do K6}
         {--force : Permite execucao em APP_ENV=production}';
 
-    protected $description = 'Cria usuarios de carga nao-admin e exporta um CSV compativel com K6.';
+    protected $description = 'Cria usuarios sinteticos de carga com perfil de secretario e exporta um CSV compativel com K6.';
+
+    /**
+     * @var array<int, string>
+     */
+    private const LOAD_TEST_ROLES = [
+        'Acessar Painel',
+        'Secretário',
+    ];
 
     public function handle(): int
     {
@@ -33,6 +43,7 @@ class GenerateLoadTestUsers extends Command
         $password = (string) $this->option('password');
         $prefix = Str::lower(trim((string) $this->option('prefix')));
         $domain = Str::lower(trim((string) $this->option('domain')));
+        $profile = Str::lower(trim((string) $this->option('profile'))) ?: 'secretario';
 
         if ($prefix === '' || $domain === '') {
             $this->error('Prefixo e dominio sao obrigatorios.');
@@ -40,167 +51,83 @@ class GenerateLoadTestUsers extends Command
             return self::FAILURE;
         }
 
-        $sources = $this->sourceUsers($prefix, $domain);
-
-        if ($sources->isEmpty()) {
-            $this->error('Nenhum usuario nao-admin encontrado para servir como modelo.');
+        if (! $this->rolesExist()) {
+            $this->error('As roles "Acessar Painel" e/ou "Secretário" nao existem.');
+            $this->line('Execute "php artisan permissoes:criar" antes de gerar a massa de carga.');
 
             return self::FAILURE;
         }
 
-        $quotas = $this->profileQuotas($sources, $count);
+        $schools = $this->schools();
+
+        if ($schools->isEmpty()) {
+            $this->error('Nenhuma escola ativa encontrada para vincular os usuarios de carga.');
+
+            return self::FAILURE;
+        }
+
         $rows = [['email', 'password', 'profile']];
-        $created = 0;
 
-        foreach ($quotas as $profile => $quota) {
-            $profileSources = $sources
-                ->filter(fn (User $user): bool => $this->profileFor($user) === $profile)
-                ->values();
+        for ($i = 1; $i <= $count; $i++) {
+            /** @var Escola $school */
+            $school = $schools->random();
+            $sequence = str_pad((string) $i, max(3, strlen((string) $count)), '0', STR_PAD_LEFT);
+            $email = "{$prefix}+{$sequence}@{$domain}";
 
-            if ($profileSources->isEmpty()) {
-                continue;
-            }
+            $user = User::query()->updateOrCreate(
+                ['email' => $email],
+                [
+                    'id_escola' => $school->getKey(),
+                    'setor_id' => $school->setor_id,
+                    'name' => "LOADTEST SECRETARIO {$sequence}",
+                    'email_approved' => true,
+                    'email_verified_at' => now(),
+                    'password' => Hash::make($password),
+                    'must_change_password' => false,
+                    'google_id' => null,
+                    'google_email' => null,
+                    'avatar_url' => null,
+                    'google_token' => null,
+                    'google_refresh_token' => null,
+                    'google_token_expires_in' => null,
+                ],
+            );
 
-            for ($i = 1; $i <= $quota; $i++) {
-                /** @var User $source */
-                $source = $profileSources[($i - 1) % $profileSources->count()];
-                $email = "{$prefix}+{$profile}{$i}@{$domain}";
-                $name = 'LOADTEST '.Str::upper($profile).' '.$i;
+            $user->syncRoles(self::LOAD_TEST_ROLES);
+            $user->syncPermissions([]);
+            $user->escolas()->sync([$school->getKey()]);
 
-                $user = User::query()->updateOrCreate(
-                    ['email' => $email],
-                    [
-                        'id_escola' => $source->id_escola,
-                        'setor_id' => $source->setor_id,
-                        'name' => $name,
-                        'email_approved' => true,
-                        'email_verified_at' => now(),
-                        'password' => Hash::make($password),
-                        'must_change_password' => false,
-                        'google_id' => null,
-                        'google_email' => null,
-                        'avatar_url' => null,
-                        'google_token' => null,
-                        'google_refresh_token' => null,
-                        'google_token_expires_in' => null,
-                    ],
-                );
-
-                $user->syncRoles($source->roles->pluck('name')->all());
-                $user->syncPermissions($source->getDirectPermissions()->pluck('name')->all());
-
-                $rows[] = [$email, $password, $profile];
-                $created++;
-            }
+            $rows[] = [$email, $password, $profile];
         }
 
         $this->writeCsv($rows, (string) $this->option('output'));
-        $this->info("Usuarios de carga prontos: {$created}");
+        $this->info("Usuarios de carga prontos: {$count}");
+        $this->line('Roles: '.implode(', ', self::LOAD_TEST_ROLES));
+        $this->line('Escolas usadas: '.$schools->count());
         $this->line('CSV: '.base_path((string) $this->option('output')));
 
         return self::SUCCESS;
     }
 
-    /**
-     * @return Collection<int, User>
-     */
-    private function sourceUsers(string $prefix, string $domain): Collection
+    private function rolesExist(): bool
     {
-        return User::query()
-            ->with(['roles.permissions', 'permissions'])
-            ->where('id', '!=', 1)
-            ->where('email', 'not like', "{$prefix}+%@{$domain}")
-            ->whereDoesntHave('roles', fn ($query) => $query->where('name', 'Admin'))
-            ->orderBy('id')
-            ->get()
-            ->filter(fn (User $user): bool => $this->profileFor($user) !== 'admin')
-            ->values();
+        $existing = Role::query()
+            ->whereIn('name', self::LOAD_TEST_ROLES)
+            ->pluck('name')
+            ->all();
+
+        return count(array_intersect(self::LOAD_TEST_ROLES, $existing)) === count(self::LOAD_TEST_ROLES);
     }
 
     /**
-     * @param Collection<int, User> $sources
-     * @return array<string, int>
+     * @return Collection<int, Escola>
      */
-    private function profileQuotas(Collection $sources, int $count): array
+    private function schools(): Collection
     {
-        $manual = $this->manualProfileQuotas();
-
-        if ($manual !== []) {
-            return $manual;
-        }
-
-        $groups = $sources->groupBy(fn (User $user): string => $this->profileFor($user));
-        $total = max(1, $sources->count());
-        $quotas = [];
-        $fractions = [];
-        $assigned = 0;
-
-        foreach ($groups as $profile => $users) {
-            $raw = ($users->count() / $total) * $count;
-            $quota = (int) floor($raw);
-            $quotas[$profile] = $quota;
-            $fractions[$profile] = $raw - $quota;
-            $assigned += $quota;
-        }
-
-        arsort($fractions);
-
-        foreach (array_keys($fractions) as $profile) {
-            if ($assigned >= $count) {
-                break;
-            }
-
-            $quotas[$profile]++;
-            $assigned++;
-        }
-
-        return array_filter($quotas, fn (int $quota): bool => $quota > 0);
-    }
-
-    /**
-     * @return array<string, int>
-     */
-    private function manualProfileQuotas(): array
-    {
-        $value = trim((string) $this->option('profile-counts'));
-
-        if ($value === '') {
-            return [];
-        }
-
-        $quotas = [];
-
-        foreach (explode(',', $value) as $part) {
-            [$profile, $count] = array_pad(explode(':', trim($part), 2), 2, null);
-
-            $profile = Str::lower(trim((string) $profile));
-            $count = (int) $count;
-
-            if ($profile !== '' && $count > 0) {
-                $quotas[$profile] = $count;
-            }
-        }
-
-        return $quotas;
-    }
-
-    private function profileFor(User $user): string
-    {
-        $text = Str::lower(Str::ascii($user->email.' '.$user->name));
-
-        if (Str::lower((string) $user->email) === 'admin@admin.com' || Str::lower((string) $user->name) === 'admin') {
-            return 'admin';
-        }
-
-        if (str_contains($text, 'cmei') || str_contains($text, 'cei')) {
-            return 'cmei';
-        }
-
-        if (str_contains($text, 'escola')) {
-            return 'school';
-        }
-
-        return 'staff';
+        return Escola::query()
+            ->where('ativo', true)
+            ->whereNotNull('id')
+            ->get(['id', 'setor_id']);
     }
 
     /**

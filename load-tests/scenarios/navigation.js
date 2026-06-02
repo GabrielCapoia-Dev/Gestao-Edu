@@ -233,8 +233,16 @@ function defaultProfilePages() {
     { name: 'profile', path: '/admin/profile' },
   ];
 
+  const secretario = [
+    { name: 'dashboard', path: '/admin/dashboard' },
+    { name: 'professores', path: '/admin/professores' },
+    { name: 'turmas', path: '/admin/turmas' },
+  ];
+
   return {
     default: common,
+
+    secretario,
 
     staff: common.concat([
       { name: 'usuarios', path: '/admin/usuarios' },

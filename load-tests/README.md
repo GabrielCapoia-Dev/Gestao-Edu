@@ -8,7 +8,7 @@ O K6 nao abre um navegador real. Ele mede requisicoes HTTP do backend: login, re
 
 Crie ou mantenha estes arquivos fora do Git:
 
-- `load-tests/data/users.local.csv`: usuarios reais de teste.
+- `load-tests/data/users.local.csv`: usuarios sinteticos de teste gerados pelo comando `loadtest:users`.
 - `load-tests/.env.local`: overrides opcionais de URL, portas e perfil.
 - `load-tests/results/`: saidas locais de execucoes.
 
@@ -16,14 +16,28 @@ Formato do CSV. O campo `profile` define qual fluxo de telas o usuario percorre:
 
 ```csv
 email,password,profile
-escola.exemplo@edu.umuarama.pr.gov.br,Mudar@1234,school
+loadtest-secretario+001@loadtest.local,Mudar@1234,secretario
 ```
 
-Para gerar uma massa local de 300 usuarios de carga no ambiente de teste:
+Antes de gerar a massa, sincronize as permissoes e niveis de acesso do ambiente de teste:
+
+```bash
+php artisan permissoes:criar
+```
+
+Para gerar uma massa local de 300 usuarios sinteticos de carga:
 
 ```bash
 php artisan loadtest:users --count=300 --output=load-tests/data/users.local.csv
 ```
+
+O comando cria usuarios com e-mails `loadtest-secretario+NNN@loadtest.local`, senha padrao `Mudar@1234`, roles `Acessar Painel` e `Secretário`, `must_change_password=false`, e vinculo aleatorio com escolas ativas existentes. O vinculo e gravado em `users.id_escola` e tambem no pivot `escola_user`.
+
+O perfil `secretario` navega por:
+
+- `/admin/dashboard`
+- `/admin/professores`
+- `/admin/turmas`
 
 ## Comandos
 
