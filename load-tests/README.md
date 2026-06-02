@@ -75,6 +75,18 @@ npm run k6:300
 
 Abrir o Grafana em `http://localhost:3001`, usando `admin` / `admin`, e acessar o dashboard `Gestao Edu - K6 Overview`.
 
+O dashboard mostra os principais sinais para encontrar gargalos:
+
+- tempo de login p95 por usuario e tempo de login geral;
+- tempo p95 e tempo medio por tela;
+- requisicoes por rota;
+- erros agrupados por status HTTP;
+- taxa de 403 por tela;
+- VUs ativos;
+- duracao da iteracao completa;
+- paginas mais lentas por p95;
+- sucesso de login e sucesso de carregamento das paginas.
+
 Encerrar a stack local:
 
 ```bash

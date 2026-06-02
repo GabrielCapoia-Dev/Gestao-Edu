@@ -18,6 +18,8 @@ const loginSuccessRate = new Rate('gestao_login_success');
 const pageSuccessRate = new Rate('gestao_page_success');
 const forbiddenRate = new Rate('gestao_page_forbidden');
 const loginDuration = new Trend('gestao_login_duration', true);
+const pageDuration = new Trend('gestao_page_duration', true);
+const iterationFlowDuration = new Trend('gestao_iteration_duration', true);
 
 const users = parseUsers(open(USERS_FILE));
 
@@ -27,6 +29,8 @@ let sessionReady = false;
 export const options = profileOptions(PROFILE);
 
 export default function () {
+  const iterationStarted = Date.now();
+
   if (!sessionReady) {
     sessionUser = pickUserForVu();
 
@@ -34,16 +38,17 @@ export default function () {
       const login = loginAs(sessionUser);
 
       if (!login.ok) {
-        loginSuccessRate.add(false, { profile: sessionUser.profile });
+        loginSuccessRate.add(false, tagsForUser(sessionUser));
         return;
       }
 
       sessionReady = true;
-      loginSuccessRate.add(true, { profile: sessionUser.profile });
+      loginSuccessRate.add(true, tagsForUser(sessionUser));
     });
   }
 
   if (!sessionReady || !sessionUser) {
+    iterationFlowDuration.add(Date.now() - iterationStarted, tagsForUser(sessionUser));
     return;
   }
 
@@ -59,12 +64,16 @@ export default function () {
       postHeartbeat();
     }
   });
+
+  iterationFlowDuration.add(Date.now() - iterationStarted, tagsForUser(sessionUser));
 }
 
 function loginAs(user) {
   const started = Date.now();
+  const loginTags = tagsForUser(user, { kind: 'login', page: 'login_form', route: '/admin/login' });
+
   const loginPage = http.get(`${BASE_URL}/admin/login`, {
-    tags: { kind: 'login', page: 'login_form' },
+    tags: loginTags,
     responseType: 'text',
   });
 
@@ -76,7 +85,7 @@ function loginAs(user) {
   });
 
   if (!formOk || !token) {
-    loginDuration.add(Date.now() - started);
+    loginDuration.add(Date.now() - started, loginTags);
     return { ok: false };
   }
 
@@ -90,7 +99,7 @@ function loginAs(user) {
     },
     {
       redirects: 5,
-      tags: { kind: 'login', page: 'login_submit', profile: user.profile },
+      tags: tagsForUser(user, { kind: 'login', page: 'login_submit', route: '/admin/login' }),
       responseType: 'text',
     },
   );
@@ -101,23 +110,31 @@ function loginAs(user) {
     'not forced password change': (response) => !String(response.url || '').includes('alterar-senha-obrigatoria'),
   });
 
-  loginDuration.add(Date.now() - started);
+  loginDuration.add(Date.now() - started, tagsForUser(user, { kind: 'login', page: 'login_total', route: '/admin/login' }));
 
   return { ok };
 }
 
 function visitPage(page, user) {
+  const started = Date.now();
+  const requestTags = tagsForUser(user, { kind: 'page', page: page.name, route: page.path });
   const response = http.get(`${BASE_URL}${page.path}`, {
     redirects: 5,
-    tags: { kind: 'page', page: page.name, profile: user.profile },
+    tags: requestTags,
     responseType: 'none',
   });
+  const duration = Date.now() - started;
 
   const forbidden = response.status === 403;
   const ok = response.status >= 200 && response.status < 400;
+  const resultTags = {
+    ...requestTags,
+    status: String(response.status),
+  };
 
-  forbiddenRate.add(forbidden, { page: page.name, profile: user.profile });
-  pageSuccessRate.add(ok, { page: page.name, profile: user.profile });
+  forbiddenRate.add(forbidden, resultTags);
+  pageSuccessRate.add(ok, resultTags);
+  pageDuration.add(duration, resultTags);
 
   check(response, {
     [`${page.name} loaded`]: () => ok,
@@ -137,6 +154,15 @@ function pickUserForVu() {
   const index = (exec.vu.idInTest - 1) % users.length;
 
   return users[index];
+}
+
+function tagsForUser(user, extra = {}) {
+  return {
+    profile: user ? user.profile : 'unknown',
+    user: user ? user.label : 'unknown',
+    vu: String(exec.vu.idInTest),
+    ...extra,
+  };
 }
 
 function rotatePages(source) {
@@ -173,8 +199,20 @@ function parseUsers(csv) {
       throw new Error(`Linha ${index + 2} invalida em ${USERS_FILE}`);
     }
 
-    return { email, password, profile };
+    return {
+      email,
+      password,
+      profile,
+      label: userLabel(email, index),
+    };
   });
+}
+
+function userLabel(email, index) {
+  const localPart = String(email || '').split('@')[0] || `user-${index + 1}`;
+  const suffix = localPart.includes('+') ? localPart.split('+').pop() : localPart;
+
+  return suffix.replace(/[^A-Za-z0-9_-]/g, '_') || `user-${index + 1}`;
 }
 
 function parsePages(value) {

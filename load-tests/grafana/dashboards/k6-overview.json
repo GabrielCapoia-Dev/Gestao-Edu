@@ -29,14 +29,111 @@
       "id": 1,
       "targets": [
         {
-          "alias": "p95 por tela",
-          "query": "SELECT percentile(\"value\", 95) FROM \"http_req_duration\" WHERE $timeFilter AND \"kind\"='page' GROUP BY time($__interval), \"page\" fill(null)",
+          "alias": "login p95 por usuario",
+          "query": "SELECT percentile(\"value\", 95) FROM \"gestao_login_duration\" WHERE $timeFilter AND \"page\"='login_total' GROUP BY time($__interval), \"user\" fill(null)",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series"
         }
       ],
-      "title": "Tempo de Resposta p95",
+      "title": "Tempo de Login p95 por Usuario",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "k6-influxdb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 2,
+      "targets": [
+        {
+          "alias": "login p95 geral",
+          "query": "SELECT percentile(\"value\", 95) FROM \"gestao_login_duration\" WHERE $timeFilter AND \"page\"='login_total' GROUP BY time($__interval) fill(null)",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series"
+        },
+        {
+          "alias": "login medio geral",
+          "query": "SELECT mean(\"value\") FROM \"gestao_login_duration\" WHERE $timeFilter AND \"page\"='login_total' GROUP BY time($__interval) fill(null)",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series"
+        }
+      ],
+      "title": "Tempo de Login Geral",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "k6-influxdb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "id": 3,
+      "targets": [
+        {
+          "alias": "p95 por tela",
+          "query": "SELECT percentile(\"value\", 95) FROM \"gestao_page_duration\" WHERE $timeFilter GROUP BY time($__interval), \"page\" fill(null)",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series"
+        }
+      ],
+      "title": "Tempo de Resposta p95 por Tela",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "k6-influxdb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "id": 4,
+      "targets": [
+        {
+          "alias": "media por tela",
+          "query": "SELECT mean(\"value\") FROM \"gestao_page_duration\" WHERE $timeFilter GROUP BY time($__interval), \"page\" fill(null)",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series"
+        }
+      ],
+      "title": "Tempo Medio por Tela",
       "type": "timeseries"
     },
     {
@@ -53,20 +150,50 @@
       "gridPos": {
         "h": 8,
         "w": 12,
-        "x": 12,
-        "y": 0
+        "x": 0,
+        "y": 16
       },
-      "id": 2,
+      "id": 5,
       "targets": [
         {
-          "alias": "req/s",
-          "query": "SELECT count(\"value\") / $__interval_ms * 1000 FROM \"http_reqs\" WHERE $timeFilter GROUP BY time($__interval) fill(null)",
+          "alias": "req/s por rota",
+          "query": "SELECT count(\"value\") / $__interval_ms * 1000 FROM \"http_reqs\" WHERE $timeFilter GROUP BY time($__interval), \"route\" fill(null)",
           "rawQuery": true,
           "refId": "A",
           "resultFormat": "time_series"
         }
       ],
-      "title": "Vazao de Requisicoes",
+      "title": "Requisicoes por Rota",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "k6-influxdb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "id": 6,
+      "targets": [
+        {
+          "alias": "erros por status",
+          "query": "SELECT count(\"value\") FROM \"http_req_failed\" WHERE $timeFilter AND \"value\"=1 GROUP BY time($__interval), \"status\" fill(null)",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series"
+        }
+      ],
+      "title": "Erros por Status HTTP",
       "type": "timeseries"
     },
     {
@@ -84,9 +211,136 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 8
+        "y": 24
       },
-      "id": 3,
+      "id": 7,
+      "targets": [
+        {
+          "alias": "403 por tela",
+          "query": "SELECT mean(\"value\") FROM \"gestao_page_forbidden\" WHERE $timeFilter GROUP BY time($__interval), \"page\" fill(null)",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series"
+        }
+      ],
+      "title": "403 por Tela",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "k6-influxdb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 24
+      },
+      "id": 8,
+      "targets": [
+        {
+          "alias": "vus ativos",
+          "query": "SELECT max(\"value\") FROM \"vus\" WHERE $timeFilter GROUP BY time($__interval) fill(null)",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series"
+        }
+      ],
+      "title": "VUs Ativos",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "k6-influxdb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 32
+      },
+      "id": 9,
+      "targets": [
+        {
+          "alias": "iteracao p95",
+          "query": "SELECT percentile(\"value\", 95) FROM \"gestao_iteration_duration\" WHERE $timeFilter GROUP BY time($__interval) fill(null)",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series"
+        },
+        {
+          "alias": "iteracao media",
+          "query": "SELECT mean(\"value\") FROM \"gestao_iteration_duration\" WHERE $timeFilter GROUP BY time($__interval) fill(null)",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series"
+        }
+      ],
+      "title": "Duracao da Iteracao Completa",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "k6-influxdb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 32
+      },
+      "id": 10,
+      "targets": [
+        {
+          "alias": "top paginas p95",
+          "query": "SELECT percentile(\"value\", 95) FROM \"gestao_page_duration\" WHERE $timeFilter GROUP BY \"page\"",
+          "rawQuery": true,
+          "refId": "A",
+          "resultFormat": "time_series"
+        }
+      ],
+      "title": "Top Paginas mais Lentas p95",
+      "type": "bargauge"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "k6-influxdb"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 40
+      },
+      "id": 11,
       "targets": [
         {
           "alias": "falhas HTTP",
@@ -114,9 +368,9 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 8
+        "y": 40
       },
-      "id": 4,
+      "id": 12,
       "targets": [
         {
           "alias": "login",
@@ -155,6 +409,6 @@
   "timezone": "browser",
   "title": "Gestao Edu - K6 Overview",
   "uid": "gestao-edu-k6",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }
