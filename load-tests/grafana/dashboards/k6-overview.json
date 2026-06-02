@@ -313,7 +313,7 @@
       "id": 10,
       "targets": [
         {
-          "alias": "top paginas p95",
+          "alias": "$tag_page",
           "query": "SELECT percentile(\"value\", 95) FROM \"gestao_page_duration\" WHERE $timeFilter GROUP BY \"page\"",
           "rawQuery": true,
           "refId": "A",
