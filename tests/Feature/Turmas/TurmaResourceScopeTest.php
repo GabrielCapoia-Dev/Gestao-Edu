@@ -10,6 +10,7 @@ use App\Models\Serie;
 use App\Models\Turma;
 use App\Models\User;
 use App\Services\UserService;
+use Filament\Forms\Components\Select;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
@@ -185,6 +186,40 @@ class TurmaResourceScopeTest extends TestCase
             'componente_curricular_id' => $componente->id,
             'professor_id' => $professorAntigo->id,
         ]);
+    }
+
+    public function test_edicao_exibe_nome_da_escola_vinculada_mesmo_fora_do_filtro_de_ativas(): void
+    {
+        Permission::findOrCreate('Listar Turmas');
+        Permission::findOrCreate('Editar Turmas');
+        Permission::findOrCreate('Editar Dados da Turma');
+        Permission::findOrCreate('Editar Escola da Turma');
+
+        $escola = $this->criarEscola('Escola Historica');
+        $escola->update(['ativo' => false]);
+
+        $turma = $this->criarTurma($escola, 'Turma Historica');
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo([
+            'Listar Turmas',
+            'Editar Turmas',
+            'Editar Dados da Turma',
+            'Editar Escola da Turma',
+        ]);
+
+        Livewire::actingAs($usuario)
+            ->test(ManageTurmas::class)
+            ->mountTableAction('edit', $turma)
+            ->assertSchemaComponentExists('id_escola', function ($component) use ($escola): bool {
+                $this->assertInstanceOf(Select::class, $component);
+                $this->assertSame($escola->nome, $component->getOptionLabel(false));
+
+                return true;
+            });
     }
 
     private function criarEscola(string $nome): Escola

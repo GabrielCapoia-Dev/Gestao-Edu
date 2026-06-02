@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Escola;
 use App\Models\Professor;
 use App\Models\Serie;
 use App\Models\Turma;
@@ -241,6 +242,7 @@ class TurmaService
                         Select::make('id_escola')
                             ->label('Escola')
                             ->relationship('escola', 'nome', modifyQueryUsing: fn ($query) => $query->where('ativo', true))
+                            ->getOptionLabelUsing(fn ($value): ?string => Escola::query()->whereKey($value)->value('nome'))
                             ->searchable()
                             ->required()
                             ->live()
