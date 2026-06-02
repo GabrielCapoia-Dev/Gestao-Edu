@@ -53,7 +53,7 @@ class PedidosTable
             ->defaultSort('updated_at', 'desc')
             ->striped()
             ->columns(static::columns($user))
-            ->filters(static::filters(), layout: FiltersLayout::AboveContent)
+            ->filters(static::filters($user), layout: FiltersLayout::AboveContent)
             ->filtersFormColumns(12)
             ->recordActions(static::actions($user, $service))
             ->groupedBulkActions(static::bulkActions($user, $service))
@@ -67,7 +67,7 @@ class PedidosTable
         ];
     }
 
-    public static function filters(): array
+    public static function filters(?User $user = null): array
     {
         return [
             SelectFilter::make('tipo_status_id')
@@ -92,7 +92,18 @@ class PedidosTable
             SelectFilter::make('escola_id')
                 ->label('Escola')
                 ->columnSpan(3)
-                ->relationship('escola', 'nome', modifyQueryUsing: fn ($query) => $query->where('ativo', true))
+                ->relationship('escola', 'nome', modifyQueryUsing: function ($query) use ($user) {
+                    $service = app(PedidoService::class);
+                    $escolaIds = $service->escolaIdsParaEscopo($user);
+
+                    return $query
+                        ->where('ativo', true)
+                        ->when(
+                            ! $service->podeVerTodosOsPedidos($user) && $escolaIds !== [],
+                            fn ($builder) => $builder->whereIn('id', $escolaIds)
+                        )
+                        ->orderBy('nome');
+                })
                 ->searchable()
                 ->preload(),
 

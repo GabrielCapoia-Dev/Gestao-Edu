@@ -6,8 +6,10 @@ use App\Models\Escola;
 use App\Models\TipoManutencao;
 use App\Models\TipoStatus;
 use App\Models\User;
+use App\Services\PedidoService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -15,6 +17,7 @@ class PedidoRelatorioGeralService
 {
     public function __construct(
         protected RelatorioPdfRenderer $renderer,
+        protected PedidoService $pedidoService,
     ) {}
 
     /**
@@ -25,14 +28,14 @@ class PedidoRelatorioGeralService
         $reportFilters = $this->formatarFiltros($filtros);
 
         return $this->renderer->download('relatorios.Manutencao.geral-pedidos', [
-            'metricas' => $this->calcularMetricas($filtros),
-            'porStatus' => $this->agruparPorStatus($filtros),
-            'porPrioridade' => $this->agruparPorPrioridade($filtros),
-            'porTipo' => $this->agruparPorTipo($filtros),
-            'porEscola' => $this->agruparPorEscola($filtros),
-            'porMes' => $this->evolucaoMensal($filtros),
-            'metricaFeedback' => $this->metricasFeedback($filtros),
-            'pedidos' => $this->buscarPedidosLeve($filtros),
+            'metricas' => $this->calcularMetricas($filtros, $usuario),
+            'porStatus' => $this->agruparPorStatus($filtros, $usuario),
+            'porPrioridade' => $this->agruparPorPrioridade($filtros, $usuario),
+            'porTipo' => $this->agruparPorTipo($filtros, $usuario),
+            'porEscola' => $this->agruparPorEscola($filtros, $usuario),
+            'porMes' => $this->evolucaoMensal($filtros, $usuario),
+            'metricaFeedback' => $this->metricasFeedback($filtros, $usuario),
+            'pedidos' => $this->buscarPedidosLeve($filtros, $usuario),
             'filtros' => $reportFilters,
             'reportFilters' => $reportFilters,
             'reportTitle' => 'Relatorio Analitico de Pedidos de Manutencao',
@@ -42,9 +45,9 @@ class PedidoRelatorioGeralService
         ], 'relatorio-pedidos-' . now()->format('Y-m-d_H-i') . '.pdf');
     }
 
-    protected function calcularMetricas(array $filtros): object
+    protected function calcularMetricas(array $filtros, User $usuario): object
     {
-        $row = (clone $this->queryBase($filtros))
+        $row = (clone $this->queryBase($filtros, $usuario))
             ->selectRaw('
                 COUNT(*) as total,
                 SUM(CASE WHEN ts.finaliza_pedido = 1 THEN 1 ELSE 0 END) AS concluidos,
@@ -85,9 +88,9 @@ class PedidoRelatorioGeralService
         ];
     }
 
-    protected function agruparPorStatus(array $filtros): Collection
+    protected function agruparPorStatus(array $filtros, User $usuario): Collection
     {
-        return (clone $this->queryBase($filtros))
+        return (clone $this->queryBase($filtros, $usuario))
             ->selectRaw('ts.nome, ts.cor, COUNT(*) as total')
             ->leftJoin('tipo_status as ts', 'ts.id', '=', 'p.tipo_status_id')
             ->groupBy('ts.id', 'ts.nome', 'ts.cor')
@@ -100,9 +103,9 @@ class PedidoRelatorioGeralService
             ]);
     }
 
-    protected function agruparPorPrioridade(array $filtros): Collection
+    protected function agruparPorPrioridade(array $filtros, User $usuario): Collection
     {
-        return (clone $this->queryBase($filtros))
+        return (clone $this->queryBase($filtros, $usuario))
             ->selectRaw('p.nivel_prioridade as prioridade, COUNT(*) as total')
             ->groupBy('p.nivel_prioridade')
             ->orderByDesc('total')
@@ -113,9 +116,9 @@ class PedidoRelatorioGeralService
             ]);
     }
 
-    protected function agruparPorTipo(array $filtros): Collection
+    protected function agruparPorTipo(array $filtros, User $usuario): Collection
     {
-        return (clone $this->queryBase($filtros))
+        return (clone $this->queryBase($filtros, $usuario))
             ->selectRaw('
                 tm.nome,
                 COUNT(*) as total,
@@ -135,9 +138,9 @@ class PedidoRelatorioGeralService
             ]);
     }
 
-    protected function agruparPorEscola(array $filtros): Collection
+    protected function agruparPorEscola(array $filtros, User $usuario): Collection
     {
-        $rows = (clone $this->queryBase($filtros))
+        $rows = (clone $this->queryBase($filtros, $usuario))
             ->selectRaw('e.nome, COUNT(*) as total')
             ->leftJoin('escolas as e', 'e.id', '=', 'p.escola_id')
             ->groupBy('e.id', 'e.nome')
@@ -154,9 +157,9 @@ class PedidoRelatorioGeralService
         ]);
     }
 
-    protected function evolucaoMensal(array $filtros): Collection
+    protected function evolucaoMensal(array $filtros, User $usuario): Collection
     {
-        $rows = (clone $this->queryBase($filtros))
+        $rows = (clone $this->queryBase($filtros, $usuario))
             ->selectRaw("DATE_FORMAT(p.data_solicitacao, '%Y-%m') as mes, COUNT(*) as total")
             ->groupByRaw("DATE_FORMAT(p.data_solicitacao, '%Y-%m')")
             ->orderByRaw("DATE_FORMAT(p.data_solicitacao, '%Y-%m')")
@@ -171,12 +174,12 @@ class PedidoRelatorioGeralService
         ]);
     }
 
-    protected function metricasFeedback(array $filtros): object
+    protected function metricasFeedback(array $filtros, User $usuario): object
     {
         $tabela = (new \App\Models\FeedbackPedido())->getTable();
 
         try {
-            $pedidoIds = $this->queryBase($filtros)->select('p.id');
+            $pedidoIds = $this->queryBase($filtros, $usuario)->select('p.id');
 
             $r = DB::table("{$tabela} as f")
                 ->whereIn('f.pedido_id', $pedidoIds)
@@ -206,9 +209,9 @@ class PedidoRelatorioGeralService
         }
     }
 
-    protected function buscarPedidosLeve(array $filtros): Collection
+    protected function buscarPedidosLeve(array $filtros, User $usuario): Collection
     {
-        return $this->queryBase($filtros)
+        return $this->queryBase($filtros, $usuario)
             ->select([
                 'p.id',
                 'p.numero_protocolo',
@@ -237,9 +240,17 @@ class PedidoRelatorioGeralService
             ->get();
     }
 
-    protected function queryBase(array $filtros): \Illuminate\Database\Query\Builder
+    protected function queryBase(array $filtros, User $usuario): QueryBuilder
     {
         $q = DB::table('pedidos as p')->where('p.ativo', true);
+
+        $this->pedidoService->aplicarEscopoConsulta(
+            $q,
+            $usuario,
+            'p.escola_id',
+            'p.setor_id',
+            'p.setor_origem_id'
+        );
 
         if (! empty($filtros['data_inicio'])) {
             $q->whereDate('p.data_solicitacao', '>=', $filtros['data_inicio']);

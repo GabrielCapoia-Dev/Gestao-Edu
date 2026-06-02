@@ -3,8 +3,10 @@
 namespace App\Filament\Admin\Resources\Pedidos\Tables\Actions;
 
 use App\Models\Enums\NivelEmergenciaPedido;
+use App\Models\Escola;
 use App\Models\TipoManutencao;
 use App\Models\TipoStatus;
+use App\Services\PedidoService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -59,12 +61,21 @@ class ExportarRelatorioAction
 
                     Select::make('escola_id')
                         ->label('Escola')
-                        ->options(
-                            \App\Models\Escola::query()
+                        ->options(function (): array {
+                            $service = app(PedidoService::class);
+                            $user = Auth::user();
+                            $escolaIds = $service->escolaIdsParaEscopo($user);
+
+                            return Escola::query()
                                 ->where('ativo', true)
+                                ->when(
+                                    ! $service->podeVerTodosOsPedidos($user) && $escolaIds !== [],
+                                    fn ($query) => $query->whereIn('id', $escolaIds)
+                                )
                                 ->orderBy('nome')
                                 ->pluck('nome', 'id')
-                        )
+                                ->toArray();
+                        })
                         ->searchable()
                         ->placeholder('Todas as escolas'),
 

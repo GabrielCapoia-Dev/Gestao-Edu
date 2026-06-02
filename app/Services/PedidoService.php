@@ -16,6 +16,7 @@ use App\Models\TipoStatus;
 use App\Models\User;
 use App\Services\UserSetorAccessService;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -40,6 +41,26 @@ class PedidoService
     {
         return $this->ehAdmin($user)
             || ($user?->hasPermissionTo('Listar Todos os Pedidos') ?? false);
+    }
+
+    public function podeVerTodosOsPedidos(?User $user): bool
+    {
+        return $this->podeListarTodos($user)
+            || app(UserSetorAccessService::class)->hasGlobalAccess($user);
+    }
+
+    public function escolaIdsParaEscopo(?User $user): array
+    {
+        if (! $user) {
+            return [];
+        }
+
+        return collect($user->idsEscolasVinculadas())
+            ->filter(fn ($id): bool => filled($id))
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
     }
 
     public function podeGerenciarPedidos(?User $user): bool
@@ -81,8 +102,14 @@ class PedidoService
             return false;
         }
 
-        if ($this->podeListarTodos($user)) {
+        if ($this->podeVerTodosOsPedidos($user)) {
             return true;
+        }
+
+        $escolaIds = $this->escolaIdsParaEscopo($user);
+
+        if ($escolaIds !== []) {
+            return in_array((int) $pedido->escola_id, $escolaIds, true);
         }
 
         $access = app(UserSetorAccessService::class);
@@ -138,6 +165,19 @@ class PedidoService
 
     protected function aplicarEscopo(Builder $query, ?User $user): Builder
     {
+        /** @var Builder $query */
+        $query = $this->aplicarEscopoConsulta($query, $user);
+
+        return $query;
+    }
+
+    public function aplicarEscopoConsulta(
+        Builder|QueryBuilder $query,
+        ?User $user,
+        string $escolaColumn = 'escola_id',
+        string $setorColumn = 'setor_id',
+        string $setorOrigemColumn = 'setor_origem_id'
+    ): Builder|QueryBuilder {
         if (! $user) {
             return $query->whereRaw('1 = 0');
         }
@@ -148,20 +188,22 @@ class PedidoService
             return $query;
         }
 
+        $escolaIds = $this->escolaIdsParaEscopo($user);
+
+        if ($escolaIds !== []) {
+            return $query->whereIn($escolaColumn, $escolaIds);
+        }
+
         $setorIds = $access->visibleSetorIds($user);
 
         if ($setorIds !== []) {
-            return $query->where(function (Builder $builder) use ($setorIds): void {
-                $builder->whereIn('setor_id', $setorIds)
-                    ->orWhereIn('setor_origem_id', $setorIds);
+            return $query->where(function ($builder) use ($setorIds, $setorColumn, $setorOrigemColumn): void {
+                $builder->whereIn($setorColumn, $setorIds)
+                    ->orWhereIn($setorOrigemColumn, $setorIds);
             });
         }
 
-        if ($user->id_escola) {
-            return $query->where('escola_id', $user->id_escola);
-        }
-
-        return $query->nenhum();
+        return $query->whereRaw('1 = 0');
     }
 
     /*

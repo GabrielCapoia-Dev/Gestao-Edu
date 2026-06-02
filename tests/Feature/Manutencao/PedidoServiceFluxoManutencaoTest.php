@@ -18,6 +18,8 @@ use App\Models\TipoManutencaoOpcao;
 use App\Models\TipoStatus;
 use App\Models\User;
 use App\Services\PedidoService;
+use App\Services\Relatorios\PedidoRelatorioGeralService;
+use App\Services\Relatorios\RelatorioPdfRenderer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -154,6 +156,71 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
         $this->assertEqualsCanonicalizing([$pedidoEducacao->id, $pedidoObras->id], $this->service->queryTabela($educacaoUser)->pluck('id')->all());
         $this->assertEqualsCanonicalizing([$pedidoEducacao->id, $pedidoObras->id], $this->service->queryTabela($globalUser)->pluck('id')->all());
         $this->assertSame([$pedidoEducacao->id], $this->service->queryTabela($escolaUser)->pluck('id')->all());
+    }
+
+    public function test_usuario_vinculado_a_escola_tem_escopo_de_escola_prioritario_ao_setor_geral(): void
+    {
+        $pedidoDaEscola = $this->pedido(status: 'Em Aberto', setor: $this->educacao, escola: $this->escola);
+
+        $outraEscola = Escola::create([
+            'codigo' => '002',
+            'nome' => 'Outra Escola',
+            'setor_id' => $this->obras->id,
+            'ativo' => true,
+        ]);
+
+        $pedidoOutraEscola = $this->pedido(status: 'Em Aberto', setor: $this->obras, escola: $outraEscola);
+
+        foreach (['Listar Pedidos', 'Editar Pedidos', 'Listar Todos os Pedidos'] as $permission) {
+            Permission::findOrCreate($permission, 'web');
+        }
+
+        $usuarioEscolaComSetorGeral = User::factory()->create([
+            'id_escola' => $this->escola->id,
+            'setor_id' => $this->educacao->id,
+            'email_approved' => true,
+        ]);
+        $usuarioEscolaComSetorGeral->givePermissionTo(['Listar Pedidos', 'Editar Pedidos']);
+
+        $usuarioGlobalComEscola = User::factory()->create([
+            'id_escola' => $this->escola->id,
+            'setor_id' => $this->educacao->id,
+            'email_approved' => true,
+        ]);
+        $usuarioGlobalComEscola->givePermissionTo(['Listar Pedidos', 'Editar Pedidos', 'Listar Todos os Pedidos']);
+
+        $this->assertSame([$pedidoDaEscola->id], $this->service->queryTabela($usuarioEscolaComSetorGeral)->pluck('id')->all());
+        $this->assertEqualsCanonicalizing(
+            [$pedidoDaEscola->id, $pedidoOutraEscola->id],
+            $this->service->queryTabela($usuarioGlobalComEscola)->pluck('id')->all()
+        );
+
+        $this->assertTrue($usuarioEscolaComSetorGeral->can('view', $pedidoDaEscola));
+        $this->assertTrue($usuarioEscolaComSetorGeral->can('update', $pedidoDaEscola));
+        $this->assertFalse($usuarioEscolaComSetorGeral->can('view', $pedidoOutraEscola));
+        $this->assertFalse($usuarioEscolaComSetorGeral->can('update', $pedidoOutraEscola));
+        $this->assertTrue($this->service->podeGerenciarRegistro($pedidoDaEscola, $usuarioEscolaComSetorGeral));
+        $this->assertFalse($this->service->podeGerenciarRegistro($pedidoOutraEscola, $usuarioEscolaComSetorGeral));
+
+        $relatorio = new class(app(RelatorioPdfRenderer::class), $this->service) extends PedidoRelatorioGeralService {
+            public function idsVisiveis(array $filtros, User $usuario): array
+            {
+                return $this->queryBase($filtros, $usuario)
+                    ->select('p.id')
+                    ->orderBy('p.id')
+                    ->get()
+                    ->pluck('id')
+                    ->map(fn ($id): int => (int) $id)
+                    ->all();
+            }
+        };
+
+        $this->assertSame([$pedidoDaEscola->id], $relatorio->idsVisiveis([], $usuarioEscolaComSetorGeral));
+        $this->assertSame([], $relatorio->idsVisiveis(['escola_id' => $outraEscola->id], $usuarioEscolaComSetorGeral));
+        $this->assertEqualsCanonicalizing(
+            [$pedidoDaEscola->id, $pedidoOutraEscola->id],
+            $relatorio->idsVisiveis([], $usuarioGlobalComEscola)
+        );
     }
 
     public function test_encaminhar_educacao_para_obras_deixa_status_atual_em_aberto_em_obras(): void

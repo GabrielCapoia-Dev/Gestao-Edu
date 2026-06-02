@@ -4,7 +4,7 @@ namespace App\Policies;
 
 use App\Models\User;
 use App\Models\Pedido;
-use App\Services\UserSetorAccessService;
+use App\Services\PedidoService;
 
 class PedidoPolicy
 
@@ -56,14 +56,9 @@ class PedidoPolicy
 
     private function podeAcessarPedido(User $user, Pedido $model): bool
     {
-        $access = app(UserSetorAccessService::class);
-
-        if ($access->hasGlobalAccess($user) || $user->hasPermissionTo('Listar Todos os Pedidos')) {
-            return true;
-        }
-
-        return $access->canAccessSetor($user, $model->setor_id)
-            || $access->canAccessSetor($user, $model->setor_origem_id);
+        return app(PedidoService::class)
+            ->queryPorPerfil(Pedido::query()->whereKey($model->getKey()), $user)
+            ->exists();
     }
 
     // /**
