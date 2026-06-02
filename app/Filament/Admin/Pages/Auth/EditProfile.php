@@ -9,6 +9,7 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Alignment;
 use Illuminate\Support\Arr;
@@ -34,7 +35,7 @@ class EditProfile extends BaseEditProfile
         return str($this->getUser()->name)
             ->trim()
             ->explode(' ')
-            ->map(fn(string $segment): string => filled($segment) ? mb_substr($segment, 0, 1) : '')
+            ->map(fn (string $segment): string => filled($segment) ? mb_substr($segment, 0, 1) : '')
             ->filter()
             ->take(2)
             ->join('');
@@ -52,6 +53,7 @@ class EditProfile extends BaseEditProfile
         $profilePhoto = Arr::first(Arr::wrap($data['profile_photo'] ?? null));
 
         unset($data['profile_photo']);
+        unset($data['email']);
 
         if (filled($profilePhoto)) {
             $this->deletePreviousLocalAvatar((string) $profilePhoto);
@@ -66,7 +68,7 @@ class EditProfile extends BaseEditProfile
         return $schema
             ->components([
                 Section::make('Dados da Conta')
-                    ->description('Atualize sua foto, nome e e-mail de acesso.')
+                    ->description('Atualize sua foto e nome de acesso.')
                     ->schema([
                         Grid::make([
                             'default' => 1,
@@ -134,7 +136,9 @@ class EditProfile extends BaseEditProfile
     {
         return parent::getEmailFormComponent()
             ->label('E-mail')
-            ->prefixIcon('heroicon-o-envelope');
+            ->prefixIcon('heroicon-o-envelope')
+            ->disabled()
+            ->dehydrated(false);
     }
 
     protected function getPasswordFormComponent(): Component
@@ -155,7 +159,8 @@ class EditProfile extends BaseEditProfile
     {
         return parent::getCurrentPasswordFormComponent()
             ->label('Senha atual')
-            ->prefixIcon('heroicon-o-key');
+            ->prefixIcon('heroicon-o-key')
+            ->visible(fn (Get $get): bool => filled($get('password')));
     }
 
     protected function getSaveFormAction(): Action
@@ -174,7 +179,7 @@ class EditProfile extends BaseEditProfile
             ->action(fn () => $this->redirect(Filament::getUrl()));
     }
 
-    public function getFormActionsAlignment(): string | Alignment
+    public function getFormActionsAlignment(): string|Alignment
     {
         return Alignment::End;
     }
