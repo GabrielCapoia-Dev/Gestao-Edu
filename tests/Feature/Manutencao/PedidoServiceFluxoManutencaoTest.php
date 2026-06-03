@@ -2,8 +2,8 @@
 
 namespace Tests\Feature\Manutencao;
 
-use App\Filament\Admin\Resources\Pedidos\Pages\ListPedidos;
 use App\Filament\Admin\Resources\Pedidos\Pages\EditPedido;
+use App\Filament\Admin\Resources\Pedidos\Pages\ListPedidos;
 use App\Filament\Admin\Resources\Pedidos\PedidoResource;
 use App\Filament\Admin\Resources\Pedidos\RelationManagers\PedidosAdicionaisRelationManager;
 use App\Models\EmpresaContratada;
@@ -158,6 +158,33 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
         $this->assertSame([$pedidoEducacao->id], $this->service->queryTabela($escolaUser)->pluck('id')->all());
     }
 
+    public function test_tabela_de_pedidos_pode_agrupar_registros_por_setor(): void
+    {
+        $usuario = $this->usuarioComRoleSetor('Manutencao: Educacao', $this->educacao, ['Listar Pedidos']);
+        $pedidoEducacao = $this->pedido(status: 'Em Aberto', setor: $this->educacao, escola: $this->escola);
+
+        $outraEscola = Escola::create([
+            'codigo' => '002',
+            'nome' => 'Outra Escola',
+            'setor_id' => $this->obras->id,
+            'ativo' => true,
+        ]);
+        $pedidoObras = $this->pedido(status: 'Em Aberto', setor: $this->obras, escola: $outraEscola);
+
+        $component = Livewire::actingAs($usuario)
+            ->test(ListPedidos::class)
+            ->set('tableGrouping', 'setor_id:asc')
+            ->assertSee($pedidoEducacao->numero_protocolo)
+            ->assertSee($pedidoObras->numero_protocolo)
+            ->assertSee($this->educacao->nome_completo)
+            ->assertSee($this->obras->nome_completo);
+
+        $groups = $component->instance()->getTable()->getGroups();
+
+        $this->assertArrayHasKey('setor_id', $groups);
+        $this->assertSame('Setor', (string) $groups['setor_id']->getLabel());
+    }
+
     public function test_usuario_vinculado_a_escola_tem_escopo_de_escola_prioritario_ao_setor_geral(): void
     {
         $pedidoDaEscola = $this->pedido(status: 'Em Aberto', setor: $this->educacao, escola: $this->escola);
@@ -202,7 +229,8 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
         $this->assertTrue($this->service->podeGerenciarRegistro($pedidoDaEscola, $usuarioEscolaComSetorGeral));
         $this->assertFalse($this->service->podeGerenciarRegistro($pedidoOutraEscola, $usuarioEscolaComSetorGeral));
 
-        $relatorio = new class(app(RelatorioPdfRenderer::class), $this->service) extends PedidoRelatorioGeralService {
+        $relatorio = new class(app(RelatorioPdfRenderer::class), $this->service) extends PedidoRelatorioGeralService
+        {
             public function idsVisiveis(array $filtros, User $usuario): array
             {
                 return $this->queryBase($filtros, $usuario)

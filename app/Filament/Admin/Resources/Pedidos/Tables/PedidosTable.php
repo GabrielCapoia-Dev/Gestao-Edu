@@ -34,6 +34,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -59,6 +60,8 @@ class PedidosTable
             ->columns(static::columns($user))
             ->filters(static::filters($user), layout: FiltersLayout::AboveContent)
             ->filtersFormColumns(12)
+            ->groups(static::groups())
+            ->groupingDirectionSettingHidden()
             ->recordActions(static::actions($user, $service))
             ->groupedBulkActions(static::bulkActions($user, $service))
             ->headerActions(static::headerActions($user));
@@ -203,6 +206,30 @@ class PedidosTable
                             fn (Builder $builder) => $builder->whereDate('data_identificacao_problema', '<=', $data['data_fim'])
                         );
                 }),
+        ];
+    }
+
+    public static function groups(): array
+    {
+        return [
+            Group::make('setor_id')
+                ->label('Setor')
+                ->getTitleFromRecordUsing(fn (Pedido $record): string => $record->setor?->nome_completo ?: 'Sem setor')
+                ->orderQueryUsing(fn (Builder $query, string $direction): Builder => $query
+                    ->orderBy(
+                        Setor::query()
+                            ->select('path')
+                            ->whereColumn('setor.id', 'pedidos.setor_id')
+                            ->limit(1),
+                        $direction
+                    )
+                    ->orderBy(
+                        Setor::query()
+                            ->select('nome')
+                            ->whereColumn('setor.id', 'pedidos.setor_id')
+                            ->limit(1),
+                        $direction
+                    )),
         ];
     }
 
