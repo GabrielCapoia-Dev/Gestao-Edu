@@ -12,6 +12,7 @@ use App\Models\Pedido;
 use App\Models\Setor;
 use App\Models\TipoManutencao;
 use App\Models\TipoManutencaoOpcao;
+use App\Models\TipoStatus;
 use App\Models\User;
 use App\Services\PedidoService;
 use App\Services\UserSetorAccessService;
@@ -38,6 +39,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class PedidosTable
 {
@@ -444,6 +446,83 @@ class PedidosTable
     public static function bulkActions(?User $user, PedidoService $service): array
     {
         return [
+            BulkAction::make('alterar_status')
+                ->label('Alterar status')
+                ->icon('heroicon-o-arrow-path')
+                ->color('warning')
+                ->visible(fn () => $service->statusOptionsParaAlteracaoEmMassa($user) !== [])
+                ->schema([
+                    Select::make('tipo_status_id')
+                        ->label('Novo status')
+                        ->options(fn (): array => $service->statusOptionsParaAlteracaoEmMassa($user))
+                        ->searchable()
+                        ->preload()
+                        ->required(),
+
+                    Textarea::make('descricao')
+                        ->label('Observacao')
+                        ->rows(3)
+                        ->maxLength(1000)
+                        ->helperText('Se ficar em branco, o historico usara a mensagem automatica.'),
+                ])
+                ->requiresConfirmation()
+                ->modalHeading('Alterar status dos pedidos selecionados')
+                ->modalDescription('Somente pedidos que voce pode gerenciar serao atualizados. Status com fluxo proprio continuam nas acoes especificas.')
+                ->action(function (EloquentCollection $records, array $data) use ($user, $service) {
+                    if (! $user) {
+                        return;
+                    }
+
+                    $statusId = (int) ($data['tipo_status_id'] ?? 0);
+                    $statusOptions = $service->statusOptionsParaAlteracaoEmMassa($user);
+
+                    if (! array_key_exists($statusId, $statusOptions)) {
+                        Notification::make()
+                            ->title('Status indisponivel para alteracao em massa.')
+                            ->danger()
+                            ->send();
+
+                        return;
+                    }
+
+                    $novoStatus = TipoStatus::query()->findOrFail($statusId);
+                    $observacao = trim((string) ($data['descricao'] ?? ''));
+                    $alterados = 0;
+
+                    DB::transaction(function () use ($records, $user, $service, $novoStatus, $observacao, &$alterados): void {
+                        foreach ($records as $record) {
+                            if (! $record instanceof Pedido || ! $service->podeGerenciarRegistro($record, $user)) {
+                                continue;
+                            }
+
+                            if ((int) $record->tipo_status_id === (int) $novoStatus->id) {
+                                continue;
+                            }
+
+                            $descricao = "Usuario {$user->name} alterou o status do pedido para {$novoStatus->nome}.";
+
+                            if ($observacao !== '') {
+                                $descricao .= ' '.$observacao;
+                            }
+
+                            $service->alterarStatus(
+                                $record,
+                                $novoStatus,
+                                $user,
+                                $descricao
+                            );
+
+                            $alterados++;
+                        }
+                    });
+
+                    Notification::make()
+                        ->title($alterados.' pedido(s) tiveram o status alterado.')
+                        ->success()
+                        ->send();
+                })
+                ->deselectRecordsAfterCompletion(),
+
             VincularSetorBulkAction::make(
                 permission: 'Encaminhar Pedidos para Setor',
                 recordsLabel: 'pedidos selecionados',

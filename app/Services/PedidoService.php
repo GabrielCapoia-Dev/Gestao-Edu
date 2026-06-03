@@ -84,6 +84,48 @@ class PedidoService
         return $user?->hasPermissionTo('Vincular Pedidos Adicionais') ?? false;
     }
 
+    public function statusOptionsParaAlteracaoEmMassa(?User $user): array
+    {
+        if (! $this->podeGerenciarPedidos($user)) {
+            return [];
+        }
+
+        $statusComFluxoProprioIds = collect([
+            'Encaminhado ao Setor',
+            'Enviado para Empresa',
+            'Pedido Adicional',
+        ])
+            ->map(fn (string $nome): ?TipoStatus => $this->statusPorNome($nome))
+            ->filter()
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
+
+        $ordemPreferencial = collect([
+            'Em Aberto',
+            'Reaberto',
+            'Em Análise',
+            'Em Manutenção',
+        ])
+            ->map(fn (string $nome): ?TipoStatus => $this->statusPorNome($nome))
+            ->filter()
+            ->values();
+
+        $ordemPorId = $ordemPreferencial
+            ->mapWithKeys(fn (TipoStatus $status, int $index): array => [(int) $status->id => $index])
+            ->all();
+
+        return TipoStatus::query()
+            ->where('ativo', true)
+            ->where('finaliza_pedido', false)
+            ->where('cancela_pedido', false)
+            ->when($statusComFluxoProprioIds !== [], fn (Builder $query) => $query->whereNotIn('id', $statusComFluxoProprioIds))
+            ->get()
+            ->sortBy(fn (TipoStatus $status): array => [$ordemPorId[(int) $status->id] ?? 999, $status->nome])
+            ->mapWithKeys(fn (TipoStatus $status): array => [(int) $status->id => $status->nome])
+            ->toArray();
+    }
+
     public function usuarioEhSetor(?User $user, string $nomeSetor): bool
     {
         return false;

@@ -326,6 +326,67 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
             ->assertTableBulkActionHidden('enviar_para_empresa');
     }
 
+    public function test_bulk_action_alterar_status_aparece_somente_com_permissao_de_edicao(): void
+    {
+        $usuarioComPermissao = $this->usuarioComRoleSetor('Manutencao: Educacao Altera Status', $this->educacao, [
+            'Listar Pedidos',
+            'Editar Pedidos',
+        ]);
+
+        $usuarioSemPermissao = $this->usuarioComRoleSetor('Manutencao: Educacao Sem Alterar Status', $this->educacao, [
+            'Listar Pedidos',
+        ]);
+
+        Livewire::actingAs($usuarioComPermissao)
+            ->test(ListPedidos::class)
+            ->assertTableBulkActionVisible('alterar_status');
+
+        Livewire::actingAs($usuarioSemPermissao)
+            ->test(ListPedidos::class)
+            ->assertTableBulkActionHidden('alterar_status');
+    }
+
+    public function test_bulk_action_alterar_status_atualiza_multiplos_pedidos_e_registra_historico(): void
+    {
+        $usuario = $this->usuarioComRoleSetor('Manutencao: Educacao Bulk Status', $this->educacao, [
+            'Listar Pedidos',
+            'Editar Pedidos',
+        ]);
+
+        $novoStatus = $this->service->statusPorNome('Em Manutenção', true);
+        $pedidoA = $this->pedido(status: 'Em Aberto', setor: $this->educacao, escola: $this->escola);
+        $pedidoB = $this->pedido(status: 'Em Análise', setor: $this->obras, escola: $this->escola);
+        $pedidoCancelado = $this->pedido(status: 'Cancelado', setor: $this->educacao, escola: $this->escola);
+
+        Livewire::actingAs($usuario)
+            ->test(ListPedidos::class)
+            ->mountTableBulkAction('alterar_status', [$pedidoA, $pedidoB, $pedidoCancelado])
+            ->setTableBulkActionData([
+                'tipo_status_id' => $novoStatus->id,
+                'descricao' => 'Ajuste operacional em lote.',
+            ])
+            ->callMountedTableBulkAction()
+            ->assertHasNoTableBulkActionErrors();
+
+        $this->assertSame('Em Manutenção', $pedidoA->refresh()->tipoStatus->nome);
+        $this->assertSame('Em Manutenção', $pedidoB->refresh()->tipoStatus->nome);
+        $this->assertSame('Cancelado', $pedidoCancelado->refresh()->tipoStatus->nome);
+
+        foreach ([$pedidoA, $pedidoB] as $pedido) {
+            $historico = $pedido->historicos()->with(['statusNovo', 'usuario'])->latest('id')->firstOrFail();
+
+            $this->assertSame($novoStatus->id, $historico->status_novo_id);
+            $this->assertSame($usuario->id, $historico->usuario_id);
+            $this->assertStringContainsString(
+                "Usuario {$usuario->name} alterou o status do pedido para {$novoStatus->nome}.",
+                $historico->descricao_alteracao
+            );
+            $this->assertStringContainsString('Ajuste operacional em lote.', $historico->descricao_alteracao);
+        }
+
+        $this->assertSame(0, $pedidoCancelado->historicos()->count());
+    }
+
     public function test_bulk_action_enviar_para_empresa_atualiza_multiplos_pedidos_e_ignora_nao_gerenciaveis(): void
     {
         $usuario = $this->usuarioComRoleSetor('Manutencao: Educacao Bulk Empresa', $this->educacao, [
