@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Enums\NivelEmergenciaPedido;
 use App\Models\Enums\ResultadoFeedbackPedido;
 use App\Models\Enums\TipoArquivoPedido;
+use App\Models\EmpresaContratada;
 use App\Models\FeedbackPedido;
 use App\Models\Pedido;
 use App\Models\PedidoHistorico;
@@ -432,6 +433,64 @@ class PedidoService
                 $usuario,
                 "Pedido recebido pelo setor {$setorDestino->nome} com status Em Aberto."
             );
+        });
+    }
+
+    public function empresaContratadaDisponivelParaEnvio(EmpresaContratada|int $empresa, User $usuario): EmpresaContratada
+    {
+        $empresa = $empresa instanceof EmpresaContratada
+            ? $empresa
+            : EmpresaContratada::query()->whereKey($empresa)->first();
+
+        if (! $empresa || ! $empresa->ativo) {
+            throw ValidationException::withMessages([
+                'empresa_contratada_id' => 'Empresa indisponivel para envio de pedidos.',
+            ]);
+        }
+
+        if (! app(UserSetorAccessService::class)->canAccessSetor($usuario, (int) $empresa->setor_id)) {
+            throw ValidationException::withMessages([
+                'empresa_contratada_id' => 'Voce nao tem permissao para usar esta empresa.',
+            ]);
+        }
+
+        return $empresa;
+    }
+
+    public function enviarParaEmpresa(
+        Pedido $pedido,
+        EmpresaContratada|int $empresa,
+        User $usuario,
+        ?string $descricao = null
+    ): bool {
+        return DB::transaction(function () use ($pedido, $empresa, $usuario, $descricao): bool {
+            if (! $this->podeEnviarParaEmpresa($usuario)) {
+                throw new \RuntimeException('Usuario sem permissao para enviar pedidos para empresa.');
+            }
+
+            if (! $this->podeGerenciarRegistro($pedido, $usuario)) {
+                return false;
+            }
+
+            $empresa = $this->empresaContratadaDisponivelParaEnvio($empresa, $usuario);
+            $statusAnteriorId = $pedido->tipo_status_id;
+            $statusEnviadoEmpresa = $this->statusPorNome('Enviado para Empresa', true);
+
+            $pedido->update([
+                'tipo_status_id' => $statusEnviadoEmpresa->id,
+                'empresa_contratada_id' => $empresa->id,
+                'responsavel_id' => $usuario->id,
+            ]);
+
+            $this->registrarHistorico(
+                $pedido,
+                $statusAnteriorId,
+                $statusEnviadoEmpresa->id,
+                $usuario,
+                $descricao ?: "Pedido enviado para a empresa {$empresa->nome}."
+            );
+
+            return true;
         });
     }
 

@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\Pedidos\Tables;
 use App\Filament\Admin\Actions\VincularSetorBulkAction;
 use App\Filament\Admin\Components\SliderRating;
 use App\Filament\Admin\Resources\Pedidos\Tables\Actions\ExportarRelatorioAction;
+use App\Models\EmpresaContratada;
 use App\Models\Enums\NivelEmergenciaPedido;
 use App\Models\Enums\ResultadoFeedbackPedido;
 use App\Models\Pedido;
@@ -36,6 +37,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 class PedidosTable
 {
@@ -459,6 +461,48 @@ class PedidosTable
                     return true;
                 },
             ),
+
+            BulkAction::make('enviar_para_empresa')
+                ->label('Enviar para empresa')
+                ->icon('heroicon-o-building-office-2')
+                ->color('primary')
+                ->visible(fn () => $service->podeEnviarParaEmpresa($user))
+                ->schema([
+                    Select::make('empresa_contratada_id')
+                        ->label('Empresa')
+                        ->options(fn (): array => EmpresaContratada::query()
+                            ->where('ativo', true)
+                            ->doSetorDoUsuario(Auth::user())
+                            ->orderBy('nome')
+                            ->pluck('nome', 'id')
+                            ->toArray())
+                        ->searchable()
+                        ->preload()
+                        ->required(),
+                ])
+                ->requiresConfirmation()
+                ->modalHeading('Enviar pedidos selecionados para empresa')
+                ->modalDescription('Somente pedidos que voce pode gerenciar serao enviados para a empresa selecionada.')
+                ->action(function (EloquentCollection $records, array $data) use ($user, $service) {
+                    $enviados = 0;
+                    $empresaId = (int) ($data['empresa_contratada_id'] ?? 0);
+
+                    foreach ($records as $record) {
+                        if (! $user || ! $record instanceof Pedido) {
+                            continue;
+                        }
+
+                        if ($service->enviarParaEmpresa($record, $empresaId, $user)) {
+                            $enviados++;
+                        }
+                    }
+
+                    Notification::make()
+                        ->title($enviados.' pedido(s) enviado(s) para a empresa.')
+                        ->success()
+                        ->send();
+                })
+                ->deselectRecordsAfterCompletion(),
 
             BulkAction::make('cancelar')
                 ->label('Cancelar pedidos')

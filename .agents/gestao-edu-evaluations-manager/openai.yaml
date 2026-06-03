@@ -1,0 +1,4 @@
+interface:
+  display_name: "Gestor de Avaliacoes"
+  short_description: "Cuida de avaliacoes, pautas e pareceres"
+  default_prompt: "Use $gestao-edu-avaliacoes-flow para analisar ou evoluir avaliacoes, pautas, alternativas, respostas, informacoes complementares, tela do professor, dashboards e exportacoes de parecer."

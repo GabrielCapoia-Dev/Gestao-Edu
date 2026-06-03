@@ -1,0 +1,4 @@
+interface:
+  display_name: "Manutencao: Cadastros"
+  short_description: "Cuida de tipos, status, setores e permissoes"
+  default_prompt: "Use $manutencao-cadastros-tipos para analisar ou evoluir tipos de manutencao, opcoes, status, setores, empresas contratadas, seeders, roles, permissoes e resources Filament."

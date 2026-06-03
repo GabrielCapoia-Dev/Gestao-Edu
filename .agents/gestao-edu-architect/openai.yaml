@@ -1,0 +1,4 @@
+interface:
+  display_name: "Arquiteto Gestao-Edu"
+  short_description: "Orquestra skills por dominio do Gestao-Edu"
+  default_prompt: "Use $gestao-edu-kit para orientar mudancas amplas no Gestao-Edu, escolher as skills de dominio corretas, confirmar comportamento no codigo atual e definir validacao focada."

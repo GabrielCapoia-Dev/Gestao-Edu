@@ -1,0 +1,4 @@
+interface:
+  display_name: "Gestor Pedagogico Estrutural"
+  short_description: "Cuida de professores, turmas e componentes"
+  default_prompt: "Use $gestao-edu-professores-turmas-componentes-flow para analisar ou evoluir professores, turmas, series, componentes curriculares, vinculos professor-componente-turma e relatorios pedagogicos."

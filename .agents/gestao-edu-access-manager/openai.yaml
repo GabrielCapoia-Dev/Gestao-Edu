@@ -1,0 +1,4 @@
+interface:
+  display_name: "Gestor de Acesso"
+  short_description: "Analisa login, roles, policies e escopo"
+  default_prompt: "Use $gestao-edu-acesso-permissoes-flow para analisar ou evoluir login, Google OAuth, aprovacao de acesso, roles, permissoes, policies, menus Filament e filtros por escola ou setor."

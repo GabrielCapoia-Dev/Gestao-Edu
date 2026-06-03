@@ -263,6 +263,99 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
         $this->assertSame(['Empresa Obras'], EmpresaContratada::query()->doSetorDoUsuario($obrasUser)->pluck('nome')->all());
     }
 
+    public function test_enviar_para_empresa_atualiza_status_empresa_responsavel_e_historico(): void
+    {
+        $usuario = $this->usuarioComRoleSetor('Manutencao: Educacao Empresa', $this->educacao, [
+            'Editar Pedidos',
+            'Enviar Pedidos para Empresa',
+        ]);
+
+        $empresa = $this->empresa('Empresa Obras', $this->obras);
+        $pedido = $this->pedido(status: 'Em Aberto', setor: $this->educacao, escola: $this->escola);
+        $setorOriginalId = $pedido->setor_id;
+
+        $this->assertTrue($this->service->enviarParaEmpresa($pedido, $empresa, $usuario));
+
+        $pedido->refresh();
+
+        $this->assertSame('Enviado para Empresa', $pedido->tipoStatus->nome);
+        $this->assertSame($empresa->id, $pedido->empresa_contratada_id);
+        $this->assertSame($usuario->id, $pedido->responsavel_id);
+        $this->assertSame($setorOriginalId, $pedido->setor_id);
+
+        $historico = $pedido->historicos()->with('statusNovo')->orderByDesc('id')->firstOrFail();
+
+        $this->assertSame('Enviado para Empresa', $historico->statusNovo->nome);
+        $this->assertSame("Pedido enviado para a empresa {$empresa->nome}.", $historico->descricao_alteracao);
+    }
+
+    public function test_enviar_para_empresa_bloqueia_empresa_fora_do_escopo_do_usuario(): void
+    {
+        $usuario = $this->usuarioComRoleSetor('Manutencao: Obras Empresa', $this->obras, [
+            'Editar Pedidos',
+            'Enviar Pedidos para Empresa',
+        ]);
+
+        $empresaEducacao = $this->empresa('Empresa Educacao', $this->educacao);
+        $pedido = $this->pedido(status: 'Em Aberto', setor: $this->obras, escola: $this->escola);
+
+        $this->expectException(ValidationException::class);
+
+        $this->service->enviarParaEmpresa($pedido, $empresaEducacao, $usuario);
+    }
+
+    public function test_bulk_action_enviar_para_empresa_aparece_somente_com_permissao(): void
+    {
+        $usuarioComPermissao = $this->usuarioComRoleSetor('Manutencao: Educacao Envia Empresa', $this->educacao, [
+            'Listar Pedidos',
+            'Editar Pedidos',
+            'Enviar Pedidos para Empresa',
+        ]);
+
+        $usuarioSemPermissao = $this->usuarioComRoleSetor('Manutencao: Educacao Sem Empresa', $this->educacao, [
+            'Listar Pedidos',
+            'Editar Pedidos',
+        ]);
+
+        Livewire::actingAs($usuarioComPermissao)
+            ->test(ListPedidos::class)
+            ->assertTableBulkActionVisible('enviar_para_empresa');
+
+        Livewire::actingAs($usuarioSemPermissao)
+            ->test(ListPedidos::class)
+            ->assertTableBulkActionHidden('enviar_para_empresa');
+    }
+
+    public function test_bulk_action_enviar_para_empresa_atualiza_multiplos_pedidos_e_ignora_nao_gerenciaveis(): void
+    {
+        $usuario = $this->usuarioComRoleSetor('Manutencao: Educacao Bulk Empresa', $this->educacao, [
+            'Listar Pedidos',
+            'Editar Pedidos',
+            'Enviar Pedidos para Empresa',
+        ]);
+
+        $empresa = $this->empresa('Empresa Bulk Obras', $this->obras);
+        $pedidoA = $this->pedido(status: 'Em Aberto', setor: $this->educacao, escola: $this->escola);
+        $pedidoB = $this->pedido(status: 'Em Aberto', setor: $this->obras, escola: $this->escola);
+        $pedidoCancelado = $this->pedido(status: 'Cancelado', setor: $this->educacao, escola: $this->escola);
+
+        Livewire::actingAs($usuario)
+            ->test(ListPedidos::class)
+            ->mountTableBulkAction('enviar_para_empresa', [$pedidoA, $pedidoB, $pedidoCancelado])
+            ->setTableBulkActionData([
+                'empresa_contratada_id' => $empresa->id,
+            ])
+            ->callMountedTableBulkAction()
+            ->assertHasNoTableBulkActionErrors();
+
+        $this->assertSame('Enviado para Empresa', $pedidoA->refresh()->tipoStatus->nome);
+        $this->assertSame($empresa->id, $pedidoA->empresa_contratada_id);
+        $this->assertSame('Enviado para Empresa', $pedidoB->refresh()->tipoStatus->nome);
+        $this->assertSame($empresa->id, $pedidoB->empresa_contratada_id);
+        $this->assertSame('Cancelado', $pedidoCancelado->refresh()->tipoStatus->nome);
+        $this->assertNull($pedidoCancelado->empresa_contratada_id);
+    }
+
     public function test_pedido_adicional_e_feedback_por_problema_nao_reabrem_por_nota_um_sem_botao(): void
     {
         $usuario = $this->usuarioComRoleSetor('Manutenção: Educação', $this->educacao, [
@@ -625,6 +718,18 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
     private function fotosAdicional(): array
     {
         return ['pedidos/adicionais/foto-adicional.jpg'];
+    }
+
+    private function empresa(string $nome, Setor $setor): EmpresaContratada
+    {
+        $sequencia = EmpresaContratada::query()->count() + 1;
+
+        return EmpresaContratada::create([
+            'nome' => $nome,
+            'cnpj' => sprintf('12.345.678/%04d-%02d', $sequencia, $sequencia),
+            'setor_id' => $setor->id,
+            'ativo' => true,
+        ]);
     }
 
     private function usuarioComRoleSetor(string $roleName, Setor $setor, array $permissions): User

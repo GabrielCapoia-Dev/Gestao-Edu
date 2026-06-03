@@ -3,13 +3,13 @@
 namespace App\Filament\Admin\Resources\Pedidos\Pages;
 
 use App\Filament\Admin\Resources\Pedidos\PedidoResource;
-use App\Models\EmpresaContratada;
 use App\Models\TipoStatus;
 use App\Services\PedidoService;
 use App\Services\UserSetorAccessService;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 
 class EditPedido extends EditRecord
 {
@@ -19,6 +19,7 @@ class EditPedido extends EditRecord
     private ?int $statusAnteriorId = null;
     private ?int $novoStatusId = null;
     private ?int $statusEncaminhadoId = null;
+    private ?int $empresaContratadaId = null;
 
     protected function getHeaderActions(): array
     {
@@ -40,6 +41,7 @@ class EditPedido extends EditRecord
         $this->observacaoStatus = $data['descricao_alteracao'] ?? null;
         $this->novoStatusId = $data['novo_status_id'] ?? null;
         $this->statusEncaminhadoId = null;
+        $this->empresaContratadaId = null;
 
         unset($data['descricao_alteracao'], $data['novo_status_id']);
 
@@ -59,22 +61,24 @@ class EditPedido extends EditRecord
         if (
             $this->novoStatusId
             && $statusEnviadoEmpresa?->id === (int) $this->novoStatusId
-            && ! $service->podeEnviarParaEmpresa($user)
         ) {
-            unset($data['empresa_contratada_id']);
-            $this->novoStatusId = null;
-        }
+            if (! $service->podeEnviarParaEmpresa($user)) {
+                unset($data['empresa_contratada_id']);
+                $this->novoStatusId = null;
+            } else {
+                if (blank($data['empresa_contratada_id'] ?? null)) {
+                    throw ValidationException::withMessages([
+                        'empresa_contratada_id' => 'Informe a empresa responsavel.',
+                    ]);
+                }
 
-        if (
-            $this->novoStatusId
-            && $statusEnviadoEmpresa?->id === (int) $this->novoStatusId
-            && filled($data['empresa_contratada_id'] ?? null)
-        ) {
-            $empresaSetorId = EmpresaContratada::query()
-                ->whereKey($data['empresa_contratada_id'])
-                ->value('setor_id');
+                $empresa = $service->empresaContratadaDisponivelParaEnvio((int) $data['empresa_contratada_id'], $user);
+                $this->empresaContratadaId = (int) $empresa->id;
 
-            app(UserSetorAccessService::class)->assertCanUseSetor($user, $empresaSetorId);
+                unset($data['empresa_contratada_id']);
+
+                return $data;
+            }
         }
 
         if ($this->novoStatusId) {
@@ -115,6 +119,17 @@ class EditPedido extends EditRecord
                 $statusNovoId,
                 $user,
                 "Pedido recebido por {$setorNome} com status Em Aberto."
+            );
+
+            return;
+        }
+
+        if ($this->empresaContratadaId) {
+            $service->enviarParaEmpresa(
+                $record,
+                $this->empresaContratadaId,
+                $user,
+                $this->observacaoStatus
             );
 
             return;
