@@ -252,13 +252,8 @@ class PedidosTable
                         ->alignCenter()
                         ->label('Status')
                         ->badge()
-                        ->formatStateUsing(function (Pedido $record) {
-                            $status = $record->tipoStatus?->nome ?? 'Sem status';
-                            $setor = $record->setor?->nome_completo;
-
-                            return $setor ? "{$status} - {$setor}" : $status;
-                        })
-                        ->color(fn (Pedido $record) => Color::hex($record->tipoStatus?->cor ?? '#6b7280')),
+                        ->formatStateUsing(fn (Pedido $record): string => static::statusListagem($record))
+                        ->color(fn (Pedido $record) => Color::hex(static::corStatusListagem($record))),
 
                     TextColumn::make('nivel_prioridade')
                         ->label('Prioridade')
@@ -842,6 +837,36 @@ class PedidosTable
         $status = app(PedidoService::class)->statusPorNome($nome);
 
         return $status && (int) $record->tipo_status_id === (int) $status->id;
+    }
+
+    private static function statusListagem(Pedido $record): string
+    {
+        if (static::pedidoEncaminhadoParaSetor($record)) {
+            return 'Encaminhado ao setor - '.$record->setor->nome_completo;
+        }
+
+        return $record->tipoStatus?->nome ?? 'Sem status';
+    }
+
+    private static function corStatusListagem(Pedido $record): string
+    {
+        if (static::pedidoEncaminhadoParaSetor($record)) {
+            static $corEncaminhado = null;
+
+            $corEncaminhado ??= app(PedidoService::class)->statusPorNome('Encaminhado ao Setor')?->cor ?? '#8b5cf6';
+
+            return $corEncaminhado;
+        }
+
+        return $record->tipoStatus?->cor ?? '#6b7280';
+    }
+
+    private static function pedidoEncaminhadoParaSetor(Pedido $record): bool
+    {
+        return $record->tipoStatus?->nome === 'Em Aberto'
+            && filled($record->setor_id)
+            && $record->setor !== null
+            && ! $record->setor->ehSetorGeral();
     }
 
     private static function nomeEscolaDoPedido(Pedido $record): ?string

@@ -167,6 +167,21 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
             ->assertSee($this->escola->nome);
     }
 
+    public function test_listagem_diferencia_pedido_encaminhado_do_aberto(): void
+    {
+        $pedidoAberto = $this->pedido(status: 'Em Aberto', setor: $this->educacao, escola: $this->escola);
+        $pedidoEncaminhado = $this->pedido(status: 'Em Aberto', setor: $this->obras, escola: $this->escola);
+        $usuario = $this->usuarioComPermissoes(['Listar Pedidos', 'Listar Todos os Pedidos']);
+
+        Livewire::actingAs($usuario)
+            ->test(ListPedidos::class)
+            ->assertSee($pedidoAberto->numero_protocolo)
+            ->assertSee($pedidoEncaminhado->numero_protocolo)
+            ->assertSee('Em Aberto')
+            ->assertSee('Encaminhado ao setor - '.$pedidoEncaminhado->setor->nome_completo)
+            ->assertDontSee('Em Aberto - '.$pedidoEncaminhado->setor->nome_completo);
+    }
+
     public function test_criacao_de_pedido_salva_fotos_no_storage_publico(): void
     {
         Storage::fake('public');
