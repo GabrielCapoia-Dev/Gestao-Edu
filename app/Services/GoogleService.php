@@ -93,7 +93,7 @@ class GoogleService
         // Impacto: quando nao ha professor elegivel, ainda sincronizamos escolas se o usuario ja tinha vinculo/role. Remover isso pode deixar acesso antigo sem escola_user atualizado.
         if ($professoresElegiveis->isEmpty()) {
             if ($deveSincronizarVinculos) {
-                $this->professorEscolaVinculoService->sincronizarPorUsuario($user);
+                $this->professorEscolaVinculoService->sincronizarPorUsuario($user, preservarVinculosExistentes: true);
             }
             return;
         }
@@ -123,7 +123,7 @@ class GoogleService
             $user->forceFill($dadosUsuario)->save();
         });
 
-        $this->professorEscolaVinculoService->sincronizarPorUsuario($user);
+        $this->professorEscolaVinculoService->sincronizarPorUsuario($user, preservarVinculosExistentes: true);
     }
 
     private function garantirAcessoProfessor(User $user): void

@@ -6,7 +6,9 @@ use App\Models\ComponenteCurricular;
 use App\Models\DominioEmail;
 use App\Models\Escola;
 use App\Models\Professor;
+use App\Models\Role;
 use App\Models\Serie;
+use App\Models\Setor;
 use App\Models\Turma;
 use App\Models\TurmaComponenteProfessor;
 use App\Models\User;
@@ -116,6 +118,43 @@ class GoogleServiceProfessorAccessTest extends TestCase
 
         $this->assertSame($avatarUrl, $user->avatar_url);
         $this->assertSame($avatarUrl, $user->getFilamentAvatarUrl());
+    }
+
+    public function test_login_google_preserva_escola_e_setor_de_usuario_existente_sem_vinculo_pedagogico(): void
+    {
+        $setor = Setor::query()->create([
+            'nome' => 'Setor Escola',
+            'ativo' => true,
+            'status' => 'Ativo',
+        ]);
+
+        $escola = $this->criarEscola('Escola Vinculada Manualmente');
+        $escola->update(['setor_id' => $setor->id]);
+
+        $role = Role::query()->create([
+            'name' => 'Visualizar Turmas e Alunos',
+            'guard_name' => 'web',
+        ]);
+
+        $userExistente = User::factory()->create([
+            'name' => 'Usuario Escola',
+            'email' => 'usuario.escola@edu.umuarama.pr.gov.br',
+            'id_escola' => $escola->id,
+            'setor_id' => $setor->id,
+            'email_approved' => true,
+        ]);
+        $userExistente->assignRole($role);
+        $userExistente->escolas()->attach($escola->id);
+
+        $oauthUser = $this->fakeOAuthUser('usuario.escola@edu.umuarama.pr.gov.br', 'Usuario Escola');
+
+        $user = app(GoogleService::class)->registrarOuLogar($oauthUser);
+        $user->refresh();
+
+        $this->assertSame($userExistente->id, $user->id);
+        $this->assertSame($escola->id, (int) $user->id_escola);
+        $this->assertSame($setor->id, (int) $user->setor_id);
+        $this->assertSame([$escola->id], $user->escolas()->pluck('escolas.id')->map(fn ($id) => (int) $id)->all());
     }
 
     public function test_usuario_pendente_ja_existente_e_aprovado_com_dados_do_professor_no_login_google(): void

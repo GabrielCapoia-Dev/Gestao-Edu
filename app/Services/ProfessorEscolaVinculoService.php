@@ -8,7 +8,7 @@ use App\Models\User;
 
 class ProfessorEscolaVinculoService
 {
-    public function sincronizarPorUsuario(User|int|null $user): void
+    public function sincronizarPorUsuario(User|int|null $user, bool $preservarVinculosExistentes = false): void
     {
         // Fluxo: login Google/alteracoes pedagogicas chamam este metodo; ele recalcula escolas pelo vinculo turma-componente-professor, sincroniza escola_user e ajusta id_escola principal.
         $userModel = $user instanceof User
@@ -23,6 +23,10 @@ class ProfessorEscolaVinculoService
 
         if ($escolasIds === []) {
             $escolasIds = $this->buscarEscolasCadastraisDoUsuario($userModel->id);
+        }
+
+        if ($preservarVinculosExistentes) {
+            $escolasIds = $this->mesclarComVinculosAtuais($userModel, $escolasIds);
         }
 
         $userModel->escolas()->sync($escolasIds);
@@ -79,6 +83,20 @@ class ProfessorEscolaVinculoService
             ->orderBy('id_escola')
             ->pluck('id_escola')
             ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+    }
+
+    private function mesclarComVinculosAtuais(User $user, array $escolasIds): array
+    {
+        $atuais = $user->idsEscolasVinculadas();
+
+        return collect($escolasIds)
+            ->merge($atuais)
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->sort()
             ->values()
             ->all();
     }
