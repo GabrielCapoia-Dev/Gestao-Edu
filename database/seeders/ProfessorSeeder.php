@@ -12,7 +12,7 @@ class ProfessorSeeder extends Seeder
 {
     public function run(): void
     {
-        $turnos = ['Manhã', 'Tarde', 'Noite'];
+        $turnos = array_keys(Professor::turnosOptions());
 
         $especializacoesNomes = [
             'Magisterio',

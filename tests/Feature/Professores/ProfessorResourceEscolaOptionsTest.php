@@ -48,6 +48,33 @@ class ProfessorResourceEscolaOptionsTest extends TestCase
             });
     }
 
+    public function test_modal_de_criacao_exibe_opcoes_de_turno_do_professor(): void
+    {
+        Permission::findOrCreate('Listar Professores');
+        Permission::findOrCreate('Criar Professores');
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo(['Listar Professores', 'Criar Professores']);
+
+        Livewire::actingAs($usuario)
+            ->test(ManageProfessors::class)
+            ->mountAction('create')
+            ->assertSchemaComponentExists('turno', null, function ($component): bool {
+                $this->assertInstanceOf(Select::class, $component);
+
+                $this->assertSame([
+                    'manha' => 'Manhã',
+                    'tarde' => 'Tarde',
+                    'integral' => 'Integral',
+                ], $component->getOptions());
+
+                return true;
+            });
+    }
+
     private function criarEscola(string $nome, bool $ativo = true): Escola
     {
         return Escola::query()->create([

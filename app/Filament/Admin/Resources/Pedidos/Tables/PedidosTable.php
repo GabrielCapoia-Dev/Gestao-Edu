@@ -51,7 +51,7 @@ class PedidosTable
         return $table
             ->modifyQueryUsing(fn (Builder $query) => $query
                 ->where('is_pedido_adicional', false)
-                ->with(['pedidoPrincipal', 'tipoManutencao', 'tipoStatus', 'escola', 'setor'])
+                ->with(['pedidoPrincipal', 'tipoManutencao', 'tipoStatus', 'escola', 'setor', 'solicitante.escola', 'solicitante.escolas'])
                 ->withCount(['pedidosAdicionais', 'problemas']))
             ->paginated([10, 25, 50, 100])
             ->defaultPaginationPageOption(10)
@@ -234,6 +234,8 @@ class PedidosTable
                     TextColumn::make('escola.nome')
                         ->label('Escola')
                         ->icon('heroicon-o-building-office-2')
+                        ->state(fn (Pedido $record): ?string => static::nomeEscolaDoPedido($record))
+                        ->placeholder('Escola nao informada')
                         ->alignCenter()
                         ->sortable(),
 
@@ -840,5 +842,20 @@ class PedidosTable
         $status = app(PedidoService::class)->statusPorNome($nome);
 
         return $status && (int) $record->tipo_status_id === (int) $status->id;
+    }
+
+    private static function nomeEscolaDoPedido(Pedido $record): ?string
+    {
+        if (filled($record->escola?->nome)) {
+            return $record->escola->nome;
+        }
+
+        if (filled($record->solicitante?->escola?->nome)) {
+            return $record->solicitante->escola->nome;
+        }
+
+        $escolas = $record->solicitante?->escolas;
+
+        return $escolas?->count() === 1 ? $escolas->first()?->nome : null;
     }
 }

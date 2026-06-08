@@ -17,6 +17,7 @@ class ProfessorFactory extends Factory
         return [
             'id_escola' => $escolaId,
             'matricula' => fake()->numerify('PROF####'),
+            'turno' => fake()->randomElement(array_keys(\App\Models\Professor::turnosOptions())),
             'nome' => $nome,
             'email' => "{$slug}." . fake()->unique()->numberBetween(1, 9999) . "@escola.edu.br",
             'telefone' => fake()->optional(0.8)->numerify('(##) 9####-####'),

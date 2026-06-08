@@ -117,6 +117,56 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
         ], $pedido->problemas()->orderBy('id')->pluck('texto_problema')->all());
     }
 
+    public function test_cria_pedido_com_escola_vinculada_mesmo_sem_id_escola_legado(): void
+    {
+        $usuario = User::factory()->create([
+            'id_escola' => null,
+            'email_approved' => true,
+        ]);
+        $usuario->escolas()->attach($this->escola->id);
+
+        $pedido = $this->service->criarPedido([
+            'tipo_manutencao_id' => $this->tipo->id,
+            'tipo_manutencao_opcao_ids' => [$this->opcaoLuz->id],
+            'data_identificacao_problema' => '2026-05-01',
+            'descricao_pedido' => 'Pedido aberto por usuario vinculado a escola.',
+            'nome_solicitante' => 'Direcao',
+        ], $usuario);
+
+        $this->assertSame($this->escola->id, $pedido->escola_id);
+        $this->assertSame($this->escola->setor_id, $pedido->setor_origem_id);
+    }
+
+    public function test_listagem_exibe_escola_do_solicitante_para_pedido_antigo_sem_escola_id(): void
+    {
+        $solicitante = User::factory()->create([
+            'id_escola' => $this->escola->id,
+            'email_approved' => true,
+        ]);
+
+        $pedido = Pedido::create([
+            'tipo_manutencao_id' => $this->tipo->id,
+            'tipo_status_id' => $this->service->statusPorNome('Em Aberto', true)->id,
+            'descricao_pedido' => 'Pedido antigo sem escola_id.',
+            'nome_solicitante' => 'Solicitante',
+            'nivel_prioridade' => NivelEmergenciaPedido::INDEFINIDO,
+            'escola_id' => null,
+            'solicitante_id' => $solicitante->id,
+            'setor_id' => $this->educacao->id,
+            'setor_origem_id' => $this->escola->setor_id,
+            'data_solicitacao' => now(),
+            'data_identificacao_problema' => now(),
+            'ativo' => true,
+        ]);
+
+        $usuario = $this->usuarioComPermissoes(['Listar Pedidos', 'Listar Todos os Pedidos']);
+
+        Livewire::actingAs($usuario)
+            ->test(ListPedidos::class)
+            ->assertSee($pedido->numero_protocolo)
+            ->assertSee($this->escola->nome);
+    }
+
     public function test_criacao_de_pedido_salva_fotos_no_storage_publico(): void
     {
         Storage::fake('public');

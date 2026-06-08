@@ -364,12 +364,16 @@ class TurmaService
                                                     return [];
                                                 }
 
-                                                return Professor::where('id_escola', $escolaId)
-                                                    ->whereNull('funcao_administrativa_id')
-                                                    ->pluck('nome', 'id')
-                                                    ->toArray();
+                                                return static::professoresOptionsParaTurma($escolaId);
                                             })
+                                            ->getOptionLabelUsing(
+                                                fn ($value): ?string => Professor::query()
+                                                    ->whereKey($value)
+                                                    ->first(['id', 'turno', 'matricula', 'nome'])
+                                                    ?->rotuloParaVinculoTurma()
+                                            )
                                             ->searchable()
+                                            ->preload()
                                             ->placeholder('Selecione o professor')
                                             ->disabled(fn (Get $get) => $get('tem_professor'))
                                             ->dehydrated(fn (Get $get) => ! $get('tem_professor')),
@@ -396,6 +400,24 @@ class TurmaService
                     ->columnSpanFull()
                     ->visible(fn (Get $get) => $get('id_serie') && $get('id_escola')),
             ]);
+    }
+
+    public static function professoresOptionsParaTurma(int|string|null $escolaId): array
+    {
+        if (! $escolaId) {
+            return [];
+        }
+
+        return Professor::where('id_escola', $escolaId)
+            ->whereNull('funcao_administrativa_id')
+            ->orderBy('turno')
+            ->orderBy('matricula')
+            ->orderBy('nome')
+            ->get(['id', 'turno', 'matricula', 'nome'])
+            ->mapWithKeys(fn (Professor $professor): array => [
+                $professor->id => $professor->rotuloParaVinculoTurma(),
+            ])
+            ->toArray();
     }
 
     public function aplicarCodigo(array $data): array

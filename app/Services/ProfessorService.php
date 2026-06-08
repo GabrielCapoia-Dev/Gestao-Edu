@@ -76,6 +76,15 @@ class ProfessorService
                             ->maxLength(255)
                             ->placeholder('Ex: PROF001'),
 
+                        Select::make('turno')
+                            ->label('Turno')
+                            ->options(Professor::turnosOptions())
+                            ->required()
+                            ->placeholder('Selecione o turno')
+                            ->disabled(function (?Professor $record) use ($user) {
+                                return $record !== null && !$user->hasPermissionTo('Editar Dados do Professor');
+                            }),
+
                         TextInput::make('nome')
                             ->label('Nome Completo')
                             ->required()
@@ -149,6 +158,18 @@ class ProfessorService
                 ->label('Matrícula')
                 ->searchable()
                 ->copyable()
+                ->sortable(),
+
+            TextColumn::make('turno')
+                ->label('Turno')
+                ->badge()
+                ->formatStateUsing(fn (?string $state): string => Professor::turnosOptions()[$state] ?? 'Não informado')
+                ->color(fn (?string $state): string => match ($state) {
+                    'manha' => 'info',
+                    'tarde' => 'warning',
+                    'integral' => 'success',
+                    default => 'gray',
+                })
                 ->sortable(),
 
             TextColumn::make('nome')
@@ -243,6 +264,9 @@ class ProfessorService
                             \Filament\Infolists\Components\TextEntry::make('matricula')
                                 ->label('Matrícula')
                                 ->copyable(),
+                            \Filament\Infolists\Components\TextEntry::make('turno')
+                                ->label('Turno')
+                                ->formatStateUsing(fn (?string $state): string => Professor::turnosOptions()[$state] ?? 'Não informado'),
                             \Filament\Infolists\Components\TextEntry::make('nome')
                                 ->label('Nome')
                                 ->copyable(),

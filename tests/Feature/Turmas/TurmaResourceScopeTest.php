@@ -9,6 +9,7 @@ use App\Models\Professor;
 use App\Models\Serie;
 use App\Models\Turma;
 use App\Models\User;
+use App\Services\TurmaService;
 use App\Services\UserService;
 use Filament\Forms\Components\Select;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -188,6 +189,22 @@ class TurmaResourceScopeTest extends TestCase
         ]);
     }
 
+    public function test_edicao_exibe_turno_matricula_e_nome_no_select_de_professor(): void
+    {
+        Permission::findOrCreate('Listar Turmas');
+        Permission::findOrCreate('Editar Turmas');
+        Permission::findOrCreate('Editar Dados da Turma');
+        Permission::findOrCreate('Editar Escola da Turma');
+
+        $escola = $this->criarEscola('Escola Labels');
+        $professor = $this->criarProfessor($escola, 'MAT-001', 'Professora Label', 'tarde');
+
+        $this->assertSame(
+            'Tarde - MAT-001 - Professora Label',
+            TurmaService::professoresOptionsParaTurma($escola->id)[$professor->id] ?? null,
+        );
+    }
+
     public function test_edicao_exibe_nome_da_escola_vinculada_mesmo_fora_do_filtro_de_ativas(): void
     {
         Permission::findOrCreate('Listar Turmas');
@@ -248,11 +265,12 @@ class TurmaResourceScopeTest extends TestCase
         ]);
     }
 
-    private function criarProfessor(Escola $escola, string $matricula, string $nome): Professor
+    private function criarProfessor(Escola $escola, string $matricula, string $nome, string $turno = 'manha'): Professor
     {
         return Professor::query()->create([
             'id_escola' => $escola->id,
             'matricula' => $matricula,
+            'turno' => $turno,
             'nome' => $nome,
             'email' => strtolower(str_replace(' ', '.', $nome)).'@edu.umuarama.pr.gov.br',
         ]);

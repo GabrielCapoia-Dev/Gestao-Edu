@@ -13,12 +13,19 @@ class Professor extends Model
 
     public const EMAIL_INSTITUCIONAL_DOMINIO = 'edu.umuarama.pr.gov.br';
 
+    public const TURNOS = [
+        'manha' => 'Manhã',
+        'tarde' => 'Tarde',
+        'integral' => 'Integral',
+    ];
+
     protected $table = 'professores';
 
     protected $fillable = [
         'user_id',
         'id_escola',
         'matricula',
+        'turno',
         'nome',
         'email',
         'telefone',
@@ -30,6 +37,7 @@ class Professor extends Model
     {
         return [
             'matricula' => 'string',
+            'turno' => 'string',
             'nome' => 'string',
             'email' => 'string',
             'telefone' => 'string',
@@ -85,6 +93,26 @@ class Professor extends Model
         }
 
         return str_ends_with($emailNormalizado, '@' . static::EMAIL_INSTITUCIONAL_DOMINIO);
+    }
+
+    public static function turnosOptions(): array
+    {
+        return static::TURNOS;
+    }
+
+    public function turnoLabel(): string
+    {
+        return static::turnosOptions()[$this->turno] ?? 'Não informado';
+    }
+
+    public function rotuloParaVinculoTurma(): string
+    {
+        return sprintf(
+            '%s - %s - %s',
+            $this->turnoLabel(),
+            filled($this->matricula) ? $this->matricula : 'Sem matrícula',
+            filled($this->nome) ? $this->nome : 'Sem nome',
+        );
     }
 
     public function setEmailAttribute(?string $value): void

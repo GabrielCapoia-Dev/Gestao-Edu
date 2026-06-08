@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Filament\Admin\Actions\VincularSetorBulkAction;
 use App\Models\Escola;
 use App\Models\User;
-use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
@@ -91,47 +90,6 @@ class EscolaService
     private function acoesTabela(?User $user): array
     {
         return [
-            Action::make('historico')
-                ->label('Histórico')
-                ->icon('heroicon-o-clock')
-                ->slideOver()
-                ->modalWidth('7xl')
-                ->color('warning')
-                ->modalHeading('Histórico da Escola')
-                ->modalSubmitAction(false)
-                ->modalCancelActionLabel('Fechar')
-                ->modalContent(function (Escola $record) {
-
-                    $historico = Escola::where('codigo', $record->codigo)
-                        ->select([
-                            'id',
-                            'codigo',
-                            'nome',
-                            'email',
-                            'telefone',
-                            'setor_id',
-                            'logradouro',
-                            'numero',
-                            'bairro',
-                            'cep',
-                            'cidade',
-                            'estado',
-                            'complemento',
-                            'ativo',
-                            'registro_anterior_id',
-                            'created_at',
-                            'updated_at',
-                        ])
-                        ->with('setor:id,nome,parent_id,path')
-                        ->orderByDesc('created_at')
-                        ->limit(30)
-                        ->get();
-
-                    return view('components.escola.historico', [
-                        'historico' => $historico,
-                    ]);
-                }),
-
             EditAction::make()
                 ->fillForm(function (Escola $record): array {
                     return [
@@ -149,7 +107,7 @@ class EscolaService
                         'complemento' => $record->complemento,
                     ];
                 })
-                ->using(fn (Escola $record, array $data): Escola => $this->atualizarComHistorico($record, $data)),
+                ->using(fn (Escola $record, array $data): Escola => $this->atualizarEmLinha($record, $data)),
 
             DeleteAction::make()
                 ->successNotification(null)
@@ -188,7 +146,7 @@ class EscolaService
                 permission: 'Editar Escolas',
                 recordsLabel: 'escolas selecionadas',
                 updateRecord: function (Escola $record, int $setorId): void {
-                    $this->atualizarComHistorico($record, [
+                    $this->atualizarEmLinha($record, [
                         'nome' => $record->nome,
                         'email' => $record->email,
                         'telefone' => $record->telefone,
@@ -206,7 +164,7 @@ class EscolaService
         ];
     }
 
-    public function atualizarComHistorico(Escola $record, array $data): Escola
+    public function atualizarEmLinha(Escola $record, array $data): Escola
     {
         $camposVerificar = [
             'nome',
@@ -238,16 +196,11 @@ class EscolaService
             return $record;
         }
 
-        return DB::transaction(function () use ($record, $data): Escola {
-            $record->update(['ativo' => false]);
+        $record->fill($data);
+        $record->ativo = true;
+        $record->save();
 
-            return Escola::create([
-                ...$data,
-                'codigo' => $record->codigo,
-                'ativo' => true,
-                'registro_anterior_id' => $record->id,
-            ]);
-        });
+        return $record->fresh();
     }
 
     public static function configurarFormulario(Schema $schema): Schema

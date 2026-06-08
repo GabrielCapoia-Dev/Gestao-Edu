@@ -6,6 +6,7 @@ use App\Models\Enums\NivelEmergenciaPedido;
 use App\Models\Enums\ResultadoFeedbackPedido;
 use App\Models\Enums\TipoArquivoPedido;
 use App\Models\EmpresaContratada;
+use App\Models\Escola;
 use App\Models\FeedbackPedido;
 use App\Models\Pedido;
 use App\Models\PedidoHistorico;
@@ -260,8 +261,9 @@ class PedidoService
         return DB::transaction(function () use ($data, $solicitante): Pedido {
             $statusInicial = $this->statusPorNome('Em Aberto', true);
             $setorInicial = Setor::setorGeral();
+            $escolaId = $this->escolaIdDoSolicitante($solicitante);
             $setorOrigemId = app(UserSetorAccessService::class)->primarySetorId($solicitante)
-                ?: ($solicitante->id_escola ? \App\Models\Escola::query()->whereKey($solicitante->id_escola)->value('setor_id') : null);
+                ?: ($escolaId ? Escola::query()->whereKey($escolaId)->value('setor_id') : null);
 
             if (! $setorInicial) {
                 throw new \RuntimeException('Nenhum setor foi configurado para receber os pedidos iniciais.');
@@ -277,7 +279,7 @@ class PedidoService
                 'nome_solicitante' => $data['nome_solicitante'],
                 'nivel_prioridade' => NivelEmergenciaPedido::INDEFINIDO,
                 'solicitante_id' => $solicitante->id,
-                'escola_id' => $solicitante->id_escola,
+                'escola_id' => $escolaId,
                 'tipo_status_id' => $statusInicial->id,
                 'setor_id' => $setorInicial->id,
                 'setor_origem_id' => $setorOrigemId,
@@ -413,6 +415,21 @@ class PedidoService
             'tipo_manutencao_opcao_id' => null,
             'texto_problema' => Str::limit($fallbackDescricao ?: 'Problema informado no pedido', 255, ''),
         ]);
+    }
+
+    private function escolaIdDoSolicitante(User $solicitante): ?int
+    {
+        if (filled($solicitante->id_escola)) {
+            return (int) $solicitante->id_escola;
+        }
+
+        $escolaIds = collect($solicitante->idsEscolasVinculadas())
+            ->map(fn ($id): int => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        return $escolaIds->count() === 1 ? $escolaIds->first() : null;
     }
 
     /*
