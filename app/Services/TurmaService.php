@@ -123,18 +123,7 @@ class TurmaService
                     $data['turno'] = $record->turno;
                     $data['codigo'] = $record->codigo;
 
-                    $componentesDaSerie = $record->serie?->componentesCurriculares ?? collect();
-
-                    $data['componentes'] = $componentesDaSerie->map(function ($componente) use ($record) {
-                        $pivot = $record->componentes->firstWhere('id', $componente->id);
-
-                        return [
-                            'componente_curricular_id' => $componente->id,
-                            'componente_nome' => $componente->nome,
-                            'professor_id' => $pivot?->pivot->professor_id,
-                            'tem_professor' => $pivot ? (bool) $pivot->pivot->tem_professor : false,
-                        ];
-                    })->toArray();
+                    $data['componentes'] = static::componentesFormulario($record);
 
                     return $data;
                 })
@@ -283,6 +272,7 @@ class TurmaService
                                         'componente_curricular_id' => $componente->id,
                                         'componente_nome' => $componente->nome,
                                         'professor_id' => null,
+                                        'tem_professor' => true,
                                     ];
                                 })->toArray();
 
@@ -328,7 +318,10 @@ class TurmaService
                         Repeater::make('componentes')
                             ->label('')
                             ->schema([
-                                Grid::make(3)
+                                Grid::make([
+                                    'default' => 1,
+                                    'lg' => 12,
+                                ])
                                     ->schema([
                                         Textarea::make('componente_nome')
                                             ->label('Componente Curricular')
@@ -353,6 +346,10 @@ class TurmaService
                             padding-left: 0.5rem;
                             border-radius: 0;
                         ',
+                                            ])
+                                            ->columnSpan([
+                                                'default' => 1,
+                                                'lg' => 3,
                                             ]),
 
                                         Select::make('professor_id')
@@ -374,9 +371,15 @@ class TurmaService
                                             )
                                             ->searchable()
                                             ->preload()
+                                            ->live()
                                             ->placeholder('Selecione o professor')
-                                            ->disabled(fn (Get $get) => $get('tem_professor'))
-                                            ->dehydrated(fn (Get $get) => ! $get('tem_professor')),
+                                            ->afterStateUpdated(function ($state, Set $set) {
+                                                $set('tem_professor', blank($state));
+                                            })
+                                            ->columnSpan([
+                                                'default' => 1,
+                                                'lg' => 9,
+                                            ]),
 
                                         Checkbox::make('tem_professor')
                                             ->label('Não tem Professor?')
@@ -386,7 +389,11 @@ class TurmaService
                                                 if ($state) {
                                                     $set('professor_id', null);
                                                 }
-                                            }),
+                                            })
+                                            ->columnSpan([
+                                                'default' => 1,
+                                                'lg' => 12,
+                                            ]),
 
                                         Hidden::make('componente_curricular_id'),
                                     ]),
@@ -420,6 +427,28 @@ class TurmaService
             ->toArray();
     }
 
+    public static function componentesFormulario(Turma $record): array
+    {
+        $record->loadMissing([
+            'serie.componentesCurriculares',
+            'componentes',
+        ]);
+
+        $componentesDaSerie = $record->serie?->componentesCurriculares ?? collect();
+
+        return $componentesDaSerie->map(function ($componente) use ($record): array {
+            $pivot = $record->componentes->firstWhere('id', $componente->id);
+            $professorId = $pivot?->pivot->professor_id;
+
+            return [
+                'componente_curricular_id' => $componente->id,
+                'componente_nome' => $componente->nome,
+                'professor_id' => $professorId,
+                'tem_professor' => blank($professorId),
+            ];
+        })->toArray();
+    }
+
     public function aplicarCodigo(array $data): array
     {
         // Impacto: normaliza a letra/codigo antes de salvar; mudar este padrao afeta buscas, exibicao e possiveis integracoes que dependem do codigo TR{letra}.
@@ -450,7 +479,8 @@ class TurmaService
         $componentesNormalizados = collect($componentes)
             ->filter(fn (array $componente): bool => isset($componente['componente_curricular_id']))
             ->map(function (array $componente): array {
-                $professorId = filled($componente['professor_id'] ?? null)
+                $semProfessor = (bool) ($componente['tem_professor'] ?? false);
+                $professorId = (! $semProfessor && filled($componente['professor_id'] ?? null))
                     ? (int) $componente['professor_id']
                     : null;
 

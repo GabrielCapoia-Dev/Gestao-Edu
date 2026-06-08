@@ -189,6 +189,113 @@ class TurmaResourceScopeTest extends TestCase
         ]);
     }
 
+    public function test_edicao_marca_checkbox_quando_componente_esta_sem_professor(): void
+    {
+        Permission::findOrCreate('Listar Turmas');
+        Permission::findOrCreate('Editar Turmas');
+        Permission::findOrCreate('Editar Dados da Turma');
+        Permission::findOrCreate('Editar Escola da Turma');
+
+        $escola = $this->criarEscola('Escola Sem Professor');
+        $serie = Serie::query()->create([
+            'codigo' => 'SER-SEM-PROF',
+            'nome' => 'Serie Sem Professor',
+        ]);
+        $componente = ComponenteCurricular::query()->create([
+            'codigo' => 'COMP-SEM-PROF',
+            'nome' => 'Arte',
+        ]);
+        $serie->componentesCurriculares()->sync([$componente->id]);
+
+        $turma = Turma::query()->create([
+            'codigo' => 'TUR-SEM-PROF',
+            'nome' => 'B',
+            'turno' => 'manha',
+            'id_serie' => $serie->id,
+            'id_escola' => $escola->id,
+        ]);
+
+        $turma->componentes()->attach($componente->id, [
+            'professor_id' => null,
+            'tem_professor' => false,
+        ]);
+
+        $componentes = TurmaService::componentesFormulario($turma);
+
+        $this->assertTrue($componentes[0]['tem_professor']);
+        $this->assertNull($componentes[0]['professor_id']);
+    }
+
+    public function test_edicao_com_checkbox_sem_professor_remove_professor_do_componente(): void
+    {
+        Permission::findOrCreate('Listar Turmas');
+        Permission::findOrCreate('Editar Turmas');
+        Permission::findOrCreate('Editar Dados da Turma');
+        Permission::findOrCreate('Editar Escola da Turma');
+
+        $escola = $this->criarEscola('Escola Remove Professor');
+        $serie = Serie::query()->create([
+            'codigo' => 'SER-REMOVE',
+            'nome' => 'Serie Remove',
+        ]);
+        $componente = ComponenteCurricular::query()->create([
+            'codigo' => 'COMP-REMOVE',
+            'nome' => 'Musica',
+        ]);
+        $serie->componentesCurriculares()->sync([$componente->id]);
+
+        $turma = Turma::query()->create([
+            'codigo' => 'TUR-REMOVE',
+            'nome' => 'C',
+            'turno' => 'tarde',
+            'id_serie' => $serie->id,
+            'id_escola' => $escola->id,
+        ]);
+        $professor = $this->criarProfessor($escola, 'PROF-REMOVE', 'Professor Remove');
+
+        $turma->componentes()->attach($componente->id, [
+            'professor_id' => $professor->id,
+            'tem_professor' => true,
+        ]);
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo([
+            'Listar Turmas',
+            'Editar Turmas',
+            'Editar Dados da Turma',
+            'Editar Escola da Turma',
+        ]);
+
+        Livewire::actingAs($usuario)
+            ->test(ManageTurmas::class)
+            ->callTableAction('edit', $turma, [
+                'id_escola' => $escola->id,
+                'id_serie' => $serie->id,
+                'nome' => $turma->nome,
+                'turno' => $turma->turno,
+                'codigo' => $turma->codigo,
+                'componentes' => [
+                    [
+                        'componente_curricular_id' => $componente->id,
+                        'componente_nome' => $componente->nome,
+                        'professor_id' => $professor->id,
+                        'tem_professor' => true,
+                    ],
+                ],
+            ])
+            ->assertHasNoTableActionErrors();
+
+        $this->assertDatabaseHas('turma_componente_professor', [
+            'turma_id' => $turma->id,
+            'componente_curricular_id' => $componente->id,
+            'professor_id' => null,
+            'tem_professor' => false,
+        ]);
+    }
+
     public function test_edicao_exibe_turno_matricula_e_nome_no_select_de_professor(): void
     {
         Permission::findOrCreate('Listar Turmas');
