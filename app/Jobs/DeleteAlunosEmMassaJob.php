@@ -34,7 +34,6 @@ class DeleteAlunosEmMassaJob implements ShouldQueue
         public readonly ?int $usuarioId,
         public readonly ?string $processRequestId = null,
     ) {
-        $this->onConnection('database');
         $this->onQueue((string) config('imports.queue', config('exports.queue', 'exports')));
     }
 

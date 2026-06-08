@@ -33,7 +33,6 @@ class ImportAlunosMatriculadosJob implements ShouldQueue
         public readonly string $disk = 'local',
         public readonly ?string $processRequestId = null,
     ) {
-        $this->onConnection('database');
         $this->onQueue((string) config('imports.queue', config('exports.queue', 'exports')));
     }
 

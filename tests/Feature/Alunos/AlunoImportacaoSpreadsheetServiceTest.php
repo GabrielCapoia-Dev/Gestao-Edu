@@ -191,8 +191,8 @@ class AlunoImportacaoSpreadsheetServiceTest extends TestCase
                 && $job->usuarioId === $user->id
                 && $job->disk === 'local'
                 && filled($job->processRequestId)
-                && $job->connection === 'database'
-                && $job->queue === 'exports';
+                && $job->connection === null
+                && $job->queue === config('imports.queue');
         });
     }
 
