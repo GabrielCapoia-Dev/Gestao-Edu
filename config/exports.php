@@ -5,6 +5,7 @@ use App\Services\Exports\Handlers\EstoqueRelatorioExportHandler;
 use App\Services\Exports\Handlers\FeedbackPedidoExportHandler;
 use App\Services\Exports\Handlers\InventarioRelatorioExportHandler;
 use App\Services\Exports\Handlers\PedidoRelatorioGeralExportHandler;
+use App\Services\Exports\Handlers\PedidoRelatorioSimplificadoExportHandler;
 
 return [
     'disk' => env('EXPORTS_DISK', 'local'),
@@ -22,6 +23,7 @@ return [
         'inventario_rede' => InventarioRelatorioExportHandler::class,
         'inventario_item' => InventarioRelatorioExportHandler::class,
         'pedido_relatorio_geral' => PedidoRelatorioGeralExportHandler::class,
+        'pedido_relatorio_simplificado' => PedidoRelatorioSimplificadoExportHandler::class,
         'feedback_pedido_relatorio' => FeedbackPedidoExportHandler::class,
     ],
 ];

@@ -10,6 +10,7 @@ use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\Auth;
 
@@ -116,7 +117,9 @@ class InventarioPedidosTable
                 ),
             SelectFilter::make('escola_id')
                 ->label('Escola')
-                ->relationship('escola', 'nome'),
+                ->relationship('escola', 'nome', modifyQueryUsing: fn (Builder $query): Builder => $query
+                    ->where('ativo', true)
+                    ->orderBy('nome')),
         ];
     }
 }

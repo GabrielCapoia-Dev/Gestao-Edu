@@ -45,11 +45,19 @@
         }
 
         .pdf-logo-left {
-            width: 170px;
+            width: auto;
+            height: 38px;
+            max-width: 170px;
         }
 
         .pdf-logo-right {
             text-align: right;
+        }
+
+        .pdf-logo-right-image {
+            width: auto;
+            height: 42px;
+            max-width: 190px;
         }
 
         .pdf-header-text {
@@ -117,6 +125,11 @@
         .divider {
             border-top: 1px solid #d1d5db;
             margin: 12px 0;
+        }
+
+        .pdf-header-divider {
+            border-top: 1px solid #d1d5db;
+            margin-top: 8px;
         }
 
         .report-filters {

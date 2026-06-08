@@ -5,7 +5,7 @@
                 <img src="{{ public_path('images/logo-educacao.png') }}" class="pdf-logo-left" alt="Logo Educacao">
             </td>
             <td style="width: 50%;" class="pdf-logo-right">
-                <img src="{{ public_path('images/logo-abrinq-preto.png') }}" style="width: 190px;" alt="Logo Abrinq">
+                <img src="{{ public_path('images/logo-abrinq-preto.png') }}" class="pdf-logo-right-image" alt="Logo Abrinq">
             </td>
         </tr>
     </table>
@@ -21,5 +21,5 @@
         @endif
     </div>
 
-    <div class="divider"></div>
+    <div class="pdf-header-divider"></div>
 </div>

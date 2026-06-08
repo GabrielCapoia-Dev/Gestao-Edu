@@ -290,7 +290,7 @@ class RelatorioProfessorComponenteTurma extends Page implements HasTable
             ->filters([
                 Tables\Filters\SelectFilter::make('escola')
                     ->label('Escola')
-                    ->options(fn() => Escola::where('ativo', true)->pluck('nome', 'id'))
+                    ->options(fn() => Escola::where('ativo', true)->orderBy('nome')->pluck('nome', 'id'))
                     ->searchable()
                     ->query(
                         fn(Builder $query, array $data) =>

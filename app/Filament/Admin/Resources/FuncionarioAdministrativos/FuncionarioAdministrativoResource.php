@@ -342,7 +342,9 @@ class FuncionarioAdministrativoResource extends Resource
             ->filters([
                 SelectFilter::make('id_escola')
                     ->label('Escola')
-                    ->relationship('escola', 'nome')
+                    ->relationship('escola', 'nome', modifyQueryUsing: fn (Builder $query): Builder => $query
+                        ->where('ativo', true)
+                        ->orderBy('nome'))
                     ->searchable()
                     ->preload(),
 

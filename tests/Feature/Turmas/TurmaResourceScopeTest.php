@@ -214,7 +214,7 @@ class TurmaResourceScopeTest extends TestCase
         Livewire::actingAs($usuario)
             ->test(ManageTurmas::class)
             ->mountTableAction('edit', $turma)
-            ->assertSchemaComponentExists('id_escola', function ($component) use ($escola): bool {
+            ->assertSchemaComponentExists('id_escola', null, function ($component) use ($escola): bool {
                 $this->assertInstanceOf(Select::class, $component);
                 $this->assertSame($escola->nome, $component->getOptionLabel(false));
 

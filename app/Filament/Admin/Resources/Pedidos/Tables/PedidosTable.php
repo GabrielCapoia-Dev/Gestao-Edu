@@ -14,6 +14,7 @@ use App\Models\TipoManutencao;
 use App\Models\TipoManutencaoOpcao;
 use App\Models\TipoStatus;
 use App\Models\User;
+use App\Services\Exports\ExportRequestService;
 use App\Services\PedidoService;
 use App\Services\UserSetorAccessService;
 use Filament\Actions\Action;
@@ -520,6 +521,70 @@ class PedidosTable
                         ->title($alterados.' pedido(s) tiveram o status alterado.')
                         ->success()
                         ->send();
+                })
+                ->deselectRecordsAfterCompletion(),
+
+            BulkAction::make('exportar_pdf_simplificado')
+                ->label('Exportar PDF')
+                ->icon('heroicon-o-document-arrow-down')
+                ->color('info')
+                ->visible(fn () => $user?->hasPermissionLike('exportar relatorios') ?? false)
+                ->requiresConfirmation()
+                ->modalHeading('Exportar pedidos selecionados em PDF')
+                ->modalDescription('O arquivo sera gerado em segundo plano com um pedido por pagina, contendo somente o cabecalho e as imagens do problema.')
+                ->modalSubmitActionLabel('Enviar para fila')
+                ->action(function (EloquentCollection $records) use ($user): mixed {
+                    if (! $user) {
+                        return null;
+                    }
+
+                    $pedidoIds = $records
+                        ->filter(fn ($record): bool => $record instanceof Pedido)
+                        ->pluck('id')
+                        ->map(fn ($id): int => (int) $id)
+                        ->filter()
+                        ->values()
+                        ->all();
+
+                    if ($pedidoIds === []) {
+                        Notification::make()
+                            ->title('Nenhum pedido selecionado para exportacao.')
+                            ->danger()
+                            ->send();
+
+                        return null;
+                    }
+
+                    try {
+                        $exportRequest = app(ExportRequestService::class)->queue(
+                            user: $user,
+                            type: 'pedido_relatorio_simplificado',
+                            format: 'pdf',
+                            filters: ['pedido_ids' => $pedidoIds],
+                            label: 'PDF simplificado de pedidos',
+                            metadata: ['source' => 'pedidos.bulk_action'],
+                        );
+
+                        Notification::make()
+                            ->title($exportRequest->wasRecentlyCreated ? 'Exportacao enviada para a fila' : 'Exportacao ja esta em andamento')
+                            ->body('Acompanhe o progresso em Minhas Exportacoes.')
+                            ->success()
+                            ->send();
+
+                        return redirect()->route('filament.admin.pages.minhas-exportacoes', [
+                            'download' => $exportRequest->getKey(),
+                        ]);
+                    } catch (\Throwable $exception) {
+                        report($exception);
+
+                        Notification::make()
+                            ->title('Nao foi possivel iniciar a exportacao')
+                            ->body('Tente novamente em alguns instantes.')
+                            ->danger()
+                            ->send();
+
+                        return null;
+                    }
                 })
                 ->deselectRecordsAfterCompletion(),
 

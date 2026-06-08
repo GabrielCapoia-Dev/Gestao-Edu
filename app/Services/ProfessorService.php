@@ -50,7 +50,12 @@ class ProfessorService
                     ->schema([
                         Select::make('id_escola')
                             ->label('Escola')
-                            ->relationship('escola', 'nome')
+                            ->relationship('escola', 'nome', modifyQueryUsing: fn (Builder $query): Builder => $query
+                                ->where('ativo', true)
+                                ->orderBy('nome'))
+                            ->getOptionLabelUsing(fn ($value): ?string => $value
+                                ? \App\Models\Escola::query()->whereKey($value)->value('nome')
+                                : null)
                             ->searchable()
                             ->preload()
                             ->required()
@@ -371,7 +376,9 @@ class ProfessorService
         return [
             SelectFilter::make('id_escola')
                 ->label('Escola')
-                ->relationship('escola', 'nome')
+                ->relationship('escola', 'nome', modifyQueryUsing: fn (Builder $query): Builder => $query
+                    ->where('ativo', true)
+                    ->orderBy('nome'))
                 ->searchable()
                 ->preload()
                 ->visible(function () use ($user): bool {

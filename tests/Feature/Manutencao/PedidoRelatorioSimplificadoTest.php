@@ -1,0 +1,205 @@
+<?php
+
+namespace Tests\Feature\Manutencao;
+
+use App\Jobs\ProcessExportRequestJob;
+use App\Models\Enums\NivelEmergenciaPedido;
+use App\Models\Enums\TipoArquivoPedido;
+use App\Models\Escola;
+use App\Models\ExportRequest;
+use App\Models\Pedido;
+use App\Models\PedidoArquivo;
+use App\Models\Setor;
+use App\Models\TipoManutencao;
+use App\Models\TipoStatus;
+use App\Models\User;
+use App\Services\Exports\ExportRequestService;
+use App\Services\Exports\Handlers\PedidoRelatorioSimplificadoExportHandler;
+use App\Services\Relatorios\PedidoRelatorioSimplificadoService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
+use Mockery;
+use Tests\TestCase;
+
+class PedidoRelatorioSimplificadoTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_view_simplificada_embute_apenas_fotos_do_problema_abaixo_do_cabecalho(): void
+    {
+        Storage::fake('public');
+
+        Storage::disk('public')->put(
+            'pedidos/foto-problema.png',
+            base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=')
+        );
+        Storage::disk('public')->put('pedidos/laudo-tecnico.pdf', '%PDF-1.4 teste');
+
+        $dados = $this->criarPedidoBase();
+        $pedido = $dados['pedido'];
+        $usuario = $dados['usuario'];
+
+        PedidoArquivo::create([
+            'pedido_id' => $pedido->id,
+            'usuario_id' => $usuario->id,
+            'tipo_arquivo' => TipoArquivoPedido::FOTOS_PROBLEMA,
+            'caminho' => 'pedidos/foto-problema.png',
+            'nome_original' => 'foto-problema.png',
+            'mime_type' => 'image/png',
+        ]);
+
+        PedidoArquivo::create([
+            'pedido_id' => $pedido->id,
+            'usuario_id' => $usuario->id,
+            'tipo_arquivo' => TipoArquivoPedido::LAUDO,
+            'caminho' => 'pedidos/laudo-tecnico.pdf',
+            'nome_original' => 'laudo-tecnico.pdf',
+            'mime_type' => 'application/pdf',
+            'descricao' => 'Laudo da manutencao',
+        ]);
+
+        $pedido->load([
+            'tipoManutencao',
+            'tipoStatus',
+            'escola',
+            'setor',
+            'empresaContratada',
+            'solicitante',
+            'fotos.usuario',
+        ]);
+
+        $html = view('relatorios.Manutencao.pedidos-simplificado', [
+            'pedidos' => collect([$pedido]),
+            'usuarioExportacao' => $usuario,
+            'dataExportacao' => now(),
+            'reportTitle' => 'Relatorio Simplificado de Manutencao',
+            'reportSubtitle' => '1 pedido selecionado',
+        ])->render();
+
+        $this->assertStringContainsString('Protocolo:', $html);
+        $this->assertStringContainsString('Imagens do problema', $html);
+        $this->assertStringContainsString('data:image/png;base64,', $html);
+        $this->assertStringNotContainsString('Historico de Alteracoes', $html);
+        $this->assertStringNotContainsString('Arquivos Anexados', $html);
+        $this->assertStringNotContainsString('laudo-tecnico.pdf', $html);
+        $this->assertStringNotContainsString('Lampada queimada na sala 1.', $html);
+    }
+
+    public function test_exportacao_simplificada_entra_na_fila_com_ids_selecionados(): void
+    {
+        Queue::fake();
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+
+        $exportRequest = app(ExportRequestService::class)->queue(
+            user: $usuario,
+            type: 'pedido_relatorio_simplificado',
+            format: 'pdf',
+            filters: ['pedido_ids' => [20, 10]],
+            label: 'PDF simplificado de pedidos',
+        );
+
+        $this->assertSame('pedido_relatorio_simplificado', $exportRequest->type);
+        $this->assertSame('pdf', $exportRequest->format);
+        $this->assertSame([20, 10], $exportRequest->filters['pedido_ids']);
+
+        Queue::assertPushed(ProcessExportRequestJob::class, 1);
+    }
+
+    public function test_handler_salva_pdf_simplificado_em_armazenamento_privado(): void
+    {
+        Storage::fake('local');
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+
+        $exportRequest = ExportRequest::query()->create([
+            'user_id' => $usuario->id,
+            'type' => 'pedido_relatorio_simplificado',
+            'format' => 'pdf',
+            'label' => 'PDF simplificado de pedidos',
+            'filters' => ['pedido_ids' => [10, 20]],
+            'metadata' => [],
+            'fingerprint' => fake()->uuid(),
+            'status' => ExportRequest::STATUS_QUEUED,
+            'status_message' => 'Aguardando processamento.',
+            'progress_current' => 0,
+            'progress_total' => 100,
+        ]);
+
+        app()->instance(PedidoRelatorioSimplificadoService::class, tap(Mockery::mock(PedidoRelatorioSimplificadoService::class), function ($mock): void {
+            $mock->shouldReceive('gerar')
+                ->once()
+                ->with([10, 20], Mockery::type(User::class))
+                ->andReturn(response('PDF CONTENT', 200, ['Content-Type' => 'application/pdf']));
+        }));
+
+        $result = app(PedidoRelatorioSimplificadoExportHandler::class)->handle($exportRequest->load('user'));
+
+        Storage::disk('local')->assertExists($result->path);
+        $this->assertSame('application/pdf', $result->mime);
+        $this->assertSame(strlen('PDF CONTENT'), $result->sizeBytes);
+    }
+
+    /**
+     * @return array{pedido: Pedido, usuario: User}
+     */
+    private function criarPedidoBase(): array
+    {
+        $setor = Setor::create([
+            'nome' => 'Educacao',
+            'status' => 'Ativo',
+            'ativo' => true,
+            'is_default_root' => true,
+        ]);
+
+        $escola = Escola::create([
+            'codigo' => '001',
+            'nome' => 'Escola Teste',
+            'setor_id' => $setor->id,
+            'ativo' => true,
+        ]);
+
+        $tipo = TipoManutencao::create([
+            'nome' => 'Eletrica',
+            'descricao' => 'Servicos eletricos',
+            'ativo' => true,
+        ]);
+
+        $status = TipoStatus::create([
+            'nome' => 'Em Aberto',
+            'cor' => '#3b82f6',
+            'finaliza_pedido' => false,
+            'cancela_pedido' => false,
+            'ativo' => true,
+        ]);
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+
+        $pedido = Pedido::create([
+            'tipo_manutencao_id' => $tipo->id,
+            'tipo_status_id' => $status->id,
+            'descricao_pedido' => 'Lampada queimada na sala 1.',
+            'nome_solicitante' => 'Direcao',
+            'nivel_prioridade' => NivelEmergenciaPedido::INDEFINIDO,
+            'escola_id' => $escola->id,
+            'solicitante_id' => $usuario->id,
+            'setor_id' => $setor->id,
+            'setor_origem_id' => $setor->id,
+            'data_solicitacao' => now(),
+            'data_identificacao_problema' => now(),
+            'ativo' => true,
+        ]);
+
+        return compact('pedido', 'usuario');
+    }
+}
