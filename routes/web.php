@@ -13,6 +13,7 @@ use App\Http\Controllers\FeedbackPedidoExportController;
 use App\Http\Controllers\InventarioRelatorioController;
 use App\Http\Controllers\InventarioRomaneioController;
 use App\Http\Controllers\MaintenanceController;
+use App\Http\Controllers\ProfilePreviewController;
 use App\Http\Middleware\EnsurePasswordIsChanged;
 use App\Http\Controllers\NotificationCenterController;
 use App\Http\Controllers\PedidoArquivoController;
@@ -105,6 +106,12 @@ Route::post('/admin/login', [AdminLoginController::class, 'store'])
 Route::prefix('admin')
     ->middleware(['web', 'auth', EnsurePasswordIsChanged::class])
     ->group(function () {
+        Route::post('/profile-preview/start', [ProfilePreviewController::class, 'start'])
+            ->name('profile-preview.start');
+
+        Route::post('/profile-preview/stop', [ProfilePreviewController::class, 'stop'])
+            ->name('profile-preview.stop');
+
         Route::get('/alterar-senha-obrigatoria', [ForcePasswordChangeController::class, 'edit'])
             ->name('auth.force-password.edit');
 

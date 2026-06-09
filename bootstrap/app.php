@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Middleware\EnforceAbsoluteSessionLifetime;
+use App\Http\Middleware\ApplyProfilePreviewUser;
+use App\Http\Middleware\BlockProfilePreviewWrites;
 use App\Http\Middleware\PerformanceInstrumentation;
 use App\Http\Middleware\ValidaUser;
 use Illuminate\Console\Scheduling\Schedule;
@@ -22,6 +24,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->appendToGroup('web', PerformanceInstrumentation::class);
         $middleware->appendToGroup('web', EnforceAbsoluteSessionLifetime::class);
+        $middleware->appendToGroup('web', ApplyProfilePreviewUser::class);
+        $middleware->appendToGroup('web', BlockProfilePreviewWrites::class);
     })
     ->withSchedule(function (Schedule $schedule) {
         $schedule

@@ -91,6 +91,18 @@ class AdminPanelProvider extends PanelProvider
                 BloquearProfessorPendenciaTransferencia::class,
             ], isPersistent: true)
             ->renderHook(
+                PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
+                function (): string {
+                    $preview = app(\App\Services\ProfilePreviewService::class);
+
+                    if (! $preview->canControl()) {
+                        return '';
+                    }
+
+                    return '<livewire:profile-preview-topbar />';
+                }
+            )
+            ->renderHook(
                 PanelsRenderHook::USER_MENU_BEFORE,
                 function () {
                     $user = User::authUser();
@@ -109,6 +121,10 @@ class AdminPanelProvider extends PanelProvider
                         'showNotifications' => $showNotifications,
                     ]);
                 }
+            )
+            ->renderHook(
+                PanelsRenderHook::BODY_START,
+                fn (): \Illuminate\Contracts\View\View => view('filament.partials.profile-preview-body-state')
             )
             ->renderHook(
                 PanelsRenderHook::BODY_END,

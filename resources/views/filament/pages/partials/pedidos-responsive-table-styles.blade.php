@@ -71,6 +71,10 @@
         display: none !important;
     }
 
+    .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-sort-only {
+        display: none !important;
+    }
+
     .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-top.fi-ta-split {
         align-items: center;
         justify-content: space-between;

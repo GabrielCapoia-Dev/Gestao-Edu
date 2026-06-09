@@ -362,7 +362,6 @@ class PedidosTable
                     TextColumn::make('created_at')
                         ->label('Criado em')
                         ->dateTime('d/m/Y H:i')
-                        ->sortable()
                         ->description('Criado em', position: 'above')
                         ->wrap()
                         ->toggleable(isToggledHiddenByDefault: false)
@@ -371,10 +370,9 @@ class PedidosTable
                     TextColumn::make('updated_at')
                         ->label('Atualizado em')
                         ->dateTime('d/m/Y H:i')
-                        ->sortable()
                         ->description('Atualizado em', position: 'above')
                         ->wrap()
-                        ->toggleable(isToggledHiddenByDefault: true)
+                        ->toggleable(isToggledHiddenByDefault: false)
                         ->extraAttributes(['class' => 'pedido-card-field pedido-card-field--date'], merge: true),
 
                 ])
@@ -382,6 +380,16 @@ class PedidosTable
 
             LayoutView::make('filament.admin.resources.pedidos.tables.pedido-card-footer-actions')
                 ->extraAttributes(['class' => 'pedido-card-footer-slot']),
+
+            TextColumn::make('created_at_sort')
+                ->label('Data de criação')
+                ->sortable(['created_at'])
+                ->extraAttributes(['class' => 'pedido-card-sort-only'], merge: true),
+
+            TextColumn::make('updated_at_sort')
+                ->label('Data de atualização')
+                ->sortable(['updated_at'])
+                ->extraAttributes(['class' => 'pedido-card-sort-only'], merge: true),
 
         ];
     }
