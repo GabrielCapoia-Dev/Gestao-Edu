@@ -180,10 +180,14 @@
     line-height: 1;
 }
 
+.fi-topbar-end > [wire\:id] {
+    display: inline-flex;
+    align-items: center;
+}
+
 .profile-preview-topbar {
     display: inline-flex;
     align-items: center;
-    margin-right: 0.75rem;
 }
 
 .profile-preview-form,
@@ -194,16 +198,29 @@
 }
 
 .profile-preview-select {
-    width: min(18rem, 28vw);
-    height: 2.25rem;
+    width: min(14rem, 22vw);
+    height: 2rem;
     border: 1.5px solid rgba(255, 255, 255, 0.3);
-    border-radius: 8px;
+    border-radius: 999px;
     background: rgba(255, 255, 255, 0.14);
     color: var(--edu-white);
-    font-size: 0.82rem;
+    font-size: 0.75rem;
     font-weight: 700;
     outline: none;
     padding: 0 0.75rem;
+    cursor: pointer;
+    transition: background 0.18s, border-color 0.18s, transform 0.18s;
+}
+
+.profile-preview-select:hover {
+    background: rgba(255, 255, 255, 0.22);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-1px);
+}
+
+.profile-preview-select:focus {
+    background: rgba(255, 255, 255, 0.22);
+    border-color: rgba(255, 255, 255, 0.6);
 }
 
 .profile-preview-select option {
@@ -211,24 +228,25 @@
 }
 
 .profile-preview-active-label {
-    max-width: 18rem;
+    max-width: 14rem;
     overflow: hidden;
     color: #ecfdf5;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     font-weight: 700;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
 .profile-preview-stop-button {
-    height: 2.25rem;
+    height: 2rem;
     border: 2px solid #052e16;
     border-radius: 999px;
     background: #f0fdf4;
     color: #052e16;
-    font-size: 0.78rem;
+    font-size: 0.75rem;
     font-weight: 800;
     padding: 0 0.85rem;
+    cursor: pointer;
     transition: background 0.18s, transform 0.18s;
 }
 
