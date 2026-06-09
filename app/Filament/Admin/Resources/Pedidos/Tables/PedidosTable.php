@@ -842,7 +842,7 @@ class PedidosTable
     private static function statusListagem(Pedido $record): string
     {
         if (static::pedidoEncaminhadoParaSetor($record)) {
-            return 'Encaminhado ao setor - '.$record->setor->nome_completo;
+            return 'Encaminhado ao Setor - '.$record->setor->nome_completo;
         }
 
         return $record->tipoStatus?->nome ?? 'Sem status';
@@ -863,10 +863,11 @@ class PedidosTable
 
     private static function pedidoEncaminhadoParaSetor(Pedido $record): bool
     {
-        return $record->tipoStatus?->nome === 'Em Aberto'
-            && filled($record->setor_id)
-            && $record->setor !== null
-            && ! $record->setor->ehSetorGeral();
+        if (! filled($record->setor_id) || $record->setor === null || $record->setor->ehSetorGeral()) {
+            return false;
+        }
+
+        return in_array($record->tipoStatus?->nome, ['Encaminhado ao Setor', 'Em Aberto'], true);
     }
 
     private static function nomeEscolaDoPedido(Pedido $record): ?string

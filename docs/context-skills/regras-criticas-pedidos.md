@@ -35,7 +35,7 @@ Destacar os pontos mais sensiveis do fluxo de manutencao para reduzir regressao 
   - pode anexar fotos de conclusao
   - pode disparar notificacoes
 - Nota `1` nao reabre pedido. Reabertura depende do campo/botao `reabrir_pedido`.
-- Encaminhamento Educacao -> Obras deve terminar com status atual `Em Aberto` no setor Obras e historico intermediario `Encaminhado ao Setor`.
+- Encaminhamento Educacao -> Obras deve terminar com status atual `Encaminhado ao Setor` no setor Obras, sem misturar o pedido com novos pedidos `Em Aberto`.
 - `Pedido Adicional` nao passa pelo tramite completo e deve ficar vinculado ao pedido principal por `pedido_principal_id`.
 - Tipos e opcoes inativas nao aparecem em novos pedidos, mas nao podem ser removidos dos historicos.
 

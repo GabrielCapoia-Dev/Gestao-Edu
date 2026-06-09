@@ -170,7 +170,7 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
     public function test_listagem_diferencia_pedido_encaminhado_do_aberto(): void
     {
         $pedidoAberto = $this->pedido(status: 'Em Aberto', setor: $this->educacao, escola: $this->escola);
-        $pedidoEncaminhado = $this->pedido(status: 'Em Aberto', setor: $this->obras, escola: $this->escola);
+        $pedidoEncaminhado = $this->pedido(status: 'Encaminhado ao Setor', setor: $this->obras, escola: $this->escola);
         $usuario = $this->usuarioComPermissoes(['Listar Pedidos', 'Listar Todos os Pedidos']);
 
         Livewire::actingAs($usuario)
@@ -178,7 +178,7 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
             ->assertSee($pedidoAberto->numero_protocolo)
             ->assertSee($pedidoEncaminhado->numero_protocolo)
             ->assertSee('Em Aberto')
-            ->assertSee('Encaminhado ao setor - '.$pedidoEncaminhado->setor->nome_completo)
+            ->assertSee('Encaminhado ao Setor - '.$pedidoEncaminhado->setor->nome_completo)
             ->assertDontSee('Em Aberto - '.$pedidoEncaminhado->setor->nome_completo);
     }
 
@@ -289,7 +289,7 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
         );
     }
 
-    public function test_encaminhar_educacao_para_obras_deixa_status_atual_em_aberto_em_obras(): void
+    public function test_encaminhar_educacao_para_obras_deixa_status_atual_encaminhado_ao_setor(): void
     {
         $usuario = $this->usuarioComRoleSetor('Manutenção: Educação', $this->educacao, [
             'Editar Pedidos',
@@ -302,13 +302,34 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
 
         $pedido->refresh();
 
-        $this->assertSame('Em Aberto', $pedido->tipoStatus->nome);
+        $this->assertSame('Encaminhado ao Setor', $pedido->tipoStatus->nome);
         $this->assertTrue($pedido->setor->is($this->obras));
 
         $historicos = $pedido->historicos()->with('statusNovo')->oldest()->get();
 
+        $this->assertCount(1, $historicos);
         $this->assertSame('Encaminhado ao Setor', $historicos[0]->statusNovo->nome);
-        $this->assertSame('Em Aberto', $historicos[1]->statusNovo->nome);
+        $this->assertSame('Enviar para Obras.', $historicos[0]->descricao_alteracao);
+    }
+
+    public function test_gerenciar_pedido_encaminhado_move_para_em_analise_no_setor_destino(): void
+    {
+        $usuario = $this->usuarioComRoleSetor('Manutenção: Obras', $this->obras, [
+            'Editar Pedidos',
+        ]);
+
+        $pedido = $this->pedido(status: 'Encaminhado ao Setor', setor: $this->obras, escola: $this->escola);
+
+        $this->service->assumirPedido($pedido, $usuario);
+
+        $pedido->refresh();
+
+        $this->assertSame('Em Análise', $pedido->tipoStatus->nome);
+        $this->assertSame($usuario->id, $pedido->responsavel_id);
+
+        $historico = $pedido->historicos()->with('statusNovo')->latest('id')->firstOrFail();
+
+        $this->assertSame('Em Análise', $historico->statusNovo->nome);
     }
 
     public function test_enviar_para_empresa_e_empresa_responsavel_ficam_restritos_ao_setor_obras(): void

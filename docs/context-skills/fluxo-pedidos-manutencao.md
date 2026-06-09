@@ -22,9 +22,9 @@ Documentar o ciclo de vida de `Pedido`, incluindo criacao, setor operacional, pr
 - A criacao usa `PedidoService::criarPedido()`, exige `data_identificacao_problema` e salva uma ou mais frases/opcoes em `pedido_problemas`.
 - Tipo de manutencao e opcoes inativas nao entram em novos pedidos, mas continuam disponiveis para historico e relatorios.
 - O status inicial e `Em Aberto`; o setor inicial e `Educacao`.
-- O botao `Gerenciar` assume o pedido e move `Em Aberto` ou `Reaberto` para `Em Analise`, respeitando o setor operacional do usuario.
+- O botao `Gerenciar` assume o pedido e move `Em Aberto`, `Encaminhado ao Setor` ou `Reaberto` para `Em Analise`, respeitando o setor operacional do usuario.
 - Educacao pode mover para `Em Manutencao`, `Cancelado` ou encaminhar para Obras.
-- Encaminhar para Obras grava historico `Encaminhado ao Setor`, mas deixa o status atual como `Em Aberto` no setor Obras.
+- Encaminhar para Obras atualiza o status atual para `Encaminhado ao Setor`, muda o setor operacional e grava historico do encaminhamento.
 - Obras pode mover para `Em Manutencao`, `Enviado para Empresa` ou `Cancelado`; empresa responsavel so e exibida/grava para usuario do setor Obras.
 - `Em Andamento` fica inativo. `Concluido`, `Reaberto` e `Pedido Adicional` permanecem como status filtraveis.
 - Pedidos adicionais nascem com status `Pedido Adicional`, `is_pedido_adicional = true` e `pedido_principal_id`.

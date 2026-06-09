@@ -53,7 +53,7 @@ class EditPedido extends EditRecord
         if ($this->novoStatusId && $statusEncaminhado?->id === (int) $this->novoStatusId) {
             app(UserSetorAccessService::class)->assertCanUseSetor($user, $data['setor_id'] ?? null);
             $this->statusEncaminhadoId = $statusEncaminhado->id;
-            $data['tipo_status_id'] = $statusAberto?->id;
+            $data['tipo_status_id'] = $statusEncaminhado->id;
 
             return $data;
         }
@@ -111,14 +111,6 @@ class EditPedido extends EditRecord
                 $this->statusEncaminhadoId,
                 $user,
                 $this->observacaoStatus ?: "Pedido encaminhado para {$setorNome}."
-            );
-
-            $service->registrarHistorico(
-                $record,
-                $this->statusEncaminhadoId,
-                $statusNovoId,
-                $user,
-                "Pedido recebido por {$setorNome} com status Em Aberto."
             );
 
             return;

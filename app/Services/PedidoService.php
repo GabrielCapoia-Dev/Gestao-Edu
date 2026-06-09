@@ -469,10 +469,9 @@ class PedidoService
 
             $statusAnteriorId = $pedido->tipo_status_id;
             $statusEncaminhado = $this->statusPorNome('Encaminhado ao Setor', true);
-            $statusAberto = $this->statusPorNome('Em Aberto', true);
 
             $pedido->update([
-                'tipo_status_id' => $statusAberto->id,
+                'tipo_status_id' => $statusEncaminhado->id,
                 'setor_id' => $setorDestino->id,
                 'responsavel_id' => $usuario->id,
             ]);
@@ -483,14 +482,6 @@ class PedidoService
                 $statusEncaminhado->id,
                 $usuario,
                 $descricao ?: "Pedido encaminhado para o setor {$setorDestino->nome}."
-            );
-
-            $this->registrarHistorico(
-                $pedido,
-                $statusEncaminhado->id,
-                $statusAberto->id,
-                $usuario,
-                "Pedido recebido pelo setor {$setorDestino->nome} com status Em Aberto."
             );
         });
     }
@@ -557,13 +548,14 @@ class PedidoService
     {
         $statusEmAberto = $this->statusPorNome('Em Aberto');
         $statusReaberto = $this->statusPorNome('Reaberto');
+        $statusEncaminhado = $this->statusPorNome('Encaminhado ao Setor');
         $statusAnalise = $this->statusPorNome('Em Análise');
 
         if (! $statusAnalise) {
             return;
         }
 
-        $statusPermitidos = collect([$statusEmAberto?->id, $statusReaberto?->id])
+        $statusPermitidos = collect([$statusEmAberto?->id, $statusReaberto?->id, $statusEncaminhado?->id])
             ->filter()
             ->all();
 
