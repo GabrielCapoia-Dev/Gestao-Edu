@@ -16,8 +16,10 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\MenuItem;
 use Filament\Panel;
 use Filament\PanelProvider;
+use Filament\Support\Icons\Heroicon;
 use Filament\View\PanelsRenderHook;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -37,6 +39,13 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->login([AdminLoginController::class, 'show'])
             ->profile()
+            ->userMenuItems([
+                MenuItem::make()
+                    ->label('Trocar de Usuário')
+                    ->url(fn () => route('filament.admin.pages.profile-preview'))
+                    ->icon(Heroicon::ArrowsRightLeft)
+                    ->sort(1),
+            ])
             ->darkMode(false)
             ->colors([
                 'primary' => [
@@ -90,18 +99,6 @@ class AdminPanelProvider extends PanelProvider
                 EnsurePasswordIsChanged::class,
                 BloquearProfessorPendenciaTransferencia::class,
             ], isPersistent: true)
-            ->renderHook(
-                PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
-                function (): string {
-                    $preview = app(\App\Services\ProfilePreviewService::class);
-
-                    if (! $preview->canControl()) {
-                        return '';
-                    }
-
-                    return '<livewire:profile-preview-topbar />';
-                }
-            )
             ->renderHook(
                 PanelsRenderHook::USER_MENU_BEFORE,
                 function () {

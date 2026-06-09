@@ -180,11 +180,6 @@
     line-height: 1;
 }
 
-.fi-topbar-end > [wire\:id] {
-    display: inline-flex;
-    align-items: center;
-}
-
 .profile-preview-topbar {
     display: inline-flex;
     align-items: center;
