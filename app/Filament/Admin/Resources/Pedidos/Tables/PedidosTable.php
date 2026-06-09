@@ -41,6 +41,7 @@ use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Filament\Tables\Enums\RecordActionsPosition;
 
 class PedidosTable
 {
@@ -60,7 +61,7 @@ class PedidosTable
             ->columns(static::columns($user))
             ->filters(static::filters($user), layout: FiltersLayout::AboveContent)
             ->filtersFormColumns(12)
-            ->recordActions(static::actions($user, $service))
+            ->recordActions(static::actions($user, $service), position: RecordActionsPosition::BeforeColumns)
             ->groupedBulkActions(static::bulkActions($user, $service))
             ->headerActions(static::headerActions($user));
     }
@@ -214,6 +215,10 @@ class PedidosTable
                 ->label('Protocolo')
                 ->searchable()
                 ->sortable()
+                ->copyable()
+                ->copyMessage('Copiado')
+                ->copyMessageDuration(1500)
+                ->tooltip('Clique para copiar')
                 ->weight('bold'),
 
             TextColumn::make('pedidoPrincipal.numero_protocolo')
@@ -322,7 +327,7 @@ class PedidosTable
                 ->description('Atualizado em:', position: 'above')
                 ->alignEnd()
                 ->toggleable(isToggledHiddenByDefault: true),
-                
+
         ];
     }
 
