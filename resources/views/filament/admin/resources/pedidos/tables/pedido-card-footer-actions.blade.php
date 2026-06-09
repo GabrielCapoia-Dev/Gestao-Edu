@@ -19,7 +19,7 @@
                 color="info"
                 icon="heroicon-o-plus-circle"
                 size="sm"
-                wire:click="mountTableAction('vincular_adicionais', '{{ $recordKey }}')"
+                wire:click.stop.prevent="mountTableAction('vincular_adicionais', '{{ $recordKey }}')"
             >
                 Vincular Adicionais
             </x-filament::button>
@@ -30,7 +30,7 @@
                 color="success"
                 icon="heroicon-o-check-badge"
                 size="sm"
-                wire:click="mountTableAction('finalizar', '{{ $recordKey }}')"
+                wire:click.stop.prevent="mountTableAction('finalizar', '{{ $recordKey }}')"
             >
                 Avaliar Pedido
             </x-filament::button>

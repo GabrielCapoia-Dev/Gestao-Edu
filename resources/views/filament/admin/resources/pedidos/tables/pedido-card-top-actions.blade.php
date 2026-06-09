@@ -19,7 +19,7 @@
                 color="info"
                 icon="heroicon-o-eye"
                 size="sm"
-                wire:click="mountTableAction('visualizar', '{{ $recordKey }}')"
+                wire:click.stop.prevent="mountTableAction('visualizar', '{{ $recordKey }}')"
             >
                 Visualizar
             </x-filament::button>
@@ -30,7 +30,7 @@
                 color="warning"
                 icon="heroicon-o-pencil-square"
                 size="sm"
-                wire:click="mountTableAction('gerenciar', '{{ $recordKey }}')"
+                wire:click.stop.prevent="mountTableAction('gerenciar', '{{ $recordKey }}')"
             >
                 Gerenciar
             </x-filament::button>
