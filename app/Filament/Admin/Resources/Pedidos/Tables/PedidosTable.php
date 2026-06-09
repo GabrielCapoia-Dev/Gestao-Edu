@@ -220,7 +220,8 @@ class PedidosTable
                 ->label('Pedido original')
                 ->badge()
                 ->color('gray')
-                ->placeholder('Pedido principal'),
+                ->placeholder('Pedido principal')
+                ->toggleable(isToggledHiddenByDefault: true),
 
             TextColumn::make('tipoManutencao.nome')
                 ->label('Tipo')
@@ -240,7 +241,8 @@ class PedidosTable
                 ->badge()
                 ->alignCenter()
                 ->color(fn(Pedido $record): string => (int) ($record->pedidos_adicionais_count ?? 0) > 0 ? 'info' : 'gray')
-                ->state(fn(Pedido $record): string => (int) ($record->pedidos_adicionais_count ?? 0) . ' adicional(is)'),
+                ->state(fn(Pedido $record): string => (int) ($record->pedidos_adicionais_count ?? 0) . ' adicional(is)')
+                ->toggleable(isToggledHiddenByDefault: true),
 
             TextColumn::make('tipoStatus.nome')
                 ->alignCenter()
@@ -311,7 +313,7 @@ class PedidosTable
                 ->sortable()
                 ->description('Criado em:', position: 'above')
                 ->alignEnd()
-                ->toggleable(isToggledHiddenByDefault: true),
+                ->toggleable(isToggledHiddenByDefault: false),
 
             TextColumn::make('updated_at')
                 ->label('Atualizado em')
@@ -319,7 +321,8 @@ class PedidosTable
                 ->sortable()
                 ->description('Atualizado em:', position: 'above')
                 ->alignEnd()
-                ->toggleable(isToggledHiddenByDefault: false),
+                ->toggleable(isToggledHiddenByDefault: true),
+                
         ];
     }
 
