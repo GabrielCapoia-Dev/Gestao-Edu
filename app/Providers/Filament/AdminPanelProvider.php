@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Admin\Pages\Auth\EditProfile as CustomEditProfile;
+use App\Filament\Admin\Resources\Pedidos\Pages\ListPedidos;
 use App\Http\Controllers\Auth\AdminLoginController;
 use App\Http\Middleware\BloquearProfessorPendenciaTransferencia;
 use App\Http\Middleware\EnsurePasswordIsChanged;
@@ -120,6 +121,11 @@ class AdminPanelProvider extends PanelProvider
             ->renderHook(
                 PanelsRenderHook::HEAD_END,
                 fn (): \Illuminate\Contracts\View\View => view('filament.pages.partials.panel-layering-styles')
+            )
+            ->renderHook(
+                PanelsRenderHook::HEAD_END,
+                fn (): \Illuminate\Contracts\View\View => view('filament.pages.partials.pedidos-responsive-table-styles'),
+                ListPedidos::class
             )
             ->plugins([
                 AuthDesignerPlugin::make()
