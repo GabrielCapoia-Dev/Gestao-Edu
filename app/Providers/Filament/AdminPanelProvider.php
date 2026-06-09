@@ -43,12 +43,12 @@ class AdminPanelProvider extends PanelProvider
             ->login([AdminLoginController::class, 'show'])
             ->profile()
             ->userMenuItems([
-                \Filament\Pages\Auth\EditProfile::class,
                 Action::make('profilePreview')
                     ->label(fn () => app(ProfilePreviewService::class)->isActive() ? 'Sair do modo visualização' : 'Trocar de Usuário')
                     ->icon(fn () => app(ProfilePreviewService::class)->isActive() ? Heroicon::ArrowUturnLeft : Heroicon::ArrowsRightLeft)
                     ->color(fn () => app(ProfilePreviewService::class)->isActive() ? 'danger' : null)
                     ->visible(fn () => app(ProfilePreviewService::class)->canControl())
+                    ->sort(1)
                     ->modalHeading(fn () => app(ProfilePreviewService::class)->isActive() ? 'Sair do modo visualização' : 'Trocar de Usuário')
                     ->modalSubmitActionLabel(fn () => app(ProfilePreviewService::class)->isActive() ? 'Voltar à normalidade' : 'Ativar visualização')
                     ->form(fn () => [
