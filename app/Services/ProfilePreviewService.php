@@ -37,11 +37,19 @@ class ProfilePreviewService
             'target_user_id' => (int) $targetUser->getKey(),
             'started_at' => now()->toISOString(),
         ]);
+
+        Auth::login($targetUser);
     }
 
     public function stop(): void
     {
+        $realUserId = $this->realUserId();
+
         session()->forget(self::SESSION_KEY);
+
+        if ($realUserId) {
+            Auth::loginUsingId($realUserId);
+        }
     }
 
     public function isActive(): bool

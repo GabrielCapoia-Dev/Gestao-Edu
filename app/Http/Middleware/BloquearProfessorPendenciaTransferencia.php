@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\Aluno;
 use App\Services\AlunoTransferenciaPendenteService;
+use App\Services\ProfilePreviewService;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -12,6 +13,10 @@ class BloquearProfessorPendenciaTransferencia
 {
     public function handle(Request $request, Closure $next): Response
     {
+        if (app(ProfilePreviewService::class)->isActive()) {
+            return $next($request);
+        }
+
         /** @var Aluno|null $alunoOrigem */
         $alunoOrigem = app(AlunoTransferenciaPendenteService::class)
             ->pendenciaAtivaParaProfessor($request->user());

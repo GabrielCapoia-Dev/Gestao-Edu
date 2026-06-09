@@ -6,7 +6,6 @@ use App\Filament\Admin\Pages\Auth\EditProfile as CustomEditProfile;
 use App\Filament\Admin\Resources\Pedidos\Pages\ListPedidos;
 use App\Http\Controllers\Auth\AdminLoginController;
 use App\Http\Middleware\BloquearProfessorPendenciaTransferencia;
-use App\Http\Middleware\ApplyProfilePreviewUser;
 use App\Http\Middleware\BlockProfilePreviewWrites;
 use App\Http\Middleware\EnsurePasswordIsChanged;
 use App\Models\User;
@@ -142,7 +141,6 @@ class AdminPanelProvider extends PanelProvider
                 AddQueuedCookiesToResponse::class,
                 StartSession::class,
                 AuthenticateSession::class,
-                ApplyProfilePreviewUser::class,
                 BlockProfilePreviewWrites::class,
                 ShareErrorsFromSession::class,
                 VerifyCsrfToken::class,

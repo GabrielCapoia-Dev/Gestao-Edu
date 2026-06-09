@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\User;
+use App\Services\ProfilePreviewService;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -11,6 +12,10 @@ class EnsurePasswordIsChanged
 {
     public function handle(Request $request, Closure $next): Response
     {
+        if (app(ProfilePreviewService::class)->isActive()) {
+            return $next($request);
+        }
+
         $user = $request->user();
 
         if (! $user instanceof User || ! $user->must_change_password) {
