@@ -8,15 +8,18 @@ use App\Http\Controllers\Auth\AdminLoginController;
 use App\Http\Middleware\BloquearProfessorPendenciaTransferencia;
 use App\Http\Middleware\EnsurePasswordIsChanged;
 use App\Models\User;
+use App\Services\ProfilePreviewService;
 use App\Services\UserPresenceService;
 use Caresome\FilamentAuthDesigner\AuthDesignerPlugin;
 use Caresome\FilamentAuthDesigner\Data\AuthPageConfig;
 use Caresome\FilamentAuthDesigner\Enums\MediaPosition;
+use Filament\Actions\Action;
+use Filament\Forms\Components\Select;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Filament\Navigation\MenuItem;
+use Filament\Notifications\Notification;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Icons\Heroicon;
@@ -40,11 +43,60 @@ class AdminPanelProvider extends PanelProvider
             ->login([AdminLoginController::class, 'show'])
             ->profile()
             ->userMenuItems([
-                MenuItem::make()
-                    ->label('Trocar de Usuário')
-                    ->url(fn () => route('filament.admin.pages.profile-preview'))
-                    ->icon(Heroicon::ArrowsRightLeft)
-                    ->sort(1),
+                \Filament\Pages\Auth\EditProfile::class,
+                Action::make('profilePreview')
+                    ->label(fn () => app(ProfilePreviewService::class)->isActive() ? 'Sair do modo visualização' : 'Trocar de Usuário')
+                    ->icon(fn () => app(ProfilePreviewService::class)->isActive() ? Heroicon::ArrowUturnLeft : Heroicon::ArrowsRightLeft)
+                    ->color(fn () => app(ProfilePreviewService::class)->isActive() ? 'danger' : null)
+                    ->visible(fn () => app(ProfilePreviewService::class)->canControl())
+                    ->modalHeading(fn () => app(ProfilePreviewService::class)->isActive() ? 'Sair do modo visualização' : 'Trocar de Usuário')
+                    ->modalSubmitActionLabel(fn () => app(ProfilePreviewService::class)->isActive() ? 'Voltar à normalidade' : 'Ativar visualização')
+                    ->form(fn () => [
+                        Select::make('target_user_id')
+                            ->label('Usuário para visualizar')
+                            ->options(fn () => User::query()
+                                ->where('email_approved', true)
+                                ->orderBy('name')
+                                ->pluck('name', 'id')
+                                ->mapWithKeys(fn ($name, $id) => [$id => $name . ' (#' . $id . ')']))
+                            ->searchable()
+                            ->required()
+                            ->placeholder('Selecione um usuário...')
+                            ->visible(fn () => ! app(ProfilePreviewService::class)->isActive()),
+                    ])
+                    ->action(function (array $data) {
+                        $preview = app(ProfilePreviewService::class);
+                        $realUser = $preview->controlUser();
+
+                        if ($preview->isActive()) {
+                            $preview->stop();
+
+                            Notification::make()
+                                ->title('Modo visualização finalizado')
+                                ->body('Seu acesso normal foi restaurado.')
+                                ->success()
+                                ->send();
+
+                            return;
+                        }
+
+                        if (! $realUser || ! $preview->canControl($realUser)) {
+                            Notification::make()
+                                ->title('Sem permissão')
+                                ->danger()
+                                ->send();
+
+                            return;
+                        }
+
+                        $preview->start((int) $data['target_user_id'], $realUser);
+
+                        Notification::make()
+                            ->title('Modo visualização ativado')
+                            ->body('Você está navegando como outro usuário. Ações de escrita serão bloqueadas.')
+                            ->success()
+                            ->send();
+                    }),
             ])
             ->darkMode(false)
             ->colors([
