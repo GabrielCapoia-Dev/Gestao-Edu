@@ -41,6 +41,7 @@ class BlockProfilePreviewWrites
             'profile-preview.start',
             'profile-preview.stop',
             'presence.heartbeat',
+            'livewire.update',
         ], true)) {
             return true;
         }
