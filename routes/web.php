@@ -30,9 +30,9 @@ use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return redirect()->route('filament.admin.auth.login');
-});
+Route::view('/', 'public.home')->name('public.home');
+Route::view('/politica-de-privacidade', 'public.privacy')->name('public.privacy');
+Route::view('/termos-de-servico', 'public.terms')->name('public.terms');
 Route::get('/background', function () {
     return view('background-page');
 });
