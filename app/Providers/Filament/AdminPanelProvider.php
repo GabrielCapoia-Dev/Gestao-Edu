@@ -16,6 +16,7 @@ use Caresome\FilamentAuthDesigner\AuthDesignerPlugin;
 use Caresome\FilamentAuthDesigner\Data\AuthPageConfig;
 use Caresome\FilamentAuthDesigner\Enums\MediaPosition;
 use Filament\Actions\Action;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -80,7 +81,7 @@ class AdminPanelProvider extends PanelProvider
                                 ->success()
                                 ->send();
 
-                            return;
+                            return redirect()->to($this->profilePreviewRefreshUrl());
                         }
 
                         if (! $realUser || ! $preview->canControl($realUser)) {
@@ -99,6 +100,8 @@ class AdminPanelProvider extends PanelProvider
                             ->body('Você está navegando como outro usuário. Ações de escrita serão bloqueadas.')
                             ->success()
                             ->send();
+
+                        return redirect()->to($this->profilePreviewRefreshUrl());
                     }),
             ])
             ->darkMode(false)
@@ -207,5 +210,25 @@ class AdminPanelProvider extends PanelProvider
                             ->usingPage(CustomEditProfile::class)
                     ),
             ]);
+    }
+
+    private function profilePreviewRefreshUrl(): string
+    {
+        $fallback = Filament::getPanel('admin')->getUrl();
+        $referer = request()->headers->get('referer');
+
+        if (! is_string($referer) || blank($referer)) {
+            return $fallback;
+        }
+
+        if (str_starts_with($referer, '/') && ! str_starts_with($referer, '//')) {
+            return url($referer);
+        }
+
+        if (parse_url($referer, PHP_URL_HOST) === request()->getHost()) {
+            return $referer;
+        }
+
+        return $fallback;
     }
 }
