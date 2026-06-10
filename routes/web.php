@@ -1,8 +1,8 @@
 <?php
 
-use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\Auth\AdminLoginController;
 use App\Http\Controllers\Auth\ForcePasswordChangeController;
+use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\AvaliacaoDocumentoExportController;
 use App\Http\Controllers\BaixasEstoqueRelatorioController;
 use App\Http\Controllers\BalancoEstoqueRelatorioController;
@@ -13,13 +13,15 @@ use App\Http\Controllers\FeedbackPedidoExportController;
 use App\Http\Controllers\InventarioRelatorioController;
 use App\Http\Controllers\InventarioRomaneioController;
 use App\Http\Controllers\MaintenanceController;
-use App\Http\Controllers\ProfilePreviewController;
-use App\Http\Middleware\EnsurePasswordIsChanged;
 use App\Http\Controllers\NotificationCenterController;
 use App\Http\Controllers\PedidoArquivoController;
 use App\Http\Controllers\PedidoMerendaEmpenhoController;
 use App\Http\Controllers\PedidoRelatorioGeralController;
+use App\Http\Controllers\ProfilePreviewController;
 use App\Http\Controllers\UserPresenceController;
+use App\Http\Middleware\ApplyProfilePreviewUser;
+use App\Http\Middleware\BlockProfilePreviewWrites;
+use App\Http\Middleware\EnsurePasswordIsChanged;
 use App\Models\Pedido;
 use App\Models\User;
 use App\Notifications\SistemaNotification;
@@ -104,7 +106,7 @@ Route::post('/admin/login', [AdminLoginController::class, 'store'])
     ->name('admin.login.store');
 
 Route::prefix('admin')
-    ->middleware(['web', 'auth', EnsurePasswordIsChanged::class])
+    ->middleware(['web', 'auth', ApplyProfilePreviewUser::class, BlockProfilePreviewWrites::class, EnsurePasswordIsChanged::class])
     ->group(function () {
         Route::post('/profile-preview/start', [ProfilePreviewController::class, 'start'])
             ->name('profile-preview.start');

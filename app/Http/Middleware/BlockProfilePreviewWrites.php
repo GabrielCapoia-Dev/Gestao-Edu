@@ -41,9 +41,12 @@ class BlockProfilePreviewWrites
             'profile-preview.start',
             'profile-preview.stop',
             'presence.heartbeat',
-            'livewire.update',
         ], true)) {
             return true;
+        }
+
+        if ($routeName === 'livewire.update') {
+            return $this->isProfilePreviewLivewireAction($request);
         }
 
         if (str_contains($routeName, 'filament.admin.auth.logout')) {
@@ -53,5 +56,19 @@ class BlockProfilePreviewWrites
         }
 
         return false;
+    }
+
+    private function isProfilePreviewLivewireAction(Request $request): bool
+    {
+        $containsProfilePreviewAction = false;
+        $payload = $request->all();
+
+        array_walk_recursive($payload, function ($value) use (&$containsProfilePreviewAction): void {
+            if ($value === 'profilePreview') {
+                $containsProfilePreviewAction = true;
+            }
+        });
+
+        return $containsProfilePreviewAction;
     }
 }

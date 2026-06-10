@@ -13,12 +13,12 @@ class ProfilePreviewController extends Controller
 {
     public function start(Request $request, ProfilePreviewService $preview): RedirectResponse
     {
-        /** @var User $user */
-        $user = $request->user();
-
         $data = $request->validate([
             'target_user_id' => ['required', 'integer', 'exists:users,id'],
         ]);
+
+        /** @var User $user */
+        $user = $preview->controlUser() ?? $request->user();
 
         $preview->start((int) $data['target_user_id'], $user);
 

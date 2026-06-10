@@ -5,8 +5,9 @@ namespace App\Providers\Filament;
 use App\Filament\Admin\Pages\Auth\EditProfile as CustomEditProfile;
 use App\Filament\Admin\Resources\Pedidos\Pages\ListPedidos;
 use App\Http\Controllers\Auth\AdminLoginController;
-use App\Http\Middleware\BloquearProfessorPendenciaTransferencia;
+use App\Http\Middleware\ApplyProfilePreviewUser;
 use App\Http\Middleware\BlockProfilePreviewWrites;
+use App\Http\Middleware\BloquearProfessorPendenciaTransferencia;
 use App\Http\Middleware\EnsurePasswordIsChanged;
 use App\Models\User;
 use App\Services\ProfilePreviewService;
@@ -25,6 +26,7 @@ use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Icons\Heroicon;
 use Filament\View\PanelsRenderHook;
+use Illuminate\Contracts\View\View;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -59,7 +61,7 @@ class AdminPanelProvider extends PanelProvider
                                 ->where('email_approved', true)
                                 ->orderBy('name')
                                 ->pluck('name', 'id')
-                                ->mapWithKeys(fn ($name, $id) => [$id => $name . ' (#' . $id . ')']))
+                                ->mapWithKeys(fn ($name, $id) => [$id => $name.' (#'.$id.')']))
                             ->searchable()
                             ->required()
                             ->placeholder('Selecione um usuário...')
@@ -141,6 +143,7 @@ class AdminPanelProvider extends PanelProvider
                 AddQueuedCookiesToResponse::class,
                 StartSession::class,
                 AuthenticateSession::class,
+                ApplyProfilePreviewUser::class,
                 BlockProfilePreviewWrites::class,
                 ShareErrorsFromSession::class,
                 VerifyCsrfToken::class,
@@ -175,23 +178,23 @@ class AdminPanelProvider extends PanelProvider
             )
             ->renderHook(
                 PanelsRenderHook::BODY_START,
-                fn (): \Illuminate\Contracts\View\View => view('filament.partials.profile-preview-body-state')
+                fn (): View => view('filament.partials.profile-preview-body-state')
             )
             ->renderHook(
                 PanelsRenderHook::BODY_END,
-                fn (): \Illuminate\Contracts\View\View => view('components.user-presence-heartbeat')
+                fn (): View => view('components.user-presence-heartbeat')
             )
             ->renderHook(
                 PanelsRenderHook::HEAD_END,
-                fn (): \Illuminate\Contracts\View\View => view('filament.pages.partials.inventory-page-styles')
+                fn (): View => view('filament.pages.partials.inventory-page-styles')
             )
             ->renderHook(
                 PanelsRenderHook::HEAD_END,
-                fn (): \Illuminate\Contracts\View\View => view('filament.pages.partials.panel-layering-styles')
+                fn (): View => view('filament.pages.partials.panel-layering-styles')
             )
             ->renderHook(
                 PanelsRenderHook::HEAD_END,
-                fn (): \Illuminate\Contracts\View\View => view('filament.pages.partials.pedidos-responsive-table-styles'),
+                fn (): View => view('filament.pages.partials.pedidos-responsive-table-styles'),
                 ListPedidos::class
             )
             ->plugins([

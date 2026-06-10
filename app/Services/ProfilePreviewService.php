@@ -37,8 +37,6 @@ class ProfilePreviewService
             'target_user_id' => (int) $targetUser->getKey(),
             'started_at' => now()->toISOString(),
         ]);
-
-        Auth::login($targetUser);
     }
 
     public function stop(): void
@@ -48,7 +46,11 @@ class ProfilePreviewService
         session()->forget(self::SESSION_KEY);
 
         if ($realUserId) {
-            Auth::loginUsingId($realUserId);
+            $realUser = User::query()->find($realUserId);
+
+            if ($realUser) {
+                Auth::setUser($realUser);
+            }
         }
     }
 
