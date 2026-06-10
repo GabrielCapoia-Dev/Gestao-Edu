@@ -71,13 +71,10 @@
         }
 
         .brand img {
-            width: 42px;
-            height: 42px;
+            width: 180px;
+            max-width: 42vw;
+            height: auto;
             object-fit: contain;
-        }
-
-        .brand span {
-            color: var(--gold);
         }
 
         .links {
@@ -112,9 +109,7 @@
 
         .hero {
             color: var(--white);
-            background:
-                linear-gradient(135deg, rgba(7, 48, 95, 0.95), rgba(7, 87, 166, 0.90)),
-                url('/images/background.webp') center / cover;
+            background: linear-gradient(135deg, var(--blue-dark), var(--blue));
             padding: 78px 0 72px;
         }
 
@@ -246,9 +241,23 @@
 
         .footer-grid {
             display: flex;
+            align-items: center;
             justify-content: space-between;
             gap: 24px;
             flex-wrap: wrap;
+        }
+
+        .footer-brand {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            flex-wrap: wrap;
+        }
+
+        .footer-brand img {
+            height: 54px;
+            max-width: 220px;
+            object-fit: contain;
         }
 
         .footer a {
@@ -289,8 +298,7 @@
         <header class="topbar">
             <div class="wrap nav">
                 <a class="brand" href="{{ route('public.home', [], false) }}" aria-label="Gestao Edu">
-                    <img src="/images/brasao-umuarama.png" alt="Brasao de Umuarama">
-                    <strong>Gestao <span>Edu</span></strong>
+                    <img src="/images/logo-educacao.png" alt="Secretaria Municipal de Educacao de Umuarama">
                 </a>
 
                 <nav class="links" aria-label="Navegacao publica">
@@ -308,9 +316,9 @@
 
         <footer class="footer">
             <div class="wrap footer-grid">
-                <div>
-                    <strong>Gestao Edu</strong>
-                    <p>Secretaria Municipal de Educacao de Umuarama - PR</p>
+                <div class="footer-brand">
+                    <img src="/images/logo-umuarma-educacao.png" alt="Prefeitura de Umuarama e Secretaria Municipal de Educacao">
+                    <img src="/images/abrinq-logo.png" alt="Fundacao Abrinq">
                 </div>
                 <div class="links">
                     <a href="{{ route('public.privacy', [], false) }}">Politica de Privacidade</a>
