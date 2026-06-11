@@ -86,6 +86,18 @@ class PedidoService
         return $user?->hasPermissionTo('Vincular Pedidos Adicionais') ?? false;
     }
 
+    public function podeVincularAdicionaisAoPedido(Pedido $pedido, ?User $user): bool
+    {
+        return $this->podeVincularAdicionais($user)
+            && $this->podeExecutarAcaoDaEscolaOuSetor($pedido, $user);
+    }
+
+    public function podeAvaliarRegistro(Pedido $pedido, ?User $user): bool
+    {
+        return ($user?->hasPermissionTo('Avaliar Pedidos') ?? false)
+            && $this->podeExecutarAcaoDaEscolaOuSetor($pedido, $user);
+    }
+
     public function podeCancelarPedidoAdicional(Pedido $adicional, ?User $user): bool
     {
         $principal = $adicional->pedidoPrincipal;
@@ -406,9 +418,9 @@ class PedidoService
 
     public function criarPedidosAdicionais(Pedido $pedidoPrincipal, array $adicionais, User $usuario): Collection
     {
-        if (! $this->podeVincularAdicionais($usuario) || ! $this->setorPodeEditarRegistro($pedidoPrincipal, $usuario)) {
+        if (! $this->podeVincularAdicionaisAoPedido($pedidoPrincipal, $usuario)) {
             throw ValidationException::withMessages([
-                'pedidos_adicionais' => 'Seu setor nao possui autorizacao para vincular pedidos adicionais a este pedido.',
+                'pedidos_adicionais' => 'Voce nao possui autorizacao para vincular pedidos adicionais a este pedido.',
             ]);
         }
 
@@ -799,9 +811,9 @@ class PedidoService
 
     public function avaliarPedido(Pedido $pedido, array $data, User $usuario): ?FeedbackPedido
     {
-        if (! $usuario->hasPermissionTo('Avaliar Pedidos') || ! $this->setorPodeEditarRegistro($pedido, $usuario)) {
+        if (! $this->podeAvaliarRegistro($pedido, $usuario)) {
             throw ValidationException::withMessages([
-                'pedido' => 'Seu setor nao possui autorizacao para avaliar este pedido.',
+                'pedido' => 'Voce nao possui autorizacao para avaliar este pedido.',
             ]);
         }
 
@@ -989,6 +1001,27 @@ class PedidoService
         if ($errors !== []) {
             throw ValidationException::withMessages($errors);
         }
+    }
+
+    private function podeExecutarAcaoDaEscolaOuSetor(Pedido $pedido, ?User $user): bool
+    {
+        if (
+            ! $user
+            || ! $pedido->ativo
+            || $pedido->is_pedido_adicional
+            || $pedido->tipoStatus?->finaliza_pedido
+            || $pedido->tipoStatus?->cancela_pedido
+            || ! in_array($pedido->tipoStatus?->nome, $this->aliasesTexto('Em Manutenção'), true)
+        ) {
+            return false;
+        }
+
+        if ($this->setorPodeEditarRegistro($pedido, $user)) {
+            return true;
+        }
+
+        return filled($pedido->escola_id)
+            && in_array((int) $pedido->escola_id, $this->escolaIdsParaEscopo($user), true);
     }
 
     private function validarPedidosAdicionais(array $adicionais, bool $exigirAvaliacao): void

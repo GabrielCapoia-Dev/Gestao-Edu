@@ -773,6 +773,83 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
         ]);
     }
 
+    public function test_usuario_da_escola_pode_adicionar_e_avaliar_pedido_em_manutencao_em_outro_setor(): void
+    {
+        $usuario = $this->usuarioComPermissoes([
+            'Listar Pedidos',
+            'Avaliar Pedidos',
+            'Vincular Pedidos Adicionais',
+        ]);
+        $usuario->forceFill([
+            'id_escola' => $this->escola->id,
+            'setor_id' => $this->escola->setor_id,
+        ])->save();
+        $usuario->escolas()->attach($this->escola->id);
+
+        $pedido = $this->pedido(status: 'Em Manutenção', setor: $this->obras, escola: $this->escola);
+        $problema = $pedido->problemas()->create([
+            'tipo_manutencao_id' => $this->tipo->id,
+            'tipo_manutencao_opcao_id' => $this->opcaoLuz->id,
+            'texto_problema' => $this->opcaoLuz->texto,
+        ]);
+
+        $this->assertFalse($this->service->podeGerenciarRegistro($pedido, $usuario));
+        $this->assertTrue($this->service->podeVincularAdicionaisAoPedido($pedido, $usuario));
+        $this->assertTrue($this->service->podeAvaliarRegistro($pedido, $usuario));
+
+        $outraEscola = Escola::create([
+            'codigo' => '002',
+            'nome' => 'Outra Escola',
+            'setor_id' => $this->escola->setor_id,
+            'ativo' => true,
+        ]);
+        $usuarioOutraEscola = $this->usuarioComPermissoes([
+            'Avaliar Pedidos',
+            'Vincular Pedidos Adicionais',
+        ]);
+        $usuarioOutraEscola->forceFill([
+            'id_escola' => $outraEscola->id,
+            'setor_id' => $outraEscola->setor_id,
+        ])->save();
+        $usuarioOutraEscola->escolas()->attach($outraEscola->id);
+
+        $this->assertFalse($this->service->podeVincularAdicionaisAoPedido($pedido, $usuarioOutraEscola));
+        $this->assertFalse($this->service->podeAvaliarRegistro($pedido, $usuarioOutraEscola));
+
+        Livewire::actingAs($usuario)
+            ->test(ListPedidos::class)
+            ->assertTableActionHidden('gerenciar', $pedido)
+            ->assertTableActionVisible('vincular_adicionais', $pedido)
+            ->assertTableActionVisible('finalizar', $pedido);
+
+        $adicional = $this->service->criarPedidosAdicionais($pedido, [[
+            'tipo_manutencao_id' => $this->tipo->id,
+            'tipo_manutencao_opcao_ids' => [$this->opcaoDisjuntor->id],
+            'data_identificacao_problema' => '2026-06-11',
+            'descricao_pedido' => 'Problema adicional informado pela escola.',
+            'arquivos' => $this->fotosAdicional(),
+        ]], $usuario)->firstOrFail();
+
+        $this->service->avaliarPedido($pedido, [
+            'avaliacoes' => [
+                $problema->id => [
+                    'valor' => 5,
+                    'resultado' => ResultadoFeedbackPedido::Atendido->value,
+                    'comentario' => 'Problema principal atendido.',
+                ],
+                $adicional->problemas()->firstOrFail()->id => [
+                    'valor' => 4,
+                    'resultado' => ResultadoFeedbackPedido::Atendido->value,
+                    'comentario' => 'Problema adicional atendido.',
+                ],
+            ],
+            'reabrir_pedido' => false,
+            'descricao' => 'Atendimento avaliado pela escola solicitante.',
+        ], $usuario);
+
+        $this->assertSame('Concluído', $pedido->refresh()->tipoStatus->nome);
+    }
+
     public function test_avaliar_pedido_com_adicional_na_tabela_conclui_sem_redirecionar(): void
     {
         $usuario = $this->usuarioComRoleSetor('Manutenção: Educação', $this->educacao, [

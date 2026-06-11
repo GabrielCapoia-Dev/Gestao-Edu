@@ -560,8 +560,7 @@ class PedidosTable
                 ->color('info')
                 ->visible(fn (Pedido $record) => static::statusEh($record, 'Em Manutenção')
                     && ! $record->is_pedido_adicional
-                    && $service->podeVincularAdicionais($user)
-                    && $service->setorPodeEditarRegistro($record, $user))
+                    && $service->podeVincularAdicionaisAoPedido($record, $user))
                 ->modalHeading('Vincular pedidos adicionais')
                 ->modalSubmitActionLabel('Vincular')
                 ->schema([
@@ -585,8 +584,7 @@ class PedidosTable
                 ->color('success')
                 ->visible(fn (Pedido $record) => static::statusEh($record, 'Em Manutenção')
                     && ! $record->is_pedido_adicional
-                    && ($user?->hasPermissionTo('Avaliar Pedidos') ?? false)
-                    && $service->setorPodeEditarRegistro($record, $user))
+                    && $service->podeAvaliarRegistro($record, $user))
                 ->modalHeading('Avaliar Pedido')
                 ->modalDescription('Registre a avaliação do atendimento ou reabra o pedido para que ele volte ao fluxo operacional.')
                 ->modalSubmitActionLabel('Confirmar Avaliação')
@@ -636,16 +634,14 @@ class PedidosTable
 
         return static::statusEh($record, 'Em Manutenção')
             && ! $record->is_pedido_adicional
-            && $service->podeVincularAdicionais($user)
-            && $service->setorPodeEditarRegistro($record, $user);
+            && $service->podeVincularAdicionaisAoPedido($record, $user);
     }
 
     public static function podeExibirAcaoFinalizar(Pedido $record, ?User $user): bool
     {
         return static::statusEh($record, 'Em Manutenção')
             && ! $record->is_pedido_adicional
-            && ($user?->hasPermissionTo('Avaliar Pedidos') ?? false)
-            && app(PedidoService::class)->setorPodeEditarRegistro($record, $user);
+            && app(PedidoService::class)->podeAvaliarRegistro($record, $user);
     }
 
     public static function bulkActions(?User $user, PedidoService $service): array
@@ -1105,15 +1101,27 @@ class PedidosTable
             return 'Encerrado';
         }
 
-        return app(PedidoService::class)->podeGerenciarRegistro($record, $user)
-            ? 'Gerenciavel'
-            : 'Somente leitura';
+        $service = app(PedidoService::class);
+
+        if ($service->podeGerenciarRegistro($record, $user)) {
+            return 'Gerenciavel';
+        }
+
+        if (
+            $service->podeVincularAdicionaisAoPedido($record, $user)
+            || $service->podeAvaliarRegistro($record, $user)
+        ) {
+            return 'Acoes da escola';
+        }
+
+        return 'Somente leitura';
     }
 
     private static function corAcessoOperacional(Pedido $record, ?User $user): string
     {
         return match (static::rotuloAcessoOperacional($record, $user)) {
             'Gerenciavel' => 'success',
+            'Acoes da escola' => 'info',
             'Encerrado' => 'gray',
             default => 'warning',
         };
@@ -1123,6 +1131,7 @@ class PedidosTable
     {
         return match (static::rotuloAcessoOperacional($record, $user)) {
             'Gerenciavel' => 'heroicon-o-pencil-square',
+            'Acoes da escola' => 'heroicon-o-building-office-2',
             'Encerrado' => 'heroicon-o-lock-closed',
             default => 'heroicon-o-eye',
         };
