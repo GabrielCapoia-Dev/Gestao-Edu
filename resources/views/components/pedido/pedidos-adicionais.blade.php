@@ -75,6 +75,20 @@
             gap: 0.45rem;
         }
 
+        .pedido-adicionais-modal__header-actions {
+            align-items: flex-end;
+            display: flex;
+            flex-direction: column;
+            gap: 0.55rem;
+        }
+
+        .pedido-adicionais-modal__actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.45rem;
+            justify-content: flex-end;
+        }
+
         .pedido-adicionais-modal__badge {
             align-items: center;
             background: color-mix(in srgb, var(--badge-color) 12%, #ffffff);
@@ -279,6 +293,15 @@
             .pedido-adicionais-modal__imagens {
                 grid-template-columns: 1fr;
             }
+
+            .pedido-adicionais-modal__header-actions {
+                align-items: flex-start;
+                width: 100%;
+            }
+
+            .pedido-adicionais-modal__actions {
+                justify-content: flex-start;
+            }
         }
     </style>
 @endonce
@@ -317,6 +340,10 @@
                 $notaMedia = $avaliacoes->isNotEmpty()
                     ? number_format((float) $avaliacoes->avg('valor'), 1, ',', '.')
                     : null;
+                $podeCancelar = app(\App\Services\PedidoService::class)
+                    ->podeCancelarPedidoAdicional($adicional, $usuario ?? null);
+                $podePromover = app(\App\Services\PedidoService::class)
+                    ->podePromoverPedidoAdicional($adicional, $usuario ?? null);
             @endphp
 
             <div class="pedido-adicionais-modal__card">
@@ -331,15 +358,45 @@
                         </div>
                     </div>
 
-                    <div class="pedido-adicionais-modal__badges">
-                        <span class="pedido-adicionais-modal__badge" style="--badge-color: {{ $statusCor }}">
-                            {{ $adicional->tipoStatus?->nome ?? 'Pedido Adicional' }}
-                        </span>
-
-                        @if($notaMedia)
-                            <span class="pedido-adicionais-modal__badge" style="--badge-color: #047857">
-                                Nota {{ $notaMedia }}/5
+                    <div class="pedido-adicionais-modal__header-actions">
+                        <div class="pedido-adicionais-modal__badges">
+                            <span class="pedido-adicionais-modal__badge" style="--badge-color: {{ $statusCor }}">
+                                {{ $adicional->tipoStatus?->nome ?? 'Pedido Adicional' }}
                             </span>
+
+                            @if($notaMedia)
+                                <span class="pedido-adicionais-modal__badge" style="--badge-color: #047857">
+                                    Nota {{ $notaMedia }}/5
+                                </span>
+                            @endif
+                        </div>
+
+                        @if($podeCancelar || $podePromover)
+                            <div class="pedido-adicionais-modal__actions">
+                                @if($podePromover)
+                                    <x-filament::button
+                                        type="button"
+                                        size="xs"
+                                        color="warning"
+                                        icon="heroicon-o-arrow-up-circle"
+                                        wire:click="mountTableAction('promover_adicional', '{{ $pedido->getKey() }}', { adicional: {{ $adicional->getKey() }} })"
+                                    >
+                                        Transformar em principal
+                                    </x-filament::button>
+                                @endif
+
+                                @if($podeCancelar)
+                                    <x-filament::button
+                                        type="button"
+                                        size="xs"
+                                        color="danger"
+                                        icon="heroicon-o-x-circle"
+                                        wire:click="mountTableAction('cancelar_adicional', '{{ $pedido->getKey() }}', { adicional: {{ $adicional->getKey() }} })"
+                                    >
+                                        Cancelar adicional
+                                    </x-filament::button>
+                                @endif
+                            </div>
                         @endif
                     </div>
                 </div>

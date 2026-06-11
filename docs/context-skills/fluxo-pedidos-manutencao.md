@@ -34,10 +34,13 @@ Documentar o ciclo de vida de `Pedido`, incluindo criacao, setor operacional, pr
 
 ## Escopo de setor
 
-- `Setor` e apenas agrupamento operacional (`nome` e `ativo`) para manutencao.
-- `roles.setor_id` define quais setores a role carrega.
+- `users.setor_id` define o setor operacional principal; `roles.setor_id` permanece como fallback legado.
+- `setor_acessos` define a matriz entre setor de origem e setor alvo para listar, editar, cancelar e encaminhar pedidos.
+- O proprio setor recebe listar, editar e cancelar automaticamente; encaminhar para ele mesmo permanece bloqueado.
+- Permissoes gerais do usuario e capacidade contextual do setor sao obrigatorias em conjunto.
 - `Listar Todos os Pedidos` continua liberando visao global.
 - Sem setor operacional, o usuario cai para escopo por escola (`id_escola`) quando aplicavel.
+- Usuarios vinculados a escola continuam limitados as escolas vinculadas antes da avaliacao da matriz.
 
 ## Riscos e cuidados
 

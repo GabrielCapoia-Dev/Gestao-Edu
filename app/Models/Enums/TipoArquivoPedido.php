@@ -22,4 +22,13 @@ enum TipoArquivoPedido: string
             self::OUTROS => 'Outros',
         };
     }
+
+    public function exigeImagem(): bool
+    {
+        return in_array($this, [
+            self::FOTOS_PROBLEMA,
+            self::FOTOS_CONCLUSAO,
+            self::PRINTS,
+        ], true);
+    }
 }

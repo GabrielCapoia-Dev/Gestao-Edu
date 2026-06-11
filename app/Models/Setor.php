@@ -6,6 +6,7 @@ use App\Services\SetorHierarchyService;
 use App\Services\UserSetorAccessService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 
@@ -82,6 +83,36 @@ class Setor extends Model
     public function historico()
     {
         return $this->hasMany(self::class, 'registro_anterior_id');
+    }
+
+    public function acessosConcedidos()
+    {
+        return $this->hasMany(SetorAcesso::class, 'setor_origem_id');
+    }
+
+    public function acessosRecebidos()
+    {
+        return $this->hasMany(SetorAcesso::class, 'setor_alvo_id');
+    }
+
+    public function setoresListaveis(): BelongsToMany
+    {
+        return $this->setoresPorCapacidade('pode_listar');
+    }
+
+    public function setoresEditaveis(): BelongsToMany
+    {
+        return $this->setoresPorCapacidade('pode_editar');
+    }
+
+    public function setoresCancelaveis(): BelongsToMany
+    {
+        return $this->setoresPorCapacidade('pode_cancelar');
+    }
+
+    public function setoresEncaminhaveis(): BelongsToMany
+    {
+        return $this->setoresPorCapacidade('pode_encaminhar');
     }
 
     public function descendantsQuery(bool $includeSelf = false): Builder
@@ -197,5 +228,23 @@ class Setor extends Model
         }
 
         $this->encaminha_pedido_para_setor_ids = $ids;
+    }
+
+    private function setoresPorCapacidade(string $capability): BelongsToMany
+    {
+        return $this->belongsToMany(
+            self::class,
+            'setor_acessos',
+            'setor_origem_id',
+            'setor_alvo_id',
+        )
+            ->withPivot([
+                'pode_listar',
+                'pode_editar',
+                'pode_cancelar',
+                'pode_encaminhar',
+            ])
+            ->wherePivot($capability, true)
+            ->withTimestamps();
     }
 }

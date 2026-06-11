@@ -9,10 +9,13 @@ use App\Filament\Admin\Resources\Pedidos\RelationManagers\PedidosAdicionaisRelat
 use App\Models\EmpresaContratada;
 use App\Models\Enums\NivelEmergenciaPedido;
 use App\Models\Enums\ResultadoFeedbackPedido;
+use App\Models\Enums\TipoArquivoPedido;
 use App\Models\Escola;
 use App\Models\Pedido;
+use App\Models\PedidoArquivo;
 use App\Models\Role;
 use App\Models\Setor;
+use App\Models\SetorAcesso;
 use App\Models\TipoManutencao;
 use App\Models\TipoManutencaoOpcao;
 use App\Models\TipoStatus;
@@ -65,6 +68,23 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
             'nome' => 'Escola Teste',
             'setor_id' => $escolaSetor->id,
             'ativo' => true,
+        ]);
+
+        SetorAcesso::create([
+            'setor_origem_id' => $this->educacao->id,
+            'setor_alvo_id' => $this->obras->id,
+            'pode_listar' => true,
+            'pode_editar' => true,
+            'pode_cancelar' => true,
+            'pode_encaminhar' => true,
+        ]);
+
+        SetorAcesso::create([
+            'setor_origem_id' => $escolaSetor->id,
+            'setor_alvo_id' => $this->educacao->id,
+            'pode_listar' => true,
+            'pode_editar' => true,
+            'pode_cancelar' => true,
         ]);
 
         $this->tipo = TipoManutencao::create([
@@ -205,6 +225,104 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
         $this->assertSame('fotos_problema', $arquivo->tipo_arquivo->value);
         $this->assertStringStartsWith('pedidos/', $arquivo->caminho);
         Storage::disk('public')->assertExists($arquivo->caminho);
+    }
+
+    public function test_criacao_rejeita_arquivos_que_nao_sao_imagens_permitidas(): void
+    {
+        Storage::fake('public');
+
+        $usuario = User::factory()->create([
+            'id_escola' => $this->escola->id,
+            'email_approved' => true,
+        ]);
+
+        $arquivosInvalidos = [
+            UploadedFile::fake()->create('fotos.zip', 10, 'application/zip'),
+            UploadedFile::fake()->create('foto.docx', 10, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'),
+            UploadedFile::fake()->create('foto.pdf', 10, 'application/pdf'),
+            UploadedFile::fake()->create('programa.exe', 10, 'application/octet-stream'),
+            UploadedFile::fake()->createWithContent('arquivo-renomeado.jpg', "PK\x03\x04conteudo-zip"),
+        ];
+
+        foreach ($arquivosInvalidos as $arquivoInvalido) {
+            try {
+                $this->service->criarPedido([
+                    'tipo_manutencao_id' => $this->tipo->id,
+                    'tipo_manutencao_opcao_ids' => [$this->opcaoLuz->id],
+                    'data_identificacao_problema' => '2026-05-01',
+                    'descricao_pedido' => 'Tentativa de envio de arquivo invalido.',
+                    'nome_solicitante' => 'Direcao',
+                    'arquivos' => [$arquivoInvalido],
+                ], $usuario);
+
+                $this->fail('O arquivo invalido deveria ter sido rejeitado.');
+            } catch (ValidationException $exception) {
+                $this->assertSame(
+                    'Envie uma imagem JPEG, PNG ou WEBP.',
+                    $exception->errors()['arquivos'][0] ?? null
+                );
+            }
+        }
+
+        $this->assertDatabaseCount('pedidos', 0);
+        $this->assertDatabaseCount('pedido_arquivos', 0);
+        $this->assertSame([], Storage::disk('public')->allFiles());
+    }
+
+    public function test_criacao_remove_do_storage_arquivo_invalido_ja_persistido(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('pedidos/arquivo-renomeado.jpg', "PK\x03\x04conteudo-docx");
+
+        $usuario = User::factory()->create([
+            'id_escola' => $this->escola->id,
+            'email_approved' => true,
+        ]);
+
+        try {
+            $this->service->criarPedido([
+                'tipo_manutencao_id' => $this->tipo->id,
+                'tipo_manutencao_opcao_ids' => [$this->opcaoLuz->id],
+                'data_identificacao_problema' => '2026-05-01',
+                'descricao_pedido' => 'Tentativa com arquivo persistido invalido.',
+                'nome_solicitante' => 'Direcao',
+                'arquivos' => ['pedidos/arquivo-renomeado.jpg'],
+            ], $usuario);
+
+            $this->fail('O arquivo invalido deveria ter sido rejeitado.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('arquivos', $exception->errors());
+        }
+
+        Storage::disk('public')->assertMissing('pedidos/arquivo-renomeado.jpg');
+        $this->assertDatabaseCount('pedidos', 0);
+        $this->assertDatabaseCount('pedido_arquivos', 0);
+    }
+
+    public function test_laudo_e_orcamento_continuam_aceitando_documentos(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('pedidos/laudo.pdf', '%PDF-1.4 teste');
+        Storage::disk('public')->put('pedidos/orcamento.docx', "PK\x03\x04documento");
+
+        $usuario = User::factory()->create();
+        $pedido = $this->pedido(status: 'Em Aberto', setor: $this->educacao, escola: $this->escola);
+
+        foreach ([
+            [TipoArquivoPedido::LAUDO, 'pedidos/laudo.pdf'],
+            [TipoArquivoPedido::ORCAMENTO, 'pedidos/orcamento.docx'],
+        ] as [$tipo, $caminho]) {
+            PedidoArquivo::create([
+                'pedido_id' => $pedido->id,
+                'usuario_id' => $usuario->id,
+                'tipo_arquivo' => $tipo,
+                'caminho' => $caminho,
+            ]);
+        }
+
+        $this->assertDatabaseCount('pedido_arquivos', 2);
+        Storage::disk('public')->assertExists('pedidos/laudo.pdf');
+        Storage::disk('public')->assertExists('pedidos/orcamento.docx');
     }
 
     public function test_escopo_por_role_de_setor_escola_e_permissao_global(): void
@@ -742,6 +860,48 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
         Storage::disk('public')->assertExists($arquivo->caminho);
     }
 
+    public function test_avaliacao_rejeita_documento_como_foto_sem_criar_feedback_ou_concluir_pedido(): void
+    {
+        Storage::fake('public');
+
+        $usuario = $this->usuarioComRoleSetor('Teste Avaliacao Upload', $this->educacao, [
+            'Avaliar Pedidos',
+        ]);
+        $pedido = $this->pedido(status: 'Em Manutenção', setor: $this->educacao, escola: $this->escola);
+        $statusOriginalId = $pedido->tipo_status_id;
+        $problema = $pedido->problemas()->create([
+            'tipo_manutencao_id' => $this->tipo->id,
+            'tipo_manutencao_opcao_id' => $this->opcaoLuz->id,
+            'texto_problema' => $this->opcaoLuz->texto,
+        ]);
+
+        try {
+            $this->service->avaliarPedido($pedido, [
+                'avaliacoes' => [
+                    $problema->id => [
+                        'valor' => 5,
+                        'resultado' => ResultadoFeedbackPedido::Atendido->value,
+                        'comentario' => 'Problema atendido.',
+                    ],
+                ],
+                'reabrir_pedido' => false,
+                'descricao' => 'Tentativa de conclusao com documento.',
+                'fotos_conclusao' => [
+                    UploadedFile::fake()->create('foto.docx', 10, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'),
+                ],
+            ], $usuario);
+
+            $this->fail('O documento deveria ter sido rejeitado como foto de conclusao.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('fotos_conclusao', $exception->errors());
+        }
+
+        $this->assertSame($statusOriginalId, $pedido->refresh()->tipo_status_id);
+        $this->assertDatabaseCount('feedback_pedidos', 0);
+        $this->assertDatabaseCount('pedido_arquivos', 0);
+        $this->assertSame([], Storage::disk('public')->allFiles());
+    }
+
     public function test_avaliacao_exige_descricao_geral_e_comentario_por_problema(): void
     {
         $usuario = $this->usuarioComRoleSetor('Manutenção: Educação', $this->educacao, ['Avaliar Pedidos']);
@@ -800,6 +960,169 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
             'descricao_pedido' => 'Disjuntor trocado durante a visita.',
             'arquivos' => [],
         ]], $usuario);
+    }
+
+    public function test_pedido_adicional_rejeita_arquivo_renomeado_e_remove_do_storage(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('pedidos/adicionais/falso.png', "PK\x03\x04conteudo-zip");
+
+        $usuario = $this->usuarioComRoleSetor('ManutenÃ§Ã£o: EducaÃ§Ã£o', $this->educacao, [
+            'Vincular Pedidos Adicionais',
+        ]);
+        $pedido = $this->pedido(status: 'Em ManutenÃ§Ã£o', setor: $this->educacao, escola: $this->escola);
+
+        try {
+            $this->service->criarPedidosAdicionais($pedido, [[
+                'tipo_manutencao_id' => $this->tipo->id,
+                'tipo_manutencao_opcao_ids' => [$this->opcaoDisjuntor->id],
+                'data_identificacao_problema' => '2026-05-02',
+                'descricao_pedido' => 'Arquivo falso no pedido adicional.',
+                'arquivos' => ['pedidos/adicionais/falso.png'],
+            ]], $usuario);
+
+            $this->fail('O arquivo renomeado deveria ter sido rejeitado.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('pedidos_adicionais.0.arquivos', $exception->errors());
+        }
+
+        Storage::disk('public')->assertMissing('pedidos/adicionais/falso.png');
+        $this->assertDatabaseMissing('pedidos', [
+            'pedido_principal_id' => $pedido->id,
+            'is_pedido_adicional' => true,
+        ]);
+        $this->assertDatabaseCount('pedido_arquivos', 0);
+    }
+
+    public function test_cancela_pedido_adicional_e_o_remove_da_avaliacao_do_principal(): void
+    {
+        Storage::fake('public');
+
+        $usuario = $this->usuarioComRoleSetor('Manutencao: Educacao', $this->educacao, [
+            'Editar Pedidos',
+        ]);
+        $principal = $this->pedido(status: 'Em Manutenção', setor: $this->educacao, escola: $this->escola);
+        $principal->problemas()->create([
+            'tipo_manutencao_id' => $this->tipo->id,
+            'tipo_manutencao_opcao_id' => $this->opcaoLuz->id,
+            'texto_problema' => $this->opcaoLuz->texto,
+        ]);
+        $adicional = $this->pedidoAdicional($principal);
+
+        $this->assertTrue($this->service->cancelarPedidoAdicional(
+            $adicional,
+            $usuario,
+            'Servico nao sera mais necessario.'
+        ));
+
+        $adicional->refresh();
+
+        $this->assertTrue((bool) $adicional->is_pedido_adicional);
+        $this->assertTrue($adicional->pedidoPrincipal->is($principal));
+        $this->assertSame('Cancelado', $adicional->tipoStatus->nome);
+        $this->assertFalse(
+            $this->service->problemasParaAvaliacao($principal, false)
+                ->contains('pedido_id', $adicional->id)
+        );
+        $this->assertDatabaseHas('pedido_historicos', [
+            'pedido_id' => $principal->id,
+            'descricao_alteracao' => "Pedido adicional {$adicional->numero_protocolo} cancelado. Motivo: Servico nao sera mais necessario.",
+        ]);
+    }
+
+    public function test_promove_pedido_adicional_a_principal_preservando_seus_dados(): void
+    {
+        Storage::fake('public');
+
+        $usuario = $this->usuarioComRoleSetor('Manutencao: Educacao', $this->educacao, [
+            'Editar Pedidos',
+        ]);
+        $principal = $this->pedido(status: 'Em Manutenção', setor: $this->educacao, escola: $this->escola);
+        $adicional = $this->pedidoAdicional($principal);
+        $problemaId = $adicional->problemas()->value('id');
+
+        $this->assertTrue($this->service->promoverPedidoAdicional($adicional, $usuario));
+
+        $adicional->refresh();
+
+        $this->assertFalse((bool) $adicional->is_pedido_adicional);
+        $this->assertNull($adicional->pedido_principal_id);
+        $this->assertSame('Em Manutenção', $adicional->tipoStatus->nome);
+        $this->assertSame($problemaId, $adicional->problemas()->value('id'));
+        $this->assertDatabaseHas('pedido_historicos', [
+            'pedido_id' => $adicional->id,
+            'descricao_alteracao' => "Pedido adicional promovido a pedido principal. Origem: {$principal->numero_protocolo}.",
+        ]);
+        $this->assertDatabaseHas('pedido_historicos', [
+            'pedido_id' => $principal->id,
+            'descricao_alteracao' => "Pedido adicional {$adicional->numero_protocolo} transformado em pedido principal.",
+        ]);
+    }
+
+    public function test_acoes_filament_cancelam_e_promovem_pedidos_adicionais(): void
+    {
+        Storage::fake('public');
+
+        $usuario = $this->usuarioComRoleSetor('Manutencao: Educacao', $this->educacao, [
+            'Listar Pedidos',
+            'Editar Pedidos',
+        ]);
+        $principalCancelamento = $this->pedido(status: 'Em Manutenção', setor: $this->educacao, escola: $this->escola);
+        $adicionalCancelamento = $this->pedidoAdicional($principalCancelamento);
+
+        Livewire::actingAs($usuario)
+            ->test(ListPedidos::class)
+            ->callTableAction(
+                'cancelar_adicional',
+                $principalCancelamento,
+                ['descricao' => 'Cancelado pela tela de visualizacao.'],
+                ['adicional' => $adicionalCancelamento->id],
+            )
+            ->assertHasNoTableActionErrors();
+
+        $this->assertSame('Cancelado', $adicionalCancelamento->refresh()->tipoStatus->nome);
+
+        $principalPromocao = $this->pedido(status: 'Em Manutenção', setor: $this->educacao, escola: $this->escola);
+        $adicionalPromocao = $this->pedidoAdicional($principalPromocao);
+
+        Livewire::actingAs($usuario)
+            ->test(ListPedidos::class)
+            ->callTableAction(
+                'promover_adicional',
+                $principalPromocao,
+                arguments: ['adicional' => $adicionalPromocao->id],
+            )
+            ->assertHasNoTableActionErrors();
+
+        $adicionalPromocao->refresh();
+
+        $this->assertFalse((bool) $adicionalPromocao->is_pedido_adicional);
+        $this->assertNull($adicionalPromocao->pedido_principal_id);
+    }
+
+    public function test_tipo_prints_rejeita_documento_no_modelo_e_remove_do_storage(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('pedidos/print-renomeado.webp', '%PDF-1.4 teste');
+
+        $usuario = User::factory()->create();
+        $pedido = $this->pedido(status: 'Em Aberto', setor: $this->educacao, escola: $this->escola);
+
+        try {
+            PedidoArquivo::create([
+                'pedido_id' => $pedido->id,
+                'usuario_id' => $usuario->id,
+                'tipo_arquivo' => TipoArquivoPedido::PRINTS,
+                'caminho' => 'pedidos/print-renomeado.webp',
+            ]);
+
+            $this->fail('O documento deveria ter sido rejeitado como print.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('caminho', $exception->errors());
+        }
+
+        Storage::disk('public')->assertMissing('pedidos/print-renomeado.webp');
+        $this->assertDatabaseCount('pedido_arquivos', 0);
     }
 
     public function test_relation_manager_de_adicionais_aparece_somente_no_pedido_principal(): void
@@ -865,7 +1188,35 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
 
     private function fotosAdicional(): array
     {
-        return ['pedidos/adicionais/foto-adicional.jpg'];
+        return [UploadedFile::fake()->image('foto-adicional.jpg')];
+    }
+
+    private function pedidoAdicional(Pedido $principal): Pedido
+    {
+        $adicional = Pedido::create([
+            'pedido_principal_id' => $principal->id,
+            'is_pedido_adicional' => true,
+            'tipo_manutencao_id' => $this->tipo->id,
+            'tipo_status_id' => $this->service->statusPorNome('Pedido Adicional', true)->id,
+            'descricao_pedido' => 'Pedido adicional para teste.',
+            'nome_solicitante' => 'Solicitante',
+            'nivel_prioridade' => NivelEmergenciaPedido::INDEFINIDO,
+            'escola_id' => $principal->escola_id,
+            'solicitante_id' => $principal->solicitante_id,
+            'setor_id' => $principal->setor_id,
+            'setor_origem_id' => $principal->setor_origem_id,
+            'data_solicitacao' => now(),
+            'data_identificacao_problema' => now(),
+            'ativo' => true,
+        ]);
+
+        $adicional->problemas()->create([
+            'tipo_manutencao_id' => $this->tipo->id,
+            'tipo_manutencao_opcao_id' => $this->opcaoDisjuntor->id,
+            'texto_problema' => $this->opcaoDisjuntor->texto,
+        ]);
+
+        return $adicional;
     }
 
     private function empresa(string $nome, Setor $setor): EmpresaContratada

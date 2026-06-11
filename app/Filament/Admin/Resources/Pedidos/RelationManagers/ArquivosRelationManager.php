@@ -2,24 +2,28 @@
 
 namespace App\Filament\Admin\Resources\Pedidos\RelationManagers;
 
+use App\Filament\Admin\Components\PedidoArquivoUpload;
+use App\Models\Enums\TipoArquivoPedido;
+use App\Support\PedidoImageUpload;
+use Filament\Actions\CreateAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\EditAction;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Filament\Actions\CreateAction;
-use Filament\Actions\EditAction;
-use Filament\Actions\DeleteAction;
-use Filament\Schemas\Schema;
-use App\Models\Enums\TipoArquivoPedido;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\FileUpload;
 
 class ArquivosRelationManager extends RelationManager
 {
     protected static string $relationship = 'arquivos_sem_fotos_problema';
 
     protected static ?string $title = 'Arquivos';
+
     protected static ?string $modelLabel = 'Arquivo';
+
     protected static ?string $pluralModelLabel = 'Arquivos';
 
     public function form(Schema $schema): Schema
@@ -31,18 +35,30 @@ class ArquivosRelationManager extends RelationManager
                     ->label('Tipo do Arquivo')
                     ->options(
                         collect(TipoArquivoPedido::cases())
-                            ->reject(fn($case) => $case === TipoArquivoPedido::FOTOS_PROBLEMA)
-                            ->mapWithKeys(fn($case) => [
+                            ->reject(fn ($case) => $case === TipoArquivoPedido::FOTOS_PROBLEMA)
+                            ->mapWithKeys(fn ($case) => [
                                 $case->value => $case->label(),
                             ])
                             ->toArray()
                     )
                     ->required()
+                    ->live()
                     ->columnSpanFull()
                     ->native(false),
 
-                FileUpload::make('caminho')
+                PedidoArquivoUpload::make('caminho')
                     ->label('Arquivo')
+                    ->aceitarSomenteImagensQuando(
+                        fn (Get $get): bool => TipoArquivoPedido::tryFrom((string) $get('tipo_arquivo'))?->exigeImagem() ?? false
+                    )
+                    ->validationMessages([
+                        'mimetypes' => fn (Get $get): string => TipoArquivoPedido::tryFrom((string) $get('tipo_arquivo'))?->exigeImagem()
+                            ? PedidoImageUpload::MESSAGE
+                            : 'Envie um arquivo em um formato permitido.',
+                    ])
+                    ->helperText(fn (Get $get): ?string => TipoArquivoPedido::tryFrom((string) $get('tipo_arquivo'))?->exigeImagem()
+                        ? PedidoImageUpload::MESSAGE
+                        : null)
                     ->disk('public')
                     ->directory('pedidos')
                     ->visibility('public')
@@ -60,7 +76,6 @@ class ArquivosRelationManager extends RelationManager
             ]);
     }
 
-
     public function table(Table $table): Table
     {
         return $table
@@ -76,7 +91,7 @@ class ArquivosRelationManager extends RelationManager
                     ->searchable()
                     ->sortable()
                     ->icon('heroicon-o-document-arrow-down')
-                    ->url(fn($record) => route('pedidos.arquivos.download', $record))
+                    ->url(fn ($record) => route('pedidos.arquivos.download', $record))
                     ->openUrlInNewTab(),
 
                 Tables\Columns\TextColumn::make('descricao')

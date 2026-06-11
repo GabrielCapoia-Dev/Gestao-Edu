@@ -2,10 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\EmpresaContratada;
 use App\Models\Enums\NivelEmergenciaPedido;
 use App\Models\Enums\ResultadoFeedbackPedido;
+use App\Models\Enums\SetorAccessCapability;
 use App\Models\Enums\TipoArquivoPedido;
-use App\Models\EmpresaContratada;
 use App\Models\Escola;
 use App\Models\FeedbackPedido;
 use App\Models\Pedido;
@@ -16,7 +17,7 @@ use App\Models\TipoManutencao;
 use App\Models\TipoManutencaoOpcao;
 use App\Models\TipoStatus;
 use App\Models\User;
-use App\Services\UserSetorAccessService;
+use App\Support\PedidoImageUpload;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Http\UploadedFile;
@@ -85,6 +86,30 @@ class PedidoService
         return $user?->hasPermissionTo('Vincular Pedidos Adicionais') ?? false;
     }
 
+    public function podeCancelarPedidoAdicional(Pedido $adicional, ?User $user): bool
+    {
+        $principal = $adicional->pedidoPrincipal;
+
+        return $principal instanceof Pedido
+            && $adicional->is_pedido_adicional
+            && $adicional->ativo
+            && ! $adicional->tipoStatus?->finaliza_pedido
+            && ! $adicional->tipoStatus?->cancela_pedido
+            && $this->podeCancelarRegistro($principal, $user);
+    }
+
+    public function podePromoverPedidoAdicional(Pedido $adicional, ?User $user): bool
+    {
+        $principal = $adicional->pedidoPrincipal;
+
+        return $principal instanceof Pedido
+            && $adicional->is_pedido_adicional
+            && $adicional->ativo
+            && ! $adicional->tipoStatus?->finaliza_pedido
+            && ! $adicional->tipoStatus?->cancela_pedido
+            && $this->podeGerenciarRegistro($principal, $user);
+    }
+
     public function statusOptionsParaAlteracaoEmMassa(?User $user): array
     {
         if (! $this->podeGerenciarPedidos($user)) {
@@ -138,6 +163,65 @@ class PedidoService
             return false;
         }
 
+        return $this->podeExecutarNoSetorAtual($pedido, $user, SetorAccessCapability::EDITAR);
+    }
+
+    public function setorPodeEditarRegistro(Pedido $pedido, ?User $user): bool
+    {
+        return $user
+            ? $this->podeExecutarNoSetorAtual($pedido, $user, SetorAccessCapability::EDITAR)
+            : false;
+    }
+
+    public function podeCancelarRegistro(Pedido $pedido, ?User $user): bool
+    {
+        if (! $user || ! $user->hasPermissionTo('Editar Pedidos')) {
+            return false;
+        }
+
+        return $this->podeExecutarNoSetorAtual($pedido, $user, SetorAccessCapability::CANCELAR);
+    }
+
+    public function podeEncaminharRegistro(Pedido $pedido, ?User $user, ?int $setorDestinoId = null): bool
+    {
+        if (! $user || ! $user->hasPermissionTo('Encaminhar Pedidos para Setor')) {
+            return false;
+        }
+
+        if (! $this->podeExecutarNoSetorAtual($pedido, $user, SetorAccessCapability::EDITAR)) {
+            return false;
+        }
+
+        if ($setorDestinoId !== null && (int) $pedido->setor_id === (int) $setorDestinoId) {
+            return false;
+        }
+
+        if ($setorDestinoId === null) {
+            return app(SetorPedidoAccessService::class)
+                ->allowedSetorIds($user, SetorAccessCapability::ENCAMINHAR) !== [];
+        }
+
+        return app(SetorPedidoAccessService::class)
+            ->can($user, SetorAccessCapability::ENCAMINHAR, $setorDestinoId);
+    }
+
+    public function podeListarRegistro(Pedido $pedido, ?User $user): bool
+    {
+        if (! $user || ! $user->hasPermissionTo('Listar Pedidos')) {
+            return false;
+        }
+
+        return $this->queryPorPerfil(
+            Pedido::query()->whereKey($pedido->getKey()),
+            $user,
+        )->exists();
+    }
+
+    private function podeExecutarNoSetorAtual(
+        Pedido $pedido,
+        User $user,
+        SetorAccessCapability $capability,
+    ): bool {
         if ($pedido->is_pedido_adicional) {
             return false;
         }
@@ -146,20 +230,18 @@ class PedidoService
             return false;
         }
 
-        if ($this->podeVerTodosOsPedidos($user)) {
-            return true;
-        }
-
         $escolaIds = $this->escolaIdsParaEscopo($user);
 
-        if ($escolaIds !== []) {
-            return in_array((int) $pedido->escola_id, $escolaIds, true);
+        if (
+            $escolaIds !== []
+            && ! in_array((int) $pedido->escola_id, $escolaIds, true)
+            && ! app(UserSetorAccessService::class)->hasGlobalAccess($user)
+        ) {
+            return false;
         }
 
-        $access = app(UserSetorAccessService::class);
-
-        return $access->canAccessSetor($user, $pedido->setor_id)
-            || $access->canAccessSetor($user, $pedido->setor_origem_id);
+        return app(SetorPedidoAccessService::class)
+            ->can($user, $capability, $pedido->setor_id);
     }
 
     public function contarPedidosNovos(?User $user): ?string
@@ -234,17 +316,21 @@ class PedidoService
 
         $escolaIds = $this->escolaIdsParaEscopo($user);
 
-        if ($escolaIds !== []) {
-            return $query->whereIn($escolaColumn, $escolaIds);
-        }
-
-        $setorIds = $access->visibleSetorIds($user);
+        $setorIds = app(SetorPedidoAccessService::class)
+            ->allowedSetorIds($user, SetorAccessCapability::LISTAR);
 
         if ($setorIds !== []) {
-            return $query->where(function ($builder) use ($setorIds, $setorColumn, $setorOrigemColumn): void {
-                $builder->whereIn($setorColumn, $setorIds)
+            $query->where(function ($builder) use ($setorIds, $setorColumn, $setorOrigemColumn): void {
+                $builder
+                    ->whereIn($setorColumn, $setorIds)
                     ->orWhereIn($setorOrigemColumn, $setorIds);
             });
+
+            if ($escolaIds !== []) {
+                $query->whereIn($escolaColumn, $escolaIds);
+            }
+
+            return $query;
         }
 
         return $query->whereRaw('1 = 0');
@@ -258,6 +344,11 @@ class PedidoService
 
     public function criarPedido(array $data, User $solicitante): Pedido
     {
+        PedidoImageUpload::assertAllValid(
+            (array) ($data['arquivos'] ?? []),
+            'arquivos'
+        );
+
         return DB::transaction(function () use ($data, $solicitante): Pedido {
             $statusInicial = $this->statusPorNome('Em Aberto', true);
             $setorInicial = Setor::setorGeral();
@@ -314,7 +405,20 @@ class PedidoService
 
     public function criarPedidosAdicionais(Pedido $pedidoPrincipal, array $adicionais, User $usuario): Collection
     {
+        if (! $this->podeVincularAdicionais($usuario) || ! $this->setorPodeEditarRegistro($pedidoPrincipal, $usuario)) {
+            throw ValidationException::withMessages([
+                'pedidos_adicionais' => 'Seu setor nao possui autorizacao para vincular pedidos adicionais a este pedido.',
+            ]);
+        }
+
         $this->validarPedidosAdicionais($adicionais, exigirAvaliacao: false);
+
+        foreach (array_values($adicionais) as $index => $data) {
+            PedidoImageUpload::assertAllValid(
+                (array) ($data['arquivos'] ?? []),
+                "pedidos_adicionais.{$index}.arquivos"
+            );
+        }
 
         return DB::transaction(function () use ($pedidoPrincipal, $adicionais, $usuario): Collection {
             $statusAdicional = $this->statusPedidoAdicional();
@@ -461,11 +565,11 @@ class PedidoService
     public function encaminharParaSetor(Pedido $pedido, Setor $setorDestino, User $usuario, ?string $descricao = null): void
     {
         DB::transaction(function () use ($pedido, $setorDestino, $usuario, $descricao): void {
-            if (! $usuario->hasPermissionTo('Encaminhar Pedidos para Setor')) {
-                throw new \RuntimeException('Usuario sem permissao para encaminhar pedidos para setor.');
+            if (! $this->podeEncaminharRegistro($pedido, $usuario, (int) $setorDestino->id)) {
+                throw ValidationException::withMessages([
+                    'setor_id' => 'Seu setor nao possui autorizacao para encaminhar este pedido ao setor selecionado.',
+                ]);
             }
-
-            app(UserSetorAccessService::class)->assertCanUseSetor($usuario, (int) $setorDestino->id);
 
             $statusAnteriorId = $pedido->tipo_status_id;
             $statusEncaminhado = $this->statusPorNome('Encaminhado ao Setor', true);
@@ -561,7 +665,7 @@ class PedidoService
 
         if (
             in_array((int) $pedido->tipo_status_id, $statusPermitidos, true)
-            && ($this->podeListarTodos($usuario) || $usuario->podeGerenciarSetor($pedido->setor))
+            && $this->podeGerenciarRegistro($pedido, $usuario)
         ) {
             $this->alterarStatus(
                 $pedido,
@@ -570,6 +674,99 @@ class PedidoService
                 'Pedido assumido para análise por '.$usuario->name.'.'
             );
         }
+    }
+
+    public function cancelarPedido(Pedido $pedido, User $usuario, string $descricao): bool
+    {
+        if (! $this->podeCancelarRegistro($pedido, $usuario)) {
+            return false;
+        }
+
+        $this->alterarStatus(
+            $pedido,
+            $this->statusPorNome('Cancelado', true),
+            $usuario,
+            $descricao,
+        );
+
+        return true;
+    }
+
+    public function cancelarPedidoAdicional(Pedido $adicional, User $usuario, string $descricao): bool
+    {
+        return DB::transaction(function () use ($adicional, $usuario, $descricao): bool {
+            $adicional = Pedido::query()
+                ->with(['pedidoPrincipal.tipoStatus', 'tipoStatus'])
+                ->lockForUpdate()
+                ->findOrFail($adicional->getKey());
+
+            if (! $this->podeCancelarPedidoAdicional($adicional, $usuario)) {
+                return false;
+            }
+
+            $principal = $adicional->pedidoPrincipal;
+            $statusCancelado = $this->statusPorNome('Cancelado', true);
+
+            $this->alterarStatus(
+                $adicional,
+                $statusCancelado,
+                $usuario,
+                $descricao,
+            );
+
+            $this->registrarHistorico(
+                $principal,
+                $principal->tipo_status_id,
+                $principal->tipo_status_id,
+                $usuario,
+                "Pedido adicional {$adicional->numero_protocolo} cancelado. Motivo: {$descricao}"
+            );
+
+            return true;
+        });
+    }
+
+    public function promoverPedidoAdicional(Pedido $adicional, User $usuario): bool
+    {
+        return DB::transaction(function () use ($adicional, $usuario): bool {
+            $adicional = Pedido::query()
+                ->with(['pedidoPrincipal.tipoStatus', 'tipoStatus'])
+                ->lockForUpdate()
+                ->findOrFail($adicional->getKey());
+
+            if (! $this->podePromoverPedidoAdicional($adicional, $usuario)) {
+                return false;
+            }
+
+            $principal = $adicional->pedidoPrincipal;
+            $statusAnteriorId = $adicional->tipo_status_id;
+
+            $adicional->update([
+                'pedido_principal_id' => null,
+                'is_pedido_adicional' => false,
+                'tipo_status_id' => $principal->tipo_status_id,
+                'responsavel_id' => $usuario->id,
+                'data_entrega' => null,
+            ]);
+
+            $this->registrarHistorico(
+                $adicional,
+                $statusAnteriorId,
+                $principal->tipo_status_id,
+                $usuario,
+                "Pedido adicional promovido a pedido principal. Origem: {$principal->numero_protocolo}."
+            );
+
+            $this->registrarHistorico(
+                $principal,
+                $principal->tipo_status_id,
+                $principal->tipo_status_id,
+                $usuario,
+                "Pedido adicional {$adicional->numero_protocolo} transformado em pedido principal."
+            );
+
+            return true;
+        });
     }
 
     /*
@@ -585,7 +782,9 @@ class PedidoService
         }
 
         $pedidoIds = collect([$pedido->id])
-            ->merge($pedido->pedidosAdicionais()->pluck('id'))
+            ->merge($pedido->pedidosAdicionais()
+                ->whereHas('tipoStatus', fn (Builder $query) => $query->where('cancela_pedido', false))
+                ->pluck('id'))
             ->values()
             ->all();
 
@@ -599,7 +798,17 @@ class PedidoService
 
     public function avaliarPedido(Pedido $pedido, array $data, User $usuario): ?FeedbackPedido
     {
+        if (! $usuario->hasPermissionTo('Avaliar Pedidos') || ! $this->setorPodeEditarRegistro($pedido, $usuario)) {
+            throw ValidationException::withMessages([
+                'pedido' => 'Seu setor nao possui autorizacao para avaliar este pedido.',
+            ]);
+        }
+
         $this->validarAvaliacaoPedido($pedido, $data);
+        PedidoImageUpload::assertAllValid(
+            (array) ($data['fotos_conclusao'] ?? []),
+            'fotos_conclusao'
+        );
 
         return DB::transaction(function () use ($pedido, $data, $usuario): ?FeedbackPedido {
             $reabrirPedido = (bool) ($data['reabrir_pedido'] ?? false);
@@ -823,6 +1032,10 @@ class PedidoService
         ?string $descricao = null,
         string $directory = 'pedidos'
     ): void {
+        if ($tipo->exigeImagem()) {
+            PedidoImageUpload::assertValid($arquivo, 'arquivos');
+        }
+
         [$path, $nomeOriginal] = $this->armazenarArquivoPedido($arquivo, $directory);
         $mime = 'application/octet-stream';
 

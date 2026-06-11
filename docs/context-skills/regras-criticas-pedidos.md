@@ -45,6 +45,9 @@ Destacar os pontos mais sensiveis do fluxo de manutencao para reduzir regressao 
 - Alterar protocolo afeta ordenacao, identificacao humana, relatorios e vinculo de adicionais.
 - Mexer em `avaliarPedido()` altera fechamento, reabertura, fotos e qualidade dos dados de feedback.
 - Mexer em escopo por setor precisa considerar `roles.setor_id`, `Listar Todos os Pedidos` e fallback por escola.
+- A matriz `setor_acessos` vale apenas para Pedidos de Manutencao na primeira versao; outros modulos continuam usando `UserSetorAccessService`.
+- Listagem considera o setor atual ou o setor de origem, permitindo que a origem acompanhe pedidos encaminhados.
+- Edicao e cancelamento avaliam o setor atual; encaminhamento exige editar o setor atual e poder encaminhar ao destino.
 
 ## Pontos de atencao
 

@@ -3,12 +3,11 @@
 namespace App\Models;
 
 use App\Models\Enums\TipoArquivoPedido;
+use App\Support\PedidoImageUpload;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
-use App\Models\PedidoHistorico;
-
 
 class PedidoArquivo extends Model
 {
@@ -44,20 +43,21 @@ class PedidoArquivo extends Model
         return $this->belongsTo(User::class);
     }
 
-
     protected static function booted()
     {
         static::creating(function ($arquivo) {
 
-        $user = Auth::user();
-
-
+            $user = Auth::user();
 
             if (! $arquivo->usuario_id && $user) {
                 $arquivo->usuario_id = $user->id;
             }
 
             if ($arquivo->caminho) {
+                if ($arquivo->tipo_arquivo?->exigeImagem()) {
+                    PedidoImageUpload::assertValid($arquivo->caminho, 'caminho');
+                }
+
                 $arquivo->nome_original = basename($arquivo->caminho);
                 $arquivo->mime_type = 'application/octet-stream';
 
@@ -72,6 +72,19 @@ class PedidoArquivo extends Model
                 }
             }
         });
+        static::updating(function ($arquivo) {
+            if (
+                ($arquivo->isDirty('caminho') || $arquivo->isDirty('tipo_arquivo'))
+                && $arquivo->tipo_arquivo?->exigeImagem()
+                && $arquivo->caminho
+            ) {
+                PedidoImageUpload::assertValid(
+                    $arquivo->caminho,
+                    'caminho',
+                    deleteInvalidStoredFile: $arquivo->isDirty('caminho')
+                );
+            }
+        });
         static::created(function ($arquivo) {
 
             PedidoHistorico::registrarAlteracaoArquivo(
@@ -83,9 +96,9 @@ class PedidoArquivo extends Model
 
         static::updated(function ($arquivo) {
 
-            $mudouArquivo   = $arquivo->wasChanged('caminho');
+            $mudouArquivo = $arquivo->wasChanged('caminho');
             $mudouDescricao = $arquivo->wasChanged('descricao');
-            $mudouTipo      = $arquivo->wasChanged('tipo_arquivo');
+            $mudouTipo = $arquivo->wasChanged('tipo_arquivo');
 
             if (! $mudouArquivo && ! $mudouDescricao && ! $mudouTipo) {
                 return;
@@ -97,7 +110,7 @@ class PedidoArquivo extends Model
             if ($mudouArquivo) {
 
                 $original = basename($arquivo->getOriginal('caminho'));
-                $novo     = basename($arquivo->caminho);
+                $novo = basename($arquivo->caminho);
 
                 $descricao = "Arquivo substituído, De: {$original} | Para: {$novo}";
             }
@@ -112,7 +125,7 @@ class PedidoArquivo extends Model
             elseif ($mudouTipo) {
 
                 $original = $arquivo->getOriginal('tipo_arquivo')?->label() ?? '—';
-                $novo     = $arquivo->tipo_arquivo?->label() ?? '—';
+                $novo = $arquivo->tipo_arquivo?->label() ?? '—';
 
                 $descricao = "Tipo do arquivo alterado, De: {$original} | Para: {$novo}";
             }

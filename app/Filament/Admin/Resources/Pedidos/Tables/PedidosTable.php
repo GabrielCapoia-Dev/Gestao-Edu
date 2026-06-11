@@ -8,6 +8,7 @@ use App\Filament\Admin\Resources\Pedidos\Tables\Actions\ExportarRelatorioAction;
 use App\Models\EmpresaContratada;
 use App\Models\Enums\NivelEmergenciaPedido;
 use App\Models\Enums\ResultadoFeedbackPedido;
+use App\Models\Enums\SetorAccessCapability;
 use App\Models\Pedido;
 use App\Models\Setor;
 use App\Models\TipoManutencao;
@@ -16,7 +17,8 @@ use App\Models\TipoStatus;
 use App\Models\User;
 use App\Services\Exports\ExportRequestService;
 use App\Services\PedidoService;
-use App\Services\UserSetorAccessService;
+use App\Services\SetorPedidoAccessService;
+use App\Support\PedidoImageUpload;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Forms\Components\DatePicker;
@@ -52,7 +54,7 @@ class PedidosTable
         $service = app(PedidoService::class);
 
         return $table
-            ->modifyQueryUsing(fn(Builder $query) => $query
+            ->modifyQueryUsing(fn (Builder $query) => $query
                 ->where('is_pedido_adicional', false)
                 ->with(['pedidoPrincipal', 'tipoManutencao', 'tipoStatus', 'escola', 'setor', 'solicitante.escola', 'solicitante.escolas'])
                 ->withCount(['pedidosAdicionais', 'problemas']))
@@ -85,7 +87,7 @@ class PedidosTable
                 ->relationship(
                     name: 'tipoStatus',
                     titleAttribute: 'nome',
-                    modifyQueryUsing: fn($query) => $query->where('ativo', true)->orderBy('nome')
+                    modifyQueryUsing: fn ($query) => $query->where('ativo', true)->orderBy('nome')
                 )
                 ->searchable()
                 ->preload(),
@@ -93,7 +95,10 @@ class PedidosTable
             SelectFilter::make('setor_id')
                 ->label('Setor')
                 ->columnSpan(3)
-                ->options(fn() => app(UserSetorAccessService::class)->optionsForSelect(auth()->user()))
+                ->options(fn () => app(SetorPedidoAccessService::class)->optionsForCapability(
+                    auth()->user(),
+                    SetorAccessCapability::LISTAR,
+                ))
                 ->searchable()
                 ->preload(),
 
@@ -108,7 +113,7 @@ class PedidosTable
                         ->where('ativo', true)
                         ->when(
                             ! $service->podeVerTodosOsPedidos($user) && $escolaIds !== [],
-                            fn($builder) => $builder->whereIn('id', $escolaIds)
+                            fn ($builder) => $builder->whereIn('id', $escolaIds)
                         )
                         ->orderBy('nome');
                 })
@@ -120,7 +125,7 @@ class PedidosTable
                 ->columnSpan(3)
                 ->options(
                     collect(NivelEmergenciaPedido::cases())
-                        ->mapWithKeys(fn($case) => [$case->value => $case->label()])
+                        ->mapWithKeys(fn ($case) => [$case->value => $case->label()])
                         ->toArray()
                 ),
 
@@ -132,27 +137,27 @@ class PedidosTable
                     Select::make('tipo_manutencao_nome')
                         ->label('Tipo de manutencao')
                         ->placeholder('Todos os tipos')
-                        ->options(fn(): array => TipoManutencao::query()
+                        ->options(fn (): array => TipoManutencao::query()
                             ->where('ativo', true)
                             ->whereNotNull('nome')
                             ->orderBy('nome')
                             ->pluck('nome')
                             ->unique()
-                            ->mapWithKeys(fn(string $nome): array => [$nome => $nome])
+                            ->mapWithKeys(fn (string $nome): array => [$nome => $nome])
                             ->toArray())
                         ->searchable()
                         ->preload()
                         ->live()
-                        ->afterStateUpdated(fn(callable $set) => $set('tipo_manutencao_opcao_texto', null)),
+                        ->afterStateUpdated(fn (callable $set) => $set('tipo_manutencao_opcao_texto', null)),
 
                     Select::make('tipo_manutencao_opcao_texto')
                         ->label('Opcao do tipo')
                         ->placeholder('Todas as opcoes')
-                        ->options(fn(Get $get): array => TipoManutencaoOpcao::query()
+                        ->options(fn (Get $get): array => TipoManutencaoOpcao::query()
                             ->where('ativo', true)
                             ->when(
                                 filled($get('tipo_manutencao_nome')),
-                                fn(Builder $query) => $query->whereIn(
+                                fn (Builder $query) => $query->whereIn(
                                     'tipo_manutencao_id',
                                     TipoManutencao::query()
                                         ->where('nome', $get('tipo_manutencao_nome'))
@@ -162,9 +167,9 @@ class PedidosTable
                             ->orderBy('texto')
                             ->pluck('texto')
                             ->unique()
-                            ->mapWithKeys(fn(string $texto): array => [$texto => $texto])
+                            ->mapWithKeys(fn (string $texto): array => [$texto => $texto])
                             ->toArray())
-                        ->visible(fn(Get $get): bool => filled($get('tipo_manutencao_nome')))
+                        ->visible(fn (Get $get): bool => filled($get('tipo_manutencao_nome')))
                         ->searchable()
                         ->preload(),
                 ])
@@ -172,16 +177,16 @@ class PedidosTable
                     return $query
                         ->when(
                             filled($data['tipo_manutencao_nome'] ?? null),
-                            fn(Builder $builder) => $builder->whereHas(
+                            fn (Builder $builder) => $builder->whereHas(
                                 'tipoManutencao',
-                                fn(Builder $tipoQuery) => $tipoQuery->where('nome', $data['tipo_manutencao_nome'])
+                                fn (Builder $tipoQuery) => $tipoQuery->where('nome', $data['tipo_manutencao_nome'])
                             )
                         )
                         ->when(
                             filled($data['tipo_manutencao_opcao_texto'] ?? null),
-                            fn(Builder $builder) => $builder->whereHas(
+                            fn (Builder $builder) => $builder->whereHas(
                                 'problemas',
-                                fn(Builder $problemaQuery) => $problemaQuery->where('texto_problema', $data['tipo_manutencao_opcao_texto'])
+                                fn (Builder $problemaQuery) => $problemaQuery->where('texto_problema', $data['tipo_manutencao_opcao_texto'])
                             )
                         );
                 }),
@@ -200,11 +205,11 @@ class PedidosTable
                     return $query
                         ->when(
                             filled($data['data_inicio'] ?? null),
-                            fn(Builder $builder) => $builder->whereDate('data_identificacao_problema', '>=', $data['data_inicio'])
+                            fn (Builder $builder) => $builder->whereDate('data_identificacao_problema', '>=', $data['data_inicio'])
                         )
                         ->when(
                             filled($data['data_fim'] ?? null),
-                            fn(Builder $builder) => $builder->whereDate('data_identificacao_problema', '<=', $data['data_fim'])
+                            fn (Builder $builder) => $builder->whereDate('data_identificacao_problema', '<=', $data['data_fim'])
                         );
                 }),
         ];
@@ -265,7 +270,7 @@ class PedidosTable
                         ->label('Escola')
                         ->description('Escola', position: 'above')
                         ->icon('heroicon-o-building-office-2')
-                        ->state(fn(Pedido $record): ?string => static::nomeEscolaDoPedido($record))
+                        ->state(fn (Pedido $record): ?string => static::nomeEscolaDoPedido($record))
                         ->placeholder('Escola nao informada')
                         ->sortable()
                         ->wrap()
@@ -275,8 +280,8 @@ class PedidosTable
                         ->label('Adicionais')
                         ->description('Adicionais', position: 'above')
                         ->badge()
-                        ->color(fn(Pedido $record): string => (int) ($record->pedidos_adicionais_count ?? 0) > 0 ? 'info' : 'gray')
-                        ->state(fn(Pedido $record): string => (int) ($record->pedidos_adicionais_count ?? 0) . ' adicional(is)')
+                        ->color(fn (Pedido $record): string => (int) ($record->pedidos_adicionais_count ?? 0) > 0 ? 'info' : 'gray')
+                        ->state(fn (Pedido $record): string => (int) ($record->pedidos_adicionais_count ?? 0).' adicional(is)')
                         ->wrap()
                         ->toggleable(isToggledHiddenByDefault: true)
                         ->extraAttributes(['class' => 'pedido-card-field'], merge: true),
@@ -285,8 +290,8 @@ class PedidosTable
                         ->label('Status')
                         ->description('Status', position: 'above')
                         ->badge()
-                        ->formatStateUsing(fn(Pedido $record): string => static::statusListagem($record))
-                        ->color(fn(Pedido $record) => Color::hex(static::corStatusListagem($record)))
+                        ->formatStateUsing(fn (Pedido $record): string => static::statusListagem($record))
+                        ->color(fn (Pedido $record) => Color::hex(static::corStatusListagem($record)))
                         ->wrap()
                         ->extraAttributes(['class' => 'pedido-card-field pedido-card-field--status'], merge: true),
 
@@ -294,7 +299,7 @@ class PedidosTable
                         ->label('Prioridade')
                         ->description('Prioridade', position: 'above')
                         ->badge()
-                        ->color(fn(Pedido $record) => Color::hex(
+                        ->color(fn (Pedido $record) => Color::hex(
                             match ($record->nivel_prioridade?->value) {
                                 'Emergencial' => '#a10000',
                                 'Corretivo' => '#973f00',
@@ -406,7 +411,7 @@ class PedidosTable
                 ->extraModalWindowAttributes(['class' => 'pedido-view-modal-window'], merge: true)
                 ->modalSubmitAction(false)
                 ->modalCancelActionLabel('Fechar')
-                ->visible(fn() => $user?->hasPermissionTo('Visualizar Histórico de Pedidos') ?? false)
+                ->visible(fn () => $user?->hasPermissionTo('Visualizar Histórico de Pedidos') ?? false)
                 ->modalContent(function (Pedido $record) {
                     $record->load([
                         'tipoManutencao',
@@ -445,16 +450,90 @@ class PedidosTable
                         'pedido' => $record,
                         'historico' => $historico,
                         'adicionais' => $adicionais,
+                        'usuario' => auth()->user(),
                     ]);
+                }),
+
+            Action::make('cancelar_adicional')
+                ->label('Cancelar adicional')
+                ->icon('heroicon-o-x-circle')
+                ->color('danger')
+                ->visible(function (Pedido $record, array $arguments) use ($user, $service): bool {
+                    $adicional = $record->pedidosAdicionais()
+                        ->with(['pedidoPrincipal.tipoStatus', 'tipoStatus'])
+                        ->find($arguments['adicional'] ?? null);
+
+                    return $adicional instanceof Pedido
+                        && $service->podeCancelarPedidoAdicional($adicional, $user);
+                })
+                ->requiresConfirmation()
+                ->modalHeading('Cancelar pedido adicional')
+                ->modalDescription('O pedido adicional permanecera vinculado para consulta, mas nao entrara na avaliacao do pedido principal.')
+                ->modalSubmitActionLabel('Cancelar adicional')
+                ->schema([
+                    Textarea::make('descricao')
+                        ->label('Motivo do cancelamento')
+                        ->required()
+                        ->maxLength(1000),
+                ])
+                ->action(function (Pedido $record, array $arguments, array $data) use ($user, $service): void {
+                    $adicional = $record->pedidosAdicionais()->find($arguments['adicional'] ?? null);
+
+                    if (! $user || ! $adicional instanceof Pedido) {
+                        return;
+                    }
+
+                    $cancelado = $service->cancelarPedidoAdicional(
+                        $adicional,
+                        $user,
+                        trim((string) ($data['descricao'] ?? ''))
+                    );
+
+                    Notification::make()
+                        ->title($cancelado ? 'Pedido adicional cancelado.' : 'Nao foi possivel cancelar o pedido adicional.')
+                        ->color($cancelado ? 'warning' : 'danger')
+                        ->send();
+                }),
+
+            Action::make('promover_adicional')
+                ->label('Transformar em principal')
+                ->icon('heroicon-o-arrow-up-circle')
+                ->color('warning')
+                ->visible(function (Pedido $record, array $arguments) use ($user, $service): bool {
+                    $adicional = $record->pedidosAdicionais()
+                        ->with(['pedidoPrincipal.tipoStatus', 'tipoStatus'])
+                        ->find($arguments['adicional'] ?? null);
+
+                    return $adicional instanceof Pedido
+                        && $service->podePromoverPedidoAdicional($adicional, $user);
+                })
+                ->requiresConfirmation()
+                ->modalHeading('Transformar adicional em pedido principal')
+                ->modalDescription('O pedido deixara de estar vinculado e passara a aparecer separadamente na fila, mantendo protocolo, fotos, problemas e historico.')
+                ->modalSubmitActionLabel('Transformar em principal')
+                ->action(function (Pedido $record, array $arguments) use ($user, $service): void {
+                    $adicional = $record->pedidosAdicionais()->find($arguments['adicional'] ?? null);
+
+                    if (! $user || ! $adicional instanceof Pedido) {
+                        return;
+                    }
+
+                    $promovido = $service->promoverPedidoAdicional($adicional, $user);
+
+                    Notification::make()
+                        ->title($promovido ? 'Pedido transformado em principal.' : 'Nao foi possivel transformar o pedido adicional.')
+                        ->color($promovido ? 'success' : 'danger')
+                        ->send();
                 }),
 
             Action::make('vincular_adicionais')
                 ->label('Vincular Adicionais')
                 ->icon('heroicon-o-plus-circle')
                 ->color('info')
-                ->visible(fn(Pedido $record) => static::statusEh($record, 'Em Manutenção')
+                ->visible(fn (Pedido $record) => static::statusEh($record, 'Em Manutenção')
                     && ! $record->is_pedido_adicional
-                    && $service->podeVincularAdicionais($user))
+                    && $service->podeVincularAdicionais($user)
+                    && $service->setorPodeEditarRegistro($record, $user))
                 ->modalHeading('Vincular pedidos adicionais')
                 ->modalSubmitActionLabel('Vincular')
                 ->schema([
@@ -467,7 +546,7 @@ class PedidosTable
                     $criados = $service->criarPedidosAdicionais($record, $data['pedidos_adicionais'] ?? [], $user);
 
                     Notification::make()
-                        ->title($criados->count() . ' pedido(s) adicional(is) vinculado(s).')
+                        ->title($criados->count().' pedido(s) adicional(is) vinculado(s).')
                         ->success()
                         ->send();
                 }),
@@ -476,15 +555,16 @@ class PedidosTable
                 ->label('Avaliar Pedido')
                 ->icon('heroicon-o-check-badge')
                 ->color('success')
-                ->visible(fn(Pedido $record) => static::statusEh($record, 'Em Manutenção')
+                ->visible(fn (Pedido $record) => static::statusEh($record, 'Em Manutenção')
                     && ! $record->is_pedido_adicional
-                    && ($user?->hasPermissionTo('Avaliar Pedidos') ?? false))
+                    && ($user?->hasPermissionTo('Avaliar Pedidos') ?? false)
+                    && $service->setorPodeEditarRegistro($record, $user))
                 ->modalHeading('Avaliar Pedido')
                 ->modalDescription('Registre a avaliação do atendimento ou reabra o pedido para que ele volte ao fluxo operacional.')
                 ->modalSubmitActionLabel('Confirmar Avaliação')
                 ->modalCancelActionLabel('Cancelar')
                 ->modalWidth('6xl')
-                ->schema(fn(Pedido $record) => static::avaliacaoSchema($record, $service))
+                ->schema(fn (Pedido $record) => static::avaliacaoSchema($record, $service))
                 ->action(function (Pedido $record, array $data) use ($user, $service) {
                     $service->avaliarPedido($record, $data, $user);
 
@@ -500,7 +580,7 @@ class PedidosTable
                 ->label('Gerenciar')
                 ->icon('heroicon-o-pencil-square')
                 ->color('warning')
-                ->visible(fn(Pedido $record) => static::podeExibirAcaoGerenciar($record, $user, $service))
+                ->visible(fn (Pedido $record) => static::podeExibirAcaoGerenciar($record, $user, $service))
                 ->action(function (Pedido $record) use ($user, $service) {
                     $service->assumirPedido($record, $user);
 
@@ -528,14 +608,16 @@ class PedidosTable
 
         return static::statusEh($record, 'Em Manutenção')
             && ! $record->is_pedido_adicional
-            && $service->podeVincularAdicionais($user);
+            && $service->podeVincularAdicionais($user)
+            && $service->setorPodeEditarRegistro($record, $user);
     }
 
     public static function podeExibirAcaoFinalizar(Pedido $record, ?User $user): bool
     {
         return static::statusEh($record, 'Em Manutenção')
             && ! $record->is_pedido_adicional
-            && ($user?->hasPermissionTo('Avaliar Pedidos') ?? false);
+            && ($user?->hasPermissionTo('Avaliar Pedidos') ?? false)
+            && app(PedidoService::class)->setorPodeEditarRegistro($record, $user);
     }
 
     public static function bulkActions(?User $user, PedidoService $service): array
@@ -545,11 +627,11 @@ class PedidosTable
                 ->label('Alterar status')
                 ->icon('heroicon-o-arrow-path')
                 ->color('warning')
-                ->visible(fn() => $service->statusOptionsParaAlteracaoEmMassa($user) !== [])
+                ->visible(fn () => $service->statusOptionsParaAlteracaoEmMassa($user) !== [])
                 ->schema([
                     Select::make('tipo_status_id')
                         ->label('Novo status')
-                        ->options(fn(): array => $service->statusOptionsParaAlteracaoEmMassa($user))
+                        ->options(fn (): array => $service->statusOptionsParaAlteracaoEmMassa($user))
                         ->searchable()
                         ->preload()
                         ->required(),
@@ -597,7 +679,7 @@ class PedidosTable
                             $descricao = "Usuario {$user->name} alterou o status do pedido para {$novoStatus->nome}.";
 
                             if ($observacao !== '') {
-                                $descricao .= ' ' . $observacao;
+                                $descricao .= ' '.$observacao;
                             }
 
                             $service->alterarStatus(
@@ -612,7 +694,7 @@ class PedidosTable
                     });
 
                     Notification::make()
-                        ->title($alterados . ' pedido(s) tiveram o status alterado.')
+                        ->title($alterados.' pedido(s) tiveram o status alterado.')
                         ->success()
                         ->send();
                 })
@@ -622,7 +704,7 @@ class PedidosTable
                 ->label('Exportar PDF')
                 ->icon('heroicon-o-document-arrow-down')
                 ->color('info')
-                ->visible(fn() => $user?->hasPermissionLike('exportar relatorios') ?? false)
+                ->visible(fn () => $user?->hasPermissionLike('exportar relatorios') ?? false)
                 ->requiresConfirmation()
                 ->modalHeading('Exportar pedidos selecionados em PDF')
                 ->modalDescription('O arquivo sera gerado em segundo plano com um pedido por pagina, contendo somente o cabecalho e as imagens do problema.')
@@ -633,9 +715,9 @@ class PedidosTable
                     }
 
                     $pedidoIds = $records
-                        ->filter(fn($record): bool => $record instanceof Pedido)
+                        ->filter(fn ($record): bool => $record instanceof Pedido)
                         ->pluck('id')
-                        ->map(fn($id): int => (int) $id)
+                        ->map(fn ($id): int => (int) $id)
                         ->filter()
                         ->values()
                         ->all();
@@ -698,17 +780,31 @@ class PedidosTable
 
                     return true;
                 },
+                visible: fn (): bool => $user !== null
+                    && app(SetorPedidoAccessService::class)->allowedSetorIds(
+                        $user,
+                        SetorAccessCapability::ENCAMINHAR,
+                    ) !== [],
+                options: fn (): array => app(SetorPedidoAccessService::class)->optionsForCapability(
+                    $user,
+                    SetorAccessCapability::ENCAMINHAR,
+                ),
+                assertCanUse: fn (int $setorId) => app(SetorPedidoAccessService::class)->assertCan(
+                    $user,
+                    SetorAccessCapability::ENCAMINHAR,
+                    $setorId,
+                ),
             ),
 
             BulkAction::make('enviar_para_empresa')
                 ->label('Enviar para empresa')
                 ->icon('heroicon-o-building-office-2')
                 ->color('primary')
-                ->visible(fn() => $service->podeEnviarParaEmpresa($user))
+                ->visible(fn () => $service->podeEnviarParaEmpresa($user))
                 ->schema([
                     Select::make('empresa_contratada_id')
                         ->label('Empresa')
-                        ->options(fn(): array => EmpresaContratada::query()
+                        ->options(fn (): array => EmpresaContratada::query()
                             ->where('ativo', true)
                             ->doSetorDoUsuario(Auth::user())
                             ->orderBy('nome')
@@ -736,7 +832,7 @@ class PedidosTable
                     }
 
                     Notification::make()
-                        ->title($enviados . ' pedido(s) enviado(s) para a empresa.')
+                        ->title($enviados.' pedido(s) enviado(s) para a empresa.')
                         ->success()
                         ->send();
                 })
@@ -755,28 +851,26 @@ class PedidosTable
                         ->required()
                         ->maxLength(1000),
                 ])
-                ->visible(fn() => $user?->hasPermissionTo('Editar Pedidos') ?? false)
+                ->visible(fn () => ($user?->hasPermissionTo('Editar Pedidos') ?? false)
+                    && app(SetorPedidoAccessService::class)->allowedSetorIds(
+                        $user,
+                        SetorAccessCapability::CANCELAR,
+                    ) !== [])
                 ->action(function (EloquentCollection $records, array $data) use ($user, $service) {
-                    $statusCancelado = $service->statusPorNome('Cancelado', true);
                     $cancelados = 0;
 
                     foreach ($records as $record) {
-                        if (! $record instanceof Pedido || ! $service->podeGerenciarRegistro($record, $user)) {
+                        if (! $record instanceof Pedido || ! $user) {
                             continue;
                         }
 
-                        $service->alterarStatus(
-                            $record,
-                            $statusCancelado,
-                            $user,
-                            $data['descricao'] ?? 'Cancelado em massa.'
-                        );
-
-                        $cancelados++;
+                        if ($service->cancelarPedido($record, $user, $data['descricao'] ?? 'Cancelado em massa.')) {
+                            $cancelados++;
+                        }
                     }
 
                     Notification::make()
-                        ->title($cancelados . ' pedido(s) cancelado(s).')
+                        ->title($cancelados.' pedido(s) cancelado(s).')
                         ->warning()
                         ->send();
                 }),
@@ -808,6 +902,11 @@ class PedidosTable
                 ->schema([
                     FileUpload::make('fotos_conclusao')
                         ->label('Adicionar Fotos')
+                        ->acceptedFileTypes(PedidoImageUpload::MIME_TYPES)
+                        ->validationMessages([
+                            'mimetypes' => PedidoImageUpload::MESSAGE,
+                        ])
+                        ->helperText(PedidoImageUpload::MESSAGE)
                         ->multiple()
                         ->maxFiles(10)
                         ->storeFileNamesIn('nome_original')
@@ -818,7 +917,7 @@ class PedidosTable
                         ->columnSpanFull(),
 
                 ])
-                ->visible(fn(Get $get) => ! (bool) $get('reabrir_pedido')),
+                ->visible(fn (Get $get) => ! (bool) $get('reabrir_pedido')),
         ];
     }
 
@@ -842,7 +941,7 @@ class PedidosTable
                             ->label('Resultado')
                             ->options(
                                 collect(ResultadoFeedbackPedido::cases())
-                                    ->mapWithKeys(fn(ResultadoFeedbackPedido $resultado) => [$resultado->value => $resultado->label()])
+                                    ->mapWithKeys(fn (ResultadoFeedbackPedido $resultado) => [$resultado->value => $resultado->label()])
                                     ->toArray()
                             )
                             ->default(ResultadoFeedbackPedido::Atendido->value)
@@ -857,7 +956,7 @@ class PedidosTable
                             ->columnSpanFull(),
                     ])
                     ->columns(2)
-                    ->visible(fn(Get $get) => ! (bool) $get('reabrir_pedido'));
+                    ->visible(fn (Get $get) => ! (bool) $get('reabrir_pedido'));
             })
             ->all();
     }
@@ -871,7 +970,7 @@ class PedidosTable
             ->schema([
                 Select::make('tipo_manutencao_id')
                     ->label('Tipo de manutenção')
-                    ->options(fn() => TipoManutencao::query()
+                    ->options(fn () => TipoManutencao::query()
                         ->where('ativo', true)
                         ->orderBy('nome')
                         ->pluck('nome', 'id')
@@ -879,19 +978,19 @@ class PedidosTable
                     ->searchable()
                     ->preload()
                     ->live()
-                    ->afterStateUpdated(fn(callable $set) => $set('tipo_manutencao_opcao_ids', []))
+                    ->afterStateUpdated(fn (callable $set) => $set('tipo_manutencao_opcao_ids', []))
                     ->required(),
 
                 Select::make('tipo_manutencao_opcao_ids')
                     ->label('Problemas atendidos')
                     ->multiple()
-                    ->options(fn(Get $get) => filled($get('tipo_manutencao_id'))
+                    ->options(fn (Get $get) => filled($get('tipo_manutencao_id'))
                         ? TipoManutencaoOpcao::query()
-                        ->where('tipo_manutencao_id', $get('tipo_manutencao_id'))
-                        ->where('ativo', true)
-                        ->orderBy('texto')
-                        ->pluck('texto', 'id')
-                        ->toArray()
+                            ->where('tipo_manutencao_id', $get('tipo_manutencao_id'))
+                            ->where('ativo', true)
+                            ->orderBy('texto')
+                            ->pluck('texto', 'id')
+                            ->toArray()
                         : [])
                     ->searchable()
                     ->preload()
@@ -912,6 +1011,11 @@ class PedidosTable
 
                 FileUpload::make('arquivos')
                     ->label('Fotos do pedido adicional')
+                    ->acceptedFileTypes(PedidoImageUpload::MIME_TYPES)
+                    ->validationMessages([
+                        'mimetypes' => PedidoImageUpload::MESSAGE,
+                    ])
+                    ->helperText(PedidoImageUpload::MESSAGE)
                     ->multiple()
                     ->required()
                     ->minFiles(1)
@@ -939,7 +1043,7 @@ class PedidosTable
     private static function statusListagem(Pedido $record): string
     {
         if (static::pedidoEncaminhadoParaSetor($record)) {
-            return 'Encaminhado ao Setor - ' . $record->setor->nome_completo;
+            return 'Encaminhado ao Setor - '.$record->setor->nome_completo;
         }
 
         return $record->tipoStatus?->nome ?? 'Sem status';

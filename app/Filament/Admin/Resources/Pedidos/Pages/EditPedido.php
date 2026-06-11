@@ -5,7 +5,6 @@ namespace App\Filament\Admin\Resources\Pedidos\Pages;
 use App\Filament\Admin\Resources\Pedidos\PedidoResource;
 use App\Models\TipoStatus;
 use App\Services\PedidoService;
-use App\Services\UserSetorAccessService;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Auth;
@@ -49,19 +48,34 @@ class EditPedido extends EditRecord
         $statusAnalise = $service->statusPorNome('Em Análise');
         $statusEncaminhado = $service->statusPorNome('Encaminhado ao Setor');
         $statusEnviadoEmpresa = $service->statusPorNome('Enviado para Empresa');
+        $statusCancelado = $service->statusPorNome('Cancelado');
 
         if ($this->novoStatusId && $statusEncaminhado?->id === (int) $this->novoStatusId) {
-            app(UserSetorAccessService::class)->assertCanUseSetor($user, $data['setor_id'] ?? null);
+            if (! $service->podeEncaminharRegistro($this->record, $user, (int) ($data['setor_id'] ?? 0))) {
+                throw ValidationException::withMessages([
+                    'setor_id' => 'Seu setor nao possui autorizacao para encaminhar este pedido ao setor selecionado.',
+                ]);
+            }
+
             $this->statusEncaminhadoId = $statusEncaminhado->id;
             $data['tipo_status_id'] = $statusEncaminhado->id;
 
             return $data;
         }
 
-        if (
-            $this->novoStatusId
-            && $statusEnviadoEmpresa?->id === (int) $this->novoStatusId
-        ) {
+        if ($this->novoStatusId && $statusCancelado?->id === (int) $this->novoStatusId) {
+            if (! $service->podeCancelarRegistro($this->record, $user)) {
+                throw ValidationException::withMessages([
+                    'novo_status_id' => 'Seu setor nao possui autorizacao para cancelar este pedido.',
+                ]);
+            }
+        } elseif (! $service->podeGerenciarRegistro($this->record, $user)) {
+            throw ValidationException::withMessages([
+                'pedido' => 'Seu setor nao possui autorizacao para editar este pedido.',
+            ]);
+        }
+
+        if ($this->novoStatusId && $statusEnviadoEmpresa?->id === (int) $this->novoStatusId) {
             if (! $service->podeEnviarParaEmpresa($user)) {
                 unset($data['empresa_contratada_id']);
                 $this->novoStatusId = null;
@@ -72,7 +86,10 @@ class EditPedido extends EditRecord
                     ]);
                 }
 
-                $empresa = $service->empresaContratadaDisponivelParaEnvio((int) $data['empresa_contratada_id'], $user);
+                $empresa = $service->empresaContratadaDisponivelParaEnvio(
+                    (int) $data['empresa_contratada_id'],
+                    $user,
+                );
                 $this->empresaContratadaId = (int) $empresa->id;
 
                 unset($data['empresa_contratada_id']);
@@ -99,7 +116,6 @@ class EditPedido extends EditRecord
         $record = $this->record->refresh();
         $user = Auth::user();
         $service = app(PedidoService::class);
-
         $statusNovoId = $record->tipo_status_id;
 
         if ($this->statusEncaminhadoId) {
@@ -110,7 +126,7 @@ class EditPedido extends EditRecord
                 $this->statusAnteriorId,
                 $this->statusEncaminhadoId,
                 $user,
-                $this->observacaoStatus ?: "Pedido encaminhado para {$setorNome}."
+                $this->observacaoStatus ?: "Pedido encaminhado para {$setorNome}.",
             );
 
             return;
@@ -121,7 +137,7 @@ class EditPedido extends EditRecord
                 $record,
                 $this->empresaContratadaId,
                 $user,
-                $this->observacaoStatus
+                $this->observacaoStatus,
             );
 
             return;

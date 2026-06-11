@@ -2,14 +2,14 @@
 
 namespace App\Services;
 
+use App\Models\Enums\SetorAccessCapability;
 use App\Models\Setor;
 use App\Models\User;
-use App\Services\UserSetorAccessService;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -67,6 +67,20 @@ class SetorService
                 ->label('Atualizado')
                 ->since()
                 ->sortable(),
+
+            TextColumn::make('resumo_acessos')
+                ->label('Acessos externos')
+                ->state(function (Setor $record): string {
+                    $acessos = $record->acessosConcedidos;
+
+                    return collect([
+                        'L '.$acessos->where('pode_listar', true)->count(),
+                        'E '.$acessos->where('pode_editar', true)->count(),
+                        'C '.$acessos->where('pode_cancelar', true)->count(),
+                        'Enc '.$acessos->where('pode_encaminhar', true)->count(),
+                    ])->join(' | ');
+                })
+                ->toggleable(isToggledHiddenByDefault: true),
         ];
     }
 
@@ -136,6 +150,69 @@ class SetorService
                             ->helperText('Setores inativos deixam de aparecer em novos vinculos, mas continuam nos historicos.'),
                     ]),
                 ]),
+
+            Section::make('Acesso a outros setores')
+                ->description('As permissoes gerais do usuario continuam obrigatorias. O proprio setor recebe listar, editar e cancelar automaticamente.')
+                ->columnSpanFull()
+                ->visible(fn (?Setor $record): bool => $record?->exists && $this->podeConfigurarMatriz(auth()->user()))
+                ->schema([
+                    Grid::make(2)->schema([
+                        $this->selectCapacidade(
+                            relation: 'setoresListaveis',
+                            label: 'Pode listar pedidos dos setores',
+                            capability: SetorAccessCapability::LISTAR,
+                        ),
+                        $this->selectCapacidade(
+                            relation: 'setoresEditaveis',
+                            label: 'Pode editar pedidos dos setores',
+                            capability: SetorAccessCapability::EDITAR,
+                        ),
+                        $this->selectCapacidade(
+                            relation: 'setoresCancelaveis',
+                            label: 'Pode cancelar pedidos dos setores',
+                            capability: SetorAccessCapability::CANCELAR,
+                        ),
+                        $this->selectCapacidade(
+                            relation: 'setoresEncaminhaveis',
+                            label: 'Pode encaminhar pedidos para os setores',
+                            capability: SetorAccessCapability::ENCAMINHAR,
+                        ),
+                    ]),
+                ]),
         ]);
+    }
+
+    public function podeConfigurarMatriz(?User $user): bool
+    {
+        return (bool) ($user?->hasPermissionTo('Editar Setores')
+            && app(UserSetorAccessService::class)->hasGlobalAccess($user));
+    }
+
+    private function selectCapacidade(
+        string $relation,
+        string $label,
+        SetorAccessCapability $capability,
+    ): Select {
+        return Select::make($relation)
+            ->label($label)
+            ->multiple()
+            ->relationship(
+                name: $relation,
+                titleAttribute: 'nome',
+                modifyQueryUsing: fn ($query, ?Setor $record) => $query
+                    ->where('ativo', true)
+                    ->when($record?->exists, fn ($builder) => $builder->whereKeyNot($record->id))
+                    ->orderedTree(),
+            )
+            ->getOptionLabelFromRecordUsing(fn (Setor $record): string => $record->nome_completo)
+            ->saveRelationshipsUsing(function (Setor $record, mixed $state) use ($capability): void {
+                app(SetorPedidoAccessService::class)->syncCapability(
+                    $record,
+                    $capability,
+                    is_array($state) ? $state : [],
+                );
+            })
+            ->searchable()
+            ->preload();
     }
 }

@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources\Pedidos\Schemas;
 
 use App\Models\TipoManutencao;
 use App\Models\TipoManutencaoOpcao;
+use App\Support\PedidoImageUpload;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
@@ -78,6 +79,11 @@ class PedidoCriacaoForm
 
                         FileUpload::make('arquivos')
                             ->label('Fotos do Problema')
+                            ->acceptedFileTypes(PedidoImageUpload::MIME_TYPES)
+                            ->validationMessages([
+                                'mimetypes' => PedidoImageUpload::MESSAGE,
+                            ])
+                            ->helperText(PedidoImageUpload::MESSAGE)
                             ->multiple()
                             ->required()
                             ->maxFiles(10)

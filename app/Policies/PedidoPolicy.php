@@ -2,12 +2,11 @@
 
 namespace App\Policies;
 
-use App\Models\User;
 use App\Models\Pedido;
+use App\Models\User;
 use App\Services\PedidoService;
 
 class PedidoPolicy
-
 {
     /**
      * Determine whether the user can view any models.
@@ -22,9 +21,7 @@ class PedidoPolicy
      */
     public function view(User $user, Pedido $model): bool
     {
-        return $user->hasPermissionTo('Listar Pedidos')
-            && $this->podeAcessarPedido($user, $model);
-
+        return app(PedidoService::class)->podeListarRegistro($model, $user);
     }
 
     /**
@@ -33,7 +30,6 @@ class PedidoPolicy
     public function create(User $user): bool
     {
         return $user->hasPermissionTo('Criar Pedidos');
-        ;
     }
 
     /**
@@ -41,8 +37,7 @@ class PedidoPolicy
      */
     public function update(User $user, Pedido $model): bool
     {
-        return $user->hasPermissionTo('Editar Pedidos')
-            && $this->podeAcessarPedido($user, $model);
+        return app(PedidoService::class)->podeGerenciarRegistro($model, $user);
     }
 
     /**
@@ -51,14 +46,7 @@ class PedidoPolicy
     public function delete(User $user, Pedido $model): bool
     {
         return $user->hasPermissionTo('Excluir Pedidos')
-            && $this->podeAcessarPedido($user, $model);
-    }
-
-    private function podeAcessarPedido(User $user, Pedido $model): bool
-    {
-        return app(PedidoService::class)
-            ->queryPorPerfil(Pedido::query()->whereKey($model->getKey()), $user)
-            ->exists();
+            && app(PedidoService::class)->podeGerenciarRegistro($model, $user);
     }
 
     // /**

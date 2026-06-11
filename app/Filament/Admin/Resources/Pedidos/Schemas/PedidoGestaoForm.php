@@ -3,9 +3,11 @@
 namespace App\Filament\Admin\Resources\Pedidos\Schemas;
 
 use App\Models\Enums\NivelEmergenciaPedido;
+use App\Models\Enums\SetorAccessCapability;
+use App\Models\Pedido;
 use App\Models\TipoStatus;
 use App\Services\PedidoService;
-use App\Services\UserSetorAccessService;
+use App\Services\SetorPedidoAccessService;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -40,8 +42,8 @@ class PedidoGestaoForm
                         Select::make('novo_status_id')
                             ->label('Atualizar Status')
                             ->reactive()
-                            ->options(fn () => static::statusOptions())
-                            ->afterStateUpdated(function ($state, callable $set) {
+                            ->options(fn (?Pedido $record) => static::statusOptions($record))
+                            ->afterStateUpdated(function ($state, callable $set): void {
                                 $status = $state ? TipoStatus::find($state) : null;
 
                                 if (! static::statusEh($status, 'Encaminhado ao Setor')) {
@@ -52,7 +54,7 @@ class PedidoGestaoForm
                                     $set('empresa_contratada_id', null);
                                 }
                             })
-                            ->helperText('As opcoes disponiveis dependem das permissoes e do escopo de setor do usuario.')
+                            ->helperText('As opcoes disponiveis dependem das permissoes e do acesso entre setores.')
                             ->placeholder('Padrão: Em Análise')
                             ->searchable()
                             ->nullable(),
@@ -69,7 +71,10 @@ class PedidoGestaoForm
 
                         Select::make('setor_id')
                             ->label('Setor destino')
-                            ->options(fn () => app(UserSetorAccessService::class)->optionsForSelect(Auth::user()))
+                            ->options(fn () => app(SetorPedidoAccessService::class)->optionsForCapability(
+                                Auth::user(),
+                                SetorAccessCapability::ENCAMINHAR,
+                            ))
                             ->visible(fn (Get $get) => static::statusEh(TipoStatus::find($get('novo_status_id')), 'Encaminhado ao Setor'))
                             ->required(fn (Get $get) => static::statusEh(TipoStatus::find($get('novo_status_id')), 'Encaminhado ao Setor'))
                             ->searchable()
@@ -118,25 +123,25 @@ class PedidoGestaoForm
             ]);
     }
 
-    private static function statusOptions(): array
+    private static function statusOptions(?Pedido $record): array
     {
         $service = app(PedidoService::class);
         $user = Auth::user();
-
         $nomes = [];
 
-        if ($user?->hasPermissionTo('Editar Pedidos')) {
-            $nomes = array_merge($nomes, [
-                'Em Manutenção',
-                'Cancelado',
-            ]);
+        if ($record && $service->podeGerenciarRegistro($record, $user)) {
+            $nomes[] = 'Em Manutenção';
         }
 
-        if ($user?->hasPermissionTo('Encaminhar Pedidos para Setor')) {
+        if ($record && $service->podeCancelarRegistro($record, $user)) {
+            $nomes[] = 'Cancelado';
+        }
+
+        if ($record && $service->podeEncaminharRegistro($record, $user)) {
             $nomes[] = 'Encaminhado ao Setor';
         }
 
-        if ($service->podeEnviarParaEmpresa($user)) {
+        if ($record && $service->podeEnviarParaEmpresa($user) && $service->setorPodeEditarRegistro($record, $user)) {
             $nomes[] = 'Enviado para Empresa';
         }
 

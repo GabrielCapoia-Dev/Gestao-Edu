@@ -58,6 +58,12 @@ class SetorResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return app(UserSetorAccessService::class)
-            ->applySetorScope(parent::getEloquentQuery()->where('ativo', true), Auth::user(), 'id');
+            ->applySetorScope(
+                parent::getEloquentQuery()
+                    ->where('ativo', true)
+                    ->with('acessosConcedidos'),
+                Auth::user(),
+                'id',
+            );
     }
 }
