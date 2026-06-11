@@ -32,6 +32,7 @@ class SetorPedidoAccessTest extends TestCase
 
         foreach ([
             'Listar Pedidos',
+            'Listar Todos os Pedidos',
             'Editar Pedidos',
             'Encaminhar Pedidos para Setor',
             'Acessar Escopo Global de Setores',
@@ -205,6 +206,63 @@ class SetorPedidoAccessTest extends TestCase
 
         $this->assertTrue($service->podeListarRegistro($pedido, $user));
         $this->assertTrue($service->podeGerenciarRegistro($pedido, $user));
+    }
+
+    public function test_listar_todos_remove_restricao_escolar_mas_mantem_matriz_para_edicao(): void
+    {
+        $administrativo = $this->setor('Administrativo');
+        $educacao = $this->setor('Educacao');
+        $obras = $this->setor('Obras');
+        $escolaVinculada = Escola::create([
+            'codigo' => 'ESC-VINC',
+            'nome' => 'Escola Vinculada',
+            'setor_id' => $educacao->id,
+            'ativo' => true,
+        ]);
+        $outraEscola = Escola::create([
+            'codigo' => 'ESC-OUTRA',
+            'nome' => 'Outra Escola',
+            'setor_id' => $educacao->id,
+            'ativo' => true,
+        ]);
+        $pedidoEducacao = $this->pedido($educacao, $educacao, $outraEscola);
+        $pedidoObras = $this->pedido($obras, $educacao, $outraEscola);
+        $user = User::factory()->create(['setor_id' => $administrativo->id]);
+        $user->escolas()->attach($escolaVinculada);
+        $user->givePermissionTo([
+            'Listar Pedidos',
+            'Listar Todos os Pedidos',
+            'Editar Pedidos',
+        ]);
+        $access = app(SetorPedidoAccessService::class);
+        $service = app(PedidoService::class);
+
+        $access->syncCapability($administrativo, SetorAccessCapability::EDITAR, [$educacao->id]);
+        $access->syncCapability($administrativo, SetorAccessCapability::LISTAR, [$obras->id]);
+
+        $this->assertTrue($service->podeGerenciarRegistro($pedidoEducacao, $user));
+        $this->assertFalse($service->podeGerenciarRegistro($pedidoObras, $user));
+        $this->assertTrue($user->can('update', $pedidoEducacao));
+        $this->assertFalse($user->can('update', $pedidoObras));
+    }
+
+    public function test_usuario_de_obras_gerencia_pedido_ativo_do_proprio_setor(): void
+    {
+        $obras = $this->setor('Obras');
+        $escola = Escola::create([
+            'codigo' => 'ESC-OBRAS',
+            'nome' => 'Escola Obras',
+            'setor_id' => $obras->id,
+            'ativo' => true,
+        ]);
+        $pedido = $this->pedido($obras, $obras, $escola);
+        $user = User::factory()->create(['setor_id' => $obras->id]);
+        $user->givePermissionTo(['Listar Pedidos', 'Editar Pedidos']);
+        $service = app(PedidoService::class);
+
+        $this->assertTrue($service->podeListarRegistro($pedido, $user));
+        $this->assertTrue($service->podeGerenciarRegistro($pedido, $user));
+        $this->assertTrue($user->can('update', $pedido));
     }
 
     public function test_regra_para_o_proprio_setor_e_rejeitada_no_modelo(): void

@@ -1127,7 +1127,10 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
 
     public function test_relation_manager_de_adicionais_aparece_somente_no_pedido_principal(): void
     {
-        $usuario = $this->usuarioComRoleSetor('Manutenção: Educação', $this->educacao, ['Editar Pedidos']);
+        $usuario = $this->usuarioComRoleSetor('Manutenção: Educação', $this->educacao, [
+            'Editar Pedidos',
+            'Vincular Pedidos Adicionais',
+        ]);
         $this->actingAs($usuario);
 
         $pedido = $this->pedido(status: 'Em Manutenção', setor: $this->educacao, escola: $this->escola);

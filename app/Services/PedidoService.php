@@ -235,6 +235,7 @@ class PedidoService
         if (
             $escolaIds !== []
             && ! in_array((int) $pedido->escola_id, $escolaIds, true)
+            && ! $this->podeListarTodos($user)
             && ! app(UserSetorAccessService::class)->hasGlobalAccess($user)
         ) {
             return false;

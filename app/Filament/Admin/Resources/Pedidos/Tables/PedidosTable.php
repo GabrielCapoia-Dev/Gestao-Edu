@@ -56,7 +56,7 @@ class PedidosTable
         return $table
             ->modifyQueryUsing(fn (Builder $query) => $query
                 ->where('is_pedido_adicional', false)
-                ->with(['pedidoPrincipal', 'tipoManutencao', 'tipoStatus', 'escola', 'setor', 'solicitante.escola', 'solicitante.escolas'])
+                ->with(['pedidoPrincipal', 'tipoManutencao', 'tipoStatus', 'escola', 'setor', 'setorOrigem', 'solicitante.escola', 'solicitante.escolas'])
                 ->withCount(['pedidosAdicionais', 'problemas']))
             ->paginated([10, 25, 50, 100])
             ->defaultPaginationPageOption(10)
@@ -275,6 +275,34 @@ class PedidosTable
                         ->sortable()
                         ->wrap()
                         ->extraAttributes(['class' => 'pedido-card-field pedido-card-field--school'], merge: true),
+
+                    TextColumn::make('setor.nome_completo')
+                        ->label('Setor atual')
+                        ->description('Setor atual', position: 'above')
+                        ->icon('heroicon-o-map-pin')
+                        ->badge()
+                        ->color('primary')
+                        ->placeholder('Setor nao informado')
+                        ->wrap()
+                        ->extraAttributes(['class' => 'pedido-card-field pedido-card-field--sector'], merge: true),
+
+                    TextColumn::make('setorOrigem.nome_completo')
+                        ->label('Setor de origem')
+                        ->description('Setor de origem', position: 'above')
+                        ->icon('heroicon-o-arrow-uturn-left')
+                        ->placeholder('Origem nao informada')
+                        ->wrap()
+                        ->extraAttributes(['class' => 'pedido-card-field pedido-card-field--sector'], merge: true),
+
+                    TextColumn::make('acesso_operacional')
+                        ->label('Seu acesso')
+                        ->description('Seu acesso', position: 'above')
+                        ->badge()
+                        ->icon(fn (Pedido $record): string => static::iconeAcessoOperacional($record, $user))
+                        ->state(fn (Pedido $record): string => static::rotuloAcessoOperacional($record, $user))
+                        ->color(fn (Pedido $record): string => static::corAcessoOperacional($record, $user))
+                        ->wrap()
+                        ->extraAttributes(['class' => 'pedido-card-field pedido-card-field--access'], merge: true),
 
                     TextColumn::make('pedidos_adicionais_count')
                         ->label('Adicionais')
@@ -1069,6 +1097,35 @@ class PedidosTable
         }
 
         return in_array($record->tipoStatus?->nome, ['Encaminhado ao Setor', 'Em Aberto'], true);
+    }
+
+    private static function rotuloAcessoOperacional(Pedido $record, ?User $user): string
+    {
+        if ($record->tipoStatus?->finaliza_pedido || $record->tipoStatus?->cancela_pedido) {
+            return 'Encerrado';
+        }
+
+        return app(PedidoService::class)->podeGerenciarRegistro($record, $user)
+            ? 'Gerenciavel'
+            : 'Somente leitura';
+    }
+
+    private static function corAcessoOperacional(Pedido $record, ?User $user): string
+    {
+        return match (static::rotuloAcessoOperacional($record, $user)) {
+            'Gerenciavel' => 'success',
+            'Encerrado' => 'gray',
+            default => 'warning',
+        };
+    }
+
+    private static function iconeAcessoOperacional(Pedido $record, ?User $user): string
+    {
+        return match (static::rotuloAcessoOperacional($record, $user)) {
+            'Gerenciavel' => 'heroicon-o-pencil-square',
+            'Encerrado' => 'heroicon-o-lock-closed',
+            default => 'heroicon-o-eye',
+        };
     }
 
     private static function nomeEscolaDoPedido(Pedido $record): ?string
