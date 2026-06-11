@@ -322,10 +322,12 @@ class FeedbackPedidoAnalyticsService
             ];
         }
 
+        $media = round((float) ((clone $query)->avg('valor') ?? 0), 2);
+
         return [
             'total' => $total,
-            'media' => round((float) ((clone $query)->avg('valor') ?? 0), 2),
-            'satisfacao' => (int) round((((clone $query)->where('valor', '>=', 3)->count()) / $total) * 100),
+            'media' => $media,
+            'satisfacao' => $this->satisfactionFromAverage($media),
             'reabertos' => (clone $query)->where('reabrir_pedido', true)->count(),
             'criticas' => (clone $query)->where('valor', '<=', 2)->count(),
         ];
@@ -541,10 +543,8 @@ class FeedbackPedidoAnalyticsService
 
         usort($rows, fn (array $a, array $b): int => [$b['satisfacao'], $b['media'], $b['total']] <=> [$a['satisfacao'], $a['media'], $a['total']]);
 
-        $maxTotal = max(array_column($rows, 'total') ?: [1]);
-
-        return array_map(function (array $row) use ($maxTotal): array {
-            $row['pct_barra'] = $maxTotal > 0 ? (int) round(($row['total'] / $maxTotal) * 100) : 0;
+        return array_map(function (array $row): array {
+            $row['pct_barra'] = $row['satisfacao'];
 
             return $row;
         }, array_slice($rows, 0, 10));
@@ -558,6 +558,11 @@ class FeedbackPedidoAnalyticsService
             return 0;
         }
 
-        return (int) round(($feedbacks->where('valor', '>=', 3)->count() / $total) * 100);
+        return $this->satisfactionFromAverage((float) $feedbacks->avg('valor'));
+    }
+
+    private function satisfactionFromAverage(float $average): int
+    {
+        return (int) round(($average / 5) * 100);
     }
 }

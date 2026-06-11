@@ -111,6 +111,22 @@ class FeedbackPedidoExportQueueTest extends TestCase
         $this->assertSame([$dados['feedback']->id], $query->pluck('id')->all());
     }
 
+    public function test_satisfacao_reflete_a_media_das_notas_na_escala_de_cinco_pontos(): void
+    {
+        $this->criarFeedbacksParaFiltro();
+
+        $service = app(FeedbackPedidoAnalyticsService::class);
+        $query = $service->query([]);
+
+        $this->assertSame(3.5, $service->metrics(clone $query)['media']);
+        $this->assertSame(70, $service->metrics(clone $query)['satisfacao']);
+
+        $empresas = $service->rankingEmpresas($query->get());
+
+        $this->assertSame([100, 40], array_column($empresas, 'satisfacao'));
+        $this->assertSame([100, 40], array_column($empresas, 'pct_barra'));
+    }
+
     public function test_options_de_filtro_sao_baseadas_em_pedidos_avaliados(): void
     {
         $dados = $this->criarFeedbacksParaFiltro();

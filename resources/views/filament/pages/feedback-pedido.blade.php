@@ -18,7 +18,7 @@
             <article class="fb-metric fb-metric--green">
                 <span>Satisfacao</span>
                 <strong>{{ $metricas['satisfacao'] }}%</strong>
-                <small>notas 3, 4 e 5</small>
+                <small>media das notas em percentual</small>
             </article>
 
             <article class="fb-metric fb-metric--amber">
