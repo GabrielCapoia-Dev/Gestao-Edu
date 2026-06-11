@@ -1147,6 +1147,16 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
         $principalCancelamento = $this->pedido(status: 'Em Manutenção', setor: $this->educacao, escola: $this->escola);
         $adicionalCancelamento = $this->pedidoAdicional($principalCancelamento);
 
+        $htmlVisualizacao = view('components.pedido.visualizar', [
+            'pedido' => $principalCancelamento,
+            'historico' => collect(),
+            'adicionais' => collect([$adicionalCancelamento]),
+            'usuario' => $usuario,
+        ])->render();
+
+        $this->assertStringContainsString('Transformar em principal', $htmlVisualizacao);
+        $this->assertStringContainsString('Cancelar adicional', $htmlVisualizacao);
+
         Livewire::actingAs($usuario)
             ->test(ListPedidos::class)
             ->callTableAction(

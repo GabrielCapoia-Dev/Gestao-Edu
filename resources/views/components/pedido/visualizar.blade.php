@@ -441,7 +441,11 @@
 
     @if($adicionais->isNotEmpty())
         <div class="pedido-view__panel" x-show="tab === 'adicionais'" x-cloak>
-            <x-pedido.pedidos-adicionais :pedido="$pedido" :adicionais="$adicionais" />
+            <x-pedido.pedidos-adicionais
+                :pedido="$pedido"
+                :adicionais="$adicionais"
+                :usuario="$usuario"
+            />
         </div>
     @endif
 
