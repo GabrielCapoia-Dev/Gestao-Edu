@@ -6,6 +6,7 @@ use App\Filament\Admin\Actions\VincularSetorBulkAction;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\UserService;
+use App\Services\UserSetorAccessService;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -17,6 +18,9 @@ use Filament\Schemas\Components;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
+use Filament\Tables\Enums\FiltersLayout;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
@@ -39,6 +43,8 @@ class UsersTable
             ->defaultPaginationPageOption(5)
             ->checkIfRecordIsSelectableUsing(fn (User $record) => $service->podeSelecionarRegistro($user, $record))
             ->columns(self::columns($service, $user))
+            ->filters(self::filters($service, $user), layout: FiltersLayout::AboveContent)
+            ->filtersFormColumns(4)
             ->recordActions(self::recordActions($service, $user))
             ->groupedBulkActions(self::bulkActions($service, $user))
             ->defaultSort('updated_at', 'desc')
@@ -126,6 +132,48 @@ class UsersTable
                 ->label('Atualizado em')
                 ->sortable()
                 ->toggleable(isToggledHiddenByDefault: true),
+        ];
+    }
+
+    // -------------------------------------------------------------------------
+    // Filtros
+    // -------------------------------------------------------------------------
+
+    private static function filters(UserService $service, User $user): array
+    {
+        return [
+            SelectFilter::make('setor_id')
+                ->label('Setor')
+                ->options(fn () => app(UserSetorAccessService::class)->optionsForSelect($user))
+                ->searchable()
+                ->preload()
+                ->visible(fn () => $service->podeVisualizarSetor($user)),
+
+            SelectFilter::make('id_escola')
+                ->label('Escola')
+                ->options(fn () => $service->opcoesDeEscolasParaCampo($user))
+                ->searchable()
+                ->preload(),
+
+            SelectFilter::make('roles')
+                ->label('Nível de acesso')
+                ->multiple()
+                ->relationship(
+                    name: 'roles',
+                    titleAttribute: 'name',
+                    modifyQueryUsing: fn (Builder $query) => $service
+                        ->opcoesDeRoles($query, $user)
+                        ->orderBy('name')
+                )
+                ->searchable()
+                ->preload(),
+
+            TernaryFilter::make('email_approved')
+                ->label('Verificação')
+                ->trueLabel('Apenas aprovados')
+                ->falseLabel('Apenas pendentes')
+                ->placeholder('Todos')
+                ->visible(fn () => $service->podeVerToggleAprovacaoEmail($user, null, 'table')),
         ];
     }
 

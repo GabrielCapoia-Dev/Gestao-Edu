@@ -346,6 +346,42 @@ class TurmaResourceScopeTest extends TestCase
             });
     }
 
+    public function test_listagem_pesquisa_dados_relacionados_e_filtra_por_turno(): void
+    {
+        Permission::findOrCreate('Listar Turmas');
+
+        $escolaNorte = $this->criarEscola('Escola Busca Norte');
+        $escolaSul = $this->criarEscola('Escola Busca Sul');
+
+        $turmaNorte = $this->criarTurma($escolaNorte, 'Turma Norte');
+        $turmaSul = $this->criarTurma($escolaSul, 'Turma Sul');
+        $turmaSul->update(['turno' => 'tarde']);
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo('Listar Turmas');
+
+        Livewire::actingAs($usuario)
+            ->test(ManageTurmas::class)
+            ->searchTable('Busca Norte')
+            ->assertCanSeeTableRecords([$turmaNorte])
+            ->assertCanNotSeeTableRecords([$turmaSul]);
+
+        Livewire::actingAs($usuario)
+            ->test(ManageTurmas::class)
+            ->searchTable('Manhã')
+            ->assertCanSeeTableRecords([$turmaNorte])
+            ->assertCanNotSeeTableRecords([$turmaSul]);
+
+        Livewire::actingAs($usuario)
+            ->test(ManageTurmas::class)
+            ->filterTable('turno', 'tarde')
+            ->assertCanSeeTableRecords([$turmaSul])
+            ->assertCanNotSeeTableRecords([$turmaNorte]);
+    }
+
     private function criarEscola(string $nome): Escola
     {
         return Escola::query()->create([

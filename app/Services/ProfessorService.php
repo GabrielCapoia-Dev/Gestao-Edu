@@ -31,6 +31,7 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Str;
 
 
 class ProfessorService
@@ -137,6 +138,24 @@ class ProfessorService
             })
             ->paginated([5, 10, 25, 50, 100])
             ->defaultPaginationPageOption(5)
+            ->searchable([
+                'escola.nome',
+                'turno',
+                'componentesPorTurma.nome',
+                'turmas.nome',
+                'turmas.serie.nome',
+                fn (Builder $query, string $search): Builder => $query->whereIn(
+                    'turno',
+                    collect(Professor::turnosOptions())
+                        ->filter(fn (string $label): bool => str_contains(
+                            Str::lower(Str::ascii($label)),
+                            Str::lower(Str::ascii($search))
+                        ))
+                        ->keys()
+                        ->all()
+                ),
+            ])
+            ->searchPlaceholder('Buscar por nome, matricula, escola, turno, turma ou componente')
             ->columns($this->colunasTabela())
             ->recordActions($this->acoesTabela($user))
             ->toolbarActions($this->acoesEmMassa($user))
@@ -150,6 +169,7 @@ class ProfessorService
     {
         return [
             TextColumn::make('escola.nome')
+                ->searchable()
                 ->label('Escola')
                 ->sortable()
                 ->wrap(),
@@ -161,6 +181,7 @@ class ProfessorService
                 ->sortable(),
 
             TextColumn::make('turno')
+                ->searchable()
                 ->label('Turno')
                 ->badge()
                 ->formatStateUsing(fn (?string $state): string => Professor::turnosOptions()[$state] ?? 'Não informado')
@@ -409,6 +430,25 @@ class ProfessorService
                     return $user->hasPermissionTo('Filtrar Professores por Escola');
                 }),
 
+            SelectFilter::make('turno')
+                ->label('Turno')
+                ->options(Professor::turnosOptions()),
+
+            SelectFilter::make('turma_id')
+                ->label('Turma')
+                ->options(fn (): array => $this->turmasOptionsFiltro($user))
+                ->searchable()
+                ->query(function (Builder $query, array $data): Builder {
+                    if (blank($data['value'] ?? null)) {
+                        return $query;
+                    }
+
+                    return $query->whereHas(
+                        'turmas',
+                        fn (Builder $turmaQuery): Builder => $turmaQuery->whereKey($data['value'])
+                    );
+                }),
+
             SelectFilter::make('serie_id')
                 ->label('Série')
                 ->options(
@@ -449,6 +489,26 @@ class ProfessorService
                     return $user->hasPermissionTo('Filtrar Professores por Componente');
                 }),
         ];
+    }
+
+    private function turmasOptionsFiltro(?User $user): array
+    {
+        $query = \App\Models\Turma::query()
+            ->with(['escola:id,nome', 'serie:id,nome'])
+            ->orderBy('nome');
+
+        $this->userService->aplicarFiltroTurmasDoUsuario($query, $user);
+
+        return $query
+            ->get()
+            ->mapWithKeys(fn (\App\Models\Turma $turma): array => [
+                $turma->id => collect([
+                    $turma->escola?->nome,
+                    $turma->serie?->nome,
+                    $turma->nome,
+                ])->filter()->join(' - '),
+            ])
+            ->toArray();
     }
 
     public function forcarVinculoComEscola(array $data, ?User $auth): array

@@ -1223,6 +1223,47 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
             ->assertCanSeeTableRecords([$principalComDois, $principalComUm], inOrder: true);
     }
 
+    public function test_listagem_pesquisa_descricao_e_filtra_empresa_e_previsao(): void
+    {
+        $usuario = $this->usuarioComPermissoes([
+            'Listar Pedidos',
+            'Listar Todos os Pedidos',
+            'Visualizar Pedidos por Status',
+        ]);
+
+        $empresa = $this->empresa('Empresa Filtro Pedidos', $this->educacao);
+        $pedidoFiltrado = $this->pedido(status: 'Em Aberto', setor: $this->educacao, escola: $this->escola);
+        $pedidoFiltrado->update([
+            'descricao_pedido' => 'Infiltracao exclusiva na biblioteca',
+            'empresa_contratada_id' => $empresa->id,
+            'data_prevista' => '2026-06-20',
+        ]);
+
+        $pedidoFora = $this->pedido(status: 'Em Aberto', setor: $this->educacao, escola: $this->escola);
+        $pedidoFora->update([
+            'descricao_pedido' => 'Troca de lampadas no refeitorio',
+            'data_prevista' => '2026-07-20',
+        ]);
+
+        Livewire::actingAs($usuario)
+            ->test(ListPedidos::class)
+            ->set('activeTab', 'todos')
+            ->searchTable('Infiltracao exclusiva')
+            ->assertCanSeeTableRecords([$pedidoFiltrado])
+            ->assertCanNotSeeTableRecords([$pedidoFora]);
+
+        Livewire::actingAs($usuario)
+            ->test(ListPedidos::class)
+            ->set('activeTab', 'todos')
+            ->filterTable('empresa_contratada_id', $empresa->id)
+            ->filterTable('periodo_previsto', [
+                'data_inicio' => '2026-06-01',
+                'data_fim' => '2026-06-30',
+            ])
+            ->assertCanSeeTableRecords([$pedidoFiltrado])
+            ->assertCanNotSeeTableRecords([$pedidoFora]);
+    }
+
     public function test_tipo_prints_rejeita_documento_no_modelo_e_remove_do_storage(): void
     {
         Storage::fake('public');

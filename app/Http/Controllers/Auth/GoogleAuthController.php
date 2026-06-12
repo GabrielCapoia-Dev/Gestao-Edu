@@ -4,12 +4,13 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Services\GoogleService;
+use DomainException;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Laravel\Socialite\Two\InvalidStateException;
 use Laravel\Socialite\Facades\Socialite;
+use Laravel\Socialite\Two\InvalidStateException;
 use RuntimeException;
 use Throwable;
 
@@ -36,7 +37,6 @@ class GoogleAuthController extends Controller
             ])
             ->redirect();
     }
-
 
     public function callback(GoogleService $service): RedirectResponse
     {
@@ -104,9 +104,11 @@ class GoogleAuthController extends Controller
             return 'Sua sessao expirou durante o login com Google. Tente novamente.';
         }
 
-        return filled($error->getMessage())
-            ? $error->getMessage()
-            : 'Nao foi possivel concluir o login com Google. Tente novamente em instantes.';
+        if ($error instanceof DomainException && filled($error->getMessage())) {
+            return $error->getMessage();
+        }
+
+        return 'Nao foi possivel concluir o login com Google. Tente novamente em instantes.';
     }
 
     protected function sanitizeRedirectTo(?string $redirectTo): ?string
@@ -122,7 +124,7 @@ class GoogleAuthController extends Controller
 
         $appUrl = rtrim((string) config('app.url'), '/');
 
-        if ($appUrl !== '' && str_starts_with($redirectTo, $appUrl . '/')) {
+        if ($appUrl !== '' && str_starts_with($redirectTo, $appUrl.'/')) {
             return $redirectTo;
         }
 

@@ -390,7 +390,7 @@
             align-items: center;
             justify-content: center;
             padding: clamp(16px, 4vh, 40px) clamp(20px, 5vw, 52px);
-            overflow: hidden;
+            overflow-y: auto;
             background: linear-gradient(180deg, rgba(255, 255, 255, .90), rgba(247, 251, 255, .86));
             border-left: 1px solid rgba(7, 79, 155, .10);
             backdrop-filter: blur(14px);
@@ -399,6 +399,8 @@
         .login-card {
             width: min(100%, 386px);
             max-height: calc(100svh - 32px);
+            overflow-y: auto;
+            overscroll-behavior: contain;
             padding: clamp(22px, 3vh, 30px);
             border: 1px solid rgba(7, 79, 155, .12);
             border-radius: 18px;
@@ -427,15 +429,70 @@
             line-height: 1.55;
         }
 
-        .alert {
+        .login-notices {
+            display: grid;
+            gap: 10px;
             margin-bottom: 18px;
+        }
+
+        .login-notice {
+            display: grid;
+            grid-template-columns: 22px minmax(0, 1fr);
+            gap: 10px;
             padding: 12px 14px;
-            border: 1px solid #abefc6;
+            border: 1px solid var(--notice-border);
             border-radius: 12px;
-            background: #ecfdf3;
-            color: var(--success);
+            background: var(--notice-background);
+            color: var(--notice-color);
             font-size: 13px;
             line-height: 1.4;
+        }
+
+        .login-notice-success {
+            --notice-border: #abefc6;
+            --notice-background: #ecfdf3;
+            --notice-color: #067647;
+        }
+
+        .login-notice-warning {
+            --notice-border: #fedf89;
+            --notice-background: #fffaeb;
+            --notice-color: #93370d;
+        }
+
+        .login-notice-danger {
+            --notice-border: #fecdca;
+            --notice-background: #fef3f2;
+            --notice-color: #b42318;
+        }
+
+        .login-notice-info {
+            --notice-border: #b2ddff;
+            --notice-background: #eff8ff;
+            --notice-color: #175cd3;
+        }
+
+        .login-notice-icon {
+            width: 22px;
+            height: 22px;
+            display: grid;
+            place-items: center;
+            border: 1px solid currentColor;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 900;
+            line-height: 1;
+        }
+
+        .login-notice-title {
+            display: block;
+            margin-bottom: 2px;
+            color: inherit;
+            font-weight: 800;
+        }
+
+        .login-notice-message {
+            margin: 0;
         }
 
         .field {
@@ -953,8 +1010,27 @@
                 <h2 class="login-title" id="login-title">Acessar o sistema</h2>
                 <p class="intro">Entre com seu email institucional para continuar.</p>
 
-                @if (session('status'))
-                    <div class="alert">{{ session('status') }}</div>
+                @if ($loginNotices !== [])
+                    <div class="login-notices" role="status" aria-live="polite" aria-atomic="false">
+                        @foreach ($loginNotices as $notice)
+                            <div class="login-notice login-notice-{{ $notice['type'] }}">
+                                <span class="login-notice-icon" aria-hidden="true">
+                                    {{ match ($notice['type']) {
+                                        'success' => '+',
+                                        'warning' => '!',
+                                        'danger' => 'x',
+                                        default => 'i',
+                                    } }}
+                                </span>
+                                <div>
+                                    <strong class="login-notice-title">{{ $notice['title'] }}</strong>
+                                    @if ($notice['message'] !== '')
+                                        <p class="login-notice-message">{{ $notice['message'] }}</p>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
                 @endif
 
                 <form method="POST" action="{{ $loginAction }}" autocomplete="on">

@@ -29,6 +29,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 class TurmaService
 {
@@ -50,6 +51,26 @@ class TurmaService
             })
             ->paginated([5, 10, 25, 50, 100])
             ->defaultPaginationPageOption(5)
+            ->searchable([
+                'codigo',
+                'turno',
+                fn (Builder $query, string $search): Builder => $query->whereIn(
+                    'turno',
+                    collect([
+                        'manha' => 'Manha',
+                        'tarde' => 'Tarde',
+                        'noite' => 'Noite',
+                        'integral' => 'Integral',
+                    ])
+                        ->filter(fn (string $label): bool => str_contains(
+                            Str::lower(Str::ascii($label)),
+                            Str::lower(Str::ascii($search))
+                        ))
+                        ->keys()
+                        ->all()
+                ),
+            ])
+            ->searchPlaceholder('Buscar por escola, serie, turma, codigo ou turno')
             ->columns($this->colunasTabela())
             ->recordActions($this->acoesTabela($user))
             ->toolbarActions($this->acoesEmMassa($user))

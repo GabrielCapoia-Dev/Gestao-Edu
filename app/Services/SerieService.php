@@ -12,6 +12,8 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -28,7 +30,12 @@ class SerieService
         return $table
             ->paginated([5, 10, 25, 50, 100])
             ->defaultPaginationPageOption(5)
+            ->searchable([
+                'componentesCurriculares.nome',
+            ])
+            ->searchPlaceholder('Buscar por codigo, nome ou componente curricular')
             ->columns($this->colunasTabela())
+            ->filters($this->filtrosTabela())
             ->recordActions($this->acoesTabela($user))
             ->toolbarActions($this->acoesEmMassa($user))
             ->defaultSort('updated_at', 'desc')
@@ -49,6 +56,7 @@ class SerieService
                 ->sortable(),
 
             TextColumn::make('componentesCurriculares.nome')
+                ->searchable()
                 ->label('Componentes')
                 ->badge()
                 ->separator(',')
@@ -72,6 +80,28 @@ class SerieService
                 ->dateTime('d/m/Y H:i')
                 ->sortable()
                 ->toggleable(isToggledHiddenByDefault: true),
+        ];
+    }
+
+    private function filtrosTabela(): array
+    {
+        return [
+            SelectFilter::make('componente_curricular_id')
+                ->label('Componente curricular')
+                ->relationship(
+                    'componentesCurriculares',
+                    'nome',
+                    modifyQueryUsing: fn ($query) => $query->orderBy('nome'),
+                )
+                ->searchable()
+                ->preload(),
+
+            TernaryFilter::make('possui_turmas')
+                ->label('Possui turmas')
+                ->queries(
+                    true: fn ($query) => $query->has('turmas'),
+                    false: fn ($query) => $query->doesntHave('turmas'),
+                ),
         ];
     }
 

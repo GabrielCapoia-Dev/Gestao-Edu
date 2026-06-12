@@ -332,6 +332,56 @@ class AlunoResourceScopeTest extends TestCase
         Notification::assertSentTo($usuario, \App\Notifications\SistemaNotification::class);
     }
 
+    public function test_listagem_pesquisa_escola_e_filtra_por_turma_e_sexo(): void
+    {
+        Permission::findOrCreate('Listar Alunos');
+
+        $escolaNorte = $this->criarEscola('Escola Alunos Norte');
+        $escolaSul = $this->criarEscola('Escola Alunos Sul');
+        $turmaNorte = $this->criarTurma($escolaNorte, 'Norte');
+        $turmaSul = $this->criarTurma($escolaSul, 'Sul');
+
+        $alunaNorte = Aluno::query()->create([
+            'nome' => 'Aluna Busca Norte',
+            'cgm' => 'BUSCA-NORTE',
+            'data_nascimento' => '2015-01-01',
+            'sexo' => 'F',
+            'id_turma' => $turmaNorte->id,
+        ]);
+        $alunoSul = Aluno::query()->create([
+            'nome' => 'Aluno Busca Sul',
+            'cgm' => 'BUSCA-SUL',
+            'data_nascimento' => '2015-02-01',
+            'sexo' => 'M',
+            'id_turma' => $turmaSul->id,
+        ]);
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo('Listar Alunos');
+
+        Livewire::actingAs($usuario)
+            ->test(ListAlunos::class)
+            ->searchTable('Alunos Norte')
+            ->assertCanSeeTableRecords([$alunaNorte])
+            ->assertCanNotSeeTableRecords([$alunoSul]);
+
+        Livewire::actingAs($usuario)
+            ->test(ListAlunos::class)
+            ->searchTable('Feminino')
+            ->assertCanSeeTableRecords([$alunaNorte])
+            ->assertCanNotSeeTableRecords([$alunoSul]);
+
+        Livewire::actingAs($usuario)
+            ->test(ListAlunos::class)
+            ->filterTable('id_turma', $turmaSul->id)
+            ->filterTable('sexo', 'M')
+            ->assertCanSeeTableRecords([$alunoSul])
+            ->assertCanNotSeeTableRecords([$alunaNorte]);
+    }
+
     private function criarEscola(string $nome): Escola
     {
         return Escola::query()->create([

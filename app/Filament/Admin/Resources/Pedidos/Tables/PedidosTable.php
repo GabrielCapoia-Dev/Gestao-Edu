@@ -55,12 +55,28 @@ class PedidosTable
 
         return $table
             ->modifyQueryUsing(fn (Builder $query) => $query
-                ->with(['pedidoPrincipal', 'tipoManutencao', 'tipoStatus', 'escola', 'setor', 'setorOrigem', 'solicitante.escola', 'solicitante.escolas'])
+                ->with(['pedidoPrincipal', 'tipoManutencao', 'tipoStatus', 'escola', 'setor', 'setorOrigem', 'empresaContratada', 'solicitante.escola', 'solicitante.escolas'])
                 ->withCount(['pedidosAdicionais', 'problemas']))
             ->paginated([10, 25, 50, 100])
             ->defaultPaginationPageOption(10)
             ->defaultSort('updated_at', 'desc')
             ->striped()
+            ->searchable([
+                'pedidoPrincipal.numero_protocolo',
+                'tipoManutencao.nome',
+                'escola.nome',
+                'setor.nome',
+                'setorOrigem.nome',
+                'tipoStatus.nome',
+                'empresaContratada.nome',
+                'nivel_prioridade',
+                'nome_solicitante',
+                'descricao_pedido',
+                'problemas.texto_problema',
+                'solicitante.name',
+                'responsavel.name',
+            ])
+            ->searchPlaceholder('Buscar por protocolo, escola, setor, status, tipo ou descricao')
             ->columns(static::columns($user))
             ->filters(static::filters($user), layout: FiltersLayout::AboveContent)
             ->filtersFormColumns(12)
@@ -120,6 +136,20 @@ class PedidosTable
                         )
                         ->orderBy('nome');
                 })
+                ->searchable()
+                ->preload(),
+
+            SelectFilter::make('empresa_contratada_id')
+                ->label('Empresa')
+                ->columnSpan(3)
+                ->options(fn (): array => $user
+                    ? EmpresaContratada::query()
+                        ->where('ativo', true)
+                        ->doSetorDoUsuario($user)
+                        ->orderBy('nome')
+                        ->pluck('nome', 'id')
+                        ->toArray()
+                    : [])
                 ->searchable()
                 ->preload(),
 
@@ -234,6 +264,50 @@ class PedidosTable
                         ->when(
                             filled($data['data_fim'] ?? null),
                             fn (Builder $builder) => $builder->whereDate('data_identificacao_problema', '<=', $data['data_fim'])
+                        );
+                }),
+
+            Filter::make('periodo_previsto')
+                ->label('Previsao')
+                ->columnSpan(6)
+                ->columns(2)
+                ->schema([
+                    DatePicker::make('data_inicio')
+                        ->label('De'),
+                    DatePicker::make('data_fim')
+                        ->label('Ate'),
+                ])
+                ->query(function (Builder $query, array $data): Builder {
+                    return $query
+                        ->when(
+                            filled($data['data_inicio'] ?? null),
+                            fn (Builder $builder) => $builder->whereDate('data_prevista', '>=', $data['data_inicio'])
+                        )
+                        ->when(
+                            filled($data['data_fim'] ?? null),
+                            fn (Builder $builder) => $builder->whereDate('data_prevista', '<=', $data['data_fim'])
+                        );
+                }),
+
+            Filter::make('periodo_conclusao')
+                ->label('Conclusao')
+                ->columnSpan(6)
+                ->columns(2)
+                ->schema([
+                    DatePicker::make('data_inicio')
+                        ->label('De'),
+                    DatePicker::make('data_fim')
+                        ->label('Ate'),
+                ])
+                ->query(function (Builder $query, array $data): Builder {
+                    return $query
+                        ->when(
+                            filled($data['data_inicio'] ?? null),
+                            fn (Builder $builder) => $builder->whereDate('data_entrega', '>=', $data['data_inicio'])
+                        )
+                        ->when(
+                            filled($data['data_fim'] ?? null),
+                            fn (Builder $builder) => $builder->whereDate('data_entrega', '<=', $data['data_fim'])
                         );
                 }),
         ];

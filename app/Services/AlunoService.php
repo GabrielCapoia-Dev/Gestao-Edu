@@ -207,6 +207,33 @@ class AlunoService
             })
             ->paginated([5, 10, 25, 50, 100])
             ->defaultPaginationPageOption(10)
+            ->searchable([
+                'status',
+                'sexo',
+                'turma.nome',
+                'turma.serie.nome',
+                'turma.escola.nome',
+                fn (Builder $query, string $search): Builder => $query->where(function (Builder $labelQuery) use ($search): void {
+                    $search = Str::lower(Str::ascii($search));
+
+                    $status = collect(Aluno::statusOptions())
+                        ->filter(fn (string $label): bool => str_contains(Str::lower(Str::ascii($label)), $search))
+                        ->keys()
+                        ->all();
+                    $sexos = collect([
+                        'F' => 'Feminino',
+                        'M' => 'Masculino',
+                    ])
+                        ->filter(fn (string $label): bool => str_contains(Str::lower(Str::ascii($label)), $search))
+                        ->keys()
+                        ->all();
+
+                    $labelQuery
+                        ->whereIn('status', $status)
+                        ->orWhereIn('sexo', $sexos);
+                }),
+            ])
+            ->searchPlaceholder('Buscar por nome, CGM, status, turma, serie ou escola')
             ->columns($this->colunasTabela())
             ->filters($this->filtrosTabela($user))
             ->recordActions($this->acoesTabela($user))
@@ -269,16 +296,19 @@ class AlunoService
                 ->toggleable(),
 
             TextColumn::make('turma.serie.nome')
+                ->searchable()
                 ->label('Série')
                 ->sortable()
                 ->toggleable(),
 
             TextColumn::make('turma.nome')
+                ->searchable()
                 ->label('Turma')
                 ->sortable()
                 ->badge(),
 
             TextColumn::make('turma.escola.nome')
+                ->searchable()
                 ->label('Escola')
                 ->sortable()
                 ->toggleable(),
@@ -303,6 +333,18 @@ class AlunoService
             SelectFilter::make('status')
                 ->label('Status')
                 ->options(Aluno::statusOptions()),
+
+            SelectFilter::make('id_turma')
+                ->label('Turma')
+                ->options(fn (): array => $this->opcoesDeTurmas($user))
+                ->searchable(),
+
+            SelectFilter::make('sexo')
+                ->label('Sexo')
+                ->options([
+                    'F' => 'Feminino',
+                    'M' => 'Masculino',
+                ]),
 
             SelectFilter::make('sem_professor')
                 ->label('Professor')

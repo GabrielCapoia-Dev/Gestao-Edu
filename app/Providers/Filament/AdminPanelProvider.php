@@ -46,6 +46,7 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->login([AdminLoginController::class, 'show'])
             ->profile()
+            ->globalSearch(false)
             ->userMenuItems([
                 Action::make('profilePreview')
                     ->label(fn () => app(ProfilePreviewService::class)->isActive() ? 'Sair do modo visualização' : 'Trocar de Usuário')
