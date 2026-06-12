@@ -79,9 +79,10 @@ class ProfessorResourceEscolaOptionsTest extends TestCase
             });
     }
 
-    public function test_listagem_pesquisa_componente_e_filtra_por_turno_e_turma(): void
+    public function test_listagem_pesquisa_componente_e_filtra_por_turno_e_serie_sem_filtro_de_turma(): void
     {
         Permission::findOrCreate('Listar Professores');
+        Permission::findOrCreate('Filtrar Professores por Serie');
 
         $escola = $this->criarEscola('Escola Professores Busca');
         $serie = Serie::query()->create([
@@ -124,7 +125,10 @@ class ProfessorResourceEscolaOptionsTest extends TestCase
             'email_approved' => true,
             'email_verified_at' => now(),
         ]);
-        $usuario->givePermissionTo('Listar Professores');
+        $usuario->givePermissionTo([
+            'Listar Professores',
+            'Filtrar Professores por Serie',
+        ]);
 
         Livewire::actingAs($usuario)
             ->test(ManageProfessors::class)
@@ -138,12 +142,15 @@ class ProfessorResourceEscolaOptionsTest extends TestCase
             ->assertCanSeeTableRecords([$professorSemVinculo])
             ->assertCanNotSeeTableRecords([$professorVinculado]);
 
-        Livewire::actingAs($usuario)
+        $component = Livewire::actingAs($usuario)
             ->test(ManageProfessors::class)
+            ->assertTableFilterExists('serie_id')
             ->filterTable('turno', 'tarde')
-            ->filterTable('turma_id', $turma->id)
+            ->filterTable('serie_id', $serie->id)
             ->assertCanSeeTableRecords([$professorVinculado])
             ->assertCanNotSeeTableRecords([$professorSemVinculo]);
+
+        $this->assertArrayNotHasKey('turma_id', $component->instance()->getTable()->getFilters(withHidden: true));
     }
 
     private function criarEscola(string $nome, bool $ativo = true): Escola

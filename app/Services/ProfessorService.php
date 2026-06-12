@@ -434,21 +434,6 @@ class ProfessorService
                 ->label('Turno')
                 ->options(Professor::turnosOptions()),
 
-            SelectFilter::make('turma_id')
-                ->label('Turma')
-                ->options(fn (): array => $this->turmasOptionsFiltro($user))
-                ->searchable()
-                ->query(function (Builder $query, array $data): Builder {
-                    if (blank($data['value'] ?? null)) {
-                        return $query;
-                    }
-
-                    return $query->whereHas(
-                        'turmas',
-                        fn (Builder $turmaQuery): Builder => $turmaQuery->whereKey($data['value'])
-                    );
-                }),
-
             SelectFilter::make('serie_id')
                 ->label('Série')
                 ->options(
@@ -489,26 +474,6 @@ class ProfessorService
                     return $user->hasPermissionTo('Filtrar Professores por Componente');
                 }),
         ];
-    }
-
-    private function turmasOptionsFiltro(?User $user): array
-    {
-        $query = \App\Models\Turma::query()
-            ->with(['escola:id,nome', 'serie:id,nome'])
-            ->orderBy('nome');
-
-        $this->userService->aplicarFiltroTurmasDoUsuario($query, $user);
-
-        return $query
-            ->get()
-            ->mapWithKeys(fn (\App\Models\Turma $turma): array => [
-                $turma->id => collect([
-                    $turma->escola?->nome,
-                    $turma->serie?->nome,
-                    $turma->nome,
-                ])->filter()->join(' - '),
-            ])
-            ->toArray();
     }
 
     public function forcarVinculoComEscola(array $data, ?User $auth): array
