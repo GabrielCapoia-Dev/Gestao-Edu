@@ -60,6 +60,16 @@
         border-color: color-mix(in oklab, var(--primary-300) 58%, var(--gray-200));
     }
 
+    .fi-resource-pedidos.fi-resource-list-records-page .fi-ta-record.pedido-card--has-additionals {
+        --pedido-card-surface: color-mix(in srgb, #ffffff 97%, #dbeafe);
+        --pedido-card-border: color-mix(in srgb, var(--gray-200) 88%, #bfdbfe);
+    }
+
+    .dark .fi-resource-pedidos.fi-resource-list-records-page .fi-ta-record.pedido-card--has-additionals {
+        --pedido-card-surface: color-mix(in srgb, var(--gray-900) 97%, #1e3a8a);
+        --pedido-card-border: color-mix(in srgb, var(--gray-700) 90%, #1d4ed8);
+    }
+
     .fi-resource-pedidos.fi-resource-list-records-page .fi-ta-record-content {
         display: grid;
         gap: 0.8rem;

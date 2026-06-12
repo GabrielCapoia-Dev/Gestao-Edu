@@ -1187,6 +1187,42 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
         $this->assertNull($adicionalPromocao->pedido_principal_id);
     }
 
+    public function test_listagem_filtra_ordena_e_destaca_pedidos_com_adicionais(): void
+    {
+        $usuario = $this->usuarioComPermissoes([
+            'Listar Pedidos',
+            'Listar Todos os Pedidos',
+            'Visualizar Pedidos por Status',
+        ]);
+
+        $principalComDois = $this->pedido(status: 'Em Manutenção', setor: $this->educacao, escola: $this->escola);
+        $adicionalUm = $this->pedidoAdicional($principalComDois);
+        $adicionalDois = $this->pedidoAdicional($principalComDois);
+
+        $principalComUm = $this->pedido(status: 'Em Manutenção', setor: $this->educacao, escola: $this->escola);
+        $adicionalTres = $this->pedidoAdicional($principalComUm);
+
+        $principalSemAdicional = $this->pedido(status: 'Em Manutenção', setor: $this->educacao, escola: $this->escola);
+
+        Livewire::actingAs($usuario)
+            ->test(ListPedidos::class)
+            ->set('activeTab', 'adicionais')
+            ->sortTable('pedido_principal_sort', 'asc')
+            ->assertCanSeeTableRecords([$adicionalUm, $adicionalDois, $adicionalTres])
+            ->assertCanNotSeeTableRecords([$principalComDois, $principalComUm, $principalSemAdicional]);
+
+        Livewire::actingAs($usuario)
+            ->test(ListPedidos::class)
+            ->set('activeTab', 'todos')
+            ->filterTable('relacao_pedido', 'com_adicionais')
+            ->assertCanSeeTableRecords([$principalComDois, $principalComUm])
+            ->assertCanNotSeeTableRecords([$principalSemAdicional, $adicionalUm])
+            ->assertSeeHtml('pedido-card--has-additionals')
+            ->sortTable('tipo_pedido_sort', 'asc')
+            ->sortTable('pedidos_adicionais_count', 'desc')
+            ->assertCanSeeTableRecords([$principalComDois, $principalComUm], inOrder: true);
+    }
+
     public function test_tipo_prints_rejeita_documento_no_modelo_e_remove_do_storage(): void
     {
         Storage::fake('public');

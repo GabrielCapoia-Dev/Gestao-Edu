@@ -55,7 +55,6 @@ class PedidosTable
 
         return $table
             ->modifyQueryUsing(fn (Builder $query) => $query
-                ->where('is_pedido_adicional', false)
                 ->with(['pedidoPrincipal', 'tipoManutencao', 'tipoStatus', 'escola', 'setor', 'setorOrigem', 'solicitante.escola', 'solicitante.escolas'])
                 ->withCount(['pedidosAdicionais', 'problemas']))
             ->paginated([10, 25, 50, 100])
@@ -65,6 +64,10 @@ class PedidosTable
             ->columns(static::columns($user))
             ->filters(static::filters($user), layout: FiltersLayout::AboveContent)
             ->filtersFormColumns(12)
+            ->recordClasses(fn (Pedido $record): ?string => ! $record->is_pedido_adicional
+                && (int) ($record->pedidos_adicionais_count ?? 0) > 0
+                    ? 'pedido-card--has-additionals'
+                    : null)
             ->recordActions(static::actions($user, $service), position: RecordActionsPosition::AfterContent)
             ->groupedBulkActions(static::bulkActions($user, $service))
             ->headerActions(static::headerActions($user));
@@ -128,6 +131,27 @@ class PedidosTable
                         ->mapWithKeys(fn ($case) => [$case->value => $case->label()])
                         ->toArray()
                 ),
+
+            SelectFilter::make('relacao_pedido')
+                ->label('Tipo de pedido')
+                ->columnSpan(3)
+                ->options([
+                    'principais' => 'Pedidos principais',
+                    'com_adicionais' => 'Principais com adicionais',
+                    'sem_adicionais' => 'Principais sem adicionais',
+                    'adicionais' => 'Pedidos adicionais',
+                ])
+                ->query(fn (Builder $query, array $data): Builder => match ($data['value'] ?? null) {
+                    'principais' => $query->where('is_pedido_adicional', false),
+                    'com_adicionais' => $query
+                        ->where('is_pedido_adicional', false)
+                        ->has('pedidosAdicionais'),
+                    'sem_adicionais' => $query
+                        ->where('is_pedido_adicional', false)
+                        ->doesntHave('pedidosAdicionais'),
+                    'adicionais' => $query->where('is_pedido_adicional', true),
+                    default => $query,
+                }),
 
             Filter::make('manutencao')
                 ->label('Manutencao')
@@ -310,6 +334,7 @@ class PedidosTable
                         ->badge()
                         ->color(fn (Pedido $record): string => (int) ($record->pedidos_adicionais_count ?? 0) > 0 ? 'info' : 'gray')
                         ->state(fn (Pedido $record): string => (int) ($record->pedidos_adicionais_count ?? 0).' adicional(is)')
+                        ->sortable(['pedidos_adicionais_count'])
                         ->wrap()
                         ->toggleable(isToggledHiddenByDefault: true)
                         ->extraAttributes(['class' => 'pedido-card-field'], merge: true),
@@ -417,6 +442,23 @@ class PedidosTable
             TextColumn::make('created_at_sort')
                 ->label('Data de criação')
                 ->sortable(['created_at'])
+                ->extraAttributes(['class' => 'pedido-card-sort-only'], merge: true),
+
+            TextColumn::make('tipo_pedido_sort')
+                ->label('Tipo de pedido')
+                ->sortable(['is_pedido_adicional'])
+                ->extraAttributes(['class' => 'pedido-card-sort-only'], merge: true),
+
+            TextColumn::make('pedido_principal_sort')
+                ->label('Pedido principal')
+                ->sortable(query: fn (Builder $query, string $direction): Builder => $query
+                    ->orderBy(
+                        DB::table('pedidos as principal')
+                            ->select('principal.numero_protocolo')
+                            ->whereColumn('principal.id', 'pedidos.pedido_principal_id')
+                            ->limit(1),
+                        $direction
+                    ))
                 ->extraAttributes(['class' => 'pedido-card-sort-only'], merge: true),
 
             TextColumn::make('updated_at_sort')

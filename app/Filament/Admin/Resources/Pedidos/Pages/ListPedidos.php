@@ -65,6 +65,21 @@ class ListPedidos extends ListRecords
             );
         }
 
+        if ($activeTab === 'adicionais') {
+            return new HtmlString(
+                '<span style="
+                display:inline-block;
+                padding:2px 10px;
+                border-radius:5px;
+                font-weight:600;
+                line-height:1.6;
+                background-color:#eff6ff;
+                color:#1d4ed8;
+                border:1px solid #bfdbfe;
+            ">Pedidos adicionais</span>'
+            );
+        }
+
         $status = TipoStatus::find($activeTab);
 
         if (! $status) {
@@ -142,6 +157,26 @@ class ListPedidos extends ListRecords
                     ',
                 ]),
         ];
+
+        $quantidadeAdicionais = (clone $tableQuery)
+            ->where('is_pedido_adicional', true)
+            ->count();
+
+        if ($quantidadeAdicionais > 0) {
+            $tabs['adicionais'] = Tab::make('Adicionais')
+                ->modifyQueryUsing(fn (Builder $query): Builder => $query
+                    ->where('is_pedido_adicional', true)
+                    ->reorder()
+                    ->orderByDesc('updated_at'))
+                ->badge($quantidadeAdicionais)
+                ->extraAttributes([
+                    'style' => '
+                        --tab-color: #2563eb;
+                        background-color: #eff6ff;
+                        border: 1px solid #bfdbfe;
+                    ',
+                ]);
+        }
 
         $ordemStatus = [
             'Em Aberto',
@@ -246,6 +281,20 @@ class ListPedidos extends ListRecords
             );
         }
 
+        if ($activeTab === 'adicionais') {
+            return new HtmlString(
+                '<span style="
+                    display:inline-block;
+                    padding:2px 10px;
+                    border-radius:5px;
+                    font-weight:600;
+                    line-height:1.6;
+                    background-color:#eff6ff;
+                    color:#1d4ed8;
+                    border:1px solid #bfdbfe">Pedidos adicionais</span>'
+            );
+        }
+
         $status = TipoStatus::find($activeTab);
 
         if (! $status) {
@@ -275,7 +324,8 @@ class ListPedidos extends ListRecords
         $service = app(PedidoService::class);
 
         if (! $user?->hasPermissionTo('Visualizar Pedidos por Status')) {
-            return $service->queryTabTodos($user);
+            return $service->queryTabTodos($user)
+                ->where('is_pedido_adicional', false);
         }
 
         if (request()->query('activeTab') === 'todos') {
