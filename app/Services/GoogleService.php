@@ -7,7 +7,6 @@ use App\Models\Professor;
 use App\Models\Role;
 use App\Models\User;
 use DomainException;
-use Google\Client as GoogleClient;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -44,7 +43,7 @@ class GoogleService
             $user = $this->registroGoogle($oauthUser, $email);
         }
 
-        $this->salvarTokens($user, $oauthUser);
+        $this->salvarIdentidadeGoogle($user, $oauthUser);
         $this->sincronizarProfessorAoUsuario($user, $email);
 
         return $user;
@@ -164,51 +163,20 @@ class GoogleService
         app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 
-    /**
-     * Salva ou atualiza tokens do Google para o usuario.
-     */
-    private function salvarTokens(User $user, SocialiteUserContract $oauthUser): void
+    private function salvarIdentidadeGoogle(User $user, SocialiteUserContract $oauthUser): void
     {
-        $refresh = $oauthUser->refreshToken ?? $user->google_refresh_token;
         $googleEmail = Professor::normalizarEmail((string) ($oauthUser->getEmail() ?: $user->google_email));
         $avatarUrl = $oauthUser->getAvatar();
-
-        $expiresIn = $oauthUser->expiresIn ?? 3600;
-        $expiresAt = now()->addSeconds(max(60, (int) $expiresIn - 60));
 
         $user->forceFill([
             'google_id' => $oauthUser->getId() ?: $user->google_id,
             'google_email' => $googleEmail !== '' ? $googleEmail : $user->google_email,
             'avatar_url' => filled($avatarUrl) ? $avatarUrl : $user->avatar_url,
-            'google_token' => $oauthUser->token,
-            'google_refresh_token' => $refresh,
-            'google_token_expires_in' => $expiresAt,
+            // Campos legados sao limpos para que o login nao mantenha credenciais de APIs Google.
+            'google_token' => null,
+            'google_refresh_token' => null,
+            'google_token_expires_in' => null,
         ])->save();
     }
 
-    /**
-     * Retorna um Google Client autenticado para o usuario.
-     */
-    public function getGoogleClient(User $user): GoogleClient
-    {
-        $client = new GoogleClient();
-        $client->setClientId(config('services.google.client_id'));
-        $client->setClientSecret(config('services.google.client_secret'));
-        $client->setRedirectUri(config('services.google.redirect'));
-        $client->setAccessToken([
-            'access_token' => $user->google_token,
-            'refresh_token' => $user->google_refresh_token,
-            'expires_in' => $user->google_token_expires_in,
-        ]);
-
-        if ($client->isAccessTokenExpired() && $user->google_refresh_token) {
-            $newToken = $client->fetchAccessTokenWithRefreshToken($user->google_refresh_token);
-            $user->update([
-                'google_token' => $newToken['access_token'] ?? null,
-                'google_token_expires_in' => $newToken['expires_in'] ?? null,
-            ]);
-        }
-
-        return $client;
-    }
 }

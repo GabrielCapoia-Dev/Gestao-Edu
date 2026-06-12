@@ -118,6 +118,9 @@ class GoogleServiceProfessorAccessTest extends TestCase
 
         $this->assertSame($avatarUrl, $user->avatar_url);
         $this->assertSame($avatarUrl, $user->getFilamentAvatarUrl());
+        $this->assertNull($user->google_token);
+        $this->assertNull($user->google_refresh_token);
+        $this->assertNull($user->google_token_expires_in);
     }
 
     public function test_login_google_preserva_escola_e_setor_de_usuario_existente_sem_vinculo_pedagogico(): void

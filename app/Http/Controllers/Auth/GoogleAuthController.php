@@ -8,7 +8,6 @@ use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Laravel\Socialite\Two\InvalidStateException;
 use Laravel\Socialite\Facades\Socialite;
 use RuntimeException;
@@ -26,28 +25,15 @@ class GoogleAuthController extends Controller
             $request->session()->forget('google_auth.redirect_to');
         }
 
-        $queryParams = [
-            'prompt' => 'select_account',
-        ];
-        /** @var \App\Models\User|null $user */
-        $user = Auth::user();
-        // Impacto: access_type=offline so deve ser pedido quando falta refresh token; alterar isso pode fazer usuarios perderem integracoes Google apos expirar o access token.
-        if (!$user?->hasGoogleOauth()) {
-            $queryParams['prompt'] = 'select_account';
-            $queryParams['access_type'] = 'offline';
-            $queryParams['include_granted_scopes'] = 'true';
-        }
-
         return Socialite::driver('google')
             ->scopes([
                 'openid',
                 'email',
                 'profile',
-                'https://www.googleapis.com/auth/drive.metadata.readonly',
-                'https://www.googleapis.com/auth/spreadsheets.readonly'
-
             ])
-            ->with($queryParams)
+            ->with([
+                'prompt' => 'select_account',
+            ])
             ->redirect();
     }
 

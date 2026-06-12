@@ -277,7 +277,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
     {
         $this->form['series_ids'] = collect($this->form['series_ids'] ?? [])
             ->filter()
-            ->map(fn($id) => (int) $id)
+            ->map(fn($id) => (string) $id)
             ->unique()
             ->values()
             ->all();
@@ -292,7 +292,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
     {
         $this->form['componentes_ids'] = collect($this->form['componentes_ids'] ?? [])
             ->filter()
-            ->map(fn($id) => (int) $id)
+            ->map(fn($id) => (string) $id)
             ->unique()
             ->values()
             ->all();
@@ -470,8 +470,8 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
             'data_inicio' => optional($avaliacao->data_inicio)->format('Y-m-d') ?? '',
             'data_fim' => optional($avaliacao->data_fim)->format('Y-m-d') ?? '',
             'status' => (string) $avaliacao->status,
-            'series_ids' => $avaliacao->series->pluck('id')->map(fn($id) => (int) $id)->values()->all(),
-            'componentes_ids' => $avaliacao->componentes->pluck('id')->map(fn($id) => (int) $id)->values()->all(),
+            'series_ids' => $avaliacao->series->pluck('id')->map(fn($id) => (string) $id)->values()->all(),
+            'componentes_ids' => $avaliacao->componentes->pluck('id')->map(fn($id) => (string) $id)->values()->all(),
             'escolas_ids' => $avaliacao->escolas->pluck('id')->map(fn($id) => (string) $id)->values()->all(),
             'pautas_override_habilitado' => [],
             'alternativas_override' => [],
@@ -897,13 +897,13 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
     private function sincronizarComponentesSelecionadosComFiltros(): void
     {
         $componentesDisponiveis = collect(array_keys($this->componentesOptions))
-            ->map(fn($id) => (int) $id)
+            ->map(fn($id) => (string) $id)
             ->values()
             ->all();
 
         $this->form['componentes_ids'] = collect($this->form['componentes_ids'] ?? [])
             ->filter()
-            ->map(fn($id) => (int) $id)
+            ->map(fn($id) => (string) $id)
             ->intersect($componentesDisponiveis)
             ->unique()
             ->values()

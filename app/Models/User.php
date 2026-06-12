@@ -52,15 +52,15 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
         'google_id',
         'google_email',
         'avatar_url',
-        'google_token',
-        'google_refresh_token',
-        'google_token_expires_in',
         'codigo',
     ];
 
     protected $hidden = [
         'password',
         'remember_token',
+        'google_token',
+        'google_refresh_token',
+        'google_token_expires_in',
     ];
 
     protected function casts(): array
@@ -71,7 +71,6 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
             'last_seen_at' => 'datetime',
             'password' => 'hashed',
             'must_change_password' => 'boolean',
-            'google_token_expires_in' => 'datetime',
         ];
     }
 
@@ -167,11 +166,6 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
     }
 
 
-    public function hasGoogleOauth(): bool
-    {
-        return filled($this->google_token) || filled($this->google_refresh_token);
-    }
-
     public function getFilamentAvatarUrl(): ?string
     {
         if (filled($this->avatar_url)) {
@@ -195,13 +189,6 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
         }
 
         return Storage::disk('public')->url($avatarUrl);
-    }
-
-    public function googleAccessTokenExpired(): bool
-    {
-        return is_null($this->google_token_expires_in)
-            ? true
-            : now()->greaterThan($this->google_token_expires_in);
     }
 
     public function escola()

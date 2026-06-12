@@ -43,8 +43,11 @@ O limite deste dominio termina na autorizacao e no enquadramento do usuario. Reg
 
 ### Login Google e onboarding
 
-- `GoogleAuthController::redirect()` inicia OAuth com escopos de perfil, email, Drive metadata e leitura de Sheets
+- `GoogleAuthController::redirect()` inicia OAuth somente com escopos de identidade: `openid`, `email` e `profile`
+- o login nao solicita acesso offline nem agrega autorizacoes antigas de Drive ou Sheets
 - `GoogleService::registrarOuLogar()` encontra o usuario por email ou `google_email`
+- `GoogleService` persiste apenas identidade basica (`google_id`, email e avatar) e limpa tokens legados
+- a migracao `2026_06_12_000000_clear_legacy_google_api_tokens` apaga tokens Google previamente armazenados
 - se o usuario nao existir, `GoogleService::registroGoogle()` valida o dominio com `DominioEmailService`
 - se o dominio estiver autorizado, o usuario e criado com `email_approved = false`
 - depois da autenticacao, `User::canAccessPanel()` barra o painel ate aprovacao e redireciona para o login com notificacao
@@ -117,7 +120,7 @@ O limite deste dominio termina na autorizacao e no enquadramento do usuario. Reg
 
 - catalogo de permissoes disperso entre comando, seeders e verificacoes manuais
 - mistura de policy ampla com filtros contextuais pode dar falsa sensacao de seguranca
-- alteracoes em login Google afetam onboarding, vinculacao de conta e persistencia de token
+- alteracoes em login Google afetam onboarding, vinculacao de conta e persistencia da identidade Google
 - variacoes de acentuacao em nomes de permissao podem esconder bugs de acesso
 
 ## Testes existentes e lacunas

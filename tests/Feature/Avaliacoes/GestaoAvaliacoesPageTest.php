@@ -106,7 +106,9 @@ class GestaoAvaliacoesPageTest extends TestCase
             ->set('form.data_fim', now()->addDays(7)->toDateString())
             ->set('form.status', Avaliacao::STATUS_ATIVA)
             ->set('form.series_ids', [$serie1->id])
+            ->assertSet('form.series_ids', [(string) $serie1->id])
             ->set('form.componentes_ids', [$componenteMat->id])
+            ->assertSet('form.componentes_ids', [(string) $componenteMat->id])
             ->set('form.escolas_ids', ['todas'])
             ->call('salvarAvaliacao');
 
