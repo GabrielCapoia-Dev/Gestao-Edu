@@ -20,11 +20,13 @@ use App\Models\TipoManutencao;
 use App\Models\TipoManutencaoOpcao;
 use App\Models\TipoStatus;
 use App\Models\User;
+use App\Notifications\SistemaNotification;
 use App\Services\PedidoService;
 use App\Services\Relatorios\PedidoRelatorioGeralService;
 use App\Services\Relatorios\RelatorioPdfRenderer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
@@ -697,6 +699,36 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
         $this->assertSame('Pedido Adicional', $criados->first()->tipoStatus->nome);
     }
 
+    public function test_notifica_somente_usuarios_com_permissao_quando_pedido_adicional_e_criado(): void
+    {
+        Notification::fake();
+
+        $usuario = $this->usuarioComRoleSetor('Manutenção: Educação', $this->educacao, [
+            'Vincular Pedidos Adicionais',
+        ]);
+        $destinatario = $this->usuarioComPermissoes([
+            PedidoService::PERMISSAO_NOTIFICAR_PEDIDO_ADICIONAL_CRIADO,
+        ]);
+        $usuarioSemPermissao = User::factory()->create();
+        $pedido = $this->pedido(status: 'Em Manutenção', setor: $this->educacao, escola: $this->escola);
+
+        $adicional = $this->service->criarPedidosAdicionais($pedido, [[
+            'tipo_manutencao_id' => $this->tipo->id,
+            'tipo_manutencao_opcao_ids' => [$this->opcaoDisjuntor->id],
+            'data_identificacao_problema' => '2026-05-02',
+            'descricao_pedido' => 'Disjuntor trocado durante a visita.',
+            'arquivos' => $this->fotosAdicional(),
+        ]], $usuario)->firstOrFail();
+
+        Notification::assertSentTo(
+            $destinatario,
+            SistemaNotification::class,
+            fn (SistemaNotification $notification): bool => $notification->titulo === 'Pedido adicional criado'
+                && $notification->mensagem === "Pedido adicional {$adicional->numero_protocolo} foi criado."
+        );
+        Notification::assertNotSentTo($usuarioSemPermissao, SistemaNotification::class);
+    }
+
     public function test_botao_reabrir_pedido_define_status_reaberto_mesmo_com_nota_alta(): void
     {
         $usuario = $this->usuarioComRoleSetor('Manutenção: Educação', $this->educacao, ['Avaliar Pedidos']);
@@ -1218,6 +1250,7 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
             ->assertCanSeeTableRecords([$principalComDois, $principalComUm])
             ->assertCanNotSeeTableRecords([$principalSemAdicional, $adicionalUm])
             ->assertSeeHtml('pedido-card--has-additionals')
+            ->assertSeeHtml('pedido-card-field--additionals')
             ->sortTable('tipo_pedido_sort', 'asc')
             ->sortTable('pedidos_adicionais_count', 'desc')
             ->assertCanSeeTableRecords([$principalComDois, $principalComUm], inOrder: true);

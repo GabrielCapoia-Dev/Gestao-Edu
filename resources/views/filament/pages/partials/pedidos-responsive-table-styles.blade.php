@@ -61,13 +61,16 @@
     }
 
     .fi-resource-pedidos.fi-resource-list-records-page .fi-ta-record.pedido-card--has-additionals {
-        --pedido-card-surface: color-mix(in srgb, #ffffff 97%, #dbeafe);
-        --pedido-card-border: color-mix(in srgb, var(--gray-200) 88%, #bfdbfe);
+        --pedido-card-surface: color-mix(in srgb, #ffffff 92%, #fef3c7);
+        --pedido-card-border: #f59e0b;
+        border-left-width: 0.35rem;
+        box-shadow: 0 2px 4px rgba(146, 64, 14, 0.1), 0 14px 30px rgba(146, 64, 14, 0.14);
     }
 
     .dark .fi-resource-pedidos.fi-resource-list-records-page .fi-ta-record.pedido-card--has-additionals {
-        --pedido-card-surface: color-mix(in srgb, var(--gray-900) 97%, #1e3a8a);
-        --pedido-card-border: color-mix(in srgb, var(--gray-700) 90%, #1d4ed8);
+        --pedido-card-surface: color-mix(in srgb, var(--gray-900) 90%, #78350f);
+        --pedido-card-border: #d97706;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.24), 0 14px 30px rgba(120, 53, 15, 0.2);
     }
 
     .fi-resource-pedidos.fi-resource-list-records-page .fi-ta-record-content {
@@ -156,6 +159,11 @@
     .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-field--school .fi-ta-text-item {
         color: var(--gray-950);
         font-weight: var(--font-weight-medium);
+    }
+
+    .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-field--additionals .fi-badge {
+        border: 1px solid color-mix(in srgb, #f59e0b 55%, transparent);
+        box-shadow: 0 1px 3px rgba(146, 64, 14, 0.12);
     }
 
     .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-original-stack:empty,

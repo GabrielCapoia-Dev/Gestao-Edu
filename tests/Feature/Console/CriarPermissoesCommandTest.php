@@ -3,6 +3,7 @@
 namespace Tests\Feature\Console;
 
 use App\Models\Role;
+use App\Services\PedidoService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Spatie\Permission\Models\Permission;
@@ -63,6 +64,16 @@ class CriarPermissoesCommandTest extends TestCase
         $this->assertTrue($turmasRole->hasPermissionTo('Editar Dados da Turma'));
         $this->assertTrue($turmasRole->hasPermissionTo('Filtrar Turmas por Escola'));
         $this->assertFalse($turmasRole->hasPermissionTo('Listar Pedidos'));
+    }
+
+    public function test_it_creates_additional_request_notification_permission(): void
+    {
+        Artisan::call('permissoes:criar');
+
+        $this->assertDatabaseHas('permissions', [
+            'name' => PedidoService::PERMISSAO_NOTIFICAR_PEDIDO_ADICIONAL_CRIADO,
+            'guard_name' => 'web',
+        ]);
     }
 
     public function test_it_normalizes_legacy_mojibake_permission_and_role_names(): void

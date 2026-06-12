@@ -2,9 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Role;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use App\Models\Role;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -50,7 +50,7 @@ class CriarPermissoes extends Command
 
             $role->syncPermissions($rolePermissions);
 
-            $this->line("Nivel sincronizado: {$roleName} (" . count($rolePermissions) . ' permissoes)');
+            $this->line("Nivel sincronizado: {$roleName} (".count($rolePermissions).' permissoes)');
         }
 
         $this->sincronizarAdminComTodasAsPermissoes();
@@ -244,6 +244,7 @@ class CriarPermissoes extends Command
             'Visualizar Notificação: Pedidos Atrasados',
             'Visualizar Notificação: Pedidos Emergenciais',
             'Visualizar Notificação: Pedido Reaberto',
+            'Visualizar Notificação: Pedido Adicional Criado',
             'Visualizar Notificação: Balanço de Estoque',
             'Visualizar Tela de Inicio',
             'Acessar Painel',
@@ -405,6 +406,7 @@ class CriarPermissoes extends Command
                 'Visualizar Notificação: Pedidos Atrasados',
                 'Visualizar Notificação: Pedidos Emergenciais',
                 'Visualizar Notificação: Pedido Reaberto',
+                'Visualizar Notificação: Pedido Adicional Criado',
                 'Avaliar Pedidos',
                 'Encaminhar Pedidos para Setor',
                 'Enviar Pedidos para Empresa',
@@ -692,7 +694,7 @@ class CriarPermissoes extends Command
             "Realizar Transfer\u{00EA}ncia de Aluno" => 'Realizar Transferencia de Aluno',
             'Realizar Tranferencia de Aluno' => 'Realizar Transferencia de Aluno',
             "Gerar Parecer de Transfer\u{00EA}ncia" => 'Gerar Parecer de Transferencia',
-            "Notificar Status Pendente" => 'Notificar Status Pendente',
+            'Notificar Status Pendente' => 'Notificar Status Pendente',
             "Notificar Impedimento de Matr\u{00ED}cula por Falta de Transfer\u{00EA}ncia" => 'Notificar Impedimento de Matricula por Falta de Transferencia',
             "Gerenciar Impedimento de Matr\u{00ED}cula por Falta de Transfer\u{00EA}ncia" => 'Gerenciar Impedimento de Matricula por Falta de Transferencia',
             'Manutenção: Educação' => 'Manutenção: Triagem',
@@ -712,7 +714,7 @@ class CriarPermissoes extends Command
             $legacyName,
             str_replace("\u{00C3}\u{00A3}o", "\u{00C3}o", $legacyName),
         ])
-            ->filter(fn(string $alias): bool => $alias !== $name)
+            ->filter(fn (string $alias): bool => $alias !== $name)
             ->unique()
             ->values()
             ->all();
@@ -733,6 +735,6 @@ class CriarPermissoes extends Command
 
         $admin->syncPermissions($allPermissions);
 
-        $this->line('Nivel sincronizado: Admin (' . count($allPermissions) . ' permissoes totais)');
+        $this->line('Nivel sincronizado: Admin ('.count($allPermissions).' permissoes totais)');
     }
 }

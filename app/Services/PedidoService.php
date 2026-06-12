@@ -17,6 +17,7 @@ use App\Models\TipoManutencao;
 use App\Models\TipoManutencaoOpcao;
 use App\Models\TipoStatus;
 use App\Models\User;
+use App\Notifications\SistemaNotification;
 use App\Support\PedidoImageUpload;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -26,9 +27,12 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 class PedidoService
 {
+    public const PERMISSAO_NOTIFICAR_PEDIDO_ADICIONAL_CRIADO = 'Visualizar Notificação: Pedido Adicional Criado';
+
     /*
     |--------------------------------------------------------------------------
     | PERMISSOES E ESCOPO
@@ -493,11 +497,30 @@ class PedidoService
                     "Pedido adicional {$pedido->numero_protocolo} vinculado a esta solicitacao."
                 );
 
+                $this->notificarCriacaoPedidoAdicional($pedido);
+
                 $criados->push($pedido);
             }
 
             return $criados;
         });
+    }
+
+    private function notificarCriacaoPedidoAdicional(Pedido $pedido): void
+    {
+        try {
+            $usuarios = User::permission(self::PERMISSAO_NOTIFICAR_PEDIDO_ADICIONAL_CRIADO)->get();
+        } catch (PermissionDoesNotExist) {
+            return;
+        }
+
+        foreach ($usuarios as $usuario) {
+            $usuario->notify(new SistemaNotification(
+                titulo: 'Pedido adicional criado',
+                mensagem: "Pedido adicional {$pedido->numero_protocolo} foi criado.",
+                url: route('filament.admin.resources.pedidos.edit', $pedido),
+            ));
+        }
     }
 
     protected function criarProblemasDoPedido(Pedido $pedido, array $opcaoIds, ?string $fallbackDescricao = null): void

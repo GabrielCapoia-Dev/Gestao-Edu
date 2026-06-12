@@ -406,12 +406,16 @@ class PedidosTable
                         ->label('Adicionais')
                         ->description('Adicionais', position: 'above')
                         ->badge()
-                        ->color(fn (Pedido $record): string => (int) ($record->pedidos_adicionais_count ?? 0) > 0 ? 'info' : 'gray')
+                        ->icon(fn (Pedido $record): ?string => (int) ($record->pedidos_adicionais_count ?? 0) > 0
+                            ? 'heroicon-o-plus-circle'
+                            : null)
+                        ->color(fn (Pedido $record): string => (int) ($record->pedidos_adicionais_count ?? 0) > 0 ? 'warning' : 'gray')
                         ->state(fn (Pedido $record): string => (int) ($record->pedidos_adicionais_count ?? 0).' adicional(is)')
                         ->sortable(['pedidos_adicionais_count'])
+                        ->weight('bold')
                         ->wrap()
-                        ->toggleable(isToggledHiddenByDefault: true)
-                        ->extraAttributes(['class' => 'pedido-card-field'], merge: true),
+                        ->toggleable()
+                        ->extraAttributes(['class' => 'pedido-card-field pedido-card-field--additionals'], merge: true),
 
                     TextColumn::make('tipoStatus.nome')
                         ->label('Status')
