@@ -13,6 +13,8 @@ class Servidor extends Model
     public const STATUS_ATIVO = 'ativo';
     public const STATUS_INATIVO = 'inativo';
 
+    protected $table = 'servidores';
+
     protected $fillable = [
         'user_id',
         'id_escola',

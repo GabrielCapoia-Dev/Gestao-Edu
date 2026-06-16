@@ -204,6 +204,25 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
             ->assertDontSee('Em Aberto - '.$pedidoEncaminhado->setor->nome_completo);
     }
 
+    public function test_edicao_de_pedido_renderiza_cabecalho_com_problemas_segmentados(): void
+    {
+        $usuario = $this->usuarioComRoleSetor('Manutencao: Educacao', $this->educacao, [
+            'Listar Pedidos',
+            'Editar Pedidos',
+        ]);
+        $pedido = $this->pedido(status: 'Em Aberto', setor: $this->educacao, escola: $this->escola);
+        $pedido->problemas()->create([
+            'tipo_manutencao_id' => $this->tipo->id,
+            'tipo_manutencao_opcao_id' => $this->opcaoLuz->id,
+            'texto_problema' => $this->opcaoLuz->texto,
+        ]);
+
+        Livewire::actingAs($usuario)
+            ->test(EditPedido::class, ['record' => $pedido->getKey()])
+            ->assertSee($pedido->numero_protocolo)
+            ->assertSee($this->opcaoLuz->texto);
+    }
+
     public function test_criacao_de_pedido_salva_fotos_no_storage_publico(): void
     {
         Storage::fake('public');

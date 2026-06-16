@@ -4,7 +4,7 @@
         'solicitante',
         'tipoStatus',
         'tipoManutencao',
-        'problemas.opção',
+        'problemas.opcao',
         'fotos',
         'fotosConclusao',
         'ultimoFeedback.itens.problema',
