@@ -23,6 +23,7 @@ class Professor extends Model
 
     protected $fillable = [
         'user_id',
+        'servidor_id',
         'id_escola',
         'matricula',
         'turno',
@@ -51,6 +52,11 @@ class Professor extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function servidor(): BelongsTo
+    {
+        return $this->belongsTo(Servidor::class, 'servidor_id');
     }
 
     /**
@@ -196,5 +202,10 @@ class Professor extends Model
     public function avaliacaoRespostas()
     {
         return $this->hasMany(AvaliacaoResposta::class, 'professor_id');
+    }
+
+    public function avaliacaoInformacoesComplementares()
+    {
+        return $this->hasMany(AvaliacaoInformacaoComplementar::class, 'professor_id');
     }
 }

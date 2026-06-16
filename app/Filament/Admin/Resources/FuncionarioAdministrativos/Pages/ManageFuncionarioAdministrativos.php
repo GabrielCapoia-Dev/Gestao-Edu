@@ -11,6 +11,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Actions\Action;
 use App\Models\FuncaoAdministrativa;
 use Illuminate\Contracts\View\View;
+use App\Services\ServidorService;
 
 class ManageFuncionarioAdministrativos extends ManageRecords
 {
@@ -47,6 +48,8 @@ class ManageFuncionarioAdministrativos extends ManageRecords
                         $professor->turmasFuncao()->sync($data['turmasFuncao']);
                     }
 
+                    app(ServidorService::class)->sincronizarProfessor($professor->fresh());
+
                     return $professor->fresh();
                 }),
 
@@ -64,6 +67,7 @@ class ManageFuncionarioAdministrativos extends ManageRecords
                         ->required(),
                 ])
                 ->action(function (array $data) {
+                    $data['categoria'] = FuncaoAdministrativa::CATEGORIA_EQUIPE_GESTORA;
                     FuncaoAdministrativa::create($data);
                 })
                 ->successNotificationTitle('Função criada com sucesso'),

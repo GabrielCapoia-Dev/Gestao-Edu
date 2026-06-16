@@ -224,6 +224,11 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
         return $this->hasMany(Professor::class, 'user_id');
     }
 
+    public function servidores()
+    {
+        return $this->hasMany(Servidor::class, 'user_id');
+    }
+
     public function ehProfessor(): bool
     {
         return $this->ehProfessorCache ??= $this->professores()->exists();

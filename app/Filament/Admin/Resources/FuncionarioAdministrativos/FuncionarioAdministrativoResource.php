@@ -27,6 +27,7 @@ use App\Models\User;
 use App\Models\Professor;
 use App\Models\Turma;
 use App\Services\UserService;
+use App\Services\ServidorService;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -413,7 +414,21 @@ class FuncionarioAdministrativoResource extends Resource
                             ->visible(fn($record) => $record->funcaoAdministrativa?->tem_relacao_turma),
                     ]),
 
-                EditAction::make(),
+                EditAction::make()
+                    ->using(function (Professor $record, array $data): Professor {
+                        $record->update([
+                            'funcao_administrativa_id' => $data['funcao_administrativa_id'],
+                            'portaria' => $data['portaria'] ?? null,
+                        ]);
+
+                        if (isset($data['turmasFuncao']) && is_array($data['turmasFuncao'])) {
+                            $record->turmasFuncao()->sync($data['turmasFuncao']);
+                        }
+
+                        app(ServidorService::class)->sincronizarProfessor($record->fresh());
+
+                        return $record->fresh();
+                    }),
 
                 // Action para remover função administrativa (volta a ser professor)
                 Action::make('remover_funcao')
@@ -430,6 +445,8 @@ class FuncionarioAdministrativoResource extends Resource
                     ->modalDescription(fn($record) => "Tem certeza que deseja remover a função administrativa de {$record->nome}? Ele voltará a aparecer na lista de professores.")
                     ->modalSubmitActionLabel('Sim, remover função')
                     ->action(function ($record) {
+                        $funcaoId = $record->funcao_administrativa_id;
+
                         // Remove turmas vinculadas
                         $record->turmasFuncao()->detach();
 
@@ -438,6 +455,10 @@ class FuncionarioAdministrativoResource extends Resource
                             'funcao_administrativa_id' => null,
                             'portaria' => null,
                         ]);
+
+                        if ($funcaoId && $record->servidor) {
+                            app(ServidorService::class)->removerFuncao($record->servidor, (int) $funcaoId);
+                        }
                     }),
             ])
             ->toolbarActions([

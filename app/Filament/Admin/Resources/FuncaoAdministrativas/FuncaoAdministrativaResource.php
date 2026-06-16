@@ -13,6 +13,7 @@ use Filament\Actions\EditAction;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Select;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Forms\Components\Toggle;
@@ -50,7 +51,26 @@ class FuncaoAdministrativaResource extends Resource
                 TextInput::make('nome')
                     ->required()
                     ->maxLength(255),
+                TextInput::make('codigo')
+                    ->label('Código')
+                    ->maxLength(255)
+                    ->helperText('Identificador técnico gerado automaticamente quando ficar em branco.'),
+                Select::make('categoria')
+                    ->label('Categoria')
+                    ->options(FuncaoAdministrativa::categoriasOptions())
+                    ->default(FuncaoAdministrativa::CATEGORIA_GERAL)
+                    ->required(),
+                Toggle::make('ativo')
+                    ->label('Ativa')
+                    ->default(true)
+                    ->required(),
+                Toggle::make('exige_professor')
+                    ->label('Exige vínculo com professor')
+                    ->helperText('Use apenas para funções que precisam criar ou vincular um registro pedagógico de professor.')
+                    ->default(false)
+                    ->required(),
                 Toggle::make('tem_relacao_turma')
+                    ->label('Tem relação com turmas')
                     ->required(),
             ]);
     }
@@ -61,6 +81,18 @@ class FuncaoAdministrativaResource extends Resource
             ->columns([
                 TextColumn::make('nome')
                     ->searchable(),
+                TextColumn::make('codigo')
+                    ->label('Código')
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('categoria')
+                    ->label('Categoria')
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state): string => FuncaoAdministrativa::categoriasOptions()[$state] ?? 'Geral')
+                    ->sortable(),
+                IconColumn::make('ativo')
+                    ->label('Ativa')
+                    ->boolean(),
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -70,6 +102,10 @@ class FuncaoAdministrativaResource extends Resource
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 IconColumn::make('tem_relacao_turma')
+                    ->label('Relação com turmas')
+                    ->boolean(),
+                IconColumn::make('exige_professor')
+                    ->label('Exige professor')
                     ->boolean(),
             ])
             ->filters([

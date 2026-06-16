@@ -4,12 +4,14 @@ namespace App\Observers;
 
 use App\Models\Professor;
 use App\Services\ProfessorEscolaVinculoService;
+use App\Services\ServidorService;
 
 class ProfessorObserver
 {
     public function saved(Professor $professor): void
     {
         $this->sincronizarUsuariosRelacionados($professor);
+        app(ServidorService::class)->sincronizarProfessor($professor);
     }
 
     public function deleted(Professor $professor): void
