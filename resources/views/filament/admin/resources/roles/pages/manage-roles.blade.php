@@ -10,9 +10,9 @@
             <div class="am-panel__header">
                 <div class="am-desktop-header">
                     <div>
-                        <p class="am-panel__eyebrow">Biblioteca de niveis</p>
-                        <h3 class="am-panel__title">Niveis de acesso</h3>
-                        <p class="am-panel__subtitle">Gerencie os grupos de permissoes com uma visualizacao mais clara para desktop.</p>
+                        <p class="am-panel__eyebrow">Biblioteca de níveis</p>
+                        <h3 class="am-panel__title">Níveis de acesso</h3>
+                        <p class="am-panel__subtitle">Gerencie os grupos de permissões com uma visualização mais clara para desktop.</p>
                     </div>
 
                     <div class="am-toolbar">
@@ -25,7 +25,7 @@
                             <input
                                 type="text"
                                 wire:model.live.debounce.300ms="search"
-                                placeholder="Buscar nivel de acesso ou permissao..."
+                                placeholder="Buscar nível de acesso ou permissão..."
                             />
                         </label>
 
@@ -34,7 +34,7 @@
                                 color="primary"
                                 wire:click="mountAction('create')"
                             >
-                                Novo nivel
+                                Novo nível
                             </x-filament::button>
                         @endif
                     </div>
@@ -67,8 +67,8 @@
                         </div>
 
                         <div>
-                            <h4>Nenhum nivel encontrado</h4>
-                            <p>Refine a busca ou crie um novo grupo de permissoes para comecar a organizar os acessos.</p>
+                            <h4>Nenhum nível encontrado</h4>
+                            <p>Refine a busca ou crie um novo grupo de permissões para comecar a organizar os acessos.</p>
                         </div>
                     </div>
                 @else
@@ -84,7 +84,7 @@
                                         <div>
                                             <h4>{{ $role['name'] }}</h4>
                                             <p>
-                                                {{ $role['permission_count'] }} permissoes ativas
+                                                {{ $role['permission_count'] }} permissões ativas
                                                 @if (count($role['summary']))
                                                     - {{ implode(' - ', $role['summary']->all()) }}
                                                 @endif
@@ -129,7 +129,7 @@
                                                 <div class="am-permission-group__header">
                                                     <div>
                                                         <h5>{{ $permissionGroup['name'] }}</h5>
-                                                        <p>{{ $permissionGroup['count'] }} permissoes</p>
+                                                        <p>{{ $permissionGroup['count'] }} permissões</p>
                                                     </div>
                                                 </div>
 

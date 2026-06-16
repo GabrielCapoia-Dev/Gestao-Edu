@@ -29,18 +29,18 @@ class PedidoRelatorioSimplificadoService
             ->values();
 
         if ($ids->isEmpty()) {
-            throw new RuntimeException('Nenhum pedido foi selecionado para exportacao.');
+            throw new RuntimeException('Nenhum pedido foi selecionado para exportação.');
         }
 
         $pedidos = $this->buscarPedidosSelecionados($ids, $usuario);
 
         if ($pedidos->isEmpty()) {
-            throw new RuntimeException('Nenhum dos pedidos selecionados esta disponivel para exportacao.');
+            throw new RuntimeException('Nenhum dos pedidos selecionados está disponível para exportação.');
         }
 
         return $this->renderer->download('relatorios.Manutencao.pedidos-simplificado', [
             'pedidos' => $pedidos,
-            'reportTitle' => 'Relatorio Simplificado de Manutencao',
+            'reportTitle' => 'Relatório Simplificado de Manutenção',
             'reportSubtitle' => $pedidos->count().' pedido(s) selecionado(s)',
             'usuarioExportacao' => $usuario,
             'dataExportacao' => Carbon::now(),

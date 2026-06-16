@@ -27,22 +27,22 @@ class HomeController extends Controller
     {
         return array_values(array_filter([
             Gate::allows('viewAny', User::class) ? $this->makeCard(
-                title: 'Usuarios',
-                description: 'Liberacoes, vinculos e niveis em uma tela leve para o celular.',
+                title: 'Usuários',
+                description: 'Liberacoes, vinculos e níveis em uma tela leve para o celular.',
                 url: route('mobile.users.index'),
                 badge: 'US',
                 tone: 'slate',
             ) : null,
             Gate::allows('viewAny', DominioEmail::class) ? $this->makeCard(
-                title: 'Dominios de e-mail',
-                description: 'Controle rapido dos dominios autorizados para entrar no sistema.',
+                title: 'Domínios de e-mail',
+                description: 'Controle rápido dos domínios autorizados para entrar no sistema.',
                 url: route('mobile.domains.index'),
                 badge: 'DM',
                 tone: 'amber',
             ) : null,
             Gate::allows('viewAny', Role::class) ? $this->makeCard(
-                title: 'Niveis de acesso',
-                description: 'Visualize perfis, quantidade de permissoes e estrutura de acesso.',
+                title: 'Níveis de acesso',
+                description: 'Visualize perfis, quantidade de permissões e estrutura de acesso.',
                 url: route('mobile.roles.index'),
                 badge: 'NA',
                 tone: 'sky',
@@ -56,7 +56,7 @@ class HomeController extends Controller
             $this->userHasAnyPermission($user, [
                 'Listar Relatórios: Dashboard',
             ]) ? $this->makeCard(
-                title: 'Central de relatorios',
+                title: 'Central de relatórios',
                 description: 'Resumo geral e entrada para as consultas operacionais.',
                 url: route('mobile.reports.dashboard'),
                 badge: 'RD',
@@ -66,7 +66,7 @@ class HomeController extends Controller
                 'Listar Relatórios: Professor por Componente e Turma',
             ]) ? $this->makeCard(
                 title: 'Professor por turma',
-                description: 'Escola, serie, turno, componente e professor em cards mobile.',
+                description: 'Escola, série, turno, componente e professor em cards mobile.',
                 url: route('mobile.reports.professor-by-class'),
                 badge: 'PT',
                 tone: 'violet',

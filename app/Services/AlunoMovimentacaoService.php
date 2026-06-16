@@ -48,8 +48,8 @@ class AlunoMovimentacaoService
                 'status_alterado_em' => now(),
                 'status_alterado_por' => $usuario?->id,
                 'status_motivo' => $data['status_motivo'] ?? ($origemPendente
-                    ? 'Matricula criada como pendente por transferencia nao finalizada na escola de origem.'
-                    : 'Matricula criada no sistema.'),
+                    ? 'Matrícula criada como pendente por transferência não finalizada na escola de origem.'
+                    : 'Matrícula criada no sistema.'),
                 'aluno_origem_id' => $origemHistorica?->id,
                 'turma_origem_id' => $origemHistorica?->id_turma,
                 'movimentacao_origem' => $origemHistorica ? $this->tipoOrigemPorStatus($origemHistorica) : null,
@@ -111,14 +111,14 @@ class AlunoMovimentacaoService
             if ($chaveUnidade !== null && $alunosCadastrados->first(fn (Aluno $a): bool => $a->cgm_unidade_matricula_ativa === $chaveUnidade)) {
                 throw new MatriculaAlunoBloqueadaException(
                     $alunosCadastrados->first(fn (Aluno $a): bool => $a->cgm_unidade_matricula_ativa === $chaveUnidade),
-                    'Este CGM ja esta cadastrado nesta unidade.'
+                    'Este CGM já está cadastrado nesta unidade.'
                 );
             }
 
             if (isset($pendentesIndex[$cgm])) {
                 throw new MatriculaAlunoBloqueadaException(
                     $pendentesIndex[$cgm],
-                    'Este CGM ja possui uma matricula pendente em outra unidade. Resolva a pendencia antes de criar uma nova matricula.'
+                    'Este CGM já possui uma matrícula pendente em outra unidade. Resolva a pendência antes de criar uma nova matrícula.'
                 );
             }
 
@@ -135,8 +135,8 @@ class AlunoMovimentacaoService
                 'status_alterado_em' => now(),
                 'status_alterado_por' => $usuario?->id,
                 'status_motivo' => $linha['status_motivo'] ?? ($origemPendente
-                    ? 'Matricula criada como pendente por transferencia nao finalizada na escola de origem.'
-                    : 'Matricula criada no sistema.'),
+                    ? 'Matrícula criada como pendente por transferência não finalizada na escola de origem.'
+                    : 'Matrícula criada no sistema.'),
                 'aluno_origem_id' => $origemHistorica?->id,
                 'turma_origem_id' => $origemHistorica?->id_turma,
                 'movimentacao_origem' => $origemHistorica ? $this->tipoOrigemPorStatus($origemHistorica) : null,
@@ -200,7 +200,7 @@ class AlunoMovimentacaoService
             if ($ativoNaMesmaUnidade) {
                 throw new MatriculaAlunoBloqueadaException(
                     $ativoNaMesmaUnidade,
-                    'Este CGM ja esta cadastrado nesta unidade.'
+                    'Este CGM já está cadastrado nesta unidade.'
                 );
             }
         }
@@ -215,7 +215,7 @@ class AlunoMovimentacaoService
         if ($pendente) {
             throw new MatriculaAlunoBloqueadaException(
                 $pendente,
-                'Este CGM ja possui uma matricula pendente em outra unidade. Resolva a pendencia antes de criar uma nova matricula.'
+                'Este CGM já possui uma matrícula pendente em outra unidade. Resolva a pendência antes de criar uma nova matrícula.'
             );
         }
 
@@ -259,7 +259,7 @@ class AlunoMovimentacaoService
             }
 
             if ((int) $aluno->turma?->id_serie !== (int) $turmaDestino->id_serie) {
-                throw new RuntimeException('Remanejamento so pode ocorrer entre turmas da mesma serie.');
+                throw new RuntimeException('Remanejamento so pode ocorrer entre turmas da mesma série.');
             }
 
             $aluno->forceFill([
@@ -279,7 +279,7 @@ class AlunoMovimentacaoService
                 'status' => $statusDestino,
                 'status_alterado_em' => now(),
                 'status_alterado_por' => $usuario?->id,
-                'status_motivo' => $motivo ?: 'Matricula criada por remanejamento.',
+                'status_motivo' => $motivo ?: 'Matrícula criada por remanejamento.',
                 'aluno_origem_id' => (int) $aluno->id,
                 'turma_origem_id' => (int) $aluno->id_turma,
                 'movimentacao_origem' => self::MOVIMENTACAO_REMANEJAMENTO,
@@ -305,7 +305,7 @@ class AlunoMovimentacaoService
                 'status' => Aluno::STATUS_TRANSFERIDO,
                 'status_alterado_em' => now(),
                 'status_alterado_por' => $usuario?->id,
-                'status_motivo' => $motivo ?: 'Parecer de transferencia gerado.',
+                'status_motivo' => $motivo ?: 'Parecer de transferência gerado.',
             ])->save();
 
             $this->bloquearDadosAvaliativosOrigem($aluno, self::MOVIMENTACAO_TRANSFERENCIA);
@@ -318,7 +318,7 @@ class AlunoMovimentacaoService
     public function marcarStatusFinal(Aluno $aluno, string $status, ?User $usuario = null, ?string $motivo = null): Aluno
     {
         if (! in_array($status, [Aluno::STATUS_APROVADO, Aluno::STATUS_RETIDO, Aluno::STATUS_TRANSFERIDO], true)) {
-            throw new RuntimeException('Status final invalido para aluno.');
+            throw new RuntimeException('Status final inválido para aluno.');
         }
 
         $aluno->forceFill([
@@ -526,7 +526,7 @@ class AlunoMovimentacaoService
                     'status' => Aluno::STATUS_MATRICULADO,
                     'status_alterado_em' => now(),
                     'status_alterado_por' => $usuario?->id,
-                    'status_motivo' => 'Pendencia de transferencia resolvida pelo parecer da escola de origem.',
+                    'status_motivo' => 'Pendência de transferência resolvida pelo parecer da escola de origem.',
                     'aluno_origem_id' => (int) $origem->id,
                     'turma_origem_id' => (int) $origem->id_turma,
                     'movimentacao_origem' => self::MOVIMENTACAO_TRANSFERENCIA,
@@ -569,7 +569,7 @@ class AlunoMovimentacaoService
     {
         $alunoAtivo->loadMissing('turma.escola');
 
-        $titulo = 'Impedimento de matricula por falta de transferencia';
+        $titulo = 'Impedimento de matrícula por falta de transferência';
         $mensagem = (new MatriculaAlunoBloqueadaException($alunoAtivo))->getMessage();
         $escolaId = (int) ($alunoAtivo->turma?->id_escola ?? 0);
         $url = route('filament.admin.pages.parecer-transferencia-aluno', ['aluno' => $alunoAtivo->id]);
@@ -584,7 +584,7 @@ class AlunoMovimentacaoService
                 titulo: $titulo,
                 mensagem: $mensagem,
                 url: $podeReceberLink ? $url : null,
-                label: $podeReceberLink ? 'Abrir Parecer de Transferencia' : null,
+                label: $podeReceberLink ? 'Abrir parecer de transferência' : null,
                 prioridade: 'alta',
                 escopo: $alunoAtivo->turma?->escola?->nome,
                 metadata: [

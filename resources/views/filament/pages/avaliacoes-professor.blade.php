@@ -5,14 +5,14 @@
             <section class="gi-panel av-professor-control-panel">
                 <div class="av-form-grid av-form-grid--two">
                     <label class="gi-field">
-                        <span>Avaliacao</span>
+                        <span>Avaliação</span>
                         <select wire:model.live="avaliacao">
-                            <option value="">Selecione uma avaliacao</option>
+                            <option value="">Selecione uma avaliação</option>
                             @foreach ($this->avaliacoesDisponiveis as $avaliacaoItem)
                             <option value="{{ $avaliacaoItem->id }}">
                                 {{ $avaliacaoItem->nome }} |
                                 {{ optional($avaliacaoItem->data_inicio)->format('d/m/Y') }}
-                                ate
+                                até
                                 {{ optional($avaliacaoItem->data_fim)->format('d/m/Y') }}
                             </option>
                             @endforeach
@@ -20,9 +20,9 @@
                     </label>
 
                     <label class="gi-field">
-                        <span>Serie</span>
+                        <span>Série</span>
                         <select wire:model.live="serieEscola" @disabled(! $avaliacao)>
-                            <option value="">Selecione uma serie</option>
+                            <option value="">Selecione uma série</option>
                             @foreach ($this->seriesPorEscolaDisponiveis->groupBy('escola_nome') as $escolaNome => $seriesDaEscola)
                             <optgroup label="{{ $escolaNome }}">
                                 @foreach ($seriesDaEscola as $serieItem)
@@ -49,33 +49,33 @@
 
             @if (! $this->podeResponder())
             <section class="av-note">
-                Modo leitura: para alterar/responder avaliacoes, e necessario ter a permissao "Responder Avaliacoes".
+                Modo leitura: para alterar/responder avaliações, e necessário ter a permissão "Responder Avaliações".
             </section>
             @endif
 
             @if ($this->avaliacoesDisponiveis->isEmpty())
             <section class="av-note av-note--warning">
-                Nao existem avaliacoes pendentes para seus componentes neste momento.
+                Não existem avaliações pendentes para seus componentes neste momento.
             </section>
             @elseif (! $avaliacao)
             <section class="av-note">
-                Selecione uma avaliacao para comecar.
+                Selecione uma avaliação para comecar.
             </section>
             @elseif ($this->seriesPorEscolaDisponiveis->isEmpty())
             <section class="av-note av-note--warning">
-                Esta avaliacao nao possui series com turmas vinculadas aos componentes que voce leciona.
+                Esta avaliação não possui séries com turmas vinculadas aos componentes que você leciona.
             </section>
             @elseif (! $serieEscola)
             <section class="av-note">
-                Selecione a serie para visualizar as turmas, pautas e alunos.
+                Selecione a série para visualizar as turmas, pautas e alunos.
             </section>
             @elseif ($this->turmasDaSerieDisponiveis->isEmpty())
             <section class="av-note av-note--warning">
-                Esta serie nao possui turmas disponiveis para esta avaliacao.
+                Esta série não possui turmas disponíveis para esta avaliação.
             </section>
             @elseif ($this->pautasDisponiveis->isEmpty())
             <section class="av-note av-note--warning">
-                Nenhuma pauta desta avaliacao esta disponivel para os seus componentes nesta serie.
+                Nenhuma pauta desta avaliação está disponível para os seus componentes nesta série.
             </section>
             @else
             @php($turmasDaSerie = $this->turmasDaSerieDisponiveis)
@@ -84,7 +84,7 @@
                 <div class="gi-toolbar">
                     <div>
                         <h3 class="av-pauta-title">Ações da Avaliação</h3>
-                        <p class="av-pauta-meta">Escolha como deseja preencher esta avaliacao.</p>
+                        <p class="av-pauta-meta">Escolha como deseja preencher esta avaliação.</p>
                     </div>
 
                     <div class="av-mode-actions">
@@ -100,12 +100,12 @@
                             </label>
 
                             <label class="gi-field av-bulk-select">
-                                <span>Avaliacao em massa</span>
+                                <span>Avaliação em massa</span>
                                 <select wire:model.live="avaliacaoEmMassaGlobal" @disabled(! $this->podeResponder())>
                                     <option value="">Selecione uma alternativa</option>
                                     @foreach ($this->alternativasEmMassaDisponiveis as $alternativa)
                                     <option value="{{ $alternativa['id'] }}">
-                                        {{ $alternativa['nome'] }}{{ ($alternativa['tem_observacao'] ?? false) ? ' (exige observacao)' : '' }}
+                                        {{ $alternativa['nome'] }}{{ ($alternativa['tem_observacao'] ?? false) ? ' (exige observação)' : '' }}
                                     </option>
                                     @endforeach
                                 </select>
@@ -115,7 +115,7 @@
                                 type="button"
                                 class="gi-action"
                                 wire:click="aplicarEmMassaNaSerie"
-                                wire:confirm="Tem certeza que deseja aplicar a mesma resposta para todos os alunos do escopo selecionado? Campos com observacao ja preenchida nao serao alterados."
+                                wire:confirm="Tem certeza que deseja aplicar a mesma resposta para todos os alunos do escopo selecionado? Campos com observação já preenchida não serão alterados."
                                 wire:loading.attr="disabled"
                                 wire:target="aplicarEmMassaNaSerie"
                                 @disabled(! $this->podeResponder())>
@@ -161,7 +161,7 @@
                             </div>
                             <div class="av-pauta-toggle-meta">
                                 @if ($progressoTurma['concluida'])
-                                <span class="av-pauta-check">Concluida</span>
+                                <span class="av-pauta-check">Concluída</span>
                                 @else
                                 <span class="av-pauta-check av-pauta-check--pending">Em andamento</span>
                                 @endif
@@ -197,7 +197,7 @@
                                     </div>
                                     <div class="av-pauta-toggle-meta">
                                         @if ($progressoPauta['concluida'])
-                                        <span class="av-pauta-check">Concluida</span>
+                                        <span class="av-pauta-check">Concluída</span>
                                         @else
                                         <span class="av-pauta-check av-pauta-check--pending">Em andamento</span>
                                         @endif
@@ -215,7 +215,7 @@
                                             <tr>
                                                 <th>Aluno</th>
                                                 <th>Alternativa</th>
-                                                <th>Observacao da pauta</th>
+                                                <th>Observação da pauta</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -228,13 +228,13 @@
                                                     <strong>{{ $aluno->nome }}</strong>
                                                     <small>CGM: {{ $aluno->cgm }}</small>
                                                     @if ($alunoBloqueadoTransferencia)
-                                                    <small>Aluno pendente de transferencia. Avaliacao bloqueada ate o parecer da escola de origem.</small>
+                                                    <small>Aluno pendente de transferência. Avaliação bloqueada até o parecer da escola de origem.</small>
                                                     @endif
                                                     @if ($respostaBloqueada)
-                                                    <small>Resposta bloqueada por historico.</small>
+                                                    <small>Resposta bloqueada por histórico.</small>
                                                     @endif
                                                     @if ($referenciaOrigem)
-                                                    <small>Origem: {{ $referenciaOrigem['alternativa'] !== '' ? $referenciaOrigem['alternativa'] : 'Nao avaliado' }}{{ $referenciaOrigem['observacao'] !== '' ? ' | '.$referenciaOrigem['observacao'] : '' }}</small>
+                                                    <small>Origem: {{ $referenciaOrigem['alternativa'] !== '' ? $referenciaOrigem['alternativa'] : 'Não avaliado' }}{{ $referenciaOrigem['observacao'] !== '' ? ' | '.$referenciaOrigem['observacao'] : '' }}</small>
                                                     @endif
                                                 </td>
                                                 <td data-label="Alternativa">
@@ -243,7 +243,7 @@
                                                             <option value="">Selecione</option>
                                                             @foreach ($alternativasPauta as $alternativa)
                                                             <option value="{{ $alternativa['id'] }}">
-                                                                {{ $alternativa['nome'] }}{{ ($alternativa['tem_observacao'] ?? false) ? ' (exige observacao)' : '' }}
+                                                                {{ $alternativa['nome'] }}{{ ($alternativa['tem_observacao'] ?? false) ? ' (exige observação)' : '' }}
                                                             </option>
                                                             @endforeach
                                                         </select>
@@ -254,7 +254,7 @@
                                                         </span>
                                                     </div>
                                                 </td>
-                                                <td data-label="Observacao da pauta">
+                                                <td data-label="Observação da pauta">
                                                     @php($alternativaSelecionadaId = (int) ($respostas[$pauta->id][$aluno->id]['alternativa_id'] ?? 0))
                                                     @php($requerObservacao = $this->alternativaRequerObservacao((int) $pauta->id, $alternativaSelecionadaId))
 
@@ -265,7 +265,7 @@
                                                             x-ref="field"
                                                             x-on:input="count = $event.target.value.length"
                                                             maxlength="1500"
-                                                            placeholder="Observacao obrigatoria"
+                                                            placeholder="Observação obrigatória"
                                                             class="av-table-input av-textarea-input"
                                                             wire:model.live.debounce.500ms="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao"
                                                             @disabled(! $this->podeResponder() || $respostaBloqueada || $alunoBloqueadoTransferencia)></textarea>
@@ -275,12 +275,12 @@
                                                             Salvando...
                                                         </span>
                                                         <div class="av-field-meta">
-                                                            <small class="av-field-hint av-field-hint--danger">Obrigatoria para esta alternativa.</small>
+                                                            <small class="av-field-hint av-field-hint--danger">Obrigatória para esta alternativa.</small>
                                                             <small class="av-char-count" x-text="`${count}/1500`"></small>
                                                         </div>
                                                     </div>
                                                     @else
-                                                    <small class="av-field-hint">Somente alternativas com observacao habilitam este campo.</small>
+                                                    <small class="av-field-hint">Somente alternativas com observação habilitam este campo.</small>
                                                     @endif
                                                 </td>
                                             </tr>
@@ -293,7 +293,7 @@
                         </section>
                         @empty
                         <section class="av-note av-note--warning">
-                            Esta turma nao possui pautas disponiveis nesta serie.
+                            Esta turma não possui pautas disponíveis nesta série.
                         </section>
                         @endforelse
 
@@ -329,7 +329,7 @@
                             </div>
                             <div class="av-pauta-toggle-meta">
                                 @if ($progressoTurma['concluida'])
-                                <span class="av-pauta-check">Concluida</span>
+                                <span class="av-pauta-check">Concluída</span>
                                 @else
                                 <span class="av-pauta-check av-pauta-check--pending">Em andamento</span>
                                 @endif
@@ -352,7 +352,7 @@
                                     <h3 class="av-pauta-title">{{ $aluno->nome }}</h3>
                                     <p class="av-pauta-meta">CGM: {{ $aluno->cgm }}</p>
                                     @if ($alunoBloqueadoTransferencia)
-                                    <p class="av-pauta-meta">Aluno pendente de transferencia. Avaliacao bloqueada ate o parecer da escola de origem.</p>
+                                    <p class="av-pauta-meta">Aluno pendente de transferência. Avaliação bloqueada até o parecer da escola de origem.</p>
                                     @endif
                                 </div>
 
@@ -366,7 +366,7 @@
                                     </div>
                                     <div class="av-pauta-toggle-meta">
                                         @if ($progressoAluno['concluida'])
-                                        <span class="av-pauta-check">Concluida</span>
+                                        <span class="av-pauta-check">Concluída</span>
                                         @else
                                         <span class="av-pauta-check av-pauta-check--pending">Em andamento</span>
                                         @endif
@@ -389,7 +389,7 @@
                                                 <tr>
                                                     <th>Pauta</th>
                                                     <th>Alternativa</th>
-                                                    <th>Observacao da pauta</th>
+                                                    <th>Observação da pauta</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -401,10 +401,10 @@
                                                     <td data-label="Pauta">
                                                         <strong>{{ $pauta->texto }}</strong>
                                                         @if ($respostaBloqueada)
-                                                        <small>Resposta bloqueada por historico.</small>
+                                                        <small>Resposta bloqueada por histórico.</small>
                                                         @endif
                                                         @if ($referenciaOrigem)
-                                                        <small>Origem: {{ $referenciaOrigem['alternativa'] !== '' ? $referenciaOrigem['alternativa'] : 'Nao avaliado' }}{{ $referenciaOrigem['observacao'] !== '' ? ' | '.$referenciaOrigem['observacao'] : '' }}</small>
+                                                        <small>Origem: {{ $referenciaOrigem['alternativa'] !== '' ? $referenciaOrigem['alternativa'] : 'Não avaliado' }}{{ $referenciaOrigem['observacao'] !== '' ? ' | '.$referenciaOrigem['observacao'] : '' }}</small>
                                                         @endif
                                                     </td>
                                                     <td data-label="Alternativa">
@@ -413,7 +413,7 @@
                                                                 <option value="">Selecione</option>
                                                                 @foreach ($alternativasPauta as $alternativa)
                                                                 <option value="{{ $alternativa['id'] }}">
-                                                                    {{ $alternativa['nome'] }}{{ ($alternativa['tem_observacao'] ?? false) ? ' (exige observacao)' : '' }}
+                                                                    {{ $alternativa['nome'] }}{{ ($alternativa['tem_observacao'] ?? false) ? ' (exige observação)' : '' }}
                                                                 </option>
                                                                 @endforeach
                                                             </select>
@@ -424,7 +424,7 @@
                                                             </span>
                                                         </div>
                                                     </td>
-                                                    <td data-label="Observacao da pauta">
+                                                    <td data-label="Observação da pauta">
                                                         @php($alternativaSelecionadaId = (int) ($respostas[$pauta->id][$aluno->id]['alternativa_id'] ?? 0))
                                                         @php($requerObservacao = $this->alternativaRequerObservacao((int) $pauta->id, $alternativaSelecionadaId))
 
@@ -435,7 +435,7 @@
                                                                 x-ref="field"
                                                                 x-on:input="count = $event.target.value.length"
                                                                 maxlength="1500"
-                                                                placeholder="Observacao obrigatoria"
+                                                                placeholder="Observação obrigatória"
                                                                 class="av-table-input av-textarea-input"
                                                                 wire:model.live.debounce.500ms="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao"
                                                                 @disabled(! $this->podeResponder() || $respostaBloqueada || $alunoBloqueadoTransferencia)></textarea>
@@ -445,12 +445,12 @@
                                                                 Salvando...
                                                             </span>
                                                             <div class="av-field-meta">
-                                                                <small class="av-field-hint av-field-hint--danger">Obrigatoria para esta alternativa.</small>
+                                                                <small class="av-field-hint av-field-hint--danger">Obrigatória para esta alternativa.</small>
                                                                 <small class="av-char-count" x-text="`${count}/1500`"></small>
                                                             </div>
                                                         </div>
                                                         @else
-                                                        <small class="av-field-hint">Somente alternativas com observacao habilitam este campo.</small>
+                                                        <small class="av-field-hint">Somente alternativas com observação habilitam este campo.</small>
                                                         @endif
                                                     </td>
                                                 </tr>
@@ -462,19 +462,19 @@
                                     @php($informacoesAtuais = (string) ($informacoesComplementares[$componenteId][$aluno->id] ?? ''))
                                     @php($informacaoBloqueada = $this->informacaoComplementarEstaBloqueada($componenteId, (int) $aluno->id))
                                     <div class="av-complementary-section">
-                                        <h4>Informacoes complementares do componente</h4>
+                                        <h4>Informações complementares do componente</h4>
                                         @if ($alunoBloqueadoTransferencia)
-                                        <small class="av-field-hint">Informacoes bloqueadas enquanto a transferencia estiver pendente.</small>
+                                        <small class="av-field-hint">Informações bloqueadas enquanto a transferência estiver pendente.</small>
                                         @endif
                                         @if ($informacaoBloqueada)
-                                        <small class="av-field-hint">Informacoes bloqueadas por historico.</small>
+                                        <small class="av-field-hint">Informações bloqueadas por histórico.</small>
                                         @endif
                                         <div class="av-input-wrap" x-data="{ count: @js(mb_strlen($informacoesAtuais)) }" x-init="$nextTick(() => count = $refs.field.value.length)">
                                             <textarea
                                                 x-ref="field"
                                                 x-on:input="count = $event.target.value.length"
                                                 maxlength="1500"
-                                                placeholder="Informacoes complementares (opcional)"
+                                                placeholder="Informações complementares (opcional)"
                                                 class="av-table-input av-textarea-input"
                                                 wire:model.live.debounce.600ms="informacoesComplementares.{{ $componenteId }}.{{ $aluno->id }}"
                                                 @disabled(! $this->podeResponder() || $informacaoBloqueada || $alunoBloqueadoTransferencia)></textarea>
@@ -496,7 +496,7 @@
                         </section>
                         @empty
                         <section class="av-note av-note--warning">
-                            Esta turma nao possui alunos cadastrados.
+                            Esta turma não possui alunos cadastrados.
                         </section>
                         @endforelse
 
@@ -512,7 +512,7 @@
                     <div></div>
                     <div class="gi-toolbar-right">
                         <button type="button" class="gi-action gi-action--primary" wire:click="salvarRespostas" @disabled(! $this->podeResponder())>
-                            Validar pendencias da serie
+                            Validar pendências da série
                         </button>
                     </div>
                 </div>

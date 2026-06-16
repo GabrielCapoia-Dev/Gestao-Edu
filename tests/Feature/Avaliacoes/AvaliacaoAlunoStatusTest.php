@@ -120,7 +120,7 @@ class AvaliacaoAlunoStatusTest extends TestCase
             ->call('alternarTurma', $turma->id)
             ->call('alternarPauta', $turma->id, $pauta->id)
             ->assertSee($alunoPendente->nome)
-            ->assertSee('Aluno pendente de transferencia');
+            ->assertSee('Aluno pendente de transferência');
 
         $this->assertSame(['preenchidas' => 0, 'total' => 1], $component->instance()->getProgressoProperty());
         $this->assertSame(0, $component->instance()->getProgressoPorAlunoProperty()[$alunoPendente->id]['total']);

@@ -191,9 +191,9 @@ class ListPedidosMerenda extends Page
                         return [
                             'pedido' => $pedido,
                             'pedido_item' => $item,
-                            'item_nome' => $contratoItem?->item?->nome ?: 'Item nao encontrado',
+                            'item_nome' => $contratoItem?->item?->nome ?: 'Item não encontrado',
                             'unidade' => $contratoItem?->item?->unidade_medida?->value ?: '-',
-                            'empresa' => $contratoItem?->contrato?->empresaContratada?->nome ?: 'Empresa nao encontrada',
+                            'empresa' => $contratoItem?->contrato?->empresaContratada?->nome ?: 'Empresa não encontrada',
                             'contrato' => $contratoItem?->contrato?->numero_contrato ?: '-',
                             'quantidade_pedida' => (float) $item->quantidade_pedida,
                             'quantidade_entregue' => (float) $item->quantidade_entregue,
@@ -236,7 +236,7 @@ class ListPedidosMerenda extends Page
 
         return [
             [
-                'titulo' => 'Pedidos visiveis',
+                'titulo' => 'Pedidos visíveis',
                 'valor' => $pedidos->count(),
                 'descricao' => $pedidos->where('status', '!=', StatusPedidoMerenda::Cancelado)->count() . ' ativos no filtro atual',
             ],
@@ -323,7 +323,7 @@ class ListPedidosMerenda extends Page
     public function salvarQuantidade(int $pedidoItemId, float $novaQuantidade): void
     {
         Notification::make()
-            ->title('Quantidade pedida nao pode ser alterada apos a criacao do pedido.')
+            ->title('Quantidade pedida não pode ser alterada após a criacao do pedido.')
             ->warning()
             ->send();
     }

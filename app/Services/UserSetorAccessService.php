@@ -160,7 +160,7 @@ class UserSetorAccessService
         }
 
         throw ValidationException::withMessages([
-            'setor_id' => 'Voce nao tem permissao para usar este setor.',
+            'setor_id' => 'Você não tem permissão para usar este setor.',
         ]);
     }
 }

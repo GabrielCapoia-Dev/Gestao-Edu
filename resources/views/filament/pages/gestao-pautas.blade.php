@@ -8,7 +8,7 @@
         <div class="gi-modal" role="dialog" aria-modal="true">
             <header>
                 <div>
-                    <p class="gi-eyebrow">Avaliacoes</p>
+                    <p class="gi-eyebrow">Avaliações</p>
                     <h3>{{ $pautaIdEditando ? 'Editar Pauta' : 'Novas Pautas' }}</h3>
                 </div>
 
@@ -25,10 +25,10 @@
                     class="{{ $abaPautas === 'configuracao' ? 'is-active' : '' }}"
                     wire:click="abrirAbaPautas('configuracao')"
                     role="tab"
-                    aria-selected="{{ $abaPautas === 'configuracao' ? 'true' : 'false' }}"
+                    aria-selected="{{ $abaPautas === 'configuração' ? 'true' : 'false' }}"
                 >
                     <span class="av-tab-index">01</span>
-                    <span>Configuracao da pauta</span>
+                    <span>Configuração da pauta</span>
                 </button>
 
                 <button
@@ -44,10 +44,10 @@
             </div>
 
             <div class="gi-modal-body">
-                @if ($abaPautas === 'configuracao')
+                @if ($abaPautas === 'configuração')
                     <div class="av-stack">
                         <section class="av-form-section av-form-section--plain">
-                            <h4>Configuracao da pauta</h4>
+                            <h4>Configuração da pauta</h4>
 
                             <div class="av-form-grid av-form-grid--two">
                                 <label class="gi-field">
@@ -77,9 +77,9 @@
                                 </label>
 
                                 <label class="gi-field">
-                                    <span>Serie</span>
+                                    <span>Série</span>
                                     <select wire:model.defer="form.serie_id">
-                                        <option value="">Selecione uma serie</option>
+                                        <option value="">Selecione uma série</option>
                                         @foreach ($this->seriesOptions as $serieId => $serieNome)
                                             <option value="{{ $serieId }}">{{ $serieNome }}</option>
                                         @endforeach
@@ -131,9 +131,9 @@
                                         </label>
 
                                         <label class="gi-field gi-field--small">
-                                            <span>Tem observacao?</span>
+                                            <span>Tem observação?</span>
                                             <select wire:model.live="novasAlternativas.{{ $index }}.tem_observacao">
-                                                <option value="0">Nao</option>
+                                                <option value="0">Não</option>
                                                 <option value="1">Sim</option>
                                             </select>
                                         </label>
@@ -148,7 +148,7 @@
 
                                         @if ((bool) ($novasAlternativas[$index]['tem_observacao'] ?? false))
                                             <label class="gi-field">
-                                                <span>Observacao da alternativa (opcional)</span>
+                                                <span>Observação da alternativa (opcional)</span>
                                                 <input type="text" maxlength="1000" wire:model.defer="novasAlternativas.{{ $index }}.observacao" />
                                             </label>
                                         @endif
@@ -157,13 +157,13 @@
                                             <span>Vai no documento?</span>
                                             <select wire:model.live="novasAlternativas.{{ $index }}.vai_no_documento">
                                                 <option value="1">Sim</option>
-                                                <option value="0">Nao</option>
+                                                <option value="0">Não</option>
                                             </select>
                                         </label>
 
                                         @if ((bool) ($novasAlternativas[$index]['vai_no_documento'] ?? true))
                                             <label class="gi-field">
-                                                <span>Descricao no documento (opcional)</span>
+                                                <span>Descrição no documento (opcional)</span>
                                                 <input type="text" maxlength="1000" wire:model.defer="novasAlternativas.{{ $index }}.descricao_documento" />
                                             </label>
                                         @endif
@@ -226,9 +226,9 @@
                     Cancelar
                 </button>
 
-                @if ($abaPautas === 'configuracao')
+                @if ($abaPautas === 'configuração')
                     <button type="button" class="gi-action gi-action--primary" wire:click="avancarParaTextosPautas">
-                        Proximo
+                        Próximo
                     </button>
                 @else
                     <button type="button" class="gi-action" wire:click="voltarParaConfiguracaoPautas">

@@ -72,8 +72,8 @@ class FeedbackPedidoExportQueueTest extends TestCase
             ->get(route('filament.admin.pages.feedback-pedidos'))
             ->assertOk()
             ->assertSee('Desempenho por contratada')
-            ->assertSee('Satisfacao por escola')
-            ->assertSee('Distribuicao das avaliacoes');
+            ->assertSee('Satisfação por escola')
+            ->assertSee('Distribuição das avaliações');
     }
 
     public function test_rota_de_feedback_nao_enfileira_sem_data_fim(): void

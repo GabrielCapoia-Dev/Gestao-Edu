@@ -27,7 +27,7 @@ class FeedbackPedidoExportHandler implements ExportHandler
         $user = $exportRequest->user;
 
         if (! $user) {
-            throw new RuntimeException('Usuario da exportacao nao encontrado.');
+            throw new RuntimeException('Usuário da exportação não encontrado.');
         }
 
         $filters = $this->analytics->normalizeFilters($exportRequest->filters ?? []);

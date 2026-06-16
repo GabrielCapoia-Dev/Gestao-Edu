@@ -299,7 +299,7 @@ class RelatorioComponenteProfessorFaltando extends Page
         $path = tempnam(sys_get_temp_dir(), 'relatorio_componentes_');
 
         if ($path === false) {
-            throw new \RuntimeException('Nao foi possivel criar o arquivo temporario do relatorio.');
+            throw new \RuntimeException('Não foi possível criar o arquivo temporário do relatório.');
         }
 
         (new Xlsx($spreadsheet))->save($path);

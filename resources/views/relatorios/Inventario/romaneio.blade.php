@@ -1,6 +1,6 @@
 @extends('relatorios.layouts.base-pdf')
 
-@section('reportTitle', $reportTitle ?? 'Romaneio de Inventarios')
+@section('reportTitle', $reportTitle ?? 'Romaneio de Inventários')
 @section('reportSubtitle', $reportSubtitle ?? 'Separacao consolidada dos pedidos aprovados')
 
 @section('styles')
@@ -65,14 +65,14 @@
 @section('content')
     @foreach($romaneio->pedidos as $pedido)
         <div class="{{ $loop->first ? '' : 'page-break' }}">
-            <div class="section-title">Pedido #{{ $pedido->id }} - {{ $pedido->escola?->nome ?? 'Escola nao informada' }}</div>
+            <div class="section-title">Pedido #{{ $pedido->id }} - {{ $pedido->escola?->nome ?? 'Escola não informada' }}</div>
 
             <div class="resumo">
                 <strong>Status:</strong> {{ $pedido->status?->label() ?? 'N/A' }}
                 <br>
-                <strong>Observacao da Escola:</strong> {{ $pedido->observacao_escola ?: '-' }}
+                <strong>Observação da Escola:</strong> {{ $pedido->observacao_escola ?: '-' }}
                 <br>
-                <strong>Observacao do Gestor:</strong> {{ $pedido->observacao_gestor ?: '-' }}
+                <strong>Observação do Gestor:</strong> {{ $pedido->observacao_gestor ?: '-' }}
             </div>
 
             <table class="listagem">
@@ -83,7 +83,7 @@
                         <th class="right">Qtd. Solicitada</th>
                         <th class="right">Qtd. Aprovada</th>
                         <th class="right">Qtd. Recebida</th>
-                        <th>Obs. Solicitacao</th>
+                        <th>Obs. Solicitação</th>
                         <th>Obs. Aprovacao</th>
                     </tr>
                 </thead>
@@ -110,7 +110,7 @@
                     </td>
                     <td style="width: 35%;">
                         <div class="linha-assinatura"></div>
-                        <span class="label-assinatura">Nome do responsavel</span>
+                        <span class="label-assinatura">Nome do responsável</span>
                     </td>
                     <td style="width: 20%;">
                         <div class="linha-assinatura"></div>

@@ -70,13 +70,13 @@ class LogExportacoesAvaliacoes extends Page implements HasTable
                     ->sortable(),
 
                 TextColumn::make('user.name')
-                    ->label('Usuario')
+                    ->label('Usuário')
                     ->searchable()
                     ->sortable()
                     ->placeholder('Sistema'),
 
                 TextColumn::make('avaliacao.nome')
-                    ->label('Avaliacao')
+                    ->label('Avaliação')
                     ->searchable()
                     ->sortable()
                     ->wrap(),
@@ -117,7 +117,7 @@ class LogExportacoesAvaliacoes extends Page implements HasTable
                     ]),
 
                 SelectFilter::make('avaliacao_id')
-                    ->label('Avaliacao')
+                    ->label('Avaliação')
                     ->options(fn (): array => Avaliacao::query()->orderBy('nome')->pluck('nome', 'id')->toArray())
                     ->searchable(),
             ])

@@ -133,9 +133,9 @@ class GestaoAlternativas extends Page implements HasTable
                     ->toggleable(),
 
                 TextColumn::make('descricao_documento')
-                    ->label('Descricao no documento')
+                    ->label('Descrição no documento')
                     ->limit(80)
-                    ->placeholder('Sem descricao')
+                    ->placeholder('Sem descrição')
                     ->toggleable(),
 
                 IconColumn::make('status')

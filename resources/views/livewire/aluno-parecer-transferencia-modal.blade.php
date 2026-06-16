@@ -14,7 +14,7 @@
     @if ($aluno)
         <header class="parecer-modal-header">
             <div>
-                <p class="gi-eyebrow">Parecer de Transferencia</p>
+                <p class="gi-eyebrow">Parecer de Transferência</p>
                 <h3>{{ $aluno->nome }}</h3>
                 <p>
                     CGM: {{ $aluno->cgm }} |
@@ -28,17 +28,17 @@
         <div class="parecer-modal-actions">
             @if ($somenteLeitura)
                 <section class="av-note">
-                    Este registro e historico. As respostas ficam disponiveis apenas para consulta.
+                    Este registro e histórico. As respostas ficam disponíveis apenas para consulta.
                 </section>
             @elseif ($this->podeGerarParecer)
                 <button
                     type="button"
                     class="gi-action gi-action--primary"
                     wire:click="gerarParecerTransferencia"
-                    wire:confirm="Caso deseje continuar, o aluno sera marcado como transferido e essa acao nao podera ser revertida. Deseja gerar o Parecer de Transferencia?"
+                    wire:confirm="Caso deseje continuar, o aluno será marcado como transferido e essa ação não poderá ser revertida. Deseja gerar o parecer de transferência?"
                     wire:loading.attr="disabled"
                     wire:target="gerarParecerTransferencia">
-                    Gerar Parecer de Transferencia
+                    Gerar Parecer de Transferência
                 </button>
             @endif
         </div>
@@ -89,7 +89,7 @@
                                                     <th>Pauta</th>
                                                     <th>Alternativas</th>
                                                     <th>Resposta</th>
-                                                    <th>Observacao</th>
+                                                    <th>Observação</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -102,7 +102,7 @@
                                                             @if ($campoBloqueado)
                                                                 <span class="parecer-readonly-value">{{ $pauta['resposta'] !== '' ? $pauta['resposta'] : 'Não Avaliado' }}</span>
                                                                 @if ($pauta['bloqueada'])
-                                                                    <small>Bloqueada por historico</small>
+                                                                    <small>Bloqueada por histórico</small>
                                                                 @elseif (! (bool) ($pauta['editavel'] ?? true))
                                                                     <small>Componente restrito ao professor vinculado.</small>
                                                                 @endif
@@ -114,7 +114,7 @@
                                                                     <option value="">Pendente</option>
                                                                     @foreach ($pauta['alternativas'] as $alternativa)
                                                                         <option value="{{ $alternativa['id'] }}">
-                                                                            {{ $alternativa['nome'] }}{{ ($alternativa['tem_observacao'] ?? false) ? ' (exige observacao)' : '' }}
+                                                                            {{ $alternativa['nome'] }}{{ ($alternativa['tem_observacao'] ?? false) ? ' (exige observação)' : '' }}
                                                                         </option>
                                                                     @endforeach
                                                                 </select>
@@ -126,13 +126,13 @@
                                                             @elseif ($pauta['requer_observacao'])
                                                                 <textarea
                                                                     maxlength="1500"
-                                                                    placeholder="Observacao obrigatoria"
+                                                                    placeholder="Observação obrigatória"
                                                                     class="parecer-response-textarea"
                                                                     wire:model="observacoesParecer.{{ $avaliacao['id'] }}.{{ $pauta['id'] }}"
                                                                     wire:input.debounce.700ms="salvarObservacaoParecerCampo({{ $avaliacao['id'] }}, {{ $pauta['id'] }}, $event.target.value)"></textarea>
-                                                                <small class="av-field-hint av-field-hint--danger">Obrigatoria para esta alternativa.</small>
+                                                                    <small class="av-field-hint av-field-hint--danger">Obrigatória para esta alternativa.</small>
                                                             @else
-                                                                <small class="av-field-hint">Somente alternativas com observacao habilitam este campo.</small>
+                                                                <small class="av-field-hint">Somente alternativas com observação habilitam este campo.</small>
                                                             @endif
                                                         </td>
                                                     </tr>
@@ -143,18 +143,18 @@
 
                                     @php($informacaoBloqueada = $somenteLeitura || ! (bool) ($componente['editavel'] ?? true) || (bool) ($componente['informacao_bloqueada'] ?? false))
                                     <div class="parecer-complementary-section">
-                                        <h4>Informacoes complementares do componente</h4>
+                                        <h4>Informações complementares do componente</h4>
                                         @if ($informacaoBloqueada)
                                             <div class="parecer-readonly-box">{{ $componente['informacoes_complementares'] !== '' ? $componente['informacoes_complementares'] : '-' }}</div>
                                             @if ($componente['informacao_bloqueada'] ?? false)
-                                                <small class="av-field-hint">Informacoes bloqueadas por historico.</small>
+                                                <small class="av-field-hint">Informações bloqueadas por histórico.</small>
                                             @elseif (! (bool) ($componente['editavel'] ?? true))
                                                 <small class="av-field-hint">Componente restrito ao professor vinculado.</small>
                                             @endif
                                         @else
                                             <textarea
                                                 maxlength="1500"
-                                                placeholder="Informacoes complementares (opcional)"
+                                                placeholder="Informações complementares (opcional)"
                                                 class="parecer-response-textarea"
                                                 wire:model="informacoesComplementaresParecer.{{ $avaliacao['id'] }}.{{ $componente['id'] }}"
                                                 wire:input.debounce.900ms="salvarInformacaoComplementarParecerCampo({{ $avaliacao['id'] }}, {{ $componente['id'] }}, $event.target.value)"></textarea>
@@ -167,13 +167,13 @@
                 </section>
             @empty
                 <section class="av-note av-note--warning">
-                    Nenhuma avaliacao vinculada a turma atual do aluno.
+                    Nenhuma avaliação vinculada a turma atual do aluno.
                 </section>
             @endforelse
         </div>
     @else
         <section class="av-note av-note--warning">
-            Aluno nao encontrado no escopo permitido.
+            Aluno não encontrado no escopo permitido.
         </section>
     @endif
 

@@ -38,15 +38,15 @@ class InventarioRelatorioService
             'itens' => $itens,
             'movimentacoes' => $movimentacoes,
             'baixas' => $baixas,
-            'reportTitle' => 'Relatorio Geral de Inventario',
-            'reportSubtitle' => 'Visao consolidada do inventario escolar',
+            'reportTitle' => 'Relatório Geral de Inventário',
+            'reportSubtitle' => 'Visão consolidada do inventário escolar',
             'reportFilters' => array_merge([
                 'escola' => $inventario->escola?->nome ?? 'N/A',
             ], $this->dataService->formatarFiltros($filtros)),
             'usuarioExportacao' => $usuario,
             'dataExportacao' => now(),
             'orientation' => 'landscape',
-        ], 'relatorio-inventario-' . $this->slugInventario($inventario) . '.pdf');
+        ], 'relatório-inventário-' . $this->slugInventario($inventario) . '.pdf');
     }
 
     public function gerarXlsxGeral(Inventario $inventario, array $params, ?User $usuario): Response
@@ -72,11 +72,11 @@ class InventarioRelatorioService
         );
 
         $itensSheet = $spreadsheet->createSheet();
-        $itensSheet->setTitle('Inventario');
+        $itensSheet->setTitle('Inventário');
         $this->preencherItensSheet($itensSheet, $itens, $usuario);
 
         $movimentacoesSheet = $spreadsheet->createSheet();
-        $movimentacoesSheet->setTitle('Movimentacoes');
+        $movimentacoesSheet->setTitle('Movimentações');
         $this->preencherMovimentacoesSheet($movimentacoesSheet, $movimentacoes, $usuario);
 
         $baixasSheet = $spreadsheet->createSheet();
@@ -87,7 +87,7 @@ class InventarioRelatorioService
 
         return $this->downloadSpreadsheet(
             $spreadsheet,
-            'relatorio-inventario-' . $this->slugInventario($inventario) . '.xlsx'
+            'relatório-inventário-' . $this->slugInventario($inventario) . '.xlsx'
         );
     }
 
@@ -99,13 +99,13 @@ class InventarioRelatorioService
             'resumo' => $relatorio->resumo,
             'escolas' => $relatorio->escolas,
             'periodoLabel' => $relatorio->periodo_label,
-            'reportTitle' => 'Relatorio de Envios para Escolas',
-            'reportSubtitle' => 'Consolidado das entregas realizadas para os inventarios escolares',
+            'reportTitle' => 'Relatório de Envios para Escolas',
+            'reportSubtitle' => 'Consolidado das entregas realizadas para os inventários escolares',
             'reportFilters' => $this->dataService->formatarFiltrosRelatorioEnvios($relatorio->filtros),
             'usuarioExportacao' => $usuario,
             'dataExportacao' => now(),
             'orientation' => 'landscape',
-        ], 'relatorio-envios-escolas-' . now()->format('Y-m-d_H-i') . '.pdf');
+        ], 'relatório-envios-escolas-' . now()->format('Y-m-d_H-i') . '.pdf');
     }
 
     public function gerarXlsxEnviosEscolas(array $params, ?User $usuario): Response
@@ -129,7 +129,7 @@ class InventarioRelatorioService
 
         return $this->downloadSpreadsheet(
             $spreadsheet,
-            'relatorio-envios-escolas-' . now()->format('Y-m-d_H-i') . '.xlsx'
+            'relatório-envios-escolas-' . now()->format('Y-m-d_H-i') . '.xlsx'
         );
     }
 
@@ -145,8 +145,8 @@ class InventarioRelatorioService
             'resumo' => $this->dataService->resumoItem($estoque),
             'movimentacoes' => $movimentacoes,
             'baixas' => $baixas,
-            'reportTitle' => 'Relatorio Individual de Inventario',
-            'reportSubtitle' => 'Historico completo do item no inventario escolar',
+            'reportTitle' => 'Relatório Individual de Inventário',
+            'reportSubtitle' => 'Histórico completo do item no inventário escolar',
             'reportFilters' => [
                 'escola' => $estoque->inventario?->escola?->nome ?? 'N/A',
                 'item' => $estoque->item?->nome ?? 'N/A',
@@ -156,7 +156,7 @@ class InventarioRelatorioService
             'usuarioExportacao' => $usuario,
             'dataExportacao' => now(),
             'orientation' => 'landscape',
-        ], 'relatorio-item-inventario-' . $this->slugItem($estoque) . '.pdf');
+        ], 'relatório-item-inventário-' . $this->slugItem($estoque) . '.pdf');
     }
 
     public function gerarXlsxItem(InventarioEstoque $estoque, ?User $usuario): Response
@@ -173,7 +173,7 @@ class InventarioRelatorioService
         $this->preencherResumoItemSheet($resumoSheet, $estoque, $resumo, $usuario);
 
         $movimentacoesSheet = $spreadsheet->createSheet();
-        $movimentacoesSheet->setTitle('Movimentacoes');
+        $movimentacoesSheet->setTitle('Movimentações');
         $this->preencherMovimentacoesSheet($movimentacoesSheet, $movimentacoes, $usuario);
 
         $baixasSheet = $spreadsheet->createSheet();
@@ -184,7 +184,7 @@ class InventarioRelatorioService
 
         return $this->downloadSpreadsheet(
             $spreadsheet,
-            'relatorio-item-inventario-' . $this->slugItem($estoque) . '.xlsx'
+            'relatório-item-inventário-' . $this->slugItem($estoque) . '.xlsx'
         );
     }
 
@@ -198,7 +198,7 @@ class InventarioRelatorioService
     ): void {
         $linha = $this->preencherCabecalhoSheet(
             $sheet,
-            'Relatorio Geral de Inventario',
+            'Relatório Geral de Inventário',
             array_merge(['escola' => $inventario->escola?->nome ?? 'N/A'], $filtros),
             $usuario
         );
@@ -210,11 +210,11 @@ class InventarioRelatorioService
 
         $indicadores = [
             'Itens filtrados' => $metricas->total_itens,
-            'Quantidade total em inventario' => $metricas->quantidade_total,
+            'Quantidade total em inventário' => $metricas->quantidade_total,
             'Valor total estimado' => $metricas->valor_total,
             'Itens em estoque baixo' => $metricas->itens_criticos,
             'Itens zerados' => $metricas->itens_zerados,
-            'Movimentacoes' => $metricas->total_movimentacoes,
+            'Movimentações' => $metricas->total_movimentacoes,
             'Entradas acumuladas' => $metricas->total_entradas,
             'Saidas acumuladas' => $metricas->total_saidas,
             'Saldo movimentado' => $metricas->saldo_movimentado,
@@ -255,7 +255,7 @@ class InventarioRelatorioService
 
     protected function preencherResumoItemSheet(Worksheet $sheet, InventarioEstoque $estoque, object $resumo, ?User $usuario): void
     {
-        $linha = $this->preencherCabecalhoSheet($sheet, 'Relatorio Individual de Inventario', [
+        $linha = $this->preencherCabecalhoSheet($sheet, 'Relatório Individual de Inventário', [
             'escola' => $estoque->inventario?->escola?->nome ?? 'N/A',
             'item' => $estoque->item?->nome ?? 'N/A',
             'categoria' => $estoque->item?->tipo_item?->label() ?? 'N/A',
@@ -269,7 +269,7 @@ class InventarioRelatorioService
 
         $indicadores = [
             'Saldo atual' => $resumo->saldo_atual,
-            'Movimentacoes' => $resumo->total_movimentacoes,
+            'Movimentações' => $resumo->total_movimentacoes,
             'Entradas' => $resumo->total_entradas,
             'Saidas' => $resumo->total_saidas,
             'Baixas' => $resumo->total_baixas,
@@ -290,9 +290,9 @@ class InventarioRelatorioService
 
     protected function preencherItensSheet(Worksheet $sheet, Collection $itens, ?User $usuario): void
     {
-        $linha = $this->preencherCabecalhoSheet($sheet, 'Itens do Inventario', [], $usuario);
+        $linha = $this->preencherCabecalhoSheet($sheet, 'Itens do Inventário', [], $usuario);
 
-        $headers = ['Item', 'Descricao', 'Categoria', 'Unidade', 'Quantidade', 'Valor Unitario', 'Valor Total', 'Status', 'Atualizado em'];
+        $headers = ['Item', 'Descrição', 'Categoria', 'Unidade', 'Quantidade', 'Valor Unitário', 'Valor Total', 'Status', 'Atualizado em'];
         $this->preencherTabelaSimples($sheet, $linha, $headers, $itens->map(fn (array $item) => [
             $item['nome'],
             $item['descricao'],
@@ -308,9 +308,9 @@ class InventarioRelatorioService
 
     protected function preencherMovimentacoesSheet(Worksheet $sheet, Collection $movimentacoes, ?User $usuario): void
     {
-        $linha = $this->preencherCabecalhoSheet($sheet, 'Historico de Movimentacoes', [], $usuario);
+        $linha = $this->preencherCabecalhoSheet($sheet, 'Histórico de Movimentações', [], $usuario);
 
-        $headers = ['Data', 'Item', 'Categoria', 'Tipo', 'Quantidade', 'Pedido', 'Registrado por', 'Observacao'];
+        $headers = ['Data', 'Item', 'Categoria', 'Tipo', 'Quantidade', 'Pedido', 'Registrado por', 'Observação'];
         $this->preencherTabelaSimples($sheet, $linha, $headers, $movimentacoes->map(fn (array $mov) => [
             $mov['data'],
             $mov['item_nome'],
@@ -325,9 +325,9 @@ class InventarioRelatorioService
 
     protected function preencherBaixasSheet(Worksheet $sheet, Collection $baixas, ?User $usuario): void
     {
-        $linha = $this->preencherCabecalhoSheet($sheet, 'Historico de Baixas', [], $usuario);
+        $linha = $this->preencherCabecalhoSheet($sheet, 'Histórico de Baixas', [], $usuario);
 
-        $headers = ['Data', 'Item', 'Categoria', 'Motivo', 'Descricao', 'Quantidade', 'Saldo Antes', 'Saldo Depois', 'Registrado por'];
+        $headers = ['Data', 'Item', 'Categoria', 'Motivo', 'Descrição', 'Quantidade', 'Saldo Antes', 'Saldo Depois', 'Registrado por'];
         $this->preencherTabelaSimples($sheet, $linha, $headers, $baixas->map(fn (array $baixa) => [
             $baixa['data'],
             $baixa['item_nome'],
@@ -366,7 +366,7 @@ class InventarioRelatorioService
     {
         $linha = $this->preencherCabecalhoSheet(
             $sheet,
-            'Relatorio de Envios para Escolas',
+            'Relatório de Envios para Escolas',
             $this->dataService->formatarFiltrosRelatorioEnvios($relatorio->filtros),
             $usuario
         );
@@ -383,7 +383,7 @@ class InventarioRelatorioService
             'Itens consolidados' => $relatorio->resumo->total_itens,
             'Quantidade total enviada' => $relatorio->resumo->quantidade_total,
             'Valor total estimado' => $relatorio->resumo->valor_total,
-            'Periodo considerado' => $relatorio->periodo_label,
+            'Período considerado' => $relatorio->periodo_label,
         ];
 
         foreach ($indicadores as $label => $valor) {
@@ -463,7 +463,7 @@ class InventarioRelatorioService
             'Unidade',
             'Entregas',
             'Quantidade Enviada',
-            'Valor Unitario',
+            'Valor Unitário',
             'Valor Total',
             'Ultima Entrega',
             'Romaneios',

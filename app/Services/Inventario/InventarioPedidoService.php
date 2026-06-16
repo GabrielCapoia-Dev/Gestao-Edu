@@ -73,7 +73,7 @@ class InventarioPedidoService
 
         // Impacto: este guard evita que uma escola solicite itens em inventario de outra unidade. Afeta pedidos, romaneios e recebimento no estoque escolar.
         if (! $inventario || blank($user->id_escola) || (int) $inventario->escola_id !== (int) $user->id_escola) {
-            throw new DomainException('O usuario nao possui inventario escolar disponivel para solicitar itens.');
+            throw new DomainException('O usuário não possui inventário escolar disponível para solicitar itens.');
         }
 
         // Impacto: remover este bloqueio permite varios romaneios simultaneos para a mesma escola, dificultando conferencia e podendo duplicar reservas da matriz.
@@ -112,12 +112,12 @@ class InventarioPedidoService
     public function aprovarPedido(InventarioPedido $pedido, array $itensData, ?string $observacaoGestor, User $user): InventarioPedido
     {
         if (! $this->contextService->ehGestorGeral($user)) {
-            throw new DomainException('Somente o gestor geral pode analisar pedidos de inventario.');
+            throw new DomainException('Somente o gestor geral pode analisar pedidos de inventário.');
         }
 
         if (! app(UserSetorAccessService::class)->hasGlobalAccess($user)
             && ! app(UserSetorAccessService::class)->canAccessSetor($user, $pedido->inventario?->setor_id)) {
-            throw new DomainException('O usuario nao tem permissao para analisar este pedido de inventario.');
+            throw new DomainException('O usuário não tem permissão para analisar este pedido de inventário.');
         }
 
         if (! $pedido->isPendente()) {
@@ -141,12 +141,12 @@ class InventarioPedidoService
                 $quantidadeAprovada = round((float) ($payload['quantidade_aprovada'] ?? 0), 3);
 
                 if ($quantidadeAprovada < 0) {
-                    throw new DomainException('Nao e permitido aprovar quantidade negativa.');
+                    throw new DomainException('Não é permitido aprovar quantidade negativa.');
                 }
 
                 // Impacto: aprovar acima do solicitado muda a base do romaneio e pode reservar saldo que a escola nao pediu.
                 if ($quantidadeAprovada > $quantidadeSolicitada) {
-                    throw new DomainException("A quantidade aprovada do item {$pedidoItem->item?->nome} nao pode exceder a solicitada.");
+                    throw new DomainException("A quantidade aprovada do item {$pedidoItem->item?->nome} não pode exceder a solicitada.");
                 }
 
                 $statusItem = $quantidadeAprovada > 0
@@ -239,7 +239,7 @@ class InventarioPedidoService
                 // Impacto: esta reserva compromete saldo da matriz ate a conferencia. Trocar por saida direta quebraria a logica de divergencia na entrega.
                 $estoque->reservar(
                     $quantidade,
-                    "Reserva para romaneio de inventario - {$itemNome}"
+                    "Reserva para romaneio de inventário - {$itemNome}"
                 );
             }
 
@@ -272,7 +272,7 @@ class InventarioPedidoService
             && (int) $pedido->escola_id !== (int) $user->id_escola
             && ! app(UserSetorAccessService::class)->canAccessSetor($user, $pedido->inventario?->setor_id)
         ) {
-            throw new DomainException('O usuario nao tem permissao para conferir este pedido.');
+            throw new DomainException('O usuário não tem permissão para conferir este pedido.');
         }
 
         $mapaItens = collect($itensData)
@@ -304,7 +304,7 @@ class InventarioPedidoService
                 $quantidadeRecebida = round((float) ($payload['quantidade_recebida'] ?? 0), 3);
 
                 if ($quantidadeRecebida < 0) {
-                    throw new DomainException('A quantidade recebida nao pode ser negativa.');
+                    throw new DomainException('A quantidade recebida não pode ser negativa.');
                 }
 
                 // Impacto: divergencia exige justificativa para manter auditoria entre romaneio, baixa da matriz e entrada no inventario escolar.
@@ -326,7 +326,7 @@ class InventarioPedidoService
                 $estoqueMatriz->confirmarEntregaReservada(
                     $quantidadeAprovada,
                     $quantidadeRecebida,
-                    'Entrega para pedido de inventario #' . $pedido->getKey() . ' - ' . ($pedido->escola?->nome ?? 'Escola'),
+                    'Entrega para pedido de inventário #' . $pedido->getKey() . ' - ' . ($pedido->escola?->nome ?? 'Escola'),
                 );
 
                 // Impacto: somente o recebido entra no inventario escolar; mudar para aprovado faria o estoque da escola divergir da conferencia fisica.
@@ -350,7 +350,7 @@ class InventarioPedidoService
             }
 
             if ($houveDivergencia && ! filled($observacaoConferencia)) {
-                throw new DomainException('Informe a observacao da conferencia quando houver divergencia entre romaneio e entrega.');
+                throw new DomainException('Informe a observação da conferência quando houver divergência entre romaneio e entrega.');
             }
 
             $pedido->update([

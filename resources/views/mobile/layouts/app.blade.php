@@ -6,10 +6,10 @@
     <meta name="theme-color" content="#0f4c81">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="Gestao Edu">
+    <meta name="apple-mobile-web-app-title" content="Gestão Edu">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="description" content="@yield('meta_description', 'Aplicativo mobile do Gestao Edu.')">
-    <title>@yield('title', 'Gestao Edu Mobile')</title>
+    <meta name="description" content="@yield('meta_description', 'Aplicativo mobile do sistema Gestão Edu.')">
+    <title>@yield('title', 'Gestão Edu Mobile')</title>
 
     <link rel="manifest" href="{{ asset('mobile.webmanifest') }}">
     <link rel="icon" href="{{ asset('pwa/icon-192.png') }}" sizes="192x192">
@@ -24,7 +24,7 @@
             <a href="{{ route('mobile.home') }}" class="mobile-brand">
                 <span class="mobile-brand__mark">GE</span>
                 <span class="mobile-brand__text">
-                    <strong>Gestao Edu</strong>
+                    <strong>Gestão Edu</strong>
                     <small>Mobile</small>
                 </span>
             </a>
@@ -42,7 +42,7 @@
 
         <nav class="mobile-bottom-nav">
             <a href="{{ route('mobile.home') }}" class="mobile-bottom-nav__item {{ request()->routeIs('mobile.home', 'mobile.legacy.home') ? 'is-active' : '' }}">
-                <span>Inicio</span>
+                <span>Início</span>
             </a>
 
             <a href="{{ route('mobile.access.index') }}" class="mobile-bottom-nav__item {{ request()->routeIs('mobile.access.index', 'mobile.users.index', 'mobile.domains.index', 'mobile.roles.index') ? 'is-active' : '' }}">
@@ -50,7 +50,7 @@
             </a>
 
             <a href="{{ route('mobile.reports.index') }}" class="mobile-bottom-nav__item {{ request()->routeIs('mobile.reports.index', 'mobile.reports.dashboard', 'mobile.reports.professor-by-class', 'mobile.reports.missing-teachers') ? 'is-active' : '' }}">
-                <span>Relatorios</span>
+                <span>Relatórios</span>
             </a>
 
             <form method="POST" action="{{ route('mobile.logout') }}" class="mobile-bottom-nav__form">
@@ -63,7 +63,7 @@
     </div>
 
     <aside class="mobile-ios-hint" data-ios-install-hint hidden>
-        <p>Para instalar no iPhone, toque em Compartilhar e depois em Adicionar a Tela de Inicio.</p>
+        <p>Para instalar no iPhone, toque em Compartilhar e depois em Adicionar a Tela de Início.</p>
         <button type="button" data-dismiss-ios-install>Fechar</button>
     </aside>
 

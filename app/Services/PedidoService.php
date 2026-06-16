@@ -378,7 +378,7 @@ class PedidoService
             }
 
             if (! TipoManutencao::query()->whereKey($data['tipo_manutencao_id'])->where('ativo', true)->exists()) {
-                throw new \RuntimeException('Tipo de manutencao indisponivel para novos pedidos.');
+                throw new \RuntimeException('Tipo de manutenção indisponível para novos pedidos.');
             }
 
             $pedido = Pedido::create([
@@ -424,7 +424,7 @@ class PedidoService
     {
         if (! $this->podeVincularAdicionaisAoPedido($pedidoPrincipal, $usuario)) {
             throw ValidationException::withMessages([
-                'pedidos_adicionais' => 'Voce nao possui autorizacao para vincular pedidos adicionais a este pedido.',
+                'pedidos_adicionais' => 'Você não possui autorização para vincular pedidos adicionais a este pedido.',
             ]);
         }
 
@@ -603,7 +603,7 @@ class PedidoService
         DB::transaction(function () use ($pedido, $setorDestino, $usuario, $descricao): void {
             if (! $this->podeEncaminharRegistro($pedido, $usuario, (int) $setorDestino->id)) {
                 throw ValidationException::withMessages([
-                    'setor_id' => 'Seu setor nao possui autorizacao para encaminhar este pedido ao setor selecionado.',
+                    'setor_id' => 'Seu setor não possui autorização para encaminhar este pedido ao setor selecionado.',
                 ]);
             }
 
@@ -640,7 +640,7 @@ class PedidoService
 
         if (! app(UserSetorAccessService::class)->canAccessSetor($usuario, (int) $empresa->setor_id)) {
             throw ValidationException::withMessages([
-                'empresa_contratada_id' => 'Voce nao tem permissao para usar esta empresa.',
+                'empresa_contratada_id' => 'Você não tem permissão para usar esta empresa.',
             ]);
         }
 
@@ -655,7 +655,7 @@ class PedidoService
     ): bool {
         return DB::transaction(function () use ($pedido, $empresa, $usuario, $descricao): bool {
             if (! $this->podeEnviarParaEmpresa($usuario)) {
-                throw new \RuntimeException('Usuario sem permissao para enviar pedidos para empresa.');
+                throw new \RuntimeException('Usuário sem permissão para enviar pedidos para empresa.');
             }
 
             if (! $this->podeGerenciarRegistro($pedido, $usuario)) {
@@ -836,7 +836,7 @@ class PedidoService
     {
         if (! $this->podeAvaliarRegistro($pedido, $usuario)) {
             throw ValidationException::withMessages([
-                'pedido' => 'Voce nao possui autorizacao para avaliar este pedido.',
+                'pedido' => 'Você não possui autorização para avaliar este pedido.',
             ]);
         }
 
@@ -1005,7 +1005,7 @@ class PedidoService
         $errors = [];
 
         if (blank($data['descricao'] ?? null)) {
-            $errors['descricao'] = 'Descreva a avaliacao geral do pedido.';
+            $errors['descricao'] = 'Descreva a avaliação geral do pedido.';
         }
 
         $reabrirPedido = (bool) ($data['reabrir_pedido'] ?? false);
@@ -1016,7 +1016,7 @@ class PedidoService
                     ?? collect($data['avaliacoes'] ?? [])->get($problema->id);
 
                 if (blank($avaliacao['comentario'] ?? null)) {
-                    $errors["avaliacoes.{$problema->id}.comentario"] = 'Descreva a avaliacao deste problema.';
+                    $errors["avaliacoes.{$problema->id}.comentario"] = 'Descreva a avaliação deste problema.';
                 }
             }
         }
@@ -1062,7 +1062,7 @@ class PedidoService
 
         foreach (array_values($adicionais) as $index => $data) {
             if (blank($data['tipo_manutencao_id'] ?? null)) {
-                $errors["pedidos_adicionais.{$index}.tipo_manutencao_id"] = 'Informe o tipo de manutencao do pedido adicional.';
+                $errors["pedidos_adicionais.{$index}.tipo_manutencao_id"] = 'Informe o tipo de manutenção do pedido adicional.';
             }
 
             if (blank($data['descricao_pedido'] ?? null)) {
@@ -1074,7 +1074,7 @@ class PedidoService
             }
 
             if ($exigirAvaliacao && blank($data['comentario'] ?? null)) {
-                $errors["pedidos_adicionais.{$index}.comentario"] = 'Descreva a avaliacao do pedido adicional.';
+                $errors["pedidos_adicionais.{$index}.comentario"] = 'Descreva a avaliação do pedido adicional.';
             }
         }
 
@@ -1136,7 +1136,7 @@ class PedidoService
         );
 
         if (! is_string($path) || blank($path)) {
-            throw new \RuntimeException('Nao foi possivel salvar o arquivo do pedido no storage publico.');
+            throw new \RuntimeException('Não foi possível salvar o arquivo do pedido no storage público.');
         }
 
         return [$path, $nomeOriginal];

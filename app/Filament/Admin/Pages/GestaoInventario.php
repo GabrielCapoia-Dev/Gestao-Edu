@@ -337,7 +337,7 @@ class GestaoInventario extends Page
 
         if (! $estoque) {
             Notification::make()
-                ->title('Item de inventario nao encontrado.')
+                ->title('Item de inventário não encontrado.')
                 ->danger()
                 ->send();
 

@@ -325,7 +325,7 @@
         </div>
 
         <span class="pedido-adicionais-modal__badge" style="--badge-color: #475569">
-            {{ $pedido->tipoStatus?->nome ?? 'Status nao informado' }}
+            {{ $pedido->tipoStatus?->nome ?? 'Status não informado' }}
         </span>
     </div>
 
@@ -354,7 +354,7 @@
                         </div>
 
                         <div class="pedido-adicionais-modal__tipo">
-                            {{ $adicional->tipoManutencao?->nome ?? 'Tipo nao informado' }}
+                            {{ $adicional->tipoManutencao?->nome ?? 'Tipo não informado' }}
                         </div>
                     </div>
 
@@ -439,9 +439,9 @@
                 </div>
 
                 <div class="pedido-adicionais-modal__section">
-                    <span class="pedido-adicionais-modal__label">Descricao do adicional</span>
+                    <span class="pedido-adicionais-modal__label">Descrição do adicional</span>
                     <div class="pedido-adicionais-modal__descricao">
-                        {{ $adicional->descricao_pedido ?: 'Sem descricao informada.' }}
+                        {{ $adicional->descricao_pedido ?: 'Sem descrição informada.' }}
                     </div>
                 </div>
 
@@ -487,7 +487,7 @@
                 </div>
 
                 <div class="pedido-adicionais-modal__section">
-                    <span class="pedido-adicionais-modal__label">Avaliacao registrada</span>
+                    <span class="pedido-adicionais-modal__label">Avaliação registrada</span>
 
                     @if($avaliacoes->isNotEmpty())
                         <div class="pedido-adicionais-modal__avaliacoes">
@@ -512,7 +512,7 @@
                             @endforeach
                         </div>
                     @else
-                        <span class="pedido-adicionais-modal__value">Ainda sem avaliacao registrada para este adicional.</span>
+                        <span class="pedido-adicionais-modal__value">Ainda sem avaliação registrada para este adicional.</span>
                     @endif
                 </div>
             </div>

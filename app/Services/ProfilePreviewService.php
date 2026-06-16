@@ -17,7 +17,7 @@ class ProfilePreviewService
     {
         if (! $realUser->hasPermissionTo(self::PERMISSION)) {
             throw ValidationException::withMessages([
-                'target_user_id' => 'Voce nao tem permissao para visualizar perfis.',
+                'target_user_id' => 'Você não tem permissão para visualizar perfis.',
             ]);
         }
 
@@ -28,7 +28,7 @@ class ProfilePreviewService
 
         if (! $targetUser) {
             throw ValidationException::withMessages([
-                'target_user_id' => 'Selecione um usuario aprovado para visualizar.',
+                'target_user_id' => 'Selecione um usuário aprovado para visualizar.',
             ]);
         }
 

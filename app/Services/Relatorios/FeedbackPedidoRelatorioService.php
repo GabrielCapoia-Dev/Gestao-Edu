@@ -126,21 +126,21 @@ class FeedbackPedidoRelatorioService
     protected function tituloPorTipo(string $tipo): string
     {
         return match ($tipo) {
-            'terceirizada', FeedbackPedidoAnalyticsService::REPORT_EMPRESAS => 'Relatorio de Desempenho das Empresas',
-            FeedbackPedidoAnalyticsService::REPORT_ESCOLAS => 'Relatorio de Satisfacao das Escolas',
-            FeedbackPedidoAnalyticsService::REPORT_LISTAGEM => 'Relatorio Filtrado de Feedback de Pedidos',
-            default => 'Relatorio Geral de Satisfacao dos Pedidos',
+            'terceirizada', FeedbackPedidoAnalyticsService::REPORT_EMPRESAS => 'Relatório de Desempenho das Empresas',
+            FeedbackPedidoAnalyticsService::REPORT_ESCOLAS => 'Relatório de Satisfação das Escolas',
+            FeedbackPedidoAnalyticsService::REPORT_LISTAGEM => 'Relatório Filtrado de Feedback de Pedidos',
+            default => 'Relatório Geral de Satisfação dos Pedidos',
         };
     }
 
     protected function subtituloPorTipo(string $tipo): ?string
     {
         return match ($tipo) {
-            'listagem', FeedbackPedidoAnalyticsService::REPORT_LISTAGEM => 'Listagem consolidada das avaliacoes registradas no periodo informado',
-            'graficos', FeedbackPedidoAnalyticsService::REPORT_GERAL => 'Visao grafica e estatistica das avaliacoes no periodo informado',
-            'terceirizada', FeedbackPedidoAnalyticsService::REPORT_EMPRESAS => 'Consolidado de satisfacao por empresa contratada',
-            FeedbackPedidoAnalyticsService::REPORT_ESCOLAS => 'Consolidado de satisfacao por escola solicitante',
-            default => 'Resumo geral com indicadores, listagem e analise visual',
+            'listagem', FeedbackPedidoAnalyticsService::REPORT_LISTAGEM => 'Listagem consolidada das avaliações registradas no período informado',
+            'graficos', FeedbackPedidoAnalyticsService::REPORT_GERAL => 'Visão gráfica e estatística das avaliações no período informado',
+            'terceirizada', FeedbackPedidoAnalyticsService::REPORT_EMPRESAS => 'Consolidado de satisfação por empresa contratada',
+            FeedbackPedidoAnalyticsService::REPORT_ESCOLAS => 'Consolidado de satisfação por escola solicitante',
+            default => 'Resumo geral com indicadores, listagem e análise visual',
         };
     }
 }

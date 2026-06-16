@@ -1,6 +1,6 @@
 @extends('mobile.layouts.app')
 
-@section('title', 'Componentes sem Professor | Gestao Edu Mobile')
+@section('title', 'Componentes sem Professor | Gestão Edu Mobile')
 
 @section('content')
     @php
@@ -9,7 +9,7 @@
             'tarde' => 'Tarde',
             'noite' => 'Noite',
             'integral' => 'Integral',
-            default => $turno ?: 'Nao informado',
+            default => $turno ?: 'Não informado',
         };
     @endphp
 
@@ -29,7 +29,7 @@
     </section>
 
     <form method="GET" class="mobile-filter-stack">
-        <input type="search" name="search" value="{{ $filters['search'] }}" class="mobile-input" placeholder="Buscar componente, turma, escola ou serie">
+        <input type="search" name="search" value="{{ $filters['search'] }}" class="mobile-input" placeholder="Buscar componente, turma, escola ou série">
 
         <div class="mobile-filter-grid">
             <select name="escola_id" class="mobile-select">
@@ -40,7 +40,7 @@
             </select>
 
             <select name="serie_id" class="mobile-select">
-                <option value="">Todas as series</option>
+                <option value="">Todas as séries</option>
                 @foreach ($series as $serie)
                     <option value="{{ $serie->id }}" @selected((string) $filters['serie_id'] === (string) $serie->id)>{{ $serie->nome }}</option>
                 @endforeach

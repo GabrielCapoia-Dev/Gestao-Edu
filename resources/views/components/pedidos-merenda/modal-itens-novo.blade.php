@@ -94,7 +94,7 @@
             </div>
 
             <div class="pm-chip-list pmt-meta">
-                <span class="pm-chip">Criado por {{ $pedido->criado_por ?: 'Nao informado' }}</span>
+                <span class="pm-chip">Criado por {{ $pedido->criado_por ?: 'Não informado' }}</span>
                 <span class="pm-chip">{{ $pedido->created_at?->format('d/m/Y H:i') }}</span>
                 <span class="pm-chip">{{ $empresasPedido->count() }} empresa(s)</span>
             </div>
@@ -124,11 +124,11 @@
                             @endphp
                             <tr>
                                 <td>
-                                    <strong>{{ $contratoItem?->item?->nome ?: 'Item nao encontrado' }}</strong>
+                                    <strong>{{ $contratoItem?->item?->nome ?: 'Item não encontrado' }}</strong>
                                     <small>{{ $contratoItem?->item?->unidade_medida?->value ?: '-' }}</small>
                                 </td>
                                 <td>
-                                    <strong>{{ $contratoItem?->contrato?->empresaContratada?->nome ?: 'Empresa nao encontrada' }}</strong>
+                                    <strong>{{ $contratoItem?->contrato?->empresaContratada?->nome ?: 'Empresa não encontrada' }}</strong>
                                     <small>Contrato {{ $contratoItem?->contrato?->numero_contrato ?: '-' }}</small>
                                 </td>
                                 <td>
@@ -173,7 +173,7 @@
                                             <span class="pmt-helper">Registra somente a entrega agora, sem alterar a quantidade pedida.</span>
                                         </div>
                                     @else
-                                        <span class="pmt-muted">Sem acao</span>
+                                        <span class="pmt-muted">Sem ação</span>
                                     @endif
                                 </td>
                             </tr>
@@ -200,7 +200,7 @@
                         type="button"
                         class="pm-btn pm-btn-danger"
                         wire:click="cancelarPedido({{ $pedido->id }})"
-                        wire:confirm="Confirma o cancelamento deste pedido? O saldo pendente sera devolvido aos contratos."
+                        wire:confirm="Confirma o cancelamento deste pedido? O saldo pendente será devolvido aos contratos."
                     >
                         Cancelar pedido
                     </button>

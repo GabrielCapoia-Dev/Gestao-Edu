@@ -155,7 +155,7 @@ class ProfessorService
                         ->all()
                 ),
             ])
-            ->searchPlaceholder('Buscar por nome, matricula, escola, turno, turma ou componente')
+            ->searchPlaceholder('Buscar por nome, matrícula, escola, turno, turma ou componente')
             ->columns($this->colunasTabela())
             ->recordActions($this->acoesTabela($user))
             ->toolbarActions($this->acoesEmMassa($user))

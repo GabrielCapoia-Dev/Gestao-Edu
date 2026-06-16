@@ -57,7 +57,7 @@ class HistoricoBaixasEstoqueTable
                 ->sortable(),
 
             TextColumn::make('descricao')
-                ->label('Descricao')
+                ->label('Descrição')
                 ->limit(80)
                 ->wrap(),
 

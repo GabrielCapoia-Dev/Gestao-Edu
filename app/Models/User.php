@@ -91,7 +91,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
                 ->send();
         }
         Notification::make()
-            ->title('Aguardando Aprovação')
+            ->title('Aguardando aprovação')
             ->body('Entre em contato com o administrador para solicitar a aprovação do seu e-mail.')
             ->icon('heroicon-o-arrow-path')
             ->duration(10000)

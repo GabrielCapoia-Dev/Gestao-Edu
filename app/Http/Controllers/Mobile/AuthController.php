@@ -18,7 +18,7 @@ class AuthController extends Controller
         return view('mobile.auth.install', [
             'shareUrl' => $shareUrl,
             'whatsAppUrl' => 'https://wa.me/?text=' . rawurlencode(
-                "Instale o Gestao Edu Mobile no seu celular: {$shareUrl}"
+                "Instale o Gestão Edu Mobile no seu celular: {$shareUrl}"
             ),
             'entryUrl' => $user ? route('mobile.home') : route('mobile.login'),
             'entryLabel' => $user ? 'Abrir app mobile' : 'Entrar no app mobile',

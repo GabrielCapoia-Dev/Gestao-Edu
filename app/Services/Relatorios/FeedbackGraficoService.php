@@ -35,9 +35,9 @@ class FeedbackGraficoService
 
         return [
             'labels' => $dados->keys()->map(function ($mes) {
-                [$ano, $mês] = explode('-', $mes);
+                [$ano, $mes] = explode('-', $mes);
                 $meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-                return $meses[(int)$mês - 1] . '/' . substr($ano, 2);
+                return $meses[(int)$mes - 1] . '/' . substr($ano, 2);
             })->toArray(),
             'data' => $dados->values()->toArray(),
         ];

@@ -37,7 +37,7 @@
     "The given data was invalid.": "Os dados fornecidos eram inválidos.",
     "The response is not a streamed response.": "A resposta não é uma resposta transmitida.",
     "The response is not a view.": "A resposta não é uma visualização.",
-    "This action is unauthorized.": "Esta ação não é autorizada.",
+    "This action is unauthorized.": "Está ação não é autorizada.",
     "This password reset link will expire in :count minutes.": "O link de redefinição de senha irá expirar em :count minutos.",
     "to": "até",
     "Toggle navigation": "Alternar navegação",
@@ -45,5 +45,5 @@
     "Unauthorized": "Não autorizado",
     "Verify Email Address": "Verifique o endereço de e-mail",
     "Whoops!": "Ops!",
-    "You are receiving this email because we received a password reset request for your account.": "Você recebeu esse e-mail porque foi solicitado uma redefinição de senha na sua conta."
+    "You are receiving this email because we received a password reset request for your account.": "Você recebeu esse e-mail porque foi solicitada uma redefinição de senha na sua conta."
 }

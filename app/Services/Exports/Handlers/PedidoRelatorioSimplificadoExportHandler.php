@@ -21,13 +21,13 @@ class PedidoRelatorioSimplificadoExportHandler implements ExportHandler
         $user = $exportRequest->user;
 
         if (! $user) {
-            throw new RuntimeException('Usuario da exportacao nao encontrado.');
+            throw new RuntimeException('Usuário da exportação não encontrado.');
         }
 
         $pedidoIds = $exportRequest->filters['pedido_ids'] ?? [];
 
         if (! is_array($pedidoIds)) {
-            throw new RuntimeException('A exportacao nao recebeu uma lista valida de pedidos.');
+            throw new RuntimeException('A exportação não recebeu uma lista valida de pedidos.');
         }
 
         $exportRequest->updateProgress(10, 100, 'Preparando pedidos selecionados.');

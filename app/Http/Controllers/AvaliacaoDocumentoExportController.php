@@ -75,12 +75,12 @@ class AvaliacaoDocumentoExportController extends Controller
                 type: 'avaliacao_documento',
                 format: $format,
                 filters: $params,
-                label: 'Documento de avaliacao',
+                label: 'Documento de avaliação',
                 metadata: ['route' => $request->route()?->getName()],
             );
 
             Notification::make()
-                ->title($exportRequest->wasRecentlyCreated ? 'Exportacao enviada para a fila' : 'Exportacao ja esta em andamento')
+                ->title($exportRequest->wasRecentlyCreated ? 'Exportação enviada para a fila' : 'Exportação já está em andamento')
                 ->body('Acompanhe o progresso em Minhas Exportacoes.')
                 ->success()
                 ->send();
@@ -89,13 +89,13 @@ class AvaliacaoDocumentoExportController extends Controller
                 'download' => $exportRequest->getKey(),
             ]);
         } catch (Throwable $e) {
-            Log::error('Falha ao enfileirar exportacao de avaliacao.', [
+            Log::error('Falha ao enfileirar exportação de avaliação.', [
                 'exception' => $e,
                 'user_id' => $request->user()?->getKey(),
             ]);
 
             Notification::make()
-                ->title('Nao foi possivel iniciar a exportacao')
+                ->title('Não foi possível iniciar a exportação')
                 ->body('Tente novamente em alguns instantes.')
                 ->danger()
                 ->send();

@@ -6,10 +6,10 @@
 
     <div class="am-page">
         <section class="am-hero">
-            <p class="am-kicker">Novo usuario</p>
-            <h2 class="am-title">Cadastro claro, rapido e sem excesso de contexto.</h2>
+            <p class="am-kicker">Novo usuário</p>
+            <h2 class="am-title">Cadastro claro, rápido e sem excesso de contexto.</h2>
             <p class="am-subtitle">
-                Monte o acesso do usuario com niveis reutilizaveis e ajuste apenas o que for necessario.
+                Monte o acesso do usuário com níveis reutilizaveis e ajuste apenas o que for necessário.
             </p>
 
             <div class="am-pill-list">
@@ -22,8 +22,8 @@
         <section class="am-panel">
             <div class="am-panel__header">
                 <p class="am-panel__eyebrow">Formulario</p>
-                <h3 class="am-panel__title">Configuracao inicial do acesso</h3>
-                <p class="am-panel__subtitle">Dados, niveis e vinculos em uma estrutura mais limpa.</p>
+                <h3 class="am-panel__title">Configuração inicial do acesso</h3>
+                <p class="am-panel__subtitle">Dados, níveis e vinculos em uma estrutura mais limpa.</p>
             </div>
 
             <div class="am-summary">

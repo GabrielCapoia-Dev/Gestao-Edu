@@ -469,7 +469,7 @@ class AvaliacoesProfessor extends Page
         if ($payload === [] && $alunosComPendencia === []) {
             Notification::make()
                 ->title('Nenhuma resposta alterada.')
-                ->body('Alunos pendentes de transferencia ou respostas bloqueadas foram mantidos.')
+                ->body('Alunos pendentes de transferência ou respostas bloqueadas foram mantidos.')
                 ->warning()
                 ->send();
 
@@ -517,7 +517,7 @@ class AvaliacoesProfessor extends Page
 
         if (! $this->avaliacao || ! $this->serie) {
             Notification::make()
-                ->title('Selecione uma avaliacao e uma serie para aplicar em massa.')
+                ->title('Selecione uma avaliação e uma série para aplicar em massa.')
                 ->warning()
                 ->send();
 
@@ -625,7 +625,7 @@ class AvaliacoesProfessor extends Page
             if ($alunosPendentesTransferenciaIgnorados !== []) {
                 Notification::make()
                     ->title('Nenhuma resposta alterada.')
-                    ->body('Alunos pendentes de transferencia foram mantidos bloqueados.')
+                    ->body('Alunos pendentes de transferência foram mantidos bloqueados.')
                     ->warning()
                     ->send();
 
@@ -635,7 +635,7 @@ class AvaliacoesProfessor extends Page
             if ($totalIgnoradoPorPreenchimento > 0) {
                 Notification::make()
                     ->title('Nenhuma resposta alterada.')
-                    ->body('Respostas bloqueadas ou ja preenchidas foram mantidas.')
+                    ->body('Respostas bloqueadas ou já preenchidas foram mantidas.')
                     ->warning()
                     ->send();
 
@@ -643,7 +643,7 @@ class AvaliacoesProfessor extends Page
             }
 
             Notification::make()
-                ->title('A alternativa selecionada nao esta disponivel nas pautas desta serie.')
+                ->title('A alternativa selecionada não está disponível nas pautas desta série.')
                 ->warning()
                 ->send();
 
@@ -675,23 +675,23 @@ class AvaliacoesProfessor extends Page
         $mensagens = [$totalAplicado . ' resposta(s) salvas automaticamente.'];
 
         if ($totalPendencias > 0) {
-            $mensagens[] = $totalPendencias . ' resposta(s) precisam de observacao obrigatoria.';
+            $mensagens[] = $totalPendencias . ' resposta(s) precisam de observação obrigatória.';
         }
 
         if ($pautasIgnoradas > 0) {
-            $mensagens[] = $pautasIgnoradas . ' pauta(s) nao possuem esta alternativa.';
+            $mensagens[] = $pautasIgnoradas . ' pauta(s) não possuem esta alternativa.';
         }
 
         if ($totalIgnoradoPorPreenchimento > 0) {
-            $mensagens[] = $totalIgnoradoPorPreenchimento . ' resposta(s) com observacao foram mantidas.';
+            $mensagens[] = $totalIgnoradoPorPreenchimento . ' resposta(s) com observação foram mantidas.';
         }
 
         if ($alunosPendentesTransferenciaIgnorados !== []) {
-            $mensagens[] = count($alunosPendentesTransferenciaIgnorados) . ' aluno(s) pendente(s) de transferencia foram ignorados.';
+            $mensagens[] = count($alunosPendentesTransferenciaIgnorados) . ' aluno(s) pendente(s) de transferência foram ignorados.';
         }
 
         Notification::make()
-            ->title('Avaliacao em massa aplicada.')
+            ->title('Avaliação em massa aplicada.')
             ->body(implode(' ', $mensagens))
             ->success()
             ->send();
@@ -703,7 +703,7 @@ class AvaliacoesProfessor extends Page
 
         if (! $this->avaliacao || ! $this->serie) {
             Notification::make()
-                ->title('Selecione uma avaliacao e uma serie para continuar.')
+                ->title('Selecione uma avaliação e uma série para continuar.')
                 ->warning()
                 ->send();
 
@@ -937,7 +937,7 @@ class AvaliacoesProfessor extends Page
                     'escola_id' => (int) $turma->id_escola,
                     'escola_nome' => (string) ($turma->escola?->nome ?? 'Escola sem nome'),
                     'serie_id' => (int) $turma->id_serie,
-                    'serie_nome' => (string) ($turma->serie?->nome ?? 'Serie sem nome'),
+                    'serie_nome' => (string) ($turma->serie?->nome ?? 'Série sem nome'),
                 ];
             })
             ->sortBy(fn(array $escopo): string => mb_strtolower($escopo['escola_nome'] . '|' . $escopo['serie_nome']))

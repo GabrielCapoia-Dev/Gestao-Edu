@@ -147,12 +147,12 @@ class SetorService
                         Toggle::make('ativo')
                             ->label('Ativo')
                             ->default(true)
-                            ->helperText('Setores inativos deixam de aparecer em novos vinculos, mas continuam nos historicos.'),
+                            ->helperText('Setores inativos deixam de aparecer em novos vinculos, mas continuam nos históricos.'),
                     ]),
                 ]),
 
             Section::make('Acesso a outros setores')
-                ->description('As permissoes gerais do usuario continuam obrigatorias. O proprio setor recebe listar, editar e cancelar automaticamente.')
+                ->description('As permissões gerais do usuário continuam obrigatórias. O próprio setor recebe listar, editar e cancelar automaticamente.')
                 ->columnSpanFull()
                 ->visible(fn (?Setor $record): bool => $record?->exists && $this->podeConfigurarMatriz(auth()->user()))
                 ->schema([

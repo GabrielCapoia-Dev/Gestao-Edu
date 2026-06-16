@@ -45,7 +45,7 @@ class AlunoImportacaoSpreadsheetService
         'nome' => ['nome do aluno', 'aluno', 'nome'],
         'data_nascimento' => ['data de nasc', 'data de nascimento', 'nascimento'],
         'sexo' => ['sexo'],
-        'data_matricula' => ['data matricula', 'data de matricula'],
+        'data_matricula' => ['data matrícula', 'data de matrícula'],
     ];
 
     private const REQUIRED_HEADERS = [
@@ -71,14 +71,14 @@ class AlunoImportacaoSpreadsheetService
         $sheet->setTitle(self::SHEET_NAME);
 
         $sheet->setCellValue('A1', 'Escola');
-        $sheet->setCellValue('B1', 'Seriacao');
+        $sheet->setCellValue('B1', 'Seriação');
         $sheet->setCellValue('C1', 'Turma');
         $sheet->setCellValue('D1', 'Turno');
         $sheet->setCellValue('E1', 'CGM');
-        $sheet->setCellValue('F1', 'Nome do Aluno');
+        $sheet->setCellValue('F1', 'Nome do aluno');
         $sheet->setCellValue('G1', 'Data de Nascimento');
         $sheet->setCellValue('H1', 'Sexo');
-        $sheet->setCellValue('I1', 'Data Matricula');
+        $sheet->setCellValue('I1', 'Data da matrícula');
 
         $sheet->fromArray([
             'CMEI - Cecilia Meireles',
@@ -101,7 +101,7 @@ class AlunoImportacaoSpreadsheetService
 
         return $this->downloadSpreadsheet(
             $spreadsheet,
-            'modelo-importacao-alunos-'.now()->format('Y-m-d_H-i').'.xlsx'
+            'modelo-importação-alunos-'.now()->format('Y-m-d_H-i').'.xlsx'
         );
     }
 
@@ -158,7 +158,7 @@ class AlunoImportacaoSpreadsheetService
                             'sexo' => $linha['sexo'],
                             'data_matricula' => $linha['data_matricula'],
                             'id_turma' => $turmaId,
-                            'status_motivo' => 'Matricula criada por importacao de planilha.',
+                            'status_motivo' => 'Matrícula criada por importação de planilha.',
                         ];
                     }
 
@@ -261,7 +261,7 @@ class AlunoImportacaoSpreadsheetService
             ->values();
 
         if ($linhas->isEmpty()) {
-            throw new InvalidArgumentException('O arquivo nao possui linhas preenchidas para importacao.');
+            throw new InvalidArgumentException('O arquivo não possui linhas preenchidas para importação.');
         }
 
         $escolas = $this->escolasPorNome();
@@ -272,11 +272,11 @@ class AlunoImportacaoSpreadsheetService
 
             foreach ([
                 'escola' => 'Escola',
-                'seriacao' => 'Seriacao',
+                'seriacao' => 'Seriação',
                 'turma' => 'Turma',
                 'turno' => 'Turno',
                 'cgm' => 'CGM',
-                'nome' => 'Nome do Aluno',
+                'nome' => 'Nome do aluno',
             ] as $campo => $label) {
                 if (blank($linha[$campo])) {
                     $erros[] = "Linha {$numeroLinha}: informe {$label}.";
@@ -294,7 +294,7 @@ class AlunoImportacaoSpreadsheetService
             $chaveEscola = $this->normalizarTexto($linha['escola']);
 
             if (filled($linha['escola']) && ! $escolas->has($chaveEscola)) {
-                $erros[] = "Linha {$numeroLinha}: a escola {$linha['escola']} nao foi encontrada no cadastro.";
+                $erros[] = "Linha {$numeroLinha}: a escola {$linha['escola']} não foi encontrada no cadastro.";
             }
 
         });
@@ -356,7 +356,7 @@ class AlunoImportacaoSpreadsheetService
         }
 
         throw new InvalidArgumentException(
-            'Cabecalho invalido. Use as colunas: Escola, Seriacao, Turma, Turno, CGM, Nome do Aluno, Data de Nascimento e Sexo. Data Matricula e opcional.'
+            'Cabeçalho inválido. Use as colunas: Escola, Seriação, Turma, Turno, CGM, Nome do aluno, Data de Nascimento e Sexo. Data da matrícula é opcional.'
         );
     }
 

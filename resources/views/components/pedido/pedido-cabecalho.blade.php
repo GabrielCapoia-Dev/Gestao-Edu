@@ -4,7 +4,7 @@
         'solicitante',
         'tipoStatus',
         'tipoManutencao',
-        'problemas.opcao',
+        'problemas.opção',
         'fotos',
         'fotosConclusao',
         'ultimoFeedback.itens.problema',
@@ -16,11 +16,11 @@
     $escola = $record->escola;
     $endereco = $escola
         ? "{$escola->logradouro}, {$escola->numero} - {$escola->bairro}, {$escola->cidade}/{$escola->estado} - CEP: {$escola->cep}"
-        : 'Nao informado';
+        : 'Não informado';
 
     $prioridadeLabel = match($record->nivel_prioridade?->value) {
         'indeterminado' => 'Indeterminado',
-        default => $record->nivel_prioridade?->value ?? 'Nao informado',
+        default => $record->nivel_prioridade?->value ?? 'Não informado',
     };
 
     $prioridadeCor = match($record->nivel_prioridade?->value) {
@@ -199,9 +199,9 @@
 <div class="pedido-header">
     <div class="pedido-header__top">
         <div class="pedido-header__identity">
-            <span class="pedido-header__protocol">{{ $record->numero_protocolo ?? 'Nao informado' }}</span>
+            <span class="pedido-header__protocol">{{ $record->numero_protocolo ?? 'Não informado' }}</span>
             <span class="pedido-header__subtitle">
-                {{ $record->tipoManutencao?->nome ?? 'Tipo nao informado' }}
+                {{ $record->tipoManutencao?->nome ?? 'Tipo não informado' }}
                 @if($adicionaisCount > 0)
                     | {{ $adicionaisCount }} adicional(is)
                 @endif
@@ -221,12 +221,12 @@
     <div class="pedido-header__grid">
         <div class="pedido-header__field">
             <span class="pedido-header__label">Solicitado em</span>
-            <span class="pedido-header__value">{{ $record->data_solicitacao?->format('d/m/Y') ?? 'Nao informado' }}</span>
+            <span class="pedido-header__value">{{ $record->data_solicitacao?->format('d/m/Y') ?? 'Não informado' }}</span>
         </div>
 
         <div class="pedido-header__field">
             <span class="pedido-header__label">Identificado em</span>
-            <span class="pedido-header__value">{{ $record->data_identificacao_problema?->format('d/m/Y') ?? 'Nao informado' }}</span>
+            <span class="pedido-header__value">{{ $record->data_identificacao_problema?->format('d/m/Y') ?? 'Não informado' }}</span>
         </div>
 
         <div class="pedido-header__field">
@@ -235,28 +235,28 @@
         </div>
 
         <div class="pedido-header__field">
-            <span class="pedido-header__label">Concluido em</span>
+            <span class="pedido-header__label">Concluído em</span>
             <span class="pedido-header__value">{{ $record->data_entrega?->format('d/m/Y') ?? 'Em andamento' }}</span>
         </div>
 
         <div class="pedido-header__field pedido-header__field--wide">
             <span class="pedido-header__label">Escola</span>
-            <span class="pedido-header__value">{{ $escola?->nome ?? 'Nao informado' }}</span>
+            <span class="pedido-header__value">{{ $escola?->nome ?? 'Não informado' }}</span>
         </div>
 
         <div class="pedido-header__field">
             <span class="pedido-header__label">Solicitante</span>
-            <span class="pedido-header__value">{{ $record->nome_solicitante ?? 'Nao informado' }}</span>
+            <span class="pedido-header__value">{{ $record->nome_solicitante ?? 'Não informado' }}</span>
         </div>
 
         <div class="pedido-header__field">
             <span class="pedido-header__label">E-mail</span>
-            <span class="pedido-header__value">{{ $record->solicitante?->email ?? 'Nao informado' }}</span>
+            <span class="pedido-header__value">{{ $record->solicitante?->email ?? 'Não informado' }}</span>
         </div>
 
         <div class="pedido-header__field">
             <span class="pedido-header__label">Telefone</span>
-            <span class="pedido-header__value">{{ $escola?->telefone ?? 'Nao informado' }}</span>
+            <span class="pedido-header__value">{{ $escola?->telefone ?? 'Não informado' }}</span>
         </div>
 
         <div class="pedido-header__field pedido-header__field--wide">
@@ -277,8 +277,8 @@
     </div>
 
     <div class="pedido-header__section">
-        <span class="pedido-header__label">Descricao do pedido</span>
-        <span class="pedido-header__value pedido-header__description">{{ $record->descricao_pedido ?? 'Nao informado' }}</span>
+        <span class="pedido-header__label">Descrição do pedido</span>
+        <span class="pedido-header__value pedido-header__description">{{ $record->descricao_pedido ?? 'Não informado' }}</span>
     </div>
 
     @can('Visualizar Arquivos de Pedidos')
@@ -294,7 +294,7 @@
                 @if($record->fotosConclusao->isNotEmpty())
                     <x-pedido.ver-fotos
                         :fotos="$record->fotosConclusao"
-                        title="Fotos da Conclusao"
+                        title="Fotos da Conclusão"
                         class="pedido-header__badge"
                         style="--badge-color: #047857" />
                 @endif
@@ -304,7 +304,7 @@
 
     @if($feedback)
         <div class="pedido-header__section">
-            <span class="pedido-header__label">Avaliacao do servico</span>
+            <span class="pedido-header__label">Avaliação do servico</span>
             <div class="pedido-header__rating">
                 @for ($i = 1; $i <= 5; $i++)
                     @if ($i <= $feedback->valor)

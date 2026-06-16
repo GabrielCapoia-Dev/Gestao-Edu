@@ -23,8 +23,8 @@ class ProfilePreviewController extends Controller
         $preview->start((int) $data['target_user_id'], $user);
 
         Notification::make()
-            ->title('Modo visualizacao ativado')
-            ->body('Voce esta navegando como outro usuario. Acoes de escrita serao bloqueadas.')
+            ->title('Modo visualização ativado')
+            ->body('Você está navegando como outro usuário. Ações de escrita serão bloqueadas.')
             ->success()
             ->send();
 
@@ -36,7 +36,7 @@ class ProfilePreviewController extends Controller
         $preview->stop();
 
         Notification::make()
-            ->title('Modo visualizacao finalizado')
+            ->title('Modo visualização finalizado')
             ->body('Seu acesso normal foi restaurado.')
             ->success()
             ->send();

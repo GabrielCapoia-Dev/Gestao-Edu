@@ -13,7 +13,7 @@ enum ResultadoFeedbackPedido: string
         return match ($this) {
             self::Atendido => 'Atendido',
             self::ParcialmenteAtendido => 'Parcialmente atendido',
-            self::NaoAtendido => 'Nao atendido',
+            self::NaoAtendido => 'Não atendido',
         };
     }
 

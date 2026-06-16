@@ -8,7 +8,7 @@
                 <th>Pedida</th>
                 <th>Entregue</th>
                 <th>Pendente</th>
-                <th class="text-right">Acoes</th>
+                <th class="text-right">Ações</th>
             </tr>
         </thead>
         <tbody>

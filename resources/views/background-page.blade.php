@@ -184,7 +184,7 @@
         <span class="word-edu">Edu</span>
     </div>
     <div class="divider-line"></div>
-    <div class="secretaria">Secretaria Municipal de Educacao</div>
+    <div class="secretaria">Secretaria Municipal de Educação</div>
     <div class="cidade">Prefeitura Municipal de Umuarama - PR</div>
 </div>
 

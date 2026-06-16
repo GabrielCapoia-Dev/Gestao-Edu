@@ -38,12 +38,12 @@ class PedidoRelatorioGeralController extends Controller
                 type: 'pedido_relatorio_geral',
                 format: 'pdf',
                 filters: $filtros,
-                label: 'Relatorio geral de pedidos',
+                label: 'Relatório geral de pedidos',
                 metadata: ['route' => 'pedidos.relatorio-geral'],
             );
 
             Notification::make()
-                ->title($exportRequest->wasRecentlyCreated ? 'Exportacao enviada para a fila' : 'Exportacao ja esta em andamento')
+                ->title($exportRequest->wasRecentlyCreated ? 'Exportação enviada para a fila' : 'Exportação já está em andamento')
                 ->body('Acompanhe o progresso em Minhas Exportacoes.')
                 ->success()
                 ->send();
@@ -53,13 +53,13 @@ class PedidoRelatorioGeralController extends Controller
             ]);
 
         } catch (Throwable $e) {
-            Log::error('Falha ao enfileirar relatorio geral de pedidos.', [
+            Log::error('Falha ao enfileirar relatório geral de pedidos.', [
                 'exception' => $e,
                 'user_id' => Auth::id(),
             ]);
 
             Notification::make()
-                ->title('Nao foi possivel iniciar a exportacao')
+                ->title('Não foi possível iniciar a exportação')
                 ->body('Tente novamente em alguns instantes.')
                 ->danger()
                 ->send();

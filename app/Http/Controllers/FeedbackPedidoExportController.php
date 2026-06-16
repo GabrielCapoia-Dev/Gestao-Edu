@@ -75,7 +75,7 @@ class FeedbackPedidoExportController extends Controller
             );
 
             Notification::make()
-                ->title($exportRequest->wasRecentlyCreated ? 'Exportacao enviada para a fila' : 'Exportacao ja esta em andamento')
+                ->title($exportRequest->wasRecentlyCreated ? 'Exportação enviada para a fila' : 'Exportação já está em andamento')
                 ->body('Acompanhe o progresso em Minhas Exportacoes.')
                 ->success()
                 ->send();
@@ -84,14 +84,14 @@ class FeedbackPedidoExportController extends Controller
                 'download' => $exportRequest->getKey(),
             ]);
         } catch (Throwable $exception) {
-            Log::warning('Falha ao enfileirar relatorio de feedback.', [
+            Log::warning('Falha ao enfileirar relatório de feedback.', [
                 'exception' => $exception,
                 'user_id' => Auth::id(),
                 'report_type' => $reportType,
             ]);
 
             Notification::make()
-                ->title('Nao foi possivel iniciar a exportacao')
+                ->title('Não foi possível iniciar a exportação')
                 ->body($exception->getMessage())
                 ->danger()
                 ->send();

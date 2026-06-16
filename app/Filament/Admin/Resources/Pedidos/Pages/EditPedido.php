@@ -53,7 +53,7 @@ class EditPedido extends EditRecord
         if ($this->novoStatusId && $statusEncaminhado?->id === (int) $this->novoStatusId) {
             if (! $service->podeEncaminharRegistro($this->record, $user, (int) ($data['setor_id'] ?? 0))) {
                 throw ValidationException::withMessages([
-                    'setor_id' => 'Seu setor nao possui autorizacao para encaminhar este pedido ao setor selecionado.',
+                    'setor_id' => 'Seu setor não possui autorização para encaminhar este pedido ao setor selecionado.',
                 ]);
             }
 
@@ -66,12 +66,12 @@ class EditPedido extends EditRecord
         if ($this->novoStatusId && $statusCancelado?->id === (int) $this->novoStatusId) {
             if (! $service->podeCancelarRegistro($this->record, $user)) {
                 throw ValidationException::withMessages([
-                    'novo_status_id' => 'Seu setor nao possui autorizacao para cancelar este pedido.',
+                    'novo_status_id' => 'Seu setor não possui autorização para cancelar este pedido.',
                 ]);
             }
         } elseif (! $service->podeGerenciarRegistro($this->record, $user)) {
             throw ValidationException::withMessages([
-                'pedido' => 'Seu setor nao possui autorizacao para editar este pedido.',
+                'pedido' => 'Seu setor não possui autorização para editar este pedido.',
             ]);
         }
 
@@ -82,7 +82,7 @@ class EditPedido extends EditRecord
             } else {
                 if (blank($data['empresa_contratada_id'] ?? null)) {
                     throw ValidationException::withMessages([
-                        'empresa_contratada_id' => 'Informe a empresa responsavel.',
+                        'empresa_contratada_id' => 'Informe a empresa responsável.',
                     ]);
                 }
 

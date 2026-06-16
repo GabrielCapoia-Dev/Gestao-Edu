@@ -33,7 +33,7 @@ class SerieService
             ->searchable([
                 'componentesCurriculares.nome',
             ])
-            ->searchPlaceholder('Buscar por codigo, nome ou componente curricular')
+            ->searchPlaceholder('Buscar por código, nome ou componente curricular')
             ->columns($this->colunasTabela())
             ->filters($this->filtrosTabela())
             ->recordActions($this->acoesTabela($user))

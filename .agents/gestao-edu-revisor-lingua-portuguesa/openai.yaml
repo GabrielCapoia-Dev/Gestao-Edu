@@ -1,0 +1,4 @@
+interface:
+  display_name: "Revisor de Língua Portuguesa"
+  short_description: "Revisa gramática e acentuação do sistema"
+  default_prompt: "Use $gestao-edu-revisao-lingua-portuguesa para revisar textos visíveis do Gestao-Edu em português brasileiro, preservando identificadores técnicos, placeholders e regras de negócio."

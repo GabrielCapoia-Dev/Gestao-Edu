@@ -5,7 +5,7 @@
             <article class="inv-card">
                 <span>Total de inventarios</span>
                 <strong>{{ $this->metricas->total_inventarios }}</strong>
-                <small>unidades com inventario vinculado</small>
+                <small>unidades com inventário vinculado</small>
             </article>
             <article class="inv-card">
                 <span>Valor estimado</span>
@@ -13,9 +13,9 @@
                 <small>referencia contratual agregada</small>
             </article>
             <article class="inv-card">
-                <span>Movimentacoes</span>
+                <span>Movimentações</span>
                 <strong>{{ $this->metricas->total_movimentacoes }}</strong>
-                <small>historico consolidado da rede</small>
+                <small>histórico consolidado da rede</small>
             </article>
             <article class="inv-card">
                 <span>Quantidade baixada</span>
@@ -40,7 +40,7 @@
                     </label>
 
                     <label class="inv-field inv-field--small">
-                        <span>Por pagina</span>
+                        <span>Por página</span>
                         <select wire:model.live="porPagina">
                             <option value="5">5</option>
                             <option value="10">10</option>
@@ -184,7 +184,7 @@
     <aside class="inv-slideover">
         <header>
             <div>
-                <p class="inv-panel-kicker">Historico consolidado</p>
+                <p class="inv-panel-kicker">Histórico consolidado</p>
                 <h3>Últimas movimentações</h3>
             </div>
             <button type="button" wire:click="fecharSlideOver">Fechar</button>

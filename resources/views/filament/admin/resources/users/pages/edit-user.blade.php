@@ -8,8 +8,8 @@
         <section class="am-panel">
             <div class="am-panel__header">
                 <p class="am-panel__eyebrow">Formulario</p>
-                <h3 class="am-panel__title">Perfil atual do usuario</h3>
-                <p class="am-panel__subtitle">O essencial fica visivel logo acima do formulario.</p>
+                <h3 class="am-panel__title">Perfil atual do usuário</h3>
+                <p class="am-panel__subtitle">O essencial fica visível logo acima do formulario.</p>
             </div>
 
             <div class="am-summary">

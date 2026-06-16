@@ -1,11 +1,11 @@
 @extends('mobile.layouts.app')
 
-@section('title', 'Dominios | Gestao Edu Mobile')
+@section('title', 'Domínios | Gestão Edu Mobile')
 
 @section('content')
     <section class="mobile-page-intro">
-        <p class="mobile-page-intro__eyebrow">Dominios</p>
-        <h1 class="mobile-page-intro__title">Quais dominios podem entrar no sistema.</h1>
+        <p class="mobile-page-intro__eyebrow">Domínios</p>
+        <h1 class="mobile-page-intro__title">Quais domínios podem entrar no sistema.</h1>
         <p class="mobile-page-intro__subtitle">
             Uma leitura mais leve para o celular, com foco em status e organizacao por setor.
         </p>
@@ -13,7 +13,7 @@
 
     <section class="mobile-stats-grid">
         <article class="mobile-stat-card">
-            <small>Total de dominios</small>
+            <small>Total de domínios</small>
             <strong>{{ number_format($stats['total'], 0, ',', '.') }}</strong>
         </article>
         <article class="mobile-stat-card">
@@ -27,7 +27,7 @@
     </section>
 
     <form method="GET" class="mobile-filter-form">
-        <input type="search" name="search" value="{{ $search }}" class="mobile-input" placeholder="Buscar dominio ou setor">
+        <input type="search" name="search" value="{{ $search }}" class="mobile-input" placeholder="Buscar domínio ou setor">
         <button type="submit" class="mobile-button mobile-button--primary">Filtrar</button>
     </form>
 
@@ -46,7 +46,7 @@
                 </div>
             </article>
         @empty
-            <div class="mobile-empty">Nenhum dominio encontrado com os filtros atuais.</div>
+            <div class="mobile-empty">Nenhum domínio encontrado com os filtros atuais.</div>
         @endforelse
     </section>
 

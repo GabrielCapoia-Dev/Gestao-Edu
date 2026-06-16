@@ -105,7 +105,7 @@ class BaixasEstoqueTable
                         ->native(false)
                         ->required(),
                     Textarea::make('descricao')
-                        ->label('Descricao do ocorrido')
+                        ->label('Descrição do ocorrido')
                         ->required()
                         ->rows(4)
                         ->maxLength(1000),

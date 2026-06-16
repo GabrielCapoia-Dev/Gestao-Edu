@@ -26,10 +26,10 @@ class BaixasEstoqueRelatorioService
             'metricas' => $this->calcularMetricas($baixas),
             'usuarioExportacao' => $usuario,
             'dataExportacao' => now(),
-            'reportTitle' => 'Relatorio de Baixas de Estoque',
-            'reportSubtitle' => 'Historico consolidado das baixas registradas',
+            'reportTitle' => 'Relatório de Baixas de Estoque',
+            'reportSubtitle' => 'Histórico consolidado das baixas registradas',
             'reportFilters' => $reportFilters,
-        ], 'relatorio-baixas-estoque-' . now()->format('Y-m-d_H-i') . '.pdf');
+        ], 'relatório-baixas-estoque-' . now()->format('Y-m-d_H-i') . '.pdf');
     }
 
     protected function extrairFiltros(array $params): array

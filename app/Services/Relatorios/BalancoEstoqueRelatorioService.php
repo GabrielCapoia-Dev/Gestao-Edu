@@ -59,13 +59,13 @@ class BalancoEstoqueRelatorioService
             'metricas' => $metricas,
             'eventos' => $eventos,
             'itensContagem' => $itensContagem,
-            'reportTitle' => 'Relatorio de Balanco de Estoque',
-            'reportSubtitle' => 'Resumo completo de divergencias e impacto financeiro do balanco',
+            'reportTitle' => 'Relatório de Balanço de Estoque',
+            'reportSubtitle' => 'Resumo completo de divergências e impacto financeiro do balanço',
             'reportFilters' => $this->filtrosDoBalanco($balanco),
             'usuarioExportacao' => $usuario,
             'dataExportacao' => now(),
             'orientation' => 'landscape',
-        ], 'relatorio-balanco-estoque-' . $this->slugBalanco($balanco) . '.pdf');
+        ], 'relatório-balanço-estoque-' . $this->slugBalanco($balanco) . '.pdf');
     }
 
     protected function filtrosDoBalanco(BalancoEstoque $balanco): array

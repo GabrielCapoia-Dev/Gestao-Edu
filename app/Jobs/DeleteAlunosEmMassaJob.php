@@ -51,8 +51,8 @@ class DeleteAlunosEmMassaJob implements ShouldQueue
         }
 
         if (! $usuario->hasPermissionTo('Excluir Alunos em Massa')) {
-            $processo?->markFailed('Voce nao possui permissao para excluir alunos em massa.');
-            $this->notificarFalha($usuario, 'Voce nao possui permissao para excluir alunos em massa.');
+            $processo?->markFailed('Você não possui permissão para excluir alunos em massa.');
+            $this->notificarFalha($usuario, 'Você não possui permissão para excluir alunos em massa.');
 
             return;
         }
@@ -114,7 +114,7 @@ class DeleteAlunosEmMassaJob implements ShouldQueue
         $mensagem = $this->mensagemConclusao($excluidos, $ignorados, $falhas);
 
         $usuario->notify(new SistemaNotification(
-            titulo: $falhas > 0 ? 'Exclusao de alunos concluida com falhas' : 'Exclusao de alunos concluida',
+            titulo: $falhas > 0 ? 'Exclusao de alunos concluida com falhas' : 'Exclusao de alunos concluída',
             mensagem: $mensagem,
             url: route('filament.admin.resources.alunos.index'),
             label: 'Ver alunos',
@@ -148,14 +148,14 @@ class DeleteAlunosEmMassaJob implements ShouldQueue
 
     private function mensagemConclusao(int $excluidos, int $ignorados, int $falhas): string
     {
-        $mensagem = "{$excluidos} aluno(s) excluido(s).";
+        $mensagem = "{$excluidos} aluno(s) excluído(s).";
 
         if ($ignorados > 0) {
-            $mensagem .= " {$ignorados} ignorado(s) por permissao, status ou escopo.";
+            $mensagem .= " {$ignorados} ignorado(s) por permissão, status ou escopo.";
         }
 
         if ($falhas > 0) {
-            $mensagem .= " {$falhas} nao puderam ser excluido(s).";
+            $mensagem .= " {$falhas} não puderam ser excluído(s).";
         }
 
         return $mensagem;

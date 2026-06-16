@@ -14,7 +14,7 @@
     $tabs = [
         'geral' => 'Visao geral',
         'imagens' => 'Imagens',
-        'historico' => 'Historico',
+        'histórico' => 'Histórico',
     ];
 
     if ($adicionais->isNotEmpty()) {
@@ -291,7 +291,7 @@
         <div>
             <div class="pedido-view__title">Protocolo {{ $pedido->numero_protocolo }}</div>
             <div class="pedido-view__subtitle">
-                {{ $pedido->tipoManutencao?->nome ?? 'Tipo nao informado' }} | {{ $pedido->escola?->nome ?? 'Escola nao informada' }}
+                {{ $pedido->tipoManutencao?->nome ?? 'Tipo não informado' }} | {{ $pedido->escola?->nome ?? 'Escola não informada' }}
             </div>
         </div>
 
@@ -336,7 +336,7 @@
                 <span class="pedido-view__value">{{ $pedido->data_prevista?->format('d/m/Y') ?? 'Sem previsao' }}</span>
             </div>
             <div class="pedido-view__field">
-                <span class="pedido-view__label">Concluido em</span>
+                <span class="pedido-view__label">Concluído em</span>
                 <span class="pedido-view__value">{{ $pedido->data_entrega?->format('d/m/Y') ?? 'Em andamento' }}</span>
             </div>
             <div class="pedido-view__field pedido-view__field--wide">
@@ -365,13 +365,13 @@
         </div>
 
         <div class="pedido-view__section">
-            <span class="pedido-view__label">Descricao</span>
+            <span class="pedido-view__label">Descrição</span>
             <div class="pedido-view__text">{{ $pedido->descricao_pedido ?? '-' }}</div>
         </div>
 
         @if($pedido->ultimoFeedback)
             <div class="pedido-view__section">
-                <span class="pedido-view__label">Avaliacao</span>
+                <span class="pedido-view__label">Avaliação</span>
                 <div class="pedido-view__text">
                     Nota {{ $pedido->ultimoFeedback->valor }}/5
                     @if($pedido->ultimoFeedback->descricao)
@@ -414,7 +414,7 @@
                         <th>Novo status</th>
                         <th>Setor</th>
                         <th>Alterado por</th>
-                        <th>Descricao</th>
+                        <th>Descrição</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -432,7 +432,7 @@
                             <td>{{ $item->descricao_alteracao ?? '-' }}</td>
                         </tr>
                     @empty
-                        <tr><td colspan="6">Nenhum historico encontrado.</td></tr>
+                        <tr><td colspan="6">Nenhum histórico encontrado.</td></tr>
                     @endforelse
                 </tbody>
             </table>

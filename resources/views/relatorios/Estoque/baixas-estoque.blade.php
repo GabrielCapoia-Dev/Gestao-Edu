@@ -1,7 +1,7 @@
 @extends('relatorios.layouts.base-pdf')
 
-@section('reportTitle', $reportTitle ?? 'Relatorio de Baixas de Estoque')
-@section('reportSubtitle', $reportSubtitle ?? 'Historico consolidado das baixas registradas')
+@section('reportTitle', $reportTitle ?? 'Relatório de Baixas de Estoque')
+@section('reportSubtitle', $reportSubtitle ?? 'Histórico consolidado das baixas registradas')
 
 @section('styles')
     .cards {
@@ -93,7 +93,7 @@
                 <th>Item</th>
                 <th>Categoria</th>
                 <th>Motivo</th>
-                <th>Descricao</th>
+                <th>Descrição</th>
                 <th>Qtd.</th>
                 <th>Saldo Antes</th>
                 <th>Saldo Depois</th>

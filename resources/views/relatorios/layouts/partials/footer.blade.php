@@ -7,8 +7,8 @@
     <table class="pdf-footer-table">
         <tr>
             <td class="pdf-footer-left">
-                Documento exportado do Sistema de Gestao Educacional<br>
-                Secretaria Municipal de Educacao - Umuarama
+                Documento exportado do Sistema de Gestão Educacional<br>
+                Secretaria Municipal de Educação - Umuarama
             </td>
             <td class="pdf-footer-center">&nbsp;</td>
             <td class="pdf-footer-right">

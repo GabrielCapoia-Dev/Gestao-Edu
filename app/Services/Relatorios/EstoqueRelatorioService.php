@@ -36,13 +36,13 @@ class EstoqueRelatorioService
             'itens' => $itens,
             'movimentacoes' => $movimentacoes,
             'baixas' => $baixas,
-            'reportTitle' => 'Relatorio Geral de Estoque',
-            'reportSubtitle' => 'Visao consolidada dos itens e do historico de movimentacoes',
+            'reportTitle' => 'Relatório Geral de Estoque',
+            'reportSubtitle' => 'Visão consolidada dos itens e do histórico de movimentações',
             'reportFilters' => $this->dataService->formatarFiltros($filtros),
             'usuarioExportacao' => $usuario,
             'dataExportacao' => now(),
             'orientation' => 'landscape',
-        ], 'relatorio-geral-estoque-' . now()->format('Y-m-d_H-i') . '.pdf');
+        ], 'relatório-geral-estoque-' . now()->format('Y-m-d_H-i') . '.pdf');
     }
 
     public function gerarXlsxGeral(array $params, ?User $usuario): Response
@@ -71,7 +71,7 @@ class EstoqueRelatorioService
         $this->preencherItensSheet($itensSheet, $itens, $usuario);
 
         $movimentacoesSheet = $spreadsheet->createSheet();
-        $movimentacoesSheet->setTitle('Movimentacoes');
+        $movimentacoesSheet->setTitle('Movimentações');
         $this->preencherMovimentacoesSheet($movimentacoesSheet, $movimentacoes, $usuario);
 
         $baixasSheet = $spreadsheet->createSheet();
@@ -82,7 +82,7 @@ class EstoqueRelatorioService
 
         return $this->downloadSpreadsheet(
             $spreadsheet,
-            'relatorio-geral-estoque-' . now()->format('Y-m-d_H-i') . '.xlsx'
+            'relatório-geral-estoque-' . now()->format('Y-m-d_H-i') . '.xlsx'
         );
     }
 
@@ -97,8 +97,8 @@ class EstoqueRelatorioService
             'resumo' => $this->dataService->resumoItem($estoque),
             'movimentacoes' => $movimentacoes,
             'baixas' => $baixas,
-            'reportTitle' => 'Relatorio Individual de Estoque',
-            'reportSubtitle' => 'Historico completo de movimentacoes do item',
+            'reportTitle' => 'Relatório Individual de Estoque',
+            'reportSubtitle' => 'Histórico completo de movimentações do item',
             'reportFilters' => [
                 'item' => $estoque->item?->nome ?? 'N/A',
                 'categoria' => $estoque->item?->tipo_item?->label() ?? 'N/A',
@@ -107,7 +107,7 @@ class EstoqueRelatorioService
             'usuarioExportacao' => $usuario,
             'dataExportacao' => now(),
             'orientation' => 'landscape',
-        ], 'relatorio-item-estoque-' . $this->slugItem($estoque) . '.pdf');
+        ], 'relatório-item-estoque-' . $this->slugItem($estoque) . '.pdf');
     }
 
     public function gerarXlsxItem(Estoque $estoque, ?User $usuario): Response
@@ -124,7 +124,7 @@ class EstoqueRelatorioService
         $this->preencherResumoItemSheet($resumoSheet, $estoque, $resumo, $usuario);
 
         $movimentacoesSheet = $spreadsheet->createSheet();
-        $movimentacoesSheet->setTitle('Movimentacoes');
+        $movimentacoesSheet->setTitle('Movimentações');
         $this->preencherMovimentacoesSheet($movimentacoesSheet, $movimentacoes, $usuario);
 
         $baixasSheet = $spreadsheet->createSheet();
@@ -135,7 +135,7 @@ class EstoqueRelatorioService
 
         return $this->downloadSpreadsheet(
             $spreadsheet,
-            'relatorio-item-estoque-' . $this->slugItem($estoque) . '.xlsx'
+            'relatório-item-estoque-' . $this->slugItem($estoque) . '.xlsx'
         );
     }
 
@@ -148,7 +148,7 @@ class EstoqueRelatorioService
     ): void {
         $linha = $this->preencherCabecalhoSheet(
             $sheet,
-            'Relatorio Geral de Estoque',
+            'Relatório Geral de Estoque',
             $filtros,
             $usuario
         );
@@ -163,7 +163,7 @@ class EstoqueRelatorioService
             'Quantidade total em estoque' => $metricas->quantidade_total,
             'Itens em estoque baixo' => $metricas->itens_criticos,
             'Itens zerados' => $metricas->itens_zerados,
-            'Movimentacoes' => $metricas->total_movimentacoes,
+            'Movimentações' => $metricas->total_movimentacoes,
             'Entradas acumuladas' => $metricas->total_entradas,
             'Saidas acumuladas' => $metricas->total_saidas,
             'Saldo movimentado' => $metricas->saldo_movimentado,
@@ -202,7 +202,7 @@ class EstoqueRelatorioService
 
     protected function preencherResumoItemSheet(Worksheet $sheet, Estoque $estoque, object $resumo, ?User $usuario): void
     {
-        $linha = $this->preencherCabecalhoSheet($sheet, 'Relatorio Individual de Estoque', [
+        $linha = $this->preencherCabecalhoSheet($sheet, 'Relatório Individual de Estoque', [
             'item' => $estoque->item?->nome ?? 'N/A',
             'categoria' => $estoque->item?->tipo_item?->label() ?? 'N/A',
             'unidade' => strtoupper($estoque->item?->unidade_medida?->value ?? 'N/A'),
@@ -215,7 +215,7 @@ class EstoqueRelatorioService
 
         $indicadores = [
             'Saldo atual' => $resumo->saldo_atual,
-            'Movimentacoes' => $resumo->total_movimentacoes,
+            'Movimentações' => $resumo->total_movimentacoes,
             'Entradas' => $resumo->total_entradas,
             'Saidas' => $resumo->total_saidas,
             'Baixas' => $resumo->total_baixas,
@@ -238,7 +238,7 @@ class EstoqueRelatorioService
     {
         $linha = $this->preencherCabecalhoSheet($sheet, 'Itens Filtrados do Estoque', [], $usuario);
 
-        $headers = ['Item', 'Descricao', 'Categoria', 'Unidade', 'Quantidade', 'Status', 'Atualizado em'];
+        $headers = ['Item', 'Descrição', 'Categoria', 'Unidade', 'Quantidade', 'Status', 'Atualizado em'];
         $this->preencherTabelaSimples($sheet, $linha, $headers, $itens->map(fn (array $item) => [
             $item['nome'],
             $item['descricao'],
@@ -252,9 +252,9 @@ class EstoqueRelatorioService
 
     protected function preencherMovimentacoesSheet(Worksheet $sheet, Collection $movimentacoes, ?User $usuario): void
     {
-        $linha = $this->preencherCabecalhoSheet($sheet, 'Historico de Movimentacoes', [], $usuario);
+        $linha = $this->preencherCabecalhoSheet($sheet, 'Histórico de Movimentações', [], $usuario);
 
-        $headers = ['Data', 'Item', 'Categoria', 'Tipo', 'Quantidade', 'Pedido', 'Registrado por', 'Observacao'];
+        $headers = ['Data', 'Item', 'Categoria', 'Tipo', 'Quantidade', 'Pedido', 'Registrado por', 'Observação'];
         $this->preencherTabelaSimples($sheet, $linha, $headers, $movimentacoes->map(fn (array $mov) => [
             $mov['data'],
             $mov['item_nome'],
@@ -269,9 +269,9 @@ class EstoqueRelatorioService
 
     protected function preencherBaixasSheet(Worksheet $sheet, Collection $baixas, ?User $usuario): void
     {
-        $linha = $this->preencherCabecalhoSheet($sheet, 'Historico de Baixas', [], $usuario);
+        $linha = $this->preencherCabecalhoSheet($sheet, 'Histórico de Baixas', [], $usuario);
 
-        $headers = ['Data', 'Item', 'Categoria', 'Motivo', 'Descricao', 'Quantidade', 'Saldo Antes', 'Saldo Depois', 'Registrado por'];
+        $headers = ['Data', 'Item', 'Categoria', 'Motivo', 'Descrição', 'Quantidade', 'Saldo Antes', 'Saldo Depois', 'Registrado por'];
         $this->preencherTabelaSimples($sheet, $linha, $headers, $baixas->map(fn (array $baixa) => [
             $baixa['data'],
             $baixa['item_nome'],

@@ -117,7 +117,7 @@ class UsersTable
                 }),
 
             TextColumn::make('roles')
-                ->label('Niveis de acesso')
+                ->label('Níveis de acesso')
                 ->grow(false)
                 ->wrap()
                 ->getStateUsing(fn (User $record) => $record->roles->pluck('name')->join(', ') ?: '-')
@@ -299,7 +299,7 @@ class UsersTable
         return [
 
             Action::make('verificacao_em_massa')
-                ->label('Verificacao de acesso')
+                ->label('Verificação de acesso')
                 ->icon('heroicon-o-check-badge')
                 ->color('success')
                 ->accessSelectedRecords()
@@ -309,12 +309,12 @@ class UsersTable
                 ->closeModalByEscaping(false)
                 ->modalCloseButton(false)
                 ->modalCancelAction(fn (Action $action) => $action->label('Fechar'))
-                ->modalHeading('Verificacao de acesso em massa')
-                ->modalDescription('Aprove ou desaprove o acesso dos usuarios selecionados. O Admin do sistema sempre sera ignorado.')
+                ->modalHeading('Verificação de acesso em massa')
+                ->modalDescription('Aprove ou desaprove o acesso dos usuários selecionados. O Admin do sistema sempre será ignorado.')
                 ->modalIcon('heroicon-o-check-badge')
                 ->schema(fn () => [
                     Select::make('acao_verificacao')
-                        ->label('Acao')
+                        ->label('Ação')
                         ->options([
                             'approve' => 'Aprovar acesso',
                             'disapprove' => 'Desaprovar acesso',
@@ -352,8 +352,8 @@ class UsersTable
                         ->title($aprovar ? 'Acessos aprovados' : 'Acessos desaprovados')
                         ->body(
                             $ignorados > 0
-                                ? "{$afetados} usuario(s) atualizados. {$ignorados} admin(s) ignorado(s)."
-                                : "{$afetados} usuario(s) atualizados."
+                                ? "{$afetados} usuário(s) atualizados. {$ignorados} admin(s) ignorado(s)."
+                                : "{$afetados} usuário(s) atualizados."
                         )
                         ->success()
                         ->send();
@@ -371,7 +371,7 @@ class UsersTable
                 ->modalSubmitActionLabel('Setar senha')
                 ->modalCancelAction(fn (Action $action) => $action->label('Fechar'))
                 ->modalHeading('Setar Senha Padrao')
-                ->modalDescription('A senha sera aplicada aos usuarios selecionados. No proximo acesso, eles serao obrigados a cadastrar uma nova senha.')
+                ->modalDescription('A senha será aplicada aos usuários selecionados. No próximo acesso, eles serão obrigados a cadastrar uma nova senha.')
                 ->modalIcon('heroicon-o-key')
                 ->schema(fn () => [
                     TextInput::make('nova_senha')
@@ -410,15 +410,15 @@ class UsersTable
                         ->title('Senha padrao aplicada')
                         ->body(
                             $ignorados > 0
-                                ? "{$afetados} usuario(s) atualizados. {$ignorados} usuario(s) ignorado(s)."
-                                : "{$afetados} usuario(s) atualizados. Eles deverao redefinir a senha no proximo acesso."
+                                ? "{$afetados} usuário(s) atualizados. {$ignorados} usuário(s) ignorado(s)."
+                                : "{$afetados} usuário(s) atualizados. Eles deverão redefinir a senha no próximo acesso."
                         )
                         ->success()
                         ->send();
                 }),
 
             Action::make('niveis_em_massa')
-                ->label('Editar niveis')
+                ->label('Editar níveis')
                 ->icon('heroicon-o-shield-check')
                 ->color('primary')
                 ->accessSelectedRecords()
@@ -428,24 +428,24 @@ class UsersTable
                 ->closeModalByEscaping(false)
                 ->modalCloseButton(false)
                 ->modalCancelAction(fn (Action $action) => $action->label('Fechar'))
-                ->modalHeading('Editar niveis em massa')
-                ->modalDescription('Adicione, substitua ou remova niveis de acesso dos usuarios selecionados.')
+                ->modalHeading('Editar níveis em massa')
+                ->modalDescription('Adicione, substitua ou remova níveis de acesso dos usuários selecionados.')
                 ->modalIcon('heroicon-o-shield-check')
                 ->schema(fn () => [
                     Select::make('modo_roles')
                         ->label('Como aplicar')
                         ->options([
-                            'add' => 'Adicionar niveis',
-                            'replace' => 'Substituir niveis atuais',
-                            'remove' => 'Remover niveis selecionados',
+                            'add' => 'Adicionar níveis',
+                            'replace' => 'Substituir níveis atuais',
+                            'remove' => 'Remover níveis selecionados',
                         ])
                         ->default('add')
                         ->selectablePlaceholder(false)
                         ->required(),
 
                     Select::make('roles')
-                        ->label('Niveis de acesso')
-                        ->helperText('Selecione um ou mais niveis para os usuarios escolhidos.')
+                        ->label('Níveis de acesso')
+                        ->helperText('Selecione um ou mais níveis para os usuários escolhidos.')
                         ->options(fn () => $service->opcoesDeRolesParaSelect($user))
                         ->multiple()
                         ->searchable()
@@ -486,8 +486,8 @@ class UsersTable
                     app(PermissionRegistrar::class)->forgetCachedPermissions();
 
                     Notification::make()
-                        ->title('Niveis de acesso atualizados')
-                        ->body("{$afetados} usuario(s) atualizados.")
+                        ->title('Níveis de acesso atualizados')
+                        ->body("{$afetados} usuário(s) atualizados.")
                         ->success()
                         ->send();
                 }),
@@ -510,9 +510,9 @@ class UsersTable
                     Select::make('modo_permissoes')
                         ->label('Como aplicar')
                         ->options([
-                            'add' => 'Adicionar permissoes',
-                            'replace' => 'Substituir permissoes diretas',
-                            'remove' => 'Remover permissoes diretas',
+                            'add' => 'Adicionar permissões',
+                            'replace' => 'Substituir permissões diretas',
+                            'remove' => 'Remover permissões diretas',
                         ])
                         ->default('add')
                         ->selectablePlaceholder(false)
@@ -588,15 +588,15 @@ class UsersTable
                     app(PermissionRegistrar::class)->forgetCachedPermissions();
 
                     Notification::make()
-                        ->title('Permissoes atualizadas')
-                        ->body("{$afetados} usuario(s) atualizados.")
+                        ->title('Permissões atualizadas')
+                        ->body("{$afetados} usuário(s) atualizados.")
                         ->success()
                         ->send();
                 }),
 
             VincularSetorBulkAction::make(
                 permission: 'Editar Setor do Usuário',
-                recordsLabel: 'usuarios selecionados',
+                recordsLabel: 'usuários selecionados',
             ),
 
             DeleteBulkAction::make()

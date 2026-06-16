@@ -19,7 +19,7 @@ class ManageTipoManutencaos extends ManageRecords
             'actions' => $this->getCachedHeaderActions(),
 
             'eyebrow' => 'Manutenção',
-            'title' => 'Tipos de Manutencao',
+            'title' => 'Tipos de Manutenção',
             'description' => 'Gerencie os tipos de manutenção para organizar as demandas de manutenção para unidades escolares.',
         ]);
     }

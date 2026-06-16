@@ -38,7 +38,7 @@ class BalancoEstoqueResource extends Resource
 
     protected static ?string $navigationLabel = 'Balancos';
 
-    protected static ?string $modelLabel = 'Balanco de Estoque';
+    protected static ?string $modelLabel = 'Balanço de Estoque';
 
     protected static ?string $pluralModelLabel = 'Balancos de Estoque';
 
@@ -83,7 +83,7 @@ class BalancoEstoqueResource extends Resource
                     ->seconds(false)
                     ->native(false),
                 Textarea::make('observacao_inicial')
-                    ->label('Observacao inicial')
+                    ->label('Observação inicial')
                     ->rows(4)
                     ->maxLength(1500)
                     ->columnSpanFull(),
@@ -98,7 +98,7 @@ class BalancoEstoqueResource extends Resource
                 Section::make('Resumo')
                     ->schema([
                         TextEntry::make('codigo')
-                            ->label('Codigo')
+                            ->label('Código')
                             ->badge()
                             ->color('gray'),
                         TextEntry::make('status')
@@ -120,7 +120,7 @@ class BalancoEstoqueResource extends Resource
                             ->label('Iniciado por')
                             ->placeholder('-'),
                         TextEntry::make('concluido_em')
-                            ->label('Concluido em')
+                            ->label('Concluído em')
                             ->dateTime('d/m/Y H:i')
                             ->placeholder('-'),
                         TextEntry::make('cancelado_em')
@@ -149,17 +149,17 @@ class BalancoEstoqueResource extends Resource
                     ])
                     ->columns(4),
 
-                Section::make('Observacao Inicial')
+                Section::make('Observação Inicial')
                     ->schema([
                         TextEntry::make('observacao_inicial')
                             ->label('')
-                            ->placeholder('Sem observacao inicial.')
+                            ->placeholder('Sem observação inicial.')
                             ->columnSpanFull(),
                     ])
                     ->visible(fn (BalancoEstoque $record): bool => filled($record->observacao_inicial))
                     ->columns(1),
 
-                Section::make('Timeline do Balanco')
+                Section::make('Timeline do Balanço')
                     ->schema([
                         RepeatableEntry::make('eventos')
                             ->label('')
@@ -168,7 +168,7 @@ class BalancoEstoqueResource extends Resource
                                 TableColumn::make('Data'),
                                 TableColumn::make('Evento'),
                                 TableColumn::make('Responsavel'),
-                                TableColumn::make('Descricao'),
+                                TableColumn::make('Descrição'),
                             ])
                             ->schema([
                                 TextEntry::make('created_at')
@@ -183,7 +183,7 @@ class BalancoEstoqueResource extends Resource
                                     ->label('Responsavel')
                                     ->placeholder('Sistema'),
                                 TextEntry::make('descricao')
-                                    ->label('Descricao'),
+                                    ->label('Descrição'),
                             ]),
                     ])
                     ->columnSpanFull(),
@@ -198,7 +198,7 @@ class BalancoEstoqueResource extends Resource
             ->recordUrl(fn (BalancoEstoque $record): string => static::getUrl('view', ['record' => $record]))
             ->columns([
                 TextColumn::make('codigo')
-                    ->label('Codigo')
+                    ->label('Código')
                     ->searchable()
                     ->sortable()
                     ->weight('bold'),
@@ -218,7 +218,7 @@ class BalancoEstoqueResource extends Resource
                     ->placeholder('-')
                     ->sortable(),
                 TextColumn::make('concluido_em')
-                    ->label('Concluido em')
+                    ->label('Concluído em')
                     ->dateTime('d/m/Y H:i')
                     ->placeholder('-')
                     ->sortable(),
@@ -259,12 +259,12 @@ class BalancoEstoqueResource extends Resource
                     ->label('Responsavel')
                     ->relationship('criadoPor', 'name'),
                 Filter::make('periodo')
-                    ->label('Periodo agendado')
+                    ->label('Período agendado')
                     ->schema([
                         DatePicker::make('data_inicio')
                             ->label('De'),
                         DatePicker::make('data_fim')
-                            ->label('Ate'),
+                            ->label('Até'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         return $query

@@ -33,7 +33,7 @@ class InventarioRelatorioController extends Controller
                 'inventario_geral',
                 'pdf',
                 ['inventario_id' => $inventario->getKey()] + $request->all(),
-                'Relatorio geral de inventario',
+                'Relatório geral de inventário',
                 $request,
             );
         }
@@ -48,7 +48,7 @@ class InventarioRelatorioController extends Controller
         $this->autorizarExportacaoRede();
 
         if ($request->boolean('async')) {
-            return $this->queueExport('inventario_rede', 'pdf', $request->all(), 'Relatorio de envios por escola', $request);
+            return $this->queueExport('inventario_rede', 'pdf', $request->all(), 'Relatório de envios por escola', $request);
         }
 
         $this->prepararExecucao();
@@ -65,7 +65,7 @@ class InventarioRelatorioController extends Controller
                 'inventario_geral',
                 'xlsx',
                 ['inventario_id' => $inventario->getKey()] + $request->all(),
-                'Relatorio geral de inventario',
+                'Relatório geral de inventário',
                 $request,
             );
         }
@@ -80,7 +80,7 @@ class InventarioRelatorioController extends Controller
         $this->autorizarExportacaoRede();
 
         if ($request->boolean('async')) {
-            return $this->queueExport('inventario_rede', 'xlsx', $request->all(), 'Relatorio de envios por escola', $request);
+            return $this->queueExport('inventario_rede', 'xlsx', $request->all(), 'Relatório de envios por escola', $request);
         }
 
         $this->prepararExecucao();
@@ -98,7 +98,7 @@ class InventarioRelatorioController extends Controller
                 'inventario_item',
                 'pdf',
                 ['inventario_estoque_id' => $estoque->getKey()],
-                'Relatorio individual de inventario',
+                'Relatório individual de inventário',
                 $request,
             );
         }
@@ -118,7 +118,7 @@ class InventarioRelatorioController extends Controller
                 'inventario_item',
                 'xlsx',
                 ['inventario_estoque_id' => $estoque->getKey()],
-                'Relatorio individual de inventario',
+                'Relatório individual de inventário',
                 $request,
             );
         }
@@ -184,7 +184,7 @@ class InventarioRelatorioController extends Controller
             );
 
             Notification::make()
-                ->title($exportRequest->wasRecentlyCreated ? 'Exportacao enviada para a fila' : 'Exportacao ja esta em andamento')
+                ->title($exportRequest->wasRecentlyCreated ? 'Exportação enviada para a fila' : 'Exportação já está em andamento')
                 ->body('Acompanhe o progresso em Minhas Exportacoes.')
                 ->success()
                 ->send();
@@ -193,7 +193,7 @@ class InventarioRelatorioController extends Controller
                 'download' => $exportRequest->getKey(),
             ]);
         } catch (Throwable $e) {
-            Log::error('Falha ao enfileirar exportacao de inventario.', [
+            Log::error('Falha ao enfileirar exportação de inventário.', [
                 'exception' => $e,
                 'user_id' => Auth::id(),
                 'type' => $type,
@@ -201,7 +201,7 @@ class InventarioRelatorioController extends Controller
             ]);
 
             Notification::make()
-                ->title('Nao foi possivel iniciar a exportacao')
+                ->title('Não foi possível iniciar a exportação')
                 ->body('Tente novamente em alguns instantes.')
                 ->danger()
                 ->send();

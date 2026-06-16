@@ -1,66 +1,93 @@
 @extends('public.layout')
 
-@section('title', 'Gestao Edu | Secretaria Municipal de Educacao de Umuarama')
-@section('description', 'Homepage publica do Gestao Edu, sistema institucional da Secretaria Municipal de Educacao de Umuarama.')
+@section('title', 'Gestão Edu | Secretaria Municipal de Educação de Umuarama')
+@section('description', 'Página inicial pública do Gestão Edu, sistema institucional da Secretaria Municipal de Educação de Umuarama.')
 
 @section('content')
-    <section class="hero">
+    <section class="public-hero">
         <div class="wrap hero-grid">
-            <div>
-                <p class="eyebrow">Sistema institucional</p>
-                <h1>Gestao Edu</h1>
+            <div class="hero-copy">
+                <p class="eyebrow">Prefeitura Municipal de Umuarama</p>
+                <h1>Gestão escolar simples, clara e conectada.</h1>
                 <p class="lead">
-                    Plataforma da Secretaria Municipal de Educacao de Umuarama para apoiar a gestao escolar,
-                    administrativa e operacional da rede municipal de ensino.
+                    O Gestão Edu é a plataforma institucional da Secretaria Municipal de Educação de Umuarama para
+                    organizar rotinas escolares, administrativas e operacionais da rede municipal de ensino.
                 </p>
                 <p class="lead">
-                    O sistema atende servidores autorizados da Secretaria, equipes gestoras, escolas, professores
-                    e setores administrativos, centralizando informacoes e fluxos de trabalho em um ambiente seguro.
+                    O acesso é destinado a usuários autorizados, com recursos liberados conforme perfil,
+                    vínculo institucional, escola, setor e responsabilidade de trabalho.
                 </p>
                 <div class="hero-actions">
-                    <a class="button secondary" href="/admin/login">Acessar sistema</a>
-                    <a class="button" href="{{ route('public.privacy', [], false) }}">Politica de Privacidade</a>
+                    <a class="button" href="/admin/login">Acessar sistema</a>
+                    <a class="button secondary" href="{{ route('public.privacy', [], false) }}">Política de Privacidade</a>
                 </div>
             </div>
 
             <aside class="hero-panel" aria-label="Resumo do sistema">
-                <strong>Umuarama - PR</strong>
-                <p>
-                    Uma base unica para organizar processos educacionais, acompanhar informacoes da rede
-                    e apoiar decisoes com mais rastreabilidade.
-                </p>
+                <span class="status-pill">
+                    <span class="status-dot" aria-hidden="true"></span>
+                    Ambiente institucional
+                </span>
+
+                <div>
+                    <h2>Umuarama - PR</h2>
+                    <p>
+                        Uma base integrada para apoiar o acompanhamento de escolas, turmas, professores,
+                        avaliações, documentos, solicitações, estoque e alimentação escolar.
+                    </p>
+                </div>
+
+                <ul class="metric-list">
+                    <li>
+                        <strong>Acesso controlado</strong>
+                        <span>Permissões, papéis e vínculos definem o que cada usuário pode consultar ou registrar.</span>
+                    </li>
+                    <li>
+                        <strong>Fluxos rastreáveis</strong>
+                        <span>Registros, históricos e relatórios ajudam a acompanhar decisões e processos internos.</span>
+                    </li>
+                    <li>
+                        <strong>Uso institucional</strong>
+                        <span>A plataforma atende rotinas oficiais da Secretaria Municipal de Educação.</span>
+                    </li>
+                </ul>
             </aside>
         </div>
     </section>
 
-    <section class="section">
+    <section class="section compact">
         <div class="wrap">
-            <p class="eyebrow">Finalidade</p>
-            <h2>Para que o Gestao Edu serve</h2>
-            <p>
-                O Gestao Edu foi criado para reunir, em um ambiente digital, rotinas que fazem parte da administracao
-                da educacao municipal. A plataforma auxilia no acompanhamento de usuarios, unidades escolares,
-                turmas, professores, avaliacoes, relatorios, manutencoes, estoque e demais processos internos.
-            </p>
-        </div>
-    </section>
+            <div class="section-header">
+                <p class="eyebrow">Finalidade</p>
+                <h2>Uma plataforma para a rotina da rede municipal.</h2>
+                <p>
+                    O sistema reúne informações essenciais para que equipes da Secretaria, escolas, gestores,
+                    professores e setores administrativos trabalhem com dados organizados, acesso seguro e
+                    acompanhamento consistente dos processos educacionais.
+                </p>
+            </div>
 
-    <section class="section alt">
-        <div class="wrap">
-            <p class="eyebrow">Publico atendido</p>
-            <h2>Quem utiliza a plataforma</h2>
             <div class="grid">
                 <article class="card">
-                    <h3>Secretaria Municipal de Educacao</h3>
-                    <p>Equipes tecnicas e administrativas usam o sistema para acompanhar dados, permissoes, relatorios e processos da rede.</p>
+                    <h3>Gestão pedagógica</h3>
+                    <p>
+                        Apoia cadastros escolares, turmas, professores, componentes curriculares, avaliações,
+                        pareceres, relatórios pedagógicos e acompanhamento de estudantes.
+                    </p>
                 </article>
                 <article class="card">
-                    <h3>Escolas e equipes gestoras</h3>
-                    <p>Diretores, coordenadores e equipes escolares acessam informacoes relacionadas a sua unidade e aos fluxos liberados.</p>
+                    <h3>Administração e acesso</h3>
+                    <p>
+                        Organiza usuários, perfis, permissões, vínculos com escolas e setores, mantendo o acesso
+                        alinhado às responsabilidades institucionais.
+                    </p>
                 </article>
                 <article class="card">
-                    <h3>Professores e servidores</h3>
-                    <p>Usuarios autorizados acessam funcionalidades conforme sua funcao, perfil e vinculos institucionais.</p>
+                    <h3>Operação da rede</h3>
+                    <p>
+                        Centraliza solicitações de manutenção, alimentação escolar, controle de estoque,
+                        documentos e acompanhamentos administrativos.
+                    </p>
                 </article>
             </div>
         </div>
@@ -68,21 +95,18 @@
 
     <section class="section">
         <div class="wrap">
-            <p class="eyebrow">Modulos</p>
-            <h2>Principais areas de apoio</h2>
-            <div class="grid">
-                <article class="card">
-                    <h3>Gestao pedagogica</h3>
-                    <p>Apoio a cadastros educacionais, turmas, professores, avaliacoes e relatorios pedagogicos.</p>
-                </article>
-                <article class="card">
-                    <h3>Administracao e acesso</h3>
-                    <p>Controle de usuarios, autorizacoes, perfis de acesso e registros operacionais.</p>
-                </article>
-                <article class="card">
-                    <h3>Operacao da rede</h3>
-                    <p>Fluxos de manutencao, estoque, alimentacao escolar, documentos e acompanhamentos internos.</p>
-                </article>
+            <div class="callout">
+                <p class="eyebrow">Uso responsável</p>
+                <h2>Informações protegidas por contexto e necessidade de acesso.</h2>
+                <p>
+                    Cada área do Gestão Edu é organizada para respeitar o perfil do usuário, os vínculos
+                    institucionais e a finalidade pública do tratamento das informações. O uso da plataforma
+                    deve ocorrer exclusivamente em atividades autorizadas pela Secretaria Municipal de Educação.
+                </p>
+                <div class="hero-actions">
+                    <a class="button" href="{{ route('public.terms', [], false) }}">Termos de Serviço</a>
+                    <a class="button secondary" href="mailto:automacao@edu.umuarama.pr.gov.br">Entrar em contato</a>
+                </div>
             </div>
         </div>
     </section>

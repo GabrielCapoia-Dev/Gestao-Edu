@@ -21,13 +21,13 @@ class ExportarRelatorioAction
     public static function make(): Action
     {
         return Action::make('relatorio_geral')
-            ->label('Exportar Relatorio')
+            ->label('Exportar Relatório')
             ->icon('heroicon-o-document-chart-bar')
             ->color(Color::hex('#102b86'))
             ->visible(fn (): bool => Auth::user()?->hasPermissionLike('exportar relatorios') ?? false)
             ->schema(static::schema())
-            ->modalHeading('Exportar Relatorio de Pedidos')
-            ->modalDescription('Configure os filtros. O periodo e obrigatorio para gerar o PDF.')
+            ->modalHeading('Exportar Relatório de Pedidos')
+            ->modalDescription('Configure os filtros. O período é obrigatório para gerar o PDF.')
             ->modalSubmitActionLabel('Exportar PDF')
             ->modalIcon('heroicon-o-document-chart-bar')
             ->modalWidth('2xl')
@@ -46,7 +46,7 @@ class ExportarRelatorioAction
                         ->validationAttribute('data inicial')
                         ->displayFormat('d/m/Y')
                         ->native(false)
-                        ->helperText('Informe o inicio do periodo para exportacao.')
+                        ->helperText('Informe o início do período para exportação.')
                         ->maxDate(fn (Get $get) => $get('data_fim') ?: now()),
 
                     DatePicker::make('data_fim')
@@ -55,7 +55,7 @@ class ExportarRelatorioAction
                         ->validationAttribute('data final')
                         ->displayFormat('d/m/Y')
                         ->native(false)
-                        ->helperText('Informe o fim do periodo para exportacao.')
+                        ->helperText('Informe o fim do período para exportação.')
                         ->minDate(fn (Get $get) => $get('data_inicio'))
                         ->maxDate(now()),
 
@@ -80,7 +80,7 @@ class ExportarRelatorioAction
                         ->placeholder('Todas as escolas'),
 
                     Select::make('tipo_manutencao_id')
-                        ->label('Tipo de Manutencao')
+                        ->label('Tipo de Manutenção')
                         ->options(
                             TipoManutencao::query()
                                 ->orderBy('nome')
@@ -126,8 +126,8 @@ class ExportarRelatorioAction
         return function (array $data): mixed {
             if (empty($data['data_inicio']) || empty($data['data_fim'])) {
                 throw ValidationException::withMessages([
-                    'data_inicio' => 'Informe a data inicial para exportar o relatorio.',
-                    'data_fim' => 'Informe a data final para exportar o relatorio.',
+                    'data_inicio' => 'Informe a data inicial para exportar o relatório.',
+                    'data_fim' => 'Informe a data final para exportar o relatório.',
                 ]);
             }
 

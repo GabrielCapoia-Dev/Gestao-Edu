@@ -269,7 +269,7 @@ body {
       <div class="node-fields">
         <div class="field pk"><div class="field-dot"></div>id</div>
         <div class="field"><div class="field-dot"></div>nome</div>
-        <div class="field"><div class="field-dot"></div>descricao</div>
+        <div class="field"><div class="field-dot"></div>descrição</div>
         <div class="field note"><div class="field-dot"></div>ex: Alimentos, Limpeza, Material Escolar</div>
       </div>
     </div>
@@ -281,7 +281,7 @@ body {
         <div class="field fk"><div class="field-dot"></div>categoria_id</div>
         <div class="field"><div class="field-dot"></div>nome</div>
         <div class="field"><div class="field-dot"></div>unidade_medida</div>
-        <div class="field"><div class="field-dot"></div>descricao</div>
+        <div class="field"><div class="field-dot"></div>descrição</div>
         <div class="field note"><div class="field-dot"></div>catálogo único — compartilhado por todo sistema</div>
       </div>
     </div>
@@ -296,7 +296,7 @@ body {
         <div class="field pk"><div class="field-dot"></div>id</div>
         <div class="field"><div class="field-dot"></div>nome</div>
         <div class="field"><div class="field-dot"></div>endereco</div>
-        <div class="field"><div class="field-dot"></div>responsavel</div>
+        <div class="field"><div class="field-dot"></div>responsável</div>
         <div class="field"><div class="field-dot"></div>telefone</div>
       </div>
     </div>
@@ -356,7 +356,7 @@ body {
         <div class="field fk"><div class="field-dot"></div>escola_id</div>
         <div class="field fk"><div class="field-dot"></div>romaneio_id</div>
         <div class="field"><div class="field-dot"></div>status</div>
-        <div class="field"><div class="field-dot"></div>observacao</div>
+        <div class="field"><div class="field-dot"></div>observação</div>
         <div class="field"><div class="field-dot"></div>created_at</div>
         <div style="border-top:1px solid var(--border);margin:8px 0;"></div>
         <div class="field pk"><div class="field-dot"></div>item_pedido.id</div>
@@ -379,7 +379,7 @@ body {
         <div class="field note"><div class="field-dot"></div>BAIXA | DEVOLUÇÃO</div>
         <div class="field"><div class="field-dot"></div>quantidade</div>
         <div class="field"><div class="field-dot"></div>data</div>
-        <div class="field"><div class="field-dot"></div>responsavel</div>
+        <div class="field"><div class="field-dot"></div>responsável</div>
       </div>
     </div>
     <div class="node rom">
@@ -499,7 +499,7 @@ body {
         <div class="flow-effects">
           <span class="effect-tag ok">deposito.quantidade -= qtd_aprovada</span>
           <span class="effect-tag ok">deposito.qtd_reservada -= qtd_aprovada</span>
-          <span class="effect-tag ok">inventario.quantidade += qtd_aprovada</span>
+          <span class="effect-tag ok">inventário.quantidade += qtd_aprovada</span>
           <span class="effect-tag db">INSERT movimentacao (TRANSFERÊNCIA)</span>
           <span class="effect-tag db">pedido.status → RECEBIDO</span>
         </div>

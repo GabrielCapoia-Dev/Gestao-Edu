@@ -172,7 +172,7 @@ class InventarioDataService
 
             return [
                 [
-                    'titulo' => 'Itens no inventario',
+                    'titulo' => 'Itens no inventário',
                     'valor' => $metricas->total_itens,
                     'descricao' => 'itens atualmente cadastrados',
                     'cor' => 'blue',
@@ -186,7 +186,7 @@ class InventarioDataService
                 [
                     'titulo' => 'Estoque baixo',
                     'valor' => $metricas->itens_criticos,
-                    'descricao' => 'itens com saldo ate 10 unidades',
+                    'descricao' => 'itens com saldo até 10 unidades',
                     'cor' => 'amber',
                 ],
                 [
@@ -317,7 +317,7 @@ class InventarioDataService
 
                 return [
                     'tipo_item' => $tipoItem,
-                    'label' => $enum?->label() ?? 'Nao informado',
+                    'label' => $enum?->label() ?? 'Não informado',
                     'total_itens' => $grupo->count(),
                     'quantidade_total' => round((float) $grupo->sum('quantidade'), 3),
                     'valor_total' => round((float) $grupo->sum('valor_total'), 2),
@@ -491,9 +491,9 @@ class InventarioDataService
 
                 return [
                     'inventario_id' => (int) ($movimentacao->estoque?->inventario_id ?? 0),
-                    'inventario_nome' => $movimentacao->estoque?->inventario?->nome ?? 'Inventario Escolar',
+                    'inventario_nome' => $movimentacao->estoque?->inventario?->nome ?? 'Inventário Escolar',
                     'escola_id' => (int) ($movimentacao->estoque?->inventario?->escola_id ?? 0),
-                    'escola_nome' => $movimentacao->estoque?->inventario?->escola?->nome ?? 'Escola nao informada',
+                    'escola_nome' => $movimentacao->estoque?->inventario?->escola?->nome ?? 'Escola não informada',
                     'pedido_id' => (int) ($movimentacao->inventario_pedido_id ?? 0),
                     'romaneio_codigo' => $movimentacao->pedido?->romaneio?->codigo,
                     'item_id' => (int) ($itemId ?? 0),
@@ -554,9 +554,9 @@ class InventarioDataService
 
                 return [
                     'inventario_id' => (int) ($base['inventario_id'] ?? 0),
-                    'inventario_nome' => $base['inventario_nome'] ?? 'Inventario Escolar',
+                    'inventario_nome' => $base['inventario_nome'] ?? 'Inventário Escolar',
                     'escola_id' => (int) ($base['escola_id'] ?? 0),
-                    'escola_nome' => $base['escola_nome'] ?? 'Escola nao informada',
+                    'escola_nome' => $base['escola_nome'] ?? 'Escola não informada',
                     'total_pedidos' => $rows->pluck('pedido_id')->filter()->unique()->count(),
                     'total_entregas' => $rows->count(),
                     'total_itens' => $itens->count(),
@@ -598,7 +598,7 @@ class InventarioDataService
                 'inventario_id' => $inventario->getKey(),
                 'escola_id' => (int) $inventario->escola_id,
                 'inventario_nome' => $inventario->nome,
-                'escola_nome' => $inventario->escola?->nome ?? 'Escola nao informada',
+                'escola_nome' => $inventario->escola?->nome ?? 'Escola não informada',
                 'total_itens' => $metricas->total_itens,
                 'quantidade_total' => $metricas->quantidade_total,
                 'valor_total' => $metricas->valor_total,
@@ -814,15 +814,15 @@ class InventarioDataService
     {
         return match ($tipo) {
             TipoMovimentacao::Entrada->value => 'Entrada',
-            TipoMovimentacao::Transferencia->value => 'Transferencia',
-            default => 'Saida',
+            TipoMovimentacao::Transferencia->value => 'Transferência',
+            default => 'Saída',
         };
     }
 
     protected function descricaoOrdenacao(string $sortCol, string $sortDir): string
     {
         $label = match ($sortCol) {
-            'quantidade' => 'Quantidade em inventario',
+            'quantidade' => 'Quantidade em inventário',
             'tipo_item' => 'Categoria',
             'valor_total' => 'Valor total',
             'atualizado' => 'Ultima atualizacao',

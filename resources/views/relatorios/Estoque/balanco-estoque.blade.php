@@ -1,7 +1,7 @@
 @extends('relatorios.layouts.base-pdf')
 
-@section('reportTitle', $reportTitle ?? 'Relatorio de Balanco de Estoque')
-@section('reportSubtitle', $reportSubtitle ?? 'Resumo completo de divergencias e impacto financeiro do balanco')
+@section('reportTitle', $reportTitle ?? 'Relatório de Balanço de Estoque')
+@section('reportSubtitle', $reportSubtitle ?? 'Resumo completo de divergências e impacto financeiro do balanço')
 
 @section('styles')
     .cards {
@@ -115,7 +115,7 @@
         </tr>
     </table>
 
-    <div class="section-title">Resumo do Balanco</div>
+    <div class="section-title">Resumo do Balanço</div>
     <table class="listagem">
         <tbody>
             <tr>
@@ -137,9 +137,9 @@
                 <td>{{ $balanco->iniciadoPor?->name ?? '-' }}</td>
             </tr>
             <tr>
-                <th>Concluido em</th>
+                <th>Concluído em</th>
                 <td>{{ $balanco->concluido_em?->format('d/m/Y H:i') ?? '-' }}</td>
-                <th>Concluido por</th>
+                <th>Concluído por</th>
                 <td>{{ $balanco->concluidoPor?->name ?? '-' }}</td>
             </tr>
             <tr>
@@ -152,18 +152,18 @@
     </table>
 
     @if(filled($balanco->observacao_inicial))
-        <div class="section-title">Observacao Inicial</div>
+        <div class="section-title">Observação Inicial</div>
         <div class="obs-box">{{ $balanco->observacao_inicial }}</div>
     @endif
 
-    <div class="section-title">Timeline do Balanco</div>
+    <div class="section-title">Timeline do Balanço</div>
     <table class="listagem">
         <thead>
             <tr>
                 <th>Data</th>
                 <th>Evento</th>
-                <th>Responsavel</th>
-                <th>Descricao</th>
+                <th>Responsável</th>
+                <th>Descrição</th>
             </tr>
         </thead>
         <tbody>
@@ -176,13 +176,13 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="4" class="muted">Nenhum evento registrado para este balanco.</td>
+                    <td colspan="4" class="muted">Nenhum evento registrado para este balanço.</td>
                 </tr>
             @endforelse
         </tbody>
     </table>
 
-    <div class="section-title">Itens Selecionados no Balanco</div>
+    <div class="section-title">Itens Selecionados no Balanço</div>
     <table class="listagem">
         <thead>
             <tr>
@@ -197,7 +197,7 @@
                 <th class="right">Saldo Final</th>
                 <th>Status</th>
                 <th>Contado por</th>
-                <th>Observacao</th>
+                <th>Observação</th>
             </tr>
         </thead>
         <tbody>
@@ -224,7 +224,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="12" class="muted">Este balanco ainda nao possui itens selecionados para contagem.</td>
+                    <td colspan="12" class="muted">Este balanço ainda não possui itens selecionados para contagem.</td>
                 </tr>
             @endforelse
         </tbody>

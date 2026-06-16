@@ -20,12 +20,12 @@ class BlockProfilePreviewWrites
 
         if ($request->expectsJson()) {
             return response()->json([
-                'message' => 'Modo visualizacao ativo. Acoes de escrita estao bloqueadas.',
+                'message' => 'Modo visualização ativo. Ações de escrita estão bloqueadas.',
             ], 423);
         }
 
         Notification::make()
-            ->title('Acao bloqueada no modo visualizacao')
+            ->title('Ação bloqueada no modo visualização')
             ->body('Nada foi salvo. Volte a normalidade para executar alteracoes reais.')
             ->warning()
             ->send();

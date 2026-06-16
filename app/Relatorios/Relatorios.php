@@ -28,9 +28,9 @@ class Relatorios
     protected static function defaultFileName(string $tipo): string
     {
         $prefix = match ($tipo) {
-            self::TIPO_BULK_LIST => 'relatorio-lista',
-            self::TIPO_BULK_FICHA => 'relatorio-fichas',
-            default => 'relatorio-ficha',
+            self::TIPO_BULK_LIST => 'relatório-lista',
+            self::TIPO_BULK_FICHA => 'relatório-fichas',
+            default => 'relatório-ficha',
         };
 
         return sprintf('%s-%s.pdf', $prefix, now()->format('Ymd_His'));
@@ -48,9 +48,9 @@ class Relatorios
     protected static function defaultTitle(string $tipo): string
     {
         return match ($tipo) {
-            self::TIPO_BULK_LIST => 'Relatorio - Lista',
-            self::TIPO_BULK_FICHA => 'Relatorio - Fichas',
-            default => 'Relatorio',
+            self::TIPO_BULK_LIST => 'Relatório - Lista',
+            self::TIPO_BULK_FICHA => 'Relatório - Fichas',
+            default => 'Relatório',
         };
     }
 

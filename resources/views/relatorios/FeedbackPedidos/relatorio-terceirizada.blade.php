@@ -9,8 +9,8 @@
 @endphp
 @extends('relatorios.layouts.base-pdf')
 
-@section('reportTitle', $reportTitle ?? 'Relatorio de Avaliacao de Empresas Terceirizadas')
-@section('reportSubtitle', $reportSubtitle ?? 'Consolidado de satisfacao por empresa terceirizada')
+@section('reportTitle', $reportTitle ?? 'Relatório de Avaliação de Empresas Terceirizadas')
+@section('reportSubtitle', $reportSubtitle ?? 'Consolidado de satisfação por empresa terceirizada')
 
 @section('styles')
     .cards-container {
@@ -144,7 +144,7 @@
                         </td>
 
                         <td style="width: 30%; text-align: center; color: #374151;">
-                            <div style="font-size: 9px;">Percentual de Satisfacao</div>
+                            <div style="font-size: 9px;">Percentual de Satisfação</div>
                             <div style="font-size: 20px; font-weight: bold;">
                                 {{ $empresaData['percentual'] }}%
                             </div>
@@ -155,7 +155,7 @@
                 <table class="cards-container">
                     <tr>
                         <td>
-                            <div class="card-label">Avaliacoes</div>
+                            <div class="card-label">Avaliações</div>
                             <div class="card-value">{{ $empresaData['total'] ?? 0 }}</div>
                         </td>
                         <td>
@@ -215,7 +215,7 @@
                 </table>
 
                 <div class="divider"></div>
-                <div class="section-title">Nivel de Satisfacao dos Servicos Prestados</div>
+                <div class="section-title">Nível de Satisfação dos serviços prestados</div>
 
                 @foreach($empresaData['anos'] as $ano => $meses)
                     <div class="ano-titulo">{{ $ano }}</div>
@@ -223,7 +223,7 @@
                     <table class="matriz-table">
                         <thead>
                             <tr>
-                                <th style="width: 10%; text-align: center;">Avaliacao</th>
+                                <th style="width: 10%; text-align: center;">Avaliação</th>
                                 @foreach(array_reverse($meses, true) as $mes => $dados)
                                     <th style="width: {{ 90 / count($meses) }}%;">{{ $mes }}</th>
                                 @endforeach
@@ -258,7 +258,7 @@
         @endforeach
     @else
         <p style="text-align: center; color: #6b7280; padding: 20px 0;">
-            Nenhuma avaliacao registrada para os filtros selecionados.
+            Nenhuma avaliação registrada para os filtros selecionados.
         </p>
     @endif
 @endsection

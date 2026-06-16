@@ -489,12 +489,12 @@
                 <span class="force-password-brand-mark">G</span>
                 <span>
                     <span class="force-password-brand-text">Sistema Integrado Municipal</span>
-                    <span class="force-password-brand-name">Gestao Edu</span>
+                    <span class="force-password-brand-name">Gestão Edu</span>
                 </span>
             </div>
 
             <div class="force-password-panel-copy">
-                <span class="force-password-kicker">Senha obrigatoria</span>
+                <span class="force-password-kicker">Senha obrigatória</span>
                 <h1 id="force-password-title" class="force-password-title">Redefina sua senha</h1>
                 <p class="force-password-description">
                     Para continuar no sistema, cadastre uma nova senha pessoal.
@@ -502,7 +502,7 @@
             </div>
 
             <p class="force-password-panel-note">
-                Essa etapa protege sua conta apos a aplicacao da senha padrao.
+                Essa etapa protege sua conta após a aplicação da senha padrão.
             </p>
         </div>
 
@@ -510,7 +510,7 @@
             <div class="force-password-form">
                 <h2 class="force-password-form-heading">Crie sua nova senha</h2>
                 <p class="force-password-form-text">
-                    Use letras maiusculas e minusculas, numeros e simbolos.
+                    Use letras maiúsculas e minúsculas, números e símbolos.
                 </p>
 
                 <div class="force-password-field">
@@ -536,11 +536,11 @@
                         </li>
                         <li class="force-password-requirement" x-bind:class="{ 'is-valid': hasUpper() }">
                             <span class="force-password-requirement-icon" aria-hidden="true"></span>
-                            Letras maiusculas
+                            Letras maiúsculas
                         </li>
                         <li class="force-password-requirement" x-bind:class="{ 'is-valid': hasLower() }">
                             <span class="force-password-requirement-icon" aria-hidden="true"></span>
-                            Letras minusculas
+                            Letras minúsculas
                         </li>
                         <li class="force-password-requirement" x-bind:class="{ 'is-valid': hasNumber() }">
                             <span class="force-password-requirement-icon" aria-hidden="true"></span>
@@ -569,7 +569,7 @@
                         As senhas devem ser iguais.
                     </p>
                     <p class="force-password-match-message is-valid" x-cloak x-show="passwordsMatch()">
-                        As senhas estao iguais.
+                        As senhas estão iguais.
                     </p>
                 </div>
 

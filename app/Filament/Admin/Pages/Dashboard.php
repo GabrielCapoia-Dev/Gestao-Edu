@@ -26,7 +26,7 @@ class Dashboard extends Page
         return '';
     }
 
-    protected static ?string $navigationLabel = 'Inicio';
+    protected static ?string $navigationLabel = 'Início';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::Home;
 

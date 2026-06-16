@@ -31,8 +31,8 @@ class ManageRoles extends ManageRecords
             'actions' => $this->getCachedHeaderActions(),
 
             'eyebrow' => 'Acesso',
-            'title' => 'Niveis de Acesso',
-            'description' => 'Gerencie os niveis de acesso para organizar as permissoes dos usuarios.',
+            'title' => 'Níveis de Acesso',
+            'description' => 'Gerencie os níveis de acesso para organizar as permissões dos usuários.',
         ]);
     }
 
@@ -66,7 +66,7 @@ class ManageRoles extends ManageRecords
             })
             ->after(function (): void {
                 Notification::make()
-                    ->title('Nivel de acesso criado')
+                    ->title('Nível de acesso criado')
                     ->success()
                     ->send();
             });
@@ -78,23 +78,23 @@ class ManageRoles extends ManageRecords
 
         return [
             [
-                'label' => 'Niveis cadastrados',
+                'label' => 'Níveis cadastrados',
                 'value' => number_format($stats['roles'], 0, ',', '.'),
                 'description' => 'Perfis reutilizaveis para compor acessos.',
                 'icon' => 'heroicon-o-shield-check',
                 'tone' => 'amber',
             ],
             [
-                'label' => 'Com permissoes',
+                'label' => 'Com permissões',
                 'value' => number_format($stats['roles_with_permissions'], 0, ',', '.'),
-                'description' => 'Niveis que ja possuem capacidades definidas.',
+                'description' => 'Níveis que já possuem capacidades definidas.',
                 'icon' => 'heroicon-o-sparkles',
                 'tone' => 'emerald',
             ],
             [
-                'label' => 'Catalogo de permissoes',
+                'label' => 'Catalogo de permissões',
                 'value' => number_format($stats['permissions'], 0, ',', '.'),
-                'description' => 'A base que alimenta seus niveis contextuais.',
+                'description' => 'A base que alimenta seus níveis contextuais.',
                 'icon' => 'heroicon-o-key',
                 'tone' => 'sky',
             ],
@@ -111,9 +111,9 @@ class ManageRoles extends ManageRecords
     public function getHighlights(): array
     {
         return [
-            'Niveis contextuais por tema de trabalho',
-            'Permissoes agrupadas para configuracao mais rapida',
-            'Criacao e edicao em slide-over sem sair da listagem',
+            'Níveis contextuais por tema de trabalho',
+            'Permissões agrupadas para configuração mais rapida',
+            'Criacao e edição em slide-over sem sair da listagem',
         ];
     }
 
@@ -122,11 +122,11 @@ class ManageRoles extends ManageRecords
         return [
             [
                 'title' => 'Modelo mais modular',
-                'description' => 'Organize os niveis por contexto, como inventario, merenda, pedidos e cadastros. Depois, combine quantos forem necessarios em cada usuario.',
+                'description' => 'Organize os níveis por contexto, como inventário, merenda, pedidos e cadastros. Depois, combine quantos forem necessários em cada usuário.',
             ],
             [
-                'title' => 'Menos manutencao manual',
-                'description' => 'Quando um tema muda, ajuste o nivel correspondente e a alteracao se propaga para todos que usam aquela composicao.',
+                'title' => 'Menos manutenção manual',
+                'description' => 'Quando um tema muda, ajuste o nível correspondente e a alteracao se propaga para todos que usam aquela composicao.',
             ],
         ];
     }

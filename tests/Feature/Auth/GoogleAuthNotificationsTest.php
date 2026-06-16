@@ -30,8 +30,8 @@ class GoogleAuthNotificationsTest extends TestCase
 
         $this->get(route('filament.admin.auth.login'))
             ->assertOk()
-            ->assertSee('Aguardando aprovacao')
-            ->assertSee('o acesso ainda depende da aprovacao do administrador');
+            ->assertSee('Aguardando aprovação')
+            ->assertSee('o acesso ainda depende da aprovação do administrador');
     }
 
     public function test_login_google_aprovado_mantem_notificacao_de_sucesso_para_o_painel(): void
@@ -62,7 +62,7 @@ class GoogleAuthNotificationsTest extends TestCase
         $this->get(route('filament.admin.auth.login'))
             ->assertOk()
             ->assertSee('Falha ao autenticar com Google')
-            ->assertSee('Sua sessao expirou durante o login com Google');
+            ->assertSee('Sua sessão expirou durante o login com Google');
     }
 
     public function test_erro_de_negocio_google_mantem_mensagem_util_ao_usuario(): void
@@ -92,7 +92,7 @@ class GoogleAuthNotificationsTest extends TestCase
         $this->get(route('filament.admin.auth.login'))
             ->assertOk()
             ->assertSee('Falha ao autenticar com Google')
-            ->assertSee('Nao foi possivel concluir o login com Google. Tente novamente em instantes.')
+            ->assertSee('Não foi possível concluir o login com Google. Tente novamente em instantes.')
             ->assertDontSee($technicalMessage);
     }
 

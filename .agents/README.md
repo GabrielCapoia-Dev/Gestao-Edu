@@ -41,6 +41,7 @@ Agents sao entradas de trabalho para a UI e para prompts padronizados. Skills sa
 - `gestao-edu-pedagogical-structure-manager`: usa `$gestao-edu-professores-turmas-componentes-flow` para professores, turmas, series, componentes e vinculos professor-componente-turma.
 - `gestao-edu-evaluations-manager`: usa `$gestao-edu-avaliacoes-flow` para avaliacoes, pautas, alternativas, respostas, dashboards e pareceres.
 - `gestao-edu-student-movement-manager`: usa `$gestao-edu-transferencia-remanejamento-flow` para transferencia, remanejamento, matricula pendente, bloqueios avaliativos e parecer de transferencia.
+- `gestao-edu-revisor-lingua-portuguesa`: usa `$gestao-edu-revisao-lingua-portuguesa` para revisar acentuacao, ortografia, gramatica e clareza dos textos visiveis sem alterar identificadores tecnicos.
 - `estoque-flow-mapper`: permanece como skill especializada para estoque, merenda, inventarios, reservas e romaneios.
 - `maintenance-flow-manager`: permanece como agent operacional composto para o modulo de manutencao, acionando as tres skills especializadas de manutencao.
 

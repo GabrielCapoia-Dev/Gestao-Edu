@@ -59,7 +59,7 @@ class TipoManutencaoService
 
                             Repeater::make('opcoes_data')
                                 ->label('Palavras-chave e frases prontas')
-                                ->helperText('Estas opcoes orientam a descricao do problema no pedido.')
+                                ->helperText('Estas opções orientam a descrição do problema no pedido.')
                                 ->schema([
                                     TextInput::make('texto')
                                         ->label('Frase')
@@ -110,7 +110,7 @@ class TipoManutencaoService
                 ->toggleable(),
 
             TextColumn::make('opcoes_count')
-                ->label('Opcoes')
+                ->label('Opções')
                 ->badge()
                 ->sortable(),
 

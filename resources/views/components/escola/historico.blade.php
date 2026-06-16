@@ -56,7 +56,7 @@
                 <tr>
                     <th>Data</th>
                     <th>Nome</th>
-                    <th>Email</th>
+                    <th>E-mail</th>
                     <th>Telefone</th>
                     <th>Logradouro</th>
                     <th>CEP</th>

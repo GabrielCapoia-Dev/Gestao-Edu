@@ -20,7 +20,7 @@ class ExportRequestController extends Controller
         $disk = Storage::disk($exportRequest->file_disk);
 
         if (! $disk->exists($exportRequest->file_path)) {
-            Log::warning('Arquivo de exportacao pronto nao encontrado no disco.', [
+            Log::warning('Arquivo de exportação pronto não encontrado no disco.', [
                 'export_request_id' => $exportRequest->getKey(),
                 'disk' => $exportRequest->file_disk,
                 'path' => $exportRequest->file_path,

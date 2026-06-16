@@ -16,13 +16,13 @@
             </article>
 
             <article class="fb-metric fb-metric--green">
-                <span>Satisfacao</span>
+                <span>Satisfação</span>
                 <strong>{{ $metricas['satisfacao'] }}%</strong>
                 <small>media das notas em percentual</small>
             </article>
 
             <article class="fb-metric fb-metric--amber">
-                <span>Avaliacoes</span>
+                <span>Avaliações</span>
                 <strong>{{ $metricas['total'] }}</strong>
                 <small>registros filtrados</small>
             </article>
@@ -48,7 +48,7 @@
                         <div class="fb-rank-row">
                             <div>
                                 <strong>{{ $empresa['nome'] }}</strong>
-                                <small>{{ $empresa['total'] }} avaliacao(oes) - media {{ number_format((float) $empresa['media'], 2, ',', '.') }}</small>
+                                <small>{{ $empresa['total'] }} avaliação(oes) - media {{ number_format((float) $empresa['media'], 2, ',', '.') }}</small>
                             </div>
                             <span>{{ $empresa['satisfacao'] }}%</span>
                             <div class="fb-bar"><i style="width: {{ $empresa['pct_barra'] }}%"></i></div>
@@ -63,7 +63,7 @@
                 <header class="fb-panel-head">
                     <div>
                         <p>Escolas</p>
-                        <h2>Satisfacao por escola</h2>
+                        <h2>Satisfação por escola</h2>
                     </div>
                 </header>
 
@@ -72,7 +72,7 @@
                         <div class="fb-rank-row">
                             <div>
                                 <strong>{{ $escola['nome'] }}</strong>
-                                <small>{{ $escola['total'] }} avaliacao(oes) - {{ $escola['criticas'] }} critica(s)</small>
+                                <small>{{ $escola['total'] }} avaliação(oes) - {{ $escola['criticas'] }} critica(s)</small>
                             </div>
                             <span>{{ $escola['satisfacao'] }}%</span>
                             <div class="fb-bar fb-bar--green"><i style="width: {{ $escola['pct_barra'] }}%"></i></div>
@@ -88,7 +88,7 @@
             <header class="fb-panel-head">
                 <div>
                     <p>Notas</p>
-                    <h2>Distribuicao das avaliacoes</h2>
+                    <h2>Distribuição das avaliações</h2>
                 </div>
             </header>
 
@@ -111,7 +111,7 @@
             <header class="fb-panel-head">
                 <div>
                     <p>Registros</p>
-                    <h2>Avaliacoes detalhadas</h2>
+                    <h2>Avaliações detalhadas</h2>
                 </div>
             </header>
 

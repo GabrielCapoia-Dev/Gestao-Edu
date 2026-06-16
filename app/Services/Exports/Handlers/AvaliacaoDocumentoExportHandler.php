@@ -21,18 +21,18 @@ class AvaliacaoDocumentoExportHandler implements ExportHandler
         $user = $exportRequest->user;
 
         if (! $user) {
-            throw new RuntimeException('Usuario da exportacao nao encontrado.');
+            throw new RuntimeException('Usuário da exportação não encontrado.');
         }
 
         $params = $exportRequest->filters ?? [];
         $format = strtolower((string) $exportRequest->format);
 
-        $exportRequest->updateProgress(10, 100, 'Preparando documentos de avaliacao.');
+        $exportRequest->updateProgress(10, 100, 'Preparando documentos de avaliação.');
 
         $response = match ($format) {
             'csv' => $this->service->exportarCsv($params, $user),
             'pdf' => $this->service->exportar($params, $user),
-            default => throw new RuntimeException("Formato de avaliacao nao suportado: {$format}."),
+            default => throw new RuntimeException("Formato de avaliação não suportado: {$format}."),
         };
 
         $exportRequest->updateProgress(90, 100, 'Salvando documento em armazenamento privado.');
@@ -40,7 +40,7 @@ class AvaliacaoDocumentoExportHandler implements ExportHandler
         return $this->storage->storeResponse(
             $exportRequest,
             $response,
-            'avaliacao-documento.' . $format,
+            'avaliação-documento.' . $format,
             $format === 'csv' ? 'text/csv' : 'application/pdf',
         );
     }

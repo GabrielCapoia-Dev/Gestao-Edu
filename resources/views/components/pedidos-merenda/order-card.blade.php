@@ -28,7 +28,7 @@
         <div>
             <h3 class="pmo-title">Pedido #{{ $pedido->id }}</h3>
             <div class="pmo-subtitle">
-                Criado por {{ $pedido->criado_por ?: 'Nao informado' }} em {{ $pedido->created_at?->format('d/m/Y H:i') }}
+                Criado por {{ $pedido->criado_por ?: 'Não informado' }} em {{ $pedido->created_at?->format('d/m/Y H:i') }}
             </div>
         </div>
 
@@ -83,7 +83,7 @@
                     type="button"
                     class="pm-btn pm-btn-danger"
                     wire:click="cancelarPedido({{ $pedido->id }})"
-                    wire:confirm="Confirma o cancelamento deste pedido? O saldo pendente sera devolvido aos contratos."
+                    wire:confirm="Confirma o cancelamento deste pedido? O saldo pendente será devolvido aos contratos."
                 >
                     Cancelar
                 </button>

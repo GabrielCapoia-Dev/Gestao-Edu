@@ -77,7 +77,7 @@ class AdminLoginController extends Controller
             RateLimiter::hit($throttleKey, 60);
 
             throw ValidationException::withMessages([
-                'email' => 'As credenciais informadas nao conferem.',
+                'email' => 'As credenciais informadas não conferem.',
             ]);
         }
 
@@ -184,10 +184,10 @@ class AdminLoginController extends Controller
         return [
             'status' => ['title' => 'Tudo certo', 'type' => 'success'],
             'success' => ['title' => 'Tudo certo', 'type' => 'success'],
-            'warning' => ['title' => 'Atencao', 'type' => 'warning'],
-            'error' => ['title' => 'Nao foi possivel continuar', 'type' => 'danger'],
-            'message' => ['title' => 'Informacao', 'type' => 'info'],
-            'session_expired' => ['title' => 'Sessao expirada', 'type' => 'warning'],
+            'warning' => ['title' => 'Atenção', 'type' => 'warning'],
+            'error' => ['title' => 'Não foi possível continuar', 'type' => 'danger'],
+            'message' => ['title' => 'Informação', 'type' => 'info'],
+            'session_expired' => ['title' => 'Sessão expirada', 'type' => 'warning'],
         ];
     }
 
@@ -206,9 +206,9 @@ class AdminLoginController extends Controller
     {
         return match ($this->normalizeNoticeType($status)) {
             'success' => 'Tudo certo',
-            'warning' => 'Atencao',
-            'danger' => 'Nao foi possivel continuar',
-            default => 'Informacao',
+            'warning' => 'Atenção',
+            'danger' => 'Não foi possível continuar',
+            default => 'Informação',
         };
     }
 }

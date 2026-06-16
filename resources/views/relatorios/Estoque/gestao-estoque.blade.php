@@ -1,7 +1,7 @@
 @extends('relatorios.layouts.base-pdf')
 
-@section('reportTitle', $reportTitle ?? 'Relatorio Geral de Estoque')
-@section('reportSubtitle', $reportSubtitle ?? 'Visao consolidada dos itens e do historico de movimentacoes')
+@section('reportTitle', $reportTitle ?? 'Relatório Geral de Estoque')
+@section('reportSubtitle', $reportSubtitle ?? 'Visão consolidada dos itens e do histórico de movimentações')
 
 @section('styles')
     .cards {
@@ -115,7 +115,7 @@
         </tr>
         <tr>
             <td>
-                <div class="label">Movimentacoes</div>
+                <div class="label">Movimentações</div>
                 <div class="value">{{ $metricas->total_movimentacoes }}</div>
             </td>
             <td>
@@ -135,7 +135,7 @@
 
     <div class="grid">
         <div class="col">
-            <div class="section-title">Distribuicao por Categoria</div>
+            <div class="section-title">Distribuição por categoria</div>
             <table class="listagem">
                 <thead>
                     <tr>
@@ -172,7 +172,7 @@
                         <td class="right">{{ $metricas->total_baixas }}</td>
                     </tr>
                     <tr>
-                        <th>Movimentacoes por item</th>
+                        <th>Movimentações por item</th>
                         <td class="right">
                             {{ $metricas->total_itens > 0 ? number_format($metricas->total_movimentacoes / $metricas->total_itens, 2, ',', '.') : '0,00' }}
                         </td>
@@ -193,7 +193,7 @@
         <thead>
             <tr>
                 <th>Item</th>
-                <th>Descricao</th>
+                <th>Descrição</th>
                 <th>Categoria</th>
                 <th>Unidade</th>
                 <th class="right">Quantidade</th>
@@ -220,7 +220,7 @@
         </tbody>
     </table>
 
-    <div class="section-title">Historico de Movimentacoes</div>
+    <div class="section-title">Histórico de Movimentações</div>
     <table class="listagem">
         <thead>
             <tr>
@@ -231,7 +231,7 @@
                 <th class="right">Quantidade</th>
                 <th>Pedido</th>
                 <th>Registrado por</th>
-                <th>Observacao</th>
+                <th>Observação</th>
             </tr>
         </thead>
         <tbody>
@@ -261,7 +261,7 @@
                 <th>Data</th>
                 <th>Item</th>
                 <th>Motivo</th>
-                <th>Descricao</th>
+                <th>Descrição</th>
                 <th class="right">Qtd.</th>
                 <th class="right">Saldo Antes</th>
                 <th class="right">Saldo Depois</th>

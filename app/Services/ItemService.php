@@ -41,13 +41,13 @@ class ItemService
     {
         return [
             TextColumn::make('codigo')
-                ->label('Codigo')
+                ->label('Código')
                 ->badge()
                 ->color('primary')
                 ->sortable()
                 ->searchable()
                 ->copyable()
-                ->copyMessage('Codigo copiado')
+                ->copyMessage('Código copiado')
                 ->copyMessageDuration(1500)
                 ->tooltip('Clique para copiar'),
 
@@ -67,7 +67,7 @@ class ItemService
                 ->sortable(),
 
             TextColumn::make('descricao')
-                ->label('Descricao')
+                ->label('Descrição')
                 ->sortable()
                 ->searchable()
                 ->toggleable(isToggledHiddenByDefault: true),
@@ -112,11 +112,11 @@ class ItemService
     {
         return $schema
             ->components([
-                Section::make('Identificacao do Item')
-                    ->description('O codigo UUID e gerado automaticamente e usado em buscas, contratos e importacoes.')
+                Section::make('Identificação do item')
+                    ->description('O código UUID é gerado automaticamente e usado em buscas, contratos e importações.')
                     ->schema([
                         TextInput::make('codigo')
-                            ->label('Codigo')
+                            ->label('Código')
                             ->disabled()
                             ->dehydrated(false)
                             ->visible(fn (?string $operation): bool => $operation !== 'create')
@@ -126,7 +126,7 @@ class ItemService
 
                         TextInput::make('nome')
                             ->label('Nome')
-                            ->helperText('Use um nome claro para facilitar localizacao e vinculacao em contratos.')
+                            ->helperText('Use um nome claro para facilitar localização e vinculação em contratos.')
                             ->required()
                             ->maxLength(255)
                             ->columnSpanFull(),
@@ -134,7 +134,7 @@ class ItemService
                     ->columnSpanFull(),
 
                 Section::make('Classificacao')
-                    ->description('Defina como o item sera agrupado e exibido em relatorios e listagens.')
+                    ->description('Defina como o item será agrupado e exibido em relatórios e listagens.')
                     ->schema([
                         Grid::make(2)
                             ->schema([
@@ -164,11 +164,11 @@ class ItemService
                     ->columnSpanFull(),
 
                 Section::make('Detalhes Adicionais')
-                    ->description('Campo opcional para observacoes curtas sobre apresentacao, uso ou identificacao.')
+                    ->description('Campo opcional para observações curtas sobre apresentação, uso ou identificação.')
                     ->schema([
                         Textarea::make('descricao')
-                            ->label('Descricao')
-                            ->helperText('Exemplo: embalagem, especificacao ou observacao util para a equipe.')
+                            ->label('Descrição')
+                            ->helperText('Exemplo: embalagem, especificação ou observação útil para a equipe.')
                             ->maxLength(100)
                             ->rows(3)
                             ->columnSpanFull(),

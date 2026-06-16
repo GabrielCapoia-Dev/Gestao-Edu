@@ -499,7 +499,7 @@
             <div class="alert-box">
                 <div class="alert-box-title">
                     <span>🔐</span>
-                    Por que estou vendo esta mensagem?
+                    Por que estou vendo está mensagem?
                 </div>
                 <div class="alert-box-text">
                     Seu usuário não possui as permissões adequadas ou você tentou acessar uma área administrativa.

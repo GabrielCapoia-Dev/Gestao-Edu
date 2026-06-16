@@ -8,8 +8,8 @@
         <div class="gi-modal av-modal--wide" role="dialog" aria-modal="true">
             <header>
                 <div>
-                    <p class="gi-eyebrow">Avaliacoes</p>
-                    <h3>{{ $avaliacaoIdEditando ? 'Editar Avaliacao' : 'Nova Avaliacao' }}</h3>
+                    <p class="gi-eyebrow">Avaliações</p>
+                    <h3>{{ $avaliacaoIdEditando ? 'Editar avaliação' : 'Nova avaliação' }}</h3>
                 </div>
 
                 <button type="button" wire:click="fecharModal">
@@ -20,7 +20,7 @@
             <div class="gi-modal-body">
                 <div class="av-form-grid av-form-grid--three">
                     <label class="gi-field av-span-2">
-                        <span>Nome da avaliacao</span>
+                        <span>Nome da avaliação</span>
                         <input type="text" wire:model.defer="form.nome" maxlength="255" />
                         @error('form.nome')
                             <p class="error">{{ $message }}</p>
@@ -43,9 +43,9 @@
 
                 <div class="av-form-grid av-form-grid--three">
                     <label class="gi-field">
-                        <span>Periodo</span>
+                        <span>Período</span>
                         <select wire:model.defer="form.periodo_avaliacao_id">
-                            <option value="">Selecione um periodo</option>
+                            <option value="">Selecione um período</option>
                             @foreach ($this->periodosOptions as $periodoId => $periodoNome)
                                 <option value="{{ $periodoId }}">{{ $periodoNome }}</option>
                             @endforeach
@@ -56,7 +56,7 @@
                     </label>
 
                     <label class="gi-field">
-                        <span>Ou cadastre novo periodo</span>
+                        <span>Ou cadastre novo período</span>
                         <input type="text" wire:model.defer="form.novo_periodo_nome" maxlength="255" placeholder="Ex.: 1º Semestre" />
                         @error('form.novo_periodo_nome')
                             <p class="error">{{ $message }}</p>
@@ -78,7 +78,7 @@
 
                 <div class="av-form-grid av-form-grid--three">
                     <label class="gi-field">
-                        <span>Data inicio</span>
+                        <span>Data início</span>
                         <input type="date" wire:model.defer="form.data_inicio" />
                         @error('form.data_inicio')
                             <p class="error">{{ $message }}</p>
@@ -96,7 +96,7 @@
 
                 <section class="av-form-section">
                     <h4>Escopo pedagogico</h4>
-                    <p>Selecione series, componentes e escolas. As pautas e turmas serao carregadas automaticamente por esse escopo.</p>
+                    <p>Selecione séries, componentes e escolas. As pautas e turmas serão carregadas automaticamente por esse escopo.</p>
 
                     <div class="av-filament-scope-form">
                         {{ $this->escopoForm }}
@@ -122,12 +122,12 @@
 
                     <div class="av-selection-grid">
                         <div>
-                            <small class="av-selection-title">Series selecionadas</small>
+                            <small class="av-selection-title">Séries selecionadas</small>
                             <div class="av-chip-grid">
                                 @forelse ($seriesSelecionadas as $serieSelecionada)
                                     <span class="av-chip">{{ $serieSelecionada }}</span>
                                 @empty
-                                    <span class="av-chip av-chip--muted">Nenhuma serie selecionada</span>
+                                    <span class="av-chip av-chip--muted">Nenhuma série selecionada</span>
                                 @endforelse
                             </div>
                         </div>
@@ -168,7 +168,7 @@
 
                 <section class="av-form-section">
                     <h4>Pautas carregadas automaticamente</h4>
-                    <p>As pautas abaixo foram carregadas por tipo + serie + componente. Você pode substituir as alternativas por pauta apenas nesta avaliacao.</p>
+                    <p>As pautas abaixo foram carregadas por tipo + série + componente. Você pode substituir as alternativas por pauta apenas nesta avaliação.</p>
 
                     @if ($this->pautasCarregadas->isEmpty())
                         <p class="gi-empty">Nenhuma pauta encontrada para o escopo atual.</p>
@@ -180,7 +180,7 @@
                                     <div>
                                         <strong>{{ $pauta->texto }}</strong>
                                         <small>
-                                            Serie: {{ $pauta->serie?->nome ?? 'Sem serie' }} |
+                                            Série: {{ $pauta->serie?->nome ?? 'Sem série' }} |
                                             Componente: {{ $pauta->componente?->nome ?? 'Sem componente' }}
                                         </small>
                                     </div>
@@ -189,7 +189,7 @@
                                         <span>Alternativas nesta pauta</span>
                                         <select wire:model.live="form.pautas_override_habilitado.{{ $pauta->id }}">
                                             <option value="0">Usar alternativas do tipo</option>
-                                            <option value="1">Substituir nessa avaliacao</option>
+                                            <option value="1">Substituir nessa avaliação</option>
                                         </select>
                                         @error('form.pautas_override_habilitado.' . $pauta->id)
                                             <p class="error">{{ $message }}</p>
@@ -213,7 +213,7 @@
                     Cancelar
                 </button>
                 <button type="button" class="gi-action gi-action--primary" wire:click="salvarAvaliacao">
-                    Salvar Avaliacao
+                    Salvar Avaliação
                 </button>
             </footer>
         </div>

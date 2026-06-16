@@ -34,7 +34,7 @@
 
     $prioridadeLabel = static fn ($pedido): string => match ($pedido->nivel_prioridade?->value) {
         'indeterminado' => 'Indeterminado',
-        default => $pedido->nivel_prioridade?->value ?? 'Nao Informado',
+        default => $pedido->nivel_prioridade?->value ?? 'Não informado',
     };
 
     $prioridadeCor = static fn ($pedido): string => match ($pedido->nivel_prioridade?->value) {
@@ -46,7 +46,7 @@
 @endphp
 @extends('relatorios.layouts.base-pdf')
 
-@section('reportTitle', $reportTitle ?? 'Relatorio Simplificado de Manutencao')
+@section('reportTitle', $reportTitle ?? 'Relatório Simplificado de Manutenção')
 @section('reportSubtitle', $reportSubtitle ?? null)
 
 @section('styles')
@@ -151,7 +151,7 @@
             $escola = $pedido->escola;
             $endereco = $escola
                 ? "{$escola->logradouro}, {$escola->numero} - {$escola->bairro}, {$escola->cidade}/{$escola->estado} - CEP: {$escola->cep}"
-                : 'Nao Informado';
+                : 'Não informado';
             $statusCor = '#' . ltrim($pedido->tipoStatus?->cor ?? '#9ca3af', '#');
             $imagens = ($pedido->fotos ?? collect())->filter($arquivoEhImagem)->values();
         @endphp
@@ -161,51 +161,51 @@
                 <tr>
                     <td>
                         <strong>Protocolo:</strong>
-                        {{ $pedido->numero_protocolo ?? 'Nao Informado' }}
+                        {{ $pedido->numero_protocolo ?? 'Não informado' }}
                     </td>
                     <td>
                         <strong>Data:</strong>
-                        {{ $pedido->data_solicitacao?->format('d/m/Y') ?? 'Nao Informado' }}
+                        {{ $pedido->data_solicitacao?->format('d/m/Y') ?? 'Não informado' }}
                     </td>
                     <td>
                         <strong>Status:</strong>
                         <span class="badge" style="background: {{ $statusCor }};">
-                            {{ $pedido->tipoStatus?->nome ?? 'Nao Informado' }}
+                            {{ $pedido->tipoStatus?->nome ?? 'Não informado' }}
                         </span>
                     </td>
                 </tr>
                 <tr>
                     <td>
-                        <strong>Identificacao do Problema:</strong>
-                        {{ $pedido->data_identificacao_problema?->format('d/m/Y') ?? 'Nao Informado' }}
+                        <strong>Identificação do problema:</strong>
+                        {{ $pedido->data_identificacao_problema?->format('d/m/Y') ?? 'Não informado' }}
                     </td>
                     <td>
                         <strong>Setor Atual:</strong>
-                        {{ $pedido->setor?->nome ?? 'Nao Informado' }}
+                        {{ $pedido->setor?->nome ?? 'Não informado' }}
                     </td>
                     <td>
                         <strong>Empresa:</strong>
-                        {{ $pedido->empresaContratada?->nome ?? 'Nao Informado' }}
+                        {{ $pedido->empresaContratada?->nome ?? 'Não informado' }}
                     </td>
                 </tr>
                 <tr>
                     <td>
                         <strong>Escola:</strong>
-                        {{ $escola?->nome ?? 'Nao Informado' }}
+                        {{ $escola?->nome ?? 'Não informado' }}
                     </td>
                     <td>
                         <strong>Solicitante:</strong>
-                        {{ $pedido->nome_solicitante ?? 'Nao Informado' }}
+                        {{ $pedido->nome_solicitante ?? 'Não informado' }}
                     </td>
                     <td>
                         <strong>Telefone:</strong>
-                        {{ $escola?->telefone ?? 'Nao Informado' }}
+                        {{ $escola?->telefone ?? 'Não informado' }}
                     </td>
                 </tr>
                 <tr>
                     <td>
                         <strong>E-mail:</strong>
-                        {{ $pedido->solicitante?->email ?? 'Nao Informado' }}
+                        {{ $pedido->solicitante?->email ?? 'Não informado' }}
                     </td>
                     <td colspan="2">
                         <strong>Endereco:</strong>
@@ -215,7 +215,7 @@
                 <tr>
                     <td>
                         <strong>Tipo:</strong>
-                        {{ $pedido->tipoManutencao?->nome ?? 'Nao Informado' }}
+                        {{ $pedido->tipoManutencao?->nome ?? 'Não informado' }}
                     </td>
                     <td></td>
                     <td>

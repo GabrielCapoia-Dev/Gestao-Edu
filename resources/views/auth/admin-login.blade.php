@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
-    <title>Login - Gestao Edu</title>
+    <title>Login - Gestão Edu</title>
     <style>
         :root {
             color-scheme: light;
@@ -954,7 +954,7 @@
     </svg>
 
     <main class="auth-shell">
-        <section class="brand-panel" aria-label="Gestao Edu">
+        <section class="brand-panel" aria-label="Gestão Edu">
             <div class="edu-icons" aria-hidden="true">
                 <span class="edu-icon icon-book"><svg><use href="#edu-icon-book"></use></svg></span>
                 <span class="edu-icon icon-calendar"><svg><use href="#edu-icon-calendar"></use></svg></span>
@@ -978,8 +978,8 @@
                 <div class="brand-lockup">
                     <span class="brand-mark" aria-hidden="true">G</span>
                     <span>
-                        <span class="brand-name">Gestao Edu</span>
-                        <span class="brand-subtitle">Secretaria de Educacao</span>
+                        <span class="brand-name">Gestão Edu</span>
+                        <span class="brand-subtitle">Secretaria de Educação</span>
                     </span>
                 </div>
 
@@ -991,8 +991,8 @@
 
             <div class="hero">
                 <span class="eyebrow">Prefeitura Municipal de Umuarama</span>
-                <h1>Gestao escolar simples, clara e conectada.</h1>
-                <p>Um painel para apoiar a rotina da Secretaria de Educacao com acesso rapido a escolas, avaliacoes, merenda, pedidos e relatorios.</p>
+                <h1>Gestão escolar simples, clara e conectada.</h1>
+                <p>Um painel para apoiar a rotina da Secretaria de Educação com acesso rápido a escolas, avaliações, merenda, pedidos e relatórios.</p>
             </div>
 
         </section>
@@ -1002,13 +1002,13 @@
                 <div class="mobile-brand">
                     <span class="brand-mark" aria-hidden="true">G</span>
                     <span>
-                        <span class="brand-name">Gestao Edu</span>
-                        <span class="brand-subtitle">Secretaria de Educacao</span>
+                        <span class="brand-name">Gestão Edu</span>
+                        <span class="brand-subtitle">Secretaria de Educação</span>
                     </span>
                 </div>
 
                 <h2 class="login-title" id="login-title">Acessar o sistema</h2>
-                <p class="intro">Entre com seu email institucional para continuar.</p>
+                <p class="intro">Entre com seu e-mail institucional para continuar.</p>
 
                 @if ($loginNotices !== [])
                     <div class="login-notices" role="status" aria-live="polite" aria-atomic="false">
@@ -1037,7 +1037,7 @@
                     @csrf
 
                     <div class="field">
-                        <label for="email">Email</label>
+                        <label for="email">E-mail</label>
                         <input
                             id="email"
                             name="email"
@@ -1089,7 +1089,7 @@
                         </label>
                     </div>
 
-                    <button class="submit" type="submit">Entrar no Sistema</button>
+                    <button class="submit" type="submit">Entrar no sistema</button>
                 </form>
 
                 <div class="divider">ou</div>

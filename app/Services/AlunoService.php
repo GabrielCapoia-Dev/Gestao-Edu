@@ -117,7 +117,7 @@ class AlunoService
                             && ! $this->formularioAlunoLiberadoAposCgm($get)),
 
                     DatePicker::make('data_matricula')
-                        ->label('Data de Matricula')
+                        ->label('Data de Matrícula')
                         ->native(false)
                         ->displayFormat('d/m/Y')
                         ->disabled(fn (Get $get, ?string $operation = null): bool => $operation === 'create'
@@ -233,7 +233,7 @@ class AlunoService
                         ->orWhereIn('sexo', $sexos);
                 }),
             ])
-            ->searchPlaceholder('Buscar por nome, CGM, status, turma, serie ou escola')
+            ->searchPlaceholder('Buscar por nome, CGM, status, turma, série ou escola')
             ->columns($this->colunasTabela())
             ->filters($this->filtrosTabela($user))
             ->recordActions($this->acoesTabela($user))
@@ -290,7 +290,7 @@ class AlunoService
                 ->toggleable(),
 
             TextColumn::make('data_matricula')
-                ->label('Data de Matricula')
+                ->label('Data de Matrícula')
                 ->date('d/m/Y')
                 ->sortable()
                 ->toggleable(),
@@ -414,14 +414,14 @@ class AlunoService
                 }),
 
             Action::make('parecer_transferencia')
-                ->label('Parecer de Transferencia')
+                ->label('Parecer de Transferência')
                 ->icon('heroicon-o-document-arrow-down')
                 ->color('info')
                 ->slideOver()
                 ->modalWidth('5xl')
                 ->modalSubmitAction(false)
                 ->modalCancelActionLabel('Fechar')
-                ->modalHeading(fn (Aluno $record): string => 'Parecer de Transferencia')
+                ->modalHeading(fn (Aluno $record): string => 'Parecer de Transferência')
                 ->modalDescription(fn (Aluno $record): string => trim(collect([
                     $record->nome,
                     'CGM: '.$record->cgm,
@@ -468,7 +468,7 @@ class AlunoService
                         );
                     } catch (MatriculaAlunoBloqueadaException $exception) {
                         Notification::make()
-                            ->title('Matricula impedida')
+                            ->title('Matrícula impedida')
                             ->body($exception->getMessage())
                             ->danger()
                             ->send();
@@ -502,8 +502,8 @@ class AlunoService
                 ->color('danger')
                 ->requiresConfirmation()
                 ->modalHeading('Excluir alunos selecionados')
-                ->modalDescription('A exclusao sera enviada para processamento em segundo plano. Voce podera continuar usando o sistema.')
-                ->modalSubmitActionLabel('Enviar para exclusao')
+                ->modalDescription('A exclusão será enviada para processamento em segundo plano. Você poderá continuar usando o sistema.')
+                ->modalSubmitActionLabel('Enviar para exclusão')
                 ->fetchSelectedRecords(false)
                 ->visible(fn () => ! $this->professorEstaBloqueado($user)
                     && ($user?->hasPermissionTo('Excluir Alunos em Massa') ?? false))
@@ -564,8 +564,8 @@ class AlunoService
         }
 
         return filled($get('cgm_encontrado_aluno_id'))
-            ? 'Aluno encontrado no sistema. Confira os dados e selecione serie e turma de destino.'
-            : 'CGM nao encontrado. Preencha os dados do novo aluno.';
+            ? 'Aluno encontrado no sistema. Confira os dados e selecione série e turma de destino.'
+            : 'CGM não encontrado. Preencha os dados do novo aluno.';
     }
 
     private function alunoPorCgmParaFormulario(string $cgm): ?Aluno

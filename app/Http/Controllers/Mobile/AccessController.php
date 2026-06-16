@@ -121,22 +121,22 @@ class AccessController extends Controller
     {
         return array_values(array_filter([
             Gate::allows('viewAny', User::class) ? $this->makeCard(
-                title: 'Usuarios',
-                description: 'Lista mobile com status de acesso, escola e niveis ativos.',
+                title: 'Usuários',
+                description: 'Lista mobile com status de acesso, escola e níveis ativos.',
                 url: route('mobile.users.index'),
                 badge: 'US',
                 tone: 'slate',
             ) : null,
             Gate::allows('viewAny', DominioEmail::class) ? $this->makeCard(
-                title: 'Dominios de e-mail',
-                description: 'Consulte quais dominios estao ativos e por qual setor foram organizados.',
+                title: 'Domínios de e-mail',
+                description: 'Consulte quais domínios estão ativos e por qual setor foram organizados.',
                 url: route('mobile.domains.index'),
                 badge: 'DM',
                 tone: 'amber',
             ) : null,
             Gate::allows('viewAny', Role::class) ? $this->makeCard(
-                title: 'Niveis de acesso',
-                description: 'Veja o catalogo de perfis e a distribuicao de permissoes.',
+                title: 'Níveis de acesso',
+                description: 'Veja o catalogo de perfis e a distribuicao de permissões.',
                 url: route('mobile.roles.index'),
                 badge: 'NA',
                 tone: 'sky',

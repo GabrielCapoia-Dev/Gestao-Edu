@@ -1104,7 +1104,7 @@
                         state.page = 1;
                         root.querySelector('[data-filter="busca"]').value = '';
                         root.querySelector('[data-filter="prioridade"]').value = 'todas';
-                        root.querySelector('[data-filter="periodo"]').value = '30';
+                        root.querySelector('[data-filter="período"]').value = '30';
                         load();
                     } else if (action === 'previous-page') {
                         state.page = Math.max(1, state.page - 1);

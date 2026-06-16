@@ -54,7 +54,7 @@ class PedidoGestaoForm
                                     $set('empresa_contratada_id', null);
                                 }
                             })
-                            ->helperText('As opcoes disponiveis dependem das permissoes e do acesso entre setores.')
+                            ->helperText('As opções disponíveis dependem das permissões e do acesso entre setores.')
                             ->placeholder('Padrão: Em Análise')
                             ->searchable()
                             ->nullable(),

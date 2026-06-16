@@ -1,61 +1,82 @@
 @extends('public.layout')
 
-@section('title', 'Politica de Privacidade | Gestao Edu')
-@section('description', 'Politica de Privacidade publica do sistema Gestao Edu.')
+@section('title', 'Política de Privacidade | Gestão Edu')
+@section('description', 'Política de Privacidade pública do sistema Gestão Edu.')
 
 @section('content')
-    <section class="document">
-        <div class="wrap">
+    <section class="document-shell">
+        <div class="wrap document-layout">
             <article class="document-card">
-                <p class="eyebrow">Conformidade</p>
-                <h1>Politica de Privacidade</h1>
+                <p class="eyebrow">Privacidade e segurança</p>
+                <h1>Política de Privacidade</h1>
                 <p>
-                    Esta Politica de Privacidade descreve como o Gestao Edu trata dados pessoais e operacionais
-                    usados pela Secretaria Municipal de Educacao de Umuarama no contexto da gestao educacional.
+                    Está Política de Privacidade apresenta, de forma objetiva, como o Gestão Edu trata dados
+                    pessoais e informações operacionais utilizados pela Secretaria Municipal de Educação de
+                    Umuarama no contexto da gestão educacional.
+                </p>
+                <p>
+                    O sistema é de uso institucional e deve ser acessado apenas por usuários autorizados,
+                    conforme a função exercida, o vínculo com escola ou setor e as permissões concedidas.
                 </p>
 
-                <h2>Dados coletados</h2>
-                <p>O sistema pode coletar e armazenar dados necessarios ao seu funcionamento, incluindo:</p>
+                <h2>Dados e informações tratados</h2>
+                <p>Para cumprir suas finalidades, o sistema pode registrar e armazenar informações como:</p>
                 <ul>
-                    <li>nome, e-mail institucional, identificadores de usuario e informacoes de perfil;</li>
-                    <li>foto ou dados basicos de perfil Google, quando o login Google for utilizado;</li>
-                    <li>vinculos com escola, setor, funcao, perfis de acesso, papeis e permissoes;</li>
-                    <li>registros operacionais inseridos nos modulos do sistema;</li>
-                    <li>arquivos, documentos e anexos necessarios aos fluxos autorizados;</li>
-                    <li>logs de acesso, auditoria, seguranca e historico de alteracoes.</li>
+                    <li>nome, e-mail institucional, identificadores de usuário e dados básicos de perfil;</li>
+                    <li>foto ou dados básicos de perfil do Google, quando o login Google for utilizado;</li>
+                    <li>vínculos com escola, setor, função, papéis, perfis de acesso e permissões;</li>
+                    <li>registros educacionais, administrativos e operacionais inseridos nos módulos do sistema;</li>
+                    <li>arquivos, documentos, anexos e evidências necessários aos fluxos autorizados;</li>
+                    <li>logs de acesso, auditoria, segurança e histórico de alterações.</li>
                 </ul>
 
-                <h2>Por que os dados sao coletados</h2>
-                <p>Os dados sao utilizados para:</p>
+                <h2>Finalidade do tratamento</h2>
+                <p>As informações são utilizadas para:</p>
                 <ul>
-                    <li>autenticar usuarios e controlar o acesso ao sistema;</li>
-                    <li>permitir a execucao de processos educacionais e administrativos;</li>
-                    <li>organizar informacoes por escola, setor, perfil e responsabilidade;</li>
-                    <li>gerar relatorios, documentos, indicadores e registros de acompanhamento;</li>
-                    <li>manter rastreabilidade, auditoria, suporte tecnico e seguranca da plataforma.</li>
+                    <li>autenticar usuários e controlar o acesso à plataforma;</li>
+                    <li>executar processos educacionais, administrativos e operacionais da rede municipal;</li>
+                    <li>organizar dados por escola, setor, perfil, função e responsabilidade institucional;</li>
+                    <li>gerar relatórios, documentos, indicadores e registros de acompanhamento;</li>
+                    <li>preservar rastreabilidade, auditoria, suporte técnico e segurança do sistema.</li>
                 </ul>
 
-                <h2>Quem utiliza as informacoes</h2>
+                <h2>Acesso às informações</h2>
                 <p>
-                    As informacoes sao acessadas apenas por usuarios autorizados da Secretaria Municipal de Educacao,
-                    unidades escolares, setores vinculados e equipe tecnica responsavel pela manutencao do sistema,
-                    sempre conforme perfil de acesso e necessidade institucional.
+                    As informações são acessadas somente por usuários autorizados da Secretaria Municipal de
+                    Educação, por unidades escolares, por setores vinculados e pela equipe técnica responsável
+                    pela manutenção da plataforma. O acesso deve observar o perfil de permissão e a necessidade
+                    institucional de cada atividade.
                 </p>
 
-                <h2>Como os dados sao protegidos</h2>
+                <h2>Proteção e segurança</h2>
                 <p>
-                    O Gestao Edu utiliza medidas tecnicas e administrativas para proteger as informacoes, incluindo
-                    acesso por usuario autenticado, controle de permissoes, conexao segura por HTTPS no ambiente
-                    publico, registros de auditoria, restricao de acesso por perfil e boas praticas de armazenamento.
+                    O Gestão Edu adota medidas técnicas e administrativas para proteger as informações, incluindo
+                    autenticação de usuário, controle de permissões, conexão segura por HTTPS no ambiente público,
+                    registros de auditoria, restrição de acesso por perfil e boas práticas de armazenamento.
                 </p>
 
-                <h2>Contato responsavel</h2>
+                <h2>Contato responsável</h2>
                 <p>
-                    Para assuntos relacionados a privacidade, seguranca ou tratamento de dados do Gestao Edu,
+                    Para assuntos relacionados à privacidade, à segurança ou ao tratamento de dados no Gestão Edu,
                     entre em contato pelo e-mail
                     <a href="mailto:automacao@edu.umuarama.pr.gov.br">automacao@edu.umuarama.pr.gov.br</a>.
                 </p>
             </article>
+
+            <aside class="document-side" aria-label="Informações da política">
+                <span class="status-pill">
+                    <span class="status-dot" aria-hidden="true"></span>
+                    Documento público
+                </span>
+                <p>
+                    Está página orienta usuários e responsáveis sobre o tratamento de informações no contexto
+                    institucional do Gestão Edu.
+                </p>
+                <p>
+                    O uso da plataforma também deve observar os
+                    <a href="{{ route('public.terms', [], false) }}">Termos de Serviço</a>.
+                </p>
+            </aside>
         </div>
     </section>
 @endsection

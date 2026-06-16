@@ -67,7 +67,7 @@ class AlternativaResource extends Resource
                             ->columnSpanFull(),
 
                         Textarea::make('descricao_documento')
-                            ->label('Descricao no documento')
+                            ->label('Descrição no documento')
                             ->rows(4)
                             ->maxLength(1000)
                             ->columnSpanFull(),
@@ -100,9 +100,9 @@ class AlternativaResource extends Resource
                     ->sortable(),
 
                 TextColumn::make('descricao_documento')
-                    ->label('Descricao no documento')
+                    ->label('Descrição no documento')
                     ->limit(80)
-                    ->placeholder('Sem descricao')
+                    ->placeholder('Sem descrição')
                     ->toggleable(),
 
                 IconColumn::make('status')

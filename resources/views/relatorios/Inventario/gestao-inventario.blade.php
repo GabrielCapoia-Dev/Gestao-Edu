@@ -1,7 +1,7 @@
 @extends('relatorios.layouts.base-pdf')
 
-@section('reportTitle', $reportTitle ?? 'Relatorio Geral de Inventario')
-@section('reportSubtitle', $reportSubtitle ?? 'Visao consolidada do inventario escolar')
+@section('reportTitle', $reportTitle ?? 'Relatório Geral de Inventário')
+@section('reportSubtitle', $reportSubtitle ?? 'Visão consolidada do inventário escolar')
 
 @section('styles')
     .cards {
@@ -108,7 +108,7 @@
                 <div class="value">{{ $metricas->itens_zerados }}</div>
             </td>
             <td>
-                <div class="label">Movimentacoes</div>
+                <div class="label">Movimentações</div>
                 <div class="value">{{ $metricas->total_movimentacoes }}</div>
             </td>
             <td>
@@ -170,12 +170,12 @@
         </div>
     </div>
 
-    <div class="section-title">Itens do Inventario</div>
+    <div class="section-title">Itens do Inventário</div>
     <table class="listagem">
         <thead>
             <tr>
                 <th>Item</th>
-                <th>Descricao</th>
+                <th>Descrição</th>
                 <th>Categoria</th>
                 <th>Unidade</th>
                 <th class="right">Quantidade</th>
@@ -206,7 +206,7 @@
         </tbody>
     </table>
 
-    <div class="section-title">Historico de Movimentacoes</div>
+    <div class="section-title">Histórico de Movimentações</div>
     <table class="listagem">
         <thead>
             <tr>
@@ -217,7 +217,7 @@
                 <th class="right">Quantidade</th>
                 <th>Pedido</th>
                 <th>Registrado por</th>
-                <th>Observacao</th>
+                <th>Observação</th>
             </tr>
         </thead>
         <tbody>
@@ -240,14 +240,14 @@
         </tbody>
     </table>
 
-    <div class="section-title">Baixas do Inventario</div>
+    <div class="section-title">Baixas do Inventário</div>
     <table class="listagem">
         <thead>
             <tr>
                 <th>Data</th>
                 <th>Item</th>
                 <th>Motivo</th>
-                <th>Descricao</th>
+                <th>Descrição</th>
                 <th class="right">Quantidade</th>
                 <th class="right">Saldo Antes</th>
                 <th class="right">Saldo Depois</th>

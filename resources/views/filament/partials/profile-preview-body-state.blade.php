@@ -6,7 +6,7 @@
         document.body?.classList.add('profile-preview-mode');
     </script>
     <div class="profile-preview-banner">
-        <span>Modo visualizacao</span>
+        <span>Modo visualização</span>
         <strong>{{ $targetUser->name }}</strong>
         <form method="POST" action="{{ route('profile-preview.stop') }}">
             @csrf

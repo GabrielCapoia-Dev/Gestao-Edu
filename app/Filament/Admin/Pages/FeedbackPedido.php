@@ -33,7 +33,7 @@ class FeedbackPedido extends Page implements HasTable
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::Star;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Manutencao';
+    protected static string|UnitEnum|null $navigationGroup = 'Manutenção';
 
     protected static ?string $navigationParentItem = 'Pedidos';
 
@@ -43,9 +43,9 @@ class FeedbackPedido extends Page implements HasTable
     {
         return view('filament.admin.pages.partials.page-header', [
             'actions' => $this->getCachedHeaderActions(),
-            'eyebrow' => 'Manutencao',
+            'eyebrow' => 'Manutenção',
             'title' => 'Feedback de Pedidos',
-            'description' => 'Acompanhe satisfacao das escolas, desempenho das empresas e relatorios de feedback em fila.',
+            'description' => 'Acompanhe satisfação das escolas, desempenho das empresas e relatórios de feedback em fila.',
         ]);
     }
 
@@ -108,7 +108,7 @@ class FeedbackPedido extends Page implements HasTable
                 Tables\Columns\TextColumn::make('reabrir_pedido')
                     ->label('Reaberto')
                     ->badge()
-                    ->formatStateUsing(fn ($state): string => $state ? 'Sim' : 'Nao')
+                    ->formatStateUsing(fn ($state): string => $state ? 'Sim' : 'Não')
                     ->color(fn ($state): string => $state ? 'danger' : 'success'),
 
                 Tables\Columns\TextColumn::make('created_at')
@@ -128,13 +128,13 @@ class FeedbackPedido extends Page implements HasTable
     {
         return [
             Tables\Filters\Filter::make('periodo')
-                ->label('Periodo do pedido')
+                ->label('Período do pedido')
                 ->visible(fn (): bool => filled($this->firstPedidoDate()))
                 ->columnSpan(4)
                 ->columns(2)
                 ->schema([
                     Forms\Components\DatePicker::make('data_inicio')
-                        ->label('Inicio')
+                        ->label('Início')
                         ->minDate(fn (): ?string => $this->firstPedidoDate())
                         ->maxDate(now()->toDateString()),
                     Forms\Components\DatePicker::make('data_fim')
@@ -160,7 +160,7 @@ class FeedbackPedido extends Page implements HasTable
                 ])),
 
             Tables\Filters\Filter::make('manutencao')
-                ->label('Manutencao')
+                ->label('Manutenção')
                 ->visible(fn (): bool => $this->tipoManutencaoOptions() !== [])
                 ->columnSpan(4)
                 ->columns(2)
@@ -175,8 +175,8 @@ class FeedbackPedido extends Page implements HasTable
                         ->afterStateUpdated(fn (callable $set): mixed => $set('tipo_manutencao_opcao_id', null)),
 
                     Forms\Components\Select::make('tipo_manutencao_opcao_id')
-                        ->label('Opcao do tipo')
-                        ->placeholder('Todas as opcoes')
+                        ->label('Opção do tipo')
+                        ->placeholder('Todas as opções')
                         ->options(fn (Get $get): array => $this->tipoManutencaoOpcaoOptions($get('tipo_manutencao_id')))
                         ->visible(fn (Get $get): bool => filled($get('tipo_manutencao_id')) && $this->tipoManutencaoOpcaoOptions($get('tipo_manutencao_id')) !== [])
                         ->searchable()
@@ -262,11 +262,11 @@ class FeedbackPedido extends Page implements HasTable
     {
         return [
             Actions\Action::make('exportar_feedback')
-                ->label('Gerar relatorio')
+                ->label('Gerar relatório')
                 ->icon('heroicon-o-arrow-down-tray')
                 ->visible(fn (): bool => User::authUser()?->hasPermissionLike('exportar relatorios') ?? false)
-                ->modalHeading('Gerar relatorio de feedback')
-                ->modalDescription('Informe obrigatoriamente o periodo do pedido. O PDF sera enviado para Minhas Exportacoes.')
+                ->modalHeading('Gerar relatório de feedback')
+                ->modalDescription('Informe obrigatoriamente o período do pedido. O PDF será enviado para Minhas Exportacoes.')
                 ->form($this->exportForm())
                 ->action(function (array $data): void {
                     $this->queueExport($data);
@@ -281,14 +281,14 @@ class FeedbackPedido extends Page implements HasTable
     {
         return [
             Forms\Components\Select::make('report_type')
-                ->label('Tipo de relatorio')
+                ->label('Tipo de relatório')
                 ->options($this->analytics()->reportTypeOptions())
                 ->default(FeedbackPedidoAnalyticsService::REPORT_GERAL)
                 ->required()
                 ->native(false),
 
             Forms\Components\DatePicker::make('data_inicio')
-                ->label('Data de inicio')
+                ->label('Data de início')
                 ->minDate(fn (): ?string => $this->firstPedidoDate())
                 ->maxDate(now()->toDateString())
                 ->required(),
@@ -315,7 +315,7 @@ class FeedbackPedido extends Page implements HasTable
                 ->nullable(),
 
             Forms\Components\Select::make('tipo_manutencao_id')
-                ->label('Tipo de manutencao')
+                ->label('Tipo de manutenção')
                 ->visible(fn (): bool => $this->tipoManutencaoOptions() !== [])
                 ->options(fn (): array => $this->tipoManutencaoOptions())
                 ->searchable()
@@ -325,7 +325,7 @@ class FeedbackPedido extends Page implements HasTable
                 ->nullable(),
 
             Forms\Components\Select::make('tipo_manutencao_opcao_id')
-                ->label('Opcao do tipo')
+                ->label('Opção do tipo')
                 ->options(fn (Get $get): array => $this->tipoManutencaoOpcaoOptions($get('tipo_manutencao_id')))
                 ->visible(fn (Get $get): bool => filled($get('tipo_manutencao_id')) && $this->tipoManutencaoOpcaoOptions($get('tipo_manutencao_id')) !== [])
                 ->searchable()
@@ -380,7 +380,7 @@ class FeedbackPedido extends Page implements HasTable
             );
 
             Notification::make()
-                ->title($exportRequest->wasRecentlyCreated ? 'Exportacao enviada para a fila' : 'Exportacao ja esta em andamento')
+                ->title($exportRequest->wasRecentlyCreated ? 'Exportação enviada para a fila' : 'Exportação já está em andamento')
                 ->body('Acompanhe o progresso em Minhas Exportacoes.')
                 ->success()
                 ->send();
@@ -390,7 +390,7 @@ class FeedbackPedido extends Page implements HasTable
             ]);
         } catch (Throwable $exception) {
             Notification::make()
-                ->title('Nao foi possivel iniciar a exportacao')
+                ->title('Não foi possível iniciar a exportação')
                 ->body($exception->getMessage())
                 ->danger()
                 ->send();

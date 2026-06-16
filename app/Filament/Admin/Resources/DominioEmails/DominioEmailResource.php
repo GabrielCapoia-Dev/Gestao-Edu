@@ -32,19 +32,19 @@ class DominioEmailResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::Envelope;
 
-    public static ?string $label = 'Dominio Permitido';
+    public static ?string $label = 'Domínio permitido';
 
-    public static ?string $pluralLabel = 'Dominios Permitidos';
+    public static ?string $pluralLabel = 'Domínios permitidos';
 
     protected static ?string $navigationParentItem = 'Usuários';
 
-    public static ?string $modelLabel = 'Dominio Permitido';
+    public static ?string $modelLabel = 'Domínio permitido';
 
     protected static string | UnitEnum | null $navigationGroup = 'Acesso';
 
-    public static ?string $navigationLabel = 'Dominios Permitidos';
+    public static ?string $navigationLabel = 'Domínios permitidos';
 
-    public static ?string $pluralModelLabel = 'Dominios Permitidos';
+    public static ?string $pluralModelLabel = 'Domínios permitidos';
 
     public static ?string $slug = 'dominio-emails';
 
@@ -53,11 +53,11 @@ class DominioEmailResource extends Resource
         return $schema
             ->components([
                 TextInput::make('dominio_email')
-                    ->label('Dominio Permitido')
+                    ->label('Domínio permitido')
                     ->required()
                     ->unique(ignoreRecord: true)
                     ->rule('regex:/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/')
-                    ->helperText('Digite o dominio sem o @, exemplo: dominio.com.br')
+                    ->helperText('Digite o domínio sem @. Exemplo: dominio.com.br.')
                     ->placeholder('dominio.com.br'),
 
                 TextInput::make('nome')
@@ -87,7 +87,7 @@ class DominioEmailResource extends Resource
             ->defaultPaginationPageOption(5)
             ->columns([
                 TextColumn::make('dominio_email')
-                    ->label('Email Dominio')
+                    ->label('Domínio de e-mail')
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('setor')

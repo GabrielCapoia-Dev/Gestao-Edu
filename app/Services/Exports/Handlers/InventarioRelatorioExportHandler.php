@@ -23,27 +23,27 @@ class InventarioRelatorioExportHandler implements ExportHandler
         $user = $exportRequest->user;
 
         if (! $user) {
-            throw new RuntimeException('Usuario da exportacao nao encontrado.');
+            throw new RuntimeException('Usuário da exportação não encontrado.');
         }
 
         $format = strtolower((string) $exportRequest->format);
         $filters = $exportRequest->filters ?? [];
 
-        $exportRequest->updateProgress(10, 100, 'Preparando dados de inventario.');
+        $exportRequest->updateProgress(10, 100, 'Preparando dados de inventário.');
 
         $response = match ($exportRequest->type) {
             'inventario_geral' => $this->handleGeral($filters, $format, $user),
             'inventario_rede' => $this->handleRede($filters, $format, $user),
             'inventario_item' => $this->handleItem($filters, $format, $user),
-            default => throw new RuntimeException("Tipo de inventario nao suportado: {$exportRequest->type}."),
+            default => throw new RuntimeException("Tipo de inventário não suportado: {$exportRequest->type}."),
         };
 
-        $exportRequest->updateProgress(90, 100, 'Salvando relatorio de inventario.');
+        $exportRequest->updateProgress(90, 100, 'Salvando relatório de inventário.');
 
         return $this->storage->storeResponse(
             $exportRequest,
             $response,
-            'relatorio-inventario.' . $format,
+            'relatório-inventário.' . $format,
             $format === 'xlsx'
                 ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
                 : 'application/pdf',
@@ -57,7 +57,7 @@ class InventarioRelatorioExportHandler implements ExportHandler
         return match ($format) {
             'pdf' => $this->service->gerarPdfGeral($inventario, $filters, $user),
             'xlsx' => $this->service->gerarXlsxGeral($inventario, $filters, $user),
-            default => throw new RuntimeException("Formato de inventario nao suportado: {$format}."),
+            default => throw new RuntimeException("Formato de inventário não suportado: {$format}."),
         };
     }
 
@@ -66,7 +66,7 @@ class InventarioRelatorioExportHandler implements ExportHandler
         return match ($format) {
             'pdf' => $this->service->gerarPdfEnviosEscolas($filters, $user),
             'xlsx' => $this->service->gerarXlsxEnviosEscolas($filters, $user),
-            default => throw new RuntimeException("Formato de inventario nao suportado: {$format}."),
+            default => throw new RuntimeException("Formato de inventário não suportado: {$format}."),
         };
     }
 
@@ -77,7 +77,7 @@ class InventarioRelatorioExportHandler implements ExportHandler
         return match ($format) {
             'pdf' => $this->service->gerarPdfItem($estoque, $user),
             'xlsx' => $this->service->gerarXlsxItem($estoque, $user),
-            default => throw new RuntimeException("Formato de inventario nao suportado: {$format}."),
+            default => throw new RuntimeException("Formato de inventário não suportado: {$format}."),
         };
     }
 }

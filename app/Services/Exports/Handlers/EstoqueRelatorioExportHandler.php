@@ -22,7 +22,7 @@ class EstoqueRelatorioExportHandler implements ExportHandler
         $user = $exportRequest->user;
 
         if (! $user) {
-            throw new RuntimeException('Usuario da exportacao nao encontrado.');
+            throw new RuntimeException('Usuário da exportação não encontrado.');
         }
 
         $format = strtolower((string) $exportRequest->format);
@@ -34,18 +34,18 @@ class EstoqueRelatorioExportHandler implements ExportHandler
             'estoque_geral' => match ($format) {
                 'pdf' => $this->service->gerarPdfGeral($filters, $user),
                 'xlsx' => $this->service->gerarXlsxGeral($filters, $user),
-                default => throw new RuntimeException("Formato de estoque nao suportado: {$format}."),
+                default => throw new RuntimeException("Formato de estoque não suportado: {$format}."),
             },
             'estoque_item' => $this->handleItem($filters, $format, $user),
-            default => throw new RuntimeException("Tipo de estoque nao suportado: {$exportRequest->type}."),
+            default => throw new RuntimeException("Tipo de estoque não suportado: {$exportRequest->type}."),
         };
 
-        $exportRequest->updateProgress(90, 100, 'Salvando relatorio de estoque.');
+        $exportRequest->updateProgress(90, 100, 'Salvando relatório de estoque.');
 
         return $this->storage->storeResponse(
             $exportRequest,
             $response,
-            'relatorio-estoque.' . $format,
+            'relatório-estoque.' . $format,
             $format === 'xlsx'
                 ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
                 : 'application/pdf',
@@ -59,7 +59,7 @@ class EstoqueRelatorioExportHandler implements ExportHandler
         return match ($format) {
             'pdf' => $this->service->gerarPdfItem($estoque, $user),
             'xlsx' => $this->service->gerarXlsxItem($estoque, $user),
-            default => throw new RuntimeException("Formato de estoque nao suportado: {$format}."),
+            default => throw new RuntimeException("Formato de estoque não suportado: {$format}."),
         };
     }
 }

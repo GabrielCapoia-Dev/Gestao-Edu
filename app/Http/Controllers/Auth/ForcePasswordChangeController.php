@@ -57,13 +57,13 @@ class ForcePasswordChangeController extends Controller
                 'password.required' => 'Informe a nova senha.',
                 'password.confirmed' => 'As senhas devem ser iguais.',
                 'password.min' => 'A senha deve ter pelo menos 8 caracteres.',
-                'password.mixed' => 'Use letras maiusculas e minusculas.',
-                'password.numbers' => 'Use pelo menos um numero.',
+                'password.mixed' => 'Use letras maiúsculas e minúsculas.',
+                'password.numbers' => 'Use pelo menos um número.',
                 'password.symbols' => 'Use pelo menos um caractere especial.',
             ],
             [
                 'password' => 'senha',
-                'password_confirmation' => 'confirmacao da senha',
+                'password_confirmation' => 'confirmação da senha',
             ],
         );
 

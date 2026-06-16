@@ -63,7 +63,7 @@ class SistemaNotification extends Notification implements ShouldQueue
 
     public function failed(Throwable $exception): void
     {
-        Log::error('Falha ao enviar notificacao do sistema.', [
+        Log::error('Falha ao enviar notificação do sistema.', [
             'titulo' => $this->titulo,
             'url' => $this->url,
             'prioridade' => $this->prioridade,

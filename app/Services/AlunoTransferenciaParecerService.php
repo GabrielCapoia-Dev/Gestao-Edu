@@ -24,11 +24,11 @@ class AlunoTransferenciaParecerService
         $aluno->loadMissing('turma.avaliacoes');
 
         if (! $aluno->estaMatriculado()) {
-            throw new RuntimeException('Somente alunos matriculados podem gerar parecer de transferencia.');
+            throw new RuntimeException('Somente alunos matriculados podem gerar parecer de transferência.');
         }
 
         if (! $aluno->turma) {
-            throw new NotFoundHttpException('Turma do aluno nao encontrada.');
+            throw new NotFoundHttpException('Turma do aluno não encontrada.');
         }
 
         $avaliacoes = $aluno->turma->avaliacoes()
@@ -37,14 +37,14 @@ class AlunoTransferenciaParecerService
             ->get(['avaliacoes.id', 'nome', 'data_inicio', 'data_fim', 'tipo_avaliacao_id', 'periodo_avaliacao_id']);
 
         if ($avaliacoes->isEmpty()) {
-            throw new NotFoundHttpException('Nenhuma avaliacao encontrada para gerar o parecer de transferencia.');
+            throw new NotFoundHttpException('Nenhuma avaliação encontrada para gerar o parecer de transferência.');
         }
 
         $zipPath = storage_path('app/parecer-transferencia-'.Str::uuid().'.zip');
         $zip = new ZipArchive();
 
         if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-            throw new RuntimeException('Nao foi possivel criar o arquivo de parecer de transferencia.');
+            throw new RuntimeException('Não foi possível criar o arquivo de parecer de transferência.');
         }
 
         $arquivos = 0;
@@ -54,7 +54,7 @@ class AlunoTransferenciaParecerService
                 (int) $avaliacao->id,
                 $aluno,
                 $usuario,
-                'parecer-transferencia'
+                'parecer-transferência'
             );
 
             $zip->addFromString($documento['filename'], $documento['contents']);
@@ -66,13 +66,13 @@ class AlunoTransferenciaParecerService
         if ($arquivos === 0) {
             @unlink($zipPath);
 
-            throw new NotFoundHttpException('Nenhum documento foi gerado para o parecer de transferencia.');
+            throw new NotFoundHttpException('Nenhum documento foi gerado para o parecer de transferência.');
         }
 
         $this->movimentacaoService->transferir($aluno, $usuario);
 
         return response()
-            ->download($zipPath, Str::slug('parecer-transferencia-'.$aluno->nome.'-'.$aluno->cgm).'.zip', [
+            ->download($zipPath, Str::slug('parecer-transferência-'.$aluno->nome.'-'.$aluno->cgm).'.zip', [
                 'Content-Type' => 'application/zip',
             ])
             ->deleteFileAfterSend(true);

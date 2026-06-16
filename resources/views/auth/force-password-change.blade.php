@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
-    <title>Redefinir senha - Gestao Edu</title>
+    <title>Redefinir senha - Gestão Edu</title>
     <style>
         :root {
             color-scheme: light;
@@ -763,20 +763,20 @@
                 <div class="brand">
                     <span class="brand-mark" aria-hidden="true">G</span>
                     <span>
-                        <span class="brand-title">Gestao Edu</span>
-                        <span class="brand-subtitle">Senha obrigatoria</span>
+                        <span class="brand-title">Gestão Edu</span>
+                        <span class="brand-subtitle">Senha obrigatória</span>
                     </span>
                 </div>
 
                 <div class="panel-content">
                     <h1 id="force-password-title">Redefina sua senha</h1>
-                    <p>Para continuar no sistema, cadastre uma senha pessoal usando letras, numeros e simbolos.</p>
+                    <p>Para continuar no sistema, cadastre uma senha pessoal usando letras, números e símbolos.</p>
                 </div>
             </section>
 
-            <section class="form-wrap" aria-label="Formulario de redefinicao de senha">
+            <section class="form-wrap" aria-label="Formulário de redefinição de senha">
                 <h2>Criar nova senha</h2>
-                <p class="intro">Depois de salvar, voce voltara para o login e entrara com a nova senha.</p>
+                <p class="intro">Depois de salvar, você voltará para o login e entrará com a nova senha.</p>
 
                 <div class="field">
                     <label for="password">Nova senha</label>
@@ -807,11 +807,11 @@
                 </div>
 
                 <ul class="requirements" aria-label="Requisitos da senha">
-                    <li data-rule="min">Minimo de 8 caracteres</li>
-                    <li data-rule="upper">Letra maiuscula</li>
-                    <li data-rule="lower">Letra minuscula</li>
-                    <li data-rule="number">Numero</li>
-                    <li data-rule="symbol">Caractere especial</li>
+                    <li data-rule="min">Mínimo de 8 caracteres</li>
+                    <li data-rule="upper">Letras maiúsculas</li>
+                    <li data-rule="lower">Letras minúsculas</li>
+                    <li data-rule="number">Números</li>
+                    <li data-rule="symbol">Caracteres especiais</li>
                 </ul>
 
                 <div class="field">
@@ -890,7 +890,7 @@
                 }
 
                 if (value === confirmation.value) {
-                    match.textContent = 'As senhas estao iguais.';
+                    match.textContent = 'As senhas estão iguais.';
                     match.className = 'match valid';
                 } else {
                     match.textContent = 'As senhas devem ser iguais.';

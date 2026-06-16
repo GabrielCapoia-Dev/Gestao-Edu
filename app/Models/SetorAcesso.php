@@ -33,7 +33,7 @@ class SetorAcesso extends Model
                 && (int) $acesso->setor_origem_id === (int) $acesso->setor_alvo_id
             ) {
                 throw ValidationException::withMessages([
-                    'setor_alvo_id' => 'Um setor nao pode possuir uma regra de acesso para ele mesmo.',
+                    'setor_alvo_id' => 'Um setor não pode possuir uma regra de acesso para ele mesmo.',
                 ]);
             }
         });

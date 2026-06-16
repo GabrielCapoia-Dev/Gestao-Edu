@@ -16,8 +16,8 @@ class AdminLoginNotificationsTest extends TestCase
     {
         $notifications = [
             Notification::make()
-                ->title('Aguardando aprovacao')
-                ->body('Seu acesso depende da aprovacao do administrador.')
+                ->title('Aguardando aprovação')
+                ->body('Seu acesso depende da aprovação do administrador.')
                 ->warning()
                 ->toArray(),
             Notification::make()
@@ -29,23 +29,23 @@ class AdminLoginNotificationsTest extends TestCase
 
         $session = [
             'filament.notifications' => $notifications,
-            'session_expired' => 'Sua sessao expirou. Faca login novamente.',
+            'session_expired' => 'Sua sessão expirou. Faça login novamente.',
             'status' => 'Senha redefinida. Entre novamente usando a nova senha.',
         ];
 
         $this->withSession($session)
             ->get(route('filament.admin.auth.login'))
             ->assertOk()
-            ->assertSee('Aguardando aprovacao')
+            ->assertSee('Aguardando aprovação')
             ->assertSee('Falha ao autenticar com Google')
-            ->assertSee('Sessao expirada')
+            ->assertSee('Sessão expirada')
             ->assertSee('Senha redefinida. Entre novamente usando a nova senha.');
 
         $this->get(route('filament.admin.auth.login'))
             ->assertOk()
-            ->assertDontSee('Aguardando aprovacao')
+            ->assertDontSee('Aguardando aprovação')
             ->assertDontSee('Falha ao autenticar com Google')
-            ->assertDontSee('Sua sessao expirou. Faca login novamente.')
+            ->assertDontSee('Sua sessão expirou. Faça login novamente.')
             ->assertDontSee('Senha redefinida. Entre novamente usando a nova senha.');
     }
 
@@ -82,7 +82,7 @@ class AdminLoginNotificationsTest extends TestCase
 
         $this->get(route('filament.admin.auth.login'))
             ->assertOk()
-            ->assertSee('Aguardando Aprova')
+            ->assertSee('Aguardando aprovação')
             ->assertSee('Entre em contato com o administrador');
 
         $this->assertGuest();

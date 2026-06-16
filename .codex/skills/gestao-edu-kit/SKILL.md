@@ -33,6 +33,7 @@ Escolher a skill especializada correta e montar uma sequencia segura de analise 
    - `$manutencao-fluxo-pedidos` para pedidos de manutencao, status, anexos, historico e notificacoes
    - `$manutencao-cadastros-tipos` para tipos, status, setores, empresas, seeders e permissoes de manutencao
    - `$manutencao-relatorios-feedback` para PDFs, exportacoes, dashboards, anexos e feedbacks de manutencao
+   - `$gestao-edu-revisao-lingua-portuguesa` sempre que a tarefa criar, alterar ou revisar textos visiveis
 5. Confirmar no codigo atual os pontos canonicos antes de propor alteracao.
 
 ## Checklist de analise
@@ -40,6 +41,7 @@ Escolher a skill especializada correta e montar uma sequencia segura de analise 
 - Identificar o dominio principal e os dominios transversais.
 - Confirmar se a mudanca toca permissao, policy, role, menu, `id_escola` ou `setor_id`.
 - Confirmar se ha efeito em dados historicos, exportacoes, notificacoes ou filas.
+- Revisar com `$gestao-edu-revisao-lingua-portuguesa` labels, mensagens, validacoes, notificacoes e saidas geradas que forem alteradas.
 - Localizar testes existentes antes de criar novos.
 - Preferir validacao focada por arquivo ou grupo pequeno de feature tests.
 - Registrar risco residual quando o fluxo depender de validacao manual.

@@ -46,7 +46,7 @@
                     </label>
 
                     <label class="pm-field">
-                        <span>Por pagina</span>
+                        <span>Por página</span>
                         <select wire:model.live="porPagina">
                             <option value="5">5</option>
                             <option value="10">10</option>
@@ -60,7 +60,7 @@
                 <div class="pm-inline-tools">
                     <label class="pm-check">
                         <input type="checkbox" wire:model.live="mostrarCancelados">
-                        <span>Incluir cancelados no historico final</span>
+                        <span>Incluir cancelados no histórico final</span>
                     </label>
 
                     <button type="button" wire:click="limparFiltros" class="pm-link-button">Limpar filtros</button>
@@ -78,7 +78,7 @@
                 @include('components.pedidos-merenda.table-partial-items', [
                     'itens' => $this->itensParciais,
                     'paginacao' => $this->paginacaoParcial,
-                    'secao' => 'parcial',
+                    'seção' => 'parcial',
                     'page' => $this,
                 ])
             </article>
@@ -95,7 +95,7 @@
             @include('components.pedidos-merenda.table-list', [
                 'pedidos' => $this->pedidosAguardando,
                 'paginacao' => $this->paginacaoAguardando,
-                'secao' => 'aguardando',
+                'seção' => 'aguardando',
                 'page' => $this,
                 'mostrarEmpenho' => true,
                 'compacta' => false,
@@ -106,7 +106,7 @@
         <section class="pm-panel pm-panel--wide" data-secao="finalizado">
             <div class="pm-panel-head">
                 <div>
-                    <p class="pm-panel-kicker">Historico</p>
+                    <p class="pm-panel-kicker">Histórico</p>
                     <h2>Pedidos entregues e cancelados</h2>
                 </div>
             </div>
@@ -114,7 +114,7 @@
             @include('components.pedidos-merenda.table-list', [
                 'pedidos' => $this->pedidosFinalizados,
                 'paginacao' => $this->paginacaoFinalizado,
-                'secao' => 'finalizado',
+                'seção' => 'finalizado',
                 'page' => $this,
                 'mostrarEmpenho' => false,
                 'compacta' => false,

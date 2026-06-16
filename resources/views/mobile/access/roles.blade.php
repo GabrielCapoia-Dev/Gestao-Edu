@@ -1,27 +1,27 @@
 @extends('mobile.layouts.app')
 
-@section('title', 'Niveis de Acesso | Gestao Edu Mobile')
+@section('title', 'Níveis de Acesso | Gestão Edu Mobile')
 
 @section('content')
     <section class="mobile-page-intro">
-        <p class="mobile-page-intro__eyebrow">Niveis</p>
-        <h1 class="mobile-page-intro__title">Catalogo de perfis e permissoes.</h1>
+        <p class="mobile-page-intro__eyebrow">Níveis</p>
+        <h1 class="mobile-page-intro__title">Catalogo de perfis e permissões.</h1>
         <p class="mobile-page-intro__subtitle">
-            A tela mobile prioriza leitura e entendimento rapido da estrutura de acesso.
+            A tela mobile prioriza leitura e entendimento rápido da estrutura de acesso.
         </p>
     </section>
 
     <section class="mobile-stats-grid">
         <article class="mobile-stat-card">
-            <small>Niveis cadastrados</small>
+            <small>Níveis cadastrados</small>
             <strong>{{ number_format($stats['roles'], 0, ',', '.') }}</strong>
         </article>
         <article class="mobile-stat-card">
-            <small>Com permissoes</small>
+            <small>Com permissões</small>
             <strong>{{ number_format($stats['withPermissions'], 0, ',', '.') }}</strong>
         </article>
         <article class="mobile-stat-card">
-            <small>Catalogo de permissoes</small>
+            <small>Catalogo de permissões</small>
             <strong>{{ number_format($stats['permissions'], 0, ',', '.') }}</strong>
         </article>
         <article class="mobile-stat-card">
@@ -31,7 +31,7 @@
     </section>
 
     <form method="GET" class="mobile-filter-form">
-        <input type="search" name="search" value="{{ $search }}" class="mobile-input" placeholder="Buscar nivel de acesso">
+        <input type="search" name="search" value="{{ $search }}" class="mobile-input" placeholder="Buscar nível de acesso">
         <button type="submit" class="mobile-button mobile-button--primary">Filtrar</button>
     </form>
 
@@ -45,16 +45,16 @@
                     </div>
 
                     <span class="mobile-status-badge is-info">
-                        {{ $role->permissions_count }} permissoes
+                        {{ $role->permissions_count }} permissões
                     </span>
                 </div>
 
                 <div class="mobile-meta-list">
-                    <span><strong>Usuarios com este nivel:</strong> {{ $role->users_count }}</span>
+                    <span><strong>Usuários com este nível:</strong> {{ $role->users_count }}</span>
                 </div>
             </article>
         @empty
-            <div class="mobile-empty">Nenhum nivel encontrado com os filtros atuais.</div>
+            <div class="mobile-empty">Nenhum nível encontrado com os filtros atuais.</div>
         @endforelse
     </section>
 

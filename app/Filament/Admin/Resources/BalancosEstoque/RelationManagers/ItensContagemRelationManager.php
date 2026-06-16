@@ -23,7 +23,7 @@ class ItensContagemRelationManager extends RelationManager
 {
     protected static string $relationship = 'itensContagem';
 
-    protected static ?string $title = 'Itens do Balanco';
+    protected static ?string $title = 'Itens do Balanço';
 
     public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
     {
@@ -65,7 +65,7 @@ class ItensContagemRelationManager extends RelationManager
                     ->numeric(decimalPlaces: 3, decimalSeparator: ',', thousandsSeparator: '.')
                     ->color(fn (BalancoEstoqueItem $record): string => (float) ($record->diferenca ?? 0) === 0.0 ? 'gray' : 'warning'),
                 TextColumn::make('valor_unitario_referencia')
-                    ->label('Valor unitario')
+                    ->label('Valor unitário')
                     ->money('BRL')
                     ->placeholder('-'),
                 TextColumn::make('valor_impacto')
@@ -85,7 +85,7 @@ class ItensContagemRelationManager extends RelationManager
                     ->label('Contado por')
                     ->placeholder('-'),
                 TextColumn::make('observacao_contagem')
-                    ->label('Observacao')
+                    ->label('Observação')
                     ->limit(60)
                     ->wrap(),
             ])
@@ -107,7 +107,7 @@ class ItensContagemRelationManager extends RelationManager
                             ->minValue(0)
                             ->step('0.001'),
                         Textarea::make('observacao_contagem')
-                            ->label('Observacao da contagem')
+                            ->label('Observação da contagem')
                             ->rows(4)
                             ->maxLength(1500),
                     ])
@@ -139,7 +139,7 @@ class ItensContagemRelationManager extends RelationManager
                     ->color('gray')
                     ->requiresConfirmation()
                     ->modalHeading('Manter saldo atual')
-                    ->modalDescription('A quantidade contada dos itens selecionados sera preenchida com o saldo atual do sistema, zerando a divergencia desses registros.')
+                    ->modalDescription('A quantidade contada dos itens selecionados será preenchida com o saldo atual do sistema, zerando a divergência desses registros.')
                     ->visible(fn (): bool => $this->getOwnerRecord()->isEmAndamento() && (Auth::user()?->hasPermissionTo('Registrar Contagem de Balanços de Estoque') ?? false))
                     ->deselectRecordsAfterCompletion()
                     ->action(function (EloquentCollection $records): void {

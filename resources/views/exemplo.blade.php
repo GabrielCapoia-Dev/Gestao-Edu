@@ -718,7 +718,7 @@ const dispDep = itemId => {
 };
 
 const statusBadge = s => {
-  const map={pendente:'badge-pending',aprovado:'badge-approved',enviado:'badge-sent',recebido:'badge-received',cancelado:'badge-canceled',gerado:'badge-gerado',concluido:'badge-concluido'};
+  const map={pendente:'badge-pending',aprovado:'badge-approved',enviado:'badge-sent',recebido:'badge-received',cancelado:'badge-canceled',gerado:'badge-gerado',concluido:'badge-concluído'};
   return `<span class="badge ${map[s]||'badge-info'}">${s}</span>`;
 };
 

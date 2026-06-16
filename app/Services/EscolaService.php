@@ -54,7 +54,7 @@ class EscolaService
                 ->searchable(),
 
             TextColumn::make('email')
-                ->label('Email')
+                ->label('E-mail')
                 ->toggleable(),
 
             TextColumn::make('telefone')
@@ -220,7 +220,7 @@ class EscolaService
                                 ->maxLength(100),
 
                             TextInput::make('email')
-                                ->label('Email')
+                                ->label('E-mail')
                                 ->required()
                                 ->email()
                                 ->maxLength(150),

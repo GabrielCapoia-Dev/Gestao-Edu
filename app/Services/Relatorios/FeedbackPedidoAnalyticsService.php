@@ -33,9 +33,9 @@ class FeedbackPedidoAnalyticsService
     public function reportTypeOptions(): array
     {
         return [
-            self::REPORT_GERAL => 'Satisfacao geral',
+            self::REPORT_GERAL => 'Satisfação geral',
             self::REPORT_EMPRESAS => 'Desempenho das empresas',
-            self::REPORT_ESCOLAS => 'Satisfacao das escolas',
+            self::REPORT_ESCOLAS => 'Satisfação das escolas',
             self::REPORT_LISTAGEM => 'Listagem filtrada',
         ];
     }
@@ -109,11 +109,11 @@ class FeedbackPedidoAnalyticsService
     public function assertReportFilters(array $filters): void
     {
         if (blank($filters['data_inicio'] ?? null) || blank($filters['data_fim'] ?? null)) {
-            throw new InvalidArgumentException('Informe data de inicio e data de fim para gerar o relatorio.');
+            throw new InvalidArgumentException('Informe data de início e data de fim para gerar o relatório.');
         }
 
         if (Carbon::parse($filters['data_inicio'])->gt(Carbon::parse($filters['data_fim']))) {
-            throw new InvalidArgumentException('A data de inicio nao pode ser maior que a data de fim.');
+            throw new InvalidArgumentException('A data de início não pode ser maior que a data de fim.');
         }
     }
 
@@ -301,7 +301,7 @@ class FeedbackPedidoAnalyticsService
             ->distinct()
             ->orderBy('reabrir_pedido')
             ->pluck('reabrir_pedido')
-            ->mapWithKeys(fn (bool|int|string $value): array => [(string) (int) $value => $value ? 'Sim' : 'Nao'])
+            ->mapWithKeys(fn (bool|int|string $value): array => [(string) (int) $value => $value ? 'Sim' : 'Não'])
             ->toArray();
     }
 
@@ -472,11 +472,11 @@ class FeedbackPedidoAnalyticsService
     {
         $filters = $this->normalizeFilters($filters);
         $formatted = [
-            'Relatorio' => $this->reportTypeLabel($filters['report_type'] ?? null),
+            'Relatório' => $this->reportTypeLabel($filters['report_type'] ?? null),
         ];
 
         if (isset($filters['data_inicio'], $filters['data_fim'])) {
-            $formatted['Periodo'] = Carbon::parse($filters['data_inicio'])->format('d/m/Y') . ' a ' . Carbon::parse($filters['data_fim'])->format('d/m/Y');
+            $formatted['Período'] = Carbon::parse($filters['data_inicio'])->format('d/m/Y') . ' a ' . Carbon::parse($filters['data_fim'])->format('d/m/Y');
         }
 
         if (isset($filters['valor'])) {
@@ -488,11 +488,11 @@ class FeedbackPedidoAnalyticsService
         }
 
         if (isset($filters['tipo_manutencao_id'])) {
-            $formatted['Tipo de manutencao'] = TipoManutencao::query()->find($filters['tipo_manutencao_id'])?->nome ?? 'N/A';
+            $formatted['Tipo de manutenção'] = TipoManutencao::query()->find($filters['tipo_manutencao_id'])?->nome ?? 'N/A';
         }
 
         if (isset($filters['tipo_manutencao_opcao_id'])) {
-            $formatted['Opcao do tipo'] = TipoManutencaoOpcao::query()->find($filters['tipo_manutencao_opcao_id'])?->texto ?? 'N/A';
+            $formatted['Opção do tipo'] = TipoManutencaoOpcao::query()->find($filters['tipo_manutencao_opcao_id'])?->texto ?? 'N/A';
         }
 
         if (isset($filters['escola_id'])) {
@@ -508,7 +508,7 @@ class FeedbackPedidoAnalyticsService
         }
 
         if (array_key_exists('reabrir_pedido', $filters)) {
-            $formatted['Reabertura'] = $filters['reabrir_pedido'] ? 'Sim' : 'Nao';
+            $formatted['Reabertura'] = $filters['reabrir_pedido'] ? 'Sim' : 'Não';
         }
 
         return $formatted;

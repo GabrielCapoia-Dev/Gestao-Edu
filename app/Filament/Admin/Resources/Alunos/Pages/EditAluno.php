@@ -33,7 +33,7 @@ class EditAluno extends EditRecord
             );
         } catch (MatriculaAlunoBloqueadaException $exception) {
             Notification::make()
-                ->title('Matricula impedida')
+                ->title('Matrícula impedida')
                 ->body($exception->getMessage())
                 ->danger()
                 ->send();

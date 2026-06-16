@@ -56,7 +56,7 @@ class PedidoRelatorioService
             'pedido' => $pedido,
             'usuarioExportacao' => $usuario,
             'dataExportacao' => now(),
-            'reportTitle' => 'Relatorio Tecnico de Manutencao',
+            'reportTitle' => 'Relatório Técnico de Manutenção',
             'reportSubtitle' => "Protocolo {$pedido->numero_protocolo}",
         ], "Pedido-{$nomeArquivo}.pdf");
     }

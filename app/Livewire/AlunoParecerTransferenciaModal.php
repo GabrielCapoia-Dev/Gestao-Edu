@@ -151,7 +151,7 @@ class AlunoParecerTransferenciaModal extends Component
         if (! $aluno->estaMatriculado()) {
             Notification::make()
                 ->title('Parecer somente para consulta.')
-                ->body('Alunos historicos permanecem disponiveis para visualizacao, sem alteracao de respostas ou transferencia.')
+                ->body('Alunos históricos permanecem disponíveis para visualização, sem alteração de respostas ou transferência.')
                 ->warning()
                 ->send();
 
@@ -160,7 +160,7 @@ class AlunoParecerTransferenciaModal extends Component
 
         if (! $this->podeGerarParecer) {
             Notification::make()
-                ->title('Sem permissao para gerar o parecer.')
+                ->title('Sem permissão para gerar o parecer.')
                 ->warning()
                 ->send();
 
@@ -175,7 +175,7 @@ class AlunoParecerTransferenciaModal extends Component
             $response = $service->exportarETransferir($aluno, $usuario);
 
             Notification::make()
-                ->title('Parecer de Transferencia gerado.')
+                ->title('Parecer de Transferência gerado.')
                 ->body('O aluno foi marcado como Transferido.')
                 ->success()
                 ->send();
@@ -185,7 +185,7 @@ class AlunoParecerTransferenciaModal extends Component
             return $response;
         } catch (RuntimeException $exception) {
             Notification::make()
-                ->title('Nao foi possivel gerar o parecer.')
+                ->title('Não foi possível gerar o parecer.')
                 ->body($exception->getMessage())
                 ->danger()
                 ->send();
@@ -454,7 +454,7 @@ class AlunoParecerTransferenciaModal extends Component
             $this->persistirRespostaParecer($aluno, $avaliacaoId, $pautaId, false);
         } catch (RuntimeException $exception) {
             Notification::make()
-                ->title('Nao foi possivel salvar a resposta.')
+                ->title('Não foi possível salvar a resposta.')
                 ->body($exception->getMessage())
                 ->danger()
                 ->send();
@@ -520,7 +520,7 @@ class AlunoParecerTransferenciaModal extends Component
                 ->firstWhere('id', $alternativaId);
 
             if (! $alternativaSelecionada) {
-                throw new RuntimeException('A alternativa selecionada nao pertence a pauta informada.');
+                throw new RuntimeException('A alternativa selecionada não pertence a pauta informada.');
             }
         }
 
@@ -530,7 +530,7 @@ class AlunoParecerTransferenciaModal extends Component
             : null;
 
         if ($temObservacao && $validarObservacaoObrigatoria && $observacao === '') {
-            throw new RuntimeException('Preencha a observacao obrigatoria das alternativas que exigem observacao.');
+            throw new RuntimeException('Preencha a observação obrigatória das alternativas que exigem observação.');
         }
 
         AvaliacaoResposta::query()->updateOrCreate(

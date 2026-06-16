@@ -18,7 +18,7 @@
                     <th>Empresas</th>
                     <th>Criado em</th>
                 @endunless
-                <th class="text-right">Acoes</th>
+                <th class="text-right">Ações</th>
             </tr>
         </thead>
         <tbody>
@@ -33,7 +33,7 @@
                 <tr>
                     <td>
                         <strong>#{{ $pedido->id }}</strong>
-                        <small>{{ $pedido->criado_por ?: 'Nao informado' }}</small>
+                        <small>{{ $pedido->criado_por ?: 'Não informado' }}</small>
                     </td>
                     <td>
                         <strong>{{ $pedido->itens_count ?? $pedido->itens->count() }} item(ns)</strong>
@@ -71,7 +71,7 @@
                                     type="button"
                                     class="danger"
                                     wire:click="cancelarPedido({{ $pedido->id }})"
-                                    wire:confirm="Confirma o cancelamento deste pedido? O saldo pendente sera devolvido aos contratos."
+                                    wire:confirm="Confirma o cancelamento deste pedido? O saldo pendente será devolvido aos contratos."
                                 >
                                     Cancelar
                                 </button>

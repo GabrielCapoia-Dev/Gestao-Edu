@@ -94,7 +94,7 @@ class EditProfile extends BaseEditProfile
                     ])
                     ->extraAttributes(['class' => 'edu-profile-account-section']),
 
-                Section::make('Seguranca da conta')
+                Section::make('Segurança da conta')
                     ->description('Preencha somente se quiser alterar sua senha.')
                     ->schema([
                         Grid::make([
@@ -122,7 +122,7 @@ class EditProfile extends BaseEditProfile
             ->visibility('public')
             ->maxSize(2048)
             ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
-            ->helperText('JPG, PNG ou WebP, ate 2 MB.');
+            ->helperText('JPG, PNG ou WebP, até 2 MB.');
     }
 
     protected function getNameFormComponent(): Component
@@ -173,7 +173,7 @@ class EditProfile extends BaseEditProfile
     protected function getCancelFormAction(): Action
     {
         return Action::make('back')
-            ->label('Voltar ao Inicio')
+            ->label('Voltar ao Início')
             ->icon('heroicon-o-home')
             ->color('gray')
             ->action(fn () => $this->redirect(Filament::getUrl()));

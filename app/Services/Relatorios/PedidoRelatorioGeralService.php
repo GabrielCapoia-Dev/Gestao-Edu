@@ -38,11 +38,11 @@ class PedidoRelatorioGeralService
             'pedidos' => $this->buscarPedidosLeve($filtros, $usuario),
             'filtros' => $reportFilters,
             'reportFilters' => $reportFilters,
-            'reportTitle' => 'Relatorio Analitico de Pedidos de Manutencao',
-            'reportSubtitle' => 'Visao consolidada com indicadores e listagem detalhada',
+            'reportTitle' => 'Relatório Analítico de Pedidos de Manutenção',
+            'reportSubtitle' => 'Visão consolidada com indicadores e listagem detalhada',
             'usuarioExportacao' => $usuario,
             'dataExportacao' => Carbon::now(),
-        ], 'relatorio-pedidos-' . now()->format('Y-m-d_H-i') . '.pdf');
+        ], 'relatório-pedidos-' . now()->format('Y-m-d_H-i') . '.pdf');
     }
 
     protected function calcularMetricas(array $filtros, User $usuario): object
@@ -131,7 +131,7 @@ class PedidoRelatorioGeralService
             ->limit(8)
             ->get()
             ->map(fn ($r) => (object) [
-                'nome' => $r->nome ?? 'Nao Informado',
+                'nome' => $r->nome ?? 'Não Informado',
                 'total' => (int) $r->total,
                 'concluidos' => (int) $r->concluidos,
                 'taxa' => $r->total > 0 ? round(($r->concluidos / $r->total) * 100) : 0,
@@ -151,7 +151,7 @@ class PedidoRelatorioGeralService
         $max = $rows->max('total') ?: 1;
 
         return $rows->map(fn ($r) => (object) [
-            'nome' => $r->nome ?? 'Nao Informada',
+            'nome' => $r->nome ?? 'Não Informada',
             'total' => (int) $r->total,
             'pct_bar' => round(($r->total / $max) * 100),
         ]);
@@ -292,7 +292,7 @@ class PedidoRelatorioGeralService
         $r = [];
 
         if (! empty($filtros['data_inicio']) || ! empty($filtros['data_fim'])) {
-            $de = ! empty($filtros['data_inicio']) ? Carbon::parse($filtros['data_inicio'])->format('d/m/Y') : 'Inicio';
+            $de = ! empty($filtros['data_inicio']) ? Carbon::parse($filtros['data_inicio'])->format('d/m/Y') : 'Início';
             $ate = ! empty($filtros['data_fim']) ? Carbon::parse($filtros['data_fim'])->format('d/m/Y') : 'Atual';
             $r['periodo'] = "{$de} a {$ate}";
         }

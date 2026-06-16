@@ -247,7 +247,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
             ->map(fn(Pauta $pauta): Select => Select::make("alternativas_override.{$pauta->id}")
                 ->key($this->alternativasOverrideComponentKey((int) $pauta->id))
                 ->label('Alternativas de override')
-                ->helperText('Selecione uma ou mais alternativas para esta pauta apenas nesta avaliacao.')
+                ->helperText('Selecione uma ou mais alternativas para esta pauta apenas nesta avaliação.')
                 ->options(fn(): array => $this->alternativasAtivasOptions)
                 ->multiple()
                 ->native(false)

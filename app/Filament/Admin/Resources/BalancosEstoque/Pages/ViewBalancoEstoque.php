@@ -301,7 +301,7 @@ class ViewBalancoEstoque extends ViewRecord
         $bloqueados = $itens->where('bloqueado', true)->count();
         $disponiveis = $total - $bloqueados;
 
-        return "{$total} item(ns) neste tipo, {$disponiveis} disponivel(is) e {$bloqueados} bloqueado(s).";
+        return "{$total} item(ns) neste tipo, {$disponiveis} disponível(is) e {$bloqueados} bloqueado(s).";
     }
 
     protected function labelTipoInicio(string $tipo): string

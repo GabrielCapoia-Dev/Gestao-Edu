@@ -4,8 +4,8 @@
         class="online-users-card"
         wire:click="togglePanel"
         aria-expanded="{{ $open ? 'true' : 'false' }}"
-        aria-label="Ver usuarios online"
-        title="Usuarios online"
+        aria-label="Ver usuários online"
+        title="Usuários online"
     >
         <span class="online-users-dot" aria-hidden="true"></span>
         <span class="online-users-count">{{ $onlineCount }}</span>
@@ -16,14 +16,14 @@
         <div class="online-users-popover" wire:click.outside="closePanel">
             <div class="online-users-popover-header">
                 <div>
-                    <strong>Usuarios</strong>
+                    <strong>Usuários</strong>
                     <span>{{ $onlineCount }} de {{ $totalUsers }} online</span>
                 </div>
 
                 <button
                     type="button"
                     wire:click="closePanel"
-                    aria-label="Fechar lista de usuarios"
+                    aria-label="Fechar lista de usuários"
                 >
                     <x-heroicon-o-x-mark />
                 </button>
@@ -42,7 +42,7 @@
                             </div>
                         </div>
                     @empty
-                        <p class="online-users-empty">Nenhum usuario online.</p>
+                        <p class="online-users-empty">Nenhum usuário online.</p>
                     @endforelse
                 </section>
 
@@ -58,7 +58,7 @@
                             </div>
                         </div>
                     @empty
-                        <p class="online-users-empty">Nenhum usuario offline.</p>
+                        <p class="online-users-empty">Nenhum usuário offline.</p>
                     @endforelse
                 </section>
             </div>

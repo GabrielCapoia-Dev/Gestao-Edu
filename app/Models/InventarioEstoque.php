@@ -86,7 +86,7 @@ class InventarioEstoque extends Model
         $saldoAtual = (float) $this->quantidade;
 
         if ($quantidade > $saldoAtual) {
-            throw new \DomainException('Quantidade de saida maior que o saldo em inventario.');
+            throw new \DomainException('Quantidade de saída maior que o saldo em inventário.');
         }
 
         $this->decrement('quantidade', $quantidade);
@@ -104,11 +104,11 @@ class InventarioEstoque extends Model
     {
         // Impacto: esta baixa combina movimentacao e historico. Separar as duas gravacoes quebra as telas de baixas e o saldo posterior auditado.
         if ($quantidade <= 0) {
-            throw new \InvalidArgumentException('Quantidade de baixa invalida.');
+            throw new \InvalidArgumentException('Quantidade de baixa inválida.');
         }
 
         if ($quantidade > (float) $this->quantidade) {
-            throw new \DomainException('Quantidade de baixa maior que o saldo em inventario.');
+            throw new \DomainException('Quantidade de baixa maior que o saldo em inventário.');
         }
 
         return DB::transaction(function () use ($quantidade, $motivo, $descricao, $ignorarBalancoId) {
@@ -117,7 +117,7 @@ class InventarioEstoque extends Model
             $saldoAnterior = (float) $this->quantidade;
 
             if ($quantidade > $saldoAnterior) {
-                throw new \DomainException('Quantidade de baixa maior que o saldo em inventario.');
+                throw new \DomainException('Quantidade de baixa maior que o saldo em inventário.');
             }
 
             $this->saida(

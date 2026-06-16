@@ -31,12 +31,12 @@ class ContratoItemSpreadsheetService
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Modelo');
 
-        $sheet->setCellValue('A1', 'Modelo de Importacao de Itens do Contrato');
+        $sheet->setCellValue('A1', 'Modelo de Importação de Itens do Contrato');
         $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
-        $sheet->setCellValue('A2', 'Preencha uma linha por item usando codigos ja cadastrados no sistema.');
-        $sheet->setCellValue('A4', 'Codigo do Item');
+        $sheet->setCellValue('A2', 'Preencha uma linha por item usando códigos já cadastrados no sistema.');
+        $sheet->setCellValue('A4', 'Código do item');
         $sheet->setCellValue('B4', 'Quantidade');
-        $sheet->setCellValue('C4', 'Preco unitario');
+        $sheet->setCellValue('C4', 'Preço unitário');
 
         $this->estilizarCabecalho($sheet, 'A4:C4');
 
@@ -94,7 +94,7 @@ class ContratoItemSpreadsheetService
     {
         // Impacto: a importacao so grava depois que todas as linhas passam. Alterar para gravacao parcial mudaria o contrato da UI, que hoje espera erro completo ou sucesso completo.
         if ($rows === [] || count($rows) < 2) {
-            throw new InvalidArgumentException('O arquivo precisa conter cabecalho e ao menos uma linha de dados.');
+            throw new InvalidArgumentException('O arquivo precisa conter cabeçalho e ao menos uma linha de dados.');
         }
 
         $headers = array_map(fn ($header) => $this->normalizarCabecalho($header), $rows[0]);
@@ -107,7 +107,7 @@ class ContratoItemSpreadsheetService
 
         // Impacto: o cabecalho e propositalmente rigido para evitar importar colunas trocadas como quantidade/preco.
         if ($headers !== $esperados) {
-            throw new InvalidArgumentException('Cabecalho invalido. Use exatamente: Codigo do Item, Quantidade, Preco unitario.');
+            throw new InvalidArgumentException('Cabeçalho inválido. Use exatamente: Código do item, Quantidade, Preço unitário.');
         }
 
         $linhas = collect(array_slice($rows, 1))
@@ -123,7 +123,7 @@ class ContratoItemSpreadsheetService
             ->values();
 
         if ($linhas->isEmpty()) {
-            throw new InvalidArgumentException('O arquivo nao possui linhas preenchidas para importacao.');
+            throw new InvalidArgumentException('O arquivo não possui linhas preenchidas para importação.');
         }
 
         $erros = [];
@@ -152,12 +152,12 @@ class ContratoItemSpreadsheetService
             $item = $itens->get($codigo);
 
             if (! $item) {
-                $erros[] = "Linha {$numeroLinha}: o codigo {$codigo} nao foi encontrado no cadastro de itens.";
+                $erros[] = "Linha {$numeroLinha}: o código {$codigo} não foi encontrado no cadastro de itens.";
                 return null;
             }
 
             if (! $item->ativo) {
-                $erros[] = "Linha {$numeroLinha}: o item {$codigo} esta inativo e nao pode ser importado.";
+                $erros[] = "Linha {$numeroLinha}: o item {$codigo} está inativo e não pode ser importado.";
                 return null;
             }
 
@@ -165,11 +165,11 @@ class ContratoItemSpreadsheetService
             $precoUnitario = $this->normalizarNumero($linha['preco_unitario']);
 
             if ($quantidade === null || $quantidade <= 0) {
-                $erros[] = "Linha {$numeroLinha}: a Quantidade deve ser um numero maior que zero.";
+                $erros[] = "Linha {$numeroLinha}: a Quantidade deve ser um número maior que zero.";
             }
 
             if ($precoUnitario === null || $precoUnitario <= 0) {
-                $erros[] = "Linha {$numeroLinha}: o Preco unitario deve ser um numero maior que zero.";
+                $erros[] = "Linha {$numeroLinha}: o preço unitário deve ser um número maior que zero.";
             }
 
             if ($quantidade === null || $precoUnitario === null || $quantidade <= 0 || $precoUnitario <= 0) {

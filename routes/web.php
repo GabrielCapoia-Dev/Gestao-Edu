@@ -92,7 +92,7 @@ Route::post('/test/notify', function () {
         )
     );
 
-    return back()->with('success', 'Notificacao enviada');
+    return back()->with('success', 'Notificação enviada');
 })->name('test.notify');
 
 Route::get('/pedidos/relatorio-geral', [PedidoRelatorioGeralController::class, 'exportar'])

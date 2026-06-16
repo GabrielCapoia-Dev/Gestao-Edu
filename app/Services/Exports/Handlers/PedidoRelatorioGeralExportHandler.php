@@ -21,7 +21,7 @@ class PedidoRelatorioGeralExportHandler implements ExportHandler
         $user = $exportRequest->user;
 
         if (! $user) {
-            throw new RuntimeException('Usuario da exportacao nao encontrado.');
+            throw new RuntimeException('Usuário da exportação não encontrado.');
         }
 
         $exportRequest->updateProgress(10, 100, 'Preparando consulta de pedidos.');

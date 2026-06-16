@@ -28,7 +28,7 @@ class ExportRequestService
         array $metadata = [],
     ): ExportRequest {
         if (! $this->manager->hasHandler($type)) {
-            throw new RuntimeException("Exportacao [{$type}] ainda nao possui processador assincrono.");
+            throw new RuntimeException("Exportação [{$type}] ainda não possui processador assincrono.");
         }
 
         $filters = $this->normalizePayload($filters);
@@ -57,7 +57,7 @@ class ExportRequestService
             $maxActive = (int) config('exports.max_active_per_user', 3);
 
             if ($maxActive > 0 && $activeCount >= $maxActive) {
-                throw new RuntimeException("Voce ja possui {$activeCount} exportacoes em andamento. Aguarde uma delas terminar.");
+                throw new RuntimeException("Você já possui {$activeCount} exportacoes em andamento. Aguarde uma delas terminar.");
             }
 
             $exportRequest = ExportRequest::query()->create([

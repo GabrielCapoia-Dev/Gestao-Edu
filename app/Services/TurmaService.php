@@ -70,7 +70,7 @@ class TurmaService
                         ->all()
                 ),
             ])
-            ->searchPlaceholder('Buscar por escola, serie, turma, codigo ou turno')
+            ->searchPlaceholder('Buscar por escola, série, turma, código ou turno')
             ->columns($this->colunasTabela())
             ->recordActions($this->acoesTabela($user))
             ->toolbarActions($this->acoesEmMassa($user))

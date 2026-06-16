@@ -24,7 +24,7 @@ class EstoqueRelatorioController extends Controller
         $this->autorizarExportacao();
 
         if ($request->boolean('async')) {
-            return $this->queueExport('estoque_geral', 'pdf', $request->all(), 'Relatorio geral de estoque', $request);
+            return $this->queueExport('estoque_geral', 'pdf', $request->all(), 'Relatório geral de estoque', $request);
         }
 
         $this->prepararExecucao();
@@ -37,7 +37,7 @@ class EstoqueRelatorioController extends Controller
         $this->autorizarExportacao();
 
         if ($request->boolean('async')) {
-            return $this->queueExport('estoque_geral', 'xlsx', $request->all(), 'Relatorio geral de estoque', $request);
+            return $this->queueExport('estoque_geral', 'xlsx', $request->all(), 'Relatório geral de estoque', $request);
         }
 
         $this->prepararExecucao();
@@ -50,7 +50,7 @@ class EstoqueRelatorioController extends Controller
         $this->autorizarExportacao();
 
         if ($request->boolean('async')) {
-            return $this->queueExport('estoque_item', 'pdf', ['estoque_id' => $estoque->getKey()], 'Relatorio individual de estoque', $request);
+            return $this->queueExport('estoque_item', 'pdf', ['estoque_id' => $estoque->getKey()], 'Relatório individual de estoque', $request);
         }
 
         $this->prepararExecucao();
@@ -63,7 +63,7 @@ class EstoqueRelatorioController extends Controller
         $this->autorizarExportacao();
 
         if ($request->boolean('async')) {
-            return $this->queueExport('estoque_item', 'xlsx', ['estoque_id' => $estoque->getKey()], 'Relatorio individual de estoque', $request);
+            return $this->queueExport('estoque_item', 'xlsx', ['estoque_id' => $estoque->getKey()], 'Relatório individual de estoque', $request);
         }
 
         $this->prepararExecucao();
@@ -105,7 +105,7 @@ class EstoqueRelatorioController extends Controller
             );
 
             Notification::make()
-                ->title($exportRequest->wasRecentlyCreated ? 'Exportacao enviada para a fila' : 'Exportacao ja esta em andamento')
+                ->title($exportRequest->wasRecentlyCreated ? 'Exportação enviada para a fila' : 'Exportação já está em andamento')
                 ->body('Acompanhe o progresso em Minhas Exportacoes.')
                 ->success()
                 ->send();
@@ -114,7 +114,7 @@ class EstoqueRelatorioController extends Controller
                 'download' => $exportRequest->getKey(),
             ]);
         } catch (Throwable $e) {
-            Log::error('Falha ao enfileirar exportacao de estoque.', [
+            Log::error('Falha ao enfileirar exportação de estoque.', [
                 'exception' => $e,
                 'user_id' => Auth::id(),
                 'type' => $type,
@@ -122,7 +122,7 @@ class EstoqueRelatorioController extends Controller
             ]);
 
             Notification::make()
-                ->title('Nao foi possivel iniciar a exportacao')
+                ->title('Não foi possível iniciar a exportação')
                 ->body('Tente novamente em alguns instantes.')
                 ->danger()
                 ->send();

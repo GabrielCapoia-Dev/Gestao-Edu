@@ -65,7 +65,7 @@ class RelatorioPdfRenderer
     protected function normalizePayload(array $data): array
     {
         $payload = array_replace([
-            'reportTitle' => 'Relatorio',
+            'reportTitle' => 'Relatório',
             'reportSubtitle' => null,
             'reportFilters' => $data['filtros'] ?? [],
             'usuarioExportacao' => Auth::user(),
@@ -92,7 +92,7 @@ class RelatorioPdfRenderer
     protected function assertViewExists(string $view): void
     {
         if (! view()->exists($view)) {
-            throw new NotFoundHttpException("A view de relatorio [{$view}] nao foi encontrada.");
+            throw new NotFoundHttpException("A view de relatório [{$view}] não foi encontrada.");
         }
     }
 

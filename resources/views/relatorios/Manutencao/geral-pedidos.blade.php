@@ -9,8 +9,8 @@
 @endphp
 @extends('relatorios.layouts.base-pdf')
 
-@section('reportTitle', $reportTitle ?? 'Relatorio Analitico de Pedidos de Manutencao')
-@section('reportSubtitle', $reportSubtitle ?? 'Visao consolidada com indicadores e listagem detalhada')
+@section('reportTitle', $reportTitle ?? 'Relatório Analítico de Pedidos de Manutenção')
+@section('reportSubtitle', $reportSubtitle ?? 'Visão consolidada com indicadores e listagem detalhada')
 
 @section('styles')
     .page-break {
@@ -229,7 +229,7 @@
             <div class="card-value">{{ $metricas->total }}</div>
         </div>
         <div class="card card-green">
-            <div class="card-label">Concluidos</div>
+            <div class="card-label">Concluídos</div>
             <div class="card-value card-value-green">{{ $metricas->concluidos }}</div>
         </div>
         <div class="card card-blue">
@@ -241,7 +241,7 @@
             <div class="card-value card-value-red">{{ $metricas->cancelados }}</div>
         </div>
         <div class="card card-yellow">
-            <div class="card-label">Taxa de Conclusao</div>
+            <div class="card-label">Taxa de Conclusão</div>
             <div class="card-value card-value-yellow">
                 {{ $metricas->taxa_conclusao }}<span class="card-unit">%</span>
             </div>
@@ -276,7 +276,7 @@
     @if($metricaFeedback->total > 0)
         <div class="cards-row">
             <div class="card">
-                <div class="card-label">Avaliacoes Recebidas</div>
+                <div class="card-label">Avaliações Recebidas</div>
                 <div class="card-value">{{ $metricaFeedback->total }}</div>
             </div>
             <div class="card card-green">
@@ -284,7 +284,7 @@
                 <div class="card-value card-value-green">{{ $metricaFeedback->media }}<span class="card-unit">/5</span></div>
             </div>
             <div class="card card-blue">
-                <div class="card-label">Satisfacao (>= 4)</div>
+                <div class="card-label">Satisfação (>= 4)</div>
                 <div class="card-value card-value-blue">{{ $metricaFeedback->tx_satisfacao }}<span class="card-unit">%</span></div>
             </div>
         </div>
@@ -294,13 +294,13 @@
 
     <div class="two-col">
         <div class="col-left">
-            <div class="section-title">Distribuicao por Status</div>
+            <div class="section-title">Distribuição por status</div>
             <table class="insight-table">
                 <thead>
                     <tr>
                         <th>Status</th>
                         <th style="text-align: center;">Qtd</th>
-                        <th style="width: 40%;">Distribuicao</th>
+                        <th style="width: 40%;">Distribuição</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -322,13 +322,13 @@
         </div>
 
         <div class="col-right">
-            <div class="section-title">Distribuicao por Prioridade</div>
+            <div class="section-title">Distribuição por prioridade</div>
             <table class="insight-table">
                 <thead>
                     <tr>
                         <th>Prioridade</th>
                         <th style="text-align: center;">Qtd</th>
-                        <th style="width: 40%;">Distribuicao</th>
+                        <th style="width: 40%;">Distribuição</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -357,13 +357,13 @@
 
     <div class="two-col">
         <div class="col-left">
-            <div class="section-title">Top Tipos de Manutencao</div>
+            <div class="section-title">Top Tipos de Manutenção</div>
             <table class="insight-table">
                 <thead>
                     <tr>
                         <th>Tipo</th>
                         <th style="text-align: center;">Total</th>
-                        <th style="text-align: center;">Concluidos</th>
+                        <th style="text-align: center;">Concluídos</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -455,7 +455,7 @@
                     <th style="width: 8%;">Registro</th>
                     <th style="width: 8%;">Identificado</th>
                     <th style="width: 8%;">Solicitado</th>
-                    <th style="width: 8%;">Concluido</th>
+                    <th style="width: 8%;">Concluído</th>
                     <th style="width: 12%;">Problemas</th>
                     <th style="width: 10%;">Empresa</th>
                 </tr>

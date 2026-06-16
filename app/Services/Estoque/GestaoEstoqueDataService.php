@@ -296,7 +296,7 @@ class GestaoEstoqueDataService
 
                 return [
                     'tipo_item' => $tipoItem,
-                    'label' => $enum?->label() ?? 'Nao informado',
+                    'label' => $enum?->label() ?? 'Não informado',
                     'total_itens' => $grupo->count(),
                     'quantidade_total' => round((float) $grupo->sum('quantidade'), 3),
                 ];
@@ -434,7 +434,7 @@ class GestaoEstoqueDataService
     {
         return match ($tipo) {
             TipoMovimentacao::Entrada->value => 'Entrada',
-            TipoMovimentacao::Transferencia->value => 'Transferencia',
+            TipoMovimentacao::Transferencia->value => 'Transferência',
             default => 'Saida',
         };
     }

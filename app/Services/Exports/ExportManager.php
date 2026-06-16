@@ -17,7 +17,7 @@ class ExportManager
         $handlerClass = config("exports.handlers.{$type}");
 
         if (! is_string($handlerClass) || ! class_exists($handlerClass)) {
-            throw new InvalidArgumentException("Nenhum processador de exportacao foi configurado para [{$type}].");
+            throw new InvalidArgumentException("Nenhum processador de exportação foi configurado para [{$type}].");
         }
 
         $handler = app($handlerClass);

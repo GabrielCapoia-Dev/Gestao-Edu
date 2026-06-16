@@ -37,11 +37,11 @@
 
     $endereco = $escola
         ? "{$escola->logradouro}, {$escola->numero} - {$escola->bairro}, {$escola->cidade}/{$escola->estado} - CEP: {$escola->cep}"
-        : 'Nao Informado';
+        : 'Não informado';
 
     $tipo = match($pedido->nivel_prioridade?->value) {
         'indeterminado' => 'Indeterminado',
-        default => $pedido->nivel_prioridade?->value ?? 'Nao Informado',
+        default => $pedido->nivel_prioridade?->value ?? 'Não informado',
     };
 
     $prioridadeCor = match($pedido->nivel_prioridade?->value) {
@@ -56,7 +56,7 @@
 @endphp
 @extends('relatorios.layouts.base-pdf')
 
-@section('reportTitle', $reportTitle ?? 'Relatorio Tecnico de Manutencao')
+@section('reportTitle', $reportTitle ?? 'Relatório Técnico de Manutenção')
 @section('reportSubtitle', $reportSubtitle ?? ('Protocolo ' . ($pedido->numero_protocolo ?? 'N/A')))
 
 @section('styles')
@@ -174,54 +174,54 @@
         <tr>
             <td style="width: 33.33%;" class="espaco-line">
                 <strong>Protocolo:</strong><br>
-                {{ $pedido->numero_protocolo ?? 'Nao Informado' }}
+                {{ $pedido->numero_protocolo ?? 'Não informado' }}
             </td>
             <td style="width: 33.33%;" class="espaco-line">
                 <strong>Data:</strong><br>
-                {{ $pedido->data_solicitacao?->format('d/m/Y') ?? 'Nao Informado' }}
+                {{ $pedido->data_solicitacao?->format('d/m/Y') ?? 'Não informado' }}
             </td>
             <td style="width: 33.33%;" class="espaco-line">
                 <strong>Status:</strong><br>
                 <span class="badge" style="background: {{ $statusCor }};">
-                    {{ $pedido->tipoStatus?->nome ?? 'Nao Informado' }}
+                    {{ $pedido->tipoStatus?->nome ?? 'Não informado' }}
                 </span>
             </td>
         </tr>
 
         <tr>
             <td class="espaco-line">
-                <strong>Identificacao do Problema:</strong><br>
-                {{ $pedido->data_identificacao_problema?->format('d/m/Y') ?? 'Nao Informado' }}
+                <strong>Identificação do problema:</strong><br>
+                {{ $pedido->data_identificacao_problema?->format('d/m/Y') ?? 'Não informado' }}
             </td>
             <td class="espaco-line">
                 <strong>Setor Atual:</strong><br>
-                {{ $pedido->setor?->nome ?? 'Nao Informado' }}
+                {{ $pedido->setor?->nome ?? 'Não informado' }}
             </td>
             <td class="espaco-line">
                 <strong>Empresa:</strong><br>
-                {{ $pedido->empresaContratada?->nome ?? 'Nao Informado' }}
+                {{ $pedido->empresaContratada?->nome ?? 'Não informado' }}
             </td>
         </tr>
 
         <tr>
             <td class="espaco-line">
                 <strong>Escola:</strong><br>
-                {{ $escola?->nome ?? 'Nao Informado' }}
+                {{ $escola?->nome ?? 'Não informado' }}
             </td>
             <td class="espaco-line">
                 <strong>Solicitante:</strong><br>
-                {{ $pedido->nome_solicitante ?? 'Nao Informado' }}
+                {{ $pedido->nome_solicitante ?? 'Não informado' }}
             </td>
             <td class="espaco-line">
                 <strong>Telefone:</strong><br>
-                {{ $escola?->telefone ?? 'Nao Informado' }}
+                {{ $escola?->telefone ?? 'Não informado' }}
             </td>
         </tr>
 
         <tr>
             <td class="espaco-line">
                 <strong>E-mail:</strong><br>
-                {{ $pedido->solicitante?->email ?? 'Nao Informado' }}
+                {{ $pedido->solicitante?->email ?? 'Não informado' }}
             </td>
             <td colspan="2" class="espaco-line">
                 <strong>Endereco:</strong><br>
@@ -232,7 +232,7 @@
         <tr>
             <td class="espaco-line">
                 <strong>Tipo:</strong><br>
-                {{ $pedido->tipoManutencao?->nome ?? 'Nao Informado' }}
+                {{ $pedido->tipoManutencao?->nome ?? 'Não informado' }}
             </td>
             <td class="espaco-line"></td>
             <td class="espaco-line">
@@ -245,9 +245,9 @@
 
         <tr>
             <td class="espaco-line" colspan="3">
-                <strong>Descricao:</strong>
+                <strong>Descrição:</strong>
                 <div class="descricao">
-                    {{ $pedido->descricao_pedido ?? 'Nao Informado' }}
+                    {{ $pedido->descricao_pedido ?? 'Não informado' }}
                 </div>
             </td>
         </tr>
@@ -266,7 +266,7 @@
         @if($feedback)
             <tr>
                 <td class="espaco-line" colspan="3">
-                    <strong>Avaliacao do Servico:</strong>
+                    <strong>Avaliação do serviço:</strong>
 
                     <div class="descricao">
                         <div style="margin-bottom: 6px;">
@@ -282,7 +282,7 @@
 
                         @if($feedback->itens->isNotEmpty())
                             <div style="margin-top: 8px;">
-                                <strong>Avaliacao por problema:</strong><br>
+                                <strong>Avaliação por problema:</strong><br>
                                 @foreach($feedback->itens as $item)
                                     <div style="margin-top: 4px;">
                                         {{ $item->problema?->texto_problema ?? 'Problema' }}:
@@ -312,7 +312,7 @@
                         <th style="border:1px solid #d1d5db; padding:5px;">Protocolo</th>
                         <th style="border:1px solid #d1d5db; padding:5px;">Tipo</th>
                         <th style="border:1px solid #d1d5db; padding:5px;">Problemas</th>
-                        <th style="border:1px solid #d1d5db; padding:5px;">Descricao</th>
+                        <th style="border:1px solid #d1d5db; padding:5px;">Descrição</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -375,7 +375,7 @@
                             <tr>
                                 <th>Tipo</th>
                                 <th>Arquivo</th>
-                                <th>Descricao</th>
+                                <th>Descrição</th>
                                 <th>Enviado por</th>
                                 <th>Data</th>
                             </tr>
@@ -411,7 +411,7 @@
     @if($historicosOrdenados->isNotEmpty())
         <div class="divider"></div>
         <div class="section-block espaco-line">
-            <div class="section-title-inline">Historico de Alteracoes</div>
+            <div class="section-title-inline">Histórico de alterações</div>
 
             <table class="history-table">
                 <thead>
@@ -421,7 +421,7 @@
                         <th>Novo status</th>
                         <th>Setor</th>
                         <th>Alterado por</th>
-                        <th>Descricao</th>
+                        <th>Descrição</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -484,7 +484,7 @@
                     <tr>
                         <th>Tipo</th>
                         <th>Arquivo</th>
-                        <th>Descricao</th>
+                        <th>Descrição</th>
                         <th>Enviado por</th>
                         <th>Data</th>
                     </tr>

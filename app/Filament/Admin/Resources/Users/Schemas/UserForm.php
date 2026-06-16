@@ -55,8 +55,8 @@ class UserForm
                 ]),
 
             Select::make('roles')
-                ->label('Niveis de acesso')
-                ->helperText('Voce pode vincular um ou mais niveis de acesso ao usuario.')
+                ->label('Níveis de acesso')
+                ->helperText('Você pode vincular um ou mais níveis de acesso ao usuário.')
                 ->options(fn() => $service->opcoesDeRolesParaSelect($user))
                 ->multiple()
                 ->searchable()
@@ -107,7 +107,7 @@ class UserForm
             Components\Section::make('Permissões específicas')
                 ->collapsible()
                 ->columnSpanFull()
-                ->description('As permissoes herdadas dos niveis de acesso ficam destacadas.')
+                ->description('As permissões herdadas dos níveis de acesso ficam destacadas.')
                 ->visible(fn(Get $get) => $get('usar_permissoes_extras') === true)
                 ->schema(function (Get $get, ?User $record) use ($service, $user) {
                     if (! $user || ! $service->ehAdmin($user)) {
@@ -150,7 +150,7 @@ class UserForm
 
                         $helperText = '';
                         if (! empty($permissoesDoGrupoNaRole)) {
-                            $helperText = 'Herdadas dos niveis: ' . implode(', ', $permissoesDoGrupoNaRole);
+                            $helperText = 'Herdadas dos níveis: ' . implode(', ', $permissoesDoGrupoNaRole);
                         }
 
                         $schema[] = CheckboxList::make("permissions_{$grupo}")
@@ -181,7 +181,7 @@ class UserForm
 
             Components\Section::make('Vínculo com Escola')
                 ->icon('heroicon-o-identification')
-                ->description('Aqui mostra se o usuário esta vinculado a uma escola.')
+                ->description('Aqui mostra se o usuário está vinculado a uma escola.')
                 ->schema([
                     Select::make('id_escola')
                         ->label('Escola')
@@ -199,7 +199,7 @@ class UserForm
 
             Components\Section::make('Vínculo com Setor')
                 ->icon('heroicon-o-building-office')
-                ->description('Aqui mostra se o usuário esta vinculado a um setor.')
+                ->description('Aqui mostra se o usuário está vinculado a um setor.')
                 ->schema([
                     Select::make('setor_id')
                         ->label('Setor')

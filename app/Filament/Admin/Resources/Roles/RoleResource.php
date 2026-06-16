@@ -33,17 +33,17 @@ class RoleResource extends Resource
 
     protected static ?string $navigationParentItem = 'Usuários';
 
-    public static ?string $modelLabel = 'Nivel de acesso';
+    public static ?string $modelLabel = 'Nível de acesso';
 
-    public static ?string $label = 'Niveis de acesso';
+    public static ?string $label = 'Níveis de acesso';
 
     protected static string|UnitEnum|null $navigationGroup = 'Acesso';
 
-    public static ?string $pluralLabel = 'Niveis de acesso';
+    public static ?string $pluralLabel = 'Níveis de acesso';
 
-    public static ?string $navigationLabel = 'Niveis de acesso';
+    public static ?string $navigationLabel = 'Níveis de acesso';
 
-    public static ?string $pluralModelLabel = 'Niveis de acesso';
+    public static ?string $pluralModelLabel = 'Níveis de acesso';
 
     public static ?string $slug = 'niveis-de-acesso';
 
@@ -55,7 +55,7 @@ class RoleResource extends Resource
             ->components([
                 Components\TextInput::make('name')
                     ->columnSpanFull()
-                    ->label('Nivel de acesso')
+                    ->label('Nível de acesso')
                     ->required()
                     ->disabled(fn ($record, $context) => app(RoleService::class)->bloquearCampo($record, $context))
                     ->unique(ignoreRecord: true),
@@ -63,7 +63,7 @@ class RoleResource extends Resource
                 Components\Select::make('setor_id')
                     ->columnSpanFull()
                     ->label('Setor legado')
-                    ->helperText('Mantido apenas para compatibilidade. O escopo operacional novo vem do setor vinculado ao usuario.')
+                    ->helperText('Mantido apenas para compatibilidade. O escopo operacional novo vem do setor vinculado ao usuário.')
                     ->options(fn () => app(UserSetorAccessService::class)->optionsForSelect(Auth::user()))
                     ->searchable()
                     ->preload()
@@ -144,7 +144,7 @@ class RoleResource extends Resource
             ->defaultPaginationPageOption(5)
             ->columns([
                 Tables\Columns\TextColumn::make('name')
-                    ->label('Nivel de acesso')
+                    ->label('Nível de acesso')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('setor.nome')
                     ->label('Setor legado')
@@ -196,7 +196,7 @@ class RoleResource extends Resource
 
                             Components\Select::make('setor_id')
                                 ->label('Setor legado')
-                                ->helperText('Mantido apenas para compatibilidade. O escopo operacional novo vem do usuario.')
+                                ->helperText('Mantido apenas para compatibilidade. O escopo operacional novo vem do usuário.')
                                 ->options(fn () => app(UserSetorAccessService::class)->optionsForSelect(Auth::user()))
                                 ->searchable()
                                 ->preload()

@@ -196,7 +196,7 @@ class Inventarios extends Page
                 ->color('gray')
                 ->visible(fn (): bool => $this->podeExportar)
                 ->modalHeading('Exportar envios para as escolas')
-                ->modalDescription('Gere um consolidado agrupado por escola, respeitando o contexto do panorama e com opcao mensal.')
+                ->modalDescription('Gere um consolidado agrupado por escola, respeitando o contexto do panorama e com opção mensal.')
                 ->modalWidth('lg')
                 ->modalSubmitActionLabel('Exportar')
                 ->schema([
@@ -204,20 +204,20 @@ class Inventarios extends Page
                         ->label('Busca')
                         ->default(fn (): string => $this->busca)
                         ->maxLength(255)
-                        ->placeholder('Escola ou inventario'),
+                        ->placeholder('Escola ou inventário'),
                     Select::make('escolas')
                         ->label('Escolas')
                         ->options(fn (): array => $this->escolasRelatorioEnviosOptions)
                         ->multiple()
                         ->searchable()
                         ->preload()
-                        ->placeholder('Todas as escolas visiveis')
-                        ->helperText('Se nada for selecionado, o relatorio considera todas as escolas do contexto filtrado.'),
+                        ->placeholder('Todas as escolas visíveis')
+                        ->helperText('Se nada for selecionado, o relatório considera todas as escolas do contexto filtrado.'),
                     Select::make('periodo')
-                        ->label('Periodo')
+                        ->label('Período')
                         ->options([
                             'geral' => 'Geral',
-                            'mensal' => 'Por mes',
+                            'mensal' => 'Por mês',
                         ])
                         ->default('geral')
                         ->native(false)
@@ -247,7 +247,7 @@ class Inventarios extends Page
                 ])
                 ->action(fn (array $data): mixed => $this->redirecionarExportacaoEnvios($data)),
             Action::make('novoInventario')
-                ->label('Novo inventario')
+                ->label('Novo inventário')
                 ->icon('heroicon-o-plus-circle')
                 ->color('success')
                 ->visible(fn (): bool => $this->inventarioService()->escolasSemInventario() !== [])
@@ -268,8 +268,8 @@ class Inventarios extends Page
                         );
 
                         Notification::make()
-                            ->title('Inventario criado com sucesso.')
-                            ->body('A escola selecionada agora possui um inventario proprio.')
+                            ->title('Inventário criado com sucesso.')
+                            ->body('A escola selecionada agora possui um inventário próprio.')
                             ->success()
                             ->send();
                     } catch (\DomainException $exception) {

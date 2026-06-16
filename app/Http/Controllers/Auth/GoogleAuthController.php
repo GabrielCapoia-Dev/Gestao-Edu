@@ -44,7 +44,7 @@ class GoogleAuthController extends Controller
         $panel = Filament::getPanel('admin');
 
         if (! $panel) {
-            throw new RuntimeException('Painel admin do Filament nao encontrado.');
+            throw new RuntimeException('Painel admin do Filament não encontrado.');
         }
 
         $loginUrl = $panel->getLoginUrl();
@@ -58,8 +58,8 @@ class GoogleAuthController extends Controller
                 session()->forget('google_auth.redirect_to');
 
                 Notification::make()
-                    ->title('Aguardando aprovacao')
-                    ->body('Seu cadastro foi localizado, mas o acesso ainda depende da aprovacao do administrador.')
+                    ->title('Aguardando aprovação')
+                    ->body('Seu cadastro foi localizado, mas o acesso ainda depende da aprovação do administrador.')
                     ->warning()
                     ->persistent()
                     ->send();
@@ -101,14 +101,14 @@ class GoogleAuthController extends Controller
     protected function resolveErrorMessage(Throwable $error): string
     {
         if ($error instanceof InvalidStateException) {
-            return 'Sua sessao expirou durante o login com Google. Tente novamente.';
+            return 'Sua sessão expirou durante o login com Google. Tente novamente.';
         }
 
         if ($error instanceof DomainException && filled($error->getMessage())) {
             return $error->getMessage();
         }
 
-        return 'Nao foi possivel concluir o login com Google. Tente novamente em instantes.';
+        return 'Não foi possível concluir o login com Google. Tente novamente em instantes.';
     }
 
     protected function sanitizeRedirectTo(?string $redirectTo): ?string

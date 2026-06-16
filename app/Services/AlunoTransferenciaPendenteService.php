@@ -162,15 +162,15 @@ class AlunoTransferenciaPendenteService
             }
 
             $destinatario->notify(new SistemaNotification(
-                titulo: 'Transferencia pendente de aluno',
+                titulo: 'Transferência pendente de aluno',
                 mensagem: sprintf(
-                    'O aluno %s, CGM %s, esta com matricula pendente na escola %s. Gere o parecer de transferencia na unidade de origem.',
+                    'O aluno %s, CGM %s, está com matrícula pendente na escola %s. Gere o parecer de transferência na unidade de origem.',
                     $origem->nome,
                     $origem->cgm,
-                    $pendente->turma?->escola?->nome ?? 'destino nao identificado'
+                    $pendente->turma?->escola?->nome ?? 'destino não identificado'
                 ),
                 url: route('filament.admin.pages.parecer-transferencia-aluno', ['aluno' => $origem->id]),
-                label: 'Abrir Parecer de Transferencia',
+                label: 'Abrir Parecer de Transferência',
                 prioridade: 'alta',
                 escopo: $origem->turma?->escola?->nome,
                 metadata: [
@@ -241,7 +241,7 @@ class AlunoTransferenciaPendenteService
                     ->orWhere(function ($observacoesObrigatorias): void {
                         $observacoesObrigatorias
                             ->where('alt.tem_observacao', true)
-                            ->whereRaw("TRIM(COALESCE(ar.observacao, '')) = ''");
+                            ->whereRaw("TRIM(COALESCE(ar.observação, '')) = ''");
                     });
             })
             ->exists();

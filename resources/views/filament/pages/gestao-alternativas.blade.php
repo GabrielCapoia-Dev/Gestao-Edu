@@ -8,7 +8,7 @@
             <div class="gi-modal" role="dialog" aria-modal="true">
                 <header>
                     <div>
-                        <p class="gi-eyebrow">Avaliacoes</p>
+                        <p class="gi-eyebrow">Avaliações</p>
                         <h3>{{ $alternativaIdEditando ? 'Editar Alternativa' : 'Nova Alternativa' }}</h3>
                     </div>
 
@@ -19,7 +19,7 @@
 
                 <div class="gi-modal-body">
                     <label class="gi-field">
-                        <span>Tipo da avaliacao</span>
+                        <span>Tipo da avaliação</span>
                         <select wire:model.defer="form.tipo_avaliacao_id">
                             <option value="">Selecione um tipo</option>
                             @foreach ($this->tiposOptions as $tipoId => $tipoNome)
@@ -48,9 +48,9 @@
                     </label>
 
                     <label class="gi-field gi-field--small">
-                        <span>Tem observacao?</span>
+                        <span>Tem observação?</span>
                         <select wire:model.live="form.tem_observacao">
-                            <option value="0">Nao</option>
+                            <option value="0">Não</option>
                             <option value="1">Sim</option>
                         </select>
                         @error('form.tem_observacao')
@@ -60,7 +60,7 @@
 
                     @if ((bool) ($form['tem_observacao'] ?? false))
                         <label class="gi-field">
-                            <span>Observacao da alternativa (opcional)</span>
+                            <span>Observação da alternativa (opcional)</span>
                             <textarea wire:model.defer="form.observacao" rows="4" maxlength="1000"></textarea>
                             @error('form.observacao')
                                 <p class="error">{{ $message }}</p>
@@ -72,7 +72,7 @@
                         <span>Vai no documento?</span>
                         <select wire:model.live="form.vai_no_documento">
                             <option value="1">Sim</option>
-                            <option value="0">Nao</option>
+                            <option value="0">Não</option>
                         </select>
                         @error('form.vai_no_documento')
                             <p class="error">{{ $message }}</p>
@@ -81,7 +81,7 @@
 
                     @if ((bool) ($form['vai_no_documento'] ?? true))
                         <label class="gi-field">
-                            <span>Descricao no documento (opcional)</span>
+                            <span>Descrição no documento (opcional)</span>
                             <textarea wire:model.defer="form.descricao_documento" rows="4" maxlength="1000"></textarea>
                             @error('form.descricao_documento')
                                 <p class="error">{{ $message }}</p>

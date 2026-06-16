@@ -223,7 +223,7 @@ class SetorHierarchyService
 
         if ($setor->exists && (int) $parent->id === (int) $setor->id) {
             throw ValidationException::withMessages([
-                'parent_id' => 'Um setor nao pode ser pai dele mesmo.',
+                'parent_id' => 'Um setor não pode ser pai dele mesmo.',
             ]);
         }
 
@@ -239,7 +239,7 @@ class SetorHierarchyService
 
         if ($setor->exists && $setor->path && str_starts_with((string) $parent->path, (string) $setor->path)) {
             throw ValidationException::withMessages([
-                'parent_id' => 'Um setor nao pode ser movido para dentro de sua propria arvore.',
+                'parent_id' => 'Um setor não pode ser movido para dentro de sua própria arvore.',
             ]);
         }
     }

@@ -431,7 +431,7 @@ class UserService
 
             $helperText = '';
             if (! empty($permissoesDoGrupoNaRole)) {
-                $helperText = 'Herdadas dos niveis: '.implode(', ', $permissoesDoGrupoNaRole);
+                $helperText = 'Herdadas dos níveis: '.implode(', ', $permissoesDoGrupoNaRole);
             }
 
             $schema[] = CheckboxList::make("permissions_{$grupo}")

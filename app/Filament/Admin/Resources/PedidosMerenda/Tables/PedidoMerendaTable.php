@@ -70,7 +70,7 @@ class PedidoMerendaTable
                 ->sortable(),
 
             TextColumn::make('observacoes')
-                ->label('Observacoes')
+                ->label('Observações')
                 ->searchable()
                 ->limit(70)
                 ->placeholder('-')
@@ -126,7 +126,7 @@ class PedidoMerendaTable
                 ->preload(),
 
             Filter::make('periodo_criacao')
-                ->label('Periodo de criacao')
+                ->label('Período de criacao')
                 ->columnSpan(6)
                 ->columns(2)
                 ->schema([
@@ -134,7 +134,7 @@ class PedidoMerendaTable
                         ->label('De')
                         ->columnSpan(1),
                     DatePicker::make('data_fim')
-                        ->label('Ate')
+                        ->label('Até')
                         ->columnSpan(1),
                 ])
                 ->query(function (Builder $query, array $data): Builder {
@@ -180,10 +180,10 @@ class PedidoMerendaTable
                     $pedido = static::resolveRecord($record);
 
                     return match ($pedido?->status) {
-                        StatusPedidoMerenda::Aguardando => 'Voce pode ajustar as quantidades e registrar entregas parciais.',
+                        StatusPedidoMerenda::Aguardando => 'Você pode ajustar as quantidades e registrar entregas parciais.',
                         StatusPedidoMerenda::ParcialmenteEntregue => 'Pedido com entrega parcial em andamento. Registre as proximas entregas abaixo.',
-                        StatusPedidoMerenda::Entregue => 'Este pedido foi totalmente entregue. Somente visualizacao.',
-                        StatusPedidoMerenda::Cancelado => 'Este pedido foi cancelado. Somente visualizacao.',
+                        StatusPedidoMerenda::Entregue => 'Este pedido foi totalmente entregue. Somente visualização.',
+                        StatusPedidoMerenda::Cancelado => 'Este pedido foi cancelado. Somente visualização.',
                         default => null,
                     };
                 })
@@ -247,7 +247,7 @@ class PedidoMerendaTable
                         $pedido = static::resolveRecord($record);
 
                         return $pedido
-                            ? "Confirma o cancelamento do Pedido #{$pedido->id}? O saldo pendente de entrega sera devolvido aos contratos. Quantidades ja entregues permanecem no estoque. Esta acao nao pode ser desfeita."
+                            ? "Confirma o cancelamento do Pedido #{$pedido->id}? O saldo pendente de entrega será devolvido aos contratos. Quantidades já entregues permanecem no estoque. Esta ação não pode ser desfeita."
                             : '';
                     })
                     ->modalSubmitActionLabel('Confirmar cancelamento')

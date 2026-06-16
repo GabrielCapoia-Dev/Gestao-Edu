@@ -111,7 +111,7 @@
 
     @if(filled($pedido->observacoes))
         <div class="note-box">
-            <strong>Observacoes do pedido:</strong><br>
+            <strong>Observações do pedido:</strong><br>
             {{ $pedido->observacoes }}
         </div>
     @endif
@@ -133,25 +133,25 @@
             <div class="section-title">Encaminhamento para Empresa {{ $index + 1 }}</div>
 
             <div class="note-box">
-                Este empenho informa ao setor responsavel que os itens abaixo foram solicitados e devem ser encaminhados para a empresa destacada nesta secao.
+                Este empenho informa ao setor responsável que os itens abaixo foram solicitados e devem ser encaminhados para a empresa destacada nesta seção.
             </div>
 
             <table class="info-table">
                 <tbody>
                     <tr>
                         <th style="width: 22%;">Empresa</th>
-                        <td>{{ $empresa?->nome ?: 'Empresa nao informada' }}</td>
+                        <td>{{ $empresa?->nome ?: 'Empresa não informada' }}</td>
                         <th style="width: 18%;">CNPJ</th>
                         <td>{{ $empresa?->cnpj ?: '-' }}</td>
                     </tr>
                     <tr>
-                        <th>Responsavel</th>
+                        <th>Responsável</th>
                         <td>{{ $empresa?->responsavel ?: '-' }}</td>
                         <th>Telefone</th>
                         <td>{{ $empresa?->telefone ?: '-' }}</td>
                     </tr>
                     <tr>
-                        <th>Email</th>
+                        <th>E-mail</th>
                         <td>{{ $empresa?->email ?: '-' }}</td>
                         <th>Endereco</th>
                         <td>{{ $endereco !== '' ? $endereco : '-' }}</td>
@@ -164,9 +164,9 @@
                 <thead>
                     <tr>
                         <th>Contrato</th>
-                        <th>Inicio</th>
+                        <th>Início</th>
                         <th>Vencimento</th>
-                        <th>Observacoes</th>
+                        <th>Observações</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -201,7 +201,7 @@
                     @foreach($grupo['itens'] as $pedidoItem)
                         <tr>
                             <td>{{ $pedidoItem->contratoItem?->contrato?->numero_contrato ?: '-' }}</td>
-                            <td>{{ $pedidoItem->contratoItem?->item?->nome ?: 'Item nao encontrado' }}</td>
+                            <td>{{ $pedidoItem->contratoItem?->item?->nome ?: 'Item não encontrado' }}</td>
                             <td>{{ $pedidoItem->contratoItem?->item?->unidade_medida?->value ?: '-' }}</td>
                             <td class="right">{{ number_format((float) $pedidoItem->quantidade_pedida, 3, ',', '.') }}</td>
                             <td class="right">{{ number_format((float) $pedidoItem->quantidade_entregue, 3, ',', '.') }}</td>

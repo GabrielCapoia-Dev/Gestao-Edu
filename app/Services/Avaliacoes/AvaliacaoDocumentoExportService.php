@@ -38,7 +38,7 @@ class AvaliacaoDocumentoExportService
         $documentos = $this->montarDocumentos($avaliacao, $turmas, $escopo, $params, $usuario);
 
         if ($documentos->isEmpty()) {
-            throw new NotFoundHttpException('Nenhum aluno encontrado para exportacao.');
+            throw new NotFoundHttpException('Nenhum aluno encontrado para exportação.');
         }
 
         $documentosComPaginas = $documentos
@@ -89,7 +89,7 @@ class AvaliacaoDocumentoExportService
         $dados = $this->montarDadosCsv($avaliacao, $turmas, $escopo, $params);
 
         if ($dados->isEmpty()) {
-            throw new NotFoundHttpException('Nenhum dado encontrado para exportacao.');
+            throw new NotFoundHttpException('Nenhum dado encontrado para exportação.');
         }
 
         $quantidadeAlunos = $dados
@@ -119,8 +119,8 @@ class AvaliacaoDocumentoExportService
             $delimiter = ';';
 
             fputcsv($out, [
-                'Avaliacao ID',
-                'Avaliacao Nome',
+                'Avaliação ID',
+                'Avaliação Nome',
                 'Turma ID',
                 'Turma Nome',
                 'Aluno ID',
@@ -132,10 +132,10 @@ class AvaliacaoDocumentoExportService
                 'Componente',
                 'Alternativa ID',
                 'Alternativa',
-                'Observacao',
+                'Observação',
                 'Respondido Em',
                 'Professor ID',
-                'Informacoes Complementares (Componente)',
+                'Informações Complementares (Componente)',
             ], $delimiter);
 
             foreach ($dados as $turmaDados) {
@@ -193,24 +193,24 @@ class AvaliacaoDocumentoExportService
         $aluno->loadMissing('turma.escola', 'turma.serie');
 
         if (! $aluno->podeExportarDados()) {
-            throw new NotFoundHttpException('Alunos com transferencia pendente nao podem ser exportados.');
+            throw new NotFoundHttpException('Alunos com transferência pendente não podem ser exportados.');
         }
 
         /** @var Turma|null $turma */
         $turma = $aluno->turma;
 
         if (! $turma) {
-            throw new NotFoundHttpException('Turma do aluno nao encontrada.');
+            throw new NotFoundHttpException('Turma do aluno não encontrada.');
         }
 
         if (! $turma->avaliacoes()->whereKey((int) $avaliacao->id)->exists()) {
-            throw new NotFoundHttpException('A avaliacao nao pertence a turma do aluno.');
+            throw new NotFoundHttpException('A avaliação não pertence a turma do aluno.');
         }
 
         $pautas = $this->pautasDaTurma($avaliacao, $turma);
 
         if ($pautas->isEmpty()) {
-            throw new NotFoundHttpException('Nenhuma pauta encontrada para a avaliacao do aluno.');
+            throw new NotFoundHttpException('Nenhuma pauta encontrada para a avaliação do aluno.');
         }
 
         $documento = $this->montarDocumentoAluno(
@@ -221,7 +221,7 @@ class AvaliacaoDocumentoExportService
             $this->montarLegenda($this->alternativasPorPauta($avaliacao, $pautas)),
             $this->gestoresDaTurma($turma),
             $this->logoDataUri(),
-            $prefixoArquivo === 'parecer-transferencia' ? 'Parecer de Transferencia' : null
+            $prefixoArquivo === 'parecer-transferência' ? 'Parecer de Transferência' : null
         );
 
         $documentosComPaginas = collect([array_replace($documento, [
@@ -277,7 +277,7 @@ class AvaliacaoDocumentoExportService
             ->find($avaliacaoId);
 
         if (! $avaliacao) {
-            throw new NotFoundHttpException('Avaliacao nao encontrada.');
+            throw new NotFoundHttpException('Avaliação não encontrada.');
         }
 
         return $avaliacao;
@@ -299,11 +299,11 @@ class AvaliacaoDocumentoExportService
             $aluno = Aluno::query()->find((int) ($params['aluno_id'] ?? 0));
 
             if (! $aluno) {
-                throw new NotFoundHttpException('Aluno nao encontrado.');
+                throw new NotFoundHttpException('Aluno não encontrado.');
             }
 
             if (! $aluno->podeExportarDados()) {
-                throw new NotFoundHttpException('Alunos com transferencia pendente nao podem ser exportados.');
+                throw new NotFoundHttpException('Alunos com transferência pendente não podem ser exportados.');
             }
 
             $query->whereKey((int) $aluno->id_turma);
@@ -312,7 +312,7 @@ class AvaliacaoDocumentoExportService
         } elseif ($escopo === 'escola') {
             $query->where('id_escola', (int) ($params['escola_id'] ?? 0));
         } else {
-            throw new NotFoundHttpException('Escopo de exportacao invalido.');
+            throw new NotFoundHttpException('Escopo de exportação inválido.');
         }
 
         $turmas = $query
@@ -322,7 +322,7 @@ class AvaliacaoDocumentoExportService
             ->get();
 
         if ($turmas->isEmpty()) {
-            throw new NotFoundHttpException('Nenhuma turma encontrada para exportacao.');
+            throw new NotFoundHttpException('Nenhuma turma encontrada para exportação.');
         }
 
         return $turmas;

@@ -146,7 +146,7 @@ class DashboardAvaliacoes extends Page implements HasForms
                 Select::make('avaliacao_id')
                     ->label('Avaliação')
                     ->options(fn (): array => $this->avaliacoesOptions)
-                    ->placeholder('Selecione uma avaliacao')
+                    ->placeholder('Selecione uma avaliação')
                     ->searchable()
                     ->preload()
                     ->live(),
@@ -964,7 +964,7 @@ class DashboardAvaliacoes extends Page implements HasForms
 
         if (! $this->avaliacaoSelecionada()) {
             Notification::make()
-                ->title('Selecione uma avaliacao antes de exportar.')
+                ->title('Selecione uma avaliação antes de exportar.')
                 ->warning()
                 ->send();
 
@@ -987,7 +987,7 @@ class DashboardAvaliacoes extends Page implements HasForms
                 'dataExportacao' => now(),
                 'orientation' => 'landscape',
             ],
-            'dashboard-avaliacoes-' . now()->format('Y-m-d_H-i') . '.pdf'
+            'dashboard-avaliações-' . now()->format('Y-m-d_H-i') . '.pdf'
         );
     }
 
@@ -1004,7 +1004,7 @@ class DashboardAvaliacoes extends Page implements HasForms
 
         if (! $this->avaliacaoSelecionada()) {
             Notification::make()
-                ->title('Selecione uma avaliacao antes de exportar.')
+                ->title('Selecione uma avaliação antes de exportar.')
                 ->warning()
                 ->send();
 
@@ -1135,7 +1135,7 @@ class DashboardAvaliacoes extends Page implements HasForms
 
         return $this->downloadSpreadsheet(
             $spreadsheet,
-            'dashboard-avaliacoes-' . now()->format('Y-m-d_H-i') . '.xlsx'
+            'dashboard-avaliações-' . now()->format('Y-m-d_H-i') . '.xlsx'
         );
     }
 
@@ -1236,7 +1236,7 @@ class DashboardAvaliacoes extends Page implements HasForms
             'grafico_alunos_sem_resposta_por_escola' => [],
             'distribuicao_alternativas' => [
                 'titulo' => 'Top alternativas no escopo',
-                'subtitulo' => 'Selecione uma avaliacao para carregar os indicadores.',
+                'subtitulo' => 'Selecione uma avaliação para carregar os indicadores.',
                 'total_respostas' => 0,
                 'total_esperado' => 0,
                 'total_alunos' => 0,
@@ -1976,7 +1976,7 @@ class DashboardAvaliacoes extends Page implements HasForms
         $query = (clone $this->baseRespostasQuery($avaliacaoIds))
             ->join('avaliacoes as av', 'av.id', '=', 'ar.avaliacao_id')
             ->leftJoin('escolas as e', 'e.id', '=', 't.id_escola')
-            ->leftJoin('series as s', 's.id', '=', 't.id_serie')
+            ->leftJoin('séries as s', 's.id', '=', 't.id_serie')
             ->groupBy(
                 'ar.avaliacao_id',
                 'ar.turma_id',

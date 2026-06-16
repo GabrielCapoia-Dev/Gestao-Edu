@@ -76,7 +76,7 @@ class PedidosTable
                 'solicitante.name',
                 'responsavel.name',
             ])
-            ->searchPlaceholder('Buscar por protocolo, escola, setor, status, tipo ou descricao')
+            ->searchPlaceholder('Buscar por protocolo, escola, setor, status, tipo ou descrição')
             ->columns(static::columns($user))
             ->filters(static::filters($user), layout: FiltersLayout::AboveContent)
             ->filtersFormColumns(12)
@@ -184,12 +184,12 @@ class PedidosTable
                 }),
 
             Filter::make('manutencao')
-                ->label('Manutencao')
+                ->label('Manutenção')
                 ->columnSpan(6)
                 ->columns(2)
                 ->schema([
                     Select::make('tipo_manutencao_nome')
-                        ->label('Tipo de manutencao')
+                        ->label('Tipo de manutenção')
                         ->placeholder('Todos os tipos')
                         ->options(fn (): array => TipoManutencao::query()
                             ->where('ativo', true)
@@ -205,8 +205,8 @@ class PedidosTable
                         ->afterStateUpdated(fn (callable $set) => $set('tipo_manutencao_opcao_texto', null)),
 
                     Select::make('tipo_manutencao_opcao_texto')
-                        ->label('Opcao do tipo')
-                        ->placeholder('Todas as opcoes')
+                        ->label('Opção do tipo')
+                        ->placeholder('Todas as opções')
                         ->options(fn (Get $get): array => TipoManutencaoOpcao::query()
                             ->where('ativo', true)
                             ->when(
@@ -268,14 +268,14 @@ class PedidosTable
                 }),
 
             Filter::make('periodo_previsto')
-                ->label('Previsao')
+                ->label('Previsão')
                 ->columnSpan(6)
                 ->columns(2)
                 ->schema([
                     DatePicker::make('data_inicio')
                         ->label('De'),
                     DatePicker::make('data_fim')
-                        ->label('Ate'),
+                        ->label('Até'),
                 ])
                 ->query(function (Builder $query, array $data): Builder {
                     return $query
@@ -290,14 +290,14 @@ class PedidosTable
                 }),
 
             Filter::make('periodo_conclusao')
-                ->label('Conclusao')
+                ->label('Conclusão')
                 ->columnSpan(6)
                 ->columns(2)
                 ->schema([
                     DatePicker::make('data_inicio')
                         ->label('De'),
                     DatePicker::make('data_fim')
-                        ->label('Ate'),
+                        ->label('Até'),
                 ])
                 ->query(function (Builder $query, array $data): Builder {
                     return $query
@@ -369,7 +369,7 @@ class PedidosTable
                         ->description('Escola', position: 'above')
                         ->icon('heroicon-o-building-office-2')
                         ->state(fn (Pedido $record): ?string => static::nomeEscolaDoPedido($record))
-                        ->placeholder('Escola nao informada')
+                        ->placeholder('Escola não informada')
                         ->sortable()
                         ->wrap()
                         ->extraAttributes(['class' => 'pedido-card-field pedido-card-field--school'], merge: true),
@@ -380,7 +380,7 @@ class PedidosTable
                         ->icon('heroicon-o-map-pin')
                         ->badge()
                         ->color('primary')
-                        ->placeholder('Setor nao informado')
+                        ->placeholder('Setor não informado')
                         ->wrap()
                         ->extraAttributes(['class' => 'pedido-card-field pedido-card-field--sector'], merge: true),
 
@@ -388,7 +388,7 @@ class PedidosTable
                         ->label('Setor de origem')
                         ->description('Setor de origem', position: 'above')
                         ->icon('heroicon-o-arrow-uturn-left')
-                        ->placeholder('Origem nao informada')
+                        ->placeholder('Origem não informada')
                         ->wrap()
                         ->extraAttributes(['class' => 'pedido-card-field pedido-card-field--sector'], merge: true),
 
@@ -484,8 +484,8 @@ class PedidosTable
                         ->extraAttributes(['class' => 'pedido-card-field pedido-card-field--date'], merge: true),
 
                     TextColumn::make('data_entrega')
-                        ->label('Concluido em')
-                        ->description('Concluido em', position: 'above')
+                        ->label('Concluído em')
+                        ->description('Concluído em', position: 'above')
                         ->icon('heroicon-o-check-circle')
                         ->sortable()
                         ->date('d/m/Y')
@@ -616,7 +616,7 @@ class PedidosTable
                 })
                 ->requiresConfirmation()
                 ->modalHeading('Cancelar pedido adicional')
-                ->modalDescription('O pedido adicional permanecera vinculado para consulta, mas nao entrara na avaliacao do pedido principal.')
+                ->modalDescription('O pedido adicional permanecera vinculado para consulta, mas não entrará na avaliação do pedido principal.')
                 ->modalSubmitActionLabel('Cancelar adicional')
                 ->schema([
                     Textarea::make('descricao')
@@ -638,7 +638,7 @@ class PedidosTable
                     );
 
                     Notification::make()
-                        ->title($cancelado ? 'Pedido adicional cancelado.' : 'Nao foi possivel cancelar o pedido adicional.')
+                        ->title($cancelado ? 'Pedido adicional cancelado.' : 'Não foi possível cancelar o pedido adicional.')
                         ->color($cancelado ? 'warning' : 'danger')
                         ->send();
                 }),
@@ -657,7 +657,7 @@ class PedidosTable
                 })
                 ->requiresConfirmation()
                 ->modalHeading('Transformar adicional em pedido principal')
-                ->modalDescription('O pedido deixara de estar vinculado e passara a aparecer separadamente na fila, mantendo protocolo, fotos, problemas e historico.')
+                ->modalDescription('O pedido deixara de estar vinculado e passara a aparecer separadamente na fila, mantendo protocolo, fotos, problemas e histórico.')
                 ->modalSubmitActionLabel('Transformar em principal')
                 ->action(function (Pedido $record, array $arguments) use ($user, $service): void {
                     $adicional = $record->pedidosAdicionais()->find($arguments['adicional'] ?? null);
@@ -669,7 +669,7 @@ class PedidosTable
                     $promovido = $service->promoverPedidoAdicional($adicional, $user);
 
                     Notification::make()
-                        ->title($promovido ? 'Pedido transformado em principal.' : 'Nao foi possivel transformar o pedido adicional.')
+                        ->title($promovido ? 'Pedido transformado em principal.' : 'Não foi possível transformar o pedido adicional.')
                         ->color($promovido ? 'success' : 'danger')
                         ->send();
                 }),
@@ -781,14 +781,14 @@ class PedidosTable
                         ->required(),
 
                     Textarea::make('descricao')
-                        ->label('Observacao')
+                        ->label('Observação')
                         ->rows(3)
                         ->maxLength(1000)
-                        ->helperText('Se ficar em branco, o historico usara a mensagem automatica.'),
+                        ->helperText('Se ficar em branco, o histórico usara a mensagem automatica.'),
                 ])
                 ->requiresConfirmation()
                 ->modalHeading('Alterar status dos pedidos selecionados')
-                ->modalDescription('Somente pedidos que voce pode gerenciar serao atualizados. Status com fluxo proprio continuam nas acoes especificas.')
+                ->modalDescription('Somente pedidos que você pode gerenciar serão atualizados. Status com fluxo próprio continuam nas ações especificas.')
                 ->action(function (EloquentCollection $records, array $data) use ($user, $service) {
                     if (! $user) {
                         return;
@@ -851,7 +851,7 @@ class PedidosTable
                 ->visible(fn () => $user?->hasPermissionLike('exportar relatorios') ?? false)
                 ->requiresConfirmation()
                 ->modalHeading('Exportar pedidos selecionados em PDF')
-                ->modalDescription('O arquivo sera gerado em segundo plano com um pedido por pagina, contendo somente o cabecalho e as imagens do problema.')
+                ->modalDescription('O arquivo será gerado em segundo plano com um pedido por página, contendo somente o cabecalho e as imagens do problema.')
                 ->modalSubmitActionLabel('Enviar para fila')
                 ->action(function (EloquentCollection $records) use ($user): mixed {
                     if (! $user) {
@@ -868,7 +868,7 @@ class PedidosTable
 
                     if ($pedidoIds === []) {
                         Notification::make()
-                            ->title('Nenhum pedido selecionado para exportacao.')
+                            ->title('Nenhum pedido selecionado para exportação.')
                             ->danger()
                             ->send();
 
@@ -886,7 +886,7 @@ class PedidosTable
                         );
 
                         Notification::make()
-                            ->title($exportRequest->wasRecentlyCreated ? 'Exportacao enviada para a fila' : 'Exportacao ja esta em andamento')
+                            ->title($exportRequest->wasRecentlyCreated ? 'Exportação enviada para a fila' : 'Exportação já está em andamento')
                             ->body('Acompanhe o progresso em Minhas Exportacoes.')
                             ->success()
                             ->send();
@@ -898,7 +898,7 @@ class PedidosTable
                         report($exception);
 
                         Notification::make()
-                            ->title('Nao foi possivel iniciar a exportacao')
+                            ->title('Não foi possível iniciar a exportação')
                             ->body('Tente novamente em alguns instantes.')
                             ->danger()
                             ->send();
@@ -960,7 +960,7 @@ class PedidosTable
                 ])
                 ->requiresConfirmation()
                 ->modalHeading('Enviar pedidos selecionados para empresa')
-                ->modalDescription('Somente pedidos que voce pode gerenciar serao enviados para a empresa selecionada.')
+                ->modalDescription('Somente pedidos que você pode gerenciar serão enviados para a empresa selecionada.')
                 ->action(function (EloquentCollection $records, array $data) use ($user, $service) {
                     $enviados = 0;
                     $empresaId = (int) ($data['empresa_contratada_id'] ?? 0);
@@ -1224,14 +1224,14 @@ class PedidosTable
         $service = app(PedidoService::class);
 
         if ($service->podeGerenciarRegistro($record, $user)) {
-            return 'Gerenciavel';
+            return 'Gerenciável';
         }
 
         if (
             $service->podeVincularAdicionaisAoPedido($record, $user)
             || $service->podeAvaliarRegistro($record, $user)
         ) {
-            return 'Acoes da escola';
+            return 'Ações da escola';
         }
 
         return 'Somente leitura';
@@ -1240,8 +1240,8 @@ class PedidosTable
     private static function corAcessoOperacional(Pedido $record, ?User $user): string
     {
         return match (static::rotuloAcessoOperacional($record, $user)) {
-            'Gerenciavel' => 'success',
-            'Acoes da escola' => 'info',
+            'Gerenciável' => 'success',
+            'Ações da escola' => 'info',
             'Encerrado' => 'gray',
             default => 'warning',
         };
@@ -1250,8 +1250,8 @@ class PedidosTable
     private static function iconeAcessoOperacional(Pedido $record, ?User $user): string
     {
         return match (static::rotuloAcessoOperacional($record, $user)) {
-            'Gerenciavel' => 'heroicon-o-pencil-square',
-            'Acoes da escola' => 'heroicon-o-building-office-2',
+            'Gerenciável' => 'heroicon-o-pencil-square',
+            'Ações da escola' => 'heroicon-o-building-office-2',
             'Encerrado' => 'heroicon-o-lock-closed',
             default => 'heroicon-o-eye',
         };

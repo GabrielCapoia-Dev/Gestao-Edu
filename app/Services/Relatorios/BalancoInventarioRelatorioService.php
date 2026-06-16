@@ -66,7 +66,7 @@ class BalancoInventarioRelatorioService
             'usuarioExportacao' => $usuario,
             'dataExportacao' => now(),
             'orientation' => 'landscape',
-        ], 'relatorio-balanco-inventario-' . $this->slugBalanco($balanco) . '.pdf');
+        ], 'relatório-balanço-inventário-' . $this->slugBalanco($balanco) . '.pdf');
     }
 
     protected function filtrosDoBalanco(BalancoInventario $balanco): array

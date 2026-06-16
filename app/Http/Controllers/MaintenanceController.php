@@ -39,7 +39,7 @@ class MaintenanceController extends Controller
         'notifications.overdue_orders' => 'Notificar pedidos atrasados',
         'notifications.due_orders' => 'Notificar pedidos a vencer',
         'notifications.stock_balances' => 'Notificar balancos de estoque vencidos',
-        'notifications.pending_transfers' => 'Notificar alunos pendentes de transferencia',
+        'notifications.pending_transfers' => 'Notificar alunos pendentes de transferência',
     ];
 
     public function login(Request $request): JsonResponse
@@ -59,7 +59,7 @@ class MaintenanceController extends Controller
             || ! $user->hasRole('Admin')
         ) {
             return response()->json([
-                'message' => 'Credenciais invalidas para manutencao.',
+                'message' => 'Credenciais invalidas para manutenção.',
             ], 403);
         }
 
@@ -319,7 +319,7 @@ class MaintenanceController extends Controller
 
         if (! is_string($token) || $token === '') {
             return response()->json([
-                'message' => 'Token de manutencao ausente.',
+                'message' => 'Token de manutenção ausente.',
             ], 401);
         }
 
@@ -327,7 +327,7 @@ class MaintenanceController extends Controller
 
         if (! is_array($payload) || empty($payload['user_id'])) {
             return response()->json([
-                'message' => 'Token de manutencao invalido ou expirado.',
+                'message' => 'Token de manutenção inválido ou expirado.',
             ], 401);
         }
 
@@ -335,7 +335,7 @@ class MaintenanceController extends Controller
 
         if (! $user || ! $user->hasRole('Admin')) {
             return response()->json([
-                'message' => 'Token sem permissao de manutencao.',
+                'message' => 'Token sem permissão de manutenção.',
             ], 403);
         }
 
@@ -348,7 +348,7 @@ class MaintenanceController extends Controller
 
         if ($commands === null) {
             return response()->json([
-                'message' => 'Comando de manutencao desconhecido.',
+                'message' => 'Comando de manutenção desconhecido.',
                 'available_commands' => array_keys(self::COMMAND_LABELS),
             ], 404);
         }

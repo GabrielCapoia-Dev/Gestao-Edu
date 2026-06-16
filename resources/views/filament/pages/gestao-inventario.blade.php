@@ -19,7 +19,7 @@
                     <div class="gi-toolbar-left">
                         @if ($this->inventariosDisponiveis->count() > 1)
                             <label class="gi-field gi-field--select">
-                                <span>Inventario</span>
+                                <span>Inventário</span>
                                 <select wire:model.live="inventario">
                                     @foreach ($this->inventariosDisponiveis as $inventarioId => $inventarioNome)
                                         <option value="{{ $inventarioId }}">{{ $inventarioNome }}</option>
@@ -36,7 +36,7 @@
 
                     <div class="gi-toolbar-right">
                         <label class="gi-field gi-field--small">
-                            <span>Por pagina</span>
+                            <span>Por página</span>
                             <select wire:model.live="porPagina">
                                 <option value="8">8</option>
                                 <option value="12">12</option>
@@ -63,7 +63,7 @@
                                 <th><button type="button" wire:click="sortBy('quantidade')">Quantidade</button></th>
                                 <th><button type="button" wire:click="sortBy('valor_total')">Valor estimado</button></th>
                                 <th><button type="button" wire:click="sortBy('atualizado')">Atualizado</button></th>
-                                <th class="text-right">Acoes</th>
+                                <th class="text-right">Ações</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -71,7 +71,7 @@
                                 <tr>
                                     <td>
                                         <strong>{{ $item['nome'] }}</strong>
-                                        <small>{{ $item['descricao'] ?: 'Sem descricao' }}</small>
+                                        <small>{{ $item['descricao'] ?: 'Sem descrição' }}</small>
                                     </td>
                                     <td>{{ $item['tipo_label'] }}</td>
                                     <td>
@@ -85,17 +85,17 @@
                                     <td>{{ $item['atualizado'] ?: 'N/A' }}</td>
                                     <td class="text-right">
                                         <div class="gi-row-actions">
-                                            <button type="button" wire:click="abrirSlideOver({{ $item['inventario_estoque_id'] }})">Movimentacoes</button>
+                                            <button type="button" wire:click="abrirSlideOver({{ $item['inventario_estoque_id'] }})">Movimentações</button>
                                             <button type="button" wire:click="abrirModalBaixa({{ $item['inventario_estoque_id'] }})" @disabled((float) $item['quantidade'] <= 0)>Baixa</button>
                                             @if ($this->podeExportar)
-                                                <a href="{{ route('gestao-inventario.item-relatorio.pdf', ['estoque' => $item['inventario_estoque_id'], 'async' => 1]) }}" target="_blank">Relatorio</a>
+                                                <a href="{{ route('gestao-inventario.item-relatorio.pdf', ['estoque' => $item['inventario_estoque_id'], 'async' => 1]) }}" target="_blank">Relatório</a>
                                             @endif
                                         </div>
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="gi-empty">Nenhum item encontrado no inventario.</td>
+                                    <td colspan="6" class="gi-empty">Nenhum item encontrado no inventário.</td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -119,9 +119,9 @@
         <aside class="gi-slideover">
             <header>
                 <div>
-                    <p class="gi-eyebrow">Historico do item</p>
+                    <p class="gi-eyebrow">Histórico do item</p>
                     <h3>{{ $itemSelecionadoNome }}</h3>
-                    <small>{{ $totalMovimentacoesItem }} movimentacoes registradas</small>
+                    <small>{{ $totalMovimentacoesItem }} movimentações registradas</small>
                 </div>
                 <button type="button" wire:click="fecharSlideOver">Fechar</button>
             </header>
@@ -175,7 +175,7 @@
                 </label>
 
                 <label class="gi-field">
-                    <span>Descricao</span>
+                    <span>Descrição</span>
                     <textarea rows="4" wire:model.defer="baixaDescricao"></textarea>
                     @error('baixaDescricao') <small class="error">{{ $message }}</small> @enderror
                 </label>

@@ -215,8 +215,8 @@ class ReportsController extends Controller
                 'turmas.turno',
                 'componentes_curriculares.nome as componente_nome',
                 DB::raw("COALESCE(professores.nome, 'Sem professor') as professor_nome"),
-                DB::raw("COALESCE(professores.email, 'Nao informado') as professor_email"),
-                DB::raw("COALESCE(professores.matricula, 'Nao informada') as professor_matricula"),
+                DB::raw("COALESCE(professores.email, 'Não informado') as professor_email"),
+                DB::raw("COALESCE(professores.matricula, 'Não informada') as professor_matricula"),
             ]);
     }
 

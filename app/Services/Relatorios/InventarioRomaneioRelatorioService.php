@@ -39,8 +39,8 @@ class InventarioRomaneioRelatorioService
         return $this->renderer->download('relatorios.Inventario.romaneio', [
             'romaneio' => $romaneio,
             'totais' => $totais,
-            'reportTitle' => 'Romaneio de Inventarios',
-            'reportSubtitle' => 'Separacao consolidada dos pedidos aprovados',
+            'reportTitle' => 'Romaneio de Inventários',
+            'reportSubtitle' => 'Separação consolidada dos pedidos aprovados',
             'reportFilters' => [
                 'romaneio' => $romaneio->codigo ?? 'N/A',
                 'gerado_em' => $romaneio->gerado_em?->format('d/m/Y H:i') ?? 'N/A',

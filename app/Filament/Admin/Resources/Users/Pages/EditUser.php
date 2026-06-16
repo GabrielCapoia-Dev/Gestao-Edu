@@ -38,29 +38,29 @@ class EditUser extends EditRecord
 
         return [
             [
-                'label' => 'Niveis ativos',
+                'label' => 'Níveis ativos',
                 'value' => number_format($record->roles->count(), 0, ',', '.'),
                 'description' => $record->roles->pluck('name')->join(', ') ?: 'Nenhum nivel vinculado.',
                 'icon' => 'heroicon-o-shield-check',
                 'tone' => 'amber',
             ],
             [
-                'label' => 'Permissoes extras',
+                'label' => 'Permissões extras',
                 'value' => number_format($record->getDirectPermissions()->count(), 0, ',', '.'),
-                'description' => 'Permissoes aplicadas diretamente ao usuario.',
+                'description' => 'Permissões aplicadas diretamente ao usuário.',
                 'icon' => 'heroicon-o-key',
                 'tone' => 'rose',
             ],
             [
                 'label' => 'Escola',
-                'value' => $record->escola ? Str::limit($record->escola->nome, 24) : 'Nao vinculada',
+                'value' => $record->escola ? Str::limit($record->escola->nome, 24) : 'Não vinculada',
                 'description' => 'Escopo operacional principal.',
                 'icon' => 'heroicon-o-building-library',
                 'tone' => 'sky',
             ],
             [
                 'label' => 'Setor',
-                'value' => $record->setor ? Str::limit($record->setor->nome, 22) : 'Nao vinculado',
+                'value' => $record->setor ? Str::limit($record->setor->nome, 22) : 'Não vinculado',
                 'description' => 'Organizacao interna do acesso.',
                 'icon' => 'heroicon-o-building-office-2',
                 'tone' => 'emerald',
@@ -71,8 +71,8 @@ class EditUser extends EditRecord
     public function getHighlights(): array
     {
         return [
-            'Ajuste niveis sem perder o historico do usuario',
-            'Mantenha permissoes diretas apenas para casos especiais',
+            'Ajuste níveis sem perder o histórico do usuário',
+            'Mantenha permissões diretas apenas para casos especiais',
             'Revise escola, setor e liberacao de acesso no mesmo fluxo',
         ];
     }
@@ -83,16 +83,16 @@ class EditUser extends EditRecord
 
         return [
             [
-                'title' => 'Situacao atual do acesso',
+                'title' => 'Situação atual do acesso',
                 'description' => $record->email_approved
-                    ? 'O usuario esta com acesso liberado ao sistema.'
-                    : 'O usuario ainda nao esta liberado para acessar o sistema.',
+                    ? 'O usuário está com acesso liberado ao sistema.'
+                    : 'O usuário ainda não está liberado para acessar o sistema.',
             ],
             [
                 'title' => 'Composicao recomendada',
                 'description' => $record->roles->count() > 1
-                    ? 'Este usuario ja combina mais de um nivel. Revise apenas se os temas ainda fazem sentido juntos.'
-                    : 'Se o usuario acumular responsabilidades, voce pode adicionar mais niveis sem substituir o acesso atual.',
+                    ? 'Este usuário já combina mais de um nível. Revise apenas se os temas ainda fazem sentido juntos.'
+                    : 'Se o usuário acumular responsabilidades, você pode adicionar mais níveis sem substituir o acesso atual.',
             ],
         ];
     }

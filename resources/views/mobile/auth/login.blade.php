@@ -1,12 +1,12 @@
 @extends('mobile.layouts.auth')
 
-@section('title', 'Entrar | Gestao Edu Mobile')
+@section('title', 'Entrar | Gestão Edu Mobile')
 
 @section('content')
     <section class="mobile-auth-card">
         <div class="mobile-hero mobile-hero--auth">
             <p class="mobile-hero__eyebrow">PWA mobile</p>
-            <h1 class="mobile-hero__title">Entre no Gestao Edu do celular.</h1>
+            <h1 class="mobile-hero__title">Entre no Gestão Edu do celular.</h1>
             <p class="mobile-hero__subtitle">
                 A experiencia mobile agora roda separada do painel Filament, com mais liberdade de layout e pronta para instalacao.
             </p>

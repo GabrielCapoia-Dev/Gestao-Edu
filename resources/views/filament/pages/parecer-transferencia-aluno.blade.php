@@ -4,7 +4,7 @@
         <section class="gi-panel av-professor-control-panel parecer-filter-grid">
             <label class="gi-field">
                 <span>Buscar aluno</span>
-                <input type="search" wire:model.live.debounce.400ms="busca" placeholder="Nome, CGM, escola ou serie">
+                <input type="search" wire:model.live.debounce.400ms="busca" placeholder="Nome, CGM, escola ou série">
             </label>
 
             <label class="gi-field">
@@ -18,9 +18,9 @@
             </label>
 
             <label class="gi-field">
-                <span>Serie</span>
+                <span>Série</span>
                 <select wire:model.live="serieFiltro">
-                    <option value="">Todas as series</option>
+                    <option value="">Todas as séries</option>
                     @foreach ($this->opcoesSeries() as $serieId => $serieNome)
                     <option value="{{ $serieId }}">{{ $serieNome }}</option>
                     @endforeach
@@ -58,7 +58,7 @@
                     </div>
 
                     <label class="gi-field gi-field--small">
-                        <span>Por pagina</span>
+                        <span>Por página</span>
                         <select wire:model.live="porPagina">
                             @foreach ($this->opcoesPorPagina() as $valor => $label)
                             <option value="{{ $valor }}">{{ $label }}</option>
@@ -176,7 +176,7 @@
                 $aluno = $this->alunoSelecionado;
             @endphp
             <div class="parecer-slideover-backdrop" wire:click="fecharSlideover"></div>
-            <aside class="parecer-slideover" role="dialog" aria-modal="true" aria-label="Parecer de Transferencia">
+            <aside class="parecer-slideover" role="dialog" aria-modal="true" aria-label="Parecer de Transferência">
                 <div class="parecer-loading-overlay" wire:loading.flex>
                     <div class="parecer-loading-card" role="status" aria-live="polite">
                         <span class="parecer-loading-spinner"></span>
@@ -186,7 +186,7 @@
 
                 <header class="parecer-slideover-header">
                     <div>
-                        <p class="gi-eyebrow">Parecer de Transferencia</p>
+                        <p class="gi-eyebrow">Parecer de Transferência</p>
                         <h3>{{ $aluno->nome }}</h3>
                         <p>
                             CGM: {{ $aluno->cgm }} |
@@ -204,10 +204,10 @@
                         type="button"
                         class="gi-action gi-action--primary"
                         wire:click="gerarParecerTransferencia"
-                        wire:confirm="Caso deseje continuar, o aluno sera marcado como transferido e essa acao nao podera ser revertida. Deseja gerar o Parecer de Transferencia?"
+                        wire:confirm="Caso deseje continuar, o aluno será marcado como transferido e essa ação não poderá ser revertida. Deseja gerar o parecer de transferência?"
                         wire:loading.attr="disabled"
                         wire:target="gerarParecerTransferencia">
-                        Gerar Parecer de Transferencia
+                        Gerar Parecer de Transferência
                     </button>
                     @endif
                 </div>
@@ -258,7 +258,7 @@
                                                 <th>Pauta</th>
                                                 <th>Alternativas</th>
                                                 <th>Resposta</th>
-                                                <th>Observacao</th>
+                                                <th>Observação</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -280,7 +280,7 @@
                                                         @endforeach
                                                     </select>
                                                     @if ($pauta['bloqueada'])
-                                                    <small>Bloqueada por historico</small>
+                                                    <small>Bloqueada por histórico</small>
                                                     @elseif (! (bool) ($pauta['editavel'] ?? true))
                                                     <small>Componente restrito ao professor vinculado.</small>
                                                     @endif
@@ -289,13 +289,13 @@
                                                     @if ($pauta['requer_observacao'])
                                                     <textarea
                                                         maxlength="1500"
-                                                        placeholder="Observacao obrigatoria"
+                                                        placeholder="Observação obrigatória"
                                                         class="parecer-response-textarea"
                                                         wire:model.live.debounce.500ms="observacoesParecer.{{ $avaliacao['id'] }}.{{ $pauta['id'] }}"
                                                         @disabled($campoBloqueado)></textarea>
-                                                    <small class="av-field-hint av-field-hint--danger">Obrigatoria para esta alternativa.</small>
+                                                    <small class="av-field-hint av-field-hint--danger">Obrigatória para esta alternativa.</small>
                                                     @else
-                                                    <small class="av-field-hint">Somente alternativas com observacao habilitam este campo.</small>
+                                                    <small class="av-field-hint">Somente alternativas com observação habilitam este campo.</small>
                                                     @endif
                                                 </td>
                                             </tr>
@@ -306,17 +306,17 @@
 
                                 @php($informacaoBloqueada = ! (bool) ($componente['editavel'] ?? true) || (bool) ($componente['informacao_bloqueada'] ?? false))
                                 <div class="parecer-complementary-section">
-                                    <h4>Informacoes complementares do componente</h4>
+                                    <h4>Informações complementares do componente</h4>
                                     @if ($informacaoBloqueada)
                                     @if ($componente['informacao_bloqueada'] ?? false)
-                                    <small class="av-field-hint">Informacoes bloqueadas por historico.</small>
+                                    <small class="av-field-hint">Informações bloqueadas por histórico.</small>
                                     @elseif (! (bool) ($componente['editavel'] ?? true))
                                     <small class="av-field-hint">Componente restrito ao professor vinculado.</small>
                                     @endif
                                     @endif
                                     <textarea
                                         maxlength="1500"
-                                        placeholder="Informacoes complementares (opcional)"
+                                        placeholder="Informações complementares (opcional)"
                                         class="parecer-response-textarea"
                                         wire:model.live.debounce.600ms="informacoesComplementaresParecer.{{ $avaliacao['id'] }}.{{ $componente['id'] }}"
                                         @disabled($informacaoBloqueada)></textarea>
@@ -328,14 +328,14 @@
                     </section>
                     @empty
                     <section class="av-note av-note--warning">
-                        Nenhuma avaliacao vinculada a turma atual do aluno.
+                        Nenhuma avaliação vinculada a turma atual do aluno.
                     </section>
                     @endforelse
                 </div>
             </aside>
             @else
             <section class="av-note">
-                Clique em Abrir para visualizar as avaliacoes em painel lateral.
+                Clique em Abrir para visualizar as avaliações em painel lateral.
             </section>
             @endif
         </div>

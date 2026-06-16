@@ -37,7 +37,7 @@ class MinhasExportacoes extends Page implements HasTable
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ArrowDownTray;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Relatorios';
+    protected static string|UnitEnum|null $navigationGroup = 'Relatórios';
 
     public ?string $autoDownload = null;
 
@@ -66,7 +66,7 @@ class MinhasExportacoes extends Page implements HasTable
     {
         return view('filament.admin.pages.partials.page-header', [
             'actions' => $this->getCachedHeaderActions(),
-            'eyebrow' => 'Relatorios',
+            'eyebrow' => 'Relatórios',
             'title' => 'Minhas Exportacoes',
             'description' => 'Acompanhe exportacoes e processamentos em segundo plano.',
         ]);
@@ -80,8 +80,8 @@ class MinhasExportacoes extends Page implements HasTable
             ->defaultPaginationPageOption(10)
             ->columns([
                 TextColumn::make('label')
-                    ->label('Solicitacao')
-                    ->placeholder('Solicitacao')
+                    ->label('Solicitação')
+                    ->placeholder('Solicitação')
                     ->searchable()
                     ->wrap(),
 
@@ -117,7 +117,7 @@ class MinhasExportacoes extends Page implements HasTable
                     ->sortable(),
 
                 TextColumn::make('finished_at')
-                    ->label('Concluido em')
+                    ->label('Concluído em')
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(),
@@ -186,7 +186,7 @@ class MinhasExportacoes extends Page implements HasTable
 
             Notification::make()
                 ->title('Arquivo pronto')
-                ->body('O download sera iniciado automaticamente. O arquivo continua disponivel para baixar novamente nesta tela.')
+                ->body('O download será iniciado automaticamente. O arquivo continua disponível para baixar novamente nesta tela.')
                 ->success()
                 ->send();
 
@@ -200,8 +200,8 @@ class MinhasExportacoes extends Page implements HasTable
             $this->autoDownload = null;
 
             Notification::make()
-                ->title('Falha na exportacao')
-                ->body($exportRequest->error_message ?: 'Nao foi possivel gerar o arquivo solicitado.')
+                ->title('Falha na exportação')
+                ->body($exportRequest->error_message ?: 'Não foi possível gerar o arquivo solicitado.')
                 ->danger()
                 ->send();
         }

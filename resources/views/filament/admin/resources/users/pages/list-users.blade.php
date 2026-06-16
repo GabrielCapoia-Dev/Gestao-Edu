@@ -8,8 +8,8 @@
         <section class="am-panel">
             <div class="am-panel__header">
                 <p class="am-panel__eyebrow">Painel principal</p>
-                <h3 class="am-panel__title">Usuarios cadastrados</h3>
-                <p class="am-panel__subtitle">Edite niveis, permissoes e vinculos no mesmo fluxo de trabalho.</p>
+                <h3 class="am-panel__title">Usuários cadastrados</h3>
+                <p class="am-panel__subtitle">Edite níveis, permissões e vinculos no mesmo fluxo de trabalho.</p>
             </div>
 
             <div class="am-summary">

@@ -74,9 +74,9 @@ class ForcePasswordChangeTest extends TestCase
             ->get(ForcePasswordChange::getUrl())
             ->assertOk()
             ->assertSee('Redefina sua senha')
-            ->assertSee('Letras maiusculas')
-            ->assertSee('Letras minusculas')
-            ->assertSee('Numeros')
+            ->assertSee('Letras maiúsculas')
+            ->assertSee('Letras minúsculas')
+            ->assertSee('Números')
             ->assertSee('Caracteres especiais')
             ->assertSee('As senhas devem ser iguais');
     }

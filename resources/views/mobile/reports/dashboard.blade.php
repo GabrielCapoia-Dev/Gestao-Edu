@@ -1,13 +1,13 @@
 @extends('mobile.layouts.app')
 
-@section('title', 'Dashboard de Relatorios | Gestao Edu Mobile')
+@section('title', 'Dashboard de Relatórios | Gestão Edu Mobile')
 
 @section('content')
     <section class="mobile-page-intro">
         <p class="mobile-page-intro__eyebrow">Dashboard</p>
         <h1 class="mobile-page-intro__title">Panorama geral dos vinculos do sistema.</h1>
         <p class="mobile-page-intro__subtitle">
-            Esta visao mobile concentra os indicadores principais e aponta onde a cobertura de professores esta mais pressionada.
+            Esta visão mobile concentra os indicadores principais e aponta onde a cobertura de professores está mais pressionada.
         </p>
     </section>
 
@@ -34,7 +34,7 @@
                 <span class="mobile-link-card__badge">PT</span>
                 <span class="mobile-link-card__content">
                     <strong>Professor por turma</strong>
-                    <small>Consulta detalhada por escola, serie, turno e componente.</small>
+                    <small>Consulta detalhada por escola, série, turno e componente.</small>
                 </span>
             </a>
 
@@ -42,7 +42,7 @@
                 <span class="mobile-link-card__badge">CF</span>
                 <span class="mobile-link-card__content">
                     <strong>Componentes faltando</strong>
-                    <small>Descubra onde faltam professores e quais turmas estao afetadas.</small>
+                    <small>Descubra onde faltam professores e quais turmas estão afetadas.</small>
                 </span>
             </a>
         </div>

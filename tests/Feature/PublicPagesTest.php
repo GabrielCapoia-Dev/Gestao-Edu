@@ -12,7 +12,9 @@ class PublicPagesTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSee('Gestao Edu')
+            ->assertSee('Gestão Edu')
+            ->assertSee('Gestão escolar simples, clara e conectada.')
+            ->assertSee('Secretaria Municipal de Educação')
             ->assertSee('href="/politica-de-privacidade"', false)
             ->assertSee('href="/termos-de-servico"', false)
             ->assertSee('/admin/login', false);
@@ -24,8 +26,9 @@ class PublicPagesTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSee('Politica de Privacidade')
-            ->assertSee('dados')
+            ->assertSee('Política de Privacidade')
+            ->assertSee('Privacidade e segurança')
+            ->assertSee('controle de permissões')
             ->assertSee('automacao@edu.umuarama.pr.gov.br');
     }
 
@@ -35,8 +38,9 @@ class PublicPagesTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSee('Termos de Servico')
+            ->assertSee('Termos de Serviço')
             ->assertSee('Uso institucional')
+            ->assertSee('Responsabilidades do usuário')
             ->assertSee('automacao@edu.umuarama.pr.gov.br');
     }
 

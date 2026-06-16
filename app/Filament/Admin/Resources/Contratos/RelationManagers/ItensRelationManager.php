@@ -47,7 +47,7 @@ class ItensRelationManager extends RelationManager
                     ->searchable(),
 
                 TextColumn::make('item.codigo')
-                    ->label('Codigo')
+                    ->label('Código')
                     ->searchable(),
 
                 TextColumn::make('tipo')
@@ -117,7 +117,7 @@ class ItensRelationManager extends RelationManager
                             ])
                             ->maxSize(5120)
                             ->required()
-                            ->helperText('Aceita arquivos CSV e XLSX com as colunas Codigo do Item, Quantidade e Preco unitario.'),
+                            ->helperText('Aceita arquivos CSV e XLSX com as colunas Código do item, Quantidade e Preço unitário.'),
                     ])
                     ->action(function (array $data): void {
                         try {
@@ -127,13 +127,13 @@ class ItensRelationManager extends RelationManager
                             );
 
                             Notification::make()
-                                ->title('Importacao concluida')
+                                ->title('Importação concluída')
                                 ->body("{$resultado['total_importado']} item(ns) foram adicionados ao contrato.")
                                 ->success()
                                 ->send();
                         } catch (InvalidArgumentException $exception) {
                             Notification::make()
-                                ->title('Nao foi possivel importar a planilha')
+                                ->title('Não foi possível importar a planilha')
                                 ->body($exception->getMessage())
                                 ->danger()
                                 ->persistent()

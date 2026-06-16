@@ -23,8 +23,8 @@ class ListUsers extends ListRecords
             'actions' => $this->getCachedHeaderActions(),
 
             'eyebrow' => 'Acesso',
-            'title' => 'Usuarios',
-            'description' => 'Gerencie os usuarios e permissões de acesso.',
+            'title' => 'Usuários',
+            'description' => 'Gerencie os usuários e permissões de acesso.',
         ]);
     }
 
@@ -53,7 +53,7 @@ class ListUsers extends ListRecords
 
         return [
             [
-                'label' => 'Usuarios visiveis',
+                'label' => 'Usuários visíveis',
                 'value' => number_format($stats['total'], 0, ',', '.'),
                 'description' => 'Dentro do seu escopo atual de gestao.',
                 'icon' => 'heroicon-o-users',
@@ -67,16 +67,16 @@ class ListUsers extends ListRecords
                 'tone' => 'emerald',
             ],
             [
-                'label' => 'Multiplos niveis',
+                'label' => 'Múltiplos níveis',
                 'value' => number_format($stats['multi_role'], 0, ',', '.'),
-                'description' => 'Usuarios com dois ou mais niveis.',
+                'description' => 'Usuários com dois ou mais níveis.',
                 'icon' => 'heroicon-o-shield-check',
                 'tone' => 'amber',
             ],
             [
-                'label' => 'Permissoes extras',
+                'label' => 'Permissões extras',
                 'value' => number_format($stats['direct_permissions'], 0, ',', '.'),
-                'description' => 'Com excecoes alem dos niveis de acesso.',
+                'description' => 'Com excecoes alem dos níveis de acesso.',
                 'icon' => 'heroicon-o-key',
                 'tone' => 'rose',
             ],
@@ -86,9 +86,9 @@ class ListUsers extends ListRecords
     public function getHighlights(): array
     {
         return [
-            'Multiplos niveis por usuario',
-            'Permissoes diretas para excecoes controladas',
-            'Edicao em massa para grupos de usuarios',
+            'Múltiplos níveis por usuário',
+            'Permissões diretas para excecoes controladas',
+            'Edição em massa para grupos de usuários',
         ];
     }
 
@@ -97,11 +97,11 @@ class ListUsers extends ListRecords
         return [
             [
                 'title' => 'Fluxo mais claro para a equipe',
-                'description' => 'A tabela continua com as mesmas acoes, filtros e bulk actions, agora dentro de um contexto visual mais facil de ler.',
+                'description' => 'A tabela continua com as mesmas ações, filtros e bulk actions, agora dentro de um contexto visual mais facil de ler.',
             ],
             [
                 'title' => 'Combinacao de acesso sem retrabalho',
-                'description' => 'Use niveis tematicos para montar o pacote de acesso ideal e recorra a permissoes extras apenas quando houver uma excecao real.',
+                'description' => 'Use níveis tematicos para montar o pacote de acesso ideal e recorra a permissões extras apenas quando houver uma excecao real.',
             ],
         ];
     }

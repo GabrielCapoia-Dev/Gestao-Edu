@@ -833,7 +833,7 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             ->assertSet("avaliacoesExpandidas.{$avaliacao->id}", false)
             ->assertSee('Aluno Parecer Slideover')
             ->assertDontSee('Pauta de teste')
-            ->assertSee('Gerar Parecer de Transferencia')
+            ->assertSee('Gerar Parecer de Transferência')
             ->assertSee('100%')
             ->call('alternarAvaliacaoParecer', $avaliacao->id)
             ->assertSet("avaliacoesExpandidas.{$avaliacao->id}", true)

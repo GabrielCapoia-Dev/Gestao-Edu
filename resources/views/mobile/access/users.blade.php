@@ -1,19 +1,19 @@
 @extends('mobile.layouts.app')
 
-@section('title', 'Usuarios | Gestao Edu Mobile')
+@section('title', 'Usuários | Gestão Edu Mobile')
 
 @section('content')
     <section class="mobile-page-intro">
-        <p class="mobile-page-intro__eyebrow">Usuarios</p>
+        <p class="mobile-page-intro__eyebrow">Usuários</p>
         <h1 class="mobile-page-intro__title">Visao resumida dos acessos ativos.</h1>
         <p class="mobile-page-intro__subtitle">
-            Consulte o status de liberacao, escola, setor e niveis sem depender das telas administrativas do desktop.
+            Consulte o status de liberacao, escola, setor e níveis sem depender das telas administrativas do desktop.
         </p>
     </section>
 
     <section class="mobile-stats-grid">
         <article class="mobile-stat-card">
-            <small>Usuarios visiveis</small>
+            <small>Usuários visíveis</small>
             <strong>{{ number_format($stats['total'], 0, ',', '.') }}</strong>
         </article>
         <article class="mobile-stat-card">
@@ -21,11 +21,11 @@
             <strong>{{ number_format($stats['approved'], 0, ',', '.') }}</strong>
         </article>
         <article class="mobile-stat-card">
-            <small>Multiplos niveis</small>
+            <small>Múltiplos níveis</small>
             <strong>{{ number_format($stats['multiRole'], 0, ',', '.') }}</strong>
         </article>
         <article class="mobile-stat-card">
-            <small>Permissoes extras</small>
+            <small>Permissões extras</small>
             <strong>{{ number_format($stats['directPermissions'], 0, ',', '.') }}</strong>
         </article>
     </section>
@@ -50,20 +50,20 @@
                 </div>
 
                 <div class="mobile-meta-list">
-                    <span><strong>Escola:</strong> {{ $user->escola?->nome ?? 'Nao vinculada' }}</span>
-                    <span><strong>Setor:</strong> {{ $user->setor?->nome ?? 'Nao vinculado' }}</span>
+                    <span><strong>Escola:</strong> {{ $user->escola?->nome ?? 'Não vinculada' }}</span>
+                    <span><strong>Setor:</strong> {{ $user->setor?->nome ?? 'Não vinculado' }}</span>
                 </div>
 
                 <div class="mobile-tags">
                     @forelse ($user->roles as $role)
                         <span class="mobile-tag">{{ $role->name }}</span>
                     @empty
-                        <span class="mobile-tag mobile-tag--muted">Sem nivel vinculado</span>
+                        <span class="mobile-tag mobile-tag--muted">Sem nível vinculado</span>
                     @endforelse
                 </div>
             </article>
         @empty
-            <div class="mobile-empty">Nenhum usuario encontrado com os filtros atuais.</div>
+            <div class="mobile-empty">Nenhum usuário encontrado com os filtros atuais.</div>
         @endforelse
     </section>
 

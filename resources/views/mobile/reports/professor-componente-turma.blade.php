@@ -1,6 +1,6 @@
 @extends('mobile.layouts.app')
 
-@section('title', 'Professor por Turma | Gestao Edu Mobile')
+@section('title', 'Professor por Turma | Gestão Edu Mobile')
 
 @section('content')
     @php
@@ -9,15 +9,15 @@
             'tarde' => 'Tarde',
             'noite' => 'Noite',
             'integral' => 'Integral',
-            default => $turno ?: 'Nao informado',
+            default => $turno ?: 'Não informado',
         };
     @endphp
 
     <section class="mobile-page-intro">
         <p class="mobile-page-intro__eyebrow">Professor por turma</p>
-        <h1 class="mobile-page-intro__title">Consulta detalhada por escola, serie e componente.</h1>
+        <h1 class="mobile-page-intro__title">Consulta detalhada por escola, série e componente.</h1>
         <p class="mobile-page-intro__subtitle">
-            A estrutura em cards facilita a leitura rapida no celular e mantem os filtros essenciais sempre visiveis.
+            A estrutura em cards facilita a leitura rapida no celular e mantem os filtros essenciais sempre visíveis.
         </p>
     </section>
 
@@ -28,7 +28,7 @@
     </section>
 
     <form method="GET" class="mobile-filter-stack">
-        <input type="search" name="search" value="{{ $filters['search'] }}" class="mobile-input" placeholder="Buscar escola, serie, turma, componente ou professor">
+        <input type="search" name="search" value="{{ $filters['search'] }}" class="mobile-input" placeholder="Buscar escola, série, turma, componente ou professor">
 
         <div class="mobile-filter-grid">
             <select name="escola_id" class="mobile-select">
@@ -39,7 +39,7 @@
             </select>
 
             <select name="serie_id" class="mobile-select">
-                <option value="">Todas as series</option>
+                <option value="">Todas as séries</option>
                 @foreach ($series as $serie)
                     <option value="{{ $serie->id }}" @selected((string) $filters['serie_id'] === (string) $serie->id)>{{ $serie->nome }}</option>
                 @endforeach
@@ -74,7 +74,7 @@
                 <div class="mobile-meta-list">
                     <span><strong>Turma:</strong> {{ $record->turma_nome }}</span>
                     <span><strong>Turno:</strong> {{ $turnoLabel($record->turno) }}</span>
-                    <span><strong>Matricula:</strong> {{ $record->professor_matricula }}</span>
+                    <span><strong>Matrícula:</strong> {{ $record->professor_matricula }}</span>
                     <span><strong>E-mail:</strong> {{ $record->professor_email }}</span>
                 </div>
             </article>

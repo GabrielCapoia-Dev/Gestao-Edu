@@ -30,7 +30,7 @@ class ListHistoricoBaixasEstoque extends ListRecords
                 ->icon('heroicon-o-arrow-trending-down')
                 ->url(route('filament.admin.resources.baixas-estoque.index')),
             Action::make('exportarRelatorio')
-                ->label('Exportar Relatorio')
+                ->label('Exportar Relatório')
                 ->icon('heroicon-o-document-arrow-down')
                 ->color('gray')
                 ->url(fn() => route('baixas-estoque.relatorio', request()->query()))

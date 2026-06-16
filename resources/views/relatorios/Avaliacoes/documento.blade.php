@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="utf-8">
-    <title>Documento de Avaliacao</title>
+    <title>Documento de Avaliação</title>
     <style>
         @page {
             size: A4;
@@ -243,7 +243,7 @@
                         <tr>
                             <th class="question">Pautas Avaliativas</th>
                             <th class="result">Resultado</th>
-                            <th class="observation">Observacoes</th>
+                            <th class="observation">Observações</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -255,7 +255,7 @@
                             </tr>
                         @endforeach
                         <tr>
-                            <th class="complementary-title" colspan="3">Informacoes Complementares</th>
+                            <th class="complementary-title" colspan="3">Informações Complementares</th>
                         </tr>
                         <tr>
                             <td class="complementary-text" colspan="3">{{ $componente['informacoes_complementares'] ?? '' }}</td>

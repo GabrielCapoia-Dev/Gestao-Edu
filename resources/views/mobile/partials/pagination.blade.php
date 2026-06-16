@@ -7,7 +7,7 @@
         @endif
 
         <span class="mobile-pager__status">
-            Pagina {{ $paginator->currentPage() }} de {{ $paginator->lastPage() }}
+            Página {{ $paginator->currentPage() }} de {{ $paginator->lastPage() }}
         </span>
 
         @if ($paginator->hasMorePages())

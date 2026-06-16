@@ -1,7 +1,7 @@
 @php
     $resolvedReportTitle = $reportTitle ?? trim((string) $__env->yieldContent('reportTitle'));
     $resolvedReportSubtitle = $reportSubtitle ?? trim((string) $__env->yieldContent('reportSubtitle'));
-    $resolvedReportTitle = $resolvedReportTitle !== '' ? $resolvedReportTitle : 'Relatorio';
+    $resolvedReportTitle = $resolvedReportTitle !== '' ? $resolvedReportTitle : 'Relatório';
     $resolvedReportSubtitle = $resolvedReportSubtitle !== '' ? $resolvedReportSubtitle : null;
     $resolvedFilters = $reportFilters ?? $filtros ?? [];
 @endphp

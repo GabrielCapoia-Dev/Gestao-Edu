@@ -2,7 +2,7 @@
     <table class="pdf-header-table">
         <tr>
             <td style="width: 50%;">
-                <img src="{{ public_path('images/logo-educacao.png') }}" class="pdf-logo-left" alt="Logo Educacao">
+                <img src="{{ public_path('images/logo-educacao.png') }}" class="pdf-logo-left" alt="Logo Educação">
             </td>
             <td style="width: 50%;" class="pdf-logo-right">
                 <img src="{{ public_path('images/logo-abrinq-preto.png') }}" class="pdf-logo-right-image" alt="Logo Abrinq">
@@ -11,7 +11,7 @@
     </table>
 
     <div class="pdf-header-text">
-        <h1>Gestao Educacional</h1>
+        <h1>Gestão Educacional</h1>
         <h2>{{ $reportTitle }}</h2>
 
         @if(! empty($reportSubtitle))

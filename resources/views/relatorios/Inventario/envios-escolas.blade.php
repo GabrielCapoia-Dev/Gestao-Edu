@@ -1,6 +1,6 @@
 @extends('relatorios.layouts.base-pdf')
 
-@section('reportTitle', $reportTitle ?? 'Relatorio de Envios para Escolas')
+@section('reportTitle', $reportTitle ?? 'Relatório de Envios para Escolas')
 @section('reportSubtitle', $reportSubtitle ?? 'Consolidado das entregas realizadas para os inventarios escolares')
 
 @section('styles')
@@ -110,7 +110,7 @@
                 <div class="value">{{ $resumo->total_entregas }}</div>
             </td>
             <td>
-                <div class="label">Periodo</div>
+                <div class="label">Período</div>
                 <div class="value" style="font-size: 14px;">{{ $periodoLabel }}</div>
             </td>
         </tr>
@@ -214,14 +214,14 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9">Nenhum item enviado para esta escola no periodo selecionado.</td>
+                            <td colspan="9">Nenhum item enviado para esta escola no período selecionado.</td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
 
             <p class="muted" style="margin-top: 6px;">
-                Os valores utilizam a referencia contratual mais recente disponivel no sistema para cada item.
+                Os valores utilizam a referencia contratual mais recente disponível no sistema para cada item.
             </p>
         </div>
     @empty

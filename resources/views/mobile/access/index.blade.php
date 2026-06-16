@@ -1,13 +1,13 @@
 @extends('mobile.layouts.app')
 
-@section('title', 'Acesso | Gestao Edu Mobile')
+@section('title', 'Acesso | Gestão Edu Mobile')
 
 @section('content')
     <section class="mobile-page-intro">
         <p class="mobile-page-intro__eyebrow">Acesso</p>
-        <h1 class="mobile-page-intro__title">Modulos de controle de permissao e usuarios.</h1>
+        <h1 class="mobile-page-intro__title">Módulos de controle de permissão e usuários.</h1>
         <p class="mobile-page-intro__subtitle">
-            Esta area foi separada para voce navegar no celular com menos densidade e mais clareza visual.
+            Está área foi separada para você navegar no celular com menos densidade e mais clareza visual.
         </p>
     </section>
 
@@ -24,6 +24,6 @@
             @endforeach
         </div>
     @else
-        <div class="mobile-empty">Seu perfil nao possui acesso aos modulos de controle.</div>
+        <div class="mobile-empty">Seu perfil não possui acesso aos módulos de controle.</div>
     @endif
 @endsection

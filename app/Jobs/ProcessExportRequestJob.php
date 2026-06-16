@@ -59,7 +59,7 @@ class ProcessExportRequestJob implements ShouldQueue
         if ($exportRequest->cancel_requested_at) {
             $exportRequest->forceFill([
                 'status' => ExportRequest::STATUS_CANCELLED,
-                'status_message' => 'Exportacao cancelada antes do processamento.',
+                'status_message' => 'Exportação cancelada antes do processamento.',
                 'finished_at' => now(),
             ])->save();
 
@@ -67,7 +67,7 @@ class ProcessExportRequestJob implements ShouldQueue
         }
 
         try {
-            $exportRequest->markRunning('Processando exportacao.');
+            $exportRequest->markRunning('Processando exportação.');
 
             $result = $manager->handlerFor($exportRequest->type)->handle($exportRequest->refresh());
 
@@ -76,7 +76,7 @@ class ProcessExportRequestJob implements ShouldQueue
         } catch (Throwable $exception) {
             $exportRequest->refresh()->markFailed($exception->getMessage());
 
-            Log::error('Falha ao processar exportacao.', [
+            Log::error('Falha ao processar exportação.', [
                 'export_request_id' => $exportRequest->getKey(),
                 'type' => $exportRequest->type,
                 'format' => $exportRequest->format,
@@ -92,8 +92,8 @@ class ProcessExportRequestJob implements ShouldQueue
     private function notifySuccess(ExportRequest $exportRequest): void
     {
         $exportRequest->user?->notify(new SistemaNotification(
-            titulo: 'Exportacao pronta',
-            mensagem: ($exportRequest->label ?: 'Seu arquivo') . ' ja pode ser baixado.',
+            titulo: 'Exportação pronta',
+            mensagem: ($exportRequest->label ?: 'Seu arquivo') . ' já pode ser baixado.',
             url: route('exports.download', $exportRequest),
             label: 'Baixar arquivo',
             escopo: 'exports',
@@ -104,8 +104,8 @@ class ProcessExportRequestJob implements ShouldQueue
     private function notifyFailure(ExportRequest $exportRequest): void
     {
         $exportRequest->user?->notify(new SistemaNotification(
-            titulo: 'Falha na exportacao',
-            mensagem: ($exportRequest->label ?: 'O arquivo solicitado') . ' nao pode ser gerado.',
+            titulo: 'Falha na exportação',
+            mensagem: ($exportRequest->label ?: 'O arquivo solicitado') . ' não pode ser gerado.',
             url: route('filament.admin.pages.minhas-exportacoes'),
             label: 'Ver exportacoes',
             prioridade: 'alta',

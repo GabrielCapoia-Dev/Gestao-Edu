@@ -12,7 +12,7 @@ class MatriculaAlunoBloqueadaException extends RuntimeException
         $alunoAtivo->loadMissing('turma.escola');
 
         parent::__construct($message ?: sprintf(
-            'O aluno %s com CGM %s continua com o status de Matriculado na escola %s, sendo impossivel o aluno manter a matricula ativa em duas unidades diferentes, entre em contato com o gestor da unidade para iniciar o processo de transferencia.',
+            'O aluno %s com CGM %s continua com o status de Matriculado na escola %s, sendo impossível o aluno manter a matrícula ativa em duas unidades diferentes, entre em contato com o gestor da unidade para iniciar o processo de transferência.',
             $alunoAtivo->nome,
             $alunoAtivo->cgm,
             $alunoAtivo->turma?->escola?->nome ?? 'sem escola vinculada'

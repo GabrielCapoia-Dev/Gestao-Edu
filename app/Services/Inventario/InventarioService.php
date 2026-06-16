@@ -25,23 +25,23 @@ class InventarioService
             ->find($escolaId);
 
         if (! $escola) {
-            throw new DomainException('A escola informada nao foi encontrada.');
+            throw new DomainException('A escola informada não foi encontrada.');
         }
 
         $access = app(UserSetorAccessService::class);
 
         if (! $access->hasGlobalAccess($user) && ! $access->canAccessSetor($user, $escola->setor_id)) {
-            throw new DomainException('O usuario nao tem permissao para criar inventario nesta escola.');
+            throw new DomainException('O usuário não tem permissão para criar inventário nesta escola.');
         }
 
         if (Inventario::query()->where('escola_id', $escola->getKey())->exists()) {
-            throw new DomainException('Esta escola ja possui inventario vinculado.');
+            throw new DomainException('Esta escola já possui inventário vinculado.');
         }
 
         return Inventario::query()->create([
             'escola_id' => $escola->getKey(),
             'setor_id' => $escola->setor_id,
-            'nome' => 'Inventario - ' . $escola->nome,
+            'nome' => 'Inventário - ' . $escola->nome,
             'ativo' => true,
             'criado_por_id' => $user->getKey(),
         ]);

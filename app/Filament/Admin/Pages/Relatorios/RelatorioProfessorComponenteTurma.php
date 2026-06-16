@@ -69,7 +69,7 @@ class RelatorioProfessorComponenteTurma extends Page implements HasTable
                     return $user->hasPermissionTo('Exportar Relatórios');
                 })
                 ->modalHeading('Exportar Relatório Geral')
-                ->modalDescription('Esta ação irá exportar TODOS os registros de Turmas. Dependendo da quantidade de dados, isso pode causar lentidão temporária. Deseja continuar?')
+                ->modalDescription('Está ação irá exportar TODOS os registros de Turmas. Dependendo da quantidade de dados, isso pode causar lentidão temporária. Deseja continuar?')
                 ->modalSubmitActionLabel('Sim, exportar tudo')
                 ->action(function () {
                     return $this->exportarRelatorioGeral();
@@ -87,7 +87,7 @@ class RelatorioProfessorComponenteTurma extends Page implements HasTable
             ->leftJoin('professores', 'professores.id', '=', 'tcp.professor_id')
             ->select([
                 'escolas.nome as escola',
-                'series.nome as serie',
+                'séries.nome as série',
                 'turmas.nome as turma',
                 DB::raw("CASE turmas.turno 
                                     WHEN 'manha' THEN 'Manhã'
@@ -98,7 +98,7 @@ class RelatorioProfessorComponenteTurma extends Page implements HasTable
                                 END as turno"),
                 'cc.nome as componente',
                 DB::raw("COALESCE(professores.nome, 'Sem professor') as professor"),
-                DB::raw("COALESCE(professores.matricula, 'Não informado') as matricula"),
+                DB::raw("COALESCE(professores.matrícula, 'Não informado') as matrícula"),
                 DB::raw("COALESCE(professores.email, 'Não informado') as email"),
             ])
 
@@ -171,7 +171,7 @@ class RelatorioProfessorComponenteTurma extends Page implements HasTable
         $path = tempnam(sys_get_temp_dir(), 'relatorio_turmas_');
 
         if ($path === false) {
-            throw new \RuntimeException('Nao foi possivel criar o arquivo temporario do relatorio.');
+            throw new \RuntimeException('Não foi possível criar o arquivo temporário do relatório.');
         }
 
         $writer = new Xlsx($spreadsheet);

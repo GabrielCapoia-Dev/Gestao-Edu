@@ -25,11 +25,11 @@ class SerieResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'nome';
 
-    protected static ?string $navigationLabel = 'Series';
+    protected static ?string $navigationLabel = 'Séries';
 
-    protected static ?string $pluralModelLabel = 'Series';
+    protected static ?string $pluralModelLabel = 'Séries';
 
-    protected static ?string $modelLabel = 'Serie';
+    protected static ?string $modelLabel = 'Série';
 
     protected static ?string $slug = 'series';
 

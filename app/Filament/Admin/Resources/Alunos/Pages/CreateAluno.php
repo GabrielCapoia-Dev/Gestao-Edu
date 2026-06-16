@@ -21,7 +21,7 @@ class CreateAluno extends CreateRecord
             return app(AlunoMovimentacaoService::class)->criarMatricula($data, Auth::user());
         } catch (MatriculaAlunoBloqueadaException $exception) {
             Notification::make()
-                ->title('Matricula impedida')
+                ->title('Matrícula impedida')
                 ->body($exception->getMessage())
                 ->danger()
                 ->send();

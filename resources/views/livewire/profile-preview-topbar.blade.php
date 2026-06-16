@@ -12,7 +12,7 @@
     @else
         <form method="POST" action="{{ route('profile-preview.start') }}" class="profile-preview-form">
             @csrf
-            <label for="profile-preview-target" class="sr-only">Visualizar como usuario</label>
+            <label for="profile-preview-target" class="sr-only">Visualizar como usuário</label>
             <select
                 id="profile-preview-target"
                 name="target_user_id"

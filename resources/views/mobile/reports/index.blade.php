@@ -1,13 +1,13 @@
 @extends('mobile.layouts.app')
 
-@section('title', 'Relatorios | Gestao Edu Mobile')
+@section('title', 'Relatórios | Gestão Edu Mobile')
 
 @section('content')
     <section class="mobile-page-intro">
-        <p class="mobile-page-intro__eyebrow">Relatorios</p>
+        <p class="mobile-page-intro__eyebrow">Relatórios</p>
         <h1 class="mobile-page-intro__title">Consultas desenhadas para o celular.</h1>
         <p class="mobile-page-intro__subtitle">
-            Abra um relatorio por vez, filtre rapido e leia as informacoes sem depender do layout do desktop.
+            Abra um relatório por vez, filtre rápido e leia as informações sem depender do layout do desktop.
         </p>
     </section>
 
@@ -24,6 +24,6 @@
             @endforeach
         </div>
     @else
-        <div class="mobile-empty">Seu perfil nao possui relatorios liberados no app mobile.</div>
+        <div class="mobile-empty">Seu perfil não possui relatórios liberados no app mobile.</div>
     @endif
 @endsection

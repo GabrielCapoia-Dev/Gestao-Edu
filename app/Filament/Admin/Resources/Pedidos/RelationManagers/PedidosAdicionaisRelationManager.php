@@ -60,7 +60,7 @@ class PedidosAdicionaisRelationManager extends RelationManager
                     ->placeholder('Sem problemas'),
 
                 Tables\Columns\TextColumn::make('descricao_pedido')
-                    ->label('Descricao')
+                    ->label('Descrição')
                     ->limit(80)
                     ->wrap(),
 
@@ -71,7 +71,7 @@ class PedidosAdicionaisRelationManager extends RelationManager
                     ->placeholder('-'),
 
                 Tables\Columns\TextColumn::make('avaliacao_resumo')
-                    ->label('Avaliacao')
+                    ->label('Avaliação')
                     ->state(function (Pedido $record): ?string {
                         $itens = $record->feedbackItens;
 
@@ -90,7 +90,7 @@ class PedidosAdicionaisRelationManager extends RelationManager
                     })
                     ->badge()
                     ->color('success')
-                    ->placeholder('Sem avaliacao'),
+                    ->placeholder('Sem avaliação'),
             ])
             ->defaultSort('created_at', 'desc')
             ->paginated([5, 10, 25, 50])

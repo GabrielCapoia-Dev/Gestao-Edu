@@ -1,7 +1,7 @@
 @extends('relatorios.layouts.base-pdf')
 
-@section('reportTitle', $reportTitle ?? 'Relatorio Individual de Estoque')
-@section('reportSubtitle', $reportSubtitle ?? 'Historico completo de movimentacoes do item')
+@section('reportTitle', $reportTitle ?? 'Relatório Individual de Estoque')
+@section('reportSubtitle', $reportSubtitle ?? 'Histórico completo de movimentações do item')
 
 @section('styles')
     .cards {
@@ -79,7 +79,7 @@
                 <div class="value">{{ number_format($resumo->saldo_atual, 3, ',', '.') }}</div>
             </td>
             <td>
-                <div class="label">Movimentacoes</div>
+                <div class="label">Movimentações</div>
                 <div class="value">{{ $resumo->total_movimentacoes }}</div>
             </td>
             <td>
@@ -119,7 +119,7 @@
                 <td>{{ $estoque->item?->nome ?? 'N/A' }}</td>
             </tr>
             <tr>
-                <th>Descricao</th>
+                <th>Descrição</th>
                 <td>{{ $estoque->item?->descricao ?: '-' }}</td>
             </tr>
             <tr>
@@ -133,7 +133,7 @@
         </tbody>
     </table>
 
-    <div class="section-title">Historico Completo de Movimentacoes</div>
+    <div class="section-title">Histórico completo de movimentações</div>
     <table class="listagem">
         <thead>
             <tr>
@@ -142,7 +142,7 @@
                 <th class="right">Quantidade</th>
                 <th>Pedido</th>
                 <th>Registrado por</th>
-                <th>Observacao</th>
+                <th>Observação</th>
             </tr>
         </thead>
         <tbody>
@@ -163,13 +163,13 @@
         </tbody>
     </table>
 
-    <div class="section-title">Historico de Baixas</div>
+    <div class="section-title">Histórico de Baixas</div>
     <table class="listagem">
         <thead>
             <tr>
                 <th>Data</th>
                 <th>Motivo</th>
-                <th>Descricao</th>
+                <th>Descrição</th>
                 <th class="right">Qtd.</th>
                 <th class="right">Saldo Antes</th>
                 <th class="right">Saldo Depois</th>

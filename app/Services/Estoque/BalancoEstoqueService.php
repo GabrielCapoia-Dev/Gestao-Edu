@@ -83,13 +83,13 @@ class BalancoEstoqueService
 
         // Impacto: sem itens selecionados o balanco mudaria para "em andamento" sem contagem real, travando telas e bloqueios de estoque.
         if ($selecionados->isEmpty()) {
-            throw new DomainException('Selecione pelo menos um item para iniciar o balanco.');
+            throw new DomainException('Selecione pelo menos um item para iniciar o balanço.');
         }
 
         $invalidos = $selecionados->reject(fn (int $itemId): bool => $elegiveisPorId->has($itemId));
 
         if ($invalidos->isNotEmpty()) {
-            throw new DomainException('Ha itens invalidos na selecao do balanco.');
+            throw new DomainException('Há itens inválidos na seleção do balanço.');
         }
 
         $conflitos = $this->bloqueioService->buscarConflitos($selecionados->all(), $balanco->getKey());
@@ -101,7 +101,7 @@ class BalancoEstoqueService
                 ->unique()
                 ->implode(', ');
 
-            throw new DomainException("Os seguintes itens ja estao em outro balanco em andamento: {$itens}.");
+            throw new DomainException("Os seguintes itens já estão em outro balanço em andamento: {$itens}.");
         }
 
         DB::transaction(function () use ($balanco, $elegiveis, $selecionados, $user) {
@@ -139,15 +139,15 @@ class BalancoEstoqueService
         $balanco = $balancoItem->balanco;
 
         if (! $balanco || ! $balanco->isEmAndamento()) {
-            throw new DomainException('So e possivel registrar contagem em balancos em andamento.');
+            throw new DomainException('Só é possível registrar contagem em balanços em andamento.');
         }
 
         if (! $balancoItem->incluido_na_contagem) {
-            throw new DomainException('Este item esta fora do balanco e nao aceita contagem.');
+            throw new DomainException('Este item está fora do balanço e não aceita contagem.');
         }
 
         if ($quantidadeContada < 0) {
-            throw new DomainException('A quantidade contada nao pode ser negativa.');
+            throw new DomainException('A quantidade contada não pode ser negativa.');
         }
 
         $quantidadeContada = $this->normalizarQuantidade($quantidadeContada);
@@ -202,7 +202,7 @@ class BalancoEstoqueService
     public function cancelar(BalancoEstoque $balanco, string $motivo, User $user): BalancoEstoque
     {
         if ($balanco->isConcluido() || $balanco->isCancelado()) {
-            throw new DomainException('Este balanco nao pode mais ser cancelado.');
+            throw new DomainException('Este balanço não pode mais ser cancelado.');
         }
 
         $motivo = $this->textoObrigatorio($motivo, 'Informe o motivo do cancelamento.');
@@ -220,7 +220,7 @@ class BalancoEstoqueService
 
     public function concluir(BalancoEstoque $balanco, User $user): BalancoEstoque
     {
-        $this->garantirStatus($balanco, BalancoEstoqueStatus::EmAndamento, 'Apenas balancos em andamento podem ser concluidos.');
+        $this->garantirStatus($balanco, BalancoEstoqueStatus::EmAndamento, 'Apenas balancos em andamento podem ser concluídos.');
 
         DB::transaction(function () use ($balanco, $user) {
             // Impacto: lockForUpdate() protege a conclusao contra contagens simultaneas. Remover pode gerar valor_impacto e saldo_final divergentes.
@@ -235,7 +235,7 @@ class BalancoEstoqueService
 
             // Impacto: concluir com pendencias ajustaria apenas parte do saldo e deixaria o relatorio do balanco sem fechamento contabil confiavel.
             if ($pendentes->isNotEmpty()) {
-                throw new DomainException('Todos os itens selecionados precisam ter contagem registrada antes da conclusao.');
+                throw new DomainException('Todos os itens selecionados precisam ter contagem registrada antes da conclusão.');
             }
 
             foreach ($itens as $itemBalanco) {
@@ -280,7 +280,7 @@ class BalancoEstoqueService
             $this->registrarEvento(
                 $balanco,
                 BalancoEstoqueEventoTipo::Concluido,
-                'Balanco concluido com reajuste dos itens contados.',
+                'Balanço concluído com reajuste dos itens contados.',
                 $user,
                 [
                     'impacto_financeiro_total' => $impactoTotal,

@@ -71,7 +71,7 @@ class ExportFileStorage
             $contents = file_get_contents($path);
 
             if ($contents === false) {
-                throw new RuntimeException('Nao foi possivel ler o arquivo temporario gerado.');
+                throw new RuntimeException('Não foi possível ler o arquivo temporário gerado.');
             }
 
             if (str_starts_with($path, sys_get_temp_dir()) && is_file($path)) {

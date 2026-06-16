@@ -9,8 +9,8 @@
 @endphp
 @extends('relatorios.layouts.base-pdf')
 
-@section('reportTitle', $reportTitle ?? 'Relatorio de Feedback de Pedidos')
-@section('reportSubtitle', $reportSubtitle ?? 'Resumo geral com indicadores, listagem e analise visual')
+@section('reportTitle', $reportTitle ?? 'Relatório de Feedback de Pedidos')
+@section('reportSubtitle', $reportSubtitle ?? 'Resumo geral com indicadores, listagem e análise visual')
 
 @section('styles')
     .cards-container {
@@ -252,18 +252,18 @@
     @if(in_array($tipoRelatorio ?? 'geral', ['geral', 'graficos', 'geral_satisfacao', 'satisfacao_escolas'], true))
         <div class="cards-container">
             <div class="card">
-                <div class="card-label">Media Geral</div>
+                <div class="card-label">Média geral</div>
                 <div class="card-value">
                     {{ $mediaGeral }}
                     <span class="card-unit">/ 5</span>
                 </div>
             </div>
             <div class="card">
-                <div class="card-label">Total de Avaliacoes</div>
+                <div class="card-label">Total de Avaliações</div>
                 <div class="card-value">{{ $totalAvaliacoes }}</div>
             </div>
             <div class="card">
-                <div class="card-label">Nivel de Satisfacao</div>
+                <div class="card-label">Nível de Satisfação</div>
                 <div class="card-value">
                     {{ $percentualSatisfacao }}<span class="card-unit">%</span>
                 </div>
@@ -274,17 +274,17 @@
     @endif
 
     @if(($tipoRelatorio ?? null) === 'satisfacao_escolas' && ! empty($rankingEscolas ?? []))
-        <div class="section-title">Satisfacao por Escola</div>
+        <div class="section-title">Satisfação por Escola</div>
 
         <table class="ranking-table">
             <thead>
                 <tr>
                     <th>Escola</th>
                     <th>Total</th>
-                    <th>Media</th>
-                    <th>Satisfacao</th>
+                    <th>Média</th>
+                    <th>Satisfação</th>
                     <th>Reabertos</th>
-                    <th>Criticas</th>
+                    <th>Críticas</th>
                 </tr>
             </thead>
             <tbody>
@@ -305,11 +305,11 @@
     @endif
 
     @if(in_array($tipoRelatorio ?? 'geral', ['geral', 'listagem', 'geral_satisfacao', 'listagem_filtrada'], true))
-        <div class="section-title">Detalhes das Avaliacoes</div>
+        <div class="section-title">Detalhes das Avaliações</div>
 
         @if($feedbacks->isEmpty())
             <p style="text-align: center; color: #6b7280; padding: 20px 0;">
-                Nenhuma avaliacao registrada para os filtros selecionados.
+                Nenhuma avaliação registrada para os filtros selecionados.
             </p>
         @else
             <table class="feedback-table">
@@ -320,9 +320,9 @@
                         <th style="width: 10%;">Nota</th>
                         <th style="width: 10%;">Reaberto</th>
                         <th style="width: 23%;">Por problema</th>
-                        <th style="width: 15%;">Descricao</th>
+                        <th style="width: 15%;">Descrição</th>
                         <th style="width: 10%;">Data</th>
-                        <th style="width: 15%;">Tipo Manutencao</th>
+                        <th style="width: 15%;">Tipo de manutenção</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -335,7 +335,7 @@
                                     {{ $feedback->valor }}/5
                                 </span>
                             </td>
-                            <td>{{ $feedback->reabrir_pedido ? 'Sim' : 'Nao' }}</td>
+                            <td>{{ $feedback->reabrir_pedido ? 'Sim' : 'Não' }}</td>
                             <td>
                                 @forelse($feedback->itens as $item)
                                     <div style="margin-bottom:3px;">
@@ -359,20 +359,20 @@
 
     @if(in_array($tipoRelatorio ?? 'geral', ['geral', 'graficos', 'geral_satisfacao', 'satisfacao_escolas'], true) && ($graficoMediaMensal || $graficoPorNota))
         <div class="divider" style="margin-top: 20px;"></div>
-        <div class="section-title">Analise Visual</div>
+        <div class="section-title">Análise visual</div>
 
         <div class="graficos-container">
             @if($graficoMediaMensal)
                 <div class="grafico-wrapper">
-                    <div class="grafico-titulo">Quantidade Mensal de Avaliacoes</div>
-                    <img src="{{ $graficoMediaMensal }}" alt="Grafico Mensal">
+                    <div class="grafico-titulo">Quantidade Mensal de Avaliações</div>
+                    <img src="{{ $graficoMediaMensal }}" alt="Gráfico mensal">
                 </div>
             @endif
 
             @if($graficoPorNota)
                 <div class="grafico-wrapper">
-                    <div class="grafico-titulo">Distribuicao por Nota</div>
-                    <img src="{{ $graficoPorNota }}" alt="Grafico por Nota">
+                    <div class="grafico-titulo">Distribuição por nota</div>
+                    <img src="{{ $graficoPorNota }}" alt="Gráfico por nota">
                 </div>
             @endif
         </div>
@@ -380,7 +380,7 @@
 
     @if(in_array($tipoRelatorio ?? 'geral', ['geral', 'graficos', 'geral_satisfacao', 'satisfacao_escolas'], true) && ! empty($matrizesAgrupadas))
         <div class="divider" style="margin-top: 20px;"></div>
-        <div class="section-title">Matriz de Avaliacoes por Mes</div>
+        <div class="section-title">Matriz de avaliações por mês</div>
 
         @foreach($matrizesAgrupadas as $ano => $meses)
             <div class="ano-titulo">{{ $ano }}</div>
@@ -388,7 +388,7 @@
             <table class="matriz-table">
                 <thead>
                     <tr>
-                        <th style="width: 10%; text-align: left;">Avaliacao</th>
+                        <th style="width: 10%; text-align: left;">Avaliação</th>
                         @foreach($meses as $mes => $dados)
                             <th style="width: {{ 90 / count($meses) }}%;">{{ $mes }}</th>
                         @endforeach

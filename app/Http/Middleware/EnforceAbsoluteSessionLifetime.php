@@ -36,12 +36,12 @@ class EnforceAbsoluteSessionLifetime
 
         if ($request->expectsJson()) {
             return response()->json([
-                'message' => 'Sessao expirada. Faca login novamente.',
+                'message' => 'Sessão expirada. Faça login novamente.',
             ], 401);
         }
 
         return redirect()->to(Filament::getLoginUrl())
-            ->with('session_expired', 'Sua sessao expirou. Faca login novamente.');
+            ->with('session_expired', 'Sua sessão expirou. Faça login novamente.');
     }
 
     private function loginTimestamp(Request $request): int

@@ -223,7 +223,7 @@ class Setor extends Model
 
         if ($this->exists && in_array((int) $this->getKey(), $ids, true)) {
             throw ValidationException::withMessages([
-                'encaminha_pedido_para_setor_ids' => 'Um setor nao pode encaminhar pedidos para ele mesmo.',
+                'encaminha_pedido_para_setor_ids' => 'Um setor não pode encaminhar pedidos para ele mesmo.',
             ]);
         }
 

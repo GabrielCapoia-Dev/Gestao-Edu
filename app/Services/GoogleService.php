@@ -31,7 +31,7 @@ class GoogleService
 
         // Impacto: todo o vinculo professor-usuario depende do e-mail normalizado. Alterar normalizacao aqui pode duplicar usuarios ou perder autoaprovacao de professor.
         if ($email === '') {
-            throw new DomainException('Nao foi possivel identificar o e-mail retornado pelo Google.');
+            throw new DomainException('Não foi possível identificar o e-mail retornado pelo Google.');
         }
 
         $user = User::query()
@@ -56,7 +56,7 @@ class GoogleService
 
         // Bloqueia o fluxo quando o dominio de e-mail nao esta autorizado.
         if (! app('App\Services\DominioEmailService')->isEmailAutorizado($email)) {
-            throw new DomainException('Seu e-mail nao esta autorizado. Entre em contato com o administrador.');
+            throw new DomainException('Seu e-mail não está autorizado. Entre em contato com o administrador.');
         }
 
         if ($currentUser instanceof User) {
@@ -64,7 +64,7 @@ class GoogleService
         }
 
         return User::create([
-            'name' => $oauthUser->getName() ?? 'Usuario Sem Nome',
+            'name' => $oauthUser->getName() ?? 'Usuário Sem Nome',
             'email' => $email,
             'password' => bcrypt(Str::random(16)),
             'email_approved' => false,

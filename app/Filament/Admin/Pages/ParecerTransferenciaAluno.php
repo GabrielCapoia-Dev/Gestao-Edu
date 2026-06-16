@@ -33,9 +33,9 @@ class ParecerTransferenciaAluno extends Page
 
     protected string $view = 'filament.pages.parecer-transferencia-aluno';
 
-    protected static ?string $title = 'Parecer de Transferencia';
+    protected static ?string $title = 'Parecer de Transferência';
 
-    protected static ?string $navigationLabel = 'Parecer de Transferencia';
+    protected static ?string $navigationLabel = 'Parecer de Transferência';
 
     protected static ?string $slug = 'parecer-transferencia-aluno';
 
@@ -247,7 +247,7 @@ class ParecerTransferenciaAluno extends Page
 
         if (! $this->podeGerarParecer) {
             Notification::make()
-                ->title('Sem permissao para gerar o parecer.')
+                ->title('Sem permissão para gerar o parecer.')
                 ->warning()
                 ->send();
 
@@ -262,7 +262,7 @@ class ParecerTransferenciaAluno extends Page
             $response = $service->exportarETransferir($aluno, $usuario);
 
             Notification::make()
-                ->title('Parecer de Transferencia gerado.')
+                ->title('Parecer de Transferência gerado.')
                 ->body('O aluno foi marcado como Transferido.')
                 ->success()
                 ->send();
@@ -273,7 +273,7 @@ class ParecerTransferenciaAluno extends Page
             return $response;
         } catch (RuntimeException $exception) {
             Notification::make()
-                ->title('Nao foi possivel gerar o parecer.')
+                ->title('Não foi possível gerar o parecer.')
                 ->body($exception->getMessage())
                 ->danger()
                 ->send();
@@ -744,7 +744,7 @@ class ParecerTransferenciaAluno extends Page
                         ->firstWhere('id', $alternativaId);
 
                     if (! $alternativaSelecionada) {
-                        throw new RuntimeException('A alternativa selecionada nao pertence a pauta informada.');
+                        throw new RuntimeException('A alternativa selecionada não pertence a pauta informada.');
                     }
                 }
 
@@ -754,7 +754,7 @@ class ParecerTransferenciaAluno extends Page
                     : null;
 
                 if ($temObservacao && $observacao === '') {
-                    throw new RuntimeException('Preencha a observacao obrigatoria das alternativas que exigem observacao.');
+                    throw new RuntimeException('Preencha a observação obrigatória das alternativas que exigem observação.');
                 }
 
                 AvaliacaoResposta::query()->updateOrCreate(
@@ -788,7 +788,7 @@ class ParecerTransferenciaAluno extends Page
             $this->persistirRespostaParecer($aluno, $avaliacaoId, $pautaId, false);
         } catch (RuntimeException $exception) {
             Notification::make()
-                ->title('Nao foi possivel salvar a resposta.')
+                ->title('Não foi possível salvar a resposta.')
                 ->body($exception->getMessage())
                 ->danger()
                 ->send();
@@ -854,7 +854,7 @@ class ParecerTransferenciaAluno extends Page
                 ->firstWhere('id', $alternativaId);
 
             if (! $alternativaSelecionada) {
-                throw new RuntimeException('A alternativa selecionada nao pertence a pauta informada.');
+                throw new RuntimeException('A alternativa selecionada não pertence a pauta informada.');
             }
         }
 
@@ -864,7 +864,7 @@ class ParecerTransferenciaAluno extends Page
             : null;
 
         if ($temObservacao && $validarObservacaoObrigatoria && $observacao === '') {
-            throw new RuntimeException('Preencha a observacao obrigatoria das alternativas que exigem observacao.');
+            throw new RuntimeException('Preencha a observação obrigatória das alternativas que exigem observação.');
         }
 
         AvaliacaoResposta::query()->updateOrCreate(

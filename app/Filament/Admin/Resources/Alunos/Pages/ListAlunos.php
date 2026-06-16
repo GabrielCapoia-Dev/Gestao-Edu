@@ -98,7 +98,7 @@ class ListAlunos extends ListRecords
                         ])
                         ->maxSize(10240)
                         ->required()
-                        ->helperText('Use a aba Matriculados com Escola, Seriacao, Turma, Turno, CGM, Nome do Aluno, Data de Nascimento e Sexo. Data Matricula e opcional.'),
+                        ->helperText('Use a aba Matriculados com Escola, Seriação, Turma, Turno, CGM, Nome do aluno, Data de Nascimento e Sexo. Data da matrícula é opcional.'),
                 ])
                 ->action(function (array $data): void {
                     $arquivo = $this->normalizarArquivoImportacao($data['arquivo'] ?? null);
@@ -112,8 +112,8 @@ class ListAlunos extends ListRecords
                     )->afterCommit();
 
                     Notification::make()
-                        ->title('Importacao enviada para processamento')
-                        ->body('Acompanhe o andamento em Minhas Exportacoes. Voce pode continuar usando o sistema.')
+                        ->title('Importação enviada para processamento')
+                        ->body('Acompanhe o andamento em Minhas Exportacoes. Você pode continuar usando o sistema.')
                         ->success()
                         ->send();
                 }),
@@ -129,7 +129,7 @@ class ListAlunos extends ListRecords
                         return app(AlunoMovimentacaoService::class)->criarMatricula($data, Auth::user());
                     } catch (MatriculaAlunoBloqueadaException $exception) {
                         Notification::make()
-                            ->title('Matricula impedida')
+                            ->title('Matrícula impedida')
                             ->body($exception->getMessage())
                             ->danger()
                             ->send();
@@ -165,7 +165,7 @@ class ListAlunos extends ListRecords
         }
 
         $mensagem = e(sprintf(
-            'O aluno %s esta com transferencia pendente, suas ações estão limitadas enquanto as pendencias não forem solucionadas',
+            'O aluno %s está com transferência pendente, suas ações estão limitadas enquanto as pendências não forem solucionadas',
             $aluno->nome
         ));
 
@@ -196,7 +196,7 @@ HTML;
             'user_id' => Auth::id(),
             'type' => 'alunos_importacao_planilha',
             'format' => 'processo',
-            'label' => 'Importacao de alunos por planilha',
+            'label' => 'Importação de alunos por planilha',
             'filters' => ['arquivo' => basename($arquivo)],
             'metadata' => [
                 'process_kind' => 'importacao_alunos',

@@ -98,7 +98,7 @@ class SetorPedidoAccessService
         }
 
         throw ValidationException::withMessages([
-            'setor_id' => 'Seu setor nao possui autorizacao para executar esta acao no setor informado.',
+            'setor_id' => 'Seu setor não possui autorização para executar esta ação no setor informado.',
         ]);
     }
 
@@ -130,7 +130,7 @@ class SetorPedidoAccessService
 
         if ($ids->diff($validIds)->isNotEmpty()) {
             throw ValidationException::withMessages([
-                $capability->value => 'Um ou mais setores selecionados sao invalidos ou estao inativos.',
+                $capability->value => 'Um ou mais setores selecionados sao invalidos ou estão inativos.',
             ]);
         }
 

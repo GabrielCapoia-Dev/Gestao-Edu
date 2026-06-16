@@ -17,8 +17,8 @@ class ManageDominioEmails extends ManageRecords
             'actions' => $this->getCachedHeaderActions(),
 
             'eyebrow' => 'Acesso',
-            'title' => 'Domínios de Emails',
-            'description' => 'Gerencie os domínios de emails, adicione novos domínios e mantenha um registro atualizado das informações.',
+            'title' => 'Domínios de e-mail',
+            'description' => 'Gerencie os domínios de e-mail, adicione novos domínios e mantenha um registro atualizado das informações.',
         ]);
     }
 

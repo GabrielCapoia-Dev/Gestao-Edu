@@ -47,23 +47,23 @@ class CreateUser extends CreateRecord
 
         return [
             [
-                'label' => 'Niveis disponiveis',
+                'label' => 'Níveis disponíveis',
                 'value' => number_format(count($service->opcoesDeRolesParaSelect($auth)), 0, ',', '.'),
-                'description' => 'Perfis que voce pode atribuir neste cadastro.',
+                'description' => 'Perfis que você pode atribuir neste cadastro.',
                 'icon' => 'heroicon-o-shield-check',
                 'tone' => 'amber',
             ],
             [
-                'label' => 'Permissoes extras',
+                'label' => 'Permissões extras',
                 'value' => $service->ehAdmin($auth) ? 'Liberadas' : 'Controladas',
-                'description' => 'Excecoes individuais alem dos niveis padrao.',
+                'description' => 'Exceções individuais além dos níveis padrão.',
                 'icon' => 'heroicon-o-key',
                 'tone' => 'rose',
             ],
             [
                 'label' => 'Vinculo escolar',
                 'value' => $service->deveTravarCampoEscola($auth, 'create') ? 'Herdado' : 'Editavel',
-                'description' => 'Define o alcance operacional do usuario.',
+                'description' => 'Define o alcance operacional do usuário.',
                 'icon' => 'heroicon-o-building-library',
                 'tone' => 'sky',
             ],
@@ -80,8 +80,8 @@ class CreateUser extends CreateRecord
     public function getHighlights(): array
     {
         return [
-            'Combine niveis de acesso por tema',
-            'Use permissoes extras so quando necessario',
+            'Combine níveis de acesso por tema',
+            'Use permissões extras so quando necessário',
             'Defina escola e setor logo no cadastro',
         ];
     }
@@ -91,11 +91,11 @@ class CreateUser extends CreateRecord
         return [
             [
                 'title' => 'Cadastro preparado para crescimento',
-                'description' => 'Ja e possivel criar usuarios com mais de um nivel de acesso, sem perder a simplicidade no preenchimento.',
+                'description' => 'Já é possível criar usuários com mais de um nível de acesso, sem perder a simplicidade no preenchimento.',
             ],
             [
                 'title' => 'Melhor pratica',
-                'description' => 'Priorize niveis de acesso reutilizaveis. As permissoes especificas ficam melhores quando usadas apenas para ajustes finos.',
+                'description' => 'Priorize níveis de acesso reutilizaveis. As permissões especificas ficam melhores quando usadas apenas para ajustes finos.',
             ],
         ];
     }

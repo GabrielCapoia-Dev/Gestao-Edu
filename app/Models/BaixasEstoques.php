@@ -29,7 +29,7 @@ class BaixasEstoques extends Model
 
     public function getMotivoLabelAttribute(): string
     {
-        return $this->motivo?->label() ?? 'Nao informado';
+        return $this->motivo?->label() ?? 'Não informado';
     }
 
     public function estoque(): BelongsTo

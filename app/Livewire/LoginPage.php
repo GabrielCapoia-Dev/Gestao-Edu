@@ -38,7 +38,7 @@ class LoginPage extends BaseLogin
     {
         return $schema->components([
             Forms\Components\TextInput::make('email')
-                ->label('Email')
+                ->label('E-mail')
                 ->type('email')
                 ->required()
                 ->placeholder('exemplo@exemplo.com')
@@ -60,7 +60,7 @@ class LoginPage extends BaseLogin
         return [
             // Botão de login padrão (manual)
             Actions\Action::make('authenticate')  // troque 'login' por 'authenticate'
-                ->label('Entrar no Sistema')
+                ->label('Entrar no sistema')
                 ->color('primary')
                 ->submit('authenticate'),
 

@@ -349,17 +349,17 @@
         <div class="pm-section">
             <h3 class="pm-section-title">Resumo do pedido</h3>
 
-            <label class="pm-field-label">Observacoes <span>(opcional)</span></label>
+            <label class="pm-field-label">Observações <span>(opcional)</span></label>
             <textarea
                 wire:model.live.debounce.300ms="observacoes"
                 class="pm-textarea"
-                placeholder="Anote contexto, urgencia, observacoes de entrega ou qualquer detalhe util."
+                placeholder="Anote contexto, urgencia, observações de entrega ou qualquer detalhe util."
             ></textarea>
 
             <div class="pm-toolbar">
                 <div class="pm-toolbar-left">
                     <strong style="font-size:0.95rem;color:#334155;">Itens adicionados</strong>
-                    <span class="pm-badge">{{ count($this->itensPedidoFiltrados) }} visiveis</span>
+                    <span class="pm-badge">{{ count($this->itensPedidoFiltrados) }} visíveis</span>
                 </div>
                 <div class="pm-toolbar-right">
                     <div style="min-width:260px;max-width:360px;width:100%;">
@@ -381,12 +381,12 @@
                 @if(empty($itensPedido))
                     <div class="pm-empty">
                         <strong>Nenhum item foi adicionado ainda.</strong>
-                        Comece escolhendo um item com saldo disponivel para montar o pedido.
+                        Comece escolhendo um item com saldo disponível para montar o pedido.
                     </div>
                 @elseif(empty($this->itensPedidoFiltrados))
                     <div class="pm-empty">
                         <strong>Nenhum resultado para a busca atual.</strong>
-                        Ajuste os termos para localizar os itens ja adicionados.
+                        Ajuste os termos para localizar os itens já adicionados.
                     </div>
                 @else
                     <div class="pm-table-wrap">
@@ -463,14 +463,14 @@
             <div class="pm-modal-body">
                 <div class="pm-search-grid">
                     <div>
-                        <label class="pm-field-label">Buscar item disponivel</label>
+                        <label class="pm-field-label">Buscar item disponível</label>
                         <input
                             type="text"
                             wire:model.live.debounce.250ms="buscaItemDisponivel"
                             class="pm-input"
-                            placeholder="Nome, descricao ou unidade..."
+                            placeholder="Nome, descrição ou unidade..."
                         >
-                        <div class="pm-hint">Mostrando ate 100 itens com saldo em contratos ativos.</div>
+                        <div class="pm-hint">Mostrando até 100 itens com saldo em contratos ativos.</div>
                     </div>
                     <div>
                         <label class="pm-field-label">Selecionar item</label>
@@ -500,7 +500,7 @@
                                 type="text"
                                 wire:model.live.debounce.250ms="filtroContratoModal"
                                 class="pm-input"
-                                placeholder="Numero do contrato..."
+                                placeholder="Número do contrato..."
                             >
                         </div>
                     </div>
@@ -522,7 +522,7 @@
                                     <div class="pm-contract-line">Contrato: <strong>{{ $entry['numero_contrato'] }}</strong></div>
                                 </div>
                                 <div class="pm-contract-balance">
-                                    <small>Saldo disponivel</small>
+                                    <small>Saldo disponível</small>
                                     <strong>{{ number_format($entry['saldo'], 3, ',', '.') }}</strong>
                                 </div>
                                 <div>
@@ -546,7 +546,7 @@
                     </div>
                 @elseif($itemSelecionado)
                     <div class="pm-alert">
-                        Nenhum contrato ativo com saldo disponivel foi encontrado para este item.
+                        Nenhum contrato ativo com saldo disponível foi encontrado para este item.
                     </div>
                 @endif
             </div>
