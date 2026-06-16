@@ -50,6 +50,13 @@ class ServidorPolicy
             return true;
         }
 
+        if (
+            filled($servidor->id_escola)
+            && in_array((int) $servidor->id_escola, $user->idsEscolasVinculadas(), true)
+        ) {
+            return true;
+        }
+
         $setorId = $servidor->setor_id;
 
         if (blank($setorId) && filled($servidor->id_escola)) {

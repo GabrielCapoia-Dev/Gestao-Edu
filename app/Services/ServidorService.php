@@ -207,15 +207,22 @@ class ServidorService
         }
 
         $setorIds = $access->visibleSetorIds($user);
+        $escolaIds = $user->idsEscolasVinculadas();
 
-        if ($setorIds === []) {
+        if ($setorIds === [] && $escolaIds === []) {
             return $query->whereRaw('1 = 0');
         }
 
-        return $query->where(function (Builder $servidores) use ($setorIds): void {
-            $servidores
-                ->whereIn('setor_id', $setorIds)
-                ->orWhereHas('escola', fn (Builder $escola): Builder => $escola->whereIn('setor_id', $setorIds));
+        return $query->where(function (Builder $servidores) use ($setorIds, $escolaIds): void {
+            if ($setorIds !== []) {
+                $servidores
+                    ->whereIn('setor_id', $setorIds)
+                    ->orWhereHas('escola', fn (Builder $escola): Builder => $escola->whereIn('setor_id', $setorIds));
+            }
+
+            if ($escolaIds !== []) {
+                $servidores->orWhereIn('id_escola', $escolaIds);
+            }
         });
     }
 
