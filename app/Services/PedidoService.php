@@ -168,6 +168,11 @@ class PedidoService
             ->toArray();
     }
 
+    public function statusOptionsParaPromocaoPedidoAdicional(?User $user): array
+    {
+        return $this->statusOptionsParaAlteracaoEmMassa($user);
+    }
+
     public function usuarioEhSetor(?User $user, string $nomeSetor): bool
     {
         return false;
@@ -762,9 +767,14 @@ class PedidoService
         });
     }
 
-    public function promoverPedidoAdicional(Pedido $adicional, User $usuario): bool
+    public function promoverPedidoAdicional(
+        Pedido $adicional,
+        User $usuario,
+        ?TipoStatus $novoStatus = null,
+        ?string $descricao = null
+    ): bool
     {
-        return DB::transaction(function () use ($adicional, $usuario): bool {
+        return DB::transaction(function () use ($adicional, $usuario, $novoStatus, $descricao): bool {
             $adicional = Pedido::query()
                 ->with(['pedidoPrincipal.tipoStatus', 'tipoStatus'])
                 ->lockForUpdate()
@@ -776,11 +786,36 @@ class PedidoService
 
             $principal = $adicional->pedidoPrincipal;
             $statusAnteriorId = $adicional->tipo_status_id;
+            $statusAplicado = $novoStatus ?? $principal->tipoStatus;
+            $descricao = trim((string) $descricao);
+
+            if (! $statusAplicado instanceof TipoStatus) {
+                throw ValidationException::withMessages([
+                    'tipo_status_id' => 'Selecione um status para o pedido promovido.',
+                ]);
+            }
+
+            if (
+                $novoStatus instanceof TipoStatus
+                && ! array_key_exists((int) $novoStatus->id, $this->statusOptionsParaPromocaoPedidoAdicional($usuario))
+            ) {
+                throw ValidationException::withMessages([
+                    'tipo_status_id' => 'Status indisponível para o pedido promovido.',
+                ]);
+            }
+
+            $descricaoAdicional = "Pedido adicional promovido a pedido principal. Origem: {$principal->numero_protocolo}.";
+            $descricaoPrincipal = "Pedido adicional {$adicional->numero_protocolo} transformado em pedido principal.";
+
+            if ($descricao !== '') {
+                $descricaoAdicional .= " Ação registrada: {$descricao}";
+                $descricaoPrincipal .= " Ação registrada: {$descricao}";
+            }
 
             $adicional->update([
                 'pedido_principal_id' => null,
                 'is_pedido_adicional' => false,
-                'tipo_status_id' => $principal->tipo_status_id,
+                'tipo_status_id' => $statusAplicado->id,
                 'responsavel_id' => $usuario->id,
                 'data_entrega' => null,
             ]);
@@ -788,9 +823,9 @@ class PedidoService
             $this->registrarHistorico(
                 $adicional,
                 $statusAnteriorId,
-                $principal->tipo_status_id,
+                $statusAplicado->id,
                 $usuario,
-                "Pedido adicional promovido a pedido principal. Origem: {$principal->numero_protocolo}."
+                $descricaoAdicional
             );
 
             $this->registrarHistorico(
@@ -798,7 +833,7 @@ class PedidoService
                 $principal->tipo_status_id,
                 $principal->tipo_status_id,
                 $usuario,
-                "Pedido adicional {$adicional->numero_protocolo} transformado em pedido principal."
+                $descricaoPrincipal
             );
 
             return true;

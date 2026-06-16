@@ -10,12 +10,27 @@
             return str_starts_with($mime, 'image/') || in_array($ext, $imageExtensions, true);
         })
         ->groupBy(fn (PedidoArquivo $arquivo): string => $arquivo->tipo_arquivo?->label() ?? 'Imagens');
+    $pedidoOriginal = $pedidoOriginal ?? ($pedido->is_pedido_adicional ? $pedido->pedidoPrincipal : null);
+    $pedidoOriginal?->loadMissing([
+        'tipoManutencao',
+        'tipoStatus',
+        'escola',
+        'setor',
+        'setorOrigem',
+        'empresaContratada',
+        'solicitante',
+        'problemas',
+    ]);
 
     $tabs = [
         'geral' => 'Visao geral',
         'imagens' => 'Imagens',
         'histórico' => 'Histórico',
     ];
+
+    if ($pedidoOriginal) {
+        $tabs['original'] = 'Pedido original';
+    }
 
     if ($adicionais->isNotEmpty()) {
         $tabs['adicionais'] = 'Adicionais';
@@ -381,6 +396,68 @@
             </div>
         @endif
     </div>
+
+    @if($pedidoOriginal)
+        @php
+            $pedidoOriginalStatusCor = '#' . ltrim($pedidoOriginal->tipoStatus?->cor ?? '#64748b', '#');
+            $pedidoOriginalPrioridade = $pedidoOriginal->nivel_prioridade?->value ?? 'Indeterminado';
+        @endphp
+
+        <div class="pedido-view__panel" x-show="tab === 'original'" x-cloak>
+            <div class="pedido-view__badges" style="margin-bottom: 0.8rem;">
+                <span class="pedido-view__badge" style="--badge-color: #2563eb">Protocolo {{ $pedidoOriginal->numero_protocolo }}</span>
+                <span class="pedido-view__badge" style="--badge-color: {{ $pedidoOriginalStatusCor }}">{{ $pedidoOriginal->tipoStatus?->nome ?? 'Sem status' }}</span>
+                <span class="pedido-view__badge" style="--badge-color: #475569">{{ $pedidoOriginalPrioridade }}</span>
+            </div>
+
+            <div class="pedido-view__grid">
+                <div class="pedido-view__field">
+                    <span class="pedido-view__label">Tipo</span>
+                    <span class="pedido-view__value">{{ $pedidoOriginal->tipoManutencao?->nome ?? '-' }}</span>
+                </div>
+                <div class="pedido-view__field">
+                    <span class="pedido-view__label">Escola</span>
+                    <span class="pedido-view__value">{{ $pedidoOriginal->escola?->nome ?? '-' }}</span>
+                </div>
+                <div class="pedido-view__field">
+                    <span class="pedido-view__label">Setor atual</span>
+                    <span class="pedido-view__value">{{ $pedidoOriginal->setor?->nome_completo ?? $pedidoOriginal->setor?->nome ?? '-' }}</span>
+                </div>
+                <div class="pedido-view__field">
+                    <span class="pedido-view__label">Setor de origem</span>
+                    <span class="pedido-view__value">{{ $pedidoOriginal->setorOrigem?->nome_completo ?? $pedidoOriginal->setorOrigem?->nome ?? '-' }}</span>
+                </div>
+                <div class="pedido-view__field pedido-view__field--wide">
+                    <span class="pedido-view__label">Solicitante</span>
+                    <span class="pedido-view__value">{{ $pedidoOriginal->nome_solicitante ?? '-' }} | {{ $pedidoOriginal->solicitante?->email ?? 'sem e-mail' }}</span>
+                </div>
+                <div class="pedido-view__field">
+                    <span class="pedido-view__label">Solicitado em</span>
+                    <span class="pedido-view__value">{{ $pedidoOriginal->data_solicitacao?->format('d/m/Y') ?? '-' }}</span>
+                </div>
+                <div class="pedido-view__field">
+                    <span class="pedido-view__label">Empresa</span>
+                    <span class="pedido-view__value">{{ $pedidoOriginal->empresaContratada?->nome ?? '-' }}</span>
+                </div>
+            </div>
+
+            <div class="pedido-view__section">
+                <span class="pedido-view__label">Problemas do pedido original</span>
+                <div class="pedido-view__badges">
+                    @forelse($pedidoOriginal->problemas as $problema)
+                        <span class="pedido-view__badge" style="--badge-color: #475569">{{ $problema->texto_problema }}</span>
+                    @empty
+                        <span class="pedido-view__value">Nenhum problema segmentado.</span>
+                    @endforelse
+                </div>
+            </div>
+
+            <div class="pedido-view__section">
+                <span class="pedido-view__label">Detalhamento do pedido original</span>
+                <div class="pedido-view__text">{{ $pedidoOriginal->descricao_pedido ?? '-' }}</div>
+            </div>
+        </div>
+    @endif
 
     <div class="pedido-view__panel" x-show="tab === 'imagens'" x-cloak>
         @forelse($imagens as $tipo => $arquivos)

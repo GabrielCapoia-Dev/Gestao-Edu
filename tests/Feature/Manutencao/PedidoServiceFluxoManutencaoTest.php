@@ -1149,22 +1149,28 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
         $principal = $this->pedido(status: 'Em Manutenção', setor: $this->educacao, escola: $this->escola);
         $adicional = $this->pedidoAdicional($principal);
         $problemaId = $adicional->problemas()->value('id');
+        $statusPromovido = $this->service->statusPorNome('Em Aberto', true);
 
-        $this->assertTrue($this->service->promoverPedidoAdicional($adicional, $usuario));
+        $this->assertTrue($this->service->promoverPedidoAdicional(
+            $adicional,
+            $usuario,
+            $statusPromovido,
+            'Retomar como pedido principal.'
+        ));
 
         $adicional->refresh();
 
         $this->assertFalse((bool) $adicional->is_pedido_adicional);
         $this->assertNull($adicional->pedido_principal_id);
-        $this->assertSame('Em Manutenção', $adicional->tipoStatus->nome);
+        $this->assertSame('Em Aberto', $adicional->tipoStatus->nome);
         $this->assertSame($problemaId, $adicional->problemas()->value('id'));
         $this->assertDatabaseHas('pedido_historicos', [
             'pedido_id' => $adicional->id,
-            'descricao_alteracao' => "Pedido adicional promovido a pedido principal. Origem: {$principal->numero_protocolo}.",
+            'descricao_alteracao' => "Pedido adicional promovido a pedido principal. Origem: {$principal->numero_protocolo}. Ação registrada: Retomar como pedido principal.",
         ]);
         $this->assertDatabaseHas('pedido_historicos', [
             'pedido_id' => $principal->id,
-            'descricao_alteracao' => "Pedido adicional {$adicional->numero_protocolo} transformado em pedido principal.",
+            'descricao_alteracao' => "Pedido adicional {$adicional->numero_protocolo} transformado em pedido principal. Ação registrada: Retomar como pedido principal.",
         ]);
     }
 
@@ -1175,6 +1181,8 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
         $usuario = $this->usuarioComRoleSetor('Manutencao: Educacao', $this->educacao, [
             'Listar Pedidos',
             'Editar Pedidos',
+            'Visualizar Pedidos por Status',
+            'Visualizar Histórico de Pedidos',
         ]);
         $principalCancelamento = $this->pedido(status: 'Em Manutenção', setor: $this->educacao, escola: $this->escola);
         $adicionalCancelamento = $this->pedidoAdicional($principalCancelamento);
@@ -1188,6 +1196,17 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
 
         $this->assertStringContainsString('Transformar em principal', $htmlVisualizacao);
         $this->assertStringContainsString('Cancelar adicional', $htmlVisualizacao);
+
+        $htmlAdicional = view('components.pedido.visualizar', [
+            'pedido' => $adicionalCancelamento,
+            'pedidoOriginal' => $principalCancelamento,
+            'historico' => collect(),
+            'adicionais' => collect(),
+            'usuario' => $usuario,
+        ])->render();
+
+        $this->assertStringContainsString('Pedido original', $htmlAdicional);
+        $this->assertStringContainsString($principalCancelamento->numero_protocolo, $htmlAdicional);
 
         Livewire::actingAs($usuario)
             ->test(ListPedidos::class)
@@ -1203,12 +1222,17 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
 
         $principalPromocao = $this->pedido(status: 'Em Manutenção', setor: $this->educacao, escola: $this->escola);
         $adicionalPromocao = $this->pedidoAdicional($principalPromocao);
+        $statusPromovido = $this->service->statusPorNome('Em Aberto', true);
 
         Livewire::actingAs($usuario)
             ->test(ListPedidos::class)
             ->callTableAction(
                 'promover_adicional',
                 $principalPromocao,
+                [
+                    'tipo_status_id' => $statusPromovido->id,
+                    'descricao' => 'Promovido pela tela de visualizacao.',
+                ],
                 arguments: ['adicional' => $adicionalPromocao->id],
             )
             ->assertHasNoTableActionErrors();
@@ -1217,6 +1241,41 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
 
         $this->assertFalse((bool) $adicionalPromocao->is_pedido_adicional);
         $this->assertNull($adicionalPromocao->pedido_principal_id);
+        $this->assertSame('Em Aberto', $adicionalPromocao->tipoStatus->nome);
+
+        $principalAbaCancelamento = $this->pedido(status: 'Em Manutenção', setor: $this->educacao, escola: $this->escola);
+        $adicionalAbaCancelamento = $this->pedidoAdicional($principalAbaCancelamento);
+
+        Livewire::actingAs($usuario)
+            ->test(ListPedidos::class)
+            ->set('activeTab', 'adicionais')
+            ->assertTableActionVisible('visualizar', $adicionalAbaCancelamento)
+            ->assertTableActionVisible('cancelar_adicional', $adicionalAbaCancelamento)
+            ->callTableAction('cancelar_adicional', $adicionalAbaCancelamento, [
+                'descricao' => 'Cancelado pela aba de adicionais.',
+            ])
+            ->assertHasNoTableActionErrors();
+
+        $this->assertSame('Cancelado', $adicionalAbaCancelamento->refresh()->tipoStatus->nome);
+
+        $principalAbaPromocao = $this->pedido(status: 'Em Manutenção', setor: $this->educacao, escola: $this->escola);
+        $adicionalAbaPromocao = $this->pedidoAdicional($principalAbaPromocao);
+
+        Livewire::actingAs($usuario)
+            ->test(ListPedidos::class)
+            ->set('activeTab', 'adicionais')
+            ->assertTableActionVisible('promover_adicional', $adicionalAbaPromocao)
+            ->callTableAction('promover_adicional', $adicionalAbaPromocao, [
+                'tipo_status_id' => $statusPromovido->id,
+                'descricao' => 'Promovido pela aba de adicionais.',
+            ])
+            ->assertHasNoTableActionErrors();
+
+        $adicionalAbaPromocao->refresh();
+
+        $this->assertFalse((bool) $adicionalAbaPromocao->is_pedido_adicional);
+        $this->assertNull($adicionalAbaPromocao->pedido_principal_id);
+        $this->assertSame('Em Aberto', $adicionalAbaPromocao->tipoStatus->nome);
     }
 
     public function test_listagem_filtra_ordena_e_destaca_pedidos_com_adicionais(): void

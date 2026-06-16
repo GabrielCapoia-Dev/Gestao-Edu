@@ -10,9 +10,15 @@
 
     $canView = $record instanceof Pedido && PedidosTable::podeExibirAcaoVisualizar($user);
     $canManage = $record instanceof Pedido && PedidosTable::podeExibirAcaoGerenciar($record, $user, $service);
+    $canPromoteAdditional = $record instanceof Pedido
+        && $record->is_pedido_adicional
+        && $service->podePromoverPedidoAdicional($record, $user);
+    $canCancelAdditional = $record instanceof Pedido
+        && $record->is_pedido_adicional
+        && $service->podeCancelarPedidoAdicional($record, $user);
 @endphp
 
-@if ($canView || $canManage)
+@if ($canView || $canManage || $canPromoteAdditional || $canCancelAdditional)
     <div class="pedido-card-actions pedido-card-actions--top">
         @if ($canView)
             <x-filament::button
@@ -33,6 +39,28 @@
                 wire:click.stop.prevent="mountTableAction('gerenciar', '{{ $recordKey }}')"
             >
                 Gerenciar
+            </x-filament::button>
+        @endif
+
+        @if ($canPromoteAdditional)
+            <x-filament::button
+                color="warning"
+                icon="heroicon-o-arrow-up-circle"
+                size="sm"
+                wire:click.stop.prevent="mountTableAction('promover_adicional', '{{ $recordKey }}')"
+            >
+                Transformar em principal
+            </x-filament::button>
+        @endif
+
+        @if ($canCancelAdditional)
+            <x-filament::button
+                color="danger"
+                icon="heroicon-o-x-circle"
+                size="sm"
+                wire:click.stop.prevent="mountTableAction('cancelar_adicional', '{{ $recordKey }}')"
+            >
+                Cancelar pedido
             </x-filament::button>
         @endif
     </div>

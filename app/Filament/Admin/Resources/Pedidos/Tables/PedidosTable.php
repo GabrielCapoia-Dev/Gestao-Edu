@@ -55,7 +55,24 @@ class PedidosTable
 
         return $table
             ->modifyQueryUsing(fn (Builder $query) => $query
-                ->with(['pedidoPrincipal', 'tipoManutencao', 'tipoStatus', 'escola', 'setor', 'setorOrigem', 'empresaContratada', 'solicitante.escola', 'solicitante.escolas'])
+                ->with([
+                    'pedidoPrincipal.tipoManutencao',
+                    'pedidoPrincipal.tipoStatus',
+                    'pedidoPrincipal.escola',
+                    'pedidoPrincipal.setor',
+                    'pedidoPrincipal.setorOrigem',
+                    'pedidoPrincipal.empresaContratada',
+                    'pedidoPrincipal.solicitante',
+                    'pedidoPrincipal.problemas',
+                    'tipoManutencao',
+                    'tipoStatus',
+                    'escola',
+                    'setor',
+                    'setorOrigem',
+                    'empresaContratada',
+                    'solicitante.escola',
+                    'solicitante.escolas',
+                ])
                 ->withCount(['pedidosAdicionais', 'problemas']))
             ->paginated([10, 25, 50, 100])
             ->defaultPaginationPageOption(10)
@@ -564,6 +581,14 @@ class PedidosTable
                     $record->load([
                         'tipoManutencao',
                         'tipoStatus',
+                        'pedidoPrincipal.tipoManutencao',
+                        'pedidoPrincipal.tipoStatus',
+                        'pedidoPrincipal.escola',
+                        'pedidoPrincipal.setor',
+                        'pedidoPrincipal.setorOrigem',
+                        'pedidoPrincipal.empresaContratada',
+                        'pedidoPrincipal.solicitante',
+                        'pedidoPrincipal.problemas',
                         'escola',
                         'setor',
                         'empresaContratada',
@@ -574,30 +599,35 @@ class PedidosTable
                         'ultimoFeedback.itens.problema',
                     ]);
 
+                    $pedidoOriginal = $record->is_pedido_adicional ? $record->pedidoPrincipal : null;
+
                     $historico = $record->historicos()
                         ->with(['statusAnterior', 'statusNovo', 'usuario', 'setor'])
                         ->orderByDesc('created_at')
                         ->orderByRaw('CASE WHEN status_anterior_id IS NOT NULL THEN 1 ELSE 0 END DESC')
                         ->get();
 
-                    $adicionais = $record->pedidosAdicionais()
-                        ->with([
-                            'tipoManutencao',
-                            'problemas',
-                            'tipoStatus',
-                            'escola',
-                            'setor',
-                            'empresaContratada',
-                            'solicitante',
-                            'arquivos.usuario',
-                            'feedbackItens.problema',
-                        ])
-                        ->get();
+                    $adicionais = $record->is_pedido_adicional
+                        ? collect()
+                        : $record->pedidosAdicionais()
+                            ->with([
+                                'tipoManutencao',
+                                'problemas',
+                                'tipoStatus',
+                                'escola',
+                                'setor',
+                                'empresaContratada',
+                                'solicitante',
+                                'arquivos.usuario',
+                                'feedbackItens.problema',
+                            ])
+                            ->get();
 
                     return view('components.pedido.visualizar', [
                         'pedido' => $record,
                         'historico' => $historico,
                         'adicionais' => $adicionais,
+                        'pedidoOriginal' => $pedidoOriginal,
                         'usuario' => auth()->user(),
                     ]);
                 }),
@@ -607,9 +637,7 @@ class PedidosTable
                 ->icon('heroicon-o-x-circle')
                 ->color('danger')
                 ->visible(function (Pedido $record, array $arguments) use ($user, $service): bool {
-                    $adicional = $record->pedidosAdicionais()
-                        ->with(['pedidoPrincipal.tipoStatus', 'tipoStatus'])
-                        ->find($arguments['adicional'] ?? null);
+                    $adicional = static::pedidoAdicionalParaAcao($record, $arguments);
 
                     return $adicional instanceof Pedido
                         && $service->podeCancelarPedidoAdicional($adicional, $user);
@@ -625,7 +653,7 @@ class PedidosTable
                         ->maxLength(1000),
                 ])
                 ->action(function (Pedido $record, array $arguments, array $data) use ($user, $service): void {
-                    $adicional = $record->pedidosAdicionais()->find($arguments['adicional'] ?? null);
+                    $adicional = static::pedidoAdicionalParaAcao($record, $arguments);
 
                     if (! $user || ! $adicional instanceof Pedido) {
                         return;
@@ -648,9 +676,7 @@ class PedidosTable
                 ->icon('heroicon-o-arrow-up-circle')
                 ->color('warning')
                 ->visible(function (Pedido $record, array $arguments) use ($user, $service): bool {
-                    $adicional = $record->pedidosAdicionais()
-                        ->with(['pedidoPrincipal.tipoStatus', 'tipoStatus'])
-                        ->find($arguments['adicional'] ?? null);
+                    $adicional = static::pedidoAdicionalParaAcao($record, $arguments);
 
                     return $adicional instanceof Pedido
                         && $service->podePromoverPedidoAdicional($adicional, $user);
@@ -659,14 +685,33 @@ class PedidosTable
                 ->modalHeading('Transformar adicional em pedido principal')
                 ->modalDescription('O pedido deixara de estar vinculado e passara a aparecer separadamente na fila, mantendo protocolo, fotos, problemas e histórico.')
                 ->modalSubmitActionLabel('Transformar em principal')
-                ->action(function (Pedido $record, array $arguments) use ($user, $service): void {
-                    $adicional = $record->pedidosAdicionais()->find($arguments['adicional'] ?? null);
+                ->schema([
+                    Select::make('tipo_status_id')
+                        ->label('Status do pedido')
+                        ->options(fn (): array => $service->statusOptionsParaPromocaoPedidoAdicional($user))
+                        ->required()
+                        ->searchable()
+                        ->preload(),
 
-                    if (! $user || ! $adicional instanceof Pedido) {
+                    Textarea::make('descricao')
+                        ->label('Descrição da ação realizada')
+                        ->required()
+                        ->maxLength(1000),
+                ])
+                ->action(function (Pedido $record, array $arguments, array $data) use ($user, $service): void {
+                    $adicional = static::pedidoAdicionalParaAcao($record, $arguments);
+                    $status = TipoStatus::query()->find((int) ($data['tipo_status_id'] ?? 0));
+
+                    if (! $user || ! $adicional instanceof Pedido || ! $status instanceof TipoStatus) {
                         return;
                     }
 
-                    $promovido = $service->promoverPedidoAdicional($adicional, $user);
+                    $promovido = $service->promoverPedidoAdicional(
+                        $adicional,
+                        $user,
+                        $status,
+                        trim((string) ($data['descricao'] ?? ''))
+                    );
 
                     Notification::make()
                         ->title($promovido ? 'Pedido transformado em principal.' : 'Não foi possível transformar o pedido adicional.')
@@ -1019,6 +1064,25 @@ class PedidosTable
                         ->send();
                 }),
         ];
+    }
+
+    private static function pedidoAdicionalParaAcao(Pedido $record, array $arguments = []): ?Pedido
+    {
+        if ($record->is_pedido_adicional) {
+            $record->loadMissing(['pedidoPrincipal.tipoStatus', 'tipoStatus']);
+
+            return $record;
+        }
+
+        $adicionalId = $arguments['adicional'] ?? null;
+
+        if (blank($adicionalId)) {
+            return null;
+        }
+
+        return $record->pedidosAdicionais()
+            ->with(['pedidoPrincipal.tipoStatus', 'tipoStatus'])
+            ->find($adicionalId);
     }
 
     private static function avaliacaoSchema(Pedido $record, PedidoService $service): array
