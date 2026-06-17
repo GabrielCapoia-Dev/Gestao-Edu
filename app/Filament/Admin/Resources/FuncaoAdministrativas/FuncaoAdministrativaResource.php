@@ -5,13 +5,17 @@ namespace App\Filament\Admin\Resources\FuncaoAdministrativas;
 use App\Filament\Admin\Resources\FuncaoAdministrativas\Pages\ManageFuncaoAdministrativas;
 use App\Models\FuncaoAdministrativa;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
@@ -58,11 +62,65 @@ class FuncaoAdministrativaResource extends Resource
                     ->maxLength(255)
                     ->helperText('Identificador técnico gerado automaticamente quando ficar em branco.'),
 
+                Hidden::make('criando_nova_categoria')
+                    ->default(false)
+                    ->dehydrated(false),
+
                 Select::make('categoria')
                     ->label('Categoria')
-                    ->options(FuncaoAdministrativa::categoriasOptions())
-                    ->default(FuncaoAdministrativa::CATEGORIA_GERAL)
-                    ->required(),
+                    ->options(fn (Get $get): array => FuncaoAdministrativa::categoriasOptions($get('categoria')))
+                    ->required()
+                    ->searchable()
+                    ->hidden(fn (Get $get): bool => (bool) $get('criando_nova_categoria'))
+                    ->suffixAction(
+                        Action::make('adicionar_categoria')
+                            ->label('Adicionar categoria')
+                            ->tooltip('Adicionar categoria')
+                            ->icon(Heroicon::Plus)
+                            ->color('gray')
+                            ->action(function (Set $set): void {
+                                $set('nova_categoria', null);
+                                $set('criando_nova_categoria', true);
+                            }),
+                        isInline: true,
+                    ),
+
+                TextInput::make('nova_categoria')
+                    ->label('Nova categoria')
+                    ->placeholder('Informe a nova categoria')
+                    ->maxLength(255)
+                    ->dehydrated(false)
+                    ->required(fn (Get $get): bool => (bool) $get('criando_nova_categoria'))
+                    ->visible(fn (Get $get): bool => (bool) $get('criando_nova_categoria'))
+                    ->suffixActions([
+                        Action::make('confirmar_categoria')
+                            ->label('Confirmar categoria')
+                            ->tooltip('Confirmar categoria')
+                            ->icon(Heroicon::Check)
+                            ->color('success')
+                            ->disabled(fn (Get $get): bool => FuncaoAdministrativa::normalizarCategoria($get('nova_categoria')) === '')
+                            ->action(function (Get $get, Set $set): void {
+                                $categoria = FuncaoAdministrativa::normalizarCategoria($get('nova_categoria'));
+
+                                if ($categoria === '') {
+                                    return;
+                                }
+
+                                $set('categoria', $categoria);
+                                $set('nova_categoria', null);
+                                $set('criando_nova_categoria', false);
+                            }),
+
+                        Action::make('cancelar_categoria')
+                            ->label('Cancelar')
+                            ->tooltip('Cancelar')
+                            ->icon(Heroicon::XMark)
+                            ->color('gray')
+                            ->action(function (Set $set): void {
+                                $set('nova_categoria', null);
+                                $set('criando_nova_categoria', false);
+                            }),
+                    ], isInline: true),
 
                 Toggle::make('ativo')
                     ->label('Ativa')
@@ -110,7 +168,7 @@ class FuncaoAdministrativaResource extends Resource
                 TextColumn::make('categoria')
                     ->label('Categoria')
                     ->badge()
-                    ->formatStateUsing(fn (?string $state): string => FuncaoAdministrativa::categoriasOptions()[$state] ?? 'Geral')
+                    ->formatStateUsing(fn (?string $state): string => FuncaoAdministrativa::categoriaLabel($state))
                     ->sortable(),
 
                 IconColumn::make('ativo')

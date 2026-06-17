@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class FuncaoAdministrativa extends Model
@@ -50,20 +51,63 @@ class FuncaoAdministrativa extends Model
                 $funcao->codigo = static::codigoDisponivelParaNome((string) $funcao->nome, $funcao->id);
             }
 
+            $funcao->categoria = static::normalizarCategoria($funcao->categoria);
+
             if (blank($funcao->categoria)) {
                 $funcao->categoria = static::CATEGORIA_GERAL;
             }
         });
     }
 
-    public static function categoriasOptions(): array
+    public static function categoriasOptions(?string $categoriaAtual = null): array
     {
-        return [
+        if (! Schema::hasTable((new static())->getTable()) || ! Schema::hasColumn((new static())->getTable(), 'categoria')) {
+            return [];
+        }
+
+        return collect(static::query()
+            ->whereNotNull('categoria')
+            ->where('categoria', '!=', '')
+            ->distinct()
+            ->orderBy('categoria')
+            ->pluck('categoria')
+            ->all())
+            ->push(static::normalizarCategoria($categoriaAtual))
+            ->filter()
+            ->unique(fn (string $categoria): string => Str::lower($categoria))
+            ->sortBy(fn (string $categoria): string => static::categoriaLabel($categoria))
+            ->mapWithKeys(fn (string $categoria): array => [
+                $categoria => static::categoriaLabel($categoria),
+            ])
+            ->all();
+    }
+
+    public static function normalizarCategoria(?string $categoria): string
+    {
+        return Str::of((string) $categoria)
+            ->squish()
+            ->toString();
+    }
+
+    public static function categoriaLabel(?string $categoria): string
+    {
+        $categoria = static::normalizarCategoria($categoria);
+
+        if ($categoria === '') {
+            return 'Geral';
+        }
+
+        return match ($categoria) {
             self::CATEGORIA_GERAL => 'Geral',
             self::CATEGORIA_PEDAGOGICO => 'Pedagógico',
             self::CATEGORIA_ADMINISTRATIVO => 'Administrativo',
             self::CATEGORIA_OPERACIONAL => 'Operacional',
-        ];
+            default => Str::of($categoria)
+                ->replace(['_', '-'], ' ')
+                ->squish()
+                ->title()
+                ->toString(),
+        };
     }
 
     public static function professorPadrao(): self
