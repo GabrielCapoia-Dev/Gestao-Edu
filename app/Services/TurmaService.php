@@ -437,7 +437,7 @@ class TurmaService
         }
 
         return Professor::where('id_escola', $escolaId)
-            ->whereNull('funcao_administrativa_id')
+            ->disponivelParaComponente()
             ->orderBy('turno')
             ->orderBy('matricula')
             ->orderBy('nome')

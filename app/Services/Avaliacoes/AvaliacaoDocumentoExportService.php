@@ -10,6 +10,8 @@ use App\Models\AvaliacaoInformacaoComplementar;
 use App\Models\AvaliacaoResposta;
 use App\Models\Pauta;
 use App\Models\Professor;
+use App\Models\Servidor;
+use App\Models\ServidorFuncaoAdministrativa;
 use App\Models\Turma;
 use App\Models\TurmaComponenteProfessor;
 use App\Models\User;
@@ -620,19 +622,32 @@ class AvaliacaoDocumentoExportService
      */
     private function gestoresDaTurma(Turma $turma): array
     {
-        $gestores = Professor::query()
-            ->whereNotNull('funcao_administrativa_id')
+        $gestores = ServidorFuncaoAdministrativa::query()
+            ->where('status', ServidorFuncaoAdministrativa::STATUS_ATIVO)
             ->where(function (Builder $query) use ($turma): void {
                 $query
                     ->where('id_escola', (int) $turma->id_escola)
-                    ->orWhereHas('turmasFuncao', fn (Builder $turmas): Builder => $turmas->whereKey((int) $turma->id));
+                    ->orWhereHas('turmas', fn (Builder $turmas): Builder => $turmas->whereKey((int) $turma->id));
             })
-            ->with(['funcaoAdministrativa', 'turmasFuncao:id'])
-            ->orderBy('nome')
+            ->whereHas('servidor', fn (Builder $servidor): Builder => $servidor->where('status', Servidor::STATUS_ATIVO))
+            ->whereHas('funcaoAdministrativa', function (Builder $funcao): void {
+                $funcao
+                    ->where('ativo', true)
+                    ->where(function (Builder $flags): void {
+                        $flags
+                            ->where('direcao_escolar', true)
+                            ->orWhere('coordenacao_pedagogica', true);
+                    });
+            })
+            ->with([
+                'funcaoAdministrativa:id,nome,direcao_escolar,coordenacao_pedagogica',
+                'servidor:id,nome,id_escola,status',
+                'turmas:id',
+            ])
             ->get();
 
-        $diretor = $this->gestorPorFuncao($gestores, $turma, ['diretor']);
-        $coordenacao = $this->gestorPorFuncao($gestores, $turma, ['coorden']);
+        $diretor = $this->gestorPorFlag($gestores, $turma, 'direcao_escolar');
+        $coordenacao = $this->gestorPorFlag($gestores, $turma, 'coordenacao_pedagogica');
 
         return [
             'diretor' => $this->formatarGestor($diretor),
@@ -641,67 +656,50 @@ class AvaliacaoDocumentoExportService
     }
 
     /**
-     * @param  Collection<int, Professor>  $gestores
-     * @param  array<int, string>  $termos
+     * @param  Collection<int, ServidorFuncaoAdministrativa>  $gestores
      */
-    private function gestorPorFuncao(Collection $gestores, Turma $turma, array $termos): ?Professor
+    private function gestorPorFlag(Collection $gestores, Turma $turma, string $flag): ?ServidorFuncaoAdministrativa
     {
         return $gestores
-            ->filter(fn (Professor $professor): bool => $this->funcaoContemTermo($professor, $termos))
-            ->sortByDesc(fn (Professor $professor): int => $this->pontuacaoGestorDaTurma($professor, $turma))
+            ->filter(fn (ServidorFuncaoAdministrativa $vinculo): bool => (bool) ($vinculo->funcaoAdministrativa?->{$flag} ?? false))
+            ->sort(function (ServidorFuncaoAdministrativa $a, ServidorFuncaoAdministrativa $b) use ($turma): int {
+                $score = $this->pontuacaoGestorDaTurma($b, $turma) <=> $this->pontuacaoGestorDaTurma($a, $turma);
+
+                return $score !== 0
+                    ? $score
+                    : strcmp((string) ($a->servidor?->nome ?? ''), (string) ($b->servidor?->nome ?? ''));
+            })
             ->first();
     }
 
-    /**
-     * @param  array<int, string>  $termos
-     */
-    private function funcaoContemTermo(Professor $professor, array $termos): bool
+    private function pontuacaoGestorDaTurma(ServidorFuncaoAdministrativa $vinculo, Turma $turma): int
     {
-        $funcao = $this->normalizarTexto($professor->funcaoAdministrativa?->nome);
-
-        foreach ($termos as $termo) {
-            if (str_contains($funcao, $termo)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private function pontuacaoGestorDaTurma(Professor $professor, Turma $turma): int
-    {
-        if ($professor->turmasFuncao->contains('id', (int) $turma->id)) {
+        if ($vinculo->turmas->contains('id', (int) $turma->id)) {
             return 2;
         }
 
-        if ((int) $professor->id_escola === (int) $turma->id_escola) {
+        if ((int) ($vinculo->id_escola ?? $vinculo->servidor?->id_escola) === (int) $turma->id_escola) {
             return 1;
         }
 
         return 0;
     }
 
-    private function formatarGestor(?Professor $professor): string
+    private function formatarGestor(?ServidorFuncaoAdministrativa $vinculo): string
     {
-        if (! $professor?->nome) {
+        $nome = $vinculo?->servidor?->nome;
+
+        if (! $nome) {
             return '';
         }
 
-        $portaria = trim((string) ($professor->portaria ?? ''));
+        $portaria = trim((string) ($vinculo->portaria ?? ''));
 
         if ($portaria === '') {
-            return (string) $professor->nome;
+            return (string) $nome;
         }
 
-        return $professor->nome.' - '.$portaria;
-    }
-
-    private function normalizarTexto(?string $texto): string
-    {
-        return Str::of((string) $texto)
-            ->ascii()
-            ->lower()
-            ->toString();
+        return $nome.' - '.$portaria;
     }
 
     /**

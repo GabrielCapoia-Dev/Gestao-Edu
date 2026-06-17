@@ -6,6 +6,7 @@ use App\Filament\Admin\Resources\Servidores\Pages\ManageServidores;
 use App\Models\FuncaoAdministrativa;
 use App\Models\Servidor;
 use App\Models\ServidorFuncaoAdministrativa;
+use App\Models\Turma;
 use App\Models\User;
 use App\Services\ServidorService;
 use App\Services\UserService;
@@ -14,11 +15,14 @@ use BackedEnum;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -38,6 +42,8 @@ class ServidorResource extends Resource
     protected static string|UnitEnum|null $navigationGroup = 'Cadastros';
 
     protected static ?string $navigationLabel = 'Servidores';
+
+    protected static ?int $navigationSort = 1;
 
     protected static ?string $pluralModelLabel = 'Servidores';
 
@@ -86,6 +92,7 @@ class ServidorResource extends Resource
                             ->options(fn (): array => app(UserService::class)->opcoesDeEscolasParaCampo(Auth::user()))
                             ->searchable()
                             ->preload()
+                            ->live()
                             ->nullable(),
 
                         Select::make('setor_id')
@@ -107,30 +114,57 @@ class ServidorResource extends Resource
                             ->nullable()
                             ->helperText('A função do servidor não concede acesso ao sistema automaticamente.'),
 
-                        Select::make('funcao_administrativa_ids')
+                        Repeater::make('vinculos_funcionais')
                             ->label('Funções do servidor')
-                            ->options(fn (): array => FuncaoAdministrativa::query()
-                                ->where('ativo', true)
-                                ->orderBy('nome')
-                                ->pluck('nome', 'id')
-                                ->toArray())
-                            ->multiple()
-                            ->searchable()
-                            ->preload()
+                            ->schema([
+                                Select::make('funcao_administrativa_id')
+                                    ->label('Função')
+                                    ->options(fn (): array => FuncaoAdministrativa::query()
+                                        ->where('ativo', true)
+                                        ->orderBy('nome')
+                                        ->pluck('nome', 'id')
+                                        ->toArray())
+                                    ->searchable()
+                                    ->preload()
+                                    ->required()
+                                    ->live(),
+
+                                TextInput::make('portaria')
+                                    ->label('Portaria')
+                                    ->maxLength(255),
+
+                                Select::make('turma_ids')
+                                    ->label('Turmas vinculadas')
+                                    ->multiple()
+                                    ->searchable()
+                                    ->preload()
+                                    ->options(fn (Get $get): array => static::turmasOptions($get('../../id_escola')))
+                                    ->visible(fn (Get $get): bool => static::funcaoTemRelacaoTurma($get('funcao_administrativa_id')))
+                                    ->columnSpanFull(),
+                            ])
+                            ->columns(2)
                             ->required()
+                            ->minItems(1)
+                            ->addActionLabel('Adicionar função')
                             ->helperText('Selecione Professor apenas quando este servidor também precisar existir no cadastro pedagógico.')
-                            ->afterStateHydrated(function (Select $component, ?Servidor $record): void {
+                            ->afterStateHydrated(function (Repeater $component, ?Servidor $record): void {
                                 if (! $record) {
                                     return;
                                 }
 
                                 $component->state(
-                                    $record->funcoesAtivas()
-                                        ->pluck('funcao_administrativa.id')
-                                        ->map(fn ($id): int => (int) $id)
+                                    $record->servidorFuncoesAtivas()
+                                        ->with('turmas:id')
+                                        ->get()
+                                        ->map(fn (ServidorFuncaoAdministrativa $vinculo): array => [
+                                            'funcao_administrativa_id' => $vinculo->funcao_administrativa_id,
+                                            'portaria' => $vinculo->portaria,
+                                            'turma_ids' => $vinculo->turmas->pluck('id')->map(fn ($id): int => (int) $id)->all(),
+                                        ])
                                         ->all()
                                 );
-                            }),
+                            })
+                            ->columnSpanFull(),
 
                         Textarea::make('observacoes')
                             ->label('Observações')
@@ -149,6 +183,7 @@ class ServidorResource extends Resource
                 'setor:id,nome',
                 'user:id,name,email',
                 'funcoesAtivas:id,nome,codigo,categoria',
+                'servidorFuncoesAtivas.turmas:id',
             ]))
             ->paginated([5, 10, 25, 50, 100])
             ->defaultPaginationPageOption(10)
@@ -262,12 +297,12 @@ class ServidorResource extends Resource
                     ->schema([
                         Section::make('Informações do servidor')
                             ->schema([
-                                \Filament\Infolists\Components\TextEntry::make('nome')->label('Nome'),
-                                \Filament\Infolists\Components\TextEntry::make('matricula')->label('Matrícula')->placeholder('Não informada'),
-                                \Filament\Infolists\Components\TextEntry::make('escola.nome')->label('Escola')->placeholder('Não vinculada'),
-                                \Filament\Infolists\Components\TextEntry::make('setor.nome')->label('Setor')->placeholder('Não vinculado'),
-                                \Filament\Infolists\Components\TextEntry::make('user.name')->label('Usuário')->placeholder('Sem acesso'),
-                                \Filament\Infolists\Components\TextEntry::make('status')
+                                TextEntry::make('nome')->label('Nome'),
+                                TextEntry::make('matricula')->label('Matrícula')->placeholder('Não informada'),
+                                TextEntry::make('escola.nome')->label('Escola')->placeholder('Não vinculada'),
+                                TextEntry::make('setor.nome')->label('Setor')->placeholder('Não vinculado'),
+                                TextEntry::make('user.name')->label('Usuário')->placeholder('Sem acesso'),
+                                TextEntry::make('status')
                                     ->label('Status')
                                     ->formatStateUsing(fn (?string $state): string => Servidor::statusOptions()[$state] ?? 'Não informado'),
                             ])
@@ -275,7 +310,7 @@ class ServidorResource extends Resource
 
                         Section::make('Funções')
                             ->schema([
-                                \Filament\Infolists\Components\TextEntry::make('funcoes_lista')
+                                TextEntry::make('funcoes_lista')
                                     ->label('Funções ativas')
                                     ->getStateUsing(fn (Servidor $record): array => $record->funcoesAtivas()->pluck('nome')->sort()->values()->all())
                                     ->badge()
@@ -285,10 +320,10 @@ class ServidorResource extends Resource
 
                 EditAction::make()
                     ->using(function (Servidor $record, array $data): Servidor {
-                        $funcaoIds = $data['funcao_administrativa_ids'] ?? [];
-                        unset($data['funcao_administrativa_ids']);
+                        $vinculos = $data['vinculos_funcionais'] ?? [];
+                        unset($data['vinculos_funcionais']);
 
-                        return app(ServidorService::class)->atualizarServidorComFuncoes($record, $data, $funcaoIds);
+                        return app(ServidorService::class)->atualizarServidorComFuncoes($record, $data, $vinculos);
                     }),
 
                 DeleteAction::make(),
@@ -310,5 +345,30 @@ class ServidorResource extends Resource
             parent::getEloquentQuery(),
             Auth::user(),
         );
+    }
+
+    private static function funcaoTemRelacaoTurma(mixed $funcaoId): bool
+    {
+        return filled($funcaoId)
+            && (bool) FuncaoAdministrativa::query()
+                ->whereKey($funcaoId)
+                ->value('tem_relacao_turma');
+    }
+
+    private static function turmasOptions(int|string|null $escolaId): array
+    {
+        if (! $escolaId) {
+            return [];
+        }
+
+        return Turma::query()
+            ->where('id_escola', $escolaId)
+            ->with('serie')
+            ->orderBy('nome')
+            ->get()
+            ->mapWithKeys(fn (Turma $turma): array => [
+                $turma->id => trim(($turma->serie?->nome ? $turma->serie->nome.' - ' : '').$turma->nome.' ('.$turma->turno.')'),
+            ])
+            ->toArray();
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 
@@ -56,5 +57,17 @@ class ServidorFuncaoAdministrativa extends Pivot
     public function setor(): BelongsTo
     {
         return $this->belongsTo(Setor::class);
+    }
+
+    public function turmas(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            Turma::class,
+            'servidor_funcao_turma',
+            'servidor_funcao_administrativa_id',
+            'turma_id',
+        )
+            ->using(ServidorFuncaoTurma::class)
+            ->withTimestamps();
     }
 }

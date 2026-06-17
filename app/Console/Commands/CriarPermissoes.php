@@ -38,6 +38,8 @@ class CriarPermissoes extends Command
             }
         }
 
+        $this->migrarPermissoesLegadasDeGestao();
+
         $this->info('Sincronizando niveis de acesso...');
 
         foreach ($rolePresets as $roleName => $rolePermissions) {
@@ -84,7 +86,6 @@ class CriarPermissoes extends Command
             'Listar Séries',
             'Listar Professores',
             'Listar Funções Administrativas',
-            'Listar Equipe Gestora',
             'Listar Alternativas',
             'Listar Pautas',
             'Listar Avaliações',
@@ -126,7 +127,6 @@ class CriarPermissoes extends Command
             'Criar Pautas',
             'Criar Avaliações',
             'Criar Funções Administrativas',
-            'Criar Equipe Gestora',
             'Criar Tipos de Avaliações',
             'Criar Contratos',
             'Criar Pedidos: Merenda',
@@ -162,7 +162,6 @@ class CriarPermissoes extends Command
             'Editar Séries',
             'Editar Escolas',
             'Editar Professores',
-            'Editar Equipe Gestora',
             'Editar Funções Administrativas',
             'Editar Alternativas',
             'Editar Pautas',
@@ -192,7 +191,6 @@ class CriarPermissoes extends Command
             'Excluir Alternativas',
             'Excluir Pautas',
             'Excluir Avaliações',
-            'Excluir Equipe Gestora',
             'Excluir Funções Administrativas',
             'Excluir Tipos de Avaliações',
             'Excluir Contratos',
@@ -209,7 +207,6 @@ class CriarPermissoes extends Command
             'Excluir Tipo Status em Massa',
             'Excluir Pedidos em Massa',
             'Excluir Alternativas em Massa',
-            'Excluir Equipe Gestora em Massa',
             'Excluir Funções Administrativas em Massa',
             'Excluir Tipos de Avaliações em Massa',
             'Excluir Setores em Massa',
@@ -478,11 +475,6 @@ class CriarPermissoes extends Command
                 'Excluir Funções Administrativas',
                 'Excluir Servidores',
                 'Excluir Funções Administrativas em Massa',
-                'Listar Equipe Gestora',
-                'Criar Equipe Gestora',
-                'Editar Equipe Gestora',
-                'Excluir Equipe Gestora',
-                'Excluir Equipe Gestora em Massa',
                 'Listar Alternativas',
                 'Criar Alternativas',
                 'Editar Alternativas',
@@ -552,6 +544,63 @@ class CriarPermissoes extends Command
         }
 
         return array_values(array_unique($merged));
+    }
+
+    private function migrarPermissoesLegadasDeGestao(): void
+    {
+        $map = [
+            'Listar Equipe Gestora' => ['Listar Servidores'],
+            'Criar Equipe Gestora' => ['Listar Servidores', 'Editar Servidores', 'Gerenciar Funções de Servidores'],
+            'Editar Equipe Gestora' => ['Listar Servidores', 'Editar Servidores', 'Gerenciar Funções de Servidores'],
+            'Excluir Equipe Gestora' => ['Listar Servidores', 'Editar Servidores', 'Gerenciar Funções de Servidores'],
+            'Excluir Equipe Gestora em Massa' => ['Listar Servidores', 'Editar Servidores', 'Gerenciar Funções de Servidores'],
+        ];
+
+        foreach ($map as $legacyName => $targetNames) {
+            $legacyPermission = Permission::query()
+                ->where('guard_name', 'web')
+                ->where('name', $legacyName)
+                ->first();
+
+            if (! $legacyPermission) {
+                continue;
+            }
+
+            $targetIds = Permission::query()
+                ->where('guard_name', 'web')
+                ->whereIn('name', $targetNames)
+                ->pluck('id')
+                ->all();
+
+            if ($targetIds === []) {
+                continue;
+            }
+
+            DB::transaction(function () use ($legacyPermission, $targetIds): void {
+                foreach (DB::table('role_has_permissions')->where('permission_id', $legacyPermission->id)->get() as $row) {
+                    foreach ($targetIds as $targetId) {
+                        DB::table('role_has_permissions')->insertOrIgnore([
+                            'permission_id' => $targetId,
+                            'role_id' => $row->role_id,
+                        ]);
+                    }
+                }
+
+                foreach (DB::table('model_has_permissions')->where('permission_id', $legacyPermission->id)->get() as $row) {
+                    foreach ($targetIds as $targetId) {
+                        DB::table('model_has_permissions')->insertOrIgnore([
+                            'permission_id' => $targetId,
+                            'model_type' => $row->model_type,
+                            'model_id' => $row->model_id,
+                        ]);
+                    }
+                }
+
+                DB::table('role_has_permissions')->where('permission_id', $legacyPermission->id)->delete();
+                DB::table('model_has_permissions')->where('permission_id', $legacyPermission->id)->delete();
+                $legacyPermission->delete();
+            });
+        }
     }
 
     private function sincronizarSetorDaRole(Role $role, string $roleName): void

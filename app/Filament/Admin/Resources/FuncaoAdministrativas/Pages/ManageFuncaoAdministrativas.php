@@ -15,37 +15,17 @@ class ManageFuncaoAdministrativas extends ManageRecords
     {
         return view('filament.admin.pages.partials.page-header', [
             'actions' => $this->getCachedHeaderActions(),
-
-            'eyebrow' => 'Pedagógico',
-            'title' => "Funções Administrativas",
-            'description' => 'Gerencie as Funções Administrativas disponíveis para a equipe gestora, adicione novas funções e mantenha um registro atualizado das atribuições.',
+            'eyebrow' => 'Cadastros',
+            'title' => 'Funções Administrativas',
+            'description' => 'Gerencie funções, vínculos pedagógicos e marcadores usados em documentos e relatórios.',
         ]);
     }
 
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make(),
+            CreateAction::make()
+                ->label('Criar função administrativa'),
         ];
-    }
-
-    protected function mutateFormDataUsing(array $data): array
-    {
-        $data['portaria'] = "{$data['portaria_numero']}/{$data['portaria_ano']}";
-
-        unset($data['portaria_numero'], $data['portaria_ano']);
-
-        return $data;
-    }
-
-    protected function mutateFormDataBeforeFill(array $data): array
-    {
-        if (!empty($data['portaria']) && str_contains($data['portaria'], '/')) {
-            [$num, $ano] = explode('/', $data['portaria']);
-            $data['portaria_numero'] = $num;
-            $data['portaria_ano'] = $ano;
-        }
-
-        return $data;
     }
 }

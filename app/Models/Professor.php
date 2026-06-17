@@ -30,8 +30,6 @@ class Professor extends Model
         'nome',
         'email',
         'telefone',
-        'funcao_administrativa_id',
-        'portaria',
     ];
 
     protected function casts(): array
@@ -42,7 +40,6 @@ class Professor extends Model
             'nome' => 'string',
             'email' => 'string',
             'telefone' => 'string',
-            'portaria' => 'string',
         ];
     }
 
@@ -149,30 +146,12 @@ class Professor extends Model
         )->withPivot('turma_id');
     }
 
-    public function funcaoAdministrativa()
-    {
-        return $this->belongsTo(FuncaoAdministrativa::class, 'funcao_administrativa_id');
-    }
-
-    /**
-     * Turmas vinculadas através da função administrativa
-     */
-    public function turmasFuncao()
-    {
-        return $this->belongsToMany(
-            Turma::class,
-            'professor_funcao_turma',
-            'professor_id',
-            'turma_id'
-        )->withTimestamps();
-    }
-
     /**
      * Verifica se o professor tem função administrativa
      */
     public function temFuncaoAdministrativa(): bool
     {
-        return !is_null($this->funcao_administrativa_id);
+        return $this->servidor?->possuiFuncaoAtivaNaoProfessor() ?? false;
     }
 
     /**
@@ -180,7 +159,10 @@ class Professor extends Model
      */
     public function funcaoTemRelacaoTurma(): bool
     {
-        return $this->funcaoAdministrativa?->tem_relacao_turma ?? false;
+        return $this->servidor?->funcoesAtivas()
+            ->where('funcao_administrativa.codigo', '!=', FuncaoAdministrativa::CODIGO_PROFESSOR)
+            ->where('funcao_administrativa.tem_relacao_turma', true)
+            ->exists() ?? false;
     }
 
     /**
@@ -188,7 +170,9 @@ class Professor extends Model
      */
     public function scopeDisponivelParaComponente($query)
     {
-        return $query->whereNull('funcao_administrativa_id');
+        return $query->whereDoesntHave('servidor.servidorFuncoesAtivas.funcaoAdministrativa', function ($funcoes): void {
+            $funcoes->where('codigo', '!=', FuncaoAdministrativa::CODIGO_PROFESSOR);
+        });
     }
 
     /**
@@ -196,7 +180,9 @@ class Professor extends Model
      */
     public function scopeComFuncaoAdministrativa($query)
     {
-        return $query->whereNotNull('funcao_administrativa_id');
+        return $query->whereHas('servidor.servidorFuncoesAtivas.funcaoAdministrativa', function ($funcoes): void {
+            $funcoes->where('codigo', '!=', FuncaoAdministrativa::CODIGO_PROFESSOR);
+        });
     }
 
     public function avaliacaoRespostas()

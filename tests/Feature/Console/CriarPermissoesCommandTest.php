@@ -76,6 +76,33 @@ class CriarPermissoesCommandTest extends TestCase
         ]);
     }
 
+    public function test_it_migrates_legacy_equipe_gestora_permissions_to_servidores(): void
+    {
+        $listar = Permission::findOrCreate('Listar Equipe Gestora', 'web');
+        $editar = Permission::findOrCreate('Editar Equipe Gestora', 'web');
+        $excluir = Permission::findOrCreate('Excluir Equipe Gestora', 'web');
+        $excluirEmMassa = Permission::findOrCreate('Excluir Equipe Gestora em Massa', 'web');
+
+        $role = Role::query()->create([
+            'name' => 'Equipe Gestora Legado',
+            'guard_name' => 'web',
+        ]);
+        $role->givePermissionTo([$listar, $editar, $excluir, $excluirEmMassa]);
+
+        Artisan::call('permissoes:criar');
+
+        $role = Role::findByName('Equipe Gestora Legado', 'web');
+
+        $this->assertDatabaseMissing('permissions', ['name' => 'Listar Equipe Gestora']);
+        $this->assertDatabaseMissing('permissions', ['name' => 'Editar Equipe Gestora']);
+        $this->assertDatabaseMissing('permissions', ['name' => 'Excluir Equipe Gestora']);
+        $this->assertDatabaseMissing('permissions', ['name' => 'Excluir Equipe Gestora em Massa']);
+        $this->assertTrue($role->hasPermissionTo('Listar Servidores'));
+        $this->assertTrue($role->hasPermissionTo('Editar Servidores'));
+        $this->assertTrue($role->hasPermissionTo('Gerenciar Funções de Servidores'));
+        $this->assertFalse($role->hasPermissionTo('Excluir Servidores'));
+    }
+
     public function test_it_normalizes_legacy_mojibake_permission_and_role_names(): void
     {
         $legacyPermissionName = $this->mojibake('Visualizar Notificações');

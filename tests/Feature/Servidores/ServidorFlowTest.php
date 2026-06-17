@@ -100,6 +100,49 @@ class ServidorFlowTest extends TestCase
         ]);
     }
 
+    public function test_vinculo_funcional_salva_portaria_e_turmas(): void
+    {
+        $escola = $this->criarEscola('Escola Vinculo Funcional');
+        $serie = Serie::query()->create(['codigo' => 'SER-FUNC', 'nome' => 'Serie Funcional']);
+        $turma = Turma::query()->create([
+            'codigo' => 'TUR-FUNC',
+            'nome' => 'A',
+            'turno' => 'manha',
+            'id_serie' => $serie->id,
+            'id_escola' => $escola->id,
+        ]);
+        $funcaoCoordenacao = FuncaoAdministrativa::query()->create([
+            'nome' => 'Coordenacao Pedagogica',
+            'categoria' => FuncaoAdministrativa::CATEGORIA_PEDAGOGICO,
+            'ativo' => true,
+            'exige_professor' => false,
+            'tem_relacao_turma' => true,
+            'coordenacao_pedagogica' => true,
+        ]);
+
+        $servidor = app(ServidorService::class)->criarServidorComFuncoes([
+            'id_escola' => $escola->id,
+            'nome' => 'Servidor Coordenacao',
+            'matricula' => 'COORD-001',
+            'status' => Servidor::STATUS_ATIVO,
+        ], [[
+            'funcao_administrativa_id' => $funcaoCoordenacao->id,
+            'portaria' => '123/2026',
+            'turma_ids' => [$turma->id],
+        ]]);
+
+        $vinculo = ServidorFuncaoAdministrativa::query()
+            ->where('servidor_id', $servidor->id)
+            ->where('funcao_administrativa_id', $funcaoCoordenacao->id)
+            ->firstOrFail();
+
+        $this->assertSame('123/2026', $vinculo->portaria);
+        $this->assertDatabaseHas('servidor_funcao_turma', [
+            'servidor_funcao_administrativa_id' => $vinculo->id,
+            'turma_id' => $turma->id,
+        ]);
+    }
+
     public function test_funcao_professor_cria_ou_vincula_cadastro_pedagogico(): void
     {
         $escola = $this->criarEscola('Escola Professor Servidor');

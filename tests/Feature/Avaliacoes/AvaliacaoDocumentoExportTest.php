@@ -19,6 +19,7 @@ use App\Models\TipoAvaliacao;
 use App\Models\Turma;
 use App\Models\User;
 use App\Services\Avaliacoes\AvaliacaoDocumentoExportService;
+use App\Services\ServidorService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use ReflectionMethod;
 use Spatie\Permission\Models\Permission;
@@ -301,49 +302,109 @@ class AvaliacaoDocumentoExportTest extends TestCase
         ]);
     }
 
-    public function test_resolve_diretor_e_coordenador_da_equipe_gestora_para_o_documento(): void
+    public function test_resolve_diretor_e_coordenador_por_funcoes_do_servidor_para_o_documento(): void
     {
-        $escola = $this->criarEscola('Escola Gestora Documento');
-        $outraEscola = $this->criarEscola('Outra Escola Gestora');
-        $serie = $this->criarSerie('SER-GEST', '1o Ano');
+        $escola = $this->criarEscola('Escola Servidor Documento');
+        $outraEscola = $this->criarEscola('Outra Escola Servidor');
+        $serie = $this->criarSerie('SER-SERV-GEST', '1o Ano');
         $turma = $this->criarTurma($escola, $serie, 'A');
 
         $funcaoDiretor = FuncaoAdministrativa::query()->create([
-            'nome' => 'Diretor(a)',
-            'tem_relacao_turma' => true,
+            'nome' => 'Direcao Escolar',
+            'categoria' => FuncaoAdministrativa::CATEGORIA_ADMINISTRATIVO,
+            'ativo' => true,
+            'tem_relacao_turma' => false,
+            'direcao_escolar' => true,
         ]);
         $funcaoCoordenador = FuncaoAdministrativa::query()->create([
-            'nome' => 'Coordenador(a)',
+            'nome' => 'Coordenacao Pedagogica',
+            'categoria' => FuncaoAdministrativa::CATEGORIA_PEDAGOGICO,
+            'ativo' => true,
             'tem_relacao_turma' => true,
+            'coordenacao_pedagogica' => true,
+        ]);
+        $funcaoDirecaoSemFlag = FuncaoAdministrativa::query()->create([
+            'nome' => 'Direcao Sem Flag',
+            'categoria' => FuncaoAdministrativa::CATEGORIA_ADMINISTRATIVO,
+            'ativo' => true,
+            'tem_relacao_turma' => false,
         ]);
 
-        $diretor = Professor::query()->create([
-            'id_escola' => $outraEscola->id,
-            'matricula' => 'DIR-GEST',
-            'nome' => 'Diretora Documento',
-            'email' => 'diretora.documento@edu.umuarama.pr.gov.br',
+        app(ServidorService::class)->criarServidorComFuncoes([
+            'id_escola' => $escola->id,
+            'nome' => 'Diretora da Escola',
+            'matricula' => 'DIR-ESCOLA',
+            'status' => 'ativo',
+        ], [[
             'funcao_administrativa_id' => $funcaoDiretor->id,
             'portaria' => '111/2026',
-        ]);
-        $diretor->turmasFuncao()->attach($turma->id);
+        ]]);
 
-        $coordenadora = Professor::query()->create([
-            'id_escola' => $escola->id,
-            'matricula' => 'COORD-GEST',
-            'nome' => 'Coordenadora Documento',
-            'email' => 'coordenadora.documento@edu.umuarama.pr.gov.br',
-            'funcao_administrativa_id' => $funcaoCoordenador->id,
+        app(ServidorService::class)->criarServidorComFuncoes([
+            'id_escola' => $outraEscola->id,
+            'nome' => 'Diretora da Turma',
+            'matricula' => 'DIR-TURMA',
+            'status' => 'ativo',
+        ], [[
+            'funcao_administrativa_id' => $funcaoDiretor->id,
             'portaria' => '222/2026',
-        ]);
-        $coordenadora->turmasFuncao()->attach($turma->id);
+            'turma_ids' => [$turma->id],
+        ]]);
+
+        app(ServidorService::class)->criarServidorComFuncoes([
+            'id_escola' => $escola->id,
+            'nome' => 'Coordenadora Documento',
+            'matricula' => 'COORD-TURMA',
+            'status' => 'ativo',
+        ], [[
+            'funcao_administrativa_id' => $funcaoCoordenador->id,
+            'portaria' => '333/2026',
+            'turma_ids' => [$turma->id],
+        ]]);
+
+        app(ServidorService::class)->criarServidorComFuncoes([
+            'id_escola' => $escola->id,
+            'nome' => 'Servidor Sem Flag',
+            'matricula' => 'SEM-FLAG',
+            'status' => 'ativo',
+        ], [$funcaoDirecaoSemFlag->id]);
 
         $metodo = new ReflectionMethod(AvaliacaoDocumentoExportService::class, 'gestoresDaTurma');
         $metodo->setAccessible(true);
 
         $gestores = $metodo->invoke(new AvaliacaoDocumentoExportService(), $turma);
 
-        $this->assertSame('Diretora Documento - 111/2026', $gestores['diretor']);
-        $this->assertSame('Coordenadora Documento - 222/2026', $gestores['coordenacao']);
+        $this->assertSame('Diretora da Turma - 222/2026', $gestores['diretor']);
+        $this->assertSame('Coordenadora Documento - 333/2026', $gestores['coordenacao']);
+    }
+
+    public function test_nome_da_funcao_sem_flag_nao_resolve_diretor_ou_coordenador(): void
+    {
+        $escola = $this->criarEscola('Escola Sem Flag Documento');
+        $serie = $this->criarSerie('SER-SEM-FLAG', '1o Ano');
+        $turma = $this->criarTurma($escola, $serie, 'A');
+
+        $funcaoDirecaoSemFlag = FuncaoAdministrativa::query()->create([
+            'nome' => 'Direcao Escolar',
+            'categoria' => FuncaoAdministrativa::CATEGORIA_ADMINISTRATIVO,
+            'ativo' => true,
+            'tem_relacao_turma' => false,
+        ]);
+
+        app(ServidorService::class)->criarServidorComFuncoes([
+            'id_escola' => $escola->id,
+            'nome' => 'Servidor Direcao Sem Flag',
+            'matricula' => 'DIR-SEM-FLAG',
+            'status' => 'ativo',
+        ], [$funcaoDirecaoSemFlag->id]);
+
+        $metodo = new ReflectionMethod(AvaliacaoDocumentoExportService::class, 'gestoresDaTurma');
+        $metodo->setAccessible(true);
+
+        $gestores = $metodo->invoke(new AvaliacaoDocumentoExportService(), $turma);
+
+        $this->assertSame('', $gestores['diretor']);
+        $this->assertSame('', $gestores['coordenacao']);
     }
 
     public function test_documento_exibe_nao_avaliado_para_pauta_pendente(): void

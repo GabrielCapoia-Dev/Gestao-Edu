@@ -14,23 +14,23 @@ use Illuminate\Validation\ValidationException;
 
 class ServidorService
 {
-    public function criarServidorComFuncoes(array $data, array $funcaoIds = []): Servidor
+    public function criarServidorComFuncoes(array $data, array $vinculos = []): Servidor
     {
-        return DB::transaction(function () use ($data, $funcaoIds): Servidor {
+        return DB::transaction(function () use ($data, $vinculos): Servidor {
             $servidor = Servidor::query()->create($this->dadosServidor($data));
-            $this->sincronizarFuncoesSelecionadas($servidor, $funcaoIds);
+            $this->sincronizarVinculosFuncionais($servidor, $vinculos);
 
-            return $servidor->fresh(['funcoesAtivas', 'professores']);
+            return $servidor->fresh(['funcoesAtivas', 'servidorFuncoesAtivas.turmas', 'professores']);
         });
     }
 
-    public function atualizarServidorComFuncoes(Servidor $servidor, array $data, array $funcaoIds = []): Servidor
+    public function atualizarServidorComFuncoes(Servidor $servidor, array $data, array $vinculos = []): Servidor
     {
-        return DB::transaction(function () use ($servidor, $data, $funcaoIds): Servidor {
+        return DB::transaction(function () use ($servidor, $data, $vinculos): Servidor {
             $servidor->update($this->dadosServidor($data));
-            $this->sincronizarFuncoesSelecionadas($servidor->fresh(), $funcaoIds);
+            $this->sincronizarVinculosFuncionais($servidor->fresh(), $vinculos);
 
-            return $servidor->fresh(['funcoesAtivas', 'professores']);
+            return $servidor->fresh(['funcoesAtivas', 'servidorFuncoesAtivas.turmas', 'professores']);
         });
     }
 
@@ -48,8 +48,6 @@ class ServidorService
                 'id_escola' => $professor->id_escola,
                 'setor_id' => $this->setorIdDoProfessor($professor),
             ]);
-
-            $this->sincronizarFuncaoAdministrativaLegada($professor->fresh(), $servidor);
 
             return $servidor->fresh(['funcoesAtivas']);
         });
@@ -94,33 +92,43 @@ class ServidorService
             }
 
             $origem = (string) ($contexto['origem'] ?? 'manual');
-
-            $vinculo = ServidorFuncaoAdministrativa::query()
+            $query = ServidorFuncaoAdministrativa::query()
                 ->where('servidor_id', $servidor->id)
                 ->where('funcao_administrativa_id', $funcao->id)
-                ->where('origem', $origem)
-                ->where('status', ServidorFuncaoAdministrativa::STATUS_ATIVO)
-                ->first() ?? new ServidorFuncaoAdministrativa([
-                    'servidor_id' => $servidor->id,
-                    'funcao_administrativa_id' => $funcao->id,
-                    'origem' => $origem,
-                ]);
+                ->where('status', ServidorFuncaoAdministrativa::STATUS_ATIVO);
+
+            if ($origem !== 'manual') {
+                $query->where('origem', $origem);
+            }
+
+            $vinculo = $query->first() ?? new ServidorFuncaoAdministrativa([
+                'servidor_id' => $servidor->id,
+                'funcao_administrativa_id' => $funcao->id,
+                'origem' => $origem,
+            ]);
 
             $vinculo->fill([
                 'id_escola' => $contexto['id_escola'] ?? $servidor->id_escola,
                 'setor_id' => $contexto['setor_id'] ?? $servidor->setor_id,
                 'status' => ServidorFuncaoAdministrativa::STATUS_ATIVO,
-                'portaria' => $contexto['portaria'] ?? $vinculo->portaria,
+                'portaria' => array_key_exists('portaria', $contexto) ? $contexto['portaria'] : $vinculo->portaria,
                 'data_inicio' => $contexto['data_inicio'] ?? $vinculo->data_inicio,
                 'data_fim' => null,
             ]);
             $vinculo->save();
 
-            if ($funcao->categoria === FuncaoAdministrativa::CATEGORIA_EQUIPE_GESTORA) {
-                $this->sincronizarFuncaoLegadaNoProfessor($servidor, $funcao, $vinculo->portaria);
+            if (array_key_exists('turma_ids', $contexto) && Schema::hasTable('servidor_funcao_turma')) {
+                $turmaIds = collect($contexto['turma_ids'])
+                    ->filter(fn ($id): bool => filled($id))
+                    ->map(fn ($id): int => (int) $id)
+                    ->unique()
+                    ->values()
+                    ->all();
+
+                $vinculo->turmas()->sync($turmaIds);
             }
 
-            return $vinculo->fresh();
+            return $vinculo->fresh(['turmas']);
         });
     }
 
@@ -138,55 +146,56 @@ class ServidorService
 
                 if ($professor && $this->professorPossuiVinculosPedagogicos($professor)) {
                     throw ValidationException::withMessages([
-                        'funcao_administrativa_ids' => 'Não é possível remover a função Professor enquanto houver vínculos pedagógicos ativos.',
+                        'vinculos_funcionais' => 'Nao e possivel remover a funcao Professor enquanto houver vinculos pedagogicos ativos.',
                     ]);
                 }
             }
 
-            ServidorFuncaoAdministrativa::query()
+            $vinculos = ServidorFuncaoAdministrativa::query()
                 ->where('servidor_id', $servidor->id)
                 ->where('funcao_administrativa_id', $funcao->id)
                 ->where('status', ServidorFuncaoAdministrativa::STATUS_ATIVO)
+                ->get();
+
+            if ($vinculos->isEmpty()) {
+                return;
+            }
+
+            foreach ($vinculos as $vinculo) {
+                if (Schema::hasTable('servidor_funcao_turma')) {
+                    $vinculo->turmas()->detach();
+                }
+            }
+
+            ServidorFuncaoAdministrativa::query()
+                ->whereKey($vinculos->pluck('id')->all())
                 ->update([
                     'status' => ServidorFuncaoAdministrativa::STATUS_INATIVO,
                     'data_fim' => now()->toDateString(),
                     'updated_at' => now(),
                 ]);
-
-            if ($funcao->categoria === FuncaoAdministrativa::CATEGORIA_EQUIPE_GESTORA) {
-                $this->removerFuncaoLegadaDoProfessor($servidor, $funcao);
-            }
         });
     }
 
     public function sincronizarFuncoesSelecionadas(Servidor $servidor, array $funcaoIds): void
     {
-        $funcaoIds = collect($funcaoIds)
-            ->filter(fn ($id): bool => filled($id))
-            ->map(fn ($id): int => (int) $id)
-            ->unique()
-            ->values();
+        $this->sincronizarVinculosFuncionais($servidor, $funcaoIds);
+    }
 
-        $funcoes = FuncaoAdministrativa::query()
-            ->whereIn('id', $funcaoIds)
-            ->get();
-
-        $funcoesEquipeGestora = $funcoes
-            ->where('categoria', FuncaoAdministrativa::CATEGORIA_EQUIPE_GESTORA);
-
-        if ($servidor->professores()->exists() && $funcoesEquipeGestora->count() > 1) {
-            throw ValidationException::withMessages([
-                'funcao_administrativa_ids' => 'Selecione apenas uma função de equipe gestora para servidor vinculado a professor.',
-            ]);
-        }
-
+    public function sincronizarVinculosFuncionais(Servidor $servidor, array $vinculos): void
+    {
+        $vinculos = $this->normalizarVinculosFuncionais($vinculos);
+        $funcaoIds = $vinculos->pluck('funcao_administrativa_id')->values();
         $ativas = $servidor->funcoesAtivas()
             ->pluck('funcao_administrativa.id')
             ->map(fn ($id): int => (int) $id)
             ->values();
 
-        foreach ($funcaoIds->diff($ativas) as $funcaoId) {
-            $this->vincularFuncao($servidor, $funcaoId);
+        foreach ($vinculos as $vinculo) {
+            $this->vincularFuncao($servidor, (int) $vinculo['funcao_administrativa_id'], [
+                'portaria' => $vinculo['portaria'] ?? null,
+                'turma_ids' => $vinculo['turma_ids'] ?? [],
+            ]);
         }
 
         foreach ($ativas->diff($funcaoIds) as $funcaoId) {
@@ -230,7 +239,6 @@ class ServidorService
     {
         $checks = [
             ['turma_componente_professor', 'professor_id'],
-            ['professor_funcao_turma', 'professor_id'],
             ['avaliacao_respostas', 'professor_id'],
             ['avaliacao_informacoes_complementares', 'professor_id'],
         ];
@@ -242,6 +250,39 @@ class ServidorService
         }
 
         return false;
+    }
+
+    private function normalizarVinculosFuncionais(array $vinculos)
+    {
+        return collect($vinculos)
+            ->map(function ($vinculo): ?array {
+                if (is_array($vinculo)) {
+                    $funcaoId = $vinculo['funcao_administrativa_id'] ?? $vinculo['id'] ?? null;
+
+                    if (! filled($funcaoId)) {
+                        return null;
+                    }
+
+                    return [
+                        'funcao_administrativa_id' => (int) $funcaoId,
+                        'portaria' => filled($vinculo['portaria'] ?? null) ? (string) $vinculo['portaria'] : null,
+                        'turma_ids' => $vinculo['turma_ids'] ?? $vinculo['turmas'] ?? [],
+                    ];
+                }
+
+                if (! filled($vinculo)) {
+                    return null;
+                }
+
+                return [
+                    'funcao_administrativa_id' => (int) $vinculo,
+                    'portaria' => null,
+                    'turma_ids' => [],
+                ];
+            })
+            ->filter()
+            ->keyBy('funcao_administrativa_id')
+            ->values();
     }
 
     private function dadosServidor(array $data): array
@@ -316,7 +357,7 @@ class ServidorService
 
         if (blank($servidor->id_escola) || blank($servidor->matricula) || blank($servidor->nome)) {
             throw ValidationException::withMessages([
-                'funcao_administrativa_ids' => 'Para atribuir a função Professor, informe escola, matrícula e nome do servidor.',
+                'vinculos_funcionais' => 'Para atribuir a funcao Professor, informe escola, matricula e nome do servidor.',
             ]);
         }
 
@@ -346,62 +387,6 @@ class ServidorService
             'email' => $servidor->email,
             'telefone' => $servidor->telefone,
         ]);
-    }
-
-    private function sincronizarFuncaoAdministrativaLegada(Professor $professor, Servidor $servidor): void
-    {
-        ServidorFuncaoAdministrativa::query()
-            ->where('servidor_id', $servidor->id)
-            ->where('origem', 'professor_legacy')
-            ->when($professor->funcao_administrativa_id, function (Builder $query) use ($professor): Builder {
-                return $query->where('funcao_administrativa_id', '!=', $professor->funcao_administrativa_id);
-            })
-            ->where('status', ServidorFuncaoAdministrativa::STATUS_ATIVO)
-            ->update([
-                'status' => ServidorFuncaoAdministrativa::STATUS_INATIVO,
-                'data_fim' => now()->toDateString(),
-                'updated_at' => now(),
-            ]);
-
-        if (! $professor->funcao_administrativa_id) {
-            return;
-        }
-
-        $this->vincularFuncao($servidor, (int) $professor->funcao_administrativa_id, [
-            'origem' => 'professor_legacy',
-            'id_escola' => $professor->id_escola,
-            'setor_id' => $this->setorIdDoProfessor($professor),
-            'portaria' => $professor->portaria,
-        ]);
-    }
-
-    private function sincronizarFuncaoLegadaNoProfessor(Servidor $servidor, FuncaoAdministrativa $funcao, ?string $portaria): void
-    {
-        $professor = $servidor->professores()->first();
-
-        if (! $professor) {
-            return;
-        }
-
-        $professor->forceFill([
-            'funcao_administrativa_id' => $funcao->id,
-            'portaria' => $portaria,
-        ])->saveQuietly();
-    }
-
-    private function removerFuncaoLegadaDoProfessor(Servidor $servidor, FuncaoAdministrativa $funcao): void
-    {
-        $professor = $servidor->professores()->first();
-
-        if (! $professor || (int) $professor->funcao_administrativa_id !== (int) $funcao->id) {
-            return;
-        }
-
-        $professor->turmasFuncao()->detach();
-        $professor->forceFill([
-            'funcao_administrativa_id' => null,
-            'portaria' => null,
-        ])->saveQuietly();
     }
 
     private function setorIdDoProfessor(Professor $professor): ?int

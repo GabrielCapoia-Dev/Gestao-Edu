@@ -12,7 +12,6 @@ class FuncaoAdministrativa extends Model
     public const CODIGO_PROFESSOR = 'professor';
 
     public const CATEGORIA_GERAL = 'geral';
-    public const CATEGORIA_EQUIPE_GESTORA = 'equipe_gestora';
     public const CATEGORIA_PEDAGOGICO = 'pedagogico';
     public const CATEGORIA_ADMINISTRATIVO = 'administrativo';
     public const CATEGORIA_OPERACIONAL = 'operacional';
@@ -25,8 +24,9 @@ class FuncaoAdministrativa extends Model
         'categoria',
         'ativo',
         'exige_professor',
-        'portaria',
         'tem_relacao_turma',
+        'direcao_escolar',
+        'coordenacao_pedagogica',
     ];
 
     protected function casts(): array
@@ -37,8 +37,9 @@ class FuncaoAdministrativa extends Model
             'categoria' => 'string',
             'ativo' => 'boolean',
             'exige_professor' => 'boolean',
-            'portaria' => 'string',
             'tem_relacao_turma' => 'boolean',
+            'direcao_escolar' => 'boolean',
+            'coordenacao_pedagogica' => 'boolean',
         ];
     }
 
@@ -59,7 +60,6 @@ class FuncaoAdministrativa extends Model
     {
         return [
             self::CATEGORIA_GERAL => 'Geral',
-            self::CATEGORIA_EQUIPE_GESTORA => 'Equipe gestora',
             self::CATEGORIA_PEDAGOGICO => 'Pedagógico',
             self::CATEGORIA_ADMINISTRATIVO => 'Administrativo',
             self::CATEGORIA_OPERACIONAL => 'Operacional',
@@ -78,11 +78,6 @@ class FuncaoAdministrativa extends Model
                 'tem_relacao_turma' => false,
             ],
         );
-    }
-
-    public function professores()
-    {
-        return $this->hasMany(Professor::class, 'funcao_administrativa_id');
     }
 
     public function servidorFuncoes(): HasMany

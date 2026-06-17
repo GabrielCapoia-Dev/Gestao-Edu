@@ -23,7 +23,7 @@ Dar um panorama rapido dos dominios do sistema e de onde cada responsabilidade p
 
 ### Estrutura escolar e pedagogica
 
-- `Escola`, `Setor`, `Serie`, `Turma`, `Professor`, `ComponenteCurricular`, `FuncaoAdministrativa`, `EquipeGestora`
+- `Escola`, `Setor`, `Serie`, `Turma`, `Professor`, `ComponenteCurricular`, `Servidor`, `FuncaoAdministrativa`
 - Relacoes entre escola, serie, turma, professor e componente vivem em models e resources do Filament
 
 ### Manutencao predial

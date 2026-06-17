@@ -170,7 +170,7 @@
             bottom: 12%;
         }
 
-        .icon-ruler {
+        .icon-pencil {
             --size: clamp(40px, 4.2vw, 62px);
             --alpha: .23;
             --rot: 11deg;
@@ -218,7 +218,7 @@
             top: 24%;
         }
 
-        .icon-ruler-alt {
+        .icon-pencil-alt {
             --size: clamp(34px, 3.4vw, 50px);
             --alpha: .28;
             --rot: -13deg;
@@ -943,9 +943,10 @@
             <circle cx="24" cy="32" r="9"></circle>
             <path d="M33 32h19M43 32v7M50 32v5"></path>
         </symbol>
-        <symbol id="edu-icon-ruler" viewBox="0 0 64 64">
-            <path d="M14 48L31 16l19 32H14z"></path>
-            <path d="M31 27v21M24 41h14"></path>
+        <symbol id="edu-icon-pencil" viewBox="0 0 64 64">
+            <path d="M16 48l-3 9 9-3 30-30-6-6-30 30z"></path>
+            <path d="M41 23l6 6"></path>
+            <path d="M46 18l3-3a4 4 0 0 1 6 6l-3 3"></path>
         </symbol>
         <symbol id="edu-icon-books" viewBox="0 0 64 64">
             <path d="M18 16h12v38H18zM34 20h12v34H34z"></path>
@@ -960,13 +961,13 @@
                 <span class="edu-icon icon-calendar"><svg><use href="#edu-icon-calendar"></use></svg></span>
                 <span class="edu-icon icon-check"><svg><use href="#edu-icon-check"></use></svg></span>
                 <span class="edu-icon icon-key"><svg><use href="#edu-icon-key"></use></svg></span>
-                <span class="edu-icon icon-ruler"><svg><use href="#edu-icon-ruler"></use></svg></span>
+                <span class="edu-icon icon-pencil"><svg><use href="#edu-icon-pencil"></use></svg></span>
                 <span class="edu-icon icon-books"><svg><use href="#edu-icon-books"></use></svg></span>
                 <span class="edu-icon icon-book-alt"><svg><use href="#edu-icon-book"></use></svg></span>
                 <span class="edu-icon icon-calendar-alt"><svg><use href="#edu-icon-calendar"></use></svg></span>
                 <span class="edu-icon icon-check-alt"><svg><use href="#edu-icon-check"></use></svg></span>
                 <span class="edu-icon icon-key-alt"><svg><use href="#edu-icon-key"></use></svg></span>
-                <span class="edu-icon icon-ruler-alt"><svg><use href="#edu-icon-ruler"></use></svg></span>
+                <span class="edu-icon icon-pencil-alt"><svg><use href="#edu-icon-pencil"></use></svg></span>
                 <span class="edu-icon icon-books-alt"><svg><use href="#edu-icon-books"></use></svg></span>
                 <span class="edu-icon icon-book-top"><svg><use href="#edu-icon-book"></use></svg></span>
                 <span class="edu-icon icon-calendar-top"><svg><use href="#edu-icon-calendar"></use></svg></span>

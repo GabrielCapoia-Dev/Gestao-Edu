@@ -5,10 +5,12 @@ namespace Tests\Feature\Turmas;
 use App\Filament\Admin\Resources\Turmas\Pages\ManageTurmas;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
+use App\Models\FuncaoAdministrativa;
 use App\Models\Professor;
 use App\Models\Serie;
 use App\Models\Turma;
 use App\Models\User;
+use App\Services\ServidorService;
 use App\Services\TurmaService;
 use App\Services\UserService;
 use Filament\Forms\Components\Select;
@@ -309,6 +311,27 @@ class TurmaResourceScopeTest extends TestCase
         $this->assertSame(
             'Tarde - MAT-001 - Professora Label',
             TurmaService::professoresOptionsParaTurma($escola->id)[$professor->id] ?? null,
+        );
+    }
+
+    public function test_professor_com_funcao_ativa_nao_professor_nao_aparece_para_componente(): void
+    {
+        $escola = $this->criarEscola('Escola Professor Funcao');
+        $professor = $this->criarProfessor($escola, 'PROF-FUNCAO', 'Professor com Funcao');
+        $funcaoDirecao = FuncaoAdministrativa::query()->create([
+            'nome' => 'Direcao Escolar',
+            'categoria' => FuncaoAdministrativa::CATEGORIA_ADMINISTRATIVO,
+            'ativo' => true,
+            'exige_professor' => false,
+            'tem_relacao_turma' => false,
+            'direcao_escolar' => true,
+        ]);
+
+        app(ServidorService::class)->vincularFuncao($professor->fresh()->servidor, $funcaoDirecao);
+
+        $this->assertArrayNotHasKey(
+            $professor->id,
+            TurmaService::professoresOptionsParaTurma($escola->id),
         );
     }
 

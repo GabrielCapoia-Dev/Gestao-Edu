@@ -31,10 +31,10 @@ class ManageServidores extends ManageRecords
                 ->slideOver()
                 ->closeModalByClickingAway(false)
                 ->using(function (array $data): Servidor {
-                    $funcaoIds = $data['funcao_administrativa_ids'] ?? [];
-                    unset($data['funcao_administrativa_ids']);
+                    $vinculos = $data['vinculos_funcionais'] ?? [];
+                    unset($data['vinculos_funcionais']);
 
-                    return app(ServidorService::class)->criarServidorComFuncoes($data, $funcaoIds);
+                    return app(ServidorService::class)->criarServidorComFuncoes($data, $vinculos);
                 }),
         ];
     }

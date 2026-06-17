@@ -201,14 +201,19 @@ Policy: `TipoManutencaoPolicy` (registrada em `AppServiceProvider`)
 - Editar: `Editar Tipo Manutenção`
 - Excluir: `Excluir Tipo Manutenção`
 
-### Estrutura -> Equipe gestora
+### Cadastros -> Servidores
 
-Policy: `EquipeGestoraPolicy` (registrada em `AppServiceProvider`)
+Policy: `ServidorPolicy` (registrada em `AppServiceProvider`)
 
-- Listar/Ver: `Listar Equipe Gestora`
-- Criar: `Criar Equipe Gestora`
-- Editar: `Editar Equipe Gestora`
-- Excluir: `Excluir Equipe Gestora`
+- Listar/Ver: `Listar Servidores`
+- Criar: `Criar Servidores`
+- Editar: `Editar Servidores`
+- Excluir: `Excluir Servidores`
+- Gerenciar vínculos funcionais: `Gerenciar Funções de Servidores`
+
+Escopo adicional:
+
+- `ServidorService::aplicarEscopoVisibilidade()` restringe por escola ou setor quando o usuário não possui escopo global.
 
 ### Estrutura -> Componente curricular
 
@@ -219,7 +224,7 @@ Policy: `ComponenteCurricularPolicy` (registrada em `AppServiceProvider`)
 - Editar: `Editar Componente Curricular`
 - Excluir: `Excluir Componente Curricular`
 
-### Estrutura -> Funcoes administrativas
+### Cadastros -> Funcoes administrativas
 
 Policy: `FuncaoAdministrativaPolicy` (registrada em `AppServiceProvider`)
 
