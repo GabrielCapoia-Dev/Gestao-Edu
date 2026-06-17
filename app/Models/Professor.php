@@ -160,7 +160,7 @@ class Professor extends Model
     public function funcaoTemRelacaoTurma(): bool
     {
         return $this->servidor?->funcoesAtivas()
-            ->where('funcao_administrativa.codigo', '!=', FuncaoAdministrativa::CODIGO_PROFESSOR)
+            ->where('funcao_administrativa.exige_professor', false)
             ->where('funcao_administrativa.tem_relacao_turma', true)
             ->exists() ?? false;
     }
@@ -171,7 +171,7 @@ class Professor extends Model
     public function scopeDisponivelParaComponente($query)
     {
         return $query->whereDoesntHave('servidor.servidorFuncoesAtivas.funcaoAdministrativa', function ($funcoes): void {
-            $funcoes->where('codigo', '!=', FuncaoAdministrativa::CODIGO_PROFESSOR);
+            $funcoes->where('exige_professor', false);
         });
     }
 
@@ -181,7 +181,7 @@ class Professor extends Model
     public function scopeComFuncaoAdministrativa($query)
     {
         return $query->whereHas('servidor.servidorFuncoesAtivas.funcaoAdministrativa', function ($funcoes): void {
-            $funcoes->where('codigo', '!=', FuncaoAdministrativa::CODIGO_PROFESSOR);
+            $funcoes->where('exige_professor', false);
         });
     }
 

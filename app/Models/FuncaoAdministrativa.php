@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasUuidCodigo;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -10,7 +11,7 @@ use Illuminate\Support\Str;
 
 class FuncaoAdministrativa extends Model
 {
-    public const CODIGO_PROFESSOR = 'professor';
+    use HasUuidCodigo;
 
     public const CATEGORIA_GERAL = 'geral';
     public const CATEGORIA_PEDAGOGICO = 'pedagogico';
@@ -47,10 +48,6 @@ class FuncaoAdministrativa extends Model
     protected static function booted(): void
     {
         static::saving(function (FuncaoAdministrativa $funcao): void {
-            if (blank($funcao->codigo)) {
-                $funcao->codigo = static::codigoDisponivelParaNome((string) $funcao->nome, $funcao->id);
-            }
-
             $funcao->categoria = static::normalizarCategoria($funcao->categoria);
 
             if (blank($funcao->categoria)) {
@@ -112,16 +109,26 @@ class FuncaoAdministrativa extends Model
 
     public static function professorPadrao(): self
     {
-        return static::query()->firstOrCreate(
-            ['codigo' => self::CODIGO_PROFESSOR],
-            [
-                'nome' => 'Professor',
-                'categoria' => self::CATEGORIA_PEDAGOGICO,
-                'ativo' => true,
-                'exige_professor' => true,
-                'tem_relacao_turma' => false,
-            ],
-        );
+        $funcao = static::query()
+            ->where('exige_professor', true)
+            ->where(function ($query): void {
+                $query
+                    ->where('nome', 'Professor')
+                    ->orWhere('codigo', 'professor');
+            })
+            ->first();
+
+        if ($funcao) {
+            return $funcao;
+        }
+
+        return static::query()->create([
+            'nome' => 'Professor',
+            'categoria' => self::CATEGORIA_PEDAGOGICO,
+            'ativo' => true,
+            'exige_professor' => true,
+            'tem_relacao_turma' => false,
+        ]);
     }
 
     public function servidorFuncoes(): HasMany
@@ -151,20 +158,4 @@ class FuncaoAdministrativa extends Model
             ->withTimestamps();
     }
 
-    private static function codigoDisponivelParaNome(string $nome, ?int $ignoreId = null): string
-    {
-        $base = Str::slug($nome) ?: 'funcao';
-        $codigo = $base;
-        $sufixo = 2;
-
-        while (static::query()
-            ->where('codigo', $codigo)
-            ->when($ignoreId, fn ($query) => $query->whereKeyNot($ignoreId))
-            ->exists()) {
-            $codigo = "{$base}-{$sufixo}";
-            $sufixo++;
-        }
-
-        return $codigo;
-    }
 }

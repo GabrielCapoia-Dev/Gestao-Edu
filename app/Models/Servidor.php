@@ -114,14 +114,14 @@ class Servidor extends Model
     public function temFuncaoProfessor(): bool
     {
         return $this->funcoesAtivas()
-            ->where('funcao_administrativa.codigo', FuncaoAdministrativa::CODIGO_PROFESSOR)
+            ->where('funcao_administrativa.exige_professor', true)
             ->exists();
     }
 
     public function possuiFuncaoAtivaNaoProfessor(): bool
     {
         return $this->funcoesAtivas()
-            ->where('funcao_administrativa.codigo', '!=', FuncaoAdministrativa::CODIGO_PROFESSOR)
+            ->where('funcao_administrativa.exige_professor', false)
             ->exists();
     }
 }

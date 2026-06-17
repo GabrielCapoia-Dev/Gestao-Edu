@@ -141,7 +141,7 @@ class ServidorService
         DB::transaction(function () use ($servidor, $funcao): void {
             $servidor = $servidor->fresh(['professores']);
 
-            if ($funcao->codigo === FuncaoAdministrativa::CODIGO_PROFESSOR) {
+            if ($funcao->exige_professor) {
                 $professor = $servidor->professores()->first();
 
                 if ($professor && $this->professorPossuiVinculosPedagogicos($professor)) {

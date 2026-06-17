@@ -57,11 +57,6 @@ class FuncaoAdministrativaResource extends Resource
                     ->required()
                     ->maxLength(255),
 
-                TextInput::make('codigo')
-                    ->label('Código')
-                    ->maxLength(255)
-                    ->helperText('Identificador técnico gerado automaticamente quando ficar em branco.'),
-
                 Hidden::make('criando_nova_categoria')
                     ->default(false)
                     ->dehydrated(false),
@@ -89,6 +84,7 @@ class FuncaoAdministrativaResource extends Resource
                     ->label('Nova categoria')
                     ->placeholder('Informe a nova categoria')
                     ->maxLength(255)
+                    ->live()
                     ->dehydrated(false)
                     ->required(fn (Get $get): bool => (bool) $get('criando_nova_categoria'))
                     ->visible(fn (Get $get): bool => (bool) $get('criando_nova_categoria'))
@@ -159,11 +155,6 @@ class FuncaoAdministrativaResource extends Resource
                 TextColumn::make('nome')
                     ->label('Nome')
                     ->searchable(),
-
-                TextColumn::make('codigo')
-                    ->label('Código')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('categoria')
                     ->label('Categoria')
