@@ -613,9 +613,6 @@
                 </a>
 
                 <nav class="nav-links" aria-label="Navegação pública">
-                    <!-- <a href="{{ route('public.home', [], false) }}" @class(['is-active' => request()->routeIs('public.home')])>Início</a>
-                    <a href="{{ route('public.privacy', [], false) }}" @class(['is-active' => request()->routeIs('public.privacy')])>Política de Privacidade</a>
-                    <a href="{{ route('public.terms', [], false) }}" @class(['is-active' => request()->routeIs('public.terms')])>Termos de Serviço</a> -->
                     <a class="button" href="/admin/login">Acessar sistema</a>
                 </nav>
             </div>
@@ -634,7 +631,6 @@
                 <div class="footer-links">
                     <a href="{{ route('public.privacy', [], false) }}">Política de Privacidade</a>
                     <a href="{{ route('public.terms', [], false) }}">Termos de Serviço</a>
-                    <a href="mailto:automacao@edu.umuarama.pr.gov.br">Contato</a>
                 </div>
             </div>
         </footer>

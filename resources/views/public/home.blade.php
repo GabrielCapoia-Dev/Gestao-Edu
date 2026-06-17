@@ -93,21 +93,5 @@
         </div>
     </section>
 
-    <section class="section">
-        <div class="wrap">
-            <div class="callout">
-                <p class="eyebrow">Uso responsável</p>
-                <h2>Informações protegidas por contexto e necessidade de acesso.</h2>
-                <p>
-                    Cada área do Gestão Edu é organizada para respeitar o perfil do usuário, os vínculos
-                    institucionais e a finalidade pública do tratamento das informações. O uso da plataforma
-                    deve ocorrer exclusivamente em atividades autorizadas pela Secretaria Municipal de Educação.
-                </p>
-                <div class="hero-actions">
-                    <a class="button" href="{{ route('public.terms', [], false) }}">Termos de Serviço</a>
-                    <a class="button secondary" href="mailto:automacao@edu.umuarama.pr.gov.br">Entrar em contato</a>
-                </div>
-            </div>
-        </div>
-    </section>
+   
 @endsection
