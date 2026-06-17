@@ -948,6 +948,61 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
         $this->assertSame('Concluído', $pedido->refresh()->tipoStatus->nome);
     }
 
+    public function test_listagem_filtra_pedidos_avaliados_e_exibe_feedback_em_slide_over(): void
+    {
+        $usuario = $this->usuarioComRoleSetor('Manutenção: Feedback', $this->educacao, [
+            'Listar Pedidos',
+            'Listar Todos os Pedidos',
+            'Visualizar Pedidos por Status',
+            'Visualizar Feedback de Pedidos',
+            'Avaliar Pedidos',
+        ]);
+
+        $pedidoAvaliado = $this->pedido(status: 'Em Manutenção', setor: $this->educacao, escola: $this->escola);
+        $problema = $pedidoAvaliado->problemas()->create([
+            'tipo_manutencao_id' => $this->tipo->id,
+            'tipo_manutencao_opcao_id' => $this->opcaoLuz->id,
+            'texto_problema' => $this->opcaoLuz->texto,
+        ]);
+
+        $pedidoSemAvaliacao = $this->pedido(status: 'Em Aberto', setor: $this->educacao, escola: $this->escola);
+
+        $this->service->avaliarPedido($pedidoAvaliado, [
+            'avaliacoes' => [
+                $problema->id => [
+                    'valor' => 5,
+                    'resultado' => ResultadoFeedbackPedido::Atendido->value,
+                    'comentario' => 'Resolvido por problema.',
+                ],
+            ],
+            'reabrir_pedido' => false,
+            'descricao' => 'Atendimento aprovado pela escola.',
+        ], $usuario);
+
+        Livewire::actingAs($usuario)
+            ->test(ListPedidos::class)
+            ->set('activeTab', 'todos')
+            ->assertTableActionVisible('visualizar_feedback', $pedidoAvaliado)
+            ->assertTableActionHidden('visualizar_feedback', $pedidoSemAvaliacao)
+            ->filterTable('feedback', [
+                'status' => 'avaliados',
+                'valor' => 5,
+                'resultado' => ResultadoFeedbackPedido::Atendido->value,
+            ])
+            ->assertCanSeeTableRecords([$pedidoAvaliado])
+            ->assertCanNotSeeTableRecords([$pedidoSemAvaliacao])
+            ->callTableAction('visualizar_feedback', $pedidoAvaliado)
+            ->assertHasNoTableActionErrors();
+
+        $html = view('components.pedido.feedback', [
+            'pedido' => $pedidoAvaliado->refresh()->load(['tipoManutencao', 'tipoStatus', 'escola', 'empresaContratada']),
+            'feedback' => $pedidoAvaliado->ultimoFeedback()->with(['itens.problema', 'itens.pedido.tipoManutencao'])->first(),
+        ])->render();
+
+        $this->assertStringContainsString('Atendimento aprovado pela escola.', $html);
+        $this->assertStringContainsString('Resolvido por problema.', $html);
+    }
+
     public function test_avaliacao_de_pedido_salva_fotos_de_conclusao_no_storage_publico(): void
     {
         Storage::fake('public');

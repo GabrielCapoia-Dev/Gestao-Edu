@@ -9,6 +9,7 @@ use App\Models\EmpresaContratada;
 use App\Models\Enums\NivelEmergenciaPedido;
 use App\Models\Enums\ResultadoFeedbackPedido;
 use App\Models\Enums\SetorAccessCapability;
+use App\Models\FeedbackPedido;
 use App\Models\Pedido;
 use App\Models\Setor;
 use App\Models\TipoManutencao;
@@ -72,6 +73,8 @@ class PedidosTable
                     'empresaContratada',
                     'solicitante.escola',
                     'solicitante.escolas',
+                    'ultimoFeedback.itens.problema',
+                    'feedbackItens.feedback.itens.problema',
                 ])
                 ->withCount(['pedidosAdicionais', 'problemas']))
             ->paginated([10, 25, 50, 100])
@@ -198,6 +201,128 @@ class PedidosTable
                         ->doesntHave('pedidosAdicionais'),
                     'adicionais' => $query->where('is_pedido_adicional', true),
                     default => $query,
+                }),
+
+            Filter::make('feedback')
+                ->label('Feedback')
+                ->columnSpan(6)
+                ->columns(3)
+                ->schema([
+                    Select::make('status')
+                        ->label('Avaliação')
+                        ->placeholder('Todos')
+                        ->options([
+                            'avaliados' => 'Avaliados',
+                            'sem_avaliacao' => 'Sem avaliação',
+                        ])
+                        ->native(false),
+
+                    Select::make('valor')
+                        ->label('Nota')
+                        ->placeholder('Todas')
+                        ->options([
+                            1 => '1 estrela',
+                            2 => '2 estrelas',
+                            3 => '3 estrelas',
+                            4 => '4 estrelas',
+                            5 => '5 estrelas',
+                        ])
+                        ->native(false),
+
+                    Select::make('resultado')
+                        ->label('Resultado')
+                        ->placeholder('Todos')
+                        ->options(
+                            collect(ResultadoFeedbackPedido::cases())
+                                ->mapWithKeys(fn (ResultadoFeedbackPedido $resultado) => [$resultado->value => $resultado->label()])
+                                ->toArray()
+                        )
+                        ->native(false),
+
+                    Select::make('reabrir_pedido')
+                        ->label('Reaberto')
+                        ->placeholder('Todos')
+                        ->options([
+                            '1' => 'Sim',
+                            '0' => 'Não',
+                        ])
+                        ->native(false),
+
+                    DatePicker::make('avaliado_de')
+                        ->label('Avaliado de'),
+
+                    DatePicker::make('avaliado_ate')
+                        ->label('Avaliado até'),
+                ])
+                ->query(function (Builder $query, array $data): Builder {
+                    return $query
+                        ->when(
+                            ($data['status'] ?? null) === 'avaliados',
+                            fn (Builder $builder) => $builder->where(fn (Builder $feedbackBuilder) => $feedbackBuilder
+                                ->whereHas('feedbacks')
+                                ->orWhereHas('feedbackItens.feedback'))
+                        )
+                        ->when(
+                            ($data['status'] ?? null) === 'sem_avaliacao',
+                            fn (Builder $builder) => $builder
+                                ->doesntHave('feedbacks')
+                                ->doesntHave('feedbackItens.feedback')
+                        )
+                        ->when(
+                            filled($data['valor'] ?? null),
+                            fn (Builder $builder) => $builder->where(fn (Builder $feedbackBuilder) => $feedbackBuilder
+                                ->whereHas(
+                                    'feedbacks',
+                                    fn (Builder $feedbackQuery) => $feedbackQuery->where('valor', (int) $data['valor'])
+                                )
+                                ->orWhereHas(
+                                    'feedbackItens',
+                                    fn (Builder $itemQuery) => $itemQuery->where('valor', (int) $data['valor'])
+                                ))
+                        )
+                        ->when(
+                            filled($data['resultado'] ?? null),
+                            fn (Builder $builder) => $builder->whereHas(
+                                'feedbackItens',
+                                fn (Builder $itemQuery) => $itemQuery->where('resultado', $data['resultado'])
+                            )
+                        )
+                        ->when(
+                            filled($data['reabrir_pedido'] ?? null),
+                            fn (Builder $builder) => $builder->where(fn (Builder $feedbackBuilder) => $feedbackBuilder
+                                ->whereHas(
+                                    'feedbacks',
+                                    fn (Builder $feedbackQuery) => $feedbackQuery->where('reabrir_pedido', (bool) (int) $data['reabrir_pedido'])
+                                )
+                                ->orWhereHas(
+                                    'feedbackItens.feedback',
+                                    fn (Builder $feedbackQuery) => $feedbackQuery->where('reabrir_pedido', (bool) (int) $data['reabrir_pedido'])
+                                ))
+                        )
+                        ->when(
+                            filled($data['avaliado_de'] ?? null),
+                            fn (Builder $builder) => $builder->where(fn (Builder $feedbackBuilder) => $feedbackBuilder
+                                ->whereHas(
+                                    'feedbacks',
+                                    fn (Builder $feedbackQuery) => $feedbackQuery->whereDate('created_at', '>=', $data['avaliado_de'])
+                                )
+                                ->orWhereHas(
+                                    'feedbackItens.feedback',
+                                    fn (Builder $feedbackQuery) => $feedbackQuery->whereDate('created_at', '>=', $data['avaliado_de'])
+                                ))
+                        )
+                        ->when(
+                            filled($data['avaliado_ate'] ?? null),
+                            fn (Builder $builder) => $builder->where(fn (Builder $feedbackBuilder) => $feedbackBuilder
+                                ->whereHas(
+                                    'feedbacks',
+                                    fn (Builder $feedbackQuery) => $feedbackQuery->whereDate('created_at', '<=', $data['avaliado_ate'])
+                                )
+                                ->orWhereHas(
+                                    'feedbackItens.feedback',
+                                    fn (Builder $feedbackQuery) => $feedbackQuery->whereDate('created_at', '<=', $data['avaliado_ate'])
+                                ))
+                        );
                 }),
 
             Filter::make('manutencao')
@@ -632,6 +757,43 @@ class PedidosTable
                     ]);
                 }),
 
+            Action::make('visualizar_feedback')
+                ->label('Visualizar feedback')
+                ->icon('heroicon-o-star')
+                ->color('warning')
+                ->slideOver()
+                ->modalWidth('4xl')
+                ->modalSubmitAction(false)
+                ->modalCancelActionLabel('Fechar')
+                ->visible(fn (Pedido $record): bool => ($user?->hasPermissionTo('Visualizar Feedback de Pedidos') ?? false)
+                    && static::feedbackParaVisualizacao($record) !== null)
+                ->modalHeading(fn (Pedido $record): string => 'Feedback do pedido '.$record->numero_protocolo)
+                ->modalContent(function (Pedido $record) {
+                    $record->load([
+                        'tipoManutencao',
+                        'tipoStatus',
+                        'escola',
+                        'setor',
+                        'setorOrigem',
+                        'empresaContratada',
+                        'solicitante',
+                        'problemas',
+                        'ultimoFeedback.itens.problema',
+                        'ultimoFeedback.itens.pedido.tipoManutencao',
+                        'ultimoFeedback.fotos',
+                        'feedbackItens.feedback.itens.problema',
+                        'feedbackItens.feedback.itens.pedido.tipoManutencao',
+                        'feedbackItens.feedback.fotos',
+                    ]);
+
+                    $feedback = static::feedbackParaVisualizacao($record);
+
+                    return view('components.pedido.feedback', [
+                        'pedido' => $record,
+                        'feedback' => $feedback,
+                    ]);
+                }),
+
             Action::make('cancelar_adicional')
                 ->label('Cancelar adicional')
                 ->icon('heroicon-o-x-circle')
@@ -807,6 +969,19 @@ class PedidosTable
         return static::statusEh($record, 'Em Manutenção')
             && ! $record->is_pedido_adicional
             && app(PedidoService::class)->podeAvaliarRegistro($record, $user);
+    }
+
+    private static function feedbackParaVisualizacao(Pedido $record): ?FeedbackPedido
+    {
+        if ($record->ultimoFeedback instanceof FeedbackPedido) {
+            return $record->ultimoFeedback;
+        }
+
+        $item = $record->relationLoaded('feedbackItens')
+            ? $record->feedbackItens->sortByDesc('created_at')->first()
+            : $record->feedbackItens()->with('feedback')->latest()->first();
+
+        return $item?->feedback instanceof FeedbackPedido ? $item->feedback : null;
     }
 
     public static function bulkActions(?User $user, PedidoService $service): array
