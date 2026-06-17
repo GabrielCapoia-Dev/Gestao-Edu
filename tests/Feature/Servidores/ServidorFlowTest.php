@@ -100,6 +100,69 @@ class ServidorFlowTest extends TestCase
         ]);
     }
 
+    public function test_formulario_exige_matricula_do_servidor(): void
+    {
+        Permission::findOrCreate('Listar Servidores');
+        Permission::findOrCreate('Criar Servidores');
+        Permission::findOrCreate('Gerenciar Funções de Servidores');
+
+        $funcaoAuxiliar = FuncaoAdministrativa::query()->create([
+            'nome' => 'Auxiliar Administrativo',
+            'categoria' => FuncaoAdministrativa::CATEGORIA_OPERACIONAL,
+            'ativo' => true,
+            'exige_professor' => false,
+            'tem_relacao_turma' => false,
+        ]);
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo(['Listar Servidores', 'Criar Servidores', 'Gerenciar Funções de Servidores']);
+
+        Livewire::actingAs($usuario)
+            ->test(ManageServidores::class)
+            ->callAction('create', [
+                'nome' => 'Servidor Sem Matricula',
+                'status' => Servidor::STATUS_ATIVO,
+                'vinculos_funcionais' => [
+                    [
+                        'funcao_administrativa_id' => $funcaoAuxiliar->id,
+                    ],
+                ],
+            ])
+            ->assertHasActionErrors(['matricula' => 'required']);
+
+        $this->assertDatabaseMissing('servidores', [
+            'nome' => 'Servidor Sem Matricula',
+        ]);
+    }
+
+    public function test_formulario_permite_matricula_repetida_para_servidores(): void
+    {
+        $funcaoAuxiliar = FuncaoAdministrativa::query()->create([
+            'nome' => 'Auxiliar Operacional',
+            'categoria' => FuncaoAdministrativa::CATEGORIA_OPERACIONAL,
+            'ativo' => true,
+            'exige_professor' => false,
+            'tem_relacao_turma' => false,
+        ]);
+
+        app(ServidorService::class)->criarServidorComFuncoes([
+            'nome' => 'Servidor Existente',
+            'matricula' => 'MAT-REPETIDA',
+            'status' => Servidor::STATUS_ATIVO,
+        ], [$funcaoAuxiliar->id]);
+
+        app(ServidorService::class)->criarServidorComFuncoes([
+            'nome' => 'Servidor Nova Matricula Repetida',
+            'matricula' => 'MAT-REPETIDA',
+            'status' => Servidor::STATUS_ATIVO,
+        ], [$funcaoAuxiliar->id]);
+
+        $this->assertSame(2, Servidor::query()->where('matricula', 'MAT-REPETIDA')->count());
+    }
+
     public function test_vinculo_funcional_salva_portaria_e_turmas(): void
     {
         $escola = $this->criarEscola('Escola Vinculo Funcional');

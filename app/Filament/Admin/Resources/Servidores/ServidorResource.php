@@ -64,6 +64,7 @@ class ServidorResource extends Resource
 
                         TextInput::make('matricula')
                             ->label('Matrícula')
+                            ->required()
                             ->maxLength(255),
 
                         TextInput::make('email')
@@ -83,6 +84,7 @@ class ServidorResource extends Resource
                             ->default(Servidor::STATUS_ATIVO)
                             ->required(),
                     ])
+                    ->columnSpanFull()
                     ->columns(2),
 
                 Section::make('Vínculos funcionais')
@@ -171,6 +173,7 @@ class ServidorResource extends Resource
                             ->maxLength(2000)
                             ->columnSpanFull(),
                     ])
+                    ->columnSpanFull()
                     ->columns(2),
             ]);
     }
