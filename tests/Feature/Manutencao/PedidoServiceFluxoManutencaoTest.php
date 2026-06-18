@@ -948,7 +948,7 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
         $this->assertSame('Concluído', $pedido->refresh()->tipoStatus->nome);
     }
 
-    public function test_listagem_filtra_pedidos_avaliados_e_exibe_feedback_em_slide_over(): void
+    public function test_listagem_exibe_feedback_sem_misturar_filtros_da_tela_de_feedback(): void
     {
         $usuario = $this->usuarioComRoleSetor('Manutenção: Feedback', $this->educacao, [
             'Listar Pedidos',
@@ -984,13 +984,8 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
             ->set('activeTab', 'todos')
             ->assertTableActionVisible('visualizar_feedback', $pedidoAvaliado)
             ->assertTableActionHidden('visualizar_feedback', $pedidoSemAvaliacao)
-            ->filterTable('feedback', [
-                'status' => 'avaliados',
-                'valor' => 5,
-                'resultado' => ResultadoFeedbackPedido::Atendido->value,
-            ])
-            ->assertCanSeeTableRecords([$pedidoAvaliado])
-            ->assertCanNotSeeTableRecords([$pedidoSemAvaliacao])
+            ->assertDontSee('Avaliado de')
+            ->assertDontSee('Avaliado até')
             ->callTableAction('visualizar_feedback', $pedidoAvaliado)
             ->assertHasNoTableActionErrors();
 
