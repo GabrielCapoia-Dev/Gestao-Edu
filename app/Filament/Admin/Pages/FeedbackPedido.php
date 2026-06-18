@@ -9,6 +9,7 @@ use App\Services\Exports\ExportRequestService;
 use App\Services\Relatorios\FeedbackPedidoAnalyticsService;
 use BackedEnum;
 use Filament\Actions;
+use Filament\Actions\Action;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -115,6 +116,20 @@ class FeedbackPedido extends Page implements HasTable
                     ->label('Avaliado em')
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
+            ])
+            ->recordActions([
+                Action::make('visualizar_pedido')
+                    ->label('Visualizar pedido')
+                    ->icon('heroicon-o-eye')
+                    ->color('info')
+                    ->slideOver()
+                    ->modalWidth('7xl')
+                    ->extraModalWindowAttributes(['class' => 'pedido-view-modal-window'], merge: true)
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Fechar')
+                    ->modalHeading(fn (FeedbackPedidoModel $record): string => 'Pedido '.$record->pedido?->numero_protocolo)
+                    ->visible(fn (FeedbackPedidoModel $record): bool => $record->pedido !== null)
+                    ->modalContent(fn (FeedbackPedidoModel $record): \Illuminate\Contracts\View\View => $this->pedidoModalContent($record)),
             ])
             ->filters($this->tableFilters(), layout: Tables\Enums\FiltersLayout::AboveContent)
             ->filtersFormColumns(12)
@@ -395,6 +410,66 @@ class FeedbackPedido extends Page implements HasTable
                 ->danger()
                 ->send();
         }
+    }
+
+    private function pedidoModalContent(FeedbackPedidoModel $record): \Illuminate\Contracts\View\View
+    {
+        $pedido = $record->pedido;
+
+        abort_unless($pedido, 404);
+
+        $pedido->load([
+            'tipoManutencao',
+            'tipoStatus',
+            'pedidoPrincipal.tipoManutencao',
+            'pedidoPrincipal.tipoStatus',
+            'pedidoPrincipal.escola',
+            'pedidoPrincipal.setor',
+            'pedidoPrincipal.setorOrigem',
+            'pedidoPrincipal.empresaContratada',
+            'pedidoPrincipal.solicitante',
+            'pedidoPrincipal.problemas',
+            'escola',
+            'setor',
+            'empresaContratada',
+            'solicitante',
+            'responsavel',
+            'problemas',
+            'arquivos.usuario',
+            'ultimoFeedback.itens.problema',
+        ]);
+
+        $pedidoOriginal = $pedido->is_pedido_adicional ? $pedido->pedidoPrincipal : null;
+
+        $historico = $pedido->historicos()
+            ->with(['statusAnterior', 'statusNovo', 'usuario', 'setor'])
+            ->orderByDesc('created_at')
+            ->orderByRaw('CASE WHEN status_anterior_id IS NOT NULL THEN 1 ELSE 0 END DESC')
+            ->get();
+
+        $adicionais = $pedido->is_pedido_adicional
+            ? collect()
+            : $pedido->pedidosAdicionais()
+                ->with([
+                    'tipoManutencao',
+                    'problemas',
+                    'tipoStatus',
+                    'escola',
+                    'setor',
+                    'empresaContratada',
+                    'solicitante',
+                    'arquivos.usuario',
+                    'feedbackItens.problema',
+                ])
+                ->get();
+
+        return view('components.pedido.visualizar', [
+            'pedido' => $pedido,
+            'historico' => $historico,
+            'adicionais' => $adicionais,
+            'pedidoOriginal' => $pedidoOriginal,
+            'usuario' => auth()->user(),
+        ]);
     }
 
     private function analytics(): FeedbackPedidoAnalyticsService

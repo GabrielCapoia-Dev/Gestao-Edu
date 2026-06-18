@@ -3,6 +3,7 @@
 namespace Tests\Feature\Manutencao;
 
 use App\Jobs\ProcessExportRequestJob;
+use App\Filament\Admin\Pages\FeedbackPedido as FeedbackPedidoPage;
 use App\Models\EmpresaContratada;
 use App\Models\Enums\ResultadoFeedbackPedido;
 use App\Models\Escola;
@@ -21,6 +22,7 @@ use App\Services\UserSetorAccessService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Livewire;
 use Mockery;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
@@ -74,6 +76,18 @@ class FeedbackPedidoExportQueueTest extends TestCase
             ->assertSee('Desempenho por contratada')
             ->assertSee('Satisfação por escola')
             ->assertSee('Distribuição das avaliações');
+    }
+
+    public function test_tela_de_feedback_abre_visualizacao_do_pedido_em_modal(): void
+    {
+        $dados = $this->criarFeedbacksParaFiltro();
+        $user = $this->usuarioComPermissoes();
+
+        Livewire::actingAs($user)
+            ->test(FeedbackPedidoPage::class)
+            ->assertTableActionVisible('visualizar_pedido', $dados['feedback'])
+            ->callTableAction('visualizar_pedido', $dados['feedback'])
+            ->assertHasNoTableActionErrors();
     }
 
     public function test_rota_de_feedback_nao_enfileira_sem_data_fim(): void
