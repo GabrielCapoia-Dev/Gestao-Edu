@@ -162,8 +162,10 @@ class ListPedidos extends ListRecords
             ->where('is_pedido_adicional', true)
             ->count();
 
+        $tabAdicionais = null;
+
         if ($quantidadeAdicionais > 0) {
-            $tabs['adicionais'] = Tab::make('Adicionais')
+            $tabAdicionais = Tab::make('Adicionais')
                 ->modifyQueryUsing(fn (Builder $query): Builder => $query
                     ->where('is_pedido_adicional', true)
                     ->reorder()
@@ -177,6 +179,8 @@ class ListPedidos extends ListRecords
                     ',
                 ]);
         }
+
+        $adicionaisInseridos = false;
 
         $ordemStatus = [
             'Em Aberto',
@@ -201,6 +205,7 @@ class ListPedidos extends ListRecords
             ->sortBy(fn(TipoStatus $status): int => array_search($status->id, $statusIdsOrdenados, true) !== false
                 ? array_search($status->id, $statusIdsOrdenados, true)
                 : 999);
+        $statusManutencao = $service->statusPorNome($ordemStatus[3]);
 
         foreach ($statuses as $status) {
             if ($service->statusPorNome('Pedido Adicional')?->is($status)) {
@@ -233,6 +238,19 @@ class ListPedidos extends ListRecords
                         border: 1px solid #{$hex}50;
                     ",
                 ]);
+
+            if (
+                $tabAdicionais
+                && ! $adicionaisInseridos
+                && $statusManutencao?->is($status)
+            ) {
+                $tabs['adicionais'] = $tabAdicionais;
+                $adicionaisInseridos = true;
+            }
+        }
+
+        if ($tabAdicionais && ! $adicionaisInseridos) {
+            $tabs['adicionais'] = $tabAdicionais;
         }
 
         return $tabs;

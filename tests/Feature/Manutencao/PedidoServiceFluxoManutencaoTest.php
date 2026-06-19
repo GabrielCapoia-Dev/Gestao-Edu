@@ -1385,6 +1385,34 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
             ->assertCanSeeTableRecords([$principalComDois, $principalComUm], inOrder: true);
     }
 
+    public function test_aba_adicionais_aparece_depois_de_em_manutencao(): void
+    {
+        $usuario = $this->usuarioComPermissoes([
+            'Listar Pedidos',
+            'Listar Todos os Pedidos',
+            'Visualizar Pedidos por Status',
+        ]);
+
+        $statusManutencao = TipoStatus::query()
+            ->where('nome', 'like', 'Em Manuten%')
+            ->firstOrFail();
+
+        $principal = $this->pedido(status: 'Em Aberto', setor: $this->educacao, escola: $this->escola);
+        $principal->forceFill(['tipo_status_id' => $statusManutencao->id])->save();
+        $this->pedidoAdicional($principal);
+
+        $tabs = Livewire::actingAs($usuario)
+            ->test(ListPedidos::class)
+            ->instance()
+            ->getTabs();
+
+        $keys = array_map('strval', array_keys($tabs));
+        $manutencaoKey = (string) $statusManutencao->id;
+
+        $this->assertSame($manutencaoKey, $keys[1] ?? null);
+        $this->assertSame('adicionais', $keys[2] ?? null);
+    }
+
     public function test_modo_visualizacao_da_listagem_usa_usuario_alvo_ao_alternar_abas(): void
     {
         $admin = $this->usuarioComPermissoes([
