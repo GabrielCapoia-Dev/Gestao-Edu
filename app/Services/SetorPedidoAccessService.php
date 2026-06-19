@@ -29,7 +29,7 @@ class SetorPedidoAccessService
             return $capability->permiteProprioSetor();
         }
 
-        if ($this->userSetorAccess->hasGlobalAccess($user)) {
+        if ($user->hasRole('Admin')) {
             return true;
         }
 
@@ -50,7 +50,7 @@ class SetorPedidoAccessService
             return [];
         }
 
-        if ($this->userSetorAccess->hasGlobalAccess($user)) {
+        if ($user->hasRole('Admin')) {
             $ids = Setor::query()
                 ->where('ativo', true)
                 ->orderBy('path')

@@ -184,18 +184,18 @@ class SetorPedidoAccessTest extends TestCase
         $this->assertFalse($service->podeGerenciarRegistro($pedido, $user));
     }
 
-    public function test_escopo_global_ignora_matriz_mas_permissoes_gerais_continuam_obrigatorias(): void
+    public function test_escopo_global_de_setores_nao_ignora_matriz_de_pedidos(): void
     {
-        $administrativo = $this->setor('Administrativo');
+        $educacao = $this->setor('Educacao');
         $obras = $this->setor('Obras');
         $escola = Escola::create([
             'codigo' => 'ESC-3',
             'nome' => 'Escola 3',
-            'setor_id' => $administrativo->id,
+            'setor_id' => $educacao->id,
             'ativo' => true,
         ]);
-        $pedido = $this->pedido($obras, $administrativo, $escola);
-        $user = User::factory()->create(['setor_id' => $administrativo->id]);
+        $pedido = $this->pedido($educacao, $educacao, $escola);
+        $user = User::factory()->create(['setor_id' => $obras->id]);
         $user->givePermissionTo('Acessar Escopo Global de Setores');
         $service = app(PedidoService::class);
 
@@ -204,8 +204,13 @@ class SetorPedidoAccessTest extends TestCase
 
         $user->givePermissionTo(['Listar Pedidos', 'Editar Pedidos']);
 
+        $this->assertFalse($service->podeListarRegistro($pedido, $user));
+        $this->assertFalse($service->podeGerenciarRegistro($pedido, $user));
+        $this->assertSame([], $service->queryTabela($user)->pluck('id')->all());
+
+        $user->givePermissionTo('Listar Todos os Pedidos');
+
         $this->assertTrue($service->podeListarRegistro($pedido, $user));
-        $this->assertTrue($service->podeGerenciarRegistro($pedido, $user));
     }
 
     public function test_listar_todos_remove_restricao_escolar_mas_mantem_matriz_para_edicao(): void

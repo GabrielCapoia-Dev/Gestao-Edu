@@ -1384,7 +1384,7 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
             ->assertCanSeeTableRecords([$principalComDois, $principalComUm], inOrder: true);
     }
 
-    public function test_listagem_pesquisa_descricao_e_filtra_empresa_e_previsao(): void
+    public function test_listagem_pesquisa_descricao_e_filtra_empresa_e_data_criacao(): void
     {
         $usuario = $this->usuarioComPermissoes([
             'Listar Pedidos',
@@ -1397,14 +1397,14 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
         $pedidoFiltrado->update([
             'descricao_pedido' => 'Infiltracao exclusiva na biblioteca',
             'empresa_contratada_id' => $empresa->id,
-            'data_prevista' => '2026-06-20',
         ]);
+        $pedidoFiltrado->forceFill(['created_at' => '2026-06-20 08:00:00'])->save();
 
         $pedidoFora = $this->pedido(status: 'Em Aberto', setor: $this->educacao, escola: $this->escola);
         $pedidoFora->update([
             'descricao_pedido' => 'Troca de lampadas no refeitorio',
-            'data_prevista' => '2026-07-20',
         ]);
+        $pedidoFora->forceFill(['created_at' => '2026-07-20 08:00:00'])->save();
 
         Livewire::actingAs($usuario)
             ->test(ListPedidos::class)
@@ -1417,9 +1417,8 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
             ->test(ListPedidos::class)
             ->set('activeTab', 'todos')
             ->filterTable('empresa_contratada_id', $empresa->id)
-            ->filterTable('periodo_previsto', [
-                'data_inicio' => '2026-06-01',
-                'data_fim' => '2026-06-30',
+            ->filterTable('data_criacao', [
+                'data' => '2026-06-20',
             ])
             ->assertCanSeeTableRecords([$pedidoFiltrado])
             ->assertCanNotSeeTableRecords([$pedidoFora]);

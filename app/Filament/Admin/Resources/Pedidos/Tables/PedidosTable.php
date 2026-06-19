@@ -265,70 +265,18 @@ class PedidosTable
                         );
                 }),
 
-            Filter::make('periodo_identificacao')
-                ->label('Identificação do problema')
-                ->columnSpan(6)
-                ->columns(2)
+            Filter::make('data_criacao')
+                ->label('Data de criação')
+                ->columnSpan(3)
                 ->schema([
-                    DatePicker::make('data_inicio')
-                        ->label('De'),
-                    DatePicker::make('data_fim')
-                        ->label('Até'),
+                    DatePicker::make('data')
+                        ->label('Data de criação'),
                 ])
                 ->query(function (Builder $query, array $data): Builder {
-                    return $query
-                        ->when(
-                            filled($data['data_inicio'] ?? null),
-                            fn (Builder $builder) => $builder->whereDate('data_identificacao_problema', '>=', $data['data_inicio'])
-                        )
-                        ->when(
-                            filled($data['data_fim'] ?? null),
-                            fn (Builder $builder) => $builder->whereDate('data_identificacao_problema', '<=', $data['data_fim'])
-                        );
-                }),
-
-            Filter::make('periodo_previsto')
-                ->label('Previsão')
-                ->columnSpan(6)
-                ->columns(2)
-                ->schema([
-                    DatePicker::make('data_inicio')
-                        ->label('De'),
-                    DatePicker::make('data_fim')
-                        ->label('Até'),
-                ])
-                ->query(function (Builder $query, array $data): Builder {
-                    return $query
-                        ->when(
-                            filled($data['data_inicio'] ?? null),
-                            fn (Builder $builder) => $builder->whereDate('data_prevista', '>=', $data['data_inicio'])
-                        )
-                        ->when(
-                            filled($data['data_fim'] ?? null),
-                            fn (Builder $builder) => $builder->whereDate('data_prevista', '<=', $data['data_fim'])
-                        );
-                }),
-
-            Filter::make('periodo_conclusao')
-                ->label('Conclusão')
-                ->columnSpan(6)
-                ->columns(2)
-                ->schema([
-                    DatePicker::make('data_inicio')
-                        ->label('De'),
-                    DatePicker::make('data_fim')
-                        ->label('Até'),
-                ])
-                ->query(function (Builder $query, array $data): Builder {
-                    return $query
-                        ->when(
-                            filled($data['data_inicio'] ?? null),
-                            fn (Builder $builder) => $builder->whereDate('data_entrega', '>=', $data['data_inicio'])
-                        )
-                        ->when(
-                            filled($data['data_fim'] ?? null),
-                            fn (Builder $builder) => $builder->whereDate('data_entrega', '<=', $data['data_fim'])
-                        );
+                    return $query->when(
+                        filled($data['data'] ?? null),
+                        fn (Builder $builder) => $builder->whereDate('created_at', $data['data'])
+                    );
                 }),
         ];
     }

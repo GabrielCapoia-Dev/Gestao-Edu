@@ -52,8 +52,7 @@ class PedidoService
 
     public function podeVerTodosOsPedidos(?User $user): bool
     {
-        return $this->podeListarTodos($user)
-            || app(UserSetorAccessService::class)->hasGlobalAccess($user);
+        return $this->podeListarTodos($user);
     }
 
     public function escolaIdsParaEscopo(?User $user): array
@@ -257,7 +256,7 @@ class PedidoService
             $escolaIds !== []
             && ! in_array((int) $pedido->escola_id, $escolaIds, true)
             && ! $this->podeListarTodos($user)
-            && ! app(UserSetorAccessService::class)->hasGlobalAccess($user)
+            && ! $user->hasRole('Admin')
         ) {
             return false;
         }
@@ -330,9 +329,7 @@ class PedidoService
             return $query->whereRaw('1 = 0');
         }
 
-        $access = app(UserSetorAccessService::class);
-
-        if ($this->podeListarTodos($user) || $access->hasGlobalAccess($user)) {
+        if ($this->podeListarTodos($user)) {
             return $query;
         }
 
