@@ -111,6 +111,36 @@ class NotificationCenterController extends Controller
         ]);
     }
 
+    public function delete(Request $request, string $id): JsonResponse
+    {
+        $user = $request->user();
+
+        abort_unless($this->service->canView($user), 403);
+
+        $deleted = $this->service->delete($user, $id);
+
+        return response()->json([
+            'ok' => true,
+            'deleted' => $deleted,
+            'stats' => $this->service->stats($user),
+        ]);
+    }
+
+    public function deleteAll(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        abort_unless($this->service->canView($user), 403);
+
+        $deleted = $this->service->deleteAll($user);
+
+        return response()->json([
+            'ok' => true,
+            'deleted' => $deleted,
+            'stats' => $this->service->stats($user),
+        ]);
+    }
+
     public function send(Request $request): JsonResponse
     {
         $user = $request->user();

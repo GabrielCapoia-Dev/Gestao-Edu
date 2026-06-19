@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Jobs\SendManualNotificationBatchJob;
 use App\Models\Escola;
 use App\Models\NotificacaoEnvio;
+use App\Models\Pedido;
 use App\Models\Professor;
 use App\Models\Role;
 use App\Models\Setor;
@@ -343,6 +344,30 @@ class NotificationCenterService
         return $updated;
     }
 
+    public function delete(User $user, string $id): int
+    {
+        $deleted = $this->notificationBaseQuery($user)
+            ->where('id', $id)
+            ->delete();
+
+        if ($deleted > 0) {
+            $this->forgetUnreadCountCache($user);
+        }
+
+        return $deleted;
+    }
+
+    public function deleteAll(User $user): int
+    {
+        $deleted = $this->notificationBaseQuery($user)->delete();
+
+        if ($deleted > 0) {
+            $this->forgetUnreadCountCache($user);
+        }
+
+        return $deleted;
+    }
+
     public function forgetUnreadCountCache(User|int|string $user): void
     {
         Cache::forget($this->unreadCountCacheKey($user));
@@ -647,6 +672,7 @@ class NotificationCenterService
         $prioridade = $data['prioridade'] ?? 'normal';
         $createdAt = Carbon::parse($notification->created_at);
         $readAt = filled($notification->read_at) ? Carbon::parse($notification->read_at) : null;
+        $pedido = $this->detalhesPedidoNotificacao($data);
 
         return [
             'id' => $notification->id,
@@ -659,11 +685,81 @@ class NotificationCenterService
             'prioridade_label' => $this->prioridadeOptions()[$prioridade] ?? ucfirst($prioridade),
             'escopo' => $data['escopo'] ?? null,
             'enviado_por_nome' => $data['enviado_por_nome'] ?? null,
+            'pedido' => $pedido,
             'lida' => filled($notification->read_at),
             'criada_em' => $createdAt->format('d/m/Y H:i'),
             'criada_em_humano' => $createdAt->diffForHumans(),
             'lida_em' => $readAt?->format('d/m/Y H:i'),
         ];
+    }
+
+    private function detalhesPedidoNotificacao(array $data): ?array
+    {
+        $pedido = $this->pedidoDaNotificacao($data);
+
+        if ($pedido) {
+            return [
+                'protocolo' => $pedido->numero_protocolo,
+                'escola' => $pedido->escola?->nome,
+                'tipo' => $pedido->tipoManutencao?->nome,
+                'status' => $pedido->tipoStatus?->nome,
+                'adicional' => (bool) $pedido->is_pedido_adicional,
+            ];
+        }
+
+        $protocolo = $data['pedido_protocolo'] ?? $data['protocolo'] ?? null;
+        $escola = $data['pedido_escola'] ?? $data['escola_nome'] ?? null;
+        $tipo = $data['pedido_tipo'] ?? $data['tipo_pedido'] ?? $data['tipo_manutencao'] ?? null;
+
+        if (! filled($protocolo) && ! filled($escola) && ! filled($tipo)) {
+            return null;
+        }
+
+        return [
+            'protocolo' => $protocolo,
+            'escola' => $escola,
+            'tipo' => $tipo,
+            'status' => $data['pedido_status'] ?? null,
+            'adicional' => (bool) ($data['pedido_adicional'] ?? false),
+        ];
+    }
+
+    private function pedidoDaNotificacao(array $data): ?Pedido
+    {
+        $pedidoId = $data['pedido_id'] ?? null;
+
+        if (! filled($pedidoId) && filled($data['url'] ?? null)) {
+            $path = parse_url((string) $data['url'], PHP_URL_PATH) ?: (string) $data['url'];
+
+            if (preg_match('~/pedidos/(\d+)~', $path, $matches) === 1) {
+                $pedidoId = $matches[1];
+            }
+        }
+
+        $query = Pedido::query()
+            ->with([
+                'escola:id,nome',
+                'tipoManutencao:id,nome',
+                'tipoStatus:id,nome',
+            ]);
+
+        if (filled($pedidoId)) {
+            return (clone $query)->find((int) $pedidoId);
+        }
+
+        $texto = trim(implode(' ', [
+            (string) ($data['pedido_protocolo'] ?? ''),
+            (string) ($data['titulo'] ?? ''),
+            (string) ($data['mensagem'] ?? ''),
+        ]));
+
+        if (preg_match('/\b\d{4}\/\d{5}\b/', $texto, $matches) !== 1) {
+            return null;
+        }
+
+        return $query
+            ->where('numero_protocolo', $matches[0])
+            ->first();
     }
 
     private function formatarEnvio(NotificacaoEnvio $envio): array

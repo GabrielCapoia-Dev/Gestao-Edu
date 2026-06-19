@@ -2,6 +2,11 @@
 
 namespace Tests\Feature\Notifications;
 
+use App\Models\Enums\NivelEmergenciaPedido;
+use App\Models\Escola;
+use App\Models\Pedido;
+use App\Models\TipoManutencao;
+use App\Models\TipoStatus;
 use App\Models\User;
 use App\Notifications\SistemaNotification;
 use App\Services\NotificationCenterService;
@@ -71,6 +76,80 @@ class NotificationReadOptimizationTest extends TestCase
         $this->assertNull($otherNotification->fresh()->read_at);
         $this->assertSame(0, $user->unreadNotifications()->count());
         $this->assertSame(1, $otherUser->unreadNotifications()->count());
+    }
+
+    public function test_center_payload_enriches_order_notification_with_order_details(): void
+    {
+        $user = $this->userWithNotificationAccess();
+        $escola = Escola::create(['codigo' => '001', 'nome' => 'Escola Central', 'ativo' => true]);
+        $tipo = TipoManutencao::create(['nome' => 'Eletrica', 'ativo' => true]);
+        $status = TipoStatus::create(['nome' => 'Em Aberto', 'ativo' => true]);
+        $pedido = Pedido::create([
+            'tipo_manutencao_id' => $tipo->id,
+            'tipo_status_id' => $status->id,
+            'descricao_pedido' => 'Troca de lampadas.',
+            'nome_solicitante' => 'Direcao',
+            'nivel_prioridade' => NivelEmergenciaPedido::INDEFINIDO,
+            'escola_id' => $escola->id,
+            'solicitante_id' => $user->id,
+            'data_solicitacao' => now(),
+            'data_identificacao_problema' => now(),
+            'ativo' => true,
+        ]);
+
+        $user->notify(new SistemaNotification(
+            titulo: 'Pedido Proximo do Vencimento',
+            mensagem: "Pedido {$pedido->numero_protocolo} vence em 3 dia(s).",
+            url: url("/admin/pedidos/{$pedido->id}/edit"),
+        ));
+
+        $this
+            ->actingAs($user)
+            ->getJson(route('notifications.center'))
+            ->assertOk()
+            ->assertJsonPath('items.0.pedido.protocolo', $pedido->numero_protocolo)
+            ->assertJsonPath('items.0.pedido.escola', 'Escola Central')
+            ->assertJsonPath('items.0.pedido.tipo', 'Eletrica')
+            ->assertJsonPath('items.0.pedido.status', 'Em Aberto');
+    }
+
+    public function test_user_can_delete_own_notification_without_deleting_others(): void
+    {
+        $user = $this->userWithNotificationAccess();
+        $otherUser = $this->userWithNotificationAccess();
+
+        $user->notify(new SistemaNotification('Aviso do usuario', 'Mensagem'));
+        $otherUser->notify(new SistemaNotification('Aviso de outro usuario', 'Mensagem'));
+
+        $notificationId = $user->notifications()->value('id');
+
+        $this
+            ->actingAs($user)
+            ->deleteJson(route('notifications.delete', ['id' => $notificationId]))
+            ->assertOk()
+            ->assertJsonPath('deleted', 1);
+
+        $this->assertSame(0, $user->notifications()->count());
+        $this->assertSame(1, $otherUser->notifications()->count());
+    }
+
+    public function test_user_can_delete_all_own_notifications_without_deleting_others(): void
+    {
+        $user = $this->userWithNotificationAccess();
+        $otherUser = $this->userWithNotificationAccess();
+
+        $user->notify(new SistemaNotification('Aviso 1', 'Mensagem'));
+        $user->notify(new SistemaNotification('Aviso 2', 'Mensagem'));
+        $otherUser->notify(new SistemaNotification('Aviso de outro usuario', 'Mensagem'));
+
+        $this
+            ->actingAs($user)
+            ->deleteJson(route('notifications.deleteAll'))
+            ->assertOk()
+            ->assertJsonPath('deleted', 2);
+
+        $this->assertSame(0, $user->notifications()->count());
+        $this->assertSame(1, $otherUser->notifications()->count());
     }
 
     protected function userWithNotificationAccess(): User

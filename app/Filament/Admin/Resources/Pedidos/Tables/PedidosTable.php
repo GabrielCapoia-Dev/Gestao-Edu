@@ -265,17 +265,24 @@ class PedidosTable
                 }),
 
             Filter::make('data_criacao')
-                ->label('Data de criação')
+                ->label('Período de criação')
                 ->columnSpan(3)
                 ->schema([
-                    DatePicker::make('data')
-                        ->label('Data de criação'),
+                    DatePicker::make('data_inicio')
+                        ->label('De'),
+                    DatePicker::make('data_fim')
+                        ->label('Até'),
                 ])
                 ->query(function (Builder $query, array $data): Builder {
-                    return $query->when(
-                        filled($data['data'] ?? null),
-                        fn (Builder $builder) => $builder->whereDate('created_at', $data['data'])
-                    );
+                    return $query
+                        ->when(
+                            filled($data['data_inicio'] ?? null),
+                            fn (Builder $builder) => $builder->whereDate('created_at', '>=', $data['data_inicio'])
+                        )
+                        ->when(
+                            filled($data['data_fim'] ?? null),
+                            fn (Builder $builder) => $builder->whereDate('created_at', '<=', $data['data_fim'])
+                        );
                 }),
         ];
     }

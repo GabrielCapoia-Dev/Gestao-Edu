@@ -71,10 +71,16 @@
                 </select>
             </label>
 
-            <button type="button" class="nc-action nc-action--ghost" data-action="clear-filters">
-                <x-heroicon-o-x-mark />
-                <span>Limpar</span>
-            </button>
+            <div class="nc-toolbar-actions">
+                <button type="button" class="nc-action nc-action--ghost" data-action="clear-filters">
+                    <x-heroicon-o-x-mark />
+                    <span>Limpar</span>
+                </button>
+                <button type="button" class="nc-action nc-action--danger" data-action="delete-all">
+                    <x-heroicon-o-trash />
+                    <span>Apagar todas</span>
+                </button>
+            </div>
         </div>
 
         <div class="nc-status" data-status hidden>
@@ -409,7 +415,8 @@
             }
 
             .nc-card__meta span,
-            .nc-badge {
+            .nc-badge,
+            .nc-pedido-chip {
                 display: inline-flex;
                 align-items: center;
                 gap: 5px;
@@ -448,6 +455,44 @@
                 color: var(--nc-primary);
             }
 
+            .nc-pedido {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 7px;
+                margin-top: 9px;
+            }
+
+            .nc-pedido-chip {
+                min-height: 28px;
+                max-width: 100%;
+                padding: 4px 9px;
+                border: 1px solid #bfdbfe;
+                border-radius: 8px;
+                background: #eff6ff;
+                color: #1e3a8a;
+                font-size: .76rem;
+                font-weight: 760;
+            }
+
+            .nc-pedido-chip strong {
+                color: #172554;
+                font-weight: 820;
+            }
+
+            .nc-pedido-chip--accent {
+                border-color: #c7d2fe;
+                background: #eef2ff;
+                color: #312e81;
+            }
+
+            .nc-toolbar-actions {
+                display: flex;
+                align-items: end;
+                justify-content: flex-end;
+                gap: 8px;
+                flex-wrap: wrap;
+            }
+
             .nc-action {
                 display: inline-flex;
                 align-items: center;
@@ -472,6 +517,12 @@
                 border-color: #cbd5e1;
                 background: #fff;
                 color: #344054;
+            }
+
+            .nc-action--danger {
+                border-color: #fecaca;
+                background: #fff1f2;
+                color: var(--nc-red);
             }
 
             .nc-action--link {
@@ -768,6 +819,7 @@
                     external: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H18m0 0v4.5M18 6 9.75 14.25M6 7.5v10.5h10.5"/></svg>',
                     calendar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3.75 8.25h16.5M5.25 5.25h13.5A1.5 1.5 0 0 1 20.25 6.75v12A1.5 1.5 0 0 1 18.75 20.25H5.25A1.5 1.5 0 0 1 3.75 18.75v-12A1.5 1.5 0 0 1 5.25 5.25Z"/></svg>',
                     users: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.5a6 6 0 0 0-12 0m12 0h6m-6 0a6 6 0 0 0-9 0m7.5-10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 1.5a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"/></svg>',
+                    trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.35 9m-4.78 0L9.26 9m9.97-3.21c.34.05.68.1 1.01.16m-1.01-.16L18.16 19.67A2.25 2.25 0 0 1 15.92 21.75H8.08A2.25 2.25 0 0 1 5.84 19.67L4.77 5.79m14.46 0a48.1 48.1 0 0 0-3.48-.35m-12.02.51c.33-.06.67-.11 1.01-.16m0 0a48.11 48.11 0 0 1 3.48-.35m7.53 0V4.5A2.25 2.25 0 0 0 13.5 2.25h-3A2.25 2.25 0 0 0 8.25 4.5v.94m7.5 0a48.67 48.67 0 0 0-7.5 0"/></svg>',
                 };
 
                 const priorityClass = (priority) => `nc-badge nc-badge--${priority || 'normal'}`;
@@ -840,9 +892,11 @@
                         headers: {
                             Accept: 'application/json',
                             'X-Requested-With': 'XMLHttpRequest',
-                            ...(options.body ? {
-                                'Content-Type': 'application/json',
+                            ...(csrf ? {
                                 'X-CSRF-TOKEN': csrf
+                            } : {}),
+                            ...(options.body ? {
+                                'Content-Type': 'application/json'
                             } : {}),
                             ...(options.headers ?? {}),
                         },
@@ -969,11 +1023,22 @@
                     const link = item.url ?
                         `<a class="nc-action nc-action--link" href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer" data-action="open-link" data-id="${escapeHtml(item.id)}">${svg.external}<span>${escapeHtml(item.label)}</span></a>` :
                         '';
+                    const deleteAction = `<button type="button" class="nc-action nc-action--danger" data-action="delete-one" data-id="${escapeHtml(item.id)}">${svg.trash}<span>Apagar</span></button>`;
                     const extraMeta = [
                         item.escopo ? `${svg.users}<span>${escapeHtml(item.escopo)}</span>` : '',
                         item.enviado_por_nome ? `<span>${escapeHtml(item.enviado_por_nome)}</span>` : '',
                         item.lida_em ? `<span>Lida em ${escapeHtml(item.lida_em)}</span>` : '',
                     ].filter(Boolean).join('');
+                    const pedido = item.pedido ?? null;
+                    const pedidoBlock = pedido ? `
+                        <div class="nc-pedido" aria-label="Dados do pedido">
+                            ${pedido.protocolo ? `<span class="nc-pedido-chip nc-pedido-chip--accent">Protocolo <strong>${escapeHtml(pedido.protocolo)}</strong></span>` : ''}
+                            ${pedido.escola ? `<span class="nc-pedido-chip">Escola <strong>${escapeHtml(pedido.escola)}</strong></span>` : ''}
+                            ${pedido.tipo ? `<span class="nc-pedido-chip">Tipo <strong>${escapeHtml(pedido.tipo)}</strong></span>` : ''}
+                            ${pedido.status ? `<span class="nc-pedido-chip">Status <strong>${escapeHtml(pedido.status)}</strong></span>` : ''}
+                            ${pedido.adicional ? '<span class="nc-pedido-chip">Pedido adicional</span>' : ''}
+                        </div>
+                    ` : '';
 
                     return `
                     <article class="nc-card ${item.lida ? 'is-read' : 'is-unread'}" data-id="${escapeHtml(item.id)}">
@@ -985,6 +1050,7 @@
                                 <span>${escapeHtml(item.criada_em_humano)}</span>
                             </div>
                             <p class="nc-card__message">${escapeHtml(item.mensagem)}</p>
+                            ${pedidoBlock}
                             <div class="nc-card__meta">
                                 <span>${svg.calendar}${escapeHtml(item.criada_em)}</span>
                                 ${extraMeta}
@@ -993,6 +1059,7 @@
                         <div class="nc-card__actions">
                             ${link}
                             ${readAction}
+                            ${deleteAction}
                         </div>
                     </article>
                 `;
@@ -1025,6 +1092,12 @@
                         const mode = button.dataset.mode || button.dataset.tabMode;
                         button.classList.toggle('is-active', mode === state.modo);
                     });
+
+                    const deleteAllButton = root.querySelector('[data-action="delete-all"]');
+
+                    if (deleteAllButton) {
+                        deleteAllButton.hidden = state.modo === 'enviadas';
+                    }
                 };
 
                 const setMode = (mode) => {
@@ -1072,6 +1145,57 @@
                     }
                 };
 
+                const deleteNotification = async (id, trigger = null) => {
+                    if (!window.confirm('Apagar esta notificaÃ§Ã£o?')) {
+                        return;
+                    }
+
+                    const card = root.querySelector(`.nc-card[data-id="${CSS.escape(id)}"]`);
+
+                    suppressNextSound = true;
+                    window.__gestaoEduSuppressNotificationSoundUntil = Date.now() + 3000;
+                    card?.classList.add('is-updating');
+                    trigger?.classList.add('is-loading');
+                    trigger?.setAttribute('disabled', 'disabled');
+
+                    try {
+                        await request(`${config.endpoints.deleteBase}/${encodeURIComponent(id)}`, {
+                            method: 'DELETE',
+                        });
+                        state.page = 1;
+                        await load({
+                            silent: true
+                        });
+                    } catch (error) {
+                        setStatus(error.message, false, true);
+                        card?.classList.remove('is-updating');
+                        trigger?.classList.remove('is-loading');
+                        trigger?.removeAttribute('disabled');
+                    }
+                };
+
+                const deleteAllNotifications = async (trigger = null) => {
+                    if (!window.confirm('Apagar todas as suas notificaÃ§Ãµes recebidas?')) {
+                        return;
+                    }
+
+                    suppressNextSound = true;
+                    window.__gestaoEduSuppressNotificationSoundUntil = Date.now() + 3000;
+                    trigger?.setAttribute('disabled', 'disabled');
+
+                    try {
+                        await request(config.endpoints.deleteAll, {
+                            method: 'DELETE',
+                        });
+                        state.page = 1;
+                        await load({
+                            silent: true
+                        });
+                    } finally {
+                        trigger?.removeAttribute('disabled');
+                    }
+                };
+
                 document.addEventListener('click', async (event) => {
                     const target = event.target.closest('[data-mode], [data-tab-mode], [data-action], [data-nc-action]');
 
@@ -1104,7 +1228,7 @@
                         state.page = 1;
                         root.querySelector('[data-filter="busca"]').value = '';
                         root.querySelector('[data-filter="prioridade"]').value = 'todas';
-                        root.querySelector('[data-filter="período"]').value = '30';
+                        root.querySelector('[data-filter="periodo"]').value = '30';
                         load();
                     } else if (action === 'previous-page') {
                         state.page = Math.max(1, state.page - 1);
@@ -1116,6 +1240,8 @@
                         await mark(target.dataset.id, true, target);
                     } else if (action === 'mark-unread') {
                         await mark(target.dataset.id, false, target);
+                    } else if (action === 'delete-one') {
+                        await deleteNotification(target.dataset.id, target);
                     } else if (action === 'open-link') {
                         suppressNextSound = true;
                         window.__gestaoEduSuppressNotificationSoundUntil = Date.now() + 3000;
@@ -1136,6 +1262,8 @@
                         } finally {
                             target.disabled = false;
                         }
+                    } else if (action === 'delete-all') {
+                        await deleteAllNotifications(target);
                     }
                 });
 

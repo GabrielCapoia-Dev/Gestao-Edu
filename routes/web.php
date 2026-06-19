@@ -135,11 +135,17 @@ Route::prefix('admin')
         Route::post('/notifications/mark-all-read', [NotificationCenterController::class, 'markAllRead'])
             ->name('notifications.markAllRead');
 
+        Route::delete('/notifications/delete-all', [NotificationCenterController::class, 'deleteAll'])
+            ->name('notifications.deleteAll');
+
         Route::post('/notifications/{id}/mark-read', [NotificationCenterController::class, 'markRead'])
             ->name('notifications.markRead');
 
         Route::post('/notifications/{id}/mark-unread', [NotificationCenterController::class, 'markUnread'])
             ->name('notifications.markUnread');
+
+        Route::delete('/notifications/{id}', [NotificationCenterController::class, 'delete'])
+            ->name('notifications.delete');
 
         Route::get('/exports/{exportRequest}/download', [ExportRequestController::class, 'download'])
             ->name('exports.download')

@@ -1470,6 +1470,9 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
         ]);
         $pedidoFora->forceFill(['created_at' => '2026-07-20 08:00:00'])->save();
 
+        $pedidoAnterior = $this->pedido(status: 'Em Aberto', setor: $this->educacao, escola: $this->escola);
+        $pedidoAnterior->forceFill(['created_at' => '2026-05-20 08:00:00'])->save();
+
         Livewire::actingAs($usuario)
             ->test(ListPedidos::class)
             ->set('activeTab', 'todos')
@@ -1482,10 +1485,11 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
             ->set('activeTab', 'todos')
             ->filterTable('empresa_contratada_id', $empresa->id)
             ->filterTable('data_criacao', [
-                'data' => '2026-06-20',
+                'data_inicio' => '2026-06-01',
+                'data_fim' => '2026-06-30',
             ])
             ->assertCanSeeTableRecords([$pedidoFiltrado])
-            ->assertCanNotSeeTableRecords([$pedidoFora]);
+            ->assertCanNotSeeTableRecords([$pedidoFora, $pedidoAnterior]);
     }
 
     public function test_tipo_prints_rejeita_documento_no_modelo_e_remove_do_storage(): void

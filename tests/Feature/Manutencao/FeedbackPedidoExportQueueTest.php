@@ -141,6 +141,34 @@ class FeedbackPedidoExportQueueTest extends TestCase
         $this->assertSame([100, 40], array_column($empresas, 'pct_barra'));
     }
 
+    public function test_criticas_consideram_pedidos_com_historico_reaberto(): void
+    {
+        $dados = $this->criarFeedbacksParaFiltro();
+        $statusReaberto = TipoStatus::query()->create([
+            'nome' => 'Reaberto',
+            'ativo' => true,
+            'finaliza_pedido' => false,
+            'cancela_pedido' => false,
+        ]);
+
+        $dados['feedback']->pedido->historicos()->create([
+            'status_anterior_id' => null,
+            'status_novo_id' => $statusReaberto->id,
+            'usuario_id' => User::factory()->create()->id,
+            'setor_id' => null,
+            'descricao_alteracao' => 'Pedido reaberto para refazer o servico.',
+        ]);
+
+        $service = app(FeedbackPedidoAnalyticsService::class);
+        $query = $service->query([]);
+        $metrics = $service->metrics(clone $query);
+        $reabertos = $service->query(['reabrir_pedido' => true])->pluck('id')->all();
+
+        $this->assertSame(1, $metrics['criticas']);
+        $this->assertSame(1, $metrics['reabertos']);
+        $this->assertSame([$dados['feedback']->id], $reabertos);
+    }
+
     public function test_options_de_filtro_sao_baseadas_em_pedidos_avaliados(): void
     {
         $dados = $this->criarFeedbacksParaFiltro();

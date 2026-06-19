@@ -11,6 +11,7 @@ use App\Models\Pedido;
 use App\Models\PedidoProblema;
 use App\Models\TipoManutencao;
 use App\Models\TipoManutencaoOpcao;
+use App\Models\TipoStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -26,6 +27,9 @@ class FeedbackPedidoAnalyticsService
     public const REPORT_ESCOLAS = 'satisfacao_escolas';
 
     public const REPORT_LISTAGEM = 'listagem_filtrada';
+
+    /** @var array<int, int>|null */
+    private ?array $reabertoStatusIds = null;
 
     /**
      * @return array<string, string>
@@ -124,6 +128,7 @@ class FeedbackPedidoAnalyticsService
                 'pedido.escola',
                 'pedido.tipoManutencao',
                 'pedido.empresaContratada',
+                'pedido.historicos.statusNovo',
                 'itens.problema',
             ]);
     }
@@ -147,7 +152,7 @@ class FeedbackPedidoAnalyticsService
             ->when($filters['data_inicio'] ?? null, fn (Builder $builder, string $date): Builder => $builder->whereHas('pedido', fn (Builder $pedido): Builder => $pedido->whereDate('data_solicitacao', '>=', $date)))
             ->when($filters['data_fim'] ?? null, fn (Builder $builder, string $date): Builder => $builder->whereHas('pedido', fn (Builder $pedido): Builder => $pedido->whereDate('data_solicitacao', '<=', $date)))
             ->when($filters['valor'] ?? null, fn (Builder $builder, mixed $value): Builder => $builder->where('valor', $value))
-            ->when(array_key_exists('reabrir_pedido', $filters), fn (Builder $builder): Builder => $builder->where('reabrir_pedido', (bool) $filters['reabrir_pedido']))
+            ->when(array_key_exists('reabrir_pedido', $filters), fn (Builder $builder): Builder => $this->applyReabertoHistoricoFilter($builder, (bool) $filters['reabrir_pedido']))
             ->when($filters['nivel_prioridade'] ?? null, fn (Builder $builder, mixed $value): Builder => $builder->whereHas('pedido', fn (Builder $pedido): Builder => $pedido->where('nivel_prioridade', $value)))
             ->when($filters['tipo_manutencao_id'] ?? null, fn (Builder $builder, mixed $value): Builder => $builder->whereHas('pedido', fn (Builder $pedido): Builder => $pedido->where('tipo_manutencao_id', $value)))
             ->when($filters['tipo_manutencao_opcao_id'] ?? null, fn (Builder $builder, mixed $value): Builder => $builder->whereHas('itens.problema', fn (Builder $problema): Builder => $problema->where('tipo_manutencao_opcao_id', $value)))
@@ -295,6 +300,23 @@ class FeedbackPedidoAnalyticsService
      */
     public function reabertoOptions(): array
     {
+        if (! FeedbackPedido::query()->whereHas('pedido')->exists()) {
+            return [];
+        }
+
+        $options = [];
+
+        if ($this->applyReabertoHistoricoFilter(FeedbackPedido::query()->whereHas('pedido'), false)->exists()) {
+            $options['0'] = 'Nao';
+        }
+
+        if ($this->applyReabertoHistoricoFilter(FeedbackPedido::query()->whereHas('pedido'), true)->exists()) {
+            $options['1'] = 'Sim';
+        }
+
+        return $options;
+
+        /*
         return FeedbackPedido::query()
             ->whereHas('pedido')
             ->select('reabrir_pedido')
@@ -303,6 +325,10 @@ class FeedbackPedidoAnalyticsService
             ->pluck('reabrir_pedido')
             ->mapWithKeys(fn (bool|int|string $value): array => [(string) (int) $value => $value ? 'Sim' : 'Não'])
             ->toArray();
+    }
+
+        */
+
     }
 
     /**
@@ -328,8 +354,8 @@ class FeedbackPedidoAnalyticsService
             'total' => $total,
             'media' => $media,
             'satisfacao' => $this->satisfactionFromAverage($media),
-            'reabertos' => (clone $query)->where('reabrir_pedido', true)->count(),
-            'criticas' => (clone $query)->where('valor', '<=', 2)->count(),
+            'reabertos' => $this->countReabertos(clone $query),
+            'criticas' => $this->countReabertos(clone $query),
         ];
     }
 
@@ -453,8 +479,8 @@ class FeedbackPedidoAnalyticsService
                 'percentual' => $this->satisfactionPercent($grupo),
                 'media' => round((float) $grupo->avg('valor'), 2),
                 'total' => $grupo->count(),
-                'reabertos' => $grupo->where('reabrir_pedido', true)->count(),
-                'criticas' => $grupo->where('valor', '<=', 2)->count(),
+                'reabertos' => $this->countReabertosCollection($grupo),
+                'criticas' => $this->countReabertosCollection($grupo),
                 'anos' => $this->matrizNotasPorMes($grupo),
             ];
         }
@@ -536,8 +562,8 @@ class FeedbackPedidoAnalyticsService
                 'total' => $grupo->count(),
                 'media' => round((float) $grupo->avg('valor'), 2),
                 'satisfacao' => $this->satisfactionPercent($grupo),
-                'reabertos' => $grupo->where('reabrir_pedido', true)->count(),
-                'criticas' => $grupo->where('valor', '<=', 2)->count(),
+                'reabertos' => $this->countReabertosCollection($grupo),
+                'criticas' => $this->countReabertosCollection($grupo),
             ];
         }
 
@@ -564,5 +590,72 @@ class FeedbackPedidoAnalyticsService
     private function satisfactionFromAverage(float $average): int
     {
         return (int) round(($average / 5) * 100);
+    }
+
+    private function countReabertos(Builder $query): int
+    {
+        return $this->applyReabertoHistoricoFilter($query, true)->count();
+    }
+
+    private function applyReabertoHistoricoFilter(Builder $query, bool $reaberto): Builder
+    {
+        $statusIds = $this->reabertoStatusIds();
+
+        if ($statusIds === []) {
+            return $reaberto ? $query->whereRaw('1 = 0') : $query;
+        }
+
+        $callback = fn (Builder $historico): Builder => $historico->whereIn('status_novo_id', $statusIds);
+
+        return $reaberto
+            ? $query->whereHas('pedido.historicos', $callback)
+            : $query->whereDoesntHave('pedido.historicos', $callback);
+    }
+
+    private function countReabertosCollection(Collection $feedbacks): int
+    {
+        return $feedbacks
+            ->filter(fn (FeedbackPedido $feedback): bool => $this->feedbackPossuiHistoricoReaberto($feedback))
+            ->count();
+    }
+
+    public function feedbackPossuiHistoricoReaberto(FeedbackPedido $feedback): bool
+    {
+        $pedido = $feedback->pedido;
+
+        if (! $pedido) {
+            return false;
+        }
+
+        $statusIds = $this->reabertoStatusIds();
+
+        if ($statusIds === []) {
+            return false;
+        }
+
+        if ($pedido->relationLoaded('historicos')) {
+            return $pedido->historicos
+                ->contains(fn ($historico): bool => in_array((int) $historico->status_novo_id, $statusIds, true));
+        }
+
+        return $pedido->historicos()
+            ->whereIn('status_novo_id', $statusIds)
+            ->exists();
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function reabertoStatusIds(): array
+    {
+        if ($this->reabertoStatusIds !== null) {
+            return $this->reabertoStatusIds;
+        }
+
+        return $this->reabertoStatusIds = TipoStatus::query()
+            ->where('nome', 'Reaberto')
+            ->pluck('id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->all();
     }
 }

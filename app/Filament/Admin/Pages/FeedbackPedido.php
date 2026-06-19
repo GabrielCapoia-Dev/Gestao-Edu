@@ -106,9 +106,10 @@ class FeedbackPedido extends Page implements HasTable
                     ->wrap()
                     ->placeholder('Sem itens'),
 
-                Tables\Columns\TextColumn::make('reabrir_pedido')
+                Tables\Columns\TextColumn::make('pedido_reaberto')
                     ->label('Reaberto')
                     ->badge()
+                    ->state(fn (FeedbackPedidoModel $record): bool => $this->analytics()->feedbackPossuiHistoricoReaberto($record))
                     ->formatStateUsing(fn ($state): string => $state ? 'Sim' : 'Não')
                     ->color(fn ($state): string => $state ? 'danger' : 'success'),
 
