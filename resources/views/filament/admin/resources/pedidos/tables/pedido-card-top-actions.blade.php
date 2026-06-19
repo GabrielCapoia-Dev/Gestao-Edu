@@ -2,9 +2,10 @@
     use App\Filament\Admin\Resources\Pedidos\Tables\PedidosTable;
     use App\Models\Pedido;
     use App\Services\PedidoService;
+    use App\Services\ProfilePreviewService;
 
     $record = $getRecord();
-    $user = auth()->user();
+    $user = app(ProfilePreviewService::class)->effectiveUser();
     $service = app(PedidoService::class);
     $recordKey = $record instanceof Pedido ? (string) $record->getKey() : '';
 

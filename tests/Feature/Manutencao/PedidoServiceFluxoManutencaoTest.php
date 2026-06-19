@@ -22,6 +22,7 @@ use App\Models\TipoStatus;
 use App\Models\User;
 use App\Notifications\SistemaNotification;
 use App\Services\PedidoService;
+use App\Services\ProfilePreviewService;
 use App\Services\Relatorios\PedidoRelatorioGeralService;
 use App\Services\Relatorios\RelatorioPdfRenderer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -1382,6 +1383,41 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
             ->sortTable('tipo_pedido_sort', 'asc')
             ->sortTable('pedidos_adicionais_count', 'desc')
             ->assertCanSeeTableRecords([$principalComDois, $principalComUm], inOrder: true);
+    }
+
+    public function test_modo_visualizacao_da_listagem_usa_usuario_alvo_ao_alternar_abas(): void
+    {
+        $admin = $this->usuarioComPermissoes([
+            ProfilePreviewService::PERMISSION,
+            'Listar Pedidos',
+            'Listar Todos os Pedidos',
+            'Editar Pedidos',
+            'Visualizar Pedidos por Status',
+        ]);
+
+        $usuarioObras = $this->usuarioComRoleSetor('Manutencao: Obras Preview', $this->obras, [
+            'Listar Pedidos',
+            'Editar Pedidos',
+            'Visualizar Pedidos por Status',
+        ]);
+
+        $pedidoObras = $this->pedido(status: 'Em Aberto', setor: $this->obras, escola: $this->escola);
+        $pedidoEducacao = $this->pedido(status: 'Em Aberto', setor: $this->educacao, escola: $this->escola);
+
+        $this->withSession([
+            'profile_preview' => [
+                'real_user_id' => $admin->id,
+                'target_user_id' => $usuarioObras->id,
+                'started_at' => now()->toISOString(),
+            ],
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(ListPedidos::class)
+            ->set('activeTab', 'todos')
+            ->assertCanSeeTableRecords([$pedidoObras])
+            ->assertCanNotSeeTableRecords([$pedidoEducacao])
+            ->assertTableActionVisible('gerenciar', $pedidoObras);
     }
 
     public function test_listagem_pesquisa_descricao_e_filtra_empresa_e_data_criacao(): void

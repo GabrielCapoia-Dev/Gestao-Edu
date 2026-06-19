@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Models\Professor;
+use App\Models\Escola;
 use Closure;
+use DomainException;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Repeater;
@@ -19,6 +21,7 @@ use App\Models\User;
 use App\Models\ComponenteCurricular;
 use App\Models\Serie;
 use App\Services\UserService;
+use App\Services\ProfessorMovimentacaoService;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Utilities\Get;
@@ -134,6 +137,7 @@ class ProfessorService
         return $table
             ->modifyQueryUsing(function (Builder $query) use ($user) {
                 // Impacto: este filtro aplica o escopo do usuario na tabela. Alterar aqui pode expor professores de outras escolas ou ocultar professores vinculados por turma.
+                $query->where('ativo', true);
                 $this->userService->aplicarFiltroPorEscolaDoUsuarioEmTurma($query, $user);
             })
             ->paginated([5, 10, 25, 50, 100])
@@ -379,6 +383,82 @@ class ProfessorService
                 }),
 
             EditAction::make(),
+
+            Action::make('transferir_professor')
+                ->label('Transferir professor')
+                ->icon('heroicon-o-arrow-right-circle')
+                ->color('warning')
+                ->modalHeading(fn (Professor $record): string => "Transferir professor - {$record->nome}")
+                ->form([
+                    Select::make('escola_destino_id')
+                        ->label('Escola de destino')
+                        ->options(fn (Professor $record): array => Escola::query()
+                            ->where('ativo', true)
+                            ->whereKeyNot($record->id_escola)
+                            ->orderBy('nome')
+                            ->pluck('nome', 'id')
+                            ->toArray())
+                        ->searchable()
+                        ->preload()
+                        ->required()
+                        ->placeholder('Selecione a escola de destino'),
+                ])
+                ->requiresConfirmation()
+                ->action(function (Professor $record, array $data): void {
+                    try {
+                        app(ProfessorMovimentacaoService::class)->transferir(
+                            $record,
+                            (int) $data['escola_destino_id'],
+                            Auth::user(),
+                        );
+
+                        Notification::make()
+                            ->title('Professor transferido com sucesso')
+                            ->success()
+                            ->send();
+                    } catch (DomainException $exception) {
+                        Notification::make()
+                            ->title('Ação bloqueada')
+                            ->body($exception->getMessage())
+                            ->danger()
+                            ->send();
+                    }
+                })
+                ->visible(fn () => $this->userService->podeTransferirProfessores(Auth::user())),
+
+            Action::make('desativar_professor')
+                ->label('Desativar professor')
+                ->icon('heroicon-o-no-symbol')
+                ->color('danger')
+                ->modalHeading(fn (Professor $record): string => "Desativar professor - {$record->nome}")
+                ->form([
+                    Textarea::make('motivo')
+                        ->label('Motivo da desativação')
+                        ->maxLength(1000)
+                        ->placeholder('Informe o motivo, se necessário.'),
+                ])
+                ->requiresConfirmation()
+                ->action(function (Professor $record, array $data): void {
+                    try {
+                        app(ProfessorMovimentacaoService::class)->desativar(
+                            $record,
+                            Auth::user(),
+                            $data['motivo'] ?? null,
+                        );
+
+                        Notification::make()
+                            ->title('Professor desativado com sucesso')
+                            ->success()
+                            ->send();
+                    } catch (DomainException $exception) {
+                        Notification::make()
+                            ->title('Ação bloqueada')
+                            ->body($exception->getMessage())
+                            ->danger()
+                            ->send();
+                    }
+                })
+                ->visible(fn () => $this->userService->podeDesativarProfessores(Auth::user())),
 
 
             DeleteAction::make()

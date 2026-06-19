@@ -45,7 +45,6 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class PedidosTable
@@ -135,7 +134,7 @@ class PedidosTable
                 ->label('Setor')
                 ->columnSpan(3)
                 ->options(fn () => app(SetorPedidoAccessService::class)->optionsForCapability(
-                    auth()->user(),
+                    $user,
                     SetorAccessCapability::LISTAR,
                 ))
                 ->searchable()
@@ -528,7 +527,7 @@ class PedidosTable
                 ->modalSubmitAction(false)
                 ->modalCancelActionLabel('Fechar')
                 ->visible(fn () => $user?->hasPermissionTo('Visualizar Histórico de Pedidos') ?? false)
-                ->modalContent(function (Pedido $record) {
+                ->modalContent(function (Pedido $record) use ($user) {
                     $record->load([
                         'tipoManutencao',
                         'tipoStatus',
@@ -579,7 +578,7 @@ class PedidosTable
                         'historico' => $historico,
                         'adicionais' => $adicionais,
                         'pedidoOriginal' => $pedidoOriginal,
-                        'usuario' => auth()->user(),
+                        'usuario' => $user,
                     ]);
                 }),
 
@@ -996,7 +995,7 @@ class PedidosTable
                         ->label('Empresa')
                         ->options(fn (): array => EmpresaContratada::query()
                             ->where('ativo', true)
-                            ->doSetorDoUsuario(Auth::user())
+                            ->doSetorDoUsuario($user)
                             ->orderBy('nome')
                             ->pluck('nome', 'id')
                             ->toArray())

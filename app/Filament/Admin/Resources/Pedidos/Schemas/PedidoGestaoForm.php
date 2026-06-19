@@ -7,6 +7,7 @@ use App\Models\Enums\SetorAccessCapability;
 use App\Models\Pedido;
 use App\Models\TipoStatus;
 use App\Services\PedidoService;
+use App\Services\ProfilePreviewService;
 use App\Services\SetorPedidoAccessService;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -17,7 +18,6 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Auth;
 
 class PedidoGestaoForm
 {
@@ -72,7 +72,7 @@ class PedidoGestaoForm
                         Select::make('setor_id')
                             ->label('Setor destino')
                             ->options(fn () => app(SetorPedidoAccessService::class)->optionsForCapability(
-                                Auth::user(),
+                                static::usuarioEfetivo(),
                                 SetorAccessCapability::ENCAMINHAR,
                             ))
                             ->visible(fn (Get $get) => static::statusEh(TipoStatus::find($get('novo_status_id')), 'Encaminhado ao Setor'))
@@ -101,11 +101,11 @@ class PedidoGestaoForm
                                 titleAttribute: 'nome',
                                 modifyQueryUsing: fn (Builder $query): Builder => $query
                                     ->where('ativo', true)
-                                    ->doSetorDoUsuario(Auth::user())
+                                    ->doSetorDoUsuario(static::usuarioEfetivo())
                             )
-                            ->visible(fn (Get $get) => app(PedidoService::class)->podeEnviarParaEmpresa(Auth::user())
+                            ->visible(fn (Get $get) => app(PedidoService::class)->podeEnviarParaEmpresa(static::usuarioEfetivo())
                                 && static::statusEh(TipoStatus::find($get('novo_status_id')), 'Enviado para Empresa'))
-                            ->required(fn (Get $get) => app(PedidoService::class)->podeEnviarParaEmpresa(Auth::user())
+                            ->required(fn (Get $get) => app(PedidoService::class)->podeEnviarParaEmpresa(static::usuarioEfetivo())
                                 && static::statusEh(TipoStatus::find($get('novo_status_id')), 'Enviado para Empresa'))
                             ->searchable()
                             ->preload()
@@ -126,7 +126,7 @@ class PedidoGestaoForm
     private static function statusOptions(?Pedido $record): array
     {
         $service = app(PedidoService::class);
-        $user = Auth::user();
+        $user = static::usuarioEfetivo();
         $nomes = [];
 
         if ($record && $service->podeGerenciarRegistro($record, $user)) {
@@ -161,5 +161,10 @@ class PedidoGestaoForm
         }
 
         return app(PedidoService::class)->statusPorNome($nome)?->is($status) ?? false;
+    }
+
+    private static function usuarioEfetivo(): ?\App\Models\User
+    {
+        return app(ProfilePreviewService::class)->effectiveUser();
     }
 }

@@ -231,7 +231,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
 
     public function ehProfessor(): bool
     {
-        return $this->ehProfessorCache ??= $this->professores()->exists();
+        return $this->ehProfessorCache ??= $this->professores()->where('ativo', true)->exists();
     }
 
     public function setor()

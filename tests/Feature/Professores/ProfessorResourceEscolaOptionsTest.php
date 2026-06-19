@@ -9,6 +9,7 @@ use App\Models\Professor;
 use App\Models\Serie;
 use App\Models\Turma;
 use App\Models\User;
+use App\Services\TurmaService;
 use Filament\Forms\Components\Select;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -151,6 +152,48 @@ class ProfessorResourceEscolaOptionsTest extends TestCase
             ->assertCanNotSeeTableRecords([$professorSemVinculo]);
 
         $this->assertArrayNotHasKey('turma_id', $component->instance()->getTable()->getFilters(withHidden: true));
+    }
+
+    public function test_professores_inativos_nao_aparecem_na_listagem_nem_nas_opcoes_de_turma(): void
+    {
+        Permission::findOrCreate('Listar Professores');
+
+        $escola = $this->criarEscola('Escola Professores Ativos');
+
+        $professorAtivo = Professor::query()->create([
+            'id_escola' => $escola->id,
+            'matricula' => 'PROF-ATIVO',
+            'turno' => 'manha',
+            'nome' => 'Professor Ativo',
+            'email' => 'professor.ativo@edu.umuarama.pr.gov.br',
+            'ativo' => true,
+        ]);
+
+        $professorInativo = Professor::query()->create([
+            'id_escola' => $escola->id,
+            'matricula' => 'PROF-INATIVO',
+            'turno' => 'tarde',
+            'nome' => 'Professor Inativo',
+            'email' => 'professor.inativo@edu.umuarama.pr.gov.br',
+            'ativo' => false,
+            'desativado_em' => now(),
+        ]);
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo('Listar Professores');
+
+        Livewire::actingAs($usuario)
+            ->test(ManageProfessors::class)
+            ->assertCanSeeTableRecords([$professorAtivo])
+            ->assertCanNotSeeTableRecords([$professorInativo]);
+
+        $options = TurmaService::professoresOptionsParaTurma($escola->id);
+
+        $this->assertArrayHasKey($professorAtivo->id, $options);
+        $this->assertArrayNotHasKey($professorInativo->id, $options);
     }
 
     private function criarEscola(string $nome, bool $ativo = true): Escola

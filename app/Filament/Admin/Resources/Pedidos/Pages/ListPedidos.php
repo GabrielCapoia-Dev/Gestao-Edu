@@ -7,11 +7,11 @@ use App\Models\Pedido;
 use App\Models\TipoStatus;
 use App\Models\User;
 use App\Services\PedidoService;
+use App\Services\ProfilePreviewService;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
 use Livewire\Attributes\On;
 use Illuminate\Contracts\View\View;
@@ -42,7 +42,7 @@ class ListPedidos extends ListRecords
     private function getStatusTitle(): string|HtmlString
     {
         /** @var User|null $user */
-        $user = Auth::user();
+        $user = $this->usuarioEfetivo();
 
         if (! $user?->hasPermissionTo('Visualizar Pedidos por Status')) {
             return 'Pedidos';
@@ -105,7 +105,7 @@ class ListPedidos extends ListRecords
     protected function getHeaderActions(): array
     {
         /** @var User|null $user */
-        $user = Auth::user();
+        $user = $this->usuarioEfetivo();
 
         return [
             Actions\CreateAction::make()
@@ -133,7 +133,7 @@ class ListPedidos extends ListRecords
     public function getTabs(): array
     {
         /** @var User|null $user */
-        $user = Auth::user();
+        $user = $this->usuarioEfetivo();
 
         if (! $user?->hasPermissionTo('Visualizar Pedidos por Status')) {
             return [];
@@ -241,7 +241,7 @@ class ListPedidos extends ListRecords
     public function getDefaultActiveTab(): ?string
     {
         /** @var User|null $user */
-        $user = Auth::user();
+        $user = $this->usuarioEfetivo();
         $service = app(PedidoService::class);
         $statusAberto = $service->statusPorNome('Em Aberto');
 
@@ -259,7 +259,7 @@ class ListPedidos extends ListRecords
     public function getTitle(): string|HtmlString
     {
         /** @var User|null $user */
-        $user = Auth::user();
+        $user = $this->usuarioEfetivo();
 
         if (! $user?->hasPermissionTo('Visualizar Pedidos por Status')) {
             return 'Pedidos';
@@ -320,7 +320,7 @@ class ListPedidos extends ListRecords
     protected function getTableQuery(): Builder
     {
         /** @var User|null $user */
-        $user = Auth::user();
+        $user = $this->usuarioEfetivo();
         $service = app(PedidoService::class);
 
         if (! $user?->hasPermissionTo('Visualizar Pedidos por Status')) {
@@ -333,5 +333,10 @@ class ListPedidos extends ListRecords
         }
 
         return $service->queryTabela($user);
+    }
+
+    private function usuarioEfetivo(): ?User
+    {
+        return app(ProfilePreviewService::class)->effectiveUser();
     }
 }

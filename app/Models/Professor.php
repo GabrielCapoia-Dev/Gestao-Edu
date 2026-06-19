@@ -30,6 +30,10 @@ class Professor extends Model
         'nome',
         'email',
         'telefone',
+        'ativo',
+        'desativado_em',
+        'desativado_por_id',
+        'motivo_desativacao',
     ];
 
     protected function casts(): array
@@ -40,6 +44,10 @@ class Professor extends Model
             'nome' => 'string',
             'email' => 'string',
             'telefone' => 'string',
+            'ativo' => 'boolean',
+            'desativado_em' => 'datetime',
+            'desativado_por_id' => 'integer',
+            'motivo_desativacao' => 'string',
         ];
     }
 
@@ -130,6 +138,11 @@ class Professor extends Model
         return $this->belongsTo(Escola::class, 'id_escola');
     }
 
+    public function desativadoPor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'desativado_por_id');
+    }
+
     public function turmas()
     {
         return $this->belongsToMany(
@@ -170,9 +183,11 @@ class Professor extends Model
      */
     public function scopeDisponivelParaComponente($query)
     {
-        return $query->whereDoesntHave('servidor.servidorFuncoesAtivas.funcaoAdministrativa', function ($funcoes): void {
-            $funcoes->where('exige_professor', false);
-        });
+        return $query
+            ->where('ativo', true)
+            ->whereDoesntHave('servidor.servidorFuncoesAtivas.funcaoAdministrativa', function ($funcoes): void {
+                $funcoes->where('exige_professor', false);
+            });
     }
 
     /**
@@ -183,6 +198,16 @@ class Professor extends Model
         return $query->whereHas('servidor.servidorFuncoesAtivas.funcaoAdministrativa', function ($funcoes): void {
             $funcoes->where('exige_professor', false);
         });
+    }
+
+    public function scopeAtivos($query)
+    {
+        return $query->where('ativo', true);
+    }
+
+    public function scopeInativos($query)
+    {
+        return $query->where('ativo', false);
     }
 
     public function avaliacaoRespostas()

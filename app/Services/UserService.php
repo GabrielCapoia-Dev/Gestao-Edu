@@ -160,6 +160,16 @@ class UserService
         return $user->hasPermissionTo('Excluir Professores');
     }
 
+    public function podeTransferirProfessores(?User $user): bool
+    {
+        return $user?->hasPermissionTo('Transferir Professores') ?? false;
+    }
+
+    public function podeDesativarProfessores(?User $user): bool
+    {
+        return $user?->hasPermissionTo('Desativar Professores') ?? false;
+    }
+
     // =========================================================================
     // Regras de formulário (usadas pelo UserForm)
     // =========================================================================
@@ -616,6 +626,7 @@ class UserService
 
         if (! array_key_exists($userId, $this->professorIdsByUser)) {
             $this->professorIdsByUser[$userId] = $user->professores()
+                ->where('ativo', true)
                 ->pluck('id')
                 ->map(fn ($id): int => (int) $id)
                 ->all();

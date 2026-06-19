@@ -63,6 +63,7 @@ class ProfessorEscolaVinculoService
             ->join('professores as p', 'p.id', '=', 'turma_componente_professor.professor_id')
             ->join('turmas as t', 't.id', '=', 'turma_componente_professor.turma_id')
             ->where('p.user_id', $userId)
+            ->where('p.ativo', true)
             ->where('turma_componente_professor.tem_professor', true)
             ->select('t.id_escola')
             ->distinct()
@@ -77,6 +78,7 @@ class ProfessorEscolaVinculoService
     {
         return Professor::query()
             ->where('user_id', $userId)
+            ->where('ativo', true)
             ->whereNotNull('id_escola')
             ->select('id_escola')
             ->distinct()

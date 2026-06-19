@@ -19,9 +19,9 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use App\Filament\Resources\PedidoResource\Pages;
 use App\Services\PedidoService as Service;
+use App\Services\ProfilePreviewService;
 use Filament\Forms\Form;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use UnitEnum;
 
@@ -41,7 +41,7 @@ class PedidoResource extends Resource
     public static function form(Schema $schema): Schema
     {
         $service = app(Service::class);
-        $user    = Auth::user();
+        $user    = static::usuarioEfetivo();
 
         if ($schema->getOperation() === 'edit' && $service->podeGerenciarPedidos($user)) {
             return PedidoGestaoForm::configure($schema);
@@ -52,7 +52,7 @@ class PedidoResource extends Resource
     public static function table(Table $table): Table
     {
         /** @var User $user */
-        $user = Auth::user();
+        $user = static::usuarioEfetivo();
 
         return PedidosTable::configure($table, $user);
     }
@@ -70,7 +70,7 @@ class PedidoResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return app(Service::class)->contarPedidosNovos(Auth::user());
+        return app(Service::class)->contarPedidosNovos(static::usuarioEfetivo());
     }
 
     public static function getNavigationBadgeColor(): ?string
@@ -81,7 +81,7 @@ class PedidoResource extends Resource
     public static function getRelations(): array
     {
         /** @var User $user */
-        $user = Auth::user();
+        $user = static::usuarioEfetivo();
 
         $relations = [
             PedidosAdicionaisRelationManager::class,
@@ -102,7 +102,12 @@ class PedidoResource extends Resource
     {
         return app(Service::class)->queryPorPerfil(
             parent::getEloquentQuery(),
-            Auth::user()
+            static::usuarioEfetivo()
         );
+    }
+
+    private static function usuarioEfetivo(): ?User
+    {
+        return app(ProfilePreviewService::class)->effectiveUser();
     }
 }

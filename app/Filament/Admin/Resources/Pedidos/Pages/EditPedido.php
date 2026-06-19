@@ -5,9 +5,9 @@ namespace App\Filament\Admin\Resources\Pedidos\Pages;
 use App\Filament\Admin\Resources\Pedidos\PedidoResource;
 use App\Models\TipoStatus;
 use App\Services\PedidoService;
+use App\Services\ProfilePreviewService;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 
 class EditPedido extends EditRecord
@@ -34,7 +34,7 @@ class EditPedido extends EditRecord
     protected function mutateFormDataBeforeSave(array $data): array
     {
         $service = app(PedidoService::class);
-        $user = Auth::user();
+        $user = $this->usuarioEfetivo();
 
         $this->statusAnteriorId = $this->record->tipo_status_id;
         $this->observacaoStatus = $data['descricao_alteracao'] ?? null;
@@ -114,7 +114,7 @@ class EditPedido extends EditRecord
     protected function afterSave(): void
     {
         $record = $this->record->refresh();
-        $user = Auth::user();
+        $user = $this->usuarioEfetivo();
         $service = app(PedidoService::class);
         $statusNovoId = $record->tipo_status_id;
 
@@ -161,5 +161,10 @@ class EditPedido extends EditRecord
     protected function getRedirectUrl(): string
     {
         return $this->previousUrl ?? $this->getResource()::getUrl('index');
+    }
+
+    private function usuarioEfetivo(): ?\App\Models\User
+    {
+        return app(ProfilePreviewService::class)->effectiveUser();
     }
 }

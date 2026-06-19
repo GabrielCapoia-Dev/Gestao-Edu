@@ -437,6 +437,7 @@ class TurmaService
         }
 
         return Professor::where('id_escola', $escolaId)
+            ->where('ativo', true)
             ->disponivelParaComponente()
             ->orderBy('turno')
             ->orderBy('matricula')

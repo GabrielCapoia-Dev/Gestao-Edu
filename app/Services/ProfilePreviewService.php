@@ -115,6 +115,14 @@ class ProfilePreviewService
         return $this->realUser() ?: Auth::user();
     }
 
+    public function effectiveUser(): ?User
+    {
+        $realUser = $this->realUser();
+        $targetUser = $this->targetUser();
+
+        return $realUser && $targetUser ? $targetUser : Auth::user();
+    }
+
     public function canControl(?User $user = null): bool
     {
         $user ??= $this->controlUser();

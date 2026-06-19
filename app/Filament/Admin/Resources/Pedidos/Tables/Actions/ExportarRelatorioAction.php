@@ -7,13 +7,13 @@ use App\Models\Escola;
 use App\Models\TipoManutencao;
 use App\Models\TipoStatus;
 use App\Services\PedidoService;
+use App\Services\ProfilePreviewService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Colors\Color;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 
 class ExportarRelatorioAction
@@ -24,7 +24,7 @@ class ExportarRelatorioAction
             ->label('Exportar Relatório')
             ->icon('heroicon-o-document-chart-bar')
             ->color(Color::hex('#102b86'))
-            ->visible(fn (): bool => Auth::user()?->hasPermissionLike('exportar relatorios') ?? false)
+            ->visible(fn (): bool => static::usuarioEfetivo()?->hasPermissionLike('exportar relatorios') ?? false)
             ->schema(static::schema())
             ->modalHeading('Exportar Relatório de Pedidos')
             ->modalDescription('Configure os filtros. O período é obrigatório para gerar o PDF.')
@@ -63,7 +63,7 @@ class ExportarRelatorioAction
                         ->label('Escola')
                         ->options(function (): array {
                             $service = app(PedidoService::class);
-                            $user = Auth::user();
+                            $user = static::usuarioEfetivo();
                             $escolaIds = $service->escolaIdsParaEscopo($user);
 
                             return Escola::query()
@@ -141,5 +141,10 @@ class ExportarRelatorioAction
 
             return redirect()->away(route('pedidos.relatorio-geral', $filtros));
         };
+    }
+
+    private static function usuarioEfetivo(): ?\App\Models\User
+    {
+        return app(ProfilePreviewService::class)->effectiveUser();
     }
 }
