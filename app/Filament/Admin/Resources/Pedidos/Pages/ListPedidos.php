@@ -13,6 +13,7 @@ use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\HtmlString;
+use Illuminate\Support\Str;
 use Livewire\Attributes\On;
 use Illuminate\Contracts\View\View;
 
@@ -48,58 +49,7 @@ class ListPedidos extends ListRecords
             return 'Pedidos';
         }
 
-        $activeTab = $this->activeTab;
-
-        if (! $activeTab || $activeTab === 'todos') {
-            return new HtmlString(
-                '<span style="
-                display:inline-block;
-                padding:2px 10px;
-                border-radius:5px;
-                font-weight:600;
-                line-height:1.6;
-                background-color:#e5e7eb;
-                color:#374151;
-                border:1px solid #d1d5db;
-            ">Todos</span>'
-            );
-        }
-
-        if ($activeTab === 'adicionais') {
-            return new HtmlString(
-                '<span style="
-                display:inline-block;
-                padding:2px 10px;
-                border-radius:5px;
-                font-weight:600;
-                line-height:1.6;
-                background-color:#eff6ff;
-                color:#1d4ed8;
-                border:1px solid #bfdbfe;
-            ">Pedidos adicionais</span>'
-            );
-        }
-
-        $status = TipoStatus::find($activeTab);
-
-        if (! $status) {
-            return 'Pedidos';
-        }
-
-        $hex = '#' . ltrim($status->cor, '#');
-
-        return new HtmlString(
-            '<span style="'
-                . 'display:inline-block;'
-                . 'padding:2px 10px;'
-                . 'border-radius:5px;'
-                . 'font-weight:600;'
-                . 'line-height:1.6;'
-                . "background-color:{$hex}20;"
-                . "color:{$hex};"
-                . "border:1px solid {$hex}50;"
-                . '">' . e($status->nome) . '</span>'
-        );
+        return $this->renderActiveTabPill();
     }
 
     protected function getHeaderActions(): array
@@ -150,11 +100,7 @@ class ListPedidos extends ListRecords
                     ->orderByDesc('updated_at'))
                 ->badge(fn() => (clone $tableQuery)->where('is_pedido_adicional', false)->count())
                 ->extraAttributes([
-                    'style' => '
-                        --tab-color: #6b7280;
-                        background-color: #e5e7eb;
-                        border: 1px solid #d1d5db;
-                    ',
+                    'class' => $this->tabClassesForAll(),
                 ]),
         ];
 
@@ -172,11 +118,7 @@ class ListPedidos extends ListRecords
                     ->orderByDesc('updated_at'))
                 ->badge($quantidadeAdicionais)
                 ->extraAttributes([
-                    'style' => '
-                        --tab-color: #2563eb;
-                        background-color: #eff6ff;
-                        border: 1px solid #bfdbfe;
-                    ',
+                    'class' => $this->tabClassesForAdditionals(),
                 ]);
         }
 
@@ -222,8 +164,6 @@ class ListPedidos extends ListRecords
                 continue;
             }
 
-            $hex = substr(ltrim($status->cor, '#'), 0, 6);
-
             $tabs[(string) $status->id] = Tab::make($status->nome)
                 ->modifyQueryUsing(function ($query) use ($status) {
                     return $query
@@ -232,11 +172,7 @@ class ListPedidos extends ListRecords
                 })
                 ->badge($count)
                 ->extraAttributes([
-                    'style' => "
-                        --tab-color: #{$hex};
-                        background-color: #{$hex}20;
-                        border: 1px solid #{$hex}50;
-                    ",
+                    'class' => $this->tabClassesForStatus($status),
                 ]);
 
             if (
@@ -283,56 +219,7 @@ class ListPedidos extends ListRecords
             return 'Pedidos';
         }
 
-        $activeTab = $this->activeTab;
-
-        if (! $activeTab || $activeTab === 'todos') {
-            return new HtmlString(
-                '<span style="
-                    display:inline-block;
-                    padding:2px 10px;
-                    border-radius:5px;
-                    font-weight:600;
-                    line-height:1.6;
-                    background-color:#e5e7eb;
-                    color:#374151;
-                    border:1px solid #d1d5db">Todos</span>'
-            );
-        }
-
-        if ($activeTab === 'adicionais') {
-            return new HtmlString(
-                '<span style="
-                    display:inline-block;
-                    padding:2px 10px;
-                    border-radius:5px;
-                    font-weight:600;
-                    line-height:1.6;
-                    background-color:#eff6ff;
-                    color:#1d4ed8;
-                    border:1px solid #bfdbfe">Pedidos adicionais</span>'
-            );
-        }
-
-        $status = TipoStatus::find($activeTab);
-
-        if (! $status) {
-            return 'Pedidos';
-        }
-
-        $hex = '#' . ltrim($status->cor, '#');
-
-        return new HtmlString(
-            '<span style="'
-                . 'display:inline-block;'
-                . 'padding:2px 10px;'
-                . 'border-radius:5px;'
-                . 'font-weight:600;'
-                . 'line-height:1.6;'
-                . "background-color:{$hex}20;"
-                . "color:{$hex};"
-                . "border:1px solid {$hex}50;"
-                . '">' . e($status->nome) . '</span>'
-        );
+        return $this->renderActiveTabPill();
     }
 
     protected function getTableQuery(): Builder
@@ -356,5 +243,84 @@ class ListPedidos extends ListRecords
     private function usuarioEfetivo(): ?User
     {
         return app(ProfilePreviewService::class)->effectiveUser();
+    }
+
+    private function renderActiveTabPill(): HtmlString
+    {
+        $presentation = $this->activeTabPresentation();
+
+        return new HtmlString(
+            view('filament.admin.resources.pedidos.partials.status-pill', [
+                'label' => $presentation['label'],
+                'class' => $presentation['pill_class'],
+            ])->render()
+        );
+    }
+
+    private function activeTabPresentation(): array
+    {
+        $activeTab = $this->activeTab;
+
+        if (! $activeTab || $activeTab === 'todos') {
+            return [
+                'label' => 'Todos',
+                'pill_class' => 'gi-status-pill gi-status-pill--todos',
+                'tab_class' => $this->tabClassesForAll(),
+            ];
+        }
+
+        if ($activeTab === 'adicionais') {
+            return [
+                'label' => 'Pedidos adicionais',
+                'pill_class' => 'gi-status-pill gi-status-pill--adicionais',
+                'tab_class' => $this->tabClassesForAdditionals(),
+            ];
+        }
+
+        $status = TipoStatus::find($activeTab);
+
+        if (! $status) {
+            return [
+                'label' => 'Pedidos',
+                'pill_class' => 'gi-status-pill gi-status-pill--fallback',
+                'tab_class' => 'gi-tab-pill gi-tab-pill--fallback',
+            ];
+        }
+
+        return [
+            'label' => $status->nome,
+            'pill_class' => sprintf('gi-status-pill gi-status-pill--%s', $this->statusModifier($status)),
+            'tab_class' => $this->tabClassesForStatus($status),
+        ];
+    }
+
+    private function tabClassesForAll(): string
+    {
+        return 'gi-tab-pill gi-tab-pill--todos';
+    }
+
+    private function tabClassesForAdditionals(): string
+    {
+        return 'gi-tab-pill gi-tab-pill--adicionais';
+    }
+
+    private function tabClassesForStatus(TipoStatus $status): string
+    {
+        return sprintf('gi-tab-pill gi-tab-pill--%s', $this->statusModifier($status));
+    }
+
+    private function statusModifier(TipoStatus $status): string
+    {
+        return match (Str::lower(Str::ascii($status->nome))) {
+            'em aberto' => 'em-aberto',
+            'reaberto' => 'reaberto',
+            'em analise' => 'em-analise',
+            'em manutencao' => 'em-manutencao',
+            'encaminhado ao setor' => 'encaminhado-ao-setor',
+            'enviado para empresa' => 'enviado-para-empresa',
+            'cancelado' => 'cancelado',
+            'concluido' => 'concluido',
+            default => 'fallback',
+        };
     }
 }

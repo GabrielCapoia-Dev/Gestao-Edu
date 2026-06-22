@@ -402,3 +402,21 @@ Na estrutura lida do CRM nao apareceu `.codex` nem `.agents`. A pasta `docs` exi
 - Revisar texto visivel e labels apos o ajuste.
 - Registrar no proprio PR ou diff quais componentes passaram a seguir o design system.
 
+## Estado Aplicado no Gestao-Edu
+
+### Onda 1 - Admin + shared
+
+- `public/css/geral.css` passou a concentrar as primitives compartilhadas do admin para hero, page header, actions, fields, empty states, status pills, tabs e dashboard cards.
+- `app/Providers/Filament/AdminPanelProvider.php` recebeu a fonte explicita do painel e a paleta auxiliar de estados (`success`, `warning`, `danger`, `info`) para reduzir cor manual espalhada.
+- `resources/views/filament/admin/pages/partials/page-header.blade.php` virou o header canonico de resources e pages com estrutura unica sobre `gi-*`.
+- `resources/views/filament/pages/partials/access-management-styles.blade.php` ficou restrito ao acabamento especifico do modulo de acesso, reaproveitando a base compartilhada.
+- `app/Filament/Admin/Resources/Pedidos/Pages/ListPedidos.php` trocou o estilo inline de titulo e tabs por classes reutilizaveis e partial visual dedicado.
+
+### Extensoes mantidas por modulo
+
+- `am-*` permanece como extensao visual do dominio de acesso, sem virar um segundo design system.
+- `pedido-*`, `av-*`, `pm-*`, `nc-*`, `gm-*`, `fb-*` e `rel-*` continuam como wrappers de modulo onde ainda existe composicao especifica, mas agora sobre base compartilhada maior.
+
+### Fase seguinte
+
+- `resources/views/public/*` e `resources/views/mobile/*` ficaram fora desta onda e devem ser alinhados depois, mantendo por enquanto seus assets separados (`public.layout` e `public/css/mobile-app.css`).

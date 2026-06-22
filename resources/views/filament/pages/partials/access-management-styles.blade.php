@@ -1,17 +1,17 @@
 <style>
     .am-page {
         display: grid;
-        gap: 1.25rem;
+        gap: 1.5rem;
     }
 
     .am-hero {
         position: relative;
         overflow: hidden;
-        padding: 1.4rem 1.5rem;
+        padding: 1.6rem;
         border-radius: 1.4rem;
         background:
-            radial-gradient(circle at top right, rgba(251, 191, 36, 0.18), transparent 24%),
-            linear-gradient(135deg, #0f766e 0%, #155e75 48%, #0f172a 100%);
+            radial-gradient(circle at top right, rgba(251, 191, 36, 0.16), transparent 24%),
+            linear-gradient(135deg, #0f766e 0%, #155e75 44%, #0f172a 100%);
         color: #f8fafc;
         box-shadow: 0 20px 42px rgba(15, 23, 42, 0.14);
     }
@@ -28,15 +28,16 @@
     .am-title {
         margin: 0;
         max-width: 42rem;
-        font-size: clamp(1.3rem, 1.1rem + 0.8vw, 1.95rem);
-        line-height: 1.1;
+        font-size: clamp(1.5rem, 1.2rem + 1vw, 2.2rem);
+        line-height: 1.08;
         font-weight: 700;
+        color: #f8fafc;
     }
 
     .am-subtitle {
-        margin: 0.75rem 0 0;
+        margin: 0.8rem 0 0;
         max-width: 44rem;
-        font-size: 0.92rem;
+        font-size: 0.94rem;
         line-height: 1.65;
         color: rgba(226, 232, 240, 0.88);
     }
@@ -45,15 +46,15 @@
         display: flex;
         flex-wrap: wrap;
         gap: 0.5rem;
-        margin-top: 0.95rem;
+        margin-top: 1rem;
     }
 
     .am-pill {
         display: inline-flex;
         align-items: center;
-        padding: 0.4rem 0.78rem;
+        padding: 0.42rem 0.8rem;
         border-radius: 9999px;
-        border: 1px solid rgba(255, 255, 255, 0.14);
+        border: 1px solid rgba(255, 255, 255, 0.16);
         background: rgba(255, 255, 255, 0.1);
         font-size: 0.78rem;
         color: #f8fafc;
@@ -74,7 +75,7 @@
     }
 
     .am-panel__header {
-        padding: 1.15rem 1.2rem 0;
+        padding: 1.2rem 1.2rem 0;
     }
 
     .am-panel__eyebrow {
@@ -92,7 +93,7 @@
 
     .am-panel__title {
         margin: 0;
-        font-size: 1.02rem;
+        font-size: 1.04rem;
         font-weight: 700;
         color: #0f172a;
     }
@@ -112,6 +113,62 @@
         color: #cbd5e1;
     }
 
+    .am-panel__body {
+        padding: 1.2rem;
+    }
+
+    .am-desktop-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+
+    .am-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-left: auto;
+        flex-wrap: wrap;
+    }
+
+    .am-search {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.55rem;
+        min-width: 21rem;
+        padding: 0.8rem 0.95rem;
+        border: 1px solid #d7dee8;
+        border-radius: 0.9rem;
+        background: #fff;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+    }
+
+    .dark .am-search {
+        border-color: #334155;
+        background: rgba(15, 23, 42, 0.72);
+    }
+
+    .am-search__icon {
+        width: 1rem;
+        height: 1rem;
+        color: #94a3b8;
+    }
+
+    .am-search input {
+        width: 100%;
+        border: none;
+        outline: none;
+        background: transparent;
+        padding: 0;
+        font-size: 0.9rem;
+        color: #0f172a;
+    }
+
+    .dark .am-search input {
+        color: #f8fafc;
+    }
+
     .am-summary {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -120,7 +177,7 @@
     }
 
     .am-summary-card {
-        padding: 0.9rem 0.95rem;
+        padding: 0.95rem;
         border-radius: 1rem;
         border: 1px solid #e2e8f0;
         background: #f8fafc;
@@ -205,7 +262,7 @@
 
     .am-summary-card__value {
         margin: 0;
-        font-size: 1.15rem;
+        font-size: 1.16rem;
         line-height: 1.1;
         font-weight: 700;
         color: #0f172a;
@@ -225,61 +282,6 @@
 
     .dark .am-summary-card__description {
         color: #94a3b8;
-    }
-
-    .am-panel__body {
-        padding: 1.2rem;
-    }
-
-    .am-desktop-header {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 1rem;
-    }
-
-    .am-toolbar {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        margin-left: auto;
-    }
-
-    .am-search {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.55rem;
-        min-width: 21rem;
-        padding: 0.8rem 0.95rem;
-        border: 1px solid #d7dee8;
-        border-radius: 0.9rem;
-        background: #fff;
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
-    }
-
-    .dark .am-search {
-        border-color: #334155;
-        background: rgba(15, 23, 42, 0.72);
-    }
-
-    .am-search__icon {
-        width: 1rem;
-        height: 1rem;
-        color: #94a3b8;
-    }
-
-    .am-search input {
-        width: 100%;
-        border: none;
-        outline: none;
-        background: transparent;
-        padding: 0;
-        font-size: 0.9rem;
-        color: #0f172a;
-    }
-
-    .dark .am-search input {
-        color: #f8fafc;
     }
 
     .am-roles-grid {
@@ -305,11 +307,6 @@
         max-height: 26rem;
     }
 
-    .am-role-card.is-collapsed {
-        min-height: auto;
-        max-height: none;
-    }
-
     .dark .am-role-card {
         border-color: #1e293b;
         background:
@@ -318,28 +315,34 @@
         box-shadow: none;
     }
 
-    .am-role-card__header {
+    .am-role-card__header,
+    .am-role-card__identity,
+    .am-role-card__actions,
+    .am-permission-group__header,
+    .am-empty-state {
         display: flex;
         align-items: flex-start;
-        justify-content: space-between;
         gap: 0.9rem;
-        margin-bottom: 0.95rem;
     }
 
-    .am-role-card__identity {
-        display: flex;
-        gap: 0.85rem;
-        min-width: 0;
+    .am-role-card__header,
+    .am-permission-group__header,
+    .am-empty-state {
+        justify-content: space-between;
     }
 
-    .am-role-card__icon {
+    .am-role-card__icon,
+    .am-empty-state__icon {
         display: inline-flex;
         align-items: center;
         justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .am-role-card__icon {
         width: 2.6rem;
         height: 2.6rem;
         border-radius: 0.95rem;
-        flex-shrink: 0;
     }
 
     .am-role-card__icon svg {
@@ -347,41 +350,45 @@
         height: 1.2rem;
     }
 
-    .am-role-card__identity h4 {
+    .am-role-card__identity h4,
+    .am-empty-state h4,
+    .am-permission-group__header h5 {
         margin: 0;
-        font-size: 1rem;
-        font-weight: 700;
         color: #0f172a;
+        font-weight: 700;
     }
 
-    .dark .am-role-card__identity h4 {
+    .dark .am-role-card__identity h4,
+    .dark .am-empty-state h4,
+    .dark .am-permission-group__header h5 {
         color: #f8fafc;
     }
 
-    .am-role-card__identity p {
+    .am-role-card__identity p,
+    .am-empty-state p,
+    .am-permission-group__header p {
         margin: 0.35rem 0 0;
         font-size: 0.78rem;
         line-height: 1.55;
         color: #64748b;
     }
 
-    .dark .am-role-card__identity p {
+    .dark .am-role-card__identity p,
+    .dark .am-empty-state p,
+    .dark .am-permission-group__header p {
         color: #94a3b8;
     }
 
     .am-role-card__actions {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.45rem;
-        flex-shrink: 0;
         flex-wrap: wrap;
+        flex-shrink: 0;
+        gap: 0.45rem;
     }
 
     .am-role-card__permissions {
         display: flex;
         flex-direction: column;
         gap: 0.75rem;
-        align-content: start;
         overflow-y: auto;
         padding-right: 0.25rem;
         max-height: 13.25rem;
@@ -401,56 +408,9 @@
         background: rgba(15, 23, 42, 0.55);
     }
 
-    .am-permission-group__header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.75rem;
-        margin-bottom: 0.7rem;
-    }
-
-    .am-permission-group__header h5 {
-        margin: 0;
-        font-size: 0.86rem;
-        font-weight: 700;
-        color: #0f172a;
-    }
-
-    .dark .am-permission-group__header h5 {
-        color: #f8fafc;
-    }
-
-    .am-permission-group__header p {
-        margin: 0.2rem 0 0;
-        font-size: 0.75rem;
-        color: #64748b;
-    }
-
-    .dark .am-permission-group__header p {
-        color: #94a3b8;
-    }
-
     .am-permission-group__items {
         display: grid;
-        grid-template-columns: 1fr;
         gap: 0.55rem;
-    }
-
-    .am-role-card__permissions::-webkit-scrollbar {
-        width: 0.45rem;
-    }
-
-    .am-role-card__permissions::-webkit-scrollbar-track {
-        background: transparent;
-    }
-
-    .am-role-card__permissions::-webkit-scrollbar-thumb {
-        border-radius: 9999px;
-        background: rgba(148, 163, 184, 0.6);
-    }
-
-    .dark .am-role-card__permissions::-webkit-scrollbar-thumb {
-        background: rgba(100, 116, 139, 0.8);
     }
 
     .am-permission-chip {
@@ -469,10 +429,14 @@
         background: rgba(20, 83, 45, 0.2);
     }
 
-    .am-permission-chip__label {
+    .am-permission-chip__label,
+    .am-permission-chip__status {
         display: inline-flex;
         align-items: center;
         gap: 0.5rem;
+    }
+
+    .am-permission-chip__label {
         min-width: 0;
         color: #166534;
         font-size: 0.83rem;
@@ -497,8 +461,6 @@
     }
 
     .am-permission-chip__status {
-        display: inline-flex;
-        align-items: center;
         justify-content: center;
         width: 1.35rem;
         height: 1.35rem;
@@ -514,9 +476,6 @@
     }
 
     .am-empty-state {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
         padding: 1.2rem;
         border-radius: 1rem;
         border: 1px dashed #cbd5e1;
@@ -529,42 +488,16 @@
     }
 
     .am-empty-state__icon {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
         width: 3rem;
         height: 3rem;
         border-radius: 1rem;
         background: rgba(79, 70, 229, 0.1);
         color: #4f46e5;
-        flex-shrink: 0;
     }
 
     .am-empty-state__icon svg {
         width: 1.4rem;
         height: 1.4rem;
-    }
-
-    .am-empty-state h4 {
-        margin: 0;
-        font-size: 1rem;
-        font-weight: 700;
-        color: #0f172a;
-    }
-
-    .dark .am-empty-state h4 {
-        color: #f8fafc;
-    }
-
-    .am-empty-state p {
-        margin: 0.35rem 0 0;
-        color: #64748b;
-        font-size: 0.88rem;
-        line-height: 1.6;
-    }
-
-    .dark .am-empty-state p {
-        color: #94a3b8;
     }
 
     .am-role-card--indigo .am-role-card__icon {
@@ -622,7 +555,8 @@
     }
 
     @media (max-width: 900px) {
-        .am-summary {
+        .am-summary,
+        .am-roles-grid {
             grid-template-columns: 1fr;
         }
 
@@ -640,15 +574,11 @@
         .am-search {
             min-width: 0;
         }
-
-        .am-roles-grid {
-            grid-template-columns: 1fr;
-        }
     }
 
     @media (max-width: 767px) {
         .am-hero {
-            padding: 1.15rem;
+            padding: 1.2rem;
         }
 
         .am-panel__header,
