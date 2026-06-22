@@ -1,0 +1,5 @@
+interface:
+  display_name: "Auditor Visual Gestao-Edu"
+  short_description: "Audita a tela antes de qualquer ajuste visual"
+  default_prompt: "Use $gestao-edu-ui-screen-analysis para auditar a tela solicitada no Gestao-Edu antes de qualquer alteracao. Analise provider, page/resource, views, partials e CSS, atue somente na camada visual e registre riscos de regra de negocio."
+

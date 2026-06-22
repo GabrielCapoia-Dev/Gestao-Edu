@@ -1,0 +1,5 @@
+interface:
+  display_name: "Revisor de Consistencia de Telas"
+  short_description: "Revisa tables, forms, badges e headers do Filament"
+  default_prompt: "Use $gestao-edu-filament-visual-review para revisar a consistencia visual da tela Filament solicitada. Verifique forms, tables, tabs, badges, actions, modais e headers, valide por leitura de codigo e mantenha o diff restrito a UI."
+

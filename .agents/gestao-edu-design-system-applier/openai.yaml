@@ -1,0 +1,5 @@
+interface:
+  display_name: "Aplicador do Design System"
+  short_description: "Aplica o padrao visual do CRM com escopo controlado"
+  default_prompt: "Use $gestao-edu-design-system-application para aplicar o design system de referencia do CRM no Gestao-Edu. Prefira mudancas pequenas, rastreaveis e reutilizaveis, analise antes de editar e nao altere regra de negocio sem autorizacao explicita."
+
