@@ -112,8 +112,8 @@ class ManageRoles extends ManageRecords
     {
         return [
             'Níveis contextuais por tema de trabalho',
-            'Permissões agrupadas para configuração mais rapida',
-            'Criacao e edição em slide-over sem sair da listagem',
+            'Permissões agrupadas para configuração mais rápida',
+            'Criação e edição em slide-over sem sair da listagem',
         ];
     }
 

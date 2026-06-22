@@ -10,7 +10,7 @@
     <div class="fb-page">
         <section class="fb-metrics">
             <article class="fb-metric fb-metric--blue">
-                <span>Media geral</span>
+                <span>Média geral</span>
                 <strong>{{ number_format((float) $metricas['media'], 2, ',', '.') }}</strong>
                 <small>escala de 1 a 5</small>
             </article>
@@ -18,7 +18,7 @@
             <article class="fb-metric fb-metric--green">
                 <span>Satisfação</span>
                 <strong>{{ $metricas['satisfacao'] }}%</strong>
-                <small>media das notas em percentual</small>
+                <small>média das notas em percentual</small>
             </article>
 
             <article class="fb-metric fb-metric--amber">
@@ -28,7 +28,7 @@
             </article>
 
             <article class="fb-metric fb-metric--red">
-                <span>Criticas</span>
+                <span>Críticas</span>
                 <strong>{{ $metricas['criticas'] }}</strong>
                 <small>{{ $metricas['reabertos'] }} reabertura(s)</small>
             </article>
@@ -48,7 +48,7 @@
                         <div class="fb-rank-row">
                             <div>
                                 <strong>{{ $empresa['nome'] }}</strong>
-                                <small>{{ $empresa['total'] }} avaliação(oes) - media {{ number_format((float) $empresa['media'], 2, ',', '.') }}</small>
+                                <small>{{ $empresa['total'] }} avaliação(ões) - média {{ number_format((float) $empresa['media'], 2, ',', '.') }}</small>
                             </div>
                             <span>{{ $empresa['satisfacao'] }}%</span>
                             <div class="fb-bar"><i style="width: {{ $empresa['pct_barra'] }}%"></i></div>
@@ -72,7 +72,7 @@
                         <div class="fb-rank-row">
                             <div>
                                 <strong>{{ $escola['nome'] }}</strong>
-                                <small>{{ $escola['total'] }} avaliação(oes) - {{ $escola['criticas'] }} critica(s)</small>
+                                <small>{{ $escola['total'] }} avaliação(ões) - {{ $escola['criticas'] }} crítica(s)</small>
                             </div>
                             <span>{{ $escola['satisfacao'] }}%</span>
                             <div class="fb-bar fb-bar--green"><i style="width: {{ $escola['pct_barra'] }}%"></i></div>

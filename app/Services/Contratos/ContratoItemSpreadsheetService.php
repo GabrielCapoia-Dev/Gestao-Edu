@@ -139,12 +139,12 @@ class ContratoItemSpreadsheetService
             $numeroLinha = $linha['numero_linha'];
 
             if ($codigo === null) {
-                $erros[] = "Linha {$numeroLinha}: informe o Codigo do Item.";
+                $erros[] = "Linha {$numeroLinha}: informe o Código do Item.";
                 return null;
             }
 
             if (isset($codigos[$codigo])) {
-                $erros[] = "Linha {$numeroLinha}: o codigo {$codigo} aparece mais de uma vez no arquivo.";
+                $erros[] = "Linha {$numeroLinha}: o código {$codigo} aparece mais de uma vez no arquivo.";
                 return null;
             }
 

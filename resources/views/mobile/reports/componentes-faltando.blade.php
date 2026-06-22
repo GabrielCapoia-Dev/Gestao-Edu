@@ -5,7 +5,7 @@
 @section('content')
     @php
         $turnoLabel = static fn (?string $turno): string => match ($turno) {
-            'manha' => 'Manha',
+            'manha' => 'Manhã',
             'tarde' => 'Tarde',
             'noite' => 'Noite',
             'integral' => 'Integral',
@@ -17,12 +17,12 @@
         <p class="mobile-page-intro__eyebrow">Cobertura</p>
         <h1 class="mobile-page-intro__title">Onde faltam professores hoje.</h1>
         <p class="mobile-page-intro__subtitle">
-            Dois paineis na mesma tela: componentes com lacuna e turmas afetadas pela falta de cobertura.
+            Dois painéis na mesma tela: componentes com lacuna e turmas afetadas pela falta de cobertura.
         </p>
     </section>
 
     <section class="mobile-stats-grid">
-        <article class="mobile-stat-card"><small>Vinculos</small><strong>{{ number_format($stats['vinculos'], 0, ',', '.') }}</strong></article>
+        <article class="mobile-stat-card"><small>Vínculos</small><strong>{{ number_format($stats['vinculos'], 0, ',', '.') }}</strong></article>
         <article class="mobile-stat-card"><small>Com professor</small><strong>{{ number_format($stats['comProfessor'], 0, ',', '.') }}</strong></article>
         <article class="mobile-stat-card"><small>Sem professor</small><strong>{{ number_format($stats['semProfessor'], 0, ',', '.') }}</strong></article>
         <article class="mobile-stat-card"><small>Turmas com falta</small><strong>{{ number_format($stats['totalTurmasFaltando'], 0, ',', '.') }}</strong></article>
@@ -48,7 +48,7 @@
 
             <select name="turno" class="mobile-select">
                 <option value="">Todos os turnos</option>
-                <option value="manha" @selected($filters['turno'] === 'manha')>Manha</option>
+                <option value="manha" @selected($filters['turno'] === 'manha')>Manhã</option>
                 <option value="tarde" @selected($filters['turno'] === 'tarde')>Tarde</option>
                 <option value="noite" @selected($filters['turno'] === 'noite')>Noite</option>
                 <option value="integral" @selected($filters['turno'] === 'integral')>Integral</option>
@@ -68,7 +68,7 @@
         <div class="mobile-section__header">
             <div>
                 <p class="mobile-section__eyebrow">Componentes</p>
-                <h2 class="mobile-section__title">Onde a falta aparece com mais frequencia</h2>
+                <h2 class="mobile-section__title">Onde a falta aparece com mais frequência</h2>
             </div>
         </div>
 
@@ -78,7 +78,7 @@
                     <div class="mobile-item-card__header">
                         <div>
                             <h2>{{ $item->componente_nome }}</h2>
-                            <p>Total de vinculos: {{ number_format($item->total, 0, ',', '.') }}</p>
+                            <p>Total de vínculos: {{ number_format($item->total, 0, ',', '.') }}</p>
                         </div>
 
                         <span class="mobile-status-badge is-warning">

@@ -1146,7 +1146,7 @@
                 };
 
                 const deleteNotification = async (id, trigger = null) => {
-                    if (!window.confirm('Apagar esta notificaÃ§Ã£o?')) {
+                    if (!window.confirm('Apagar esta notificação?')) {
                         return;
                     }
 
@@ -1175,7 +1175,7 @@
                 };
 
                 const deleteAllNotifications = async (trigger = null) => {
-                    if (!window.confirm('Apagar todas as suas notificaÃ§Ãµes recebidas?')) {
+                    if (!window.confirm('Apagar todas as suas notificações recebidas?')) {
                         return;
                     }
 

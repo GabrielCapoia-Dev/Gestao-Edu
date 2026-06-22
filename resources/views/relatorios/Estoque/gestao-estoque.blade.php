@@ -178,7 +178,7 @@
                         </td>
                     </tr>
                     <tr>
-                        <th>Quantidade media por item</th>
+                        <th>Quantidade média por item</th>
                         <td class="right">
                             {{ $metricas->total_itens > 0 ? number_format($metricas->quantidade_total / $metricas->total_itens, 3, ',', '.') : '0,000' }}
                         </td>

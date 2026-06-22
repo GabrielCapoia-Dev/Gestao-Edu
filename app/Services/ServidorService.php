@@ -146,7 +146,7 @@ class ServidorService
 
                 if ($professor && $this->professorPossuiVinculosPedagogicos($professor)) {
                     throw ValidationException::withMessages([
-                        'vinculos_funcionais' => 'Nao e possivel remover a funcao Professor enquanto houver vinculos pedagogicos ativos.',
+                        'vinculos_funcionais' => 'Não é possível remover a função Professor enquanto houver vínculos pedagógicos ativos.',
                     ]);
                 }
             }
@@ -357,7 +357,7 @@ class ServidorService
 
         if (blank($servidor->id_escola) || blank($servidor->matricula) || blank($servidor->nome)) {
             throw ValidationException::withMessages([
-                'vinculos_funcionais' => 'Para atribuir a funcao Professor, informe escola, matricula e nome do servidor.',
+                'vinculos_funcionais' => 'Para atribuir a função Professor, informe escola, matrícula e nome do servidor.',
             ]);
         }
 

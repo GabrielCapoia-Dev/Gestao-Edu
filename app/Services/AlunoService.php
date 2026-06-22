@@ -518,8 +518,8 @@ class AlunoService
                     DeleteAlunosEmMassaJob::dispatch($ids, Auth::id(), $processo->getKey())->afterCommit();
 
                     Notification::make()
-                        ->title('Exclusao enviada para processamento')
-                        ->body(count($ids).' aluno(s) foram enviados para exclusao em segundo plano. Acompanhe em Minhas Exportacoes.')
+                        ->title('Exclusão enviada para processamento')
+                        ->body(count($ids).' aluno(s) foram enviados para exclusão em segundo plano. Acompanhe em Minhas Exportações.')
                         ->success()
                         ->send();
                 })
@@ -540,7 +540,7 @@ class AlunoService
             'user_id' => Auth::id(),
             'type' => 'alunos_exclusao_massa',
             'format' => 'processo',
-            'label' => 'Exclusao de alunos em massa',
+            'label' => 'Exclusão de alunos em massa',
             'filters' => ['total' => count($ids)],
             'metadata' => ['process_kind' => 'exclusao_alunos_massa'],
             'fingerprint' => hash('sha256', 'alunos_exclusao|'.Auth::id().'|'.json_encode($ids).'|'.Str::uuid()),

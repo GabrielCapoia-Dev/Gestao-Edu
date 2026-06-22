@@ -5,7 +5,7 @@
 @section('content')
     @php
         $turnoLabel = static fn (?string $turno): string => match ($turno) {
-            'manha' => 'Manha',
+            'manha' => 'Manhã',
             'tarde' => 'Tarde',
             'noite' => 'Noite',
             'integral' => 'Integral',
@@ -17,7 +17,7 @@
         <p class="mobile-page-intro__eyebrow">Professor por turma</p>
         <h1 class="mobile-page-intro__title">Consulta detalhada por escola, série e componente.</h1>
         <p class="mobile-page-intro__subtitle">
-            A estrutura em cards facilita a leitura rapida no celular e mantem os filtros essenciais sempre visíveis.
+            A estrutura em cards facilita a leitura rápida no celular e mantém os filtros essenciais sempre visíveis.
         </p>
     </section>
 
@@ -47,7 +47,7 @@
 
             <select name="turno" class="mobile-select">
                 <option value="">Todos os turnos</option>
-                <option value="manha" @selected($filters['turno'] === 'manha')>Manha</option>
+                <option value="manha" @selected($filters['turno'] === 'manha')>Manhã</option>
                 <option value="tarde" @selected($filters['turno'] === 'tarde')>Tarde</option>
                 <option value="noite" @selected($filters['turno'] === 'noite')>Noite</option>
                 <option value="integral" @selected($filters['turno'] === 'integral')>Integral</option>

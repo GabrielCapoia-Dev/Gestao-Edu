@@ -57,7 +57,7 @@ class TurmaService
                 fn (Builder $query, string $search): Builder => $query->whereIn(
                     'turno',
                     collect([
-                        'manha' => 'Manha',
+                        'manha' => 'Manhã',
                         'tarde' => 'Tarde',
                         'noite' => 'Noite',
                         'integral' => 'Integral',

@@ -46,7 +46,7 @@
         <div class="mobile-section__header">
             <div>
                 <p class="mobile-section__eyebrow">Relatórios</p>
-                <h2 class="mobile-section__title">Leitura rapida, filtros e consultas</h2>
+                <h2 class="mobile-section__title">Leitura rápida, filtros e consultas</h2>
             </div>
         </div>
 

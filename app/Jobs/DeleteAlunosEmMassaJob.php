@@ -114,7 +114,7 @@ class DeleteAlunosEmMassaJob implements ShouldQueue
         $mensagem = $this->mensagemConclusao($excluidos, $ignorados, $falhas);
 
         $usuario->notify(new SistemaNotification(
-            titulo: $falhas > 0 ? 'Exclusao de alunos concluida com falhas' : 'Exclusao de alunos concluída',
+            titulo: $falhas > 0 ? 'Exclusão de alunos concluída com falhas' : 'Exclusão de alunos concluída',
             mensagem: $mensagem,
             url: route('filament.admin.resources.alunos.index'),
             label: 'Ver alunos',
@@ -127,7 +127,7 @@ class DeleteAlunosEmMassaJob implements ShouldQueue
     private function notificarFalha(User $usuario, string $mensagem): void
     {
         $usuario->notify(new SistemaNotification(
-            titulo: 'Falha na exclusao de alunos',
+            titulo: 'Falha na exclusão de alunos',
             mensagem: $mensagem,
             url: route('filament.admin.resources.alunos.index'),
             label: 'Ver alunos',

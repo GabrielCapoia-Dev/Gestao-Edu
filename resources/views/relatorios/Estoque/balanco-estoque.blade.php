@@ -119,7 +119,7 @@
     <table class="listagem">
         <tbody>
             <tr>
-                <th>Codigo</th>
+                <th>Código</th>
                 <td>{{ $balanco->codigo }}</td>
                 <th>Status</th>
                 <td>{{ $balanco->status?->label() ?? '-' }}</td>

@@ -5,7 +5,7 @@
 @section('content')
     <section class="mobile-page-intro">
         <p class="mobile-page-intro__eyebrow">Dashboard</p>
-        <h1 class="mobile-page-intro__title">Panorama geral dos vinculos do sistema.</h1>
+        <h1 class="mobile-page-intro__title">Panorama geral dos vínculos do sistema.</h1>
         <p class="mobile-page-intro__subtitle">
             Esta visão mobile concentra os indicadores principais e aponta onde a cobertura de professores está mais pressionada.
         </p>
@@ -16,7 +16,7 @@
         <article class="mobile-stat-card"><small>Turmas</small><strong>{{ number_format($stats['totalTurmas'], 0, ',', '.') }}</strong></article>
         <article class="mobile-stat-card"><small>Componentes</small><strong>{{ number_format($stats['totalComponentes'], 0, ',', '.') }}</strong></article>
         <article class="mobile-stat-card"><small>Escolas</small><strong>{{ number_format($stats['totalEscolas'], 0, ',', '.') }}</strong></article>
-        <article class="mobile-stat-card"><small>Vinculos</small><strong>{{ number_format($stats['vinculos'], 0, ',', '.') }}</strong></article>
+        <article class="mobile-stat-card"><small>Vínculos</small><strong>{{ number_format($stats['vinculos'], 0, ',', '.') }}</strong></article>
         <article class="mobile-stat-card"><small>Com professor</small><strong>{{ number_format($stats['comProfessor'], 0, ',', '.') }}</strong></article>
         <article class="mobile-stat-card"><small>Sem professor</small><strong>{{ number_format($stats['semProfessor'], 0, ',', '.') }}</strong></article>
     </section>

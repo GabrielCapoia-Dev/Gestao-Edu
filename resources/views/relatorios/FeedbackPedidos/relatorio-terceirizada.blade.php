@@ -159,7 +159,7 @@
                             <div class="card-value">{{ $empresaData['total'] ?? 0 }}</div>
                         </td>
                         <td>
-                            <div class="card-label">Media</div>
+                            <div class="card-label">Média</div>
                             <div class="card-value">{{ $empresaData['media'] ?? 0 }}/5</div>
                         </td>
                         <td>
@@ -167,7 +167,7 @@
                             <div class="card-value">{{ $empresaData['reabertos'] ?? 0 }}</div>
                         </td>
                         <td>
-                            <div class="card-label">Criticas</div>
+                            <div class="card-label">Críticas</div>
                             <div class="card-value">{{ $empresaData['criticas'] ?? 0 }}</div>
                         </td>
                     </tr>
