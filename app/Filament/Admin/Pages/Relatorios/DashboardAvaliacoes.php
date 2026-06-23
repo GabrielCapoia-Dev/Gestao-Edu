@@ -1976,7 +1976,7 @@ class DashboardAvaliacoes extends Page implements HasForms
         $query = (clone $this->baseRespostasQuery($avaliacaoIds))
             ->join('avaliacoes as av', 'av.id', '=', 'ar.avaliacao_id')
             ->leftJoin('escolas as e', 'e.id', '=', 't.id_escola')
-            ->leftJoin('séries as s', 's.id', '=', 't.id_serie')
+            ->leftJoin('series as s', 's.id', '=', 't.id_serie')
             ->groupBy(
                 'ar.avaliacao_id',
                 'ar.turma_id',
