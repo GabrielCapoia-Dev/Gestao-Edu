@@ -36,6 +36,8 @@ class GestaoPautas extends Page implements HasForms, HasTable
     use InteractsWithForms;
     use InteractsWithTable;
 
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static ?string $navigationParentItem = 'Avaliações';
 
     protected string $view = 'filament.pages.gestao-pautas';

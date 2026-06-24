@@ -30,6 +30,8 @@ class GestaoAlternativas extends Page implements HasTable
 {
     use InteractsWithTable;
 
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static ?string $navigationParentItem = 'Avaliações';
 
     protected string $view = 'filament.pages.gestao-alternativas';

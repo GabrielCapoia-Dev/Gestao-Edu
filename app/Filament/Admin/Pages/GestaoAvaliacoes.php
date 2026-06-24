@@ -92,6 +92,27 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('pautas')
+                ->label('Pautas')
+                ->icon(Heroicon::ClipboardDocumentList)
+                ->color('gray')
+                ->url('/admin/avaliacoes-pautas')
+                ->visible(fn(): bool => Auth::user()?->hasPermissionTo('Listar Pautas') ?? false),
+
+            Action::make('alternativas')
+                ->label('Alternativas')
+                ->icon(Heroicon::QueueList)
+                ->color('gray')
+                ->url('/admin/avaliacoes-alternativas')
+                ->visible(fn(): bool => Auth::user()?->hasPermissionTo('Listar Alternativas') ?? false),
+
+            Action::make('dashboard')
+                ->label('Dashboard')
+                ->icon(Heroicon::ChartBar)
+                ->color('gray')
+                ->url('/admin/dashboard-avaliacoes')
+                ->visible(fn(): bool => Auth::user()?->hasPermissionTo('Listar Avaliações') ?? false),
+
             Action::make('create')
                 ->label('Nova avaliação')
                 ->icon(Heroicon::Plus)

@@ -40,6 +40,8 @@ class DashboardAvaliacoes extends Page implements HasForms
 {
     use InteractsWithForms;
 
+    protected static bool $shouldRegisterNavigation = false;
+
     protected string $view = 'filament.pages.relatorios.dashboard-avaliacoes';
 
     protected static ?string $title = 'Dashboard de Avaliações';
