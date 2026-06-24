@@ -435,7 +435,7 @@ class AlunoService
                 ->visible(fn (Aluno $record): bool => ! $this->professorEstaBloqueado($user)
                     && $record->isPrincipal()
                     && ($record->estaMatriculado() || $record->estaPendente())
-                    && ($user?->hasPermissionLike('realizar remanejamento de aluno') ?? false))
+                    && ($user?->hasPermissionLike('Realizar Remanejamento de Aluno') ?? false))
                 ->modalHeading(fn (Aluno $record): string => 'Remanejar '.$record->nome)
                 ->modalSubmitActionLabel('Remanejar')
                 ->schema(fn (Aluno $record): array => [
@@ -471,7 +471,7 @@ class AlunoService
                     && $record->isPrincipal()
                     && ($record->estaMatriculado() || $record->estaPendente())
                     && (int) $record->turma_origem_id > 0
-                    && ($user?->hasPermissionLike('realizar remanejamento de aluno') ?? false))
+                    && ($user?->hasPermissionLike('Realizar Remanejamento de Aluno') ?? false))
                 ->requiresConfirmation()
                 ->modalHeading('Voltar para a turma anterior')
                 ->modalDescription('A volta sera registrada como um novo remanejamento.')
