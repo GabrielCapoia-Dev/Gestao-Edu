@@ -23,6 +23,8 @@ class AlunoMovimentacaoService
 
     public const MOVIMENTACAO_HISTORICO = 'historico';
 
+    public const MOVIMENTACAO_CONTRA_TURNO = 'contra_turno';
+
     public function criarMatricula(array $data, ?User $usuario = null): Aluno
     {
         return DB::transaction(function () use ($data, $usuario): Aluno {
@@ -44,12 +46,16 @@ class AlunoMovimentacaoService
                 'nome' => $origemPendente?->nome ?? $data['nome'] ?? null,
                 'cgm' => $cgm,
                 'data_nascimento' => $origemPendente?->data_nascimento ?? $data['data_nascimento'] ?? null,
+                'sexo' => $origemPendente?->sexo ?? $data['sexo'] ?? null,
+                'data_matricula' => $origemPendente?->data_matricula ?? $data['data_matricula'] ?? null,
+                'tipo_vinculo' => Aluno::TIPO_VINCULO_PRINCIPAL,
+                'permite_contra_turno' => false,
                 'status' => $status,
                 'status_alterado_em' => now(),
                 'status_alterado_por' => $usuario?->id,
                 'status_motivo' => $data['status_motivo'] ?? ($origemPendente
-                    ? 'Matrícula criada como pendente por transferência não finalizada na escola de origem.'
-                    : 'Matrícula criada no sistema.'),
+                    ? 'Matricula criada como pendente por transferencia nao finalizada na escola de origem.'
+                    : 'Matricula criada no sistema.'),
                 'aluno_origem_id' => $origemHistorica?->id,
                 'turma_origem_id' => $origemHistorica?->id_turma,
                 'movimentacao_origem' => $origemHistorica ? $this->tipoOrigemPorStatus($origemHistorica) : null,
@@ -85,6 +91,7 @@ class AlunoMovimentacaoService
         $alunosCadastrados = Aluno::query()
             ->with('turma')
             ->whereIn('cgm', $cgms)
+            ->where('tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL)
             ->whereIn('status', [Aluno::STATUS_MATRICULADO, Aluno::STATUS_PENDENTE])
             ->get();
 
@@ -111,14 +118,14 @@ class AlunoMovimentacaoService
             if ($chaveUnidade !== null && $alunosCadastrados->first(fn (Aluno $a): bool => $a->cgm_unidade_matricula_ativa === $chaveUnidade)) {
                 throw new MatriculaAlunoBloqueadaException(
                     $alunosCadastrados->first(fn (Aluno $a): bool => $a->cgm_unidade_matricula_ativa === $chaveUnidade),
-                    'Este CGM já está cadastrado nesta unidade.'
+                    'Este CGM ja esta cadastrado nesta unidade.'
                 );
             }
 
             if (isset($pendentesIndex[$cgm])) {
                 throw new MatriculaAlunoBloqueadaException(
                     $pendentesIndex[$cgm],
-                    'Este CGM já possui uma matrícula pendente em outra unidade. Resolva a pendência antes de criar uma nova matrícula.'
+                    'Este CGM ja possui uma matricula pendente em outra unidade. Resolva a pendencia antes de criar uma nova matricula.'
                 );
             }
 
@@ -131,12 +138,16 @@ class AlunoMovimentacaoService
                 'nome' => $origemPendente?->nome ?? $linha['nome'],
                 'cgm' => $cgm,
                 'data_nascimento' => $origemPendente?->data_nascimento ?? $linha['data_nascimento'] ?? null,
+                'sexo' => $origemPendente?->sexo ?? $linha['sexo'] ?? null,
+                'data_matricula' => $origemPendente?->data_matricula ?? $linha['data_matricula'] ?? null,
+                'tipo_vinculo' => Aluno::TIPO_VINCULO_PRINCIPAL,
+                'permite_contra_turno' => false,
                 'status' => $status,
                 'status_alterado_em' => now(),
                 'status_alterado_por' => $usuario?->id,
                 'status_motivo' => $linha['status_motivo'] ?? ($origemPendente
-                    ? 'Matrícula criada como pendente por transferência não finalizada na escola de origem.'
-                    : 'Matrícula criada no sistema.'),
+                    ? 'Matricula criada como pendente por transferencia nao finalizada na escola de origem.'
+                    : 'Matricula criada no sistema.'),
                 'aluno_origem_id' => $origemHistorica?->id,
                 'turma_origem_id' => $origemHistorica?->id_turma,
                 'movimentacao_origem' => $origemHistorica ? $this->tipoOrigemPorStatus($origemHistorica) : null,
@@ -178,8 +189,7 @@ class AlunoMovimentacaoService
         ?User $usuario = null,
         ?Aluno $ignorar = null,
         bool $permitirPendencia = false
-    ): ?Aluno
-    {
+    ): ?Aluno {
         $cgm = Aluno::normalizarCgm($cgm);
 
         if ($cgm === '') {
@@ -200,7 +210,7 @@ class AlunoMovimentacaoService
             if ($ativoNaMesmaUnidade) {
                 throw new MatriculaAlunoBloqueadaException(
                     $ativoNaMesmaUnidade,
-                    'Este CGM já está cadastrado nesta unidade.'
+                    'Este CGM ja esta cadastrado nesta unidade.'
                 );
             }
         }
@@ -208,6 +218,7 @@ class AlunoMovimentacaoService
         $pendente = Aluno::query()
             ->with('turma.escola')
             ->where('cgm', $cgm)
+            ->where('tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL)
             ->where('status', Aluno::STATUS_PENDENTE)
             ->when($ignorar, fn (Builder $query): Builder => $query->whereKeyNot((int) $ignorar->id))
             ->first();
@@ -215,13 +226,14 @@ class AlunoMovimentacaoService
         if ($pendente) {
             throw new MatriculaAlunoBloqueadaException(
                 $pendente,
-                'Este CGM já possui uma matrícula pendente em outra unidade. Resolva a pendência antes de criar uma nova matrícula.'
+                'Este CGM ja possui uma matricula pendente em outra unidade. Resolva a pendencia antes de criar uma nova matricula.'
             );
         }
 
         $ativo = Aluno::query()
             ->with('turma.escola')
             ->where('cgm_matricula_ativa', $cgm)
+            ->where('tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL)
             ->when($ignorar, fn (Builder $query): Builder => $query->whereKeyNot((int) $ignorar->id))
             ->first();
 
@@ -246,9 +258,13 @@ class AlunoMovimentacaoService
             $statusDestino = $aluno->estaPendente() ? Aluno::STATUS_PENDENTE : Aluno::STATUS_MATRICULADO;
             $pendenciaOrigemId = $aluno->pendencia_origem_aluno_id;
 
+            $this->assertAlunoPrincipal($aluno, 'Somente o vinculo principal pode ser remanejado.');
+
             if (! $aluno->estaMatriculado() && ! $aluno->estaPendente()) {
                 throw new RuntimeException('Somente alunos matriculados ou pendentes podem ser remanejados.');
             }
+
+            $this->bloquearMovimentacaoSePossuiContraTurnoAtivo($aluno);
 
             if ((int) $aluno->id_turma === (int) $turmaDestino->id) {
                 throw new RuntimeException('Selecione uma turma diferente para remanejar o aluno.');
@@ -259,7 +275,7 @@ class AlunoMovimentacaoService
             }
 
             if ((int) $aluno->turma?->id_serie !== (int) $turmaDestino->id_serie) {
-                throw new RuntimeException('Remanejamento so pode ocorrer entre turmas da mesma série.');
+                throw new RuntimeException('Remanejamento so pode ocorrer entre turmas da mesma serie.');
             }
 
             $aluno->forceFill([
@@ -275,11 +291,15 @@ class AlunoMovimentacaoService
                 'nome' => $aluno->nome,
                 'cgm' => $aluno->cgm,
                 'data_nascimento' => $aluno->data_nascimento,
+                'sexo' => $aluno->sexo,
+                'data_matricula' => $aluno->data_matricula,
                 'id_turma' => (int) $turmaDestino->id,
+                'tipo_vinculo' => Aluno::TIPO_VINCULO_PRINCIPAL,
+                'permite_contra_turno' => (bool) $aluno->permite_contra_turno,
                 'status' => $statusDestino,
                 'status_alterado_em' => now(),
                 'status_alterado_por' => $usuario?->id,
-                'status_motivo' => $motivo ?: 'Matrícula criada por remanejamento.',
+                'status_motivo' => $motivo ?: 'Matricula criada por remanejamento.',
                 'aluno_origem_id' => (int) $aluno->id,
                 'turma_origem_id' => (int) $aluno->id_turma,
                 'movimentacao_origem' => self::MOVIMENTACAO_REMANEJAMENTO,
@@ -297,15 +317,19 @@ class AlunoMovimentacaoService
         return DB::transaction(function () use ($aluno, $usuario, $motivo): Aluno {
             $aluno->refresh();
 
+            $this->assertAlunoPrincipal($aluno, 'Somente o vinculo principal pode ser transferido.');
+
             if (! $aluno->estaMatriculado()) {
                 throw new RuntimeException('Somente alunos matriculados podem ser transferidos.');
             }
+
+            $this->bloquearMovimentacaoSePossuiContraTurnoAtivo($aluno);
 
             $aluno->forceFill([
                 'status' => Aluno::STATUS_TRANSFERIDO,
                 'status_alterado_em' => now(),
                 'status_alterado_por' => $usuario?->id,
-                'status_motivo' => $motivo ?: 'Parecer de transferência gerado.',
+                'status_motivo' => $motivo ?: 'Parecer de transferencia gerado.',
             ])->save();
 
             $this->bloquearDadosAvaliativosOrigem($aluno, self::MOVIMENTACAO_TRANSFERENCIA);
@@ -317,9 +341,13 @@ class AlunoMovimentacaoService
 
     public function marcarStatusFinal(Aluno $aluno, string $status, ?User $usuario = null, ?string $motivo = null): Aluno
     {
+        $this->assertAlunoPrincipal($aluno, 'Somente o vinculo principal pode receber status final.');
+
         if (! in_array($status, [Aluno::STATUS_APROVADO, Aluno::STATUS_RETIDO, Aluno::STATUS_TRANSFERIDO], true)) {
-            throw new RuntimeException('Status final inválido para aluno.');
+            throw new RuntimeException('Status final invalido para aluno.');
         }
+
+        $this->bloquearMovimentacaoSePossuiContraTurnoAtivo($aluno);
 
         $aluno->forceFill([
             'status' => $status,
@@ -334,6 +362,131 @@ class AlunoMovimentacaoService
         );
 
         return $aluno;
+    }
+
+    public function marcarContraTurno(Aluno $aluno, ?User $usuario = null, ?string $motivo = null): Aluno
+    {
+        return DB::transaction(function () use ($aluno, $usuario, $motivo): Aluno {
+            $aluno->refresh();
+
+            $this->assertAlunoPrincipal($aluno, 'Somente o vinculo principal pode ser marcado como contra turno.');
+
+            if (! $aluno->estaMatriculado()) {
+                throw new RuntimeException('Somente alunos matriculados podem ser marcados como contra turno.');
+            }
+
+            $aluno->forceFill([
+                'permite_contra_turno' => true,
+                'status_alterado_em' => now(),
+                'status_alterado_por' => $usuario?->id,
+                'status_motivo' => $motivo ?: 'Aluno marcado como apto para contra turno.',
+            ])->save();
+
+            return $aluno;
+        });
+    }
+
+    public function vincularContraTurno(Aluno $aluno, int $turmaDestinoId, ?User $usuario = null, ?string $motivo = null): Aluno
+    {
+        return DB::transaction(function () use ($aluno, $turmaDestinoId, $usuario, $motivo): Aluno {
+            $aluno->refresh()->loadMissing('turma.escola', 'turma.serie');
+            $this->assertAlunoPrincipal($aluno, 'Somente o vinculo principal pode receber turma de contra turno.');
+
+            if (! $aluno->estaMatriculado()) {
+                throw new RuntimeException('Somente alunos matriculados podem receber turma de contra turno.');
+            }
+
+            $turmaDestino = Turma::query()->with(['escola', 'serie'])->findOrFail($turmaDestinoId);
+            $this->validarTurmaContraTurno($aluno, $turmaDestino);
+
+            $existente = $this->contraTurnoAtivoDoPrincipal($aluno);
+
+            if ($existente && (int) $existente->id_turma !== (int) $turmaDestino->id) {
+                throw new RuntimeException('O aluno ja possui um vinculo ativo de contra turno.');
+            }
+
+            $aluno->forceFill([
+                'permite_contra_turno' => true,
+                'status_alterado_em' => now(),
+                'status_alterado_por' => $usuario?->id,
+                'status_motivo' => $motivo ?: 'Aluno marcado como apto para contra turno.',
+            ])->save();
+
+            if ($existente) {
+                return $existente;
+            }
+
+            return Aluno::query()->create([
+                'nome' => $aluno->nome,
+                'cgm' => $aluno->cgm,
+                'data_nascimento' => $aluno->data_nascimento,
+                'sexo' => $aluno->sexo,
+                'data_matricula' => $aluno->data_matricula,
+                'id_turma' => (int) $turmaDestino->id,
+                'tipo_vinculo' => Aluno::TIPO_VINCULO_CONTRA_TURNO,
+                'permite_contra_turno' => false,
+                'status' => Aluno::STATUS_MATRICULADO,
+                'status_alterado_em' => now(),
+                'status_alterado_por' => $usuario?->id,
+                'status_motivo' => $motivo ?: 'Vinculo de contra turno criado.',
+                'aluno_origem_id' => (int) $aluno->id,
+                'turma_origem_id' => (int) $aluno->id_turma,
+                'movimentacao_origem' => self::MOVIMENTACAO_CONTRA_TURNO,
+            ]);
+        });
+    }
+
+    public function encerrarContraTurno(Aluno $aluno, ?User $usuario = null, ?string $motivo = null): Aluno
+    {
+        return DB::transaction(function () use ($aluno, $usuario, $motivo): Aluno {
+            $aluno->refresh();
+
+            if (! $aluno->isContraTurno()) {
+                throw new RuntimeException('Somente vinculos de contra turno podem ser encerrados.');
+            }
+
+            if (! $aluno->estaMatriculado()) {
+                throw new RuntimeException('Somente vinculos de contra turno ativos podem ser encerrados.');
+            }
+
+            $this->bloquearDadosAvaliativosOrigem($aluno, self::MOVIMENTACAO_CONTRA_TURNO);
+
+            $aluno->forceFill([
+                'status' => Aluno::STATUS_CONTRA_TURNO_ENCERRADO,
+                'status_alterado_em' => now(),
+                'status_alterado_por' => $usuario?->id,
+                'status_motivo' => $motivo ?: 'Vinculo de contra turno encerrado.',
+            ])->save();
+
+            $principal = $this->principalAtivoPorCgm($aluno->cgm);
+
+            if ($principal) {
+                $principal->forceFill([
+                    'permite_contra_turno' => false,
+                    'status_alterado_em' => now(),
+                    'status_alterado_por' => $usuario?->id,
+                    'status_motivo' => $motivo ?: 'Contra turno desmarcado.',
+                ])->save();
+            }
+
+            return $aluno;
+        });
+    }
+
+    public function voltarParaTurmaAnterior(Aluno $aluno, ?User $usuario = null, ?string $motivo = null): Aluno
+    {
+        $this->assertAlunoPrincipal($aluno, 'Somente o vinculo principal pode voltar para a turma anterior.');
+
+        if ((int) $aluno->turma_origem_id <= 0) {
+            throw new RuntimeException('O aluno nao possui turma anterior registrada para retorno.');
+        }
+
+        return $this->remanejar(
+            $aluno,
+            (int) $aluno->turma_origem_id,
+            $usuario,
+            $motivo ?: 'Aluno retornado para a turma anterior.'
+        );
     }
 
     public function copiarDadosAvaliativosBloqueados(Aluno $origem, Aluno $destino, string $tipo): void
@@ -499,6 +652,7 @@ class AlunoMovimentacaoService
         return Aluno::query()
             ->with('turma')
             ->where('cgm', Aluno::normalizarCgm($cgm))
+            ->where('tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL)
             ->whereNotIn('status', [Aluno::STATUS_MATRICULADO, Aluno::STATUS_PENDENTE])
             ->latest('status_alterado_em')
             ->latest('updated_at')
@@ -516,6 +670,7 @@ class AlunoMovimentacaoService
     {
         Aluno::query()
             ->where('pendencia_origem_aluno_id', (int) $origem->id)
+            ->where('tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL)
             ->where('status', Aluno::STATUS_PENDENTE)
             ->orderBy('id')
             ->get()
@@ -526,7 +681,7 @@ class AlunoMovimentacaoService
                     'status' => Aluno::STATUS_MATRICULADO,
                     'status_alterado_em' => now(),
                     'status_alterado_por' => $usuario?->id,
-                    'status_motivo' => 'Pendência de transferência resolvida pelo parecer da escola de origem.',
+                    'status_motivo' => 'Pendencia de transferencia resolvida pelo parecer da escola de origem.',
                     'aluno_origem_id' => (int) $origem->id,
                     'turma_origem_id' => (int) $origem->id_turma,
                     'movimentacao_origem' => self::MOVIMENTACAO_TRANSFERENCIA,
@@ -569,7 +724,7 @@ class AlunoMovimentacaoService
     {
         $alunoAtivo->loadMissing('turma.escola');
 
-        $titulo = 'Impedimento de matrícula por falta de transferência';
+        $titulo = 'Impedimento de matricula por falta de transferencia';
         $mensagem = (new MatriculaAlunoBloqueadaException($alunoAtivo))->getMessage();
         $escolaId = (int) ($alunoAtivo->turma?->id_escola ?? 0);
         $url = route('filament.admin.pages.parecer-transferencia-aluno', ['aluno' => $alunoAtivo->id]);
@@ -584,7 +739,7 @@ class AlunoMovimentacaoService
                 titulo: $titulo,
                 mensagem: $mensagem,
                 url: $podeReceberLink ? $url : null,
-                label: $podeReceberLink ? 'Abrir parecer de transferência' : null,
+                label: $podeReceberLink ? 'Abrir parecer de transferencia' : null,
                 prioridade: 'alta',
                 escopo: $alunoAtivo->turma?->escola?->nome,
                 metadata: [
@@ -612,6 +767,62 @@ class AlunoMovimentacaoService
             })
             ->unique('id')
             ->values();
+    }
+
+    private function assertAlunoPrincipal(Aluno $aluno, string $message): void
+    {
+        if (! $aluno->isPrincipal()) {
+            throw new RuntimeException($message);
+        }
+    }
+
+    private function bloquearMovimentacaoSePossuiContraTurnoAtivo(Aluno $aluno): void
+    {
+        if ($this->contraTurnoAtivoDoPrincipal($aluno)) {
+            throw new RuntimeException('Resolva o vinculo ativo de contra turno antes de movimentar a matricula principal.');
+        }
+    }
+
+    private function validarTurmaContraTurno(Aluno $aluno, Turma $turmaDestino): void
+    {
+        $turmaOrigem = $aluno->turma;
+
+        if (! $turmaOrigem) {
+            throw new RuntimeException('Turma principal do aluno nao encontrada.');
+        }
+
+        if ((int) $turmaOrigem->id === (int) $turmaDestino->id) {
+            throw new RuntimeException('Selecione uma turma diferente para o contra turno.');
+        }
+
+        if ((int) $turmaOrigem->id_escola !== (int) $turmaDestino->id_escola) {
+            throw new RuntimeException('Contra turno so pode ocorrer dentro da mesma escola.');
+        }
+
+        if ((int) $turmaOrigem->id_serie !== (int) $turmaDestino->id_serie) {
+            throw new RuntimeException('Contra turno so pode ocorrer entre turmas da mesma serie.');
+        }
+
+        if ((string) $turmaOrigem->turno === (string) $turmaDestino->turno) {
+            throw new RuntimeException('Contra turno exige uma turma de turno diferente da matricula principal.');
+        }
+    }
+
+    private function contraTurnoAtivoDoPrincipal(Aluno $aluno): ?Aluno
+    {
+        return Aluno::query()
+            ->where('cgm_contra_turno_ativo', Aluno::normalizarCgm($aluno->cgm))
+            ->where('tipo_vinculo', Aluno::TIPO_VINCULO_CONTRA_TURNO)
+            ->where('status', Aluno::STATUS_MATRICULADO)
+            ->first();
+    }
+
+    private function principalAtivoPorCgm(string $cgm): ?Aluno
+    {
+        return Aluno::query()
+            ->where('cgm_matricula_ativa', Aluno::normalizarCgm($cgm))
+            ->where('tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL)
+            ->first();
     }
 
     private function usuarioPertenceAEscola(User $user, int $escolaId): bool

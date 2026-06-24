@@ -16,6 +16,7 @@ use App\Models\Serie;
 use App\Models\TipoAvaliacao;
 use App\Models\Turma;
 use App\Models\User;
+use App\Services\AlunoMovimentacaoService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
@@ -149,6 +150,56 @@ class AvaliacaoAlunoStatusTest extends TestCase
             'pauta_id' => $pauta->id,
             'turma_id' => $turma->id,
             'aluno_id' => $alunoRegular->id,
+            'alternativa_id' => $alternativaOriginal->id,
+        ]);
+    }
+
+    public function test_contra_turno_participa_da_turma_secundaria_e_pode_receber_resposta(): void
+    {
+        Permission::findOrCreate('Responder AvaliaÃ§Ãµes');
+
+        Permission::findOrCreate("Responder Avalia\u{00E7}\u{00F5}es");
+
+        [$usuario, $escola, $serie, $turmaPrincipal, $avaliacao, $pauta, $alternativaOriginal, $alternativaMassa, $componente] = $this->criarCenarioProfessor();
+
+        $professorId = Professor::query()->where('user_id', $usuario->id)->value('id');
+        $turmaContraTurno = Turma::query()->create([
+            'codigo' => 'TUR-CT-AVAL',
+            'nome' => 'B',
+            'turno' => 'tarde',
+            'id_serie' => $serie->id,
+            'id_escola' => $escola->id,
+        ]);
+        $turmaContraTurno->componentes()->attach($componente->id, [
+            'professor_id' => $professorId,
+            'tem_professor' => true,
+        ]);
+        $avaliacao->turmas()->attach($turmaContraTurno->id);
+
+        $alunoPrincipal = Aluno::query()->create([
+            'nome' => 'Aluno Principal Contra Turno',
+            'cgm' => 'CGM-AVAL-CT',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turmaPrincipal->id,
+        ]);
+
+        $alunoContraTurno = app(AlunoMovimentacaoService::class)->vincularContraTurno($alunoPrincipal, $turmaContraTurno->id);
+
+        Livewire::actingAs($usuario)
+            ->test(AvaliacoesProfessor::class)
+            ->set('avaliacao', $avaliacao->id)
+            ->set('serieEscola', $escola->id.':'.$serie->id)
+            ->call('alternarTurma', $turmaContraTurno->id)
+            ->call('alternarPauta', $turmaContraTurno->id, $pauta->id)
+            ->assertSee('Aluno Principal Contra Turno')
+            ->set("respostas.{$pauta->id}.{$alunoContraTurno->id}.alternativa_id", $alternativaOriginal->id)
+            ->call('salvarRespostas');
+
+        $this->assertDatabaseHas('avaliacao_respostas', [
+            'avaliacao_id' => $avaliacao->id,
+            'pauta_id' => $pauta->id,
+            'turma_id' => $turmaContraTurno->id,
+            'aluno_id' => $alunoContraTurno->id,
             'alternativa_id' => $alternativaOriginal->id,
         ]);
     }

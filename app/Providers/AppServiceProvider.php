@@ -142,12 +142,14 @@ class AppServiceProvider extends ServiceProvider
         };
 
         $selectFixJs = 'js/filament-modal-select-fix.js';
+        $datePasteJs = 'js/filament-date-paste.js';
         $actionLoadingJs = 'js/app/action-loading.js';
         $actionLoadingCss = 'css/action-loading.css';
         $geralCss = 'css/geral.css';
 
         FilamentAsset::register([
             Js::make('filament-modal-select-fix', asset($selectFixJs).'?v='.$assetVersion($selectFixJs)),
+            Js::make('filament-date-paste', asset($datePasteJs).'?v='.$assetVersion($datePasteJs)),
             Js::make('action-loading', asset($actionLoadingJs).'?v='.$assetVersion($actionLoadingJs)),
             Css::make('geral', asset($geralCss).'?v='.$assetVersion($geralCss)),
             Css::make('action-loading', asset($actionLoadingCss).'?v='.$assetVersion($actionLoadingCss)),

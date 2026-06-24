@@ -20,6 +20,7 @@ class AlunoTransferenciaPendenteService
 
         $pendentes = Aluno::query()
             ->with(['pendenciaOrigem.turma.escola', 'pendenciaOrigem.turma.serie'])
+            ->where('tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL)
             ->where('status', Aluno::STATUS_PENDENTE)
             ->whereNotNull('pendencia_origem_aluno_id')
             ->orderBy('status_alterado_em')

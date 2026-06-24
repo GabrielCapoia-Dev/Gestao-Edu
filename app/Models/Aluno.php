@@ -9,6 +9,10 @@ class Aluno extends Model
 {
     use HasFactory;
 
+    public const TIPO_VINCULO_PRINCIPAL = 'principal';
+
+    public const TIPO_VINCULO_CONTRA_TURNO = 'contra_turno';
+
     public const STATUS_MATRICULADO = 'matriculado';
 
     public const STATUS_PENDENTE = 'pendente';
@@ -21,17 +25,22 @@ class Aluno extends Model
 
     public const STATUS_RETIDO = 'retido';
 
+    public const STATUS_CONTRA_TURNO_ENCERRADO = 'contra_turno_encerrado';
+
     protected $table = 'alunos';
 
     protected $fillable = [
         'nome',
         'cgm',
         'cgm_matricula_ativa',
+        'cgm_contra_turno_ativo',
         'cgm_unidade_matricula_ativa',
         'data_nascimento',
         'sexo',
         'data_matricula',
         'id_turma',
+        'tipo_vinculo',
+        'permite_contra_turno',
         'status',
         'status_alterado_em',
         'status_alterado_por',
@@ -48,11 +57,14 @@ class Aluno extends Model
             'nome' => 'string',
             'cgm' => 'string',
             'cgm_matricula_ativa' => 'string',
+            'cgm_contra_turno_ativo' => 'string',
             'cgm_unidade_matricula_ativa' => 'string',
             'data_nascimento' => 'date',
             'sexo' => 'string',
             'data_matricula' => 'date',
             'id_turma' => 'integer',
+            'tipo_vinculo' => 'string',
+            'permite_contra_turno' => 'boolean',
             'status' => 'string',
             'status_alterado_em' => 'datetime',
             'status_alterado_por' => 'integer',
@@ -66,8 +78,15 @@ class Aluno extends Model
     {
         static::saving(function (Aluno $aluno): void {
             $aluno->cgm = self::normalizarCgm($aluno->cgm);
+            $aluno->tipo_vinculo = $aluno->tipo_vinculo ?: self::TIPO_VINCULO_PRINCIPAL;
             $aluno->status = $aluno->status ?: self::STATUS_MATRICULADO;
-            $aluno->cgm_matricula_ativa = $aluno->status === self::STATUS_MATRICULADO
+            $aluno->permite_contra_turno = $aluno->isContraTurno()
+                ? false
+                : (bool) $aluno->permite_contra_turno;
+            $aluno->cgm_matricula_ativa = $aluno->isPrincipal() && $aluno->status === self::STATUS_MATRICULADO
+                ? $aluno->cgm
+                : null;
+            $aluno->cgm_contra_turno_ativo = $aluno->isContraTurno() && $aluno->status === self::STATUS_MATRICULADO
                 ? $aluno->cgm
                 : null;
 
@@ -94,6 +113,7 @@ class Aluno extends Model
             self::STATUS_TRANSFERIDO => 'Transferido',
             self::STATUS_APROVADO => 'Aprovado',
             self::STATUS_RETIDO => 'Retido',
+            self::STATUS_CONTRA_TURNO_ENCERRADO => 'Contra turno encerrado',
         ];
     }
 
@@ -127,6 +147,29 @@ class Aluno extends Model
         return self::statusOptions()[$this->status] ?? ucfirst((string) $this->status);
     }
 
+    public static function tiposVinculoOptions(): array
+    {
+        return [
+            self::TIPO_VINCULO_PRINCIPAL => 'Principal',
+            self::TIPO_VINCULO_CONTRA_TURNO => 'Contra turno',
+        ];
+    }
+
+    public function tipoVinculoLabel(): string
+    {
+        return self::tiposVinculoOptions()[$this->tipo_vinculo] ?? ucfirst((string) $this->tipo_vinculo);
+    }
+
+    public function isPrincipal(): bool
+    {
+        return $this->tipo_vinculo === self::TIPO_VINCULO_PRINCIPAL;
+    }
+
+    public function isContraTurno(): bool
+    {
+        return $this->tipo_vinculo === self::TIPO_VINCULO_CONTRA_TURNO;
+    }
+
     public function estaMatriculado(): bool
     {
         return $this->status === self::STATUS_MATRICULADO;
@@ -139,7 +182,8 @@ class Aluno extends Model
 
     public function estaAtivoNaUnidade(): bool
     {
-        return in_array($this->status, [self::STATUS_MATRICULADO, self::STATUS_PENDENTE], true);
+        return $this->isPrincipal()
+            && in_array($this->status, [self::STATUS_MATRICULADO, self::STATUS_PENDENTE], true);
     }
 
     public function podeExportarDados(): bool

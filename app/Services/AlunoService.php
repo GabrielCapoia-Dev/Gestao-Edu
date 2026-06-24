@@ -12,9 +12,10 @@ use App\Models\Serie;
 use App\Models\Turma;
 use App\Models\User;
 use Filament\Actions\Action;
-use Filament\Actions\DeleteAction;
 use Filament\Actions\BulkAction;
+use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
@@ -30,6 +31,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Js;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -54,6 +56,9 @@ class AlunoService
 
                     Hidden::make('cgm_encontrado_aluno_id')
                         ->dehydrated(false),
+
+                    Hidden::make('tipo_vinculo')
+                        ->default(Aluno::TIPO_VINCULO_PRINCIPAL),
 
                     TextInput::make('cgm')
                         ->label('CGM')
@@ -117,7 +122,7 @@ class AlunoService
                             && ! $this->formularioAlunoLiberadoAposCgm($get)),
 
                     DatePicker::make('data_matricula')
-                        ->label('Data de Matrícula')
+                        ->label('Data de Matricula')
                         ->native(false)
                         ->displayFormat('d/m/Y')
                         ->disabled(fn (Get $get, ?string $operation = null): bool => $operation === 'create'
@@ -133,6 +138,7 @@ class AlunoService
                         ->afterStateUpdated(function (Set $set): void {
                             $set('id_serie', null);
                             $set('id_turma', null);
+                            $set('turma_contra_turno_id', null);
                         })
                         ->disabled(fn (Get $get, ?string $operation = null): bool => ($operation === 'create'
                             && ! $this->formularioAlunoLiberadoAposCgm($get))
@@ -141,13 +147,14 @@ class AlunoService
                         ->columnSpanFull(),
 
                     Select::make('id_serie')
-                        ->label('Série')
+                        ->label('Serie')
                         ->options(fn (Get $get): array => $this->opcoesDeSeriesPorEscola((int) ($get('id_escola') ?? 0), $user))
                         ->searchable()
                         ->required()
                         ->live()
                         ->afterStateUpdated(function (Set $set): void {
                             $set('id_turma', null);
+                            $set('turma_contra_turno_id', null);
                         })
                         ->disabled(fn (Get $get, ?string $operation = null): bool => ($operation === 'create'
                             && ! $this->formularioAlunoLiberadoAposCgm($get))
@@ -164,10 +171,34 @@ class AlunoService
                         ))
                         ->searchable()
                         ->required()
+                        ->live()
+                        ->afterStateUpdated(function (Set $set): void {
+                            $set('turma_contra_turno_id', null);
+                        })
                         ->disabled(fn (Get $get, ?string $operation = null): bool => ($operation === 'create'
                             && ! $this->formularioAlunoLiberadoAposCgm($get))
                             || blank($get('id_escola'))
                             || blank($get('id_serie')))
+                        ->columnSpanFull(),
+
+                    Checkbox::make('permite_contra_turno')
+                        ->label('Permite contra turno')
+                        ->live()
+                        ->visible(fn (Get $get, ?string $operation = null): bool => $operation !== 'create'
+                            && ($get('tipo_vinculo') ?? Aluno::TIPO_VINCULO_PRINCIPAL) === Aluno::TIPO_VINCULO_PRINCIPAL)
+                        ->columnSpanFull(),
+
+                    Select::make('turma_contra_turno_id')
+                        ->label('Turma de contra turno')
+                        ->options(fn (Get $get): array => $this->opcoesDeTurmasParaContraTurnoPorFormulario(
+                            (int) ($get('id_turma') ?? 0),
+                            $user
+                        ))
+                        ->searchable()
+                        ->visible(fn (Get $get, ?string $operation = null): bool => $operation !== 'create'
+                            && ($get('tipo_vinculo') ?? Aluno::TIPO_VINCULO_PRINCIPAL) === Aluno::TIPO_VINCULO_PRINCIPAL
+                            && (bool) ($get('permite_contra_turno') ?? false))
+                        ->helperText('Opcional. Se informado, cria o vinculo secundario em turno diferente.')
                         ->columnSpanFull(),
 
                     Select::make('status')
@@ -228,12 +259,18 @@ class AlunoService
                         ->keys()
                         ->all();
 
+                    $tipos = collect(Aluno::tiposVinculoOptions())
+                        ->filter(fn (string $label): bool => str_contains(Str::lower(Str::ascii($label)), $search))
+                        ->keys()
+                        ->all();
+
                     $labelQuery
                         ->whereIn('status', $status)
-                        ->orWhereIn('sexo', $sexos);
+                        ->orWhereIn('sexo', $sexos)
+                        ->orWhereIn('tipo_vinculo', $tipos);
                 }),
             ])
-            ->searchPlaceholder('Buscar por nome, CGM, status, turma, série ou escola')
+            ->searchPlaceholder('Buscar por nome, CGM, status, turma, serie ou escola')
             ->columns($this->colunasTabela())
             ->filters($this->filtrosTabela($user))
             ->recordActions($this->acoesTabela($user))
@@ -258,6 +295,13 @@ class AlunoService
                 ->sortable()
                 ->copyable(),
 
+            TextColumn::make('tipo_vinculo')
+                ->label('Vinculo')
+                ->formatStateUsing(fn (?string $state): string => Aluno::tiposVinculoOptions()[$state] ?? ucfirst((string) $state))
+                ->badge()
+                ->color(fn (?string $state): string => $state === Aluno::TIPO_VINCULO_CONTRA_TURNO ? 'info' : 'gray')
+                ->sortable(),
+
             TextColumn::make('status')
                 ->label('Status')
                 ->formatStateUsing(fn (?string $state): string => Aluno::statusOptions()[$state] ?? ucfirst((string) $state))
@@ -269,6 +313,7 @@ class AlunoService
                     Aluno::STATUS_TRANSFERIDO => 'info',
                     Aluno::STATUS_APROVADO => 'success',
                     Aluno::STATUS_RETIDO => 'danger',
+                    Aluno::STATUS_CONTRA_TURNO_ENCERRADO => 'gray',
                     default => 'gray',
                 })
                 ->sortable(),
@@ -290,14 +335,14 @@ class AlunoService
                 ->toggleable(),
 
             TextColumn::make('data_matricula')
-                ->label('Data de Matrícula')
+                ->label('Data de Matricula')
                 ->date('d/m/Y')
                 ->sortable()
                 ->toggleable(),
 
             TextColumn::make('turma.serie.nome')
                 ->searchable()
-                ->label('Série')
+                ->label('Serie')
                 ->sortable()
                 ->toggleable(),
 
@@ -319,7 +364,7 @@ class AlunoService
     {
         return [
             SelectFilter::make('id_serie')
-                ->label('Série')
+                ->label('Serie')
                 ->options(fn (): array => $this->opcoesDeSeries($user))
                 ->searchable()
                 ->query(function (Builder $query, array $data) {
@@ -333,6 +378,10 @@ class AlunoService
             SelectFilter::make('status')
                 ->label('Status')
                 ->options(Aluno::statusOptions()),
+
+            SelectFilter::make('tipo_vinculo')
+                ->label('Vinculo')
+                ->options(Aluno::tiposVinculoOptions()),
 
             SelectFilter::make('id_turma')
                 ->label('Turma')
@@ -379,11 +428,21 @@ class AlunoService
     private function acoesTabela(?User $user): array
     {
         return [
+            Action::make('copiar_cgm')
+                ->label('Copiar CGM')
+                ->icon('heroicon-o-clipboard-document')
+                ->color('gray')
+                ->action(fn (): null => null)
+                ->extraAttributes(fn (Aluno $record): array => [
+                    'x-on:click.prevent' => 'navigator.clipboard.writeText('.Js::from((string) $record->cgm).');',
+                ]),
+
             Action::make('remanejar')
                 ->label('Remanejar')
                 ->icon('heroicon-o-arrows-right-left')
                 ->color('warning')
                 ->visible(fn (Aluno $record): bool => ! $this->professorEstaBloqueado($user)
+                    && $record->isPrincipal()
                     && ($record->estaMatriculado() || $record->estaPendente())
                     && ($user?->hasPermissionLike('realizar remanejamento de aluno') ?? false))
                 ->modalHeading(fn (Aluno $record): string => 'Remanejar '.$record->nome)
@@ -413,15 +472,95 @@ class AlunoService
                         ->send();
                 }),
 
+            Action::make('voltar_turma_anterior')
+                ->label('Voltar turma anterior')
+                ->icon('heroicon-o-arrow-uturn-left')
+                ->color('info')
+                ->visible(fn (Aluno $record): bool => ! $this->professorEstaBloqueado($user)
+                    && $record->isPrincipal()
+                    && ($record->estaMatriculado() || $record->estaPendente())
+                    && (int) $record->turma_origem_id > 0
+                    && ($user?->hasPermissionLike('realizar remanejamento de aluno') ?? false))
+                ->requiresConfirmation()
+                ->modalHeading('Voltar para a turma anterior')
+                ->modalDescription('A volta sera registrada como um novo remanejamento.')
+                ->action(function (Aluno $record): void {
+                    app(AlunoMovimentacaoService::class)->voltarParaTurmaAnterior($record, Auth::user());
+
+                    Notification::make()
+                        ->title('Aluno retornado para a turma anterior com sucesso.')
+                        ->success()
+                        ->send();
+                }),
+
+            Action::make('marcar_contra_turno')
+                ->label('Marcar contra turno')
+                ->icon('heroicon-o-sparkles')
+                ->color('success')
+                ->visible(fn (Aluno $record): bool => ! $this->professorEstaBloqueado($user)
+                    && $record->isPrincipal()
+                    && $record->estaMatriculado()
+                    && $this->userService->podeEditarAlunos($user))
+                ->modalHeading(fn (Aluno $record): string => 'Contra turno de '.$record->nome)
+                ->modalSubmitActionLabel('Salvar')
+                ->schema(fn (Aluno $record): array => [
+                    Select::make('turma_contra_turno_id')
+                        ->label('Turma de contra turno')
+                        ->options(fn () => $this->opcoesDeTurmasParaContraTurno($record, $user))
+                        ->searchable(),
+                    Textarea::make('motivo')
+                        ->label('Motivo')
+                        ->maxLength(1000)
+                        ->rows(3),
+                ])
+                ->action(function (Aluno $record, array $data): void {
+                    $service = app(AlunoMovimentacaoService::class);
+                    $service->marcarContraTurno($record, Auth::user(), $data['motivo'] ?? null);
+
+                    if (filled($data['turma_contra_turno_id'] ?? null)) {
+                        $service->vincularContraTurno(
+                            $record,
+                            (int) $data['turma_contra_turno_id'],
+                            Auth::user(),
+                            $data['motivo'] ?? null
+                        );
+                    }
+
+                    Notification::make()
+                        ->title('Contra turno atualizado com sucesso.')
+                        ->success()
+                        ->send();
+                }),
+
+            Action::make('encerrar_contra_turno')
+                ->label('Encerrar contra turno')
+                ->icon('heroicon-o-no-symbol')
+                ->color('danger')
+                ->visible(fn (Aluno $record): bool => ! $this->professorEstaBloqueado($user)
+                    && $record->isContraTurno()
+                    && $record->estaMatriculado()
+                    && $this->userService->podeEditarAlunos($user))
+                ->requiresConfirmation()
+                ->modalHeading('Encerrar contra turno')
+                ->modalDescription('O vinculo secundario sera encerrado e seus dados avaliativos ficarao bloqueados.')
+                ->action(function (Aluno $record): void {
+                    app(AlunoMovimentacaoService::class)->encerrarContraTurno($record, Auth::user());
+
+                    Notification::make()
+                        ->title('Contra turno encerrado com sucesso.')
+                        ->success()
+                        ->send();
+                }),
+
             Action::make('parecer_transferencia')
-                ->label('Parecer de Transferência')
+                ->label('Parecer de Transferencia')
                 ->icon('heroicon-o-document-arrow-down')
                 ->color('info')
                 ->slideOver()
                 ->modalWidth('5xl')
                 ->modalSubmitAction(false)
                 ->modalCancelActionLabel('Fechar')
-                ->modalHeading(fn (Aluno $record): string => 'Parecer de Transferência')
+                ->modalHeading(fn (Aluno $record): string => 'Parecer de Transferencia')
                 ->modalDescription(fn (Aluno $record): string => trim(collect([
                     $record->nome,
                     'CGM: '.$record->cgm,
@@ -432,7 +571,8 @@ class AlunoService
                 ->modalContent(fn (Aluno $record) => view('components.alunos.parecer-transferencia-modal', [
                     'aluno' => $record,
                 ]))
-                ->visible(fn (Aluno $record): bool => $this->alunoTemAvaliacoes($record)
+                ->visible(fn (Aluno $record): bool => $record->isPrincipal()
+                    && $this->alunoTemAvaliacoes($record)
                     && ($this->professorEstaRestritoAoAluno($user, $record)
                     || (($user?->hasPermissionLike('realizar transferencia de aluno') ?? false)
                         || ($user?->hasPermissionLike('realizar tranferencia de aluno') ?? false)
@@ -452,10 +592,17 @@ class AlunoService
                         'id_escola' => $record->turma?->id_escola,
                         'id_serie' => $record->turma?->id_serie,
                         'id_turma' => $record->id_turma,
+                        'tipo_vinculo' => $record->tipo_vinculo,
+                        'permite_contra_turno' => (bool) $record->permite_contra_turno,
+                        'turma_contra_turno_id' => $record->isPrincipal() ? $this->turmaContraTurnoAtivaId($record) : null,
                         'status' => $record->status,
                     ];
                 })
                 ->using(function (Aluno $record, array $data) use ($user): Aluno {
+                    $permiteContraTurno = (bool) ($data['permite_contra_turno'] ?? false);
+                    $turmaContraTurnoId = (int) ($data['turma_contra_turno_id'] ?? 0);
+
+                    unset($data['tipo_vinculo'], $data['permite_contra_turno'], $data['turma_contra_turno_id']);
                     unset($data['id_escola'], $data['id_serie']);
                     $this->validarTurmaPermitida((int) ($data['id_turma'] ?? 0), $user);
 
@@ -468,7 +615,7 @@ class AlunoService
                         );
                     } catch (MatriculaAlunoBloqueadaException $exception) {
                         Notification::make()
-                            ->title('Matrícula impedida')
+                            ->title('Matricula impedida')
                             ->body($exception->getMessage())
                             ->danger()
                             ->send();
@@ -480,15 +627,44 @@ class AlunoService
 
                     $record->update($data);
 
+                    if ($record->isPrincipal()) {
+                        $movimentacaoService = app(AlunoMovimentacaoService::class);
+
+                        if (! $permiteContraTurno) {
+                            $contraTurnoAtivo = $this->contraTurnoAtivo($record);
+
+                            if ($contraTurnoAtivo) {
+                                $movimentacaoService->encerrarContraTurno($contraTurnoAtivo, $user, 'Contra turno removido pela ficha do aluno.');
+                            } else {
+                                $record->forceFill(['permite_contra_turno' => false])->save();
+                            }
+                        } else {
+                            $movimentacaoService->marcarContraTurno($record, $user, 'Contra turno marcado pela ficha do aluno.');
+
+                            if ($turmaContraTurnoId > 0) {
+                                $movimentacaoService->vincularContraTurno(
+                                    $record,
+                                    $turmaContraTurnoId,
+                                    $user,
+                                    'Turma de contra turno vinculada pela ficha do aluno.'
+                                );
+                            }
+                        }
+
+                        $record->refresh();
+                    }
+
                     return $record;
                 })
                 ->visible(fn (Aluno $record) => ! $this->professorEstaBloqueado($user)
                     && $record->estaMatriculado()
+                    && $record->isPrincipal()
                     && $this->userService->podeEditarAlunos($user)),
 
             DeleteAction::make()
                 ->visible(fn (Aluno $record) => ! $this->professorEstaBloqueado($user)
                     && $record->estaMatriculado()
+                    && $record->isPrincipal()
                     && $this->userService->podeExcluirAlunos($user)),
         ];
     }
@@ -496,14 +672,60 @@ class AlunoService
     private function acoesEmMassa(?User $user): array
     {
         return [
+            BulkAction::make('marcar_contra_turno_massa')
+                ->label('Marcar contra turno')
+                ->icon('heroicon-o-sparkles')
+                ->color('success')
+                ->visible(fn () => ! $this->professorEstaBloqueado($user)
+                    && $this->userService->podeEditarAlunos($user))
+                ->schema([
+                    Select::make('turma_contra_turno_id')
+                        ->label('Turma de contra turno')
+                        ->options(fn (): array => $this->opcoesGeraisDeTurmasContraTurno($user))
+                        ->searchable(),
+                ])
+                ->action(function (array $data, $records): void {
+                    $service = app(AlunoMovimentacaoService::class);
+                    $currentUser = Auth::user();
+                    $sucessos = 0;
+                    $falhas = [];
+                    $turmaContraTurnoId = (int) ($data['turma_contra_turno_id'] ?? 0);
+                    $records = $records instanceof Builder ? $records->get() : collect($records);
+
+                    foreach ($records as $record) {
+                        try {
+                            if (! $record instanceof Aluno || ! $record->isPrincipal() || ! $record->estaMatriculado()) {
+                                throw new \RuntimeException('Registro invalido para contra turno.');
+                            }
+
+                            $service->marcarContraTurno($record, $currentUser, 'Contra turno marcado em massa.');
+
+                            if ($turmaContraTurnoId > 0) {
+                                $service->vincularContraTurno($record, $turmaContraTurnoId, $currentUser, 'Turma de contra turno vinculada em massa.');
+                            }
+
+                            $sucessos++;
+                        } catch (\Throwable $exception) {
+                            $falhas[] = ($record instanceof Aluno ? $record->nome : 'Registro selecionado').': '.$exception->getMessage();
+                        }
+                    }
+
+                    Notification::make()
+                        ->title('Ação em massa concluída.')
+                        ->body($this->mensagemResultadoContraTurnoMassa($sucessos, $falhas))
+                        ->{$falhas === [] ? 'success' : 'warning'}()
+                        ->send();
+                })
+                ->deselectRecordsAfterCompletion(),
+
             BulkAction::make('delete')
                 ->label('Excluir selecionados')
                 ->icon('heroicon-o-trash')
                 ->color('danger')
                 ->requiresConfirmation()
                 ->modalHeading('Excluir alunos selecionados')
-                ->modalDescription('A exclusão será enviada para processamento em segundo plano. Você poderá continuar usando o sistema.')
-                ->modalSubmitActionLabel('Enviar para exclusão')
+                ->modalDescription('A exclusao sera enviada para processamento em segundo plano. Voce podera continuar usando o sistema.')
+                ->modalSubmitActionLabel('Enviar para exclusao')
                 ->fetchSelectedRecords(false)
                 ->visible(fn () => ! $this->professorEstaBloqueado($user)
                     && ($user?->hasPermissionTo('Excluir Alunos em Massa') ?? false))
@@ -518,8 +740,8 @@ class AlunoService
                     DeleteAlunosEmMassaJob::dispatch($ids, Auth::id(), $processo->getKey())->afterCommit();
 
                     Notification::make()
-                        ->title('Exclusão enviada para processamento')
-                        ->body(count($ids).' aluno(s) foram enviados para exclusão em segundo plano. Acompanhe em Minhas Exportações.')
+                        ->title('Exclusao enviada para processamento')
+                        ->body(count($ids).' aluno(s) foram enviados para exclusao em segundo plano. Acompanhe em Minhas Exportacoes.')
                         ->success()
                         ->send();
                 })
@@ -540,7 +762,7 @@ class AlunoService
             'user_id' => Auth::id(),
             'type' => 'alunos_exclusao_massa',
             'format' => 'processo',
-            'label' => 'Exclusão de alunos em massa',
+            'label' => 'Exclusao de alunos em massa',
             'filters' => ['total' => count($ids)],
             'metadata' => ['process_kind' => 'exclusao_alunos_massa'],
             'fingerprint' => hash('sha256', 'alunos_exclusao|'.Auth::id().'|'.json_encode($ids).'|'.Str::uuid()),
@@ -564,14 +786,15 @@ class AlunoService
         }
 
         return filled($get('cgm_encontrado_aluno_id'))
-            ? 'Aluno encontrado no sistema. Confira os dados e selecione série e turma de destino.'
-            : 'CGM não encontrado. Preencha os dados do novo aluno.';
+            ? 'Aluno encontrado no sistema. Confira os dados e selecione serie e turma de destino.'
+            : 'CGM nao encontrado. Preencha os dados do novo aluno.';
     }
 
     private function alunoPorCgmParaFormulario(string $cgm): ?Aluno
     {
         return Aluno::query()
             ->where('cgm', Aluno::normalizarCgm($cgm))
+            ->orderByRaw("case when tipo_vinculo = ? then 0 else 1 end", [Aluno::TIPO_VINCULO_PRINCIPAL])
             ->latest('status_alterado_em')
             ->latest('updated_at')
             ->first();
@@ -652,6 +875,90 @@ class AlunoService
                 ])->filter()->join(' - '))];
             })
             ->toArray();
+    }
+
+    private function opcoesDeTurmasParaContraTurno(Aluno $aluno, ?User $user): array
+    {
+        $aluno->loadMissing('turma');
+
+        if (! $aluno->turma) {
+            return [];
+        }
+
+        $query = Turma::query()
+            ->with(['serie:id,nome', 'escola:id,nome'])
+            ->where('id_escola', (int) $aluno->turma->id_escola)
+            ->where('id_serie', (int) $aluno->turma->id_serie)
+            ->where('turno', '!=', (string) $aluno->turma->turno)
+            ->whereKeyNot((int) $aluno->id_turma)
+            ->orderBy('nome');
+
+        $this->aplicarFiltroTurmasFormularioAluno($query, $user);
+
+        return $query->get()
+            ->mapWithKeys(fn (Turma $turma): array => [
+                (int) $turma->id => trim(collect([
+                    $turma->escola?->nome,
+                    $turma->serie?->nome,
+                    $turma->nome,
+                    $turma->turno,
+                ])->filter()->join(' - ')),
+            ])
+            ->all();
+    }
+
+    private function opcoesDeTurmasParaContraTurnoPorFormulario(int $turmaAtualId, ?User $user): array
+    {
+        if ($turmaAtualId <= 0) {
+            return [];
+        }
+
+        $turmaAtual = Turma::query()->find($turmaAtualId);
+
+        if (! $turmaAtual) {
+            return [];
+        }
+
+        $query = Turma::query()
+            ->with(['serie:id,nome', 'escola:id,nome'])
+            ->where('id_escola', (int) $turmaAtual->id_escola)
+            ->where('id_serie', (int) $turmaAtual->id_serie)
+            ->where('turno', '!=', (string) $turmaAtual->turno)
+            ->whereKeyNot((int) $turmaAtual->id)
+            ->orderBy('nome');
+
+        $this->aplicarFiltroTurmasFormularioAluno($query, $user);
+
+        return $query->get()
+            ->mapWithKeys(fn (Turma $turma): array => [
+                (int) $turma->id => trim(collect([
+                    $turma->escola?->nome,
+                    $turma->serie?->nome,
+                    $turma->nome,
+                    $turma->turno,
+                ])->filter()->join(' - ')),
+            ])
+            ->all();
+    }
+
+    private function opcoesGeraisDeTurmasContraTurno(?User $user): array
+    {
+        $query = Turma::query()
+            ->with(['serie:id,nome', 'escola:id,nome'])
+            ->orderBy('nome');
+
+        $this->aplicarFiltroTurmasFormularioAluno($query, $user);
+
+        return $query->get()
+            ->mapWithKeys(fn (Turma $turma): array => [
+                (int) $turma->id => trim(collect([
+                    $turma->escola?->nome,
+                    $turma->serie?->nome,
+                    $turma->nome,
+                    $turma->turno,
+                ])->filter()->join(' - ')),
+            ])
+            ->all();
     }
 
     private function opcoesDeSeriesPorEscola(int $escolaId, ?User $user): array
@@ -749,6 +1056,31 @@ class AlunoService
         $aluno->loadMissing('turma');
 
         return $aluno->turma?->avaliacoes()->exists() ?? false;
+    }
+
+    private function contraTurnoAtivo(Aluno $aluno): ?Aluno
+    {
+        return Aluno::query()
+            ->where('cgm_contra_turno_ativo', $aluno->cgm)
+            ->where('tipo_vinculo', Aluno::TIPO_VINCULO_CONTRA_TURNO)
+            ->where('status', Aluno::STATUS_MATRICULADO)
+            ->first();
+    }
+
+    private function turmaContraTurnoAtivaId(Aluno $aluno): ?int
+    {
+        return $this->contraTurnoAtivo($aluno)?->id_turma;
+    }
+
+    private function mensagemResultadoContraTurnoMassa(int $sucessos, array $falhas): string
+    {
+        $mensagem = $sucessos.' aluno(s) processado(s) com sucesso.';
+
+        if ($falhas === []) {
+            return $mensagem;
+        }
+
+        return $mensagem.' Falhas: '.implode(' | ', $falhas);
     }
 
     private function aplicarFiltroPendenciaSemProfessor(Builder $query): void

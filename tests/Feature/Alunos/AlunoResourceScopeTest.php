@@ -238,6 +238,94 @@ class AlunoResourceScopeTest extends TestCase
         ]);
     }
 
+    public function test_listagem_exibe_tipo_de_vinculo_e_acao_explicita_para_copiar_cgm(): void
+    {
+        Permission::findOrCreate('Listar Alunos');
+
+        $escola = $this->criarEscola('Escola Copia CGM');
+        $serie = Serie::query()->create([
+            'codigo' => 'SER-CGM',
+            'nome' => 'Serie CGM',
+        ]);
+        $turmaPrincipal = $this->criarTurma($escola, 'Principal', $serie, 'manha');
+        $turmaContraTurno = $this->criarTurma($escola, 'Contra', $serie, 'tarde');
+
+        $alunoPrincipal = Aluno::query()->create([
+            'nome' => 'Aluno Copia CGM',
+            'cgm' => 'CGM-COPIAR',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turmaPrincipal->id,
+            'permite_contra_turno' => true,
+        ]);
+        $alunoContraTurno = Aluno::query()->create([
+            'nome' => 'Aluno Copia CGM',
+            'cgm' => 'CGM-COPIAR',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turmaContraTurno->id,
+            'tipo_vinculo' => Aluno::TIPO_VINCULO_CONTRA_TURNO,
+        ]);
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo('Listar Alunos');
+
+        Livewire::actingAs($usuario)
+            ->test(ListAlunos::class)
+            ->assertCanSeeTableRecords([$alunoPrincipal, $alunoContraTurno])
+            ->assertTableActionVisible('copiar_cgm', $alunoPrincipal)
+            ->assertSee('Principal')
+            ->assertSee('Contra turno');
+    }
+
+    public function test_acao_de_linha_marca_contra_turno_e_exibe_duas_linhas_ativas(): void
+    {
+        Permission::findOrCreate('Listar Alunos');
+        Permission::findOrCreate('Editar Alunos');
+
+        $escola = $this->criarEscola('Escola Linha Contra Turno');
+        $serie = Serie::query()->create([
+            'codigo' => 'SER-LINHA-CT',
+            'nome' => 'Serie Linha Contra Turno',
+        ]);
+        $turmaPrincipal = $this->criarTurma($escola, 'Manha', $serie, 'manha');
+        $turmaContraTurno = $this->criarTurma($escola, 'Tarde', $serie, 'tarde');
+
+        $aluno = Aluno::query()->create([
+            'nome' => 'Aluno Linha Contra Turno',
+            'cgm' => 'CGM-LINHA-CT',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turmaPrincipal->id,
+        ]);
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo(['Listar Alunos', 'Editar Alunos']);
+
+        Livewire::actingAs($usuario)
+            ->test(ListAlunos::class)
+            ->callTableAction('marcar_contra_turno', $aluno, [
+                'turma_contra_turno_id' => $turmaContraTurno->id,
+            ])
+            ->assertHasNoTableActionErrors();
+
+        $contraTurno = Aluno::query()
+            ->where('cgm', 'CGM-LINHA-CT')
+            ->where('tipo_vinculo', Aluno::TIPO_VINCULO_CONTRA_TURNO)
+            ->first();
+
+        $this->assertNotNull($contraTurno);
+
+        Livewire::actingAs($usuario)
+            ->test(ListAlunos::class)
+            ->assertCanSeeTableRecords([$aluno->fresh(), $contraTurno])
+            ->assertTableActionVisible('encerrar_contra_turno', $contraTurno)
+            ->assertSee('Contra turno');
+    }
+
     public function test_exclusao_em_massa_de_alunos_e_enfileirada(): void
     {
         Queue::fake();
@@ -332,6 +420,55 @@ class AlunoResourceScopeTest extends TestCase
         Notification::assertSentTo($usuario, \App\Notifications\SistemaNotification::class);
     }
 
+    public function test_acao_em_massa_de_contra_turno_processa_sucesso_parcial(): void
+    {
+        Permission::findOrCreate('Listar Alunos');
+        Permission::findOrCreate('Editar Alunos');
+
+        $escola = $this->criarEscola('Escola Bulk Contra Turno');
+        $serie = Serie::query()->create([
+            'codigo' => 'SER-BULK-CT',
+            'nome' => 'Serie Bulk Contra Turno',
+        ]);
+        $turmaManha = $this->criarTurma($escola, 'Manha', $serie, 'manha');
+
+        $alunoValido = Aluno::query()->create([
+            'nome' => 'Aluno Bulk Valido',
+            'cgm' => 'CGM-BULK-VALIDO',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turmaManha->id,
+        ]);
+        $alunoInvalido = Aluno::query()->create([
+            'nome' => 'Aluno Bulk Invalido',
+            'cgm' => 'CGM-BULK-INVALIDO',
+            'data_nascimento' => '2015-01-02',
+            'id_turma' => $turmaManha->id,
+            'status' => Aluno::STATUS_PENDENTE,
+        ]);
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo(['Listar Alunos', 'Editar Alunos']);
+
+        Livewire::actingAs($usuario)
+            ->test(ListAlunos::class)
+            ->mountTableBulkAction('marcar_contra_turno_massa', [$alunoValido, $alunoInvalido])
+            ->callMountedTableBulkAction()
+            ->assertHasNoTableBulkActionErrors();
+
+        $this->assertDatabaseHas('alunos', [
+            'id' => $alunoValido->id,
+            'permite_contra_turno' => true,
+        ]);
+
+        $this->assertDatabaseMissing('alunos', [
+            'id' => $alunoInvalido->id,
+            'permite_contra_turno' => true,
+        ]);
+    }
+
     public function test_listagem_pesquisa_escola_e_filtra_por_turma_e_sexo(): void
     {
         Permission::findOrCreate('Listar Alunos');
@@ -392,9 +529,9 @@ class AlunoResourceScopeTest extends TestCase
         ]);
     }
 
-    private function criarTurma(Escola $escola, string $sufixo): Turma
+    private function criarTurma(Escola $escola, string $sufixo, ?Serie $serie = null, string $turno = 'manha'): Turma
     {
-        $serie = Serie::query()->create([
+        $serie ??= Serie::query()->create([
             'codigo' => 'SER' . $sufixo,
             'nome' => 'Série ' . $sufixo,
         ]);
@@ -402,7 +539,7 @@ class AlunoResourceScopeTest extends TestCase
         return Turma::query()->create([
             'codigo' => 'TUR' . $sufixo . uniqid(),
             'nome' => $sufixo,
-            'turno' => 'manha',
+            'turno' => $turno,
             'id_serie' => $serie->id,
             'id_escola' => $escola->id,
         ]);

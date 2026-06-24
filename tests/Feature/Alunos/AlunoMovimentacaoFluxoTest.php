@@ -342,6 +342,206 @@ class AlunoMovimentacaoFluxoTest extends TestCase
         ]);
     }
 
+    public function test_cria_vinculo_de_contra_turno_valido_e_preserva_vinculo_principal(): void
+    {
+        $escola = $this->criarEscola('Escola Contra Turno');
+        $serie = Serie::query()->create(['codigo' => 'SER-CT', 'nome' => '3o Ano']);
+        $turmaPrincipal = $this->criarTurma($escola, 'Manha', $serie, 'manha');
+        $turmaContraTurno = $this->criarTurma($escola, 'Tarde', $serie, 'tarde');
+
+        $aluno = Aluno::query()->create([
+            'nome' => 'Aluno Contra Turno',
+            'cgm' => 'CGM-CT-OK',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turmaPrincipal->id,
+        ]);
+
+        $service = app(AlunoMovimentacaoService::class);
+        $service->marcarContraTurno($aluno);
+        $contraTurno = $service->vincularContraTurno($aluno, $turmaContraTurno->id);
+
+        $this->assertDatabaseHas('alunos', [
+            'id' => $aluno->id,
+            'tipo_vinculo' => Aluno::TIPO_VINCULO_PRINCIPAL,
+            'permite_contra_turno' => true,
+            'cgm_matricula_ativa' => 'CGM-CT-OK',
+            'cgm_contra_turno_ativo' => null,
+        ]);
+
+        $this->assertDatabaseHas('alunos', [
+            'id' => $contraTurno->id,
+            'cgm' => 'CGM-CT-OK',
+            'id_turma' => $turmaContraTurno->id,
+            'tipo_vinculo' => Aluno::TIPO_VINCULO_CONTRA_TURNO,
+            'status' => Aluno::STATUS_MATRICULADO,
+            'aluno_origem_id' => $aluno->id,
+            'turma_origem_id' => $turmaPrincipal->id,
+            'movimentacao_origem' => AlunoMovimentacaoService::MOVIMENTACAO_CONTRA_TURNO,
+            'cgm_contra_turno_ativo' => 'CGM-CT-OK',
+            'cgm_matricula_ativa' => null,
+        ]);
+    }
+
+    public function test_contra_turno_bloqueia_turma_invalida_por_escola_serie_e_turno(): void
+    {
+        $escola = $this->criarEscola('Escola Contra Turno Regra');
+        $outraEscola = $this->criarEscola('Escola Externa Contra Turno');
+        $serie = Serie::query()->create(['codigo' => 'SER-CT-REGRA', 'nome' => '4o Ano']);
+        $outraSerie = Serie::query()->create(['codigo' => 'SER-CT-OUTRA', 'nome' => '5o Ano']);
+
+        $turmaPrincipal = $this->criarTurma($escola, 'Principal', $serie, 'manha');
+        $turmaMesmoTurno = $this->criarTurma($escola, 'Mesmo Turno', $serie, 'manha');
+        $turmaOutraSerie = $this->criarTurma($escola, 'Outra Serie', $outraSerie, 'tarde');
+        $turmaOutraEscola = $this->criarTurma($outraEscola, 'Outra Escola', $serie, 'tarde');
+
+        $aluno = Aluno::query()->create([
+            'nome' => 'Aluno Regra Contra Turno',
+            'cgm' => 'CGM-CT-BLOQ',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turmaPrincipal->id,
+        ]);
+
+        $service = app(AlunoMovimentacaoService::class);
+
+        foreach ([
+            [$turmaMesmoTurno->id, 'turno diferente'],
+            [$turmaOutraSerie->id, 'mesma serie'],
+            [$turmaOutraEscola->id, 'mesma escola'],
+        ] as [$turmaId, $mensagem]) {
+            try {
+                $service->vincularContraTurno($aluno, $turmaId);
+                $this->fail('A validacao do contra turno deveria falhar.');
+            } catch (\RuntimeException $exception) {
+                $this->assertStringContainsString($mensagem, $exception->getMessage());
+            }
+        }
+    }
+
+    public function test_movimentacoes_do_vinculo_principal_falham_com_contra_turno_ativo(): void
+    {
+        $escola = $this->criarEscola('Escola Movimento Bloqueado');
+        $serie = Serie::query()->create(['codigo' => 'SER-MOV-CT', 'nome' => '6o Ano']);
+        $turmaPrincipal = $this->criarTurma($escola, 'Principal', $serie, 'manha');
+        $turmaContraTurno = $this->criarTurma($escola, 'Contra', $serie, 'tarde');
+        $turmaRemanejamento = $this->criarTurma($escola, 'Remanejamento', $serie, 'noite');
+
+        $aluno = Aluno::query()->create([
+            'nome' => 'Aluno Movimento Bloqueado',
+            'cgm' => 'CGM-CT-MOV',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turmaPrincipal->id,
+        ]);
+
+        $service = app(AlunoMovimentacaoService::class);
+        $service->vincularContraTurno($aluno, $turmaContraTurno->id);
+
+        foreach ([
+            fn () => $service->remanejar($aluno, $turmaRemanejamento->id),
+            fn () => $service->transferir($aluno, User::factory()->create()),
+            fn () => $service->marcarStatusFinal($aluno, Aluno::STATUS_APROVADO),
+        ] as $acao) {
+            try {
+                $acao();
+                $this->fail('A movimentacao principal deveria ser bloqueada enquanto houver contra turno ativo.');
+            } catch (\RuntimeException $exception) {
+                $this->assertStringContainsString('contra turno', $exception->getMessage());
+            }
+        }
+    }
+
+    public function test_encerrar_contra_turno_preserva_historico_e_bloqueia_dados_avaliativos(): void
+    {
+        [$escola, $serie, $turmaPrincipal, $turmaContraTurno, $avaliacao, $pauta, $alternativa] = $this->criarCenarioAvaliacaoDuasTurmas('manha', 'tarde');
+
+        $aluno = Aluno::query()->create([
+            'nome' => 'Aluno Encerramento Contra Turno',
+            'cgm' => 'CGM-CT-END',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turmaPrincipal->id,
+        ]);
+
+        $service = app(AlunoMovimentacaoService::class);
+        $contraTurno = $service->vincularContraTurno($aluno, $turmaContraTurno->id);
+
+        $resposta = AvaliacaoResposta::query()->create([
+            'avaliacao_id' => $avaliacao->id,
+            'pauta_id' => $pauta->id,
+            'turma_id' => $turmaContraTurno->id,
+            'aluno_id' => $contraTurno->id,
+            'alternativa_id' => $alternativa->id,
+            'respondido_em' => now(),
+        ]);
+
+        $informacao = AvaliacaoInformacaoComplementar::query()->create([
+            'avaliacao_id' => $avaliacao->id,
+            'turma_id' => $turmaContraTurno->id,
+            'aluno_id' => $contraTurno->id,
+            'componente_curricular_id' => $pauta->componente_curricular_id,
+            'informacoes_complementares' => 'Registro do contra turno',
+        ]);
+
+        $service->encerrarContraTurno($contraTurno);
+
+        $this->assertDatabaseHas('alunos', [
+            'id' => $contraTurno->id,
+            'status' => Aluno::STATUS_CONTRA_TURNO_ENCERRADO,
+            'tipo_vinculo' => Aluno::TIPO_VINCULO_CONTRA_TURNO,
+            'cgm_contra_turno_ativo' => null,
+        ]);
+
+        $this->assertDatabaseHas('alunos', [
+            'id' => $aluno->id,
+            'permite_contra_turno' => false,
+            'cgm_matricula_ativa' => 'CGM-CT-END',
+        ]);
+
+        $this->assertDatabaseHas('avaliacao_respostas', [
+            'id' => $resposta->id,
+            'bloqueada' => true,
+            'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_CONTRA_TURNO,
+        ]);
+
+        $this->assertDatabaseHas('avaliacao_informacoes_complementares', [
+            'id' => $informacao->id,
+            'bloqueada' => true,
+            'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_CONTRA_TURNO,
+        ]);
+    }
+
+    public function test_voltar_para_turma_anterior_registra_novo_remanejamento(): void
+    {
+        $escola = $this->criarEscola('Escola Retorno');
+        $serie = Serie::query()->create(['codigo' => 'SER-RET', 'nome' => '2o Ano']);
+        $turmaA = $this->criarTurma($escola, 'A', $serie, 'manha');
+        $turmaB = $this->criarTurma($escola, 'B', $serie, 'tarde');
+
+        $alunoInicial = Aluno::query()->create([
+            'nome' => 'Aluno Retorno',
+            'cgm' => 'CGM-RETORNO',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turmaA->id,
+        ]);
+
+        $alunoRemanejado = app(AlunoMovimentacaoService::class)->remanejar($alunoInicial, $turmaB->id);
+        $alunoRetornado = app(AlunoMovimentacaoService::class)->voltarParaTurmaAnterior($alunoRemanejado);
+
+        $this->assertDatabaseHas('alunos', [
+            'id' => $alunoRemanejado->id,
+            'status' => Aluno::STATUS_REMANEJADO,
+            'cgm_matricula_ativa' => null,
+        ]);
+
+        $this->assertDatabaseHas('alunos', [
+            'id' => $alunoRetornado->id,
+            'id_turma' => $turmaA->id,
+            'status' => Aluno::STATUS_MATRICULADO,
+            'aluno_origem_id' => $alunoRemanejado->id,
+            'turma_origem_id' => $turmaB->id,
+            'movimentacao_origem' => AlunoMovimentacaoService::MOVIMENTACAO_REMANEJAMENTO,
+            'cgm_matricula_ativa' => 'CGM-RETORNO',
+        ]);
+    }
+
     public function test_gerar_parecer_de_transferencia_exporta_zip_e_marca_aluno_como_transferido(): void
     {
         Permission::findOrCreate('Gerar Parecer de Transferencia');
@@ -942,12 +1142,12 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             ->assertCanNotSeeTableRecords([$alunoRespondido]);
     }
 
-    private function criarCenarioAvaliacaoDuasTurmas(): array
+    private function criarCenarioAvaliacaoDuasTurmas(string $turnoOrigem = 'manha', string $turnoDestino = 'manha'): array
     {
         $escola = $this->criarEscola('Escola Avaliacao');
         $serie = Serie::query()->create(['codigo' => 'SER'.uniqid(), 'nome' => '1o Ano '.uniqid()]);
-        $turmaOrigem = $this->criarTurma($escola, 'A', $serie);
-        $turmaDestino = $this->criarTurma($escola, 'B', $serie);
+        $turmaOrigem = $this->criarTurma($escola, 'A', $serie, $turnoOrigem);
+        $turmaDestino = $this->criarTurma($escola, 'B', $serie, $turnoDestino);
 
         $tipo = TipoAvaliacao::query()->create(['nome' => 'Parecer '.uniqid(), 'status' => true]);
         $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Periodo '.uniqid(), 'status' => true]);
@@ -992,7 +1192,7 @@ class AlunoMovimentacaoFluxoTest extends TestCase
         ]);
     }
 
-    private function criarTurma(Escola $escola, string $sufixo, ?Serie $serie = null): Turma
+    private function criarTurma(Escola $escola, string $sufixo, ?Serie $serie = null, string $turno = 'manha'): Turma
     {
         $serie ??= Serie::query()->create([
             'codigo' => 'SER'.$sufixo.uniqid(),
@@ -1002,7 +1202,7 @@ class AlunoMovimentacaoFluxoTest extends TestCase
         return Turma::query()->create([
             'codigo' => 'TUR'.$sufixo.uniqid(),
             'nome' => $sufixo,
-            'turno' => 'manha',
+            'turno' => $turno,
             'id_serie' => $serie->id,
             'id_escola' => $escola->id,
         ]);
