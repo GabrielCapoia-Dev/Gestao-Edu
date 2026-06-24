@@ -276,6 +276,7 @@ class AlunoService
             ->searchPlaceholder('Buscar por nome, CGM, status, turma, serie ou escola')
             ->columns($this->colunasTabela())
             ->filters($this->filtrosTabela($user))
+            ->recordAction(null)
             ->recordActions($this->acoesTabela($user), RecordActionsPosition::AfterContent)
             ->toolbarActions($this->acoesEmMassa($user))
             ->defaultSort('nome')

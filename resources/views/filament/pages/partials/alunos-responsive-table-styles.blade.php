@@ -21,57 +21,13 @@
     }
 
     .fi-resource-alunos.fi-resource-list-records-page .fi-ta-content-ctn {
-        overflow-x: visible !important;
+        overflow-x: hidden !important;
     }
 
     .fi-resource-alunos.fi-resource-list-records-page .fi-ta-content {
-        padding: 0.75rem;
-    }
-
-    .fi-resource-alunos.fi-resource-list-records-page .fi-ta-table {
-        display: block;
-        width: 100%;
-        min-width: 0 !important;
-        border-collapse: separate;
-        border-spacing: 0;
-    }
-
-    .fi-resource-alunos.fi-resource-list-records-page .fi-ta-table thead {
-        display: none !important;
-    }
-
-    .fi-resource-alunos.fi-resource-list-records-page .fi-ta-table tbody {
         display: grid;
-        width: 100%;
         gap: 0.75rem;
-    }
-
-    .fi-resource-alunos.fi-resource-list-records-page .fi-ta-table .fi-ta-row {
-        display: block;
-        width: 100%;
-        overflow: hidden;
-        border: 1px solid var(--aluno-card-border);
-        border-radius: 0.5rem;
-        background: var(--aluno-card-surface);
-        box-shadow: var(--aluno-card-shadow);
-    }
-
-    .fi-resource-alunos.fi-resource-list-records-page .fi-ta-table .fi-ta-row:hover {
-        border-color: color-mix(in oklab, var(--primary-300) 58%, var(--gray-200));
-    }
-
-    .fi-resource-alunos.fi-resource-list-records-page .fi-ta-table .fi-ta-cell {
-        display: block;
-        width: 100%;
-        padding: 0 !important;
-    }
-
-    .fi-resource-alunos.fi-resource-list-records-page .fi-ta-table .fi-ta-cell:has(> .fi-ta-actions) {
-        display: none !important;
-    }
-
-    .fi-resource-alunos.fi-resource-list-records-page .fi-ta-table .fi-ta-selection-cell {
-        padding: 0.75rem 0.85rem 0 !important;
+        padding: 0.75rem;
     }
 
     .fi-resource-alunos.fi-resource-list-records-page .fi-ta-content-header {
@@ -108,17 +64,6 @@
         display: grid;
         gap: 0.8rem;
         width: 100%;
-        padding: 0.85rem;
-    }
-
-    .fi-resource-alunos.fi-resource-list-records-page .fi-ta-table .fi-ta-col {
-        display: block;
-        width: 100%;
-    }
-
-    .fi-resource-alunos.fi-resource-list-records-page .fi-ta-table .fi-ta-col > .fi-ta-text,
-    .fi-resource-alunos.fi-resource-list-records-page .fi-ta-table .fi-ta-col > .fi-ta-layout,
-    .fi-resource-alunos.fi-resource-list-records-page .fi-ta-table .fi-ta-col > .fi-ta-view {
         padding: 0.85rem;
     }
 
