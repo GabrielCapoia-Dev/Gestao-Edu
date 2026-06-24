@@ -5,10 +5,13 @@ namespace Tests\Feature\Alunos;
 use App\Filament\Admin\Resources\Alunos\Pages\ListAlunos;
 use App\Jobs\DeleteAlunosEmMassaJob;
 use App\Models\Aluno;
+use App\Models\Avaliacao;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
+use App\Models\PeriodoAvaliacao;
 use App\Models\Professor;
 use App\Models\Serie;
+use App\Models\TipoAvaliacao;
 use App\Models\Turma;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -238,7 +241,7 @@ class AlunoResourceScopeTest extends TestCase
         ]);
     }
 
-    public function test_listagem_exibe_tipo_de_vinculo_e_acao_explicita_para_copiar_cgm(): void
+    public function test_listagem_exibe_tipo_de_vinculo_sem_action_manual_de_copiar_cgm(): void
     {
         Permission::findOrCreate('Listar Alunos');
 
@@ -274,9 +277,61 @@ class AlunoResourceScopeTest extends TestCase
         Livewire::actingAs($usuario)
             ->test(ListAlunos::class)
             ->assertCanSeeTableRecords([$alunoPrincipal, $alunoContraTurno])
-            ->assertTableActionVisible('copiar_cgm', $alunoPrincipal)
+            ->assertTableActionDoesNotExist('copiar_cgm')
+            ->assertTableColumnExists('cgm', function (\Filament\Tables\Columns\TextColumn $column): bool {
+                return $column->isCopyable($column->getState());
+            }, $alunoPrincipal)
             ->assertSee('Principal')
             ->assertSee('Contra turno');
+    }
+
+    public function test_listagem_restaurada_exibe_acoes_principais_do_aluno_com_permissoes(): void
+    {
+        Permission::findOrCreate('Listar Alunos');
+        Permission::findOrCreate('Editar Alunos');
+        Permission::findOrCreate('Excluir Alunos');
+        Permission::findOrCreate('Realizar Remanejamento de Aluno');
+        Permission::findOrCreate('Gerar Parecer de Transferencia');
+
+        $escola = $this->criarEscola('Escola Acoes Restauradas');
+        $serie = Serie::query()->create([
+            'codigo' => 'SER-ACOES',
+            'nome' => 'Serie Acoes',
+        ]);
+        $turmaOrigem = $this->criarTurma($escola, 'Origem', $serie, 'tarde');
+        $turmaAtual = $this->criarTurma($escola, 'Atual', $serie, 'manha');
+
+        $aluno = Aluno::query()->create([
+            'nome' => 'Aluno Acoes Restauradas',
+            'cgm' => 'CGM-ACOES-RESTAURADAS',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turmaAtual->id,
+            'turma_origem_id' => $turmaOrigem->id,
+        ]);
+
+        $this->criarAvaliacaoParaTurma($turmaAtual);
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo([
+            'Listar Alunos',
+            'Editar Alunos',
+            'Excluir Alunos',
+            'Realizar Remanejamento de Aluno',
+            'Gerar Parecer de Transferencia',
+        ]);
+
+        Livewire::actingAs($usuario)
+            ->test(ListAlunos::class)
+            ->assertCanSeeTableRecords([$aluno])
+            ->assertTableActionVisible('remanejar', $aluno)
+            ->assertTableActionVisible('voltar_turma_anterior', $aluno)
+            ->assertTableActionVisible('marcar_contra_turno', $aluno)
+            ->assertTableActionVisible('parecer_transferencia', $aluno)
+            ->assertTableActionVisible('edit', $aluno)
+            ->assertTableActionVisible('delete', $aluno);
     }
 
     public function test_acao_de_linha_marca_contra_turno_e_exibe_duas_linhas_ativas(): void
@@ -321,8 +376,20 @@ class AlunoResourceScopeTest extends TestCase
 
         Livewire::actingAs($usuario)
             ->test(ListAlunos::class)
+            ->mountTableAction('marcar_contra_turno', $aluno->fresh())
+            ->assertTableActionDataSet([
+                'turma_contra_turno_id' => $turmaContraTurno->id,
+            ]);
+
+        Livewire::actingAs($usuario)
+            ->test(ListAlunos::class)
             ->assertCanSeeTableRecords([$aluno->fresh(), $contraTurno])
+            ->assertTableActionVisible('marcar_contra_turno', $aluno->fresh())
             ->assertTableActionVisible('encerrar_contra_turno', $contraTurno)
+            ->assertTableActionHidden('remanejar', $contraTurno)
+            ->assertTableActionHidden('parecer_transferencia', $contraTurno)
+            ->assertTableActionHidden('edit', $contraTurno)
+            ->assertTableActionHidden('delete', $contraTurno)
             ->assertSee('Contra turno');
     }
 
@@ -543,5 +610,29 @@ class AlunoResourceScopeTest extends TestCase
             'id_serie' => $serie->id,
             'id_escola' => $escola->id,
         ]);
+    }
+
+    private function criarAvaliacaoParaTurma(Turma $turma): Avaliacao
+    {
+        $tipo = TipoAvaliacao::query()->create([
+            'nome' => 'Parecer ' . uniqid(),
+            'status' => true,
+        ]);
+        $periodo = PeriodoAvaliacao::query()->create([
+            'nome' => 'Periodo ' . uniqid(),
+            'status' => true,
+        ]);
+
+        $avaliacao = Avaliacao::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'periodo_avaliacao_id' => $periodo->id,
+            'nome' => 'Avaliacao ' . uniqid(),
+            'data_inicio' => now()->subDay()->toDateString(),
+            'data_fim' => now()->addDays(7)->toDateString(),
+            'status' => Avaliacao::STATUS_ATIVA,
+        ]);
+        $avaliacao->turmas()->attach($turma->id);
+
+        return $avaliacao;
     }
 }

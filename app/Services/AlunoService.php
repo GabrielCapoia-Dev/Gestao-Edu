@@ -27,11 +27,11 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Js;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -273,7 +273,7 @@ class AlunoService
             ->searchPlaceholder('Buscar por nome, CGM, status, turma, serie ou escola')
             ->columns($this->colunasTabela())
             ->filters($this->filtrosTabela($user))
-            ->recordActions($this->acoesTabela($user))
+            ->recordActions($this->acoesTabela($user), RecordActionsPosition::AfterContent)
             ->toolbarActions($this->acoesEmMassa($user))
             ->defaultSort('nome')
             ->striped();
@@ -428,15 +428,6 @@ class AlunoService
     private function acoesTabela(?User $user): array
     {
         return [
-            Action::make('copiar_cgm')
-                ->label('Copiar CGM')
-                ->icon('heroicon-o-clipboard-document')
-                ->color('gray')
-                ->action(fn (): null => null)
-                ->extraAttributes(fn (Aluno $record): array => [
-                    'x-on:click.prevent' => 'navigator.clipboard.writeText('.Js::from((string) $record->cgm).');',
-                ]),
-
             Action::make('remanejar')
                 ->label('Remanejar')
                 ->icon('heroicon-o-arrows-right-left')
@@ -501,6 +492,10 @@ class AlunoService
                     && $record->isPrincipal()
                     && $record->estaMatriculado()
                     && $this->userService->podeEditarAlunos($user))
+                ->fillForm(fn (Aluno $record): array => [
+                    'turma_contra_turno_id' => $this->turmaContraTurnoAtivaId($record),
+                    'motivo' => null,
+                ])
                 ->modalHeading(fn (Aluno $record): string => 'Contra turno de '.$record->nome)
                 ->modalSubmitActionLabel('Salvar')
                 ->schema(fn (Aluno $record): array => [
