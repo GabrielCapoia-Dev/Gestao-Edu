@@ -51,6 +51,7 @@ class DashboardAvaliacoesPageTest extends TestCase
         $alunoManhaDois = $this->criarAluno($turmaManha, 'Aluno Manha 2', 'CGM-DASH-002');
         $alunoManhaParcial = $this->criarAluno($turmaManha, 'Aluno Manha Parcial', 'CGM-DASH-004');
         $this->criarAluno($turmaTarde, 'Aluno Tarde 1', 'CGM-DASH-003');
+        $this->criarAluno($turmaTarde, 'Aluno Manha 1 Contra Turno', 'CGM-DASH-001', Aluno::TIPO_VINCULO_CONTRA_TURNO);
 
         $alternativaSim = Alternativa::query()->create([
             'tipo_avaliacao_id' => $tipo->id,
@@ -93,24 +94,36 @@ class DashboardAvaliacoesPageTest extends TestCase
 
         $cards = $component->instance()->cards;
 
-        $this->assertSame(8, $cards['preenchimentos_esperados']);
+        $this->assertSame(10, $cards['preenchimentos_esperados']);
         $this->assertSame(5, $cards['preenchimentos_respondidos']);
-        $this->assertSame(3, $cards['preenchimentos_pendentes']);
-        $this->assertEquals(37.5, $cards['percentual_alunos_sem_resposta_pautas']);
+        $this->assertSame(5, $cards['preenchimentos_pendentes']);
+        $this->assertEquals(50.0, $cards['percentual_alunos_sem_resposta_pautas']);
         $this->assertEquals(0.0, $cards['percentual_turmas_preenchidas']);
         $this->assertEquals(0.0, $cards['percentual_escolas_preenchidas']);
         $this->assertEquals(83.3, $cards['percentual_turno_manha']);
         $this->assertEquals(0.0, $cards['percentual_turno_tarde']);
         $this->assertSame(1, $cards['turno_manha_alunos_pendentes']);
         $this->assertSame(3, $cards['turno_manha_alunos_total']);
-        $this->assertSame(1, $cards['turno_tarde_alunos_pendentes']);
-        $this->assertSame(1, $cards['turno_tarde_alunos_total']);
+        $this->assertSame(2, $cards['turno_tarde_alunos_pendentes']);
+        $this->assertSame(2, $cards['turno_tarde_alunos_total']);
 
         $alternativas = collect($component->instance()->distribuicaoAlternativas['itens'])->keyBy('nome');
 
-        $this->assertEquals(75.0, $alternativas->get('Sim')['percentual']);
-        $this->assertEquals(50.0, $alternativas->get('Nao')['percentual']);
-        $this->assertSame(4, $component->instance()->distribuicaoAlternativas['total_alunos']);
+        $this->assertEquals(60.0, $alternativas->get('Sim')['percentual']);
+        $this->assertEquals(40.0, $alternativas->get('Nao')['percentual']);
+        $this->assertSame(5, $component->instance()->distribuicaoAlternativas['total_alunos']);
+
+        $vinculos = collect($component->instance()->vinculosAvaliados)->keyBy('tipo_vinculo');
+
+        $this->assertSame(4, $vinculos->get(Aluno::TIPO_VINCULO_PRINCIPAL)['alunos_total']);
+        $this->assertSame(8, $vinculos->get(Aluno::TIPO_VINCULO_PRINCIPAL)['preenchimentos_esperados']);
+        $this->assertSame(5, $vinculos->get(Aluno::TIPO_VINCULO_PRINCIPAL)['preenchimentos_respondidos']);
+        $this->assertSame(3, $vinculos->get(Aluno::TIPO_VINCULO_PRINCIPAL)['preenchimentos_pendentes']);
+        $this->assertEquals(62.5, $vinculos->get(Aluno::TIPO_VINCULO_PRINCIPAL)['percentual_preenchimento']);
+        $this->assertSame(1, $vinculos->get(Aluno::TIPO_VINCULO_CONTRA_TURNO)['alunos_total']);
+        $this->assertSame(2, $vinculos->get(Aluno::TIPO_VINCULO_CONTRA_TURNO)['preenchimentos_esperados']);
+        $this->assertSame(0, $vinculos->get(Aluno::TIPO_VINCULO_CONTRA_TURNO)['preenchimentos_respondidos']);
+        $this->assertSame(2, $vinculos->get(Aluno::TIPO_VINCULO_CONTRA_TURNO)['preenchimentos_pendentes']);
 
         $graficoEscolas = collect($component->instance()->graficoAlunosSemRespostaPorEscola)->keyBy('nome');
 
@@ -230,13 +243,19 @@ class DashboardAvaliacoesPageTest extends TestCase
         ]);
     }
 
-    private function criarAluno(Turma $turma, string $nome, string $cgm): Aluno
+    private function criarAluno(
+        Turma $turma,
+        string $nome,
+        string $cgm,
+        string $tipoVinculo = Aluno::TIPO_VINCULO_PRINCIPAL
+    ): Aluno
     {
         return Aluno::query()->create([
             'nome' => $nome,
             'cgm' => $cgm,
             'data_nascimento' => '2015-01-01',
             'id_turma' => $turma->id,
+            'tipo_vinculo' => $tipoVinculo,
         ]);
     }
 

@@ -166,7 +166,7 @@ class ExportarAvaliacoes extends Page
 
         return $query
             ->orderBy('nome')
-            ->paginate($this->perPage, ['id', 'nome', 'cgm', 'id_turma', 'status'], 'exportarAvaliacoesPage');
+            ->paginate($this->perPage, ['id', 'nome', 'cgm', 'id_turma', 'status', 'tipo_vinculo'], 'exportarAvaliacoesPage');
     }
 
     public function getTurmasComAvaliacoesProperty(): LengthAwarePaginator
@@ -248,7 +248,7 @@ class ExportarAvaliacoes extends Page
             ->where('id_turma', (int) $this->turmaSelecionada->id)
             ->where('status', '!=', Aluno::STATUS_PENDENTE)
             ->orderBy('nome')
-            ->get(['id', 'nome', 'cgm', 'id_turma', 'status']);
+            ->get(['id', 'nome', 'cgm', 'id_turma', 'status', 'tipo_vinculo']);
     }
 
     public function getAvaliacaoParaAlunoDaTurmaProperty(): ?Avaliacao

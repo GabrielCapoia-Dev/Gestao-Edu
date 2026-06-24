@@ -128,6 +128,7 @@ class AvaliacaoDocumentoExportService
                 'Aluno ID',
                 'Aluno Nome',
                 'Aluno CGM',
+                'Aluno Vínculo',
                 'Aluno Status',
                 'Pauta ID',
                 'Pauta Texto',
@@ -165,6 +166,7 @@ class AvaliacaoDocumentoExportService
                             (int) $aluno->id,
                             (string) $aluno->nome,
                             (string) $aluno->cgm,
+                            $aluno->tipoVinculoLabel(),
                             $aluno->statusLabel(),
                             (int) $pauta->id,
                             (string) $pauta->texto,
@@ -405,7 +407,7 @@ class AvaliacaoDocumentoExportService
             $query->whereKey((int) ($params['aluno_id'] ?? 0));
         }
 
-        return $query->get(['id', 'nome', 'cgm', 'id_turma', 'status']);
+        return $query->get(['id', 'nome', 'cgm', 'id_turma', 'status', 'tipo_vinculo']);
     }
 
     /**
@@ -576,6 +578,7 @@ class AvaliacaoDocumentoExportService
             'escola' => $turma->escola?->nome ?? '',
             'estudante' => (string) $aluno->nome,
             'cgm' => (string) $aluno->cgm,
+            'vinculo' => $aluno->tipoVinculoLabel(),
             'curso' => (string) ($turma->serie?->nome ?? ''),
             'turma' => $this->rotuloTurma($turma),
             'turno' => $this->formatarTurno($turma),
@@ -876,6 +879,18 @@ class AvaliacaoDocumentoExportService
     ): void {
         /** @var Turma|null $primeiraTurma */
         $primeiraTurma = $turmas->first();
+        $alunosExportados = $this->alunosExportadosParaLog($avaliacao, $turmas, $escopo, $params);
+        $parametros = [
+            'avaliacao' => $avaliacao->nome,
+            'tipo' => $avaliacao->tipo?->nome,
+            'turmas' => $turmas->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
+        ];
+
+        if ($escopo === 'aluno') {
+            $parametros['aluno_tipo_vinculo'] = (string) ($alunosExportados->first()?->tipo_vinculo ?: Aluno::TIPO_VINCULO_PRINCIPAL);
+        } else {
+            $parametros['vinculos_por_tipo'] = $this->contarVinculosPorTipo($alunosExportados);
+        }
 
         AvaliacaoExportacao::query()->create([
             'avaliacao_id' => (int) $avaliacao->id,
@@ -887,13 +902,46 @@ class AvaliacaoDocumentoExportService
             'formato' => $formato,
             'quantidade_alunos' => $quantidadeAlunos,
             'quantidade_paginas' => $quantidadePaginas,
-            'parametros' => [
-                'avaliacao' => $avaliacao->nome,
-                'tipo' => $avaliacao->tipo?->nome,
-                'turmas' => $turmas->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
-            ],
+            'parametros' => $parametros,
             'exportado_em' => now(),
         ]);
+    }
+
+    /**
+     * @param  Collection<int, Turma>  $turmas
+     * @param  array<string, mixed>  $params
+     * @return Collection<int, Aluno>
+     */
+    private function alunosExportadosParaLog(Avaliacao $avaliacao, Collection $turmas, string $escopo, array $params): Collection
+    {
+        return $turmas
+            ->flatMap(function (Turma $turma) use ($avaliacao, $escopo, $params): Collection {
+                if ($this->pautasDaTurma($avaliacao, $turma)->isEmpty()) {
+                    return collect();
+                }
+
+                return $this->alunosDaTurma($turma, $escopo, $params);
+            })
+            ->values();
+    }
+
+    /**
+     * @param  Collection<int, Aluno>  $alunos
+     * @return array<string, int>
+     */
+    private function contarVinculosPorTipo(Collection $alunos): array
+    {
+        $contagens = $alunos->countBy(
+            fn (Aluno $aluno): string => (string) ($aluno->tipo_vinculo ?: Aluno::TIPO_VINCULO_PRINCIPAL)
+        );
+
+        $resultado = [];
+
+        foreach (array_keys(Aluno::tiposVinculoOptions()) as $tipo) {
+            $resultado[$tipo] = (int) $contagens->get($tipo, 0);
+        }
+
+        return $resultado;
     }
 
     /**

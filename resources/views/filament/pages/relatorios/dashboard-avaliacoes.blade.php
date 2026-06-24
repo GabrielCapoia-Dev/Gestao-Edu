@@ -30,7 +30,7 @@
         @else
             <section class="dav-kpi-grid">
                 <article class="dav-kpi dav-kpi--amber">
-                    <span class="dav-kpi-label">% alunos sem resposta em pautas</span>
+                    <span class="dav-kpi-label">% vínculos sem resposta em pautas</span>
                     <strong>{{ number_format((float) ($cards['percentual_alunos_sem_resposta_pautas'] ?? 0), 1, ',', '.') }}%</strong>
                     <small>{{ $cards['preenchimentos_pendentes'] ?? 0 }} de {{ $cards['preenchimentos_esperados'] ?? 0 }} preenchimentos pendentes</small>
                 </article>
@@ -47,13 +47,51 @@
                 <article class="dav-kpi">
                     <span class="dav-kpi-label">Preenchimento manhã</span>
                     <strong>{{ number_format((float) ($cards['percentual_turno_manha'] ?? 0), 1, ',', '.') }}%</strong>
-                    <small>{{ $cards['turno_manha_alunos_pendentes'] ?? 0 }} de {{ $cards['turno_manha_alunos_total'] ?? 0 }} alunos com pauta pendente</small>
+                    <small>{{ $cards['turno_manha_alunos_pendentes'] ?? 0 }} de {{ $cards['turno_manha_alunos_total'] ?? 0 }} vínculos com pauta pendente</small>
                 </article>
                 <article class="dav-kpi">
                     <span class="dav-kpi-label">Preenchimento tarde</span>
                     <strong>{{ number_format((float) ($cards['percentual_turno_tarde'] ?? 0), 1, ',', '.') }}%</strong>
-                    <small>{{ $cards['turno_tarde_alunos_pendentes'] ?? 0 }} de {{ $cards['turno_tarde_alunos_total'] ?? 0 }} alunos com pauta pendente</small>
+                    <small>{{ $cards['turno_tarde_alunos_pendentes'] ?? 0 }} de {{ $cards['turno_tarde_alunos_total'] ?? 0 }} vínculos com pauta pendente</small>
                 </article>
+            </section>
+
+            <section class="dav-card">
+                <header>
+                    <h3>Vínculos avaliados</h3>
+                    <p>Separação por vínculo principal e contra turno.</p>
+                </header>
+
+                <div class="dav-table-wrap">
+                    <table class="dav-table">
+                        <thead>
+                            <tr>
+                                <th>Vínculo</th>
+                                <th class="text-right">Alunos/Vínculos</th>
+                                <th class="text-right">Esperados</th>
+                                <th class="text-right">Respondidos</th>
+                                <th class="text-right">Pendentes</th>
+                                <th class="text-right">% preenchimento</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse ($vinculosAvaliados as $item)
+                                <tr>
+                                    <td>{{ $item['label'] }}</td>
+                                    <td class="text-right">{{ $item['alunos_total'] }}</td>
+                                    <td class="text-right">{{ $item['preenchimentos_esperados'] }}</td>
+                                    <td class="text-right">{{ $item['preenchimentos_respondidos'] }}</td>
+                                    <td class="text-right">{{ $item['preenchimentos_pendentes'] }}</td>
+                                    <td class="text-right">{{ number_format((float) $item['percentual_preenchimento'], 1, ',', '.') }}%</td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="6" class="dav-empty">Nenhum vínculo encontrado para os filtros atuais.</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
             </section>
 
             <section class="dav-card">
@@ -62,7 +100,7 @@
                     <p>
                         {{ $distribuicaoAlternativas['subtitulo'] ?? '' }}
                         @if (($distribuicaoAlternativas['total_alunos'] ?? 0) > 0)
-                            ({{ $distribuicaoAlternativas['total_respostas'] ?? 0 }} alunos marcados de {{ $distribuicaoAlternativas['total_alunos'] }} alunos no escopo)
+                            ({{ $distribuicaoAlternativas['total_respostas'] ?? 0 }} vínculos marcados de {{ $distribuicaoAlternativas['total_alunos'] }} vínculos no escopo)
                         @endif
                     </p>
                 </header>
@@ -222,7 +260,7 @@
                             <th>Turma</th>
                             <th>Turno</th>
                             <th class="text-right">Respostas</th>
-                            <th class="text-right">Alunos</th>
+                            <th class="text-right">Vínculos</th>
                             <th class="text-right">Pautas</th>
                             <th>Última resposta</th>
                             <th class="text-right">Ação</th>

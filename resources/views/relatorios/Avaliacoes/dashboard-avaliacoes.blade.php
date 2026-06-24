@@ -145,7 +145,7 @@
 
     <div class="cards-row">
         <div class="card">
-            <div class="card-label">% alunos sem resposta em pautas</div>
+            <div class="card-label">% vínculos sem resposta em pautas</div>
             <div class="card-value">{{ number_format((float) ($cards['percentual_alunos_sem_resposta_pautas'] ?? 0), 1, ',', '.') }}%</div>
         </div>
         <div class="card card-green">
@@ -159,14 +159,45 @@
         <div class="card">
             <div class="card-label">Preenchimento manhã</div>
             <div class="card-value">{{ number_format((float) ($cards['percentual_turno_manha'] ?? 0), 1, ',', '.') }}%</div>
-            <div class="card-detail">{{ $cards['turno_manha_alunos_pendentes'] ?? 0 }} de {{ $cards['turno_manha_alunos_total'] ?? 0 }} alunos com pauta pendente</div>
+            <div class="card-detail">{{ $cards['turno_manha_alunos_pendentes'] ?? 0 }} de {{ $cards['turno_manha_alunos_total'] ?? 0 }} vínculos com pauta pendente</div>
         </div>
         <div class="card">
             <div class="card-label">Preenchimento tarde</div>
             <div class="card-value">{{ number_format((float) ($cards['percentual_turno_tarde'] ?? 0), 1, ',', '.') }}%</div>
-            <div class="card-detail">{{ $cards['turno_tarde_alunos_pendentes'] ?? 0 }} de {{ $cards['turno_tarde_alunos_total'] ?? 0 }} alunos com pauta pendente</div>
+            <div class="card-detail">{{ $cards['turno_tarde_alunos_pendentes'] ?? 0 }} de {{ $cards['turno_tarde_alunos_total'] ?? 0 }} vínculos com pauta pendente</div>
         </div>
     </div>
+
+    <div class="section-title">Vínculos avaliados</div>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Vínculo</th>
+                <th class="text-right">Alunos/Vínculos</th>
+                <th class="text-right">Esperados</th>
+                <th class="text-right">Respondidos</th>
+                <th class="text-right">Pendentes</th>
+                <th class="text-right">% preenchimento</th>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse($vinculos ?? [] as $item)
+                <tr>
+                    <td>{{ $item['label'] }}</td>
+                    <td class="text-right">{{ $item['alunos_total'] }}</td>
+                    <td class="text-right">{{ $item['preenchimentos_esperados'] }}</td>
+                    <td class="text-right">{{ $item['preenchimentos_respondidos'] }}</td>
+                    <td class="text-right">{{ $item['preenchimentos_pendentes'] }}</td>
+                    <td class="text-right">{{ number_format((float) $item['percentual_preenchimento'], 1, ',', '.') }}%</td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="6">Nenhum vínculo encontrado para os filtros aplicados.</td>
+                </tr>
+            @endforelse
+        </tbody>
+    </table>
 
     <div class="section-title">Progresso por Escola</div>
 
@@ -259,7 +290,7 @@
     <p style="margin: 0 0 8px 0; color: #6b7280;">
         {{ $alternativas['subtitulo'] ?? '' }}
         @if(($alternativas['total_alunos'] ?? 0) > 0)
-            ({{ $alternativas['total_respostas'] ?? 0 }} alunos marcados de {{ $alternativas['total_alunos'] }} alunos no escopo)
+            ({{ $alternativas['total_respostas'] ?? 0 }} vínculos marcados de {{ $alternativas['total_alunos'] }} vínculos no escopo)
         @endif
     </p>
 
@@ -268,7 +299,7 @@
             <tr>
                 <th>Alternativa</th>
                 <th class="text-right">Respostas</th>
-                <th class="text-right">% dos alunos</th>
+                <th class="text-right">% dos vínculos</th>
                 <th>Distribuição</th>
             </tr>
         </thead>

@@ -187,10 +187,14 @@
                 </tr>
                 <tr>
                     <td><span class="label">CGM:</span> {{ $documento['cgm'] ?? '' }}</td>
-                    <td class="right"><span class="label">ANO LETIVO:</span> {{ $documento['ano_letivo'] ?? '' }}</td>
+                    <td class="right"><span class="label">VÍNCULO:</span> {{ $documento['vinculo'] ?? '' }}</td>
                 </tr>
                 <tr>
                     <td><span class="label">CURSO:</span> {{ $documento['curso'] ?? '' }}</td>
+                    <td class="right"><span class="label">ANO LETIVO:</span> {{ $documento['ano_letivo'] ?? '' }}</td>
+                </tr>
+                <tr>
+                    <td></td>
                     <td class="right"><span class="label">TURNO:</span> {{ $documento['turno'] ?? '' }}</td>
                 </tr>
                 @if (! empty($documento['documento_tipo']))

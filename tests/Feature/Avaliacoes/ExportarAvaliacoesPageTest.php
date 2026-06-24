@@ -164,6 +164,51 @@ class ExportarAvaliacoesPageTest extends TestCase
         $this->assertStringContainsString('escopo=turma', $component->instance()->turmaExportPdfUrl($avaliacao->id, $turma->id));
     }
 
+    public function test_listagem_identifica_vinculos_do_mesmo_cgm_sem_colapsar(): void
+    {
+        Permission::findOrCreate('Exportar Avaliações');
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo('Exportar Avaliações');
+
+        $escola = $this->criarEscola('Escola Vinculos Exportacao');
+        $usuario->escolas()->attach($escola->id);
+        $serie = $this->criarSerie('SER-VINC-EXP', '2o Ano');
+        $turmaPrincipal = $this->criarTurma($escola, $serie, 'A');
+        $turmaContra = $this->criarTurma($escola, $serie, 'B');
+        $avaliacao = $this->criarAvaliacao('Avaliacao Vinculos Exportacao', '2026-06-01');
+        $avaliacao->turmas()->sync([$turmaPrincipal->id, $turmaContra->id]);
+
+        $principal = Aluno::query()->create([
+            'nome' => 'Aluno Vinculo Principal',
+            'cgm' => 'CGM-VINC-EXPORT',
+            'data_nascimento' => '2015-02-01',
+            'id_turma' => $turmaPrincipal->id,
+            'tipo_vinculo' => Aluno::TIPO_VINCULO_PRINCIPAL,
+        ]);
+        $contraTurno = Aluno::query()->create([
+            'nome' => 'Aluno Vinculo Contra Turno',
+            'cgm' => 'CGM-VINC-EXPORT',
+            'data_nascimento' => '2015-02-01',
+            'id_turma' => $turmaContra->id,
+            'tipo_vinculo' => Aluno::TIPO_VINCULO_CONTRA_TURNO,
+        ]);
+
+        $component = Livewire::actingAs($usuario)
+            ->test(ExportarAvaliacoes::class)
+            ->assertSee('Principal')
+            ->assertSee('Contra turno');
+
+        $alunos = collect($component->instance()->alunosComAvaliacoes->items());
+
+        $this->assertTrue($alunos->contains('id', $principal->id));
+        $this->assertTrue($alunos->contains('id', $contraTurno->id));
+        $this->assertSame(2, $alunos->where('cgm', 'CGM-VINC-EXPORT')->count());
+    }
+
     private function criarAvaliacao(string $nome, string $dataInicio): Avaliacao
     {
         $tipo = TipoAvaliacao::query()->first()

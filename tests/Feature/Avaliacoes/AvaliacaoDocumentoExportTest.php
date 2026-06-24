@@ -167,6 +167,7 @@ class AvaliacaoDocumentoExportTest extends TestCase
         $log = AvaliacaoExportacao::query()->firstOrFail();
 
         $this->assertSame('Parecer Periodo Diagnostico', $log->parametros['avaliacao']);
+        $this->assertSame(Aluno::TIPO_VINCULO_PRINCIPAL, $log->parametros['aluno_tipo_vinculo']);
         $this->assertGreaterThan(0, $log->quantidade_paginas);
         $this->assertNotNull($log->exportado_em);
 
@@ -186,6 +187,8 @@ class AvaliacaoDocumentoExportTest extends TestCase
 
         $this->assertSame(2, $logTurma->quantidade_alunos);
         $this->assertSame(2, $logTurma->quantidade_paginas);
+        $this->assertSame(2, $logTurma->parametros['vinculos_por_tipo'][Aluno::TIPO_VINCULO_PRINCIPAL]);
+        $this->assertSame(0, $logTurma->parametros['vinculos_por_tipo'][Aluno::TIPO_VINCULO_CONTRA_TURNO]);
     }
 
     public function test_csv_exporta_todos_os_componentes_do_aluno_mesmo_sem_ser_professor_do_componente(): void
@@ -300,6 +303,121 @@ class AvaliacaoDocumentoExportTest extends TestCase
             'formato' => 'csv',
             'quantidade_alunos' => 1,
         ]);
+    }
+
+    public function test_exportacoes_distinguem_vinculo_principal_e_contra_turno(): void
+    {
+        Permission::findOrCreate('Exportar Avaliações');
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo('Exportar Avaliações');
+
+        $tipo = TipoAvaliacao::query()->create(['nome' => 'Parecer Vinculo', 'status' => true]);
+        $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Periodo Vinculo', 'status' => true]);
+        $escola = $this->criarEscola('Escola Vinculo Documento');
+        $usuario->escolas()->attach($escola->id);
+        $serie = $this->criarSerie('SER-VINC', '2o Ano');
+        $turmaPrincipal = $this->criarTurma($escola, $serie, 'Principal');
+        $turmaContra = $this->criarTurma($escola, $serie, 'Contra');
+        $componente = ComponenteCurricular::query()->create(['codigo' => 'COMP-VINC', 'nome' => 'Arte']);
+        $alternativa = Alternativa::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'nome' => 'Atende',
+            'tem_observacao' => false,
+            'status' => true,
+        ]);
+        $pauta = Pauta::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'texto' => 'Participa das atividades',
+            'serie_id' => $serie->id,
+            'componente_curricular_id' => $componente->id,
+            'status' => true,
+        ]);
+        $pauta->alternativas()->attach($alternativa->id);
+
+        $avaliacao = Avaliacao::query()->create([
+            'nome' => 'Avaliacao Vinculo Documento',
+            'tipo_avaliacao_id' => $tipo->id,
+            'periodo_avaliacao_id' => $periodo->id,
+            'data_inicio' => '2026-02-01',
+            'data_fim' => '2026-12-20',
+            'status' => Avaliacao::STATUS_ATIVA,
+        ]);
+        $avaliacao->pautas()->sync([$pauta->id]);
+        $avaliacao->turmas()->sync([$turmaPrincipal->id, $turmaContra->id]);
+        $avaliacao->series()->sync([$serie->id]);
+        $avaliacao->componentes()->sync([$componente->id]);
+        $avaliacao->escolas()->sync([$escola->id]);
+
+        $principal = Aluno::query()->create([
+            'nome' => 'Aluno Vinculo Principal',
+            'cgm' => 'CGM-VINC-001',
+            'data_nascimento' => '2016-01-01',
+            'id_turma' => $turmaPrincipal->id,
+            'tipo_vinculo' => Aluno::TIPO_VINCULO_PRINCIPAL,
+        ]);
+        $contraTurno = Aluno::query()->create([
+            'nome' => 'Aluno Vinculo Contra Turno',
+            'cgm' => 'CGM-VINC-001',
+            'data_nascimento' => '2016-01-01',
+            'id_turma' => $turmaContra->id,
+            'tipo_vinculo' => Aluno::TIPO_VINCULO_CONTRA_TURNO,
+        ]);
+
+        foreach ([[$principal, $turmaPrincipal], [$contraTurno, $turmaContra]] as [$aluno, $turma]) {
+            AvaliacaoResposta::query()->create([
+                'avaliacao_id' => $avaliacao->id,
+                'pauta_id' => $pauta->id,
+                'turma_id' => $turma->id,
+                'aluno_id' => $aluno->id,
+                'alternativa_id' => $alternativa->id,
+                'respondido_em' => now(),
+            ]);
+        }
+
+        $avaliacao->load('tipo');
+        $pauta->load(['componente', 'alternativas']);
+
+        $metodo = new ReflectionMethod(AvaliacaoDocumentoExportService::class, 'montarDocumentoAluno');
+        $metodo->setAccessible(true);
+
+        $documento = $metodo->invoke(
+            new AvaliacaoDocumentoExportService(),
+            $avaliacao,
+            $turmaContra->load(['escola', 'serie']),
+            $contraTurno,
+            collect([$pauta]),
+            collect(),
+            ['diretor' => '', 'coordenacao' => ''],
+            ''
+        );
+
+        $this->assertSame('Contra turno', $documento['vinculo']);
+
+        $response = $this->actingAs($usuario)->get(route('avaliacoes.documento.csv', [
+            'avaliacao_id' => $avaliacao->id,
+            'escopo' => 'escola',
+            'escola_id' => $escola->id,
+        ]));
+
+        $response->assertOk();
+        $conteudo = $response->streamedContent();
+
+        $this->assertStringContainsString('Aluno Vínculo', $conteudo);
+        $this->assertStringContainsString('Principal', $conteudo);
+        $this->assertStringContainsString('Contra turno', $conteudo);
+
+        $log = AvaliacaoExportacao::query()
+            ->where('formato', 'csv')
+            ->where('escopo', 'escola')
+            ->firstOrFail();
+
+        $this->assertSame(2, $log->quantidade_alunos);
+        $this->assertSame(1, $log->parametros['vinculos_por_tipo'][Aluno::TIPO_VINCULO_PRINCIPAL]);
+        $this->assertSame(1, $log->parametros['vinculos_por_tipo'][Aluno::TIPO_VINCULO_CONTRA_TURNO]);
     }
 
     public function test_resolve_diretor_e_coordenador_por_funcoes_do_servidor_para_o_documento(): void
@@ -458,6 +576,7 @@ class AvaliacaoDocumentoExportTest extends TestCase
         );
 
         $this->assertSame('Não Avaliado', $documento['componentes'][0]['pautas'][0]['resultado']);
+        $this->assertSame('Principal', $documento['vinculo']);
     }
 
     private function criarEscola(string $nome): Escola

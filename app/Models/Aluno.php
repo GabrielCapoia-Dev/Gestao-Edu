@@ -157,7 +157,9 @@ class Aluno extends Model
 
     public function tipoVinculoLabel(): string
     {
-        return self::tiposVinculoOptions()[$this->tipo_vinculo] ?? ucfirst((string) $this->tipo_vinculo);
+        $tipoVinculo = $this->tipo_vinculo ?: self::TIPO_VINCULO_PRINCIPAL;
+
+        return self::tiposVinculoOptions()[$tipoVinculo] ?? ucfirst((string) $tipoVinculo);
     }
 
     public function isPrincipal(): bool

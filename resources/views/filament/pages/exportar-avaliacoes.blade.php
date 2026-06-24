@@ -28,7 +28,7 @@
 
                         <div class="av-segmented-control" role="tablist">
                             <button type="button" class="{{ $modoListagem === 'alunos' ? 'is-active' : '' }}" wire:click="definirModo('alunos')">
-                                Por alunos
+                                Por vínculos
                             </button>
                             <button type="button" class="{{ $modoListagem === 'turmas' ? 'is-active' : '' }}" wire:click="definirModo('turmas')">
                                 Por turmas
@@ -45,7 +45,7 @@
                         <table class="gi-table">
                             <thead>
                                 <tr>
-                                    <th>Aluno</th>
+                                    <th>Aluno/Vínculo</th>
                                     <th>Turma</th>
                                     <th>Avaliações</th>
                                     <th></th>
@@ -58,6 +58,7 @@
                                         <td>
                                             <strong>{{ $alunoItem->nome }}</strong>
                                             <small>CGM: {{ $alunoItem->cgm }}</small>
+                                            <small>Vínculo: {{ $alunoItem->tipoVinculoLabel() }}</small>
                                             <small>Status: {{ $alunoItem->statusLabel() }}</small>
                                         </td>
                                         <td>
@@ -98,7 +99,7 @@
                                 <tr>
                                     <th>Turma</th>
                                     <th>Escola</th>
-                                    <th>Alunos</th>
+                                    <th>Vínculos</th>
                                     <th>Avaliações</th>
                                     <th></th>
                                 </tr>
@@ -145,9 +146,9 @@
                 <aside class="av-slide-panel" wire:click.stop>
                     <header class="av-slide-head">
                         <div>
-                            <p>Aluno</p>
+                            <p>Aluno/Vínculo</p>
                             <h2>{{ $this->alunoSelecionado->nome }}</h2>
-                            <span>CGM: {{ $this->alunoSelecionado->cgm }} | {{ $this->alunoSelecionado->turma?->nome }}</span>
+                            <span>CGM: {{ $this->alunoSelecionado->cgm }} | {{ $this->alunoSelecionado->tipoVinculoLabel() }} | {{ $this->alunoSelecionado->turma?->nome }}</span>
                         </div>
                         <button type="button" wire:click="fecharModais">Fechar</button>
                     </header>
@@ -195,7 +196,7 @@
                                     <a class="gi-action" href="{{ $this->turmaExportPdfUrl((int) $avaliacaoItem->id, (int) $this->turmaSelecionada->id) }}">Turma PDF</a>
                                     <a class="gi-action" href="{{ $this->turmaExportCsvUrl((int) $avaliacaoItem->id, (int) $this->turmaSelecionada->id) }}">Turma CSV</a>
                                     <button type="button" class="gi-action gi-action--primary" wire:click="abrirExportacaoAlunoDaTurma({{ $avaliacaoItem->id }})">
-                                        Por aluno
+                                        Por vínculo
                                     </button>
                                 </div>
                             </section>
@@ -212,18 +213,18 @@
                 <section class="av-export-modal" wire:click.stop>
                     <header class="av-slide-head">
                         <div>
-                            <p>Exportar aluno da turma</p>
+                            <p>Exportar vínculo da turma</p>
                             <h2>{{ $this->avaliacaoParaAlunoDaTurma->nome }}</h2>
                         </div>
                         <button type="button" wire:click="fecharModalAlunoDaTurma">Fechar</button>
                     </header>
 
                     <label class="gi-field">
-                        <span>Aluno</span>
+                        <span>Aluno/Vínculo</span>
                         <select wire:model.live="alunoDaTurmaSelecionadoId">
-                            <option value="">Selecione um aluno</option>
+                            <option value="">Selecione um vínculo</option>
                             @foreach ($this->alunosDaTurmaSelecionada as $alunoItem)
-                                <option value="{{ $alunoItem->id }}">{{ $alunoItem->nome }} | CGM: {{ $alunoItem->cgm }}</option>
+                                <option value="{{ $alunoItem->id }}">{{ $alunoItem->nome }} | CGM: {{ $alunoItem->cgm }} | {{ $alunoItem->tipoVinculoLabel() }}</option>
                             @endforeach
                         </select>
                     </label>
@@ -233,11 +234,11 @@
                         <a class="gi-action" href="{{ $this->turmaExportCsvUrl((int) $this->avaliacaoParaAlunoDaTurma->id, (int) $this->turmaSelecionada->id) }}">Turma inteira CSV</a>
 
                         @if ($alunoDaTurmaSelecionadoId)
-                            <a class="gi-action gi-action--primary" href="{{ $this->alunoExportPdfUrl((int) $this->avaliacaoParaAlunoDaTurma->id, (int) $alunoDaTurmaSelecionadoId) }}">Aluno PDF</a>
-                            <a class="gi-action gi-action--primary" href="{{ $this->alunoExportCsvUrl((int) $this->avaliacaoParaAlunoDaTurma->id, (int) $alunoDaTurmaSelecionadoId) }}">Aluno CSV</a>
+                            <a class="gi-action gi-action--primary" href="{{ $this->alunoExportPdfUrl((int) $this->avaliacaoParaAlunoDaTurma->id, (int) $alunoDaTurmaSelecionadoId) }}">Vínculo PDF</a>
+                            <a class="gi-action gi-action--primary" href="{{ $this->alunoExportCsvUrl((int) $this->avaliacaoParaAlunoDaTurma->id, (int) $alunoDaTurmaSelecionadoId) }}">Vínculo CSV</a>
                         @else
-                            <button type="button" class="gi-action gi-action--primary" disabled>Aluno PDF</button>
-                            <button type="button" class="gi-action gi-action--primary" disabled>Aluno CSV</button>
+                            <button type="button" class="gi-action gi-action--primary" disabled>Vínculo PDF</button>
+                            <button type="button" class="gi-action gi-action--primary" disabled>Vínculo CSV</button>
                         @endif
                     </div>
                 </section>
