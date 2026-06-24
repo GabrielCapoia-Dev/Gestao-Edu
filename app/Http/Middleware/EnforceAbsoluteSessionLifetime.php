@@ -52,7 +52,7 @@ class EnforceAbsoluteSessionLifetime
             return (int) $loginAt;
         }
 
-        $timestamp = $request->user()?->last_login_at?->timestamp ?? now()->timestamp;
+        $timestamp = now()->timestamp;
         $request->session()->put(self::SESSION_KEY, $timestamp);
 
         return $timestamp;

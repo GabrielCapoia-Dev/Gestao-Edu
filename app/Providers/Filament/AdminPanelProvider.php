@@ -3,12 +3,14 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Admin\Pages\Auth\EditProfile as CustomEditProfile;
+use App\Filament\Admin\Resources\Alunos\Pages\ListAlunos;
 use App\Filament\Admin\Resources\Pedidos\Pages\ListPedidos;
 use App\Http\Controllers\Auth\AdminLoginController;
 use App\Http\Middleware\ApplyProfilePreviewUser;
 use App\Http\Middleware\BlockProfilePreviewWrites;
 use App\Http\Middleware\BloquearProfessorPendenciaTransferencia;
 use App\Http\Middleware\EnsurePasswordIsChanged;
+use App\Http\Middleware\NormalizeSessionCookieDomain;
 use App\Models\User;
 use App\Services\ProfilePreviewService;
 use App\Services\UserPresenceService;
@@ -196,6 +198,7 @@ class AdminPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/Admin/Widgets'), for: 'App\\Filament\\Admin\\Widgets')
             ->widgets([])
             ->middleware([
+                NormalizeSessionCookieDomain::class,
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,
                 StartSession::class,
@@ -253,6 +256,11 @@ class AdminPanelProvider extends PanelProvider
                 PanelsRenderHook::HEAD_END,
                 fn (): View => view('filament.pages.partials.pedidos-responsive-table-styles'),
                 ListPedidos::class
+            )
+            ->renderHook(
+                PanelsRenderHook::HEAD_END,
+                fn (): View => view('filament.pages.partials.alunos-responsive-table-styles'),
+                ListAlunos::class
             )
             ->plugins([
                 AuthDesignerPlugin::make()

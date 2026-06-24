@@ -1266,6 +1266,8 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
 
         $this->assertStringContainsString('Transformar em principal', $htmlVisualizacao);
         $this->assertStringContainsString('Cancelar adicional', $htmlVisualizacao);
+        $this->assertStringContainsString('x-on:click="tab = \'historico\'"', $htmlVisualizacao);
+        $this->assertStringContainsString('x-show="tab === \'historico\'"', $htmlVisualizacao);
 
         $htmlAdicional = view('components.pedido.visualizar', [
             'pedido' => $adicionalCancelamento,

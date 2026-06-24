@@ -42,4 +42,19 @@ class AbsoluteSessionLifetimeTest extends TestCase
 
         $this->assertAuthenticatedAs($user);
     }
+
+    public function test_authenticated_user_without_session_marker_starts_lifetime_from_current_session(): void
+    {
+        $user = User::factory()->create([
+            'email_approved' => true,
+            'last_login_at' => now()->subDay(),
+        ]);
+
+        $this->actingAs($user)
+            ->get('/test')
+            ->assertOk()
+            ->assertSessionHas('auth.login_at');
+
+        $this->assertAuthenticatedAs($user);
+    }
 }

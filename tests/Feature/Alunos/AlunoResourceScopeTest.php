@@ -331,7 +331,13 @@ class AlunoResourceScopeTest extends TestCase
             ->assertTableActionVisible('marcar_contra_turno', $aluno)
             ->assertTableActionVisible('parecer_transferencia', $aluno)
             ->assertTableActionVisible('edit', $aluno)
-            ->assertTableActionVisible('delete', $aluno);
+            ->assertTableActionVisible('delete', $aluno)
+            ->assertSee('Remanejar')
+            ->assertSee('Voltar turma anterior')
+            ->assertSee('Marcar contra turno')
+            ->assertSee('Parecer de Transferencia')
+            ->assertSee('Editar')
+            ->assertSee('Excluir');
     }
 
     public function test_acao_de_linha_marca_contra_turno_e_exibe_duas_linhas_ativas(): void

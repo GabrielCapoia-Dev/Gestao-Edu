@@ -25,7 +25,7 @@
     $tabs = [
         'geral' => 'Visao geral',
         'imagens' => 'Imagens',
-        'histórico' => 'Histórico',
+        'historico' => 'Histórico',
     ];
 
     if ($pedidoOriginal) {

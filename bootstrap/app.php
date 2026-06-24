@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnforceAbsoluteSessionLifetime;
+use App\Http\Middleware\NormalizeSessionCookieDomain;
 use App\Http\Middleware\PerformanceInstrumentation;
 use App\Http\Middleware\ValidaUser;
 use Illuminate\Console\Scheduling\Schedule;
@@ -20,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'valida.user' => ValidaUser::class,
         ]);
 
+        $middleware->prependToGroup('web', NormalizeSessionCookieDomain::class);
         $middleware->appendToGroup('web', PerformanceInstrumentation::class);
         $middleware->appendToGroup('web', EnforceAbsoluteSessionLifetime::class);
     })
