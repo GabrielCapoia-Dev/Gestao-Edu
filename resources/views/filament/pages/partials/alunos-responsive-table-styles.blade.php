@@ -26,14 +26,14 @@
 
     .fi-resource-alunos.fi-resource-list-records-page .fi-ta-content {
         display: grid;
-        gap: 0.75rem;
-        padding: 0.75rem;
+        gap: 0.5rem;
+        padding: 0.5rem;
     }
 
     .fi-resource-alunos.fi-resource-list-records-page .fi-ta-content-header {
         flex-wrap: wrap;
-        gap: 0.75rem;
-        padding: 0.75rem;
+        gap: 0.5rem;
+        padding: 0.5rem;
     }
 
     .fi-resource-alunos.fi-resource-list-records-page .fi-ta-sorting-settings {
@@ -62,54 +62,20 @@
 
     .fi-resource-alunos.fi-resource-list-records-page .fi-ta-record-content {
         display: grid;
-        gap: 0.8rem;
+        gap: 0.5rem;
         width: 100%;
-        padding: 0.85rem;
+        padding: 0.65rem;
     }
 
     .fi-resource-alunos.fi-resource-list-records-page .fi-ta-record-content-ctn > .fi-ta-actions {
-        display: none !important;
-    }
-
-    .fi-resource-alunos.fi-resource-list-records-page .aluno-card-top.fi-ta-split {
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.75rem 1rem;
-        padding-bottom: 0.75rem;
-        border-bottom: 1px solid var(--aluno-card-border);
-    }
-
-    .fi-resource-alunos.fi-resource-list-records-page .aluno-card-main-grid,
-    .fi-resource-alunos.fi-resource-list-records-page .aluno-card-meta-grid {
-        gap: 0.7rem 0.85rem;
-    }
-
-    .fi-resource-alunos.fi-resource-list-records-page .aluno-card-meta-grid {
-        padding-top: 0.2rem;
-    }
-
-    .fi-resource-alunos.fi-resource-list-records-page .aluno-card-actions {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 0.45rem;
-        min-width: 0;
-    }
-
-    .fi-resource-alunos.fi-resource-list-records-page .aluno-card-actions--footer {
-        justify-content: flex-start;
-        padding-top: 0.75rem;
+        padding-top: 0.35rem;
         border-top: 1px solid var(--aluno-card-border);
     }
 
-    .fi-resource-alunos.fi-resource-list-records-page .aluno-card-actions .fi-btn {
-        max-width: 100%;
-        min-height: 2.25rem;
-        border-radius: 0.5rem;
-        white-space: normal;
+    .fi-resource-alunos.fi-resource-list-records-page .aluno-card-main-grid {
+        gap: 0.5rem 0.65rem;
     }
 
-    .fi-resource-alunos.fi-resource-list-records-page .aluno-card-actions .fi-btn span,
     .fi-resource-alunos.fi-resource-list-records-page .aluno-card-name .fi-ta-text-item,
     .fi-resource-alunos.fi-resource-list-records-page .aluno-card-field .fi-ta-text-item,
     .fi-resource-alunos.fi-resource-list-records-page .aluno-card-field .fi-ta-text-description {
@@ -128,8 +94,8 @@
 
     .fi-resource-alunos.fi-resource-list-records-page .aluno-card-name .fi-ta-text-item {
         color: var(--primary-800);
-        font-size: var(--text-base);
-        line-height: var(--text-base--line-height);
+        font-size: var(--text-sm);
+        line-height: var(--text-sm--line-height);
         font-weight: var(--font-weight-bold);
     }
 
@@ -144,11 +110,6 @@
         font-weight: var(--font-weight-medium);
     }
 
-    .fi-resource-alunos.fi-resource-list-records-page .aluno-card-footer-slot:empty,
-    .fi-resource-alunos.fi-resource-list-records-page .aluno-card-actions-slot:empty {
-        display: none;
-    }
-
     @media (max-width: 48rem) {
         .fi-resource-alunos.fi-resource-list-records-page .fi-page-content {
             padding-inline: 0.75rem;
@@ -157,25 +118,12 @@
         .fi-resource-alunos.fi-resource-list-records-page .fi-ta-header,
         .fi-resource-alunos.fi-resource-list-records-page .fi-ta-content,
         .fi-resource-alunos.fi-resource-list-records-page .fi-ta-content-header {
-            padding: 0.65rem;
+            padding: 0.5rem;
         }
 
         .fi-resource-alunos.fi-resource-list-records-page .fi-ta-record-content {
-            gap: 0.7rem;
-            padding: 0.75rem;
-        }
-
-        .fi-resource-alunos.fi-resource-list-records-page .aluno-card-top.fi-ta-split {
-            align-items: stretch;
-        }
-
-        .fi-resource-alunos.fi-resource-list-records-page .aluno-card-actions,
-        .fi-resource-alunos.fi-resource-list-records-page .aluno-card-actions .fi-btn {
-            width: 100%;
-        }
-
-        .fi-resource-alunos.fi-resource-list-records-page .aluno-card-actions .fi-btn {
-            justify-content: center;
+            gap: 0.45rem;
+            padding: 0.6rem;
         }
     }
 
@@ -186,11 +134,11 @@
 
         .fi-resource-alunos.fi-resource-list-records-page .fi-ta-content,
         .fi-resource-alunos.fi-resource-list-records-page .fi-ta-content-header {
-            padding: 0.5rem;
+            padding: 0.4rem;
         }
 
         .fi-resource-alunos.fi-resource-list-records-page .fi-ta-record-content {
-            padding: 0.65rem;
+            padding: 0.5rem;
         }
     }
 </style>
