@@ -304,9 +304,9 @@ class AlunoService
                 ->extraAttributes(['class' => 'aluno-card-name'], merge: true),
 
             Grid::make([
-                'default' => 1,
+                'default' => 2,
                 'md' => 3,
-                'xl' => 4,
+                'xl' => 6,
             ])
                 ->schema([
                     TextColumn::make('status')
@@ -337,27 +337,46 @@ class AlunoService
                         ->placeholder('Nao informado')
                         ->extraAttributes(['class' => 'aluno-card-field'], merge: true),
 
-                    TextColumn::make('serie_turma')
-                        ->label('Série / Turma')
-                        ->formatStateUsing(fn (Aluno $record): string => trim(collect([
-                            $record->turma?->serie?->nome,
-                            $record->turma?->nome,
-                        ])->filter()->join(' - ')))
+                    TextColumn::make('turma.serie.nome')
+                        ->label('Série')
                         ->badge()
-                        ->placeholder('Nao informada')
+                        ->color('gray')
+                        ->placeholder('–')
+                        ->searchable()
+                        ->sortable()
                         ->wrap()
-                        ->sortable(query: function (Builder $query, string $direction): Builder {
-                            return $query->orderBy(
-                                Turma::select('nome')->whereColumn('turmas.id', 'alunos.id_turma'),
-                                $direction
-                            );
+                        ->extraAttributes(['class' => 'aluno-card-field'], merge: true),
+
+                    TextColumn::make('turma.nome')
+                        ->label('Turma')
+                        ->badge()
+                        ->color('primary')
+                        ->placeholder('–')
+                        ->searchable()
+                        ->sortable()
+                        ->wrap()
+                        ->extraAttributes(['class' => 'aluno-card-field'], merge: true),
+
+                    TextColumn::make('turma.turno')
+                        ->label('Turno')
+                        ->formatStateUsing(fn (?string $state): string => match ($state) {
+                            'manha' => 'Manhã',
+                            'tarde' => 'Tarde',
+                            'noite' => 'Noite',
+                            'integral' => 'Integral',
+                            default => ucfirst((string) $state),
                         })
-                        ->searchable(query: function (Builder $query, string $search): Builder {
-                            return $query->where(function (Builder $q) use ($search): void {
-                                $q->whereHas('turma', fn (Builder $t) => $t->where('nome', 'like', "%{$search}%"))
-                                  ->orWhereHas('turma.serie', fn (Builder $s) => $s->where('nome', 'like', "%{$search}%"));
-                            });
+                        ->badge()
+                        ->color(fn (?string $state): string => match ($state) {
+                            'manha' => 'info',
+                            'tarde' => 'warning',
+                            'noite' => 'gray',
+                            'integral' => 'success',
+                            default => 'gray',
                         })
+                        ->placeholder('–')
+                        ->sortable()
+                        ->wrap()
                         ->extraAttributes(['class' => 'aluno-card-field'], merge: true),
 
                     TextColumn::make('turma.escola.nome')
