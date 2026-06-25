@@ -43,7 +43,7 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     private const PERMISSAO_ACOMPANHAR_AVALIACOES = 'Acompanhar Avaliações';
 
-    protected static bool $shouldRegisterNavigation = true;
+    protected static bool $shouldRegisterNavigation = false;
 
     protected string $view = 'filament.pages.relatorios.dashboard-avaliacoes';
 
@@ -51,7 +51,7 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     protected static ?string $navigationLabel = 'Acompanhamento de Pareceres';
 
-    protected static ?string $navigationParentItem = null;
+    protected static ?string $navigationParentItem = 'Avaliações';
 
     protected static ?string $slug = 'dashboard-avaliacoes';
 
