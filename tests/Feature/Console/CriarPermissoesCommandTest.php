@@ -76,6 +76,20 @@ class CriarPermissoesCommandTest extends TestCase
         ]);
     }
 
+    public function test_it_creates_acompanhamento_avaliacoes_permission_and_assigns_to_admin(): void
+    {
+        Artisan::call('permissoes:criar');
+
+        $this->assertDatabaseHas('permissions', [
+            'name' => 'Acompanhar Avaliações',
+            'guard_name' => 'web',
+        ]);
+
+        $admin = Role::findByName('Admin', 'web');
+
+        $this->assertTrue($admin->hasPermissionTo('Acompanhar Avaliações'));
+    }
+
     public function test_it_migrates_legacy_equipe_gestora_permissions_to_servidores(): void
     {
         $listar = Permission::findOrCreate('Listar Equipe Gestora', 'web');

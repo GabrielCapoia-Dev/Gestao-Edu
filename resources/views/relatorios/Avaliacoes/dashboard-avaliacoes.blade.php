@@ -1,6 +1,6 @@
 @extends('relatorios.layouts.base-pdf')
 
-@section('reportTitle', $reportTitle ?? 'Dashboard de Avaliações')
+@section('reportTitle', $reportTitle ?? 'Acompanhamento de Pareceres')
 @section('reportSubtitle', $reportSubtitle ?? 'Resumo analítico por escopo e preenchimento')
 
 @section('styles')
@@ -231,6 +231,52 @@
             @empty
                 <tr>
                     <td colspan="7">Nenhuma escola encontrada para os filtros aplicados.</td>
+                </tr>
+            @endforelse
+        </tbody>
+    </table>
+
+    <div class="section-title">Acompanhamento de Pareceres</div>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Escola</th>
+                <th>Série</th>
+                <th>Turma</th>
+                <th>Componente</th>
+                <th>Professor</th>
+                <th class="text-right">Esperados</th>
+                <th class="text-right">Respondidos</th>
+                <th class="text-right">Pendentes</th>
+                <th class="text-right">% preenchimento</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse($acompanhamentoTurmas ?? [] as $item)
+                @php
+                    $statusClass = match ($item['status']) {
+                        'concluido' => 'badge-ok',
+                        'em_andamento' => 'badge-warn',
+                        default => 'badge-danger',
+                    };
+                @endphp
+                <tr>
+                    <td>{{ $item['escola_nome'] }}</td>
+                    <td>{{ $item['serie_nome'] }}</td>
+                    <td>{{ $item['turma_nome'] }}</td>
+                    <td>{{ $item['componente_nome'] }}</td>
+                    <td>{{ $item['professor_nome'] }}</td>
+                    <td class="text-right">{{ $item['preenchimentos_esperados'] }}</td>
+                    <td class="text-right">{{ $item['preenchimentos_respondidos'] }}</td>
+                    <td class="text-right">{{ $item['preenchimentos_pendentes'] }}</td>
+                    <td class="text-right">{{ number_format((float) $item['percentual_preenchimento'], 1, ',', '.') }}%</td>
+                    <td><span class="badge {{ $statusClass }}">{{ $item['status_label'] }}</span></td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="10">Nenhuma turma encontrada para os filtros aplicados.</td>
                 </tr>
             @endforelse
         </tbody>

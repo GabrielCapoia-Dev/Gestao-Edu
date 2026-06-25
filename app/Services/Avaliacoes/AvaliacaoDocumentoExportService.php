@@ -334,7 +334,13 @@ class AvaliacaoDocumentoExportService
 
     private function aplicarEscopoUsuario(Builder $query, ?User $usuario): void
     {
-        if (! $usuario || $usuario->hasPermissionLike('listar avaliacoes')) {
+        if ($usuario?->hasRole('Admin')) {
+            return;
+        }
+
+        if (! $usuario) {
+            $query->whereRaw('1 = 0');
+
             return;
         }
 

@@ -44,6 +44,7 @@ class AvaliacaoDocumentoExportTest extends TestCase
         $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Periodo Diagnostico', 'status' => true]);
 
         $escola = $this->criarEscola('Escola Documento');
+        $usuario->escolas()->attach($escola->id);
         $serie = $this->criarSerie('SER-DOC', 'Infantil 4');
         $turma = $this->criarTurma($escola, $serie, 'A');
 
@@ -577,6 +578,85 @@ class AvaliacaoDocumentoExportTest extends TestCase
 
         $this->assertSame('Não Avaliado', $documento['componentes'][0]['pautas'][0]['resultado']);
         $this->assertSame('Principal', $documento['vinculo']);
+    }
+
+    public function test_exportacao_direta_nao_permite_escola_fora_do_vinculo_mesmo_com_listar_avaliacoes(): void
+    {
+        Permission::findOrCreate('Exportar Avaliações');
+        Permission::findOrCreate('Listar Avaliações');
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo(['Exportar Avaliações', 'Listar Avaliações']);
+
+        $tipo = TipoAvaliacao::query()->create(['nome' => 'Parecer Escopo Exportacao', 'status' => true]);
+        $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Periodo Escopo Exportacao', 'status' => true]);
+        $escolaPermitida = $this->criarEscola('Escola Permitida Exportacao');
+        $escolaBloqueada = $this->criarEscola('Escola Bloqueada Exportacao');
+        $usuario->escolas()->attach($escolaPermitida->id);
+
+        $serie = $this->criarSerie('SER-EXP-ESCOPO', '4o Ano');
+        $turmaPermitida = $this->criarTurma($escolaPermitida, $serie, 'Permitida');
+        $turmaBloqueada = $this->criarTurma($escolaBloqueada, $serie, 'Bloqueada');
+        $alunoBloqueado = Aluno::query()->create([
+            'nome' => 'Aluno Bloqueado Exportacao',
+            'cgm' => 'CGM-EXP-BLOQ',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turmaBloqueada->id,
+        ]);
+
+        $componente = ComponenteCurricular::query()->create([
+            'codigo' => 'COMP-EXP-ESCOPO',
+            'nome' => 'Geografia',
+        ]);
+        $alternativa = Alternativa::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'nome' => 'Atende',
+            'tem_observacao' => false,
+            'status' => true,
+        ]);
+        $pauta = Pauta::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'texto' => 'Localiza informacoes geograficas',
+            'serie_id' => $serie->id,
+            'componente_curricular_id' => $componente->id,
+            'status' => true,
+        ]);
+        $pauta->alternativas()->attach($alternativa->id);
+
+        $avaliacao = Avaliacao::query()->create([
+            'nome' => 'Avaliacao Exportacao Escopo',
+            'tipo_avaliacao_id' => $tipo->id,
+            'periodo_avaliacao_id' => $periodo->id,
+            'data_inicio' => '2026-02-01',
+            'data_fim' => '2026-12-20',
+            'status' => Avaliacao::STATUS_ATIVA,
+        ]);
+        $avaliacao->pautas()->sync([$pauta->id]);
+        $avaliacao->turmas()->sync([$turmaPermitida->id, $turmaBloqueada->id]);
+        $avaliacao->series()->sync([$serie->id]);
+        $avaliacao->componentes()->sync([$componente->id]);
+        $avaliacao->escolas()->sync([$escolaPermitida->id, $escolaBloqueada->id]);
+
+        $this->actingAs($usuario)->get(route('avaliacoes.documento.csv', [
+            'avaliacao_id' => $avaliacao->id,
+            'escopo' => 'turma',
+            'turma_id' => $turmaBloqueada->id,
+        ]))->assertNotFound();
+
+        $this->actingAs($usuario)->get(route('avaliacoes.documento.pdf', [
+            'avaliacao_id' => $avaliacao->id,
+            'escopo' => 'aluno',
+            'aluno_id' => $alunoBloqueado->id,
+        ]))->assertNotFound();
+
+        $this->actingAs($usuario)->get(route('avaliacoes.documento.csv', [
+            'avaliacao_id' => $avaliacao->id,
+            'escopo' => 'escola',
+            'escola_id' => $escolaBloqueada->id,
+        ]))->assertNotFound();
     }
 
     private function criarEscola(string $nome): Escola

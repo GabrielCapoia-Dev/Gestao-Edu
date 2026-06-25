@@ -157,6 +157,7 @@ class EstoqueInventarioOrganicoSeeder extends Seeder
             'Concluir Balanços de Estoque',
             'Adiar Balanços de Estoque',
             'Cancelar Balanços de Estoque',
+            'Acompanhar Avaliações',
             'Exportar Relatórios',
         ];
 
@@ -222,6 +223,7 @@ class EstoqueInventarioOrganicoSeeder extends Seeder
             'Concluir Balanços de Inventário',
             'Adiar Balanços de Inventário',
             'Cancelar Balanços de Inventário',
+            'Acompanhar Avaliações',
             'Exportar Relatórios',
         ];
 

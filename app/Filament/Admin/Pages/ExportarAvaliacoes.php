@@ -340,8 +340,12 @@ class ExportarAvaliacoes extends Page
         /** @var User|null $user */
         $user = Auth::user();
 
-        if (! $user || $user->hasPermissionLike('listar avaliacoes')) {
+        if ($user?->hasRole('Admin')) {
             return $query;
+        }
+
+        if (! $user) {
+            return $query->whereRaw('1 = 0');
         }
 
         $escolasIds = $user->idsEscolasVinculadas();

@@ -168,6 +168,66 @@
 
             <section class="dav-card">
                 <header>
+                    <h3>Acompanhamento de Pareceres</h3>
+                    <p>Andamento por escola, série, turma, componente e professor, incluindo turmas sem respostas.</p>
+                </header>
+
+                <div class="dav-table-wrap">
+                    <table class="dav-table">
+                        <thead>
+                            <tr>
+                                <th>Escola</th>
+                                <th>Série</th>
+                                <th>Turma</th>
+                                <th>Componente</th>
+                                <th>Professor</th>
+                                <th class="text-right">Esperados</th>
+                                <th class="text-right">Respondidos</th>
+                                <th class="text-right">Pendentes</th>
+                                <th class="text-right">% preenchimento</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse ($acompanhamentoTurmas as $item)
+                                @php
+                                    $statusClass = match ($item['status']) {
+                                        'concluido' => 'dav-badge--ok',
+                                        'em_andamento' => 'dav-badge--warn',
+                                        default => 'dav-badge--danger',
+                                    };
+                                @endphp
+                                <tr>
+                                    <td>{{ $item['escola_nome'] }}</td>
+                                    <td>{{ $item['serie_nome'] }}</td>
+                                    <td>
+                                        <strong>{{ $item['turma_nome'] }}</strong>
+                                        <small>{{ ucfirst((string) $item['turno']) }}</small>
+                                    </td>
+                                    <td>{{ $item['componente_nome'] }}</td>
+                                    <td>{{ $item['professor_nome'] }}</td>
+                                    <td class="text-right">{{ $item['preenchimentos_esperados'] }}</td>
+                                    <td class="text-right">{{ $item['preenchimentos_respondidos'] }}</td>
+                                    <td class="text-right">{{ $item['preenchimentos_pendentes'] }}</td>
+                                    <td class="text-right">{{ number_format((float) $item['percentual_preenchimento'], 1, ',', '.') }}%</td>
+                                    <td>
+                                        <span class="dav-badge {{ $statusClass }}">
+                                            {{ $item['status_label'] }}
+                                        </span>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="10" class="dav-empty">Nenhuma turma encontrada para os filtros atuais.</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="dav-card">
+                <header>
                     <h3>Resumo da Avaliação</h3>
                     <p>Visão consolidada do recorte selecionado.</p>
                 </header>
@@ -237,7 +297,7 @@
                 <header class="dav-card-header--split">
                     <div>
                         <h3>Turmas Avaliadas</h3>
-                        <p>Turmas com respostas registradas no recorte atual, com atalho para a tela de preenchimento do professor.</p>
+                        <p>Turmas com respostas registradas no recorte atual.</p>
                     </div>
 
                     <label class="dav-page-size">
@@ -283,11 +343,15 @@
                                 <td class="text-right">{{ $item['pautas_respondidas'] }}</td>
                                 <td>{{ $item['ultima_resposta'] }}</td>
                                 <td class="text-right">
-                                    <a
-                                        class="dav-link-action"
-                                        href="{{ route('filament.admin.pages.avaliacoes-professor', ['avaliacao' => $item['avaliacao_id'], 'turma' => $item['turma_id']]) }}">
-                                        Abrir avaliação
-                                    </a>
+                                    @if ($item['pode_abrir_avaliacao'] ?? false)
+                                        <a
+                                            class="dav-link-action"
+                                            href="{{ route('filament.admin.pages.avaliacoes-professor', ['avaliacao' => $item['avaliacao_id'], 'turma' => $item['turma_id']]) }}">
+                                            Abrir avaliação
+                                        </a>
+                                    @else
+                                        <span class="dav-badge dav-badge--muted">Acompanhamento</span>
+                                    @endif
                                 </td>
                             </tr>
                         @empty

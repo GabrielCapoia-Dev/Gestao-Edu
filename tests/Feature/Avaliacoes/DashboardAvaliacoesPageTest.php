@@ -11,6 +11,7 @@ use App\Models\ComponenteCurricular;
 use App\Models\Escola;
 use App\Models\Pauta;
 use App\Models\PeriodoAvaliacao;
+use App\Models\Professor;
 use App\Models\Serie;
 use App\Models\TipoAvaliacao;
 use App\Models\Turma;
@@ -26,13 +27,13 @@ class DashboardAvaliacoesPageTest extends TestCase
 
     public function test_dashboard_carrega_indicadores_de_pendencia_apos_selecionar_avaliacao(): void
     {
-        Permission::findOrCreate('Listar Avaliações');
+        Permission::findOrCreate('Acompanhar Avaliações');
 
         $user = User::factory()->create([
             'email_approved' => true,
             'email_verified_at' => now(),
         ]);
-        $user->givePermissionTo('Listar Avaliações');
+        $user->givePermissionTo('Acompanhar Avaliações');
 
         $tipo = TipoAvaliacao::query()->create(['nome' => 'Parecer Dashboard', 'status' => true]);
         $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Periodo Dashboard', 'status' => true]);
@@ -44,6 +45,7 @@ class DashboardAvaliacoesPageTest extends TestCase
 
         $escolaManha = $this->criarEscola('Escola Manha');
         $escolaTarde = $this->criarEscola('Escola Tarde');
+        $user->escolas()->attach([$escolaManha->id, $escolaTarde->id]);
         $turmaManha = $this->criarTurma($escolaManha, $serie, 'Turma A', 'manha');
         $turmaTarde = $this->criarTurma($escolaTarde, $serie, 'Turma B', 'tarde');
 
@@ -133,13 +135,13 @@ class DashboardAvaliacoesPageTest extends TestCase
 
     public function test_listagem_de_turmas_avaliadas_tem_paginacao_configuravel(): void
     {
-        Permission::findOrCreate('Listar Avaliacoes');
+        Permission::findOrCreate('Acompanhar Avaliações');
 
         $user = User::factory()->create([
             'email_approved' => true,
             'email_verified_at' => now(),
         ]);
-        $user->givePermissionTo('Listar Avaliacoes');
+        $user->givePermissionTo('Acompanhar Avaliações');
 
         $component = Livewire::actingAs($user)
             ->test(DashboardAvaliacoes::class);
@@ -152,6 +154,7 @@ class DashboardAvaliacoesPageTest extends TestCase
             'nome' => 'Matematica',
         ]);
         $escola = $this->criarEscola('Escola Paginacao');
+        $user->escolas()->attach($escola->id);
         $alternativa = Alternativa::query()->create([
             'tipo_avaliacao_id' => $tipo->id,
             'nome' => 'Sim',
@@ -200,6 +203,126 @@ class DashboardAvaliacoesPageTest extends TestCase
         $this->assertSame(25, $component->instance()->turmasAvaliadasPorPagina);
         $this->assertSame(1, $component->instance()->turmasAvaliadasPagina);
         $this->assertCount(7, $component->instance()->turmasAvaliadas);
+    }
+
+    public function test_acompanhamento_exige_permissao_especifica(): void
+    {
+        Permission::findOrCreate('Acompanhar Avaliações');
+        Permission::findOrCreate('Listar Avaliações');
+
+        $semPermissao = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+
+        $this->actingAs($semPermissao)
+            ->get(route('filament.admin.pages.dashboard-avaliacoes'))
+            ->assertForbidden();
+
+        $apenasListar = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $apenasListar->givePermissionTo('Listar Avaliações');
+
+        $this->actingAs($apenasListar)
+            ->get(route('filament.admin.pages.dashboard-avaliacoes'))
+            ->assertForbidden();
+
+        $comAcompanhamento = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $comAcompanhamento->givePermissionTo('Acompanhar Avaliações');
+
+        $this->actingAs($comAcompanhamento)
+            ->get(route('filament.admin.pages.dashboard-avaliacoes'))
+            ->assertOk();
+    }
+
+    public function test_usuario_vinculado_visualiza_apenas_escolas_permitidas_no_acompanhamento(): void
+    {
+        Permission::findOrCreate('Acompanhar Avaliações');
+
+        $user = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $user->givePermissionTo('Acompanhar Avaliações');
+
+        $tipo = TipoAvaliacao::query()->create(['nome' => 'Parecer Escopo', 'status' => true]);
+        $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Periodo Escopo', 'status' => true]);
+        $serie = $this->criarSerie('SER-ESCOPO', '3o Ano');
+        $componente = ComponenteCurricular::query()->create([
+            'codigo' => 'COMP-ESCOPO',
+            'nome' => 'Ciencias',
+        ]);
+        $escolaPermitida = $this->criarEscola('Escola Permitida');
+        $escolaBloqueada = $this->criarEscola('Escola Bloqueada');
+        $user->escolas()->attach($escolaPermitida->id);
+
+        $turmaPermitida = $this->criarTurma($escolaPermitida, $serie, 'Turma Permitida', 'manha');
+        $turmaBloqueada = $this->criarTurma($escolaBloqueada, $serie, 'Turma Bloqueada', 'tarde');
+        $alunoPermitido = $this->criarAluno($turmaPermitida, 'Aluno Permitido', 'CGM-ESCOPO-001');
+        $this->criarAluno($turmaBloqueada, 'Aluno Bloqueado', 'CGM-ESCOPO-002');
+
+        $professorPermitido = Professor::query()->create([
+            'id_escola' => $escolaPermitida->id,
+            'matricula' => 'PROF-ESCOPO',
+            'nome' => 'Professor Permitido',
+            'email' => 'professor.escopo@edu.umuarama.pr.gov.br',
+        ]);
+        $turmaPermitida->componentes()->attach($componente->id, [
+            'professor_id' => $professorPermitido->id,
+            'tem_professor' => true,
+        ]);
+
+        $alternativa = Alternativa::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'nome' => 'Sim',
+            'tem_observacao' => false,
+            'status' => true,
+        ]);
+        $pauta = $this->criarPauta($tipo, $serie, $componente, 'Pauta escopo escolar');
+        $pauta->alternativas()->attach($alternativa->id);
+
+        $avaliacao = $this->criarAvaliacao('Avaliacao Escopo', $tipo, $periodo);
+        $avaliacao->series()->sync([$serie->id]);
+        $avaliacao->componentes()->sync([$componente->id]);
+        $avaliacao->escolas()->sync([$escolaPermitida->id, $escolaBloqueada->id]);
+        $avaliacao->turmas()->sync([$turmaPermitida->id, $turmaBloqueada->id]);
+        $avaliacao->pautas()->sync([$pauta->id]);
+
+        $this->registrarResposta($avaliacao, $turmaPermitida, $alunoPermitido, $pauta, $alternativa, $professorPermitido);
+
+        $component = Livewire::actingAs($user)
+            ->test(DashboardAvaliacoes::class)
+            ->set('filtros.avaliacao_id', $avaliacao->id);
+
+        $escolasOptions = $component->instance()->escolasOptions;
+        $this->assertArrayHasKey($escolaPermitida->id, $escolasOptions);
+        $this->assertArrayNotHasKey($escolaBloqueada->id, $escolasOptions);
+
+        $this->assertSame(1, $component->instance()->cards['preenchimentos_esperados']);
+        $this->assertSame(1, $component->instance()->cards['preenchimentos_respondidos']);
+        $this->assertSame(['Escola Permitida'], collect($component->instance()->tabelaEscolas)->pluck('nome')->all());
+
+        $acompanhamento = collect($component->instance()->acompanhamentoTurmas);
+        $this->assertSame(['Turma Permitida'], $acompanhamento->pluck('turma_nome')->unique()->values()->all());
+        $this->assertSame('Professor Permitido', $acompanhamento->first()['professor_nome']);
+        $this->assertSame('concluido', $acompanhamento->first()['status']);
+
+        $component->set('filtros.professores_ids', [$professorPermitido->id]);
+
+        $this->assertSame(1, $component->instance()->cards['preenchimentos_esperados']);
+        $this->assertSame(['Professor Permitido'], collect($component->instance()->acompanhamentoTurmas)->pluck('professor_nome')->unique()->values()->all());
+
+        $component->set('filtros.escolas_ids', [$escolaBloqueada->id]);
+
+        $this->assertSame([], $component->instance()->filtros['escolas_ids']);
+        $this->assertSame(1, $component->instance()->cards['preenchimentos_esperados']);
+        $this->assertSame(['Escola Permitida'], collect($component->instance()->tabelaEscolas)->pluck('nome')->all());
+        $this->assertSame(['Turma Permitida'], collect($component->instance()->acompanhamentoTurmas)->pluck('turma_nome')->unique()->values()->all());
     }
 
     private function criarAvaliacao(string $nome, TipoAvaliacao $tipo, PeriodoAvaliacao $periodo): Avaliacao
@@ -279,14 +402,15 @@ class DashboardAvaliacoesPageTest extends TestCase
         Turma $turma,
         Aluno $aluno,
         Pauta $pauta,
-        Alternativa $alternativa
+        Alternativa $alternativa,
+        ?Professor $professor = null
     ): void {
         AvaliacaoResposta::query()->create([
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
             'turma_id' => $turma->id,
             'aluno_id' => $aluno->id,
-            'professor_id' => null,
+            'professor_id' => $professor?->id,
             'alternativa_id' => $alternativa->id,
             'respondido_em' => now(),
         ]);

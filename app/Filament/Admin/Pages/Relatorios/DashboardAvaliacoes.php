@@ -12,6 +12,7 @@ use App\Models\PeriodoAvaliacao;
 use App\Models\Professor;
 use App\Models\Serie;
 use App\Models\TipoAvaliacao;
+use App\Models\User;
 use App\Services\Relatorios\RelatorioPdfRenderer;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -40,15 +41,17 @@ class DashboardAvaliacoes extends Page implements HasForms
 {
     use InteractsWithForms;
 
-    protected static bool $shouldRegisterNavigation = false;
+    private const PERMISSAO_ACOMPANHAR_AVALIACOES = 'Acompanhar Avaliações';
+
+    protected static bool $shouldRegisterNavigation = true;
 
     protected string $view = 'filament.pages.relatorios.dashboard-avaliacoes';
 
-    protected static ?string $title = 'Dashboard de Avaliações';
+    protected static ?string $title = 'Acompanhamento de Pareceres';
 
-    protected static ?string $navigationLabel = 'Dashboard Avaliações';
+    protected static ?string $navigationLabel = 'Acompanhamento de Pareceres';
 
-    protected static ?string $navigationParentItem = 'Avaliações';
+    protected static ?string $navigationParentItem = null;
 
     protected static ?string $slug = 'dashboard-avaliacoes';
 
@@ -71,6 +74,8 @@ class DashboardAvaliacoes extends Page implements HasForms
     public array $distribuicaoAlternativas = [];
 
     public array $vinculosAvaliados = [];
+
+    public array $acompanhamentoTurmas = [];
 
     public array $turmasAvaliadas = [];
 
@@ -249,8 +254,8 @@ class DashboardAvaliacoes extends Page implements HasForms
         return view('filament.admin.pages.partials.page-header', [
             'actions' => $this->getCachedHeaderActions(),
             'eyebrow' => 'Relatórios Pedagógicos',
-            'title' => 'Dashboard Dinâmico de Avaliações',
-            'description' => 'Acompanhe preenchimento, cobertura por escola e distribuição de alternativas com filtros em tempo real. Atualizado em ' . ($this->ultimaAtualizacao ?: '-'),
+            'title' => 'Acompanhamento de Pareceres',
+            'description' => 'Acompanhe o preenchimento dos pareceres por escola, turma, componente e professor. Atualizado em ' . ($this->ultimaAtualizacao ?: '-'),
         ]);
     }
 
@@ -275,14 +280,100 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     public static function canAccess(): bool
     {
-        /** @var \App\Models\User|null $user */
+        /** @var User|null $user */
         $user = Auth::user();
 
         if (! $user) {
             return false;
         }
 
-        return $user->can('Listar Avaliações') || $user->can('Listar Avaliacoes');
+        return $user->can(self::PERMISSAO_ACOMPANHAR_AVALIACOES);
+    }
+
+    private function usuarioAtual(): ?User
+    {
+        /** @var User|null $user */
+        $user = Auth::user();
+
+        return $user;
+    }
+
+    private function usuarioTemEscopoGlobal(?User $user = null): bool
+    {
+        $user ??= $this->usuarioAtual();
+
+        return (bool) $user?->hasRole('Admin');
+    }
+
+    /**
+     * @return array<int>|null Retorna null para acesso global.
+     */
+    private function escolasPermitidasIds(?User $user = null): ?array
+    {
+        $user ??= $this->usuarioAtual();
+
+        if (! $user) {
+            return [];
+        }
+
+        if ($this->usuarioTemEscopoGlobal($user)) {
+            return null;
+        }
+
+        return $user->idsEscolasVinculadas();
+    }
+
+    private function aplicarEscopoEscolarQuery(QueryBuilder $query, string $alias = 't'): void
+    {
+        $escolasIds = $this->escolasPermitidasIds();
+
+        if ($escolasIds === null) {
+            return;
+        }
+
+        if ($escolasIds === []) {
+            $query->whereRaw('1 = 0');
+
+            return;
+        }
+
+        $query->whereIn($alias . '.id_escola', $escolasIds);
+    }
+
+    private function aplicarEscopoEscolarEloquent(EloquentBuilder $query): void
+    {
+        $escolasIds = $this->escolasPermitidasIds();
+
+        if ($escolasIds === null) {
+            return;
+        }
+
+        if ($escolasIds === []) {
+            $query->whereRaw('1 = 0');
+
+            return;
+        }
+
+        $query->whereIn('id_escola', $escolasIds);
+    }
+
+    /**
+     * @param array<int> $ids
+     * @return array<int>
+     */
+    private function filtrarEscolasPermitidas(array $ids): array
+    {
+        $escolasIds = $this->escolasPermitidasIds();
+
+        if ($escolasIds === null) {
+            return $ids;
+        }
+
+        if ($ids === [] || $escolasIds === []) {
+            return [];
+        }
+
+        return array_values(array_intersect($ids, $escolasIds));
     }
 
     public function avaliacaoSelecionada(): bool
@@ -301,6 +392,18 @@ class DashboardAvaliacoes extends Page implements HasForms
 
         return $user->hasPermissionLike('exportar relatorios')
             || $user->hasPermissionLike('exportar avaliacoes');
+    }
+
+    private function podeAbrirAvaliacoesProfessor(): bool
+    {
+        $user = $this->usuarioAtual();
+
+        if (! $user) {
+            return false;
+        }
+
+        return $user->hasPermissionLike('listar avaliacoes')
+            || $user->hasPermissionLike('responder avaliacoes');
     }
 
     public function getStatusOptionsProperty(): array
@@ -378,6 +481,9 @@ class DashboardAvaliacoes extends Page implements HasForms
     public function getAvaliacoesOptionsProperty(): array
     {
         return Avaliacao::query()
+            ->whereHas('turmas', function (EloquentBuilder $turmaQuery): void {
+                $this->aplicarEscopoEscolarEloquent($turmaQuery);
+            })
             ->orderByDesc('data_inicio')
             ->orderBy('nome')
             ->pluck('nome', 'id')
@@ -674,6 +780,8 @@ class DashboardAvaliacoes extends Page implements HasForms
                     ->whereColumn('ar.avaliacao_id', 'ap.avaliacao_id')
                     ->whereColumn('ar.pauta_id', 'p.id');
 
+                $this->aplicarEscopoEscolarQuery($subQuery, 't2');
+
                 if ($filtros['professores_ids'] !== []) {
                     $subQuery->whereIn('ar.professor_id', $filtros['professores_ids']);
                 }
@@ -899,6 +1007,8 @@ class DashboardAvaliacoes extends Page implements HasForms
             ->join('turmas as t', 't.id', '=', 'at.turma_id')
             ->whereIn('at.avaliacao_id', $avaliacaoIds);
 
+        $this->aplicarEscopoEscolarQuery($query, 't');
+
         if (($filtros['series_ids'] ?? []) !== []) {
             $query->whereIn('t.id_serie', $filtros['series_ids']);
         }
@@ -985,7 +1095,8 @@ class DashboardAvaliacoes extends Page implements HasForms
                 'avaliacoes' => $dados['avaliacoes_resumo'],
                 'alternativas' => $dados['distribuicao_alternativas'],
                 'vinculos' => $dados['vinculos_avaliados'],
-                'reportTitle' => 'Dashboard de Avaliações',
+                'acompanhamentoTurmas' => $dados['acompanhamento_turmas'],
+                'reportTitle' => 'Acompanhamento de Pareceres',
                 'reportSubtitle' => 'Resumo analítico por escopo e preenchimento',
                 'reportFilters' => $this->filtrosAplicadosFormatados(),
                 'usuarioExportacao' => Auth::user(),
@@ -1024,7 +1135,7 @@ class DashboardAvaliacoes extends Page implements HasForms
         $resumoSheet->setTitle('Resumo');
         $linha = $this->preencherCabecalhoSheet(
             $resumoSheet,
-            'Dashboard de Avaliações',
+            'Acompanhamento de Pareceres',
             $this->filtrosAplicadosFormatados()
         );
 
@@ -1159,6 +1270,39 @@ class DashboardAvaliacoes extends Page implements HasForms
             ])
         );
 
+        $acompanhamentoSheet = $spreadsheet->createSheet();
+        $acompanhamentoSheet->setTitle('Acompanhamento');
+        $this->preencherTabelaSheet(
+            $acompanhamentoSheet,
+            'Acompanhamento de Pareceres por Turma',
+            [
+                'Escola',
+                'Série',
+                'Turma',
+                'Turno',
+                'Componente',
+                'Professor',
+                'Esperados',
+                'Respondidos',
+                'Pendentes',
+                '% preenchimento',
+                'Status',
+            ],
+            collect($dados['acompanhamento_turmas'])->map(fn (array $item): array => [
+                $item['escola_nome'],
+                $item['serie_nome'],
+                $item['turma_nome'],
+                $item['turno'],
+                $item['componente_nome'],
+                $item['professor_nome'],
+                $item['preenchimentos_esperados'],
+                $item['preenchimentos_respondidos'],
+                $item['preenchimentos_pendentes'],
+                $item['percentual_preenchimento'] . '%',
+                $item['status_label'],
+            ])
+        );
+
         $spreadsheet->setActiveSheetIndex(0);
 
         return $this->downloadSpreadsheet(
@@ -1177,6 +1321,7 @@ class DashboardAvaliacoes extends Page implements HasForms
         $this->graficoAlunosSemRespostaPorEscola = $dados['grafico_alunos_sem_resposta_por_escola'];
         $this->distribuicaoAlternativas = $dados['distribuicao_alternativas'];
         $this->vinculosAvaliados = $dados['vinculos_avaliados'];
+        $this->acompanhamentoTurmas = $dados['acompanhamento_turmas'];
         $this->turmasAvaliadas = $dados['turmas_avaliadas'];
         $this->turmasAvaliadasTotal = $dados['turmas_avaliadas_total'];
         $this->filtrosAplicados = $this->filtrosAplicadosFormatados();
@@ -1193,6 +1338,7 @@ class DashboardAvaliacoes extends Page implements HasForms
      *     grafico_alunos_sem_resposta_por_escola: array<int, array<string, int|float|string>>,
      *     distribuicao_alternativas: array<string, mixed>,
      *     vinculos_avaliados: array<int, array<string, int|float|string>>,
+     *     acompanhamento_turmas: array<int, array<string, int|float|string>>,
      *     turmas_avaliadas: array<int, array<string, int|string>>,
      *     turmas_avaliadas_total: int
      * }
@@ -1210,6 +1356,7 @@ class DashboardAvaliacoes extends Page implements HasForms
         $tabelaEscolas = $this->montarTabelaEscolas($avaliacaoIds);
         $totaisPreenchimento = $this->calcularTotaisPreenchimento($avaliacaoIds, $tabelaEscolas);
         $turnos = $this->calcularPreenchimentoPorTurno($avaliacaoIds);
+        $acompanhamentoTurmas = $this->montarAcompanhamentoTurmas($avaliacaoIds);
         $turmasAvaliadas = $this->montarTurmasAvaliadas($avaliacaoIds);
         $vinculosAvaliados = $this->calcularVinculosAvaliados($avaliacaoIds);
 
@@ -1232,6 +1379,7 @@ class DashboardAvaliacoes extends Page implements HasForms
             'grafico_alunos_sem_resposta_por_escola' => $this->montarGraficoAlunosSemRespostaPorEscola($tabelaEscolas),
             'distribuicao_alternativas' => $this->montarDistribuicaoAlternativas($avaliacaoIds),
             'vinculos_avaliados' => $vinculosAvaliados,
+            'acompanhamento_turmas' => $acompanhamentoTurmas,
             'turmas_avaliadas' => $turmasAvaliadas['itens'],
             'turmas_avaliadas_total' => $turmasAvaliadas['total'],
         ];
@@ -1275,6 +1423,7 @@ class DashboardAvaliacoes extends Page implements HasForms
                 'itens' => [],
             ],
             'vinculos_avaliados' => [],
+            'acompanhamento_turmas' => [],
             'turmas_avaliadas' => [],
             'turmas_avaliadas_total' => 0,
         ];
@@ -1290,6 +1439,10 @@ class DashboardAvaliacoes extends Page implements HasForms
         $query = Avaliacao::query()
             ->select('avaliacoes.id')
             ->distinct();
+
+        $query->whereHas('turmas', function (EloquentBuilder $turmaQuery): void {
+            $this->aplicarEscopoEscolarEloquent($turmaQuery);
+        });
 
         $this->aplicarFiltrosDiretosAvaliacao($query, $forcarAtivas, $filtrosAtivos);
 
@@ -1376,6 +1529,10 @@ class DashboardAvaliacoes extends Page implements HasForms
         $escolasIds = $filtrosAtivos['escolas_ids'];
         $componentesIds = $filtrosAtivos['componentes_ids'];
 
+        $query->whereHas('turma', function (EloquentBuilder $turmaQuery): void {
+            $this->aplicarEscopoEscolarEloquent($turmaQuery);
+        });
+
         if ($professoresIds !== []) {
             $query->whereIn('professor_id', $professoresIds);
         }
@@ -1445,6 +1602,8 @@ class DashboardAvaliacoes extends Page implements HasForms
                     ->orWhereColumn('p.serie_id', 't.id_serie');
             });
 
+        $this->aplicarEscopoEscolarQuery($query, 't');
+
         if ($filtrosAtivos['series_ids'] !== []) {
             $query->whereIn('t.id_serie', $filtrosAtivos['series_ids']);
         }
@@ -1496,6 +1655,8 @@ class DashboardAvaliacoes extends Page implements HasForms
                 $query->whereNull('p.serie_id')
                     ->orWhereColumn('p.serie_id', 't.id_serie');
             });
+
+        $this->aplicarEscopoEscolarQuery($query, 't');
 
         if ($filtrosAtivos['series_ids'] !== []) {
             $query->whereIn('t.id_serie', $filtrosAtivos['series_ids']);
@@ -2015,7 +2176,7 @@ class DashboardAvaliacoes extends Page implements HasForms
                 'tipo:id,nome',
                 'periodo:id,nome',
             ])
-            ->withCount(['escolas', 'turmas', 'pautas'])
+            ->withCount('pautas')
             ->whereIn('id', $avaliacaoIds)
             ->orderByDesc('data_inicio')
             ->limit(20)
@@ -2052,6 +2213,172 @@ class DashboardAvaliacoes extends Page implements HasForms
             })
             ->values()
             ->all();
+    }
+
+    /**
+     * @return array<int, array<string, int|float|string>>
+     */
+    private function montarAcompanhamentoTurmas(array $avaliacaoIds): array
+    {
+        if ($avaliacaoIds === []) {
+            return [];
+        }
+
+        $filtros = $this->filtros;
+        $professoresIds = $filtros['professores_ids'] ?? [];
+        $distinctEsperado = $this->distinctCombinacaoExpr('at.avaliacao_id', 'at.turma_id', 'p.id', 'aln.id');
+        $distinctRespondido = $this->distinctCombinacaoExpr('ar.avaliacao_id', 'ar.turma_id', 'ar.pauta_id', 'ar.aluno_id');
+        $professorRespostaExpr = $professoresIds !== []
+            ? 'ar.professor_id'
+            : 'CASE WHEN p.componente_curricular_id IS NULL THEN NULL ELSE ar.professor_id END';
+
+        $esperadosQuery = (clone $this->basePreenchimentosEsperadosQuery($avaliacaoIds))
+            ->join('avaliacoes as av', 'av.id', '=', 'at.avaliacao_id')
+            ->leftJoin('escolas as e', 'e.id', '=', 't.id_escola')
+            ->leftJoin('series as s', 's.id', '=', 't.id_serie')
+            ->leftJoin('componentes_curriculares as cc', 'cc.id', '=', 'p.componente_curricular_id')
+            ->leftJoin('turma_componente_professor as tcp_acomp', function ($join) use ($professoresIds): void {
+                $join->on('tcp_acomp.turma_id', '=', 't.id');
+
+                if ($professoresIds !== []) {
+                    $join->where(function ($join): void {
+                        $join->whereNull('p.componente_curricular_id')
+                            ->orOn('tcp_acomp.componente_curricular_id', '=', 'p.componente_curricular_id');
+                    });
+
+                    return;
+                }
+
+                $join->on('tcp_acomp.componente_curricular_id', '=', 'p.componente_curricular_id');
+            })
+            ->leftJoin('professores as pr_acomp', 'pr_acomp.id', '=', 'tcp_acomp.professor_id');
+
+        if ($professoresIds !== []) {
+            $esperadosQuery->whereIn('tcp_acomp.professor_id', $professoresIds);
+        }
+
+        $esperados = $esperadosQuery
+            ->groupBy(
+                'at.avaliacao_id',
+                'at.turma_id',
+                'av.nome',
+                't.nome',
+                't.turno',
+                'e.nome',
+                's.nome',
+                'p.componente_curricular_id',
+                'cc.nome',
+                'tcp_acomp.professor_id',
+                'pr_acomp.nome'
+            )
+            ->select(
+                'at.avaliacao_id',
+                'at.turma_id',
+                'av.nome as avaliacao_nome',
+                't.nome as turma_nome',
+                't.turno',
+                'e.nome as escola_nome',
+                's.nome as serie_nome',
+                'p.componente_curricular_id as componente_id',
+                'cc.nome as componente_nome',
+                'tcp_acomp.professor_id',
+                'pr_acomp.nome as professor_nome',
+                DB::raw("COUNT(DISTINCT {$distinctEsperado}) as preenchimentos_esperados"),
+                DB::raw('COUNT(DISTINCT p.id) as pautas_total'),
+                DB::raw('COUNT(DISTINCT aln.id) as alunos_total')
+            )
+            ->get();
+
+        $respondidos = (clone $this->baseRespostasQuery($avaliacaoIds, ignorarAlternativas: true))
+            ->groupBy('ar.avaliacao_id', 'ar.turma_id', 'p.componente_curricular_id')
+            ->groupByRaw($professorRespostaExpr)
+            ->select(
+                'ar.avaliacao_id',
+                'ar.turma_id',
+                'p.componente_curricular_id as componente_id',
+                DB::raw("{$professorRespostaExpr} as professor_id"),
+                DB::raw("COUNT(DISTINCT {$distinctRespondido}) as preenchimentos_respondidos"),
+                DB::raw('MAX(ar.respondido_em) as ultima_resposta_em')
+            )
+            ->get()
+            ->keyBy(fn ($item): string => $this->chaveAcompanhamentoTurma(
+                $item->avaliacao_id,
+                $item->turma_id,
+                $item->componente_id,
+                $item->professor_id,
+            ));
+
+        return $esperados
+            ->map(function ($item) use ($respondidos): array {
+                $chave = $this->chaveAcompanhamentoTurma(
+                    $item->avaliacao_id,
+                    $item->turma_id,
+                    $item->componente_id,
+                    $item->professor_id,
+                );
+                $respondido = $respondidos->get($chave);
+                $preenchimentosEsperados = (int) ($item->preenchimentos_esperados ?? 0);
+                $preenchimentosRespondidos = min((int) ($respondido->preenchimentos_respondidos ?? 0), $preenchimentosEsperados);
+                $preenchimentosPendentes = max($preenchimentosEsperados - $preenchimentosRespondidos, 0);
+                $percentualPreenchimento = $preenchimentosEsperados > 0
+                    ? round(($preenchimentosRespondidos / $preenchimentosEsperados) * 100, 1)
+                    : 0.0;
+                $status = match (true) {
+                    $preenchimentosEsperados > 0 && $preenchimentosPendentes === 0 => 'concluido',
+                    $preenchimentosRespondidos > 0 => 'em_andamento',
+                    default => 'nao_iniciado',
+                };
+
+                return [
+                    'avaliacao_id' => (int) $item->avaliacao_id,
+                    'turma_id' => (int) $item->turma_id,
+                    'avaliacao_nome' => (string) ($item->avaliacao_nome ?? '-'),
+                    'escola_nome' => (string) ($item->escola_nome ?? '-'),
+                    'serie_nome' => (string) ($item->serie_nome ?? '-'),
+                    'turma_nome' => (string) ($item->turma_nome ?? '-'),
+                    'turno' => (string) ($item->turno ?? '-'),
+                    'componente_nome' => (string) ($item->componente_nome ?? 'Componente geral'),
+                    'professor_nome' => (string) ($item->professor_nome ?? 'Professor não vinculado'),
+                    'preenchimentos_esperados' => $preenchimentosEsperados,
+                    'preenchimentos_respondidos' => $preenchimentosRespondidos,
+                    'preenchimentos_pendentes' => $preenchimentosPendentes,
+                    'percentual_preenchimento' => $percentualPreenchimento,
+                    'pautas_total' => (int) ($item->pautas_total ?? 0),
+                    'alunos_total' => (int) ($item->alunos_total ?? 0),
+                    'status' => $status,
+                    'status_label' => match ($status) {
+                        'concluido' => 'Concluído',
+                        'em_andamento' => 'Em andamento',
+                        default => 'Não iniciado',
+                    },
+                    'ultima_resposta' => $respondido?->ultima_resposta_em
+                        ? \Illuminate\Support\Carbon::parse($respondido->ultima_resposta_em)->format('d/m/Y H:i')
+                        : '-',
+                ];
+            })
+            ->sortBy([
+                ['escola_nome', 'asc'],
+                ['serie_nome', 'asc'],
+                ['turma_nome', 'asc'],
+                ['componente_nome', 'asc'],
+                ['professor_nome', 'asc'],
+            ])
+            ->values()
+            ->all();
+    }
+
+    private function chaveAcompanhamentoTurma(
+        int|string|null $avaliacaoId,
+        int|string|null $turmaId,
+        int|string|null $componenteId,
+        int|string|null $professorId
+    ): string {
+        return implode('|', [
+            (int) $avaliacaoId,
+            (int) $turmaId,
+            (int) $componenteId,
+            (int) $professorId,
+        ]);
     }
 
     /**
@@ -2120,6 +2447,7 @@ class DashboardAvaliacoes extends Page implements HasForms
                     'ultima_resposta' => $item->ultima_resposta_em
                         ? \Illuminate\Support\Carbon::parse($item->ultima_resposta_em)->format('d/m/Y H:i')
                         : '-',
+                    'pode_abrir_avaliacao' => $this->podeAbrirAvaliacoesProfessor(),
                 ];
             })
             ->values()
@@ -2264,6 +2592,8 @@ class DashboardAvaliacoes extends Page implements HasForms
     {
         $filtrosAtivos = $filtros ?? $this->filtros;
 
+        $this->aplicarEscopoEscolarQuery($query, $alias);
+
         if ($filtrosAtivos['series_ids'] !== []) {
             $query->whereIn($alias . '.id_serie', $filtrosAtivos['series_ids']);
         }
@@ -2371,7 +2701,9 @@ class DashboardAvaliacoes extends Page implements HasForms
 
         $this->filtros['series_ids'] = $this->normalizarArrayIds($this->filtros['series_ids'] ?? []);
         $this->filtros['componentes_ids'] = $this->normalizarArrayIds($this->filtros['componentes_ids'] ?? []);
-        $this->filtros['escolas_ids'] = $this->normalizarArrayIds($this->filtros['escolas_ids'] ?? []);
+        $this->filtros['escolas_ids'] = $this->filtrarEscolasPermitidas(
+            $this->normalizarArrayIds($this->filtros['escolas_ids'] ?? [])
+        );
         $this->filtros['professores_ids'] = $this->normalizarArrayIds($this->filtros['professores_ids'] ?? []);
         $this->filtros['pautas_ids'] = $this->normalizarArrayIds($this->filtros['pautas_ids'] ?? []);
         $this->filtros['alternativas_ids'] = $this->normalizarArrayIds($this->filtros['alternativas_ids'] ?? []);

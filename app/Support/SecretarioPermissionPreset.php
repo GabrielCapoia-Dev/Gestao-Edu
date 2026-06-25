@@ -62,6 +62,7 @@ class SecretarioPermissionPreset
             'Concluir Balanços de Inventário',
             'Adiar Balanços de Inventário',
             'Cancelar Balanços de Inventário',
+            'Acompanhar Avaliações',
             'Exportar Relatórios',
         ];
     }
