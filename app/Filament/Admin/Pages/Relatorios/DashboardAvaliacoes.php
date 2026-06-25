@@ -83,9 +83,25 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     public int $turmasAvaliadasPagina = 1;
 
-    public int $turmasAvaliadasPorPagina = 10;
+    public int $turmasAvaliadasPorPagina = 5;
 
     public array $turmasAvaliadasPorPaginaOptions = [5, 10, 25, 50, 100];
+
+    public array $listagensPaginas = [
+        'vinculosAvaliados' => 1,
+        'tabelaEscolas' => 1,
+        'acompanhamentoTurmas' => 1,
+        'avaliacoesResumo' => 1,
+    ];
+
+    public array $listagensPorPagina = [
+        'vinculosAvaliados' => 5,
+        'tabelaEscolas' => 5,
+        'acompanhamentoTurmas' => 5,
+        'avaliacoesResumo' => 5,
+    ];
+
+    public array $listagensPorPaginaOptions = [5, 10, 25, 50, 100];
 
     public array $filtrosAplicados = [];
 
@@ -106,7 +122,7 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     public function updatedFiltros(mixed $value = null, ?string $key = null): void
     {
-        $this->resetarPaginacaoTurmasAvaliadas();
+        $this->resetarPaginacoesDashboard();
 
         if ($key === 'avaliacao_id') {
             $this->limparFiltrosDependentes();
@@ -117,7 +133,7 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     public function updatedFiltrosAvaliacaoId(): void
     {
-        $this->resetarPaginacaoTurmasAvaliadas();
+        $this->resetarPaginacoesDashboard();
         $this->limparFiltrosDependentes();
         $this->atualizarDashboard();
     }
@@ -125,7 +141,7 @@ class DashboardAvaliacoes extends Page implements HasForms
     public function limparFiltros(): void
     {
         $this->filtros = $this->filtrosPadrao();
-        $this->resetarPaginacaoTurmasAvaliadas();
+        $this->resetarPaginacoesDashboard();
         $this->atualizarDashboard();
     }
 
@@ -134,6 +150,36 @@ class DashboardAvaliacoes extends Page implements HasForms
         $this->turmasAvaliadasPorPagina = $this->normalizarTurmasAvaliadasPorPagina($value);
         $this->resetarPaginacaoTurmasAvaliadas();
         $this->atualizarDashboard();
+    }
+
+    public function updatedListagensPorPagina(mixed $value, ?string $key = null): void
+    {
+        if (! $this->listagemPaginadaValida($key)) {
+            return;
+        }
+
+        $this->listagensPorPagina[$key] = $this->normalizarListagemPorPagina($value);
+        $this->listagensPaginas[$key] = 1;
+        $this->normalizarPaginacoesListagens();
+    }
+
+    public function paginaAnteriorListagem(string $listagem): void
+    {
+        if (! $this->listagemPaginadaValida($listagem)) {
+            return;
+        }
+
+        $this->listagensPaginas[$listagem] = max(((int) ($this->listagensPaginas[$listagem] ?? 1)) - 1, 1);
+    }
+
+    public function proximaPaginaListagem(string $listagem): void
+    {
+        if (! $this->listagemPaginadaValida($listagem)) {
+            return;
+        }
+
+        $paginaAtual = (int) ($this->listagensPaginas[$listagem] ?? 1);
+        $this->listagensPaginas[$listagem] = min($paginaAtual + 1, $this->totalPaginasListagem($listagem));
     }
 
     public function paginaAnteriorTurmasAvaliadas(): void
@@ -966,6 +1012,59 @@ class DashboardAvaliacoes extends Page implements HasForms
         $this->turmasAvaliadasPagina = 1;
     }
 
+    private function resetarPaginacoesDashboard(): void
+    {
+        $this->resetarPaginacaoTurmasAvaliadas();
+
+        foreach (array_keys($this->listagensPorPagina) as $listagem) {
+            $this->listagensPaginas[$listagem] = 1;
+        }
+    }
+
+    private function listagemPaginadaValida(?string $listagem): bool
+    {
+        return is_string($listagem)
+            && array_key_exists($listagem, $this->listagensPorPagina);
+    }
+
+    private function normalizarListagemPorPagina(mixed $value): int
+    {
+        $porPagina = (int) $value;
+
+        return in_array($porPagina, $this->listagensPorPaginaOptions, true)
+            ? $porPagina
+            : 5;
+    }
+
+    private function normalizarPaginacoesListagens(): void
+    {
+        foreach (array_keys($this->listagensPorPagina) as $listagem) {
+            $this->listagensPorPagina[$listagem] = $this->normalizarListagemPorPagina(
+                $this->listagensPorPagina[$listagem] ?? 5
+            );
+
+            $this->listagensPaginas[$listagem] = min(
+                max((int) ($this->listagensPaginas[$listagem] ?? 1), 1),
+                $this->totalPaginasListagem($listagem)
+            );
+        }
+    }
+
+    private function totalPaginasListagem(string $listagem): int
+    {
+        $total = count(match ($listagem) {
+            'vinculosAvaliados' => $this->vinculosAvaliados,
+            'tabelaEscolas' => $this->tabelaEscolas,
+            'acompanhamentoTurmas' => $this->acompanhamentoTurmas,
+            'avaliacoesResumo' => $this->avaliacoesResumo,
+            default => [],
+        });
+
+        $porPagina = max($this->normalizarListagemPorPagina($this->listagensPorPagina[$listagem] ?? 5), 1);
+
+        return max((int) ceil($total / $porPagina), 1);
+    }
+
     private function normalizarTurmasAvaliadasPorPagina(mixed $value): int
     {
         $porPagina = (int) $value;
@@ -1356,6 +1455,7 @@ class DashboardAvaliacoes extends Page implements HasForms
         $this->acompanhamentoTurmas = $dados['acompanhamento_turmas'];
         $this->turmasAvaliadas = $dados['turmas_avaliadas'];
         $this->turmasAvaliadasTotal = $dados['turmas_avaliadas_total'];
+        $this->normalizarPaginacoesListagens();
         $this->filtrosAplicados = $this->filtrosAplicadosFormatados();
         $this->ultimaAtualizacao = $this->avaliacaoSelecionada()
             ? now()->format('d/m/Y H:i:s')

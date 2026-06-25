@@ -93,6 +93,10 @@ class DashboardAvaliacoesPageTest extends TestCase
         $this->assertSame([], $component->instance()->tabelaEscolas);
 
         $component->set('filtros.avaliacao_id', $avaliacao->id);
+        $component
+            ->assertSee('Preenchimento geral')
+            ->assertSee('Pendência por escola')
+            ->assertSee('Status das turmas');
 
         $cards = $component->instance()->cards;
 
@@ -185,13 +189,34 @@ class DashboardAvaliacoesPageTest extends TestCase
         $component->set('filtros.avaliacao_id', $avaliacao->id);
 
         $this->assertSame(7, $component->instance()->turmasAvaliadasTotal);
-        $this->assertCount(7, $component->instance()->turmasAvaliadas);
-
-        $component->set('turmasAvaliadasPorPagina', 5);
-
         $this->assertSame(5, $component->instance()->turmasAvaliadasPorPagina);
         $this->assertSame(1, $component->instance()->turmasAvaliadasPagina);
         $this->assertCount(5, $component->instance()->turmasAvaliadas);
+        $this->assertSame(5, $component->instance()->listagensPorPagina['vinculosAvaliados']);
+        $this->assertSame(5, $component->instance()->listagensPorPagina['tabelaEscolas']);
+        $this->assertSame(5, $component->instance()->listagensPorPagina['acompanhamentoTurmas']);
+        $this->assertSame(5, $component->instance()->listagensPorPagina['avaliacoesResumo']);
+
+        $component
+            ->set('tabelaEscolas', array_fill(0, 7, [
+                'nome' => 'Escola',
+                'esta_preenchida' => false,
+                'percentual_pendentes' => 100.0,
+                'preenchimentos_pendentes' => 1,
+                'preenchimentos_respondidos' => 0,
+                'preenchimentos_esperados' => 1,
+                'percentual_preenchimento' => 0.0,
+                'turmas_com_resposta' => 0,
+                'turmas_esperadas' => 1,
+            ]))
+            ->call('proximaPaginaListagem', 'tabelaEscolas');
+
+        $this->assertSame(2, $component->instance()->listagensPaginas['tabelaEscolas']);
+
+        $component->set('listagensPorPagina.tabelaEscolas', 10);
+
+        $this->assertSame(10, $component->instance()->listagensPorPagina['tabelaEscolas']);
+        $this->assertSame(1, $component->instance()->listagensPaginas['tabelaEscolas']);
 
         $component->call('proximaPaginaTurmasAvaliadas');
 

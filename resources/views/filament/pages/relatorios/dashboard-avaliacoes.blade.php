@@ -28,38 +28,182 @@
                 <p>Os filtros de série, turno, componente, escola, professor, pauta e alternativa serão liberados a partir da avaliação escolhida.</p>
             </section>
         @else
+            @php
+                $preenchimentosEsperados = max((int) ($cards['preenchimentos_esperados'] ?? 0), 0);
+                $preenchimentosRespondidos = max((int) ($cards['preenchimentos_respondidos'] ?? 0), 0);
+                $preenchimentosPendentes = max((int) ($cards['preenchimentos_pendentes'] ?? 0), 0);
+                $percentualPreenchimentoGeral = $preenchimentosEsperados > 0
+                    ? round(($preenchimentosRespondidos / $preenchimentosEsperados) * 100, 1)
+                    : 0.0;
+                $percentualPendencia = (float) ($cards['percentual_alunos_sem_resposta_pautas'] ?? 0);
+                $percentualTurmas = (float) ($cards['percentual_turmas_preenchidas'] ?? 0);
+                $percentualEscolas = (float) ($cards['percentual_escolas_preenchidas'] ?? 0);
+                $percentualManha = (float) ($cards['percentual_turno_manha'] ?? 0);
+                $percentualTarde = (float) ($cards['percentual_turno_tarde'] ?? 0);
+                $statusTurmas = collect($acompanhamentoTurmas)->countBy('status');
+                $totalStatusTurmas = max($statusTurmas->sum(), 1);
+                $porPaginaOptions = $listagensPorPaginaOptions ?? [5, 10, 25, 50, 100];
+                $montarPagina = function (array $items, string $key) use ($listagensPaginas, $listagensPorPagina, $porPaginaOptions): array {
+                    $colecao = collect($items);
+                    $total = $colecao->count();
+                    $porPagina = (int) ($listagensPorPagina[$key] ?? 5);
+                    $porPagina = in_array($porPagina, $porPaginaOptions, true) ? $porPagina : 5;
+                    $ultimaPagina = max((int) ceil($total / max($porPagina, 1)), 1);
+                    $pagina = min(max((int) ($listagensPaginas[$key] ?? 1), 1), $ultimaPagina);
+                    $inicio = $total > 0 ? (($pagina - 1) * $porPagina) + 1 : 0;
+                    $fim = min($total, $pagina * $porPagina);
+
+                    return [
+                        'items' => $colecao->forPage($pagina, $porPagina)->values(),
+                        'total' => $total,
+                        'porPagina' => $porPagina,
+                        'pagina' => $pagina,
+                        'ultimaPagina' => $ultimaPagina,
+                        'inicio' => $inicio,
+                        'fim' => $fim,
+                    ];
+                };
+                $paginaVinculosAvaliados = $montarPagina($vinculosAvaliados, 'vinculosAvaliados');
+                $paginaTabelaEscolas = $montarPagina($tabelaEscolas, 'tabelaEscolas');
+                $paginaAcompanhamentoTurmas = $montarPagina($acompanhamentoTurmas, 'acompanhamentoTurmas');
+                $paginaAvaliacoesResumo = $montarPagina($avaliacoesResumo, 'avaliacoesResumo');
+            @endphp
+
             <section class="dav-kpi-grid">
+                <article class="dav-kpi dav-kpi--blue">
+                    <span class="dav-kpi-label">Preenchimento geral</span>
+                    <strong>{{ number_format($percentualPreenchimentoGeral, 1, ',', '.') }}%</strong>
+                    <small>{{ $preenchimentosRespondidos }} de {{ $preenchimentosEsperados }} preenchimentos</small>
+                    <div class="dav-mini-track"><div class="dav-mini-fill" style="width: {{ min($percentualPreenchimentoGeral, 100) }}%;"></div></div>
+                </article>
                 <article class="dav-kpi dav-kpi--amber">
-                    <span class="dav-kpi-label">% vínculos sem resposta em pautas</span>
-                    <strong>{{ number_format((float) ($cards['percentual_alunos_sem_resposta_pautas'] ?? 0), 1, ',', '.') }}%</strong>
-                    <small>{{ $cards['preenchimentos_pendentes'] ?? 0 }} de {{ $cards['preenchimentos_esperados'] ?? 0 }} preenchimentos pendentes</small>
+                    <span class="dav-kpi-label">Pendências</span>
+                    <strong>{{ $preenchimentosPendentes }}</strong>
+                    <small>{{ number_format($percentualPendencia, 1, ',', '.') }}% do escopo sem resposta</small>
+                    <div class="dav-mini-track"><div class="dav-mini-fill dav-mini-fill--amber" style="width: {{ min($percentualPendencia, 100) }}%;"></div></div>
                 </article>
                 <article class="dav-kpi dav-kpi--green">
-                    <span class="dav-kpi-label">% turmas preenchidas</span>
-                    <strong>{{ number_format((float) ($cards['percentual_turmas_preenchidas'] ?? 0), 1, ',', '.') }}%</strong>
+                    <span class="dav-kpi-label">Turmas concluídas</span>
+                    <strong>{{ number_format($percentualTurmas, 1, ',', '.') }}%</strong>
                     <small>{{ $cards['turmas_preenchidas'] ?? 0 }} de {{ $cards['turmas_esperadas'] ?? 0 }} turmas</small>
+                    <div class="dav-mini-track"><div class="dav-mini-fill dav-mini-fill--green" style="width: {{ min($percentualTurmas, 100) }}%;"></div></div>
                 </article>
-                <article class="dav-kpi dav-kpi--blue">
-                    <span class="dav-kpi-label">% escolas preenchidas</span>
-                    <strong>{{ number_format((float) ($cards['percentual_escolas_preenchidas'] ?? 0), 1, ',', '.') }}%</strong>
+                <article class="dav-kpi">
+                    <span class="dav-kpi-label">Escolas concluídas</span>
+                    <strong>{{ number_format($percentualEscolas, 1, ',', '.') }}%</strong>
                     <small>{{ $cards['escolas_preenchidas'] ?? 0 }} de {{ $cards['total_escolas'] ?? 0 }} escolas</small>
+                    <div class="dav-mini-track"><div class="dav-mini-fill" style="width: {{ min($percentualEscolas, 100) }}%;"></div></div>
                 </article>
                 <article class="dav-kpi">
-                    <span class="dav-kpi-label">Preenchimento manhã</span>
-                    <strong>{{ number_format((float) ($cards['percentual_turno_manha'] ?? 0), 1, ',', '.') }}%</strong>
-                    <small>{{ $cards['turno_manha_alunos_pendentes'] ?? 0 }} de {{ $cards['turno_manha_alunos_total'] ?? 0 }} vínculos com pauta pendente</small>
+                    <span class="dav-kpi-label">Turno manhã</span>
+                    <strong>{{ number_format($percentualManha, 1, ',', '.') }}%</strong>
+                    <small>{{ $cards['turno_manha_respondidas'] ?? 0 }} de {{ $cards['turno_manha_esperadas'] ?? 0 }} preenchimentos</small>
+                    <div class="dav-mini-track"><div class="dav-mini-fill" style="width: {{ min($percentualManha, 100) }}%;"></div></div>
                 </article>
                 <article class="dav-kpi">
-                    <span class="dav-kpi-label">Preenchimento tarde</span>
-                    <strong>{{ number_format((float) ($cards['percentual_turno_tarde'] ?? 0), 1, ',', '.') }}%</strong>
-                    <small>{{ $cards['turno_tarde_alunos_pendentes'] ?? 0 }} de {{ $cards['turno_tarde_alunos_total'] ?? 0 }} vínculos com pauta pendente</small>
+                    <span class="dav-kpi-label">Turno tarde</span>
+                    <strong>{{ number_format($percentualTarde, 1, ',', '.') }}%</strong>
+                    <small>{{ $cards['turno_tarde_respondidas'] ?? 0 }} de {{ $cards['turno_tarde_esperadas'] ?? 0 }} preenchimentos</small>
+                    <div class="dav-mini-track"><div class="dav-mini-fill" style="width: {{ min($percentualTarde, 100) }}%;"></div></div>
+                </article>
+            </section>
+
+            <section class="dav-chart-grid dav-chart-grid--three">
+                <article class="dav-card dav-card--chart">
+                    <header>
+                        <h3>Pendência por escola</h3>
+                        <p>Escolas com maior percentual de preenchimentos pendentes.</p>
+                    </header>
+
+                    <div class="dav-bars dav-bars--risk">
+                        @forelse ($graficoAlunosSemRespostaPorEscola as $item)
+                            <div class="dav-bar-row">
+                                <div class="dav-bar-top">
+                                    <span>{{ $item['nome'] }}</span>
+                                    <strong>{{ $item['total'] }} pendentes · {{ number_format((float) $item['percentual'], 1, ',', '.') }}%</strong>
+                                </div>
+                                <div class="dav-bar-track">
+                                    <div class="dav-bar-fill dav-bar-fill--amber" style="width: {{ min((float) $item['percentual_barra'], 100) }}%;"></div>
+                                </div>
+                            </div>
+                        @empty
+                            <p class="dav-empty">Nenhuma pendência por escola no recorte atual.</p>
+                        @endforelse
+                    </div>
+                </article>
+
+                <article class="dav-card dav-card--chart">
+                    <header>
+                        <h3>Status das turmas</h3>
+                        <p>Distribuição do acompanhamento por turma, componente e professor.</p>
+                    </header>
+
+                    <div class="dav-status-grid">
+                        @foreach ([
+                            'concluido' => ['label' => 'Concluídas', 'class' => 'dav-status-item--ok'],
+                            'em_andamento' => ['label' => 'Em andamento', 'class' => 'dav-status-item--warn'],
+                            'pendente' => ['label' => 'Pendentes', 'class' => 'dav-status-item--danger'],
+                        ] as $status => $config)
+                            @php
+                                $totalStatus = (int) ($statusTurmas[$status] ?? 0);
+                                $percentualStatus = round(($totalStatus / $totalStatusTurmas) * 100, 1);
+                            @endphp
+                            <div class="dav-status-item {{ $config['class'] }}">
+                                <span>{{ $config['label'] }}</span>
+                                <strong>{{ $totalStatus }}</strong>
+                                <small>{{ number_format($percentualStatus, 1, ',', '.') }}%</small>
+                            </div>
+                        @endforeach
+                    </div>
+                </article>
+
+                <article class="dav-card dav-card--chart">
+                    <header>
+                        <h3>Preenchimento por turno</h3>
+                        <p>Comparativo rápido entre os turnos com dados no recorte.</p>
+                    </header>
+
+                    <div class="dav-bars">
+                        <div class="dav-bar-row">
+                            <div class="dav-bar-top">
+                                <span>Manhã</span>
+                                <strong>{{ number_format($percentualManha, 1, ',', '.') }}%</strong>
+                            </div>
+                            <div class="dav-bar-track">
+                                <div class="dav-bar-fill" style="width: {{ min($percentualManha, 100) }}%;"></div>
+                            </div>
+                            <span class="dav-bar-note">{{ $cards['turno_manha_alunos_pendentes'] ?? 0 }} vínculos com pauta pendente</span>
+                        </div>
+
+                        <div class="dav-bar-row">
+                            <div class="dav-bar-top">
+                                <span>Tarde</span>
+                                <strong>{{ number_format($percentualTarde, 1, ',', '.') }}%</strong>
+                            </div>
+                            <div class="dav-bar-track">
+                                <div class="dav-bar-fill" style="width: {{ min($percentualTarde, 100) }}%;"></div>
+                            </div>
+                            <span class="dav-bar-note">{{ $cards['turno_tarde_alunos_pendentes'] ?? 0 }} vínculos com pauta pendente</span>
+                        </div>
+                    </div>
                 </article>
             </section>
 
             <section class="dav-card">
-                <header>
-                    <h3>Vínculos avaliados</h3>
-                    <p>Separação por vínculo principal e contra turno.</p>
+                <header class="dav-card-header--split">
+                    <div>
+                        <h3>Vínculos avaliados</h3>
+                        <p>Separação por vínculo principal e contra turno.</p>
+                    </div>
+
+                    <label class="dav-page-size">
+                        <span>Itens por página</span>
+                        <select wire:model.live="listagensPorPagina.vinculosAvaliados" aria-label="Itens por página em vínculos avaliados">
+                            @foreach ($porPaginaOptions as $opcao)
+                                <option value="{{ $opcao }}">{{ $opcao }}</option>
+                            @endforeach
+                        </select>
+                    </label>
                 </header>
 
                 <div class="dav-table-wrap">
@@ -75,7 +219,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse ($vinculosAvaliados as $item)
+                            @forelse ($paginaVinculosAvaliados['items'] as $item)
                                 <tr>
                                     <td>{{ $item['label'] }}</td>
                                     <td class="text-right">{{ $item['alunos_total'] }}</td>
@@ -92,6 +236,29 @@
                         </tbody>
                     </table>
                 </div>
+
+                @if ($paginaVinculosAvaliados['total'] > 0)
+                    <div class="dav-pagination">
+                        <span>Mostrando {{ $paginaVinculosAvaliados['inicio'] }}-{{ $paginaVinculosAvaliados['fim'] }} de {{ $paginaVinculosAvaliados['total'] }} vínculos</span>
+                        <div class="dav-pagination-actions">
+                            <button
+                                type="button"
+                                class="dav-page-button"
+                                wire:click="paginaAnteriorListagem('vinculosAvaliados')"
+                                @disabled($paginaVinculosAvaliados['pagina'] <= 1)>
+                                Anterior
+                            </button>
+                            <span>Página {{ $paginaVinculosAvaliados['pagina'] }} de {{ $paginaVinculosAvaliados['ultimaPagina'] }}</span>
+                            <button
+                                type="button"
+                                class="dav-page-button"
+                                wire:click="proximaPaginaListagem('vinculosAvaliados')"
+                                @disabled($paginaVinculosAvaliados['pagina'] >= $paginaVinculosAvaliados['ultimaPagina'])>
+                                Próxima
+                            </button>
+                        </div>
+                    </div>
+                @endif
             </section>
 
             <section class="dav-card">
@@ -123,9 +290,20 @@
             </section>
 
             <section class="dav-card">
-                <header>
-                    <h3>Progresso por Escola</h3>
-                    <p>Preenchimentos esperados, respondidos e pendentes por escola.</p>
+                <header class="dav-card-header--split">
+                    <div>
+                        <h3>Progresso por Escola</h3>
+                        <p>Preenchimentos esperados, respondidos e pendentes por escola.</p>
+                    </div>
+
+                    <label class="dav-page-size">
+                        <span>Itens por página</span>
+                        <select wire:model.live="listagensPorPagina.tabelaEscolas" aria-label="Itens por página em progresso por escola">
+                            @foreach ($porPaginaOptions as $opcao)
+                                <option value="{{ $opcao }}">{{ $opcao }}</option>
+                            @endforeach
+                        </select>
+                    </label>
                 </header>
 
                 <div class="dav-table-wrap">
@@ -142,7 +320,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse ($tabelaEscolas as $item)
+                            @forelse ($paginaTabelaEscolas['items'] as $item)
                                 <tr>
                                     <td>{{ $item['nome'] }}</td>
                                     <td class="text-right">
@@ -164,12 +342,46 @@
                         </tbody>
                     </table>
                 </div>
+
+                @if ($paginaTabelaEscolas['total'] > 0)
+                    <div class="dav-pagination">
+                        <span>Mostrando {{ $paginaTabelaEscolas['inicio'] }}-{{ $paginaTabelaEscolas['fim'] }} de {{ $paginaTabelaEscolas['total'] }} escolas</span>
+                        <div class="dav-pagination-actions">
+                            <button
+                                type="button"
+                                class="dav-page-button"
+                                wire:click="paginaAnteriorListagem('tabelaEscolas')"
+                                @disabled($paginaTabelaEscolas['pagina'] <= 1)>
+                                Anterior
+                            </button>
+                            <span>Página {{ $paginaTabelaEscolas['pagina'] }} de {{ $paginaTabelaEscolas['ultimaPagina'] }}</span>
+                            <button
+                                type="button"
+                                class="dav-page-button"
+                                wire:click="proximaPaginaListagem('tabelaEscolas')"
+                                @disabled($paginaTabelaEscolas['pagina'] >= $paginaTabelaEscolas['ultimaPagina'])>
+                                Próxima
+                            </button>
+                        </div>
+                    </div>
+                @endif
             </section>
 
             <section class="dav-card">
-                <header>
-                    <h3>Acompanhamento de Pareceres</h3>
-                    <p>Andamento por escola, série, turma, componente e professor, incluindo turmas sem respostas.</p>
+                <header class="dav-card-header--split">
+                    <div>
+                        <h3>Acompanhamento de Pareceres</h3>
+                        <p>Andamento por escola, série, turma, componente e professor, incluindo turmas sem respostas.</p>
+                    </div>
+
+                    <label class="dav-page-size">
+                        <span>Itens por página</span>
+                        <select wire:model.live="listagensPorPagina.acompanhamentoTurmas" aria-label="Itens por página em acompanhamento de pareceres">
+                            @foreach ($porPaginaOptions as $opcao)
+                                <option value="{{ $opcao }}">{{ $opcao }}</option>
+                            @endforeach
+                        </select>
+                    </label>
                 </header>
 
                 <div class="dav-table-wrap">
@@ -189,7 +401,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse ($acompanhamentoTurmas as $item)
+                            @forelse ($paginaAcompanhamentoTurmas['items'] as $item)
                                 @php
                                     $statusClass = match ($item['status']) {
                                         'concluido' => 'dav-badge--ok',
@@ -224,12 +436,46 @@
                         </tbody>
                     </table>
                 </div>
+
+                @if ($paginaAcompanhamentoTurmas['total'] > 0)
+                    <div class="dav-pagination">
+                        <span>Mostrando {{ $paginaAcompanhamentoTurmas['inicio'] }}-{{ $paginaAcompanhamentoTurmas['fim'] }} de {{ $paginaAcompanhamentoTurmas['total'] }} registros</span>
+                        <div class="dav-pagination-actions">
+                            <button
+                                type="button"
+                                class="dav-page-button"
+                                wire:click="paginaAnteriorListagem('acompanhamentoTurmas')"
+                                @disabled($paginaAcompanhamentoTurmas['pagina'] <= 1)>
+                                Anterior
+                            </button>
+                            <span>Página {{ $paginaAcompanhamentoTurmas['pagina'] }} de {{ $paginaAcompanhamentoTurmas['ultimaPagina'] }}</span>
+                            <button
+                                type="button"
+                                class="dav-page-button"
+                                wire:click="proximaPaginaListagem('acompanhamentoTurmas')"
+                                @disabled($paginaAcompanhamentoTurmas['pagina'] >= $paginaAcompanhamentoTurmas['ultimaPagina'])>
+                                Próxima
+                            </button>
+                        </div>
+                    </div>
+                @endif
             </section>
 
             <section class="dav-card">
-                <header>
-                    <h3>Resumo da Avaliação</h3>
-                    <p>Visão consolidada do recorte selecionado.</p>
+                <header class="dav-card-header--split">
+                    <div>
+                        <h3>Resumo da Avaliação</h3>
+                        <p>Visão consolidada do recorte selecionado.</p>
+                    </div>
+
+                    <label class="dav-page-size">
+                        <span>Itens por página</span>
+                        <select wire:model.live="listagensPorPagina.avaliacoesResumo" aria-label="Itens por página no resumo da avaliação">
+                            @foreach ($porPaginaOptions as $opcao)
+                                <option value="{{ $opcao }}">{{ $opcao }}</option>
+                            @endforeach
+                        </select>
+                    </label>
                 </header>
 
                 <div class="dav-table-wrap">
@@ -248,7 +494,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse ($avaliacoesResumo as $item)
+                            @forelse ($paginaAvaliacoesResumo['items'] as $item)
                                 <tr>
                                     <td>
                                         <strong>{{ $item['nome'] }}</strong>
@@ -283,6 +529,29 @@
                         </tbody>
                     </table>
                 </div>
+
+                @if ($paginaAvaliacoesResumo['total'] > 0)
+                    <div class="dav-pagination">
+                        <span>Mostrando {{ $paginaAvaliacoesResumo['inicio'] }}-{{ $paginaAvaliacoesResumo['fim'] }} de {{ $paginaAvaliacoesResumo['total'] }} avaliações</span>
+                        <div class="dav-pagination-actions">
+                            <button
+                                type="button"
+                                class="dav-page-button"
+                                wire:click="paginaAnteriorListagem('avaliacoesResumo')"
+                                @disabled($paginaAvaliacoesResumo['pagina'] <= 1)>
+                                Anterior
+                            </button>
+                            <span>Página {{ $paginaAvaliacoesResumo['pagina'] }} de {{ $paginaAvaliacoesResumo['ultimaPagina'] }}</span>
+                            <button
+                                type="button"
+                                class="dav-page-button"
+                                wire:click="proximaPaginaListagem('avaliacoesResumo')"
+                                @disabled($paginaAvaliacoesResumo['pagina'] >= $paginaAvaliacoesResumo['ultimaPagina'])>
+                                Próxima
+                            </button>
+                        </div>
+                    </div>
+                @endif
             </section>
 
             <section class="dav-card">
@@ -577,7 +846,7 @@
         .dav-kpi-grid {
             display: grid;
             gap: 0.7rem;
-            grid-template-columns: repeat(5, minmax(0, 1fr));
+            grid-template-columns: repeat(6, minmax(0, 1fr));
         }
 
         .dav-kpi {
@@ -606,6 +875,27 @@
         .dav-kpi small {
             color: var(--gray-600);
             font-size: 0.72rem;
+        }
+
+        .dav-mini-track {
+            height: 0.38rem;
+            overflow: hidden;
+            border-radius: 999px;
+            background: #e5edf7;
+        }
+
+        .dav-mini-fill {
+            height: 100%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, #175ea7 0%, #0f4e9b 100%);
+        }
+
+        .dav-mini-fill--amber {
+            background: linear-gradient(90deg, #c77700 0%, #e0a11a 100%);
+        }
+
+        .dav-mini-fill--green {
+            background: linear-gradient(90deg, #0f8f58 0%, #10b981 100%);
         }
 
         .dav-kpi--blue {
@@ -655,6 +945,10 @@
             grid-template-columns: 1fr 1fr;
         }
 
+        .dav-chart-grid--three {
+            grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.9fr) minmax(0, 0.95fr);
+        }
+
         .dav-card {
             border: 1px solid var(--gray-200);
             border-radius: 0.95rem;
@@ -662,6 +956,10 @@
             padding: 0.9rem;
             display: grid;
             gap: 0.75rem;
+        }
+
+        .dav-card--chart {
+            align-content: start;
         }
 
         .dav-card header h3 {
@@ -802,6 +1100,58 @@
             color: var(--gray-500);
             font-size: 0.7rem;
             line-height: 1.35;
+        }
+
+        .dav-status-grid {
+            display: grid;
+            gap: 0.6rem;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .dav-status-item {
+            min-height: 6rem;
+            border-radius: 0.85rem;
+            border: 1px solid var(--gray-200);
+            background: #f8fafc;
+            padding: 0.75rem;
+            display: grid;
+            align-content: center;
+            gap: 0.25rem;
+        }
+
+        .dav-status-item span {
+            color: var(--gray-600);
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .dav-status-item strong {
+            color: var(--gray-950);
+            font-size: 1.45rem;
+            line-height: 1;
+        }
+
+        .dav-status-item small {
+            color: var(--gray-600);
+            font-size: 0.72rem;
+            font-weight: 600;
+        }
+
+        .dav-status-item--ok {
+            border-color: #bce9d0;
+            background: #f2fbf6;
+        }
+
+        .dav-status-item--warn {
+            border-color: #f4d68f;
+            background: #fff9eb;
+        }
+
+        .dav-status-item--danger {
+            border-color: #fac8c3;
+            background: #fff7f5;
         }
 
         .dav-table-wrap {
@@ -1024,6 +1374,24 @@
             background: #223244;
         }
 
+        :root.dark .dav-mini-track {
+            background: #223244;
+        }
+
+        :root.dark .dav-status-item {
+            background: #111b2c;
+            border-color: #273446;
+        }
+
+        :root.dark .dav-status-item strong {
+            color: #fff;
+        }
+
+        :root.dark .dav-status-item span,
+        :root.dark .dav-status-item small {
+            color: var(--gray-300);
+        }
+
         :root.dark .dav-table th {
             background: #111b2c;
             border-bottom-color: #273446;
@@ -1071,6 +1439,10 @@
             .dav-kpi-grid {
                 grid-template-columns: repeat(3, minmax(0, 1fr));
             }
+
+            .dav-chart-grid--three {
+                grid-template-columns: 1fr;
+            }
         }
 
         @media (max-width: 760px) {
@@ -1092,6 +1464,10 @@
             }
 
             .dav-chart-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .dav-status-grid {
                 grid-template-columns: 1fr;
             }
 
