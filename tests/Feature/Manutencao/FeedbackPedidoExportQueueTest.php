@@ -139,6 +139,43 @@ class FeedbackPedidoExportQueueTest extends TestCase
 
         $this->assertSame([100, 40], array_column($empresas, 'satisfacao'));
         $this->assertSame([100, 40], array_column($empresas, 'pct_barra'));
+
+        $escolas = $service->rankingEscolas($query->get());
+
+        $this->assertSame([100, 40], array_column($escolas, 'satisfacao'));
+        $this->assertSame([100, 40], array_column($escolas, 'pct_barra'));
+    }
+
+    public function test_ranking_de_escolas_nao_oculta_escolas_com_satisfacao_menor_que_cem(): void
+    {
+        $dados = $this->criarFeedbacksParaFiltro();
+
+        for ($i = 1; $i <= 10; $i++) {
+            $escola = Escola::query()->create([
+                'codigo' => '1' . str_pad((string) $i, 2, '0', STR_PAD_LEFT),
+                'nome' => 'Escola 100 ' . $i,
+                'ativo' => true,
+            ]);
+
+            $pedido = $this->pedido($dados['user'], $escola, $dados['tipo'], $dados['status'], $dados['empresa']);
+
+            FeedbackPedido::query()->create([
+                'pedido_id' => $pedido->id,
+                'valor' => 5,
+                'descricao' => 'Atendimento excelente.',
+                'reabrir_pedido' => false,
+            ]);
+        }
+
+        $service = app(FeedbackPedidoAnalyticsService::class);
+        $ranking = $service->rankingEscolas($service->query([])->get());
+        $escolaComNotaBaixa = collect($ranking)->firstWhere('nome', 'Escola Norte');
+
+        $this->assertCount(12, $ranking);
+        $this->assertNotNull($escolaComNotaBaixa);
+        $this->assertSame(2.0, $escolaComNotaBaixa['media']);
+        $this->assertSame(40, $escolaComNotaBaixa['satisfacao']);
+        $this->assertSame(40, $escolaComNotaBaixa['pct_barra']);
     }
 
     public function test_criticas_consideram_pedidos_com_historico_reaberto(): void
@@ -326,7 +363,7 @@ class FeedbackPedidoExportQueueTest extends TestCase
         ]);
         $outroFeedback->forceFill(['created_at' => '2026-05-12 10:00:00'])->save();
 
-        return compact('empresa', 'escola', 'tipo', 'opcao', 'feedback');
+        return compact('user', 'empresa', 'escola', 'outraEscola', 'tipo', 'opcao', 'status', 'feedback');
     }
 
     private function pedido(User $user, Escola $escola, TipoManutencao $tipo, TipoStatus $status, EmpresaContratada $empresa): Pedido

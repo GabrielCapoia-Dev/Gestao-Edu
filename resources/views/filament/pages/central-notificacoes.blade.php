@@ -72,6 +72,11 @@
             </label>
 
             <div class="nc-toolbar-actions">
+                <button type="button" class="nc-action nc-action--ghost nc-sound-toggle" data-action="toggle-sound" aria-pressed="true" title="Alternar som das notificações">
+                    <x-heroicon-o-speaker-wave data-sound-icon="on" />
+                    <x-heroicon-o-speaker-x-mark data-sound-icon="off" hidden />
+                    <span data-sound-label>Som ligado</span>
+                </button>
                 <button type="button" class="nc-action nc-action--ghost" data-action="clear-filters">
                     <x-heroicon-o-x-mark />
                     <span>Limpar</span>
@@ -530,6 +535,12 @@
                 color: var(--nc-primary);
             }
 
+            .nc-sound-toggle[aria-pressed="false"] {
+                border-color: #fecaca;
+                background: #fff1f2;
+                color: var(--nc-red);
+            }
+
             .nc-action:disabled {
                 cursor: wait;
                 opacity: .62;
@@ -798,13 +809,30 @@
                 const paginationLabel = root.querySelector('[data-pagination-label]');
                 const paginationPage = root.querySelector('[data-pagination-page]');
                 const markAllButton = document.querySelector('[data-nc-action="mark-all-read"]');
+                const soundToggle = root.querySelector('[data-action="toggle-sound"]');
                 const audio = root.querySelector('[data-notification-sound]');
+                const soundPreferenceKey = 'gestaoEdu.notificationSound';
+                const readSoundPreference = () => {
+                    try {
+                        return localStorage.getItem(soundPreferenceKey) !== 'off';
+                    } catch (error) {
+                        return true;
+                    }
+                };
+                const writeSoundPreference = (enabled) => {
+                    try {
+                        localStorage.setItem(soundPreferenceKey, enabled ? 'on' : 'off');
+                    } catch (error) {
+                        //
+                    }
+                };
                 let searchTimer = null;
                 let loadVersion = 0;
                 let lastChangeToken = null;
                 let lastUnreadPollToken = null;
                 let soundReady = false;
                 let suppressNextSound = false;
+                let soundEnabled = readSoundPreference();
 
                 const escapeHtml = (value) => String(value ?? '')
                     .replaceAll('&', '&amp;')
@@ -849,8 +877,33 @@
                     }
                 };
 
+                const updateSoundToggle = () => {
+                    if (!soundToggle) {
+                        return;
+                    }
+
+                    const enabled = soundEnabled;
+                    soundToggle.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+                    soundToggle.setAttribute('title', enabled ? 'Desligar som das notificações' : 'Ligar som das notificações');
+                    soundToggle.querySelector('[data-sound-label]').textContent = enabled ? 'Som ligado' : 'Som desligado';
+                    soundToggle.querySelector('[data-sound-icon="on"]').hidden = !enabled;
+                    soundToggle.querySelector('[data-sound-icon="off"]').hidden = enabled;
+                };
+
+                const setSoundEnabled = (enabled) => {
+                    soundEnabled = enabled;
+                    writeSoundPreference(enabled);
+                    window.__gestaoEduNotificationSoundEnabled = enabled;
+                    updateSoundToggle();
+                    window.dispatchEvent(new CustomEvent('gestaoedu:notification-sound-changed', {
+                        detail: {
+                            enabled
+                        },
+                    }));
+                };
+
                 const playNotificationSound = () => {
-                    if (!audio || !soundReady) {
+                    if (!audio || !soundReady || !soundEnabled) {
                         return;
                     }
 
@@ -1264,6 +1317,8 @@
                         }
                     } else if (action === 'delete-all') {
                         await deleteAllNotifications(target);
+                    } else if (action === 'toggle-sound') {
+                        setSoundEnabled(!soundEnabled);
                     }
                 });
 
@@ -1304,6 +1359,13 @@
                     });
                 });
 
+                window.addEventListener('gestaoedu:notification-sound-changed', (event) => {
+                    soundEnabled = event.detail?.enabled !== false;
+                    updateSoundToggle();
+                });
+
+                window.__gestaoEduNotificationSoundEnabled = soundEnabled;
+                updateSoundToggle();
                 load();
 
                 setInterval(() => {

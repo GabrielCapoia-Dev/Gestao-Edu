@@ -432,7 +432,8 @@ class FeedbackPedidoAnalyticsService
             feedbacks: $feedbacks,
             relation: 'escola',
             resolver: fn (FeedbackPedido $feedback): ?Escola => $feedback->pedido?->escola,
-            emptyLabel: 'Sem escola'
+            emptyLabel: 'Sem escola',
+            limit: null
         );
     }
 
@@ -474,10 +475,12 @@ class FeedbackPedidoAnalyticsService
                 continue;
             }
 
+            $media = round((float) $grupo->avg('valor'), 2);
+
             $resultado[$empresaId] = [
                 'empresa' => $empresa,
-                'percentual' => $this->satisfactionPercent($grupo),
-                'media' => round((float) $grupo->avg('valor'), 2),
+                'percentual' => $this->satisfactionFromAverage($media),
+                'media' => $media,
                 'total' => $grupo->count(),
                 'reabertos' => $this->countReabertosCollection($grupo),
                 'criticas' => $this->countReabertosCollection($grupo),
@@ -543,7 +546,7 @@ class FeedbackPedidoAnalyticsService
     /**
      * @return array<int, array<string, mixed>>
      */
-    private function rankingPorRelacao(Collection $feedbacks, string $relation, callable $resolver, string $emptyLabel): array
+    private function rankingPorRelacao(Collection $feedbacks, string $relation, callable $resolver, string $emptyLabel, ?int $limit = 10): array
     {
         $rows = [];
 
@@ -554,14 +557,15 @@ class FeedbackPedidoAnalyticsService
         }) as $key => $grupo) {
             $model = $resolver($grupo->first());
             $nome = $model?->nome ?? $emptyLabel;
+            $media = round((float) $grupo->avg('valor'), 2);
 
             $rows[] = [
                 'id' => $model?->getKey(),
                 'nome' => $nome,
                 'relation' => $relation,
                 'total' => $grupo->count(),
-                'media' => round((float) $grupo->avg('valor'), 2),
-                'satisfacao' => $this->satisfactionPercent($grupo),
+                'media' => $media,
+                'satisfacao' => $this->satisfactionFromAverage($media),
                 'reabertos' => $this->countReabertosCollection($grupo),
                 'criticas' => $this->countReabertosCollection($grupo),
             ];
@@ -569,22 +573,15 @@ class FeedbackPedidoAnalyticsService
 
         usort($rows, fn (array $a, array $b): int => [$b['satisfacao'], $b['media'], $b['total']] <=> [$a['satisfacao'], $a['media'], $a['total']]);
 
+        if ($limit !== null) {
+            $rows = array_slice($rows, 0, $limit);
+        }
+
         return array_map(function (array $row): array {
             $row['pct_barra'] = $row['satisfacao'];
 
             return $row;
-        }, array_slice($rows, 0, 10));
-    }
-
-    private function satisfactionPercent(Collection $feedbacks): int
-    {
-        $total = $feedbacks->count();
-
-        if ($total === 0) {
-            return 0;
-        }
-
-        return $this->satisfactionFromAverage((float) $feedbacks->avg('valor'));
+        }, $rows);
     }
 
     private function satisfactionFromAverage(float $average): int

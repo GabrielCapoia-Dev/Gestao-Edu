@@ -240,6 +240,54 @@ class DashboardAvaliacoesPageTest extends TestCase
             ->assertOk();
     }
 
+    public function test_dashboard_abre_avaliacao_da_url_e_usuario_sem_vinculo_visualiza_todas_as_escolas(): void
+    {
+        Permission::findOrCreate('Acompanhar Avaliações');
+
+        $user = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $user->givePermissionTo('Acompanhar Avaliações');
+
+        $tipo = TipoAvaliacao::query()->create(['nome' => 'Parecer Global', 'status' => true]);
+        $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Periodo Global', 'status' => true]);
+        $serie = $this->criarSerie('SER-GLOBAL', '4o Ano');
+        $componente = ComponenteCurricular::query()->create([
+            'codigo' => 'COMP-GLOBAL',
+            'nome' => 'Geografia',
+        ]);
+
+        $escolaNorte = $this->criarEscola('Escola Norte');
+        $escolaSul = $this->criarEscola('Escola Sul');
+        $turmaNorte = $this->criarTurma($escolaNorte, $serie, 'Turma Norte', 'manha');
+        $turmaSul = $this->criarTurma($escolaSul, $serie, 'Turma Sul', 'tarde');
+
+        $this->criarAluno($turmaNorte, 'Aluno Norte', 'CGM-GLOBAL-001');
+        $this->criarAluno($turmaSul, 'Aluno Sul', 'CGM-GLOBAL-002');
+
+        $pauta = $this->criarPauta($tipo, $serie, $componente, 'Pauta global');
+        $avaliacao = $this->criarAvaliacao('Avaliacao Global', $tipo, $periodo);
+        $avaliacao->series()->sync([$serie->id]);
+        $avaliacao->componentes()->sync([$componente->id]);
+        $avaliacao->escolas()->sync([$escolaNorte->id, $escolaSul->id]);
+        $avaliacao->turmas()->sync([$turmaNorte->id, $turmaSul->id]);
+        $avaliacao->pautas()->sync([$pauta->id]);
+
+        $component = Livewire::withQueryParams(['avaliacao' => $avaliacao->id])
+            ->actingAs($user)
+            ->test(DashboardAvaliacoes::class);
+
+        $this->assertSame($avaliacao->id, $component->instance()->filtros['avaliacao_id']);
+        $this->assertSame(2, $component->instance()->cards['preenchimentos_esperados']);
+        $this->assertSame(
+            ['Escola Norte', 'Escola Sul'],
+            collect($component->instance()->tabelaEscolas)->pluck('nome')->sort()->values()->all()
+        );
+        $this->assertArrayHasKey($escolaNorte->id, $component->instance()->escolasOptions);
+        $this->assertArrayHasKey($escolaSul->id, $component->instance()->escolasOptions);
+    }
+
     public function test_usuario_vinculado_visualiza_apenas_escolas_permitidas_no_acompanhamento(): void
     {
         Permission::findOrCreate('Acompanhar Avaliações');

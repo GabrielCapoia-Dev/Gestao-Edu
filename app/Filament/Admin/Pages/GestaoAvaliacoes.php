@@ -106,13 +106,6 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
                 ->url('/admin/avaliacoes-alternativas')
                 ->visible(fn(): bool => Auth::user()?->hasPermissionTo('Listar Alternativas') ?? false),
 
-            Action::make('dashboard')
-                ->label('Dashboard')
-                ->icon(Heroicon::ChartBar)
-                ->color('gray')
-                ->url('/admin/dashboard-avaliacoes')
-                ->visible(fn(): bool => Auth::user()?->hasPermissionTo('Listar Avaliações') ?? false),
-
             Action::make('create')
                 ->label('Nova avaliação')
                 ->icon(Heroicon::Plus)
@@ -200,6 +193,15 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
                     ->icon(Heroicon::PencilSquare)
                     ->visible(fn(): bool => Auth::user()?->hasPermissionTo('Editar Avaliações') ?? false)
                     ->action(fn(Avaliacao $record) => $this->abrirModalEdicao($record->getKey())),
+
+                Action::make('acompanhar')
+                    ->label('Acompanhar')
+                    ->icon(Heroicon::ChartBar)
+                    ->color('gray')
+                    ->url(fn(Avaliacao $record): string => route('filament.admin.pages.dashboard-avaliacoes', [
+                        'avaliacao' => $record->getKey(),
+                    ]))
+                    ->visible(fn(): bool => Auth::user()?->hasPermissionTo('Acompanhar Avaliações') ?? false),
 
                 Action::make('excluir')
                     ->label('Excluir')

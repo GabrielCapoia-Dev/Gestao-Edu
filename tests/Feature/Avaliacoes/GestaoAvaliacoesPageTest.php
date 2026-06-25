@@ -224,6 +224,44 @@ class GestaoAvaliacoesPageTest extends TestCase
         ]);
     }
 
+    public function test_botao_acompanhar_aparece_na_listagem_com_permissao_especifica(): void
+    {
+        Permission::findOrCreate('Listar Avaliações');
+        Permission::findOrCreate('Acompanhar Avaliações');
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo('Listar Avaliações');
+
+        $tipo = TipoAvaliacao::query()->create(['nome' => 'Tipo Acompanhamento', 'status' => true]);
+        $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Periodo Acompanhamento', 'status' => true]);
+        $avaliacao = Avaliacao::query()->create([
+            'nome' => 'Avaliacao com acompanhamento',
+            'tipo_avaliacao_id' => $tipo->id,
+            'periodo_avaliacao_id' => $periodo->id,
+            'data_inicio' => now()->toDateString(),
+            'data_fim' => now()->addDays(7)->toDateString(),
+            'status' => Avaliacao::STATUS_ATIVA,
+        ]);
+
+        Livewire::actingAs($usuario)
+            ->test(GestaoAvaliacoes::class)
+            ->assertTableActionHidden('acompanhar', $avaliacao);
+
+        $usuario->givePermissionTo('Acompanhar Avaliações');
+
+        Livewire::actingAs($usuario->fresh())
+            ->test(GestaoAvaliacoes::class)
+            ->assertTableActionVisible('acompanhar', $avaliacao)
+            ->assertTableActionHasUrl(
+                'acompanhar',
+                route('filament.admin.pages.dashboard-avaliacoes', ['avaliacao' => $avaliacao->id]),
+                $avaliacao
+            );
+    }
+
     private function criarUsuarioComPermissoes(): User
     {
         Permission::findOrCreate('Listar Avaliações');

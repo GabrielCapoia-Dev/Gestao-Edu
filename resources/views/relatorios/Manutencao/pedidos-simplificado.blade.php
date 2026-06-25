@@ -79,6 +79,28 @@
         margin-bottom: 2px;
     }
 
+    .pedido-description {
+        border-left: 3px solid #d1d5db;
+        margin: 0 0 10px;
+        padding: 7px 0 7px 10px;
+        page-break-inside: avoid;
+    }
+
+    .pedido-description strong {
+        display: block;
+        color: #111827;
+        font-size: 10.5px;
+        margin-bottom: 4px;
+    }
+
+    .pedido-description-text {
+        color: #374151;
+        font-size: 11px;
+        line-height: 1.5;
+        text-align: justify;
+        white-space: pre-line;
+    }
+
     .badge {
         display: inline-block;
         padding: 3px 10px;
@@ -93,7 +115,7 @@
     .photos-title {
         border-top: 1px solid #d1d5db;
         padding-top: 8px;
-        margin: 4px 0 8px;
+        margin: 6px 0 8px;
         font-size: 11px;
         font-weight: bold;
         color: #111827;
@@ -226,6 +248,13 @@
                     </td>
                 </tr>
             </table>
+
+            <div class="pedido-description">
+                <strong>Descrição do pedido</strong>
+                <div class="pedido-description-text">
+                    {{ filled($pedido->descricao_pedido) ? $pedido->descricao_pedido : 'Não informado' }}
+                </div>
+            </div>
 
             <div class="photos-title">Imagens do problema</div>
 

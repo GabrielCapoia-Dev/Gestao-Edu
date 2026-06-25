@@ -94,6 +94,13 @@ class DashboardAvaliacoes extends Page implements HasForms
     public function mount(): void
     {
         $this->filtros = $this->filtrosPadrao();
+
+        $avaliacaoId = $this->avaliacaoIdInicialDaUrl();
+
+        if ($avaliacaoId) {
+            $this->filtros['avaliacao_id'] = $avaliacaoId;
+        }
+
         $this->atualizarDashboard();
     }
 
@@ -320,7 +327,32 @@ class DashboardAvaliacoes extends Page implements HasForms
             return null;
         }
 
-        return $user->idsEscolasVinculadas();
+        $escolasIds = $user->idsEscolasVinculadas();
+
+        return $escolasIds === [] ? null : $escolasIds;
+    }
+
+    private function avaliacaoIdInicialDaUrl(): ?int
+    {
+        $avaliacaoId = $this->normalizarId(request()->query('avaliacao'));
+
+        if (! $avaliacaoId) {
+            return null;
+        }
+
+        return $this->avaliacaoDisponivelParaUsuario($avaliacaoId)
+            ? $avaliacaoId
+            : null;
+    }
+
+    private function avaliacaoDisponivelParaUsuario(int $avaliacaoId): bool
+    {
+        return Avaliacao::query()
+            ->whereKey($avaliacaoId)
+            ->whereHas('turmas', function (EloquentBuilder $turmaQuery): void {
+                $this->aplicarEscopoEscolarEloquent($turmaQuery);
+            })
+            ->exists();
     }
 
     private function aplicarEscopoEscolarQuery(QueryBuilder $query, string $alias = 't'): void

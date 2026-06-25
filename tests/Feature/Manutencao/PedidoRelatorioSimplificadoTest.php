@@ -78,12 +78,13 @@ class PedidoRelatorioSimplificadoTest extends TestCase
         ])->render();
 
         $this->assertStringContainsString('Protocolo:', $html);
+        $this->assertStringContainsString('Descrição do pedido', $html);
+        $this->assertStringContainsString('Lampada queimada na sala 1.', $html);
         $this->assertStringContainsString('Imagens do problema', $html);
         $this->assertStringContainsString('data:image/png;base64,', $html);
         $this->assertStringNotContainsString('Historico de Alteracoes', $html);
         $this->assertStringNotContainsString('Arquivos Anexados', $html);
         $this->assertStringNotContainsString('laudo-tecnico.pdf', $html);
-        $this->assertStringNotContainsString('Lampada queimada na sala 1.', $html);
     }
 
     public function test_exportacao_simplificada_entra_na_fila_com_ids_selecionados(): void

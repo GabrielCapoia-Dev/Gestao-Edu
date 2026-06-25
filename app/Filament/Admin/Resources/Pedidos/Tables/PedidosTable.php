@@ -903,7 +903,7 @@ class PedidosTable
                 ->visible(fn () => $user?->hasPermissionLike('exportar relatorios') ?? false)
                 ->requiresConfirmation()
                 ->modalHeading('Exportar pedidos selecionados em PDF')
-                ->modalDescription('O arquivo será gerado em segundo plano com um pedido por página, contendo somente o cabecalho e as imagens do problema.')
+                ->modalDescription('O arquivo será gerado em segundo plano com um pedido por página, contendo cabeçalho, descrição do pedido e imagens do problema.')
                 ->modalSubmitActionLabel('Enviar para fila')
                 ->action(function (EloquentCollection $records) use ($user): mixed {
                     if (! $user) {

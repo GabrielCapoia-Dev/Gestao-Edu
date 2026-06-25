@@ -86,6 +86,16 @@
 
         let lastChangeToken = null;
         let soundReady = false;
+        const soundPreferenceKey = 'gestaoEdu.notificationSound';
+
+        const isSoundEnabled = () => {
+            try {
+                return window.__gestaoEduNotificationSoundEnabled !== false &&
+                    localStorage.getItem(soundPreferenceKey) !== 'off';
+            } catch (error) {
+                return window.__gestaoEduNotificationSoundEnabled !== false;
+            }
+        };
 
         const updateBadges = (count) => {
             document.querySelectorAll('[data-notification-badge]').forEach((badge) => {
@@ -99,7 +109,7 @@
             const audio = topbar?.querySelector('[data-notification-topbar-sound]');
             const now = Date.now();
 
-            if (!audio || !soundReady) {
+            if (!audio || !soundReady || !isSoundEnabled()) {
                 return;
             }
 
@@ -159,6 +169,10 @@
 
         window.addEventListener('gestaoedu:notifications-count', (event) => {
             updateBadges(Number(event.detail?.unread ?? 0));
+        });
+
+        window.addEventListener('gestaoedu:notification-sound-changed', (event) => {
+            window.__gestaoEduNotificationSoundEnabled = event.detail?.enabled !== false;
         });
 
         window.addEventListener('pointerdown', () => {

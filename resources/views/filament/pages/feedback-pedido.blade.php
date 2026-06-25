@@ -72,7 +72,7 @@
                         <div class="fb-rank-row">
                             <div>
                                 <strong>{{ $escola['nome'] }}</strong>
-                                <small>{{ $escola['total'] }} avaliação(ões) - {{ $escola['criticas'] }} crítica(s)</small>
+                                <small>{{ $escola['total'] }} avaliação(ões) - média {{ number_format((float) $escola['media'], 2, ',', '.') }} - {{ $escola['criticas'] }} crítica(s)</small>
                             </div>
                             <span>{{ $escola['satisfacao'] }}%</span>
                             <div class="fb-bar fb-bar--green"><i style="width: {{ $escola['pct_barra'] }}%"></i></div>
