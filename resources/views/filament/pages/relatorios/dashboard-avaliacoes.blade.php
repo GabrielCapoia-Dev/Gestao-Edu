@@ -2,30 +2,10 @@
     <div class="av-livewire-root">
     <div class="dav-page">
 
-        <section class="dav-panel">
-            <div class="dav-panel-head">
-                <h3>Filtros Analíticos</h3>
-                <button type="button" class="dav-action" wire:click="limparFiltros">
-                    Limpar filtros
-                </button>
-            </div>
-            {{ $this->filtrosForm }}
-
-            @if ($filtrosAplicados !== [])
-                <div class="dav-filter-chips">
-                    @foreach ($filtrosAplicados as $label => $valor)
-                        <span class="dav-chip">
-                            <strong>{{ $label }}:</strong> {{ $valor }}
-                        </span>
-                    @endforeach
-                </div>
-            @endif
-        </section>
-
         @if (! $this->avaliacaoSelecionada())
             <section class="dav-empty-state">
                 <h3>Selecione uma avaliação para carregar os indicadores.</h3>
-                <p>Os filtros de série, turno, componente, escola, professor, pauta e alternativa serão liberados a partir da avaliação escolhida.</p>
+                <p>Acesse este acompanhamento a partir de uma avaliação para carregar os indicadores.</p>
             </section>
         @else
             @php
