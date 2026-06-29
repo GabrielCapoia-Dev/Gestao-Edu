@@ -67,38 +67,28 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     public array $tabelaEscolas = [];
 
-    public array $avaliacoesResumo = [];
+    public array $preenchimentoPorComponentes = [];
 
-    public array $graficoAlunosSemRespostaPorEscola = [];
+    public array $preenchimentoPorSeries = [];
 
-    public array $distribuicaoAlternativas = [];
-
-    public array $vinculosAvaliados = [];
+    public array $turmasIncompletasPorEscola = [];
 
     public array $acompanhamentoTurmas = [];
 
-    public array $turmasAvaliadas = [];
+    public int $acompanhamentoTurmasTotal = 0;
 
-    public int $turmasAvaliadasTotal = 0;
+    public int $acompanhamentoTurmasPagina = 1;
 
-    public int $turmasAvaliadasPagina = 1;
+    public int $acompanhamentoTurmasPorPagina = 5;
 
-    public int $turmasAvaliadasPorPagina = 5;
-
-    public array $turmasAvaliadasPorPaginaOptions = [5, 10, 25, 50, 100];
+    public array $acompanhamentoTurmasPorPaginaOptions = [5, 10, 25, 50, 100];
 
     public array $listagensPaginas = [
-        'vinculosAvaliados' => 1,
         'tabelaEscolas' => 1,
-        'acompanhamentoTurmas' => 1,
-        'avaliacoesResumo' => 1,
     ];
 
     public array $listagensPorPagina = [
-        'vinculosAvaliados' => 5,
         'tabelaEscolas' => 5,
-        'acompanhamentoTurmas' => 5,
-        'avaliacoesResumo' => 5,
     ];
 
     public array $listagensPorPaginaOptions = [5, 10, 25, 50, 100];
@@ -145,10 +135,10 @@ class DashboardAvaliacoes extends Page implements HasForms
         $this->atualizarDashboard();
     }
 
-    public function updatedTurmasAvaliadasPorPagina(mixed $value): void
+    public function updatedAcompanhamentoTurmasPorPagina(mixed $value): void
     {
-        $this->turmasAvaliadasPorPagina = $this->normalizarTurmasAvaliadasPorPagina($value);
-        $this->resetarPaginacaoTurmasAvaliadas();
+        $this->acompanhamentoTurmasPorPagina = $this->normalizarAcompanhamentoTurmasPorPagina($value);
+        $this->resetarPaginacaoAcompanhamentoTurmas();
         $this->atualizarDashboard();
     }
 
@@ -182,15 +172,18 @@ class DashboardAvaliacoes extends Page implements HasForms
         $this->listagensPaginas[$listagem] = min($paginaAtual + 1, $this->totalPaginasListagem($listagem));
     }
 
-    public function paginaAnteriorTurmasAvaliadas(): void
+    public function paginaAnteriorAcompanhamentoTurmas(): void
     {
-        $this->turmasAvaliadasPagina = max($this->turmasAvaliadasPagina - 1, 1);
+        $this->acompanhamentoTurmasPagina = max($this->acompanhamentoTurmasPagina - 1, 1);
         $this->atualizarDashboard();
     }
 
-    public function proximaPaginaTurmasAvaliadas(): void
+    public function proximaPaginaAcompanhamentoTurmas(): void
     {
-        $this->turmasAvaliadasPagina = min($this->turmasAvaliadasPagina + 1, $this->totalPaginasTurmasAvaliadas());
+        $this->acompanhamentoTurmasPagina = min(
+            $this->acompanhamentoTurmasPagina + 1,
+            $this->totalPaginasAcompanhamentoTurmas()
+        );
         $this->atualizarDashboard();
     }
 
@@ -1007,14 +1000,14 @@ class DashboardAvaliacoes extends Page implements HasForms
         ];
     }
 
-    private function resetarPaginacaoTurmasAvaliadas(): void
+    private function resetarPaginacaoAcompanhamentoTurmas(): void
     {
-        $this->turmasAvaliadasPagina = 1;
+        $this->acompanhamentoTurmasPagina = 1;
     }
 
     private function resetarPaginacoesDashboard(): void
     {
-        $this->resetarPaginacaoTurmasAvaliadas();
+        $this->resetarPaginacaoAcompanhamentoTurmas();
 
         foreach (array_keys($this->listagensPorPagina) as $listagem) {
             $this->listagensPaginas[$listagem] = 1;
@@ -1053,10 +1046,7 @@ class DashboardAvaliacoes extends Page implements HasForms
     private function totalPaginasListagem(string $listagem): int
     {
         $total = count(match ($listagem) {
-            'vinculosAvaliados' => $this->vinculosAvaliados,
             'tabelaEscolas' => $this->tabelaEscolas,
-            'acompanhamentoTurmas' => $this->acompanhamentoTurmas,
-            'avaliacoesResumo' => $this->avaliacoesResumo,
             default => [],
         });
 
@@ -1065,28 +1055,30 @@ class DashboardAvaliacoes extends Page implements HasForms
         return max((int) ceil($total / $porPagina), 1);
     }
 
-    private function normalizarTurmasAvaliadasPorPagina(mixed $value): int
+    private function normalizarAcompanhamentoTurmasPorPagina(mixed $value): int
     {
         $porPagina = (int) $value;
 
-        return in_array($porPagina, $this->turmasAvaliadasPorPaginaOptions, true)
+        return in_array($porPagina, $this->acompanhamentoTurmasPorPaginaOptions, true)
             ? $porPagina
             : 10;
     }
 
-    private function normalizarPaginaTurmasAvaliadas(?int $total = null): void
+    private function normalizarPaginaAcompanhamentoTurmas(?int $total = null): void
     {
-        $this->turmasAvaliadasPorPagina = $this->normalizarTurmasAvaliadasPorPagina($this->turmasAvaliadasPorPagina);
-        $this->turmasAvaliadasPagina = min(
-            max((int) $this->turmasAvaliadasPagina, 1),
-            $this->totalPaginasTurmasAvaliadas($total)
+        $this->acompanhamentoTurmasPorPagina = $this->normalizarAcompanhamentoTurmasPorPagina(
+            $this->acompanhamentoTurmasPorPagina
+        );
+        $this->acompanhamentoTurmasPagina = min(
+            max((int) $this->acompanhamentoTurmasPagina, 1),
+            $this->totalPaginasAcompanhamentoTurmas($total)
         );
     }
 
-    private function totalPaginasTurmasAvaliadas(?int $total = null): int
+    private function totalPaginasAcompanhamentoTurmas(?int $total = null): int
     {
-        $total = $total ?? $this->turmasAvaliadasTotal;
-        $porPagina = max($this->normalizarTurmasAvaliadasPorPagina($this->turmasAvaliadasPorPagina), 1);
+        $total = $total ?? $this->acompanhamentoTurmasTotal;
+        $porPagina = max($this->normalizarAcompanhamentoTurmasPorPagina($this->acompanhamentoTurmasPorPagina), 1);
 
         return max((int) ceil($total / $porPagina), 1);
     }
@@ -1216,16 +1208,16 @@ class DashboardAvaliacoes extends Page implements HasForms
             return null;
         }
 
-        $dados = $this->montarDashboardData();
+        $dados = $this->montarDashboardData(incluirAcompanhamentoCompleto: true);
 
         return app(RelatorioPdfRenderer::class)->download(
             'relatorios.Avaliacoes.dashboard-avaliacoes',
             [
                 'cards' => $dados['cards'],
                 'escolas' => $dados['tabela_escolas'],
-                'avaliacoes' => $dados['avaliacoes_resumo'],
-                'alternativas' => $dados['distribuicao_alternativas'],
-                'vinculos' => $dados['vinculos_avaliados'],
+                'componentes' => $dados['preenchimento_por_componentes'],
+                'series' => $dados['preenchimento_por_series'],
+                'turmasIncompletasPorEscola' => $dados['turmas_incompletas_por_escola'],
                 'acompanhamentoTurmas' => $dados['acompanhamento_turmas'],
                 'reportTitle' => 'Acompanhamento de Pareceres',
                 'reportSubtitle' => 'Resumo analítico por escopo e preenchimento',
@@ -1258,8 +1250,12 @@ class DashboardAvaliacoes extends Page implements HasForms
             return null;
         }
 
-        $dados = $this->montarDashboardData();
+        return $this->exportarXlsxAcompanhamento();
+    }
 
+    private function exportarXlsxAcompanhamento()
+    {
+        $dados = $this->montarDashboardData(incluirAcompanhamentoCompleto: true);
         $spreadsheet = new Spreadsheet();
 
         $resumoSheet = $spreadsheet->getActiveSheet();
@@ -1276,18 +1272,15 @@ class DashboardAvaliacoes extends Page implements HasForms
         $linha++;
 
         $indicadores = [
-            '% de vínculos sem resposta em pautas' => ($dados['cards']['percentual_alunos_sem_resposta_pautas'] ?? 0) . '%',
+            '% de preenchimento geral' => ($dados['cards']['percentual_preenchimento_geral'] ?? 0) . '%',
             'Preenchimentos esperados' => $dados['cards']['preenchimentos_esperados'] ?? 0,
             'Preenchimentos respondidos' => $dados['cards']['preenchimentos_respondidos'] ?? 0,
             'Preenchimentos pendentes' => $dados['cards']['preenchimentos_pendentes'] ?? 0,
             '% de turmas preenchidas' => ($dados['cards']['percentual_turmas_preenchidas'] ?? 0) . '%',
             'Turmas preenchidas' => ($dados['cards']['turmas_preenchidas'] ?? 0) . ' de ' . ($dados['cards']['turmas_esperadas'] ?? 0),
-            '% de escolas preenchidas' => ($dados['cards']['percentual_escolas_preenchidas'] ?? 0) . '%',
-            'Escolas preenchidas' => ($dados['cards']['escolas_preenchidas'] ?? 0) . ' de ' . ($dados['cards']['total_escolas'] ?? 0),
-            '% preenchimento manha' => ($dados['cards']['percentual_turno_manha'] ?? 0) . '%',
-            'Vínculos sem resposta manha' => ($dados['cards']['turno_manha_alunos_pendentes'] ?? 0) . ' de ' . ($dados['cards']['turno_manha_alunos_total'] ?? 0),
-            '% preenchimento tarde' => ($dados['cards']['percentual_turno_tarde'] ?? 0) . '%',
-            'Vínculos sem resposta tarde' => ($dados['cards']['turno_tarde_alunos_pendentes'] ?? 0) . ' de ' . ($dados['cards']['turno_tarde_alunos_total'] ?? 0),
+            'Turmas incompletas' => $dados['cards']['turmas_incompletas'] ?? 0,
+            'Alunos pendentes manha' => ($dados['cards']['turno_manha_alunos_pendentes'] ?? 0) . ' de ' . ($dados['cards']['turno_manha_alunos_total'] ?? 0),
+            'Alunos pendentes tarde' => ($dados['cards']['turno_tarde_alunos_pendentes'] ?? 0) . ' de ' . ($dados['cards']['turno_tarde_alunos_total'] ?? 0),
         ];
 
         foreach ($indicadores as $label => $valor) {
@@ -1299,101 +1292,27 @@ class DashboardAvaliacoes extends Page implements HasForms
         $this->estilizarCorpoTabela($resumoSheet, 'A' . ($linha - count($indicadores)) . ':B' . ($linha - 1));
         $this->autoSizeColumns($resumoSheet, 2);
 
-        $escolasSheet = $spreadsheet->createSheet();
-        $escolasSheet->setTitle('Escolas');
         $this->preencherTabelaSheet(
-            $escolasSheet,
+            $spreadsheet->createSheet()->setTitle('Escolas'),
             'Progresso por Escola',
-            [
-                'Escola',
-                'Preenchimentos esperados',
-                'Preenchimentos respondidos',
-                'Preenchimentos pendentes',
-                '% sem resposta',
-                '% preenchimento',
-                'Turmas esperadas',
-                'Turmas com resposta',
-            ],
+            ['Escola', 'Turmas no escopo', 'Turmas concluidas', 'Turmas incompletas', '% turmas incompletas', '% preenchimento', 'Preenchimentos pendentes'],
             collect($dados['tabela_escolas'])->map(fn (array $item): array => [
                 $item['nome'],
-                $item['preenchimentos_esperados'],
-                $item['preenchimentos_respondidos'],
-                $item['preenchimentos_pendentes'],
-                $item['percentual_pendentes'] . '%',
+                $item['turmas_esperadas'],
+                $item['turmas_preenchidas'],
+                $item['turmas_incompletas'],
+                $item['percentual_turmas_incompletas'] . '%',
                 $item['percentual_preenchimento'] . '%',
-                $item['turmas_esperadas'],
-                $item['turmas_com_resposta'],
-            ])
-        );
-
-        $avaliacoesSheet = $spreadsheet->createSheet();
-        $avaliacoesSheet->setTitle('Avaliações');
-        $this->preencherTabelaSheet(
-            $avaliacoesSheet,
-            'Resumo por Avaliação',
-            [
-                'Avaliação',
-                'Tipo',
-                'Período',
-                'Status',
-                'Escolas no escopo',
-                'Turmas no escopo',
-                'Preenchimentos esperados',
-                'Preenchimentos respondidos',
-                'Preenchimentos pendentes',
-                '% sem resposta',
-                'Início',
-                'Fim',
-            ],
-            collect($dados['avaliacoes_resumo'])->map(fn (array $item): array => [
-                $item['nome'],
-                $item['tipo'],
-                $item['periodo'],
-                $item['status_label'],
-                $item['escolas_esperadas'],
-                $item['turmas_esperadas'],
-                $item['preenchimentos_esperados'],
-                $item['preenchimentos_respondidos'],
                 $item['preenchimentos_pendentes'],
-                $item['percentual_pendentes'] . '%',
-                $item['data_inicio'],
-                $item['data_fim'],
             ])
         );
 
-        $alternativasSheet = $spreadsheet->createSheet();
-        $alternativasSheet->setTitle('Alternativas');
         $this->preencherTabelaSheet(
-            $alternativasSheet,
-            $dados['distribuicao_alternativas']['titulo'] ?? 'Distribuição de Alternativas',
-            [
-                'Alternativa',
-                'Vínculos marcados',
-                '% dos vínculos',
-            ],
-            collect($dados['distribuicao_alternativas']['itens'] ?? [])->map(fn (array $item): array => [
+            $spreadsheet->createSheet()->setTitle('Componentes'),
+            'Preenchimento por Componente Curricular',
+            ['Componente', 'Preenchimentos esperados', 'Preenchimentos respondidos', 'Preenchimentos pendentes', '% preenchimento'],
+            collect($dados['preenchimento_por_componentes'])->map(fn (array $item): array => [
                 $item['nome'],
-                $item['total'],
-                $item['percentual'] . '%',
-            ])
-        );
-
-        $vinculosSheet = $spreadsheet->createSheet();
-        $vinculosSheet->setTitle('Vínculos');
-        $this->preencherTabelaSheet(
-            $vinculosSheet,
-            'Vínculos avaliados',
-            [
-                'Vínculo',
-                'Alunos/Vínculos',
-                'Preenchimentos esperados',
-                'Preenchimentos respondidos',
-                'Preenchimentos pendentes',
-                '% preenchimento',
-            ],
-            collect($dados['vinculos_avaliados'])->map(fn (array $item): array => [
-                $item['label'],
-                $item['alunos_total'],
                 $item['preenchimentos_esperados'],
                 $item['preenchimentos_respondidos'],
                 $item['preenchimentos_pendentes'],
@@ -1401,24 +1320,23 @@ class DashboardAvaliacoes extends Page implements HasForms
             ])
         );
 
-        $acompanhamentoSheet = $spreadsheet->createSheet();
-        $acompanhamentoSheet->setTitle('Acompanhamento');
         $this->preencherTabelaSheet(
-            $acompanhamentoSheet,
+            $spreadsheet->createSheet()->setTitle('Series'),
+            'Preenchimento por Serie',
+            ['Serie', 'Preenchimentos esperados', 'Preenchimentos respondidos', 'Preenchimentos pendentes', '% preenchimento'],
+            collect($dados['preenchimento_por_series'])->map(fn (array $item): array => [
+                $item['nome'],
+                $item['preenchimentos_esperados'],
+                $item['preenchimentos_respondidos'],
+                $item['preenchimentos_pendentes'],
+                $item['percentual_preenchimento'] . '%',
+            ])
+        );
+
+        $this->preencherTabelaSheet(
+            $spreadsheet->createSheet()->setTitle('Acompanhamento'),
             'Acompanhamento de Pareceres por Turma',
-            [
-                'Escola',
-                'Série',
-                'Turma',
-                'Turno',
-                'Componente',
-                'Professor',
-                'Esperados',
-                'Respondidos',
-                'Pendentes',
-                '% preenchimento',
-                'Status',
-            ],
+            ['Escola', 'Serie', 'Turma', 'Turno', 'Componente', 'Professor', 'Esperados', 'Respondidos', 'Pendentes', '% preenchimento', 'Status'],
             collect($dados['acompanhamento_turmas'])->map(fn (array $item): array => [
                 $item['escola_nome'],
                 $item['serie_nome'],
@@ -1438,7 +1356,7 @@ class DashboardAvaliacoes extends Page implements HasForms
 
         return $this->downloadSpreadsheet(
             $spreadsheet,
-            'dashboard-avaliações-' . now()->format('Y-m-d_H-i') . '.xlsx'
+            'dashboard-avaliacoes-' . now()->format('Y-m-d_H-i') . '.xlsx'
         );
     }
 
@@ -1448,13 +1366,11 @@ class DashboardAvaliacoes extends Page implements HasForms
 
         $this->cards = $dados['cards'];
         $this->tabelaEscolas = $dados['tabela_escolas'];
-        $this->avaliacoesResumo = $dados['avaliacoes_resumo'];
-        $this->graficoAlunosSemRespostaPorEscola = $dados['grafico_alunos_sem_resposta_por_escola'];
-        $this->distribuicaoAlternativas = $dados['distribuicao_alternativas'];
-        $this->vinculosAvaliados = $dados['vinculos_avaliados'];
+        $this->preenchimentoPorComponentes = $dados['preenchimento_por_componentes'];
+        $this->preenchimentoPorSeries = $dados['preenchimento_por_series'];
+        $this->turmasIncompletasPorEscola = $dados['turmas_incompletas_por_escola'];
         $this->acompanhamentoTurmas = $dados['acompanhamento_turmas'];
-        $this->turmasAvaliadas = $dados['turmas_avaliadas'];
-        $this->turmasAvaliadasTotal = $dados['turmas_avaliadas_total'];
+        $this->acompanhamentoTurmasTotal = $dados['acompanhamento_turmas_total'];
         $this->normalizarPaginacoesListagens();
         $this->filtrosAplicados = $this->filtrosAplicadosFormatados();
         $this->ultimaAtualizacao = $this->avaliacaoSelecionada()
@@ -1466,16 +1382,14 @@ class DashboardAvaliacoes extends Page implements HasForms
      * @return array{
      *     cards: array<string, int|float>,
      *     tabela_escolas: array<int, array<string, int|float|string|bool>>,
-     *     avaliacoes_resumo: array<int, array<string, int|float|string>>,
-     *     grafico_alunos_sem_resposta_por_escola: array<int, array<string, int|float|string>>,
-     *     distribuicao_alternativas: array<string, mixed>,
-     *     vinculos_avaliados: array<int, array<string, int|float|string>>,
+     *     preenchimento_por_componentes: array<int, array<string, int|float|string>>,
+     *     preenchimento_por_series: array<int, array<string, int|float|string>>,
+     *     turmas_incompletas_por_escola: array<int, array<string, int|float|string>>,
      *     acompanhamento_turmas: array<int, array<string, int|float|string>>,
-     *     turmas_avaliadas: array<int, array<string, int|string>>,
-     *     turmas_avaliadas_total: int
+     *     acompanhamento_turmas_total: int
      * }
      */
-    private function montarDashboardData(): array
+    private function montarDashboardData(bool $incluirAcompanhamentoCompleto = false): array
     {
         $this->normalizarFiltros();
 
@@ -1488,9 +1402,10 @@ class DashboardAvaliacoes extends Page implements HasForms
         $tabelaEscolas = $this->montarTabelaEscolas($avaliacaoIds);
         $totaisPreenchimento = $this->calcularTotaisPreenchimento($avaliacaoIds, $tabelaEscolas);
         $turnos = $this->calcularPreenchimentoPorTurno($avaliacaoIds);
-        $acompanhamentoTurmas = $this->montarAcompanhamentoTurmas($avaliacaoIds);
-        $turmasAvaliadas = $this->montarTurmasAvaliadas($avaliacaoIds);
-        $vinculosAvaliados = $this->calcularVinculosAvaliados($avaliacaoIds);
+        $acompanhamentoTurmas = $this->montarAcompanhamentoTurmas(
+            $avaliacaoIds,
+            paginar: ! $incluirAcompanhamentoCompleto
+        );
 
         return [
             'cards' => [
@@ -1507,13 +1422,11 @@ class DashboardAvaliacoes extends Page implements HasForms
                 'turno_tarde_alunos_total' => $turnos['tarde']['alunos_total'] ?? 0,
             ],
             'tabela_escolas' => $tabelaEscolas,
-            'avaliacoes_resumo' => $this->montarResumoAvaliacoes($avaliacaoIds),
-            'grafico_alunos_sem_resposta_por_escola' => $this->montarGraficoAlunosSemRespostaPorEscola($tabelaEscolas),
-            'distribuicao_alternativas' => $this->montarDistribuicaoAlternativas($avaliacaoIds),
-            'vinculos_avaliados' => $vinculosAvaliados,
-            'acompanhamento_turmas' => $acompanhamentoTurmas,
-            'turmas_avaliadas' => $turmasAvaliadas['itens'],
-            'turmas_avaliadas_total' => $turmasAvaliadas['total'],
+            'preenchimento_por_componentes' => $this->montarPreenchimentoPorComponentes($avaliacaoIds),
+            'preenchimento_por_series' => $this->montarPreenchimentoPorSeries($avaliacaoIds),
+            'turmas_incompletas_por_escola' => $this->montarTurmasIncompletasPorEscola($tabelaEscolas),
+            'acompanhamento_turmas' => $acompanhamentoTurmas['itens'],
+            'acompanhamento_turmas_total' => $acompanhamentoTurmas['total'],
         ];
     }
 
@@ -1524,10 +1437,12 @@ class DashboardAvaliacoes extends Page implements HasForms
                 'preenchimentos_esperados' => 0,
                 'preenchimentos_respondidos' => 0,
                 'preenchimentos_pendentes' => 0,
+                'percentual_preenchimento_geral' => 0.0,
                 'percentual_alunos_sem_resposta_pautas' => 0.0,
                 'percentual_turmas_preenchidas' => 0.0,
                 'turmas_esperadas' => 0,
                 'turmas_preenchidas' => 0,
+                'turmas_incompletas' => 0,
                 'percentual_escolas_preenchidas' => 0.0,
                 'total_escolas' => 0,
                 'escolas_preenchidas' => 0,
@@ -1544,20 +1459,11 @@ class DashboardAvaliacoes extends Page implements HasForms
                 'turno_tarde_alunos_total' => 0,
             ],
             'tabela_escolas' => [],
-            'avaliacoes_resumo' => [],
-            'grafico_alunos_sem_resposta_por_escola' => [],
-            'distribuicao_alternativas' => [
-                'titulo' => 'Top alternativas no escopo',
-                'subtitulo' => 'Selecione uma avaliação para carregar os indicadores.',
-                'total_respostas' => 0,
-                'total_esperado' => 0,
-                'total_alunos' => 0,
-                'itens' => [],
-            ],
-            'vinculos_avaliados' => [],
+            'preenchimento_por_componentes' => [],
+            'preenchimento_por_series' => [],
+            'turmas_incompletas_por_escola' => [],
             'acompanhamento_turmas' => [],
-            'turmas_avaliadas' => [],
-            'turmas_avaliadas_total' => 0,
+            'acompanhamento_turmas_total' => 0,
         ];
     }
 
@@ -1863,7 +1769,7 @@ class DashboardAvaliacoes extends Page implements HasForms
     /**
      * @return array<int, array<string, int|float|string>>
      */
-    private function calcularVinculosAvaliados(array $avaliacaoIds): array
+    private function montarPreenchimentoPorComponentes(array $avaliacaoIds): array
     {
         if ($avaliacaoIds === []) {
             return [];
@@ -1871,41 +1777,88 @@ class DashboardAvaliacoes extends Page implements HasForms
 
         $distinctEsperado = $this->distinctCombinacaoExpr('at.avaliacao_id', 'at.turma_id', 'p.id', 'aln.id');
         $distinctRespondido = $this->distinctCombinacaoExpr('ar.avaliacao_id', 'ar.turma_id', 'ar.pauta_id', 'ar.aluno_id');
-        $tipoVinculoExpr = "COALESCE(NULLIF(aln.tipo_vinculo, ''), '".Aluno::TIPO_VINCULO_PRINCIPAL."')";
 
         $esperados = (clone $this->basePreenchimentosEsperadosQuery($avaliacaoIds))
-            ->groupByRaw($tipoVinculoExpr)
-            ->selectRaw("{$tipoVinculoExpr} as tipo_vinculo")
-            ->selectRaw('COUNT(DISTINCT aln.id) as alunos_total')
+            ->leftJoin('componentes_curriculares as cc', 'cc.id', '=', 'p.componente_curricular_id')
+            ->groupBy('p.componente_curricular_id', 'cc.nome')
+            ->selectRaw('COALESCE(p.componente_curricular_id, 0) as agrupamento_id')
+            ->selectRaw("COALESCE(cc.nome, 'Componente geral') as nome")
             ->selectRaw("COUNT(DISTINCT {$distinctEsperado}) as preenchimentos_esperados")
             ->get()
-            ->keyBy(fn ($item): string => (string) ($item->tipo_vinculo ?: Aluno::TIPO_VINCULO_PRINCIPAL));
+            ->keyBy(fn ($item): int => (int) $item->agrupamento_id);
 
         $respondidos = (clone $this->baseRespostasQuery($avaliacaoIds, ignorarAlternativas: true))
-            ->groupByRaw($tipoVinculoExpr)
-            ->selectRaw("{$tipoVinculoExpr} as tipo_vinculo")
-            ->selectRaw('COUNT(DISTINCT ar.aluno_id) as alunos_respondidos')
+            ->leftJoin('componentes_curriculares as cc', 'cc.id', '=', 'p.componente_curricular_id')
+            ->groupBy('p.componente_curricular_id', 'cc.nome')
+            ->selectRaw('COALESCE(p.componente_curricular_id, 0) as agrupamento_id')
+            ->selectRaw("COALESCE(cc.nome, 'Componente geral') as nome")
             ->selectRaw("COUNT(DISTINCT {$distinctRespondido}) as preenchimentos_respondidos")
             ->get()
-            ->keyBy(fn ($item): string => (string) ($item->tipo_vinculo ?: Aluno::TIPO_VINCULO_PRINCIPAL));
+            ->keyBy(fn ($item): int => (int) $item->agrupamento_id);
 
-        return collect(Aluno::tiposVinculoOptions())
-            ->map(function (string $label, string $tipo) use ($esperados, $respondidos): ?array {
-                $esperado = $esperados->get($tipo);
-                $respondido = $respondidos->get($tipo);
+        return $this->montarLinhasPreenchimentoAgrupado($esperados, $respondidos);
+    }
+
+    /**
+     * @return array<int, array<string, int|float|string>>
+     */
+    private function montarPreenchimentoPorSeries(array $avaliacaoIds): array
+    {
+        if ($avaliacaoIds === []) {
+            return [];
+        }
+
+        $distinctEsperado = $this->distinctCombinacaoExpr('at.avaliacao_id', 'at.turma_id', 'p.id', 'aln.id');
+        $distinctRespondido = $this->distinctCombinacaoExpr('ar.avaliacao_id', 'ar.turma_id', 'ar.pauta_id', 'ar.aluno_id');
+
+        $esperados = (clone $this->basePreenchimentosEsperadosQuery($avaliacaoIds))
+            ->leftJoin('series as s', 's.id', '=', 't.id_serie')
+            ->groupBy('t.id_serie', 's.nome')
+            ->selectRaw('COALESCE(t.id_serie, 0) as agrupamento_id')
+            ->selectRaw("COALESCE(s.nome, 'Serie nao informada') as nome")
+            ->selectRaw("COUNT(DISTINCT {$distinctEsperado}) as preenchimentos_esperados")
+            ->get()
+            ->keyBy(fn ($item): int => (int) $item->agrupamento_id);
+
+        $respondidos = (clone $this->baseRespostasQuery($avaliacaoIds, ignorarAlternativas: true))
+            ->leftJoin('series as s', 's.id', '=', 't.id_serie')
+            ->groupBy('t.id_serie', 's.nome')
+            ->selectRaw('COALESCE(t.id_serie, 0) as agrupamento_id')
+            ->selectRaw("COALESCE(s.nome, 'Serie nao informada') as nome")
+            ->selectRaw("COUNT(DISTINCT {$distinctRespondido}) as preenchimentos_respondidos")
+            ->get()
+            ->keyBy(fn ($item): int => (int) $item->agrupamento_id);
+
+        return $this->montarLinhasPreenchimentoAgrupado($esperados, $respondidos);
+    }
+
+    /**
+     * @param Collection<int, object> $esperados
+     * @param Collection<int, object> $respondidos
+     * @return array<int, array<string, int|float|string>>
+     */
+    private function montarLinhasPreenchimentoAgrupado(Collection $esperados, Collection $respondidos): array
+    {
+        $ids = $esperados
+            ->keys()
+            ->merge($respondidos->keys())
+            ->unique()
+            ->values();
+
+        $linhas = $ids
+            ->map(function (int $id) use ($esperados, $respondidos): array {
+                $esperado = $esperados->get($id);
+                $respondido = $respondidos->get($id);
                 $preenchimentosEsperados = (int) ($esperado->preenchimentos_esperados ?? 0);
-                $preenchimentosRespondidos = min((int) ($respondido->preenchimentos_respondidos ?? 0), $preenchimentosEsperados);
+                $preenchimentosRespondidos = min(
+                    (int) ($respondido->preenchimentos_respondidos ?? 0),
+                    $preenchimentosEsperados
+                );
                 $preenchimentosPendentes = max($preenchimentosEsperados - $preenchimentosRespondidos, 0);
-                $alunosTotal = (int) ($esperado->alunos_total ?? 0);
-
-                if ($preenchimentosEsperados === 0 && $preenchimentosRespondidos === 0 && $alunosTotal === 0) {
-                    return null;
-                }
 
                 return [
-                    'tipo_vinculo' => $tipo,
-                    'label' => $label,
-                    'alunos_total' => $alunosTotal,
+                    'id' => $id,
+                    'nome' => (string) ($esperado->nome ?? $respondido->nome ?? '-'),
                     'preenchimentos_esperados' => $preenchimentosEsperados,
                     'preenchimentos_respondidos' => $preenchimentosRespondidos,
                     'preenchimentos_pendentes' => $preenchimentosPendentes,
@@ -1914,17 +1867,27 @@ class DashboardAvaliacoes extends Page implements HasForms
                         : 0.0,
                 ];
             })
-            ->filter()
-            ->values()
             ->all();
+
+        usort($linhas, function (array $a, array $b): int {
+            if ($a['percentual_preenchimento'] === $b['percentual_preenchimento']) {
+                return strcmp((string) $a['nome'], (string) $b['nome']);
+            }
+
+            return $a['percentual_preenchimento'] <=> $b['percentual_preenchimento'];
+        });
+
+        return $linhas;
     }
 
     private function calcularTotaisPreenchimento(array $avaliacaoIds, array $tabelaEscolas): array
     {
-        $esperados = $this->contarPreenchimentosEsperados($avaliacaoIds);
-        $respondidos = min($this->contarPreenchimentosRespondidos($avaliacaoIds), $esperados);
+        $esperados = (int) collect($tabelaEscolas)->sum('preenchimentos_esperados');
+        $respondidos = min((int) collect($tabelaEscolas)->sum('preenchimentos_respondidos'), $esperados);
         $pendentes = max($esperados - $respondidos, 0);
-        $turmas = $this->contarTurmasPreenchidas($avaliacaoIds);
+        $turmasEsperadas = (int) collect($tabelaEscolas)->sum('turmas_esperadas');
+        $turmasPreenchidas = (int) collect($tabelaEscolas)->sum('turmas_preenchidas');
+        $turmasIncompletas = max($turmasEsperadas - $turmasPreenchidas, 0);
 
         $totalEscolas = collect($tabelaEscolas)
             ->filter(fn (array $item): bool => (int) ($item['preenchimentos_esperados'] ?? 0) > 0)
@@ -1938,66 +1901,24 @@ class DashboardAvaliacoes extends Page implements HasForms
             'preenchimentos_esperados' => $esperados,
             'preenchimentos_respondidos' => $respondidos,
             'preenchimentos_pendentes' => $pendentes,
+            'percentual_preenchimento_geral' => $esperados > 0
+                ? round(($respondidos / $esperados) * 100, 1)
+                : 0.0,
             'percentual_alunos_sem_resposta_pautas' => $esperados > 0
                 ? round(($pendentes / $esperados) * 100, 1)
                 : 0.0,
-            'percentual_turmas_preenchidas' => $turmas['esperadas'] > 0
-                ? round(($turmas['preenchidas'] / $turmas['esperadas']) * 100, 1)
+            'percentual_turmas_preenchidas' => $turmasEsperadas > 0
+                ? round(($turmasPreenchidas / $turmasEsperadas) * 100, 1)
                 : 0.0,
-            'turmas_esperadas' => $turmas['esperadas'],
-            'turmas_preenchidas' => $turmas['preenchidas'],
+            'turmas_esperadas' => $turmasEsperadas,
+            'turmas_preenchidas' => $turmasPreenchidas,
+            'turmas_incompletas' => $turmasIncompletas,
             'percentual_escolas_preenchidas' => $totalEscolas > 0
                 ? round(($escolasPreenchidas / $totalEscolas) * 100, 1)
                 : 0.0,
             'total_escolas' => $totalEscolas,
             'escolas_preenchidas' => $escolasPreenchidas,
             'escolas_nao_preenchidas' => $escolasNaoPreenchidas,
-        ];
-    }
-
-    private function contarTurmasPreenchidas(array $avaliacaoIds): array
-    {
-        if ($avaliacaoIds === []) {
-            return ['esperadas' => 0, 'preenchidas' => 0];
-        }
-
-        $distinctEsperado = $this->distinctCombinacaoExpr('at.avaliacao_id', 'at.turma_id', 'p.id', 'aln.id');
-        $distinctRespondido = $this->distinctCombinacaoExpr('ar.avaliacao_id', 'ar.turma_id', 'ar.pauta_id', 'ar.aluno_id');
-
-        $esperadas = (clone $this->basePreenchimentosEsperadosQuery($avaliacaoIds))
-            ->groupBy('at.avaliacao_id', 'at.turma_id')
-            ->select(
-                'at.avaliacao_id',
-                'at.turma_id',
-                DB::raw("COUNT(DISTINCT {$distinctEsperado}) as total")
-            )
-            ->get()
-            ->keyBy(fn ($item): string => $item->avaliacao_id . ':' . $item->turma_id);
-
-        $respondidas = (clone $this->baseRespostasQuery($avaliacaoIds, ignorarAlternativas: true))
-            ->groupBy('ar.avaliacao_id', 'ar.turma_id')
-            ->select(
-                'ar.avaliacao_id',
-                'ar.turma_id',
-                DB::raw("COUNT(DISTINCT {$distinctRespondido}) as total")
-            )
-            ->get()
-            ->keyBy(fn ($item): string => $item->avaliacao_id . ':' . $item->turma_id);
-
-        $preenchidas = 0;
-
-        foreach ($esperadas as $chave => $esperada) {
-            $totalEsperado = (int) ($esperada->total ?? 0);
-            $totalRespondido = (int) ($respondidas->get($chave)?->total ?? 0);
-
-            if ($totalEsperado > 0 && $totalRespondido >= $totalEsperado) {
-                $preenchidas++;
-            }
-        }
-
-        return [
-            'esperadas' => $esperadas->count(),
-            'preenchidas' => $preenchidas,
         ];
     }
 
@@ -2097,41 +2018,6 @@ class DashboardAvaliacoes extends Page implements HasForms
         return $resultado;
     }
 
-    private function contarTurmasEsperadas(array $avaliacaoIds): int
-    {
-        if ($avaliacaoIds === []) {
-            return 0;
-        }
-
-        $distinctExpr = $this->distinctCombinacaoExpr('at.avaliacao_id', 'at.turma_id');
-
-        $query = DB::table('avaliacao_turma as at')
-            ->join('turmas as t', 't.id', '=', 'at.turma_id')
-            ->whereIn('at.avaliacao_id', $avaliacaoIds);
-
-        $this->aplicarFiltrosTurmaQuery($query, 't');
-
-        return (int) ($query
-            ->selectRaw("COUNT(DISTINCT {$distinctExpr}) as total")
-            ->value('total') ?? 0);
-    }
-
-    private function contarTurmasRespondidas(array $avaliacaoIds): int
-    {
-        if ($avaliacaoIds === []) {
-            return 0;
-        }
-
-        $distinctExpr = $this->distinctCombinacaoExpr('ar.avaliacao_id', 'ar.turma_id');
-
-        return (int) ((clone $this->baseRespostasQuery($avaliacaoIds))
-            ->selectRaw("COUNT(DISTINCT {$distinctExpr}) as total")
-            ->value('total') ?? 0);
-    }
-
-    /**
-     * @return array<int, array<string, int|float|string|bool>>
-     */
     private function montarTabelaEscolas(array $avaliacaoIds): array
     {
         if ($avaliacaoIds === []) {
@@ -2143,25 +2029,25 @@ class DashboardAvaliacoes extends Page implements HasForms
 
         $esperadas = (clone $this->basePreenchimentosEsperadosQuery($avaliacaoIds))
             ->join('escolas as e', 'e.id', '=', 't.id_escola')
-            ->groupBy('e.id', 'e.nome')
+            ->groupBy('e.id', 'e.nome', 'at.avaliacao_id', 'at.turma_id')
             ->select(
                 'e.id',
                 'e.nome',
-                DB::raw("COUNT(DISTINCT {$distinctExprEsperado}) as preenchimentos_esperados"),
-                DB::raw('COUNT(DISTINCT at.turma_id) as turmas_esperadas')
+                'at.avaliacao_id',
+                'at.turma_id',
+                DB::raw("COUNT(DISTINCT {$distinctExprEsperado}) as preenchimentos_esperados")
             )
-            ->get()
-            ->keyBy('id');
+            ->get();
 
         $respondidas = (clone $this->baseRespostasQuery($avaliacaoIds, ignorarAlternativas: true))
-            ->groupBy('t.id_escola')
+            ->groupBy('ar.avaliacao_id', 'ar.turma_id')
             ->select(
-                't.id_escola',
-                DB::raw("COUNT(DISTINCT {$distinctExprRespondido}) as preenchimentos_respondidos"),
-                DB::raw('COUNT(DISTINCT ar.turma_id) as turmas_com_resposta')
+                'ar.avaliacao_id',
+                'ar.turma_id',
+                DB::raw("COUNT(DISTINCT {$distinctExprRespondido}) as preenchimentos_respondidos")
             )
             ->get()
-            ->keyBy('id_escola');
+            ->keyBy(fn ($item): string => $item->avaliacao_id . ':' . $item->turma_id);
 
         $escolasFiltradas = $this->filtros['escolas_ids'] !== []
             ? Escola::query()
@@ -2172,36 +2058,79 @@ class DashboardAvaliacoes extends Page implements HasForms
             : collect();
 
         /** @var array<int, array<string, int|float|string|bool>> $linhas */
-        $linhas = [];
+        $linhasPorEscola = [];
 
-        foreach ($esperadas as $escolaId => $esperada) {
-            $respondida = $respondidas->get($escolaId);
+        foreach ($esperadas as $esperada) {
+            $escolaId = (int) $esperada->id;
+            $chaveTurma = $esperada->avaliacao_id . ':' . $esperada->turma_id;
+            $respondida = $respondidas->get($chaveTurma);
+
+            if (! array_key_exists($escolaId, $linhasPorEscola)) {
+                $linhasPorEscola[$escolaId] = [
+                    'id' => $escolaId,
+                    'nome' => (string) $esperada->nome,
+                    'preenchimentos_esperados' => 0,
+                    'preenchimentos_respondidos' => 0,
+                    'preenchimentos_pendentes' => 0,
+                    'percentual_preenchimento' => 0.0,
+                    'percentual_pendentes' => 0.0,
+                    'turmas_esperadas' => 0,
+                    'turmas_preenchidas' => 0,
+                    'turmas_incompletas' => 0,
+                    'turmas_com_resposta' => 0,
+                    'respostas_total' => 0,
+                    'percentual_turmas' => 0.0,
+                    'percentual_turmas_incompletas' => 0.0,
+                    'esta_preenchida' => false,
+                ];
+            }
 
             $preenchimentosEsperados = (int) ($esperada->preenchimentos_esperados ?? 0);
             $preenchimentosRespondidos = min((int) ($respondida->preenchimentos_respondidos ?? 0), $preenchimentosEsperados);
-            $preenchimentosPendentes = max($preenchimentosEsperados - $preenchimentosRespondidos, 0);
-            $percentualPreenchimento = $preenchimentosEsperados > 0
-                ? round(($preenchimentosRespondidos / $preenchimentosEsperados) * 100, 1)
-                : 0.0;
-            $percentualPendentes = $preenchimentosEsperados > 0
-                ? round(($preenchimentosPendentes / $preenchimentosEsperados) * 100, 1)
-                : 0.0;
 
-            $linhas[] = [
-                'id' => (int) $escolaId,
-                'nome' => (string) $esperada->nome,
-                'preenchimentos_esperados' => $preenchimentosEsperados,
+            $linhasPorEscola[$escolaId]['preenchimentos_esperados'] += $preenchimentosEsperados;
+            $linhasPorEscola[$escolaId]['preenchimentos_respondidos'] += $preenchimentosRespondidos;
+            $linhasPorEscola[$escolaId]['turmas_esperadas']++;
+            $linhasPorEscola[$escolaId]['respostas_total'] += $preenchimentosRespondidos;
+
+            if ($preenchimentosRespondidos > 0) {
+                $linhasPorEscola[$escolaId]['turmas_com_resposta']++;
+            }
+
+            if ($preenchimentosEsperados > 0 && $preenchimentosRespondidos >= $preenchimentosEsperados) {
+                $linhasPorEscola[$escolaId]['turmas_preenchidas']++;
+            } else {
+                $linhasPorEscola[$escolaId]['turmas_incompletas']++;
+            }
+        }
+
+        $linhas = array_values(array_map(function (array $item): array {
+            $preenchimentosEsperados = (int) $item['preenchimentos_esperados'];
+            $preenchimentosRespondidos = min((int) $item['preenchimentos_respondidos'], $preenchimentosEsperados);
+            $preenchimentosPendentes = max($preenchimentosEsperados - $preenchimentosRespondidos, 0);
+            $turmasEsperadas = (int) $item['turmas_esperadas'];
+            $turmasPreenchidas = (int) $item['turmas_preenchidas'];
+            $turmasIncompletas = (int) $item['turmas_incompletas'];
+
+            return [
+                ...$item,
                 'preenchimentos_respondidos' => $preenchimentosRespondidos,
                 'preenchimentos_pendentes' => $preenchimentosPendentes,
-                'percentual_preenchimento' => $percentualPreenchimento,
-                'percentual_pendentes' => $percentualPendentes,
-                'turmas_esperadas' => (int) ($esperada->turmas_esperadas ?? 0),
-                'turmas_com_resposta' => (int) ($respondida->turmas_com_resposta ?? 0),
-                'respostas_total' => $preenchimentosRespondidos,
-                'percentual_turmas' => $percentualPreenchimento,
-                'esta_preenchida' => $preenchimentosEsperados > 0 && $preenchimentosPendentes === 0,
+                'percentual_preenchimento' => $preenchimentosEsperados > 0
+                    ? round(($preenchimentosRespondidos / $preenchimentosEsperados) * 100, 1)
+                    : 0.0,
+                'percentual_pendentes' => $preenchimentosEsperados > 0
+                    ? round(($preenchimentosPendentes / $preenchimentosEsperados) * 100, 1)
+                    : 0.0,
+                'percentual_turmas' => $turmasEsperadas > 0
+                    ? round(($turmasPreenchidas / $turmasEsperadas) * 100, 1)
+                    : 0.0,
+                'percentual_turmas_incompletas' => $turmasEsperadas > 0
+                    ? round(($turmasIncompletas / $turmasEsperadas) * 100, 1)
+                    : 0.0,
+                'esta_preenchida' => $turmasEsperadas > 0 && $turmasIncompletas === 0,
             ];
-        }
+        }, $linhasPorEscola));
 
         foreach ($escolasFiltradas as $escola) {
             $jaExiste = collect($linhas)->contains(fn (array $item): bool => (int) $item['id'] === (int) $escola->id);
@@ -2220,24 +2149,32 @@ class DashboardAvaliacoes extends Page implements HasForms
                 'percentual_pendentes' => 0.0,
                 'turmas_esperadas' => 0,
                 'turmas_com_resposta' => 0,
+                'turmas_preenchidas' => 0,
+                'turmas_incompletas' => 0,
                 'respostas_total' => 0,
                 'percentual_turmas' => 0.0,
+                'percentual_turmas_incompletas' => 0.0,
                 'esta_preenchida' => false,
             ];
         }
 
         usort($linhas, function (array $a, array $b): int {
-            if ($a['percentual_pendentes'] === $b['percentual_pendentes']) {
-                return strcmp((string) $a['nome'], (string) $b['nome']);
+            if ($a['turmas_incompletas'] === $b['turmas_incompletas']) {
+                if ($a['percentual_turmas_incompletas'] === $b['percentual_turmas_incompletas']) {
+                    return strcmp((string) $a['nome'], (string) $b['nome']);
+                }
+
+                return $b['percentual_turmas_incompletas'] <=> $a['percentual_turmas_incompletas'];
             }
 
-            return $b['percentual_pendentes'] <=> $a['percentual_pendentes'];
+            return $b['turmas_incompletas'] <=> $a['turmas_incompletas'];
         });
 
         return array_map(function (array $item): array {
             return [
                 ...$item,
                 'percentual_turmas' => round((float) $item['percentual_turmas'], 1),
+                'percentual_turmas_incompletas' => round((float) $item['percentual_turmas_incompletas'], 1),
                 'percentual_preenchimento' => round((float) $item['percentual_preenchimento'], 1),
                 'percentual_pendentes' => round((float) $item['percentual_pendentes'], 1),
             ];
@@ -2247,20 +2184,20 @@ class DashboardAvaliacoes extends Page implements HasForms
     /**
      * @return array<int, array<string, int|float|string>>
      */
-    private function montarGraficoAlunosSemRespostaPorEscola(array $tabelaEscolas): array
+    private function montarTurmasIncompletasPorEscola(array $tabelaEscolas): array
     {
         return collect($tabelaEscolas)
-            ->filter(fn (array $item): bool => (int) ($item['preenchimentos_esperados'] ?? 0) > 0)
-            ->sortByDesc(fn (array $item): float => (float) ($item['percentual_pendentes'] ?? 0))
+            ->filter(fn (array $item): bool => (int) ($item['turmas_esperadas'] ?? 0) > 0)
+            ->sortByDesc(fn (array $item): int => (int) ($item['turmas_incompletas'] ?? 0))
             ->take(12)
             ->map(function (array $item): array {
-                $percentual = (float) ($item['percentual_pendentes'] ?? 0);
+                $percentual = (float) ($item['percentual_turmas_incompletas'] ?? 0);
 
                 return [
                     'id' => (int) ($item['id'] ?? 0),
                     'nome' => (string) ($item['nome'] ?? '-'),
-                    'total' => (int) ($item['preenchimentos_pendentes'] ?? 0),
-                    'esperadas' => (int) ($item['preenchimentos_esperados'] ?? 0),
+                    'total' => (int) ($item['turmas_incompletas'] ?? 0),
+                    'esperadas' => (int) ($item['turmas_esperadas'] ?? 0),
                     'percentual' => round($percentual, 1),
                     'percentual_barra' => round($percentual, 1),
                 ];
@@ -2270,90 +2207,24 @@ class DashboardAvaliacoes extends Page implements HasForms
     }
 
     /**
-     * @return array<int, array<string, int|float|string>>
+     * @return array{itens: array<int, array<string, int|float|string>>, total: int}
      */
-    private function montarResumoAvaliacoes(array $avaliacaoIds): array
+    private function montarAcompanhamentoTurmas(array $avaliacaoIds, bool $paginar = true): array
     {
-        if ($avaliacaoIds === []) {
-            return [];
-        }
-
-        $distinctEsperado = $this->distinctCombinacaoExpr('at.avaliacao_id', 'at.turma_id', 'p.id', 'aln.id');
-        $distinctRespondido = $this->distinctCombinacaoExpr('ar.avaliacao_id', 'ar.turma_id', 'ar.pauta_id', 'ar.aluno_id');
-
-        $esperadosPorAvaliacao = (clone $this->basePreenchimentosEsperadosQuery($avaliacaoIds))
-            ->groupBy('at.avaliacao_id')
-            ->select(
-                'at.avaliacao_id',
-                DB::raw("COUNT(DISTINCT {$distinctEsperado}) as preenchimentos_esperados"),
-                DB::raw('COUNT(DISTINCT t.id_escola) as escolas_esperadas'),
-                DB::raw('COUNT(DISTINCT at.turma_id) as turmas_esperadas')
-            )
-            ->get()
-            ->keyBy('avaliacao_id');
-
-        $respostasPorAvaliacao = (clone $this->baseRespostasQuery($avaliacaoIds, ignorarAlternativas: true))
-            ->groupBy('ar.avaliacao_id')
-            ->select(
-                'ar.avaliacao_id',
-                DB::raw("COUNT(DISTINCT {$distinctRespondido}) as respostas_total")
-            )
-            ->get()
-            ->keyBy('avaliacao_id');
-
-        $statusOptions = Avaliacao::statusOptions();
-
-        return Avaliacao::query()
-            ->with([
-                'tipo:id,nome',
-                'periodo:id,nome',
-            ])
-            ->withCount('pautas')
-            ->whereIn('id', $avaliacaoIds)
-            ->orderByDesc('data_inicio')
-            ->limit(20)
-            ->get()
-            ->map(function (Avaliacao $avaliacao) use ($esperadosPorAvaliacao, $respostasPorAvaliacao, $statusOptions): array {
-                $esperado = $esperadosPorAvaliacao->get($avaliacao->id);
-                $resposta = $respostasPorAvaliacao->get($avaliacao->id);
-
-                $preenchimentosEsperados = (int) ($esperado->preenchimentos_esperados ?? 0);
-                $preenchimentosRespondidos = min((int) ($resposta->respostas_total ?? 0), $preenchimentosEsperados);
-                $preenchimentosPendentes = max($preenchimentosEsperados - $preenchimentosRespondidos, 0);
-                $percentualPendentes = $preenchimentosEsperados > 0
-                    ? round(($preenchimentosPendentes / $preenchimentosEsperados) * 100, 1)
-                    : 0.0;
-
-                return [
-                    'id' => (int) $avaliacao->id,
-                    'nome' => (string) $avaliacao->nome,
-                    'tipo' => (string) ($avaliacao->tipo?->nome ?? '-'),
-                    'periodo' => (string) ($avaliacao->periodo?->nome ?? '-'),
-                    'status' => (string) $avaliacao->status,
-                    'status_label' => (string) ($statusOptions[$avaliacao->status] ?? ucfirst((string) $avaliacao->status)),
-                    'escolas_esperadas' => (int) ($esperado->escolas_esperadas ?? 0),
-                    'turmas_esperadas' => (int) ($esperado->turmas_esperadas ?? 0),
-                    'preenchimentos_esperados' => $preenchimentosEsperados,
-                    'preenchimentos_respondidos' => $preenchimentosRespondidos,
-                    'preenchimentos_pendentes' => $preenchimentosPendentes,
-                    'percentual_pendentes' => $percentualPendentes,
-                    'respostas_total' => $preenchimentosRespondidos,
-                    'pautas_total' => (int) ($avaliacao->pautas_count ?? 0),
-                    'data_inicio' => optional($avaliacao->data_inicio)->format('d/m/Y') ?? '-',
-                    'data_fim' => optional($avaliacao->data_fim)->format('d/m/Y') ?? '-',
-                ];
-            })
-            ->values()
-            ->all();
+        return $this->montarAcompanhamentoTurmasPaginado($avaliacaoIds, $paginar);
     }
 
     /**
-     * @return array<int, array<string, int|float|string>>
+     * @return array{itens: array<int, array<string, int|float|string>>, total: int}
      */
-    private function montarAcompanhamentoTurmas(array $avaliacaoIds): array
+    private function montarAcompanhamentoTurmasPaginado(array $avaliacaoIds, bool $paginar): array
     {
         if ($avaliacaoIds === []) {
-            return [];
+            if ($paginar) {
+                $this->normalizarPaginaAcompanhamentoTurmas(0);
+            }
+
+            return ['itens' => [], 'total' => 0];
         }
 
         $filtros = $this->filtros;
@@ -2389,7 +2260,7 @@ class DashboardAvaliacoes extends Page implements HasForms
             $esperadosQuery->whereIn('tcp_acomp.professor_id', $professoresIds);
         }
 
-        $esperados = $esperadosQuery
+        $esperadosQuery
             ->groupBy(
                 'at.avaliacao_id',
                 'at.turma_id',
@@ -2415,42 +2286,60 @@ class DashboardAvaliacoes extends Page implements HasForms
                 'cc.nome as componente_nome',
                 'tcp_acomp.professor_id',
                 'pr_acomp.nome as professor_nome',
+                DB::raw('COALESCE(p.componente_curricular_id, 0) as componente_chave'),
+                DB::raw('COALESCE(tcp_acomp.professor_id, 0) as professor_chave'),
                 DB::raw("COUNT(DISTINCT {$distinctEsperado}) as preenchimentos_esperados"),
                 DB::raw('COUNT(DISTINCT p.id) as pautas_total'),
                 DB::raw('COUNT(DISTINCT aln.id) as alunos_total')
-            )
-            ->get();
+            );
 
-        $respondidos = (clone $this->baseRespostasQuery($avaliacaoIds, ignorarAlternativas: true))
+        $respondidosQuery = (clone $this->baseRespostasQuery($avaliacaoIds, ignorarAlternativas: true))
             ->groupBy('ar.avaliacao_id', 'ar.turma_id', 'p.componente_curricular_id')
             ->groupByRaw($professorRespostaExpr)
             ->select(
                 'ar.avaliacao_id',
                 'ar.turma_id',
-                'p.componente_curricular_id as componente_id',
-                DB::raw("{$professorRespostaExpr} as professor_id"),
+                DB::raw('COALESCE(p.componente_curricular_id, 0) as componente_chave'),
+                DB::raw("COALESCE({$professorRespostaExpr}, 0) as professor_chave"),
                 DB::raw("COUNT(DISTINCT {$distinctRespondido}) as preenchimentos_respondidos"),
                 DB::raw('MAX(ar.respondido_em) as ultima_resposta_em')
-            )
-            ->get()
-            ->keyBy(fn ($item): string => $this->chaveAcompanhamentoTurma(
-                $item->avaliacao_id,
-                $item->turma_id,
-                $item->componente_id,
-                $item->professor_id,
-            ));
+            );
 
-        return $esperados
-            ->map(function ($item) use ($respondidos): array {
-                $chave = $this->chaveAcompanhamentoTurma(
-                    $item->avaliacao_id,
-                    $item->turma_id,
-                    $item->componente_id,
-                    $item->professor_id,
-                );
-                $respondido = $respondidos->get($chave);
+        $query = DB::query()
+            ->fromSub($esperadosQuery, 'esperados')
+            ->leftJoinSub($respondidosQuery, 'respondidos', function ($join): void {
+                $join->on('respondidos.avaliacao_id', '=', 'esperados.avaliacao_id')
+                    ->on('respondidos.turma_id', '=', 'esperados.turma_id')
+                    ->on('respondidos.componente_chave', '=', 'esperados.componente_chave')
+                    ->on('respondidos.professor_chave', '=', 'esperados.professor_chave');
+            })
+            ->select(
+                'esperados.*',
+                DB::raw('COALESCE(respondidos.preenchimentos_respondidos, 0) as preenchimentos_respondidos'),
+                'respondidos.ultima_resposta_em'
+            );
+
+        $total = (int) DB::query()
+            ->fromSub(clone $query, 'acompanhamento')
+            ->count();
+
+        if ($paginar) {
+            $this->normalizarPaginaAcompanhamentoTurmas($total);
+            $query->forPage($this->acompanhamentoTurmasPagina, $this->acompanhamentoTurmasPorPagina);
+        }
+
+        $dados = $query
+            ->orderBy('esperados.escola_nome')
+            ->orderBy('esperados.serie_nome')
+            ->orderBy('esperados.turma_nome')
+            ->orderBy('esperados.componente_nome')
+            ->orderBy('esperados.professor_nome')
+            ->get();
+
+        $itens = $dados
+            ->map(function ($item): array {
                 $preenchimentosEsperados = (int) ($item->preenchimentos_esperados ?? 0);
-                $preenchimentosRespondidos = min((int) ($respondido->preenchimentos_respondidos ?? 0), $preenchimentosEsperados);
+                $preenchimentosRespondidos = min((int) ($item->preenchimentos_respondidos ?? 0), $preenchimentosEsperados);
                 $preenchimentosPendentes = max($preenchimentosEsperados - $preenchimentosRespondidos, 0);
                 $percentualPreenchimento = $preenchimentosEsperados > 0
                     ? round(($preenchimentosRespondidos / $preenchimentosEsperados) * 100, 1)
@@ -2470,7 +2359,7 @@ class DashboardAvaliacoes extends Page implements HasForms
                     'turma_nome' => (string) ($item->turma_nome ?? '-'),
                     'turno' => (string) ($item->turno ?? '-'),
                     'componente_nome' => (string) ($item->componente_nome ?? 'Componente geral'),
-                    'professor_nome' => (string) ($item->professor_nome ?? 'Professor não vinculado'),
+                    'professor_nome' => (string) ($item->professor_nome ?? 'Professor nao vinculado'),
                     'preenchimentos_esperados' => $preenchimentosEsperados,
                     'preenchimentos_respondidos' => $preenchimentosRespondidos,
                     'preenchimentos_pendentes' => $preenchimentosPendentes,
@@ -2479,245 +2368,19 @@ class DashboardAvaliacoes extends Page implements HasForms
                     'alunos_total' => (int) ($item->alunos_total ?? 0),
                     'status' => $status,
                     'status_label' => match ($status) {
-                        'concluido' => 'Concluído',
+                        'concluido' => 'Concluido',
                         'em_andamento' => 'Em andamento',
-                        default => 'Não iniciado',
+                        default => 'Nao iniciado',
                     },
-                    'ultima_resposta' => $respondido?->ultima_resposta_em
-                        ? \Illuminate\Support\Carbon::parse($respondido->ultima_resposta_em)->format('d/m/Y H:i')
-                        : '-',
-                ];
-            })
-            ->sortBy([
-                ['escola_nome', 'asc'],
-                ['serie_nome', 'asc'],
-                ['turma_nome', 'asc'],
-                ['componente_nome', 'asc'],
-                ['professor_nome', 'asc'],
-            ])
-            ->values()
-            ->all();
-    }
-
-    private function chaveAcompanhamentoTurma(
-        int|string|null $avaliacaoId,
-        int|string|null $turmaId,
-        int|string|null $componenteId,
-        int|string|null $professorId
-    ): string {
-        return implode('|', [
-            (int) $avaliacaoId,
-            (int) $turmaId,
-            (int) $componenteId,
-            (int) $professorId,
-        ]);
-    }
-
-    /**
-     * @return array{itens: array<int, array<string, int|string>>, total: int}
-     */
-    private function montarTurmasAvaliadas(array $avaliacaoIds): array
-    {
-        if ($avaliacaoIds === []) {
-            $this->normalizarPaginaTurmasAvaliadas(0);
-
-            return ['itens' => [], 'total' => 0];
-        }
-
-        $query = (clone $this->baseRespostasQuery($avaliacaoIds))
-            ->join('avaliacoes as av', 'av.id', '=', 'ar.avaliacao_id')
-            ->leftJoin('escolas as e', 'e.id', '=', 't.id_escola')
-            ->leftJoin('series as s', 's.id', '=', 't.id_serie')
-            ->groupBy(
-                'ar.avaliacao_id',
-                'ar.turma_id',
-                'av.nome',
-                't.nome',
-                't.turno',
-                'e.nome',
-                's.nome'
-            )
-            ->select(
-                'ar.avaliacao_id',
-                'ar.turma_id',
-                'av.nome as avaliacao_nome',
-                't.nome as turma_nome',
-                't.turno',
-                'e.nome as escola_nome',
-                's.nome as serie_nome',
-                DB::raw('COUNT(*) as respostas_total'),
-                DB::raw('COUNT(DISTINCT ar.aluno_id) as alunos_respondidos'),
-                DB::raw('COUNT(DISTINCT ar.pauta_id) as pautas_respondidas'),
-                DB::raw('MAX(ar.respondido_em) as ultima_resposta_em')
-            );
-
-        $total = (int) DB::query()
-            ->fromSub(clone $query, 'turmas_avaliadas')
-            ->count();
-
-        $this->normalizarPaginaTurmasAvaliadas($total);
-
-        $dados = $query
-            ->orderByDesc(DB::raw('MAX(ar.respondido_em)'))
-            ->orderBy('av.nome')
-            ->forPage($this->turmasAvaliadasPagina, $this->turmasAvaliadasPorPagina)
-            ->get();
-
-        $itens = $dados
-            ->map(function ($item): array {
-                return [
-                    'avaliacao_id' => (int) $item->avaliacao_id,
-                    'turma_id' => (int) $item->turma_id,
-                    'avaliacao_nome' => (string) ($item->avaliacao_nome ?? '-'),
-                    'escola_nome' => (string) ($item->escola_nome ?? '-'),
-                    'serie_nome' => (string) ($item->serie_nome ?? '-'),
-                    'turma_nome' => (string) ($item->turma_nome ?? '-'),
-                    'turno' => (string) ($item->turno ?? '-'),
-                    'respostas_total' => (int) ($item->respostas_total ?? 0),
-                    'alunos_respondidos' => (int) ($item->alunos_respondidos ?? 0),
-                    'pautas_respondidas' => (int) ($item->pautas_respondidas ?? 0),
                     'ultima_resposta' => $item->ultima_resposta_em
                         ? \Illuminate\Support\Carbon::parse($item->ultima_resposta_em)->format('d/m/Y H:i')
                         : '-',
-                    'pode_abrir_avaliacao' => $this->podeAbrirAvaliacoesProfessor(),
                 ];
             })
             ->values()
             ->all();
 
         return ['itens' => $itens, 'total' => $total];
-    }
-
-    /**
-     * @return array{
-     *     titulo: string,
-     *     subtitulo: string,
-     *     total_respostas: int,
-     *     itens: array<int, array{name: string, nome: string, total: int, percentual: float, percentual_barra: float}>
-     * }
-     */
-    private function montarDistribuicaoAlternativas(array $avaliacaoIds): array
-    {
-        if ($avaliacaoIds === []) {
-            return [
-                'titulo' => 'Distribuição de alternativas',
-                'subtitulo' => 'Sem dados para o escopo atual.',
-                'total_respostas' => 0,
-                'total_esperado' => 0,
-                'total_alunos' => 0,
-                'itens' => [],
-            ];
-        }
-
-        $avaliacaoSelecionadaId = (int) ($this->filtros['avaliacao_id'] ?? 0);
-
-        if ($avaliacaoSelecionadaId > 0 && in_array($avaliacaoSelecionadaId, $avaliacaoIds, true)) {
-            $avaliacao = Avaliacao::query()
-                ->select('id', 'nome', 'tipo_avaliacao_id')
-                ->find($avaliacaoSelecionadaId);
-
-            if (! $avaliacao) {
-                return [
-                    'titulo' => 'Distribuição de alternativas',
-                    'subtitulo' => 'Avaliação selecionada não encontrada.',
-                    'total_respostas' => 0,
-                    'total_esperado' => 0,
-                    'total_alunos' => 0,
-                    'itens' => [],
-                ];
-            }
-
-            $contagens = (clone $this->baseRespostasQuery([$avaliacaoSelecionadaId], ignorarAlternativas: true))
-                ->groupBy('ar.alternativa_id', 'alt.nome')
-                ->select('ar.alternativa_id', 'alt.nome', DB::raw('COUNT(DISTINCT ar.aluno_id) as total'))
-                ->get()
-                ->keyBy('alternativa_id');
-
-            $idsPadrao = Alternativa::query()
-                ->where('status', true)
-                ->where('tipo_avaliacao_id', (int) $avaliacao->tipo_avaliacao_id)
-                ->pluck('id')
-                ->map(fn ($id): int => (int) $id);
-
-            $idsOverride = DB::table('avaliacao_pauta_alternativa')
-                ->where('avaliacao_id', $avaliacaoSelecionadaId)
-                ->pluck('alternativa_id')
-                ->map(fn ($id): int => (int) $id);
-
-            $idsAlternativas = $idsPadrao
-                ->merge($idsOverride)
-                ->merge($contagens->pluck('alternativa_id')->map(fn ($id): int => (int) $id))
-                ->unique()
-                ->values();
-
-            $nomesAlternativas = Alternativa::query()
-                ->whereIn('id', $idsAlternativas->all())
-                ->pluck('nome', 'id');
-
-            $totalRespostas = (int) $contagens->sum('total');
-            $totalAlunos = $this->contarAlunosEsperados([$avaliacaoSelecionadaId]);
-
-            $itens = $idsAlternativas
-                ->map(function (int $alternativaId) use ($contagens, $nomesAlternativas, $totalAlunos): array {
-                    $registro = $contagens->get($alternativaId);
-                    $total = (int) ($registro->total ?? 0);
-                    $nome = (string) ($nomesAlternativas[$alternativaId] ?? $registro->nome ?? "Alternativa #{$alternativaId}");
-                    $percentual = $totalAlunos > 0 ? round(($total / $totalAlunos) * 100, 1) : 0.0;
-
-                    return [
-                        'nome' => $nome,
-                        'total' => $total,
-                        'percentual' => $percentual,
-                        'percentual_barra' => $percentual,
-                    ];
-                })
-                ->sortByDesc('total')
-                ->values()
-                ->all();
-
-            return [
-                'titulo' => 'Distribuição de alternativas',
-                'subtitulo' => 'Avaliação selecionada: ' . $avaliacao->nome,
-                'total_respostas' => $totalRespostas,
-                'total_esperado' => $totalAlunos,
-                'total_alunos' => $totalAlunos,
-                'itens' => $itens,
-            ];
-        }
-
-        $contagens = (clone $this->baseRespostasQuery($avaliacaoIds))
-            ->groupBy('ar.alternativa_id', 'alt.nome')
-            ->orderByDesc(DB::raw('COUNT(DISTINCT ar.aluno_id)'))
-            ->limit(12)
-            ->select('ar.alternativa_id', 'alt.nome', DB::raw('COUNT(DISTINCT ar.aluno_id) as total'))
-            ->get();
-
-        $totalRespostas = (int) $contagens->sum('total');
-        $totalAlunos = $this->contarAlunosEsperados($avaliacaoIds);
-
-        $itens = $contagens
-            ->map(function ($item) use ($totalAlunos): array {
-                $total = (int) ($item->total ?? 0);
-                $percentual = $totalAlunos > 0 ? round(($total / $totalAlunos) * 100, 1) : 0.0;
-
-                return [
-                    'nome' => (string) $item->nome,
-                    'total' => $total,
-                    'percentual' => $percentual,
-                    'percentual_barra' => $percentual,
-                ];
-            })
-            ->values()
-            ->all();
-
-        return [
-            'titulo' => 'Top alternativas no escopo',
-            'subtitulo' => 'Selecione uma avaliação para ver a distribuição detalhada por alternativa.',
-            'total_respostas' => $totalRespostas,
-            'total_esperado' => $totalAlunos,
-            'total_alunos' => $totalAlunos,
-            'itens' => $itens,
-        ];
     }
 
     private function aplicarFiltrosTurmaQuery(QueryBuilder $query, string $alias = 't', ?array $filtros = null): void
