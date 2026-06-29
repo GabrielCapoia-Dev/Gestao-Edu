@@ -1781,6 +1781,8 @@ class DashboardAvaliacoes extends Page implements HasForms
         $esperados = (clone $this->basePreenchimentosEsperadosQuery($avaliacaoIds))
             ->leftJoin('componentes_curriculares as cc', 'cc.id', '=', 'p.componente_curricular_id')
             ->groupBy('p.componente_curricular_id', 'cc.nome')
+            ->groupByRaw('COALESCE(p.componente_curricular_id, 0)')
+            ->groupByRaw("COALESCE(cc.nome, 'Componente geral')")
             ->selectRaw('COALESCE(p.componente_curricular_id, 0) as agrupamento_id')
             ->selectRaw("COALESCE(cc.nome, 'Componente geral') as nome")
             ->selectRaw("COUNT(DISTINCT {$distinctEsperado}) as preenchimentos_esperados")
@@ -1790,6 +1792,8 @@ class DashboardAvaliacoes extends Page implements HasForms
         $respondidos = (clone $this->baseRespostasQuery($avaliacaoIds, ignorarAlternativas: true))
             ->leftJoin('componentes_curriculares as cc', 'cc.id', '=', 'p.componente_curricular_id')
             ->groupBy('p.componente_curricular_id', 'cc.nome')
+            ->groupByRaw('COALESCE(p.componente_curricular_id, 0)')
+            ->groupByRaw("COALESCE(cc.nome, 'Componente geral')")
             ->selectRaw('COALESCE(p.componente_curricular_id, 0) as agrupamento_id')
             ->selectRaw("COALESCE(cc.nome, 'Componente geral') as nome")
             ->selectRaw("COUNT(DISTINCT {$distinctRespondido}) as preenchimentos_respondidos")
@@ -1814,6 +1818,8 @@ class DashboardAvaliacoes extends Page implements HasForms
         $esperados = (clone $this->basePreenchimentosEsperadosQuery($avaliacaoIds))
             ->leftJoin('series as s', 's.id', '=', 't.id_serie')
             ->groupBy('t.id_serie', 's.nome')
+            ->groupByRaw('COALESCE(t.id_serie, 0)')
+            ->groupByRaw("COALESCE(s.nome, 'Serie nao informada')")
             ->selectRaw('COALESCE(t.id_serie, 0) as agrupamento_id')
             ->selectRaw("COALESCE(s.nome, 'Serie nao informada') as nome")
             ->selectRaw("COUNT(DISTINCT {$distinctEsperado}) as preenchimentos_esperados")
@@ -1823,6 +1829,8 @@ class DashboardAvaliacoes extends Page implements HasForms
         $respondidos = (clone $this->baseRespostasQuery($avaliacaoIds, ignorarAlternativas: true))
             ->leftJoin('series as s', 's.id', '=', 't.id_serie')
             ->groupBy('t.id_serie', 's.nome')
+            ->groupByRaw('COALESCE(t.id_serie, 0)')
+            ->groupByRaw("COALESCE(s.nome, 'Serie nao informada')")
             ->selectRaw('COALESCE(t.id_serie, 0) as agrupamento_id')
             ->selectRaw("COALESCE(s.nome, 'Serie nao informada') as nome")
             ->selectRaw("COUNT(DISTINCT {$distinctRespondido}) as preenchimentos_respondidos")
@@ -2234,6 +2242,9 @@ class DashboardAvaliacoes extends Page implements HasForms
         $professorRespostaExpr = $professoresIds !== []
             ? 'ar.professor_id'
             : 'CASE WHEN p.componente_curricular_id IS NULL THEN NULL ELSE ar.professor_id END';
+        $componenteChaveExpr = 'COALESCE(p.componente_curricular_id, 0)';
+        $professorChaveExpr = 'COALESCE(tcp_acomp.professor_id, 0)';
+        $professorRespostaChaveExpr = "COALESCE({$professorRespostaExpr}, 0)";
 
         $esperadosQuery = (clone $this->basePreenchimentosEsperadosQuery($avaliacaoIds))
             ->join('avaliacoes as av', 'av.id', '=', 'at.avaliacao_id')
@@ -2274,6 +2285,8 @@ class DashboardAvaliacoes extends Page implements HasForms
                 'tcp_acomp.professor_id',
                 'pr_acomp.nome'
             )
+            ->groupByRaw($componenteChaveExpr)
+            ->groupByRaw($professorChaveExpr)
             ->select(
                 'at.avaliacao_id',
                 'at.turma_id',
@@ -2286,8 +2299,8 @@ class DashboardAvaliacoes extends Page implements HasForms
                 'cc.nome as componente_nome',
                 'tcp_acomp.professor_id',
                 'pr_acomp.nome as professor_nome',
-                DB::raw('COALESCE(p.componente_curricular_id, 0) as componente_chave'),
-                DB::raw('COALESCE(tcp_acomp.professor_id, 0) as professor_chave'),
+                DB::raw("{$componenteChaveExpr} as componente_chave"),
+                DB::raw("{$professorChaveExpr} as professor_chave"),
                 DB::raw("COUNT(DISTINCT {$distinctEsperado}) as preenchimentos_esperados"),
                 DB::raw('COUNT(DISTINCT p.id) as pautas_total'),
                 DB::raw('COUNT(DISTINCT aln.id) as alunos_total')
@@ -2295,12 +2308,13 @@ class DashboardAvaliacoes extends Page implements HasForms
 
         $respondidosQuery = (clone $this->baseRespostasQuery($avaliacaoIds, ignorarAlternativas: true))
             ->groupBy('ar.avaliacao_id', 'ar.turma_id', 'p.componente_curricular_id')
-            ->groupByRaw($professorRespostaExpr)
+            ->groupByRaw('COALESCE(p.componente_curricular_id, 0)')
+            ->groupByRaw($professorRespostaChaveExpr)
             ->select(
                 'ar.avaliacao_id',
                 'ar.turma_id',
                 DB::raw('COALESCE(p.componente_curricular_id, 0) as componente_chave'),
-                DB::raw("COALESCE({$professorRespostaExpr}, 0) as professor_chave"),
+                DB::raw("{$professorRespostaChaveExpr} as professor_chave"),
                 DB::raw("COUNT(DISTINCT {$distinctRespondido}) as preenchimentos_respondidos"),
                 DB::raw('MAX(ar.respondido_em) as ultima_resposta_em')
             );
