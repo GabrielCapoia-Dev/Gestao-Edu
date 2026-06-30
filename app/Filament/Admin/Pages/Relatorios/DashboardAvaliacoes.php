@@ -28,6 +28,7 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\On;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
@@ -83,6 +84,12 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     public array $acompanhamentoTurmasPorPaginaOptions = [5, 10, 25, 50, 100];
 
+    public bool $workspaceAcompanhamentoAberto = false;
+
+    public ?array $workspaceAcompanhamentoLinha = null;
+
+    public int $workspaceAcompanhamentoKey = 0;
+
     public array $listagensPaginas = [
         'tabelaEscolas' => 1,
     ];
@@ -113,6 +120,7 @@ class DashboardAvaliacoes extends Page implements HasForms
     public function updatedFiltros(mixed $value = null, ?string $key = null): void
     {
         $this->resetarPaginacoesDashboard();
+        $this->fecharWorkspaceAcompanhamento();
 
         if ($key === 'avaliacao_id') {
             $this->limparFiltrosDependentes();
@@ -124,6 +132,7 @@ class DashboardAvaliacoes extends Page implements HasForms
     public function updatedFiltrosAvaliacaoId(): void
     {
         $this->resetarPaginacoesDashboard();
+        $this->fecharWorkspaceAcompanhamento();
         $this->limparFiltrosDependentes();
         $this->atualizarDashboard();
     }
@@ -132,6 +141,7 @@ class DashboardAvaliacoes extends Page implements HasForms
     {
         $this->filtros = $this->filtrosPadrao();
         $this->resetarPaginacoesDashboard();
+        $this->fecharWorkspaceAcompanhamento();
         $this->atualizarDashboard();
     }
 
@@ -185,6 +195,81 @@ class DashboardAvaliacoes extends Page implements HasForms
             $this->totalPaginasAcompanhamentoTurmas()
         );
         $this->atualizarDashboard();
+    }
+
+    public function abrirWorkspaceAcompanhamento(
+        int $avaliacaoId,
+        int $turmaId,
+        int $escolaId,
+        int $serieId,
+        ?int $componenteId = null,
+        ?int $professorId = null
+    ): void {
+        abort_unless(static::canAccess(), 403);
+
+        $linha = $this->localizarLinhaAcompanhamento(
+            $avaliacaoId,
+            $turmaId,
+            $escolaId,
+            $serieId,
+            $componenteId,
+            $professorId
+        );
+
+        if ($linha === null) {
+            $this->fecharWorkspaceAcompanhamento();
+
+            Notification::make()
+                ->title('A avaliação selecionada não está mais disponível no seu escopo.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $this->workspaceAcompanhamentoLinha = $linha;
+        $this->workspaceAcompanhamentoAberto = true;
+        $this->workspaceAcompanhamentoKey++;
+    }
+
+    public function fecharWorkspaceAcompanhamento(): void
+    {
+        $this->workspaceAcompanhamentoAberto = false;
+        $this->workspaceAcompanhamentoLinha = null;
+    }
+
+    #[On('workspace-avaliacao-atualizado')]
+    public function atualizarWorkspaceAcompanhamento(): void
+    {
+        $linhaAtual = $this->workspaceAcompanhamentoLinha;
+
+        $this->atualizarDashboard();
+
+        if ($linhaAtual === null) {
+            return;
+        }
+
+        $linhaRevalidada = $this->localizarLinhaAcompanhamento(
+            (int) ($linhaAtual['avaliacao_id'] ?? 0),
+            (int) ($linhaAtual['turma_id'] ?? 0),
+            (int) ($linhaAtual['escola_id'] ?? 0),
+            (int) ($linhaAtual['serie_id'] ?? 0),
+            isset($linhaAtual['componente_id']) ? (int) $linhaAtual['componente_id'] : null,
+            isset($linhaAtual['professor_id']) ? (int) $linhaAtual['professor_id'] : null
+        );
+
+        if ($linhaRevalidada === null) {
+            $this->fecharWorkspaceAcompanhamento();
+
+            Notification::make()
+                ->title('O recorte do modal deixou de ser válido para o seu escopo atual.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $this->workspaceAcompanhamentoLinha = $linhaRevalidada;
     }
 
     protected function getForms(): array
@@ -2223,6 +2308,44 @@ class DashboardAvaliacoes extends Page implements HasForms
     }
 
     /**
+     * @return array<string, int|float|string>|null
+     */
+    private function localizarLinhaAcompanhamento(
+        int $avaliacaoId,
+        int $turmaId,
+        int $escolaId,
+        int $serieId,
+        ?int $componenteId = null,
+        ?int $professorId = null
+    ): ?array {
+        $linhas = $this->montarAcompanhamentoTurmas([$avaliacaoId], paginar: false)['itens'];
+
+        return collect($linhas)->first(function (array $item) use (
+            $avaliacaoId,
+            $turmaId,
+            $escolaId,
+            $serieId,
+            $componenteId,
+            $professorId
+        ): bool {
+            if (
+                (int) ($item['avaliacao_id'] ?? 0) !== $avaliacaoId
+                || (int) ($item['turma_id'] ?? 0) !== $turmaId
+                || (int) ($item['escola_id'] ?? 0) !== $escolaId
+                || (int) ($item['serie_id'] ?? 0) !== $serieId
+            ) {
+                return false;
+            }
+
+            $itemComponenteId = (int) ($item['componente_id'] ?? 0);
+            $itemProfessorId = (int) ($item['professor_id'] ?? 0);
+
+            return $itemComponenteId === max((int) ($componenteId ?? 0), 0)
+                && $itemProfessorId === max((int) ($professorId ?? 0), 0);
+        });
+    }
+
+    /**
      * @return array{itens: array<int, array<string, int|float|string>>, total: int}
      */
     private function montarAcompanhamentoTurmasPaginado(array $avaliacaoIds, bool $paginar): array
@@ -2278,7 +2401,9 @@ class DashboardAvaliacoes extends Page implements HasForms
                 'av.nome',
                 't.nome',
                 't.turno',
+                'e.id',
                 'e.nome',
+                's.id',
                 's.nome',
                 'p.componente_curricular_id',
                 'cc.nome',
@@ -2291,9 +2416,11 @@ class DashboardAvaliacoes extends Page implements HasForms
                 'at.avaliacao_id',
                 'at.turma_id',
                 'av.nome as avaliacao_nome',
+                'e.id as escola_id',
                 't.nome as turma_nome',
                 't.turno',
                 'e.nome as escola_nome',
+                's.id as serie_id',
                 's.nome as serie_nome',
                 'p.componente_curricular_id as componente_id',
                 'cc.nome as componente_nome',
@@ -2367,6 +2494,10 @@ class DashboardAvaliacoes extends Page implements HasForms
                 return [
                     'avaliacao_id' => (int) $item->avaliacao_id,
                     'turma_id' => (int) $item->turma_id,
+                    'escola_id' => (int) ($item->escola_id ?? 0),
+                    'serie_id' => (int) ($item->serie_id ?? 0),
+                    'componente_id' => (int) ($item->componente_id ?? 0),
+                    'professor_id' => (int) ($item->professor_id ?? 0),
                     'avaliacao_nome' => (string) ($item->avaliacao_nome ?? '-'),
                     'escola_nome' => (string) ($item->escola_nome ?? '-'),
                     'serie_nome' => (string) ($item->serie_nome ?? '-'),

@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Avaliacoes;
 
-use App\Filament\Admin\Pages\AvaliacoesProfessor;
+use App\Livewire\Avaliacoes\AvaliacaoTurmaWorkspace;
 use App\Models\Aluno;
 use App\Models\Alternativa;
 use App\Models\Avaliacao;
@@ -214,7 +214,7 @@ class AvaliacaoProfessorPageTest extends TestCase
         ]);
 
         Livewire::actingAs($userProfessor)
-            ->test(AvaliacoesProfessor::class)
+            ->test(AvaliacaoTurmaWorkspace::class, $this->workspaceProfessorParams())
             ->set('avaliacao', $avaliacao->id)
             ->assertSee('Escola Serie')
             ->assertSee('Outra Escola Serie')
@@ -341,7 +341,7 @@ class AvaliacaoProfessorPageTest extends TestCase
         $observacaoLimitada = str_repeat('a', 1500);
 
         Livewire::actingAs($userProfessor)
-            ->test(AvaliacoesProfessor::class)
+            ->test(AvaliacaoTurmaWorkspace::class, $this->workspaceProfessorParams())
             ->set('avaliacao', $avaliacao->id)
             ->set('serieEscola', $escola->id.':'.$serie->id)
             ->set("respostas.{$pauta->id}.{$alunoPreenchido->id}.alternativa_id", $alternativaNao->id)
@@ -463,7 +463,7 @@ class AvaliacaoProfessorPageTest extends TestCase
         ]);
 
         Livewire::actingAs($userProfessor)
-            ->test(AvaliacoesProfessor::class)
+            ->test(AvaliacaoTurmaWorkspace::class, $this->workspaceProfessorParams())
             ->set('avaliacao', $avaliacao->id)
             ->set('turma', $turma->id)
             ->set("respostas.{$pauta->id}.{$aluno->id}.alternativa_id", $alternativaOverride->id)
@@ -554,7 +554,7 @@ class AvaliacaoProfessorPageTest extends TestCase
         $informacoesLimitadas = str_repeat('b', 1500);
 
         Livewire::actingAs($userProfessor)
-            ->test(AvaliacoesProfessor::class)
+            ->test(AvaliacaoTurmaWorkspace::class, $this->workspaceProfessorParams())
             ->set('avaliacao', $avaliacao->id)
             ->set('turma', $turma->id)
             ->set("respostas.{$pauta->id}.{$aluno->id}.alternativa_id", $alternativa->id)
@@ -617,5 +617,13 @@ class AvaliacaoProfessorPageTest extends TestCase
         $avaliacao->series()->sync($seriesIds);
         $avaliacao->componentes()->sync($componentesIds);
         $avaliacao->escolas()->sync($escolasIds);
+    }
+
+    private function workspaceProfessorParams(bool $canEdit = true): array
+    {
+        return [
+            'modo' => 'professor',
+            'canEdit' => $canEdit,
+        ];
     }
 }

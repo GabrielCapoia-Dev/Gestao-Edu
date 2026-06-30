@@ -3,6 +3,7 @@
 namespace Tests\Feature\Avaliacoes;
 
 use App\Filament\Admin\Pages\Relatorios\DashboardAvaliacoes;
+use App\Livewire\Avaliacoes\AvaliacaoTurmaWorkspace;
 use App\Models\Aluno;
 use App\Models\Alternativa;
 use App\Models\Avaliacao;
@@ -403,6 +404,225 @@ class DashboardAvaliacoesPageTest extends TestCase
         $this->assertSame(1, $component->instance()->cards['preenchimentos_esperados']);
         $this->assertSame(['Escola Permitida'], collect($component->instance()->tabelaEscolas)->pluck('nome')->all());
         $this->assertSame(['Turma Permitida'], collect($component->instance()->acompanhamentoTurmas)->pluck('turma_nome')->unique()->values()->all());
+    }
+
+    public function test_dashboard_abre_workspace_no_escopo_e_resposta_salva_atualiza_status_da_linha(): void
+    {
+        Permission::findOrCreate('Acompanhar AvaliaÃ§Ãµes');
+
+        $user = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $user->givePermissionTo('Acompanhar AvaliaÃ§Ãµes');
+
+        $tipo = TipoAvaliacao::query()->create(['nome' => 'Parecer Workspace', 'status' => true]);
+        $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Periodo Workspace', 'status' => true]);
+        $serie = $this->criarSerie('SER-WORK', 'Infantil 4');
+        $componente = ComponenteCurricular::query()->create([
+            'codigo' => 'COMP-WORK',
+            'nome' => 'Corpo, gesto e movimento',
+        ]);
+        $escola = $this->criarEscola('Escola Workspace');
+        $user->escolas()->attach($escola->id);
+
+        $turma = $this->criarTurma($escola, $serie, 'A', 'manha');
+        $alunoUm = $this->criarAluno($turma, 'Aluno Workspace 1', 'CGM-WORK-001');
+        $alunoDois = $this->criarAluno($turma, 'Aluno Workspace 2', 'CGM-WORK-002');
+
+        $professor = Professor::query()->create([
+            'id_escola' => $escola->id,
+            'matricula' => 'PROF-WORK',
+            'nome' => 'Professor Workspace',
+            'email' => 'prof.workspace@edu.umuarama.pr.gov.br',
+        ]);
+        $turma->componentes()->attach($componente->id, [
+            'professor_id' => $professor->id,
+            'tem_professor' => true,
+        ]);
+
+        $alternativa = Alternativa::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'nome' => 'Atende',
+            'tem_observacao' => false,
+            'status' => true,
+        ]);
+
+        $pauta = $this->criarPauta($tipo, $serie, $componente, 'Pauta workspace');
+        $pauta->alternativas()->attach([$alternativa->id]);
+
+        $avaliacao = $this->criarAvaliacao('Avaliacao Workspace', $tipo, $periodo);
+        $avaliacao->series()->sync([$serie->id]);
+        $avaliacao->componentes()->sync([$componente->id]);
+        $avaliacao->escolas()->sync([$escola->id]);
+        $avaliacao->turmas()->sync([$turma->id]);
+        $avaliacao->pautas()->sync([$pauta->id]);
+
+        $workspace = Livewire::actingAs($user)
+            ->test(AvaliacaoTurmaWorkspace::class, [
+                'avaliacaoId' => $avaliacao->id,
+                'turmaId' => $turma->id,
+                'escolaId' => $escola->id,
+                'serieId' => $serie->id,
+                'initialComponenteId' => $componente->id,
+                'modo' => 'acompanhamento',
+                'canEdit' => true,
+            ])
+            ->assertSet('visualizacao', 'pautas')
+            ->assertSet('componenteWorkspaceId', (string) $componente->id)
+            ->set("respostas.{$pauta->id}.{$alunoUm->id}.alternativa_id", $alternativa->id)
+            ->set("respostas.{$pauta->id}.{$alunoDois->id}.alternativa_id", $alternativa->id);
+
+        $this->assertDatabaseHas('avaliacao_respostas', [
+            'avaliacao_id' => $avaliacao->id,
+            'pauta_id' => $pauta->id,
+            'turma_id' => $turma->id,
+            'aluno_id' => $alunoUm->id,
+            'professor_id' => $professor->id,
+            'alternativa_id' => $alternativa->id,
+        ]);
+
+        $this->assertDatabaseHas('avaliacao_respostas', [
+            'avaliacao_id' => $avaliacao->id,
+            'pauta_id' => $pauta->id,
+            'turma_id' => $turma->id,
+            'aluno_id' => $alunoDois->id,
+            'professor_id' => $professor->id,
+            'alternativa_id' => $alternativa->id,
+        ]);
+
+        $workspace->assertSet('modo', 'acompanhamento');
+    }
+
+    public function test_workspace_do_acompanhamento_bloqueia_abertura_fora_do_escopo_e_respeita_prefiltro_de_componente(): void
+    {
+        Permission::findOrCreate('Acompanhar AvaliaÃ§Ãµes');
+
+        $user = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $user->givePermissionTo('Acompanhar AvaliaÃ§Ãµes');
+
+        $tipo = TipoAvaliacao::query()->create(['nome' => 'Parecer Prefiltro', 'status' => true]);
+        $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Periodo Prefiltro', 'status' => true]);
+        $serie = $this->criarSerie('SER-PREF', 'Infantil 5');
+        $componenteUm = ComponenteCurricular::query()->create([
+            'codigo' => 'COMP-PREF-1',
+            'nome' => 'Escuta e fala',
+        ]);
+        $componenteDois = ComponenteCurricular::query()->create([
+            'codigo' => 'COMP-PREF-2',
+            'nome' => 'Traços e cores',
+        ]);
+        $escolaPermitida = $this->criarEscola('Escola Prefiltro');
+        $escolaBloqueada = $this->criarEscola('Escola Fora do Escopo');
+        $user->escolas()->attach($escolaPermitida->id);
+
+        $turmaPermitida = $this->criarTurma($escolaPermitida, $serie, 'B', 'manha');
+        $turmaBloqueada = $this->criarTurma($escolaBloqueada, $serie, 'C', 'manha');
+        $alunoPermitido = $this->criarAluno($turmaPermitida, 'Aluno Prefiltro', 'CGM-PREF-001');
+
+        $professor = Professor::query()->create([
+            'id_escola' => $escolaPermitida->id,
+            'matricula' => 'PROF-PREF',
+            'nome' => 'Professor Prefiltro',
+            'email' => 'prof.prefiltro@edu.umuarama.pr.gov.br',
+        ]);
+        $turmaPermitida->componentes()->attach($componenteUm->id, [
+            'professor_id' => $professor->id,
+            'tem_professor' => true,
+        ]);
+        $turmaPermitida->componentes()->attach($componenteDois->id, [
+            'professor_id' => $professor->id,
+            'tem_professor' => true,
+        ]);
+
+        $alternativa = Alternativa::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'nome' => 'Atende',
+            'tem_observacao' => false,
+            'status' => true,
+        ]);
+
+        $pautaUm = $this->criarPauta($tipo, $serie, $componenteUm, 'Pauta componente um');
+        $pautaDois = $this->criarPauta($tipo, $serie, $componenteDois, 'Pauta componente dois');
+        $pautaUm->alternativas()->attach([$alternativa->id]);
+        $pautaDois->alternativas()->attach([$alternativa->id]);
+
+        $avaliacao = $this->criarAvaliacao('Avaliacao Prefiltro', $tipo, $periodo);
+        $avaliacao->series()->sync([$serie->id]);
+        $avaliacao->componentes()->sync([$componenteUm->id, $componenteDois->id]);
+        $avaliacao->escolas()->sync([$escolaPermitida->id, $escolaBloqueada->id]);
+        $avaliacao->turmas()->sync([$turmaPermitida->id, $turmaBloqueada->id]);
+        $avaliacao->pautas()->sync([$pautaUm->id, $pautaDois->id]);
+
+        $dashboard = Livewire::actingAs($user)
+            ->test(DashboardAvaliacoes::class);
+
+        $dashboard->set('filtros.avaliacao_id', $avaliacao->id);
+
+        $dashboard
+            ->call(
+                'abrirWorkspaceAcompanhamento',
+                $avaliacao->id,
+                $turmaBloqueada->id,
+                $escolaBloqueada->id,
+                $serie->id,
+                $componenteUm->id,
+                0
+            )
+            ->assertSet('workspaceAcompanhamentoAberto', false)
+            ->assertSet('workspaceAcompanhamentoLinha', null);
+
+        $workspace = Livewire::actingAs($user)
+            ->test(AvaliacaoTurmaWorkspace::class, [
+                'avaliacaoId' => $avaliacao->id,
+                'turmaId' => $turmaPermitida->id,
+                'escolaId' => $escolaPermitida->id,
+                'serieId' => $serie->id,
+                'initialComponenteId' => $componenteUm->id,
+                'modo' => 'acompanhamento',
+                'canEdit' => true,
+            ]);
+
+        $this->assertCount(1, $workspace->instance()->getPautasDisponiveisProperty());
+
+        $workspace
+            ->set('avaliacaoEmMassaGlobal', $alternativa->id)
+            ->call('aplicarEmMassaNaSerie');
+
+        $this->assertDatabaseHas('avaliacao_respostas', [
+            'avaliacao_id' => $avaliacao->id,
+            'pauta_id' => $pautaUm->id,
+            'turma_id' => $turmaPermitida->id,
+            'aluno_id' => $alunoPermitido->id,
+            'professor_id' => $professor->id,
+            'alternativa_id' => $alternativa->id,
+        ]);
+        $this->assertDatabaseMissing('avaliacao_respostas', [
+            'avaliacao_id' => $avaliacao->id,
+            'pauta_id' => $pautaDois->id,
+            'turma_id' => $turmaPermitida->id,
+            'aluno_id' => $alunoPermitido->id,
+        ]);
+
+        $workspace->set('componenteWorkspaceId', '');
+
+        $this->assertCount(2, $workspace->instance()->getPautasDisponiveisProperty());
+
+        $workspace
+            ->set('avaliacaoEmMassaGlobal', $alternativa->id)
+            ->call('aplicarEmMassaNaSerie');
+
+        $this->assertDatabaseHas('avaliacao_respostas', [
+            'avaliacao_id' => $avaliacao->id,
+            'pauta_id' => $pautaDois->id,
+            'turma_id' => $turmaPermitida->id,
+            'aluno_id' => $alunoPermitido->id,
+            'professor_id' => $professor->id,
+            'alternativa_id' => $alternativa->id,
+        ]);
     }
 
     private function criarAvaliacao(string $nome, TipoAvaliacao $tipo, PeriodoAvaliacao $periodo): Avaliacao

@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Avaliacoes;
 
-use App\Filament\Admin\Pages\AvaliacoesProfessor;
+use App\Livewire\Avaliacoes\AvaliacaoTurmaWorkspace;
 use App\Models\Aluno;
 use App\Models\Alternativa;
 use App\Models\Avaliacao;
@@ -63,7 +63,7 @@ class AvaliacaoAlunoStatusTest extends TestCase
         ]);
 
         Livewire::actingAs($usuario)
-            ->test(AvaliacoesProfessor::class)
+            ->test(AvaliacaoTurmaWorkspace::class, $this->workspaceProfessorParams())
             ->set('avaliacao', $avaliacao->id)
             ->set('serieEscola', $escola->id.':'.$serie->id)
             ->call('alternarTurma', $turma->id)
@@ -115,7 +115,7 @@ class AvaliacaoAlunoStatusTest extends TestCase
         $alunoPendente = $this->criarAlunoPendenteTransferencia($turma, $serie, 'CGM-PEND-BLOCK');
 
         $component = Livewire::actingAs($usuario)
-            ->test(AvaliacoesProfessor::class)
+            ->test(AvaliacaoTurmaWorkspace::class, $this->workspaceProfessorParams())
             ->set('avaliacao', $avaliacao->id)
             ->set('serieEscola', $escola->id.':'.$serie->id)
             ->call('alternarTurma', $turma->id)
@@ -186,7 +186,7 @@ class AvaliacaoAlunoStatusTest extends TestCase
         $alunoContraTurno = app(AlunoMovimentacaoService::class)->vincularContraTurno($alunoPrincipal, $turmaContraTurno->id);
 
         Livewire::actingAs($usuario)
-            ->test(AvaliacoesProfessor::class)
+            ->test(AvaliacaoTurmaWorkspace::class, $this->workspaceProfessorParams())
             ->set('avaliacao', $avaliacao->id)
             ->set('serieEscola', $escola->id.':'.$serie->id)
             ->call('alternarTurma', $turmaContraTurno->id)
@@ -311,5 +311,13 @@ class AvaliacaoAlunoStatusTest extends TestCase
             'status' => Aluno::STATUS_PENDENTE,
             'pendencia_origem_aluno_id' => $alunoOrigem->id,
         ]);
+    }
+
+    private function workspaceProfessorParams(bool $canEdit = true): array
+    {
+        return [
+            'modo' => 'professor',
+            'canEdit' => $canEdit,
+        ];
     }
 }

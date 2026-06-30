@@ -45,7 +45,89 @@
                     ? (((int) $acompanhamentoTurmasPagina - 1) * (int) $acompanhamentoTurmasPorPagina) + 1
                     : 0;
                 $acompanhamentoFim = min((int) ($acompanhamentoTurmasTotal ?? 0), (int) $acompanhamentoTurmasPagina * (int) $acompanhamentoTurmasPorPagina);
+                $avaliacaoSelecionada = $this->avaliacaoSelecionada();
             @endphp
+
+            <section class="dav-panel">
+                <div class="dav-panel-head">
+                    <div>
+                        <h3>Filtros do dashboard</h3>
+                        <p>Refine o acompanhamento geral sem duplicar os filtros específicos da listagem por turma.</p>
+                    </div>
+
+                    <button type="button" class="dav-action" wire:click="limparFiltros">
+                        Limpar filtros
+                    </button>
+                </div>
+
+                <div class="dav-filters-grid">
+                    <label class="dav-field">
+                        <span>Avaliação</span>
+                        <select wire:model.live="filtros.avaliacao_id">
+                            <option value="">Selecione uma avaliação</option>
+                            @foreach ($this->avaliacoesOptions as $id => $label)
+                                <option value="{{ $id }}">{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+
+                    <label class="dav-field">
+                        <span>Período</span>
+                        <select wire:model.live="filtros.periodo_id" @disabled(! $avaliacaoSelecionada)>
+                            <option value="">Todos</option>
+                            @foreach ($this->periodosOptions as $id => $label)
+                                <option value="{{ $id }}">{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+
+                    <label class="dav-field">
+                        <span>Tipo</span>
+                        <select wire:model.live="filtros.tipo_id" @disabled(! $avaliacaoSelecionada)>
+                            <option value="">Todos</option>
+                            @foreach ($this->tiposOptions as $id => $label)
+                                <option value="{{ $id }}">{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+
+                    <label class="dav-field">
+                        <span>Status</span>
+                        <select wire:model.live="filtros.status" @disabled(! $avaliacaoSelecionada)>
+                            @foreach ($this->statusOptions as $id => $label)
+                                <option value="{{ $id }}">{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+
+                    <label class="dav-field">
+                        <span>Professores</span>
+                        <select wire:model.live="filtros.professores_ids" multiple @disabled(! $avaliacaoSelecionada)>
+                            @foreach ($this->professoresOptions as $id => $label)
+                                <option value="{{ $id }}">{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+
+                    <label class="dav-field">
+                        <span>Pautas</span>
+                        <select wire:model.live="filtros.pautas_ids" multiple @disabled(! $avaliacaoSelecionada)>
+                            @foreach ($this->pautasOptions as $id => $label)
+                                <option value="{{ $id }}">{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+
+                    <label class="dav-field">
+                        <span>Alternativas</span>
+                        <select wire:model.live="filtros.alternativas_ids" multiple @disabled(! $avaliacaoSelecionada)>
+                            @foreach ($this->alternativasOptions as $id => $label)
+                                <option value="{{ $id }}">{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+                </div>
+            </section>
 
             <section class="dav-kpi-grid">
                 <article class="dav-kpi dav-kpi--blue">
@@ -164,6 +246,44 @@
                     </label>
                 </header>
 
+                <div class="dav-filters-grid dav-filters-grid--acompanhamento">
+                    <label class="dav-field">
+                        <span>Escolas</span>
+                        <select wire:model.live="filtros.escolas_ids" multiple @disabled(! $avaliacaoSelecionada)>
+                            @foreach ($this->escolasOptions as $id => $label)
+                                <option value="{{ $id }}">{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+
+                    <label class="dav-field">
+                        <span>Séries</span>
+                        <select wire:model.live="filtros.series_ids" multiple @disabled(! $avaliacaoSelecionada)>
+                            @foreach ($this->seriesOptions as $id => $label)
+                                <option value="{{ $id }}">{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+
+                    <label class="dav-field">
+                        <span>Turnos</span>
+                        <select wire:model.live="filtros.turnos" multiple @disabled(! $avaliacaoSelecionada)>
+                            @foreach ($this->turnosOptions as $id => $label)
+                                <option value="{{ $id }}">{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+
+                    <label class="dav-field">
+                        <span>Componentes</span>
+                        <select wire:model.live="filtros.componentes_ids" multiple @disabled(! $avaliacaoSelecionada)>
+                            @foreach ($this->componentesOptions as $id => $label)
+                                <option value="{{ $id }}">{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+                </div>
+
                 <div class="dav-table-wrap">
                     <table class="dav-table">
                         <thead>
@@ -232,6 +352,44 @@
                     </label>
                 </header>
 
+                <div class="dav-filters-grid dav-filters-grid--acompanhamento">
+                    <label class="dav-field">
+                        <span>Escolas</span>
+                        <select wire:model.live="filtros.escolas_ids" multiple @disabled(! $avaliacaoSelecionada)>
+                            @foreach ($this->escolasOptions as $id => $label)
+                                <option value="{{ $id }}">{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+
+                    <label class="dav-field">
+                        <span>Séries</span>
+                        <select wire:model.live="filtros.series_ids" multiple @disabled(! $avaliacaoSelecionada)>
+                            @foreach ($this->seriesOptions as $id => $label)
+                                <option value="{{ $id }}">{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+
+                    <label class="dav-field">
+                        <span>Turnos</span>
+                        <select wire:model.live="filtros.turnos" multiple @disabled(! $avaliacaoSelecionada)>
+                            @foreach ($this->turnosOptions as $id => $label)
+                                <option value="{{ $id }}">{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+
+                    <label class="dav-field">
+                        <span>Componentes</span>
+                        <select wire:model.live="filtros.componentes_ids" multiple @disabled(! $avaliacaoSelecionada)>
+                            @foreach ($this->componentesOptions as $id => $label)
+                                <option value="{{ $id }}">{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+                </div>
+
                 <div class="dav-table-wrap">
                     <table class="dav-table">
                         <thead>
@@ -271,9 +429,17 @@
                                     <td class="text-right">{{ $item['preenchimentos_pendentes'] }}</td>
                                     <td class="text-right">{{ number_format((float) $item['percentual_preenchimento'], 1, ',', '.') }}%</td>
                                     <td>
-                                        <span class="dav-badge {{ $statusClass }}">
-                                            {{ $item['status_label'] }}
-                                        </span>
+                                        <div class="dav-status-actions">
+                                            <span class="dav-badge {{ $statusClass }}">
+                                                {{ $item['status_label'] }}
+                                            </span>
+                                            <button
+                                                type="button"
+                                                class="dav-link-action"
+                                                wire:click="abrirWorkspaceAcompanhamento({{ $item['avaliacao_id'] }}, {{ $item['turma_id'] }}, {{ $item['escola_id'] }}, {{ $item['serie_id'] }}, {{ $item['componente_id'] }}, {{ $item['professor_id'] }})">
+                                                Abrir avaliação
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             @empty
@@ -300,6 +466,53 @@
                     </div>
                 @endif
             </section>
+
+            @if ($workspaceAcompanhamentoAberto && $workspaceAcompanhamentoLinha)
+                <div class="dav-slideover-shell" role="dialog" aria-modal="true">
+                    <button type="button" class="dav-slideover-backdrop" wire:click="fecharWorkspaceAcompanhamento" aria-label="Fechar modal de avaliação"></button>
+
+                    <section class="dav-slideover-panel">
+                        <header class="dav-slideover-header">
+                            <div>
+                                <p class="dav-slideover-eyebrow">Acompanhamento de Pareceres</p>
+                                <h3>{{ $workspaceAcompanhamentoLinha['avaliacao_nome'] }}</h3>
+                                <p class="dav-slideover-meta">
+                                    {{ $workspaceAcompanhamentoLinha['escola_nome'] }}
+                                    | {{ $workspaceAcompanhamentoLinha['serie_nome'] }}
+                                    | {{ $workspaceAcompanhamentoLinha['turma_nome'] }}
+                                    | {{ $workspaceAcompanhamentoLinha['componente_nome'] }}
+                                </p>
+                            </div>
+
+                            <button type="button" class="dav-slideover-close" wire:click="fecharWorkspaceAcompanhamento" aria-label="Fechar">
+                                ×
+                            </button>
+                        </header>
+
+                        <div class="dav-slideover-body">
+                            @livewire(
+                                'avaliacoes.avaliacao-turma-workspace',
+                                [
+                                    'avaliacaoId' => (int) $workspaceAcompanhamentoLinha['avaliacao_id'],
+                                    'turmaId' => (int) $workspaceAcompanhamentoLinha['turma_id'],
+                                    'escolaId' => (int) $workspaceAcompanhamentoLinha['escola_id'],
+                                    'serieId' => (int) $workspaceAcompanhamentoLinha['serie_id'],
+                                    'initialComponenteId' => (int) $workspaceAcompanhamentoLinha['componente_id'],
+                                    'modo' => 'acompanhamento',
+                                    'canEdit' => true,
+                                ],
+                                key('acompanhamento-workspace-' . $workspaceAcompanhamentoKey)
+                            )
+                        </div>
+
+                        <footer class="dav-slideover-footer">
+                            <button type="button" class="dav-action" wire:click="fecharWorkspaceAcompanhamento">
+                                Fechar
+                            </button>
+                        </footer>
+                    </section>
+                </div>
+            @endif
         @endif
     </div>
     </div>
@@ -437,6 +650,13 @@
             color: var(--gray-900);
             font-size: 0.95rem;
             font-weight: 700;
+        }
+
+        .dav-panel-head p {
+            margin: 0.2rem 0 0;
+            color: var(--gray-600);
+            font-size: 0.78rem;
+            line-height: 1.5;
         }
 
         .dav-filters-grid {
@@ -904,6 +1124,103 @@
             color: #1e40af;
         }
 
+        .dav-status-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            flex-wrap: wrap;
+        }
+
+        .dav-slideover-shell {
+            position: fixed;
+            inset: 0;
+            z-index: 60;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .dav-slideover-backdrop {
+            position: absolute;
+            inset: 0;
+            border: 0;
+            background: rgba(15, 23, 42, 0.52);
+            cursor: pointer;
+        }
+
+        .dav-slideover-panel {
+            position: relative;
+            z-index: 1;
+            width: min(92vw, 1100px);
+            height: 100%;
+            background: #f8fafc;
+            box-shadow: -18px 0 48px rgba(15, 23, 42, 0.24);
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr) auto;
+        }
+
+        .dav-slideover-header {
+            display: flex;
+            align-items: start;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 1.35rem 1.5rem 1rem;
+            background: #fff;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .dav-slideover-eyebrow {
+            margin: 0 0 0.35rem;
+            color: #3155a5;
+            font-size: 0.74rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .dav-slideover-header h3 {
+            margin: 0;
+            color: var(--gray-950);
+            font-size: 1.35rem;
+            font-weight: 700;
+        }
+
+        .dav-slideover-meta {
+            margin: 0.45rem 0 0;
+            color: var(--gray-600);
+            font-size: 0.84rem;
+            line-height: 1.5;
+        }
+
+        .dav-slideover-close {
+            width: 2.4rem;
+            height: 2.4rem;
+            border-radius: 999px;
+            border: 1px solid var(--gray-300);
+            background: #fff;
+            color: var(--gray-700);
+            font-size: 1.4rem;
+            line-height: 1;
+            cursor: pointer;
+        }
+
+        .dav-slideover-body {
+            overflow: auto;
+            padding: 1rem 1.25rem 1.25rem;
+        }
+
+        .dav-slideover-body .av-livewire-root {
+            padding: 0;
+        }
+
+        .dav-slideover-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+            padding: 1rem 1.5rem;
+            background: #fff;
+            border-top: 1px solid var(--gray-200);
+        }
+
         .dav-pagination {
             display: flex;
             align-items: center;
@@ -1065,6 +1382,31 @@
             color: #bfdbfe;
         }
 
+        :root.dark .dav-slideover-panel,
+        :root.dark .dav-slideover-header,
+        :root.dark .dav-slideover-footer {
+            background: #0b1323;
+            border-color: #243247;
+        }
+
+        :root.dark .dav-slideover-header h3 {
+            color: #f8fafc;
+        }
+
+        :root.dark .dav-slideover-meta {
+            color: var(--gray-300);
+        }
+
+        :root.dark .dav-slideover-close {
+            background: #17263a;
+            border-color: #274161;
+            color: #e2e8f0;
+        }
+
+        .dav-page > section:nth-of-type(4) > .dav-filters-grid--acompanhamento {
+            display: none;
+        }
+
         :root.dark .dav-page-button {
             background: #17263a;
             border-color: #274161;
@@ -1125,6 +1467,19 @@
 
             .dav-pagination-actions {
                 justify-content: space-between;
+            }
+
+            .dav-slideover-panel {
+                width: 100vw;
+            }
+
+            .dav-slideover-header,
+            .dav-slideover-footer {
+                padding-inline: 1rem;
+            }
+
+            .dav-slideover-body {
+                padding-inline: 0.75rem;
             }
         }
 
