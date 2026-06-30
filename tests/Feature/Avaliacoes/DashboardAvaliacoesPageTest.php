@@ -625,6 +625,92 @@ class DashboardAvaliacoesPageTest extends TestCase
         ]);
     }
 
+    public function test_workspace_do_acompanhamento_carrega_todos_os_componentes_no_primeiro_render_e_sem_validacao_manual(): void
+    {
+        Permission::findOrCreate('Acompanhar AvaliaÃ§Ãµes');
+
+        $user = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $user->givePermissionTo('Acompanhar AvaliaÃ§Ãµes');
+
+        $tipo = TipoAvaliacao::query()->create(['nome' => 'Parecer Todos Componentes', 'status' => true]);
+        $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Periodo Todos Componentes', 'status' => true]);
+        $serie = $this->criarSerie('SER-TODOS', 'Infantil 2');
+        $componenteUm = ComponenteCurricular::query()->create([
+            'codigo' => 'COMP-TODOS-1',
+            'nome' => 'Corpo e movimento',
+        ]);
+        $componenteDois = ComponenteCurricular::query()->create([
+            'codigo' => 'COMP-TODOS-2',
+            'nome' => 'Escuta e fala',
+        ]);
+        $escola = $this->criarEscola('Escola Todos Componentes');
+        $user->escolas()->attach($escola->id);
+
+        $turma = $this->criarTurma($escola, $serie, 'A', 'manha');
+        $this->criarAluno($turma, 'Aluno Todos Componentes', 'CGM-TODOS-001');
+
+        $professor = Professor::query()->create([
+            'id_escola' => $escola->id,
+            'matricula' => 'PROF-TODOS',
+            'nome' => 'Professor Todos Componentes',
+            'email' => 'prof.todos@edu.umuarama.pr.gov.br',
+        ]);
+        $turma->componentes()->attach($componenteUm->id, [
+            'professor_id' => $professor->id,
+            'tem_professor' => true,
+        ]);
+        $turma->componentes()->attach($componenteDois->id, [
+            'professor_id' => $professor->id,
+            'tem_professor' => true,
+        ]);
+
+        $alternativa = Alternativa::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'nome' => 'Atende',
+            'tem_observacao' => false,
+            'status' => true,
+        ]);
+
+        $pautaUm = $this->criarPauta($tipo, $serie, $componenteUm, 'Pauta todos 1');
+        $pautaDois = $this->criarPauta($tipo, $serie, $componenteDois, 'Pauta todos 2');
+        $pautaUm->alternativas()->attach([$alternativa->id]);
+        $pautaDois->alternativas()->attach([$alternativa->id]);
+
+        $avaliacao = $this->criarAvaliacao('Avaliacao Todos Componentes', $tipo, $periodo);
+        $avaliacao->series()->sync([$serie->id]);
+        $avaliacao->componentes()->sync([$componenteUm->id, $componenteDois->id]);
+        $avaliacao->escolas()->sync([$escola->id]);
+        $avaliacao->turmas()->sync([$turma->id]);
+        $avaliacao->pautas()->sync([$pautaUm->id, $pautaDois->id]);
+
+        $workspace = Livewire::actingAs($user)
+            ->test(AvaliacaoTurmaWorkspace::class, [
+                'avaliacaoId' => $avaliacao->id,
+                'turmaId' => $turma->id,
+                'escolaId' => $escola->id,
+                'serieId' => $serie->id,
+                'initialComponenteId' => null,
+                'modo' => 'acompanhamento',
+                'canEdit' => true,
+            ])
+            ->assertSet('componenteWorkspaceId', '')
+            ->assertSee('Todos os componentes')
+            ->assertDontSee('Validar pend')
+            ->assertSee('Pauta todos 1')
+            ->assertSee('Pauta todos 2');
+
+        $this->assertCount(2, $workspace->instance()->getPautasDisponiveisProperty());
+
+        $workspace->set('componenteWorkspaceId', (string) $componenteUm->id);
+        $this->assertCount(1, $workspace->instance()->getPautasDisponiveisProperty());
+
+        $workspace->set('componenteWorkspaceId', '');
+        $this->assertCount(2, $workspace->instance()->getPautasDisponiveisProperty());
+    }
+
     private function criarAvaliacao(string $nome, TipoAvaliacao $tipo, PeriodoAvaliacao $periodo): Avaliacao
     {
         return Avaliacao::query()->create([

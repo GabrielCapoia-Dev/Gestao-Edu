@@ -571,6 +571,75 @@ class AvaliacaoProfessorPageTest extends TestCase
         ]);
     }
 
+    public function test_workspace_do_professor_mantem_botao_de_validar_pendencias(): void
+    {
+        Permission::findOrCreate('Responder AvaliaÃ§Ãµes');
+
+        $tipo = TipoAvaliacao::query()->create(['nome' => 'Tipo Validacao Professor', 'status' => true]);
+        $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Periodo Validacao Professor', 'status' => true]);
+        $escola = $this->criarEscola('Escola Validacao Professor');
+        $serie = $this->criarSerie('SER-VAL-PROF', 'Infantil 3');
+        $turma = $this->criarTurma($escola, $serie, 'Turma Validacao');
+
+        $componente = ComponenteCurricular::query()->create([
+            'codigo' => 'COMP-VAL-PROF',
+            'nome' => 'Artes',
+        ]);
+
+        $userProfessor = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $userProfessor->givePermissionTo('Responder AvaliaÃ§Ãµes');
+
+        $professor = Professor::query()->create([
+            'user_id' => $userProfessor->id,
+            'id_escola' => $escola->id,
+            'matricula' => 'PROF-VAL-PROF',
+            'nome' => 'Professor Validacao',
+            'email' => 'validacao.professor@edu.umuarama.pr.gov.br',
+        ]);
+
+        $turma->componentes()->attach($componente->id, [
+            'professor_id' => $professor->id,
+            'tem_professor' => true,
+        ]);
+
+        $alternativa = Alternativa::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'nome' => 'Atende',
+            'tem_observacao' => false,
+            'status' => true,
+        ]);
+
+        $pauta = Pauta::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'texto' => 'Pauta validacao professor',
+            'serie_id' => $serie->id,
+            'componente_curricular_id' => $componente->id,
+            'status' => true,
+        ]);
+        $pauta->alternativas()->attach($alternativa->id);
+
+        $avaliacao = $this->criarAvaliacao('Avaliacao Validacao Professor', $tipo, $periodo);
+        $avaliacao->pautas()->attach($pauta->id);
+        $avaliacao->turmas()->attach($turma->id);
+        $this->sincronizarEscopoAvaliacao($avaliacao, [$serie->id], [$componente->id], [$escola->id]);
+
+        Aluno::query()->create([
+            'nome' => 'Aluno Validacao Professor',
+            'cgm' => 'CGM-VAL-PROF-001',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turma->id,
+        ]);
+
+        Livewire::actingAs($userProfessor)
+            ->test(AvaliacaoTurmaWorkspace::class, $this->workspaceProfessorParams())
+            ->set('avaliacao', $avaliacao->id)
+            ->set('serieEscola', $escola->id . ':' . $serie->id)
+            ->assertSee('Validar pend');
+    }
+
     private function criarAvaliacao(string $nome, TipoAvaliacao $tipo, PeriodoAvaliacao $periodo): Avaliacao
     {
         return Avaliacao::query()->create([

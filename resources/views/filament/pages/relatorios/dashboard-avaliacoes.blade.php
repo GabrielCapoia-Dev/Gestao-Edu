@@ -397,8 +397,8 @@
             </section>
 
             @if ($workspaceAcompanhamentoAberto && $workspaceAcompanhamentoLinha)
-                <div class="dav-slideover-shell" role="dialog" aria-modal="true">
-                    <button type="button" class="dav-slideover-backdrop" wire:click="fecharWorkspaceAcompanhamento" aria-label="Fechar modal de avaliação"></button>
+                <div class="dav-slideover-shell" x-data="{ open: true }" x-show="open" x-transition.opacity role="dialog" aria-modal="true">
+                    <button type="button" class="dav-slideover-backdrop" wire:click="fecharWorkspaceAcompanhamento" wire:loading.attr="disabled" wire:target="fecharWorkspaceAcompanhamento" aria-label="Fechar modal de avaliação"></button>
 
                     <section class="dav-slideover-panel">
                         <header class="dav-slideover-header">
@@ -412,7 +412,7 @@
                                 </p>
                             </div>
 
-                            <button type="button" class="dav-slideover-close" wire:click="fecharWorkspaceAcompanhamento" aria-label="Fechar">
+                            <button type="button" class="dav-slideover-close" x-on:click="open = false; $wire.fecharWorkspaceAcompanhamento()" wire:loading.attr="disabled" wire:target="fecharWorkspaceAcompanhamento" aria-label="Fechar">
                                 ×
                             </button>
                         </header>
@@ -436,7 +436,7 @@
                         </div>
 
                         <footer class="dav-slideover-footer">
-                            <button type="button" class="dav-action" wire:click="fecharWorkspaceAcompanhamento" wire:loading.attr="disabled" wire:target="fecharWorkspaceAcompanhamento">
+                            <button type="button" class="dav-action" x-on:click="open = false; $wire.fecharWorkspaceAcompanhamento()" wire:loading.attr="disabled" wire:target="fecharWorkspaceAcompanhamento">
                                 Fechar
                             </button>
                         </footer>

@@ -533,6 +533,7 @@
                 </div>
             @endif
 
+            @if (! $this->modoAcompanhamento())
             <section class="gi-panel">
                 <div class="gi-toolbar">
                     <div></div>
@@ -543,6 +544,7 @@
                     </div>
                 </div>
             </section>
+            @endif
         @endif
     </div>
 
