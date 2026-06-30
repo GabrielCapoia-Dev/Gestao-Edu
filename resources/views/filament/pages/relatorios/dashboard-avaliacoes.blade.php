@@ -48,7 +48,7 @@
                 $avaliacaoSelecionada = $this->avaliacaoSelecionada();
             @endphp
 
-            <section class="dav-panel">
+            <section class="dav-panel dav-panel--legacy">
                 <div class="dav-panel-head">
                     <div>
                         <h3>Filtros do dashboard</h3>
@@ -246,7 +246,11 @@
                     </label>
                 </header>
 
-                <div class="dav-filters-grid dav-filters-grid--acompanhamento">
+                <div class="dav-acompanhamento-filters">
+                    {{ $this->filtrosAcompanhamentoForm }}
+                </div>
+
+                <div class="dav-filters-grid dav-filters-grid--acompanhamento dav-filters-grid--legacy">
                     <label class="dav-field">
                         <span>Escolas</span>
                         <select wire:model.live="filtros.escolas_ids" multiple @disabled(! $avaliacaoSelecionada)>
@@ -352,7 +356,7 @@
                     </label>
                 </header>
 
-                <div class="dav-filters-grid dav-filters-grid--acompanhamento">
+                <div class="dav-filters-grid dav-filters-grid--acompanhamento dav-filters-grid--legacy">
                     <label class="dav-field">
                         <span>Escolas</span>
                         <select wire:model.live="filtros.escolas_ids" multiple @disabled(! $avaliacaoSelecionada)>
@@ -657,6 +661,22 @@
             color: var(--gray-600);
             font-size: 0.78rem;
             line-height: 1.5;
+        }
+
+        .dav-panel--legacy,
+        .dav-filters-grid--legacy {
+            display: none;
+        }
+
+        .dav-acompanhamento-filters {
+            border: 1px solid var(--gray-200);
+            border-radius: 0.85rem;
+            background: #f8fbff;
+            padding: 0.85rem;
+        }
+
+        .dav-acompanhamento-filters .fi-fo {
+            gap: 0.75rem;
         }
 
         .dav-filters-grid {
@@ -1401,10 +1421,6 @@
             background: #17263a;
             border-color: #274161;
             color: #e2e8f0;
-        }
-
-        .dav-page > section:nth-of-type(4) > .dav-filters-grid--acompanhamento {
-            display: none;
         }
 
         :root.dark .dav-page-button {

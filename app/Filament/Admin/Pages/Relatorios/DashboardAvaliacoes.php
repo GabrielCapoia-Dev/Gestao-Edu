@@ -28,7 +28,6 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Livewire\Attributes\On;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
@@ -84,6 +83,8 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     public array $acompanhamentoTurmasPorPaginaOptions = [5, 10, 25, 50, 100];
 
+    public array $filtrosAcompanhamento = [];
+
     public bool $workspaceAcompanhamentoAberto = false;
 
     public ?array $workspaceAcompanhamentoLinha = null;
@@ -107,6 +108,7 @@ class DashboardAvaliacoes extends Page implements HasForms
     public function mount(): void
     {
         $this->filtros = $this->filtrosPadrao();
+        $this->filtrosAcompanhamento = $this->filtrosAcompanhamentoPadrao();
 
         $avaliacaoId = $this->avaliacaoIdInicialDaUrl();
 
@@ -124,6 +126,7 @@ class DashboardAvaliacoes extends Page implements HasForms
 
         if ($key === 'avaliacao_id') {
             $this->limparFiltrosDependentes();
+            $this->filtrosAcompanhamento = $this->filtrosAcompanhamentoPadrao();
         }
 
         $this->atualizarDashboard();
@@ -134,22 +137,32 @@ class DashboardAvaliacoes extends Page implements HasForms
         $this->resetarPaginacoesDashboard();
         $this->fecharWorkspaceAcompanhamento();
         $this->limparFiltrosDependentes();
+        $this->filtrosAcompanhamento = $this->filtrosAcompanhamentoPadrao();
         $this->atualizarDashboard();
     }
 
     public function limparFiltros(): void
     {
         $this->filtros = $this->filtrosPadrao();
+        $this->filtrosAcompanhamento = $this->filtrosAcompanhamentoPadrao();
         $this->resetarPaginacoesDashboard();
         $this->fecharWorkspaceAcompanhamento();
         $this->atualizarDashboard();
+    }
+
+    public function updatedFiltrosAcompanhamento(): void
+    {
+        $this->workspaceAcompanhamentoAberto = false;
+        $this->workspaceAcompanhamentoLinha = null;
+        $this->resetarPaginacaoAcompanhamentoTurmas();
+        $this->atualizarAcompanhamentoTurmas();
     }
 
     public function updatedAcompanhamentoTurmasPorPagina(mixed $value): void
     {
         $this->acompanhamentoTurmasPorPagina = $this->normalizarAcompanhamentoTurmasPorPagina($value);
         $this->resetarPaginacaoAcompanhamentoTurmas();
-        $this->atualizarDashboard();
+        $this->atualizarAcompanhamentoTurmas();
     }
 
     public function updatedListagensPorPagina(mixed $value, ?string $key = null): void
@@ -185,7 +198,7 @@ class DashboardAvaliacoes extends Page implements HasForms
     public function paginaAnteriorAcompanhamentoTurmas(): void
     {
         $this->acompanhamentoTurmasPagina = max($this->acompanhamentoTurmasPagina - 1, 1);
-        $this->atualizarDashboard();
+        $this->atualizarAcompanhamentoTurmas();
     }
 
     public function proximaPaginaAcompanhamentoTurmas(): void
@@ -194,7 +207,7 @@ class DashboardAvaliacoes extends Page implements HasForms
             $this->acompanhamentoTurmasPagina + 1,
             $this->totalPaginasAcompanhamentoTurmas()
         );
-        $this->atualizarDashboard();
+        $this->atualizarAcompanhamentoTurmas();
     }
 
     public function abrirWorkspaceAcompanhamento(
@@ -234,16 +247,23 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     public function fecharWorkspaceAcompanhamento(): void
     {
+        $estavaAberto = $this->workspaceAcompanhamentoAberto;
+
         $this->workspaceAcompanhamentoAberto = false;
         $this->workspaceAcompanhamentoLinha = null;
+
+        if ($estavaAberto) {
+            $this->atualizarAcompanhamentoTurmas();
+        }
     }
 
-    #[On('workspace-avaliacao-atualizado')]
     public function atualizarWorkspaceAcompanhamento(): void
     {
-        $linhaAtual = $this->workspaceAcompanhamentoLinha;
+        $this->atualizarAcompanhamentoTurmas();
 
-        $this->atualizarDashboard();
+        return;
+
+        $linhaAtual = $this->workspaceAcompanhamentoLinha;
 
         if ($linhaAtual === null) {
             return;
@@ -276,6 +296,7 @@ class DashboardAvaliacoes extends Page implements HasForms
     {
         return [
             'filtrosForm',
+            'filtrosAcompanhamentoForm',
         ];
     }
 
@@ -378,6 +399,51 @@ class DashboardAvaliacoes extends Page implements HasForms
             ])
             ->columns(4)
             ->statePath('filtros');
+    }
+
+    public function filtrosAcompanhamentoForm(Schema $schema): Schema
+    {
+        return $schema
+            ->components([
+                Select::make('escolas_ids')
+                    ->label('Escolas')
+                    ->options(fn (): array => $this->escolasOptions)
+                    ->multiple()
+                    ->native(false)
+                    ->searchable()
+                    ->preload()
+                    ->disabled(fn (): bool => ! $this->avaliacaoSelecionada())
+                    ->live(),
+                Select::make('series_ids')
+                    ->label('Séries')
+                    ->options(fn (): array => $this->seriesOptions)
+                    ->multiple()
+                    ->native(false)
+                    ->searchable()
+                    ->preload()
+                    ->disabled(fn (): bool => ! $this->avaliacaoSelecionada())
+                    ->live(),
+                Select::make('turnos')
+                    ->label('Turnos')
+                    ->options(fn (): array => $this->turnosOptions)
+                    ->multiple()
+                    ->native(false)
+                    ->searchable()
+                    ->preload()
+                    ->disabled(fn (): bool => ! $this->avaliacaoSelecionada())
+                    ->live(),
+                Select::make('componentes_ids')
+                    ->label('Componentes')
+                    ->options(fn (): array => $this->componentesOptions)
+                    ->multiple()
+                    ->native(false)
+                    ->searchable()
+                    ->preload()
+                    ->disabled(fn (): bool => ! $this->avaliacaoSelecionada())
+                    ->live(),
+            ])
+            ->columns(4)
+            ->statePath('filtrosAcompanhamento');
     }
 
     public function getHeader(): ?\Illuminate\Contracts\View\View
@@ -1463,6 +1529,25 @@ class DashboardAvaliacoes extends Page implements HasForms
             : '';
     }
 
+    private function atualizarAcompanhamentoTurmas(): void
+    {
+        $this->normalizarFiltros();
+        $this->normalizarFiltrosAcompanhamento();
+
+        if (! $this->avaliacaoSelecionada()) {
+            $this->acompanhamentoTurmas = [];
+            $this->acompanhamentoTurmasTotal = 0;
+
+            return;
+        }
+
+        $avaliacaoIds = $this->obterIdsAvaliacoesFiltradas();
+        $acompanhamentoTurmas = $this->montarAcompanhamentoTurmas($avaliacaoIds, paginar: true);
+
+        $this->acompanhamentoTurmas = $acompanhamentoTurmas['itens'];
+        $this->acompanhamentoTurmasTotal = $acompanhamentoTurmas['total'];
+    }
+
     /**
      * @return array{
      *     cards: array<string, int|float>,
@@ -2318,9 +2403,11 @@ class DashboardAvaliacoes extends Page implements HasForms
         ?int $componenteId = null,
         ?int $professorId = null
     ): ?array {
-        $linhas = $this->montarAcompanhamentoTurmas([$avaliacaoId], paginar: false)['itens'];
+        if (! $this->linhaAcompanhamentoPermaneceNoEscopo($avaliacaoId, $turmaId, $escolaId, $serieId)) {
+            return null;
+        }
 
-        return collect($linhas)->first(function (array $item) use (
+        return collect($this->acompanhamentoTurmas)->first(function (array $item) use (
             $avaliacaoId,
             $turmaId,
             $escolaId,
@@ -2345,6 +2432,21 @@ class DashboardAvaliacoes extends Page implements HasForms
         });
     }
 
+    private function linhaAcompanhamentoPermaneceNoEscopo(int $avaliacaoId, int $turmaId, int $escolaId, int $serieId): bool
+    {
+        return Avaliacao::query()
+            ->whereKey($avaliacaoId)
+            ->whereHas('turmas', function (EloquentBuilder $turmaQuery) use ($turmaId, $escolaId, $serieId): void {
+                $turmaQuery
+                    ->whereKey($turmaId)
+                    ->where('id_escola', $escolaId)
+                    ->where('id_serie', $serieId);
+
+                $this->aplicarEscopoEscolarEloquent($turmaQuery);
+            })
+            ->exists();
+    }
+
     /**
      * @return array{itens: array<int, array<string, int|float|string>>, total: int}
      */
@@ -2358,7 +2460,7 @@ class DashboardAvaliacoes extends Page implements HasForms
             return ['itens' => [], 'total' => 0];
         }
 
-        $filtros = $this->filtros;
+        $filtros = $this->filtrosDoAcompanhamento();
         $professoresIds = $filtros['professores_ids'] ?? [];
         $distinctEsperado = $this->distinctCombinacaoExpr('at.avaliacao_id', 'at.turma_id', 'p.id', 'aln.id');
         $distinctRespondido = $this->distinctCombinacaoExpr('ar.avaliacao_id', 'ar.turma_id', 'ar.pauta_id', 'ar.aluno_id');
@@ -2657,6 +2759,34 @@ class DashboardAvaliacoes extends Page implements HasForms
             ->all();
     }
 
+    private function normalizarFiltrosAcompanhamento(): void
+    {
+        $this->filtrosAcompanhamento['series_ids'] = $this->normalizarArrayIds($this->filtrosAcompanhamento['series_ids'] ?? []);
+        $this->filtrosAcompanhamento['componentes_ids'] = $this->normalizarArrayIds($this->filtrosAcompanhamento['componentes_ids'] ?? []);
+        $this->filtrosAcompanhamento['escolas_ids'] = $this->filtrarEscolasPermitidas(
+            $this->normalizarArrayIds($this->filtrosAcompanhamento['escolas_ids'] ?? [])
+        );
+
+        $turnosPermitidos = array_keys($this->turnosOptions);
+        $this->filtrosAcompanhamento['turnos'] = collect($this->filtrosAcompanhamento['turnos'] ?? [])
+            ->map(fn ($turno): string => (string) $turno)
+            ->filter(fn (string $turno): bool => in_array($turno, $turnosPermitidos, true))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function filtrosDoAcompanhamento(): array
+    {
+        return [
+            ...$this->filtros,
+            'series_ids' => $this->filtrosAcompanhamento['series_ids'] ?? [],
+            'turnos' => $this->filtrosAcompanhamento['turnos'] ?? [],
+            'componentes_ids' => $this->filtrosAcompanhamento['componentes_ids'] ?? [],
+            'escolas_ids' => $this->filtrosAcompanhamento['escolas_ids'] ?? [],
+        ];
+    }
+
     private function normalizarId(mixed $value): ?int
     {
         $id = (int) $value;
@@ -2695,6 +2825,19 @@ class DashboardAvaliacoes extends Page implements HasForms
             'professores_ids' => [],
             'pautas_ids' => [],
             'alternativas_ids' => [],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function filtrosAcompanhamentoPadrao(): array
+    {
+        return [
+            'series_ids' => [],
+            'turnos' => [],
+            'componentes_ids' => [],
+            'escolas_ids' => [],
         ];
     }
 

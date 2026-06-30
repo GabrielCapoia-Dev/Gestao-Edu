@@ -1672,11 +1672,7 @@ class AvaliacaoTurmaWorkspace extends Component
 
     private function emitirAtualizacaoDoWorkspaceAcompanhamento(): void
     {
-        if (! $this->modoAcompanhamento()) {
-            return;
-        }
-
-        $this->dispatch('workspace-avaliacao-atualizado');
+        // O dashboard pai agora recarrega apenas ao fechar o modal.
     }
 
     private function aplicarEscopoEscolasPermitidas($query): void
