@@ -101,7 +101,7 @@ class AvaliacaoTurmaWorkspace extends Component
             $this->serieEscola = $this->escola && $this->serie
                 ? $this->chaveSerieEscola($this->escola, $this->serie)
                 : null;
-            $this->componenteWorkspaceId = $initialComponenteId !== null ? (string) $initialComponenteId : '0';
+            $this->componenteWorkspaceId = $initialComponenteId !== null ? (string) $initialComponenteId : '';
             $this->turmasExpandidas = $turmaId ? [$turmaId] : [];
         } else {
             $avaliacaoQuery = $this->normalizarQueryId(request()->query('avaliacao'));
@@ -1672,7 +1672,11 @@ class AvaliacaoTurmaWorkspace extends Component
 
     private function emitirAtualizacaoDoWorkspaceAcompanhamento(): void
     {
-        // O dashboard pai agora recarrega apenas ao fechar o modal.
+        if (! $this->modoAcompanhamento()) {
+            return;
+        }
+
+        $this->dispatch('workspace-acompanhamento-alterado');
     }
 
     private function aplicarEscopoEscolasPermitidas($query): void

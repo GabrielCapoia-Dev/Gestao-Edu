@@ -28,6 +28,7 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\On;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
@@ -91,6 +92,8 @@ class DashboardAvaliacoes extends Page implements HasForms
     public ?array $workspaceAcompanhamentoLinha = null;
 
     public int $workspaceAcompanhamentoKey = 0;
+
+    public bool $workspaceAcompanhamentoTemAlteracoes = false;
 
     public array $listagensPaginas = [
         'tabelaEscolas' => 1,
@@ -243,24 +246,32 @@ class DashboardAvaliacoes extends Page implements HasForms
 
         $this->workspaceAcompanhamentoLinha = $linha;
         $this->workspaceAcompanhamentoAberto = true;
+        $this->workspaceAcompanhamentoTemAlteracoes = false;
         $this->workspaceAcompanhamentoKey++;
     }
 
     public function fecharWorkspaceAcompanhamento(): void
     {
-        $estavaAberto = $this->workspaceAcompanhamentoAberto;
+        $deveRecarregarAcompanhamento = $this->workspaceAcompanhamentoTemAlteracoes;
 
         $this->workspaceAcompanhamentoAberto = false;
         $this->workspaceAcompanhamentoLinha = null;
+        $this->workspaceAcompanhamentoTemAlteracoes = false;
 
-        if ($estavaAberto) {
-            $this->atualizarAcompanhamentoTurmas();
+        if ($deveRecarregarAcompanhamento) {
+            $this->dispatch('dashboard-acompanhamento-recarregar');
         }
     }
 
     public function atualizarWorkspaceAcompanhamento(): void
     {
         $this->atualizarAcompanhamentoTurmas();
+    }
+
+    #[On('workspace-acompanhamento-alterado')]
+    public function marcarWorkspaceAcompanhamentoComoAlterado(): void
+    {
+        $this->workspaceAcompanhamentoTemAlteracoes = true;
     }
 
     protected function getForms(): array
@@ -1462,7 +1473,7 @@ class DashboardAvaliacoes extends Page implements HasForms
             : '';
     }
 
-    private function atualizarAcompanhamentoTurmas(): void
+    public function atualizarAcompanhamentoTurmas(): void
     {
         $this->normalizarFiltros();
         $this->normalizarFiltrosAcompanhamento();

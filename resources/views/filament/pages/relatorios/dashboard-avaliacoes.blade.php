@@ -1,6 +1,13 @@
 <x-filament-panels::page>
-    <div class="av-livewire-root">
+    <div class="av-livewire-root" x-data x-on:dashboard-acompanhamento-recarregar.window="$wire.atualizarAcompanhamentoTurmas()">
     <div class="dav-page">
+        <div class="dav-processing-overlay" wire:loading.flex wire:target="abrirWorkspaceAcompanhamento,fecharWorkspaceAcompanhamento,atualizarAcompanhamentoTurmas">
+            <div class="dav-processing-card">
+                <div class="dav-processing-spinner"></div>
+                <strong>Processando...</strong>
+                <span>Aguarde enquanto a ação é concluída.</span>
+            </div>
+        </div>
 
         @if (! $this->avaliacaoSelecionada())
             <section class="dav-empty-state">
@@ -356,7 +363,9 @@
                                             <button
                                                 type="button"
                                                 class="dav-link-action"
-                                                wire:click="abrirWorkspaceAcompanhamento({{ $item['avaliacao_id'] }}, {{ $item['turma_id'] }}, {{ $item['escola_id'] }}, {{ $item['serie_id'] }}, {{ $item['componente_id'] }}, {{ $item['professor_id'] }})">
+                                                wire:click="abrirWorkspaceAcompanhamento({{ $item['avaliacao_id'] }}, {{ $item['turma_id'] }}, {{ $item['escola_id'] }}, {{ $item['serie_id'] }}, {{ $item['componente_id'] }}, {{ $item['professor_id'] }})"
+                                                wire:loading.attr="disabled"
+                                                wire:target="abrirWorkspaceAcompanhamento">
                                                 Abrir avaliação
                                             </button>
                                         </div>
@@ -427,7 +436,7 @@
                         </div>
 
                         <footer class="dav-slideover-footer">
-                            <button type="button" class="dav-action" wire:click="fecharWorkspaceAcompanhamento">
+                            <button type="button" class="dav-action" wire:click="fecharWorkspaceAcompanhamento" wire:loading.attr="disabled" wire:target="fecharWorkspaceAcompanhamento">
                                 Fechar
                             </button>
                         </footer>
@@ -578,6 +587,56 @@
             color: var(--gray-600);
             font-size: 0.78rem;
             line-height: 1.5;
+        }
+
+        .dav-processing-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 80;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(15, 23, 42, 0.22);
+            backdrop-filter: blur(2px);
+        }
+
+        .dav-processing-card {
+            width: min(22rem, calc(100vw - 2rem));
+            border-radius: 1rem;
+            border: 1px solid #dbe7f4;
+            background: #fff;
+            box-shadow: 0 24px 70px rgba(15, 23, 42, 0.16);
+            padding: 1.4rem 1.25rem;
+            display: grid;
+            justify-items: center;
+            gap: 0.45rem;
+            text-align: center;
+        }
+
+        .dav-processing-card strong {
+            color: var(--gray-950);
+            font-size: 1.05rem;
+            font-weight: 700;
+        }
+
+        .dav-processing-card span {
+            color: var(--gray-600);
+            font-size: 0.82rem;
+        }
+
+        .dav-processing-spinner {
+            width: 2.2rem;
+            height: 2.2rem;
+            border-radius: 999px;
+            border: 3px solid #dbe7f4;
+            border-top-color: #2f5fd0;
+            animation: dav-spin 0.75s linear infinite;
+        }
+
+        @keyframes dav-spin {
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         .dav-panel--legacy,
