@@ -229,6 +229,7 @@
                 </article>
             </section>
 
+            @if ($this->podeVerProgressoPorEscola)
             <section class="dav-card">
                 <header class="dav-card-header--split">
                     <div>
@@ -245,48 +246,6 @@
                         </select>
                     </label>
                 </header>
-
-                <div class="dav-acompanhamento-filters">
-                    {{ $this->filtrosAcompanhamentoForm }}
-                </div>
-
-                <div class="dav-filters-grid dav-filters-grid--acompanhamento dav-filters-grid--legacy">
-                    <label class="dav-field">
-                        <span>Escolas</span>
-                        <select wire:model.live="filtros.escolas_ids" multiple @disabled(! $avaliacaoSelecionada)>
-                            @foreach ($this->escolasOptions as $id => $label)
-                                <option value="{{ $id }}">{{ $label }}</option>
-                            @endforeach
-                        </select>
-                    </label>
-
-                    <label class="dav-field">
-                        <span>Séries</span>
-                        <select wire:model.live="filtros.series_ids" multiple @disabled(! $avaliacaoSelecionada)>
-                            @foreach ($this->seriesOptions as $id => $label)
-                                <option value="{{ $id }}">{{ $label }}</option>
-                            @endforeach
-                        </select>
-                    </label>
-
-                    <label class="dav-field">
-                        <span>Turnos</span>
-                        <select wire:model.live="filtros.turnos" multiple @disabled(! $avaliacaoSelecionada)>
-                            @foreach ($this->turnosOptions as $id => $label)
-                                <option value="{{ $id }}">{{ $label }}</option>
-                            @endforeach
-                        </select>
-                    </label>
-
-                    <label class="dav-field">
-                        <span>Componentes</span>
-                        <select wire:model.live="filtros.componentes_ids" multiple @disabled(! $avaliacaoSelecionada)>
-                            @foreach ($this->componentesOptions as $id => $label)
-                                <option value="{{ $id }}">{{ $label }}</option>
-                            @endforeach
-                        </select>
-                    </label>
-                </div>
 
                 <div class="dav-table-wrap">
                     <table class="dav-table">
@@ -338,6 +297,7 @@
                     </div>
                 @endif
             </section>
+            @endif
 
             <section class="dav-card">
                 <header class="dav-card-header--split">
@@ -356,42 +316,8 @@
                     </label>
                 </header>
 
-                <div class="dav-filters-grid dav-filters-grid--acompanhamento dav-filters-grid--legacy">
-                    <label class="dav-field">
-                        <span>Escolas</span>
-                        <select wire:model.live="filtros.escolas_ids" multiple @disabled(! $avaliacaoSelecionada)>
-                            @foreach ($this->escolasOptions as $id => $label)
-                                <option value="{{ $id }}">{{ $label }}</option>
-                            @endforeach
-                        </select>
-                    </label>
-
-                    <label class="dav-field">
-                        <span>Séries</span>
-                        <select wire:model.live="filtros.series_ids" multiple @disabled(! $avaliacaoSelecionada)>
-                            @foreach ($this->seriesOptions as $id => $label)
-                                <option value="{{ $id }}">{{ $label }}</option>
-                            @endforeach
-                        </select>
-                    </label>
-
-                    <label class="dav-field">
-                        <span>Turnos</span>
-                        <select wire:model.live="filtros.turnos" multiple @disabled(! $avaliacaoSelecionada)>
-                            @foreach ($this->turnosOptions as $id => $label)
-                                <option value="{{ $id }}">{{ $label }}</option>
-                            @endforeach
-                        </select>
-                    </label>
-
-                    <label class="dav-field">
-                        <span>Componentes</span>
-                        <select wire:model.live="filtros.componentes_ids" multiple @disabled(! $avaliacaoSelecionada)>
-                            @foreach ($this->componentesOptions as $id => $label)
-                                <option value="{{ $id }}">{{ $label }}</option>
-                            @endforeach
-                        </select>
-                    </label>
+                <div class="dav-acompanhamento-filters">
+                    {{ $this->filtrosAcompanhamentoForm }}
                 </div>
 
                 <div class="dav-table-wrap">

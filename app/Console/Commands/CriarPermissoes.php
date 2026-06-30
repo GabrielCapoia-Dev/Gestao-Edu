@@ -90,6 +90,7 @@ class CriarPermissoes extends Command
             'Listar Pautas',
             'Listar Avaliações',
             'Acompanhar Avaliações',
+            'Visualizar Progresso por Escola',
             'Listar Tipos de Avaliações',
             'Listar Contratos',
             'Listar Pedidos: Merenda',

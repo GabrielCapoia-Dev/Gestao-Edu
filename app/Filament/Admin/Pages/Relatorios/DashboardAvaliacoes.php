@@ -42,6 +42,7 @@ class DashboardAvaliacoes extends Page implements HasForms
     use InteractsWithForms;
 
     private const PERMISSAO_ACOMPANHAR_AVALIACOES = 'Acompanhar Avaliações';
+    private const PERMISSAO_VISUALIZAR_PROGRESSO_POR_ESCOLA = 'Visualizar Progresso por Escola';
 
     protected static bool $shouldRegisterNavigation = false;
 
@@ -260,36 +261,6 @@ class DashboardAvaliacoes extends Page implements HasForms
     public function atualizarWorkspaceAcompanhamento(): void
     {
         $this->atualizarAcompanhamentoTurmas();
-
-        return;
-
-        $linhaAtual = $this->workspaceAcompanhamentoLinha;
-
-        if ($linhaAtual === null) {
-            return;
-        }
-
-        $linhaRevalidada = $this->localizarLinhaAcompanhamento(
-            (int) ($linhaAtual['avaliacao_id'] ?? 0),
-            (int) ($linhaAtual['turma_id'] ?? 0),
-            (int) ($linhaAtual['escola_id'] ?? 0),
-            (int) ($linhaAtual['serie_id'] ?? 0),
-            isset($linhaAtual['componente_id']) ? (int) $linhaAtual['componente_id'] : null,
-            isset($linhaAtual['professor_id']) ? (int) $linhaAtual['professor_id'] : null
-        );
-
-        if ($linhaRevalidada === null) {
-            $this->fecharWorkspaceAcompanhamento();
-
-            Notification::make()
-                ->title('O recorte do modal deixou de ser válido para o seu escopo atual.')
-                ->warning()
-                ->send();
-
-            return;
-        }
-
-        $this->workspaceAcompanhamentoLinha = $linhaRevalidada;
     }
 
     protected function getForms(): array
@@ -333,42 +304,6 @@ class DashboardAvaliacoes extends Page implements HasForms
                     ->default('todas')
                     ->disabled(fn (): bool => ! $this->avaliacaoSelecionada())
                     ->live(),
-                Select::make('series_ids')
-                    ->label('Séries')
-                    ->options(fn (): array => $this->seriesOptions)
-                    ->multiple()
-                    ->native(false)
-                    ->searchable()
-                    ->preload()
-                    ->disabled(fn (): bool => ! $this->avaliacaoSelecionada())
-                    ->live(),
-                Select::make('turnos')
-                    ->label('Turnos')
-                    ->options(fn (): array => $this->turnosOptions)
-                    ->multiple()
-                    ->native(false)
-                    ->searchable()
-                    ->preload()
-                    ->disabled(fn (): bool => ! $this->avaliacaoSelecionada())
-                    ->live(),
-                Select::make('componentes_ids')
-                    ->label('Componentes')
-                    ->options(fn (): array => $this->componentesOptions)
-                    ->multiple()
-                    ->native(false)
-                    ->searchable()
-                    ->preload()
-                    ->disabled(fn (): bool => ! $this->avaliacaoSelecionada())
-                    ->live(),
-                Select::make('escolas_ids')
-                    ->label('Escolas')
-                    ->options(fn (): array => $this->escolasOptions)
-                    ->multiple()
-                    ->native(false)
-                    ->searchable()
-                    ->preload()
-                    ->disabled(fn (): bool => ! $this->avaliacaoSelecionada())
-                    ->live(),
                 Select::make('professores_ids')
                     ->label('Professores')
                     ->options(fn (): array => $this->professoresOptions)
@@ -405,37 +340,35 @@ class DashboardAvaliacoes extends Page implements HasForms
     {
         return $schema
             ->components([
-                Select::make('escolas_ids')
+                Select::make('escola_id')
                     ->label('Escolas')
                     ->options(fn (): array => $this->escolasOptions)
-                    ->multiple()
+                    ->placeholder('Todas')
                     ->native(false)
                     ->searchable()
                     ->preload()
                     ->disabled(fn (): bool => ! $this->avaliacaoSelecionada())
                     ->live(),
-                Select::make('series_ids')
+                Select::make('serie_id')
                     ->label('Séries')
                     ->options(fn (): array => $this->seriesOptions)
-                    ->multiple()
+                    ->placeholder('Todas')
                     ->native(false)
                     ->searchable()
                     ->preload()
                     ->disabled(fn (): bool => ! $this->avaliacaoSelecionada())
                     ->live(),
-                Select::make('turnos')
+                Select::make('turno')
                     ->label('Turnos')
                     ->options(fn (): array => $this->turnosOptions)
-                    ->multiple()
+                    ->placeholder('Todos')
                     ->native(false)
-                    ->searchable()
-                    ->preload()
                     ->disabled(fn (): bool => ! $this->avaliacaoSelecionada())
                     ->live(),
-                Select::make('componentes_ids')
+                Select::make('componente_id')
                     ->label('Componentes')
                     ->options(fn (): array => $this->componentesOptions)
-                    ->multiple()
+                    ->placeholder('Todos')
                     ->native(false)
                     ->searchable()
                     ->preload()
@@ -485,6 +418,11 @@ class DashboardAvaliacoes extends Page implements HasForms
         }
 
         return $user->can(self::PERMISSAO_ACOMPANHAR_AVALIACOES);
+    }
+
+    public function getPodeVerProgressoPorEscolaProperty(): bool
+    {
+        return $this->usuarioAtual()?->hasPermissionTo(self::PERMISSAO_VISUALIZAR_PROGRESSO_POR_ESCOLA) ?? false;
     }
 
     private function usuarioAtual(): ?User
@@ -2761,29 +2699,29 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     private function normalizarFiltrosAcompanhamento(): void
     {
-        $this->filtrosAcompanhamento['series_ids'] = $this->normalizarArrayIds($this->filtrosAcompanhamento['series_ids'] ?? []);
-        $this->filtrosAcompanhamento['componentes_ids'] = $this->normalizarArrayIds($this->filtrosAcompanhamento['componentes_ids'] ?? []);
-        $this->filtrosAcompanhamento['escolas_ids'] = $this->filtrarEscolasPermitidas(
-            $this->normalizarArrayIds($this->filtrosAcompanhamento['escolas_ids'] ?? [])
+        $this->filtrosAcompanhamento['escola_id'] = $this->normalizarEscolaAcompanhamento(
+            $this->filtrosAcompanhamento['escola_id'] ?? null
         );
+        $this->filtrosAcompanhamento['serie_id'] = $this->normalizarId($this->filtrosAcompanhamento['serie_id'] ?? null);
+        $this->filtrosAcompanhamento['componente_id'] = $this->normalizarId($this->filtrosAcompanhamento['componente_id'] ?? null);
 
-        $turnosPermitidos = array_keys($this->turnosOptions);
-        $this->filtrosAcompanhamento['turnos'] = collect($this->filtrosAcompanhamento['turnos'] ?? [])
-            ->map(fn ($turno): string => (string) $turno)
-            ->filter(fn (string $turno): bool => in_array($turno, $turnosPermitidos, true))
-            ->unique()
-            ->values()
-            ->all();
+        $turno = $this->filtrosAcompanhamento['turno'] ?? null;
+        $turno = filled($turno) ? (string) $turno : null;
+        $this->filtrosAcompanhamento['turno'] = array_key_exists((string) $turno, $this->turnosOptions)
+            ? $turno
+            : null;
     }
 
     private function filtrosDoAcompanhamento(): array
     {
         return [
             ...$this->filtros,
-            'series_ids' => $this->filtrosAcompanhamento['series_ids'] ?? [],
-            'turnos' => $this->filtrosAcompanhamento['turnos'] ?? [],
-            'componentes_ids' => $this->filtrosAcompanhamento['componentes_ids'] ?? [],
-            'escolas_ids' => $this->filtrosAcompanhamento['escolas_ids'] ?? [],
+            'series_ids' => array_filter([(int) ($this->filtrosAcompanhamento['serie_id'] ?? 0)]),
+            'turnos' => filled($this->filtrosAcompanhamento['turno'] ?? null)
+                ? [(string) $this->filtrosAcompanhamento['turno']]
+                : [],
+            'componentes_ids' => array_filter([(int) ($this->filtrosAcompanhamento['componente_id'] ?? 0)]),
+            'escolas_ids' => array_filter([(int) ($this->filtrosAcompanhamento['escola_id'] ?? 0)]),
         ];
     }
 
@@ -2834,11 +2772,24 @@ class DashboardAvaliacoes extends Page implements HasForms
     private function filtrosAcompanhamentoPadrao(): array
     {
         return [
-            'series_ids' => [],
-            'turnos' => [],
-            'componentes_ids' => [],
-            'escolas_ids' => [],
+            'escola_id' => null,
+            'serie_id' => null,
+            'turno' => null,
+            'componente_id' => null,
         ];
+    }
+
+    private function normalizarEscolaAcompanhamento(mixed $value): ?int
+    {
+        $escolaId = $this->normalizarId($value);
+
+        if (! $escolaId) {
+            return null;
+        }
+
+        return in_array($escolaId, $this->filtrarEscolasPermitidas([$escolaId]), true)
+            ? $escolaId
+            : null;
     }
 
     private function distinctCombinacaoExpr(string ...$colunas): string
