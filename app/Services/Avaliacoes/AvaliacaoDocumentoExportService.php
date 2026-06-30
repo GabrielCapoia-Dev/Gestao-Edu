@@ -16,9 +16,9 @@ use App\Models\Turma;
 use App\Models\TurmaComponenteProfessor;
 use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Dompdf\Dompdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Response;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -43,22 +43,11 @@ class AvaliacaoDocumentoExportService
             throw new NotFoundHttpException('Nenhum aluno encontrado para exportação.');
         }
 
-        $documentosComPaginas = $documentos
-            ->map(function (array $documento, int $index) use ($documentos): array {
-                $paginas = $this->contarPaginasDocumento($documento);
-                $documento['paginas_estimadas'] = $paginas;
-                $documento['precisa_pagina_em_branco'] = $index < $documentos->count() - 1
-                    && $paginas > 1
-                    && $paginas % 2 !== 0;
-
-                return $documento;
-            })
-            ->values();
+        $documentosComPaginas = $this->prepararDocumentosParaPdf($documentos, $escopo);
 
         $pdf = $this->criarPdf($documentosComPaginas);
         $dompdf = $pdf->getDomPDF();
         $dompdf->render();
-        $this->aplicarPaginacao($dompdf);
 
         $conteudo = $pdf->output();
         $quantidadePaginas = $dompdf->getCanvas()->get_page_count();
@@ -228,15 +217,11 @@ class AvaliacaoDocumentoExportService
             $prefixoArquivo === 'parecer-transferência' ? 'Parecer de Transferência' : null
         );
 
-        $documentosComPaginas = collect([array_replace($documento, [
-            'paginas_estimadas' => $this->contarPaginasDocumento($documento),
-            'precisa_pagina_em_branco' => false,
-        ])]);
+        $documentosComPaginas = $this->prepararDocumentosParaPdf(collect([$documento]), 'aluno');
 
         $pdf = $this->criarPdf($documentosComPaginas);
         $dompdf = $pdf->getDomPDF();
         $dompdf->render();
-        $this->aplicarPaginacao($dompdf);
 
         $conteudo = $pdf->output();
 
@@ -413,7 +398,7 @@ class AvaliacaoDocumentoExportService
             $query->whereKey((int) ($params['aluno_id'] ?? 0));
         }
 
-        return $query->get(['id', 'nome', 'cgm', 'id_turma', 'status', 'tipo_vinculo']);
+        return $query->get(['id', 'nome', 'cgm', 'id_turma', 'status', 'tipo_vinculo', 'data_matricula', 'status_alterado_em']);
     }
 
     /**
@@ -557,6 +542,7 @@ class AvaliacaoDocumentoExportService
                     'nome' => $primeiraPauta->componente?->nome ?? 'Geral',
                     'professor' => $this->professorDoComponente($turma, $componenteId, $pautasDoComponente, $respostas),
                     'informacoes_complementares' => trim((string) ($informacaoComplementar?->informacoes_complementares ?? '')),
+                    'mostrar_informacoes_complementares' => trim((string) ($informacaoComplementar?->informacoes_complementares ?? '')) !== '',
                     'pautas' => $pautasDoComponente
                         ->values()
                         ->map(function (Pauta $pauta, int $index) use ($respostas): array {
@@ -590,6 +576,8 @@ class AvaliacaoDocumentoExportService
             'turno' => $this->formatarTurno($turma),
             'documento_tipo' => $documentoTipo,
             'ano_letivo' => (string) ($avaliacao->data_inicio?->format('Y') ?? now()->format('Y')),
+            'periodo_avaliacao' => $this->periodoAvaliacaoDoAluno($avaliacao, $aluno),
+            'data_impressao' => $this->formatarDataExtenso(now()),
             'diretor' => $gestores['diretor'],
             'coordenacao' => $gestores['coordenacao'],
             'legenda' => $legenda->all(),
@@ -845,28 +833,74 @@ class AvaliacaoDocumentoExportService
         return max(1, (int) $dompdf->getCanvas()->get_page_count());
     }
 
-    private function aplicarPaginacao(Dompdf $dompdf): void
+    /**
+     * @param  Collection<int, array<string, mixed>>  $documentos
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function prepararDocumentosParaPdf(Collection $documentos, string $escopo): Collection
     {
-        $canvas = $dompdf->getCanvas();
-        $fontMetrics = $dompdf->getFontMetrics();
-        $font = $fontMetrics->getFont('DejaVu Sans', 'normal');
+        return $documentos
+            ->values()
+            ->map(function (array $documento) use ($escopo): array {
+                $paginas = $this->contarPaginasDocumento($documento);
+                $documento['paginas_estimadas'] = $paginas;
+                $documento['precisa_pagina_em_branco'] = $this->deveAdicionarPaginaEmBranco($escopo, $paginas);
 
-        $size = 8;
-        $text = 'Pagina {PAGE_NUM} de {PAGE_COUNT}';
-        $textWidth = $fontMetrics->getTextWidth($text, $font, $size);
-        $fontHeight = $fontMetrics->getFontHeight($font, $size);
+                return $documento;
+            });
+    }
 
-        $width = $canvas->get_width();
-        $height = $canvas->get_height();
+    private function deveAdicionarPaginaEmBranco(string $escopo, int $paginas): bool
+    {
+        if ($escopo === 'aluno') {
+            return false;
+        }
 
-        $canvas->page_text(
-            ($width - $textWidth) / 2,
-            $height - 28 - $fontHeight,
-            $text,
-            $font,
-            $size,
-            [0.42, 0.45, 0.50]
-        );
+        return $paginas > 0 && $paginas % 2 !== 0;
+    }
+
+    private function periodoAvaliacaoDoAluno(Avaliacao $avaliacao, Aluno $aluno): string
+    {
+        $inicio = $avaliacao->data_inicio?->copy();
+        $fim = $avaliacao->data_fim?->copy();
+        $matricula = $aluno->data_matricula?->copy();
+        $transferencia = $aluno->status === Aluno::STATUS_TRANSFERIDO
+            ? $aluno->status_alterado_em?->copy()?->startOfDay()
+            : null;
+
+        if ($matricula && (! $inicio || $matricula->gt($inicio))) {
+            $inicio = $matricula;
+        }
+
+        if ($transferencia && (! $fim || $transferencia->lt($fim))) {
+            $fim = $transferencia;
+        }
+
+        if (! $inicio && ! $fim) {
+            return '';
+        }
+
+        if (! $inicio) {
+            $inicio = $fim?->copy();
+        }
+
+        if (! $fim) {
+            $fim = $inicio?->copy();
+        }
+
+        if ($inicio && $fim && $inicio->gt($fim)) {
+            $inicio = $fim->copy();
+        }
+
+        return trim(implode(' a ', array_filter([
+            $inicio ? $this->formatarDataExtenso($inicio) : null,
+            $fim ? $this->formatarDataExtenso($fim) : null,
+        ])));
+    }
+
+    private function formatarDataExtenso(Carbon $data): string
+    {
+        return $data->locale('pt_BR')->translatedFormat('d \d\e F \d\e Y');
     }
 
     /**

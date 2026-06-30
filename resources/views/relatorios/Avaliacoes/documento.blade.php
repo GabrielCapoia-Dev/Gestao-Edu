@@ -156,14 +156,31 @@
             min-height: 24px;
         }
 
+        .document-footer {
+            margin-top: 28px;
+            page-break-inside: avoid;
+        }
+
+        .document-footer-meta {
+            min-height: 88px;
+            text-align: right;
+        }
+
+        .document-footer-meta p {
+            margin: 0 0 14px;
+            font-size: 12px;
+        }
+
         .signature {
-            margin-top: 24px;
+            margin-top: 26px;
+            min-height: 120px;
             text-align: center;
             page-break-inside: avoid;
         }
 
         .signature-line {
             display: inline-block;
+            min-width: 360px;
             letter-spacing: 1px;
         }
     </style>
@@ -258,29 +275,39 @@
                                 <td class="observation">{{ $pauta['observacao'] }}</td>
                             </tr>
                         @endforeach
-                        <tr>
-                            <th class="complementary-title" colspan="3">Informações Complementares</th>
-                        </tr>
-                        <tr>
-                            <td class="complementary-text" colspan="3">{{ $componente['informacoes_complementares'] ?? '' }}</td>
-                        </tr>
+                        @if (! empty($componente['mostrar_informacoes_complementares']))
+                            <tr>
+                                <th class="complementary-title" colspan="3">Informações Complementares</th>
+                            </tr>
+                            <tr>
+                                <td class="complementary-text" colspan="3">{{ $componente['informacoes_complementares'] ?? '' }}</td>
+                            </tr>
+                        @endif
                     </tbody>
                 </table>
             </section>
         @endforeach
 
-        <section class="signature">
-            <div class="signature-line">______________________________________________________</div>
-            <div><span class="label">DIRETOR(A):</span> {{ $documento['diretor'] ?? '' }}</div>
+        <section class="document-footer">
+            <div class="document-footer-meta">
+                @if (! empty($documento['periodo_avaliacao']))
+                    <p><span class="label">Período:</span> {{ $documento['periodo_avaliacao'] }}</p>
+                @endif
+
+                <p>Umuarama {{ $documento['data_impressao'] ?? '' }}</p>
+            </div>
+
+            <div class="signature">
+                <div class="signature-line">______________________________________________________</div>
+                <div><span class="label">DIRETOR(A):</span> {{ $documento['diretor'] ?? '' }}</div>
+            </div>
         </section>
     </section>
 
-    @if (! $loop->last)
-        @if ($documento['precisa_pagina_em_branco'] ?? false)
-            <div class="duplex-blank"></div>
-        @else
+    @if ($documento['precisa_pagina_em_branco'] ?? false)
+        <div class="duplex-blank"></div>
+    @elseif (! $loop->last)
             <div class="student-break"></div>
-        @endif
     @endif
 @endforeach
 </body>

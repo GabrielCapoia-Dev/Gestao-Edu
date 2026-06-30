@@ -368,6 +368,15 @@
                                                 wire:target="abrirWorkspaceAcompanhamento">
                                                 Abrir avaliação
                                             </button>
+                                            @if ($item['status'] === 'concluido' && $this->podeExportarParecer)
+                                                <a
+                                                    href="{{ route('avaliacoes.documento.pdf', ['avaliacao_id' => $item['avaliacao_id'], 'escopo' => 'turma', 'turma_id' => $item['turma_id']]) }}"
+                                                    class="dav-link-action"
+                                                    target="_blank"
+                                                    rel="noopener">
+                                                    Exportar parecer
+                                                </a>
+                                            @endif
                                         </div>
                                     </td>
                                 </tr>

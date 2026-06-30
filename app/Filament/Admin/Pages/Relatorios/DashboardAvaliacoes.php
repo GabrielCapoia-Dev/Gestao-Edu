@@ -565,6 +565,14 @@ class DashboardAvaliacoes extends Page implements HasForms
             || $user->hasPermissionLike('exportar avaliacoes');
     }
 
+    public function getPodeExportarParecerProperty(): bool
+    {
+        /** @var \App\Models\User|null $user */
+        $user = Auth::user();
+
+        return $user?->hasPermissionLike('exportar avaliacoes') ?? false;
+    }
+
     private function podeAbrirAvaliacoesProfessor(): bool
     {
         $user = $this->usuarioAtual();

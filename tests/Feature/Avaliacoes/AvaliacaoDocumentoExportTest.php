@@ -21,6 +21,7 @@ use App\Models\User;
 use App\Services\Avaliacoes\AvaliacaoDocumentoExportService;
 use App\Services\ServidorService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use ReflectionMethod;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
@@ -187,7 +188,7 @@ class AvaliacaoDocumentoExportTest extends TestCase
             ->firstOrFail();
 
         $this->assertSame(2, $logTurma->quantidade_alunos);
-        $this->assertSame(2, $logTurma->quantidade_paginas);
+        $this->assertSame(4, $logTurma->quantidade_paginas);
         $this->assertSame(2, $logTurma->parametros['vinculos_por_tipo'][Aluno::TIPO_VINCULO_PRINCIPAL]);
         $this->assertSame(0, $logTurma->parametros['vinculos_por_tipo'][Aluno::TIPO_VINCULO_CONTRA_TURNO]);
     }
@@ -578,6 +579,81 @@ class AvaliacaoDocumentoExportTest extends TestCase
 
         $this->assertSame('Não Avaliado', $documento['componentes'][0]['pautas'][0]['resultado']);
         $this->assertSame('Principal', $documento['vinculo']);
+    }
+
+    public function test_documento_omite_informacoes_complementares_vazias_e_calcula_periodo_por_matricula_e_transferencia(): void
+    {
+        Carbon::setTestNow('2026-06-30 10:00:00');
+
+        $tipo = TipoAvaliacao::query()->create(['nome' => 'Parecer Periodo Aluno', 'status' => true]);
+        $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Periodo Periodo Aluno', 'status' => true]);
+        $escola = $this->criarEscola('Escola Periodo Documento');
+        $serie = $this->criarSerie('SER-PER-DOC', 'Infantil 5');
+        $turma = $this->criarTurma($escola, $serie, 'A');
+        $componente = ComponenteCurricular::query()->create(['codigo' => 'COMP-PER-DOC', 'nome' => 'Corpo e movimento']);
+        $pauta = Pauta::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'texto' => 'Participa das atividades propostas',
+            'serie_id' => $serie->id,
+            'componente_curricular_id' => $componente->id,
+            'status' => true,
+        ]);
+
+        $avaliacao = Avaliacao::query()->create([
+            'nome' => 'Avaliacao Periodo Documento',
+            'tipo_avaliacao_id' => $tipo->id,
+            'periodo_avaliacao_id' => $periodo->id,
+            'data_inicio' => '2026-02-22',
+            'data_fim' => '2026-06-15',
+            'status' => Avaliacao::STATUS_ATIVA,
+        ]);
+        $avaliacao->pautas()->attach($pauta->id);
+        $avaliacao->turmas()->attach($turma->id);
+
+        $aluno = Aluno::query()->create([
+            'nome' => 'Aluno Periodo Documento',
+            'cgm' => 'CGM-PER-DOC-001',
+            'data_nascimento' => '2015-01-01',
+            'data_matricula' => '2026-03-10',
+            'id_turma' => $turma->id,
+            'status' => Aluno::STATUS_TRANSFERIDO,
+            'status_alterado_em' => '2026-05-20 09:00:00',
+        ]);
+
+        $avaliacao->load('tipo');
+        $pauta->load(['componente', 'alternativas']);
+
+        $metodo = new ReflectionMethod(AvaliacaoDocumentoExportService::class, 'montarDocumentoAluno');
+        $metodo->setAccessible(true);
+
+        $documento = $metodo->invoke(
+            new AvaliacaoDocumentoExportService(),
+            $avaliacao,
+            $turma->load(['escola', 'serie']),
+            $aluno,
+            collect([$pauta]),
+            collect(),
+            ['diretor' => '', 'coordenacao' => ''],
+            ''
+        );
+
+        $this->assertSame('10 de março de 2026 a 20 de maio de 2026', $documento['periodo_avaliacao']);
+        $this->assertSame('30 de junho de 2026', $documento['data_impressao']);
+        $this->assertFalse($documento['componentes'][0]['mostrar_informacoes_complementares']);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_regra_duplex_adiciona_pagina_em_branco_apenas_para_exportacoes_multialuno_com_total_impar(): void
+    {
+        $metodo = new ReflectionMethod(AvaliacaoDocumentoExportService::class, 'deveAdicionarPaginaEmBranco');
+        $metodo->setAccessible(true);
+        $service = new AvaliacaoDocumentoExportService();
+
+        $this->assertTrue($metodo->invoke($service, 'turma', 1));
+        $this->assertTrue($metodo->invoke($service, 'escola', 3));
+        $this->assertFalse($metodo->invoke($service, 'turma', 2));
+        $this->assertFalse($metodo->invoke($service, 'aluno', 1));
     }
 
     public function test_exportacao_direta_nao_permite_escola_fora_do_vinculo_mesmo_com_listar_avaliacoes(): void
