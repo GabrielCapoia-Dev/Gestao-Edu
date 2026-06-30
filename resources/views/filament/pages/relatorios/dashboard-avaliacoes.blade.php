@@ -303,7 +303,7 @@
                 <header class="dav-card-header--split">
                     <div>
                         <h3>Acompanhamento de Pareceres</h3>
-                        <p>Andamento por escola, série, turma, componente e professor.</p>
+                        <p>Andamento geral por escola, série e turma.</p>
                     </div>
 
                     <label class="dav-page-size">
@@ -327,12 +327,7 @@
                                 <th>Escola</th>
                                 <th>Série</th>
                                 <th>Turma</th>
-                                <th>Componente</th>
-                                <th>Professor</th>
-                                <th class="text-right">Esperados</th>
-                                <th class="text-right">Respondidos</th>
-                                <th class="text-right">Pendentes</th>
-                                <th class="text-right">% preenchimento</th>
+                                <th class="text-right">% preenchimento da turma</th>
                                 <th>Status</th>
                             </tr>
                         </thead>
@@ -352,11 +347,6 @@
                                         <strong>{{ $item['turma_nome'] }}</strong>
                                         <small>{{ ucfirst((string) $item['turno']) }}</small>
                                     </td>
-                                    <td>{{ $item['componente_nome'] }}</td>
-                                    <td>{{ $item['professor_nome'] }}</td>
-                                    <td class="text-right">{{ $item['preenchimentos_esperados'] }}</td>
-                                    <td class="text-right">{{ $item['preenchimentos_respondidos'] }}</td>
-                                    <td class="text-right">{{ $item['preenchimentos_pendentes'] }}</td>
                                     <td class="text-right">{{ number_format((float) $item['percentual_preenchimento'], 1, ',', '.') }}%</td>
                                     <td>
                                         <div class="dav-status-actions">
@@ -374,7 +364,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="10" class="dav-empty">Nenhuma turma encontrada para os filtros atuais.</td>
+                                    <td colspan="5" class="dav-empty">Nenhuma turma encontrada para os filtros atuais.</td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -383,7 +373,7 @@
 
                 @if (($acompanhamentoTurmasTotal ?? 0) > 0)
                     <div class="dav-pagination">
-                        <span>Mostrando {{ $acompanhamentoInicio }}-{{ $acompanhamentoFim }} de {{ $acompanhamentoTurmasTotal }} registros</span>
+                        <span>Mostrando {{ $acompanhamentoInicio }}-{{ $acompanhamentoFim }} de {{ $acompanhamentoTurmasTotal }} turmas</span>
                         <div class="dav-pagination-actions">
                             <button type="button" class="dav-page-button" wire:click="paginaAnteriorAcompanhamentoTurmas" @disabled($acompanhamentoTurmasPagina <= 1)>
                                 Anterior
@@ -410,7 +400,6 @@
                                     {{ $workspaceAcompanhamentoLinha['escola_nome'] }}
                                     | {{ $workspaceAcompanhamentoLinha['serie_nome'] }}
                                     | {{ $workspaceAcompanhamentoLinha['turma_nome'] }}
-                                    | {{ $workspaceAcompanhamentoLinha['componente_nome'] }}
                                 </p>
                             </div>
 
@@ -427,7 +416,9 @@
                                     'turmaId' => (int) $workspaceAcompanhamentoLinha['turma_id'],
                                     'escolaId' => (int) $workspaceAcompanhamentoLinha['escola_id'],
                                     'serieId' => (int) $workspaceAcompanhamentoLinha['serie_id'],
-                                    'initialComponenteId' => (int) $workspaceAcompanhamentoLinha['componente_id'],
+                                    'initialComponenteId' => ($workspaceAcompanhamentoLinha['componente_id'] ?? 0) > 0
+                                        ? (int) $workspaceAcompanhamentoLinha['componente_id']
+                                        : null,
                                     'modo' => 'acompanhamento',
                                     'canEdit' => true,
                                 ],

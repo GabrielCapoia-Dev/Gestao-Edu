@@ -1425,17 +1425,12 @@ class DashboardAvaliacoes extends Page implements HasForms
         $this->preencherTabelaSheet(
             $spreadsheet->createSheet()->setTitle('Acompanhamento'),
             'Acompanhamento de Pareceres por Turma',
-            ['Escola', 'Serie', 'Turma', 'Turno', 'Componente', 'Professor', 'Esperados', 'Respondidos', 'Pendentes', '% preenchimento', 'Status'],
+            ['Escola', 'Serie', 'Turma', 'Turno', '% preenchimento da turma', 'Status'],
             collect($dados['acompanhamento_turmas'])->map(fn (array $item): array => [
                 $item['escola_nome'],
                 $item['serie_nome'],
                 $item['turma_nome'],
                 $item['turno'],
-                $item['componente_nome'],
-                $item['professor_nome'],
-                $item['preenchimentos_esperados'],
-                $item['preenchimentos_respondidos'],
-                $item['preenchimentos_pendentes'],
                 $item['percentual_preenchimento'] . '%',
                 $item['status_label'],
             ])
@@ -2500,6 +2495,36 @@ class DashboardAvaliacoes extends Page implements HasForms
                 'respondidos.ultima_resposta_em'
             );
 
+        $query = DB::query()
+            ->fromSub($query, 'acompanhamento')
+            ->groupBy(
+                'acompanhamento.avaliacao_id',
+                'acompanhamento.turma_id',
+                'acompanhamento.avaliacao_nome',
+                'acompanhamento.escola_id',
+                'acompanhamento.turma_nome',
+                'acompanhamento.turno',
+                'acompanhamento.escola_nome',
+                'acompanhamento.serie_id',
+                'acompanhamento.serie_nome'
+            )
+            ->select(
+                'acompanhamento.avaliacao_id',
+                'acompanhamento.turma_id',
+                'acompanhamento.avaliacao_nome',
+                'acompanhamento.escola_id',
+                'acompanhamento.turma_nome',
+                'acompanhamento.turno',
+                'acompanhamento.escola_nome',
+                'acompanhamento.serie_id',
+                'acompanhamento.serie_nome',
+                DB::raw('SUM(acompanhamento.preenchimentos_esperados) as preenchimentos_esperados'),
+                DB::raw('SUM(acompanhamento.preenchimentos_respondidos) as preenchimentos_respondidos'),
+                DB::raw('SUM(acompanhamento.pautas_total) as pautas_total'),
+                DB::raw('MAX(acompanhamento.alunos_total) as alunos_total'),
+                DB::raw('MAX(acompanhamento.ultima_resposta_em) as ultima_resposta_em')
+            );
+
         $total = (int) DB::query()
             ->fromSub(clone $query, 'acompanhamento')
             ->count();
@@ -2510,11 +2535,9 @@ class DashboardAvaliacoes extends Page implements HasForms
         }
 
         $dados = $query
-            ->orderBy('esperados.escola_nome')
-            ->orderBy('esperados.serie_nome')
-            ->orderBy('esperados.turma_nome')
-            ->orderBy('esperados.componente_nome')
-            ->orderBy('esperados.professor_nome')
+            ->orderBy('acompanhamento.escola_nome')
+            ->orderBy('acompanhamento.serie_nome')
+            ->orderBy('acompanhamento.turma_nome')
             ->get();
 
         $itens = $dados
@@ -2536,15 +2559,15 @@ class DashboardAvaliacoes extends Page implements HasForms
                     'turma_id' => (int) $item->turma_id,
                     'escola_id' => (int) ($item->escola_id ?? 0),
                     'serie_id' => (int) ($item->serie_id ?? 0),
-                    'componente_id' => (int) ($item->componente_id ?? 0),
-                    'professor_id' => (int) ($item->professor_id ?? 0),
+                    'componente_id' => 0,
+                    'professor_id' => 0,
                     'avaliacao_nome' => (string) ($item->avaliacao_nome ?? '-'),
                     'escola_nome' => (string) ($item->escola_nome ?? '-'),
                     'serie_nome' => (string) ($item->serie_nome ?? '-'),
                     'turma_nome' => (string) ($item->turma_nome ?? '-'),
                     'turno' => (string) ($item->turno ?? '-'),
-                    'componente_nome' => (string) ($item->componente_nome ?? 'Componente geral'),
-                    'professor_nome' => (string) ($item->professor_nome ?? 'Professor nao vinculado'),
+                    'componente_nome' => 'Todos os componentes',
+                    'professor_nome' => 'Todos os professores',
                     'preenchimentos_esperados' => $preenchimentosEsperados,
                     'preenchimentos_respondidos' => $preenchimentosRespondidos,
                     'preenchimentos_pendentes' => $preenchimentosPendentes,
