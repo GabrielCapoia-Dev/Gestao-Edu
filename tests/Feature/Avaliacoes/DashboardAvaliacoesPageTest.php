@@ -8,6 +8,7 @@ use App\Livewire\Avaliacoes\AvaliacaoTurmaWorkspace;
 use App\Models\Aluno;
 use App\Models\Alternativa;
 use App\Models\Avaliacao;
+use App\Models\AvaliacaoInformacaoComplementar;
 use App\Models\AvaliacaoResposta;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
@@ -20,6 +21,7 @@ use App\Models\Serie;
 use App\Models\TipoAvaliacao;
 use App\Models\Turma;
 use App\Models\User;
+use App\Services\Avaliacoes\AvaliacaoDashboardMetricsService;
 use App\Services\ServidorService;
 use Filament\Notifications\Notification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -318,6 +320,12 @@ class DashboardAvaliacoesPageTest extends TestCase
             ->test(DashboardAvaliacoes::class);
 
         $this->assertSame($avaliacao->id, $component->instance()->filtros['avaliacao_id']);
+        $this->assertFalse($component->instance()->dashboardCarregado);
+        $this->assertSame(0, $component->instance()->cards['preenchimentos_esperados']);
+
+        $component->call('carregarDashboardInicial');
+
+        $this->assertTrue($component->instance()->dashboardCarregado);
         $this->assertSame(2, $component->instance()->cards['preenchimentos_esperados']);
         $this->assertSame(
             ['Escola Norte', 'Escola Sul'],
@@ -325,6 +333,59 @@ class DashboardAvaliacoesPageTest extends TestCase
         );
         $this->assertArrayHasKey($escolaNorte->id, $component->instance()->escolasOptions);
         $this->assertArrayHasKey($escolaSul->id, $component->instance()->escolasOptions);
+    }
+
+    public function test_cache_do_dashboard_e_invalidado_por_resposta_e_informacao_complementar(): void
+    {
+        cache()->flush();
+
+        $tipo = TipoAvaliacao::query()->create(['nome' => 'Parecer Cache Dashboard', 'status' => true]);
+        $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Periodo Cache Dashboard', 'status' => true]);
+        $serie = $this->criarSerie('SER-CACHE-DASH', '5o Ano');
+        $componente = ComponenteCurricular::query()->create([
+            'codigo' => 'COMP-CACHE-DASH',
+            'nome' => 'Historia',
+        ]);
+        $escola = $this->criarEscola('Escola Cache Dashboard');
+        $turma = $this->criarTurma($escola, $serie, 'Turma Cache', 'manha');
+        $aluno = $this->criarAluno($turma, 'Aluno Cache', 'CGM-CACHE-DASH');
+        $alternativa = Alternativa::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'nome' => 'Sim',
+            'tem_observacao' => false,
+            'status' => true,
+        ]);
+        $pauta = $this->criarPauta($tipo, $serie, $componente, 'Pauta cache dashboard');
+        $pauta->alternativas()->attach($alternativa->id);
+
+        $avaliacao = $this->criarAvaliacao('Avaliacao Cache Dashboard', $tipo, $periodo);
+        $avaliacao->series()->sync([$serie->id]);
+        $avaliacao->componentes()->sync([$componente->id]);
+        $avaliacao->escolas()->sync([$escola->id]);
+        $avaliacao->turmas()->sync([$turma->id]);
+        $avaliacao->pautas()->sync([$pauta->id]);
+
+        $service = app(AvaliacaoDashboardMetricsService::class);
+
+        $this->assertSame(1, $service->versionFor($avaliacao->id));
+
+        $this->registrarResposta($avaliacao, $turma, $aluno, $pauta, $alternativa);
+
+        $this->assertSame(2, $service->versionFor($avaliacao->id));
+
+        AvaliacaoResposta::query()->firstOrFail()->update(['observacao' => 'Ajuste de cache']);
+
+        $this->assertSame(3, $service->versionFor($avaliacao->id));
+
+        AvaliacaoInformacaoComplementar::query()->create([
+            'avaliacao_id' => $avaliacao->id,
+            'turma_id' => $turma->id,
+            'aluno_id' => $aluno->id,
+            'componente_curricular_id' => $componente->id,
+            'informacoes_complementares' => 'Informacao para invalidar cache',
+        ]);
+
+        $this->assertSame(4, $service->versionFor($avaliacao->id));
     }
 
     public function test_usuario_vinculado_visualiza_apenas_escolas_permitidas_no_acompanhamento(): void
@@ -715,6 +776,22 @@ class DashboardAvaliacoesPageTest extends TestCase
 
         $workspace->set('componenteWorkspaceId', '');
         $this->assertCount(2, $workspace->instance()->getPautasDisponiveisProperty());
+
+        $workspace
+            ->call('alternarPauta', $turma->id, $pautaUm->id)
+            ->assertSet('pautasExpandidas', [$turma->id . ':' . $pautaUm->id])
+            ->call('alternarPauta', $turma->id, $pautaDois->id)
+            ->assertSet('pautasExpandidas', [$turma->id . ':' . $pautaDois->id])
+            ->call('definirVisualizacao', 'alunos')
+            ->assertSet('pautasExpandidas', []);
+
+        $aluno = Aluno::query()->where('id_turma', $turma->id)->firstOrFail();
+
+        $workspace
+            ->call('alternarAluno', $turma->id, $aluno->id)
+            ->assertSet('alunosExpandidos', [$turma->id . ':' . $aluno->id])
+            ->call('definirVisualizacao', 'pautas')
+            ->assertSet('alunosExpandidos', []);
     }
 
     public function test_exportar_parecer_no_acompanhamento_enfileira_pdf_da_turma_quando_ha_diretor_e_coordenacao(): void

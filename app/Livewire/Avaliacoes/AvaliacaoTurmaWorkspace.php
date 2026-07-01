@@ -240,7 +240,23 @@ class AvaliacaoTurmaWorkspace extends Component
             return;
         }
 
+        if ($this->visualizacao === $visualizacao) {
+            return;
+        }
+
         $this->visualizacao = $visualizacao;
+
+        if (! $this->modoAcompanhamento()) {
+            return;
+        }
+
+        if ($visualizacao === 'pautas') {
+            $this->alunosExpandidos = [];
+
+            return;
+        }
+
+        $this->pautasExpandidas = [];
     }
 
     public function alternarTurma(int $turmaId): void
@@ -272,6 +288,14 @@ class AvaliacaoTurmaWorkspace extends Component
             $this->pautasExpandidas = array_values($this->pautasExpandidas);
 
             return;
+        }
+
+        if ($this->modoAcompanhamento()) {
+            $prefixoTurma = $turmaId . ':';
+            $this->pautasExpandidas = array_values(array_filter(
+                $this->pautasExpandidas,
+                fn (string $item): bool => ! str_starts_with($item, $prefixoTurma)
+            ));
         }
 
         $this->pautasExpandidas[] = $chave;
@@ -312,6 +336,14 @@ class AvaliacaoTurmaWorkspace extends Component
             $this->alunosExpandidos = array_values($this->alunosExpandidos);
 
             return;
+        }
+
+        if ($this->modoAcompanhamento()) {
+            $prefixoTurma = $turmaId . ':';
+            $this->alunosExpandidos = array_values(array_filter(
+                $this->alunosExpandidos,
+                fn (string $item): bool => ! str_starts_with($item, $prefixoTurma)
+            ));
         }
 
         $this->alunosExpandidos[] = $chave;

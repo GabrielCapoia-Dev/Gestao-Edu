@@ -1,5 +1,5 @@
 <x-filament-panels::page>
-    <div class="av-livewire-root" x-data x-on:dashboard-acompanhamento-recarregar.window="$wire.atualizarAcompanhamentoTurmas()">
+    <div class="av-livewire-root" x-data wire:init="carregarDashboardInicial" x-on:dashboard-acompanhamento-recarregar.window="$wire.atualizarAcompanhamentoTurmas()">
     <div class="dav-page">
         <div class="dav-processing-overlay" wire:loading.flex wire:target="abrirWorkspaceAcompanhamento,fecharWorkspaceAcompanhamento,atualizarAcompanhamentoTurmas">
             <div class="dav-processing-card">
@@ -54,6 +54,16 @@
                 $acompanhamentoFim = min((int) ($acompanhamentoTurmasTotal ?? 0), (int) $acompanhamentoTurmasPagina * (int) $acompanhamentoTurmasPorPagina);
                 $avaliacaoSelecionada = $this->avaliacaoSelecionada();
             @endphp
+
+            @if (! $dashboardCarregado)
+                <section class="dav-dashboard-loading">
+                    <div class="dav-dashboard-loading__pulse"></div>
+                    <div>
+                        <strong>Carregando indicadores...</strong>
+                        <span>Os dados da avaliaÃ§Ã£o estÃ£o sendo calculados sem bloquear a abertura da pÃ¡gina.</span>
+                    </div>
+                </section>
+            @else
 
             <section class="dav-panel dav-panel--legacy">
                 <div class="dav-panel-head">
@@ -454,6 +464,7 @@
                     </section>
                 </div>
             @endif
+            @endif
         @endif
     </div>
     </div>
@@ -644,9 +655,54 @@
             animation: dav-spin 0.75s linear infinite;
         }
 
+        .dav-dashboard-loading {
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+            margin-bottom: 1rem;
+            border: 1px solid #bfdbfe;
+            border-radius: 0.95rem;
+            background: linear-gradient(135deg, #eff6ff 0%, #f8fbff 100%);
+            padding: 0.95rem 1rem;
+            color: #1e3a8a;
+            box-shadow: 0 12px 36px rgba(37, 99, 235, 0.08);
+        }
+
+        .dav-dashboard-loading strong,
+        .dav-dashboard-loading span {
+            display: block;
+        }
+
+        .dav-dashboard-loading strong {
+            font-size: 0.92rem;
+            font-weight: 800;
+        }
+
+        .dav-dashboard-loading span {
+            margin-top: 0.12rem;
+            font-size: 0.78rem;
+            color: #315a9b;
+        }
+
+        .dav-dashboard-loading__pulse {
+            width: 0.85rem;
+            height: 0.85rem;
+            border-radius: 999px;
+            background: #2563eb;
+            box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.38);
+            animation: dav-pulse 1.25s ease-out infinite;
+            flex: 0 0 auto;
+        }
+
         @keyframes dav-spin {
             to {
                 transform: rotate(360deg);
+            }
+        }
+
+        @keyframes dav-pulse {
+            to {
+                box-shadow: 0 0 0 0.55rem rgba(37, 99, 235, 0);
             }
         }
 
@@ -1322,6 +1378,16 @@
             background: var(--gray-900);
             border-color: var(--gray-700);
             color: var(--gray-100);
+        }
+
+        :root.dark .dav-dashboard-loading {
+            border-color: #1d4ed8;
+            background: linear-gradient(135deg, rgba(30, 64, 175, 0.32), rgba(15, 23, 42, 0.72));
+            color: #dbeafe;
+        }
+
+        :root.dark .dav-dashboard-loading span {
+            color: #bfdbfe;
         }
 
         :root.dark .dav-chip {

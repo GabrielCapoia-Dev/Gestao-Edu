@@ -14,6 +14,7 @@ use App\Models\Serie;
 use App\Models\TipoAvaliacao;
 use App\Models\Turma;
 use App\Models\User;
+use App\Services\Avaliacoes\AvaliacaoDashboardMetricsService;
 use App\Services\Avaliacoes\AvaliacaoDocumentoExportService;
 use App\Services\Exports\ExportRequestService;
 use App\Services\Relatorios\RelatorioPdfRenderer;
@@ -113,6 +114,8 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     public string $ultimaAtualizacao = '';
 
+    public bool $dashboardCarregado = false;
+
     /**
      * @var array<int, array{diretor: string, coordenacao: string, tem_diretor: bool, tem_coordenacao: bool, pode_exportar: bool, motivo_bloqueio: string}>
      */
@@ -127,6 +130,16 @@ class DashboardAvaliacoes extends Page implements HasForms
 
         if ($avaliacaoId) {
             $this->filtros['avaliacao_id'] = $avaliacaoId;
+        }
+
+        $this->aplicarDashboardData($this->dashboardVazio());
+        $this->dashboardCarregado = ! $this->avaliacaoSelecionada();
+    }
+
+    public function carregarDashboardInicial(): void
+    {
+        if ($this->dashboardCarregado) {
+            return;
         }
 
         $this->atualizarDashboard();
@@ -1580,9 +1593,35 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     private function atualizarDashboard(): void
     {
+        $this->dashboardCarregado = false;
         $this->parecerTurmaElegibilidade = [];
-        $dados = $this->montarDashboardData();
+        $this->normalizarFiltros();
+        $this->normalizarFiltrosAcompanhamento();
 
+        $resolver = fn (): array => $this->montarDashboardData();
+        $user = Auth::user();
+
+        $dados = $user instanceof User
+            ? app(AvaliacaoDashboardMetricsService::class)->remember(
+                $user,
+                $this->filtros,
+                $this->filtrosAcompanhamento,
+                [
+                    'acompanhamento_turmas_pagina' => $this->acompanhamentoTurmasPagina,
+                    'acompanhamento_turmas_por_pagina' => $this->acompanhamentoTurmasPorPagina,
+                    'listagens_paginas' => $this->listagensPaginas,
+                    'listagens_por_pagina' => $this->listagensPorPagina,
+                ],
+                $resolver
+            )
+            : $resolver();
+
+        $this->aplicarDashboardData($dados);
+        $this->dashboardCarregado = true;
+    }
+
+    private function aplicarDashboardData(array $dados): void
+    {
         $this->cards = $dados['cards'];
         $this->tabelaEscolas = $dados['tabela_escolas'];
         $this->preenchimentoPorComponentes = $dados['preenchimento_por_componentes'];
@@ -2676,8 +2715,13 @@ class DashboardAvaliacoes extends Page implements HasForms
             ->orderBy('acompanhamento.turma_nome')
             ->get();
 
+        $turmasDaPagina = Turma::query()
+            ->whereIn('id', $dados->pluck('turma_id')->map(fn ($id): int => (int) $id)->unique()->values()->all())
+            ->get()
+            ->keyBy('id');
+
         $itens = $dados
-            ->map(function ($item): array {
+            ->map(function ($item) use ($turmasDaPagina): array {
                 $preenchimentosEsperados = (int) ($item->preenchimentos_esperados ?? 0);
                 $preenchimentosRespondidos = min((int) ($item->preenchimentos_respondidos ?? 0), $preenchimentosEsperados);
                 $preenchimentosPendentes = max($preenchimentosEsperados - $preenchimentosRespondidos, 0);
@@ -2689,7 +2733,10 @@ class DashboardAvaliacoes extends Page implements HasForms
                     $preenchimentosRespondidos > 0 => 'em_andamento',
                     default => 'nao_iniciado',
                 };
-                $parecerElegibilidade = $this->parecerElegibilidadeDaTurma((int) $item->turma_id);
+                $parecerElegibilidade = $this->parecerElegibilidadeDaTurma(
+                    (int) $item->turma_id,
+                    $turmasDaPagina->get((int) $item->turma_id)
+                );
 
                 return [
                     'avaliacao_id' => (int) $item->avaliacao_id,
@@ -2733,13 +2780,13 @@ class DashboardAvaliacoes extends Page implements HasForms
     /**
      * @return array{diretor: string, coordenacao: string, tem_diretor: bool, tem_coordenacao: bool, pode_exportar: bool, motivo_bloqueio: string}
      */
-    private function parecerElegibilidadeDaTurma(int $turmaId): array
+    private function parecerElegibilidadeDaTurma(int $turmaId, ?Turma $turma = null): array
     {
         if (array_key_exists($turmaId, $this->parecerTurmaElegibilidade)) {
             return $this->parecerTurmaElegibilidade[$turmaId];
         }
 
-        $turma = Turma::query()->find($turmaId);
+        $turma ??= Turma::query()->find($turmaId);
 
         if (! $turma) {
             return $this->parecerTurmaElegibilidade[$turmaId] = [

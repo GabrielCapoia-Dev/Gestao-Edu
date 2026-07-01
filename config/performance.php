@@ -47,6 +47,7 @@ return [
 
     'livewire_polling' => [
         'online_users' => (int) env('PERF_POLL_ONLINE_USERS', 30),
+        'online_users_closed' => (int) env('PERF_POLL_ONLINE_USERS_CLOSED', 120),
         'exports_table' => (int) env('PERF_POLL_EXPORTS_TABLE', 15),
         'exports_auto_download' => (int) env('PERF_POLL_EXPORTS_AUTO_DOWNLOAD', 10),
     ],
@@ -65,6 +66,7 @@ return [
         'active_exports' => (int) env('PERF_CACHE_ACTIVE_EXPORTS', 10),
         'inventory_dashboard' => (int) env('PERF_CACHE_INVENTORY_DASHBOARD', 60),
         'reports_dashboard' => (int) env('PERF_CACHE_REPORTS_DASHBOARD', 60),
+        'avaliacoes_dashboard' => (int) env('PERF_CACHE_AVALIACOES_DASHBOARD', 45),
     ],
 
     'instrumentation' => [

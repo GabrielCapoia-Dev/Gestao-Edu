@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Avaliacoes\AvaliacaoDashboardMetricsService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -25,6 +26,20 @@ class AvaliacaoInformacaoComplementar extends Model
         'turma_origem_id',
         'bloqueio_tipo',
     ];
+
+    protected static function booted(): void
+    {
+        $invalidarDashboard = function (self $informacao): void {
+            $service = app(AvaliacaoDashboardMetricsService::class);
+
+            foreach (array_unique([(int) $informacao->getOriginal('avaliacao_id'), (int) $informacao->avaliacao_id]) as $avaliacaoId) {
+                $service->forgetForAvaliacao($avaliacaoId);
+            }
+        };
+
+        static::saved($invalidarDashboard);
+        static::deleted($invalidarDashboard);
+    }
 
     protected function casts(): array
     {

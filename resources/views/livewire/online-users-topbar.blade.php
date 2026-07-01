@@ -1,4 +1,10 @@
-<div class="online-users-wrapper" wire:poll.visible.{{ (int) config('performance.livewire_polling.online_users', 30) }}s="$refresh">
+@php
+    $onlineUsersPollSeconds = $open
+        ? (int) config('performance.livewire_polling.online_users', 30)
+        : (int) config('performance.livewire_polling.online_users_closed', 120);
+@endphp
+
+<div class="online-users-wrapper" wire:poll.visible.{{ $onlineUsersPollSeconds }}s="$refresh">
     <button
         type="button"
         class="online-users-card"
