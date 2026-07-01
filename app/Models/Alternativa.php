@@ -52,10 +52,21 @@ class Alternativa extends Model
     public static function sortCollectionForDocumento(Collection $alternativas): Collection
     {
         return $alternativas
-            ->sortBy([
-                fn (self $alternativa): int => $alternativa->ordem_documento ?? PHP_INT_MAX,
-                fn (self $alternativa): string => mb_strtolower((string) $alternativa->nome),
-            ])
+            ->sort(function (self $a, self $b): int {
+                $ordem = ($a->ordem_documento ?? PHP_INT_MAX) <=> ($b->ordem_documento ?? PHP_INT_MAX);
+
+                if ($ordem !== 0) {
+                    return $ordem;
+                }
+
+                $nome = strnatcasecmp((string) $a->nome, (string) $b->nome);
+
+                if ($nome !== 0) {
+                    return $nome;
+                }
+
+                return (int) $a->getKey() <=> (int) $b->getKey();
+            })
             ->values();
     }
 
