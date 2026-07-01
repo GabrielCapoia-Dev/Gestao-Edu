@@ -87,6 +87,15 @@
                                 <p class="error">{{ $message }}</p>
                             @enderror
                         </label>
+
+                        <label class="gi-field gi-field--small">
+                            <span>Ordem no documento</span>
+                            <input type="number" min="1" step="1" wire:model.defer="form.ordem_documento" placeholder="Ex.: 1" />
+                            <small>O menor número aparece mais à esquerda no quadro do documento.</small>
+                            @error('form.ordem_documento')
+                                <p class="error">{{ $message }}</p>
+                            @enderror
+                        </label>
                     @endif
 
                     <label class="gi-field gi-field--small">

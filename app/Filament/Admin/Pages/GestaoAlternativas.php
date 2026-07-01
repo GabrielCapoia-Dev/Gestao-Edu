@@ -60,6 +60,7 @@ class GestaoAlternativas extends Page implements HasTable
         'observacao' => '',
         'vai_no_documento' => true,
         'descricao_documento' => '',
+        'ordem_documento' => null,
         'status' => true,
     ];
 
@@ -127,6 +128,12 @@ class GestaoAlternativas extends Page implements HasTable
                     ->boolean()
                     ->sortable()
                     ->alignCenter(),
+
+                TextColumn::make('ordem_documento')
+                    ->label('Ordem no documento')
+                    ->sortable()
+                    ->alignCenter()
+                    ->placeholder('-'),
 
                 TextColumn::make('observacao')
                     ->label('Observação padrão')
@@ -278,6 +285,7 @@ class GestaoAlternativas extends Page implements HasTable
             'observacao' => '',
             'vai_no_documento' => true,
             'descricao_documento' => '',
+            'ordem_documento' => null,
             'status' => true,
         ];
         $this->modalAberto = true;
@@ -315,6 +323,7 @@ class GestaoAlternativas extends Page implements HasTable
             'observacao' => (string) ($alternativa->observacao ?? ''),
             'vai_no_documento' => (bool) $alternativa->vai_no_documento,
             'descricao_documento' => (string) ($alternativa->descricao_documento ?? ''),
+            'ordem_documento' => $alternativa->ordem_documento,
             'status' => (bool) $alternativa->status,
         ];
         $this->modalAberto = true;
@@ -370,6 +379,7 @@ class GestaoAlternativas extends Page implements HasTable
             'form.observacao' => ['nullable', 'string', 'max:1000'],
             'form.vai_no_documento' => ['required', 'boolean'],
             'form.descricao_documento' => ['nullable', 'string', 'max:1000'],
+            'form.ordem_documento' => ['nullable', 'integer', 'min:1'],
             'form.status' => ['required', 'boolean'],
         ]);
 
@@ -414,6 +424,9 @@ class GestaoAlternativas extends Page implements HasTable
         $descricaoDocumento = $vaiNoDocumento && filled($validated['form']['descricao_documento'] ?? null)
             ? trim((string) $validated['form']['descricao_documento'])
             : null;
+        $ordemDocumento = $vaiNoDocumento && filled($validated['form']['ordem_documento'] ?? null)
+            ? (int) $validated['form']['ordem_documento']
+            : null;
 
         $alternativa->fill([
             'tipo_avaliacao_id' => $tipoAvaliacaoId,
@@ -422,6 +435,7 @@ class GestaoAlternativas extends Page implements HasTable
             'observacao' => $observacao,
             'vai_no_documento' => $vaiNoDocumento,
             'descricao_documento' => $descricaoDocumento,
+            'ordem_documento' => $ordemDocumento,
             'status' => (bool) ($validated['form']['status'] ?? true),
         ]);
         $alternativa->save();

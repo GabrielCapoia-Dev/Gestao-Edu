@@ -717,9 +717,66 @@ class AvaliacaoDocumentoExportTest extends TestCase
         ])->render();
 
         $this->assertStringNotContainsString('Principal', $html);
-        $this->assertStringContainsString('.footer-city {', $html);
-        $this->assertStringContainsString('margin-top: 32px;', $html);
+        $this->assertStringContainsString('.footer-period-spacer {', $html);
+        $this->assertStringContainsString('height: 40px;', $html);
+        $this->assertStringContainsString('<div class="footer-period-spacer"></div>', $html);
         $this->assertStringContainsString('<p class="footer-city">Umuarama 01 de julho de 2026</p>', $html);
+    }
+
+    public function test_legenda_do_documento_respeita_ordem_configurada_das_alternativas(): void
+    {
+        $tipo = TipoAvaliacao::query()->create(['nome' => 'Parecer Ordem Documento', 'status' => true]);
+
+        $alternativaSim = Alternativa::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'nome' => 'Sim',
+            'tem_observacao' => false,
+            'vai_no_documento' => true,
+            'descricao_documento' => 'Atingiu a pauta completamente.',
+            'ordem_documento' => 3,
+            'status' => true,
+        ]);
+        $alternativaNao = Alternativa::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'nome' => 'NÃ£o',
+            'tem_observacao' => false,
+            'vai_no_documento' => true,
+            'descricao_documento' => 'NÃ£o atingiu a pauta.',
+            'ordem_documento' => 1,
+            'status' => true,
+        ]);
+        $alternativaParcial = Alternativa::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'nome' => 'Parcial',
+            'tem_observacao' => false,
+            'vai_no_documento' => true,
+            'descricao_documento' => 'Atingiu a pauta parcialmente.',
+            'ordem_documento' => 2,
+            'status' => true,
+        ]);
+
+        $metodo = new ReflectionMethod(AvaliacaoDocumentoExportService::class, 'montarLegenda');
+        $metodo->setAccessible(true);
+
+        $legenda = $metodo->invoke(
+            new AvaliacaoDocumentoExportService(),
+            [
+                1 => collect([$alternativaSim, $alternativaNao, $alternativaParcial]),
+            ]
+        );
+
+        $this->assertSame(
+            ['NÃ£O', 'PARCIAL', 'SIM'],
+            $legenda->pluck('nome')->all()
+        );
+        $this->assertSame(
+            [
+                'NÃ£o atingiu a pauta.',
+                'Atingiu a pauta parcialmente.',
+                'Atingiu a pauta completamente.',
+            ],
+            $legenda->pluck('descricao')->all()
+        );
     }
 
     public function test_exportacao_direta_nao_permite_escola_fora_do_vinculo_mesmo_com_listar_avaliacoes(): void

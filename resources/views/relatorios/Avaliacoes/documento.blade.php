@@ -171,8 +171,12 @@
             font-size: 12px;
         }
 
+        .footer-period-spacer {
+            height: 40px;
+        }
+
         .footer-city {
-            margin-top: 32px;
+            margin-top: 0;
         }
 
         .signature {
@@ -298,6 +302,7 @@
                     <p><span class="label">Período:</span> {{ $documento['periodo_avaliacao'] }}</p>
                 @endif
 
+                <div class="footer-period-spacer"></div>
                 <p class="footer-city">Umuarama {{ $documento['data_impressao'] ?? '' }}</p>
             </div>
 

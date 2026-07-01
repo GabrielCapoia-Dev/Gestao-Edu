@@ -436,13 +436,14 @@ class AvaliacaoDocumentoExportService
 
         $overrideAlternativas = Alternativa::query()
             ->whereIn('id', $overrides->flatten()->unique()->values()->all())
+            ->orderedForDocumento()
             ->get()
             ->keyBy('id');
 
         $alternativasTipoAvaliacao = Alternativa::query()
             ->where('tipo_avaliacao_id', (int) $avaliacao->tipo_avaliacao_id)
             ->where('status', true)
-            ->orderBy('nome')
+            ->orderedForDocumento()
             ->get();
 
         $porPauta = [];
@@ -466,6 +467,8 @@ class AvaliacaoDocumentoExportService
 
             if ($alternativas->isEmpty()) {
                 $alternativas = $alternativasTipoAvaliacao;
+            } else {
+                $alternativas = Alternativa::sortCollectionForDocumento($alternativas);
             }
 
             $porPauta[$pautaId] = $alternativas->values();
@@ -484,7 +487,7 @@ class AvaliacaoDocumentoExportService
             ->flatMap(fn (Collection $alternativas): Collection => $alternativas)
             ->filter(fn (Alternativa $alternativa): bool => (bool) $alternativa->vai_no_documento)
             ->unique(fn (Alternativa $alternativa): int => (int) $alternativa->id)
-            ->sortBy(fn (Alternativa $alternativa): string => mb_strtolower((string) $alternativa->nome))
+            ->pipe(fn (Collection $alternativas): Collection => Alternativa::sortCollectionForDocumento($alternativas))
             ->map(fn (Alternativa $alternativa): array => [
                 'nome' => mb_strtoupper((string) $alternativa->nome),
                 'descricao' => trim((string) (

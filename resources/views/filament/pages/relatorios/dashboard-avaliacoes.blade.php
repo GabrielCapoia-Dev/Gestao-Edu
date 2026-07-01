@@ -1,7 +1,7 @@
 <x-filament-panels::page>
     <div class="av-livewire-root" x-data x-on:dashboard-acompanhamento-recarregar.window="$wire.atualizarAcompanhamentoTurmas()">
     <div class="dav-page">
-        <div class="dav-processing-overlay" wire:loading.flex wire:target="abrirWorkspaceAcompanhamento,fecharWorkspaceAcompanhamento,atualizarAcompanhamentoTurmas,exportarParecerTurma">
+        <div class="dav-processing-overlay" wire:loading.flex wire:target="abrirWorkspaceAcompanhamento,fecharWorkspaceAcompanhamento,atualizarAcompanhamentoTurmas">
             <div class="dav-processing-card">
                 <div class="dav-processing-spinner"></div>
                 <strong>Processando...</strong>
