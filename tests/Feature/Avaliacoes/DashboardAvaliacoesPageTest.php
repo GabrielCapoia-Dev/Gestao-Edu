@@ -3,6 +3,7 @@
 namespace Tests\Feature\Avaliacoes;
 
 use App\Filament\Admin\Pages\Relatorios\DashboardAvaliacoes;
+use App\Jobs\ProcessExportRequestJob;
 use App\Livewire\Avaliacoes\AvaliacaoTurmaWorkspace;
 use App\Models\Aluno;
 use App\Models\Alternativa;
@@ -10,6 +11,8 @@ use App\Models\Avaliacao;
 use App\Models\AvaliacaoResposta;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
+use App\Models\ExportRequest;
+use App\Models\FuncaoAdministrativa;
 use App\Models\Pauta;
 use App\Models\PeriodoAvaliacao;
 use App\Models\Professor;
@@ -17,7 +20,10 @@ use App\Models\Serie;
 use App\Models\TipoAvaliacao;
 use App\Models\Turma;
 use App\Models\User;
+use App\Services\ServidorService;
+use Filament\Notifications\Notification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
@@ -390,13 +396,13 @@ class DashboardAvaliacoesPageTest extends TestCase
 
         $acompanhamento = collect($component->instance()->acompanhamentoTurmas);
         $this->assertSame(['Turma Permitida'], $acompanhamento->pluck('turma_nome')->unique()->values()->all());
-        $this->assertSame('Professor Permitido', $acompanhamento->first()['professor_nome']);
+        $this->assertSame('Todos os professores', $acompanhamento->first()['professor_nome']);
         $this->assertSame('concluido', $acompanhamento->first()['status']);
 
         $component->set('filtros.professores_ids', [$professorPermitido->id]);
 
         $this->assertSame(1, $component->instance()->cards['preenchimentos_esperados']);
-        $this->assertSame(['Professor Permitido'], collect($component->instance()->acompanhamentoTurmas)->pluck('professor_nome')->unique()->values()->all());
+        $this->assertSame(['Todos os professores'], collect($component->instance()->acompanhamentoTurmas)->pluck('professor_nome')->unique()->values()->all());
 
         $component->set('filtros.escolas_ids', [$escolaBloqueada->id]);
 
@@ -709,6 +715,232 @@ class DashboardAvaliacoesPageTest extends TestCase
 
         $workspace->set('componenteWorkspaceId', '');
         $this->assertCount(2, $workspace->instance()->getPautasDisponiveisProperty());
+    }
+
+    public function test_exportar_parecer_no_acompanhamento_enfileira_pdf_da_turma_quando_ha_diretor_e_coordenacao(): void
+    {
+        Queue::fake();
+
+        $dados = $this->criarCenarioExportacaoParecerAcompanhamento();
+        $component = $dados['component'];
+        $linha = $dados['linha'];
+
+        $this->assertTrue($linha['parecer_exportavel']);
+        $this->assertSame('', $linha['parecer_exportavel_motivo']);
+
+        $component->call(
+            'exportarParecerTurma',
+            $linha['avaliacao_id'],
+            $linha['turma_id'],
+            $linha['escola_id'],
+            $linha['serie_id'],
+            $linha['componente_id'],
+            $linha['professor_id']
+        )->assertNotified('Exportação enviada para a fila');
+
+        $exportRequest = ExportRequest::query()->firstOrFail();
+
+        $this->assertSame('avaliacao_documento', $exportRequest->type);
+        $this->assertSame('pdf', $exportRequest->format);
+        $this->assertSame($linha['avaliacao_id'], $exportRequest->filters['avaliacao_id']);
+        $this->assertSame('turma', $exportRequest->filters['escopo']);
+        $this->assertSame($linha['turma_id'], $exportRequest->filters['turma_id']);
+
+        $component->assertRedirect(route('filament.admin.pages.minhas-exportacoes', [
+            'download' => $exportRequest->getKey(),
+        ]));
+
+        Queue::assertPushed(ProcessExportRequestJob::class, 1);
+    }
+
+    public function test_exportar_parecer_no_acompanhamento_bloqueia_quando_falta_gestor_obrigatorio(): void
+    {
+        Queue::fake();
+
+        $dados = $this->criarCenarioExportacaoParecerAcompanhamento(comCoordenacao: false);
+        $component = $dados['component'];
+        $linha = $dados['linha'];
+
+        $this->assertFalse($linha['parecer_exportavel']);
+        $this->assertSame('A turma não possui vínculo com Diretor(a) ou Coordenador(a).', $linha['parecer_exportavel_motivo']);
+
+        $component->call(
+            'exportarParecerTurma',
+            $linha['avaliacao_id'],
+            $linha['turma_id'],
+            $linha['escola_id'],
+            $linha['serie_id'],
+            $linha['componente_id'],
+            $linha['professor_id']
+        )->assertNotified('A turma não possui vínculo com Diretor(a) ou Coordenador(a).');
+
+        $this->assertDatabaseCount('export_requests', 0);
+        Queue::assertNothingPushed();
+    }
+
+    public function test_exportar_parecer_no_acompanhamento_nao_enfileira_linha_fora_do_escopo_ou_nao_concluida(): void
+    {
+        Queue::fake();
+
+        $dadosEscopo = $this->criarCenarioExportacaoParecerAcompanhamento();
+        $componentEscopo = $dadosEscopo['component'];
+        $linhaEscopo = $dadosEscopo['linha'];
+
+        $componentEscopo->call(
+            'exportarParecerTurma',
+            $linhaEscopo['avaliacao_id'],
+            $linhaEscopo['turma_id'],
+            $linhaEscopo['escola_id'] + 999,
+            $linhaEscopo['serie_id'],
+            $linhaEscopo['componente_id'],
+            $linhaEscopo['professor_id']
+        )->assertNotified('A avaliação selecionada não está mais disponível no seu escopo.');
+
+        $this->assertDatabaseCount('export_requests', 0);
+        Queue::assertNothingPushed();
+
+        Notification::assertNotNotified('Exportação enviada para a fila');
+
+        $dadosNaoConcluida = $this->criarCenarioExportacaoParecerAcompanhamento(concluida: false);
+        $componentNaoConcluida = $dadosNaoConcluida['component'];
+        $linhaNaoConcluida = $dadosNaoConcluida['linha'];
+
+        $this->assertSame('nao_iniciado', $linhaNaoConcluida['status']);
+
+        $componentNaoConcluida->call(
+            'exportarParecerTurma',
+            $linhaNaoConcluida['avaliacao_id'],
+            $linhaNaoConcluida['turma_id'],
+            $linhaNaoConcluida['escola_id'],
+            $linhaNaoConcluida['serie_id'],
+            $linhaNaoConcluida['componente_id'],
+            $linhaNaoConcluida['professor_id']
+        )->assertNotified('O parecer só pode ser exportado quando a turma estiver concluída.');
+
+        $this->assertDatabaseCount('export_requests', 0);
+        Queue::assertNothingPushed();
+    }
+
+    /**
+     * @return array{component: \Livewire\Features\SupportTesting\Testable, linha: array<string, mixed>}
+     */
+    private function criarCenarioExportacaoParecerAcompanhamento(
+        bool $comDiretor = true,
+        bool $comCoordenacao = true,
+        bool $concluida = true
+    ): array {
+        $sufixo = strtoupper(substr(md5(uniqid((string) mt_rand(), true)), 0, 6));
+
+        Permission::findOrCreate('Acompanhar Avaliações');
+        Permission::findOrCreate('Exportar Avaliações');
+
+        $user = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $user->givePermissionTo(['Acompanhar Avaliações', 'Exportar Avaliações']);
+
+        $tipo = TipoAvaliacao::query()->create(['nome' => 'Parecer Exportação ' . $sufixo, 'status' => true]);
+        $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Período Exportação ' . $sufixo, 'status' => true]);
+        $serie = $this->criarSerie('SER-EXP-' . $sufixo, 'Infantil 3 ' . $sufixo);
+        $componente = ComponenteCurricular::query()->create([
+            'codigo' => 'COMP-EXP-' . $sufixo,
+            'nome' => 'Escuta, fala, pensamento e imaginação ' . $sufixo,
+        ]);
+        $escola = $this->criarEscola('Escola Exportação Parecer ' . $sufixo);
+        $user->escolas()->attach($escola->id);
+
+        $turma = $this->criarTurma($escola, $serie, 'A', 'manha');
+        $aluno = $this->criarAluno($turma, 'Aluno Exportação Parecer ' . $sufixo, 'CGM-EXP-' . $sufixo);
+
+        $professor = Professor::query()->create([
+            'id_escola' => $escola->id,
+            'matricula' => 'PROF-EXP-' . $sufixo,
+            'nome' => 'Professor Exportação Parecer ' . $sufixo,
+            'email' => 'prof.exportacao.parecer.' . strtolower($sufixo) . '@edu.umuarama.pr.gov.br',
+        ]);
+        $turma->componentes()->attach($componente->id, [
+            'professor_id' => $professor->id,
+            'tem_professor' => true,
+        ]);
+
+        $alternativa = Alternativa::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'nome' => 'Atende',
+            'tem_observacao' => false,
+            'status' => true,
+        ]);
+        $pauta = $this->criarPauta($tipo, $serie, $componente, 'Pauta exportação parecer ' . $sufixo);
+        $pauta->alternativas()->attach([$alternativa->id]);
+
+        $avaliacao = $this->criarAvaliacao('Avaliação Exportação Parecer ' . $sufixo, $tipo, $periodo);
+        $avaliacao->series()->sync([$serie->id]);
+        $avaliacao->componentes()->sync([$componente->id]);
+        $avaliacao->escolas()->sync([$escola->id]);
+        $avaliacao->turmas()->sync([$turma->id]);
+        $avaliacao->pautas()->sync([$pauta->id]);
+
+        if ($concluida) {
+            $this->registrarResposta($avaliacao, $turma, $aluno, $pauta, $alternativa, $professor);
+        }
+
+        $this->vincularGestoresDaTurma($escola, $turma, $comDiretor, $comCoordenacao);
+
+        $component = Livewire::actingAs($user)
+            ->test(DashboardAvaliacoes::class)
+            ->set('filtros.avaliacao_id', $avaliacao->id);
+
+        return [
+            'component' => $component,
+            'linha' => $component->instance()->acompanhamentoTurmas[0],
+        ];
+    }
+
+    private function vincularGestoresDaTurma(
+        Escola $escola,
+        Turma $turma,
+        bool $comDiretor,
+        bool $comCoordenacao
+    ): void {
+        $funcaoDiretor = FuncaoAdministrativa::query()->create([
+            'nome' => 'Direção Escolar Parecer ' . $turma->id,
+            'categoria' => FuncaoAdministrativa::CATEGORIA_ADMINISTRATIVO,
+            'ativo' => true,
+            'tem_relacao_turma' => false,
+            'direcao_escolar' => true,
+        ]);
+        $funcaoCoordenador = FuncaoAdministrativa::query()->create([
+            'nome' => 'Coordenação Pedagógica Parecer ' . $turma->id,
+            'categoria' => FuncaoAdministrativa::CATEGORIA_PEDAGOGICO,
+            'ativo' => true,
+            'tem_relacao_turma' => true,
+            'coordenacao_pedagogica' => true,
+        ]);
+
+        if ($comDiretor) {
+            app(ServidorService::class)->criarServidorComFuncoes([
+                'id_escola' => $escola->id,
+                'nome' => 'Diretora Parecer',
+                'matricula' => 'DIR-PARECER',
+                'status' => 'ativo',
+            ], [[
+                'funcao_administrativa_id' => $funcaoDiretor->id,
+                'portaria' => '111/2026',
+            ]]);
+        }
+
+        if ($comCoordenacao) {
+            app(ServidorService::class)->criarServidorComFuncoes([
+                'id_escola' => $escola->id,
+                'nome' => 'Coordenadora Parecer',
+                'matricula' => 'COORD-PARECER',
+                'status' => 'ativo',
+            ], [[
+                'funcao_administrativa_id' => $funcaoCoordenador->id,
+                'portaria' => '222/2026',
+                'turma_ids' => [$turma->id],
+            ]]);
+        }
     }
 
     private function criarAvaliacao(string $nome, TipoAvaliacao $tipo, PeriodoAvaliacao $periodo): Avaliacao

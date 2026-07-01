@@ -499,7 +499,7 @@ class AvaliacaoDocumentoExportService
     /**
      * @param  Collection<int, Pauta>  $pautas
      * @param  Collection<int, array{nome: string, descricao: string}>  $legenda
-     * @param  array{diretor: string, coordenacao: string}  $gestores
+     * @param  array{diretor: string, coordenacao: string, tem_diretor: bool, tem_coordenacao: bool, pode_exportar: bool, motivo_bloqueio: string}  $gestores
      * @return array<string, mixed>
      */
     private function montarDocumentoAluno(
@@ -615,9 +615,9 @@ class AvaliacaoDocumentoExportService
     }
 
     /**
-     * @return array{diretor: string, coordenacao: string}
+     * @return array{diretor: string, coordenacao: string, tem_diretor: bool, tem_coordenacao: bool, pode_exportar: bool, motivo_bloqueio: string}
      */
-    private function gestoresDaTurma(Turma $turma): array
+    public function gestoresDaTurma(Turma $turma): array
     {
         $gestores = ServidorFuncaoAdministrativa::query()
             ->where('status', ServidorFuncaoAdministrativa::STATUS_ATIVO)
@@ -645,11 +645,28 @@ class AvaliacaoDocumentoExportService
 
         $diretor = $this->gestorPorFlag($gestores, $turma, 'direcao_escolar');
         $coordenacao = $this->gestorPorFlag($gestores, $turma, 'coordenacao_pedagogica');
+        $diretorNome = $this->formatarGestor($diretor);
+        $coordenacaoNome = $this->formatarGestor($coordenacao);
+        $temDiretor = $diretorNome !== '';
+        $temCoordenacao = $coordenacaoNome !== '';
 
         return [
-            'diretor' => $this->formatarGestor($diretor),
-            'coordenacao' => $this->formatarGestor($coordenacao),
+            'diretor' => $diretorNome,
+            'coordenacao' => $coordenacaoNome,
+            'tem_diretor' => $temDiretor,
+            'tem_coordenacao' => $temCoordenacao,
+            'pode_exportar' => $temDiretor && $temCoordenacao,
+            'motivo_bloqueio' => $this->motivoBloqueioGestores($temDiretor, $temCoordenacao),
         ];
+    }
+
+    private function motivoBloqueioGestores(bool $temDiretor, bool $temCoordenacao): string
+    {
+        if ($temDiretor && $temCoordenacao) {
+            return '';
+        }
+
+        return 'A turma não possui vínculo com Diretor(a) ou Coordenador(a).';
     }
 
     /**

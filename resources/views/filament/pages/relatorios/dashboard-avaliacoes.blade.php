@@ -1,7 +1,7 @@
 <x-filament-panels::page>
     <div class="av-livewire-root" x-data x-on:dashboard-acompanhamento-recarregar.window="$wire.atualizarAcompanhamentoTurmas()">
     <div class="dav-page">
-        <div class="dav-processing-overlay" wire:loading.flex wire:target="abrirWorkspaceAcompanhamento,fecharWorkspaceAcompanhamento,atualizarAcompanhamentoTurmas">
+        <div class="dav-processing-overlay" wire:loading.flex wire:target="abrirWorkspaceAcompanhamento,fecharWorkspaceAcompanhamento,atualizarAcompanhamentoTurmas,exportarParecerTurma">
             <div class="dav-processing-card">
                 <div class="dav-processing-spinner"></div>
                 <strong>Processando...</strong>
@@ -369,13 +369,15 @@
                                                 Abrir avaliação
                                             </button>
                                             @if ($item['status'] === 'concluido' && $this->podeExportarParecer)
-                                                <a
-                                                    href="{{ route('avaliacoes.documento.pdf', ['avaliacao_id' => $item['avaliacao_id'], 'escopo' => 'turma', 'turma_id' => $item['turma_id']]) }}"
-                                                    class="dav-link-action"
-                                                    target="_blank"
-                                                    rel="noopener">
+                                                <button
+                                                    type="button"
+                                                    class="dav-link-action{{ ! $item['parecer_exportavel'] ? ' dav-link-action--muted' : '' }}"
+                                                    title="{{ $item['parecer_exportavel'] ? 'Enviar exportação para a fila' : $item['parecer_exportavel_motivo'] }}"
+                                                    wire:click="exportarParecerTurma({{ $item['avaliacao_id'] }}, {{ $item['turma_id'] }}, {{ $item['escola_id'] }}, {{ $item['serie_id'] }}, {{ $item['componente_id'] }}, {{ $item['professor_id'] }})"
+                                                    wire:loading.attr="disabled"
+                                                    wire:target="exportarParecerTurma">
                                                     Exportar parecer
-                                                </a>
+                                                </button>
                                             @endif
                                         </div>
                                     </td>
@@ -1127,6 +1129,13 @@
             background: #dbeafe;
             border-color: #93c5fd;
             color: #1e40af;
+        }
+
+        .dav-link-action--muted,
+        .dav-link-action--muted:hover {
+            border-color: #d7dce2;
+            background: #f3f4f6;
+            color: #5f6774;
         }
 
         .dav-status-actions {

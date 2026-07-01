@@ -171,6 +171,10 @@
             font-size: 12px;
         }
 
+        .footer-city {
+            margin-top: 32px;
+        }
+
         .signature {
             margin-top: 26px;
             min-height: 120px;
@@ -203,16 +207,16 @@
                     <td class="right"><span class="label">TURMA:</span> {{ $documento['turma'] ?? '' }}</td>
                 </tr>
                 <tr>
-                    <td><span class="label">CGM:</span> {{ $documento['cgm'] ?? '' }}</td>
-                    <td class="right"><span class="label">VÍNCULO:</span> {{ $documento['vinculo'] ?? '' }}</td>
-                </tr>
-                <tr>
                     <td><span class="label">CURSO:</span> {{ $documento['curso'] ?? '' }}</td>
                     <td class="right"><span class="label">ANO LETIVO:</span> {{ $documento['ano_letivo'] ?? '' }}</td>
                 </tr>
                 <tr>
-                    <td></td>
+                    <td><span class="label">CGM:</span> {{ $documento['cgm'] ?? '' }}</td>
                     <td class="right"><span class="label">TURNO:</span> {{ $documento['turno'] ?? '' }}</td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td class="right"></td>
                 </tr>
                 @if (! empty($documento['documento_tipo']))
                 <tr>
@@ -294,7 +298,7 @@
                     <p><span class="label">Período:</span> {{ $documento['periodo_avaliacao'] }}</p>
                 @endif
 
-                <p>Umuarama {{ $documento['data_impressao'] ?? '' }}</p>
+                <p class="footer-city">Umuarama {{ $documento['data_impressao'] ?? '' }}</p>
             </div>
 
             <div class="signature">

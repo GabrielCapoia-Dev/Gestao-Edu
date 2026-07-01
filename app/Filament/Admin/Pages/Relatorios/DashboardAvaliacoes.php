@@ -12,7 +12,10 @@ use App\Models\PeriodoAvaliacao;
 use App\Models\Professor;
 use App\Models\Serie;
 use App\Models\TipoAvaliacao;
+use App\Models\Turma;
 use App\Models\User;
+use App\Services\Avaliacoes\AvaliacaoDocumentoExportService;
+use App\Services\Exports\ExportRequestService;
 use App\Services\Relatorios\RelatorioPdfRenderer;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -36,6 +39,7 @@ use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Throwable;
 use UnitEnum;
 
 class DashboardAvaliacoes extends Page implements HasForms
@@ -108,6 +112,11 @@ class DashboardAvaliacoes extends Page implements HasForms
     public array $filtrosAplicados = [];
 
     public string $ultimaAtualizacao = '';
+
+    /**
+     * @var array<int, array{diretor: string, coordenacao: string, tem_diretor: bool, tem_coordenacao: bool, pode_exportar: bool, motivo_bloqueio: string}>
+     */
+    private array $parecerTurmaElegibilidade = [];
 
     public function mount(): void
     {
@@ -260,6 +269,112 @@ class DashboardAvaliacoes extends Page implements HasForms
 
         if ($deveRecarregarAcompanhamento) {
             $this->dispatch('dashboard-acompanhamento-recarregar');
+        }
+    }
+
+    public function exportarParecerTurma(
+        int $avaliacaoId,
+        int $turmaId,
+        int $escolaId,
+        int $serieId,
+        ?int $componenteId = null,
+        ?int $professorId = null
+    ): void {
+        abort_unless(static::canAccess(), 403);
+
+        if (! $this->podeExportarParecer) {
+            Notification::make()
+                ->title('Você não tem permissão para exportar pareceres.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $linha = $this->localizarLinhaAcompanhamento(
+            $avaliacaoId,
+            $turmaId,
+            $escolaId,
+            $serieId,
+            $componenteId,
+            $professorId
+        );
+
+        if ($linha === null) {
+            Notification::make()
+                ->title('A avaliação selecionada não está mais disponível no seu escopo.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        if (($linha['status'] ?? null) !== 'concluido') {
+            Notification::make()
+                ->title('O parecer só pode ser exportado quando a turma estiver concluída.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $turma = Turma::query()->find($turmaId);
+
+        if (! $turma) {
+            Notification::make()
+                ->title('A turma selecionada não está mais disponível para exportação.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $gestores = app(AvaliacaoDocumentoExportService::class)->gestoresDaTurma($turma);
+
+        if (! $gestores['pode_exportar']) {
+            Notification::make()
+                ->title($gestores['motivo_bloqueio'])
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $user = Auth::user();
+
+        if (! $user) {
+            abort(403);
+        }
+
+        try {
+            $exportRequest = app(ExportRequestService::class)->queue(
+                user: $user,
+                type: 'avaliacao_documento',
+                format: 'pdf',
+                filters: [
+                    'avaliacao_id' => $avaliacaoId,
+                    'escopo' => 'turma',
+                    'turma_id' => $turmaId,
+                ],
+                label: 'Documento de avaliação',
+                metadata: ['route' => 'filament.admin.pages.dashboard-avaliacoes'],
+            );
+
+            Notification::make()
+                ->title($exportRequest->wasRecentlyCreated ? 'Exportação enviada para a fila' : 'Exportação já está em andamento')
+                ->body('Acompanhe o progresso em Minhas Exportacoes.')
+                ->success()
+                ->send();
+
+            $this->redirectRoute('filament.admin.pages.minhas-exportacoes', [
+                'download' => $exportRequest->getKey(),
+            ]);
+        } catch (Throwable $exception) {
+            Notification::make()
+                ->title('Não foi possível iniciar a exportação')
+                ->body($exception->getMessage())
+                ->danger()
+                ->send();
         }
     }
 
@@ -1465,6 +1580,7 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     private function atualizarDashboard(): void
     {
+        $this->parecerTurmaElegibilidade = [];
         $dados = $this->montarDashboardData();
 
         $this->cards = $dados['cards'];
@@ -1483,6 +1599,7 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     public function atualizarAcompanhamentoTurmas(): void
     {
+        $this->parecerTurmaElegibilidade = [];
         $this->normalizarFiltros();
         $this->normalizarFiltrosAcompanhamento();
 
@@ -2572,6 +2689,7 @@ class DashboardAvaliacoes extends Page implements HasForms
                     $preenchimentosRespondidos > 0 => 'em_andamento',
                     default => 'nao_iniciado',
                 };
+                $parecerElegibilidade = $this->parecerElegibilidadeDaTurma((int) $item->turma_id);
 
                 return [
                     'avaliacao_id' => (int) $item->avaliacao_id,
@@ -2599,6 +2717,8 @@ class DashboardAvaliacoes extends Page implements HasForms
                         'em_andamento' => 'Em andamento',
                         default => 'Nao iniciado',
                     },
+                    'parecer_exportavel' => $parecerElegibilidade['pode_exportar'],
+                    'parecer_exportavel_motivo' => $parecerElegibilidade['motivo_bloqueio'],
                     'ultima_resposta' => $item->ultima_resposta_em
                         ? \Illuminate\Support\Carbon::parse($item->ultima_resposta_em)->format('d/m/Y H:i')
                         : '-',
@@ -2608,6 +2728,32 @@ class DashboardAvaliacoes extends Page implements HasForms
             ->all();
 
         return ['itens' => $itens, 'total' => $total];
+    }
+
+    /**
+     * @return array{diretor: string, coordenacao: string, tem_diretor: bool, tem_coordenacao: bool, pode_exportar: bool, motivo_bloqueio: string}
+     */
+    private function parecerElegibilidadeDaTurma(int $turmaId): array
+    {
+        if (array_key_exists($turmaId, $this->parecerTurmaElegibilidade)) {
+            return $this->parecerTurmaElegibilidade[$turmaId];
+        }
+
+        $turma = Turma::query()->find($turmaId);
+
+        if (! $turma) {
+            return $this->parecerTurmaElegibilidade[$turmaId] = [
+                'diretor' => '',
+                'coordenacao' => '',
+                'tem_diretor' => false,
+                'tem_coordenacao' => false,
+                'pode_exportar' => false,
+                'motivo_bloqueio' => 'A turma não possui vínculo com Diretor(a) ou Coordenador(a).',
+            ];
+        }
+
+        return $this->parecerTurmaElegibilidade[$turmaId] = app(AvaliacaoDocumentoExportService::class)
+            ->gestoresDaTurma($turma);
     }
 
     private function aplicarFiltrosTurmaQuery(QueryBuilder $query, string $alias = 't', ?array $filtros = null): void

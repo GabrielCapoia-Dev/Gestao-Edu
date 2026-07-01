@@ -489,13 +489,14 @@ class AvaliacaoDocumentoExportTest extends TestCase
             'status' => 'ativo',
         ], [$funcaoDirecaoSemFlag->id]);
 
-        $metodo = new ReflectionMethod(AvaliacaoDocumentoExportService::class, 'gestoresDaTurma');
-        $metodo->setAccessible(true);
-
-        $gestores = $metodo->invoke(new AvaliacaoDocumentoExportService(), $turma);
+        $gestores = (new AvaliacaoDocumentoExportService())->gestoresDaTurma($turma);
 
         $this->assertSame('Diretora da Turma - 222/2026', $gestores['diretor']);
         $this->assertSame('Coordenadora Documento - 333/2026', $gestores['coordenacao']);
+        $this->assertTrue($gestores['tem_diretor']);
+        $this->assertTrue($gestores['tem_coordenacao']);
+        $this->assertTrue($gestores['pode_exportar']);
+        $this->assertSame('', $gestores['motivo_bloqueio']);
     }
 
     public function test_nome_da_funcao_sem_flag_nao_resolve_diretor_ou_coordenador(): void
@@ -518,13 +519,48 @@ class AvaliacaoDocumentoExportTest extends TestCase
             'status' => 'ativo',
         ], [$funcaoDirecaoSemFlag->id]);
 
-        $metodo = new ReflectionMethod(AvaliacaoDocumentoExportService::class, 'gestoresDaTurma');
-        $metodo->setAccessible(true);
-
-        $gestores = $metodo->invoke(new AvaliacaoDocumentoExportService(), $turma);
+        $gestores = (new AvaliacaoDocumentoExportService())->gestoresDaTurma($turma);
 
         $this->assertSame('', $gestores['diretor']);
         $this->assertSame('', $gestores['coordenacao']);
+        $this->assertFalse($gestores['tem_diretor']);
+        $this->assertFalse($gestores['tem_coordenacao']);
+        $this->assertFalse($gestores['pode_exportar']);
+        $this->assertSame('A turma não possui vínculo com Diretor(a) ou Coordenador(a).', $gestores['motivo_bloqueio']);
+    }
+
+    public function test_exportacao_do_parecer_fica_bloqueada_quando_falta_coordenacao_na_turma(): void
+    {
+        $escola = $this->criarEscola('Escola Sem Coordenacao Documento');
+        $serie = $this->criarSerie('SER-SEM-COORD', '1o Ano');
+        $turma = $this->criarTurma($escola, $serie, 'A');
+
+        $funcaoDiretor = FuncaoAdministrativa::query()->create([
+            'nome' => 'Direcao Escolar',
+            'categoria' => FuncaoAdministrativa::CATEGORIA_ADMINISTRATIVO,
+            'ativo' => true,
+            'tem_relacao_turma' => false,
+            'direcao_escolar' => true,
+        ]);
+
+        app(ServidorService::class)->criarServidorComFuncoes([
+            'id_escola' => $escola->id,
+            'nome' => 'Diretora sem Coordenacao',
+            'matricula' => 'DIR-SEM-COORD',
+            'status' => 'ativo',
+        ], [[
+            'funcao_administrativa_id' => $funcaoDiretor->id,
+            'portaria' => '123/2026',
+        ]]);
+
+        $gestores = (new AvaliacaoDocumentoExportService())->gestoresDaTurma($turma);
+
+        $this->assertSame('Diretora sem Coordenacao - 123/2026', $gestores['diretor']);
+        $this->assertSame('', $gestores['coordenacao']);
+        $this->assertTrue($gestores['tem_diretor']);
+        $this->assertFalse($gestores['tem_coordenacao']);
+        $this->assertFalse($gestores['pode_exportar']);
+        $this->assertSame('A turma não possui vínculo com Diretor(a) ou Coordenador(a).', $gestores['motivo_bloqueio']);
     }
 
     public function test_documento_exibe_nao_avaliado_para_pauta_pendente(): void
@@ -654,6 +690,36 @@ class AvaliacaoDocumentoExportTest extends TestCase
         $this->assertTrue($metodo->invoke($service, 'escola', 3));
         $this->assertFalse($metodo->invoke($service, 'turma', 2));
         $this->assertFalse($metodo->invoke($service, 'aluno', 1));
+    }
+
+    public function test_view_do_documento_remove_vinculo_do_cabecalho_e_adiciona_espacamento_antes_da_cidade(): void
+    {
+        $html = view('relatorios.Avaliacoes.documento', [
+            'documentos' => [[
+                'logo' => '',
+                'escola' => 'Escola Documento',
+                'avaliacao_titulo' => 'PARECER TESTE',
+                'estudante' => 'Aluno Documento',
+                'cgm' => 'CGM-DOC-123',
+                'vinculo' => 'Principal',
+                'curso' => 'Infantil 5',
+                'turma' => 'Turma A',
+                'turno' => 'Manhã',
+                'documento_tipo' => null,
+                'ano_letivo' => '2026',
+                'periodo_avaliacao' => '12 de junho de 2026 a 10 de julho de 2026',
+                'data_impressao' => '01 de julho de 2026',
+                'diretor' => 'Diretora Documento',
+                'coordenacao' => 'Coordenadora Documento',
+                'legenda' => [],
+                'componentes' => [],
+            ]],
+        ])->render();
+
+        $this->assertStringNotContainsString('Principal', $html);
+        $this->assertStringContainsString('.footer-city {', $html);
+        $this->assertStringContainsString('margin-top: 32px;', $html);
+        $this->assertStringContainsString('<p class="footer-city">Umuarama 01 de julho de 2026</p>', $html);
     }
 
     public function test_exportacao_direta_nao_permite_escola_fora_do_vinculo_mesmo_com_listar_avaliacoes(): void
