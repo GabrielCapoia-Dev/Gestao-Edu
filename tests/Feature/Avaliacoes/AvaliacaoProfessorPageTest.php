@@ -236,6 +236,153 @@ class AvaliacaoProfessorPageTest extends TestCase
             ->assertDontSee('Turma A');
     }
 
+    public function test_professor_visualiza_apenas_avaliacoes_e_turmas_das_escolas_e_turmas_vinculadas(): void
+    {
+        Permission::findOrCreate('Responder AvaliaÃ§Ãµes');
+
+        $tipo = TipoAvaliacao::query()->create(['nome' => 'Parecer Escopo', 'status' => true]);
+        $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Periodo Escopo', 'status' => true]);
+
+        $escolaVinculada = $this->criarEscola('Escola Vinculada');
+        $escolaFora = $this->criarEscola('Escola Fora');
+        $serie = $this->criarSerie('SER-ESCOPO', '3o Ano');
+        $turmaVinculada = $this->criarTurma($escolaVinculada, $serie, 'A');
+        $turmaMesmaEscolaSemVinculo = $this->criarTurma($escolaVinculada, $serie, 'B');
+        $turmaOutraEscola = $this->criarTurma($escolaFora, $serie, 'C');
+
+        $componente = ComponenteCurricular::query()->create([
+            'codigo' => 'COMP-ESC',
+            'nome' => 'Geografia',
+        ]);
+
+        $userProfessor = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+            'id_escola' => $escolaVinculada->id,
+        ]);
+        $userProfessor->givePermissionTo('Responder AvaliaÃ§Ãµes');
+        $userProfessor->escolas()->sync([$escolaVinculada->id]);
+
+        $professor = Professor::query()->create([
+            'user_id' => $userProfessor->id,
+            'id_escola' => $escolaVinculada->id,
+            'matricula' => 'PROF-ESC',
+            'nome' => 'Professor Escopo',
+            'email' => 'escopo@edu.umuarama.pr.gov.br',
+        ]);
+
+        $turmaVinculada->componentes()->attach($componente->id, [
+            'professor_id' => $professor->id,
+            'tem_professor' => true,
+        ]);
+
+        $alternativa = Alternativa::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'nome' => 'Atende',
+            'tem_observacao' => false,
+            'status' => true,
+        ]);
+
+        $pauta = Pauta::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'texto' => 'Pauta de escopo',
+            'serie_id' => $serie->id,
+            'componente_curricular_id' => $componente->id,
+            'status' => true,
+        ]);
+        $pauta->alternativas()->attach($alternativa->id);
+
+        $avaliacaoVinculada = $this->criarAvaliacao('Avaliacao Vinculada', $tipo, $periodo);
+        $avaliacaoVinculada->pautas()->attach($pauta->id);
+        $avaliacaoVinculada->turmas()->attach($turmaVinculada->id);
+        $this->sincronizarEscopoAvaliacao($avaliacaoVinculada, [$serie->id], [$componente->id], [$escolaVinculada->id]);
+
+        $avaliacaoMesmaEscolaSemVinculo = $this->criarAvaliacao('Avaliacao Sem Vinculo', $tipo, $periodo);
+        $avaliacaoMesmaEscolaSemVinculo->pautas()->attach($pauta->id);
+        $avaliacaoMesmaEscolaSemVinculo->turmas()->attach($turmaMesmaEscolaSemVinculo->id);
+        $this->sincronizarEscopoAvaliacao($avaliacaoMesmaEscolaSemVinculo, [$serie->id], [$componente->id], [$escolaVinculada->id]);
+
+        $avaliacaoOutraEscola = $this->criarAvaliacao('Avaliacao Outra Escola', $tipo, $periodo);
+        $avaliacaoOutraEscola->pautas()->attach($pauta->id);
+        $avaliacaoOutraEscola->turmas()->attach($turmaOutraEscola->id);
+        $this->sincronizarEscopoAvaliacao($avaliacaoOutraEscola, [$serie->id], [$componente->id], [$escolaFora->id]);
+
+        Aluno::query()->create([
+            'nome' => 'Aluno Vinculado',
+            'cgm' => 'CGM-ESC-001',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turmaVinculada->id,
+        ]);
+
+        Livewire::actingAs($userProfessor)
+            ->test(AvaliacaoTurmaWorkspace::class, $this->workspaceProfessorParams())
+            ->assertSee('Avaliacao Vinculada')
+            ->assertDontSee('Avaliacao Sem Vinculo')
+            ->assertDontSee('Avaliacao Outra Escola')
+            ->set('avaliacao', $avaliacaoVinculada->id)
+            ->assertSee('Escola Vinculada')
+            ->assertDontSee('Escola Fora')
+            ->set('serieEscola', $escolaVinculada->id . ':' . $serie->id)
+            ->assertSee('Turma A')
+            ->assertDontSee('Turma B')
+            ->assertDontSee('Turma C');
+    }
+
+    public function test_usuario_com_permissao_de_listagem_fica_limitado_a_avaliacoes_da_sua_escola(): void
+    {
+        Permission::findOrCreate('Listar AvaliaÃ§Ãµes');
+
+        $tipo = TipoAvaliacao::query()->create(['nome' => 'Parecer Coordenacao', 'status' => true]);
+        $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Periodo Coordenacao', 'status' => true]);
+
+        $escolaPermitida = $this->criarEscola('Escola Permitida');
+        $escolaFora = $this->criarEscola('Escola Fora Coordenacao');
+        $serie = $this->criarSerie('SER-COORD', '4o Ano');
+        $turmaPermitida = $this->criarTurma($escolaPermitida, $serie, 'A');
+        $turmaFora = $this->criarTurma($escolaFora, $serie, 'B');
+
+        $alternativa = Alternativa::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'nome' => 'Atende',
+            'tem_observacao' => false,
+            'status' => true,
+        ]);
+
+        $pauta = Pauta::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'texto' => 'Pauta coordenacao',
+            'serie_id' => $serie->id,
+            'status' => true,
+        ]);
+        $pauta->alternativas()->attach($alternativa->id);
+
+        $avaliacaoPermitida = $this->criarAvaliacao('Avaliacao Escola Permitida', $tipo, $periodo);
+        $avaliacaoPermitida->pautas()->attach($pauta->id);
+        $avaliacaoPermitida->turmas()->attach($turmaPermitida->id);
+        $this->sincronizarEscopoAvaliacao($avaliacaoPermitida, [$serie->id], [], [$escolaPermitida->id]);
+
+        $avaliacaoFora = $this->criarAvaliacao('Avaliacao Escola Fora', $tipo, $periodo);
+        $avaliacaoFora->pautas()->attach($pauta->id);
+        $avaliacaoFora->turmas()->attach($turmaFora->id);
+        $this->sincronizarEscopoAvaliacao($avaliacaoFora, [$serie->id], [], [$escolaFora->id]);
+
+        $user = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+            'id_escola' => $escolaPermitida->id,
+        ]);
+        $user->givePermissionTo('Listar AvaliaÃ§Ãµes');
+        $user->escolas()->sync([$escolaPermitida->id]);
+
+        Livewire::actingAs($user)
+            ->test(AvaliacaoTurmaWorkspace::class, $this->workspaceProfessorParams(false))
+            ->assertSee('Avaliacao Escola Permitida')
+            ->assertDontSee('Avaliacao Escola Fora')
+            ->set('avaliacao', $avaliacaoPermitida->id)
+            ->assertSee('Escola Permitida')
+            ->assertDontSee('Escola Fora Coordenacao');
+    }
+
     public function test_avaliacao_em_massa_respeita_turma_alvo_e_nao_sobrescreve_respostas_com_observacao(): void
     {
         Permission::findOrCreate('Responder Avaliações');
@@ -591,6 +738,7 @@ class AvaliacaoProfessorPageTest extends TestCase
             'email_verified_at' => now(),
         ]);
         $userProfessor->givePermissionTo('Responder AvaliaÃ§Ãµes');
+        $userProfessor->escolas()->sync([$escola->id, $outraEscola->id]);
 
         $professor = Professor::query()->create([
             'user_id' => $userProfessor->id,

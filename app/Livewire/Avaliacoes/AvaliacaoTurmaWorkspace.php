@@ -67,6 +67,8 @@ class AvaliacaoTurmaWorkspace extends Component
 
     public array $professorIds = [];
 
+    public array $turmaIdsProfessor = [];
+
     public array $componentesPorTurma = [];
 
     public array $professoresPorTurmaComponente = [];
@@ -721,9 +723,15 @@ class AvaliacaoTurmaWorkspace extends Component
             });
         }
 
-        if ($this->deveFiltrarPorProfessor()) {
-            $query->whereHas('turmas.componentes', function ($componentes): void {
-                $componentes->whereIn('turma_componente_professor.professor_id', $this->professorIds);
+        if (! $this->modoAcompanhamento()) {
+            $query->whereHas('turmas', function ($turmas): void {
+                $this->aplicarEscopoEscolasPermitidas($turmas);
+            });
+        }
+
+        if ($this->deveRestringirAsTurmasDoProfessor()) {
+            $query->whereHas('turmas', function ($turmas): void {
+                $turmas->whereIn('turmas.id', $this->turmaIdsProfessor);
             });
         }
 
@@ -1142,6 +1150,11 @@ class AvaliacaoTurmaWorkspace extends Component
         return true;
     }
 
+    private function deveRestringirAsTurmasDoProfessor(): bool
+    {
+        return ! $this->modoAcompanhamento() && $this->turmaIdsProfessor !== [];
+    }
+
     private function abortSeNaoPuderResponder(): void
     {
         abort_unless($this->podeResponder(), 403);
@@ -1157,6 +1170,7 @@ class AvaliacaoTurmaWorkspace extends Component
         }
 
         $this->professorIds = $user->professores()
+            ->where('ativo', true)
             ->pluck('id')
             ->map(fn ($id): int => (int) $id)
             ->all();
@@ -1167,7 +1181,16 @@ class AvaliacaoTurmaWorkspace extends Component
 
         $vinculos = TurmaComponenteProfessor::query()
             ->whereIn('professor_id', $this->professorIds)
+            ->where('tem_professor', true)
             ->get(['turma_id', 'componente_curricular_id']);
+
+        $this->turmaIdsProfessor = $vinculos
+            ->pluck('turma_id')
+            ->filter()
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
 
         $this->componentesPorTurma = $vinculos
             ->groupBy('turma_id')
@@ -1201,12 +1224,14 @@ class AvaliacaoTurmaWorkspace extends Component
 
     private function turmaEstaNoEscopo(Turma $turma): bool
     {
-        if ($this->modoAcompanhamento()) {
-            $escolasIds = $this->escolasPermitidasIds();
+        $escolasIds = $this->escolasPermitidasIds();
 
-            if ($escolasIds !== null && ! in_array((int) $turma->id_escola, $escolasIds, true)) {
-                return false;
-            }
+        if ($escolasIds !== null && ! in_array((int) $turma->id_escola, $escolasIds, true)) {
+            return false;
+        }
+
+        if ($this->deveRestringirAsTurmasDoProfessor() && ! in_array((int) $turma->id, $this->turmaIdsProfessor, true)) {
+            return false;
         }
 
         return true;
