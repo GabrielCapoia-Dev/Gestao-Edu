@@ -504,17 +504,8 @@ class DashboardAvaliacoes extends Page implements HasForms
                     ->native(false)
                     ->disabled(fn (): bool => ! $this->avaliacaoSelecionada())
                     ->live(),
-                Select::make('componente_id')
-                    ->label('Componentes')
-                    ->options(fn (): array => $this->componentesOptions)
-                    ->placeholder('Todos')
-                    ->native(false)
-                    ->searchable()
-                    ->preload()
-                    ->disabled(fn (): bool => ! $this->avaliacaoSelecionada())
-                    ->live(),
             ])
-            ->columns(4)
+            ->columns(3)
             ->statePath('filtrosAcompanhamento');
     }
 
@@ -2949,8 +2940,6 @@ class DashboardAvaliacoes extends Page implements HasForms
             $this->filtrosAcompanhamento['escola_id'] ?? null
         );
         $this->filtrosAcompanhamento['serie_id'] = $this->normalizarId($this->filtrosAcompanhamento['serie_id'] ?? null);
-        $this->filtrosAcompanhamento['componente_id'] = $this->normalizarId($this->filtrosAcompanhamento['componente_id'] ?? null);
-
         $turno = $this->filtrosAcompanhamento['turno'] ?? null;
         $turno = filled($turno) ? (string) $turno : null;
         $this->filtrosAcompanhamento['turno'] = array_key_exists((string) $turno, $this->turnosOptions)
@@ -2966,7 +2955,7 @@ class DashboardAvaliacoes extends Page implements HasForms
             'turnos' => filled($this->filtrosAcompanhamento['turno'] ?? null)
                 ? [(string) $this->filtrosAcompanhamento['turno']]
                 : [],
-            'componentes_ids' => array_filter([(int) ($this->filtrosAcompanhamento['componente_id'] ?? 0)]),
+            'componentes_ids' => [],
             'escolas_ids' => array_filter([(int) ($this->filtrosAcompanhamento['escola_id'] ?? 0)]),
         ];
     }
@@ -3021,7 +3010,6 @@ class DashboardAvaliacoes extends Page implements HasForms
             'escola_id' => null,
             'serie_id' => null,
             'turno' => null,
-            'componente_id' => null,
         ];
     }
 

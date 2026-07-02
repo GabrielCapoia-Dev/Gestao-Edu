@@ -448,9 +448,6 @@
                                     'turmaId' => (int) $workspaceAcompanhamentoLinha['turma_id'],
                                     'escolaId' => (int) $workspaceAcompanhamentoLinha['escola_id'],
                                     'serieId' => (int) $workspaceAcompanhamentoLinha['serie_id'],
-                                    'initialComponenteId' => ($workspaceAcompanhamentoLinha['componente_id'] ?? 0) > 0
-                                        ? (int) $workspaceAcompanhamentoLinha['componente_id']
-                                        : null,
                                     'modo' => 'acompanhamento',
                                     'canEdit' => true,
                                 ],

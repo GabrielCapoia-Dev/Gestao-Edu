@@ -267,6 +267,7 @@ class CriarPermissoes extends Command
             'Enviar Pedidos para Empresa',
             'Vincular Pedidos Adicionais',
             'Responder Avaliações',
+            'Preencher Avaliações em Massa',
             'Aprovar Pedidos de Inventário',
             'Gerar Romaneios de Inventário',
             'Conferir Pedidos de Inventário',
@@ -521,6 +522,7 @@ class CriarPermissoes extends Command
                 'Listar Turmas',
                 'Listar Alunos',
                 'Responder Avaliações',
+                'Preencher Avaliações em Massa',
             ]),
             'administrativo' => $this->onlyPermissions($permissions, [
                 'Listar Pedidos',

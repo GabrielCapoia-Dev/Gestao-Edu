@@ -8,6 +8,7 @@ use App\Models\Avaliacao;
 use App\Models\AvaliacaoInformacaoComplementar;
 use App\Models\AvaliacaoResposta;
 use App\Models\Pauta;
+use App\Models\Professor;
 use App\Models\Turma;
 use App\Models\TurmaComponenteProfessor;
 use App\Models\User;
@@ -178,6 +179,15 @@ class AvaliacaoTurmaWorkspace extends Component
         return $this->canEdit;
     }
 
+    public function podePreencherEmMassa(): bool
+    {
+        /** @var User|null $user */
+        $user = Auth::user();
+
+        return $this->canEdit
+            && ($user?->hasPermissionTo('Preencher Avaliações em Massa') ?? false);
+    }
+
     public function updatedAvaliacao(): void
     {
         if ($this->modoAcompanhamento()) {
@@ -231,6 +241,7 @@ class AvaliacaoTurmaWorkspace extends Component
             return;
         }
 
+        $this->componenteWorkspaceId = '';
         $this->limparDadosDoEscopo();
         $this->turmasExpandidas = $this->turma ? [$this->turma] : [];
         $this->carregarDadosDoEscopo();
@@ -407,7 +418,7 @@ class AvaliacaoTurmaWorkspace extends Component
 
     public function aplicarEmMassaNaSerie(): void
     {
-        $this->abortSeNaoPuderResponder();
+        $this->abortSeNaoPuderPreencherEmMassa();
 
         if (! $this->avaliacao || ! $this->serie) {
             Notification::make()
@@ -824,21 +835,7 @@ class AvaliacaoTurmaWorkspace extends Component
             return $this->pautasDisponiveisCache = collect();
         }
 
-        $pautas = $pautas->filter(function (Pauta $pauta): bool {
-            if (! $this->modoAcompanhamento()) {
-                return true;
-            }
-
-            if ($this->componenteWorkspaceId === '') {
-                return true;
-            }
-
-            if ($this->componenteWorkspaceId === '0') {
-                return $pauta->componente_curricular_id === null;
-            }
-
-            return (int) ($pauta->componente_curricular_id ?? 0) === (int) $this->componenteWorkspaceId;
-        })->values();
+        $pautas = $pautas->values();
 
         $this->carregarAlternativasPorPauta($pautas);
 
@@ -1061,6 +1058,28 @@ class AvaliacaoTurmaWorkspace extends Component
             ->groupBy(fn (Pauta $pauta): string => $pauta->componente?->nome ?? 'Geral (sem componente especifico)');
     }
 
+    public function gruposPorComponenteDaTurma(int $turmaId): Collection
+    {
+        return $this->pautasDaTurma($turmaId)
+            ->groupBy(fn (Pauta $pauta): string => (string) ($pauta->componente_curricular_id ?? 0))
+            ->map(function (Collection $pautasDoComponente, string $componenteKey) use ($turmaId): array {
+                $componenteId = (int) $componenteKey;
+                $primeiraPauta = $pautasDoComponente->first();
+                $componenteNome = $primeiraPauta?->componente?->nome ?? 'Geral (sem componente específico)';
+                $professorNome = $this->nomeProfessorDoComponenteNaTurma($turmaId, $componenteId);
+
+                return [
+                    'componente_id' => $componenteId,
+                    'componente_nome' => $componenteNome,
+                    'professor_nome' => $professorNome,
+                    'titulo' => $componenteNome.' - '.$professorNome,
+                    'pautas' => $pautasDoComponente->values(),
+                ];
+            })
+            ->sortBy(fn (array $grupo): string => mb_strtolower($grupo['titulo']))
+            ->values();
+    }
+
     public function getComponentesDisponiveisNoWorkspaceProperty(): array
     {
         if (is_array($this->componentesDisponiveisNoWorkspaceCache)) {
@@ -1160,6 +1179,11 @@ class AvaliacaoTurmaWorkspace extends Component
         abort_unless($this->podeResponder(), 403);
     }
 
+    private function abortSeNaoPuderPreencherEmMassa(): void
+    {
+        abort_unless($this->podePreencherEmMassa(), 403);
+    }
+
     private function sincronizarVinculosProfessor(): void
     {
         /** @var User|null $user */
@@ -1249,19 +1273,7 @@ class AvaliacaoTurmaWorkspace extends Component
                     return false;
                 }
 
-                if (! $aplicarFiltroComponenteLocal || ! $this->modoAcompanhamento()) {
-                    return true;
-                }
-
-                if ($this->componenteWorkspaceId === '') {
-                    return true;
-                }
-
-                if ($this->componenteWorkspaceId === '0') {
-                    return $pauta->componente_curricular_id === null;
-                }
-
-                return (int) ($pauta->componente_curricular_id ?? 0) === (int) $this->componenteWorkspaceId;
+                return ! $aplicarFiltroComponenteLocal || ! $this->modoAcompanhamento() || $this->componenteWorkspaceId === '';
             })
             ->values();
     }
@@ -1717,6 +1729,23 @@ class AvaliacaoTurmaWorkspace extends Component
         }
 
         return $professoresIds[0] ?? null;
+    }
+
+    private function nomeProfessorDoComponenteNaTurma(int $turmaId, int $componenteId): string
+    {
+        if ($componenteId <= 0) {
+            return 'Sem Professor';
+        }
+
+        $professorId = $this->professorIdParaRegistro($turmaId, $componenteId);
+
+        if (! $professorId) {
+            return 'Sem Professor';
+        }
+
+        return (string) (Professor::query()
+            ->whereKey($professorId)
+            ->value('nome') ?? 'Sem Professor');
     }
 
     private function turmasAlvoAvaliacaoEmMassa(): Collection
