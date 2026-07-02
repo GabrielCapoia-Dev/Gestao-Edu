@@ -165,6 +165,9 @@
                     <div class="av-stack">
                         @forelse ($turmaIdAtual > 0 ? $this->gruposPorComponenteDaTurma($turmaIdAtual) : collect() as $grupo)
                             @php($componenteExpandido = $this->componenteEstaExpandido($turmaIdAtual, (int) $grupo['componente_id']))
+                            @php($progressoComponentePreenchidas = collect($grupo['pautas'])->sum(fn ($pauta) => (int) ($this->progressoPorPauta[$turmaIdAtual][$pauta->id]['preenchidas'] ?? 0)))
+                            @php($progressoComponenteTotal = collect($grupo['pautas'])->sum(fn ($pauta) => (int) ($this->progressoPorPauta[$turmaIdAtual][$pauta->id]['total'] ?? $alunosDaTurma->count())))
+                            @php($progressoComponentePercentual = $progressoComponenteTotal > 0 ? min(100, (int) round(($progressoComponentePreenchidas / $progressoComponenteTotal) * 100)) : 0)
                             <section wire:key="workspace-acompanhamento-componente-pautas-{{ $turmaIdAtual }}-{{ $grupo['componente_id'] }}" class="gi-panel av-turma-section {{ $componenteExpandido ? 'is-open' : '' }}">
                                 <button type="button" class="av-pauta-toggle" wire:click="alternarComponente({{ $turmaIdAtual }}, {{ $grupo['componente_id'] }})">
                                     <div class="av-pauta-toggle-main">
@@ -172,6 +175,13 @@
                                         <p class="av-pauta-meta">{{ $turmaAtual?->escola?->nome }} - {{ $turmaAtual?->serie?->nome }} - {{ $this->rotuloTurma($turmaAtual) }}</p>
                                     </div>
                                     <div class="av-pauta-toggle-side">
+                                        <div class="av-pauta-progress-head">
+                                            <span>{{ $progressoComponentePreenchidas }}/{{ $progressoComponenteTotal }}</span>
+                                            <span>{{ $progressoComponentePercentual }}%</span>
+                                        </div>
+                                        <div class="av-progress-track av-progress-track--compact">
+                                            <div class="av-progress-bar" style="width: {{ $progressoComponentePercentual }}%"></div>
+                                        </div>
                                         <span class="av-pauta-arrow {{ $componenteExpandido ? 'is-open' : '' }}">v</span>
                                     </div>
                                 </button>
@@ -338,6 +348,9 @@
                                 <div class="av-turma-content">
                                     @forelse ($gruposDaTurma as $grupo)
                                         @php($componenteExpandido = $this->componenteEstaExpandido($turmaIdAtual, (int) $grupo['componente_id']))
+                                        @php($progressoComponentePreenchidas = collect($grupo['pautas'])->sum(fn ($pauta) => (int) ($this->progressoPorPauta[$turmaIdAtual][$pauta->id]['preenchidas'] ?? 0)))
+                                        @php($progressoComponenteTotal = collect($grupo['pautas'])->sum(fn ($pauta) => (int) ($this->progressoPorPauta[$turmaIdAtual][$pauta->id]['total'] ?? $alunosDaTurma->count())))
+                                        @php($progressoComponentePercentual = $progressoComponenteTotal > 0 ? min(100, (int) round(($progressoComponentePreenchidas / $progressoComponenteTotal) * 100)) : 0)
                                         <section wire:key="workspace-turma-{{ $turmaIdAtual }}-componente-{{ $grupo['componente_id'] }}" class="av-pauta-section av-pauta-section--nested {{ $componenteExpandido ? 'is-open' : '' }}">
                                             <button type="button" class="av-pauta-toggle" wire:click="alternarComponente({{ $turmaIdAtual }}, {{ $grupo['componente_id'] }})">
                                                 <div class="av-pauta-toggle-main">
@@ -346,6 +359,13 @@
                                                 </div>
 
                                                 <div class="av-pauta-toggle-side">
+                                                    <div class="av-pauta-progress-head">
+                                                        <span>{{ $progressoComponentePreenchidas }}/{{ $progressoComponenteTotal }}</span>
+                                                        <span>{{ $progressoComponentePercentual }}%</span>
+                                                    </div>
+                                                    <div class="av-progress-track av-progress-track--compact">
+                                                        <div class="av-progress-bar" style="width: {{ $progressoComponentePercentual }}%"></div>
+                                                    </div>
                                                     <span class="av-pauta-arrow {{ $componenteExpandido ? 'is-open' : '' }}">v</span>
                                                 </div>
                                             </button>
