@@ -122,4 +122,101 @@ class PedidoRelatorioViewTest extends TestCase
         $this->assertStringContainsString('laudo-tecnico.pdf', $html);
         $this->assertStringContainsString('Laudo da manutencao', $html);
     }
+
+    public function test_relatorio_converte_webp_para_png_antes_de_renderizar_pdf(): void
+    {
+        Storage::fake('public');
+
+        Storage::disk('public')->put('pedidos/foto-problema.webp', $this->makeWebpImage());
+
+        $setor = Setor::create([
+            'nome' => 'Educacao',
+            'status' => 'Ativo',
+            'ativo' => true,
+            'is_default_root' => true,
+        ]);
+
+        $escola = Escola::create([
+            'codigo' => '001',
+            'nome' => 'Escola Teste',
+            'setor_id' => $setor->id,
+            'ativo' => true,
+        ]);
+
+        $tipo = TipoManutencao::create([
+            'nome' => 'Eletrica',
+            'descricao' => 'Servicos eletricos',
+            'ativo' => true,
+        ]);
+
+        $status = TipoStatus::create([
+            'nome' => 'Em Aberto',
+            'cor' => '#3b82f6',
+            'finaliza_pedido' => false,
+            'cancela_pedido' => false,
+            'ativo' => true,
+        ]);
+
+        $usuario = User::factory()->create();
+
+        $pedido = Pedido::create([
+            'tipo_manutencao_id' => $tipo->id,
+            'tipo_status_id' => $status->id,
+            'descricao_pedido' => 'Lampada queimada na sala 1.',
+            'nome_solicitante' => 'Direcao',
+            'nivel_prioridade' => NivelEmergenciaPedido::INDEFINIDO,
+            'escola_id' => $escola->id,
+            'solicitante_id' => $usuario->id,
+            'setor_id' => $setor->id,
+            'setor_origem_id' => $setor->id,
+            'data_solicitacao' => now(),
+            'data_identificacao_problema' => now(),
+            'ativo' => true,
+        ]);
+
+        PedidoArquivo::create([
+            'pedido_id' => $pedido->id,
+            'usuario_id' => $usuario->id,
+            'tipo_arquivo' => TipoArquivoPedido::FOTOS_PROBLEMA,
+            'caminho' => 'pedidos/foto-problema.webp',
+            'nome_original' => 'foto-problema.webp',
+            'mime_type' => 'image/webp',
+        ]);
+
+        $pedido->load([
+            'tipoManutencao',
+            'tipoStatus',
+            'escola',
+            'setor',
+            'solicitante',
+            'historicos.statusAnterior',
+            'historicos.statusNovo',
+            'historicos.usuario',
+            'historicos.setor',
+            'arquivos.usuario',
+            'problemas',
+            'pedidosAdicionais.arquivos.usuario',
+            'ultimoFeedback.itens.problema',
+        ]);
+
+        $response = $this->actingAs($usuario)->app->make(\App\Services\Relatorios\PedidoRelatorioService::class)->gerar($pedido);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame('application/pdf', $response->headers->get('Content-Type'));
+    }
+
+    private function makeWebpImage(): string
+    {
+        $image = imagecreatetruecolor(2, 2);
+        imagefill($image, 0, 0, imagecolorallocate($image, 20, 120, 200));
+
+        ob_start();
+        imagewebp($image);
+        $contents = ob_get_clean();
+        imagedestroy($image);
+
+        $this->assertIsString($contents);
+
+        return $contents;
+    }
 }

@@ -564,6 +564,17 @@ class DashboardAvaliacoes extends Page implements HasForms
         return $this->usuarioAtual()?->hasPermissionTo(self::PERMISSAO_VISUALIZAR_PROGRESSO_POR_ESCOLA) ?? false;
     }
 
+    public function getPodeVerPendenciaPorEscolaProperty(): bool
+    {
+        $user = $this->usuarioAtual();
+
+        if (! $user || $this->usuarioTemEscopoGlobal($user)) {
+            return true;
+        }
+
+        return count($user->idsEscolasVinculadas()) !== 1;
+    }
+
     private function usuarioAtual(): ?User
     {
         /** @var User|null $user */
@@ -2579,7 +2590,7 @@ class DashboardAvaliacoes extends Page implements HasForms
         $professorChaveExpr = 'COALESCE(tcp_acomp.professor_id, 0)';
         $professorRespostaChaveExpr = "COALESCE({$professorRespostaExpr}, 0)";
 
-        $esperadosQuery = (clone $this->basePreenchimentosEsperadosQuery($avaliacaoIds))
+        $esperadosQuery = (clone $this->basePreenchimentosEsperadosQuery($avaliacaoIds, $filtros))
             ->join('avaliacoes as av', 'av.id', '=', 'at.avaliacao_id')
             ->leftJoin('escolas as e', 'e.id', '=', 't.id_escola')
             ->leftJoin('series as s', 's.id', '=', 't.id_serie')
@@ -2643,7 +2654,7 @@ class DashboardAvaliacoes extends Page implements HasForms
                 DB::raw('COUNT(DISTINCT aln.id) as alunos_total')
             );
 
-        $respondidosQuery = (clone $this->baseRespostasQuery($avaliacaoIds, ignorarAlternativas: true))
+        $respondidosQuery = (clone $this->baseRespostasQuery($avaliacaoIds, ignorarAlternativas: true, filtros: $filtros))
             ->groupBy('ar.avaliacao_id', 'ar.turma_id', 'p.componente_curricular_id')
             ->groupByRaw('COALESCE(p.componente_curricular_id, 0)')
             ->groupByRaw($professorRespostaChaveExpr)

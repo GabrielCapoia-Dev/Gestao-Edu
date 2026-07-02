@@ -42,7 +42,8 @@ class Alternativa extends Model
         return $query
             ->orderByRaw('CASE WHEN ordem_documento IS NULL THEN 1 ELSE 0 END')
             ->orderBy('ordem_documento')
-            ->orderBy('nome');
+            ->orderBy('nome')
+            ->orderBy('id');
     }
 
     /**

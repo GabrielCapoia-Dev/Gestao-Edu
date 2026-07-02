@@ -1,5 +1,6 @@
 @php
     use App\Models\PedidoArquivo;
+    use App\Support\PedidoPdfImageDataUri;
     use Illuminate\Support\Facades\Storage;
 
     $storagePublico = Storage::disk('public');
@@ -21,15 +22,7 @@
             return null;
         }
 
-        try {
-            $mime = str_starts_with((string) $arquivo->mime_type, 'image/')
-                ? $arquivo->mime_type
-                : ($storagePublico->mimeType($arquivo->caminho) ?: 'image/jpeg');
-
-            return sprintf('data:%s;base64,%s', $mime, base64_encode($storagePublico->get($arquivo->caminho)));
-        } catch (\Throwable) {
-            return null;
-        }
+        return PedidoPdfImageDataUri::fromStorage($storagePublico, $arquivo);
     };
 
     $prioridadeLabel = static fn ($pedido): string => match ($pedido->nivel_prioridade?->value) {

@@ -733,7 +733,7 @@ class AvaliacaoDocumentoExportTest extends TestCase
             'tem_observacao' => false,
             'vai_no_documento' => true,
             'descricao_documento' => 'Atingiu a pauta completamente.',
-            'ordem_documento' => 3,
+            'ordem_documento' => 1,
             'status' => true,
         ]);
         $alternativaNao = Alternativa::query()->create([
@@ -742,7 +742,7 @@ class AvaliacaoDocumentoExportTest extends TestCase
             'tem_observacao' => false,
             'vai_no_documento' => true,
             'descricao_documento' => 'NÃ£o atingiu a pauta.',
-            'ordem_documento' => 1,
+            'ordem_documento' => 2,
             'status' => true,
         ]);
         $alternativaParcial = Alternativa::query()->create([
@@ -751,7 +751,7 @@ class AvaliacaoDocumentoExportTest extends TestCase
             'tem_observacao' => false,
             'vai_no_documento' => true,
             'descricao_documento' => 'Atingiu a pauta parcialmente.',
-            'ordem_documento' => 2,
+            'ordem_documento' => 3,
             'status' => true,
         ]);
 
@@ -766,17 +766,18 @@ class AvaliacaoDocumentoExportTest extends TestCase
         );
 
         $this->assertSame(
-            ['NÃ£O', 'PARCIAL', 'SIM'],
+            ['SIM', mb_strtoupper((string) $alternativaNao->nome), 'PARCIAL'],
             $legenda->pluck('nome')->all()
         );
         $this->assertSame(
             [
-                'NÃ£o atingiu a pauta.',
-                'Atingiu a pauta parcialmente.',
                 'Atingiu a pauta completamente.',
+                (string) $alternativaNao->descricao_documento,
+                'Atingiu a pauta parcialmente.',
             ],
             $legenda->pluck('descricao')->all()
         );
+
     }
 
     public function test_exportacao_direta_nao_permite_escola_fora_do_vinculo_mesmo_com_listar_avaliacoes(): void

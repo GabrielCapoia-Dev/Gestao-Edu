@@ -173,7 +173,8 @@
                 </article>
             </section>
 
-            <section class="dav-chart-grid dav-chart-grid--three">
+            <section class="dav-chart-grid{{ $this->podeVerPendenciaPorEscola ? ' dav-chart-grid--three' : '' }}">
+                @if ($this->podeVerPendenciaPorEscola)
                 <article class="dav-card dav-card--chart">
                     <header>
                         <h3>Pendência por escola</h3>
@@ -196,6 +197,7 @@
                         @endforelse
                     </div>
                 </article>
+                @endif
 
                 <article class="dav-card dav-card--chart">
                     <header>
@@ -775,7 +777,7 @@
         .dav-kpi-grid {
             display: grid;
             gap: 0.7rem;
-            grid-template-columns: repeat(6, minmax(0, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
         }
 
         .dav-kpi {

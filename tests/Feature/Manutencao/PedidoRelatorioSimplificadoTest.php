@@ -15,6 +15,7 @@ use App\Models\TipoStatus;
 use App\Models\User;
 use App\Services\Exports\ExportRequestService;
 use App\Services\Exports\Handlers\PedidoRelatorioSimplificadoExportHandler;
+use App\Services\PedidoService;
 use App\Services\Relatorios\PedidoRelatorioSimplificadoService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -148,6 +149,37 @@ class PedidoRelatorioSimplificadoTest extends TestCase
         $this->assertSame(strlen('PDF CONTENT'), $result->sizeBytes);
     }
 
+    public function test_exportacao_simplificada_renderiza_pdf_quando_ha_imagem_webp(): void
+    {
+        Storage::fake('public');
+
+        Storage::disk('public')->put('pedidos/foto-problema.webp', $this->makeWebpImage());
+
+        $dados = $this->criarPedidoBase();
+        $pedido = $dados['pedido'];
+        $usuario = $dados['usuario'];
+
+        PedidoArquivo::create([
+            'pedido_id' => $pedido->id,
+            'usuario_id' => $usuario->id,
+            'tipo_arquivo' => TipoArquivoPedido::FOTOS_PROBLEMA,
+            'caminho' => 'pedidos/foto-problema.webp',
+            'nome_original' => 'foto-problema.webp',
+            'mime_type' => 'image/webp',
+        ]);
+
+        app()->instance(PedidoService::class, tap(Mockery::mock(PedidoService::class), function ($mock): void {
+            $mock->shouldReceive('aplicarEscopoConsulta')
+                ->once()
+                ->andReturnUsing(static fn ($query) => $query);
+        }));
+
+        $response = app(PedidoRelatorioSimplificadoService::class)->gerar([$pedido->id], $usuario);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame('application/pdf', $response->headers->get('Content-Type'));
+    }
+
     /**
      * @return array{pedido: Pedido, usuario: User}
      */
@@ -202,5 +234,20 @@ class PedidoRelatorioSimplificadoTest extends TestCase
         ]);
 
         return compact('pedido', 'usuario');
+    }
+
+    private function makeWebpImage(): string
+    {
+        $image = imagecreatetruecolor(2, 2);
+        imagefill($image, 0, 0, imagecolorallocate($image, 20, 120, 200));
+
+        ob_start();
+        imagewebp($image);
+        $contents = ob_get_clean();
+        imagedestroy($image);
+
+        $this->assertIsString($contents);
+
+        return $contents;
     }
 }

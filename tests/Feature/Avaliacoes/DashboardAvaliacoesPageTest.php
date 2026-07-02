@@ -151,6 +151,23 @@ class DashboardAvaliacoesPageTest extends TestCase
         $this->assertSame(0, $tabelaEscolas->get('Escola Manha')['turmas_preenchidas']);
         $this->assertSame(1, $tabelaEscolas->get('Escola Tarde')['turmas_incompletas']);
         $this->assertSame(0, $tabelaEscolas->get('Escola Tarde')['turmas_preenchidas']);
+
+        $component->set('filtrosAcompanhamento.turno', 'manha');
+        $this->assertSame(
+            ['Turma A'],
+            collect($component->instance()->acompanhamentoTurmas)->pluck('turma_nome')->values()->all()
+        );
+
+        $component->set('filtrosAcompanhamento', [
+            'escola_id' => $escolaTarde->id,
+            'serie_id' => null,
+            'turno' => null,
+            'componente_id' => null,
+        ]);
+        $this->assertSame(
+            ['Turma B'],
+            collect($component->instance()->acompanhamentoTurmas)->pluck('turma_nome')->values()->all()
+        );
     }
 
     public function test_listagem_de_acompanhamento_tem_paginacao_configuravel(): void
@@ -244,6 +261,27 @@ class DashboardAvaliacoesPageTest extends TestCase
         $this->assertSame(25, $component->instance()->acompanhamentoTurmasPorPagina);
         $this->assertSame(1, $component->instance()->acompanhamentoTurmasPagina);
         $this->assertCount(7, $component->instance()->acompanhamentoTurmas);
+    }
+
+    public function test_usuario_vinculado_a_uma_escola_nao_ve_card_de_pendencia_por_escola(): void
+    {
+        Permission::findOrCreate('Acompanhar AvaliaÃ§Ãµes');
+
+        $user = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $user->givePermissionTo('Acompanhar AvaliaÃ§Ãµes');
+
+        $escola = $this->criarEscola('Escola Unica');
+        $user->escolas()->attach($escola->id);
+
+        $this->actingAs($user);
+
+        $page = app(DashboardAvaliacoes::class);
+        $page->mount();
+
+        $this->assertFalse($page->getPodeVerPendenciaPorEscolaProperty());
     }
 
     public function test_acompanhamento_exige_permissao_especifica(): void

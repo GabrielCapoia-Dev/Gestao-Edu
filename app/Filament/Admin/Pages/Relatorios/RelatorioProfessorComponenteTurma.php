@@ -2,29 +2,26 @@
 
 namespace App\Filament\Admin\Pages\Relatorios;
 
-use AlperenErsoy\FilamentExport\Actions\FilamentExportBulkAction;
 use App\Models\Escola;
 use App\Models\Serie;
 use App\Models\TurmaComponenteProfessor;
+use BackedEnum;
+use Filament\Actions\Action;
+use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Support\Icons\Heroicon;
+use Filament\Tables;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
-use Filament\Tables;
-use Filament\Actions\Action;
-use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
-use App\Services\UserService;
-use BackedEnum;
-use UnitEnum;
-use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\Facades\Auth;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class RelatorioProfessorComponenteTurma extends Page implements HasTable
 {
@@ -40,20 +37,19 @@ class RelatorioProfessorComponenteTurma extends Page implements HasTable
     {
         return view('filament.admin.pages.partials.page-header', [
             'actions' => $this->getCachedHeaderActions(),
-
             'eyebrow' => 'Relatórios',
-            'title' => "Relatório de Professor por Componente e Turma",
+            'title' => 'Relatório de Professor por Componente e Turma',
             'description' => 'Visualize o relatório detalhado de professores por componente curricular e turma, com opções de filtragem e exportação.',
         ]);
     }
 
     public static function canAccess(): bool
     {
-        /** @var \App\Models\User */
+        /** @var \App\Models\User $user */
         $user = Auth::user();
+
         return $user->hasPermissionTo('Listar Relatórios: Professor por Componente e Turma');
     }
-
 
     protected function getHeaderActions(): array
     {
@@ -63,17 +59,16 @@ class RelatorioProfessorComponenteTurma extends Page implements HasTable
                 ->icon('heroicon-o-arrow-down-tray')
                 ->color('warning')
                 ->requiresConfirmation()
-                ->visible(function () {
-                    /** @var \App\Models\User */
+                ->visible(function (): bool {
+                    /** @var \App\Models\User $user */
                     $user = Auth::user();
+
                     return $user->hasPermissionTo('Exportar Relatórios');
                 })
                 ->modalHeading('Exportar Relatório Geral')
-                ->modalDescription('Está ação irá exportar TODOS os registros de Turmas. Dependendo da quantidade de dados, isso pode causar lentidão temporária. Deseja continuar?')
+                ->modalDescription('Esta ação irá exportar todos os registros do relatório. Dependendo da quantidade de dados, isso pode causar lentidão temporária. Deseja continuar?')
                 ->modalSubmitActionLabel('Sim, exportar tudo')
-                ->action(function () {
-                    return $this->exportarRelatorioGeral();
-                }),
+                ->action(fn () => $this->exportarRelatorioGeral()),
         ];
     }
 
@@ -87,21 +82,20 @@ class RelatorioProfessorComponenteTurma extends Page implements HasTable
             ->leftJoin('professores', 'professores.id', '=', 'tcp.professor_id')
             ->select([
                 'escolas.nome as escola',
-                'séries.nome as série',
+                'series.nome as serie',
                 'turmas.nome as turma',
-                DB::raw("CASE turmas.turno 
-                                    WHEN 'manha' THEN 'Manhã'
-                                    WHEN 'tarde' THEN 'Tarde'
-                                    WHEN 'noite' THEN 'Noite'
-                                    WHEN 'integral' THEN 'Integral'
-                                    ELSE turmas.turno
-                                END as turno"),
+                DB::raw("CASE turmas.turno
+                    WHEN 'manha' THEN 'Manhã'
+                    WHEN 'tarde' THEN 'Tarde'
+                    WHEN 'noite' THEN 'Noite'
+                    WHEN 'integral' THEN 'Integral'
+                    ELSE turmas.turno
+                END as turno"),
                 'cc.nome as componente',
                 DB::raw("COALESCE(professores.nome, 'Sem professor') as professor"),
-                DB::raw("COALESCE(professores.matrícula, 'Não informado') as matrícula"),
+                DB::raw("COALESCE(professores.matricula, 'Não informado') as matricula"),
                 DB::raw("COALESCE(professores.email, 'Não informado') as email"),
             ])
-
             ->orderBy('escolas.nome')
             ->orderBy('series.nome')
             ->orderBy('turmas.nome')
@@ -110,27 +104,25 @@ class RelatorioProfessorComponenteTurma extends Page implements HasTable
 
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('Relatório de Turmas');
+        $sheet->setTitle('Relatorio Professores');
 
-        // Cabeçalhos
         $headers = [
             'Escola',
-            'Série',
+            'Serie',
             'Turma',
             'Turno',
             'Componente Curricular',
             'Professor',
-            'Matrícula',
+            'Matricula',
             'E-mail',
         ];
         $sheet->fromArray($headers, null, 'A1');
 
-        // Estilo do cabeçalho
         $headerStyle = [
             'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
             'fill' => [
                 'fillType' => Fill::FILL_SOLID,
-                'startColor' => ['rgb' => '074f9b'],
+                'startColor' => ['rgb' => '074F9B'],
             ],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
             'borders' => [
@@ -139,8 +131,6 @@ class RelatorioProfessorComponenteTurma extends Page implements HasTable
         ];
         $sheet->getStyle('A1:H1')->applyFromArray($headerStyle);
 
-
-        // Dados
         $row = 2;
         foreach ($dados as $item) {
             $sheet->setCellValue("A{$row}", $item->escola);
@@ -154,32 +144,31 @@ class RelatorioProfessorComponenteTurma extends Page implements HasTable
             $row++;
         }
 
-        // Estilo dos dados
         $lastRow = $row - 1;
-        $dataStyle = [
-            'borders' => [
-                'allBorders' => ['borderStyle' => Border::BORDER_THIN],
-            ],
-        ];
-        $sheet->getStyle("A2:H{$lastRow}")->applyFromArray($dataStyle);
+        if ($lastRow >= 2) {
+            $sheet->getStyle("A2:H{$lastRow}")->applyFromArray([
+                'borders' => [
+                    'allBorders' => ['borderStyle' => Border::BORDER_THIN],
+                ],
+            ]);
+        }
 
         foreach (range('A', 'H') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
-        // Gerar arquivo
-        $filename = 'relatorio_turmas_' . now()->format('Y-m-d_H-i-s') . '.xlsx';
-        $path = tempnam(sys_get_temp_dir(), 'relatorio_turmas_');
+
+        $filename = 'relatorio_professor_componente_turma_' . now()->format('Y-m-d_H-i-s') . '.xlsx';
+        $path = tempnam(sys_get_temp_dir(), 'relatorio_professor_componente_turma_');
 
         if ($path === false) {
-            throw new \RuntimeException('Não foi possível criar o arquivo temporário do relatório.');
+            throw new \RuntimeException('Nao foi possivel criar o arquivo temporario do relatorio.');
         }
 
-        $writer = new Xlsx($spreadsheet);
-        $writer->save($path);
+        (new Xlsx($spreadsheet))->save($path);
 
         Notification::make()
-            ->title('Relatório gerado com sucesso!')
-            ->body("Total de registros: " . ($row - 2))
+            ->title('Relatorio gerado com sucesso!')
+            ->body('Total de registros: ' . ($row - 2))
             ->success()
             ->send();
 
@@ -212,47 +201,41 @@ class RelatorioProfessorComponenteTurma extends Page implements HasTable
                 Tables\Columns\TextColumn::make('escola_nome')
                     ->label('Escola')
                     ->searchable(
-                        query: fn(Builder $query, string $search) =>
-                        $query->where('escolas.nome', 'like', "%{$search}%")
+                        query: fn (Builder $query, string $search) => $query->where('escolas.nome', 'like', "%{$search}%")
                     )
                     ->sortable(
-                        query: fn(Builder $query, string $direction) =>
-                        $query->orderBy('escolas.nome', $direction)
+                        query: fn (Builder $query, string $direction) => $query->orderBy('escolas.nome', $direction)
                     ),
 
                 Tables\Columns\TextColumn::make('serie_nome')
                     ->label('Série')
                     ->searchable(
-                        query: fn(Builder $query, string $search) =>
-                        $query->where('series.nome', 'like', "%{$search}%")
+                        query: fn (Builder $query, string $search) => $query->where('series.nome', 'like', "%{$search}%")
                     )
                     ->sortable(
-                        query: fn(Builder $query, string $direction) =>
-                        $query->orderBy('series.nome', $direction)
+                        query: fn (Builder $query, string $direction) => $query->orderBy('series.nome', $direction)
                     ),
 
                 Tables\Columns\TextColumn::make('turma_nome')
                     ->label('Turma')
                     ->searchable(
-                        query: fn(Builder $query, string $search) =>
-                        $query->where('turmas.nome', 'like', "%{$search}%")
+                        query: fn (Builder $query, string $search) => $query->where('turmas.nome', 'like', "%{$search}%")
                     )
                     ->sortable(
-                        query: fn(Builder $query, string $direction) =>
-                        $query->orderBy('turmas.nome', $direction)
+                        query: fn (Builder $query, string $direction) => $query->orderBy('turmas.nome', $direction)
                     ),
 
                 Tables\Columns\TextColumn::make('turno')
                     ->label('Turno')
                     ->badge()
-                    ->formatStateUsing(fn(?string $state) => match ($state) {
+                    ->formatStateUsing(fn (?string $state) => match ($state) {
                         'manha' => 'Manhã',
                         'tarde' => 'Tarde',
                         'noite' => 'Noite',
                         'integral' => 'Integral',
                         default => $state,
                     })
-                    ->color(fn(?string $state) => match ($state) {
+                    ->color(fn (?string $state) => match ($state) {
                         'manha' => 'info',
                         'tarde' => 'warning',
                         'noite' => 'gray',
@@ -260,52 +243,45 @@ class RelatorioProfessorComponenteTurma extends Page implements HasTable
                         default => 'secondary',
                     })
                     ->sortable(
-                        query: fn(Builder $query, string $direction) =>
-                        $query->orderBy('turmas.turno', $direction)
+                        query: fn (Builder $query, string $direction) => $query->orderBy('turmas.turno', $direction)
                     ),
 
                 Tables\Columns\TextColumn::make('componente_nome')
                     ->label('Componente Curricular')
                     ->searchable(
-                        query: fn(Builder $query, string $search) =>
-                        $query->where('componentes_curriculares.nome', 'like', "%{$search}%")
+                        query: fn (Builder $query, string $search) => $query->where('componentes_curriculares.nome', 'like', "%{$search}%")
                     )
                     ->sortable(
-                        query: fn(Builder $query, string $direction) =>
-                        $query->orderBy('componentes_curriculares.nome', $direction)
+                        query: fn (Builder $query, string $direction) => $query->orderBy('componentes_curriculares.nome', $direction)
                     ),
 
                 Tables\Columns\TextColumn::make('professor_nome')
                     ->label('Professor')
                     ->default('Sem professor')
                     ->searchable(
-                        query: fn(Builder $query, string $search) =>
-                        $query->where('professores.nome', 'like', "%{$search}%")
+                        query: fn (Builder $query, string $search) => $query->where('professores.nome', 'like', "%{$search}%")
                     )
                     ->sortable(
-                        query: fn(Builder $query, string $direction) =>
-                        $query->orderBy('professores.nome', $direction)
+                        query: fn (Builder $query, string $direction) => $query->orderBy('professores.nome', $direction)
                     ),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('escola')
                     ->label('Escola')
-                    ->options(fn() => Escola::where('ativo', true)->orderBy('nome')->pluck('nome', 'id'))
+                    ->options(fn () => Escola::where('ativo', true)->orderBy('nome')->pluck('nome', 'id'))
                     ->searchable()
                     ->query(
-                        fn(Builder $query, array $data) =>
-                        $data['value']
+                        fn (Builder $query, array $data) => $data['value']
                             ? $query->where('turmas.id_escola', $data['value'])
                             : $query
                     ),
 
                 Tables\Filters\SelectFilter::make('serie')
                     ->label('Série')
-                    ->options(fn() => Serie::pluck('nome', 'id'))
+                    ->options(fn () => Serie::pluck('nome', 'id'))
                     ->searchable()
                     ->query(
-                        fn(Builder $query, array $data) =>
-                        $data['value']
+                        fn (Builder $query, array $data) => $data['value']
                             ? $query->where('turmas.id_serie', $data['value'])
                             : $query
                     ),
@@ -319,8 +295,7 @@ class RelatorioProfessorComponenteTurma extends Page implements HasTable
                         'integral' => 'Integral',
                     ])
                     ->query(
-                        fn(Builder $query, array $data) =>
-                        $data['value']
+                        fn (Builder $query, array $data) => $data['value']
                             ? $query->where('turmas.turno', $data['value'])
                             : $query
                     ),
@@ -328,6 +303,7 @@ class RelatorioProfessorComponenteTurma extends Page implements HasTable
             ->paginated([5, 10, 25, 50, 100])
             ->defaultPaginationPageOption(5);
     }
+
     public function getTitle(): string
     {
         return '';
