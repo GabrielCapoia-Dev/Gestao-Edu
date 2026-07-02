@@ -275,7 +275,7 @@
                                                                                         x-ref="field"
                                                                                         x-on:input="count = $event.target.value.length"
                                                                                         maxlength="1500"
-                                                                                        placeholder="Observação obrigatória"
+                                                                                        placeholder="{{ $this->placeholderObservacaoAlternativa((int) $pauta->id, $alternativaSelecionadaId) }}"
                                                                                         class="av-table-input av-textarea-input"
                                                                                         wire:model.live.debounce.500ms="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao"
                                                                                         @disabled(! $this->podeResponder() || $respostaBloqueada || $alunoBloqueadoTransferencia)></textarea>
@@ -461,7 +461,7 @@
                                                                                         x-ref="field"
                                                                                         x-on:input="count = $event.target.value.length"
                                                                                         maxlength="1500"
-                                                                                        placeholder="Observação obrigatória"
+                                                                                        placeholder="{{ $this->placeholderObservacaoAlternativa((int) $pauta->id, $alternativaSelecionadaId) }}"
                                                                                         class="av-table-input av-textarea-input"
                                                                                         wire:model.live.debounce.500ms="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao"
                                                                                         @disabled(! $this->podeResponder() || $respostaBloqueada || $alunoBloqueadoTransferencia)></textarea>
@@ -607,7 +607,7 @@
                                                                                             x-ref="field"
                                                                                             x-on:input="count = $event.target.value.length"
                                                                                             maxlength="1500"
-                                                                                            placeholder="Observação obrigatória"
+                                                                                            placeholder="{{ $this->placeholderObservacaoAlternativa((int) $pauta->id, $alternativaSelecionadaId) }}"
                                                                                             class="av-table-input av-textarea-input"
                                                                                             wire:model.live.debounce.500ms="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao"
                                                                                             @disabled(! $this->podeResponder() || $respostaBloqueada || $alunoBloqueadoTransferencia)></textarea>
@@ -804,7 +804,7 @@
                                                                                                 x-ref="field"
                                                                                                 x-on:input="count = $event.target.value.length"
                                                                                                 maxlength="1500"
-                                                                                                placeholder="Observação obrigatória"
+                                                                                                placeholder="{{ $this->placeholderObservacaoAlternativa((int) $pauta->id, $alternativaSelecionadaId) }}"
                                                                                                 class="av-table-input av-textarea-input"
                                                                                                 wire:model.live.debounce.500ms="respostas.{{ $pauta->id }}.{{ $aluno->id }}.observacao"
                                                                                                 @disabled(! $this->podeResponder() || $respostaBloqueada || $alunoBloqueadoTransferencia)></textarea>

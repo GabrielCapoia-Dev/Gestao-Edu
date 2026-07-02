@@ -731,6 +731,14 @@ class AvaliacaoTurmaWorkspace extends Component
         return (bool) ($alternativa['tem_observacao'] ?? false);
     }
 
+    public function placeholderObservacaoAlternativa(int $pautaId, ?int $alternativaId): string
+    {
+        $alternativa = $this->alternativaDaPauta($pautaId, $alternativaId);
+        $placeholder = trim((string) ($alternativa['observacao'] ?? ''));
+
+        return $placeholder !== '' ? $placeholder : 'Observação obrigatória';
+    }
+
     public function alternativasDaPauta(int $pautaId): array
     {
         return $this->alternativasPorPauta[$pautaId] ?? [];
@@ -1399,6 +1407,7 @@ class AvaliacaoTurmaWorkspace extends Component
                     'id' => (int) $alternativa->id,
                     'nome' => (string) $alternativa->nome,
                     'tem_observacao' => (bool) $alternativa->tem_observacao,
+                    'observacao' => (string) ($alternativa->observacao ?? ''),
                 ])
                 ->values()
                 ->all();

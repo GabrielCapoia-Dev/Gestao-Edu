@@ -593,7 +593,8 @@ class AvaliacaoProfessorPageTest extends TestCase
         $alternativaOverride = Alternativa::query()->create([
             'tipo_avaliacao_id' => $tipo->id,
             'nome' => 'Override',
-            'tem_observacao' => false,
+            'tem_observacao' => true,
+            'observacao' => 'Informe o contexto da participação.',
             'status' => true,
         ]);
 
@@ -630,7 +631,12 @@ class AvaliacaoProfessorPageTest extends TestCase
             ->test(AvaliacaoTurmaWorkspace::class, $this->workspaceProfessorParams())
             ->set('avaliacao', $avaliacao->id)
             ->set('turma', $turma->id)
+            ->call('alternarTurma', $turma->id)
+            ->call('alternarComponente', $turma->id, $componente->id)
+            ->call('alternarPauta', $turma->id, $pauta->id)
             ->set("respostas.{$pauta->id}.{$aluno->id}.alternativa_id", $alternativaOverride->id)
+            ->assertSee('Informe o contexto da participação.')
+            ->set("respostas.{$pauta->id}.{$aluno->id}.observacao", 'Observação informada pelo professor.')
             ->call('salvarRespostas');
 
         $this->assertDatabaseHas('avaliacao_respostas', [
@@ -640,6 +646,7 @@ class AvaliacaoProfessorPageTest extends TestCase
             'aluno_id' => $aluno->id,
             'professor_id' => $professor->id,
             'alternativa_id' => $alternativaOverride->id,
+            'observacao' => 'Observação informada pelo professor.',
         ]);
 
         $this->assertDatabaseMissing('avaliacao_respostas', [
