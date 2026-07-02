@@ -717,8 +717,16 @@ class AvaliacaoDocumentoExportTest extends TestCase
         ])->render();
 
         $this->assertStringNotContainsString('Principal', $html);
+        $this->assertStringContainsString('font-family: Arial, Helvetica, DejaVu Sans, sans-serif;', $html);
+        $this->assertStringContainsString('.component-table th,', $html);
+        $this->assertStringContainsString('.component-table td {', $html);
+        $this->assertStringContainsString('font-size: 11px;', $html);
+        $this->assertStringContainsString('display: block;', $html);
+        $this->assertStringContainsString('break-inside: avoid;', $html);
+        $this->assertStringContainsString('page-break-inside: avoid;', $html);
         $this->assertStringContainsString('.footer-period-spacer {', $html);
         $this->assertStringContainsString('height: 40px;', $html);
+        $this->assertMatchesRegularExpression('/<section class="document-footer">.*<span class="label">Per.*<p class="footer-city">Umuarama 01 de julho de 2026<\/p>.*<div class="signature">/s', $html);
         $this->assertStringContainsString('<div class="footer-period-spacer"></div>', $html);
         $this->assertStringContainsString('<p class="footer-city">Umuarama 01 de julho de 2026</p>', $html);
     }

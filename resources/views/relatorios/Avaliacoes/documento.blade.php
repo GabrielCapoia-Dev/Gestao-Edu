@@ -16,7 +16,7 @@
         body {
             margin: 0;
             color: #111827;
-            font-family: DejaVu Sans, Arial, Helvetica, sans-serif;
+            font-family: Arial, Helvetica, DejaVu Sans, sans-serif;
             font-size: 11px;
             line-height: 1.35;
         }
@@ -105,6 +105,11 @@
             word-wrap: break-word;
         }
 
+        .component-table th,
+        .component-table td {
+            font-size: 11px;
+        }
+
         .legend-table th,
         .component-table th {
             background: #f3f4f6;
@@ -157,13 +162,17 @@
         }
 
         .document-footer {
+            display: block;
             margin-top: 28px;
+            break-inside: avoid;
             page-break-inside: avoid;
         }
 
         .document-footer-meta {
             min-height: 88px;
             text-align: right;
+            break-inside: avoid;
+            page-break-inside: avoid;
         }
 
         .document-footer-meta p {
@@ -183,6 +192,7 @@
             margin-top: 26px;
             min-height: 120px;
             text-align: center;
+            break-inside: avoid;
             page-break-inside: avoid;
         }
 
