@@ -153,11 +153,11 @@
                     <small>{{ $preenchimentosRespondidos }} de {{ $preenchimentosEsperados }} preenchimentos</small>
                     <div class="dav-mini-track"><div class="dav-mini-fill" style="width: {{ min($percentualPreenchimentoGeral, 100) }}%;"></div></div>
                 </article>
-                <article class="dav-kpi dav-kpi--amber">
+                <article class="dav-kpi dav-kpi--green">
                     <span class="dav-kpi-label">Turmas completas</span>
                     <strong>{{ $cards['turmas_preenchidas'] ?? 0 }}</strong>
                     <small>{{ $cards['turmas_preenchidas'] ?? 0 }} de {{ $cards['turmas_esperadas'] ?? 0 }} turmas concluídas</small>
-                    <div class="dav-mini-track"><div class="dav-mini-fill dav-mini-fill--amber" style="width: {{ min($percentualTurmas, 100) }}%;"></div></div>
+                    <div class="dav-mini-track"><div class="dav-mini-fill dav-mini-fill--green" style="width: {{ min($percentualTurmas, 100) }}%;"></div></div>
                 </article>
                 <article class="dav-kpi">
                     <span class="dav-kpi-label">Alunos pendentes - manhã</span>
