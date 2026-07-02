@@ -64,6 +64,8 @@ class AvaliacaoTurmaWorkspace extends Component
 
     public array $turmasExpandidas = [];
 
+    public array $componentesExpandidos = [];
+
     public string $visualizacao = 'pautas';
 
     public array $professorIds = [];
@@ -294,6 +296,26 @@ class AvaliacaoTurmaWorkspace extends Component
     public function turmaEstaExpandida(int $turmaId): bool
     {
         return in_array($turmaId, $this->turmasExpandidas, true);
+    }
+
+    public function alternarComponente(int $turmaId, int $componenteId): void
+    {
+        $chave = $this->chaveExpansao($turmaId, $componenteId);
+        $indice = array_search($chave, $this->componentesExpandidos, true);
+
+        if ($indice !== false) {
+            unset($this->componentesExpandidos[$indice]);
+            $this->componentesExpandidos = array_values($this->componentesExpandidos);
+
+            return;
+        }
+
+        $this->componentesExpandidos[] = $chave;
+    }
+
+    public function componenteEstaExpandido(int $turmaId, int $componenteId): bool
+    {
+        return in_array($this->chaveExpansao($turmaId, $componenteId), $this->componentesExpandidos, true);
     }
 
     public function alternarPauta(int $turmaId, int $pautaId): void
@@ -1142,6 +1164,7 @@ class AvaliacaoTurmaWorkspace extends Component
         $this->avaliacaoEmMassaGlobal = null;
         $this->pautasExpandidas = [];
         $this->alunosExpandidos = [];
+        $this->componentesExpandidos = [];
 
         if (! $this->modoAcompanhamento()) {
             $this->turmaEmMassaGlobal = null;

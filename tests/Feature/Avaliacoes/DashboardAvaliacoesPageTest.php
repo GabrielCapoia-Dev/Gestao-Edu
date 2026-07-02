@@ -810,12 +810,18 @@ class DashboardAvaliacoesPageTest extends TestCase
             ->assertSee('Por pautas')
             ->assertSee('Por alunos')
             ->assertDontSee('Validar pend')
-            ->assertSee('Pauta todos 1')
-            ->assertSee('Pauta todos 2');
+            ->assertSee('Corpo e movimento - Professor Todos Componentes')
+            ->assertSee('Escuta e fala - Professor Todos Componentes')
+            ->assertDontSee('Pauta todos 1')
+            ->assertDontSee('Pauta todos 2');
 
         $this->assertCount(2, $workspace->instance()->getPautasDisponiveisProperty());
 
         $workspace
+            ->call('alternarComponente', $turma->id, $componenteUm->id)
+            ->assertSee('Pauta todos 1')
+            ->call('alternarComponente', $turma->id, $componenteDois->id)
+            ->assertSee('Pauta todos 2')
             ->call('alternarPauta', $turma->id, $pautaUm->id)
             ->assertSet('pautasExpandidas', [$turma->id . ':' . $pautaUm->id])
             ->call('alternarPauta', $turma->id, $pautaDois->id)

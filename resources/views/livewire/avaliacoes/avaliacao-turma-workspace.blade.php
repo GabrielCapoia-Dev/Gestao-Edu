@@ -2,23 +2,6 @@
     <div class="gi-page av-page av-professor-page">
         @if ($this->modoAcompanhamento())
             <section class="gi-panel av-professor-control-panel">
-                <div class="av-form-grid">
-                    <div class="gi-field">
-                        <span>Avaliação</span>
-                        <div class="av-static-field">
-                            {{ $this->avaliacaoAtual?->nome ?? 'Avaliação não encontrada' }}
-                        </div>
-                    </div>
-
-                </div>
-
-                @php($turmaAtual = $this->turmasDaSerieDisponiveis->first())
-                @if ($turmaAtual)
-                    <p class="av-pauta-meta">
-                        {{ $turmaAtual->escola?->nome }} | {{ $turmaAtual->serie?->nome }} | {{ $this->rotuloTurma($turmaAtual) }}
-                    </p>
-                @endif
-
                 @php($progresso = $this->progresso)
                 @php($percentual = $progresso['total'] > 0 ? min(100, (int) round(($progresso['preenchidas'] / $progresso['total']) * 100)) : 0)
                 <div class="av-progress">
@@ -181,14 +164,19 @@
                     @php($alunosDaTurma = $turmaIdAtual > 0 ? $this->alunosDaTurma($turmaIdAtual) : collect())
                     <div class="av-stack">
                         @forelse ($turmaIdAtual > 0 ? $this->gruposPorComponenteDaTurma($turmaIdAtual) : collect() as $grupo)
-                            <section wire:key="workspace-acompanhamento-componente-pautas-{{ $turmaIdAtual }}-{{ $grupo['componente_id'] }}" class="gi-panel av-turma-section is-open">
-                                <div class="av-pauta-toggle">
+                            @php($componenteExpandido = $this->componenteEstaExpandido($turmaIdAtual, (int) $grupo['componente_id']))
+                            <section wire:key="workspace-acompanhamento-componente-pautas-{{ $turmaIdAtual }}-{{ $grupo['componente_id'] }}" class="gi-panel av-turma-section {{ $componenteExpandido ? 'is-open' : '' }}">
+                                <button type="button" class="av-pauta-toggle" wire:click="alternarComponente({{ $turmaIdAtual }}, {{ $grupo['componente_id'] }})">
                                     <div class="av-pauta-toggle-main">
                                         <h3 class="av-pauta-title">{{ $grupo['titulo'] }}</h3>
                                         <p class="av-pauta-meta">{{ $turmaAtual?->escola?->nome }} - {{ $turmaAtual?->serie?->nome }} - {{ $this->rotuloTurma($turmaAtual) }}</p>
                                     </div>
-                                </div>
+                                    <div class="av-pauta-toggle-side">
+                                        <span class="av-pauta-arrow {{ $componenteExpandido ? 'is-open' : '' }}">v</span>
+                                    </div>
+                                </button>
 
+                                @if ($componenteExpandido)
                                 <div class="av-turma-content">
                                     @foreach ($grupo['pautas'] as $pauta)
                                         @php($progressoPauta = $this->progressoPorPauta[$turmaIdAtual][$pauta->id] ?? ['preenchidas' => 0, 'total' => $alunosDaTurma->count(), 'percentual' => 0, 'concluida' => false])
@@ -305,6 +293,7 @@
                                         </section>
                                     @endforeach
                                 </div>
+                                @endif
                             </section>
                         @empty
                             <section class="av-note av-note--warning">
@@ -319,7 +308,7 @@
                         @php($turmaExpandida = $this->turmaEstaExpandida($turmaIdAtual))
                         @php($progressoTurma = $this->progressoPorTurma[$turmaIdAtual] ?? ['preenchidas' => 0, 'total' => 0, 'percentual' => 0, 'concluida' => false])
                         @php($alunosDaTurma = $this->alunosDaTurma($turmaIdAtual))
-                        @php($pautasDaTurma = $this->pautasDaTurma($turmaIdAtual))
+                        @php($gruposDaTurma = $this->gruposPorComponenteDaTurma($turmaIdAtual))
 
                         <section wire:key="workspace-turma-pautas-{{ $turmaIdAtual }}" class="gi-panel av-turma-section {{ $turmaExpandida ? 'is-open' : '' }}">
                             <button type="button" class="av-pauta-toggle" wire:click="alternarTurma({{ $turmaIdAtual }})">
@@ -347,7 +336,23 @@
 
                             @if ($turmaExpandida)
                                 <div class="av-turma-content">
-                                    @forelse ($pautasDaTurma as $pauta)
+                                    @forelse ($gruposDaTurma as $grupo)
+                                        @php($componenteExpandido = $this->componenteEstaExpandido($turmaIdAtual, (int) $grupo['componente_id']))
+                                        <section wire:key="workspace-turma-{{ $turmaIdAtual }}-componente-{{ $grupo['componente_id'] }}" class="av-pauta-section av-pauta-section--nested {{ $componenteExpandido ? 'is-open' : '' }}">
+                                            <button type="button" class="av-pauta-toggle" wire:click="alternarComponente({{ $turmaIdAtual }}, {{ $grupo['componente_id'] }})">
+                                                <div class="av-pauta-toggle-main">
+                                                    <h3 class="av-pauta-title">{{ $grupo['titulo'] }}</h3>
+                                                    <p class="av-pauta-meta">Agrupado por componente</p>
+                                                </div>
+
+                                                <div class="av-pauta-toggle-side">
+                                                    <span class="av-pauta-arrow {{ $componenteExpandido ? 'is-open' : '' }}">v</span>
+                                                </div>
+                                            </button>
+
+                                            @if ($componenteExpandido)
+                                                <div class="av-pauta-content">
+                                    @foreach ($grupo['pautas'] as $pauta)
                                         @php($progressoPauta = $this->progressoPorPauta[$turmaIdAtual][$pauta->id] ?? ['preenchidas' => 0, 'total' => $alunosDaTurma->count(), 'percentual' => 0, 'concluida' => false])
                                         @php($pautaExpandida = $this->pautaEstaExpandida($turmaIdAtual, (int) $pauta->id))
                                         @php($alternativasPauta = $this->alternativasDaPauta((int) $pauta->id))
@@ -459,6 +464,10 @@
                                                             </tbody>
                                                         </table>
                                                     </div>
+                                                </div>
+                                            @endif
+                                        </section>
+                                    @endforeach
                                                 </div>
                                             @endif
                                         </section>
