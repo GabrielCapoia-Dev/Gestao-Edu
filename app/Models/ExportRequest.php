@@ -200,13 +200,19 @@ class ExportRequest extends Model
         $this->markCancelled('Cancelado pelo usuario.');
     }
 
-    public function markCancelled(?string $message = null): void
+    public function markCancelled(?string $message = null, ?string $errorMessage = null): void
     {
-        $this->forceFill([
+        $payload = [
             'status' => self::STATUS_CANCELLED,
             'cancel_requested_at' => now(),
             'status_message' => $message ?? 'Cancelado.',
             'finished_at' => now(),
-        ])->save();
+        ];
+
+        if ($errorMessage !== null) {
+            $payload['error_message'] = Str::limit($errorMessage, 4000, '');
+        }
+
+        $this->forceFill($payload)->save();
     }
 }

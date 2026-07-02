@@ -25,6 +25,8 @@ class ProcessExportRequestJob implements ShouldQueue
 
     public int $timeout;
 
+    public bool $failOnTimeout = true;
+
     public function __construct(
         public readonly string $exportRequestId,
     ) {
@@ -87,6 +89,34 @@ class ProcessExportRequestJob implements ShouldQueue
 
             throw $exception;
         }
+    }
+
+    public function failed(?Throwable $exception): void
+    {
+        $exportRequest = ExportRequest::query()
+            ->with('user')
+            ->find($this->exportRequestId);
+
+        if (! $exportRequest || ! $exportRequest->isActive()) {
+            return;
+        }
+
+        $message = $exception?->getMessage();
+
+        if (! filled($message)) {
+            $message = 'A exportação foi interrompida antes de concluir o processamento.';
+        }
+
+        $exportRequest->markFailed($message);
+        $this->notifyFailure($exportRequest->refresh());
+
+        Log::error('Exportação finalizada com falha pelo worker.', [
+            'export_request_id' => $exportRequest->getKey(),
+            'type' => $exportRequest->type,
+            'format' => $exportRequest->format,
+            'message' => $message,
+            'exception' => $exception,
+        ]);
     }
 
     private function notifySuccess(ExportRequest $exportRequest): void

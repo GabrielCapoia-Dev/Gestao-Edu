@@ -14,6 +14,8 @@ return [
     'max_active_per_user' => (int) env('EXPORTS_MAX_ACTIVE_PER_USER', 3),
     'job_timeout' => (int) env('EXPORTS_JOB_TIMEOUT', 900),
     'lock_expiration' => (int) env('EXPORTS_LOCK_EXPIRATION', 1200),
+    'stalled_queued_after_minutes' => (int) env('EXPORTS_STALLED_QUEUED_AFTER_MINUTES', 30),
+    'stalled_running_after_minutes' => (int) env('EXPORTS_STALLED_RUNNING_AFTER_MINUTES', 45),
 
     'handlers' => [
         'avaliacao_documento' => AvaliacaoDocumentoExportHandler::class,

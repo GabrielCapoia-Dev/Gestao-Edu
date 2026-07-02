@@ -60,7 +60,7 @@
                     <div class="dav-dashboard-loading__pulse"></div>
                     <div>
                         <strong>Carregando indicadores...</strong>
-                        <span>Os dados da avaliaÃ§Ã£o estÃ£o sendo calculados sem bloquear a abertura da pÃ¡gina.</span>
+                        <span>Aguarde enquanto os indicadores são carregados.</span>
                     </div>
                 </section>
             @else

@@ -54,6 +54,12 @@ return Application::configure(basePath: dirname(__DIR__))
             ->dailyAt('02:30')
             ->withoutOverlapping(120);
     })
+    ->withSchedule(function (Schedule $schedule) {
+        $schedule
+            ->command('exports:monitor-stalled')
+            ->everyFiveMinutes()
+            ->withoutOverlapping(30);
+    })
     ->withExceptions(function (Exceptions $exceptions) {
         //
     })->create();

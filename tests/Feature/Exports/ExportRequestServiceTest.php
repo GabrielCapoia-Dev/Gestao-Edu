@@ -138,6 +138,39 @@ class ExportRequestServiceTest extends TestCase
         $this->assertNotNull($exportRequest->finished_at);
     }
 
+    public function test_job_marca_exportacao_como_falha_quando_worker_interrompe_antes_do_catch(): void
+    {
+        $user = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+
+        $exportRequest = ExportRequest::query()->create([
+            'user_id' => $user->id,
+            'type' => 'pedido_relatorio_geral',
+            'format' => 'pdf',
+            'label' => 'Relatorio geral de pedidos',
+            'filters' => [],
+            'metadata' => [],
+            'fingerprint' => fake()->uuid(),
+            'status' => ExportRequest::STATUS_RUNNING,
+            'status_message' => 'Preparando consulta de pedidos.',
+            'progress_current' => 10,
+            'progress_total' => 100,
+            'started_at' => now()->subMinutes(2),
+        ]);
+
+        $job = new ProcessExportRequestJob($exportRequest->getKey());
+        $job->failed(new \RuntimeException('Processo excedeu o tempo limite.'));
+
+        $exportRequest->refresh();
+
+        $this->assertSame(ExportRequest::STATUS_FAILED, $exportRequest->status);
+        $this->assertSame('Falha ao gerar arquivo.', $exportRequest->status_message);
+        $this->assertSame('Processo excedeu o tempo limite.', $exportRequest->error_message);
+        $this->assertNotNull($exportRequest->finished_at);
+    }
+
     private function finishedExportRequest(User $user): ExportRequest
     {
         $exportRequest = ExportRequest::query()->create([
