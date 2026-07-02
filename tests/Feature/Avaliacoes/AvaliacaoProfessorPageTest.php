@@ -217,7 +217,7 @@ class AvaliacaoProfessorPageTest extends TestCase
             ->test(AvaliacaoTurmaWorkspace::class, $this->workspaceProfessorParams())
             ->set('avaliacao', $avaliacao->id)
             ->assertSee('Escola Serie')
-            ->assertSee('Outra Escola Serie')
+            ->assertDontSee('Outra Escola Serie')
             ->assertSee('1o Ano')
             ->assertDontSee('2o Ano')
             ->set('serieEscola', $escola->id.':'.$serie->id)
@@ -232,7 +232,7 @@ class AvaliacaoProfessorPageTest extends TestCase
             ->assertSee('Aluno Turma B')
             ->assertDontSee('Aluno Outra Escola')
             ->set('serieEscola', $outraEscola->id.':'.$serie->id)
-            ->assertSee('Turma C')
+            ->assertDontSee('Turma C')
             ->assertDontSee('Turma A');
     }
 
@@ -366,6 +366,13 @@ class AvaliacaoProfessorPageTest extends TestCase
         $avaliacaoFora->turmas()->attach($turmaFora->id);
         $this->sincronizarEscopoAvaliacao($avaliacaoFora, [$serie->id], [], [$escolaFora->id]);
 
+        Aluno::query()->create([
+            'nome' => 'Aluno Coordenacao',
+            'cgm' => 'CGM-COORD-001',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turmaPermitida->id,
+        ]);
+
         $user = User::factory()->create([
             'email_approved' => true,
             'email_verified_at' => now(),
@@ -380,7 +387,13 @@ class AvaliacaoProfessorPageTest extends TestCase
             ->assertDontSee('Avaliacao Escola Fora')
             ->set('avaliacao', $avaliacaoPermitida->id)
             ->assertSee('Escola Permitida')
-            ->assertDontSee('Escola Fora Coordenacao');
+            ->assertDontSee('Escola Fora Coordenacao')
+            ->set('serieEscola', $escolaPermitida->id . ':' . $serie->id)
+            ->assertSee('Por pautas')
+            ->assertSee('Por alunos')
+            ->assertDontSee('AvaliaÃ§Ã£o em massa')
+            ->call('definirVisualizacao', 'alunos')
+            ->assertSet('visualizacao', 'alunos');
     }
 
     public function test_avaliacao_em_massa_respeita_turma_alvo_e_nao_sobrescreve_respostas_com_observacao(): void

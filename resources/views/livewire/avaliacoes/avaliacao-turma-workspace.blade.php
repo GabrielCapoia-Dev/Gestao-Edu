@@ -111,15 +111,17 @@
         @else
             @php($turmasDaSerie = $this->turmasDaSerieDisponiveis)
 
-            @if ($this->podePreencherEmMassa())
             <section class="gi-panel av-professor-control-panel">
                 <div class="gi-toolbar">
+                    @if ($this->podePreencherEmMassa())
                     <div>
                         <h3 class="av-pauta-title">Ações da Avaliação</h3>
                         <p class="av-pauta-meta">Escolha como deseja preencher esta avaliação.</p>
                     </div>
+                    @endif
 
                     <div class="av-mode-actions">
+                        @if ($this->podePreencherEmMassa())
                         <div class="av-bulk-control">
                             @if (! $this->modoAcompanhamento())
                                 <label class="gi-field av-bulk-turma-select">
@@ -156,7 +158,9 @@
                                 Aplicar
                             </button>
                         </div>
+                        @endif
 
+                        @if ($this->podeAlternarVisualizacao())
                         <div class="av-segmented-control" role="tablist">
                             <button type="button" class="{{ $visualizacao === 'pautas' ? 'is-active' : '' }}" wire:click="definirVisualizacao('pautas')">
                                 Por pautas
@@ -165,10 +169,10 @@
                                 Por alunos
                             </button>
                         </div>
+                        @endif
                     </div>
                 </div>
             </section>
-            @endif
 
             @if ($visualizacao === 'pautas')
                 @if ($this->modoAcompanhamento())

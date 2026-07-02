@@ -689,7 +689,12 @@ class DashboardAvaliacoesPageTest extends TestCase
                 'initialComponenteId' => $componenteUm->id,
                 'modo' => 'acompanhamento',
                 'canEdit' => true,
-            ]);
+            ])
+            ->assertSee('Por pautas')
+            ->assertSee('Por alunos')
+            ->assertDontSee('AvaliaÃ§Ã£o em massa')
+            ->call('definirVisualizacao', 'alunos')
+            ->assertSet('visualizacao', 'alunos');
 
         $this->assertCount(1, $workspace->instance()->getPautasDisponiveisProperty());
 
@@ -802,17 +807,12 @@ class DashboardAvaliacoesPageTest extends TestCase
                 'canEdit' => true,
             ])
             ->assertSet('componenteWorkspaceId', '')
-            ->assertSee('Todos os componentes')
+            ->assertSee('Por pautas')
+            ->assertSee('Por alunos')
             ->assertDontSee('Validar pend')
             ->assertSee('Pauta todos 1')
             ->assertSee('Pauta todos 2');
 
-        $this->assertCount(2, $workspace->instance()->getPautasDisponiveisProperty());
-
-        $workspace->set('componenteWorkspaceId', (string) $componenteUm->id);
-        $this->assertCount(1, $workspace->instance()->getPautasDisponiveisProperty());
-
-        $workspace->set('componenteWorkspaceId', '');
         $this->assertCount(2, $workspace->instance()->getPautasDisponiveisProperty());
 
         $workspace

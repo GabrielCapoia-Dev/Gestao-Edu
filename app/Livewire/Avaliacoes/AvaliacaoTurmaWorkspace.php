@@ -188,6 +188,11 @@ class AvaliacaoTurmaWorkspace extends Component
             && ($user?->hasPermissionTo('Preencher Avaliações em Massa') ?? false);
     }
 
+    public function podeAlternarVisualizacao(): bool
+    {
+        return true;
+    }
+
     public function updatedAvaliacao(): void
     {
         if ($this->modoAcompanhamento()) {
