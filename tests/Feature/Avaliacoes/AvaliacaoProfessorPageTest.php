@@ -738,7 +738,6 @@ class AvaliacaoProfessorPageTest extends TestCase
             'email_verified_at' => now(),
         ]);
         $userProfessor->givePermissionTo('Responder AvaliaÃ§Ãµes');
-        $userProfessor->escolas()->sync([$escola->id, $outraEscola->id]);
 
         $professor = Professor::query()->create([
             'user_id' => $userProfessor->id,

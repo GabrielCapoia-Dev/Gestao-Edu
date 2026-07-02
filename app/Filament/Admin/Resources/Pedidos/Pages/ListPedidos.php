@@ -171,9 +171,7 @@ class ListPedidos extends ListRecords
                         ->where('is_pedido_adicional', false);
                 })
                 ->badge($count)
-                ->extraAttributes([
-                    'class' => $this->tabClassesForStatus($status),
-                ]);
+                ->extraAttributes($this->tabAttributesForStatus($status));
 
             if (
                 $tabAdicionais
@@ -253,6 +251,7 @@ class ListPedidos extends ListRecords
             view('filament.admin.resources.pedidos.partials.status-pill', [
                 'label' => $presentation['label'],
                 'class' => $presentation['pill_class'],
+                'style' => $presentation['pill_style'],
             ])->render()
         );
     }
@@ -265,6 +264,7 @@ class ListPedidos extends ListRecords
             return [
                 'label' => 'Todos',
                 'pill_class' => 'gi-status-pill gi-status-pill--todos',
+                'pill_style' => null,
                 'tab_class' => $this->tabClassesForAll(),
             ];
         }
@@ -273,6 +273,7 @@ class ListPedidos extends ListRecords
             return [
                 'label' => 'Pedidos adicionais',
                 'pill_class' => 'gi-status-pill gi-status-pill--adicionais',
+                'pill_style' => null,
                 'tab_class' => $this->tabClassesForAdditionals(),
             ];
         }
@@ -283,13 +284,15 @@ class ListPedidos extends ListRecords
             return [
                 'label' => 'Pedidos',
                 'pill_class' => 'gi-status-pill gi-status-pill--fallback',
+                'pill_style' => null,
                 'tab_class' => 'gi-tab-pill gi-tab-pill--fallback',
             ];
         }
 
         return [
             'label' => $status->nome,
-            'pill_class' => sprintf('gi-status-pill gi-status-pill--%s', $this->statusModifier($status)),
+            'pill_class' => 'gi-status-pill',
+            'pill_style' => $this->statusPillStyle($status),
             'tab_class' => $this->tabClassesForStatus($status),
         ];
     }
@@ -306,21 +309,89 @@ class ListPedidos extends ListRecords
 
     private function tabClassesForStatus(TipoStatus $status): string
     {
-        return sprintf('gi-tab-pill gi-tab-pill--%s', $this->statusModifier($status));
+        $modifier = $this->statusModifier($status);
+
+        return trim(sprintf(
+            'gi-tab-pill %s',
+            $modifier ? "gi-tab-pill--{$modifier}" : '',
+        ));
+    }
+
+    private function tabAttributesForStatus(TipoStatus $status): array
+    {
+        $attributes = [
+            'class' => $this->tabClassesForStatus($status),
+        ];
+
+        $style = $this->statusPillStyle($status);
+
+        if ($style) {
+            $attributes['style'] = $style;
+        }
+
+        return $attributes;
     }
 
     private function statusModifier(TipoStatus $status): string
     {
-        return match (Str::lower(Str::ascii($status->nome))) {
-            'em aberto' => 'em-aberto',
-            'reaberto' => 'reaberto',
-            'em analise' => 'em-analise',
-            'em manutencao' => 'em-manutencao',
-            'encaminhado ao setor' => 'encaminhado-ao-setor',
-            'enviado para empresa' => 'enviado-para-empresa',
-            'cancelado' => 'cancelado',
-            'concluido' => 'concluido',
-            default => 'fallback',
-        };
+        $slug = Str::slug(Str::ascii($status->nome));
+
+        return $slug !== '' ? $slug : 'fallback';
+    }
+
+    private function statusPillStyle(TipoStatus $status): ?string
+    {
+        $hex = $this->normalizeHexColor($status->cor);
+
+        if (! $hex) {
+            return null;
+        }
+
+        [$red, $green, $blue] = $this->hexToRgb($hex);
+
+        return sprintf(
+            'border-color: rgba(%d, %d, %d, 0.28); background: rgba(%d, %d, %d, 0.12); color: %s;',
+            $red,
+            $green,
+            $blue,
+            $red,
+            $green,
+            $blue,
+            $hex,
+        );
+    }
+
+    private function normalizeHexColor(?string $color): ?string
+    {
+        $value = trim((string) $color);
+
+        if (! preg_match('/^#(?:[0-9a-fA-F]{3}){1,2}$/', $value)) {
+            return null;
+        }
+
+        if (strlen($value) === 4) {
+            return sprintf(
+                '#%s%s%s%s%s%s',
+                $value[1],
+                $value[1],
+                $value[2],
+                $value[2],
+                $value[3],
+                $value[3],
+            );
+        }
+
+        return strtoupper($value);
+    }
+
+    private function hexToRgb(string $hex): array
+    {
+        $value = ltrim($hex, '#');
+
+        return [
+            hexdec(substr($value, 0, 2)),
+            hexdec(substr($value, 2, 2)),
+            hexdec(substr($value, 4, 2)),
+        ];
     }
 }
