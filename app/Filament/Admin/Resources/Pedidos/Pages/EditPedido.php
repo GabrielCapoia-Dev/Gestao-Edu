@@ -129,6 +129,8 @@ class EditPedido extends EditRecord
                 $this->observacaoStatus ?: "Pedido encaminhado para {$setorNome}.",
             );
 
+            $this->atualizarComentarioGestorComObservacao($service, $user);
+
             return;
         }
 
@@ -139,6 +141,8 @@ class EditPedido extends EditRecord
                 $user,
                 $this->observacaoStatus,
             );
+
+            $this->atualizarComentarioGestorComObservacao($service, $user);
 
             return;
         }
@@ -156,6 +160,8 @@ class EditPedido extends EditRecord
         if ($status?->finaliza_pedido && ! $record->data_entrega) {
             $record->update(['data_entrega' => now()]);
         }
+
+        $this->atualizarComentarioGestorComObservacao($service, $user);
     }
 
     protected function getRedirectUrl(): string
@@ -166,5 +172,18 @@ class EditPedido extends EditRecord
     private function usuarioEfetivo(): ?\App\Models\User
     {
         return app(ProfilePreviewService::class)->effectiveUser();
+    }
+
+    private function atualizarComentarioGestorComObservacao(PedidoService $service, ?\App\Models\User $user): void
+    {
+        if (! $user || blank($this->observacaoStatus)) {
+            return;
+        }
+
+        $service->atualizarComentarioGestorPorAlteracao(
+            $this->record->refresh(),
+            $user,
+            $this->observacaoStatus,
+        );
     }
 }

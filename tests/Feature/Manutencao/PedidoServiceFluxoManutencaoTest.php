@@ -1081,7 +1081,7 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
         $this->assertSame([], Storage::disk('public')->allFiles());
     }
 
-    public function test_avaliacao_exige_descricao_geral_e_comentario_por_problema(): void
+    public function test_avaliacao_exige_comentario_por_problema_e_descricao_geral_somente_ao_reabrir(): void
     {
         $usuario = $this->usuarioComRoleSetor('Manutenção: Educação', $this->educacao, ['Avaliar Pedidos']);
         $pedido = $this->pedido(status: 'Em Manutenção', setor: $this->educacao, escola: $this->escola);
@@ -1091,17 +1091,46 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
             'texto_problema' => $this->opcaoLuz->texto,
         ]);
 
-        $this->expectException(ValidationException::class);
+        try {
+            $this->service->avaliarPedido($pedido, [
+                'avaliacoes' => [
+                    $problema->id => [
+                        'valor' => 5,
+                        'resultado' => ResultadoFeedbackPedido::Atendido->value,
+                    ],
+                ],
+                'reabrir_pedido' => false,
+            ], $usuario);
 
-        $this->service->avaliarPedido($pedido, [
+            $this->fail('A avaliacao sem comentario por problema deveria falhar.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey("avaliacoes.{$problema->id}.comentario", $exception->errors());
+            $this->assertArrayNotHasKey('descricao', $exception->errors());
+        }
+
+        try {
+            $this->service->avaliarPedido($pedido, [
+                'reabrir_pedido' => true,
+            ], $usuario);
+
+            $this->fail('A reabertura sem comentario geral deveria falhar.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('descricao', $exception->errors());
+        }
+
+        $feedback = $this->service->avaliarPedido($pedido, [
             'avaliacoes' => [
                 $problema->id => [
                     'valor' => 5,
                     'resultado' => ResultadoFeedbackPedido::Atendido->value,
+                    'comentario' => 'Problema resolvido.',
                 ],
             ],
             'reabrir_pedido' => false,
         ], $usuario);
+
+        $this->assertNull($feedback->descricao);
+        $this->assertSame('Concluído', $pedido->refresh()->tipoStatus->nome);
     }
 
     public function test_pedido_adicional_exige_descricao(): void

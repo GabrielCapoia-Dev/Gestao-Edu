@@ -18,6 +18,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Columns\ViewColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
@@ -105,6 +106,10 @@ class FeedbackPedido extends Page implements HasTable
                     ->limit(90)
                     ->wrap()
                     ->placeholder('Sem itens'),
+
+                ViewColumn::make('comentario_feedback')
+                    ->label('Comentário')
+                    ->view('filament.tables.columns.feedback-pedido-comment'),
 
                 Tables\Columns\TextColumn::make('pedido_reaberto')
                     ->label('Reaberto')

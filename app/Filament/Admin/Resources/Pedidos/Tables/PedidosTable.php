@@ -105,6 +105,8 @@ class PedidosTable
                 && (int) ($record->pedidos_adicionais_count ?? 0) > 0
                     ? 'pedido-card--has-additionals'
                     : null)
+            ->recordAction(null)
+            ->recordUrl(null)
             ->recordActions(static::actions($user, $service), position: RecordActionsPosition::AfterContent)
             ->groupedBulkActions(static::bulkActions($user, $service))
             ->headerActions(static::headerActions($user));
@@ -1148,7 +1150,8 @@ class PedidosTable
 
                     Textarea::make('descricao')
                         ->label('Comentário geral')
-                        ->required()
+                        ->visible(fn (Get $get): bool => (bool) $get('reabrir_pedido'))
+                        ->required(fn (Get $get): bool => (bool) $get('reabrir_pedido'))
                         ->maxLength(1000)
                         ->columnSpanFull(),
                 ])

@@ -110,11 +110,7 @@ class PedidoService
         $comentario = trim((string) $comentario);
 
         return DB::transaction(function () use ($pedido, $user, $comentario): Pedido {
-            $pedido->forceFill([
-                'comentario_gestor' => $comentario !== '' ? $comentario : null,
-                'comentario_gestor_user_id' => $comentario !== '' ? $user->id : null,
-                'comentario_gestor_at' => $comentario !== '' ? now() : null,
-            ])->save();
+            $pedido = $this->persistirComentarioGestor($pedido, $user, $comentario);
 
             $this->registrarHistorico(
                 $pedido,
@@ -130,6 +126,17 @@ class PedidoService
         });
     }
 
+    public function atualizarComentarioGestorPorAlteracao(Pedido $pedido, User $user, ?string $comentario): Pedido
+    {
+        $comentario = trim((string) $comentario);
+
+        if ($comentario === '') {
+            return $pedido->refresh();
+        }
+
+        return $this->persistirComentarioGestor($pedido, $user, $comentario);
+    }
+
     public function podeVincularAdicionaisAoPedido(Pedido $pedido, ?User $user): bool
     {
         return $this->podeVincularAdicionais($user)
@@ -143,6 +150,17 @@ class PedidoService
         } catch (PermissionDoesNotExist) {
             return false;
         }
+    }
+
+    private function persistirComentarioGestor(Pedido $pedido, User $user, string $comentario): Pedido
+    {
+        $pedido->forceFill([
+            'comentario_gestor' => $comentario !== '' ? $comentario : null,
+            'comentario_gestor_user_id' => $comentario !== '' ? $user->id : null,
+            'comentario_gestor_at' => $comentario !== '' ? now() : null,
+        ])->save();
+
+        return $pedido->refresh();
     }
 
     public function podeAvaliarRegistro(Pedido $pedido, ?User $user): bool
@@ -1086,7 +1104,7 @@ class PedidoService
     {
         $errors = [];
 
-        if (blank($data['descricao'] ?? null)) {
+        if ((bool) ($data['reabrir_pedido'] ?? false) && blank($data['descricao'] ?? null)) {
             $errors['descricao'] = 'Descreva a avaliação geral do pedido.';
         }
 
