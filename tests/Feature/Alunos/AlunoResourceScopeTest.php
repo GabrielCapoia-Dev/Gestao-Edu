@@ -324,6 +324,15 @@ class AlunoResourceScopeTest extends TestCase
         $this->criarTurma($escolaA, 'A');
         $this->criarTurma($escolaB, 'B');
         $this->criarTurma($escolaFora, 'Fora');
+        $turmaHistorica = $this->criarTurma($escolaFora, 'Historica Multipla');
+
+        Aluno::query()->create([
+            'nome' => 'Aluno Multipla Escola',
+            'cgm' => 'CGM-MULTIPLAS-ESCOLAS',
+            'data_nascimento' => '2014-05-10',
+            'id_turma' => $turmaHistorica->id,
+            'status' => Aluno::STATUS_TRANSFERIDO,
+        ]);
 
         $usuario = User::factory()->create([
             'email_approved' => true,
@@ -349,6 +358,110 @@ class AlunoResourceScopeTest extends TestCase
 
                 return true;
             });
+    }
+
+    public function test_usuario_de_escola_nao_cadastra_aluno_com_cgm_inexistente(): void
+    {
+        Permission::findOrCreate('Listar Alunos');
+        Permission::findOrCreate('Criar Alunos');
+
+        $escola = $this->criarEscola('Escola Bloqueio CGM');
+        $turma = $this->criarTurma($escola, 'Bloqueio CGM');
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->escolas()->attach($escola->id);
+        $usuario->givePermissionTo(['Listar Alunos', 'Criar Alunos']);
+
+        Livewire::actingAs($usuario)
+            ->test(ListAlunos::class)
+            ->callAction('create', [
+                'cgm' => 'CGM-INEXISTENTE-ESCOLA',
+                'data_matricula' => '2026-02-03',
+                'id_escola' => $escola->id,
+                'id_serie' => $turma->id_serie,
+                'id_turma' => $turma->id,
+            ])
+            ->assertHasActionErrors();
+
+        $this->assertDatabaseMissing('alunos', [
+            'cgm' => 'CGM-INEXISTENTE-ESCOLA',
+        ]);
+    }
+
+    public function test_usuario_de_escola_cadastra_apenas_cgm_encontrado_com_dados_oficiais_bloqueados(): void
+    {
+        Permission::findOrCreate('Listar Alunos');
+        Permission::findOrCreate('Criar Alunos');
+
+        $escolaOrigem = $this->criarEscola('Escola Origem CGM Encontrado');
+        $escolaDestino = $this->criarEscola('Escola Destino CGM Encontrado');
+        $turmaOrigem = $this->criarTurma($escolaOrigem, 'Origem CGM');
+        $turmaDestino = $this->criarTurma($escolaDestino, 'Destino CGM');
+
+        Aluno::query()->create([
+            'nome' => 'Nome Oficial Do Sistema',
+            'cgm' => 'CGM-OFICIAL-ESCOLA',
+            'data_nascimento' => '2014-04-12',
+            'sexo' => 'M',
+            'id_turma' => $turmaOrigem->id,
+            'status' => Aluno::STATUS_TRANSFERIDO,
+        ]);
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->escolas()->attach($escolaDestino->id);
+        $usuario->givePermissionTo(['Listar Alunos', 'Criar Alunos']);
+
+        Livewire::actingAs($usuario)
+            ->test(ListAlunos::class)
+            ->mountAction('create')
+            ->setActionData([
+                'cgm' => 'CGM-OFICIAL-ESCOLA',
+            ])
+            ->assertSchemaComponentExists('nome', null, function ($component): bool {
+                $this->assertTrue($component->isDisabled());
+
+                return true;
+            })
+            ->assertSchemaComponentExists('data_nascimento', null, function ($component): bool {
+                $this->assertTrue($component->isDisabled());
+
+                return true;
+            })
+            ->assertSchemaComponentExists('sexo', null, function ($component): bool {
+                $this->assertTrue($component->isDisabled());
+
+                return true;
+            })
+            ->assertSchemaComponentExists('data_matricula', null, function ($component): bool {
+                $this->assertFalse($component->isDisabled());
+
+                return true;
+            })
+            ->setActionData([
+                'cgm' => 'CGM-OFICIAL-ESCOLA',
+                'data_matricula' => '2026-02-03',
+                'id_escola' => $escolaDestino->id,
+                'id_serie' => $turmaDestino->id_serie,
+                'id_turma' => $turmaDestino->id,
+            ])
+            ->callMountedAction()
+            ->assertHasNoActionErrors();
+
+        $this->assertDatabaseHas('alunos', [
+            'cgm' => 'CGM-OFICIAL-ESCOLA',
+            'nome' => 'Nome Oficial Do Sistema',
+            'data_nascimento' => '2014-04-12 00:00:00',
+            'sexo' => 'M',
+            'data_matricula' => '2026-02-03 00:00:00',
+            'id_turma' => $turmaDestino->id,
+            'status' => Aluno::STATUS_MATRICULADO,
+        ]);
     }
 
     public function test_permissao_de_editar_escola_do_aluno_permite_matricular_em_outra_escola(): void

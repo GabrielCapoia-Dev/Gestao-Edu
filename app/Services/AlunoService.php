@@ -71,22 +71,22 @@ class AlunoService
                         ->afterStateUpdated(function (?string $state, Set $set, ?Aluno $record = null, ?string $operation = null): void {
                             $this->consultarCgmFormulario($state, $set, $record, $operation);
                         })
-                        ->helperText(fn (Get $get, ?string $operation = null): ?string => $this->textoAjudaCgmFormulario($get, $operation)),
+                        ->helperText(fn (Get $get, ?string $operation = null): ?string => $this->textoAjudaCgmFormulario($get, $operation, $user)),
 
                     TextInput::make('nome')
                         ->label('Nome')
                         ->required()
                         ->maxLength(255)
-                        ->extraInputAttributes(fn (Get $get, ?string $operation = null): array => $this->atributosCampoBloqueadoAposCgm($get, $operation))
-                        ->disabled(fn (Get $get, ?string $operation = null): bool => $this->campoBloqueadoAposCgm($get, $operation)),
+                        ->extraInputAttributes(fn (Get $get, ?string $operation = null): array => $this->atributosCampoBloqueadoAposCgm($get, $operation, $user, true))
+                        ->disabled(fn (Get $get, ?string $operation = null): bool => $this->campoDadosAlunoBloqueadoAposCgm($get, $operation, $user)),
 
                     DatePicker::make('data_nascimento')
                         ->label('Data de Nascimento')
                         ->required()
                         ->native()
                         ->displayFormat('d/m/Y')
-                        ->extraInputAttributes(fn (Get $get, ?string $operation = null): array => $this->atributosCampoBloqueadoAposCgm($get, $operation))
-                        ->disabled(fn (Get $get, ?string $operation = null): bool => $this->campoBloqueadoAposCgm($get, $operation)),
+                        ->extraInputAttributes(fn (Get $get, ?string $operation = null): array => $this->atributosCampoBloqueadoAposCgm($get, $operation, $user, true))
+                        ->disabled(fn (Get $get, ?string $operation = null): bool => $this->campoDadosAlunoBloqueadoAposCgm($get, $operation, $user)),
 
                     Select::make('sexo')
                         ->label('Sexo')
@@ -95,15 +95,15 @@ class AlunoService
                             'M' => 'Masculino',
                         ])
                         ->native(false)
-                        ->extraInputAttributes(fn (Get $get, ?string $operation = null): array => $this->atributosCampoBloqueadoAposCgm($get, $operation))
-                        ->disabled(fn (Get $get, ?string $operation = null): bool => $this->campoBloqueadoAposCgm($get, $operation)),
+                        ->extraInputAttributes(fn (Get $get, ?string $operation = null): array => $this->atributosCampoBloqueadoAposCgm($get, $operation, $user, true))
+                        ->disabled(fn (Get $get, ?string $operation = null): bool => $this->campoDadosAlunoBloqueadoAposCgm($get, $operation, $user)),
 
                     DatePicker::make('data_matricula')
                         ->label('Data de Matricula')
                         ->native()
                         ->displayFormat('d/m/Y')
-                        ->extraInputAttributes(fn (Get $get, ?string $operation = null): array => $this->atributosCampoBloqueadoAposCgm($get, $operation))
-                        ->disabled(fn (Get $get, ?string $operation = null): bool => $this->campoBloqueadoAposCgm($get, $operation)),
+                        ->extraInputAttributes(fn (Get $get, ?string $operation = null): array => $this->atributosCampoBloqueadoAposCgm($get, $operation, $user))
+                        ->disabled(fn (Get $get, ?string $operation = null): bool => $this->campoMatriculaBloqueadoAposCgm($get, $operation, $user)),
 
                     Select::make('id_escola')
                         ->label('Escola')
@@ -117,8 +117,8 @@ class AlunoService
                             $set('id_turma', null);
                             $set('turma_contra_turno_id', null);
                         })
-                        ->extraInputAttributes(fn (Get $get, ?string $operation = null): array => $this->atributosCampoBloqueadoAposCgm($get, $operation))
-                        ->disabled(fn (Get $get, ?string $operation = null): bool => $this->campoBloqueadoAposCgm($get, $operation)
+                        ->extraInputAttributes(fn (Get $get, ?string $operation = null): array => $this->atributosCampoBloqueadoAposCgm($get, $operation, $user))
+                        ->disabled(fn (Get $get, ?string $operation = null): bool => $this->campoMatriculaBloqueadoAposCgm($get, $operation, $user)
                             || $this->deveTravarEscolaAluno($user))
                         ->dehydrated(false)
                         ->columnSpanFull(),
@@ -133,8 +133,8 @@ class AlunoService
                             $set('id_turma', null);
                             $set('turma_contra_turno_id', null);
                         })
-                        ->extraInputAttributes(fn (Get $get, ?string $operation = null): array => $this->atributosCampoBloqueadoAposCgm($get, $operation))
-                        ->disabled(fn (Get $get, ?string $operation = null): bool => $this->campoBloqueadoAposCgm($get, $operation)
+                        ->extraInputAttributes(fn (Get $get, ?string $operation = null): array => $this->atributosCampoBloqueadoAposCgm($get, $operation, $user))
+                        ->disabled(fn (Get $get, ?string $operation = null): bool => $this->campoMatriculaBloqueadoAposCgm($get, $operation, $user)
                             || blank($get('id_escola')))
                         ->dehydrated(false)
                         ->columnSpanFull(),
@@ -152,8 +152,8 @@ class AlunoService
                         ->afterStateUpdated(function (Set $set): void {
                             $set('turma_contra_turno_id', null);
                         })
-                        ->extraInputAttributes(fn (Get $get, ?string $operation = null): array => $this->atributosCampoBloqueadoAposCgm($get, $operation))
-                        ->disabled(fn (Get $get, ?string $operation = null): bool => $this->campoBloqueadoAposCgm($get, $operation)
+                        ->extraInputAttributes(fn (Get $get, ?string $operation = null): array => $this->atributosCampoBloqueadoAposCgm($get, $operation, $user))
+                        ->disabled(fn (Get $get, ?string $operation = null): bool => $this->campoMatriculaBloqueadoAposCgm($get, $operation, $user)
                             || blank($get('id_escola'))
                             || blank($get('id_serie')))
                         ->columnSpanFull(),
@@ -887,19 +887,38 @@ class AlunoService
         ]);
     }
 
-    private function formularioAlunoLiberadoAposCgm(Get $get): bool
+    private function formularioAlunoLiberadoAposCgm(Get $get, ?User $user = null): bool
     {
-        return filled($get('cgm')) && (bool) $get('cgm_consultado');
+        if (blank($get('cgm')) || ! (bool) $get('cgm_consultado')) {
+            return false;
+        }
+
+        return ! $this->cadastroAlunoRestritoPorCgm($user)
+            || filled($get('cgm_encontrado_aluno_id'));
     }
 
-    private function campoBloqueadoAposCgm(Get $get, ?string $operation): bool
+    private function campoMatriculaBloqueadoAposCgm(Get $get, ?string $operation, ?User $user): bool
     {
-        return $operation === 'create' && ! $this->formularioAlunoLiberadoAposCgm($get);
+        return $operation === 'create' && ! $this->formularioAlunoLiberadoAposCgm($get, $user);
     }
 
-    private function atributosCampoBloqueadoAposCgm(Get $get, ?string $operation): array
+    private function campoDadosAlunoBloqueadoAposCgm(Get $get, ?string $operation, ?User $user): bool
     {
-        if (! $this->campoBloqueadoAposCgm($get, $operation)) {
+        if ($operation !== 'create') {
+            return false;
+        }
+
+        return $this->cadastroAlunoRestritoPorCgm($user)
+            || ! $this->formularioAlunoLiberadoAposCgm($get, $user);
+    }
+
+    private function atributosCampoBloqueadoAposCgm(Get $get, ?string $operation, ?User $user, bool $dadosOficiais = false): array
+    {
+        $bloqueado = $dadosOficiais
+            ? $this->campoDadosAlunoBloqueadoAposCgm($get, $operation, $user)
+            : $this->campoMatriculaBloqueadoAposCgm($get, $operation, $user);
+
+        if (! $bloqueado) {
             return [];
         }
 
@@ -908,7 +927,7 @@ class AlunoService
         ];
     }
 
-    private function textoAjudaCgmFormulario(Get $get, ?string $operation): ?string
+    private function textoAjudaCgmFormulario(Get $get, ?string $operation, ?User $user): ?string
     {
         if ($operation !== 'create') {
             return filled($get('cgm_encontrado_aluno_id'))
@@ -916,12 +935,18 @@ class AlunoService
                 : null;
         }
 
-        if (! $this->formularioAlunoLiberadoAposCgm($get)) {
+        if (blank($get('cgm')) || ! (bool) $get('cgm_consultado')) {
             return 'Informe o CGM para liberar os demais campos.';
         }
 
-        return filled($get('cgm_encontrado_aluno_id'))
-            ? 'Aluno encontrado no sistema. Confira os dados e selecione serie e turma de destino.'
+        if (filled($get('cgm_encontrado_aluno_id'))) {
+            return $this->cadastroAlunoRestritoPorCgm($user)
+                ? 'Aluno encontrado. Confira os dados e selecione data de matricula, serie e turma.'
+                : 'Aluno encontrado no sistema. Confira os dados e selecione serie e turma de destino.';
+        }
+
+        return $this->cadastroAlunoRestritoPorCgm($user)
+            ? 'Aluno nao encontrado. Solicite permissao ao administrador para cadastrar novos alunos.'
             : 'CGM nao encontrado. Preencha os dados do novo aluno.';
     }
 
@@ -1010,6 +1035,28 @@ class AlunoService
                 return [$turma->id => $label];
             })
             ->toArray();
+    }
+
+    public function prepararDadosCadastroAluno(array $data, ?User $user): array
+    {
+        if (! $this->cadastroAlunoRestritoPorCgm($user)) {
+            return $data;
+        }
+
+        $aluno = $this->alunoPorCgmParaFormulario((string) ($data['cgm'] ?? ''));
+
+        if (! $aluno) {
+            throw ValidationException::withMessages([
+                'cgm' => 'Aluno nao encontrado. Solicite permissao ao administrador para cadastrar novos alunos.',
+            ]);
+        }
+
+        return [
+            ...$data,
+            'nome' => $aluno->nome,
+            'data_nascimento' => $aluno->data_nascimento?->toDateString(),
+            'sexo' => $aluno->sexo,
+        ];
     }
 
     public function opcoesDeEscolas(?User $user): array
@@ -1211,6 +1258,12 @@ class AlunoService
     {
         return ($user?->hasPermissionTo('Editar Escola do Aluno') ?? false)
             || ($user?->hasPermissionTo('Editar Escola da Turma') ?? false);
+    }
+
+    private function cadastroAlunoRestritoPorCgm(?User $user): bool
+    {
+        return ! $this->podeEscolherEscolaAluno($user)
+            && $this->idsEscolasVinculadasFormularioAluno($user) !== [];
     }
 
     private function idsEscolasVinculadasFormularioAluno(?User $user): array

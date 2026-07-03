@@ -122,6 +122,8 @@ class ListAlunos extends ListRecords
                 ->modalWidth('4xl')
                 ->visible(fn (): bool => ! app(AlunoTransferenciaPendenteService::class)->professorEstaBloqueado(Auth::user()))
                 ->using(function (array $data): Model {
+                    $data = AlunoResource::alunoService()->prepararDadosCadastroAluno($data, Auth::user());
+
                     unset($data['id_escola'], $data['id_serie']);
                     AlunoResource::alunoService()->validarTurmaPermitida((int) ($data['id_turma'] ?? 0), Auth::user());
 
