@@ -1200,12 +1200,12 @@ class PedidosTable
 
                         Select::make("avaliacoes.{$problema->id}.resultado")
                             ->label('Resultado')
+                            ->placeholder('Selecione')
                             ->options(
                                 collect(ResultadoFeedbackPedido::cases())
                                     ->mapWithKeys(fn (ResultadoFeedbackPedido $resultado) => [$resultado->value => $resultado->label()])
                                     ->toArray()
                             )
-                            ->default(ResultadoFeedbackPedido::Atendido->value)
                             ->required()
                             ->native(false)
                             ->columnSpan(1),

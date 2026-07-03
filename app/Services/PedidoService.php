@@ -975,12 +975,12 @@ class PedidoService
             };
 
             $notas = $problemas
-                ->map(fn (PedidoProblema $problema): int => (int) ($dadosDaAvaliacao($problema)['valor'] ?? 3))
+                ->map(fn (PedidoProblema $problema): int => (int) $dadosDaAvaliacao($problema)['valor'])
                 ->map(fn (int $nota): int => max(1, min(5, $nota)));
 
             $notaGeral = $notas->isNotEmpty()
                 ? (int) round($notas->avg())
-                : (int) ($data['valor'] ?? 3);
+                : (int) $data['valor'];
 
             $feedback = $pedido->feedbacks()->create([
                 'valor' => max(1, min(5, $notaGeral)),
@@ -990,13 +990,12 @@ class PedidoService
 
             foreach ($problemas as $problema) {
                 $avaliacao = $dadosDaAvaliacao($problema);
-                $resultado = ResultadoFeedbackPedido::tryFrom($avaliacao['resultado'] ?? '')
-                    ?? ResultadoFeedbackPedido::Atendido;
+                $resultado = ResultadoFeedbackPedido::from($avaliacao['resultado']);
 
                 $feedback->itens()->create([
                     'pedido_id' => $problema->pedido_id,
                     'pedido_problema_id' => $problema->id,
-                    'valor' => max(1, min(5, (int) ($avaliacao['valor'] ?? 3))),
+                    'valor' => max(1, min(5, (int) $avaliacao['valor'])),
                     'resultado' => $resultado,
                     'comentario' => $avaliacao['comentario'] ?? null,
                 ]);
@@ -1111,9 +1110,22 @@ class PedidoService
         $reabrirPedido = (bool) ($data['reabrir_pedido'] ?? false);
 
         if (! $reabrirPedido) {
-            foreach ($this->problemasParaAvaliacao($pedido, false) as $problema) {
+            foreach ($this->problemasParaAvaliacao($pedido) as $problema) {
                 $avaliacao = collect($data['avaliacoes'] ?? [])->get((string) $problema->id)
                     ?? collect($data['avaliacoes'] ?? [])->get($problema->id);
+
+                $valor = $avaliacao['valor'] ?? null;
+                $valorInteiro = filter_var($valor, FILTER_VALIDATE_INT);
+
+                if ($valor === null || $valor === '' || $valorInteiro === false || $valorInteiro < 1 || $valorInteiro > 5) {
+                    $errors["avaliacoes.{$problema->id}.valor"] = 'Selecione uma nota de 1 a 5 para este problema.';
+                }
+
+                $resultado = $avaliacao['resultado'] ?? null;
+
+                if (blank($resultado) || ! ResultadoFeedbackPedido::tryFrom((string) $resultado)) {
+                    $errors["avaliacoes.{$problema->id}.resultado"] = 'Selecione o resultado deste problema.';
+                }
 
                 if (blank($avaliacao['comentario'] ?? null)) {
                     $errors["avaliacoes.{$problema->id}.comentario"] = 'Descreva a avaliação deste problema.';

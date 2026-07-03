@@ -1095,6 +1095,24 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
             $this->service->avaliarPedido($pedido, [
                 'avaliacoes' => [
                     $problema->id => [
+                        'comentario' => 'Problema resolvido.',
+                    ],
+                ],
+                'reabrir_pedido' => false,
+            ], $usuario);
+
+            $this->fail('A avaliacao sem nota e resultado deveria falhar.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey("avaliacoes.{$problema->id}.valor", $exception->errors());
+            $this->assertArrayHasKey("avaliacoes.{$problema->id}.resultado", $exception->errors());
+            $this->assertArrayNotHasKey("avaliacoes.{$problema->id}.comentario", $exception->errors());
+            $this->assertArrayNotHasKey('descricao', $exception->errors());
+        }
+
+        try {
+            $this->service->avaliarPedido($pedido, [
+                'avaliacoes' => [
+                    $problema->id => [
                         'valor' => 5,
                         'resultado' => ResultadoFeedbackPedido::Atendido->value,
                     ],

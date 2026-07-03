@@ -1,13 +1,13 @@
 <div
     x-data="{
-        value: @js($getState()),
+        value: Number(@js($getState()) || 0),
         hoverValue: 0,
         updateValue(newVal) {
             this.value = newVal;
             this.$nextTick(() => $wire.set('{{ $getStatePath() }}', newVal));
         }
     }"
-    @wire:update="{{ $getStatePath() }}"="value = $event.detail.payload"
+    @wire:update="{{ $getStatePath() }}"="value = Number($event.detail.payload || 0)"
     class="star-rating-container">
 
     <div class="stars-wrapper">
