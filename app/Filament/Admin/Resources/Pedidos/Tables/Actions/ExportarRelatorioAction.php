@@ -83,6 +83,7 @@ class ExportarRelatorioAction
                         ->label('Tipo de Manutenção')
                         ->options(
                             TipoManutencao::query()
+                                ->where('ativo', true)
                                 ->orderBy('nome')
                                 ->pluck('nome', 'id')
                         )
