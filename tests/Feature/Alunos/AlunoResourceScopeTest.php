@@ -247,6 +247,59 @@ class AlunoResourceScopeTest extends TestCase
             });
     }
 
+    public function test_modal_limpa_dados_anteriores_quando_novo_cgm_nao_e_encontrado(): void
+    {
+        Permission::findOrCreate('Listar Alunos');
+        Permission::findOrCreate('Criar Alunos');
+
+        $escola = $this->criarEscola('Escola CGM Limpeza');
+        $turma = $this->criarTurma($escola, 'CGM Limpeza');
+
+        Aluno::query()->create([
+            'nome' => 'Aluno Que Deve Ser Limpo',
+            'cgm' => 'CGM-LIMPAR-001',
+            'data_nascimento' => '2014-03-05',
+            'data_matricula' => '2024-02-01',
+            'sexo' => 'M',
+            'id_turma' => $turma->id,
+            'status' => Aluno::STATUS_TRANSFERIDO,
+        ]);
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->escolas()->attach($escola->id);
+        $usuario->givePermissionTo(['Listar Alunos', 'Criar Alunos']);
+
+        Livewire::actingAs($usuario)
+            ->test(ListAlunos::class)
+            ->mountAction('create')
+            ->setActionData([
+                'cgm' => 'CGM-LIMPAR-001',
+            ])
+            ->assertSchemaStateSet([
+                'nome' => 'Aluno Que Deve Ser Limpo',
+                'sexo' => 'M',
+            ])
+            ->setActionData([
+                'cgm' => 'CGM-NAO-ENCONTRADO-LIMPEZA',
+            ])
+            ->assertSchemaStateSet(function (array $state): array {
+                $this->assertSame('CGM-NAO-ENCONTRADO-LIMPEZA', $state['cgm'] ?? null);
+                $this->assertTrue((bool) ($state['cgm_consultado'] ?? false));
+                $this->assertNull($state['cgm_encontrado_aluno_id'] ?? null);
+                $this->assertNull($state['nome'] ?? null);
+                $this->assertNull($state['data_nascimento'] ?? null);
+                $this->assertNull($state['sexo'] ?? null);
+                $this->assertNull($state['data_matricula'] ?? null);
+                $this->assertNull($state['id_serie'] ?? null);
+                $this->assertNull($state['id_turma'] ?? null);
+
+                return [];
+            });
+    }
+
     public function test_modal_usa_datepicker_nativo_para_permitir_digitacao_e_colagem(): void
     {
         Permission::findOrCreate('Listar Alunos');

@@ -957,6 +957,10 @@ class AlunoService
         $set('cgm_consultado', $cgm !== '');
         $set('cgm_encontrado_aluno_id', null);
 
+        if ($operation === 'create') {
+            $this->limparDadosConsultaCgm($set);
+        }
+
         if ($cgm === '') {
             return;
         }
@@ -977,6 +981,17 @@ class AlunoService
         $set('data_nascimento', $alunoExistente->data_nascimento?->format('Y-m-d'));
         $set('sexo', $alunoExistente->sexo);
         $set('data_matricula', $alunoExistente->data_matricula?->format('Y-m-d'));
+    }
+
+    private function limparDadosConsultaCgm(Set $set): void
+    {
+        $set('nome', null);
+        $set('data_nascimento', null);
+        $set('sexo', null);
+        $set('data_matricula', null);
+        $set('id_serie', null);
+        $set('id_turma', null);
+        $set('turma_contra_turno_id', null);
     }
 
     private function alunoPorCgmParaFormulario(string $cgm, ?int $ignorarAlunoId = null): ?Aluno
