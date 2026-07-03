@@ -149,6 +149,36 @@
         white-space: pre-line;
     }
 
+    .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-description-text--collapsible {
+        display: -webkit-box;
+        overflow: hidden;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 1;
+    }
+
+    .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-description-text--expanded {
+        display: block;
+        overflow: visible;
+        -webkit-line-clamp: unset;
+    }
+
+    .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-description-toggle {
+        justify-self: start;
+        color: var(--primary-700);
+        font-size: var(--text-xs);
+        line-height: var(--text-xs--line-height);
+        font-weight: var(--font-weight-semibold);
+    }
+
+    .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-description-toggle:hover {
+        color: var(--primary-900);
+        text-decoration: underline;
+    }
+
+    .dark .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-description-toggle {
+        color: var(--primary-300);
+    }
+
     .dark .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-comment-text,
     .dark .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-description-text,
     .dark .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-comment-empty,

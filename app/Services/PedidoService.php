@@ -116,6 +116,16 @@ class PedidoService
                 'comentario_gestor_at' => $comentario !== '' ? now() : null,
             ])->save();
 
+            $this->registrarHistorico(
+                $pedido,
+                $pedido->tipo_status_id,
+                $pedido->tipo_status_id,
+                $user,
+                $comentario !== ''
+                    ? "Comentário registrado por {$user->name}: {$comentario}"
+                    : "Comentário removido por {$user->name}."
+            );
+
             return $pedido->refresh();
         });
     }
