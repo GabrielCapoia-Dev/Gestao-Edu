@@ -96,6 +96,80 @@
         border-bottom: 1px solid var(--pedido-card-border);
     }
 
+    .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-comment-slot {
+        flex: 1 1 30rem;
+        min-width: min(24rem, 100%);
+    }
+
+    .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-comment,
+    .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-description {
+        display: grid;
+        gap: 0.3rem;
+        min-width: 0;
+        border: 1px solid color-mix(in srgb, var(--pedido-card-border) 82%, transparent);
+        border-radius: 0.5rem;
+        padding: 0.65rem 0.75rem;
+    }
+
+    .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-comment {
+        background: color-mix(in srgb, #fff 92%, #fee2e2);
+        border-color: color-mix(in srgb, #fca5a5 68%, var(--pedido-card-border));
+    }
+
+    .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-description {
+        background: color-mix(in srgb, #fff 91%, #dcfce7);
+        border-color: color-mix(in srgb, #86efac 64%, var(--pedido-card-border));
+    }
+
+    .dark .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-comment {
+        background: color-mix(in srgb, var(--gray-900) 86%, #7f1d1d);
+        border-color: color-mix(in srgb, #b91c1c 72%, var(--gray-700));
+    }
+
+    .dark .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-description {
+        background: color-mix(in srgb, var(--gray-900) 86%, #14532d);
+        border-color: color-mix(in srgb, #15803d 72%, var(--gray-700));
+    }
+
+    .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-block-label {
+        color: var(--pedido-card-muted);
+        font-size: var(--text-xs);
+        line-height: var(--text-xs--line-height);
+        font-weight: var(--font-weight-semibold);
+    }
+
+    .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-comment-text,
+    .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-description-text,
+    .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-comment-empty,
+    .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-description-empty {
+        color: var(--gray-950);
+        font-size: var(--text-sm);
+        line-height: 1.35;
+        overflow-wrap: anywhere;
+        white-space: pre-line;
+    }
+
+    .dark .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-comment-text,
+    .dark .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-description-text,
+    .dark .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-comment-empty,
+    .dark .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-description-empty {
+        color: var(--gray-100);
+    }
+
+    .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-comment-empty,
+    .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-description-empty,
+    .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-comment-meta {
+        color: var(--pedido-card-muted);
+    }
+
+    .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-comment-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem 0.5rem;
+        font-size: var(--text-xs);
+        line-height: var(--text-xs--line-height);
+    }
+
     .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-main-grid,
     .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-meta-grid {
         gap: 0.7rem 0.85rem;
@@ -189,6 +263,11 @@
 
         .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-top.fi-ta-split {
             align-items: stretch;
+        }
+
+        .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-comment-slot {
+            min-width: 0;
+            width: 100%;
         }
 
         .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-actions,

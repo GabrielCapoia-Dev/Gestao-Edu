@@ -32,6 +32,7 @@ use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 class PedidoService
 {
     public const PERMISSAO_NOTIFICAR_PEDIDO_ADICIONAL_CRIADO = 'Visualizar Notificação: Pedido Adicional Criado';
+    public const PERMISSAO_COMENTAR_PEDIDOS = 'Comentar Pedidos';
 
     /*
     |--------------------------------------------------------------------------
@@ -89,10 +90,49 @@ class PedidoService
         return $user?->hasPermissionTo('Vincular Pedidos Adicionais') ?? false;
     }
 
+    public function podeComentarPedido(Pedido $pedido, ?User $user): bool
+    {
+        if (! $user || ! $this->usuarioTemPermissaoComentar($user)) {
+            return false;
+        }
+
+        return $this->podeListarRegistro($pedido, $user);
+    }
+
+    public function salvarComentarioGestor(Pedido $pedido, User $user, ?string $comentario): Pedido
+    {
+        if (! $this->podeComentarPedido($pedido, $user)) {
+            throw ValidationException::withMessages([
+                'comentario_gestor' => 'Você não possui autorização para comentar este pedido.',
+            ]);
+        }
+
+        $comentario = trim((string) $comentario);
+
+        return DB::transaction(function () use ($pedido, $user, $comentario): Pedido {
+            $pedido->forceFill([
+                'comentario_gestor' => $comentario !== '' ? $comentario : null,
+                'comentario_gestor_user_id' => $comentario !== '' ? $user->id : null,
+                'comentario_gestor_at' => $comentario !== '' ? now() : null,
+            ])->save();
+
+            return $pedido->refresh();
+        });
+    }
+
     public function podeVincularAdicionaisAoPedido(Pedido $pedido, ?User $user): bool
     {
         return $this->podeVincularAdicionais($user)
             && $this->podeExecutarAcaoDaEscolaOuSetor($pedido, $user);
+    }
+
+    private function usuarioTemPermissaoComentar(User $user): bool
+    {
+        try {
+            return $user->hasPermissionTo(self::PERMISSAO_COMENTAR_PEDIDOS);
+        } catch (PermissionDoesNotExist) {
+            return false;
+        }
     }
 
     public function podeAvaliarRegistro(Pedido $pedido, ?User $user): bool

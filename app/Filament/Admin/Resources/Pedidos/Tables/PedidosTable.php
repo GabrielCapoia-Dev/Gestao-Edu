@@ -27,6 +27,7 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
@@ -72,6 +73,7 @@ class PedidosTable
                     'empresaContratada',
                     'solicitante.escola',
                     'solicitante.escolas',
+                    'comentarioGestorUsuario',
                     'ultimoFeedback.itens.problema',
                     'feedbackItens.feedback.itens.problema',
                 ])
@@ -295,6 +297,9 @@ class PedidosTable
                     ->grow(false)
                     ->extraAttributes(['class' => 'pedido-card-actions-slot']),
 
+                LayoutView::make('filament.admin.resources.pedidos.tables.pedido-card-comment')
+                    ->extraAttributes(['class' => 'pedido-card-comment-slot']),
+
                 TextColumn::make('numero_protocolo')
                     ->label('Protocolo')
                     ->description('Protocolo', position: 'above')
@@ -417,6 +422,9 @@ class PedidosTable
                 ])
                 ->extraAttributes(['class' => 'pedido-card-main-grid']),
 
+            LayoutView::make('filament.admin.resources.pedidos.tables.pedido-card-description')
+                ->extraAttributes(['class' => 'pedido-card-description-slot']),
+
             Grid::make([
                 'default' => 1,
                 'sm' => 2,
@@ -524,6 +532,41 @@ class PedidosTable
     public static function actions(?User $user, PedidoService $service): array
     {
         return [
+            Action::make('comentar')
+                ->label('Comentar')
+                ->icon('heroicon-o-chat-bubble-left-right')
+                ->color('gray')
+                ->modalHeading(fn (Pedido $record): string => 'Comentário do pedido '.$record->numero_protocolo)
+                ->modalSubmitActionLabel('Comentar')
+                ->modalCancelActionLabel('Cancelar')
+                ->fillForm(fn (Pedido $record): array => [
+                    'comentario_gestor' => $record->comentario_gestor,
+                ])
+                ->schema([
+                    TextInput::make('comentario_gestor')
+                        ->label('Comentário')
+                        ->placeholder('Digite o comentário do gestor')
+                        ->maxLength(1000)
+                        ->columnSpanFull(),
+                ])
+                ->visible(fn (Pedido $record): bool => $service->podeComentarPedido($record, $user))
+                ->action(function (Pedido $record, array $data) use ($user, $service): void {
+                    if (! $user) {
+                        return;
+                    }
+
+                    $service->salvarComentarioGestor(
+                        $record,
+                        $user,
+                        $data['comentario_gestor'] ?? null
+                    );
+
+                    Notification::make()
+                        ->title('Comentário salvo.')
+                        ->success()
+                        ->send();
+                }),
+
             Action::make('visualizar')
                 ->label('Visualizar')
                 ->icon('heroicon-o-eye')

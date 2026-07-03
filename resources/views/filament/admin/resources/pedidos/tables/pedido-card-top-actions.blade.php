@@ -10,6 +10,7 @@
     $recordKey = $record instanceof Pedido ? (string) $record->getKey() : '';
 
     $canView = $record instanceof Pedido && PedidosTable::podeExibirAcaoVisualizar($user);
+    $canComment = $record instanceof Pedido && $service->podeComentarPedido($record, $user);
     $canManage = $record instanceof Pedido && PedidosTable::podeExibirAcaoGerenciar($record, $user, $service);
     $canPromoteAdditional = $record instanceof Pedido
         && $record->is_pedido_adicional
@@ -19,7 +20,7 @@
         && $service->podeCancelarPedidoAdicional($record, $user);
 @endphp
 
-@if ($canView || $canManage || $canPromoteAdditional || $canCancelAdditional)
+@if ($canView || $canComment || $canManage || $canPromoteAdditional || $canCancelAdditional)
     <div class="pedido-card-actions pedido-card-actions--top">
         @if ($canView)
             <x-filament::button
@@ -29,6 +30,17 @@
                 wire:click.stop.prevent="mountTableAction('visualizar', '{{ $recordKey }}')"
             >
                 Visualizar
+            </x-filament::button>
+        @endif
+
+        @if ($canComment)
+            <x-filament::button
+                color="gray"
+                icon="heroicon-o-chat-bubble-left-right"
+                size="sm"
+                wire:click.stop.prevent="mountTableAction('comentar', '{{ $recordKey }}')"
+            >
+                Comentar
             </x-filament::button>
         @endif
 

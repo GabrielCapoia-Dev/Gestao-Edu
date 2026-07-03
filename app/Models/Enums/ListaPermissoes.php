@@ -209,6 +209,7 @@ enum ListaPermissoes: string
 
     case AplicarPermissoes = 'aplicar permissoes';
     case AvaliarPedidos = 'avaliar pedidos';
+    case ComentarPedidos = 'comentar pedidos';
     case EncaminharPedidosParaSetor = 'encaminhar pedidos para setor';
     case EnviarPedidosParaEmpresa = 'enviar pedidos para empresa';
     case VincularPedidosAdicionais = 'vincular pedidos adicionais';
@@ -435,6 +436,7 @@ enum ListaPermissoes: string
 
             self::AplicarPermissoes => 'Aplicar Permissoes',
             self::AvaliarPedidos => 'Avaliar Pedidos',
+            self::ComentarPedidos => 'Comentar Pedidos',
             self::EncaminharPedidosParaSetor => 'Encaminhar Pedidos para Setor',
             self::EnviarPedidosParaEmpresa => 'Enviar Pedidos para Empresa',
             self::VincularPedidosAdicionais => 'Vincular Pedidos Adicionais',

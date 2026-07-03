@@ -22,6 +22,9 @@ class Pedido extends Model
         'pedido_principal_id',
         'is_pedido_adicional',
         'descricao_pedido', // Descrição do problema
+        'comentario_gestor',
+        'comentario_gestor_user_id',
+        'comentario_gestor_at',
 
         'nome_solicitante', // Nome do solicitante do problema
 
@@ -54,6 +57,7 @@ class Pedido extends Model
         'data_identificacao_problema' => 'date',
         'data_prevista' => 'date',
         'data_entrega' => 'date',
+        'comentario_gestor_at' => 'datetime',
         'valor_custo' => 'decimal:2',
         'ativo' => 'boolean',
         'is_pedido_adicional' => 'boolean',
@@ -190,6 +194,11 @@ class Pedido extends Model
     public function responsavel()
     {
         return $this->belongsTo(User::class, 'responsavel_id');
+    }
+
+    public function comentarioGestorUsuario()
+    {
+        return $this->belongsTo(User::class, 'comentario_gestor_user_id');
     }
 
     public function setor()
