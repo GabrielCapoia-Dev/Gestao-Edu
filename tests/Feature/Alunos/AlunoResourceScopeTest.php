@@ -14,6 +14,8 @@ use App\Models\Serie;
 use App\Models\TipoAvaliacao;
 use App\Models\Turma;
 use App\Models\User;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
@@ -202,6 +204,151 @@ class AlunoResourceScopeTest extends TestCase
             'id_turma' => $turma->id,
             'status' => Aluno::STATUS_MATRICULADO,
         ]);
+    }
+
+    public function test_modal_consulta_cgm_automaticamente_e_prefill_dados_encontrados(): void
+    {
+        Permission::findOrCreate('Listar Alunos');
+        Permission::findOrCreate('Criar Alunos');
+
+        $escola = $this->criarEscola('Escola CGM Automatico');
+        $turma = $this->criarTurma($escola, 'CGM Auto');
+
+        $alunoExistente = Aluno::query()->create([
+            'nome' => 'Aluno Encontrado Pelo CGM',
+            'cgm' => 'CGM-AUTO-001',
+            'data_nascimento' => '2014-03-05',
+            'data_matricula' => '2024-02-01',
+            'sexo' => 'F',
+            'id_turma' => $turma->id,
+            'status' => Aluno::STATUS_TRANSFERIDO,
+        ]);
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo(['Listar Alunos', 'Criar Alunos']);
+
+        Livewire::actingAs($usuario)
+            ->test(ListAlunos::class)
+            ->mountAction('create')
+            ->setActionData([
+                'cgm' => ' CGM-AUTO-001 ',
+            ])
+            ->assertSchemaStateSet(function (array $state) use ($alunoExistente): array {
+                $this->assertSame('CGM-AUTO-001', $state['cgm'] ?? null);
+                $this->assertTrue((bool) ($state['cgm_consultado'] ?? false));
+                $this->assertSame($alunoExistente->id, $state['cgm_encontrado_aluno_id'] ?? null);
+                $this->assertSame('Aluno Encontrado Pelo CGM', $state['nome'] ?? null);
+                $this->assertSame('F', $state['sexo'] ?? null);
+
+                return [];
+            });
+    }
+
+    public function test_modal_usa_datepicker_nativo_para_permitir_digitacao_e_colagem(): void
+    {
+        Permission::findOrCreate('Listar Alunos');
+        Permission::findOrCreate('Criar Alunos');
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo(['Listar Alunos', 'Criar Alunos']);
+
+        Livewire::actingAs($usuario)
+            ->test(ListAlunos::class)
+            ->mountAction('create')
+            ->assertSchemaComponentExists('data_nascimento', null, function ($component): bool {
+                $this->assertInstanceOf(DatePicker::class, $component);
+                $this->assertTrue($component->isNative());
+
+                return true;
+            })
+            ->assertSchemaComponentExists('data_matricula', null, function ($component): bool {
+                $this->assertInstanceOf(DatePicker::class, $component);
+                $this->assertTrue($component->isNative());
+
+                return true;
+            });
+    }
+
+    public function test_modal_trava_escola_quando_usuario_tem_um_unico_vinculo(): void
+    {
+        Permission::findOrCreate('Listar Alunos');
+        Permission::findOrCreate('Criar Alunos');
+
+        $escolaVinculada = $this->criarEscola('Escola Vinculada Unica');
+        $outraEscola = $this->criarEscola('Escola Fora Do Vinculo');
+        $this->criarTurma($escolaVinculada, 'Vinculada');
+        $this->criarTurma($outraEscola, 'Fora');
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->escolas()->attach($escolaVinculada->id);
+        $usuario->givePermissionTo(['Listar Alunos', 'Criar Alunos']);
+
+        Livewire::actingAs($usuario)
+            ->test(ListAlunos::class)
+            ->mountAction('create')
+            ->setActionData([
+                'cgm' => 'CGM-ESCOLA-UNICA',
+            ])
+            ->assertSchemaStateSet([
+                'id_escola' => $escolaVinculada->id,
+            ])
+            ->assertSchemaComponentExists('id_escola', null, function ($component) use ($escolaVinculada, $outraEscola): bool {
+                $this->assertInstanceOf(Select::class, $component);
+                $this->assertSame([
+                    $escolaVinculada->id => $escolaVinculada->nome,
+                ], $component->getOptions());
+                $this->assertArrayNotHasKey($outraEscola->id, $component->getOptions());
+                $this->assertTrue($component->isDisabled());
+
+                return true;
+            });
+    }
+
+    public function test_modal_restringe_sem_travar_quando_usuario_tem_multiplas_escolas(): void
+    {
+        Permission::findOrCreate('Listar Alunos');
+        Permission::findOrCreate('Criar Alunos');
+
+        $escolaA = $this->criarEscola('Escola Vinculada A');
+        $escolaB = $this->criarEscola('Escola Vinculada B');
+        $escolaFora = $this->criarEscola('Escola Fora Dos Vinculos');
+        $this->criarTurma($escolaA, 'A');
+        $this->criarTurma($escolaB, 'B');
+        $this->criarTurma($escolaFora, 'Fora');
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->escolas()->attach([$escolaA->id, $escolaB->id]);
+        $usuario->givePermissionTo(['Listar Alunos', 'Criar Alunos']);
+
+        Livewire::actingAs($usuario)
+            ->test(ListAlunos::class)
+            ->mountAction('create')
+            ->setActionData([
+                'cgm' => 'CGM-MULTIPLAS-ESCOLAS',
+            ])
+            ->assertSchemaComponentExists('id_escola', null, function ($component) use ($escolaA, $escolaB, $escolaFora): bool {
+                $this->assertInstanceOf(Select::class, $component);
+                $this->assertSame([
+                    $escolaA->id => $escolaA->nome,
+                    $escolaB->id => $escolaB->nome,
+                ], $component->getOptions());
+                $this->assertArrayNotHasKey($escolaFora->id, $component->getOptions());
+                $this->assertFalse($component->isDisabled());
+
+                return true;
+            });
     }
 
     public function test_permissao_de_editar_escola_do_aluno_permite_matricular_em_outra_escola(): void

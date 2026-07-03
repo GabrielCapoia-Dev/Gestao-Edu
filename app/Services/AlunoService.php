@@ -67,52 +67,26 @@ class AlunoService
                         ->label('CGM')
                         ->required()
                         ->maxLength(255)
-                        ->live(onBlur: true)
-                        ->afterStateUpdated(function (?string $state, Set $set, ?string $operation = null): void {
-                            $cgm = Aluno::normalizarCgm($state);
-                            $set('cgm', $cgm);
-
-                            if ($operation !== 'create') {
-                                return;
-                            }
-
-                            $set('cgm_consultado', $cgm !== '');
-                            $set('cgm_encontrado_aluno_id', null);
-
-                            if ($cgm === '') {
-                                return;
-                            }
-
-                            $alunoExistente = $this->alunoPorCgmParaFormulario($cgm);
-
-                            if (! $alunoExistente) {
-                                return;
-                            }
-
-                            $set('cgm_encontrado_aluno_id', (int) $alunoExistente->id);
-                            $set('nome', $alunoExistente->nome);
-                            $set('data_nascimento', $alunoExistente->data_nascimento?->format('Y-m-d'));
-                            $set('sexo', $alunoExistente->sexo);
-                            $set('data_matricula', $alunoExistente->data_matricula?->format('Y-m-d'));
+                        ->live(debounce: 500)
+                        ->afterStateUpdated(function (?string $state, Set $set, ?Aluno $record = null, ?string $operation = null): void {
+                            $this->consultarCgmFormulario($state, $set, $record, $operation);
                         })
-                        ->helperText(fn (Get $get, ?string $operation = null): ?string => $operation === 'create'
-                            ? $this->textoAjudaCgmCadastro($get)
-                            : null),
+                        ->helperText(fn (Get $get, ?string $operation = null): ?string => $this->textoAjudaCgmFormulario($get, $operation)),
 
                     TextInput::make('nome')
                         ->label('Nome')
                         ->required()
                         ->maxLength(255)
-                        ->disabled(fn (Get $get, ?string $operation = null): bool => $operation === 'create'
-                            && ! $this->formularioAlunoLiberadoAposCgm($get)),
+                        ->extraInputAttributes(fn (Get $get, ?string $operation = null): array => $this->atributosCampoBloqueadoAposCgm($get, $operation))
+                        ->disabled(fn (Get $get, ?string $operation = null): bool => $this->campoBloqueadoAposCgm($get, $operation)),
 
                     DatePicker::make('data_nascimento')
                         ->label('Data de Nascimento')
                         ->required()
-                        ->native(false)
+                        ->native()
                         ->displayFormat('d/m/Y')
-                        ->disabled(fn (Get $get, ?string $operation = null): bool => $operation === 'create'
-                            && ! $this->formularioAlunoLiberadoAposCgm($get)),
+                        ->extraInputAttributes(fn (Get $get, ?string $operation = null): array => $this->atributosCampoBloqueadoAposCgm($get, $operation))
+                        ->disabled(fn (Get $get, ?string $operation = null): bool => $this->campoBloqueadoAposCgm($get, $operation)),
 
                     Select::make('sexo')
                         ->label('Sexo')
@@ -121,15 +95,15 @@ class AlunoService
                             'M' => 'Masculino',
                         ])
                         ->native(false)
-                        ->disabled(fn (Get $get, ?string $operation = null): bool => $operation === 'create'
-                            && ! $this->formularioAlunoLiberadoAposCgm($get)),
+                        ->extraInputAttributes(fn (Get $get, ?string $operation = null): array => $this->atributosCampoBloqueadoAposCgm($get, $operation))
+                        ->disabled(fn (Get $get, ?string $operation = null): bool => $this->campoBloqueadoAposCgm($get, $operation)),
 
                     DatePicker::make('data_matricula')
                         ->label('Data de Matricula')
-                        ->native(false)
+                        ->native()
                         ->displayFormat('d/m/Y')
-                        ->disabled(fn (Get $get, ?string $operation = null): bool => $operation === 'create'
-                            && ! $this->formularioAlunoLiberadoAposCgm($get)),
+                        ->extraInputAttributes(fn (Get $get, ?string $operation = null): array => $this->atributosCampoBloqueadoAposCgm($get, $operation))
+                        ->disabled(fn (Get $get, ?string $operation = null): bool => $this->campoBloqueadoAposCgm($get, $operation)),
 
                     Select::make('id_escola')
                         ->label('Escola')
@@ -143,8 +117,8 @@ class AlunoService
                             $set('id_turma', null);
                             $set('turma_contra_turno_id', null);
                         })
-                        ->disabled(fn (Get $get, ?string $operation = null): bool => ($operation === 'create'
-                            && ! $this->formularioAlunoLiberadoAposCgm($get))
+                        ->extraInputAttributes(fn (Get $get, ?string $operation = null): array => $this->atributosCampoBloqueadoAposCgm($get, $operation))
+                        ->disabled(fn (Get $get, ?string $operation = null): bool => $this->campoBloqueadoAposCgm($get, $operation)
                             || $this->deveTravarEscolaAluno($user))
                         ->dehydrated(false)
                         ->columnSpanFull(),
@@ -159,8 +133,8 @@ class AlunoService
                             $set('id_turma', null);
                             $set('turma_contra_turno_id', null);
                         })
-                        ->disabled(fn (Get $get, ?string $operation = null): bool => ($operation === 'create'
-                            && ! $this->formularioAlunoLiberadoAposCgm($get))
+                        ->extraInputAttributes(fn (Get $get, ?string $operation = null): array => $this->atributosCampoBloqueadoAposCgm($get, $operation))
+                        ->disabled(fn (Get $get, ?string $operation = null): bool => $this->campoBloqueadoAposCgm($get, $operation)
                             || blank($get('id_escola')))
                         ->dehydrated(false)
                         ->columnSpanFull(),
@@ -178,8 +152,8 @@ class AlunoService
                         ->afterStateUpdated(function (Set $set): void {
                             $set('turma_contra_turno_id', null);
                         })
-                        ->disabled(fn (Get $get, ?string $operation = null): bool => ($operation === 'create'
-                            && ! $this->formularioAlunoLiberadoAposCgm($get))
+                        ->extraInputAttributes(fn (Get $get, ?string $operation = null): array => $this->atributosCampoBloqueadoAposCgm($get, $operation))
+                        ->disabled(fn (Get $get, ?string $operation = null): bool => $this->campoBloqueadoAposCgm($get, $operation)
                             || blank($get('id_escola'))
                             || blank($get('id_serie')))
                         ->columnSpanFull(),
@@ -918,8 +892,30 @@ class AlunoService
         return filled($get('cgm')) && (bool) $get('cgm_consultado');
     }
 
-    private function textoAjudaCgmCadastro(Get $get): string
+    private function campoBloqueadoAposCgm(Get $get, ?string $operation): bool
     {
+        return $operation === 'create' && ! $this->formularioAlunoLiberadoAposCgm($get);
+    }
+
+    private function atributosCampoBloqueadoAposCgm(Get $get, ?string $operation): array
+    {
+        if (! $this->campoBloqueadoAposCgm($get, $operation)) {
+            return [];
+        }
+
+        return [
+            'class' => 'bg-gray-100 text-gray-500 cursor-not-allowed opacity-75',
+        ];
+    }
+
+    private function textoAjudaCgmFormulario(Get $get, ?string $operation): ?string
+    {
+        if ($operation !== 'create') {
+            return filled($get('cgm_encontrado_aluno_id'))
+                ? 'CGM encontrado em outro cadastro. Confira os dados antes de salvar.'
+                : null;
+        }
+
         if (! $this->formularioAlunoLiberadoAposCgm($get)) {
             return 'Informe o CGM para liberar os demais campos.';
         }
@@ -929,10 +925,45 @@ class AlunoService
             : 'CGM nao encontrado. Preencha os dados do novo aluno.';
     }
 
-    private function alunoPorCgmParaFormulario(string $cgm): ?Aluno
+    private function consultarCgmFormulario(?string $state, Set $set, ?Aluno $record, ?string $operation): void
     {
-        return Aluno::query()
-            ->where('cgm', Aluno::normalizarCgm($cgm))
+        $cgm = Aluno::normalizarCgm($state);
+        $set('cgm', $cgm);
+        $set('cgm_consultado', $cgm !== '');
+        $set('cgm_encontrado_aluno_id', null);
+
+        if ($cgm === '') {
+            return;
+        }
+
+        $alunoExistente = $this->alunoPorCgmParaFormulario($cgm, $record?->getKey());
+
+        if (! $alunoExistente) {
+            return;
+        }
+
+        $set('cgm_encontrado_aluno_id', (int) $alunoExistente->id);
+
+        if ($operation !== 'create') {
+            return;
+        }
+
+        $set('nome', $alunoExistente->nome);
+        $set('data_nascimento', $alunoExistente->data_nascimento?->format('Y-m-d'));
+        $set('sexo', $alunoExistente->sexo);
+        $set('data_matricula', $alunoExistente->data_matricula?->format('Y-m-d'));
+    }
+
+    private function alunoPorCgmParaFormulario(string $cgm, ?int $ignorarAlunoId = null): ?Aluno
+    {
+        $query = Aluno::query()
+            ->where('cgm', Aluno::normalizarCgm($cgm));
+
+        if ($ignorarAlunoId) {
+            $query->whereKeyNot($ignorarAlunoId);
+        }
+
+        return $query
             ->orderByRaw("case when tipo_vinculo = ? then 0 else 1 end", [Aluno::TIPO_VINCULO_PRINCIPAL])
             ->latest('status_alterado_em')
             ->latest('updated_at')
@@ -985,8 +1016,10 @@ class AlunoService
     {
         $query = Escola::query()->where('ativo', true)->orderBy('nome');
 
-        if (! $user?->hasRole('Admin') && filled($user?->id_escola) && ! $this->podeEditarEscolaAluno($user)) {
-            $query->whereKey($user->id_escola);
+        $escolaIds = $this->idsEscolasVinculadasFormularioAluno($user);
+
+        if (! $this->podeEscolherEscolaAluno($user) && $escolaIds !== []) {
+            $query->whereKey($escolaIds);
         }
 
         return $query->pluck('nome', 'id')->toArray();
@@ -1150,18 +1183,49 @@ class AlunoService
 
     private function escolaInicialFormularioAluno(?User $user): ?int
     {
-        return filled($user?->id_escola) ? (int) $user->id_escola : null;
+        $escolaIds = $this->idsEscolasVinculadasFormularioAluno($user);
+
+        if (count($escolaIds) === 1) {
+            return $escolaIds[0];
+        }
+
+        if (filled($user?->id_escola) && in_array((int) $user->id_escola, $escolaIds, true)) {
+            return (int) $user->id_escola;
+        }
+
+        return null;
     }
 
     private function deveTravarEscolaAluno(?User $user): bool
     {
-        return filled($user?->id_escola) && ! $this->podeEditarEscolaAluno($user);
+        return ! $this->podeEscolherEscolaAluno($user)
+            && count($this->idsEscolasVinculadasFormularioAluno($user)) === 1;
+    }
+
+    private function podeEscolherEscolaAluno(?User $user): bool
+    {
+        return ($user?->hasRole('Admin') ?? false) || $this->podeEditarEscolaAluno($user);
     }
 
     private function podeEditarEscolaAluno(?User $user): bool
     {
         return ($user?->hasPermissionTo('Editar Escola do Aluno') ?? false)
             || ($user?->hasPermissionTo('Editar Escola da Turma') ?? false);
+    }
+
+    private function idsEscolasVinculadasFormularioAluno(?User $user): array
+    {
+        if (! $user) {
+            return [];
+        }
+
+        return collect([$user->id_escola])
+            ->merge($user->idsEscolasVinculadas())
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
     }
 
     public function validarTurmaPermitida(int $turmaId, ?User $user): void
