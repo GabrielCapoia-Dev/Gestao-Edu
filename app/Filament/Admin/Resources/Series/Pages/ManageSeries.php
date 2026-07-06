@@ -2,16 +2,19 @@
 
 namespace App\Filament\Admin\Resources\Series\Pages;
 
+use App\Filament\Admin\Resources\ComponenteCurriculars\ComponenteCurricularResource;
 use App\Filament\Admin\Resources\Series\SerieResource;
+use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
-use Illuminate\Contracts\View\View;
 use Filament\Resources\Pages\ManageRecords;
+use Filament\Support\Icons\Heroicon;
+use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Auth;
 
 class ManageSeries extends ManageRecords
 {
     protected static string $resource = SerieResource::class;
 
-    
     public function getHeader(): ?View
     {
         return view('filament.admin.pages.partials.page-header', [
@@ -26,6 +29,13 @@ class ManageSeries extends ManageRecords
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('componentes_curriculares')
+                ->label('Componentes Curriculares')
+                ->icon(Heroicon::BookmarkSquare)
+                ->color('gray')
+                ->url(fn (): string => ComponenteCurricularResource::getUrl('index'))
+                ->visible(fn (): bool => Auth::user()?->hasPermissionLike('listar componente curricular') ?? false),
+
             CreateAction::make(),
         ];
     }

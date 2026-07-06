@@ -21,6 +21,8 @@ class SerieResource extends Resource
 {
     protected static ?string $model = Serie::class;
 
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ClipboardDocumentList;
 
     protected static ?string $recordTitleAttribute = 'nome';

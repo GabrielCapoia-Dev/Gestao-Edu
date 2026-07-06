@@ -24,11 +24,15 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Url;
 use Override;
 
 class ListAlunos extends ListRecords
 {
     protected static string $resource = AlunoResource::class;
+
+    #[Url(as: 'turma')]
+    public ?int $turma = null;
 
     private const PERMISSION_EXPORTAR_MODELO_IMPORTACAO = 'Exportar Modelo de Importacao de Alunos';
 
@@ -48,7 +52,13 @@ class ListAlunos extends ListRecords
 
     public function mount(): void
     {
+        $this->turma = request()->integer('turma') ?: null;
+
         parent::mount();
+
+        if ($this->turma) {
+            $this->tableFilters['id_turma']['value'] = $this->turma;
+        }
 
         if (request()->filled('pendencia_cgm')) {
             $this->tableSearch = (string) request()->query('pendencia_cgm');
@@ -146,7 +156,7 @@ class ListAlunos extends ListRecords
 
     public function getTitle(): string
     {
-        if (request()->filled('turma')) {
+        if ($this->turma) {
             return 'Alunos da Turma';
         }
 

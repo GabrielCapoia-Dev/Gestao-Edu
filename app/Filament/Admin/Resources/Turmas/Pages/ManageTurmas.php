@@ -2,14 +2,15 @@
 
 namespace App\Filament\Admin\Resources\Turmas\Pages;
 
+use App\Filament\Admin\Pages\ExportarAvaliacoes;
+use App\Filament\Admin\Resources\Alunos\AlunoResource;
 use App\Filament\Admin\Resources\Series\SerieResource;
 use App\Filament\Admin\Resources\Turmas\TurmaResource;
-use App\Models\Serie;
-use App\Models\User;
 use App\Services\TurmaService;
+use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ManageRecords;
-use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 
@@ -33,30 +34,30 @@ class ManageTurmas extends ManageRecords
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make('nova_serie')
-                ->label('Nova Série')
-                ->icon('heroicon-o-clipboard-document-list')
-                ->model(Serie::class)
-                ->visible(function () {
-                    /** @var User */
-                    $user = Auth::user();
+            Action::make('series')
+                ->label('Séries')
+                ->icon(Heroicon::ClipboardDocumentList)
+                ->color('gray')
+                ->url(fn (): string => SerieResource::getUrl('index'))
+                ->visible(fn (): bool => Auth::user()?->hasPermissionLike('listar series') ?? false),
 
-                    if ($user->hasPermissionTo('Criar Séries')) {
-                        return true;
-                    }
+            Action::make('alunos')
+                ->label('Alunos')
+                ->icon(Heroicon::AcademicCap)
+                ->color('gray')
+                ->url(fn (): string => AlunoResource::getUrl('index'))
+                ->visible(fn (): bool => Auth::user()?->hasPermissionLike('listar alunos') ?? false),
 
-                    return false;
-                })
-                ->modalHeading('Criar Série')
-                ->schema(
-                    fn() => SerieResource::form(Schema::make())
-                        ->getComponents()
-                )
-                ->createAnother(false)
-                ->color('primary')
-                ->successNotificationTitle('Série criada!'),
+            Action::make('exportar_avaliacoes')
+                ->label('Exportar Avaliações')
+                ->icon(Heroicon::ArrowDownTray)
+                ->color('gray')
+                ->url(fn (): string => ExportarAvaliacoes::getUrl())
+                ->visible(fn (): bool => ExportarAvaliacoes::canAccess()),
 
             CreateAction::make()
+                ->label('Criar Turma')
+                ->icon(Heroicon::Plus)
                 ->using(function (array $data) {
 
                     $componentes = $data['componentes'] ?? [];

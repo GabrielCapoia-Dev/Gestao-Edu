@@ -22,6 +22,8 @@ class ExportarAvaliacoes extends Page
 
     protected string $view = 'filament.pages.exportar-avaliacoes';
 
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static ?string $title = 'Exportar Avaliações';
 
     protected static ?string $navigationLabel = 'Exportar Avaliações';

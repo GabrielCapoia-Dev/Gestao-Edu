@@ -199,8 +199,6 @@ class AlunoService
 
                 if ($pendenciaProfessor) {
                     $query->whereKey((int) $pendenciaProfessor->id);
-                } elseif (request()->filled('turma')) {
-                    $query->where('id_turma', request()->integer('turma'));
                 }
 
                 $query
@@ -1042,7 +1040,6 @@ class AlunoService
         return $query->get()
             ->mapWithKeys(function (Turma $turma) {
                 $label = trim(collect([
-                    $turma->escola?->nome,
                     $turma->serie?->nome,
                     $turma->nome,
                 ])->filter()->join(' - '));

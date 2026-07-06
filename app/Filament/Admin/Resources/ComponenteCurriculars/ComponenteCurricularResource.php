@@ -22,9 +22,11 @@ class ComponenteCurricularResource extends Resource
 {
     protected static ?string $model = ComponenteCurricular::class;
 
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::BookmarkSquare;
     public static ?string $modelLabel = 'Componente Curricular';
-    protected static ?string $navigationParentItem = 'Turmas';
+    protected static ?string $navigationParentItem = 'Séries';
     protected static string|UnitEnum|null $navigationGroup = 'Pedagógico';
     public static ?string $pluralModelLabel = 'Componentes Curriculares';
     public static ?string $slug = 'componentes-curriculares';

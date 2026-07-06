@@ -905,6 +905,71 @@ class AlunoResourceScopeTest extends TestCase
             ->assertCanNotSeeTableRecords([$alunaNorte]);
     }
 
+    public function test_contexto_de_turma_da_url_permanece_ao_aplicar_outros_filtros(): void
+    {
+        Permission::findOrCreate('Listar Alunos');
+
+        $escola = $this->criarEscola('Escola Contexto Turma');
+        $serie = Serie::query()->create([
+            'codigo' => 'SER-CONTEXTO',
+            'nome' => 'Série Contexto',
+        ]);
+        $turmaA = $this->criarTurma($escola, 'A', $serie);
+        $turmaB = $this->criarTurma($escola, 'B', $serie);
+
+        $alunaTurmaA = Aluno::query()->create([
+            'nome' => 'Aluna Turma A',
+            'cgm' => 'URL-TURMA-A',
+            'data_nascimento' => '2015-01-01',
+            'sexo' => 'F',
+            'id_turma' => $turmaA->id,
+        ]);
+        $alunaTurmaB = Aluno::query()->create([
+            'nome' => 'Aluna Turma B',
+            'cgm' => 'URL-TURMA-B',
+            'data_nascimento' => '2015-01-01',
+            'sexo' => 'F',
+            'id_turma' => $turmaB->id,
+        ]);
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo('Listar Alunos');
+
+        Livewire::withQueryParams(['turma' => $turmaA->id])
+            ->actingAs($usuario)
+            ->test(ListAlunos::class)
+            ->assertCanSeeTableRecords([$alunaTurmaA])
+            ->assertCanNotSeeTableRecords([$alunaTurmaB])
+            ->filterTable('sexo', 'F')
+            ->assertCanSeeTableRecords([$alunaTurmaA])
+            ->assertCanNotSeeTableRecords([$alunaTurmaB]);
+    }
+
+    public function test_filtro_de_turma_exibe_apenas_serie_e_turma(): void
+    {
+        Permission::findOrCreate('Editar Escola do Aluno');
+
+        $escola = $this->criarEscola('Escola Oculta No Filtro');
+        $serie = Serie::query()->create([
+            'codigo' => 'SER-LABEL',
+            'nome' => '1º Ano',
+        ]);
+        $turma = $this->criarTurma($escola, 'A', $serie);
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo('Editar Escola do Aluno');
+
+        $opcoes = app(\App\Services\AlunoService::class)->opcoesDeTurmas($usuario);
+
+        $this->assertSame('1º Ano - A', $opcoes[$turma->id] ?? null);
+    }
+
     private function criarEscola(string $nome): Escola
     {
         return Escola::query()->create([
