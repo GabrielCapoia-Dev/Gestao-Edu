@@ -75,6 +75,7 @@ class AlunoResourceScopeTest extends TestCase
         $turmaA = $this->criarTurma($escola, 'A');
         $turmaB = $this->criarTurma($escola, 'B');
         $turmaC = $this->criarTurma($outraEscola, 'C');
+        $turmaInconsistente = $this->criarTurma($escola, 'D');
 
         $componente = ComponenteCurricular::query()->create([
             'codigo' => 'COMP001',
@@ -110,6 +111,11 @@ class AlunoResourceScopeTest extends TestCase
             'tem_professor' => false,
         ]);
 
+        $turmaInconsistente->componentes()->attach($componente->id, [
+            'professor_id' => $professor->id,
+            'tem_professor' => false,
+        ]);
+
         Aluno::query()->create([
             'nome' => 'Aluno Turma A',
             'cgm' => 'TA001',
@@ -131,19 +137,28 @@ class AlunoResourceScopeTest extends TestCase
             'id_turma' => $turmaC->id,
         ]);
 
+        Aluno::query()->create([
+            'nome' => 'Aluno Turma Inconsistente',
+            'cgm' => 'TD001',
+            'data_nascimento' => '2014-06-10',
+            'id_turma' => $turmaInconsistente->id,
+        ]);
+
         $this->actingAs($usuarioProfessor)
             ->get(route('filament.admin.resources.alunos.index'))
             ->assertOk()
             ->assertSee('Aluno Turma A')
             ->assertSee('Aluno Turma B')
-            ->assertDontSee('Aluno Turma C');
+            ->assertDontSee('Aluno Turma C')
+            ->assertDontSee('Aluno Turma Inconsistente');
 
         $this->actingAs($usuarioProfessor)
             ->get(route('filament.admin.resources.alunos.index', ['turma' => $turmaA->id]))
             ->assertOk()
             ->assertSee('Aluno Turma A')
             ->assertDontSee('Aluno Turma B')
-            ->assertDontSee('Aluno Turma C');
+            ->assertDontSee('Aluno Turma C')
+            ->assertDontSee('Aluno Turma Inconsistente');
     }
 
     public function test_acesso_de_criacao_respeita_permissao(): void

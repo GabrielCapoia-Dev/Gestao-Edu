@@ -293,7 +293,7 @@ class TurmaService
                                         'componente_curricular_id' => $componente->id,
                                         'componente_nome' => $componente->nome,
                                         'professor_id' => null,
-                                        'tem_professor' => true,
+                                        'sem_professor' => true,
                                     ];
                                 })->toArray();
 
@@ -395,14 +395,14 @@ class TurmaService
                                             ->live()
                                             ->placeholder('Selecione o professor')
                                             ->afterStateUpdated(function ($state, Set $set) {
-                                                $set('tem_professor', blank($state));
+                                                $set('sem_professor', blank($state));
                                             })
                                             ->columnSpan([
                                                 'default' => 1,
                                                 'lg' => 9,
                                             ]),
 
-                                        Checkbox::make('tem_professor')
+                                        Checkbox::make('sem_professor')
                                             ->label('Não tem Professor?')
                                             ->default(false)
                                             ->live()
@@ -466,7 +466,7 @@ class TurmaService
                 'componente_curricular_id' => $componente->id,
                 'componente_nome' => $componente->nome,
                 'professor_id' => $professorId,
-                'tem_professor' => blank($professorId),
+                'sem_professor' => blank($professorId),
             ];
         })->toArray();
     }
@@ -501,7 +501,7 @@ class TurmaService
         $componentesNormalizados = collect($componentes)
             ->filter(fn (array $componente): bool => isset($componente['componente_curricular_id']))
             ->map(function (array $componente): array {
-                $semProfessor = (bool) ($componente['tem_professor'] ?? false);
+                $semProfessor = $this->componenteSemProfessor($componente);
                 $professorId = (! $semProfessor && filled($componente['professor_id'] ?? null))
                     ? (int) $componente['professor_id']
                     : null;
@@ -555,5 +555,17 @@ class TurmaService
         if ($professoresParaSincronizar !== []) {
             app(ProfessorEscolaVinculoService::class)->sincronizarPorProfessores($professoresParaSincronizar);
         }
+    }
+
+    /**
+     * @param array<string, mixed> $componente
+     */
+    private function componenteSemProfessor(array $componente): bool
+    {
+        if (array_key_exists('sem_professor', $componente)) {
+            return (bool) $componente['sem_professor'];
+        }
+
+        return (bool) ($componente['tem_professor'] ?? false);
     }
 }

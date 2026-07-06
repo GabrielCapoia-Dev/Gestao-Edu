@@ -577,7 +577,8 @@ class UserService
             $professoresIds = $this->professorIds($user);
 
             return $query->whereHas('componentes', function ($q) use ($professoresIds) {
-                $q->whereIn('turma_componente_professor.professor_id', $professoresIds);
+                $q->whereIn('turma_componente_professor.professor_id', $professoresIds)
+                    ->where('turma_componente_professor.tem_professor', true);
             });
         }
 
@@ -599,7 +600,8 @@ class UserService
             $professoresIds = $this->professorIds($user);
 
             return $query->whereHas('turma.componentes', function ($q) use ($professoresIds) {
-                $q->whereIn('turma_componente_professor.professor_id', $professoresIds);
+                $q->whereIn('turma_componente_professor.professor_id', $professoresIds)
+                    ->where('turma_componente_professor.tem_professor', true);
             });
         }
 

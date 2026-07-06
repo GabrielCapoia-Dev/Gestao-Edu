@@ -2000,6 +2000,7 @@ class DashboardAvaliacoes extends Page implements HasForms
             $query
                 ->join('turma_componente_professor as tcp', 'tcp.turma_id', '=', 't.id')
                 ->whereIn('tcp.professor_id', $filtrosAtivos['professores_ids'])
+                ->where('tcp.tem_professor', true)
                 ->where(function (QueryBuilder $query): void {
                     $query->whereNull('p.componente_curricular_id')
                         ->orWhereColumn('tcp.componente_curricular_id', 'p.componente_curricular_id');
@@ -2574,35 +2575,32 @@ class DashboardAvaliacoes extends Page implements HasForms
         $professoresIds = $filtros['professores_ids'] ?? [];
         $distinctEsperado = $this->distinctCombinacaoExpr('at.avaliacao_id', 'at.turma_id', 'p.id', 'aln.id');
         $distinctRespondido = $this->distinctCombinacaoExpr('ar.avaliacao_id', 'ar.turma_id', 'ar.pauta_id', 'ar.aluno_id');
-        $professorRespostaExpr = $professoresIds !== []
-            ? 'ar.professor_id'
-            : 'CASE WHEN p.componente_curricular_id IS NULL THEN NULL ELSE ar.professor_id END';
         $componenteChaveExpr = 'COALESCE(p.componente_curricular_id, 0)';
-        $professorChaveExpr = 'COALESCE(tcp_acomp.professor_id, 0)';
-        $professorRespostaChaveExpr = "COALESCE({$professorRespostaExpr}, 0)";
+        $professorChaveExpr = $professoresIds !== []
+            ? 'COALESCE(tcp_acomp.professor_id, 0)'
+            : '0';
+        $professorRespostaChaveExpr = $professoresIds !== []
+            ? 'COALESCE(ar.professor_id, 0)'
+            : '0';
 
         $esperadosQuery = (clone $this->basePreenchimentosEsperadosQuery($avaliacaoIds, $filtros))
             ->join('avaliacoes as av', 'av.id', '=', 'at.avaliacao_id')
             ->leftJoin('escolas as e', 'e.id', '=', 't.id_escola')
             ->leftJoin('series as s', 's.id', '=', 't.id_serie')
-            ->leftJoin('componentes_curriculares as cc', 'cc.id', '=', 'p.componente_curricular_id')
-            ->leftJoin('turma_componente_professor as tcp_acomp', function ($join) use ($professoresIds): void {
-                $join->on('tcp_acomp.turma_id', '=', 't.id');
+            ->leftJoin('componentes_curriculares as cc', 'cc.id', '=', 'p.componente_curricular_id');
 
-                if ($professoresIds !== []) {
+        if ($professoresIds !== []) {
+            $esperadosQuery
+                ->leftJoin('turma_componente_professor as tcp_acomp', function ($join): void {
+                    $join->on('tcp_acomp.turma_id', '=', 't.id');
+                    $join->where('tcp_acomp.tem_professor', true);
                     $join->where(function ($join): void {
                         $join->whereNull('p.componente_curricular_id')
                             ->orOn('tcp_acomp.componente_curricular_id', '=', 'p.componente_curricular_id');
                     });
+                })
+                ->leftJoin('professores as pr_acomp', 'pr_acomp.id', '=', 'tcp_acomp.professor_id');
 
-                    return;
-                }
-
-                $join->on('tcp_acomp.componente_curricular_id', '=', 'p.componente_curricular_id');
-            })
-            ->leftJoin('professores as pr_acomp', 'pr_acomp.id', '=', 'tcp_acomp.professor_id');
-
-        if ($professoresIds !== []) {
             $esperadosQuery->whereIn('tcp_acomp.professor_id', $professoresIds);
         }
 
@@ -2618,12 +2616,9 @@ class DashboardAvaliacoes extends Page implements HasForms
                 's.id',
                 's.nome',
                 'p.componente_curricular_id',
-                'cc.nome',
-                'tcp_acomp.professor_id',
-                'pr_acomp.nome'
+                'cc.nome'
             )
             ->groupByRaw($componenteChaveExpr)
-            ->groupByRaw($professorChaveExpr)
             ->select(
                 'at.avaliacao_id',
                 'at.turma_id',
@@ -2636,8 +2631,6 @@ class DashboardAvaliacoes extends Page implements HasForms
                 's.nome as serie_nome',
                 'p.componente_curricular_id as componente_id',
                 'cc.nome as componente_nome',
-                'tcp_acomp.professor_id',
-                'pr_acomp.nome as professor_nome',
                 DB::raw("{$componenteChaveExpr} as componente_chave"),
                 DB::raw("{$professorChaveExpr} as professor_chave"),
                 DB::raw("COUNT(DISTINCT {$distinctEsperado}) as preenchimentos_esperados"),
@@ -2645,10 +2638,21 @@ class DashboardAvaliacoes extends Page implements HasForms
                 DB::raw('COUNT(DISTINCT aln.id) as alunos_total')
             );
 
+        if ($professoresIds !== []) {
+            $esperadosQuery
+                ->groupBy('tcp_acomp.professor_id', 'pr_acomp.nome')
+                ->groupByRaw($professorChaveExpr)
+                ->addSelect('tcp_acomp.professor_id', 'pr_acomp.nome as professor_nome');
+        } else {
+            $esperadosQuery->addSelect(
+                DB::raw('NULL as professor_id'),
+                DB::raw('NULL as professor_nome')
+            );
+        }
+
         $respondidosQuery = (clone $this->baseRespostasQuery($avaliacaoIds, ignorarAlternativas: true, filtros: $filtros))
             ->groupBy('ar.avaliacao_id', 'ar.turma_id', 'p.componente_curricular_id')
             ->groupByRaw('COALESCE(p.componente_curricular_id, 0)')
-            ->groupByRaw($professorRespostaChaveExpr)
             ->select(
                 'ar.avaliacao_id',
                 'ar.turma_id',
@@ -2657,6 +2661,10 @@ class DashboardAvaliacoes extends Page implements HasForms
                 DB::raw("COUNT(DISTINCT {$distinctRespondido}) as preenchimentos_respondidos"),
                 DB::raw('MAX(ar.respondido_em) as ultima_resposta_em')
             );
+
+        if ($professoresIds !== []) {
+            $respondidosQuery->groupByRaw($professorRespostaChaveExpr);
+        }
 
         $query = DB::query()
             ->fromSub($esperadosQuery, 'esperados')

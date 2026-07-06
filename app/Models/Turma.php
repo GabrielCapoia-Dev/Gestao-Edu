@@ -49,7 +49,7 @@ class Turma extends Model
         return $this->belongsToMany(
             ComponenteCurricular::class,
             'turma_componente_professor'
-        )->withPivot('professor_id');
+        )->withPivot('professor_id', 'tem_professor');
     }
 
 
@@ -58,7 +58,7 @@ class Turma extends Model
         return $this->belongsToMany(
             Professor::class,
             'turma_componente_professor'
-        )->withPivot('componente_curricular_id');
+        )->withPivot('componente_curricular_id', 'tem_professor');
     }
 
     public function alunos()

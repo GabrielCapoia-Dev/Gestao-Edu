@@ -16,6 +16,16 @@ class TurmaComponenteProfessor extends Model
         'tem_professor',
     ];
 
+    protected function casts(): array
+    {
+        return [
+            'turma_id' => 'integer',
+            'componente_curricular_id' => 'integer',
+            'professor_id' => 'integer',
+            'tem_professor' => 'boolean',
+        ];
+    }
+
     public function turma(): BelongsTo
     {
         return $this->belongsTo(Turma::class, 'turma_id');

@@ -60,6 +60,7 @@ class TurmaResourceScopeTest extends TestCase
         $turmaA = $this->criarTurma($escolaA, 'Turma Professor A');
         $turmaB = $this->criarTurma($escolaB, 'Turma Professor B');
         $turmaC = $this->criarTurma($escolaC, 'Turma Externa');
+        $turmaInconsistente = $this->criarTurma($escolaA, 'Turma Inconsistente');
 
         $componente = ComponenteCurricular::query()->create([
             'codigo' => 'COMP-TURMA-01',
@@ -103,6 +104,11 @@ class TurmaResourceScopeTest extends TestCase
             'tem_professor' => false,
         ]);
 
+        $turmaInconsistente->componentes()->attach($componente->id, [
+            'professor_id' => $professorA->id,
+            'tem_professor' => false,
+        ]);
+
         $turmasVisiveis = app(UserService::class)
             ->aplicarFiltroTurmasDoUsuario(Turma::query(), $usuarioProfessor)
             ->pluck('id')
@@ -111,6 +117,7 @@ class TurmaResourceScopeTest extends TestCase
         $this->assertContains($turmaA->id, $turmasVisiveis);
         $this->assertContains($turmaB->id, $turmasVisiveis);
         $this->assertNotContains($turmaC->id, $turmasVisiveis);
+        $this->assertNotContains($turmaInconsistente->id, $turmasVisiveis);
     }
 
     public function test_edicao_atualiza_professor_do_componente_da_turma(): void
@@ -171,7 +178,7 @@ class TurmaResourceScopeTest extends TestCase
                         'componente_curricular_id' => $componente->id,
                         'componente_nome' => $componente->nome,
                         'professor_id' => $professorNovo->id,
-                        'tem_professor' => false,
+                        'sem_professor' => false,
                     ],
                 ],
             ])
@@ -188,6 +195,43 @@ class TurmaResourceScopeTest extends TestCase
             'turma_id' => $turma->id,
             'componente_curricular_id' => $componente->id,
             'professor_id' => $professorAntigo->id,
+        ]);
+    }
+
+    public function test_salvar_componentes_aceita_payload_legado_tem_professor_com_professor_selecionado(): void
+    {
+        $escola = $this->criarEscola('Escola Payload Legado');
+        $serie = Serie::query()->create([
+            'codigo' => 'SER-LEGADO',
+            'nome' => 'Serie Legado',
+        ]);
+        $componente = ComponenteCurricular::query()->create([
+            'codigo' => 'COMP-LEGADO',
+            'nome' => 'Ciencias',
+        ]);
+
+        $turma = Turma::query()->create([
+            'codigo' => 'TUR-LEGADO',
+            'nome' => 'L',
+            'turno' => 'manha',
+            'id_serie' => $serie->id,
+            'id_escola' => $escola->id,
+        ]);
+        $professor = $this->criarProfessor($escola, 'PROF-LEGADO', 'Professor Legado');
+
+        app(TurmaService::class)->salvarComponentes($turma, [
+            [
+                'componente_curricular_id' => $componente->id,
+                'professor_id' => $professor->id,
+                'tem_professor' => false,
+            ],
+        ]);
+
+        $this->assertDatabaseHas('turma_componente_professor', [
+            'turma_id' => $turma->id,
+            'componente_curricular_id' => $componente->id,
+            'professor_id' => $professor->id,
+            'tem_professor' => true,
         ]);
     }
 
@@ -224,7 +268,8 @@ class TurmaResourceScopeTest extends TestCase
 
         $componentes = TurmaService::componentesFormulario($turma);
 
-        $this->assertTrue($componentes[0]['tem_professor']);
+        $this->assertTrue($componentes[0]['sem_professor']);
+        $this->assertArrayNotHasKey('tem_professor', $componentes[0]);
         $this->assertNull($componentes[0]['professor_id']);
     }
 
@@ -284,7 +329,7 @@ class TurmaResourceScopeTest extends TestCase
                         'componente_curricular_id' => $componente->id,
                         'componente_nome' => $componente->nome,
                         'professor_id' => $professor->id,
-                        'tem_professor' => true,
+                        'sem_professor' => true,
                     ],
                 ],
             ])

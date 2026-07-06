@@ -511,6 +511,71 @@ class DashboardAvaliacoesPageTest extends TestCase
         $this->assertSame(['Turma Permitida'], collect($component->instance()->acompanhamentoTurmas)->pluck('turma_nome')->unique()->values()->all());
     }
 
+    public function test_acompanhamento_consolidado_nao_depende_do_professor_registrado_na_resposta(): void
+    {
+        $permissaoAcompanharAvaliacoes = 'Acompanhar Avalia' . "\u{00E7}\u{00F5}" . 'es';
+        Permission::findOrCreate($permissaoAcompanharAvaliacoes);
+
+        $user = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $user->givePermissionTo($permissaoAcompanharAvaliacoes);
+
+        $tipo = TipoAvaliacao::query()->create(['nome' => 'Parecer Consolidado', 'status' => true]);
+        $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Periodo Consolidado', 'status' => true]);
+        $serie = $this->criarSerie('SER-CONSOLIDADO', '4o Ano');
+        $componente = ComponenteCurricular::query()->create([
+            'codigo' => 'COMP-CONSOLIDADO',
+            'nome' => 'Arte',
+        ]);
+        $escola = $this->criarEscola('Escola Consolidado');
+        $user->escolas()->attach($escola->id);
+
+        $turma = $this->criarTurma($escola, $serie, 'Turma Consolidado', 'tarde');
+        $aluno = $this->criarAluno($turma, 'Aluno Consolidado', 'CGM-CONSOLIDADO-001');
+        $professorAtual = Professor::query()->create([
+            'id_escola' => $escola->id,
+            'matricula' => 'PROF-CONSOLIDADO',
+            'nome' => 'Professor Atual',
+            'email' => 'professor.consolidado@edu.umuarama.pr.gov.br',
+        ]);
+        $turma->componentes()->attach($componente->id, [
+            'professor_id' => $professorAtual->id,
+            'tem_professor' => true,
+        ]);
+
+        $alternativa = Alternativa::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'nome' => 'Sim',
+            'tem_observacao' => false,
+            'status' => true,
+        ]);
+        $pauta = $this->criarPauta($tipo, $serie, $componente, 'Pauta consolidada');
+        $pauta->alternativas()->attach($alternativa->id);
+
+        $avaliacao = $this->criarAvaliacao('Avaliacao Consolidada', $tipo, $periodo);
+        $avaliacao->series()->sync([$serie->id]);
+        $avaliacao->componentes()->sync([$componente->id]);
+        $avaliacao->escolas()->sync([$escola->id]);
+        $avaliacao->turmas()->sync([$turma->id]);
+        $avaliacao->pautas()->sync([$pauta->id]);
+
+        $this->registrarResposta($avaliacao, $turma, $aluno, $pauta, $alternativa);
+
+        $component = Livewire::actingAs($user)
+            ->test(DashboardAvaliacoes::class);
+
+        $component->set('filtros.avaliacao_id', $avaliacao->id);
+
+        $linha = collect($component->instance()->acompanhamentoTurmas)->first();
+
+        $this->assertSame(1, $linha['preenchimentos_esperados']);
+        $this->assertSame(1, $linha['preenchimentos_respondidos']);
+        $this->assertSame(100.0, $linha['percentual_preenchimento']);
+        $this->assertSame('concluido', $linha['status']);
+    }
+
     public function test_dashboard_abre_workspace_no_escopo_e_resposta_salva_atualiza_status_da_linha(): void
     {
         Permission::findOrCreate('Acompanhar AvaliaÃ§Ãµes');
