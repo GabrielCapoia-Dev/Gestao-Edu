@@ -86,9 +86,7 @@ class TipoManutencaoService
         return $table
             ->paginated([5, 10, 25, 50, 100])
             ->defaultPaginationPageOption(5)
-            ->modifyQueryUsing(fn ($query) => $query
-                ->where('ativo', true)
-                ->withCount('opcoes'))
+            ->modifyQueryUsing(fn ($query) => $query->withCount('opcoes'))
             ->columns($this->colunasTabela())
             ->recordActions($this->acoesTabela($user))
             ->toolbarActions($this->acoesEmMassa($user))

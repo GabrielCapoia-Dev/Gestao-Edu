@@ -31,6 +31,7 @@ use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use UnitEnum;
 
 class ServidorResource extends Resource
@@ -344,10 +345,15 @@ class ServidorResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return app(ServidorService::class)->aplicarEscopoVisibilidade(
-            parent::getEloquentQuery(),
-            Auth::user(),
-        );
+        $query = parent::getEloquentQuery();
+        $user = Auth::user();
+        $policy = Gate::getPolicyFor(static::getModel());
+
+        if ($user && $policy && method_exists($policy, 'applyViewAnyScope')) {
+            return $policy->applyViewAnyScope($user, $query);
+        }
+
+        return $query->whereRaw('1 = 0');
     }
 
     private static function funcaoTemRelacaoTurma(mixed $funcaoId): bool

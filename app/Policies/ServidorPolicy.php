@@ -5,13 +5,20 @@ namespace App\Policies;
 use App\Models\Escola;
 use App\Models\Servidor;
 use App\Models\User;
+use App\Services\ServidorService;
 use App\Services\UserSetorAccessService;
+use Illuminate\Database\Eloquent\Builder;
 
 class ServidorPolicy
 {
     public function viewAny(User $user): bool
     {
         return $user->hasPermissionTo('Listar Servidores');
+    }
+
+    public function applyViewAnyScope(User $user, Builder $query): Builder
+    {
+        return app(ServidorService::class)->aplicarEscopoVisibilidade($query, $user);
     }
 
     public function view(User $user, Servidor $servidor): bool

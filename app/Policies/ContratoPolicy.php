@@ -5,6 +5,7 @@ namespace App\Policies;
 use App\Models\User;
 use App\Models\Contrato;
 use App\Services\UserSetorAccessService;
+use Illuminate\Database\Eloquent\Builder;
 
 class ContratoPolicy
 
@@ -15,6 +16,29 @@ class ContratoPolicy
     public function viewAny(User $user): bool
     {
         return $user->hasPermissionTo('Listar Contratos');
+    }
+
+    public function applyViewAnyScope(User $user, Builder $query): Builder
+    {
+        $access = app(UserSetorAccessService::class);
+
+        if ($access->hasGlobalAccess($user)) {
+            return $query;
+        }
+
+        $setorIds = $access->visibleSetorIds($user);
+
+        if ($setorIds === []) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->where(function (Builder $builder) use ($setorIds): void {
+            $builder->whereIn('setor_id', $setorIds)
+                ->orWhere(function (Builder $legacy) use ($setorIds): void {
+                    $legacy->whereNull('setor_id')
+                        ->whereHas('empresaContratada', fn (Builder $empresa): Builder => $empresa->whereIn('setor_id', $setorIds));
+                });
+        });
     }
 
     /**

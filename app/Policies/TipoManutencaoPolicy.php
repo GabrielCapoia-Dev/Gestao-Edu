@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Models\TipoManutencao;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 
 class TipoManutencaoPolicy
 
@@ -14,6 +15,11 @@ class TipoManutencaoPolicy
     public function viewAny(User $user): bool
     {
         return $user->hasPermissionTo('Listar Tipo Manutenção');
+    }
+
+    public function applyViewAnyScope(User $user, Builder $query): Builder
+    {
+        return $query->where('ativo', true);
     }
 
     /**

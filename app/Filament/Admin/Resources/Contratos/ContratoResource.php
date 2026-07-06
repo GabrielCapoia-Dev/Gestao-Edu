@@ -9,7 +9,6 @@ use App\Filament\Admin\Resources\Contratos\RelationManagers\ItensRelationManager
 use App\Filament\Admin\Resources\Contratos\Schemas\ContratoForm;
 use App\Filament\Admin\Resources\Contratos\Tables\ContratosTable;
 use App\Models\Contrato;
-use App\Services\UserSetorAccessService;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -17,6 +16,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use UnitEnum;
 
 
@@ -47,27 +47,14 @@ class ContratoResource extends Resource
     {
         $query = parent::getEloquentQuery()
             ->with(['setor', 'empresaContratada']);
-
-        $access = app(UserSetorAccessService::class);
         $user = Auth::user();
+        $policy = Gate::getPolicyFor(static::getModel());
 
-        if ($access->hasGlobalAccess($user)) {
-            return $query;
+        if ($user && $policy && method_exists($policy, 'applyViewAnyScope')) {
+            return $policy->applyViewAnyScope($user, $query);
         }
 
-        $setorIds = $access->visibleSetorIds($user);
-
-        if ($setorIds === []) {
-            return $query->whereRaw('1 = 0');
-        }
-
-        return $query->where(function (Builder $builder) use ($setorIds): void {
-            $builder->whereIn('setor_id', $setorIds)
-                ->orWhere(function (Builder $legacy) use ($setorIds): void {
-                    $legacy->whereNull('setor_id')
-                        ->whereHas('empresaContratada', fn (Builder $empresa): Builder => $empresa->whereIn('setor_id', $setorIds));
-                });
-        });
+        return $query->whereRaw('1 = 0');
     }
 
     public static function getRelations(): array

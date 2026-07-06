@@ -23,6 +23,8 @@ use Filament\Forms\Form;
 use Filament\Tables;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use UnitEnum;
 
 class TipoManutencaoResource extends Resource
@@ -63,7 +65,15 @@ class TipoManutencaoResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery();
+        $query = parent::getEloquentQuery();
+        $user = Auth::user();
+        $policy = Gate::getPolicyFor(static::getModel());
+
+        if ($user && $policy && method_exists($policy, 'applyViewAnyScope')) {
+            return $policy->applyViewAnyScope($user, $query);
+        }
+
+        return $query->whereRaw('1 = 0');
     }
 
     public static function mutateFormDataBeforeCreate(array $data): array
