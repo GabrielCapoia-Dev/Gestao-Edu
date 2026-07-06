@@ -180,6 +180,47 @@ class PedidoRelatorioSimplificadoTest extends TestCase
         $this->assertSame('application/pdf', $response->headers->get('Content-Type'));
     }
 
+    public function test_exportacao_simplificada_ignora_fotos_legadas_com_conteudo_nao_suportado(): void
+    {
+        Storage::fake('public');
+
+        Storage::disk('public')->put('pedidos/video-antigo.mp4', 'conteudo de video antigo');
+        Storage::disk('public')->put('pedidos/arquivo-renomeado.jpg', '%PDF-1.4 arquivo antigo renomeado');
+        Storage::disk('public')->put('pedidos/documento-antigo.docx', "PK\x03\x04conteudo-docx");
+
+        $dados = $this->criarPedidoBase();
+        $pedido = $dados['pedido'];
+        $usuario = $dados['usuario'];
+
+        PedidoArquivo::withoutEvents(function () use ($pedido, $usuario): void {
+            foreach ([
+                ['pedidos/video-antigo.mp4', 'video-antigo.mp4'],
+                ['pedidos/arquivo-renomeado.jpg', 'arquivo-renomeado.jpg'],
+                ['pedidos/documento-antigo.docx', 'documento-antigo.docx'],
+            ] as [$caminho, $nomeOriginal]) {
+                PedidoArquivo::create([
+                    'pedido_id' => $pedido->id,
+                    'usuario_id' => $usuario->id,
+                    'tipo_arquivo' => TipoArquivoPedido::FOTOS_PROBLEMA,
+                    'caminho' => $caminho,
+                    'nome_original' => $nomeOriginal,
+                    'mime_type' => 'application/octet-stream',
+                ]);
+            }
+        });
+
+        app()->instance(PedidoService::class, tap(Mockery::mock(PedidoService::class), function ($mock): void {
+            $mock->shouldReceive('aplicarEscopoConsulta')
+                ->once()
+                ->andReturnUsing(static fn ($query) => $query);
+        }));
+
+        $response = app(PedidoRelatorioSimplificadoService::class)->gerar([$pedido->id], $usuario);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame('application/pdf', $response->headers->get('Content-Type'));
+    }
+
     /**
      * @return array{pedido: Pedido, usuario: User}
      */

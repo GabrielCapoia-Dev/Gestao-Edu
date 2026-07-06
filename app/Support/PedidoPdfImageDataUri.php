@@ -8,15 +8,12 @@ use Illuminate\Contracts\Filesystem\Filesystem;
 class PedidoPdfImageDataUri
 {
     /**
-     * @var array<string, string>
+     * @var array<string, bool>
      */
-    private const MIME_BY_EXTENSION = [
-        'jpg' => 'image/jpeg',
-        'jpeg' => 'image/jpeg',
-        'png' => 'image/png',
-        'gif' => 'image/gif',
-        'bmp' => 'image/bmp',
-        'webp' => 'image/webp',
+    private const SUPPORTED_MIMES = [
+        'image/jpeg' => true,
+        'image/png' => true,
+        'image/webp' => true,
     ];
 
     /**
@@ -29,25 +26,15 @@ class PedidoPdfImageDataUri
 
     public static function fromStorage(Filesystem $disk, PedidoArquivo $arquivo): ?string
     {
-        $path = (string) $arquivo->caminho;
+        $contents = self::contentsFromStorage($disk, $arquivo);
 
-        if ($path === '' || ! $disk->exists($path)) {
+        if ($contents === null) {
             return null;
         }
 
-        try {
-            $contents = $disk->get($path);
-        } catch (\Throwable) {
-            return null;
-        }
+        $mime = self::detectSupportedMime($contents);
 
-        if ($contents === '') {
-            return null;
-        }
-
-        $mime = self::resolveMime($disk, $arquivo, $path);
-
-        if (! str_starts_with($mime, 'image/')) {
+        if ($mime === null) {
             return null;
         }
 
@@ -58,27 +45,36 @@ class PedidoPdfImageDataUri
         return self::convertToPngDataUri($contents);
     }
 
-    private static function resolveMime(Filesystem $disk, PedidoArquivo $arquivo, string $path): string
+    public static function isSupportedImage(Filesystem $disk, PedidoArquivo $arquivo): bool
     {
-        $mime = mb_strtolower(trim((string) $arquivo->mime_type));
+        $contents = self::contentsFromStorage($disk, $arquivo);
 
-        if (str_starts_with($mime, 'image/')) {
-            return $mime;
+        return $contents !== null && self::detectSupportedMime($contents) !== null;
+    }
+
+    private static function contentsFromStorage(Filesystem $disk, PedidoArquivo $arquivo): ?string
+    {
+        $path = (string) $arquivo->caminho;
+
+        if ($path === '' || ! $disk->exists($path)) {
+            return null;
         }
 
         try {
-            $storageMime = mb_strtolower((string) $disk->mimeType($path));
+            $contents = $disk->get($path);
 
-            if (str_starts_with($storageMime, 'image/')) {
-                return $storageMime;
-            }
+            return is_string($contents) && $contents !== '' ? $contents : null;
         } catch (\Throwable) {
-            //
+            return null;
         }
+    }
 
-        $extension = mb_strtolower(pathinfo($path, PATHINFO_EXTENSION));
+    private static function detectSupportedMime(string $contents): ?string
+    {
+        $imageInfo = @getimagesizefromstring($contents);
+        $mime = is_array($imageInfo) ? mb_strtolower((string) ($imageInfo['mime'] ?? '')) : '';
 
-        return self::MIME_BY_EXTENSION[$extension] ?? 'application/octet-stream';
+        return isset(self::SUPPORTED_MIMES[$mime]) ? $mime : null;
     }
 
     private static function convertToPngDataUri(string $contents): ?string

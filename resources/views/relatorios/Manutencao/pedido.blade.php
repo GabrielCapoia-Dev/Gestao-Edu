@@ -5,26 +5,10 @@
 
     $escola = $pedido->escola;
     $storagePublico = Storage::disk('public');
-    $extensoesImagem = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'];
+    $arquivoEhImagem = static fn (PedidoArquivo $arquivo): bool => PedidoPdfImageDataUri::isSupportedImage($storagePublico, $arquivo);
+    $arquivoExigeImagem = static fn (PedidoArquivo $arquivo): bool => $arquivo->tipo_arquivo?->exigeImagem() ?? false;
 
-    $arquivoEhImagem = static function (PedidoArquivo $arquivo) use ($extensoesImagem): bool {
-        $mime = mb_strtolower((string) $arquivo->mime_type);
-        $ext = mb_strtolower(pathinfo((string) $arquivo->caminho, PATHINFO_EXTENSION));
-
-        return str_starts_with($mime, 'image/') || in_array($ext, $extensoesImagem, true);
-    };
-
-    $arquivoExiste = static function (PedidoArquivo $arquivo) use ($storagePublico): bool {
-        return filled($arquivo->caminho) && $storagePublico->exists($arquivo->caminho);
-    };
-
-    $imagemDataUri = static function (PedidoArquivo $arquivo) use ($storagePublico, $arquivoEhImagem, $arquivoExiste): ?string {
-        if (! $arquivoEhImagem($arquivo) || ! $arquivoExiste($arquivo)) {
-            return null;
-        }
-
-        return PedidoPdfImageDataUri::fromStorage($storagePublico, $arquivo);
-    };
+    $imagemDataUri = static fn (PedidoArquivo $arquivo): ?string => PedidoPdfImageDataUri::fromStorage($storagePublico, $arquivo);
 
     $formatarTipoArquivo = static fn (PedidoArquivo $arquivo): string => $arquivo->tipo_arquivo?->label() ?? 'Arquivo';
 
@@ -324,7 +308,10 @@
                 @php
                     $arquivosAdicional = $adicional->arquivos ?? collect();
                     $imagensAdicional = $arquivosAdicional->filter($arquivoEhImagem);
-                    $anexosAdicional = $arquivosAdicional->reject($arquivoEhImagem)->values();
+                    $anexosAdicional = $arquivosAdicional
+                        ->reject($arquivoEhImagem)
+                        ->reject($arquivoExigeImagem)
+                        ->values();
                 @endphp
 
                 @if($imagensAdicional->isNotEmpty())
@@ -398,7 +385,10 @@
         $imagensPorTipo = $arquivosPedido
             ->filter($arquivoEhImagem)
             ->groupBy(fn ($arquivo) => $formatarTipoArquivo($arquivo));
-        $anexosPedido = $arquivosPedido->reject($arquivoEhImagem)->values();
+        $anexosPedido = $arquivosPedido
+            ->reject($arquivoEhImagem)
+            ->reject($arquivoExigeImagem)
+            ->values();
     @endphp
 
     @if($historicosOrdenados->isNotEmpty())

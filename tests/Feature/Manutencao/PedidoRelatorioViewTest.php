@@ -27,6 +27,8 @@ class PedidoRelatorioViewTest extends TestCase
             'pedidos/foto-problema.png',
             base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=')
         );
+        Storage::disk('public')->put('pedidos/video-antigo.mp4', 'conteudo de video antigo');
+        Storage::disk('public')->put('pedidos/arquivo-renomeado.jpg', '%PDF-1.4 arquivo antigo renomeado');
         Storage::disk('public')->put('pedidos/laudo-tecnico.pdf', '%PDF-1.4 teste');
 
         $setor = Setor::create([
@@ -93,6 +95,22 @@ class PedidoRelatorioViewTest extends TestCase
             'descricao' => 'Laudo da manutencao',
         ]);
 
+        PedidoArquivo::withoutEvents(function () use ($pedido, $usuario): void {
+            foreach ([
+                ['pedidos/video-antigo.mp4', 'video-antigo.mp4'],
+                ['pedidos/arquivo-renomeado.jpg', 'arquivo-renomeado.jpg'],
+            ] as [$caminho, $nomeOriginal]) {
+                PedidoArquivo::create([
+                    'pedido_id' => $pedido->id,
+                    'usuario_id' => $usuario->id,
+                    'tipo_arquivo' => TipoArquivoPedido::FOTOS_PROBLEMA,
+                    'caminho' => $caminho,
+                    'nome_original' => $nomeOriginal,
+                    'mime_type' => 'application/octet-stream',
+                ]);
+            }
+        });
+
         $pedido->load([
             'tipoManutencao',
             'tipoStatus',
@@ -121,6 +139,8 @@ class PedidoRelatorioViewTest extends TestCase
         $this->assertStringContainsString('Arquivos Anexados', $html);
         $this->assertStringContainsString('laudo-tecnico.pdf', $html);
         $this->assertStringContainsString('Laudo da manutencao', $html);
+        $this->assertStringNotContainsString('video-antigo.mp4', $html);
+        $this->assertStringNotContainsString('arquivo-renomeado.jpg', $html);
     }
 
     public function test_relatorio_converte_webp_para_png_antes_de_renderizar_pdf(): void

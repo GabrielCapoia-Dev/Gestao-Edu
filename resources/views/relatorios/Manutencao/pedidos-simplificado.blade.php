@@ -4,26 +4,9 @@
     use Illuminate\Support\Facades\Storage;
 
     $storagePublico = Storage::disk('public');
-    $extensoesImagem = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'];
+    $arquivoEhImagem = static fn (PedidoArquivo $arquivo): bool => PedidoPdfImageDataUri::isSupportedImage($storagePublico, $arquivo);
 
-    $arquivoEhImagem = static function (PedidoArquivo $arquivo) use ($extensoesImagem): bool {
-        $mime = mb_strtolower((string) $arquivo->mime_type);
-        $ext = mb_strtolower(pathinfo((string) $arquivo->caminho, PATHINFO_EXTENSION));
-
-        return str_starts_with($mime, 'image/') || in_array($ext, $extensoesImagem, true);
-    };
-
-    $arquivoExiste = static function (PedidoArquivo $arquivo) use ($storagePublico): bool {
-        return filled($arquivo->caminho) && $storagePublico->exists($arquivo->caminho);
-    };
-
-    $imagemDataUri = static function (PedidoArquivo $arquivo) use ($storagePublico, $arquivoEhImagem, $arquivoExiste): ?string {
-        if (! $arquivoEhImagem($arquivo) || ! $arquivoExiste($arquivo)) {
-            return null;
-        }
-
-        return PedidoPdfImageDataUri::fromStorage($storagePublico, $arquivo);
-    };
+    $imagemDataUri = static fn (PedidoArquivo $arquivo): ?string => PedidoPdfImageDataUri::fromStorage($storagePublico, $arquivo);
 
     $prioridadeLabel = static fn ($pedido): string => match ($pedido->nivel_prioridade?->value) {
         'indeterminado' => 'Indeterminado',
