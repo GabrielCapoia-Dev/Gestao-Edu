@@ -9,10 +9,10 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use App\Models\Escola;
 use App\Services\EscolaService as Service;
-use App\Services\UserSetorAccessService;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use UnitEnum;
 
 
@@ -38,8 +38,15 @@ class EscolaResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return app(UserSetorAccessService::class)
-            ->applySetorScope(parent::getEloquentQuery()->where('ativo', true), Auth::user());
+        $query = parent::getEloquentQuery();
+        $user = Auth::user();
+        $policy = Gate::getPolicyFor(static::getModel());
+
+        if ($user && $policy && method_exists($policy, 'applyViewAnyScope')) {
+            return $policy->applyViewAnyScope($user, $query);
+        }
+
+        return $query->whereRaw('1 = 0');
     }
 
 

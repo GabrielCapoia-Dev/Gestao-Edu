@@ -5,12 +5,19 @@ namespace App\Policies;
 use App\Models\Setor;
 use App\Models\User;
 use App\Services\UserSetorAccessService;
+use Illuminate\Database\Eloquent\Builder;
 
 class SetorPolicy
 {
     public function viewAny(User $user): bool
     {
         return $user->hasPermissionTo('Listar Setores');
+    }
+
+    public function applyViewAnyScope(User $user, Builder $query): Builder
+    {
+        return app(UserSetorAccessService::class)
+            ->applySetorScope($query->where('ativo', true), $user, 'id');
     }
 
     public function view(User $user, Setor $model): bool
