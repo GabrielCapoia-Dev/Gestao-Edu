@@ -4,7 +4,6 @@ namespace App\Filament\Admin\Pages;
 
 use App\Models\Alternativa;
 use App\Models\TipoAvaliacao;
-use App\Models\User;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
@@ -20,7 +19,7 @@ use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -77,10 +76,7 @@ class GestaoAlternativas extends Page implements HasTable
 
     public static function canAccess(): bool
     {
-        /** @var User|null $user */
-        $user = Auth::user();
-
-        return $user?->hasPermissionTo('Listar Alternativas') ?? false;
+        return Gate::allows('viewAny', Alternativa::class);
     }
 
     protected function getHeaderActions(): array
@@ -90,7 +86,7 @@ class GestaoAlternativas extends Page implements HasTable
                 ->label('Nova alternativa')
                 ->icon(Heroicon::Plus)
                 ->color('primary')
-                ->visible(fn(): bool => Auth::user()?->hasPermissionTo('Criar Alternativas') ?? false)
+                ->visible(fn(): bool => Gate::allows('create', Alternativa::class))
                 ->action(fn() => $this->abrirModalCriacao()),
         ];
     }
@@ -196,14 +192,14 @@ class GestaoAlternativas extends Page implements HasTable
                 Action::make('editar')
                     ->label('Editar')
                     ->icon(Heroicon::PencilSquare)
-                    ->visible(fn(): bool => Auth::user()?->hasPermissionTo('Editar Alternativas') ?? false)
+                    ->visible(fn(Alternativa $record): bool => Gate::allows('update', $record))
                     ->action(fn(Alternativa $record) => $this->abrirModalEdicao($record->getKey())),
 
                 Action::make('excluir')
                     ->label('Excluir')
                     ->icon(Heroicon::Trash)
                     ->color('danger')
-                    ->visible(fn(): bool => Auth::user()?->hasPermissionTo('Excluir Alternativas') ?? false)
+                    ->visible(fn(Alternativa $record): bool => Gate::allows('delete', $record))
                     ->requiresConfirmation()
                     ->action(fn(Alternativa $record) => $this->excluirAlternativa($record->getKey())),
             ])
@@ -211,7 +207,7 @@ class GestaoAlternativas extends Page implements HasTable
                 BulkAction::make('definirTipo')
                     ->label('Definir tipo')
                     ->icon(Heroicon::Tag)
-                    ->visible(fn(): bool => Auth::user()?->hasPermissionTo('Editar Alternativas') ?? false)
+                    ->visible(fn(): bool => Gate::allows('update', new Alternativa))
                     ->form([
                         Select::make('tipo_avaliacao_id')
                             ->label('Tipo')
@@ -230,6 +226,8 @@ class GestaoAlternativas extends Page implements HasTable
                     ])
                     ->action(function (array $data, $records): void {
                         $ids = collect($records)->map(fn(Alternativa $record): int => (int) $record->getKey())->all();
+
+                        collect($records)->each(fn(Alternativa $record) => Gate::authorize('update', $record));
 
                         $novoTipoNome = Str::of((string) ($data['novo_tipo_nome'] ?? ''))->trim()->toString();
                         $tipoAvaliacaoId = (int) ($data['tipo_avaliacao_id'] ?? 0);
@@ -267,14 +265,7 @@ class GestaoAlternativas extends Page implements HasTable
 
     public function abrirModalCriacao(): void
     {
-        if (! (Auth::user()?->hasPermissionTo('Criar Alternativas') ?? false)) {
-            Notification::make()
-                ->title('Você não tem permissão para criar alternativas.')
-                ->warning()
-                ->send();
-
-            return;
-        }
+        Gate::authorize('create', Alternativa::class);
 
         $this->alternativaIdEditando = null;
         $this->form = [
@@ -294,15 +285,6 @@ class GestaoAlternativas extends Page implements HasTable
 
     public function abrirModalEdicao(int $alternativaId): void
     {
-        if (! (Auth::user()?->hasPermissionTo('Editar Alternativas') ?? false)) {
-            Notification::make()
-                ->title('Você não tem permissão para editar alternativas.')
-                ->warning()
-                ->send();
-
-            return;
-        }
-
         $alternativa = Alternativa::query()->find($alternativaId);
 
         if (! $alternativa) {
@@ -313,6 +295,8 @@ class GestaoAlternativas extends Page implements HasTable
 
             return;
         }
+
+        Gate::authorize('update', $alternativa);
 
         $this->alternativaIdEditando = (int) $alternativa->getKey();
         $this->form = [
@@ -348,22 +332,10 @@ class GestaoAlternativas extends Page implements HasTable
     {
         $isEdicao = filled($this->alternativaIdEditando);
 
-        if ($isEdicao && ! (Auth::user()?->hasPermissionTo('Editar Alternativas') ?? false)) {
-            Notification::make()
-                ->title('Você não tem permissão para editar alternativas.')
-                ->warning()
-                ->send();
-
-            return;
-        }
-
-        if (! $isEdicao && ! (Auth::user()?->hasPermissionTo('Criar Alternativas') ?? false)) {
-            Notification::make()
-                ->title('Você não tem permissão para criar alternativas.')
-                ->warning()
-                ->send();
-
-            return;
+        if ($isEdicao) {
+            Gate::authorize('update', Alternativa::query()->findOrFail($this->alternativaIdEditando));
+        } else {
+            Gate::authorize('create', Alternativa::class);
         }
 
         $validated = $this->validate([
@@ -450,15 +422,6 @@ class GestaoAlternativas extends Page implements HasTable
 
     public function excluirAlternativa(int $alternativaId): void
     {
-        if (! (Auth::user()?->hasPermissionTo('Excluir Alternativas') ?? false)) {
-            Notification::make()
-                ->title('Você não tem permissão para excluir alternativas.')
-                ->warning()
-                ->send();
-
-            return;
-        }
-
         $alternativa = Alternativa::query()->find($alternativaId);
 
         if (! $alternativa) {
@@ -469,6 +432,8 @@ class GestaoAlternativas extends Page implements HasTable
 
             return;
         }
+
+        Gate::authorize('delete', $alternativa);
 
         $alternativa->delete();
 

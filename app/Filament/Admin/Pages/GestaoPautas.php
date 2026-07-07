@@ -7,7 +7,6 @@ use App\Models\ComponenteCurricular;
 use App\Models\Pauta;
 use App\Models\Serie;
 use App\Models\TipoAvaliacao;
-use App\Models\User;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
@@ -26,8 +25,8 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use UnitEnum;
 
@@ -86,10 +85,7 @@ class GestaoPautas extends Page implements HasForms, HasTable
 
     public static function canAccess(): bool
     {
-        /** @var User|null $user */
-        $user = Auth::user();
-
-        return $user?->hasPermissionTo('Listar Pautas') ?? false;
+        return Gate::allows('viewAny', Pauta::class);
     }
 
     protected function getHeaderActions(): array
@@ -99,7 +95,7 @@ class GestaoPautas extends Page implements HasForms, HasTable
                 ->label('Nova pauta')
                 ->icon(Heroicon::Plus)
                 ->color('primary')
-                ->visible(fn(): bool => Auth::user()?->hasPermissionTo('Criar Pautas') ?? false)
+                ->visible(fn(): bool => Gate::allows('create', Pauta::class))
                 ->action(fn() => $this->abrirModalCriacao()),
         ];
     }
@@ -225,14 +221,14 @@ class GestaoPautas extends Page implements HasForms, HasTable
                 Action::make('editar')
                     ->label('Editar')
                     ->icon(Heroicon::PencilSquare)
-                    ->visible(fn(): bool => Auth::user()?->hasPermissionTo('Editar Pautas') ?? false)
+                    ->visible(fn(Pauta $record): bool => Gate::allows('update', $record))
                     ->action(fn(Pauta $record) => $this->abrirModalEdicao($record->getKey())),
 
                 Action::make('excluir')
                     ->label('Excluir')
                     ->icon(Heroicon::Trash)
                     ->color('danger')
-                    ->visible(fn(): bool => Auth::user()?->hasPermissionTo('Excluir Pautas') ?? false)
+                    ->visible(fn(Pauta $record): bool => Gate::allows('delete', $record))
                     ->requiresConfirmation()
                     ->action(fn(Pauta $record) => $this->excluirPauta($record->getKey())),
             ])
@@ -240,7 +236,7 @@ class GestaoPautas extends Page implements HasForms, HasTable
                 BulkAction::make('aplicarCampos')
                     ->label('Aplicar campos')
                     ->icon(Heroicon::AdjustmentsHorizontal)
-                    ->visible(fn(): bool => Auth::user()?->hasPermissionTo('Editar Pautas') ?? false)
+                    ->visible(fn(): bool => Gate::allows('update', new Pauta))
                     ->form([
                         Select::make('tipo_avaliacao_id')
                             ->label('Tipo')
@@ -260,6 +256,8 @@ class GestaoPautas extends Page implements HasForms, HasTable
                     ])
                     ->action(function (array $data, $records): void {
                         $ids = collect($records)->map(fn(Pauta $record): int => (int) $record->getKey())->values();
+
+                        collect($records)->each(fn(Pauta $record) => Gate::authorize('update', $record));
 
                         $updates = collect([
                             'tipo_avaliacao_id' => $data['tipo_avaliacao_id'] ?? null,
@@ -354,14 +352,7 @@ class GestaoPautas extends Page implements HasForms, HasTable
 
     public function abrirModalCriacao(): void
     {
-        if (! (Auth::user()?->hasPermissionTo('Criar Pautas') ?? false)) {
-            Notification::make()
-                ->title('Você não tem permissão para criar pautas.')
-                ->warning()
-                ->send();
-
-            return;
-        }
+        Gate::authorize('create', Pauta::class);
 
         $this->resetForm();
         $this->pautaIdEditando = null;
@@ -372,15 +363,6 @@ class GestaoPautas extends Page implements HasForms, HasTable
 
     public function abrirModalEdicao(int $pautaId): void
     {
-        if (! (Auth::user()?->hasPermissionTo('Editar Pautas') ?? false)) {
-            Notification::make()
-                ->title('Você não tem permissão para editar pautas.')
-                ->warning()
-                ->send();
-
-            return;
-        }
-
         $pauta = Pauta::query()
             ->with('alternativas:id')
             ->find($pautaId);
@@ -393,6 +375,8 @@ class GestaoPautas extends Page implements HasForms, HasTable
 
             return;
         }
+
+        Gate::authorize('update', $pauta);
 
         $this->pautaIdEditando = (int) $pauta->getKey();
         $this->form = [
@@ -484,22 +468,10 @@ class GestaoPautas extends Page implements HasForms, HasTable
     {
         $isEdicao = filled($this->pautaIdEditando);
 
-        if ($isEdicao && ! (Auth::user()?->hasPermissionTo('Editar Pautas') ?? false)) {
-            Notification::make()
-                ->title('Você não tem permissão para editar pautas.')
-                ->warning()
-                ->send();
-
-            return;
-        }
-
-        if (! $isEdicao && ! (Auth::user()?->hasPermissionTo('Criar Pautas') ?? false)) {
-            Notification::make()
-                ->title('Você não tem permissão para criar pautas.')
-                ->warning()
-                ->send();
-
-            return;
+        if ($isEdicao) {
+            Gate::authorize('update', Pauta::query()->findOrFail($this->pautaIdEditando));
+        } else {
+            Gate::authorize('create', Pauta::class);
         }
 
         try {
@@ -651,15 +623,6 @@ class GestaoPautas extends Page implements HasForms, HasTable
 
     public function excluirPauta(int $pautaId): void
     {
-        if (! (Auth::user()?->hasPermissionTo('Excluir Pautas') ?? false)) {
-            Notification::make()
-                ->title('Você não tem permissão para excluir pautas.')
-                ->warning()
-                ->send();
-
-            return;
-        }
-
         $pauta = Pauta::query()->find($pautaId);
 
         if (! $pauta) {
@@ -670,6 +633,8 @@ class GestaoPautas extends Page implements HasForms, HasTable
 
             return;
         }
+
+        Gate::authorize('delete', $pauta);
 
         $pauta->delete();
 
