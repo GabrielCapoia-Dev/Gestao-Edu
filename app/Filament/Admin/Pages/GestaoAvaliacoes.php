@@ -11,7 +11,6 @@ use App\Models\PeriodoAvaliacao;
 use App\Models\Serie;
 use App\Models\TipoAvaliacao;
 use App\Models\Turma;
-use App\Models\User;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
@@ -27,8 +26,8 @@ use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use UnitEnum;
 
@@ -83,10 +82,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
 
     public static function canAccess(): bool
     {
-        /** @var User|null $user */
-        $user = Auth::user();
-
-        return $user?->hasPermissionTo('Listar Avaliações') ?? false;
+        return Gate::allows('viewAny', Avaliacao::class);
     }
 
     protected function getHeaderActions(): array
@@ -97,20 +93,20 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
                 ->icon(Heroicon::ClipboardDocumentList)
                 ->color('gray')
                 ->url('/admin/avaliacoes-pautas')
-                ->visible(fn(): bool => Auth::user()?->hasPermissionTo('Listar Pautas') ?? false),
+                ->visible(fn(): bool => Gate::allows('viewAny', Pauta::class)),
 
             Action::make('alternativas')
                 ->label('Alternativas')
                 ->icon(Heroicon::QueueList)
                 ->color('gray')
                 ->url('/admin/avaliacoes-alternativas')
-                ->visible(fn(): bool => Auth::user()?->hasPermissionTo('Listar Alternativas') ?? false),
+                ->visible(fn(): bool => Gate::allows('viewAny', Alternativa::class)),
 
             Action::make('create')
                 ->label('Nova avaliação')
                 ->icon(Heroicon::Plus)
                 ->color('primary')
-                ->visible(fn(): bool => Auth::user()?->hasPermissionTo('Criar Avaliações') ?? false)
+                ->visible(fn(): bool => Gate::allows('create', Avaliacao::class))
                 ->action(fn() => $this->abrirModalCriacao()),
         ];
     }
@@ -191,7 +187,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
                 Action::make('editar')
                     ->label('Editar')
                     ->icon(Heroicon::PencilSquare)
-                    ->visible(fn(): bool => Auth::user()?->hasPermissionTo('Editar Avaliações') ?? false)
+                    ->visible(fn(Avaliacao $record): bool => Gate::allows('update', $record))
                     ->action(fn(Avaliacao $record) => $this->abrirModalEdicao($record->getKey())),
 
                 Action::make('acompanhar')
@@ -201,13 +197,13 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
                     ->url(fn(Avaliacao $record): string => route('filament.admin.pages.dashboard-avaliacoes', [
                         'avaliacao' => $record->getKey(),
                     ]))
-                    ->visible(fn(): bool => Auth::user()?->hasPermissionTo('Acompanhar Avaliações') ?? false),
+                    ->visible(fn(): bool => Gate::allows('follow', Avaliacao::class)),
 
                 Action::make('excluir')
                     ->label('Excluir')
                     ->icon(Heroicon::Trash)
                     ->color('danger')
-                    ->visible(fn(): bool => Auth::user()?->hasPermissionTo('Excluir Avaliações') ?? false)
+                    ->visible(fn(Avaliacao $record): bool => Gate::allows('delete', $record))
                     ->requiresConfirmation()
                     ->action(fn(Avaliacao $record) => $this->excluirAvaliacao($record->getKey())),
             ])
@@ -440,14 +436,7 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
 
     public function abrirModalCriacao(): void
     {
-        if (! (Auth::user()?->hasPermissionTo('Criar Avaliações') ?? false)) {
-            Notification::make()
-                ->title('Você não tem permissão para criar avaliações.')
-                ->warning()
-                ->send();
-
-            return;
-        }
+        Gate::authorize('create', Avaliacao::class);
 
         $this->resetForm();
         $this->avaliacaoIdEditando = null;
@@ -458,14 +447,6 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
 
     public function abrirModalEdicao(int $avaliacaoId): void
     {
-        if (! (Auth::user()?->hasPermissionTo('Editar Avaliações') ?? false)) {
-            Notification::make()
-                ->title('Você não tem permissão para editar avaliações.')
-                ->warning()
-                ->send();
-
-            return;
-        }
 
         $avaliacao = Avaliacao::query()
             ->with([
@@ -483,6 +464,8 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
 
             return;
         }
+
+        Gate::authorize('update', $avaliacao);
 
         $this->avaliacaoIdEditando = $avaliacao->id;
         $this->form = [
@@ -519,22 +502,10 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
     {
         $isEdicao = filled($this->avaliacaoIdEditando);
 
-        if ($isEdicao && ! (Auth::user()?->hasPermissionTo('Editar Avaliações') ?? false)) {
-            Notification::make()
-                ->title('Você não tem permissão para editar avaliações.')
-                ->warning()
-                ->send();
-
-            return;
-        }
-
-        if (! $isEdicao && ! (Auth::user()?->hasPermissionTo('Criar Avaliações') ?? false)) {
-            Notification::make()
-                ->title('Você não tem permissão para criar avaliações.')
-                ->warning()
-                ->send();
-
-            return;
+        if ($isEdicao) {
+            Gate::authorize('update', Avaliacao::query()->findOrFail($this->avaliacaoIdEditando));
+        } else {
+            Gate::authorize('create', Avaliacao::class);
         }
 
         $statusOptions = array_keys(Avaliacao::statusOptions());
@@ -751,14 +722,6 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
 
     public function excluirAvaliacao(int $avaliacaoId): void
     {
-        if (! (Auth::user()?->hasPermissionTo('Excluir Avaliações') ?? false)) {
-            Notification::make()
-                ->title('Você não tem permissão para excluir avaliações.')
-                ->warning()
-                ->send();
-
-            return;
-        }
 
         $avaliacao = Avaliacao::query()->find($avaliacaoId);
 
@@ -770,6 +733,8 @@ class GestaoAvaliacoes extends Page implements HasForms, HasTable
 
             return;
         }
+
+        Gate::authorize('delete', $avaliacao);
 
         $avaliacao->delete();
 

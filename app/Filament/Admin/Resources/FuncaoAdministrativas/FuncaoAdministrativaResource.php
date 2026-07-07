@@ -21,7 +21,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use UnitEnum;
 
 class FuncaoAdministrativaResource extends Resource
@@ -42,10 +42,7 @@ class FuncaoAdministrativaResource extends Resource
 
     public static function canAccess(): bool
     {
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
-
-        return $user->hasPermissionTo('Listar Funções Administrativas');
+        return Gate::allows('viewAny', FuncaoAdministrativa::class);
     }
 
     public static function form(Schema $schema): Schema
@@ -194,12 +191,7 @@ class FuncaoAdministrativaResource extends Resource
             ])
             ->toolbarActions([
                 DeleteBulkAction::make()
-                    ->visible(function (): bool {
-                        /** @var \App\Models\User $user */
-                        $user = Auth::user();
-
-                        return $user->hasPermissionTo('Excluir Funções Administrativas em Massa');
-                    }),
+                    ->visible(fn (): bool => Gate::allows('deleteAny', FuncaoAdministrativa::class)),
             ]);
     }
 

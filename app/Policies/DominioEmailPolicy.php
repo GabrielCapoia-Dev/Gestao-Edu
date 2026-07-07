@@ -4,7 +4,6 @@ namespace App\Policies;
 
 use App\Models\DominioEmail;
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
 
 class DominioEmailPolicy
 {
@@ -55,6 +54,11 @@ class DominioEmailPolicy
     // {
     //     return false;
     // }
+
+    public function deleteAny(User $user): bool
+    {
+        return $user->hasRole('Admin');
+    }
 
     // /**
     //  * Determine whether the user can permanently delete the model.

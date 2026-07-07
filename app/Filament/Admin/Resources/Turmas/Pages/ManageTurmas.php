@@ -12,7 +12,7 @@ use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ManageRecords;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\View\View;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 
 class ManageTurmas extends ManageRecords
 {
@@ -39,14 +39,14 @@ class ManageTurmas extends ManageRecords
                 ->icon(Heroicon::ClipboardDocumentList)
                 ->color('gray')
                 ->url(fn (): string => SerieResource::getUrl('index'))
-                ->visible(fn (): bool => Auth::user()?->hasPermissionLike('listar series') ?? false),
+                ->visible(fn (): bool => Gate::allows('viewAny', SerieResource::getModel())),
 
             Action::make('alunos')
                 ->label('Alunos')
                 ->icon(Heroicon::AcademicCap)
                 ->color('gray')
                 ->url(fn (): string => AlunoResource::getUrl('index'))
-                ->visible(fn (): bool => Auth::user()?->hasPermissionLike('listar alunos') ?? false),
+                ->visible(fn (): bool => Gate::allows('viewAny', AlunoResource::getModel())),
 
             Action::make('exportar_avaliacoes')
                 ->label('Exportar Avaliações')

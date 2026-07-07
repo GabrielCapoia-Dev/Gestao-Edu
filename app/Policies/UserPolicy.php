@@ -40,6 +40,11 @@ class UserPolicy
             && $this->podeAcessarUsuario($user, $model);
     }
 
+    public function viewDashboard(User $user): bool
+    {
+        return $user->hasPermissionTo('Visualizar Tela de Inicio');
+    }
+
     private function podeAcessarUsuario(User $user, User $model): bool
     {
         $access = app(UserSetorAccessService::class);

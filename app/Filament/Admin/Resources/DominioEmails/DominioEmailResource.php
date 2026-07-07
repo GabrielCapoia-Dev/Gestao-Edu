@@ -22,7 +22,7 @@ use Filament\Forms\Form;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use UnitEnum;
 
 
@@ -112,14 +112,7 @@ class DominioEmailResource extends Resource
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
-                        ->visible(function () {
-                            /** @var \App\Models\User|null $user */
-                            $user = Auth::user();
-                            if (!$user) {
-                                return false;
-                            }
-                            return $user->hasRole('Admin');
-                        }),
+                        ->visible(fn (): bool => Gate::allows('deleteAny', DominioEmail::class)),
                 ]),
 
             ]);

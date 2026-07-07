@@ -15,6 +15,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use UnitEnum;
 
 class LogExportacoesAvaliacoes extends Page implements HasTable
@@ -52,11 +53,8 @@ class LogExportacoesAvaliacoes extends Page implements HasTable
 
     public static function canAccess(): bool
     {
-        /** @var User|null $user */
-        $user = Auth::user();
-
-        return ($user?->hasPermissionTo('Listar Avaliações') ?? false)
-            || ($user?->hasPermissionTo('Exportar Avaliações') ?? false);
+        return Gate::allows('viewAny', Avaliacao::class)
+            || Gate::allows('export', Avaliacao::class);
     }
 
     public function table(Table $table): Table
@@ -142,7 +140,7 @@ class LogExportacoesAvaliacoes extends Page implements HasTable
                 'user:id,name,email',
             ]);
 
-        if ($user && ! $user->hasPermissionTo('Listar Avaliações')) {
+        if ($user && ! Gate::forUser($user)->allows('viewAny', Avaliacao::class)) {
             $query->where('user_id', (int) $user->id);
         }
 

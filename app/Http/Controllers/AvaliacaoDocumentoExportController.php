@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Avaliacao;
 use App\Services\Avaliacoes\AvaliacaoDocumentoExportService;
 use App\Services\Exports\ExportRequestService;
 use Filament\Notifications\Notification;
@@ -18,7 +19,7 @@ class AvaliacaoDocumentoExportController extends Controller
         ExportRequestService $exports,
     ): Response
     {
-        abort_unless($request->user()?->hasPermissionLike('exportar avaliacoes') ?? false, 403);
+        $this->authorize('export', Avaliacao::class);
 
         $params = $this->validarParametros($request);
 
@@ -35,7 +36,7 @@ class AvaliacaoDocumentoExportController extends Controller
         ExportRequestService $exports,
     ): Response
     {
-        abort_unless($request->user()?->hasPermissionLike('exportar avaliacoes') ?? false, 403);
+        $this->authorize('export', Avaliacao::class);
 
         $params = $this->validarParametros($request);
 

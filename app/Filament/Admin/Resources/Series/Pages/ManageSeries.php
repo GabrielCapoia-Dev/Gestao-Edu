@@ -9,7 +9,7 @@ use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ManageRecords;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\View\View;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 
 class ManageSeries extends ManageRecords
 {
@@ -34,7 +34,7 @@ class ManageSeries extends ManageRecords
                 ->icon(Heroicon::BookmarkSquare)
                 ->color('gray')
                 ->url(fn (): string => ComponenteCurricularResource::getUrl('index'))
-                ->visible(fn (): bool => Auth::user()?->hasPermissionLike('listar componente curricular') ?? false),
+                ->visible(fn (): bool => Gate::allows('viewAny', ComponenteCurricularResource::getModel())),
 
             CreateAction::make(),
         ];

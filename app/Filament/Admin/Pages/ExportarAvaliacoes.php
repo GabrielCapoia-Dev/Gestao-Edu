@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Livewire\WithPagination;
 use UnitEnum;
 
@@ -67,10 +68,7 @@ class ExportarAvaliacoes extends Page
 
     public static function canAccess(): bool
     {
-        /** @var User|null $user */
-        $user = Auth::user();
-
-        return $user?->hasPermissionLike('exportar avaliacoes') ?? false;
+        return Gate::allows('export', Avaliacao::class);
     }
 
     public function definirModo(string $modo): void

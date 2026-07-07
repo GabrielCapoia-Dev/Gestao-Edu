@@ -31,4 +31,14 @@ class AvaliacaoPolicy
     {
         return $user->hasPermissionTo('Excluir Avaliações');
     }
+
+    public function follow(User $user): bool
+    {
+        return $user->hasPermissionTo('Acompanhar Avaliações');
+    }
+
+    public function export(User $user): bool
+    {
+        return $user->hasPermissionLike('exportar avaliacoes');
+    }
 }

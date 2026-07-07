@@ -2,10 +2,12 @@
 
 namespace App\Filament\Admin\Pages;
 
+use App\Models\User;
+
 use App\Services\UserService;
 use Filament\Actions\Action;
 use Filament\Pages\Page;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use BackedEnum;
 use Filament\Support\Icons\Heroicon;
 
@@ -32,10 +34,7 @@ class Dashboard extends Page
 
     public static function canAccess(): bool
     {
-        /** @var \App\Models\User|null $user */
-        $user = Auth::user();
-
-        return $user?->hasPermissionTo('Visualizar Tela de Inicio') ?? false;
+        return Gate::allows('viewDashboard', User::class);
     }
 
     public static function userService(): UserService
