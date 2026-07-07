@@ -2,8 +2,10 @@
 
 namespace App\Policies;
 
-use App\Models\User;
 use App\Models\Professor;
+use App\Models\User;
+use App\Services\UserService;
+use Illuminate\Database\Eloquent\Builder;
 
 class ProfessorPolicy
 
@@ -14,6 +16,14 @@ class ProfessorPolicy
     public function viewAny(User $user): bool
     {
         return $user->hasPermissionTo('Listar Professores');
+    }
+
+    public function applyViewAnyScope(User $user, Builder $query): Builder
+    {
+        return app(UserService::class)->aplicarFiltroPorEscolaDoUsuarioEmTurma(
+            $query->where('ativo', true),
+            $user
+        );
     }
 
     /**

@@ -192,7 +192,7 @@ class AlunoMovimentacaoFluxoTest extends TestCase
         ]);
     }
 
-    public function test_remanejamento_marca_origem_e_cria_nova_matricula_com_respostas_bloqueadas(): void
+    public function test_remanejamento_marca_origem_e_cria_nova_matricula_com_respostas_editaveis(): void
     {
         [$escola, $serie, $turmaOrigem, $turmaDestino, $avaliacao, $pauta, $alternativa] = $this->criarCenarioAvaliacaoDuasTurmas();
 
@@ -234,7 +234,7 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             'pauta_id' => $pauta->id,
             'turma_id' => $turmaDestino->id,
             'aluno_id' => $novoAluno->id,
-            'bloqueada' => true,
+            'bloqueada' => false,
             'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_REMANEJAMENTO,
         ]);
     }
@@ -258,7 +258,7 @@ class AlunoMovimentacaoFluxoTest extends TestCase
         app(AlunoMovimentacaoService::class)->remanejar($aluno, $turmaOutraSerie->id);
     }
 
-    public function test_remanejamento_vincula_avaliacao_historica_na_turma_destino_e_preserva_dados_bloqueados(): void
+    public function test_remanejamento_vincula_avaliacao_historica_bloqueia_origem_e_deixa_destino_editavel(): void
     {
         [$escola, $serie, $turmaOrigem, $turmaDestino, $avaliacao, $pauta, $alternativa] = $this->criarCenarioAvaliacaoDuasTurmas();
         $avaliacao->turmas()->detach($turmaDestino->id);
@@ -312,7 +312,7 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             'aluno_id' => $novoAluno->id,
             'alternativa_id' => $alternativa->id,
             'observacao' => 'Resposta antes do remanejamento',
-            'bloqueada' => true,
+            'bloqueada' => false,
             'resposta_origem_id' => $respostaOrigem->id,
             'aluno_origem_id' => $aluno->id,
             'turma_origem_id' => $turmaOrigem->id,
@@ -334,7 +334,7 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             'aluno_id' => $novoAluno->id,
             'componente_curricular_id' => $pauta->componente_curricular_id,
             'informacoes_complementares' => 'Informacao complementar antes do remanejamento',
-            'bloqueada' => true,
+            'bloqueada' => false,
             'informacao_origem_id' => $informacaoOrigem->id,
             'aluno_origem_id' => $aluno->id,
             'turma_origem_id' => $turmaOrigem->id,

@@ -5,6 +5,7 @@ namespace App\Policies;
 use App\Models\EmpresaContratada;
 use App\Models\User;
 use App\Services\UserSetorAccessService;
+use Illuminate\Database\Eloquent\Builder;
 
 class EmpresaContratadaPolicy
 {
@@ -14,6 +15,11 @@ class EmpresaContratadaPolicy
     public function viewAny(User $user): bool
     {
         return $user->hasPermissionTo('Listar Empresa Contratada');
+    }
+
+    public function applyViewAnyScope(User $user, Builder $query): Builder
+    {
+        return app(UserSetorAccessService::class)->applySetorScope($query, $user);
     }
 
     /**

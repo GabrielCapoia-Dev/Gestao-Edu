@@ -135,11 +135,6 @@ class ProfessorService
     public function configurarTabela(Table $table, ?User $user): Table
     {
         return $table
-            ->modifyQueryUsing(function (Builder $query) use ($user) {
-                // Impacto: este filtro aplica o escopo do usuario na tabela. Alterar aqui pode expor professores de outras escolas ou ocultar professores vinculados por turma.
-                $query->where('ativo', true);
-                $this->userService->aplicarFiltroPorEscolaDoUsuarioEmTurma($query, $user);
-            })
             ->paginated([5, 10, 25, 50, 100])
             ->defaultPaginationPageOption(5)
             ->searchable([

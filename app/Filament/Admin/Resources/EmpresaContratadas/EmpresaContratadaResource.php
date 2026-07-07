@@ -18,6 +18,8 @@ use Filament\Tables\Table;
 use App\Filament\Resources\EmpresaContratadaResource\Pages;
 use App\Services\EmpresaContratadaService as Service;
 use Filament\Forms\Form;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Gate;
 use UnitEnum;
 
 class EmpresaContratadaResource extends Resource
@@ -45,6 +47,20 @@ class EmpresaContratadaResource extends Resource
     public static function table(Table $table): Table
     {
         return app(Service::class)->configurarTabela($table);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+
+        $user = auth()->user();
+        $policy = Gate::getPolicyFor(static::getModel());
+
+        if (! $user || ! $policy || ! method_exists($policy, 'applyViewAnyScope')) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $policy->applyViewAnyScope($user, $query);
     }
 
     public static function getPages(): array

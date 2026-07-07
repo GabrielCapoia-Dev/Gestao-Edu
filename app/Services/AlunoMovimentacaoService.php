@@ -588,7 +588,10 @@ class AlunoMovimentacaoService
 
     private function copiaAvaliativaDeveFicarBloqueada(string $tipo): bool
     {
-        return $tipo !== self::MOVIMENTACAO_TRANSFERENCIA;
+        return ! in_array($tipo, [
+            self::MOVIMENTACAO_TRANSFERENCIA,
+            self::MOVIMENTACAO_REMANEJAMENTO,
+        ], true);
     }
 
     private function bloquearDadosAvaliativosOrigem(Aluno $aluno, string $tipo): void

@@ -40,10 +40,8 @@ class TurmaService
     public function configurarTabela(Table $table, ?User $user): Table
     {
         return $table
-            ->modifyQueryUsing(function (Builder $query) use ($user) {
-                // Fluxo: a tabela de turmas primeiro aplica o escopo do usuario, depois carrega escola/serie/alunos para evitar consultas repetidas nas colunas.
-                $this->userService->aplicarFiltroPorEscolaDoUsuarioEmTurma($query, $user);
-
+            ->modifyQueryUsing(function (Builder $query): void {
+                // Fluxo: o escopo da listagem vem da policy; aqui a tabela carrega escola/serie/alunos para evitar consultas repetidas nas colunas.
                 $query->with([
                     'escola:id,nome',
                     'serie:id,nome',

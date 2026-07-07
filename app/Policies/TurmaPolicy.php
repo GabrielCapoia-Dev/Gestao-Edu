@@ -4,6 +4,8 @@ namespace App\Policies;
 
 use App\Models\Turma;
 use App\Models\User;
+use App\Services\UserService;
+use Illuminate\Database\Eloquent\Builder;
 
 class TurmaPolicy
 {
@@ -14,6 +16,11 @@ class TurmaPolicy
     {
         return $user->hasPermissionTo('Listar Turmas');
         // ou $user->can('Listar Turmas');
+    }
+
+    public function applyViewAnyScope(User $user, Builder $query): Builder
+    {
+        return app(UserService::class)->aplicarFiltroPorEscolaDoUsuarioEmTurma($query, $user);
     }
 
     /**

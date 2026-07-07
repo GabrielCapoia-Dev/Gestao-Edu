@@ -116,9 +116,8 @@ class EmpresaContratadaService
         $podeListarInativas = Auth::user()?->hasPermissionTo(self::PERMISSAO_LISTAR_EMPRESAS_INATIVAS) ?? false;
 
         return $table
-            ->query(EmpresaContratada::query()
-                ->doSetorDoUsuario(Auth::user())
-                ->when(! $podeListarInativas, fn (Builder $query) => $query->where('ativo', true)))
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query
+                ->when(! $podeListarInativas, fn (Builder $query): Builder => $query->where('ativo', true)))
             ->columns($this->colunasTabela())
             ->filters($this->filtrosTabela($podeListarInativas))
             ->recordActions($this->acoesTabela())

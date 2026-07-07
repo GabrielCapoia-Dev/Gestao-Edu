@@ -11,9 +11,10 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use App\Services\ProfessorService;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Auth;
-use UnitEnum;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
+use UnitEnum;
 
 class ProfessorResource extends Resource
 {
@@ -76,6 +77,20 @@ class ProfessorResource extends Resource
     public static function table(Table $table): Table
     {
         return static::professorService()->configurarTabela($table, Auth::user());
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+
+        $user = auth()->user();
+        $policy = Gate::getPolicyFor(static::getModel());
+
+        if (! $user || ! $policy || ! method_exists($policy, 'applyViewAnyScope')) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $policy->applyViewAnyScope($user, $query);
     }
 
     public static function getPages(): array

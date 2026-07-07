@@ -25,6 +25,7 @@ use Filament\Tables;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use UnitEnum;
 
 
@@ -57,6 +58,20 @@ class TurmaResource extends Resource
     public static function table(Table $table): Table
     {
         return static::turmaService()->configurarTabela($table, Auth::user());
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+
+        $user = auth()->user();
+        $policy = Gate::getPolicyFor(static::getModel());
+
+        if (! $user || ! $policy || ! method_exists($policy, 'applyViewAnyScope')) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $policy->applyViewAnyScope($user, $query);
     }
 
     public static function getPages(): array
