@@ -50,7 +50,7 @@ class DeleteAlunosEmMassaJob implements ShouldQueue
             return;
         }
 
-        if (! $usuario->hasPermissionTo('Excluir Alunos em Massa')) {
+        if (! Gate::forUser($usuario)->allows('deleteBulk', Aluno::class)) {
             $processo?->markFailed('Você não possui permissão para excluir alunos em massa.');
             $this->notificarFalha($usuario, 'Você não possui permissão para excluir alunos em massa.');
 

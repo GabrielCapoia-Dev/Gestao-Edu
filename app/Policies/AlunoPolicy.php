@@ -25,9 +25,14 @@ class AlunoPolicy
 
     public function update(User $user, Aluno $aluno): bool
     {
-        return $user->hasPermissionTo('Editar Alunos')
+        return $this->updateAny($user)
             && $aluno->estaMatriculado()
             && $this->pertenceAoEscopoDoUsuario($user, $aluno);
+    }
+
+    public function updateAny(User $user): bool
+    {
+        return $user->hasPermissionTo('Editar Alunos');
     }
 
     public function delete(User $user, Aluno $aluno): bool
@@ -35,6 +40,59 @@ class AlunoPolicy
         return $user->hasPermissionTo('Excluir Alunos')
             && $aluno->estaMatriculado()
             && $this->pertenceAoEscopoDoUsuario($user, $aluno);
+    }
+
+    public function import(User $user): bool
+    {
+        return $user->hasPermissionTo('Importar Alunos por Planilha');
+    }
+
+    public function exportTemplate(User $user): bool
+    {
+        return $user->hasPermissionTo('Exportar Modelo de Importacao de Alunos');
+    }
+
+    public function deleteBulk(User $user): bool
+    {
+        return $user->hasPermissionTo('Excluir Alunos em Massa');
+    }
+
+    public function filterBySchool(User $user): bool
+    {
+        return $user->hasPermissionTo('Filtrar Alunos por Escola');
+    }
+
+    public function editSchool(User $user): bool
+    {
+        return $user->hasPermissionTo('Editar Escola do Aluno')
+            || $user->hasPermissionTo('Editar Escola da Turma');
+    }
+
+    public function remanejar(User $user, Aluno $aluno): bool
+    {
+        return $user->hasPermissionLike('Realizar Remanejamento de Aluno');
+    }
+
+    public function voltarTurma(User $user, Aluno $aluno): bool
+    {
+        return $this->remanejar($user, $aluno);
+    }
+
+    public function contraTurno(User $user, Aluno $aluno): bool
+    {
+        return $this->updateAny($user);
+    }
+
+    public function encerrarContraTurno(User $user, Aluno $aluno): bool
+    {
+        return $this->updateAny($user);
+    }
+
+    public function parecerTransferencia(User $user, Aluno $aluno): bool
+    {
+        return $user->hasPermissionLike('realizar transferencia de aluno')
+            || $user->hasPermissionLike('realizar tranferencia de aluno')
+            || $user->hasPermissionLike('gerar parecer de transferencia');
     }
 
     private function pertenceAoEscopoDoUsuario(User $user, Aluno $aluno): bool

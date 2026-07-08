@@ -54,7 +54,7 @@ class ProfessorResource extends Resource
     {
         /** @var \App\Models\User */
         $user = Auth::user();
-        return $user->hasPermissionTo('Listar Professores');
+        return Gate::forUser($user)->allows('viewAny', Professor::class);
     }
 
     public static function professorService(): ProfessorService

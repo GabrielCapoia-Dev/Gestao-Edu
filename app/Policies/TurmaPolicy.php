@@ -15,7 +15,6 @@ class TurmaPolicy
     public function viewAny(User $user): bool
     {
         return $user->hasPermissionTo('Listar Turmas');
-        // ou $user->can('Listar Turmas');
     }
 
     public function applyViewAnyScope(User $user, Builder $query): Builder
@@ -55,20 +54,23 @@ class TurmaPolicy
         return $user->hasPermissionTo('Excluir Turmas');
     }
 
+    public function filterBySchool(User $user): bool
+    {
+        return $user->hasPermissionTo('Filtrar Turmas por Escola');
+    }
 
-    // /**
-    //  * Determine whether the user can restore the model.
-    //  */
-    // public function restore(User $user, User $model): bool
-    // {
-    //     return false;
-    // }
+    public function deleteBulk(User $user): bool
+    {
+        return $user->hasPermissionTo('Excluir Turmas em Massa');
+    }
 
-    // /**
-    //  * Determine whether the user can permanently delete the model.
-    //  */
-    // public function forceDelete(User $user, User $model): bool
-    // {
-    //     return false;
-    // }
+    public function editSchool(User $user): bool
+    {
+        return $user->hasPermissionTo('Editar Escola da Turma');
+    }
+
+    public function editData(User $user): bool
+    {
+        return $user->hasPermissionTo('Editar Dados da Turma');
+    }
 }

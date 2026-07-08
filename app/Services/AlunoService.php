@@ -35,6 +35,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -257,7 +258,7 @@ class AlunoService
 
     private function colunasTabela(?User $user): array
     {
-        $podeListarEscolas = $user?->hasPermissionTo('Listar Escolas') ?? false;
+        $podeListarEscolas = $user && Gate::forUser($user)->allows('viewAny', Escola::class);
 
         return [
             TextColumn::make('nome')
@@ -425,13 +426,13 @@ class AlunoService
 
                     return $query->whereHas('turma', fn (Builder $q) => $q->where('id_escola', $data['value']));
                 })
-                ->visible(fn () => $user?->hasPermissionTo('Filtrar Alunos por Escola') ?? false),
+                ->visible(fn () => $user && Gate::forUser($user)->allows('filterBySchool', Aluno::class)),
         ];
     }
 
     private function acoesTabela(?User $user): array
     {
-        $podeListarEscolas = $user?->hasPermissionTo('Listar Escolas') ?? false;
+        $podeListarEscolas = $user && Gate::forUser($user)->allows('viewAny', Escola::class);
 
         return [
             ActionGroup::make([
@@ -726,7 +727,7 @@ class AlunoService
         return ! $this->professorEstaBloqueado($user)
             && $record->isPrincipal()
             && ($record->estaMatriculado() || $record->estaPendente())
-            && ($user?->hasPermissionLike('Realizar Remanejamento de Aluno') ?? false);
+            && ($user && Gate::forUser($user)->allows('remanejar', $record));
     }
 
     public function podeVoltarTurmaAnterior(Aluno $record, ?User $user): bool
@@ -735,7 +736,7 @@ class AlunoService
             && $record->isPrincipal()
             && ($record->estaMatriculado() || $record->estaPendente())
             && (int) $record->turma_origem_id > 0
-            && ($user?->hasPermissionLike('Realizar Remanejamento de Aluno') ?? false);
+            && ($user && Gate::forUser($user)->allows('voltarTurma', $record));
     }
 
     public function podeMarcarContraTurno(Aluno $record, ?User $user): bool
@@ -743,7 +744,7 @@ class AlunoService
         return ! $this->professorEstaBloqueado($user)
             && $record->isPrincipal()
             && $record->estaMatriculado()
-            && $this->userService->podeEditarAlunos($user);
+            && ($user && Gate::forUser($user)->allows('contraTurno', $record));
     }
 
     public function podeEncerrarContraTurno(Aluno $record, ?User $user): bool
@@ -751,7 +752,7 @@ class AlunoService
         return ! $this->professorEstaBloqueado($user)
             && $record->isContraTurno()
             && $record->estaMatriculado()
-            && $this->userService->podeEditarAlunos($user);
+            && ($user && Gate::forUser($user)->allows('encerrarContraTurno', $record));
     }
 
     public function podeGerarParecerTransferencia(Aluno $record, ?User $user): bool
@@ -759,25 +760,21 @@ class AlunoService
         return $record->isPrincipal()
             && $this->alunoTemAvaliacoes($record)
             && ($this->professorEstaRestritoAoAluno($user, $record)
-                || (($user?->hasPermissionLike('realizar transferencia de aluno') ?? false)
-                    || ($user?->hasPermissionLike('realizar tranferencia de aluno') ?? false)
-                    || ($user?->hasPermissionLike('gerar parecer de transferencia') ?? false)));
+                || ($user && Gate::forUser($user)->allows('parecerTransferencia', $record)));
     }
 
     public function podeEditarAluno(Aluno $record, ?User $user): bool
     {
         return ! $this->professorEstaBloqueado($user)
-            && $record->estaMatriculado()
             && $record->isPrincipal()
-            && $this->userService->podeEditarAlunos($user);
+            && ($user && Gate::forUser($user)->allows('update', $record));
     }
 
     public function podeExcluirAluno(Aluno $record, ?User $user): bool
     {
         return ! $this->professorEstaBloqueado($user)
-            && $record->estaMatriculado()
             && $record->isPrincipal()
-            && $this->userService->podeExcluirAlunos($user);
+            && ($user && Gate::forUser($user)->allows('delete', $record));
     }
 
     private function acoesEmMassa(?User $user): array
@@ -839,7 +836,7 @@ class AlunoService
                 ->modalSubmitActionLabel('Enviar para exclusao')
                 ->fetchSelectedRecords(false)
                 ->visible(fn () => ! $this->professorEstaBloqueado($user)
-                    && ($user?->hasPermissionTo('Excluir Alunos em Massa') ?? false))
+                    && ($user && Gate::forUser($user)->allows('deleteBulk', Aluno::class)))
                 ->action(function ($recordsQuery): void {
                     $ids = $recordsQuery
                         ->pluck('alunos.id')
@@ -1268,8 +1265,7 @@ class AlunoService
 
     private function podeEditarEscolaAluno(?User $user): bool
     {
-        return ($user?->hasPermissionTo('Editar Escola do Aluno') ?? false)
-            || ($user?->hasPermissionTo('Editar Escola da Turma') ?? false);
+        return $user && Gate::forUser($user)->allows('editSchool', Aluno::class);
     }
 
     private function cadastroAlunoRestritoPorCgm(?User $user): bool

@@ -16,6 +16,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Database\Eloquent\Builder;
 use App\Models\User;
 use App\Models\ComponenteCurricular;
@@ -66,7 +67,7 @@ class ProfessorService
                             ->placeholder('Selecione a escola')
                             ->disabled(function (?Professor $record) use ($user) {
                                 // Impacto: em edicao, a escola do professor afeta filtros por unidade, vinculos com usuarios e relatorios pedagogicos.
-                                return $record !== null && !$user->hasPermissionTo('Editar Escola do Professor');
+                                return $record !== null && ! Gate::forUser($user)->allows('editSchool', Professor::class);
                             })
                             ->columnSpanFull(),
 
@@ -75,7 +76,7 @@ class ProfessorService
                             ->required()
                             ->disabled(function (?Professor $record) use ($user) {
                                 // Impacto: matricula identifica o professor em importacoes/consultas; liberar edicao sem permissao pode quebrar conciliacao com bases externas.
-                                return $record !== null && !$user->hasPermissionTo('Editar Matricula do Professor');
+                                return $record !== null && ! Gate::forUser($user)->allows('editMatricula', Professor::class);
                             })
                             ->maxLength(255)
                             ->placeholder('Ex: PROF001'),
@@ -86,14 +87,14 @@ class ProfessorService
                             ->required()
                             ->placeholder('Selecione o turno')
                             ->disabled(function (?Professor $record) use ($user) {
-                                return $record !== null && !$user->hasPermissionTo('Editar Dados do Professor');
+                                return $record !== null && ! Gate::forUser($user)->allows('editData', Professor::class);
                             }),
 
                         TextInput::make('nome')
                             ->label('Nome Completo')
                             ->required()
                             ->disabled(function (?Professor $record) use ($user) {
-                                return $record !== null && !$user->hasPermissionTo('Editar Nome do Professor');
+                                return $record !== null && ! Gate::forUser($user)->allows('editName', Professor::class);
                             })
                             ->maxLength(255)
                             ->placeholder('Ex: João da Silva'),
@@ -112,7 +113,7 @@ class ProfessorService
                             })
                             ->maxLength(255)
                             ->disabled(function (?Professor $record) use ($user) {
-                                return $record !== null && !$user->hasPermissionTo('Editar Dados do Professor');
+                                return $record !== null && ! Gate::forUser($user)->allows('editData', Professor::class);
                             })
                             ->placeholder('professor@edu.umuarama.pr.gov.br'),
 
@@ -122,7 +123,7 @@ class ProfessorService
                             ->maxLength(255)
                             ->mask('(99) 99999-9999')
                             ->disabled(function (?Professor $record) use ($user) {
-                                return $record !== null && !$user->hasPermissionTo('Editar Dados do Professor');
+                                return $record !== null && ! Gate::forUser($user)->allows('editData', Professor::class);
                             })
                             ->placeholder('(00) 00000-0000'),
                     ])
@@ -374,7 +375,7 @@ class ProfessorService
                         ->columnSpanFull(),
                 ])
                 ->visible(function () use ($user): bool {
-                    return $user->hasPermissionTo('Visualizar Professores');
+                    return $user && Gate::forUser($user)->allows('viewProfessor', Professor::class);
                 }),
 
             EditAction::make(),
@@ -502,7 +503,7 @@ class ProfessorService
                 ->searchable()
                 ->preload()
                 ->visible(function () use ($user): bool {
-                    return $user->hasPermissionTo('Filtrar Professores por Escola');
+                    return $user && Gate::forUser($user)->allows('filterBySchool', Professor::class);
                 }),
 
             SelectFilter::make('turno')
@@ -526,7 +527,7 @@ class ProfessorService
                     });
                 })
                 ->visible(function () use ($user): bool {
-                    return $user->hasPermissionTo('Filtrar Professores por Serie');
+                    return $user && Gate::forUser($user)->allows('filterBySerie', Professor::class);
                 }),
 
             SelectFilter::make('componente_curricular_id')
@@ -546,7 +547,7 @@ class ProfessorService
                     });
                 })
                 ->visible(function () use ($user): bool {
-                    return $user->hasPermissionTo('Filtrar Professores por Componente');
+                    return $user && Gate::forUser($user)->allows('filterByComponent', Professor::class);
                 }),
         ];
     }

@@ -45,6 +45,16 @@ class UserPolicy
         return $user->hasPermissionTo('Visualizar Tela de Inicio');
     }
 
+    public function viewPersonalizedPanel(User $user): bool
+    {
+        return $user->hasPermissionTo('Visualizar Painel Personalizado');
+    }
+
+    public function viewSetor(User $user): bool
+    {
+        return $user->hasPermissionTo('Visualizar Setor do Usuário');
+    }
+
     public function applyPermissions(User $user, User $target): bool
     {
         if ($target->id === $user->id || $target->hasRole('Admin')) {

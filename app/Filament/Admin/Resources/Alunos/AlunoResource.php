@@ -13,6 +13,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use UnitEnum;
 
 class AlunoResource extends Resource
@@ -44,13 +45,15 @@ class AlunoResource extends Resource
     {
         $user = Auth::user();
 
-        return ($user?->hasPermissionTo('Listar Alunos') ?? false)
+        return ($user && Gate::forUser($user)->allows('viewAny', Aluno::class))
             || static::alunoService()->queryVisivel($user)->exists();
     }
 
     public static function canGloballySearch(): bool
     {
-        return Auth::user()?->hasPermissionTo('Listar Alunos') ?? false;
+        $user = Auth::user();
+
+        return $user && Gate::forUser($user)->allows('viewAny', Aluno::class);
     }
 
     public static function getGloballySearchableAttributes(): array

@@ -8,7 +8,6 @@ use App\Services\UserService;
 use Illuminate\Database\Eloquent\Builder;
 
 class ProfessorPolicy
-
 {
     /**
      * Ver qualquer professor.
@@ -57,19 +56,79 @@ class ProfessorPolicy
     {
         return $user->hasPermissionTo('Excluir Professores');
     }
-    // /**
-    //  * Determine whether the user can restore the model.
-    //  */
-    // public function restore(User $user, User $model): bool
-    // {
-    //     return false;
-    // }
 
-    // /**
-    //  * Determine whether the user can permanently delete the model.
-    //  */
-    // public function forceDelete(User $user, User $model): bool
-    // {
-    //     return false;
-    // }
+    public function editMatricula(User $user): bool
+    {
+        return $user->hasPermissionTo('Editar Matricula do Professor');
+    }
+
+    public function editSchool(User $user): bool
+    {
+        return $user->hasPermissionTo('Editar Escola do Professor');
+    }
+
+    public function editName(User $user): bool
+    {
+        return $user->hasPermissionTo('Editar Nome do Professor');
+    }
+
+    public function editData(User $user): bool
+    {
+        return $user->hasPermissionTo('Editar Dados do Professor');
+    }
+
+    public function viewSpecializations(User $user): bool
+    {
+        return $user->hasPermissionTo('Visualizar Especializações de Professores');
+    }
+
+    public function editSpecializations(User $user): bool
+    {
+        return $user->hasPermissionTo('Editar Especializações de Professores');
+    }
+
+    public function viewDetails(User $user): bool
+    {
+        return $user->hasPermissionTo('Visualizar Detalhes de Professor');
+    }
+
+    public function viewProfessor(User $user): bool
+    {
+        return $user->hasPermissionTo('Visualizar Professores');
+    }
+
+    public function deleteBulk(User $user): bool
+    {
+        return $user->hasPermissionTo('Excluir Professores em Massa');
+    }
+
+    public function filterBySchool(User $user): bool
+    {
+        return $user->hasPermissionTo('Filtrar Professores por Escola');
+    }
+
+    public function filterBySerie(User $user): bool
+    {
+        return $user->hasPermissionTo('Filtrar Professores por Serie');
+    }
+
+    public function filterByComponent(User $user): bool
+    {
+        return $user->hasPermissionTo('Filtrar Professores por Componente');
+    }
+
+    public function export(User $user): bool
+    {
+        return $user->hasPermissionTo('Exportar Professores');
+    }
+
+    public function transfer(User $user): bool
+    {
+        return $user->hasPermissionTo('Transferir Professores');
+    }
+
+    public function deactivate(User $user): bool
+    {
+        return $user->hasPermissionTo('Desativar Professores');
+    }
 }

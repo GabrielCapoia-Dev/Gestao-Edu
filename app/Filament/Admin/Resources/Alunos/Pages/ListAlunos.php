@@ -22,6 +22,7 @@ use Filament\View\PanelsRenderHook;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Url;
@@ -33,10 +34,6 @@ class ListAlunos extends ListRecords
 
     #[Url(as: 'turma')]
     public ?int $turma = null;
-
-    private const PERMISSION_EXPORTAR_MODELO_IMPORTACAO = 'Exportar Modelo de Importacao de Alunos';
-
-    private const PERMISSION_IMPORTAR_ALUNOS_PLANILHA = 'Importar Alunos por Planilha';
 
     #[Override]
     public function getHeader(): ?View
@@ -85,7 +82,7 @@ class ListAlunos extends ListRecords
                 ->label('Exportar Modelo')
                 ->icon('heroicon-o-arrow-down-tray')
                 ->color('gray')
-                ->visible(fn (): bool => Auth::user()?->hasPermissionTo(self::PERMISSION_EXPORTAR_MODELO_IMPORTACAO) ?? false)
+                ->visible(fn (): bool => Gate::allows('exportTemplate', Aluno::class))
                 ->action(fn () => $this->spreadsheetService()->exportarModelo()),
 
             Actions\Action::make('importarMatriculados')
@@ -93,7 +90,7 @@ class ListAlunos extends ListRecords
                 ->icon('heroicon-o-arrow-up-tray')
                 ->color('primary')
                 ->visible(fn (): bool => ! app(AlunoTransferenciaPendenteService::class)->professorEstaBloqueado(Auth::user())
-                    && (Auth::user()?->hasPermissionTo(self::PERMISSION_IMPORTAR_ALUNOS_PLANILHA) ?? false))
+                    && Gate::allows('import', Aluno::class))
                 ->schema([
                     FileUpload::make('arquivo')
                         ->label('Arquivo da planilha')

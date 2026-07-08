@@ -2,9 +2,13 @@
 
 namespace App\Services;
 
+use App\Models\Aluno;
 use App\Models\Escola;
 use App\Models\IgnoredUser;
+use App\Models\Item;
+use App\Models\Professor;
 use App\Models\Role;
+use App\Models\Turma;
 use App\Models\User;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Schemas\Components\Utilities\Get;
@@ -36,17 +40,17 @@ class UserService
 
     public function podeVisualizarPainelPersonalizado(?User $user): bool
     {
-        return $user?->hasPermissionTo('Visualizar Painel Personalizado') ?? false;
+        return $user && Gate::forUser($user)->allows('viewPersonalizedPanel', User::class);
     }
 
     public function podeExcluirItens(?User $user): bool
     {
-        return $user?->hasPermissionTo('Excluir Itens') ?? false;
+        return $user && Gate::forUser($user)->allows('delete', new Item);
     }
 
     public function podeExcluirItensEmMassa(?User $user): bool
     {
-        return $user?->hasPermissionTo('Excluir Itens em Massa') ?? false;
+        return $user && Gate::forUser($user)->allows('deleteAny', Item::class);
     }
 
     public function podeEditarMatriculaDoProfessor(?User $user, ?string $operation = null): bool
@@ -55,12 +59,12 @@ class UserService
             return true;
         }
 
-        return $user->hasPermissionTo('Editar Matricula do Professor');
+        return $user && Gate::forUser($user)->allows('editMatricula', Professor::class);
     }
 
     public function podeEditarEscolaDoProfessor(?User $user): bool
     {
-        return $user->hasPermissionTo('Editar Escola do Professor');
+        return $user && Gate::forUser($user)->allows('editSchool', Professor::class);
     }
 
     public function podeEditarNomeDoProfessor(?User $user, ?string $operation = null): bool
@@ -69,12 +73,12 @@ class UserService
             return true;
         }
 
-        return $user->hasPermissionTo('Editar Nome do Professor');
+        return $user && Gate::forUser($user)->allows('editName', Professor::class);
     }
 
     public function podeVisualizarEspecializacoesDeProfessores(?User $user): bool
     {
-        return $user->hasPermissionTo('Visualizar Especializações de Professores');
+        return $user && Gate::forUser($user)->allows('viewSpecializations', Professor::class);
     }
 
     public function podeEditarEspecializacoesDeProfessores(?User $user, ?string $operation = null): bool
@@ -83,37 +87,37 @@ class UserService
             return true;
         }
 
-        return $user->hasPermissionTo('Editar Especializações de Professores');
+        return $user && Gate::forUser($user)->allows('editSpecializations', Professor::class);
     }
 
     public function podeExcluirTurmas(?User $user): bool
     {
-        return $user->hasPermissionTo('Excluir Turmas');
+        return $user && Gate::forUser($user)->allows('delete', new Turma);
     }
 
     public function podeVisualizarAlunos(?User $user): bool
     {
-        return $user?->hasPermissionTo('Listar Alunos') ?? false;
+        return $user && Gate::forUser($user)->allows('viewAny', Aluno::class);
     }
 
     public function podeCriarAlunos(?User $user): bool
     {
-        return $user?->hasPermissionTo('Criar Alunos') ?? false;
+        return $user && Gate::forUser($user)->allows('create', Aluno::class);
     }
 
     public function podeEditarAlunos(?User $user): bool
     {
-        return $user?->hasPermissionTo('Editar Alunos') ?? false;
+        return $user && Gate::forUser($user)->allows('updateAny', Aluno::class);
     }
 
     public function podeExcluirAlunos(?User $user): bool
     {
-        return $user?->hasPermissionTo('Excluir Alunos') ?? false;
+        return $user && Gate::forUser($user)->allows('delete', new Aluno);
     }
 
     public function podeVisualizarSetor(?User $user): bool
     {
-        return $user?->hasPermissionTo('Visualizar Setor do Usuário') ?? false;
+        return $user && Gate::forUser($user)->allows('viewSetor', User::class);
     }
 
     public function podeEditarSetor(?User $user, string $context): bool
@@ -122,7 +126,7 @@ class UserService
             return false;
         }
 
-        return $user->hasPermissionTo('Editar Setor do Usuário');
+        return Gate::forUser($user)->allows('editSetor', User::class);
     }
 
     public function ehAdmin(?User $user = null): bool
@@ -132,42 +136,42 @@ class UserService
 
     public function podeVisualizarDetalhesProfessor(?User $user): bool
     {
-        return $user->hasPermissionTo('Visualizar Detalhes de Professor');
+        return $user && Gate::forUser($user)->allows('viewDetails', Professor::class);
     }
 
     public function podeVisualizarEspecializacoesProfessor(?User $user): bool
     {
-        return $user->hasPermissionTo('Visualizar Especializações de Professores');
+        return $user && Gate::forUser($user)->allows('viewSpecializations', Professor::class);
     }
 
     public function podeExcluirProfessoresEmLote(?User $user): bool
     {
-        return $user->hasPermissionTo('Excluir Professores em Massa');
+        return $user && Gate::forUser($user)->allows('deleteBulk', Professor::class);
     }
 
     public function podeFiltrarProfessoresPorEscola(?User $user): bool
     {
-        return $user->hasPermissionTo('Filtrar Professores por Escola');
+        return $user && Gate::forUser($user)->allows('filterBySchool', Professor::class);
     }
 
     public function podeExportarProfessores(?User $user): bool
     {
-        return $user->hasPermissionTo('Exportar Professores');
+        return $user && Gate::forUser($user)->allows('export', Professor::class);
     }
 
     public function podeExcluirProfessores(?User $user): bool
     {
-        return $user->hasPermissionTo('Excluir Professores');
+        return $user && Gate::forUser($user)->allows('delete', new Professor);
     }
 
     public function podeTransferirProfessores(?User $user): bool
     {
-        return $user?->hasPermissionTo('Transferir Professores') ?? false;
+        return $user && Gate::forUser($user)->allows('transfer', Professor::class);
     }
 
     public function podeDesativarProfessores(?User $user): bool
     {
-        return $user?->hasPermissionTo('Desativar Professores') ?? false;
+        return $user && Gate::forUser($user)->allows('deactivate', Professor::class);
     }
 
     // =========================================================================

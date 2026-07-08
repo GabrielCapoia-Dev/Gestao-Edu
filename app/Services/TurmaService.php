@@ -29,6 +29,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 
 class TurmaService
@@ -200,7 +201,7 @@ class TurmaService
                     ->orderBy('nome'))
                 ->searchable()
                 ->visible(function () use ($user) {
-                    return $user->hasPermissionTo('Filtrar Turmas por Escola');
+                    return $user && Gate::forUser($user)->allows('filterBySchool', Turma::class);
                 }),
 
             SelectFilter::make('turno')
@@ -234,7 +235,7 @@ class TurmaService
                 })
                 ->requiresConfirmation()
                 ->visible(function ($records) use ($user) {
-                    return $user->hasPermissionTo('Excluir Turmas em Massa');
+                    return $user && Gate::forUser($user)->allows('deleteBulk', Turma::class);
                 }),
         ];
     }
@@ -260,7 +261,7 @@ class TurmaService
                             ->live()
                             ->placeholder('Selecione a escola')
                             ->disabled(function ($context) use ($user) {
-                                return $context === 'edit' && ! $user->hasPermissionTo('Editar Escola da Turma');
+                                return $context === 'edit' && ! Gate::forUser($user)->allows('editSchool', Turma::class);
                             })
                             ->columnSpanFull(),
 
@@ -299,7 +300,7 @@ class TurmaService
                             })
                             ->placeholder('Selecione a Série')
                             ->disabled(function ($context) use ($user) {
-                                return $context === 'edit' && ! $user->hasPermissionTo('Editar Dados da Turma');
+                                return $context === 'edit' && ! Gate::forUser($user)->allows('editData', Turma::class);
                             })
                             ->columnSpanFull(),
 
@@ -310,7 +311,7 @@ class TurmaService
                             ->placeholder('Ex: A, B, C')
                             ->hint('Apenas a letra/identificador da turma')
                             ->disabled(function ($context) use ($user) {
-                                return $context === 'edit' && ! $user->hasPermissionTo('Editar Dados da Turma');
+                                return $context === 'edit' && ! Gate::forUser($user)->allows('editData', Turma::class);
                             }),
 
                         Select::make('turno')
@@ -324,7 +325,7 @@ class TurmaService
                             ->required()
                             ->placeholder('Selecione o turno')
                             ->disabled(function ($context) use ($user) {
-                                return $context === 'edit' && ! $user->hasPermissionTo('Editar Dados da Turma');
+                                return $context === 'edit' && ! Gate::forUser($user)->allows('editData', Turma::class);
                             }),
 
                         Hidden::make('codigo')
