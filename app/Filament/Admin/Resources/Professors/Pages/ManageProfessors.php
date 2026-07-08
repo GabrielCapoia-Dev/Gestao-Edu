@@ -17,7 +17,7 @@ class ManageProfessors extends ManageRecords
     public function mount(): void
     {
         $this->redirect(
-            ServidorResource::getUrl('index', ['activeTab' => 'professores']),
+            ServidorResource::getUrl('index', ['tab' => 'professores']),
             navigate: false,
         );
     }

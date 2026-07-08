@@ -37,7 +37,7 @@ class PessoaLegadoRedirectTest extends TestCase
 
         Livewire::actingAs($usuario)
             ->test(ManageProfessors::class)
-            ->assertRedirect(ServidorResource::getUrl('index', ['activeTab' => 'professores']));
+            ->assertRedirect(ServidorResource::getUrl('index', ['tab' => 'professores']));
     }
 
     public function test_listagem_de_usuarios_redireciona_para_hub(): void
@@ -46,7 +46,7 @@ class PessoaLegadoRedirectTest extends TestCase
 
         Livewire::actingAs($usuario)
             ->test(ListUsers::class)
-            ->assertRedirect(ServidorResource::getUrl('index', ['activeTab' => 'usuarios']));
+            ->assertRedirect(ServidorResource::getUrl('index', ['tab' => 'usuarios']));
     }
 
     /** @param array<int, string> $permissoes */

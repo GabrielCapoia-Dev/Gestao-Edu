@@ -38,7 +38,7 @@ class ListUsers extends ListRecords
     public function mount(): void
     {
         $this->redirect(
-            ServidorResource::getUrl('index', ['activeTab' => 'usuarios']),
+            ServidorResource::getUrl('index', ['tab' => 'usuarios']),
             navigate: false,
         );
     }

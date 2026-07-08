@@ -23,7 +23,6 @@ use Filament\Tables\Table;
 use Filament\View\PanelsRenderHook;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Auth;
 
 class ManageServidores extends ManageRecords
 {
@@ -33,17 +32,6 @@ class ManageServidores extends ManageRecords
 
     protected string $view = 'filament.admin.resources.servidores.pages.manage-pessoas';
 
-    public function mount(): void
-    {
-        parent::mount();
-
-        $tab = request()->query('activeTab');
-
-        if (filled($tab) && array_key_exists($tab, $this->getCachedTabs())) {
-            $this->activeTab = (string) $tab;
-        }
-    }
-
     public function updatedActiveTab(): void
     {
         $this->resetTable();
@@ -52,6 +40,15 @@ class ManageServidores extends ManageRecords
     public function abaUsuarios(): bool
     {
         return $this->activeTab === 'usuarios';
+    }
+
+    public function getModel(): string
+    {
+        if ($this->abaUsuarios()) {
+            return User::class;
+        }
+
+        return parent::getModel();
     }
 
     public function getHeader(): ?View
@@ -84,13 +81,23 @@ class ManageServidores extends ManageRecords
             ]);
     }
 
+    protected function makeTable(): Table
+    {
+        if ($this->abaUsuarios()) {
+            return $this->makeBaseTable()
+                ->modifyQueryUsing($this->modifyQueryWithActiveTab(...))
+                ->modelLabel('Usuário')
+                ->pluralModelLabel('Usuários');
+        }
+
+        return parent::makeTable();
+    }
+
     public function table(Table $table): Table
     {
         if ($this->abaUsuarios()) {
             return UsersTable::configure($table);
         }
-
-        $table = static::getResource()::table($table);
 
         if ($this->activeTab === 'professores') {
             return $this->enriquecerTabelaProfessores($table);
@@ -136,7 +143,7 @@ class ManageServidores extends ManageRecords
                     ->label('Novo usuário')
                     ->icon(Heroicon::UserPlus)
                     ->url(fn (): string => CreateUser::getUrl([
-                        'redirect' => ServidorResource::getUrl('index', ['activeTab' => 'usuarios']),
+                        'redirect' => ServidorResource::getUrl('index', ['tab' => 'usuarios']),
                     ])),
             ];
         }

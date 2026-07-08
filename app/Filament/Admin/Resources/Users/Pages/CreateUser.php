@@ -39,7 +39,7 @@ class CreateUser extends CreateRecord
     {
         return $this->previousUrl
             ?? request()->query('redirect')
-            ?? ServidorResource::getUrl('index', ['activeTab' => 'usuarios']);
+            ?? ServidorResource::getUrl('index', ['tab' => 'usuarios']);
     }
 
     public function getOverviewCards(): array
