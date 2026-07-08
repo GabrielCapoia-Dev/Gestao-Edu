@@ -16,12 +16,52 @@ class ServidorService
 {
     public function criarServidorComFuncoes(array $data, array $vinculos = []): Servidor
     {
+        if ($this->fluxoProfessor($data, $vinculos)) {
+            return app(PessoaProfessorService::class)->criarPessoaProfessor(
+                $data,
+                $vinculos['registros_professor'] ?? $vinculos,
+                $this->dadosAcesso($data),
+            );
+        }
+
         return app(PessoaVinculoService::class)->criarPessoaComVinculos($data, $vinculos);
     }
 
     public function atualizarServidorComFuncoes(Servidor $servidor, array $data, array $vinculos = []): Servidor
     {
+        if ($this->fluxoProfessor($data, $vinculos)) {
+            return app(PessoaProfessorService::class)->atualizarPessoaProfessor(
+                $servidor,
+                $data,
+                $vinculos['registros_professor'] ?? $vinculos,
+                $this->dadosAcesso($data),
+            );
+        }
+
         return app(PessoaVinculoService::class)->atualizarPessoaComVinculos($servidor, $data, $vinculos);
+    }
+
+    private function fluxoProfessor(array $data, array $vinculos): bool
+    {
+        $cargo = $data['cargo'] ?? null;
+
+        if ($cargo === 'professor') {
+            return true;
+        }
+
+        return array_key_exists('registros_professor', $vinculos)
+            || array_key_exists('registros_professor', $data);
+    }
+
+    private function dadosAcesso(array $data): array
+    {
+        return [
+            'roles' => $data['roles_adicionais'] ?? $data['roles'] ?? [],
+            'roles_adicionais' => $data['roles_adicionais'] ?? $data['roles'] ?? [],
+            'email_approved' => $data['email_approved'] ?? true,
+            'usar_permissoes_extras' => $data['usar_permissoes_extras'] ?? false,
+            'permissoes_extras' => $data['permissoes_extras'] ?? [],
+        ];
     }
 
     public function sincronizarProfessor(Professor $professor): ?Servidor
