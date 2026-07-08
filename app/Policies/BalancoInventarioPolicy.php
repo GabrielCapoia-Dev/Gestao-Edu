@@ -55,4 +55,29 @@ class BalancoInventarioPolicy
 
         return $query->whereIn('inventario_id', $inventariosVisiveis);
     }
+
+    public function start(User $user): bool
+    {
+        return $user->hasPermissionTo('Iniciar Balanços de Inventário');
+    }
+
+    public function postpone(User $user): bool
+    {
+        return $user->hasPermissionTo('Adiar Balanços de Inventário');
+    }
+
+    public function cancel(User $user): bool
+    {
+        return $user->hasPermissionTo('Cancelar Balanços de Inventário');
+    }
+
+    public function complete(User $user): bool
+    {
+        return $user->hasPermissionTo('Concluir Balanços de Inventário');
+    }
+
+    public function registerCount(User $user): bool
+    {
+        return $user->hasPermissionTo('Registrar Contagem de Balanços de Inventário');
+    }
 }

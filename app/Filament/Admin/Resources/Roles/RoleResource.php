@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\Roles;
 use App\Filament\Admin\Actions\VincularSetorBulkAction;
 use App\Filament\Admin\Resources\Roles\Pages\ManageRoles;
 use App\Models\Role;
+use App\Models\User;
 use App\Services\RoleService;
 use App\Services\UserService;
 use App\Services\UserSetorAccessService;
@@ -21,6 +22,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 use UnitEnum;
@@ -165,14 +167,8 @@ class RoleResource extends Resource
                     ->icon('heroicon-o-pencil-square')
                     ->color('primary')
                     ->slideOver()
-                    ->visible(
-                        function () {
-                            /** @var App\Models\User */
-                            $user = Auth::user();
-
-                            return $user->hasPermissionTo('Aplicar Permissoes') && $user->hasPermissionTo('Editar Níveis de Acesso');
-                        }
-                    )
+                    ->visible(fn (): bool => Gate::allows('applyPermissionsAny', User::class)
+                        && Gate::allows('updateAny', Role::class))
                     ->disabled(
                         fn ($record) => app(RoleService::class)->bloquearCampoEdit($record, 'edit')
                     )
@@ -367,20 +363,13 @@ class RoleResource extends Resource
 
             ->groupedBulkActions([
                 VincularSetorBulkAction::make(
-                    permission: null,
                     recordsLabel: 'níveis selecionados',
                     updateRecord: function (Role $record, int $setorId): void {
                         $record->update(['setor_id' => $setorId]);
                         app(PermissionRegistrar::class)->forgetCachedPermissions();
                     },
-                    visible: function (): bool {
-                        $user = Auth::user();
-
-                        return (bool) (
-                            $user?->hasPermissionTo('Aplicar Permissoes')
-                            && $user?->hasPermissionTo('Editar Níveis de Acesso')
-                        );
-                    },
+                    visible: fn (): bool => Gate::allows('applyPermissionsAny', User::class)
+                        && Gate::allows('updateAny', Role::class),
                     name: 'vincular_setor_legado',
                 ),
 

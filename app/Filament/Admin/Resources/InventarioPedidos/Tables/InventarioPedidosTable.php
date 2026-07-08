@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\InventarioPedidos\Tables;
 
 use App\Models\Enums\InventarioPedidoStatus;
+use App\Models\InventarioPedido;
 use App\Services\Inventario\InventarioContextService;
 use App\Services\Inventario\InventarioPedidoService;
 use Filament\Actions\BulkAction;
@@ -13,6 +14,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 
 class InventarioPedidosTable
 {
@@ -31,7 +33,7 @@ class InventarioPedidosTable
                     ->icon('heroicon-o-document-duplicate')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->visible(fn (): bool => (Auth::user()?->hasPermissionTo('Gerar Romaneios de Inventário') ?? false)
+                    ->visible(fn (): bool => Gate::allows('generateRomaneio', InventarioPedido::class)
                         && app(InventarioContextService::class)->ehGestorGeral(Auth::user()))
                     ->action(function (EloquentCollection $records) {
                         try {

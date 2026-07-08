@@ -19,6 +19,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 
 class ViewBalancoEstoque extends ViewRecord
 {
@@ -33,7 +34,7 @@ class ViewBalancoEstoque extends ViewRecord
                 ->label('Exportar Relatório')
                 ->icon('heroicon-o-arrow-down-tray')
                 ->color('gray')
-                ->visible(fn (): bool => $this->pode('Listar Balanços de Estoque'))
+                ->visible(fn (): bool => Gate::allows('viewAny', BalancoEstoque::class))
                 ->url(fn (): string => route('balancos-estoque.relatorio.pdf', ['balanco' => $this->getRecord()]))
                 ->openUrlInNewTab(),
 
@@ -42,7 +43,7 @@ class ViewBalancoEstoque extends ViewRecord
                 ->icon('heroicon-o-play')
                 ->color('warning')
                 ->modalWidth('7xl')
-                ->visible(fn (): bool => $this->getRecord()->isAgendado() && $this->pode('Iniciar Balanços de Estoque'))
+                ->visible(fn (): bool => $this->getRecord()->isAgendado() && Gate::allows('start', BalancoEstoque::class))
                 ->disabled(fn (): bool => $this->itensDisponiveisParaInicio()->where('bloqueado', false)->isEmpty())
                 ->schema([
                     Select::make('tipos_filtro')
@@ -94,7 +95,7 @@ class ViewBalancoEstoque extends ViewRecord
                 ->label('Adiar')
                 ->icon('heroicon-o-clock')
                 ->color('info')
-                ->visible(fn (): bool => $this->getRecord()->isAgendado() && $this->pode('Adiar Balanços de Estoque'))
+                ->visible(fn (): bool => $this->getRecord()->isAgendado() && Gate::allows('postpone', BalancoEstoque::class))
                 ->schema([
                     DateTimePicker::make('data_agendada')
                         ->label('Nova data agendada')
@@ -129,7 +130,7 @@ class ViewBalancoEstoque extends ViewRecord
                 ->label('Cancelar')
                 ->icon('heroicon-o-x-circle')
                 ->color('danger')
-                ->visible(fn (): bool => ! $this->getRecord()->isConcluido() && ! $this->getRecord()->isCancelado() && $this->pode('Cancelar Balanços de Estoque'))
+                ->visible(fn (): bool => ! $this->getRecord()->isConcluido() && ! $this->getRecord()->isCancelado() && Gate::allows('cancel', BalancoEstoque::class))
                 ->schema([
                     Textarea::make('motivo')
                         ->label('Motivo do cancelamento')
@@ -161,7 +162,7 @@ class ViewBalancoEstoque extends ViewRecord
                 ->requiresConfirmation()
                 ->modalHeading('Concluir balanço')
                 ->modalDescription('As quantidades contadas serão aplicadas no estoque e gerarão movimentações de reajuste.')
-                ->visible(fn (): bool => $this->getRecord()->isEmAndamento() && $this->pode('Concluir Balanços de Estoque'))
+                ->visible(fn (): bool => $this->getRecord()->isEmAndamento() && Gate::allows('complete', BalancoEstoque::class))
                 ->action(function (): void {
                     try {
                         $this->service()->concluir($this->getRecord(), Auth::user());
@@ -336,8 +337,4 @@ class ViewBalancoEstoque extends ViewRecord
         return (bool) ($item['bloqueado'] ?? false);
     }
 
-    protected function pode(string $permissao): bool
-    {
-        return Auth::user()?->hasPermissionTo($permissao) ?? false;
-    }
 }

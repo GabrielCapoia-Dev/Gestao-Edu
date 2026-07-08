@@ -11,9 +11,10 @@ use App\Http\Middleware\BlockProfilePreviewWrites;
 use App\Http\Middleware\BloquearProfessorPendenciaTransferencia;
 use App\Http\Middleware\EnsurePasswordIsChanged;
 use App\Http\Middleware\NormalizeSessionCookieDomain;
+use App\Models\NotificacaoEnvio;
 use App\Models\User;
 use App\Services\ProfilePreviewService;
-use App\Services\UserPresenceService;
+
 use Caresome\FilamentAuthDesigner\AuthDesignerPlugin;
 use Caresome\FilamentAuthDesigner\Data\AuthPageConfig;
 use Caresome\FilamentAuthDesigner\Enums\MediaPosition;
@@ -35,6 +36,7 @@ use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
@@ -224,14 +226,14 @@ class AdminPanelProvider extends PanelProvider
 
                     if ($user) {
                         try {
-                            $showNotifications = $user->hasPermissionTo('Visualizar Notificações');
+                            $showNotifications = Gate::forUser($user)->allows('viewAny', NotificacaoEnvio::class);
                         } catch (PermissionDoesNotExist) {
                             $showNotifications = false;
                         }
                     }
 
                     return view('filament.partials.topbar-user-menu-before', [
-                        'showOnlineUsers' => $user?->hasPermissionTo(UserPresenceService::PERMISSION) ?? false,
+                        'showOnlineUsers' => $user ? Gate::forUser($user)->allows('viewOnlineUsers', User::class) : false,
                         'showNotifications' => $showNotifications,
                     ]);
                 }

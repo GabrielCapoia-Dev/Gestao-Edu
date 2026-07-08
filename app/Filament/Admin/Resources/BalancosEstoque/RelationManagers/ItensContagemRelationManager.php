@@ -18,6 +18,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 
 class ItensContagemRelationManager extends RelationManager
 {
@@ -94,7 +95,7 @@ class ItensContagemRelationManager extends RelationManager
                     ->label(fn (BalancoEstoqueItem $record): string => $record->quantidade_contada === null ? 'Registrar contagem' : 'Atualizar contagem')
                     ->icon('heroicon-o-pencil-square')
                     ->color('primary')
-                    ->visible(fn (): bool => $this->getOwnerRecord()->isEmAndamento() && (Auth::user()?->hasPermissionTo('Registrar Contagem de Balanços de Estoque') ?? false))
+                    ->visible(fn (): bool => $this->getOwnerRecord()->isEmAndamento() && Gate::allows('registerCount', BalancoEstoque::class))
                     ->fillForm(fn (BalancoEstoqueItem $record): array => [
                         'quantidade_contada' => $record->quantidade_contada,
                         'observacao_contagem' => $record->observacao_contagem,
@@ -140,7 +141,7 @@ class ItensContagemRelationManager extends RelationManager
                     ->requiresConfirmation()
                     ->modalHeading('Manter saldo atual')
                     ->modalDescription('A quantidade contada dos itens selecionados será preenchida com o saldo atual do sistema, zerando a divergência desses registros.')
-                    ->visible(fn (): bool => $this->getOwnerRecord()->isEmAndamento() && (Auth::user()?->hasPermissionTo('Registrar Contagem de Balanços de Estoque') ?? false))
+                    ->visible(fn (): bool => $this->getOwnerRecord()->isEmAndamento() && Gate::allows('registerCount', BalancoEstoque::class))
                     ->deselectRecordsAfterCompletion()
                     ->action(function (EloquentCollection $records): void {
                         try {

@@ -17,6 +17,7 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Permission;
@@ -36,12 +37,12 @@ class NotificationCenterService
 
     public function canView(?User $user): bool
     {
-        return $user?->hasPermissionTo('Visualizar Notificações') ?? false;
+        return $user ? Gate::forUser($user)->allows('viewAny', NotificacaoEnvio::class) : false;
     }
 
     public function canCreate(?User $user): bool
     {
-        return $user?->hasPermissionTo('Criar Notificações') ?? false;
+        return $user ? Gate::forUser($user)->allows('create', NotificacaoEnvio::class) : false;
     }
 
     public function prioridadeOptions(): array
@@ -77,13 +78,11 @@ class NotificationCenterService
 
     public function canSendToDestination(?User $user, string $tipo): bool
     {
-        $permission = self::DESTINATION_PERMISSIONS[$tipo] ?? null;
-
-        if (! $user || ! $permission) {
+        if (! $user || ! isset(self::DESTINATION_PERMISSIONS[$tipo])) {
             return false;
         }
 
-        return $user->hasRole('Admin') || $user->hasPermissionTo($permission);
+        return Gate::forUser($user)->allows('sendToDestination', [NotificacaoEnvio::class, $tipo]);
     }
 
     public function formOptions(?User $user = null): array

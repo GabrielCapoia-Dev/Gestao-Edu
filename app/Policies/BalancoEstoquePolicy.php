@@ -31,4 +31,29 @@ class BalancoEstoquePolicy
     {
         return $user->hasPermissionTo('Excluir Balanços de Estoque');
     }
+
+    public function start(User $user): bool
+    {
+        return $user->hasPermissionTo('Iniciar Balanços de Estoque');
+    }
+
+    public function postpone(User $user): bool
+    {
+        return $user->hasPermissionTo('Adiar Balanços de Estoque');
+    }
+
+    public function cancel(User $user): bool
+    {
+        return $user->hasPermissionTo('Cancelar Balanços de Estoque');
+    }
+
+    public function complete(User $user): bool
+    {
+        return $user->hasPermissionTo('Concluir Balanços de Estoque');
+    }
+
+    public function registerCount(User $user): bool
+    {
+        return $user->hasPermissionTo('Registrar Contagem de Balanços de Estoque');
+    }
 }

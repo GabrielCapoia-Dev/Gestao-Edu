@@ -42,6 +42,11 @@ class RolePolicy
 
     }
 
+    public function updateAny(User $user): bool
+    {
+        return $user->hasPermissionTo('Editar Níveis de Acesso');
+    }
+
     /**
      * Determine whether the user can delete the model.
      */
