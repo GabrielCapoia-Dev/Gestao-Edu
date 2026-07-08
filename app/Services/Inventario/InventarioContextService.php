@@ -15,8 +15,7 @@ class InventarioContextService
             return false;
         }
 
-        return app(UserSetorAccessService::class)->hasGlobalAccess($user)
-            || blank($user->id_escola);
+        return app(\App\Services\PessoaScopeService::class)->ehGestorGeral($user);
     }
 
     public function inventarioDoUsuario(?User $user): ?Inventario

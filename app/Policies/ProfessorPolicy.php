@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Models\Professor;
 use App\Models\User;
+use App\Services\PessoaScopeService;
 use App\Services\UserService;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -19,10 +20,20 @@ class ProfessorPolicy
 
     public function applyViewAnyScope(User $user, Builder $query): Builder
     {
-        return app(UserService::class)->aplicarFiltroPorEscolaDoUsuarioEmTurma(
-            $query->where('ativo', true),
-            $user
-        );
+        $query = $query->where('ativo', true);
+        $scope = app(PessoaScopeService::class);
+
+        if ($scope->hasGlobalAccess($user)) {
+            return $query;
+        }
+
+        $escolaIds = $scope->escolaIdsDosVinculos($user);
+
+        if ($escolaIds !== []) {
+            return $query->whereIn('id_escola', $escolaIds);
+        }
+
+        return app(UserService::class)->aplicarFiltroPorEscolaDoUsuarioEmTurma($query, $user);
     }
 
     /**

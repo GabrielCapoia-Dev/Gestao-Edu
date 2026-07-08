@@ -199,18 +199,18 @@ class ServidorService
 
     public function aplicarEscopoVisibilidade(Builder $query, ?User $user): Builder
     {
-        $access = app(UserSetorAccessService::class);
+        $scope = app(PessoaScopeService::class);
 
         if (! $user) {
             return $query->whereRaw('1 = 0');
         }
 
-        if ($access->hasGlobalAccess($user)) {
+        if ($scope->hasGlobalAccess($user)) {
             return $query;
         }
 
-        $setorIds = $access->visibleSetorIds($user);
-        $escolaIds = $user->idsEscolasVinculadas();
+        $setorIds = $scope->visibleSetorIds($user);
+        $escolaIds = $scope->escolaIdsDosVinculos($user);
 
         if ($setorIds === [] && $escolaIds === []) {
             return $query->whereRaw('1 = 0');
@@ -220,11 +220,20 @@ class ServidorService
             if ($setorIds !== []) {
                 $servidores
                     ->whereIn('setor_id', $setorIds)
-                    ->orWhereHas('escola', fn (Builder $escola): Builder => $escola->whereIn('setor_id', $setorIds));
+                    ->orWhereHas('escola', fn (Builder $escola): Builder => $escola->whereIn('setor_id', $setorIds))
+                    ->orWhereHas(
+                        'vinculosAtivos',
+                        fn (Builder $vinculos): Builder => $vinculos->whereIn('setor_id', $setorIds)
+                    );
             }
 
             if ($escolaIds !== []) {
-                $servidores->orWhereIn('id_escola', $escolaIds);
+                $servidores
+                    ->orWhereIn('id_escola', $escolaIds)
+                    ->orWhereHas(
+                        'vinculosAtivos',
+                        fn (Builder $vinculos): Builder => $vinculos->whereIn('id_escola', $escolaIds)
+                    );
             }
         });
     }

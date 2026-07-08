@@ -5,6 +5,7 @@ namespace App\Policies;
 use App\Models\Escola;
 use App\Models\User;
 use App\Services\UserPresenceService;
+use App\Services\PessoaScopeService;
 use App\Services\UserSetorAccessService;
 
 class UserPolicy
@@ -120,9 +121,16 @@ class UserPolicy
 
     private function podeAcessarUsuario(User $user, User $model): bool
     {
+        $scope = app(PessoaScopeService::class);
         $access = app(UserSetorAccessService::class);
 
-        if ($access->hasGlobalAccess($user)) {
+        if ($scope->hasGlobalAccess($user)) {
+            return true;
+        }
+
+        $servidor = $scope->servidorDaPessoa($model);
+
+        if ($servidor && app(ServidorPolicy::class)->view($user, $servidor)) {
             return true;
         }
 
