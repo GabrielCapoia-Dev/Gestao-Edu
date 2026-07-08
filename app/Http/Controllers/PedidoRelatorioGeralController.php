@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Pedido;
 use App\Services\Exports\ExportRequestService;
 use App\Services\ProfilePreviewService;
 use App\Services\Relatorios\PedidoRelatorioGeralService;
 use Filament\Notifications\Notification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -22,7 +24,7 @@ class PedidoRelatorioGeralController extends Controller
     {
         $user = app(ProfilePreviewService::class)->effectiveUser();
 
-        abort_unless($user?->hasPermissionLike('exportar relatorios'), 403);
+        Gate::forUser($user)->authorize('exportReports', Pedido::class);
 
         try {
             $filtros = $request->only([

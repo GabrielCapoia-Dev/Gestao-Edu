@@ -16,4 +16,9 @@ class FeedbackPedidoPolicy
     {
         return $this->viewAny($user);
     }
+
+    public function exportReports(User $user): bool
+    {
+        return $this->viewAny($user) && $user->hasPermissionLike('exportar relatorios');
+    }
 }

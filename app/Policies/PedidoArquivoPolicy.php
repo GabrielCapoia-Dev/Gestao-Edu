@@ -29,4 +29,19 @@ class PedidoArquivoPolicy
             ->queryPorPerfil(Pedido::query()->whereKey($pedidoId), $user)
             ->exists();
     }
+
+    public function exportImages(User $user, Pedido $pedido): bool
+    {
+        if (! $user->hasPermissionTo('Exportar Arquivos Pedido')) {
+            return false;
+        }
+
+        if ($user->hasRole('Admin') || $user->hasPermissionTo('Listar Todos os Pedidos')) {
+            return true;
+        }
+
+        return app(PedidoService::class)
+            ->queryPorPerfil(Pedido::query()->whereKey($pedido->getKey()), $user)
+            ->exists();
+    }
 }

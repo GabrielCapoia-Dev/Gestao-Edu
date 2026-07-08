@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Estoque;
+use App\Models\User;
 use App\Services\Exports\ExportRequestService;
 use App\Services\Relatorios\EstoqueRelatorioService;
 use Filament\Notifications\Notification;
@@ -79,7 +80,7 @@ class EstoqueRelatorioController extends Controller
 
     protected function autorizarExportacao(): void
     {
-        abort_unless(Auth::user()?->hasPermissionTo('Exportar Relatórios'), 403);
+        $this->authorize('exportReports', User::class);
     }
 
     /**

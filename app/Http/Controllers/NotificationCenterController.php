@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\NotificacaoEnvio;
 use App\Services\NotificationCenterService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,7 +21,7 @@ class NotificationCenterController extends Controller
         $start = microtime(true);
         $user = $request->user();
 
-        abort_unless($this->service->canView($user), 403);
+        $this->authorize('viewAny', NotificacaoEnvio::class);
 
         $result = $this->service->payload($user, $request->only([
             'modo',
@@ -41,7 +42,7 @@ class NotificationCenterController extends Controller
         $start = microtime(true);
         $user = $request->user();
 
-        abort_unless($this->service->canView($user), 403);
+        $this->authorize('viewAny', NotificacaoEnvio::class);
 
         $result = $this->service->unreadCountPayload($user);
 
@@ -72,7 +73,7 @@ class NotificationCenterController extends Controller
     {
         $user = $request->user();
 
-        abort_unless($this->service->canView($user), 403);
+        $this->authorize('viewAny', NotificacaoEnvio::class);
 
         $this->service->markRead($user, $id);
 
@@ -86,7 +87,7 @@ class NotificationCenterController extends Controller
     {
         $user = $request->user();
 
-        abort_unless($this->service->canView($user), 403);
+        $this->authorize('viewAny', NotificacaoEnvio::class);
 
         $this->service->markUnread($user, $id);
 
@@ -100,7 +101,7 @@ class NotificationCenterController extends Controller
     {
         $user = $request->user();
 
-        abort_unless($this->service->canView($user), 403);
+        $this->authorize('viewAny', NotificacaoEnvio::class);
 
         $updated = $this->service->markAllRead($user);
 
@@ -115,7 +116,7 @@ class NotificationCenterController extends Controller
     {
         $user = $request->user();
 
-        abort_unless($this->service->canView($user), 403);
+        $this->authorize('viewAny', NotificacaoEnvio::class);
 
         $deleted = $this->service->delete($user, $id);
 
@@ -130,7 +131,7 @@ class NotificationCenterController extends Controller
     {
         $user = $request->user();
 
-        abort_unless($this->service->canView($user), 403);
+        $this->authorize('viewAny', NotificacaoEnvio::class);
 
         $deleted = $this->service->deleteAll($user);
 
@@ -145,7 +146,7 @@ class NotificationCenterController extends Controller
     {
         $user = $request->user();
 
-        abort_unless($this->service->canCreate($user), 403);
+        $this->authorize('create', NotificacaoEnvio::class);
 
         $data = $request->validate([
             'titulo' => ['required', 'string', 'max:120'],

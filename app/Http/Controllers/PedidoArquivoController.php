@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Pedido;
 use App\Models\PedidoArquivo;
-use App\Services\PedidoService;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Filesystem\FilesystemAdapter;
 use ZipArchive;
@@ -40,14 +39,7 @@ class PedidoArquivoController extends Controller
 
     public function exportImages(Pedido $pedido)
     {
-        abort_unless(auth()->user()?->hasPermissionTo('Exportar Arquivos Pedido'), 403);
-
-        abort_unless(
-            app(PedidoService::class)
-                ->queryPorPerfil(Pedido::query()->whereKey($pedido->getKey()), auth()->user())
-                ->exists(),
-            403
-        );
+        $this->authorize('exportImages', $pedido);
 
         $pedido->load('arquivos');
 

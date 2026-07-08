@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Inventario;
 use App\Models\InventarioEstoque;
 use App\Services\Exports\ExportRequestService;
-use App\Services\Inventario\InventarioContextService;
 use App\Services\Relatorios\InventarioRelatorioService;
 use Filament\Notifications\Notification;
 use Illuminate\Http\Request;
@@ -16,11 +15,8 @@ use Throwable;
 
 class InventarioRelatorioController extends Controller
 {
-    protected const PERMISSAO_EXPORTAR_RELATORIOS = "Exportar Relat\xC3\xB3rios";
-
     public function __construct(
         protected InventarioRelatorioService $service,
-        protected InventarioContextService $contextService,
         protected ExportRequestService $exports,
     ) {}
 
@@ -136,29 +132,14 @@ class InventarioRelatorioController extends Controller
 
     protected function autorizarExportacao(?Inventario $inventario): void
     {
-        $user = Auth::user();
-
-        abort_unless($this->usuarioPodeExportarRelatorios($user), 403);
         abort_unless($inventario !== null, 404);
 
-        if ($this->contextService->ehGestorGeral($user)) {
-            return;
-        }
-
-        abort_unless(in_array((int) $inventario->escola_id, $user?->idsEscolasVinculadas() ?? [], true), 403);
+        $this->authorize('export', $inventario);
     }
 
     protected function autorizarExportacaoRede(): void
     {
-        $user = Auth::user();
-
-        abort_unless($this->usuarioPodeExportarRelatorios($user), 403);
-        abort_unless($this->contextService->ehGestorGeral($user), 403);
-    }
-
-    protected function usuarioPodeExportarRelatorios($user): bool
-    {
-        return $user?->hasPermissionTo(self::PERMISSAO_EXPORTAR_RELATORIOS) ?? false;
+        $this->authorize('exportNetwork', Inventario::class);
     }
 
     /**

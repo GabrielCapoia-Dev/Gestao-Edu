@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Mobile;
 
 use App\Http\Controllers\Controller;
+use App\Models\Avaliacao;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
 use App\Models\Professor;
@@ -13,6 +14,7 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
 class ReportsController extends Controller
@@ -26,7 +28,7 @@ class ReportsController extends Controller
 
     public function dashboard(Request $request): View
     {
-        $this->authorizePermission($request, 'Listar Relatórios: Dashboard');
+        $this->authorize('viewReportsDashboard', Avaliacao::class);
 
         return view('mobile.reports.dashboard', [
             'stats' => [
@@ -55,7 +57,7 @@ class ReportsController extends Controller
 
     public function professorByClass(Request $request): View
     {
-        $this->authorizePermission($request, 'Listar Relatórios: Professor por Componente e Turma');
+        $this->authorize('viewProfessorComponentTurmaReport', Avaliacao::class);
 
         $filters = [
             'search' => trim((string) $request->string('search')),
@@ -89,7 +91,7 @@ class ReportsController extends Controller
 
     public function missingTeachers(Request $request): View
     {
-        $this->authorizePermission($request, 'Listar Relatórios: Componentes com Professores Faltando');
+        $this->authorize('viewMissingTeachersReport', Avaliacao::class);
 
         $filters = [
             'search' => trim((string) $request->string('search')),
@@ -134,30 +136,22 @@ class ReportsController extends Controller
 
     protected function getCards(Request $request): array
     {
-        $user = $request->user();
-
         return array_values(array_filter([
-            $this->userHasAnyPermission($user, [
-                'Listar Relatórios: Dashboard',
-            ]) ? $this->makeCard(
+            Gate::allows('viewReportsDashboard', Avaliacao::class) ? $this->makeCard(
                 title: 'Dashboard',
                 description: 'Panorama geral dos vínculos, escolas, turmas e componentes.',
                 url: route('mobile.reports.dashboard'),
                 badge: 'DG',
                 tone: 'emerald',
             ) : null,
-            $this->userHasAnyPermission($user, [
-                'Listar Relatórios: Professor por Componente e Turma',
-            ]) ? $this->makeCard(
+            Gate::allows('viewProfessorComponentTurmaReport', Avaliacao::class) ? $this->makeCard(
                 title: 'Professor por turma',
                 description: 'Consulta detalhada com filtros de escola, série, turno e busca.',
                 url: route('mobile.reports.professor-by-class'),
                 badge: 'PT',
                 tone: 'violet',
             ) : null,
-            $this->userHasAnyPermission($user, [
-                'Listar Relatórios: Componentes com Professores Faltando',
-            ]) ? $this->makeCard(
+            Gate::allows('viewMissingTeachersReport', Avaliacao::class) ? $this->makeCard(
                 title: 'Componentes faltando',
                 description: 'Dois painéis: componentes afetados e turmas com falta de cobertura.',
                 url: route('mobile.reports.missing-teachers'),
@@ -175,13 +169,6 @@ class ReportsController extends Controller
         string $tone,
     ): array {
         return compact('title', 'description', 'url', 'badge', 'tone');
-    }
-
-    protected function authorizePermission(Request $request, string $permission): void
-    {
-        abort_unless($this->userHasAnyPermission($request->user(), [
-            $permission,
-        ]), 403);
     }
 
     protected function buildProfessorByClassQuery(array $filters)
@@ -368,18 +355,4 @@ class ReportsController extends Controller
         );
     }
 
-    protected function userHasAnyPermission($user, array $permissions): bool
-    {
-        if (! $user) {
-            return false;
-        }
-
-        foreach ($permissions as $permission) {
-            if ($user->hasPermissionTo($permission)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
 }

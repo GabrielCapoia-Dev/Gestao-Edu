@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\FeedbackPedido;
 use App\Services\Exports\ExportRequestService;
 use App\Services\Relatorios\FeedbackPedidoAnalyticsService;
 use Filament\Notifications\Notification;
@@ -40,11 +41,7 @@ class FeedbackPedidoExportController extends Controller
 
     private function queueExport(Request $request, string $reportType): RedirectResponse
     {
-        abort_unless(
-            Auth::user()?->hasPermissionTo('Visualizar Feedback de Pedidos')
-            && (Auth::user()?->hasPermissionLike('exportar relatorios') ?? false),
-            403
-        );
+        $this->authorize('exportReports', FeedbackPedido::class);
 
         try {
             $filters = $this->analytics->normalizeFilters(array_merge(

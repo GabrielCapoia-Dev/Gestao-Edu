@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Mobile;
 
 use App\Http\Controllers\Controller;
+use App\Models\Avaliacao;
 use App\Models\DominioEmail;
 use App\Models\Role;
 use App\Models\User;
@@ -19,7 +20,7 @@ class HomeController extends Controller
         return view('mobile.home', [
             'user' => $user,
             'accessCards' => $this->getAccessCards(),
-            'reportCards' => $this->getReportCards($user),
+            'reportCards' => $this->getReportCards(),
         ]);
     }
 
@@ -50,30 +51,24 @@ class HomeController extends Controller
         ]));
     }
 
-    protected function getReportCards(?User $user): array
+    protected function getReportCards(): array
     {
         return array_values(array_filter([
-            $this->userHasAnyPermission($user, [
-                'Listar Relatórios: Dashboard',
-            ]) ? $this->makeCard(
+            Gate::allows('viewReportsDashboard', Avaliacao::class) ? $this->makeCard(
                 title: 'Central de relatórios',
                 description: 'Resumo geral e entrada para as consultas operacionais.',
                 url: route('mobile.reports.dashboard'),
                 badge: 'RD',
                 tone: 'emerald',
             ) : null,
-            $this->userHasAnyPermission($user, [
-                'Listar Relatórios: Professor por Componente e Turma',
-            ]) ? $this->makeCard(
+            Gate::allows('viewProfessorComponentTurmaReport', Avaliacao::class) ? $this->makeCard(
                 title: 'Professor por turma',
                 description: 'Escola, série, turno, componente e professor em cards mobile.',
                 url: route('mobile.reports.professor-by-class'),
                 badge: 'PT',
                 tone: 'violet',
             ) : null,
-            $this->userHasAnyPermission($user, [
-                'Listar Relatórios: Componentes com Professores Faltando',
-            ]) ? $this->makeCard(
+            Gate::allows('viewMissingTeachersReport', Avaliacao::class) ? $this->makeCard(
                 title: 'Componentes sem professor',
                 description: 'Mapeie rapidamente as lacunas de cobertura por componente e turma.',
                 url: route('mobile.reports.missing-teachers'),
@@ -91,20 +86,5 @@ class HomeController extends Controller
         string $tone,
     ): array {
         return compact('title', 'description', 'url', 'badge', 'tone');
-    }
-
-    protected function userHasAnyPermission(?User $user, array $permissions): bool
-    {
-        if (! $user) {
-            return false;
-        }
-
-        foreach ($permissions as $permission) {
-            if ($user->hasPermissionTo($permission)) {
-                return true;
-            }
-        }
-
-        return false;
     }
 }

@@ -14,7 +14,7 @@ class BalancoEstoqueRelatorioController extends Controller
 
     public function exportarPdf(BalancoEstoque $balanco)
     {
-        $this->autorizarVisualizacao();
+        $this->authorize('view', $balanco);
         $this->prepararExecucao();
 
         return $this->service->gerarPdf($balanco, Auth::user());
@@ -26,8 +26,4 @@ class BalancoEstoqueRelatorioController extends Controller
         set_time_limit(180);
     }
 
-    protected function autorizarVisualizacao(): void
-    {
-        abort_unless(Auth::user()?->hasPermissionTo('Listar Balanços de Estoque'), 403);
-    }
 }

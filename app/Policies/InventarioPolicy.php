@@ -55,4 +55,32 @@ class InventarioPolicy
     {
         return app(InventarioContextService::class)->queryInventariosVisiveis($user);
     }
+
+    public function exportReports(User $user): bool
+    {
+        return $user->hasPermissionTo('Exportar Relatórios');
+    }
+
+    public function export(User $user, Inventario $model): bool
+    {
+        if (! $this->exportReports($user)) {
+            return false;
+        }
+
+        return $this->view($user, $model);
+    }
+
+    public function exportNetwork(User $user): bool
+    {
+        if (! $this->exportReports($user)) {
+            return false;
+        }
+
+        return app(InventarioContextService::class)->ehGestorGeral($user);
+    }
+
+    public function exportRomaneio(User $user): bool
+    {
+        return $this->exportNetwork($user);
+    }
 }

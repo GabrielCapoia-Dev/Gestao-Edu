@@ -20,6 +20,7 @@ use App\Models\FeedbackPedido;
 use App\Models\FuncaoAdministrativa;
 use App\Models\Inventario;
 use App\Models\InventarioPedido;
+use App\Models\NotificacaoEnvio;
 use App\Models\Item;
 use App\Models\Pauta;
 use App\Models\Pedido;
@@ -55,6 +56,7 @@ use App\Policies\ExportRequestPolicy;
 use App\Policies\FeedbackPedidoPolicy;
 use App\Policies\FuncaoAdministrativaPolicy;
 use App\Policies\InventarioPedidoPolicy;
+use App\Policies\NotificationPolicy;
 use App\Policies\InventarioPolicy;
 use App\Policies\ItemPolicy;
 use App\Policies\PautaPolicy;
@@ -132,6 +134,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(BalancoInventario::class, BalancoInventarioPolicy::class);
         Gate::policy(InventarioPedido::class, InventarioPedidoPolicy::class);
         Gate::policy(FeedbackPedido::class, FeedbackPedidoPolicy::class);
+        Gate::policy(NotificacaoEnvio::class, NotificationPolicy::class);
 
         // ── Observers ──────────────────────────────────────────────────────────
         Pedido::observe(PedidoObserver::class);
