@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasUuidCodigo;
+use App\Models\Role;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -26,6 +27,7 @@ class FuncaoAdministrativa extends Model
         'categoria',
         'ativo',
         'exige_professor',
+        'concede_acesso_sistema',
         'tem_relacao_turma',
         'direcao_escolar',
         'coordenacao_pedagogica',
@@ -39,6 +41,7 @@ class FuncaoAdministrativa extends Model
             'categoria' => 'string',
             'ativo' => 'boolean',
             'exige_professor' => 'boolean',
+            'concede_acesso_sistema' => 'boolean',
             'tem_relacao_turma' => 'boolean',
             'direcao_escolar' => 'boolean',
             'coordenacao_pedagogica' => 'boolean',
@@ -134,6 +137,21 @@ class FuncaoAdministrativa extends Model
     public function servidorFuncoes(): HasMany
     {
         return $this->hasMany(ServidorFuncaoAdministrativa::class, 'funcao_administrativa_id');
+    }
+
+    public function rolesPadrao(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            Role::class,
+            'funcao_administrativa_role',
+            'funcao_administrativa_id',
+            'role_id',
+        )->withTimestamps();
+    }
+
+    public function concedeAcessoSistema(): bool
+    {
+        return (bool) $this->concede_acesso_sistema;
     }
 
     public function servidores(): BelongsToMany

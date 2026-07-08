@@ -92,6 +92,12 @@ class Servidor extends Model
         return $this->servidorFuncoesAtivas();
     }
 
+    /** @alias vínculos ativos (compatibilidade) */
+    public function vinculosAtivas(): HasMany
+    {
+        return $this->vinculosAtivos();
+    }
+
     public function matriculasAtivas(): HasMany
     {
         return $this->servidorFuncoesAtivas();

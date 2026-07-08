@@ -59,6 +59,8 @@ class PessoaVinculoService
         foreach ($ativas->diff($funcaoIds) as $funcaoId) {
             $this->servidorService->removerFuncao($servidor, $funcaoId);
         }
+
+        app(PessoaAcessoService::class)->provisionarAcessosDoServidor($servidor->fresh());
     }
 
     public function validarVinculo(array $vinculo): void

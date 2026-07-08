@@ -7,7 +7,6 @@ use App\Models\FuncaoAdministrativa;
 use App\Models\Servidor;
 use App\Models\ServidorFuncaoAdministrativa;
 use App\Models\Turma;
-use App\Models\User;
 use App\Services\ServidorService;
 use App\Services\UserService;
 use App\Services\UserSetorAccessService;
@@ -95,18 +94,6 @@ class ServidorResource extends Resource
 
                 Section::make('Vínculos e acesso')
                     ->schema([
-                        Select::make('user_id')
-                            ->label('Usuário de acesso')
-                            ->options(fn (): array => app(UserService::class)
-                                ->listarUsuariosQuery(User::query(), Auth::user())
-                                ->orderBy('name')
-                                ->pluck('name', 'id')
-                                ->toArray())
-                            ->searchable()
-                            ->preload()
-                            ->nullable()
-                            ->helperText('A função do servidor não concede acesso ao sistema automaticamente.'),
-
                         Repeater::make('vinculos_funcionais')
                             ->label('Matrículas e funções')
                             ->schema([
@@ -159,7 +146,7 @@ class ServidorResource extends Resource
                             ->required()
                             ->minItems(1)
                             ->addActionLabel('Adicionar função')
-                            ->helperText('Selecione Professor apenas quando este servidor também precisar existir no cadastro pedagógico.')
+                            ->helperText('O cargo define o perfil da pessoa: Professor cria cadastro pedagógico; cargos com acesso ao sistema geram usuário com níveis padrão (editáveis na aba Usuários).')
                             ->afterStateHydrated(function (Repeater $component, ?Servidor $record): void {
                                 if (! $record) {
                                     return;

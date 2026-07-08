@@ -119,7 +119,11 @@ class ServidorService
                 $vinculo->turmas()->sync($turmaIds);
             }
 
-            return $vinculo->fresh(['turmas']);
+            $vinculo = $vinculo->fresh(['turmas']);
+
+            app(PessoaAcessoService::class)->vincularProfessorAoVinculo($vinculo);
+
+            return $vinculo;
         });
     }
 
