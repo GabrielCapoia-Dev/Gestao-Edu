@@ -3,20 +3,14 @@
 namespace App\Filament\Admin\Resources\Servidores\Pages;
 
 use App\Filament\Admin\Resources\Servidores\ServidorResource;
-use App\Filament\Admin\Resources\Users\Concerns\HasUsersOverview;
-use App\Filament\Admin\Resources\Users\Pages\CreateUser;
-use App\Filament\Admin\Resources\Users\Tables\UsersTable;
 use App\Models\Servidor;
-use App\Models\User;
 use App\Services\ServidorService;
-use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ManageRecords;
 use Filament\Schemas\Components\EmbeddedTable;
 use Filament\Schemas\Components\RenderHook;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Filament\View\PanelsRenderHook;
@@ -25,11 +19,18 @@ use Illuminate\Database\Eloquent\Builder;
 
 class ManageServidores extends ManageRecords
 {
-    use HasUsersOverview;
-
     protected static string $resource = ServidorResource::class;
 
     protected string $view = 'filament.admin.resources.servidores.pages.manage-pessoas';
+
+    public function mount(): void
+    {
+        parent::mount();
+
+        if ($this->activeTab === 'usuarios') {
+            $this->activeTab = 'com_acesso';
+        }
+    }
 
     public function updatedActiveTab(): void
     {
@@ -41,11 +42,6 @@ class ManageServidores extends ManageRecords
         }
     }
 
-    public function abaUsuarios(): bool
-    {
-        return $this->activeTab === 'usuarios';
-    }
-
     protected function refreshHeaderActionsCache(): void
     {
         $this->cachedHeaderActions = [];
@@ -54,20 +50,11 @@ class ManageServidores extends ManageRecords
 
     public function getHeader(): ?View
     {
-        if ($this->abaUsuarios()) {
-            return view('filament.admin.pages.partials.page-header', [
-                'actions' => $this->getCachedHeaderActions(),
-                'eyebrow' => 'Pessoas',
-                'title' => 'Usuários do sistema',
-                'description' => 'Gerencie níveis de acesso, permissões e verificação dos usuários vinculados às pessoas.',
-            ]);
-        }
-
         return view('filament.admin.pages.partials.page-header', [
             'actions' => $this->getCachedHeaderActions(),
             'eyebrow' => 'Pessoas',
             'title' => 'Central de pessoas',
-            'description' => 'Cadastro único de servidores, vínculos por matrícula, perfis pedagógicos e acesso ao sistema.',
+            'description' => 'Cadastre identidade, vínculos pedagógicos e acesso ao sistema em um único lugar.',
         ]);
     }
 
@@ -82,25 +69,8 @@ class ManageServidores extends ManageRecords
             ]);
     }
 
-    protected function makeTable(): Table
-    {
-        if ($this->abaUsuarios()) {
-            return $this->makeBaseTable()
-                ->modifyQueryUsing($this->modifyQueryWithActiveTab(...))
-                ->query(fn (): Builder => $this->getTableQuery())
-                ->modelLabel('Usuário')
-                ->pluralModelLabel('Usuários');
-        }
-
-        return parent::makeTable();
-    }
-
     public function table(Table $table): Table
     {
-        if ($this->abaUsuarios()) {
-            return UsersTable::configure($table);
-        }
-
         if ($this->activeTab === 'professores') {
             return $this->enriquecerTabelaProfessores($table);
         }
@@ -119,32 +89,16 @@ class ManageServidores extends ManageRecords
                     fn (Builder $professores): Builder => $professores->where('ativo', true),
                 )),
 
-            'usuarios' => Tab::make('Usuários'),
+            'com_acesso' => Tab::make('Com acesso')
+                ->modifyQueryUsing(fn (Builder $query): Builder => $query->whereNotNull('user_id')),
+
+            'sem_acesso' => Tab::make('Sem acesso')
+                ->modifyQueryUsing(fn (Builder $query): Builder => $query->whereNull('user_id')),
         ];
-    }
-
-    protected function getTableQuery(): Builder
-    {
-        if ($this->abaUsuarios()) {
-            return User::query();
-        }
-
-        return parent::getTableQuery();
     }
 
     protected function getHeaderActions(): array
     {
-        if ($this->abaUsuarios()) {
-            return [
-                Action::make('novoUsuario')
-                    ->label('Novo usuário')
-                    ->icon(Heroicon::UserPlus)
-                    ->url(fn (): string => CreateUser::getUrl([
-                        'redirect' => ServidorResource::getUrl('index', ['tab' => 'usuarios']),
-                    ])),
-            ];
-        }
-
         return [
             CreateAction::make()
                 ->label('Nova pessoa')

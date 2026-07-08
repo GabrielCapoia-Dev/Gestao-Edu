@@ -219,7 +219,8 @@ class ServidorResource extends Resource
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
                 'escola:id,nome,setor_id',
                 'setor:id,nome',
-                'user:id,name,email',
+                'user:id,name,email,email_approved',
+                'user.roles:id,name',
                 'professores.escola:id,nome',
             ]))
             ->paginated([5, 10, 25, 50, 100])
@@ -251,6 +252,37 @@ class ServidorResource extends Resource
                     ->getStateUsing(fn (Servidor $record): string => $record->professores->isNotEmpty() ? 'Professor' : '—')
                     ->badge(),
 
+                TextColumn::make('email')
+                    ->label('E-mail')
+                    ->searchable()
+                    ->wrap()
+                    ->placeholder('—')
+                    ->toggleable(),
+
+                TextColumn::make('acesso_ao_sistema')
+                    ->label('Acesso')
+                    ->badge()
+                    ->getStateUsing(function (Servidor $record): string {
+                        if (! $record->user_id) {
+                            return 'Sem usuário';
+                        }
+
+                        return $record->user?->email_approved ? 'Liberado' : 'Pendente';
+                    })
+                    ->color(fn (string $state): string => match ($state) {
+                        'Liberado' => 'success',
+                        'Pendente' => 'warning',
+                        default => 'gray',
+                    }),
+
+                TextColumn::make('user.roles')
+                    ->label('Níveis de acesso')
+                    ->getStateUsing(fn (Servidor $record): string => $record->user?->roles
+                        ->pluck('name')
+                        ->join(', ') ?: '—')
+                    ->wrap()
+                    ->toggleable(),
+
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
@@ -261,11 +293,6 @@ class ServidorResource extends Resource
                         default => 'warning',
                     })
                     ->sortable(),
-
-                TextColumn::make('user.name')
-                    ->label('Usuário')
-                    ->placeholder('Sem acesso')
-                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('updated_at')
                     ->label('Atualizado')
@@ -314,6 +341,23 @@ class ServidorResource extends Resource
                                 TextEntry::make('cpf')->label('CPF')->placeholder('Não informado'),
                                 TextEntry::make('email')->label('E-mail')->placeholder('Não informado'),
                                 TextEntry::make('user.name')->label('Usuário')->placeholder('Sem acesso'),
+                                TextEntry::make('user.email')->label('Login')->placeholder('Sem acesso'),
+                                TextEntry::make('acesso_resumo')
+                                    ->label('Situação do acesso')
+                                    ->getStateUsing(function (Servidor $record): string {
+                                        if (! $record->user_id) {
+                                            return 'Sem usuário vinculado';
+                                        }
+
+                                        return $record->user?->email_approved
+                                            ? 'Acesso liberado'
+                                            : 'Aguardando verificação';
+                                    }),
+                                TextEntry::make('niveis_acesso')
+                                    ->label('Níveis de acesso')
+                                    ->getStateUsing(fn (Servidor $record): string => $record->user?->roles
+                                        ->pluck('name')
+                                        ->join(', ') ?: '—'),
                                 TextEntry::make('status')
                                     ->label('Status')
                                     ->formatStateUsing(fn (?string $state): string => Servidor::statusOptions()[$state] ?? 'Não informado'),

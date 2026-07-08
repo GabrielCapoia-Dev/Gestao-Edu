@@ -46,21 +46,30 @@ class PessoaLegadoRedirectTest extends TestCase
 
         Livewire::actingAs($usuario)
             ->test(ListUsers::class)
-            ->assertRedirect(ServidorResource::getUrl('index', ['tab' => 'usuarios']));
+            ->assertRedirect(ServidorResource::getUrl('index', ['tab' => 'com_acesso']));
     }
 
     /** @param array<int, string> $permissoes */
     private function usuarioComPermissoes(array $permissoes): User
     {
-        foreach ($permissoes as $permissao) {
-            Permission::findOrCreate($permissao);
-        }
+        $permissoesCriadas = collect($permissoes)
+            ->map(function (string $permissao): Permission {
+                app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+                return Permission::query()->firstOrCreate([
+                    'name' => $permissao,
+                    'guard_name' => 'web',
+                ]);
+            })
+            ->all();
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         $usuario = User::factory()->create([
             'email_approved' => true,
             'email_verified_at' => now(),
         ]);
-        $usuario->givePermissionTo($permissoes);
+        $usuario->syncPermissions($permissoesCriadas);
 
         return $usuario;
     }

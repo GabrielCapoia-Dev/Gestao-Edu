@@ -137,12 +137,12 @@
             'description' => 'Séries e anos escolares.',
         ],
         [
-            'permission' => 'Listar Usuários',
-            'route' => route('filament.admin.resources.usuarios.index'),
+            'permission' => 'Listar Servidores',
+            'route' => route('filament.admin.resources.servidores.index', ['tab' => 'com_acesso']),
             'tone' => 'slate',
             'icon' => 'heroicon-o-users',
-            'title' => 'Usuários',
-            'description' => 'Controle de acesso e permissões.',
+            'title' => 'Pessoas',
+            'description' => 'Cadastro, vínculos pedagógicos e acesso ao sistema.',
         ],
         [
             'permission' => 'Listar Empresa Contratada',

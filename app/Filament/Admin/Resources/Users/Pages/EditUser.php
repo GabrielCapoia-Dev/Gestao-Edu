@@ -31,7 +31,7 @@ class EditUser extends EditRecord
     protected function getRedirectUrl(): string
     {
         return $this->previousUrl
-            ?? ServidorResource::getUrl('index', ['tab' => 'usuarios']);
+            ?? ServidorResource::getUrl('index', ['tab' => 'com_acesso']);
     }
 
     public function getOverviewCards(): array
