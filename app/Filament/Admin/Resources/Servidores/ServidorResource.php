@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\Servidores;
 
 use App\Filament\Admin\Resources\Servidores\Pages\ManageServidores;
+use App\Filament\Admin\Resources\Servidores\Schemas\ServidorAcessoForm;
 use App\Models\Professor;
 use App\Models\Servidor;
 use App\Models\Turma;
@@ -206,6 +207,8 @@ class ServidorResource extends Resource
                             ->columnSpanFull(),
                     ])
                     ->columnSpanFull(),
+
+                ServidorAcessoForm::section(),
             ]);
     }
 

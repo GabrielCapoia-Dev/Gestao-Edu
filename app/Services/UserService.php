@@ -217,8 +217,13 @@ class UserService
     {
         // Impacto: esta rotina e o ponto central de sincronizacao Spatie. Alterar ordem de roles/permissoes pode deixar permissoes herdadas gravadas como diretas.
         if (array_key_exists('roles', $data) || array_key_exists('role', $data)) {
+            $roleIds = app(PessoaAcessoService::class)->mesclarRolesComProfessor(
+                $record,
+                $this->idsDeRolesSelecionadas($data),
+            );
+
             $roles = Role::query()
-                ->whereIn('id', $this->idsDeRolesSelecionadas($data))
+                ->whereIn('id', $roleIds)
                 ->get();
 
             $record->syncRoles($roles);

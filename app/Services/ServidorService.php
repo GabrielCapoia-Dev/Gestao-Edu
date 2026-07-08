@@ -55,12 +55,20 @@ class ServidorService
 
     private function dadosAcesso(array $data): array
     {
+        $permissoesExtras = collect($data)
+            ->filter(fn ($_, string $key): bool => str_starts_with($key, 'permissions_'))
+            ->flatMap(fn ($permissions) => is_array($permissions) ? $permissions : [$permissions])
+            ->filter(fn ($permission): bool => filled($permission))
+            ->unique()
+            ->values()
+            ->all();
+
         return [
             'roles' => $data['roles_adicionais'] ?? $data['roles'] ?? [],
             'roles_adicionais' => $data['roles_adicionais'] ?? $data['roles'] ?? [],
             'email_approved' => $data['email_approved'] ?? true,
             'usar_permissoes_extras' => $data['usar_permissoes_extras'] ?? false,
-            'permissoes_extras' => $data['permissoes_extras'] ?? [],
+            'permissoes_extras' => $permissoesExtras,
         ];
     }
 

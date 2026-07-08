@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources\Users\Schemas;
 
 use App\Models\Role;
 use App\Models\User;
+use App\Services\PessoaAcessoService;
 use App\Services\UserService;
 use App\Services\UserSetorAccessService;
 use Filament\Forms\Components\CheckboxList;
@@ -57,7 +58,9 @@ class UserForm
 
             Select::make('roles')
                 ->label('Níveis de acesso')
-                ->helperText('Você pode vincular um ou mais níveis de acesso ao usuário.')
+                ->helperText(fn (?User $record): string => app(PessoaAcessoService::class)->usuarioEhProfessor($record)
+                    ? 'Usuários vinculados a professor mantêm os níveis pedagógicos fixos. Você pode adicionar outros níveis, mas não remover os do professor.'
+                    : 'Você pode vincular um ou mais níveis de acesso ao usuário.')
                 ->options(fn() => $service->opcoesDeRolesParaSelect($user))
                 ->multiple()
                 ->searchable()
@@ -71,6 +74,13 @@ class UserForm
                     }
 
                     $set('roles', $record->roles()->pluck('roles.id')->all());
+                })
+                ->disableOptionWhen(function (string $value, ?User $record): bool {
+                    if (! app(PessoaAcessoService::class)->usuarioEhProfessor($record)) {
+                        return false;
+                    }
+
+                    return app(PessoaAcessoService::class)->rolesImutaveisProfessor()->contains((int) $value);
                 })
                 ->dehydrated(true)
                 ->disabled(
