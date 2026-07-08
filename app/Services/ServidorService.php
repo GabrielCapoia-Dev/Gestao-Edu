@@ -347,17 +347,43 @@ class ServidorService
 
     private function garantirProfessorParaServidor(Servidor $servidor): Professor
     {
+        if (filled($servidor->id_escola) && filled($servidor->matricula)) {
+            $correspondente = $servidor->professores()
+                ->where('id_escola', $servidor->id_escola)
+                ->where('matricula', $servidor->matricula)
+                ->first();
+
+            if ($correspondente) {
+                $correspondente->forceFill([
+                    'nome' => $servidor->nome,
+                    'email' => $servidor->email,
+                    'telefone' => $servidor->telefone,
+                    'user_id' => $servidor->user_id,
+                ])->saveQuietly();
+
+                return $correspondente;
+            }
+        }
+
         $professor = $servidor->professores()->first();
 
         if ($professor) {
-            $professor->forceFill([
-                'id_escola' => $servidor->id_escola,
-                'matricula' => $servidor->matricula,
+            $payload = [
                 'nome' => $servidor->nome,
                 'email' => $servidor->email,
                 'telefone' => $servidor->telefone,
                 'user_id' => $servidor->user_id,
-            ])->saveQuietly();
+            ];
+
+            if (filled($servidor->id_escola)) {
+                $payload['id_escola'] = $servidor->id_escola;
+            }
+
+            if (filled($servidor->matricula) && ! $this->professorMatriculaConflita($professor, $servidor)) {
+                $payload['matricula'] = $servidor->matricula;
+            }
+
+            $professor->forceFill($payload)->saveQuietly();
 
             return $professor;
         }
@@ -394,6 +420,19 @@ class ServidorService
             'email' => $servidor->email,
             'telefone' => $servidor->telefone,
         ]);
+    }
+
+    private function professorMatriculaConflita(Professor $professor, Servidor $servidor): bool
+    {
+        if (blank($servidor->id_escola) || blank($servidor->matricula)) {
+            return false;
+        }
+
+        return Professor::query()
+            ->where('id_escola', $servidor->id_escola)
+            ->where('matricula', $servidor->matricula)
+            ->where('id', '!=', $professor->id)
+            ->exists();
     }
 
     private function setorIdDoProfessor(Professor $professor): ?int

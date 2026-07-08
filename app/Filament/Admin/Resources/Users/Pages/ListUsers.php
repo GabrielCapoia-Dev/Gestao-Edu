@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\Users\Pages;
 
+use App\Filament\Admin\Resources\Servidores\ServidorResource;
 use App\Filament\Admin\Resources\Users\UserResource;
 use App\Models\User;
 use App\Services\UserService;
@@ -37,14 +38,10 @@ class ListUsers extends ListRecords
 
     public function mount(): void
     {
-        parent::mount();
-
-        /** @var \App\Models\User $admin */
-        $admin = Auth::user();
-
-        app(UserService::class)->sincronizarIgnoradosParaAdmin($admin);
-
-        $this->dispatch('refresh-navigation');
+        $this->redirect(
+            ServidorResource::getUrl('index', ['activeTab' => 'usuarios']),
+            navigate: false,
+        );
     }
 
     public function getOverviewCards(): array

@@ -2,6 +2,25 @@
 
 Este documento explica como o acesso e montado no projeto. A regra pratica e: quase nunca existe uma unica camada resolvendo tudo.
 
+## Modelo pessoa e vínculos
+
+O cadastro de pessoas foi centralizado no hub **Pessoas** (`ServidorResource`):
+
+| Conceito | Tabela / recurso | Papel |
+| --- | --- | --- |
+| Pessoa física | `servidores` | Identidade única (CPF quando disponível) |
+| Matrícula / vínculo | `servidor_funcao_administrativa` | Cargo + setor + escola condicional |
+| Perfil pedagógico | `professores` | Extensão do vínculo com função que exige professor |
+| Acesso ao sistema | `users` via `servidores.user_id` | Opcional; escopo agregado dos vínculos ativos |
+
+Escopo do usuário logado:
+
+1. `User` autenticado aponta para um `Servidor` (pessoa).
+2. `PessoaScopeService` agrega setores e escolas dos vínculos ativos.
+3. Policies (`ServidorPolicy`, `ProfessorPolicy`, `UserPolicy`) aplicam o escopo nas queries Filament.
+
+Telas legadas de **Professores** e **Usuários** redirecionam para o hub com a aba correspondente.
+
 ## Camadas de acesso atuais
 
 | Camada | Responsabilidade | Fonte principal |

@@ -32,6 +32,8 @@ class UserResource extends Resource
     protected static string | UnitEnum | null $navigationGroup = 'Acesso';
     protected static ?string $recordTitleAttribute = 'name';
 
+    protected static bool $shouldRegisterNavigation = false;
+
 
     /** Mantém sua sincronização antes da query base */
     protected function getTableQuery()

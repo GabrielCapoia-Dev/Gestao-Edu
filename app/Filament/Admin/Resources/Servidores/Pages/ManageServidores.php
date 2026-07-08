@@ -16,6 +16,17 @@ class ManageServidores extends ManageRecords
 {
     protected static string $resource = ServidorResource::class;
 
+    public function mount(): void
+    {
+        parent::mount();
+
+        $tab = request()->query('activeTab');
+
+        if (filled($tab) && array_key_exists($tab, $this->getCachedTabs())) {
+            $this->activeTab = (string) $tab;
+        }
+    }
+
     public function getHeader(): ?View
     {
         return view('filament.admin.pages.partials.page-header', [

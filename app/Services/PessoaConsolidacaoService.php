@@ -150,7 +150,15 @@ class PessoaConsolidacaoService
             }
 
             foreach ($duplicata->professores as $professor) {
-                $professor->update(['servidor_id' => $canonica->id]);
+                $existente = $this->professorEquivalenteNaCanonica($canonica, $professor);
+
+                if ($existente) {
+                    $this->realocarReferenciasProfessor($professor, $existente);
+                    $professor->delete();
+                    $stats['professores_mesclados']++;
+                } else {
+                    $professor->update(['servidor_id' => $canonica->id]);
+                }
             }
 
             $stats['professores_mesclados'] += $this->consolidarProfessoresDaPessoa($canonica);
@@ -219,6 +227,21 @@ class PessoaConsolidacaoService
             });
 
         return $mesclados;
+    }
+
+    private function professorEquivalenteNaCanonica(Servidor $canonica, Professor $professor): ?Professor
+    {
+        $query = $canonica->professores();
+
+        if (filled($professor->id_escola)) {
+            $query->where('id_escola', $professor->id_escola);
+        }
+
+        if (filled($professor->matricula)) {
+            $query->where('matricula', $professor->matricula);
+        }
+
+        return $query->first();
     }
 
     private function consolidarProfessoresDaPessoa(Servidor $servidor): int
