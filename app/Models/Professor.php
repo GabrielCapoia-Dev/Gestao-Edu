@@ -24,6 +24,7 @@ class Professor extends Model
     protected $fillable = [
         'user_id',
         'servidor_id',
+        'servidor_funcao_administrativa_id',
         'id_escola',
         'matricula',
         'turno',
@@ -62,6 +63,11 @@ class Professor extends Model
     public function servidor(): BelongsTo
     {
         return $this->belongsTo(Servidor::class, 'servidor_id');
+    }
+
+    public function vinculoFuncional(): BelongsTo
+    {
+        return $this->belongsTo(ServidorFuncaoAdministrativa::class, 'servidor_funcao_administrativa_id');
     }
 
     /**

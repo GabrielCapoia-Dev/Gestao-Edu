@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Enums\SetorContexto;
 use App\Services\SetorHierarchyService;
 use App\Services\UserSetorAccessService;
 use Illuminate\Database\Eloquent\Builder;
@@ -21,6 +22,8 @@ class Setor extends Model
         'sort_order',
         'is_default_root',
         'nome',
+        'contexto',
+        'exige_vinculo_escola',
         'status',
         'recebe_pedidos_iniciais',
         'encaminha_pedido_para_setor_ids',
@@ -36,11 +39,17 @@ class Setor extends Model
         'is_default_root' => 'boolean',
         'recebe_pedidos_iniciais' => 'boolean',
         'encaminha_pedido_para_setor_ids' => 'array',
+        'exige_vinculo_escola' => 'boolean',
     ];
 
     protected static function booted(): void
     {
         static::saving(function (Setor $model): void {
+            if (filled($model->contexto)) {
+                $contexto = SetorContexto::tryFrom((string) $model->contexto);
+                $model->exige_vinculo_escola = $contexto?->exigeVinculoEscola() ?? (bool) $model->exige_vinculo_escola;
+            }
+
             if ($model->is_default_root) {
                 $model->parent_id = null;
                 $model->recebe_pedidos_iniciais = true;
@@ -61,6 +70,16 @@ class Setor extends Model
         static::saved(function (Setor $model): void {
             app(SetorHierarchyService::class)->refreshNode($model);
         });
+    }
+
+    public function contextoEnum(): ?SetorContexto
+    {
+        return SetorContexto::tryFrom((string) $this->contexto);
+    }
+
+    public function exigeVinculoEscola(): bool
+    {
+        return (bool) $this->exige_vinculo_escola;
     }
 
     public function parent()

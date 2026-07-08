@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 
 class ServidorFuncaoAdministrativa extends Pivot
@@ -18,6 +20,7 @@ class ServidorFuncaoAdministrativa extends Pivot
     protected $fillable = [
         'servidor_id',
         'funcao_administrativa_id',
+        'matricula',
         'id_escola',
         'setor_id',
         'status',
@@ -57,6 +60,21 @@ class ServidorFuncaoAdministrativa extends Pivot
     public function setor(): BelongsTo
     {
         return $this->belongsTo(Setor::class);
+    }
+
+    public function professor(): HasOne
+    {
+        return $this->hasOne(Professor::class, 'servidor_funcao_administrativa_id');
+    }
+
+    public function professores(): HasMany
+    {
+        return $this->hasMany(Professor::class, 'servidor_funcao_administrativa_id');
+    }
+
+    public function isAtivo(): bool
+    {
+        return $this->status === self::STATUS_ATIVO;
     }
 
     public function turmas(): BelongsToMany

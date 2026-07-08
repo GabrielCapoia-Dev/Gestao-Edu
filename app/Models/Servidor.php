@@ -16,6 +16,7 @@ class Servidor extends Model
     protected $table = 'servidores';
 
     protected $fillable = [
+        'cpf',
         'user_id',
         'id_escola',
         'setor_id',
@@ -79,6 +80,23 @@ class Servidor extends Model
         return $this->servidorFuncoes()->where('status', ServidorFuncaoAdministrativa::STATUS_ATIVO);
     }
 
+    /** @alias vínculos funcionais com matrícula */
+    public function vinculos(): HasMany
+    {
+        return $this->servidorFuncoes();
+    }
+
+    /** @alias vínculos ativos */
+    public function vinculosAtivos(): HasMany
+    {
+        return $this->servidorFuncoesAtivas();
+    }
+
+    public function matriculasAtivas(): HasMany
+    {
+        return $this->servidorFuncoesAtivas();
+    }
+
     public function funcoes(): BelongsToMany
     {
         return $this->belongsToMany(
@@ -90,6 +108,7 @@ class Servidor extends Model
             ->using(ServidorFuncaoAdministrativa::class)
             ->withPivot([
                 'id',
+                'matricula',
                 'id_escola',
                 'setor_id',
                 'status',
