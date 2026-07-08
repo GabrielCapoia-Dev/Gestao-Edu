@@ -16,22 +16,12 @@ class ServidorService
 {
     public function criarServidorComFuncoes(array $data, array $vinculos = []): Servidor
     {
-        return DB::transaction(function () use ($data, $vinculos): Servidor {
-            $servidor = Servidor::query()->create($this->dadosServidor($data));
-            $this->sincronizarVinculosFuncionais($servidor, $vinculos);
-
-            return $servidor->fresh(['funcoesAtivas', 'servidorFuncoesAtivas.turmas', 'professores']);
-        });
+        return app(PessoaVinculoService::class)->criarPessoaComVinculos($data, $vinculos);
     }
 
     public function atualizarServidorComFuncoes(Servidor $servidor, array $data, array $vinculos = []): Servidor
     {
-        return DB::transaction(function () use ($servidor, $data, $vinculos): Servidor {
-            $servidor->update($this->dadosServidor($data));
-            $this->sincronizarVinculosFuncionais($servidor->fresh(), $vinculos);
-
-            return $servidor->fresh(['funcoesAtivas', 'servidorFuncoesAtivas.turmas', 'professores']);
-        });
+        return app(PessoaVinculoService::class)->atualizarPessoaComVinculos($servidor, $data, $vinculos);
     }
 
     public function sincronizarProfessor(Professor $professor): ?Servidor
@@ -108,6 +98,7 @@ class ServidorService
             ]);
 
             $vinculo->fill([
+                'matricula' => $contexto['matricula'] ?? $servidor->matricula,
                 'id_escola' => $contexto['id_escola'] ?? $servidor->id_escola,
                 'setor_id' => $contexto['setor_id'] ?? $servidor->setor_id,
                 'status' => ServidorFuncaoAdministrativa::STATUS_ATIVO,
@@ -193,6 +184,9 @@ class ServidorService
 
         foreach ($vinculos as $vinculo) {
             $this->vincularFuncao($servidor, (int) $vinculo['funcao_administrativa_id'], [
+                'matricula' => $vinculo['matricula'] ?? null,
+                'setor_id' => $vinculo['setor_id'] ?? null,
+                'id_escola' => $vinculo['id_escola'] ?? null,
                 'portaria' => $vinculo['portaria'] ?? null,
                 'turma_ids' => $vinculo['turma_ids'] ?? [],
             ]);
@@ -265,6 +259,9 @@ class ServidorService
 
                     return [
                         'funcao_administrativa_id' => (int) $funcaoId,
+                        'matricula' => $vinculo['matricula'] ?? null,
+                        'setor_id' => $vinculo['setor_id'] ?? null,
+                        'id_escola' => $vinculo['id_escola'] ?? null,
                         'portaria' => filled($vinculo['portaria'] ?? null) ? (string) $vinculo['portaria'] : null,
                         'turma_ids' => $vinculo['turma_ids'] ?? $vinculo['turmas'] ?? [],
                     ];
@@ -288,6 +285,7 @@ class ServidorService
     private function dadosServidor(array $data): array
     {
         return [
+            'cpf' => $data['cpf'] ?? null,
             'user_id' => $data['user_id'] ?? null,
             'id_escola' => $data['id_escola'] ?? null,
             'setor_id' => $data['setor_id'] ?? null,

@@ -22,9 +22,7 @@ class UserSetorAccessService
     /** @var array<int, array<int, int>> */
     private array $visibleSetoresByUser = [];
 
-    public function __construct(private readonly SetorHierarchyService $hierarchy)
-    {
-    }
+    public function __construct(private readonly SetorHierarchyService $hierarchy) {}
 
     public function hasGlobalAccess(?User $user): bool
     {
@@ -43,6 +41,12 @@ class UserSetorAccessService
     {
         if (! $user) {
             return null;
+        }
+
+        $pessoaScope = app(PessoaScopeService::class);
+
+        if ($pessoaScope->usaEscopoPorVinculos($user)) {
+            return $pessoaScope->primarySetorId($user);
         }
 
         $userId = (int) $user->getKey();
@@ -79,6 +83,12 @@ class UserSetorAccessService
     {
         if (! $user) {
             return [];
+        }
+
+        $pessoaScope = app(PessoaScopeService::class);
+
+        if ($pessoaScope->usaEscopoPorVinculos($user)) {
+            return $pessoaScope->visibleSetorIds($user);
         }
 
         $userId = (int) $user->getKey();
