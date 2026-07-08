@@ -85,11 +85,18 @@ class ServidorFlowTest extends TestCase
             'tem_relacao_turma' => false,
         ]);
 
+        $setor = $this->criarSetor('Operacional');
+
         $servidor = app(ServidorService::class)->criarServidorComFuncoes([
             'nome' => 'Servidor Auxiliar',
             'matricula' => 'AUX-001',
+            'setor_id' => $setor->id,
             'status' => Servidor::STATUS_ATIVO,
-        ], [$funcaoAuxiliar->id]);
+        ], [[
+            'funcao_administrativa_id' => $funcaoAuxiliar->id,
+            'matricula' => 'AUX-001',
+            'setor_id' => $setor->id,
+        ]]);
 
         $this->assertNull($servidor->user_id);
         $this->assertFalse($servidor->professores()->exists());
@@ -113,6 +120,7 @@ class ServidorFlowTest extends TestCase
             'exige_professor' => false,
             'tem_relacao_turma' => false,
         ]);
+        $setor = $this->criarSetor('Administrativo');
 
         $usuario = User::factory()->create([
             'email_approved' => true,
@@ -128,10 +136,11 @@ class ServidorFlowTest extends TestCase
                 'vinculos_funcionais' => [
                     [
                         'funcao_administrativa_id' => $funcaoAuxiliar->id,
+                        'setor_id' => $setor->id,
                     ],
                 ],
             ])
-            ->assertHasActionErrors(['matricula' => 'required']);
+            ->assertHasActionErrors(['vinculos_funcionais.0.matricula' => 'required']);
 
         $this->assertDatabaseMissing('servidores', [
             'nome' => 'Servidor Sem Matricula',
@@ -148,17 +157,29 @@ class ServidorFlowTest extends TestCase
             'tem_relacao_turma' => false,
         ]);
 
+        $setor = $this->criarSetor('Operacional Repetida');
+
         app(ServidorService::class)->criarServidorComFuncoes([
             'nome' => 'Servidor Existente',
             'matricula' => 'MAT-REPETIDA',
+            'setor_id' => $setor->id,
             'status' => Servidor::STATUS_ATIVO,
-        ], [$funcaoAuxiliar->id]);
+        ], [[
+            'funcao_administrativa_id' => $funcaoAuxiliar->id,
+            'matricula' => 'MAT-REPETIDA',
+            'setor_id' => $setor->id,
+        ]]);
 
         app(ServidorService::class)->criarServidorComFuncoes([
             'nome' => 'Servidor Nova Matricula Repetida',
             'matricula' => 'MAT-REPETIDA',
+            'setor_id' => $setor->id,
             'status' => Servidor::STATUS_ATIVO,
-        ], [$funcaoAuxiliar->id]);
+        ], [[
+            'funcao_administrativa_id' => $funcaoAuxiliar->id,
+            'matricula' => 'MAT-REPETIDA',
+            'setor_id' => $setor->id,
+        ]]);
 
         $this->assertSame(2, Servidor::query()->where('matricula', 'MAT-REPETIDA')->count());
     }
@@ -185,11 +206,15 @@ class ServidorFlowTest extends TestCase
 
         $servidor = app(ServidorService::class)->criarServidorComFuncoes([
             'id_escola' => $escola->id,
+            'setor_id' => $escola->setor_id,
             'nome' => 'Servidor Coordenacao',
             'matricula' => 'COORD-001',
             'status' => Servidor::STATUS_ATIVO,
         ], [[
             'funcao_administrativa_id' => $funcaoCoordenacao->id,
+            'matricula' => 'COORD-001',
+            'setor_id' => $escola->setor_id,
+            'id_escola' => $escola->id,
             'portaria' => '123/2026',
             'turma_ids' => [$turma->id],
         ]]);
@@ -212,11 +237,17 @@ class ServidorFlowTest extends TestCase
 
         $servidor = app(ServidorService::class)->criarServidorComFuncoes([
             'id_escola' => $escola->id,
+            'setor_id' => $escola->setor_id,
             'nome' => 'Servidor Professor',
             'matricula' => 'PROF-SERV-001',
             'email' => 'servidor.professor@edu.umuarama.pr.gov.br',
             'status' => Servidor::STATUS_ATIVO,
-        ], [FuncaoAdministrativa::professorPadrao()->id]);
+        ], [[
+            'funcao_administrativa_id' => FuncaoAdministrativa::professorPadrao()->id,
+            'matricula' => 'PROF-SERV-001',
+            'setor_id' => $escola->setor_id,
+            'id_escola' => $escola->id,
+        ]]);
 
         $this->assertDatabaseHas('professores', [
             'servidor_id' => $servidor->id,
