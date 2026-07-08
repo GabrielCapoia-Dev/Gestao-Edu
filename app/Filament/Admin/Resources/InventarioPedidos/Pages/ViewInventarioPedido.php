@@ -16,6 +16,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 
 class ViewInventarioPedido extends ViewRecord
 {
@@ -36,7 +37,7 @@ class ViewInventarioPedido extends ViewRecord
                 ->label('Analisar Pedido')
                 ->icon('heroicon-o-check-badge')
                 ->color('info')
-                ->visible(fn (): bool => $this->getRecord()->isPendente() && $this->pode('Aprovar Pedidos de Inventário') && $this->ehGestorGeral())
+                ->visible(fn (): bool => $this->getRecord()->isPendente() && Gate::allows('approve', InventarioPedido::class) && $this->ehGestorGeral())
                 ->modalWidth('6xl')
                 ->fillForm(fn (): array => $this->dadosAnalisePedido())
                 ->schema([
@@ -100,7 +101,7 @@ class ViewInventarioPedido extends ViewRecord
                 ->label('Conferir Recebimento')
                 ->icon('heroicon-o-inbox-arrow-down')
                 ->color('success')
-                ->visible(fn (): bool => $this->getRecord()->isEmAndamento() && $this->pode('Conferir Pedidos de Inventário') && $this->podeConferirPedido())
+                ->visible(fn (): bool => $this->getRecord()->isEmAndamento() && Gate::allows('confer', InventarioPedido::class) && $this->podeConferirPedido())
                 ->action(function (): void {
                     try {
                         $dados = $this->dadosConferenciaPedido();
@@ -138,11 +139,6 @@ class ViewInventarioPedido extends ViewRecord
         /** @var InventarioPedido $record */
         $record = InventarioPedidoResource::getEloquentQuery()->findOrFail($this->getRecord()->getKey());
         $this->record = $record;
-    }
-
-    protected function pode(string $permissao): bool
-    {
-        return Auth::user()?->hasPermissionTo($permissao) ?? false;
     }
 
     protected function ehGestorGeral(): bool

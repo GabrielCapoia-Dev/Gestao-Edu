@@ -16,6 +16,7 @@ use Filament\Notifications\Notification;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
 
 class AvaliacaoTurmaWorkspace extends Component
@@ -187,7 +188,7 @@ class AvaliacaoTurmaWorkspace extends Component
         $user = Auth::user();
 
         return $this->canEdit
-            && ($user?->hasPermissionTo('Preencher Avaliações em Massa') ?? false);
+            && ($user && Gate::forUser($user)->allows('fillBulk', Avaliacao::class));
     }
 
     public function podeAlternarVisualizacao(): bool

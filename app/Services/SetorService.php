@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Enums\SetorAccessCapability;
 use App\Models\Setor;
 use App\Models\User;
+use Illuminate\Support\Facades\Gate;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -184,8 +185,7 @@ class SetorService
 
     public function podeConfigurarMatriz(?User $user): bool
     {
-        return (bool) ($user?->hasPermissionTo('Editar Setores')
-            && app(UserSetorAccessService::class)->hasGlobalAccess($user));
+        return (bool) ($user && Gate::forUser($user)->allows('configureAccessMatrix', Setor::class));
     }
 
     private function selectCapacidade(

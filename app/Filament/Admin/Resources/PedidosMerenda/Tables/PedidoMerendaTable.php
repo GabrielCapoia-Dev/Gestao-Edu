@@ -37,7 +37,8 @@ class PedidoMerendaTable
             ->recordActions(static::recordActions())
             ->groupedBulkActions([
                 VincularSetorBulkAction::make(
-                    permission: 'Editar Pedidos: Merenda',
+                    ability: 'update',
+                    arguments: PedidoMerenda::class,
                     recordsLabel: 'pedidos selecionados',
                 ),
             ]);

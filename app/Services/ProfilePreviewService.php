@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 class ProfilePreviewService
@@ -15,7 +16,7 @@ class ProfilePreviewService
 
     public function start(int $targetUserId, User $realUser): void
     {
-        if (! $realUser->hasPermissionTo(self::PERMISSION)) {
+        if (! Gate::forUser($realUser)->allows('previewProfile', User::class)) {
             throw ValidationException::withMessages([
                 'target_user_id' => 'Você não tem permissão para visualizar perfis.',
             ]);
@@ -127,6 +128,6 @@ class ProfilePreviewService
     {
         $user ??= $this->controlUser();
 
-        return $user?->hasPermissionTo(self::PERMISSION) ?? false;
+        return $user && Gate::forUser($user)->allows('previewProfile', User::class);
     }
 }

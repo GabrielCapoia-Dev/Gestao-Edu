@@ -58,6 +58,11 @@ class EscolaPolicy
         return $user->hasPermissionTo('Excluir Escolas');
     }
 
+    public function editCodigo(User $user): bool
+    {
+        return $user->hasPermissionTo('Editar Codigo da Escola');
+    }
+
     // /**
     //  * Determine whether the user can restore the model.
     //  */

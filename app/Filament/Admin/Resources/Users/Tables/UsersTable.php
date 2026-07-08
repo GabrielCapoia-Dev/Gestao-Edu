@@ -587,7 +587,8 @@ class UsersTable
                 }),
 
             VincularSetorBulkAction::make(
-                permission: 'Editar Setor do Usuário',
+                ability: 'editSetor',
+                arguments: User::class,
                 recordsLabel: 'usuários selecionados',
             ),
 

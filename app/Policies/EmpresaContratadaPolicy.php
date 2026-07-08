@@ -57,6 +57,11 @@ class EmpresaContratadaPolicy
             && $this->pertenceAoSetorDoUsuario($user, $empresaContratada);
     }
 
+    public function viewInactive(User $user): bool
+    {
+        return $user->hasPermissionTo('Listar Empresas Inativas');
+    }
+
     private function pertenceAoSetorDoUsuario(User $user, EmpresaContratada $empresaContratada): bool
     {
         return app(UserSetorAccessService::class)->canAccessSetor($user, $empresaContratada->setor_id);

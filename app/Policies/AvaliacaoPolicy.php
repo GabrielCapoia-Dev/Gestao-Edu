@@ -72,4 +72,9 @@ class AvaliacaoPolicy
     {
         return $user->hasPermissionTo('Listar Relatórios: Componentes com Professores Faltando');
     }
+
+    public function fillBulk(User $user): bool
+    {
+        return $user->hasPermissionTo('Preencher Avaliações em Massa');
+    }
 }

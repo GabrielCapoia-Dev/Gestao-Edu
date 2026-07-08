@@ -5,6 +5,7 @@ namespace App\Livewire;
 use App\Models\User;
 use App\Services\UserPresenceService;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
 
 class OnlineUsersTopbar extends Component
@@ -13,7 +14,7 @@ class OnlineUsersTopbar extends Component
 
     public function mount(): void
     {
-        abort_unless(auth()->user()?->hasPermissionTo(UserPresenceService::PERMISSION), 403);
+        abort_unless(auth()->user() && Gate::forUser(auth()->user())->allows('viewOnlineUsers', User::class), 403);
     }
 
     public function togglePanel(): void

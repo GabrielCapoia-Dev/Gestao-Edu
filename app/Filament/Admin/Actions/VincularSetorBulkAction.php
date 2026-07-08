@@ -9,11 +9,13 @@ use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 
 class VincularSetorBulkAction
 {
     public static function make(
-        ?string $permission,
+        ?string $ability = null,
+        mixed $arguments = null,
         string $recordsLabel = 'registros selecionados',
         ?Closure $updateRecord = null,
         ?Closure $visible = null,
@@ -25,7 +27,15 @@ class VincularSetorBulkAction
             ->label('Vincular ao setor')
             ->icon('heroicon-o-building-office')
             ->color('primary')
-            ->visible($visible ?? fn (): bool => $permission === null || (Auth::user()?->hasPermissionTo($permission) ?? false))
+            ->visible($visible ?? function () use ($ability, $arguments): bool {
+                if ($ability === null) {
+                    return true;
+                }
+
+                $user = Auth::user();
+
+                return $user && Gate::forUser($user)->allows($ability, $arguments);
+            })
             ->form([
                 Select::make('setor_id')
                     ->label('Setor')

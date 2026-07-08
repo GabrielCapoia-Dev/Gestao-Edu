@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\ComponenteCurricular;
 use App\Models\Serie;
 use App\Models\User;
+use Illuminate\Support\Facades\Gate;
 use Filament\Actions\BulkAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -128,7 +129,7 @@ class SerieService
             BulkAction::make('adicionar_componentes_curriculares')
                 ->label('Adicionar componentes')
                 ->icon('heroicon-o-plus-circle')
-                ->visible(fn (): bool => $user?->hasPermissionTo('Editar Séries') ?? false)
+                ->visible(fn (): bool => $user && Gate::forUser($user)->allows('update', Serie::class))
                 ->form([
                     Select::make('componentes_curriculares')
                         ->label('Componentes curriculares')

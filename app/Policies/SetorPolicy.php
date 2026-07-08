@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Builder;
 
 class SetorPolicy
 {
+    public const GLOBAL_SCOPE_PERMISSION = 'Acessar Escopo Global de Setores';
+
     public function viewAny(User $user): bool
     {
         return $user->hasPermissionTo('Listar Setores');
@@ -46,5 +48,16 @@ class SetorPolicy
     public function deleteAny(User $user): bool
     {
         return $user->hasPermissionTo('Excluir Setores em Massa');
+    }
+
+    public function accessGlobalScope(User $user): bool
+    {
+        return $user->hasPermissionTo(self::GLOBAL_SCOPE_PERMISSION);
+    }
+
+    public function configureAccessMatrix(User $user): bool
+    {
+        return $user->hasPermissionTo('Editar Setores')
+            && ($user->hasRole('Admin') || $this->accessGlobalScope($user));
     }
 }

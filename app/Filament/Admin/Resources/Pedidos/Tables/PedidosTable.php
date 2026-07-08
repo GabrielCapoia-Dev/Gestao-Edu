@@ -1005,7 +1005,8 @@ class PedidosTable
                 ->deselectRecordsAfterCompletion(),
 
             VincularSetorBulkAction::make(
-                permission: 'Encaminhar Pedidos para Setor',
+                ability: 'forward',
+                arguments: new Pedido,
                 recordsLabel: 'pedidos selecionados',
                 updateRecord: function (Pedido $record, int $setorId) use ($user, $service): bool {
                     if (! $user || ! $service->podeGerenciarRegistro($record, $user)) {

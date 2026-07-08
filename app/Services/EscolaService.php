@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Filament\Admin\Actions\VincularSetorBulkAction;
 use App\Models\Escola;
 use App\Models\User;
+use Illuminate\Support\Facades\Gate;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
@@ -27,7 +28,7 @@ class EscolaService
 
     public function podeEditarCodigoEscola(?User $user): bool
     {
-        return $user?->hasPermissionTo('Editar Codigo da Escola');
+        return $user && Gate::forUser($user)->allows('editCodigo', Escola::class);
     }
 
     /** Configura a tabela completa (paginações, colunas, filtros, ações, ordenação). */
@@ -143,7 +144,8 @@ class EscolaService
     {
         return [
             VincularSetorBulkAction::make(
-                permission: 'Editar Escolas',
+                ability: 'update',
+                arguments: Escola::class,
                 recordsLabel: 'escolas selecionadas',
                 updateRecord: function (Escola $record, int $setorId): void {
                     $this->atualizarEmLinha($record, [

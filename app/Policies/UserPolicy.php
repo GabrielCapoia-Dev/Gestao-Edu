@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Models\Escola;
 use App\Models\User;
+use App\Services\UserPresenceService;
 use App\Services\UserSetorAccessService;
 
 class UserPolicy
@@ -105,6 +106,16 @@ class UserPolicy
     public function exportReports(User $user): bool
     {
         return $user->hasPermissionTo('Exportar Relatórios');
+    }
+
+    public function viewOnlineUsers(User $user): bool
+    {
+        return $user->hasPermissionTo(UserPresenceService::PERMISSION);
+    }
+
+    public function previewProfile(User $user): bool
+    {
+        return $user->hasPermissionTo('Visualizar Select de Perfis');
     }
 
     private function podeAcessarUsuario(User $user, User $model): bool

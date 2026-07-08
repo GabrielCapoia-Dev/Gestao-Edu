@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\Contratos\Tables;
 
 use App\Filament\Admin\Actions\VincularSetorBulkAction;
+use App\Models\Contrato;
 use App\Services\UserSetorAccessService;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -80,7 +81,8 @@ class ContratosTable
             ])
             ->toolbarActions([
                 VincularSetorBulkAction::make(
-                    permission: 'Editar Contratos',
+                    ability: 'update',
+                    arguments: Contrato::class,
                     recordsLabel: 'contratos selecionados',
                 ),
                 DeleteBulkAction::make(),

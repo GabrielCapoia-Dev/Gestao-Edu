@@ -143,7 +143,7 @@ class AppServiceProvider extends ServiceProvider
 
         // ── Gates ──────────────────────────────────────────────────────────────
         Gate::define('admin-only', fn ($user) => $user->hasRole('Admin'));
-        Gate::define('exportReports', fn (User $user) => $user->hasPermissionTo('Exportar Relatórios'));
+        Gate::define('exportReports', fn (User $user): bool => app(UserPolicy::class)->exportReports($user));
 
         Event::listen(Login::class, function (Login $event): void {
             if ($event->user instanceof User) {

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Filament\Admin\Actions\VincularSetorBulkAction;
 use App\Models\EmpresaContratada;
+use Illuminate\Support\Facades\Gate;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -113,7 +114,8 @@ class EmpresaContratadaService
 
     public function configurarTabela(Table $table): Table
     {
-        $podeListarInativas = Auth::user()?->hasPermissionTo(self::PERMISSAO_LISTAR_EMPRESAS_INATIVAS) ?? false;
+        $podeListarInativas = Auth::user()
+            && Gate::forUser(Auth::user())->allows('viewInactive', EmpresaContratada::class);
 
         return $table
             ->modifyQueryUsing(fn (Builder $query): Builder => $query
@@ -283,7 +285,8 @@ class EmpresaContratadaService
     {
         return [
             VincularSetorBulkAction::make(
-                permission: 'Editar Empresa Contratada',
+                ability: 'update',
+                arguments: EmpresaContratada::class,
                 recordsLabel: 'empresas selecionadas',
                 updateRecord: fn (EmpresaContratada $record, int $setorId) => $record->update([
                     'setor_id' => $setorId,

@@ -35,7 +35,7 @@ class UserSetorAccessService
         $userId = (int) $user->getKey();
 
         return $this->globalAccessByUser[$userId] ??= $user->hasRole('Admin')
-            || $user->hasPermissionTo(self::GLOBAL_SCOPE_PERMISSION)
+            || Gate::forUser($user)->allows('accessGlobalScope', Setor::class)
             || Gate::forUser($user)->allows('admin-only');
     }
 
