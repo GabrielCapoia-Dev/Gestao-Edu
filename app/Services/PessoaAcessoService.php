@@ -20,6 +20,7 @@ class PessoaAcessoService
     {
         return FuncaoAdministrativa::professorPadrao()
             ->rolesPadrao()
+            ->get()
             ->pluck('id')
             ->map(fn ($id): int => (int) $id);
     }

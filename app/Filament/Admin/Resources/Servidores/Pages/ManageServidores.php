@@ -34,6 +34,11 @@ class ManageServidores extends ManageRecords
     public function updatedActiveTab(): void
     {
         $this->resetTable();
+        $this->refreshHeaderActionsCache();
+
+        if (filled($this->mountedActions)) {
+            $this->unmountAction();
+        }
     }
 
     public function abaUsuarios(): bool
@@ -41,13 +46,10 @@ class ManageServidores extends ManageRecords
         return $this->activeTab === 'usuarios';
     }
 
-    public function getModel(): string
+    protected function refreshHeaderActionsCache(): void
     {
-        if ($this->abaUsuarios()) {
-            return User::class;
-        }
-
-        return parent::getModel();
+        $this->cachedHeaderActions = [];
+        $this->cacheInteractsWithHeaderActions();
     }
 
     public function getHeader(): ?View
@@ -85,6 +87,7 @@ class ManageServidores extends ManageRecords
         if ($this->abaUsuarios()) {
             return $this->makeBaseTable()
                 ->modifyQueryUsing($this->modifyQueryWithActiveTab(...))
+                ->query(fn (): Builder => $this->getTableQuery())
                 ->modelLabel('Usuário')
                 ->pluralModelLabel('Usuários');
         }
@@ -145,7 +148,9 @@ class ManageServidores extends ManageRecords
         return [
             CreateAction::make()
                 ->label('Nova pessoa')
+                ->model(Servidor::class)
                 ->slideOver()
+                ->modalWidth('7xl')
                 ->closeModalByClickingAway(false)
                 ->using(function (array $data): Servidor {
                     $registros = $data['registros_professor'] ?? [];

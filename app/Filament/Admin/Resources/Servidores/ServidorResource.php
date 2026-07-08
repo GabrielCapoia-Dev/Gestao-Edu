@@ -8,6 +8,7 @@ use App\Models\Professor;
 use App\Models\Servidor;
 use App\Models\Turma;
 use App\Models\TurmaComponenteProfessor;
+use App\Services\PessoaProfessorFormService;
 use App\Services\ServidorService;
 use App\Services\UserService;
 use BackedEnum;
@@ -337,6 +338,10 @@ class ServidorResource extends Resource
                     ]),
 
                 EditAction::make()
+                    ->model(Servidor::class)
+                    ->slideOver()
+                    ->modalWidth('7xl')
+                    ->fillForm(fn (Servidor $record): array => app(PessoaProfessorFormService::class)->dadosParaFormulario($record))
                     ->using(function (Servidor $record, array $data): Servidor {
                         $registros = $data['registros_professor'] ?? [];
                         unset($data['registros_professor']);

@@ -4,11 +4,14 @@ namespace Tests\Feature\Pessoas;
 
 use App\Filament\Admin\Resources\Servidores\Pages\ManageServidores;
 use App\Filament\Admin\Resources\Servidores\ServidorResource;
+use App\Filament\Admin\Resources\Users\Pages\CreateUser;
 use App\Models\Escola;
 use App\Models\Professor;
+use App\Models\Role;
 use App\Models\Servidor;
 use App\Models\Setor;
 use App\Models\User;
+use Filament\Actions\CreateAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
@@ -72,15 +75,97 @@ class PessoaHubFilamentTest extends TestCase
             ->assertCanNotSeeTableRecords([$semProfessor]);
     }
 
+    public function test_header_nova_pessoa_na_aba_todos(): void
+    {
+        $usuario = $this->usuarioComPermissaoListar();
+
+        $actions = Livewire::actingAs($usuario)
+            ->test(ManageServidores::class)
+            ->set('activeTab', 'todos')
+            ->instance()
+            ->getCachedHeaderActions();
+
+        $this->assertCount(1, $actions);
+        $this->assertInstanceOf(CreateAction::class, $actions[0]);
+        $this->assertSame('Nova pessoa', $actions[0]->getLabel());
+    }
+
+    public function test_header_novo_usuario_na_aba_usuarios(): void
+    {
+        $admin = $this->usuarioHubAdmin(['Listar Servidores', 'Listar Usuarios']);
+
+        $actions = Livewire::actingAs($admin)
+            ->test(ManageServidores::class)
+            ->set('activeTab', 'usuarios')
+            ->instance()
+            ->getCachedHeaderActions();
+
+        $this->assertCount(1, $actions);
+        $this->assertSame('Novo usuário', $actions[0]->getLabel());
+        $this->assertSame(
+            CreateUser::getUrl(['redirect' => ServidorResource::getUrl('index', ['tab' => 'usuarios'])]),
+            $actions[0]->getUrl(),
+        );
+    }
+
+    public function test_trocar_aba_atualiza_header(): void
+    {
+        $usuario = $this->usuarioHubAdmin(['Listar Servidores', 'Listar Usuarios']);
+
+        $component = Livewire::actingAs($usuario)->test(ManageServidores::class);
+
+        $component->set('activeTab', 'usuarios');
+        $this->assertSame('Novo usuário', $component->instance()->getCachedHeaderActions()[0]->getLabel());
+
+        $component->set('activeTab', 'todos');
+        $this->assertSame('Nova pessoa', $component->instance()->getCachedHeaderActions()[0]->getLabel());
+    }
+
+    public function test_create_slideover_exibe_campos_de_servidor(): void
+    {
+        $usuario = $this->usuarioHubAdmin(['Listar Servidores', 'Criar Servidores']);
+
+        Livewire::actingAs($usuario)
+            ->test(ManageServidores::class)
+            ->set('activeTab', 'todos')
+            ->mountAction('create')
+            ->assertSchemaComponentExists('nome')
+            ->assertSchemaComponentExists('registros_professor')
+            ->assertSchemaComponentDoesNotExist('password');
+    }
+
+    public function test_edit_servidor_abre_slideover_com_registros(): void
+    {
+        $usuario = $this->usuarioHubAdmin(['Listar Servidores', 'Editar Servidores']);
+
+        $setor = $this->criarSetor('Pedagógico');
+        $escola = $this->criarEscola('Escola Edit', $setor);
+        $servidor = $this->criarServidor('Servidor Editável', $escola, $setor);
+
+        Professor::query()->create([
+            'servidor_id' => $servidor->id,
+            'id_escola' => $escola->id,
+            'matricula' => 'EDIT-001',
+            'turno' => 'tarde',
+            'nome' => $servidor->nome,
+            'email' => 'edit@edu.umuarama.pr.gov.br',
+            'ativo' => true,
+        ]);
+
+        Livewire::actingAs($usuario)
+            ->test(ManageServidores::class)
+            ->set('activeTab', 'todos')
+            ->mountTableAction('edit', $servidor)
+            ->assertSchemaComponentExists('registros_professor')
+            ->assertSchemaStateSet([
+                'nome' => 'Servidor Editável',
+                'cargo' => ServidorResource::CARGO_PROFESSOR,
+            ]);
+    }
+
     public function test_aba_usuarios_lista_registros_de_user_com_colunas_de_acesso(): void
     {
-        Permission::findOrCreate('Listar Usuarios');
-
-        $admin = User::factory()->create([
-            'email_approved' => true,
-            'email_verified_at' => now(),
-        ]);
-        $admin->givePermissionTo(['Listar Servidores', 'Listar Usuarios']);
+        $admin = $this->usuarioHubAdmin(['Listar Servidores', 'Listar Usuarios']);
 
         $userAlvo = User::factory()->create([
             'name' => 'Usuario Hub Teste',
@@ -97,15 +182,38 @@ class PessoaHubFilamentTest extends TestCase
 
     private function usuarioComPermissaoListar(): User
     {
-        Permission::findOrCreate('Listar Servidores');
+        return $this->usuarioHubAdmin(['Listar Servidores']);
+    }
+
+    /** @param array<int, string> $permissoes */
+    private function usuarioHubAdmin(array $permissoes): User
+    {
+        $permissoesCriadas = collect($permissoes)
+            ->map(fn (string $permissao): Permission => $this->garantirPermissao($permissao))
+            ->all();
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $adminRole = Role::findOrCreate('Admin', 'web');
 
         $usuario = User::factory()->create([
             'email_approved' => true,
             'email_verified_at' => now(),
         ]);
-        $usuario->givePermissionTo('Listar Servidores');
+        $usuario->assignRole($adminRole);
+        $usuario->syncPermissions($permissoesCriadas);
 
         return $usuario;
+    }
+
+    private function garantirPermissao(string $nome): Permission
+    {
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        return Permission::query()->firstOrCreate([
+            'name' => $nome,
+            'guard_name' => 'web',
+        ]);
     }
 
     private function criarServidor(string $nome, Escola $escola, Setor $setor, ?int $userId = null): Servidor
