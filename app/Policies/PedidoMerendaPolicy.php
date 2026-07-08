@@ -2,9 +2,10 @@
 
 namespace App\Policies;
 
-use App\Models\User;
 use App\Models\PedidoMerenda;
+use App\Models\User;
 use App\Services\UserSetorAccessService;
+use Illuminate\Database\Eloquent\Builder;
 
 class PedidoMerendaPolicy
 
@@ -52,6 +53,11 @@ class PedidoMerendaPolicy
     {
         return $user->hasPermissionTo('Excluir Pedidos: Merenda')
             && $this->podeAcessar($user, $model);
+    }
+
+    public function applyViewAnyScope(User $user, Builder $query): Builder
+    {
+        return app(UserSetorAccessService::class)->applySetorScope($query, $user);
     }
 
     private function podeAcessar(User $user, PedidoMerenda $model): bool

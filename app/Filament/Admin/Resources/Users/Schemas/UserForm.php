@@ -14,6 +14,7 @@ use Filament\Schemas\Components;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password as PasswordRule;
 use Spatie\Permission\Models\Permission;
@@ -195,7 +196,7 @@ class UserForm
                         ->disabled(fn(string $operation) => $service->deveTravarCampoEscola($user, $operation))
                         ->dehydrated(true),
                 ])
-                ->visible(fn() => $user->hasPermissionTo('Editar Escola do Usuario')),
+                ->visible(fn (): bool => Gate::allows('editSchool', User::class)),
 
             Components\Section::make('Vínculo com Setor')
                 ->icon('heroicon-o-building-office')
@@ -214,7 +215,7 @@ class UserForm
                                 || $service->podeEditarSetor($user, 'create')
                         ),
                 ])
-                ->visible(fn() => $user->hasPermissionTo('Editar Setor do Usuário')),
+                ->visible(fn (): bool => Gate::allows('editSetor', User::class)),
 
         ]);
     }

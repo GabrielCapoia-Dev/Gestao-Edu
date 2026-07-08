@@ -10,8 +10,10 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Auth;
+use App\Models\InventarioPedido;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 
 class ListInventarioPedidos extends ListRecords
 {
@@ -54,9 +56,7 @@ class ListInventarioPedidos extends ListRecords
 
     public function getTabs(): array
     {
-        $user = Auth::user();
-
-        if (! $user?->hasPermissionTo('Listar Pedidos de Inventário')) {
+        if (! Gate::allows('viewAny', InventarioPedido::class)) {
             return [];
         }
 

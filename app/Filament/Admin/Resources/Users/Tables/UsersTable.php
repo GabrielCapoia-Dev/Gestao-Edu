@@ -24,6 +24,7 @@ use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password as PasswordRule;
 use Spatie\Permission\PermissionRegistrar;
@@ -95,7 +96,7 @@ class UsersTable
                 ->disabled(
                     fn (User $record) => $service->desabilitarToggleAprovacaoEmail(Auth::user(), $record)
                 )
-                ->visible(fn () => $service->podeVerToggleAprovacaoEmail(Auth::user(), null, 'table'))
+                ->visible(fn () => Gate::allows('toggleEmailApproval', [User::class, null, 'table']))
                 ->inline(false)
                 ->onColor('success')
                 ->offColor('danger')
@@ -173,7 +174,7 @@ class UsersTable
                 ->trueLabel('Apenas aprovados')
                 ->falseLabel('Apenas pendentes')
                 ->placeholder('Todos')
-                ->visible(fn () => $service->podeVerToggleAprovacaoEmail($user, null, 'table')),
+                ->visible(fn (): bool => Gate::allows('toggleEmailApproval', [User::class, null, 'table'])),
         ];
     }
 
@@ -192,16 +193,7 @@ class UsersTable
                 ->slideOver()
                 ->modalSubmitActionLabel('Salvar')
                 ->modalSubmitAction(fn (Action $action) => $action->color('primary'))
-                ->visible(function (User $record) use ($user) {
-                    if ($record->id === $user->id) {
-                        return false;
-                    }
-                    if ($record->hasRole('Admin')) {
-                        return false;
-                    }
-
-                    return $user->hasPermissionTo('Aplicar Permissoes');
-                })
+                ->visible(fn (User $record): bool => Gate::forUser($user)->allows('applyPermissions', $record))
                 ->modalHeading(fn (User $record) => 'Permissões do usuário')
                 ->modalDescription(fn (User $record) => "{$record->name} • {$record->email}")
                 ->modalIcon('heroicon-o-key')
@@ -304,7 +296,7 @@ class UsersTable
                 ->color('success')
                 ->accessSelectedRecords()
                 ->slideOver()
-                ->visible(fn () => $service->podeVerToggleAprovacaoEmail(Auth::user(), null, 'table'))
+                ->visible(fn () => Gate::allows('toggleEmailApproval', [User::class, null, 'table']))
                 ->closeModalByClickingAway(false)
                 ->closeModalByEscaping(false)
                 ->modalCloseButton(false)
@@ -364,7 +356,7 @@ class UsersTable
                 ->icon('heroicon-o-key')
                 ->color('danger')
                 ->accessSelectedRecords()
-                ->visible(fn () => $service->ehAdmin($user) || $user->hasPermissionTo('Editar Usuários'))
+                ->visible(fn (): bool => Gate::allows('admin-only') || Gate::allows('updateAny', User::class))
                 ->closeModalByClickingAway(false)
                 ->closeModalByEscaping(false)
                 ->modalCloseButton(false)
@@ -423,7 +415,7 @@ class UsersTable
                 ->color('primary')
                 ->accessSelectedRecords()
                 ->slideOver()
-                ->visible(fn () => $user->hasPermissionTo('Aplicar Permissoes'))
+                ->visible(fn (): bool => Gate::allows('applyPermissionsAny', User::class))
                 ->closeModalByClickingAway(false)
                 ->closeModalByEscaping(false)
                 ->modalCloseButton(false)
@@ -498,7 +490,7 @@ class UsersTable
                 ->color('warning')
                 ->accessSelectedRecords()
                 ->slideOver()
-                ->visible(fn () => $user->hasPermissionTo('Aplicar Permissoes'))
+                ->visible(fn (): bool => Gate::allows('applyPermissionsAny', User::class))
                 ->closeModalByClickingAway(false)
                 ->closeModalByEscaping(false)
                 ->modalCloseButton(false)

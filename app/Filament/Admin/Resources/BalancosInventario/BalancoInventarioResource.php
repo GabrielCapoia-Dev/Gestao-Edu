@@ -25,6 +25,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use UnitEnum;
 
 class BalancoInventarioResource extends Resource
@@ -46,35 +47,6 @@ class BalancoInventarioResource extends Resource
     protected static ?int $navigationSort = 13;
 
     protected static ?string $recordTitleAttribute = 'codigo';
-
-    public static function canViewAny(): bool
-    {
-        return Auth::user()?->hasPermissionTo('Listar Balanços de Inventário') ?? false;
-    }
-
-    public static function canCreate(): bool
-    {
-        return Auth::user()?->hasPermissionTo('Criar Balanços de Inventário') ?? false;
-    }
-
-    public static function canView($record): bool
-    {
-        if (! (Auth::user()?->hasPermissionTo('Listar Balanços de Inventário') ?? false)) {
-            return false;
-        }
-
-        return static::getEloquentQuery()->whereKey($record->getKey())->exists();
-    }
-
-    public static function canEdit($record): bool
-    {
-        return false;
-    }
-
-    public static function canDelete($record): bool
-    {
-        return false;
-    }
 
     public static function form(Schema $schema): Schema
     {
@@ -310,12 +282,17 @@ class BalancoInventarioResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        $inventariosVisiveis = app(InventarioContextService::class)
-            ->queryInventariosVisiveis(Auth::user())
-            ->select('inventarios.id');
+        $query = parent::getEloquentQuery();
+        $user = Auth::user();
+        $policy = Gate::getPolicyFor(static::getModel());
 
-        return parent::getEloquentQuery()
-            ->whereIn('inventario_id', $inventariosVisiveis)
+        if ($user && $policy && method_exists($policy, 'applyViewAnyScope')) {
+            $query = $policy->applyViewAnyScope($user, $query);
+        } else {
+            $query->whereRaw('1 = 0');
+        }
+
+        return $query
             ->with([
                 'inventario.escola',
                 'criadoPor',

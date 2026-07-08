@@ -22,6 +22,7 @@ use Filament\Tables\Columns\ViewColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Throwable;
 use UnitEnum;
 
@@ -53,7 +54,7 @@ class FeedbackPedido extends Page implements HasTable
 
     public static function canAccess(): bool
     {
-        return User::authUser()->hasPermissionTo('Visualizar Feedback de Pedidos') ?? false;
+        return Gate::allows('viewAny', FeedbackPedidoModel::class);
     }
 
     public function table(Table $table): Table
@@ -285,7 +286,7 @@ class FeedbackPedido extends Page implements HasTable
             Actions\Action::make('exportar_feedback')
                 ->label('Gerar relatório')
                 ->icon('heroicon-o-arrow-down-tray')
-                ->visible(fn (): bool => User::authUser()?->hasPermissionLike('exportar relatorios') ?? false)
+                ->visible(fn (): bool => Gate::allows('exportReports'))
                 ->modalHeading('Gerar relatório de feedback')
                 ->modalDescription('Informe obrigatoriamente o período do pedido. O PDF será enviado para Minhas Exportacoes.')
                 ->form($this->exportForm())

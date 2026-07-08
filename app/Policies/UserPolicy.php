@@ -45,6 +45,58 @@ class UserPolicy
         return $user->hasPermissionTo('Visualizar Tela de Inicio');
     }
 
+    public function applyPermissions(User $user, User $target): bool
+    {
+        if ($target->id === $user->id || $target->hasRole('Admin')) {
+            return false;
+        }
+
+        return $this->applyPermissionsAny($user);
+    }
+
+    public function applyPermissionsAny(User $user): bool
+    {
+        return $user->hasPermissionTo('Aplicar Permissoes');
+    }
+
+    public function toggleEmailApproval(User $user, ?User $target = null, string $context = 'table'): bool
+    {
+        if ($context === 'create') {
+            return true;
+        }
+
+        if (! $user->hasRole('Admin')) {
+            return false;
+        }
+
+        if ($target && ($target->hasRole('Admin') || $target->id === $user->id)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public function updateAny(User $user): bool
+    {
+        return $user->hasPermissionTo('Editar Usuários')
+            || $user->hasPermissionTo('Editar Usuarios');
+    }
+
+    public function editSchool(User $user): bool
+    {
+        return $user->hasPermissionTo('Editar Escola do Usuario');
+    }
+
+    public function editSetor(User $user): bool
+    {
+        return $user->hasPermissionTo('Editar Setor do Usuário');
+    }
+
+    public function exportReports(User $user): bool
+    {
+        return $user->hasPermissionTo('Exportar Relatórios');
+    }
+
     private function podeAcessarUsuario(User $user, User $model): bool
     {
         $access = app(UserSetorAccessService::class);

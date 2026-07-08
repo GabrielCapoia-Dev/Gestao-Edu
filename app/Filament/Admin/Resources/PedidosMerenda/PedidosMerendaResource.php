@@ -6,6 +6,9 @@ use App\Filament\Admin\Resources\PedidosMerenda\Pages\CreatePedidoMerenda;
 use App\Filament\Admin\Resources\PedidosMerenda\Pages\ListPedidosMerenda;
 use App\Models\PedidoMerenda;
 use Filament\Resources\Resource;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
 use Filament\Support\Icons\Heroicon;
@@ -40,5 +43,18 @@ class PedidosMerendaResource extends Resource
             'index'  => ListPedidosMerenda::route('/'),
             'create' => CreatePedidoMerenda::route('/create'),
         ];
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+        $user = Auth::user();
+        $policy = Gate::getPolicyFor(static::getModel());
+
+        if ($user && $policy && method_exists($policy, 'applyViewAnyScope')) {
+            return $policy->applyViewAnyScope($user, $query);
+        }
+
+        return $query->whereRaw('1 = 0');
     }
 }

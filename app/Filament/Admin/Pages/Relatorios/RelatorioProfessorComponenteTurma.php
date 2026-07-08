@@ -17,6 +17,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
@@ -48,7 +49,7 @@ class RelatorioProfessorComponenteTurma extends Page implements HasTable
         /** @var \App\Models\User $user */
         $user = Auth::user();
 
-        return $user->hasPermissionTo('Listar Relatórios: Professor por Componente e Turma');
+        return Gate::allows('viewProfessorComponentTurmaReport', \App\Models\Avaliacao::class);
     }
 
     protected function getHeaderActions(): array
@@ -63,7 +64,7 @@ class RelatorioProfessorComponenteTurma extends Page implements HasTable
                     /** @var \App\Models\User $user */
                     $user = Auth::user();
 
-                    return $user->hasPermissionTo('Exportar Relatórios');
+                    return Gate::allows('exportReports');
                 })
                 ->modalHeading('Exportar Relatório Geral')
                 ->modalDescription('Esta ação irá exportar todos os registros do relatório. Dependendo da quantidade de dados, isso pode causar lentidão temporária. Deseja continuar?')

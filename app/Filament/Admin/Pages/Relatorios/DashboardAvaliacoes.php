@@ -32,6 +32,7 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\On;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -46,9 +47,6 @@ use UnitEnum;
 class DashboardAvaliacoes extends Page implements HasForms
 {
     use InteractsWithForms;
-
-    private const PERMISSAO_ACOMPANHAR_AVALIACOES = 'Acompanhar Avaliações';
-    private const PERMISSAO_VISUALIZAR_PROGRESSO_POR_ESCOLA = 'Visualizar Progresso por Escola';
 
     protected static bool $shouldRegisterNavigation = false;
 
@@ -547,12 +545,12 @@ class DashboardAvaliacoes extends Page implements HasForms
             return false;
         }
 
-        return $user->can(self::PERMISSAO_ACOMPANHAR_AVALIACOES);
+        return Gate::allows('follow', Avaliacao::class);
     }
 
     public function getPodeVerProgressoPorEscolaProperty(): bool
     {
-        return $this->usuarioAtual()?->hasPermissionTo(self::PERMISSAO_VISUALIZAR_PROGRESSO_POR_ESCOLA) ?? false;
+        return Gate::allows('viewProgressBySchool', Avaliacao::class);
     }
 
     public function getPodeVerPendenciaPorEscolaProperty(): bool
@@ -578,7 +576,7 @@ class DashboardAvaliacoes extends Page implements HasForms
     {
         $user ??= $this->usuarioAtual();
 
-        return (bool) $user?->hasRole('Admin');
+        return Gate::allows('admin-only', $user);
     }
 
     /**
@@ -691,28 +689,18 @@ class DashboardAvaliacoes extends Page implements HasForms
             return false;
         }
 
-        return $user->hasPermissionLike('exportar relatorios')
-            || $user->hasPermissionLike('exportar avaliacoes');
+        return Gate::allows('exportReports')
+            || Gate::allows('export', Avaliacao::class);
     }
 
     public function getPodeExportarParecerProperty(): bool
     {
-        /** @var \App\Models\User|null $user */
-        $user = Auth::user();
-
-        return $user?->hasPermissionLike('exportar avaliacoes') ?? false;
+        return Gate::allows('export', Avaliacao::class);
     }
 
     private function podeAbrirAvaliacoesProfessor(): bool
     {
-        $user = $this->usuarioAtual();
-
-        if (! $user) {
-            return false;
-        }
-
-        return $user->hasPermissionLike('listar avaliacoes')
-            || $user->hasPermissionLike('responder avaliacoes');
+        return Gate::allows('accessProfessorPage', Avaliacao::class);
     }
 
     public function getStatusOptionsProperty(): array

@@ -78,6 +78,11 @@ class ContratoPolicy
             && $this->podeAcessarContrato($user, $model);
     }
 
+    public function accessMargins(User $user): bool
+    {
+        return $user->hasPermissionTo('Listar Gestão de Margens');
+    }
+
     private function podeAcessarContrato(User $user, Contrato $model): bool
     {
         $setorId = $model->setor_id ?: $model->empresaContratada?->setor_id;

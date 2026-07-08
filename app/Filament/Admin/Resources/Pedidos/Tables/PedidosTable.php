@@ -47,6 +47,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 
 class PedidosTable
 {
@@ -578,7 +579,7 @@ class PedidosTable
                 ->extraModalWindowAttributes(['class' => 'pedido-view-modal-window'], merge: true)
                 ->modalSubmitAction(false)
                 ->modalCancelActionLabel('Fechar')
-                ->visible(fn () => $user?->hasPermissionTo('Visualizar Histórico de Pedidos') ?? false)
+                ->visible(fn (): bool => Gate::allows('viewHistory', Pedido::class))
                 ->modalContent(function (Pedido $record) use ($user) {
                     $record->load([
                         'tipoManutencao',
@@ -642,7 +643,7 @@ class PedidosTable
                 ->modalWidth('4xl')
                 ->modalSubmitAction(false)
                 ->modalCancelActionLabel('Fechar')
-                ->visible(fn (Pedido $record): bool => ($user?->hasPermissionTo('Visualizar Feedback de Pedidos') ?? false)
+                ->visible(fn (Pedido $record): bool => Gate::allows('viewFeedback', Pedido::class)
                     && static::feedbackParaVisualizacao($record) !== null)
                 ->modalHeading(fn (Pedido $record): string => 'Feedback do pedido '.$record->numero_protocolo)
                 ->modalContent(function (Pedido $record) {
@@ -822,7 +823,7 @@ class PedidosTable
 
     public static function podeExibirAcaoVisualizar(?User $user): bool
     {
-        return $user?->hasPermissionTo('Visualizar Histórico de Pedidos') ?? false;
+        return Gate::allows('viewHistory', Pedido::class);
     }
 
     public static function podeExibirAcaoGerenciar(Pedido $record, ?User $user, ?PedidoService $service = null): bool
@@ -945,7 +946,7 @@ class PedidosTable
                 ->label('Exportar PDF')
                 ->icon('heroicon-o-document-arrow-down')
                 ->color('info')
-                ->visible(fn () => $user?->hasPermissionLike('exportar relatorios') ?? false)
+                ->visible(fn (): bool => Gate::allows('exportReports', Pedido::class))
                 ->requiresConfirmation()
                 ->modalHeading('Exportar pedidos selecionados em PDF')
                 ->modalDescription('O arquivo será gerado em segundo plano com um pedido por página, contendo cabeçalho, descrição do pedido e imagens do problema.')
@@ -1092,7 +1093,7 @@ class PedidosTable
                         ->required()
                         ->maxLength(1000),
                 ])
-                ->visible(fn () => ($user?->hasPermissionTo('Editar Pedidos') ?? false)
+                ->visible(fn (): bool => Gate::allows('updateAny', Pedido::class)
                     && app(SetorPedidoAccessService::class)->allowedSetorIds(
                         $user,
                         SetorAccessCapability::CANCELAR,

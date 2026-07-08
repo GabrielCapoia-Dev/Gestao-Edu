@@ -9,7 +9,6 @@ use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
 class BaixasEstoqueResource extends Resource
@@ -24,11 +23,6 @@ class BaixasEstoqueResource extends Resource
     protected static ?string $modelLabel = 'Baixa de Estoque';
     protected static ?string $slug = 'baixas-estoque';
     protected static ?int $navigationSort = 6;
-
-    public static function canViewAny(): bool
-    {
-        return Auth::user()?->hasPermissionTo('Listar Gestão de Estoque') ?? false;
-    }
 
     public static function table(Table $table): Table
     {

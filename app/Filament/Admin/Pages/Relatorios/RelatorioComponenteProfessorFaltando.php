@@ -16,6 +16,7 @@ use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
@@ -79,7 +80,7 @@ class RelatorioComponenteProfessorFaltando extends Page
         /** @var \App\Models\User $user */
         $user = Auth::user();
 
-        return $user->hasPermissionTo('Listar Relatórios: Componentes com Professores Faltando');
+        return Gate::allows('viewMissingTeachersReport', \App\Models\Avaliacao::class);
     }
 
     protected function getHeaderActions(): array
@@ -90,7 +91,7 @@ class RelatorioComponenteProfessorFaltando extends Page
                 ->icon('heroicon-o-arrow-down-tray')
                 ->color('warning')
                 ->requiresConfirmation()
-                ->visible(fn(): bool => Auth::user()?->hasPermissionTo('Exportar Relatórios') ?? false)
+                ->visible(fn (): bool => Gate::allows('exportReports'))
                 ->modalHeading('Exportar Relatório Geral')
                 ->modalDescription(fn(): string => $this->getExportModalDescription())
                 ->modalSubmitActionLabel('Exportar XLSX')

@@ -13,7 +13,9 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Collection;
+use App\Models\Inventario;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use UnitEnum;
 
 class GestaoInventario extends Page
@@ -130,11 +132,7 @@ class GestaoInventario extends Page
 
     public static function canAccess(): bool
     {
-        /** @var \App\Models\User|null $user */
-        $user = Auth::user();
-
-        return ($user?->hasPermissionTo('Listar Gestão de Inventário') ?? false)
-            || ($user?->hasPermissionTo('Listar Inventários') ?? false);
+        return Gate::allows('accessGestao', Inventario::class);
     }
 
     public function mount(): void
@@ -253,7 +251,7 @@ class GestaoInventario extends Page
 
     public function getPodeExportarProperty(): bool
     {
-        return Auth::user()?->hasPermissionTo('Exportar Relatórios') ?? false;
+        return Gate::allows('exportReports');
     }
 
     public function mudarAba(string $aba): void

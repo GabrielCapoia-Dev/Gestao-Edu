@@ -8,7 +8,6 @@ use App\Filament\Admin\Resources\InventarioPedidos\Pages\ViewInventarioPedido;
 use App\Filament\Admin\Resources\InventarioPedidos\Tables\InventarioPedidosTable;
 use App\Models\InventarioPedido;
 use App\Models\Item;
-use App\Services\Inventario\InventarioContextService;
 use BackedEnum;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -41,32 +40,6 @@ class InventarioPedidoResource extends Resource
     protected static string|UnitEnum|null $navigationGroup = 'Alimentação Escolar';
 
     protected static ?int $navigationSort = 12;
-
-    public static function canViewAny(): bool
-    {
-        return Auth::user()?->hasPermissionTo('Listar Pedidos de Inventário') ?? false;
-    }
-
-    public static function canCreate(): bool
-    {
-        $user = Auth::user();
-
-        if (! $user?->hasPermissionTo('Criar Pedidos de Inventário')) {
-            return false;
-        }
-
-        return ! app(InventarioContextService::class)->ehGestorGeral($user);
-    }
-
-    public static function canEdit($record): bool
-    {
-        return false;
-    }
-
-    public static function canDelete($record): bool
-    {
-        return false;
-    }
 
     public static function form(Schema $schema): Schema
     {

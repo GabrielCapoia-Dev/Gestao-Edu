@@ -14,7 +14,9 @@ use Filament\Pages\Page;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Collection;
+use App\Models\Inventario;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use UnitEnum;
 
 class Inventarios extends Page
@@ -55,13 +57,7 @@ class Inventarios extends Page
 
     public static function canAccess(): bool
     {
-        $user = Auth::user();
-
-        if (! ($user?->hasPermissionTo('Listar Inventários') ?? false)) {
-            return false;
-        }
-
-        return app(InventarioContextService::class)->ehGestorGeral($user);
+        return Gate::allows('accessPanorama', Inventario::class);
     }
 
     public function updatedBusca(): void
@@ -118,7 +114,7 @@ class Inventarios extends Page
 
     public function getPodeExportarProperty(): bool
     {
-        return Auth::user()?->hasPermissionTo('Exportar Relatórios') ?? false;
+        return Gate::allows('exportReports');
     }
 
     public function getMesesRelatorioEnviosOptionsProperty(): array

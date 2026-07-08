@@ -10,7 +10,7 @@ use Filament\Actions\Action;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use UnitEnum;
 
 class GestaoEstoque extends Page
@@ -64,10 +64,7 @@ class GestaoEstoque extends Page
 
     public static function canAccess(): bool
     {
-        /** @var \App\Models\User|null $user */
-        $user = Auth::user();
-
-        return $user?->hasPermissionTo('Listar Gestão de Estoque') ?? false;
+        return Gate::allows('viewAny', Estoque::class);
     }
 
     public function updatedBusca(): void
@@ -155,10 +152,7 @@ class GestaoEstoque extends Page
 
     public function getPodeExportarProperty(): bool
     {
-        /** @var \App\Models\User|null $user */
-        $user = Auth::user();
-
-        return $user?->hasPermissionTo('Exportar Relatórios') ?? false;
+        return Gate::allows('exportReports');
     }
 
     public function mudarAba(string $aba): void

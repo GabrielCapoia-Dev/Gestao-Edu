@@ -37,7 +37,13 @@ class PedidoPolicy
      */
     public function update(User $user, Pedido $model): bool
     {
-        return app(PedidoService::class)->podeGerenciarRegistro($model, $user);
+        return $user->hasPermissionTo('Editar Pedidos')
+            && app(PedidoService::class)->podeGerenciarRegistro($model, $user);
+    }
+
+    public function updateAny(User $user): bool
+    {
+        return $user->hasPermissionTo('Editar Pedidos');
     }
 
     /**
@@ -47,6 +53,21 @@ class PedidoPolicy
     {
         return $user->hasPermissionTo('Excluir Pedidos')
             && app(PedidoService::class)->podeGerenciarRegistro($model, $user);
+    }
+
+    public function viewHistory(User $user): bool
+    {
+        return $user->hasPermissionTo('Visualizar Histórico de Pedidos');
+    }
+
+    public function viewFeedback(User $user): bool
+    {
+        return $user->hasPermissionTo('Visualizar Feedback de Pedidos');
+    }
+
+    public function exportReports(User $user): bool
+    {
+        return $user->hasPermissionLike('exportar relatorios');
     }
 
     // /**

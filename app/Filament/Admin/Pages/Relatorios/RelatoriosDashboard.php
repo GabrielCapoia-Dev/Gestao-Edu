@@ -5,8 +5,10 @@ namespace App\Filament\Admin\Pages\Relatorios;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use BackedEnum;
+use App\Models\Avaliacao;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use App\Models\Professor;
 use App\Models\Turma;
 use App\Models\ComponenteCurricular;
@@ -225,9 +227,7 @@ class RelatoriosDashboard extends Page
 
     public static function canAccess(): bool
     {
-        /** @var \App\Models\User */
-        $user = Auth::user();
-        return $user->hasPermissionTo('Listar Relatórios: Dashboard');
+        return Gate::allows('viewReportsDashboard', Avaliacao::class);
     }
     public function getTitle(): string
     {

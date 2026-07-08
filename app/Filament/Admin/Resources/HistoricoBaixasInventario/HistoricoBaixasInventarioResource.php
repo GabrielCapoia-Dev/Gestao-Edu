@@ -11,7 +11,9 @@ use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use App\Models\Inventario;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use UnitEnum;
 
 class HistoricoBaixasInventarioResource extends Resource
@@ -34,11 +36,7 @@ class HistoricoBaixasInventarioResource extends Resource
 
     public static function canViewAny(): bool
     {
-        /** @var \App\Models\User|null $user */
-        $user = Auth::user();
-
-        return ($user?->hasPermissionTo('Listar Gestão de Inventário') ?? false)
-            && static::resolverInventarioId() !== null;
+        return Gate::allows('accessBaixasWithContext', Inventario::class);
     }
 
     public static function table(Table $table): Table

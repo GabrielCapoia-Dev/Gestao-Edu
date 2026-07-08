@@ -6,13 +6,20 @@ use App\Http\Responses\PasswordChangeLoginResponse;
 use App\Models\Alternativa;
 use App\Models\Aluno;
 use App\Models\Avaliacao;
+use App\Models\BaixasEstoques;
+use App\Models\BalancoEstoque;
+use App\Models\BalancoInventario;
 use App\Models\ComponenteCurricular;
 use App\Models\Contrato;
 use App\Models\DominioEmail;
 use App\Models\EmpresaContratada;
 use App\Models\Escola;
+use App\Models\Estoque;
 use App\Models\ExportRequest;
+use App\Models\FeedbackPedido;
 use App\Models\FuncaoAdministrativa;
+use App\Models\Inventario;
+use App\Models\InventarioPedido;
 use App\Models\Item;
 use App\Models\Pauta;
 use App\Models\Pedido;
@@ -35,13 +42,20 @@ use App\Observers\TurmaComponenteProfessorObserver;
 use App\Policies\AlternativaPolicy;
 use App\Policies\AlunoPolicy;
 use App\Policies\AvaliacaoPolicy;
+use App\Policies\BaixasEstoquesPolicy;
+use App\Policies\BalancoEstoquePolicy;
+use App\Policies\BalancoInventarioPolicy;
 use App\Policies\ComponenteCurricularPolicy;
 use App\Policies\ContratoPolicy;
 use App\Policies\DominioEmailPolicy;
 use App\Policies\EmpresaContratadaPolicy;
 use App\Policies\EscolaPolicy;
+use App\Policies\EstoquePolicy;
 use App\Policies\ExportRequestPolicy;
+use App\Policies\FeedbackPedidoPolicy;
 use App\Policies\FuncaoAdministrativaPolicy;
+use App\Policies\InventarioPedidoPolicy;
+use App\Policies\InventarioPolicy;
 use App\Policies\ItemPolicy;
 use App\Policies\PautaPolicy;
 use App\Policies\PedidoArquivoPolicy;
@@ -111,6 +125,13 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Alternativa::class, AlternativaPolicy::class);
         Gate::policy(Pauta::class, PautaPolicy::class);
         Gate::policy(Avaliacao::class, AvaliacaoPolicy::class);
+        Gate::policy(Estoque::class, EstoquePolicy::class);
+        Gate::policy(BaixasEstoques::class, BaixasEstoquesPolicy::class);
+        Gate::policy(BalancoEstoque::class, BalancoEstoquePolicy::class);
+        Gate::policy(Inventario::class, InventarioPolicy::class);
+        Gate::policy(BalancoInventario::class, BalancoInventarioPolicy::class);
+        Gate::policy(InventarioPedido::class, InventarioPedidoPolicy::class);
+        Gate::policy(FeedbackPedido::class, FeedbackPedidoPolicy::class);
 
         // ── Observers ──────────────────────────────────────────────────────────
         Pedido::observe(PedidoObserver::class);
@@ -119,6 +140,7 @@ class AppServiceProvider extends ServiceProvider
 
         // ── Gates ──────────────────────────────────────────────────────────────
         Gate::define('admin-only', fn ($user) => $user->hasRole('Admin'));
+        Gate::define('exportReports', fn (User $user) => $user->hasPermissionTo('Exportar Relatórios'));
 
         Event::listen(Login::class, function (Login $event): void {
             if ($event->user instanceof User) {

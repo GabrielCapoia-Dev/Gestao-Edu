@@ -23,7 +23,6 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Auth;
 use UnitEnum;
 
 class BalancoEstoqueResource extends Resource
@@ -47,31 +46,6 @@ class BalancoEstoqueResource extends Resource
     protected static ?int $navigationSort = 8;
 
     protected static ?string $recordTitleAttribute = 'codigo';
-
-    public static function canViewAny(): bool
-    {
-        return Auth::user()?->hasPermissionTo('Listar Balanços de Estoque') ?? false;
-    }
-
-    public static function canCreate(): bool
-    {
-        return Auth::user()?->hasPermissionTo('Criar Balanços de Estoque') ?? false;
-    }
-
-    public static function canView($record): bool
-    {
-        return Auth::user()?->hasPermissionTo('Listar Balanços de Estoque') ?? false;
-    }
-
-    public static function canEdit($record): bool
-    {
-        return false;
-    }
-
-    public static function canDelete($record): bool
-    {
-        return false;
-    }
 
     public static function form(Schema $schema): Schema
     {

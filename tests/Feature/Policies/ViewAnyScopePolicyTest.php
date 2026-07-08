@@ -10,10 +10,14 @@ use App\Filament\Admin\Resources\Servidores\ServidorResource;
 use App\Filament\Admin\Resources\Setors\SetorResource;
 use App\Filament\Admin\Resources\TipoManutencaos\TipoManutencaoResource;
 use App\Filament\Admin\Resources\Turmas\TurmaResource;
+use App\Models\BalancoInventario;
+use App\Models\Enums\BalancoInventarioStatus;
 use App\Models\ComponenteCurricular;
 use App\Models\Contrato;
 use App\Models\EmpresaContratada;
 use App\Models\Escola;
+use App\Models\Inventario;
+use App\Models\InventarioPedido;
 use App\Models\Professor;
 use App\Models\Role;
 use App\Models\Serie;
@@ -23,9 +27,14 @@ use App\Models\TipoManutencao;
 use App\Models\Turma;
 use App\Models\TurmaComponenteProfessor;
 use App\Models\User;
+use App\Policies\BalancoEstoquePolicy;
+use App\Policies\BalancoInventarioPolicy;
 use App\Policies\ContratoPolicy;
 use App\Policies\EmpresaContratadaPolicy;
+use App\Policies\EstoquePolicy;
 use App\Policies\EscolaPolicy;
+use App\Policies\InventarioPedidoPolicy;
+use App\Policies\InventarioPolicy;
 use App\Policies\ProfessorPolicy;
 use App\Policies\ServidorPolicy;
 use App\Policies\SetorPolicy;
@@ -573,6 +582,120 @@ class ViewAnyScopePolicyTest extends TestCase
             [$professorFolha->id, $professorFora->id],
             app(ProfessorPolicy::class)->applyViewAnyScope($admin, Professor::query())->pluck('id')->all(),
         );
+    }
+
+    public function test_estoque_e_balanco_respeitam_permissoes_de_listagem(): void
+    {
+        foreach ([
+            'Listar Gestão de Estoque',
+            'Listar Balanços de Estoque',
+            'Criar Balanços de Estoque',
+        ] as $permission) {
+            Permission::findOrCreate($permission, 'web');
+        }
+
+        $semPermissao = User::factory()->create();
+        $comEstoque = User::factory()->create();
+        $comBalanco = User::factory()->create();
+
+        $comEstoque->givePermissionTo('Listar Gestão de Estoque');
+        $comBalanco->givePermissionTo(['Listar Balanços de Estoque', 'Criar Balanços de Estoque']);
+
+        $estoquePolicy = app(EstoquePolicy::class);
+        $balancoEstoquePolicy = app(BalancoEstoquePolicy::class);
+
+        $this->assertFalse($estoquePolicy->viewAny($semPermissao));
+        $this->assertTrue($estoquePolicy->viewAny($comEstoque));
+        $this->assertFalse($balancoEstoquePolicy->viewAny($semPermissao));
+        $this->assertTrue($balancoEstoquePolicy->viewAny($comBalanco));
+        $this->assertFalse($balancoEstoquePolicy->create($semPermissao));
+        $this->assertTrue($balancoEstoquePolicy->create($comBalanco));
+    }
+
+    public function test_inventario_panorama_exige_gestor_geral(): void
+    {
+        foreach ([
+            'Listar Inventários',
+            'Listar Gestão de Inventário',
+        ] as $permission) {
+            Permission::findOrCreate($permission, 'web');
+        }
+
+        $gestorEscolar = User::factory()->create(['id_escola' => 1]);
+        $gestorEscolar->givePermissionTo([
+            'Listar Inventários',
+            'Listar Gestão de Inventário',
+        ]);
+
+        $gestorGeral = User::factory()->create(['id_escola' => null]);
+        $gestorGeral->givePermissionTo('Listar Inventários');
+
+        $inventarioPolicy = app(InventarioPolicy::class);
+
+        $this->assertTrue($inventarioPolicy->accessGestao($gestorEscolar));
+        $this->assertFalse($inventarioPolicy->accessPanorama($gestorEscolar));
+        $this->assertTrue($inventarioPolicy->accessPanorama($gestorGeral));
+    }
+
+    public function test_inventario_pedido_create_bloqueia_gestor_geral(): void
+    {
+        Permission::findOrCreate('Criar Pedidos de Inventário', 'web');
+
+        $gestorGeral = User::factory()->create(['id_escola' => null]);
+        $gestorGeral->givePermissionTo('Criar Pedidos de Inventário');
+
+        $gestorEscolar = User::factory()->create(['id_escola' => 1]);
+        $gestorEscolar->givePermissionTo('Criar Pedidos de Inventário');
+
+        $policy = app(InventarioPedidoPolicy::class);
+
+        $this->assertFalse($policy->create($gestorGeral));
+        $this->assertTrue($policy->create($gestorEscolar));
+    }
+
+    public function test_balanco_inventario_view_respeita_inventarios_visiveis(): void
+    {
+        Permission::findOrCreate('Listar Balanços de Inventário', 'web');
+
+        [$area, , $fora] = $this->criarHierarquiaSetores();
+        $escolaVisivel = $this->criarEscola('ESC-INV-1', 'Escola Inventario', $area);
+        $escolaOculta = $this->criarEscola('ESC-INV-2', 'Escola Fora', $fora);
+
+        $usuario = User::factory()->create(['setor_id' => $area->id]);
+        $usuario->givePermissionTo('Listar Balanços de Inventário');
+
+        $inventarioVisivel = Inventario::query()->create([
+            'escola_id' => $escolaVisivel->id,
+            'setor_id' => $area->id,
+            'criado_por_id' => $usuario->id,
+        ]);
+
+        $inventarioOculto = Inventario::query()->create([
+            'escola_id' => $escolaOculta->id,
+            'setor_id' => $fora->id,
+            'criado_por_id' => $usuario->id,
+        ]);
+
+        $balancoVisivel = BalancoInventario::query()->create([
+            'inventario_id' => $inventarioVisivel->id,
+            'codigo' => 'BAL-INV-1',
+            'status' => BalancoInventarioStatus::Agendado,
+            'data_agendada' => now(),
+            'criado_por_id' => $usuario->id,
+        ]);
+
+        $balancoOculto = BalancoInventario::query()->create([
+            'inventario_id' => $inventarioOculto->id,
+            'codigo' => 'BAL-INV-2',
+            'status' => BalancoInventarioStatus::Agendado,
+            'data_agendada' => now(),
+            'criado_por_id' => $usuario->id,
+        ]);
+
+        $policy = app(BalancoInventarioPolicy::class);
+
+        $this->assertTrue($policy->view($usuario, $balancoVisivel));
+        $this->assertFalse($policy->view($usuario, $balancoOculto));
     }
 
     /**

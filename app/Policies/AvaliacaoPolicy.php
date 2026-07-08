@@ -41,4 +41,35 @@ class AvaliacaoPolicy
     {
         return $user->hasPermissionLike('exportar avaliacoes');
     }
+
+    public function viewProgressBySchool(User $user): bool
+    {
+        return $user->hasPermissionTo('Visualizar Progresso por Escola');
+    }
+
+    public function accessProfessorPage(User $user): bool
+    {
+        return $user->hasPermissionLike('listar avaliacoes')
+            || $user->hasPermissionLike('responder avaliacoes');
+    }
+
+    public function respond(User $user): bool
+    {
+        return $user->hasPermissionLike('responder avaliacoes');
+    }
+
+    public function viewReportsDashboard(User $user): bool
+    {
+        return $user->hasPermissionTo('Listar Relatórios: Dashboard');
+    }
+
+    public function viewProfessorComponentTurmaReport(User $user): bool
+    {
+        return $user->hasPermissionTo('Listar Relatórios: Professor por Componente e Turma');
+    }
+
+    public function viewMissingTeachersReport(User $user): bool
+    {
+        return $user->hasPermissionTo('Listar Relatórios: Componentes com Professores Faltando');
+    }
 }

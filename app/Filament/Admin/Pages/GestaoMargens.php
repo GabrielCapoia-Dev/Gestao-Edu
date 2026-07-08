@@ -12,6 +12,7 @@ use UnitEnum;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 
 class GestaoMargens extends Page
 {
@@ -51,9 +52,7 @@ class GestaoMargens extends Page
     }
     public static function canAccess(): bool
     {
-        /** @var \App\Models\User */
-        $user = Auth::user();
-        return $user->hasPermissionTo('Listar Gestão de Margens');
+        return Gate::allows('accessMargins', \App\Models\Contrato::class);
     }
 
     // -------------------------------------------------------------------------

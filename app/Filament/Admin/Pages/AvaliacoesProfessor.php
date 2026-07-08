@@ -6,7 +6,9 @@ use App\Models\User;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
+use App\Models\Avaliacao;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use UnitEnum;
 
 class AvaliacoesProfessor extends Page
@@ -52,16 +54,12 @@ class AvaliacoesProfessor extends Page
             return false;
         }
 
-        return $user->hasPermissionLike('listar avaliacoes')
-            || $user->hasPermissionLike('responder avaliacoes');
+        return Gate::allows('accessProfessorPage', Avaliacao::class);
     }
 
     public function podeResponder(): bool
     {
-        /** @var User|null $user */
-        $user = Auth::user();
-
-        return $user?->hasPermissionLike('responder avaliacoes') ?? false;
+        return Gate::allows('respond', Avaliacao::class);
     }
 
     public function mount(): void
