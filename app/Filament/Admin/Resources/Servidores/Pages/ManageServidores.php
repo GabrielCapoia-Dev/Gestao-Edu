@@ -7,7 +7,6 @@ use App\Filament\Admin\Resources\Users\Concerns\HasUsersOverview;
 use App\Filament\Admin\Resources\Users\Pages\CreateUser;
 use App\Filament\Admin\Resources\Users\Tables\UsersTable;
 use App\Models\Servidor;
-use App\Models\ServidorFuncaoAdministrativa;
 use App\Models\User;
 use App\Services\ServidorService;
 use Filament\Actions\Action;
@@ -113,13 +112,8 @@ class ManageServidores extends ManageRecords
 
             'professores' => Tab::make('Professores')
                 ->modifyQueryUsing(fn (Builder $query): Builder => $query->whereHas(
-                    'servidorFuncoes',
-                    fn (Builder $vinculos): Builder => $vinculos
-                        ->where('status', ServidorFuncaoAdministrativa::STATUS_ATIVO)
-                        ->whereHas(
-                            'funcaoAdministrativa',
-                            fn (Builder $funcao): Builder => $funcao->where('exige_professor', true)
-                        )
+                    'professores',
+                    fn (Builder $professores): Builder => $professores->where('ativo', true),
                 )),
 
             'usuarios' => Tab::make('Usuários'),
@@ -154,10 +148,14 @@ class ManageServidores extends ManageRecords
                 ->slideOver()
                 ->closeModalByClickingAway(false)
                 ->using(function (array $data): Servidor {
-                    $vinculos = $data['vinculos_funcionais'] ?? [];
-                    unset($data['vinculos_funcionais']);
+                    $registros = $data['registros_professor'] ?? [];
+                    unset($data['registros_professor']);
+                    $data['cargo'] = $data['cargo'] ?? ServidorResource::CARGO_PROFESSOR;
 
-                    return app(ServidorService::class)->criarServidorComFuncoes($data, $vinculos);
+                    return app(ServidorService::class)->criarServidorComFuncoes(
+                        $data,
+                        ['registros_professor' => $registros],
+                    );
                 }),
         ];
     }
@@ -167,7 +165,7 @@ class ManageServidores extends ManageRecords
         return $table->pushColumns([
             TextColumn::make('escolas_pedagogicas')
                 ->label('Escolas')
-                ->getStateUsing(fn (Servidor $record): string => $record->servidorFuncoesAtivas
+                ->getStateUsing(fn (Servidor $record): string => $record->professores
                     ->loadMissing('escola')
                     ->pluck('escola.nome')
                     ->filter()

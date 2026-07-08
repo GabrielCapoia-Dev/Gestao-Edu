@@ -3,17 +3,18 @@
 namespace App\Filament\Admin\Resources\Servidores;
 
 use App\Filament\Admin\Resources\Servidores\Pages\ManageServidores;
-use App\Models\FuncaoAdministrativa;
+use App\Models\Professor;
 use App\Models\Servidor;
-use App\Models\ServidorFuncaoAdministrativa;
 use App\Models\Turma;
+use App\Models\TurmaComponenteProfessor;
 use App\Services\ServidorService;
 use App\Services\UserService;
-use App\Services\UserSetorAccessService;
 use BackedEnum;
+use Closure;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -35,6 +36,8 @@ use UnitEnum;
 
 class ServidorResource extends Resource
 {
+    public const CARGO_PROFESSOR = 'professor';
+
     protected static ?string $model = Servidor::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::Briefcase;
@@ -67,14 +70,18 @@ class ServidorResource extends Resource
                             ->mask('999.999.999-99')
                             ->maxLength(14),
 
-                        TextInput::make('matricula')
-                            ->label('Matrícula legada')
-                            ->helperText('Preferir informar a matrícula em cada vínculo abaixo.')
-                            ->maxLength(255),
-
                         TextInput::make('email')
                             ->label('E-mail')
                             ->email()
+                            ->required()
+                            ->dehydrateStateUsing(fn (?string $state): ?string => filled($state) ? Professor::normalizarEmail($state) : null)
+                            ->rule(function (): Closure {
+                                return function (string $attribute, mixed $value, Closure $fail): void {
+                                    if (! Professor::emailInstitucionalValido((string) $value)) {
+                                        $fail('Use somente e-mail institucional @edu.umuarama.pr.gov.br.');
+                                    }
+                                };
+                            })
                             ->maxLength(255),
 
                         TextInput::make('telefone')
@@ -92,79 +99,103 @@ class ServidorResource extends Resource
                     ->columnSpanFull()
                     ->columns(2),
 
-                Section::make('Vínculos e acesso')
+                Section::make('Cargo')
                     ->schema([
-                        Repeater::make('vinculos_funcionais')
-                            ->label('Matrículas e funções')
+                        Select::make('cargo')
+                            ->label('Função / cargo')
+                            ->options([
+                                self::CARGO_PROFESSOR => 'Professor',
+                            ])
+                            ->default(self::CARGO_PROFESSOR)
+                            ->required()
+                            ->disabled()
+                            ->dehydrated(),
+                    ])
+                    ->columnSpanFull(),
+
+                Section::make('Registros do professor')
+                    ->schema([
+                        Repeater::make('registros_professor')
+                            ->label('Matrículas e lotações')
                             ->schema([
+                                Hidden::make('id'),
+
                                 TextInput::make('matricula')
                                     ->label('Matrícula')
                                     ->required()
                                     ->maxLength(255),
 
-                                Select::make('funcao_administrativa_id')
-                                    ->label('Função / cargo')
-                                    ->options(fn (): array => FuncaoAdministrativa::query()
-                                        ->where('ativo', true)
-                                        ->orderBy('nome')
-                                        ->pluck('nome', 'id')
-                                        ->toArray())
-                                    ->searchable()
-                                    ->preload()
-                                    ->required()
-                                    ->live(),
-
-                                Select::make('setor_id')
-                                    ->label('Setor')
-                                    ->options(fn (): array => app(UserSetorAccessService::class)->optionsForSelect(Auth::user()))
-                                    ->searchable()
-                                    ->preload()
-                                    ->required()
-                                    ->live(),
+                                Select::make('turno')
+                                    ->label('Turno')
+                                    ->options(Professor::turnosOptions())
+                                    ->required(),
 
                                 Select::make('id_escola')
                                     ->label('Escola / CMEI')
                                     ->options(fn (): array => app(UserService::class)->opcoesDeEscolasParaCampo(Auth::user()))
                                     ->searchable()
                                     ->preload()
+                                    ->required()
                                     ->live(),
 
-                                TextInput::make('portaria')
-                                    ->label('Portaria')
-                                    ->maxLength(255),
+                                Repeater::make('vinculos_turma_componente')
+                                    ->label('Turmas e componentes')
+                                    ->schema([
+                                        Select::make('turma_id')
+                                            ->label('Turma')
+                                            ->options(fn (Get $get): array => static::turmasOptions($get('../../id_escola')))
+                                            ->searchable()
+                                            ->preload()
+                                            ->required()
+                                            ->live(),
 
-                                Select::make('turma_ids')
-                                    ->label('Turmas vinculadas')
-                                    ->multiple()
-                                    ->searchable()
-                                    ->preload()
-                                    ->options(fn (Get $get): array => static::turmasOptions($get('id_escola')))
-                                    ->visible(fn (Get $get): bool => static::funcaoTemRelacaoTurma($get('funcao_administrativa_id')))
+                                        Select::make('componente_curricular_id')
+                                            ->label('Componente')
+                                            ->options(fn (Get $get): array => static::componentesOptions($get('turma_id')))
+                                            ->searchable()
+                                            ->preload()
+                                            ->required(),
+                                    ])
+                                    ->columns(2)
+                                    ->addActionLabel('Vincular turma')
+                                    ->visible(fn (Get $get): bool => filled($get('id_escola')))
                                     ->columnSpanFull(),
                             ])
                             ->columns(2)
                             ->required()
                             ->minItems(1)
-                            ->addActionLabel('Adicionar função')
-                            ->helperText('O cargo define o perfil da pessoa: Professor cria cadastro pedagógico; cargos com acesso ao sistema geram usuário com níveis padrão (editáveis na aba Usuários).')
+                            ->addActionLabel('Adicionar registro')
+                            ->helperText('O setor é definido automaticamente pela escola. Os vínculos com turmas são opcionais.')
                             ->afterStateHydrated(function (Repeater $component, ?Servidor $record): void {
                                 if (! $record) {
                                     return;
                                 }
 
+                                $professores = $record->professores()
+                                    ->with(['escola:id,nome'])
+                                    ->get();
+
+                                $vinculosPorProfessor = TurmaComponenteProfessor::query()
+                                    ->whereIn('professor_id', $professores->pluck('id'))
+                                    ->where('tem_professor', true)
+                                    ->whereNotNull('professor_id')
+                                    ->get()
+                                    ->groupBy('professor_id');
+
                                 $component->state(
-                                    $record->servidorFuncoesAtivas()
-                                        ->with('turmas:id')
-                                        ->get()
-                                        ->map(fn (ServidorFuncaoAdministrativa $vinculo): array => [
-                                            'matricula' => $vinculo->matricula,
-                                            'funcao_administrativa_id' => $vinculo->funcao_administrativa_id,
-                                            'setor_id' => $vinculo->setor_id,
-                                            'id_escola' => $vinculo->id_escola,
-                                            'portaria' => $vinculo->portaria,
-                                            'turma_ids' => $vinculo->turmas->pluck('id')->map(fn ($id): int => (int) $id)->all(),
-                                        ])
-                                        ->all()
+                                    $professores->map(fn (Professor $professor): array => [
+                                        'id' => $professor->id,
+                                        'matricula' => $professor->matricula,
+                                        'turno' => $professor->turno,
+                                        'id_escola' => $professor->id_escola,
+                                        'vinculos_turma_componente' => ($vinculosPorProfessor->get($professor->id) ?? collect())
+                                            ->map(fn (TurmaComponenteProfessor $vinculo): array => [
+                                                'turma_id' => $vinculo->turma_id,
+                                                'componente_curricular_id' => $vinculo->componente_curricular_id,
+                                            ])
+                                            ->values()
+                                            ->all(),
+                                    ])->all()
                                 );
                             })
                             ->columnSpanFull(),
@@ -174,8 +205,7 @@ class ServidorResource extends Resource
                             ->maxLength(2000)
                             ->columnSpanFull(),
                     ])
-                    ->columnSpanFull()
-                    ->columns(2),
+                    ->columnSpanFull(),
             ]);
     }
 
@@ -186,8 +216,7 @@ class ServidorResource extends Resource
                 'escola:id,nome,setor_id',
                 'setor:id,nome',
                 'user:id,name,email',
-                'funcoesAtivas:id,nome,codigo,categoria',
-                'servidorFuncoesAtivas.turmas:id',
+                'professores.escola:id,nome',
             ]))
             ->paginated([5, 10, 25, 50, 100])
             ->defaultPaginationPageOption(10)
@@ -199,11 +228,11 @@ class ServidorResource extends Resource
 
                 TextColumn::make('vinculos_resumo')
                     ->label('Matrículas')
-                    ->getStateUsing(fn (Servidor $record): string => $record->servidorFuncoesAtivas
+                    ->getStateUsing(fn (Servidor $record): string => $record->professores
                         ->pluck('matricula')
                         ->filter()
                         ->unique()
-                        ->implode(', ') ?: ($record->matricula ?? '—'))
+                        ->implode(', ') ?: '—')
                     ->wrap(),
 
                 TextColumn::make('nome')
@@ -213,12 +242,10 @@ class ServidorResource extends Resource
                     ->wrap()
                     ->copyable(),
 
-                TextColumn::make('funcoes_ativas')
-                    ->label('Funções')
-                    ->getStateUsing(fn (Servidor $record): array => $record->funcoesAtivas->pluck('nome')->sort()->values()->all())
-                    ->badge()
-                    ->separator(',')
-                    ->wrap(),
+                TextColumn::make('cargo_label')
+                    ->label('Cargo')
+                    ->getStateUsing(fn (Servidor $record): string => $record->professores->isNotEmpty() ? 'Professor' : '—')
+                    ->badge(),
 
                 TextColumn::make('status')
                     ->label('Status')
@@ -243,36 +270,17 @@ class ServidorResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                SelectFilter::make('funcao_administrativa_id')
-                    ->label('Função')
-                    ->options(fn (): array => FuncaoAdministrativa::query()
-                        ->where('ativo', true)
-                        ->orderBy('nome')
-                        ->pluck('nome', 'id')
-                        ->toArray())
+                SelectFilter::make('id_escola')
+                    ->label('Escola')
+                    ->options(fn (): array => app(UserService::class)->opcoesDeEscolasParaCampo(Auth::user()))
                     ->query(function (Builder $query, array $data): Builder {
                         if (! filled($data['value'] ?? null)) {
                             return $query;
                         }
 
-                        return $query->whereHas('servidorFuncoes', function (Builder $funcoes) use ($data): void {
-                            $funcoes
-                                ->where('funcao_administrativa_id', (int) $data['value'])
-                                ->where('status', ServidorFuncaoAdministrativa::STATUS_ATIVO);
-                        });
-                    }),
-
-                SelectFilter::make('id_escola')
-                    ->label('Escola')
-                    ->relationship('escola', 'nome', modifyQueryUsing: fn (Builder $query): Builder => $query
-                        ->where('ativo', true)
-                        ->orderBy('nome'))
-                    ->searchable()
-                    ->preload(),
-
-                SelectFilter::make('setor_id')
-                    ->label('Setor')
-                    ->options(fn (): array => app(UserSetorAccessService::class)->optionsForSelect(Auth::user()))
+                        return $query->whereHas('professores', fn (Builder $professores): Builder => $professores
+                            ->where('id_escola', (int) $data['value']));
+                    })
                     ->searchable()
                     ->preload(),
 
@@ -296,12 +304,11 @@ class ServidorResource extends Resource
                     ->modalHeading(fn (Servidor $record): string => "Detalhes - {$record->nome}")
                     ->modalWidth('3xl')
                     ->schema([
-                        Section::make('Informações do servidor')
+                        Section::make('Informações da pessoa')
                             ->schema([
                                 TextEntry::make('nome')->label('Nome'),
-                                TextEntry::make('matricula')->label('Matrícula')->placeholder('Não informada'),
-                                TextEntry::make('escola.nome')->label('Escola')->placeholder('Não vinculada'),
-                                TextEntry::make('setor.nome')->label('Setor')->placeholder('Não vinculado'),
+                                TextEntry::make('cpf')->label('CPF')->placeholder('Não informado'),
+                                TextEntry::make('email')->label('E-mail')->placeholder('Não informado'),
                                 TextEntry::make('user.name')->label('Usuário')->placeholder('Sem acesso'),
                                 TextEntry::make('status')
                                     ->label('Status')
@@ -309,11 +316,18 @@ class ServidorResource extends Resource
                             ])
                             ->columns(2),
 
-                        Section::make('Funções')
+                        Section::make('Registros do professor')
                             ->schema([
-                                TextEntry::make('funcoes_lista')
-                                    ->label('Funções ativas')
-                                    ->getStateUsing(fn (Servidor $record): array => $record->funcoesAtivas()->pluck('nome')->sort()->values()->all())
+                                TextEntry::make('registros_resumo')
+                                    ->label('Lotações')
+                                    ->getStateUsing(fn (Servidor $record): array => $record->professores
+                                        ->map(fn (Professor $professor): string => sprintf(
+                                            '%s — %s — %s',
+                                            $professor->matricula,
+                                            $professor->turnoLabel(),
+                                            $professor->escola?->nome ?? 'Sem escola',
+                                        ))
+                                        ->all())
                                     ->badge()
                                     ->separator(','),
                             ]),
@@ -321,10 +335,15 @@ class ServidorResource extends Resource
 
                 EditAction::make()
                     ->using(function (Servidor $record, array $data): Servidor {
-                        $vinculos = $data['vinculos_funcionais'] ?? [];
-                        unset($data['vinculos_funcionais']);
+                        $registros = $data['registros_professor'] ?? [];
+                        unset($data['registros_professor']);
+                        $data['cargo'] = $data['cargo'] ?? self::CARGO_PROFESSOR;
 
-                        return app(ServidorService::class)->atualizarServidorComFuncoes($record, $data, $vinculos);
+                        return app(ServidorService::class)->atualizarServidorComFuncoes(
+                            $record,
+                            $data,
+                            ['registros_professor' => $registros],
+                        );
                     }),
 
                 DeleteAction::make(),
@@ -353,14 +372,6 @@ class ServidorResource extends Resource
         return $query->whereRaw('1 = 0');
     }
 
-    private static function funcaoTemRelacaoTurma(mixed $funcaoId): bool
-    {
-        return filled($funcaoId)
-            && (bool) FuncaoAdministrativa::query()
-                ->whereKey($funcaoId)
-                ->value('tem_relacao_turma');
-    }
-
     private static function turmasOptions(int|string|null $escolaId): array
     {
         if (! $escolaId) {
@@ -374,6 +385,28 @@ class ServidorResource extends Resource
             ->get()
             ->mapWithKeys(fn (Turma $turma): array => [
                 $turma->id => trim(($turma->serie?->nome ? $turma->serie->nome.' - ' : '').$turma->nome.' ('.$turma->turno.')'),
+            ])
+            ->toArray();
+    }
+
+    private static function componentesOptions(int|string|null $turmaId): array
+    {
+        if (! $turmaId) {
+            return [];
+        }
+
+        $turma = Turma::query()
+            ->with('serie.componentesCurriculares')
+            ->find($turmaId);
+
+        if (! $turma?->serie) {
+            return [];
+        }
+
+        return $turma->serie->componentesCurriculares
+            ->sortBy('nome')
+            ->mapWithKeys(fn ($componente): array => [
+                $componente->id => $componente->nome,
             ])
             ->toArray();
     }
