@@ -828,25 +828,23 @@ class PedidosTable
 
     public static function podeExibirAcaoGerenciar(Pedido $record, ?User $user, ?PedidoService $service = null): bool
     {
-        $service ??= app(PedidoService::class);
-
-        return $service->podeGerenciarRegistro($record, $user);
+        return $user && Gate::forUser($user)->allows('manage', $record);
     }
 
     public static function podeExibirAcaoVincularAdicionais(Pedido $record, ?User $user, ?PedidoService $service = null): bool
     {
-        $service ??= app(PedidoService::class);
-
         return static::statusEh($record, 'Em Manutenção')
             && ! $record->is_pedido_adicional
-            && $service->podeVincularAdicionaisAoPedido($record, $user);
+            && $user
+            && Gate::forUser($user)->allows('linkAdditionals', $record);
     }
 
     public static function podeExibirAcaoFinalizar(Pedido $record, ?User $user): bool
     {
         return static::statusEh($record, 'Em Manutenção')
             && ! $record->is_pedido_adicional
-            && app(PedidoService::class)->podeAvaliarRegistro($record, $user);
+            && $user
+            && Gate::forUser($user)->allows('evaluate', $record);
     }
 
     private static function feedbackParaVisualizacao(Pedido $record): ?FeedbackPedido

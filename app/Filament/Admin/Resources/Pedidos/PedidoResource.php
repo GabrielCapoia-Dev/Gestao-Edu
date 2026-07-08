@@ -23,6 +23,7 @@ use App\Services\ProfilePreviewService;
 use Filament\Forms\Form;
 use Illuminate\Database\Eloquent\Builder;
 use App\Models\User;
+use Illuminate\Support\Facades\Gate;
 use UnitEnum;
 
 
@@ -87,11 +88,11 @@ class PedidoResource extends Resource
             PedidosAdicionaisRelationManager::class,
         ];
 
-        if ($user?->hasPermissionTo('Visualizar Histórico de Pedidos')) {
+        if (Gate::forUser($user)->allows('viewHistory', Pedido::class)) {
             $relations[] = HistoricosRelationManager::class;
         }
 
-        if ($user?->hasPermissionTo('Visualizar Arquivos de Pedidos')) {
+        if (Gate::forUser($user)->allows('viewFiles', Pedido::class)) {
             $relations[] = ArquivosRelationManager::class;
         }
 

@@ -11,8 +11,8 @@ use Filament\Infolists;
 use Filament\Infolists\Infolist;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Notifications\Notification;
-use Illuminate\Support\Facades\Auth;
-use App\Models\User;
+use App\Models\Pedido;
+use Illuminate\Support\Facades\Gate;
 
 class ViewPedido extends ViewRecord
 {
@@ -25,7 +25,7 @@ class ViewPedido extends ViewRecord
                 ->label('Baixar PDF')
                 ->icon('heroicon-o-arrow-down-tray')
                 ->url(fn() => route('pedidos.pdf', $this->record))
-                ->visible(fn() => User::authUser()->hasPermissionTo('Visualizar Arquivos de Pedidos'))
+                ->visible(fn () => Gate::allows('viewFiles', Pedido::class))
                 ->openUrlInNewTab(),
         ];
     }

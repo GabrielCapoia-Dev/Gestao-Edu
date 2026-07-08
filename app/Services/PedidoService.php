@@ -25,9 +25,9 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 class PedidoService
 {
@@ -47,8 +47,7 @@ class PedidoService
 
     public function podeListarTodos(?User $user): bool
     {
-        return $this->ehAdmin($user)
-            || ($user?->hasPermissionTo('Listar Todos os Pedidos') ?? false);
+        return $user && Gate::forUser($user)->allows('viewAll', Pedido::class);
     }
 
     public function podeVerTodosOsPedidos(?User $user): bool
@@ -72,31 +71,27 @@ class PedidoService
 
     public function podeGerenciarPedidos(?User $user): bool
     {
-        return $user?->hasPermissionTo('Editar Pedidos') ?? false;
+        return $user && Gate::forUser($user)->allows('updateAny', Pedido::class);
     }
 
     public function podeCriarPedidos(?User $user): bool
     {
-        return $user?->hasPermissionTo('Criar Pedidos') ?? false;
+        return $user && Gate::forUser($user)->allows('create', Pedido::class);
     }
 
     public function podeEnviarParaEmpresa(?User $user): bool
     {
-        return $user?->hasPermissionTo('Enviar Pedidos para Empresa') ?? false;
+        return $user && Gate::forUser($user)->allows('sendToCompany', Pedido::class);
     }
 
     public function podeVincularAdicionais(?User $user): bool
     {
-        return $user?->hasPermissionTo('Vincular Pedidos Adicionais') ?? false;
+        return $user && Gate::forUser($user)->allows('linkAdditionalsAny', Pedido::class);
     }
 
     public function podeComentarPedido(Pedido $pedido, ?User $user): bool
     {
-        if (! $user || ! $this->usuarioTemPermissaoComentar($user)) {
-            return false;
-        }
-
-        return $this->podeListarRegistro($pedido, $user);
+        return $user && Gate::forUser($user)->allows('comment', $pedido);
     }
 
     public function salvarComentarioGestor(Pedido $pedido, User $user, ?string $comentario): Pedido
@@ -139,17 +134,7 @@ class PedidoService
 
     public function podeVincularAdicionaisAoPedido(Pedido $pedido, ?User $user): bool
     {
-        return $this->podeVincularAdicionais($user)
-            && $this->podeExecutarAcaoDaEscolaOuSetor($pedido, $user);
-    }
-
-    private function usuarioTemPermissaoComentar(User $user): bool
-    {
-        try {
-            return $user->hasPermissionTo(self::PERMISSAO_COMENTAR_PEDIDOS);
-        } catch (PermissionDoesNotExist) {
-            return false;
-        }
+        return $user && Gate::forUser($user)->allows('linkAdditionals', $pedido);
     }
 
     private function persistirComentarioGestor(Pedido $pedido, User $user, string $comentario): Pedido
@@ -165,32 +150,25 @@ class PedidoService
 
     public function podeAvaliarRegistro(Pedido $pedido, ?User $user): bool
     {
-        return ($user?->hasPermissionTo('Avaliar Pedidos') ?? false)
-            && $this->podeExecutarAcaoDaEscolaOuSetor($pedido, $user);
+        return $user && Gate::forUser($user)->allows('evaluate', $pedido);
     }
 
     public function podeCancelarPedidoAdicional(Pedido $adicional, ?User $user): bool
     {
-        $principal = $adicional->pedidoPrincipal;
-
-        return $principal instanceof Pedido
-            && $adicional->is_pedido_adicional
-            && $adicional->ativo
-            && ! $adicional->tipoStatus?->finaliza_pedido
-            && ! $adicional->tipoStatus?->cancela_pedido
-            && $this->podeCancelarRegistro($principal, $user);
+        return $user && Gate::forUser($user)->allows('cancelAdditional', $adicional);
     }
 
     public function podePromoverPedidoAdicional(Pedido $adicional, ?User $user): bool
     {
-        $principal = $adicional->pedidoPrincipal;
+        return $user && Gate::forUser($user)->allows('promoteAdditional', $adicional);
+    }
 
-        return $principal instanceof Pedido
-            && $adicional->is_pedido_adicional
+    public function adicionalElegivelParaAcao(Pedido $adicional): bool
+    {
+        return $adicional->is_pedido_adicional
             && $adicional->ativo
             && ! $adicional->tipoStatus?->finaliza_pedido
-            && ! $adicional->tipoStatus?->cancela_pedido
-            && $this->podeGerenciarRegistro($principal, $user);
+            && ! $adicional->tipoStatus?->cancela_pedido;
     }
 
     public function statusOptionsParaAlteracaoEmMassa(?User $user): array
@@ -247,11 +225,7 @@ class PedidoService
 
     public function podeGerenciarRegistro(Pedido $pedido, ?User $user): bool
     {
-        if (! $user || ! $user->hasPermissionTo('Editar Pedidos')) {
-            return false;
-        }
-
-        return $this->podeExecutarNoSetorAtual($pedido, $user, SetorAccessCapability::EDITAR);
+        return $user && Gate::forUser($user)->allows('manage', $pedido);
     }
 
     public function setorPodeEditarRegistro(Pedido $pedido, ?User $user): bool
@@ -263,19 +237,36 @@ class PedidoService
 
     public function podeCancelarRegistro(Pedido $pedido, ?User $user): bool
     {
-        if (! $user || ! $user->hasPermissionTo('Editar Pedidos')) {
-            return false;
-        }
-
-        return $this->podeExecutarNoSetorAtual($pedido, $user, SetorAccessCapability::CANCELAR);
+        return $user && Gate::forUser($user)->allows('cancel', $pedido);
     }
 
     public function podeEncaminharRegistro(Pedido $pedido, ?User $user, ?int $setorDestinoId = null): bool
     {
-        if (! $user || ! $user->hasPermissionTo('Encaminhar Pedidos para Setor')) {
-            return false;
-        }
+        return $user && Gate::forUser($user)->allows('forward', [$pedido, $setorDestinoId]);
+    }
 
+    public function podeListarRegistro(Pedido $pedido, ?User $user): bool
+    {
+        return $user && Gate::forUser($user)->allows('view', $pedido);
+    }
+
+    public function registroVisivelNoPerfil(Pedido $pedido, User $user): bool
+    {
+        return $this->queryPorPerfil(
+            Pedido::query()->whereKey($pedido->getKey()),
+            $user,
+        )->exists();
+    }
+
+    public function setorPodeCancelarRegistro(Pedido $pedido, ?User $user): bool
+    {
+        return $user
+            ? $this->podeExecutarNoSetorAtual($pedido, $user, SetorAccessCapability::CANCELAR)
+            : false;
+    }
+
+    public function podeEncaminharNoEscopo(Pedido $pedido, User $user, ?int $setorDestinoId = null): bool
+    {
         if (! $this->podeExecutarNoSetorAtual($pedido, $user, SetorAccessCapability::EDITAR)) {
             return false;
         }
@@ -293,16 +284,9 @@ class PedidoService
             ->can($user, SetorAccessCapability::ENCAMINHAR, $setorDestinoId);
     }
 
-    public function podeListarRegistro(Pedido $pedido, ?User $user): bool
+    public function executarAcaoDaEscolaOuSetor(Pedido $pedido, ?User $user): bool
     {
-        if (! $user || ! $user->hasPermissionTo('Listar Pedidos')) {
-            return false;
-        }
-
-        return $this->queryPorPerfil(
-            Pedido::query()->whereKey($pedido->getKey()),
-            $user,
-        )->exists();
+        return $this->podeExecutarAcaoDaEscolaOuSetor($pedido, $user);
     }
 
     private function podeExecutarNoSetorAtual(

@@ -8,37 +8,28 @@ use App\Services\PedidoService;
 
 class PedidoPolicy
 {
-    /**
-     * Determine whether the user can view any models.
-     */
     public function viewAny(User $user): bool
     {
         return $user->hasPermissionTo('Listar Pedidos');
     }
 
-    /**
-     * Determine whether the user can view the model.
-     */
     public function view(User $user, Pedido $model): bool
     {
-        return app(PedidoService::class)->podeListarRegistro($model, $user);
+        if (! $this->viewAny($user)) {
+            return false;
+        }
+
+        return app(PedidoService::class)->registroVisivelNoPerfil($model, $user);
     }
 
-    /**
-     * Determine whether the user can create models.
-     */
     public function create(User $user): bool
     {
         return $user->hasPermissionTo('Criar Pedidos');
     }
 
-    /**
-     * Determine whether the user can update the model.
-     */
     public function update(User $user, Pedido $model): bool
     {
-        return $user->hasPermissionTo('Editar Pedidos')
-            && app(PedidoService::class)->podeGerenciarRegistro($model, $user);
+        return $this->manage($user, $model);
     }
 
     public function updateAny(User $user): bool
@@ -46,13 +37,10 @@ class PedidoPolicy
         return $user->hasPermissionTo('Editar Pedidos');
     }
 
-    /**
-     * Determine whether the user can delete the model.
-     */
     public function delete(User $user, Pedido $model): bool
     {
         return $user->hasPermissionTo('Excluir Pedidos')
-            && app(PedidoService::class)->podeGerenciarRegistro($model, $user);
+            && $this->manage($user, $model);
     }
 
     public function viewHistory(User $user): bool
@@ -65,24 +53,113 @@ class PedidoPolicy
         return $user->hasPermissionTo('Visualizar Feedback de Pedidos');
     }
 
+    public function viewFiles(User $user): bool
+    {
+        return $user->hasPermissionTo('Visualizar Arquivos de Pedidos');
+    }
+
+    public function viewByStatus(User $user): bool
+    {
+        return $user->hasPermissionTo('Visualizar Pedidos por Status');
+    }
+
+    public function viewAll(User $user): bool
+    {
+        return $user->hasRole('Admin') || $user->hasPermissionTo('Listar Todos os Pedidos');
+    }
+
+    public function manage(User $user, Pedido $pedido): bool
+    {
+        if (! $user->hasPermissionTo('Editar Pedidos')) {
+            return false;
+        }
+
+        return app(PedidoService::class)->setorPodeEditarRegistro($pedido, $user);
+    }
+
+    public function cancel(User $user, Pedido $pedido): bool
+    {
+        if (! $user->hasPermissionTo('Editar Pedidos')) {
+            return false;
+        }
+
+        return app(PedidoService::class)->setorPodeCancelarRegistro($pedido, $user);
+    }
+
+    public function forward(User $user, Pedido $pedido, ?int $setorDestinoId = null): bool
+    {
+        if (! $user->hasPermissionTo('Encaminhar Pedidos para Setor')) {
+            return false;
+        }
+
+        return app(PedidoService::class)->podeEncaminharNoEscopo($pedido, $user, $setorDestinoId);
+    }
+
+    public function sendToCompany(User $user): bool
+    {
+        return $user->hasPermissionTo('Enviar Pedidos para Empresa');
+    }
+
+    public function linkAdditionalsAny(User $user): bool
+    {
+        return $user->hasPermissionTo('Vincular Pedidos Adicionais');
+    }
+
+    public function linkAdditionals(User $user, Pedido $pedido): bool
+    {
+        if (! $this->linkAdditionalsAny($user)) {
+            return false;
+        }
+
+        return app(PedidoService::class)->executarAcaoDaEscolaOuSetor($pedido, $user);
+    }
+
+    public function comment(User $user, Pedido $pedido): bool
+    {
+        if (! $user->hasPermissionTo(PedidoService::PERMISSAO_COMENTAR_PEDIDOS)) {
+            return false;
+        }
+
+        return $this->view($user, $pedido);
+    }
+
+    public function evaluate(User $user, Pedido $pedido): bool
+    {
+        if (! $user->hasPermissionTo('Avaliar Pedidos')) {
+            return false;
+        }
+
+        return app(PedidoService::class)->executarAcaoDaEscolaOuSetor($pedido, $user);
+    }
+
+    public function cancelAdditional(User $user, Pedido $adicional): bool
+    {
+        $service = app(PedidoService::class);
+
+        if (! $service->adicionalElegivelParaAcao($adicional)) {
+            return false;
+        }
+
+        $principal = $adicional->pedidoPrincipal;
+
+        return $principal instanceof Pedido && $this->cancel($user, $principal);
+    }
+
+    public function promoteAdditional(User $user, Pedido $adicional): bool
+    {
+        $service = app(PedidoService::class);
+
+        if (! $service->adicionalElegivelParaAcao($adicional)) {
+            return false;
+        }
+
+        $principal = $adicional->pedidoPrincipal;
+
+        return $principal instanceof Pedido && $this->manage($user, $principal);
+    }
+
     public function exportReports(User $user): bool
     {
         return $user->hasPermissionLike('exportar relatorios');
     }
-
-    // /**
-    //  * Determine whether the user can restore the model.
-    //  */
-    // public function restore(User $user, Pedido $model): bool
-    // {
-    //     return false;
-    // }
-
-    // /**
-    //  * Determine whether the user can permanently delete the model.
-    //  */
-    // public function forceDelete(User $user, Pedido $model): bool
-    // {
-    //     return false;
-    // }
 }

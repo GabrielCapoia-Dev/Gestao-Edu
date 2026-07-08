@@ -8,6 +8,7 @@ use App\Models\TipoStatus;
 use App\Models\User;
 use App\Services\PedidoService;
 use App\Services\ProfilePreviewService;
+use Illuminate\Support\Facades\Gate;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
@@ -45,7 +46,7 @@ class ListPedidos extends ListRecords
         /** @var User|null $user */
         $user = $this->usuarioEfetivo();
 
-        if (! $user?->hasPermissionTo('Visualizar Pedidos por Status')) {
+        if (! Gate::forUser($user)->allows('viewByStatus', Pedido::class)) {
             return 'Pedidos';
         }
 
@@ -64,7 +65,7 @@ class ListPedidos extends ListRecords
             Actions\Action::make('feedbacks')
                 ->label('Feedbacks')
                 ->icon('heroicon-o-star')
-                ->visible(fn() => $user?->hasPermissionTo('Visualizar Feedback de Pedidos') ?? false)
+                ->visible(fn () => Gate::forUser($user)->allows('viewFeedback', Pedido::class))
                 ->color('warning')
                 ->url(fn() => route('filament.admin.pages.feedback-pedidos')),
         ];
@@ -85,7 +86,7 @@ class ListPedidos extends ListRecords
         /** @var User|null $user */
         $user = $this->usuarioEfetivo();
 
-        if (! $user?->hasPermissionTo('Visualizar Pedidos por Status')) {
+        if (! Gate::forUser($user)->allows('viewByStatus', Pedido::class)) {
             return [];
         }
 
@@ -213,7 +214,7 @@ class ListPedidos extends ListRecords
         /** @var User|null $user */
         $user = $this->usuarioEfetivo();
 
-        if (! $user?->hasPermissionTo('Visualizar Pedidos por Status')) {
+        if (! Gate::forUser($user)->allows('viewByStatus', Pedido::class)) {
             return 'Pedidos';
         }
 
@@ -226,7 +227,7 @@ class ListPedidos extends ListRecords
         $user = $this->usuarioEfetivo();
         $service = app(PedidoService::class);
 
-        if (! $user?->hasPermissionTo('Visualizar Pedidos por Status')) {
+        if (! Gate::forUser($user)->allows('viewByStatus', Pedido::class)) {
             return $service->queryTabTodos($user)
                 ->where('is_pedido_adicional', false);
         }
