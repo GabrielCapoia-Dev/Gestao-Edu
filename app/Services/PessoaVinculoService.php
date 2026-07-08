@@ -90,6 +90,14 @@ class PessoaVinculoService
                 'vinculos_funcionais' => 'Cada vínculo precisa informar a matrícula.',
             ]);
         }
+
+        $funcao = FuncaoAdministrativa::query()->find($vinculo['funcao_administrativa_id'] ?? null);
+
+        if ($funcao?->exige_professor && blank($vinculo['id_escola'] ?? null) && $setor->exigeVinculoEscola()) {
+            throw ValidationException::withMessages([
+                'vinculos_funcionais' => 'Funções pedagógicas neste setor exigem escola ou CMEI.',
+            ]);
+        }
     }
 
     /** @return Collection<int, array<string, mixed>> */

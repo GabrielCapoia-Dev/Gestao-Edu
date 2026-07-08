@@ -42,13 +42,13 @@ class ServidorResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Cadastros';
 
-    protected static ?string $navigationLabel = 'Servidores';
+    protected static ?string $navigationLabel = 'Pessoas';
 
     protected static ?int $navigationSort = 1;
 
-    protected static ?string $pluralModelLabel = 'Servidores';
+    protected static ?string $pluralModelLabel = 'Pessoas';
 
-    protected static ?string $modelLabel = 'Servidor';
+    protected static ?string $modelLabel = 'Pessoa';
 
     protected static ?string $slug = 'servidores';
 
@@ -56,16 +56,21 @@ class ServidorResource extends Resource
     {
         return $schema
             ->components([
-                Section::make('Dados do servidor')
+                Section::make('Identidade da pessoa')
                     ->schema([
                         TextInput::make('nome')
                             ->label('Nome')
                             ->required()
                             ->maxLength(255),
 
+                        TextInput::make('cpf')
+                            ->label('CPF')
+                            ->mask('999.999.999-99')
+                            ->maxLength(14),
+
                         TextInput::make('matricula')
-                            ->label('Matrícula')
-                            ->required()
+                            ->label('Matrícula legada')
+                            ->helperText('Preferir informar a matrícula em cada vínculo abaixo.')
                             ->maxLength(255),
 
                         TextInput::make('email')
@@ -88,23 +93,8 @@ class ServidorResource extends Resource
                     ->columnSpanFull()
                     ->columns(2),
 
-                Section::make('Vínculos funcionais')
+                Section::make('Vínculos e acesso')
                     ->schema([
-                        Select::make('id_escola')
-                            ->label('Escola')
-                            ->options(fn (): array => app(UserService::class)->opcoesDeEscolasParaCampo(Auth::user()))
-                            ->searchable()
-                            ->preload()
-                            ->live()
-                            ->nullable(),
-
-                        Select::make('setor_id')
-                            ->label('Setor')
-                            ->options(fn (): array => app(UserSetorAccessService::class)->optionsForSelect(Auth::user()))
-                            ->searchable()
-                            ->preload()
-                            ->nullable(),
-
                         Select::make('user_id')
                             ->label('Usuário de acesso')
                             ->options(fn (): array => app(UserService::class)
@@ -118,10 +108,15 @@ class ServidorResource extends Resource
                             ->helperText('A função do servidor não concede acesso ao sistema automaticamente.'),
 
                         Repeater::make('vinculos_funcionais')
-                            ->label('Funções do servidor')
+                            ->label('Matrículas e funções')
                             ->schema([
+                                TextInput::make('matricula')
+                                    ->label('Matrícula')
+                                    ->required()
+                                    ->maxLength(255),
+
                                 Select::make('funcao_administrativa_id')
-                                    ->label('Função')
+                                    ->label('Função / cargo')
                                     ->options(fn (): array => FuncaoAdministrativa::query()
                                         ->where('ativo', true)
                                         ->orderBy('nome')
@@ -130,6 +125,21 @@ class ServidorResource extends Resource
                                     ->searchable()
                                     ->preload()
                                     ->required()
+                                    ->live(),
+
+                                Select::make('setor_id')
+                                    ->label('Setor')
+                                    ->options(fn (): array => app(UserSetorAccessService::class)->optionsForSelect(Auth::user()))
+                                    ->searchable()
+                                    ->preload()
+                                    ->required()
+                                    ->live(),
+
+                                Select::make('id_escola')
+                                    ->label('Escola / CMEI')
+                                    ->options(fn (): array => app(UserService::class)->opcoesDeEscolasParaCampo(Auth::user()))
+                                    ->searchable()
+                                    ->preload()
                                     ->live(),
 
                                 TextInput::make('portaria')
@@ -141,7 +151,7 @@ class ServidorResource extends Resource
                                     ->multiple()
                                     ->searchable()
                                     ->preload()
-                                    ->options(fn (Get $get): array => static::turmasOptions($get('../../id_escola')))
+                                    ->options(fn (Get $get): array => static::turmasOptions($get('id_escola')))
                                     ->visible(fn (Get $get): bool => static::funcaoTemRelacaoTurma($get('funcao_administrativa_id')))
                                     ->columnSpanFull(),
                             ])
@@ -160,7 +170,10 @@ class ServidorResource extends Resource
                                         ->with('turmas:id')
                                         ->get()
                                         ->map(fn (ServidorFuncaoAdministrativa $vinculo): array => [
+                                            'matricula' => $vinculo->matricula,
                                             'funcao_administrativa_id' => $vinculo->funcao_administrativa_id,
+                                            'setor_id' => $vinculo->setor_id,
+                                            'id_escola' => $vinculo->id_escola,
                                             'portaria' => $vinculo->portaria,
                                             'turma_ids' => $vinculo->turmas->pluck('id')->map(fn ($id): int => (int) $id)->all(),
                                         ])
@@ -192,22 +205,19 @@ class ServidorResource extends Resource
             ->paginated([5, 10, 25, 50, 100])
             ->defaultPaginationPageOption(10)
             ->columns([
-                TextColumn::make('escola.nome')
-                    ->label('Escola')
+                TextColumn::make('cpf')
+                    ->label('CPF')
                     ->searchable()
-                    ->sortable()
+                    ->toggleable(),
+
+                TextColumn::make('vinculos_resumo')
+                    ->label('Matrículas')
+                    ->getStateUsing(fn (Servidor $record): string => $record->servidorFuncoesAtivas
+                        ->pluck('matricula')
+                        ->filter()
+                        ->unique()
+                        ->implode(', ') ?: ($record->matricula ?? '—'))
                     ->wrap(),
-
-                TextColumn::make('setor.nome')
-                    ->label('Setor')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-
-                TextColumn::make('matricula')
-                    ->label('Matrícula')
-                    ->searchable()
-                    ->sortable()
-                    ->copyable(),
 
                 TextColumn::make('nome')
                     ->label('Nome')
