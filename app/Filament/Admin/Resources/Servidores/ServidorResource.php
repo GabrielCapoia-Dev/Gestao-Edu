@@ -40,7 +40,7 @@ class ServidorResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::Briefcase;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Cadastros';
+    protected static string|UnitEnum|null $navigationGroup = 'Acesso';
 
     protected static ?string $navigationLabel = 'Pessoas';
 
