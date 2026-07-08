@@ -5,9 +5,8 @@ namespace Tests\Feature\Pessoas;
 use App\Filament\Admin\Resources\Servidores\Pages\ManageServidores;
 use App\Filament\Admin\Resources\Servidores\ServidorResource;
 use App\Models\Escola;
-use App\Models\FuncaoAdministrativa;
+use App\Models\Professor;
 use App\Models\Servidor;
-use App\Models\ServidorFuncaoAdministrativa;
 use App\Models\Setor;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -47,38 +46,24 @@ class PessoaHubFilamentTest extends TestCase
         $this->assertArrayHasKey('usuarios', $tabs);
     }
 
-    public function test_aba_professores_filtra_servidores_com_funcao_pedagogica(): void
+    public function test_aba_professores_filtra_servidores_com_registros_pedagogicos(): void
     {
         $usuario = $this->usuarioComPermissaoListar();
         $setor = $this->criarSetor('Pedagógico');
         $escola = $this->criarEscola('Escola Hub', $setor);
 
-        $funcaoProfessor = FuncaoAdministrativa::professorPadrao();
-        $funcaoAuxiliar = FuncaoAdministrativa::query()->create([
-            'nome' => 'Apoio Administrativo',
-            'categoria' => FuncaoAdministrativa::CATEGORIA_OPERACIONAL,
-            'ativo' => true,
-            'exige_professor' => false,
-        ]);
-
-        $comProfessor = $this->criarServidor('Com função professor', $escola, $setor);
-        ServidorFuncaoAdministrativa::query()->create([
+        $comProfessor = $this->criarServidor('Com registro professor', $escola, $setor);
+        Professor::query()->create([
             'servidor_id' => $comProfessor->id,
-            'funcao_administrativa_id' => $funcaoProfessor->id,
-            'matricula' => 'PROF-HUB',
-            'setor_id' => $setor->id,
             'id_escola' => $escola->id,
-            'status' => ServidorFuncaoAdministrativa::STATUS_ATIVO,
+            'matricula' => 'PROF-HUB',
+            'turno' => 'manha',
+            'nome' => $comProfessor->nome,
+            'email' => 'prof.hub@edu.umuarama.pr.gov.br',
+            'ativo' => true,
         ]);
 
-        $semProfessor = $this->criarServidor('Sem função professor', $escola, $setor);
-        ServidorFuncaoAdministrativa::query()->create([
-            'servidor_id' => $semProfessor->id,
-            'funcao_administrativa_id' => $funcaoAuxiliar->id,
-            'matricula' => 'AUX-HUB',
-            'setor_id' => $setor->id,
-            'status' => ServidorFuncaoAdministrativa::STATUS_ATIVO,
-        ]);
+        $semProfessor = $this->criarServidor('Sem registro professor', $escola, $setor);
 
         Livewire::actingAs($usuario)
             ->test(ManageServidores::class)
