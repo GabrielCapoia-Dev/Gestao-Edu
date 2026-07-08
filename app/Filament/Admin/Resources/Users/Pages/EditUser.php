@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\Users\Pages;
 
+use App\Filament\Admin\Resources\Servidores\ServidorResource;
 use App\Filament\Admin\Resources\Users\UserResource;
 use App\Services\UserService;
 use Filament\Resources\Pages\EditRecord;
@@ -29,7 +30,8 @@ class EditUser extends EditRecord
 
     protected function getRedirectUrl(): string
     {
-        return $this->previousUrl ?? $this->getResource()::getUrl('index');
+        return $this->previousUrl
+            ?? ServidorResource::getUrl('index', ['activeTab' => 'usuarios']);
     }
 
     public function getOverviewCards(): array

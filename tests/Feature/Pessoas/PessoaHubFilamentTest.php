@@ -87,25 +87,27 @@ class PessoaHubFilamentTest extends TestCase
             ->assertCanNotSeeTableRecords([$semProfessor]);
     }
 
-    public function test_aba_usuarios_filtra_servidores_com_acesso_ao_sistema(): void
+    public function test_aba_usuarios_lista_registros_de_user_com_colunas_de_acesso(): void
     {
-        $usuario = $this->usuarioComPermissaoListar();
-        $setor = $this->criarSetor('Acesso');
-        $escola = $this->criarEscola('Escola Acesso', $setor);
+        Permission::findOrCreate('Listar Usuarios');
 
-        $userAcesso = User::factory()->create([
+        $admin = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $admin->givePermissionTo(['Listar Servidores', 'Listar Usuarios']);
+
+        $userAlvo = User::factory()->create([
+            'name' => 'Usuario Hub Teste',
+            'email' => 'hub.teste@edu.umuarama.pr.gov.br',
             'email_approved' => true,
             'email_verified_at' => now(),
         ]);
 
-        $comUsuario = $this->criarServidor('Com usuário', $escola, $setor, $userAcesso->id);
-        $semUsuario = $this->criarServidor('Sem usuário', $escola, $setor);
-
-        Livewire::actingAs($usuario)
+        Livewire::actingAs($admin)
             ->test(ManageServidores::class)
             ->set('activeTab', 'usuarios')
-            ->assertCanSeeTableRecords([$comUsuario])
-            ->assertCanNotSeeTableRecords([$semUsuario]);
+            ->assertCanSeeTableRecords([$userAlvo]);
     }
 
     private function usuarioComPermissaoListar(): User
