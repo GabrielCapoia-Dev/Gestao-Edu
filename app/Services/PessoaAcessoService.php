@@ -286,10 +286,24 @@ class PessoaAcessoService
     {
         $payload = [
             'name' => $servidor->nome ?? $user->name,
-            'email' => $servidor->email ?? $user->email,
             'id_escola' => $servidor->id_escola ?? $user->id_escola,
             'setor_id' => $servidor->setor_id ?? $user->setor_id,
         ];
+
+        $email = filled($servidor->email)
+            ? Professor::normalizarEmail((string) $servidor->email)
+            : null;
+
+        if ($email && $email !== $user->email) {
+            $conflito = User::query()
+                ->where('email', $email)
+                ->where('id', '!=', $user->id)
+                ->exists();
+
+            if (! $conflito) {
+                $payload['email'] = $email;
+            }
+        }
 
         if (array_key_exists('email_approved', $acesso)) {
             $payload['email_approved'] = (bool) $acesso['email_approved'];

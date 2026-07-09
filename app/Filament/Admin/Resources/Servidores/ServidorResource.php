@@ -63,11 +63,14 @@ class ServidorResource extends Resource
         return $schema
             ->components([
                 Section::make('Identidade da pessoa')
+                    ->description('Dados básicos usados em todo o sistema.')
+                    ->icon('heroicon-o-user')
                     ->schema([
                         TextInput::make('nome')
                             ->label('Nome')
                             ->required()
-                            ->maxLength(255),
+                            ->maxLength(255)
+                            ->columnSpan(2),
 
                         TextInput::make('cpf')
                             ->label('CPF')
@@ -101,9 +104,11 @@ class ServidorResource extends Resource
                             ->required(),
                     ])
                     ->columnSpanFull()
-                    ->columns(2),
+                    ->columns(2)
+                    ->compact(),
 
                 Section::make('Cargo')
+                    ->icon('heroicon-o-briefcase')
                     ->schema([
                         Select::make('cargo')
                             ->label('Função / cargo')
@@ -112,12 +117,15 @@ class ServidorResource extends Resource
                             ->required()
                             ->live()
                             ->dehydrated()
-                            ->helperText('Nesta fase apenas Professor está habilitado. O seletor já está preparado para novos cargos.'),
+                            ->helperText('Nesta fase apenas Professor. Outros cargos poderão ser adicionados depois.'),
                     ])
-                    ->columnSpanFull(),
+                    ->columnSpanFull()
+                    ->compact()
+                    ->collapsible(),
 
-                Section::make('Matrículas do professor')
-                    ->description('Até 2 matrículas. O turno pertence à matrícula; cada matrícula pode ter várias escolas.')
+                Section::make('Matrículas e lotações')
+                    ->description('Turno pertence à matrícula. Cada matrícula pode ter várias escolas. Vínculos de turma são opcionais.')
+                    ->icon('heroicon-o-academic-cap')
                     ->schema([
                         Repeater::make('matriculas_professor')
                             ->label('Matrículas')
@@ -130,13 +138,13 @@ class ServidorResource extends Resource
                                     ->maxLength(255),
 
                                 Select::make('turno')
-                                    ->label('Turno da matrícula')
+                                    ->label('Turno')
                                     ->options(Professor::turnosOptions())
                                     ->required()
                                     ->live(),
 
                                 Repeater::make('escolas')
-                                    ->label('Escolas / lotações')
+                                    ->label('Escolas desta matrícula')
                                     ->schema([
                                         Hidden::make('id'),
 
@@ -146,10 +154,11 @@ class ServidorResource extends Resource
                                             ->searchable()
                                             ->preload()
                                             ->required()
-                                            ->live(),
+                                            ->live()
+                                            ->columnSpanFull(),
 
                                         Repeater::make('vinculos_turma_componente')
-                                            ->label('Turmas e componentes')
+                                            ->label('Turmas e componentes (opcional)')
                                             ->schema([
                                                 Select::make('turma_id')
                                                     ->label('Turma')
@@ -161,7 +170,6 @@ class ServidorResource extends Resource
                                                     })
                                                     ->searchable()
                                                     ->preload()
-                                                    ->required()
                                                     ->live(),
 
                                                 Select::make('componente_curricular_id')
@@ -169,32 +177,53 @@ class ServidorResource extends Resource
                                                     ->options(fn (Get $get): array => static::componentesOptions($get('turma_id')))
                                                     ->searchable()
                                                     ->preload()
-                                                    ->required(),
+                                                    ->visible(fn (Get $get): bool => filled($get('turma_id'))),
                                             ])
                                             ->columns(2)
+                                            ->defaultItems(0)
                                             ->addActionLabel('Vincular turma')
+                                            ->collapsible()
+                                            ->collapsed()
+                                            ->itemLabel(fn (array $state): ?string => filled($state['turma_id'] ?? null)
+                                                ? 'Vínculo de turma'
+                                                : 'Novo vínculo')
                                             ->visible(fn (Get $get): bool => filled($get('id_escola')))
-                                            ->columnSpanFull(),
+                                            ->columnSpanFull()
+                                            ->reorderable(false),
                                     ])
                                     ->columns(1)
-                                    ->defaultItems(1)
+                                    ->defaultItems(0)
+                                    ->minItems(0)
                                     ->addActionLabel('Adicionar escola')
-                                    ->columnSpanFull(),
+                                    ->collapsible()
+                                    ->itemLabel(fn (array $state): ?string => filled($state['id_escola'] ?? null)
+                                        ? 'Escola #'.($state['id_escola'] ?? '')
+                                        : 'Nova escola')
+                                    ->columnSpanFull()
+                                    ->reorderable(false),
                             ])
                             ->columns(2)
-                            ->minItems(1)
-                            ->maxItems(ProfessorMatricula::MAX_POR_PESSOA)
+                            ->defaultItems(0)
+                            ->minItems(0)
+                            // NÃO usar maxItems(2) no form: legado pode ter 3+ matrículas e o save falhava em silêncio.
                             ->addActionLabel('Adicionar matrícula')
-                            ->helperText('Máximo de 2 matrículas. Turno é da matrícula; turmas respeitam o turno (Integral vê manhã, tarde e integral).')
-                            ->columnSpanFull(),
+                            ->collapsible()
+                            ->itemLabel(fn (array $state): ?string => filled($state['matricula'] ?? null)
+                                ? sprintf('%s · %s', $state['matricula'], Professor::turnosOptions()[$state['turno'] ?? ''] ?? 'turno')
+                                : 'Nova matrícula')
+                            ->helperText('Cadastros novos: prefira no máximo 2 matrículas. Legado com mais matrículas é preservado e editável.')
+                            ->columnSpanFull()
+                            ->reorderable(false),
 
                         Textarea::make('observacoes')
                             ->label('Observações')
+                            ->rows(2)
                             ->maxLength(2000)
                             ->columnSpanFull(),
                     ])
                     ->visible(fn (Get $get): bool => ($get('cargo') ?? self::CARGO_PROFESSOR) === self::CARGO_PROFESSOR)
-                    ->columnSpanFull(),
+                    ->columnSpanFull()
+                    ->collapsible(),
 
                 ServidorAcessoForm::section(),
             ]);
@@ -403,18 +432,47 @@ class ServidorResource extends Resource
                 EditAction::make()
                     ->model(Servidor::class)
                     ->slideOver()
-                    ->modalWidth('7xl')
+                    ->modalWidth('5xl')
+                    ->modalHeading(fn (Servidor $record): string => "Editar pessoa — {$record->nome}")
+                    ->closeModalByClickingAway(false)
                     ->fillForm(fn (Servidor $record): array => app(PessoaProfessorFormService::class)->dadosParaFormulario($record))
                     ->using(function (Servidor $record, array $data): Servidor {
-                        $registros = static::extrairRegistrosProfessorDoForm($data);
-                        unset($data['registros_professor'], $data['matriculas_professor']);
-                        $data['cargo'] = $data['cargo'] ?? self::CARGO_PROFESSOR;
+                        try {
+                            $registros = static::extrairRegistrosProfessorDoForm($data);
+                            unset($data['registros_professor'], $data['matriculas_professor']);
+                            $data['cargo'] = $data['cargo'] ?? self::CARGO_PROFESSOR;
 
-                        return app(ServidorService::class)->atualizarServidorComFuncoes(
-                            $record,
-                            $data,
-                            ['registros_professor' => $registros],
-                        );
+                            $atualizado = app(ServidorService::class)->atualizarServidorComFuncoes(
+                                $record,
+                                $data,
+                                ['registros_professor' => $registros],
+                            );
+
+                            Notification::make()
+                                ->title('Pessoa atualizada')
+                                ->success()
+                                ->send();
+
+                            return $atualizado;
+                        } catch (\Illuminate\Validation\ValidationException $e) {
+                            Notification::make()
+                                ->title('Não foi possível salvar')
+                                ->body(collect($e->errors())->flatten()->take(5)->implode(' '))
+                                ->danger()
+                                ->persistent()
+                                ->send();
+
+                            throw $e;
+                        } catch (\Throwable $e) {
+                            Notification::make()
+                                ->title('Erro ao salvar pessoa')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->persistent()
+                                ->send();
+
+                            throw $e;
+                        }
                     }),
 
                 DeleteAction::make()

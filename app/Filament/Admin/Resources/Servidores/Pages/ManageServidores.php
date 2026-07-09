@@ -46,17 +46,45 @@ class ManageServidores extends ManageRecords
                 ->label('Nova pessoa')
                 ->model(Servidor::class)
                 ->slideOver()
-                ->modalWidth('7xl')
+                ->modalWidth('5xl')
+                ->modalHeading('Nova pessoa')
                 ->closeModalByClickingAway(false)
                 ->using(function (array $data): Servidor {
-                    $registros = ServidorResource::extrairRegistrosProfessorDoForm($data);
-                    unset($data['registros_professor'], $data['matriculas_professor']);
-                    $data['cargo'] = $data['cargo'] ?? ServidorResource::CARGO_PROFESSOR;
+                    try {
+                        $registros = ServidorResource::extrairRegistrosProfessorDoForm($data);
+                        unset($data['registros_professor'], $data['matriculas_professor']);
+                        $data['cargo'] = $data['cargo'] ?? ServidorResource::CARGO_PROFESSOR;
 
-                    return app(ServidorService::class)->criarServidorComFuncoes(
-                        $data,
-                        ['registros_professor' => $registros],
-                    );
+                        $criado = app(ServidorService::class)->criarServidorComFuncoes(
+                            $data,
+                            ['registros_professor' => $registros],
+                        );
+
+                        \Filament\Notifications\Notification::make()
+                            ->title('Pessoa cadastrada')
+                            ->success()
+                            ->send();
+
+                        return $criado;
+                    } catch (\Illuminate\Validation\ValidationException $e) {
+                        \Filament\Notifications\Notification::make()
+                            ->title('Não foi possível cadastrar')
+                            ->body(collect($e->errors())->flatten()->take(5)->implode(' '))
+                            ->danger()
+                            ->persistent()
+                            ->send();
+
+                        throw $e;
+                    } catch (\Throwable $e) {
+                        \Filament\Notifications\Notification::make()
+                            ->title('Erro ao cadastrar pessoa')
+                            ->body($e->getMessage())
+                            ->danger()
+                            ->persistent()
+                            ->send();
+
+                        throw $e;
+                    }
                 }),
         ];
     }

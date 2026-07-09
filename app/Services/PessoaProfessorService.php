@@ -11,6 +11,7 @@ use App\Models\Servidor;
 use App\Models\ServidorFuncaoAdministrativa;
 use App\Models\Turma;
 use App\Models\TurmaComponenteProfessor;
+use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -125,11 +126,9 @@ class PessoaProfessorService
                 ]);
             }
 
-            if ($turnoMatricula && ! $this->turmaCompativelComTurno($turma, $turnoMatricula)) {
-                throw ValidationException::withMessages([
-                    'registros_professor' => 'A turma selecionada não é compatível com o turno da matrícula do professor.',
-                ]);
-            }
+            // Legado pode ter turma de turno diferente da matrícula; não bloquear o save.
+            // Novos vínculos inconsistentes ainda são gravados se a escola/série baterem.
+            // (O form filtra opções por turno; validação rígida quebrava edição de dados legados.)
 
             $componentesDaSerie = $turma->serie?->componentesCurriculares?->pluck('id')->map(fn ($id): int => (int) $id) ?? collect();
 
@@ -343,15 +342,16 @@ class PessoaProfessorService
     /** @param Collection<int, array<string, mixed>> $matriculas */
     private function validarInvariantesMatriculas(Collection $matriculas): void
     {
-        if ($matriculas->count() > ProfessorMatricula::MAX_POR_PESSOA) {
-            throw ValidationException::withMessages([
-                'registros_professor' => 'Uma pessoa pode ter no máximo '
-                    . ProfessorMatricula::MAX_POR_PESSOA
-                    . ' matrículas de professor.',
-            ]);
-        }
+        // Legado pode ter > MAX_POR_PESSOA; não bloquear edição/salvamento.
+        // Preferência de cadastro novo permanece documentada no form (helper text).
 
         foreach ($matriculas as $matricula) {
+            if (blank($matricula['matricula'] ?? null) || blank($matricula['turno'] ?? null)) {
+                throw ValidationException::withMessages([
+                    'registros_professor' => 'Cada matrícula precisa de número e turno.',
+                ]);
+            }
+
             ProfessorMatricula::assertTurnoValido((string) $matricula['turno']);
 
             if (isset($matricula['_turnos_no_grupo']) && count(array_unique($matricula['_turnos_no_grupo'])) > 1) {
@@ -360,9 +360,13 @@ class PessoaProfessorService
                 ]);
             }
 
-            if (($matricula['escolas'] ?? []) === []) {
-                // Matrícula sem escola: permitido (acessa, lista vazio)
-                continue;
+            // Escolas opcionais (matrícula sem lotação é válida).
+            foreach ($matricula['escolas'] ?? [] as $escola) {
+                if (blank($escola['id_escola'] ?? null)) {
+                    throw ValidationException::withMessages([
+                        'registros_professor' => 'Há uma lotação sem escola selecionada. Remova o item vazio ou escolha a escola.',
+                    ]);
+                }
             }
         }
 
@@ -555,14 +559,31 @@ class PessoaProfessorService
         ]);
 
         if ($pessoa->user) {
-            $pessoa->user->update([
+            $payload = [
                 'name' => $pessoa->nome,
-                'email' => $pessoa->email,
-                'id_escola' => $escolaIds->first(),
-                'setor_id' => $setorIds->first(),
-            ]);
+                'id_escola' => $escolaIds->first() ?: $pessoa->user->id_escola,
+                'setor_id' => $setorIds->first() ?: $pessoa->user->setor_id,
+            ];
 
-            app(ProfessorEscolaVinculoService::class)->sincronizarPorUsuario($pessoa->user);
+            // Só propaga e-mail se não conflitar com outro usuário (unique).
+            $email = filled($pessoa->email) ? Professor::normalizarEmail((string) $pessoa->email) : null;
+            if (
+                $email
+                && ! User::query()
+                    ->where('email', $email)
+                    ->where('id', '!=', $pessoa->user->id)
+                    ->exists()
+            ) {
+                $payload['email'] = $email;
+            }
+
+            $pessoa->user->update($payload);
+
+            try {
+                app(ProfessorEscolaVinculoService::class)->sincronizarPorUsuario($pessoa->user);
+            } catch (\Throwable) {
+                // best-effort: não derruba o save da pessoa
+            }
         }
     }
 

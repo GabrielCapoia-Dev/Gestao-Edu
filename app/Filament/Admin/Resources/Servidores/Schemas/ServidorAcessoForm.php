@@ -23,10 +23,11 @@ class ServidorAcessoForm
         $acessoService = app(PessoaAcessoService::class);
 
         return Section::make('Acesso ao sistema')
-            ->description('Ao cadastrar como professor, o sistema cria o usuário automaticamente. Os níveis de acesso de professor não podem ser removidos.')
+            ->description('Login criado automaticamente para professor. Nível Professor fica fixo; extras são opcionais.')
+            ->icon('heroicon-o-key')
             ->schema([
                 Select::make('roles_professor')
-                    ->label('Níveis de acesso do professor')
+                    ->label('Nível do cargo (fixo)')
                     ->options(fn (): array => Role::query()
                         ->whereIn('id', $acessoService->rolesImutaveisProfessor()->all())
                         ->orderBy('name')
@@ -39,8 +40,8 @@ class ServidorAcessoForm
                     ->columnSpanFull(),
 
                 Select::make('roles_adicionais')
-                    ->label('Níveis de acesso adicionais')
-                    ->helperText('Opcional. Os níveis do professor permanecem fixos.')
+                    ->label('Níveis adicionais (opcional)')
+                    ->helperText('Prefira deixar vazio: nesta fase o padrão é só Professor.')
                     ->options(fn (): array => $userService->opcoesDeRolesParaSelect($user))
                     ->multiple()
                     ->searchable()
@@ -52,21 +53,22 @@ class ServidorAcessoForm
                     ->columnSpanFull(),
 
                 Toggle::make('email_approved')
-                    ->label('Verificação de acesso')
-                    ->helperText('Ative para permitir o acesso ao sistema.')
+                    ->label('Liberar acesso ao painel')
+                    ->helperText('Desative para manter o login pendente de aprovação.')
                     ->default(true)
                     ->onColor('success')
                     ->offColor('danger'),
 
                 Toggle::make('usar_permissoes_extras')
-                    ->label('Permissões adicionais')
-                    ->helperText('Conceda permissões específicas além dos níveis de acesso.')
+                    ->label('Permissões avulsas (admin)')
+                    ->helperText('Só se precisar de exceção pontual além do nível Professor.')
                     ->default(false)
                     ->live()
                     ->visible(fn (): bool => $userService->ehAdmin($user)),
 
                 Section::make('Permissões específicas')
                     ->collapsible()
+                    ->collapsed()
                     ->columnSpanFull()
                     ->visible(fn (Get $get): bool => $get('usar_permissoes_extras') === true && $userService->ehAdmin($user))
                     ->schema(function (Get $get, ?Servidor $record) use ($userService, $user, $acessoService): array {
@@ -102,7 +104,7 @@ class ServidorAcessoForm
                             $schema[] = CheckboxList::make("permissions_{$grupo}")
                                 ->label($grupo)
                                 ->options($permissoes->pluck('name', 'name')->toArray())
-                                ->columns(3)
+                                ->columns(2)
                                 ->afterStateHydrated(function (callable $set) use (
                                     $grupo,
                                     $permissoes,
@@ -125,22 +127,21 @@ class ServidorAcessoForm
             ])
             ->afterStateHydrated(function (callable $set, ?Servidor $record) use ($acessoService): void {
                 if (! $record?->user) {
+                    $set('roles_adicionais', []);
+                    $set('email_approved', true);
+                    $set('usar_permissoes_extras', false);
+
                     return;
                 }
 
-                $imutaveis = $acessoService->rolesImutaveisProfessor();
-                $rolesAdicionais = $record->user->roles
-                    ->pluck('id')
-                    ->map(fn ($id): int => (int) $id)
-                    ->diff($imutaveis)
-                    ->values()
-                    ->all();
-
-                $set('roles_adicionais', $rolesAdicionais);
+                // Nesta fase: não sugerir extras legados no form de pessoa
+                $set('roles_adicionais', []);
                 $set('email_approved', (bool) $record->user->email_approved);
-                $set('usar_permissoes_extras', $record->user->getDirectPermissions()->isNotEmpty());
+                $set('usar_permissoes_extras', false);
             })
             ->columns(2)
-            ->columnSpanFull();
+            ->columnSpanFull()
+            ->collapsible()
+            ->collapsed();
     }
 }
