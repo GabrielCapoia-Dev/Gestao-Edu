@@ -328,6 +328,117 @@ class ServidorService
         return false;
     }
 
+    /**
+     * Bloqueia exclusão apenas quando há dados de avaliação irreversíveis.
+     * Vínculos de turma/componente são liberados (professor_id anulado).
+     */
+    public function pessoaPodeSerExcluida(Servidor $pessoa): bool
+    {
+        $professorIds = $pessoa->professores()->pluck('id');
+
+        if ($professorIds->isEmpty()) {
+            return true;
+        }
+
+        foreach (['avaliacao_respostas', 'avaliacao_informacoes_complementares'] as $table) {
+            if (
+                Schema::hasTable($table)
+                && DB::table($table)->whereIn('professor_id', $professorIds->all())->exists()
+            ) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public function motivoBloqueioExclusao(Servidor $pessoa): ?string
+    {
+        if ($this->pessoaPodeSerExcluida($pessoa)) {
+            return null;
+        }
+
+        return "Não é possível excluir \"{$pessoa->nome}\" porque há avaliações ou informações complementares vinculadas aos registros de professor.";
+    }
+
+    public function excluirPessoa(Servidor $pessoa): void
+    {
+        if (! $this->pessoaPodeSerExcluida($pessoa)) {
+            throw ValidationException::withMessages([
+                'delete' => $this->motivoBloqueioExclusao($pessoa) ?? 'Pessoa não pode ser excluída.',
+            ]);
+        }
+
+        DB::transaction(function () use ($pessoa): void {
+            $pessoa = $pessoa->fresh(['professores', 'professorMatriculas', 'servidorFuncoes']);
+            $professorIds = $pessoa->professores->pluck('id')->all();
+
+            if ($professorIds !== [] && Schema::hasTable('turma_componente_professor')) {
+                DB::table('turma_componente_professor')
+                    ->whereIn('professor_id', $professorIds)
+                    ->update([
+                        'professor_id' => null,
+                        'tem_professor' => false,
+                        'updated_at' => now(),
+                    ]);
+            }
+
+            if ($professorIds !== []) {
+                Professor::query()->whereIn('id', $professorIds)->delete();
+            }
+
+            if (Schema::hasTable('professor_matriculas')) {
+                DB::table('professor_matriculas')->where('servidor_id', $pessoa->id)->delete();
+            }
+
+            if (Schema::hasTable('servidor_funcao_turma')) {
+                $vinculoIds = $pessoa->servidorFuncoes->pluck('id')->all();
+                if ($vinculoIds !== []) {
+                    DB::table('servidor_funcao_turma')
+                        ->whereIn('servidor_funcao_administrativa_id', $vinculoIds)
+                        ->delete();
+                }
+            }
+
+            ServidorFuncaoAdministrativa::query()
+                ->where('servidor_id', $pessoa->id)
+                ->delete();
+
+            $pessoa->delete();
+        });
+    }
+
+    /**
+     * @param  iterable<int, Servidor>  $pessoas
+     * @return array{excluidos: int, bloqueados: list<string>}
+     */
+    public function excluirPessoasEmMassa(iterable $pessoas): array
+    {
+        $excluidos = 0;
+        $bloqueados = [];
+
+        foreach ($pessoas as $pessoa) {
+            if (! $pessoa instanceof Servidor) {
+                continue;
+            }
+
+            $motivo = $this->motivoBloqueioExclusao($pessoa);
+            if ($motivo) {
+                $bloqueados[] = $motivo;
+
+                continue;
+            }
+
+            $this->excluirPessoa($pessoa);
+            $excluidos++;
+        }
+
+        return [
+            'excluidos' => $excluidos,
+            'bloqueados' => $bloqueados,
+        ];
+    }
+
     private function normalizarVinculosFuncionais(array $vinculos)
     {
         return collect($vinculos)

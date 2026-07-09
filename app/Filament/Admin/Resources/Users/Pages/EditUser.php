@@ -2,8 +2,8 @@
 
 namespace App\Filament\Admin\Resources\Users\Pages;
 
-use App\Filament\Admin\Resources\Servidores\ServidorResource;
 use App\Filament\Admin\Resources\Users\UserResource;
+use App\Services\PessoaAcessoService;
 use App\Services\UserService;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Str;
@@ -31,14 +31,32 @@ class EditUser extends EditRecord
     protected function getRedirectUrl(): string
     {
         return $this->previousUrl
-            ?? ServidorResource::getUrl('index', ['tab' => 'com_acesso']);
+            ?? UserResource::getUrl('index');
     }
 
     public function getOverviewCards(): array
     {
-        $record = $this->getRecord()->loadMissing(['roles', 'permissions', 'escola', 'setor']);
+        $record = $this->getRecord()->loadMissing([
+            'roles',
+            'permissions',
+            'escola',
+            'setor',
+            'servidores.professores',
+            'professores',
+        ]);
+
+        $ehProfessor = app(PessoaAcessoService::class)->usuarioEhProfessor($record);
+        $pessoas = $record->servidores->pluck('nome')->filter()->unique()->implode(', ')
+            ?: ($record->professores->pluck('nome')->filter()->unique()->implode(', ') ?: '—');
 
         return [
+            [
+                'label' => 'Cargo / pessoa',
+                'value' => $ehProfessor ? 'Professor' : 'Sem cargo pedagógico',
+                'description' => $pessoas !== '—' ? "Pessoa: {$pessoas}" : 'Sem ficha em Pessoas vinculada.',
+                'icon' => 'heroicon-o-identification',
+                'tone' => $ehProfessor ? 'sky' : 'gray',
+            ],
             [
                 'label' => 'Níveis ativos',
                 'value' => number_format($record->roles->count(), 0, ',', '.'),
@@ -58,13 +76,6 @@ class EditUser extends EditRecord
                 'value' => $record->escola ? Str::limit($record->escola->nome, 24) : 'Não vinculada',
                 'description' => 'Escopo operacional principal.',
                 'icon' => 'heroicon-o-building-library',
-                'tone' => 'sky',
-            ],
-            [
-                'label' => 'Setor',
-                'value' => $record->setor ? Str::limit($record->setor->nome, 22) : 'Não vinculado',
-                'description' => 'Organizacao interna do acesso.',
-                'icon' => 'heroicon-o-building-office-2',
                 'tone' => 'emerald',
             ],
         ];
@@ -73,15 +84,16 @@ class EditUser extends EditRecord
     public function getHighlights(): array
     {
         return [
-            'Ajuste níveis sem perder o histórico do usuário',
-            'Mantenha permissões diretas apenas para casos especiais',
-            'Revise escola, setor e liberacao de acesso no mesmo fluxo',
+            'Cargos (ex.: Professor) são geridos em Pessoas',
+            'Roles do cargo professor não podem ser removidas aqui',
+            'Use níveis extras e permissões diretas só quando necessário',
         ];
     }
 
     public function getSupportItems(): array
     {
         $record = $this->getRecord()->loadMissing(['roles', 'permissions']);
+        $ehProfessor = app(PessoaAcessoService::class)->usuarioEhProfessor($record);
 
         return [
             [
@@ -91,10 +103,10 @@ class EditUser extends EditRecord
                     : 'O usuário ainda não está liberado para acessar o sistema.',
             ],
             [
-                'title' => 'Composicao recomendada',
-                'description' => $record->roles->count() > 1
-                    ? 'Este usuário já combina mais de um nível. Revise apenas se os temas ainda fazem sentido juntos.'
-                    : 'Se o usuário acumular responsabilidades, você pode adicionar mais níveis sem substituir o acesso atual.',
+                'title' => $ehProfessor ? 'Cargo Professor vinculado' : 'Sem cargo pedagógico',
+                'description' => $ehProfessor
+                    ? 'Os níveis padrão do cargo Professor ficam travados. Edite lotação/matrícula em Pessoas.'
+                    : 'Este usuário não tem ficha de professor. Atribua o cargo na tela Pessoas se necessário.',
             ],
         ];
     }

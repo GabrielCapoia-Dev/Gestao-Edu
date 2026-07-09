@@ -2,7 +2,6 @@
 
 namespace App\Filament\Admin\Resources\Users\Pages;
 
-use App\Filament\Admin\Resources\Servidores\ServidorResource;
 use App\Filament\Admin\Resources\Users\UserResource;
 use App\Services\UserService;
 use Filament\Resources\Pages\CreateRecord;
@@ -39,7 +38,7 @@ class CreateUser extends CreateRecord
     {
         return $this->previousUrl
             ?? request()->query('redirect')
-            ?? ServidorResource::getUrl('index', ['tab' => 'com_acesso']);
+            ?? UserResource::getUrl('index');
     }
 
     public function getOverviewCards(): array

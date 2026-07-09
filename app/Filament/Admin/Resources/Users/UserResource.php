@@ -26,13 +26,15 @@ class UserResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::Users;
     public static ?string $slug = 'usuarios';
-    public static ?string $pluralModelLabel = 'Usuários';
-    public static ?string $navigationLabel = 'Usuários';
+    public static ?string $pluralModelLabel = 'Usuários';
+    public static ?string $modelLabel = 'Usuário';
+    public static ?string $navigationLabel = 'Usuários';
 
     protected static string | UnitEnum | null $navigationGroup = 'Acesso';
+    protected static ?int $navigationSort = 2;
     protected static ?string $recordTitleAttribute = 'name';
 
-    protected static bool $shouldRegisterNavigation = false;
+    protected static bool $shouldRegisterNavigation = true;
 
 
     /** Mantém sua sincronização antes da query base */

@@ -42,7 +42,7 @@ class ServidorPolicy
     {
         return $user->hasPermissionTo('Excluir Servidores')
             && $this->podeAcessarServidor($user, $servidor)
-            && ! $servidor->professores()->exists();
+            && app(ServidorService::class)->pessoaPodeSerExcluida($servidor);
     }
 
     public function deleteAny(User $user): bool

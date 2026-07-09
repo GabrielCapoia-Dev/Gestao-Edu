@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\Users\Tables;
 use App\Filament\Admin\Actions\VincularSetorBulkAction;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\PessoaAcessoService;
 use App\Services\UserService;
 use App\Services\UserSetorAccessService;
 use Filament\Actions\Action;
@@ -39,9 +40,15 @@ class UsersTable
 
         return $table
             ->modifyQueryUsing(fn (Builder $query) => $service->listarUsuariosQuery($query, $user)
-                ->with(['roles:id,name', 'escola:id,nome,setor_id', 'setor:id,nome']))
+                ->with([
+                    'roles:id,name',
+                    'escola:id,nome,setor_id',
+                    'setor:id,nome',
+                    'servidores:id,user_id,nome,cpf',
+                    'professores:id,user_id,nome,ativo',
+                ]))
             ->paginated([5, 10, 25, 50, 100])
-            ->defaultPaginationPageOption(5)
+            ->defaultPaginationPageOption(10)
             ->checkIfRecordIsSelectableUsing(fn (User $record) => $service->podeSelecionarRegistro($user, $record))
             ->columns(self::columns($service, $user))
             ->filters(self::filters($service, $user), layout: FiltersLayout::AboveContent)
@@ -79,6 +86,29 @@ class UsersTable
                 ->sortable()
                 ->grow(false)
                 ->searchable(),
+
+            TextColumn::make('pessoa_vinculada')
+                ->label('Pessoa')
+                ->getStateUsing(function (User $record): string {
+                    $nomes = $record->servidores->pluck('nome')->filter()->unique()->values();
+
+                    if ($nomes->isEmpty()) {
+                        $nomes = $record->professores->pluck('nome')->filter()->unique()->values();
+                    }
+
+                    return $nomes->implode(', ') ?: '—';
+                })
+                ->wrap()
+                ->toggleable(),
+
+            TextColumn::make('cargo_label')
+                ->label('Cargo')
+                ->badge()
+                ->getStateUsing(fn (User $record): string => app(PessoaAcessoService::class)->usuarioEhProfessor($record)
+                    ? 'Professor'
+                    : '—')
+                ->color(fn (string $state): string => $state === 'Professor' ? 'info' : 'gray')
+                ->toggleable(),
 
             TextColumn::make('email')
                 ->label('E-mail')
@@ -155,6 +185,23 @@ class UsersTable
                 ->options(fn () => $service->opcoesDeEscolasParaCampo($user))
                 ->searchable()
                 ->preload(),
+
+            TernaryFilter::make('cargo_professor')
+                ->label('Cargo professor')
+                ->trueLabel('Professores')
+                ->falseLabel('Sem cargo professor')
+                ->placeholder('Todos')
+                ->queries(
+                    true: fn (Builder $query): Builder => $query->whereHas(
+                        'professores',
+                        fn (Builder $professores): Builder => $professores->where('ativo', true),
+                    ),
+                    false: fn (Builder $query): Builder => $query->whereDoesntHave(
+                        'professores',
+                        fn (Builder $professores): Builder => $professores->where('ativo', true),
+                    ),
+                    blank: fn (Builder $query): Builder => $query,
+                ),
 
             SelectFilter::make('roles')
                 ->label('Nível de acesso')

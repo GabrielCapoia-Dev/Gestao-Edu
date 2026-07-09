@@ -2,7 +2,6 @@
 
 namespace App\Filament\Admin\Resources\Users\Pages;
 
-use App\Filament\Admin\Resources\Servidores\ServidorResource;
 use App\Filament\Admin\Resources\Users\Concerns\HasUsersOverview;
 use App\Filament\Admin\Resources\Users\UserResource;
 use Filament\Actions\CreateAction;
@@ -24,35 +23,28 @@ class ListUsers extends ListRecords
 
             'eyebrow' => 'Acesso',
             'title' => 'Usuários',
-            'description' => 'Gerencie os usuários e permissões de acesso.',
+            'description' => 'Gerencie login, níveis de acesso e permissões. Cargos pedagógicos vêm da ficha em Pessoas.',
         ]);
     }
 
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make(),
+            CreateAction::make()
+                ->label('Novo usuário'),
         ];
-    }
-
-    public function mount(): void
-    {
-        $this->redirect(
-            ServidorResource::getUrl('index', ['tab' => 'com_acesso']),
-            navigate: false,
-        );
     }
 
     public function getSupportItems(): array
     {
         return [
             [
-                'title' => 'Fluxo mais claro para a equipe',
-                'description' => 'A tabela continua com as mesmas ações, filtros e bulk actions, agora dentro de um contexto visual mais facil de ler.',
+                'title' => 'Pessoas × Usuários',
+                'description' => 'Identidade e cargo (ex.: Professor) ficam em Pessoas. Aqui você controla a conta de acesso e os níveis Spatie.',
             ],
             [
-                'title' => 'Combinacao de acesso sem retrabalho',
-                'description' => 'Use níveis tematicos para montar o pacote de acesso ideal e recorra a permissões extras apenas quando houver uma excecao real.',
+                'title' => 'Roles de professor são imutáveis',
+                'description' => 'Se o usuário estiver vinculado a um professor, os níveis do cargo Professor não podem ser removidos — só níveis extras.',
             ],
         ];
     }

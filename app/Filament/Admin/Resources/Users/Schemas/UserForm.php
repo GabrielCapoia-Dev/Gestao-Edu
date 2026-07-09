@@ -8,6 +8,7 @@ use App\Services\PessoaAcessoService;
 use App\Services\UserService;
 use App\Services\UserSetorAccessService;
 use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -17,6 +18,7 @@ use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\HtmlString;
 use Illuminate\Validation\Rules\Password as PasswordRule;
 use Spatie\Permission\Models\Permission;
 
@@ -29,6 +31,40 @@ class UserForm
         $service = app(UserService::class);
 
         return $schema->components([
+
+            Components\Section::make('Vínculo com pessoa / cargo')
+                ->description('Identidade e cargo pedagógico são cadastrados em Pessoas. Aqui aparece o espelho para orientar os níveis de acesso.')
+                ->schema([
+                    Placeholder::make('pessoa_cargo_resumo')
+                        ->label('Situação')
+                        ->content(function (?User $record): HtmlString {
+                            if (! $record) {
+                                return new HtmlString('Novo usuário: após salvar, vincule a ficha em <strong>Pessoas</strong> se for professor ou outro cargo.');
+                            }
+
+                            $record->loadMissing(['servidores.professores', 'professores']);
+                            $acesso = app(PessoaAcessoService::class);
+                            $ehProfessor = $acesso->usuarioEhProfessor($record);
+                            $pessoa = $record->servidores->first()?->nome
+                                ?? $record->professores->first()?->nome
+                                ?? '—';
+
+                            $cargo = $ehProfessor ? 'Professor' : 'Sem cargo pedagógico';
+                            $rolesTravadas = $ehProfessor
+                                ? $acesso->rolesImutaveisProfessor()->count().' nível(is) do cargo travado(s)'
+                                : 'Nenhum nível travado por cargo';
+
+                            return new HtmlString(
+                                '<div class="space-y-1 text-sm">'
+                                .'<div><span class="font-medium">Pessoa:</span> '.e($pessoa).'</div>'
+                                .'<div><span class="font-medium">Cargo:</span> '.e($cargo).'</div>'
+                                .'<div class="text-gray-500">'.e($rolesTravadas).'</div>'
+                                .'</div>'
+                            );
+                        }),
+                ])
+                ->columnSpanFull()
+                ->collapsible(),
 
             TextInput::make('codigo')->label('Código')->disabled()->dehydrated(false)->visible(false),
             TextInput::make('name')->label('Nome:')->required()->minLength(3)->maxLength(100)->rule('regex:/^[\p{L}\p{N}]+(?: [\p{L}\p{N}]+)*$/u')->validationMessages(['regex' => 'Use apenas letras, sem caracteres especiais.',]),

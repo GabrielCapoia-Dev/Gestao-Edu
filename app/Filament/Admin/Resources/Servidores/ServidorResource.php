@@ -14,8 +14,10 @@ use App\Services\UserService;
 use BackedEnum;
 use Closure;
 use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Filament\Notifications\Notification;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -331,6 +333,20 @@ class ServidorResource extends Resource
                         false: fn (Builder $query): Builder => $query->whereNull('user_id'),
                         blank: fn (Builder $query): Builder => $query,
                     ),
+
+                TernaryFilter::make('eh_professor')
+                    ->label('Cargo professor')
+                    ->trueLabel('Professores')
+                    ->falseLabel('Sem cargo professor')
+                    ->placeholder('Todos')
+                    ->queries(
+                        true: fn (Builder $query): Builder => $query->whereHas(
+                            'professores',
+                            fn (Builder $professores): Builder => $professores->where('ativo', true),
+                        ),
+                        false: fn (Builder $query): Builder => $query->whereDoesntHave('professores'),
+                        blank: fn (Builder $query): Builder => $query,
+                    ),
             ])
             ->recordActions([
                 ViewAction::make()
@@ -401,7 +417,46 @@ class ServidorResource extends Resource
                         );
                     }),
 
-                DeleteAction::make(),
+                DeleteAction::make()
+                    ->label('Excluir')
+                    ->requiresConfirmation()
+                    ->modalHeading('Excluir pessoa')
+                    ->modalDescription(fn (Servidor $record): string => app(ServidorService::class)->motivoBloqueioExclusao($record)
+                        ?? "Tem certeza que deseja excluir \"{$record->nome}\"? Lotações e vínculos de turma serão removidos. O usuário de login, se existir, não é apagado automaticamente.")
+                    ->disabled(fn (Servidor $record): bool => ! Gate::allows('delete', $record))
+                    ->visible(fn (): bool => Gate::allows('deleteAny', Servidor::class))
+                    ->using(function (Servidor $record): void {
+                        app(ServidorService::class)->excluirPessoa($record);
+                    }),
+            ])
+            ->toolbarActions([
+                DeleteBulkAction::make()
+                    ->label('Excluir selecionados')
+                    ->requiresConfirmation()
+                    ->modalHeading('Excluir pessoas em massa')
+                    ->modalDescription('Pessoas com avaliações registradas serão ignoradas. Lotações e vínculos de turma dos demais serão limpos. Contas de usuário não são apagadas automaticamente.')
+                    ->visible(fn (): bool => Gate::allows('deleteAny', Servidor::class))
+                    ->deselectRecordsAfterCompletion()
+                    ->using(function ($records): void {
+                        $resultado = app(ServidorService::class)->excluirPessoasEmMassa($records);
+
+                        if ($resultado['excluidos'] > 0) {
+                            Notification::make()
+                                ->title('Exclusão concluída')
+                                ->body("{$resultado['excluidos']} pessoa(s) excluída(s).")
+                                ->success()
+                                ->send();
+                        }
+
+                        if ($resultado['bloqueados'] !== []) {
+                            Notification::make()
+                                ->title('Algumas pessoas não foram excluídas')
+                                ->body(collect($resultado['bloqueados'])->take(5)->implode("\n"))
+                                ->warning()
+                                ->persistent()
+                                ->send();
+                        }
+                    }),
             ])
             ->defaultSort('updated_at', 'desc')
             ->striped();

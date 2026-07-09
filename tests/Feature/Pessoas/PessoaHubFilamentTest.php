@@ -10,6 +10,7 @@ use App\Models\Role;
 use App\Models\Servidor;
 use App\Models\Setor;
 use App\Models\User;
+use App\Services\ServidorService;
 use Filament\Actions\CreateAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -34,32 +35,18 @@ class PessoaHubFilamentTest extends TestCase
         $this->assertSame('Pessoa', ServidorResource::getModelLabel());
     }
 
-    public function test_hub_possui_abas_de_filtro_unificadas(): void
+    public function test_hub_lista_unica_sem_metodo_de_abas_proprio(): void
     {
-        $usuario = $this->usuarioComPermissaoListar();
+        $reflection = new \ReflectionClass(ManageServidores::class);
 
-        $tabs = Livewire::actingAs($usuario)
-            ->test(ManageServidores::class)
-            ->instance()
-            ->getTabs();
-
-        $this->assertArrayHasKey('todos', $tabs);
-        $this->assertArrayHasKey('professores', $tabs);
-        $this->assertArrayHasKey('com_acesso', $tabs);
-        $this->assertArrayHasKey('sem_acesso', $tabs);
-        $this->assertArrayNotHasKey('usuarios', $tabs);
+        $this->assertFalse(
+            $reflection->hasMethod('getTabs')
+                && $reflection->getMethod('getTabs')->getDeclaringClass()->getName() === ManageServidores::class,
+            'ManageServidores não deve declarar abas próprias.',
+        );
     }
 
-    public function test_aba_legada_usuarios_redireciona_para_com_acesso(): void
-    {
-        $usuario = $this->usuarioComPermissaoListar();
-
-        Livewire::actingAs($usuario)
-            ->test(ManageServidores::class, ['activeTab' => 'usuarios'])
-            ->assertSet('activeTab', 'com_acesso');
-    }
-
-    public function test_aba_professores_filtra_servidores_com_registros_pedagogicos(): void
+    public function test_lista_exibe_todas_as_pessoas_sem_filtro_de_aba(): void
     {
         $usuario = $this->usuarioComPermissaoListar();
         $setor = $this->criarSetor('Pedagógico');
@@ -80,47 +67,21 @@ class PessoaHubFilamentTest extends TestCase
 
         Livewire::actingAs($usuario)
             ->test(ManageServidores::class)
-            ->set('activeTab', 'professores')
-            ->assertCanSeeTableRecords([$comProfessor])
-            ->assertCanNotSeeTableRecords([$semProfessor]);
+            ->assertCanSeeTableRecords([$comProfessor, $semProfessor]);
     }
 
-    public function test_aba_com_acesso_filtra_servidores_com_usuario_vinculado(): void
+    public function test_header_nova_pessoa(): void
     {
         $usuario = $this->usuarioComPermissaoListar();
-        $setor = $this->criarSetor('Pedagógico');
-        $escola = $this->criarEscola('Escola Acesso', $setor);
 
-        $userVinculado = User::factory()->create([
-            'email_approved' => true,
-            'email_verified_at' => now(),
-        ]);
-
-        $comAcesso = $this->criarServidor('Com acesso', $escola, $setor, $userVinculado->id);
-        $semAcesso = $this->criarServidor('Sem acesso', $escola, $setor);
-
-        Livewire::actingAs($usuario)
+        $actions = Livewire::actingAs($usuario)
             ->test(ManageServidores::class)
-            ->set('activeTab', 'com_acesso')
-            ->assertCanSeeTableRecords([$comAcesso])
-            ->assertCanNotSeeTableRecords([$semAcesso]);
-    }
+            ->instance()
+            ->getCachedHeaderActions();
 
-    public function test_header_nova_pessoa_em_todas_as_abas(): void
-    {
-        $usuario = $this->usuarioComPermissaoListar();
-
-        foreach (['todos', 'professores', 'com_acesso', 'sem_acesso'] as $aba) {
-            $actions = Livewire::actingAs($usuario)
-                ->test(ManageServidores::class)
-                ->set('activeTab', $aba)
-                ->instance()
-                ->getCachedHeaderActions();
-
-            $this->assertCount(1, $actions, "A aba {$aba} deve ter um único botão de criação.");
-            $this->assertInstanceOf(CreateAction::class, $actions[0]);
-            $this->assertSame('Nova pessoa', $actions[0]->getLabel());
-        }
+        $this->assertCount(1, $actions);
+        $this->assertInstanceOf(CreateAction::class, $actions[0]);
+        $this->assertSame('Nova pessoa', $actions[0]->getLabel());
     }
 
     public function test_create_slideover_exibe_campos_de_servidor_e_acesso(): void
@@ -165,6 +126,29 @@ class PessoaHubFilamentTest extends TestCase
             ]);
     }
 
+    public function test_exclui_pessoa_sem_avaliacoes_e_limpa_lotacoes(): void
+    {
+        $usuario = $this->usuarioHubAdmin(['Listar Servidores', 'Excluir Servidores']);
+        $setor = $this->criarSetor('Pedagógico');
+        $escola = $this->criarEscola('Escola Del', $setor);
+        $servidor = $this->criarServidor('Para Excluir', $escola, $setor);
+
+        $professor = Professor::query()->create([
+            'servidor_id' => $servidor->id,
+            'id_escola' => $escola->id,
+            'matricula' => 'DEL-001',
+            'turno' => 'manha',
+            'nome' => $servidor->nome,
+            'email' => 'del@edu.umuarama.pr.gov.br',
+            'ativo' => true,
+        ]);
+
+        app(ServidorService::class)->excluirPessoa($servidor->fresh());
+
+        $this->assertDatabaseMissing('servidores', ['id' => $servidor->id]);
+        $this->assertDatabaseMissing('professores', ['id' => $professor->id]);
+    }
+
     private function usuarioComPermissaoListar(): User
     {
         return $this->usuarioHubAdmin(['Listar Servidores']);
@@ -179,14 +163,15 @@ class PessoaHubFilamentTest extends TestCase
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-        $adminRole = Role::findOrCreate('Admin', 'web');
-
         $usuario = User::factory()->create([
             'email_approved' => true,
             'email_verified_at' => now(),
         ]);
-        $usuario->assignRole($adminRole);
         $usuario->syncPermissions($permissoesCriadas);
+
+        // Escopo global para listar/editar pessoas no hub de testes.
+        $roleAdmin = Role::query()->firstOrCreate(['name' => 'Admin', 'guard_name' => 'web']);
+        $usuario->assignRole($roleAdmin);
 
         return $usuario;
     }
@@ -201,18 +186,6 @@ class PessoaHubFilamentTest extends TestCase
         ]);
     }
 
-    private function criarServidor(string $nome, Escola $escola, Setor $setor, ?int $userId = null): Servidor
-    {
-        return Servidor::query()->create([
-            'user_id' => $userId,
-            'nome' => $nome,
-            'matricula' => strtoupper(substr(md5($nome), 0, 8)),
-            'id_escola' => $escola->id,
-            'setor_id' => $setor->id,
-            'status' => Servidor::STATUS_ATIVO,
-        ]);
-    }
-
     private function criarSetor(string $nome): Setor
     {
         return Setor::query()->create([
@@ -220,7 +193,8 @@ class PessoaHubFilamentTest extends TestCase
             'ativo' => true,
             'status' => 'Ativo',
             'is_default_root' => true,
-            'contexto' => 'central',
+            'contexto' => 'escolar',
+            'exige_vinculo_escola' => true,
         ]);
     }
 
@@ -233,6 +207,18 @@ class PessoaHubFilamentTest extends TestCase
             'email' => strtolower(str_replace(' ', '.', $nome)).'@teste.local',
             'telefone' => '(44) 99999-9999',
             'ativo' => true,
+        ]);
+    }
+
+    private function criarServidor(string $nome, Escola $escola, Setor $setor, ?int $userId = null): Servidor
+    {
+        return Servidor::query()->create([
+            'nome' => $nome,
+            'email' => strtolower(str_replace(' ', '.', $nome)).'@edu.umuarama.pr.gov.br',
+            'id_escola' => $escola->id,
+            'setor_id' => $setor->id,
+            'user_id' => $userId,
+            'status' => Servidor::STATUS_ATIVO,
         ]);
     }
 }
