@@ -315,17 +315,33 @@ class UsersTable
                     }
                 }),
 
-            EditAction::make(),
+            EditAction::make()
+                ->visible(fn (User $record): bool => Gate::forUser($user)->allows('update', $record)),
 
             DeleteAction::make()
-                ->before(function (User $record, DeleteAction $action) use ($service, $user) {
+                ->label('Excluir')
+                ->requiresConfirmation()
+                ->modalHeading('Excluir usuário')
+                ->modalDescription(fn (User $record): string => "Excluir a conta \"{$record->email}\"? A ficha em Pessoas e lotações de professor são mantidas; apenas o login é removido.")
+                ->visible(fn (User $record): bool => $service->podeDeletar($user, $record))
+                ->disabled(fn (User $record): bool => ($record->id === 1) || (Auth::id() === $record->id))
+                ->using(function (User $record) use ($service, $user): void {
                     if (! $service->podeDeletar($user, $record)) {
-                        $action->failure();
-                        $action->halt();
+                        Notification::make()
+                            ->title('Exclusão não permitida')
+                            ->danger()
+                            ->send();
+
+                        return;
                     }
-                })
-                ->disabled(fn (User $record) => ($record->id === 1) || (Auth::id() === $record->id))
-                ->visible(fn () => $service->ehAdmin(Auth::user())),
+
+                    $service->excluirUsuario($record);
+
+                    Notification::make()
+                        ->title('Usuário excluído')
+                        ->success()
+                        ->send();
+                }),
         ];
     }
 
@@ -640,12 +656,38 @@ class UsersTable
             ),
 
             DeleteBulkAction::make()
-                ->before(function ($records, $action) use ($service, $user) {
-                    if (! $service->podeDeletarEmLote($user, $records)) {
-                        $action->halt();
+                ->label('Excluir selecionados')
+                ->requiresConfirmation()
+                ->modalDescription('Remove apenas as contas de login. Pessoas e professores vinculados permanecem no sistema.')
+                ->visible(fn (): bool => $user->hasPermissionTo('Excluir Usuarios')
+                    || $user->hasPermissionTo('Excluir Usuários')
+                    || $service->ehAdmin($user))
+                ->deselectRecordsAfterCompletion()
+                ->using(function ($records) use ($service, $user): void {
+                    $ok = 0;
+                    $falha = 0;
+
+                    foreach ($records as $record) {
+                        if (! $record instanceof User || ! $service->podeDeletar($user, $record)) {
+                            $falha++;
+
+                            continue;
+                        }
+
+                        try {
+                            $service->excluirUsuario($record);
+                            $ok++;
+                        } catch (\Throwable) {
+                            $falha++;
+                        }
                     }
-                })
-                ->visible(fn () => $service->ehAdmin(Auth::user())),
+
+                    Notification::make()
+                        ->title('Exclusão em massa')
+                        ->body("{$ok} excluído(s)".($falha > 0 ? ", {$falha} ignorado(s)." : '.'))
+                        ->success()
+                        ->send();
+                }),
         ];
     }
 }

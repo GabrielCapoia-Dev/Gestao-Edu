@@ -777,7 +777,7 @@ class PessoaLegadoNormalizacaoService
                         ->update(['user_id' => $user->id]);
 
                     if ($servidor->professores()->where('ativo', true)->exists()) {
-                        $this->acessoService->aplicarRolesProfessor($user, [], false);
+                        $this->acessoService->aplicarRolesProfessor($user, [], forcarDefaults: true);
                         $stats['users_alinhados'] = ($stats['users_alinhados'] ?? 0) + 1;
                     }
 

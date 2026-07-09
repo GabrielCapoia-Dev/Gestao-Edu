@@ -67,7 +67,15 @@ class UserForm
                 ->collapsible(),
 
             TextInput::make('codigo')->label('Código')->disabled()->dehydrated(false)->visible(false),
-            TextInput::make('name')->label('Nome:')->required()->minLength(3)->maxLength(100)->rule('regex:/^[\p{L}\p{N}]+(?: [\p{L}\p{N}]+)*$/u')->validationMessages(['regex' => 'Use apenas letras, sem caracteres especiais.',]),
+            TextInput::make('name')
+                ->label('Nome:')
+                ->required()
+                ->minLength(3)
+                ->maxLength(150)
+                ->rule('regex:/^[\p{L}\p{N}][\p{L}\p{N}\'.\- ]*[\p{L}\p{N}.]?$/u')
+                ->validationMessages([
+                    'regex' => 'Use letras, espaços, hífen ou apóstrofo.',
+                ]),
             TextInput::make('email')->label('E-mail')->unique(ignoreRecord: true)->email()->required(),
 
             TextInput::make('password')
@@ -95,34 +103,50 @@ class UserForm
             Select::make('roles')
                 ->label('Níveis de acesso')
                 ->helperText(fn (?User $record): string => app(PessoaAcessoService::class)->usuarioEhProfessor($record)
-                    ? 'Usuários vinculados a professor mantêm os níveis pedagógicos fixos. Você pode adicionar outros níveis, mas não remover os do professor.'
+                    ? 'Usuário professor: nesta fase permanece apenas com o nível do cargo Professor (sem extras).'
                     : 'Você pode vincular um ou mais níveis de acesso ao usuário.')
-                ->options(fn() => $service->opcoesDeRolesParaSelect($user))
+                ->options(fn () => $service->opcoesDeRolesParaSelect($user))
                 ->multiple()
                 ->searchable()
                 ->live()
                 ->preload()
                 ->required()
-                ->default(fn(?User $record) => $record?->roles->pluck('id')->all() ?? [])
+                ->default(fn (?User $record) => $record?->roles->pluck('id')->all() ?? [])
                 ->afterStateHydrated(function (callable $set, ?User $record): void {
                     if (! $record) {
+                        return;
+                    }
+
+                    $acesso = app(PessoaAcessoService::class);
+                    if ($acesso->usuarioEhProfessor($record)) {
+                        $set('roles', $acesso->rolesImutaveisProfessor()->values()->all());
+
                         return;
                     }
 
                     $set('roles', $record->roles()->pluck('roles.id')->all());
                 })
                 ->disableOptionWhen(function (string $value, ?User $record): bool {
-                    if (! app(PessoaAcessoService::class)->usuarioEhProfessor($record)) {
+                    // Professor: trava todas as opções que não sejam do cargo e também as do cargo (não remove).
+                    $acesso = app(PessoaAcessoService::class);
+                    if (! $acesso->usuarioEhProfessor($record)) {
                         return false;
                     }
 
-                    return app(PessoaAcessoService::class)->rolesImutaveisProfessor()->contains((int) $value);
+                    // Só permite manter as roles imutáveis; demais opções ficam desabilitadas.
+                    return ! $acesso->rolesImutaveisProfessor()->contains((int) $value);
                 })
+                // disabled + required quebra o save no Filament se o state não for reenviado
                 ->dehydrated(true)
-                ->disabled(
-                    fn(string $context, ?User $record) =>
-                    $service->desabilitarCampoRole($user, $record, $context)
-                ),
+                ->disabled(function (string $context, ?User $record) use ($service, $user): bool {
+                    if ($service->desabilitarCampoRole($user, $record, $context)) {
+                        return true;
+                    }
+
+                    // Professor: campo travado (roles forçadas no mutateFormDataBeforeSave)
+                    return app(PessoaAcessoService::class)->usuarioEhProfessor($record);
+                })
+                ->required(fn (?User $record): bool => ! app(PessoaAcessoService::class)->usuarioEhProfessor($record)),
 
             Toggle::make('email_approved')
                 ->label('Verificação de acesso')

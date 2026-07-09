@@ -384,22 +384,63 @@ class UserService
             return false;
         }
 
-        return $this->ehAdmin($user);
+        if ($record->hasRole('Admin') && ! $this->ehAdmin($user)) {
+            return false;
+        }
+
+        // Alinha com UserPolicy (permissão Excluir Usuários), não só role Admin.
+        return Gate::forUser($user)->allows('delete', $record);
     }
 
     public function podeDeletarEmLote(?User $user, iterable $records): bool
     {
-        if (! $this->ehAdmin($user)) {
+        if (! $user) {
             return false;
         }
 
         foreach ($records as $record) {
-            if ($record instanceof User && $record->hasRole('Admin')) {
+            if (! $record instanceof User) {
+                continue;
+            }
+
+            if (! $this->podeDeletar($user, $record)) {
                 return false;
             }
         }
 
         return true;
+    }
+
+    /**
+     * Exclui usuário desvinculando FKs amigáveis (pessoa/professor permanecem).
+     */
+    public function excluirUsuario(User $record): void
+    {
+        if ($record->id === 1) {
+            throw new \RuntimeException('O usuário raiz não pode ser excluído.');
+        }
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($record): void {
+            if (Schema::hasTable('servidores') && Schema::hasColumn('servidores', 'user_id')) {
+                \App\Models\Servidor::query()->where('user_id', $record->id)->update(['user_id' => null]);
+            }
+
+            if (Schema::hasTable('professores') && Schema::hasColumn('professores', 'user_id')) {
+                Professor::query()->where('user_id', $record->id)->update(['user_id' => null]);
+            }
+
+            if (Schema::hasTable('escola_user')) {
+                \Illuminate\Support\Facades\DB::table('escola_user')->where('user_id', $record->id)->delete();
+            }
+
+            if (Schema::hasTable('socialite_users')) {
+                \Illuminate\Support\Facades\DB::table('socialite_users')->where('user_id', $record->id)->delete();
+            }
+
+            $record->roles()->detach();
+            $record->permissions()->detach();
+            $record->delete();
+        });
     }
 
     // =========================================================================

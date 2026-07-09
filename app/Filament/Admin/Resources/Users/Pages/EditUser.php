@@ -14,10 +14,37 @@ class EditUser extends EditRecord
 
     protected string $view = 'filament.admin.resources.users.pages.edit-user';
 
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        $record = $this->getRecord();
+        $acesso = app(PessoaAcessoService::class);
+
+        if ($acesso->usuarioEhProfessor($record)) {
+            $data['roles'] = $acesso->rolesImutaveisProfessor()->values()->all();
+            $data['usar_permissoes_extras'] = false;
+        } else {
+            $data['roles'] = $record->roles()->pluck('roles.id')->all();
+        }
+
+        return $data;
+    }
+
     protected function mutateFormDataBeforeSave(array $data): array
     {
         if (! empty($data['email_approved']) && empty($data['email_verified_at'])) {
             $data['email_verified_at'] = now();
+        }
+
+        $acesso = app(PessoaAcessoService::class);
+        if ($acesso->usuarioEhProfessor($this->getRecord())) {
+            // Garante payload coerente mesmo com select desabilitado.
+            $data['roles'] = $acesso->rolesImutaveisProfessor()->values()->all();
+            $data['usar_permissoes_extras'] = false;
+        }
+
+        // Não reenviar senha vazia / hash nulo
+        if (array_key_exists('password', $data) && blank($data['password'])) {
+            unset($data['password']);
         }
 
         return $data;
@@ -25,7 +52,16 @@ class EditUser extends EditRecord
 
     protected function afterSave(): void
     {
-        app(UserService::class)->sincronizarAcessosDoUsuario($this->record, $this->data);
+        $data = $this->data;
+        $acesso = app(PessoaAcessoService::class);
+
+        if ($acesso->usuarioEhProfessor($this->record)) {
+            $acesso->aplicarRolesProfessor($this->record->fresh(), [], forcarDefaults: true);
+
+            return;
+        }
+
+        app(UserService::class)->sincronizarAcessosDoUsuario($this->record, $data);
     }
 
     protected function getRedirectUrl(): string

@@ -9,6 +9,7 @@ use App\Models\Role;
 use App\Models\Servidor;
 use App\Models\ServidorFuncaoAdministrativa;
 use App\Models\User;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -81,27 +82,77 @@ class PessoaAcessoService
             ->whereIn('id', $this->rolesImutaveisProfessor()->all())
             ->get();
 
+        // Fase atual: usuário professor fica somente com roles do cargo Professor
+        // (não reaproveita "Acessar Painel", "Visualizar Turmas..." legados).
+        if ($forcarDefaults || $this->usuarioEhProfessor($user)) {
+            $extrasPermitidos = collect($acesso['roles_adicionais'] ?? $acesso['roles'] ?? [])
+                ->filter(fn ($id): bool => filled($id))
+                ->map(fn ($id): int => (int) $id)
+                ->reject(fn (int $id): bool => $this->rolesImutaveisProfessor()->contains($id))
+                ->unique()
+                ->values();
+
+            // Por enquanto não adiciona extras no fluxo de professor, salvo forçar lista explícita vazia.
+            if ($forcarDefaults || $extrasPermitidos->isEmpty()) {
+                $user->syncRoles($rolesImutaveis);
+                $user->syncPermissions([]);
+
+                return;
+            }
+
+            $finais = $rolesImutaveis->pluck('id')->merge($extrasPermitidos)->unique()->values();
+            $user->syncRoles(Role::query()->whereIn('id', $finais->all())->get());
+            $user->syncPermissions([]);
+
+            return;
+        }
+
         $rolesAdicionais = collect($acesso['roles_adicionais'] ?? $acesso['roles'] ?? [])
             ->filter(fn ($id): bool => filled($id))
             ->map(fn ($id): int => (int) $id)
-            ->reject(fn (int $id): bool => $this->rolesImutaveisProfessor()->contains($id))
             ->unique()
             ->values();
 
-        if ($forcarDefaults || ($rolesAdicionais->isEmpty() && ! $user->roles()->exists())) {
+        if ($rolesAdicionais->isEmpty() && ! $user->roles()->exists()) {
             $user->syncRoles($rolesImutaveis);
 
             return;
         }
 
-        $rolesFinais = $rolesImutaveis
-            ->pluck('id')
-            ->merge($rolesAdicionais)
-            ->merge($user->roles()->pluck('roles.id'))
-            ->unique()
-            ->values();
+        if ($rolesAdicionais->isNotEmpty()) {
+            $user->syncRoles(Role::query()->whereIn('id', $rolesAdicionais->all())->get());
+        }
+    }
 
-        $user->syncRoles(Role::query()->whereIn('id', $rolesFinais->all())->get());
+    /**
+     * Sanitiza em massa: usuários com vínculo de professor ficam só com role(s) do cargo.
+     *
+     * @return array{usuarios: int}
+     */
+    public function sanitizarAcessosSomenteProfessor(): array
+    {
+        $count = 0;
+
+        User::query()
+            ->where(function ($q): void {
+                $q->whereHas('professores', fn ($p) => $p->where('ativo', true))
+                    ->orWhereHas('servidores.professores', fn ($p) => $p->where('ativo', true));
+            })
+            ->orderBy('id')
+            ->chunkById(100, function ($users) use (&$count): void {
+                foreach ($users as $user) {
+                    if ((int) $user->id === 1 || $user->hasRole('Admin')) {
+                        continue;
+                    }
+
+                    $this->aplicarRolesProfessor($user, [], forcarDefaults: true);
+                    $count++;
+                }
+            });
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        return ['usuarios' => $count];
     }
 
     public function mesclarRolesComProfessor(User $user, array $roleIds): array

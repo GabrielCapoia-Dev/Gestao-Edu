@@ -31,6 +31,7 @@
             </div>
 
             <div class="am-panel__body">
+                {{-- content() do EditRecord já inclui form + botões salvar/cancelar --}}
                 {{ $this->content }}
             </div>
         </section>
