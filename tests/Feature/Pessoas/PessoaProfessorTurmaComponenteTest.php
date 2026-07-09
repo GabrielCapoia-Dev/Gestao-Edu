@@ -21,7 +21,7 @@ class PessoaProfessorTurmaComponenteTest extends TestCase
 
     public function test_repeater_turma_componente_grava_pivot_pedagogico(): void
     {
-        $roleProfessor = Role::query()->create(['name' => 'Professor', 'guard_name' => 'web']);
+        $roleProfessor = Role::query()->firstOrCreate(['name' => 'Professor', 'guard_name' => 'web']);
         $funcao = FuncaoAdministrativa::professorPadrao();
         $funcao->rolesPadrao()->sync([$roleProfessor->id]);
 

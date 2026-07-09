@@ -107,8 +107,8 @@ class ManageServidores extends ManageRecords
                 ->modalWidth('7xl')
                 ->closeModalByClickingAway(false)
                 ->using(function (array $data): Servidor {
-                    $registros = $data['registros_professor'] ?? [];
-                    unset($data['registros_professor']);
+                    $registros = ServidorResource::extrairRegistrosProfessorDoForm($data);
+                    unset($data['registros_professor'], $data['matriculas_professor']);
                     $data['cargo'] = $data['cargo'] ?? ServidorResource::CARGO_PROFESSOR;
 
                     return app(ServidorService::class)->criarServidorComFuncoes(

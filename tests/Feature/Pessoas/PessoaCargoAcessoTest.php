@@ -24,7 +24,7 @@ class PessoaCargoAcessoTest extends TestCase
 
     public function test_cargo_professor_provisiona_user_com_role_padrao(): void
     {
-        $roleProfessor = Role::query()->create(['name' => 'Professor', 'guard_name' => 'web']);
+        $roleProfessor = Role::query()->firstOrCreate(['name' => 'Professor', 'guard_name' => 'web']);
         Permission::findOrCreate('Listar Turmas');
 
         $setor = Setor::query()->create([

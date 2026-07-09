@@ -19,7 +19,7 @@ class PessoaProfessorRolesImutaveisTest extends TestCase
 
     public function test_user_service_mantem_role_professor_ao_sincronizar_acessos(): void
     {
-        $roleProfessor = Role::query()->create(['name' => 'Professor', 'guard_name' => 'web']);
+        $roleProfessor = Role::query()->firstOrCreate(['name' => 'Professor', 'guard_name' => 'web']);
         $roleExtra = Role::query()->create(['name' => 'Coordenador', 'guard_name' => 'web']);
 
         $funcao = FuncaoAdministrativa::professorPadrao();

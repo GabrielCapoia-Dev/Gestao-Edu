@@ -18,7 +18,7 @@ class PessoaProfessorEscopoTest extends TestCase
 
     public function test_shadow_sync_mantem_escolas_no_escopo_agregado(): void
     {
-        $roleProfessor = Role::query()->create(['name' => 'Professor', 'guard_name' => 'web']);
+        $roleProfessor = Role::query()->firstOrCreate(['name' => 'Professor', 'guard_name' => 'web']);
         $funcao = FuncaoAdministrativa::professorPadrao();
         $funcao->rolesPadrao()->sync([$roleProfessor->id]);
 

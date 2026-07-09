@@ -4,13 +4,16 @@ namespace App\Services;
 
 use App\Models\Escola;
 use App\Models\FuncaoAdministrativa;
+use App\Models\Pessoa;
 use App\Models\Professor;
+use App\Models\ProfessorMatricula;
 use App\Models\Servidor;
 use App\Models\ServidorFuncaoAdministrativa;
 use App\Models\Turma;
 use App\Models\TurmaComponenteProfessor;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class PessoaProfessorService
@@ -23,44 +26,63 @@ class PessoaProfessorService
     public function criarPessoaProfessor(array $dadosPessoa, array $registros, array $acesso = []): Servidor
     {
         return DB::transaction(function () use ($dadosPessoa, $registros, $acesso): Servidor {
-            $servidor = Servidor::query()->create($this->dadosPessoa($dadosPessoa));
+            // Servidor extends Pessoa — instancia concreta para compatibilidade de typehints legados.
+            $pessoa = Servidor::query()->create($this->dadosPessoa($dadosPessoa));
 
-            return $this->finalizarProfessor($servidor, $registros, $acesso);
+            return $this->finalizarProfessor($pessoa, $registros, $acesso);
         });
     }
 
-    public function atualizarPessoaProfessor(Servidor $servidor, array $dadosPessoa, array $registros, array $acesso = []): Servidor
+    public function atualizarPessoaProfessor(Pessoa|Servidor $pessoa, array $dadosPessoa, array $registros, array $acesso = []): Servidor
     {
-        return DB::transaction(function () use ($servidor, $dadosPessoa, $registros, $acesso): Servidor {
-            $servidor->update($this->dadosPessoa($dadosPessoa));
+        return DB::transaction(function () use ($pessoa, $dadosPessoa, $registros, $acesso): Servidor {
+            $pessoa->update($this->dadosPessoa($dadosPessoa));
 
-            return $this->finalizarProfessor($servidor->fresh(), $registros, $acesso);
+            /** @var Servidor $fresh */
+            $fresh = Servidor::query()->findOrFail($pessoa->id);
+
+            return $this->finalizarProfessor($fresh, $registros, $acesso);
         });
     }
 
-    public function sincronizarRegistros(Servidor $servidor, array $registros): void
+    /**
+     * Aceita formato hierárquico (matriculas → escolas) ou flat legado
+     * (registros_professor com matricula+turno+id_escola).
+     */
+    public function sincronizarRegistros(Pessoa|Servidor $pessoa, array $registros): void
     {
-        $normalizados = $this->normalizarRegistros($registros);
-        $idsMantidos = collect();
+        $matriculas = $this->normalizarMatriculas($registros);
+        $this->validarInvariantesMatriculas($matriculas);
 
-        foreach ($normalizados as $registro) {
-            $this->validarRegistro($registro);
+        $idsProfessoresMantidos = collect();
+        $idsMatriculasMantidas = collect();
 
-            $professor = $this->upsertProfessor($servidor, $registro);
-            $idsMantidos->push($professor->id);
+        foreach ($matriculas as $matriculaData) {
+            $matriculaModel = $this->upsertMatricula($pessoa, $matriculaData);
+            $idsMatriculasMantidas->push($matriculaModel->id);
 
-            $this->sincronizarTurmasComponentes(
-                $professor,
-                $registro['vinculos_turma_componente'] ?? [],
-            );
+            foreach ($matriculaData['escolas'] as $escolaData) {
+                $this->validarEscola($escolaData['id_escola']);
+
+                $professor = $this->upsertProfessorLotacao($pessoa, $matriculaModel, $escolaData);
+                $idsProfessoresMantidos->push($professor->id);
+
+                $this->sincronizarTurmasComponentes(
+                    $professor,
+                    $escolaData['vinculos_turma_componente'] ?? [],
+                    $matriculaModel->turno,
+                );
+            }
         }
 
-        $this->removerRegistrosAusentes($servidor, $idsMantidos);
+        $this->removerRegistrosAusentes($pessoa, $idsProfessoresMantidos);
+        $this->removerMatriculasAusentes($pessoa, $idsMatriculasMantidas);
     }
 
-    public function sincronizarTurmasComponentes(Professor $professor, array $vinculos): void
+    public function sincronizarTurmasComponentes(Professor $professor, array $vinculos, ?string $turnoMatricula = null): void
     {
-        $professor->loadMissing('escola');
+        $professor->loadMissing(['escola', 'professorMatricula']);
+        $turnoMatricula ??= $professor->turnoEfetivo();
 
         $normalizados = collect($vinculos)
             ->map(function ($vinculo): ?array {
@@ -84,6 +106,8 @@ class PessoaProfessorService
             ->unique(fn (array $item): string => "{$item['turma_id']}-{$item['componente_curricular_id']}")
             ->values();
 
+        $vinculosMantidosKeys = collect();
+
         foreach ($normalizados as $vinculo) {
             $turma = Turma::query()
                 ->with('serie.componentesCurriculares')
@@ -98,6 +122,12 @@ class PessoaProfessorService
             if ((int) $turma->id_escola !== (int) $professor->id_escola) {
                 throw ValidationException::withMessages([
                     'registros_professor' => 'A turma selecionada não pertence à escola do registro.',
+                ]);
+            }
+
+            if ($turnoMatricula && ! $this->turmaCompativelComTurno($turma, $turnoMatricula)) {
+                throw ValidationException::withMessages([
+                    'registros_professor' => 'A turma selecionada não é compatível com o turno da matrícula do professor.',
                 ]);
             }
 
@@ -119,25 +149,44 @@ class PessoaProfessorService
                     'tem_professor' => true,
                 ],
             );
+
+            $vinculosMantidosKeys->push("{$vinculo['turma_id']}-{$vinculo['componente_curricular_id']}");
         }
+
+        // Remove vínculos deste professor que saíram do formulário (sem apagar slots de outros).
+        TurmaComponenteProfessor::query()
+            ->where('professor_id', $professor->id)
+            ->where('tem_professor', true)
+            ->get()
+            ->each(function (TurmaComponenteProfessor $row) use ($vinculosMantidosKeys): void {
+                $key = "{$row->turma_id}-{$row->componente_curricular_id}";
+                if ($vinculosMantidosKeys->contains($key)) {
+                    return;
+                }
+
+                $row->update([
+                    'professor_id' => null,
+                    'tem_professor' => false,
+                ]);
+            });
 
         if ($normalizados->isNotEmpty()) {
             app(ProfessorEscolaVinculoService::class)->sincronizarPorProfessores([$professor->id]);
         }
     }
 
-    public function sincronizarVinculosFuncionaisSilenciosos(Servidor $servidor): void
+    public function sincronizarVinculosFuncionaisSilenciosos(Pessoa|Servidor $pessoa): void
     {
         $funcaoProfessor = FuncaoAdministrativa::professorPadrao();
-        $servidor->loadMissing(['professores.escola']);
+        $pessoa->loadMissing(['professores.escola']);
 
         $vinculosMantidos = collect();
 
-        foreach ($servidor->professores->where('ativo', true) as $professor) {
+        foreach ($pessoa->professores->where('ativo', true) as $professor) {
             $setorId = $professor->escola?->setor_id ? (int) $professor->escola->setor_id : null;
 
             $vinculo = ServidorFuncaoAdministrativa::query()
-                ->where('servidor_id', $servidor->id)
+                ->where('servidor_id', $pessoa->id)
                 ->where('funcao_administrativa_id', $funcaoProfessor->id)
                 ->where('status', ServidorFuncaoAdministrativa::STATUS_ATIVO)
                 ->where('id_escola', $professor->id_escola)
@@ -146,7 +195,7 @@ class PessoaProfessorService
 
             if (! $vinculo) {
                 $vinculo = new ServidorFuncaoAdministrativa([
-                    'servidor_id' => $servidor->id,
+                    'servidor_id' => $pessoa->id,
                     'funcao_administrativa_id' => $funcaoProfessor->id,
                     'origem' => 'professor',
                 ]);
@@ -169,7 +218,7 @@ class PessoaProfessorService
         }
 
         ServidorFuncaoAdministrativa::query()
-            ->where('servidor_id', $servidor->id)
+            ->where('servidor_id', $pessoa->id)
             ->where('funcao_administrativa_id', $funcaoProfessor->id)
             ->where('status', ServidorFuncaoAdministrativa::STATUS_ATIVO)
             ->whereNotIn('id', $vinculosMantidos->all())
@@ -179,7 +228,74 @@ class PessoaProfessorService
                 'updated_at' => now(),
             ]);
 
-        $this->atualizarEscopoAgregadoServidor($servidor->fresh(['professores.escola']));
+        $this->atualizarEscopoAgregadoPessoa($pessoa->fresh(['professores.escola']));
+    }
+
+    /**
+     * Normaliza hierárquico OU flat para:
+     * [
+     *   ['id'?, 'matricula', 'turno', 'escolas' => [['id'?, 'id_escola', 'vinculos_turma_componente' => [...]]]]
+     * ]
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function normalizarMatriculas(array $registros): Collection
+    {
+        // Formato hierárquico explícito
+        if ($this->pareceHierarquico($registros)) {
+            return collect($registros)
+                ->map(function ($item): ?array {
+                    if (! is_array($item) || blank($item['matricula'] ?? null) || blank($item['turno'] ?? null)) {
+                        return null;
+                    }
+
+                    $escolas = collect($item['escolas'] ?? $item['lotacoes'] ?? [])
+                        ->map(function ($escola): ?array {
+                            if (! is_array($escola) || blank($escola['id_escola'] ?? null)) {
+                                return null;
+                            }
+
+                            return [
+                                'id' => filled($escola['id'] ?? null) ? (int) $escola['id'] : null,
+                                'id_escola' => (int) $escola['id_escola'],
+                                'vinculos_turma_componente' => $escola['vinculos_turma_componente'] ?? [],
+                            ];
+                        })
+                        ->filter()
+                        ->values()
+                        ->all();
+
+                    return [
+                        'id' => filled($item['id'] ?? null) ? (int) $item['id'] : null,
+                        'matricula' => (string) $item['matricula'],
+                        'turno' => (string) $item['turno'],
+                        'escolas' => $escolas,
+                    ];
+                })
+                ->filter()
+                ->values();
+        }
+
+        // Formato flat legado: cada linha = matrícula + turno + escola
+        return $this->normalizarRegistros($registros)
+            ->groupBy(fn (array $r): string => (string) $r['matricula'])
+            ->map(function (Collection $grupo, string $matricula): array {
+                $turnos = $grupo->pluck('turno')->unique()->values();
+                $turno = (string) $turnos->first();
+
+                return [
+                    'id' => null,
+                    'matricula' => $matricula,
+                    'turno' => $turno,
+                    'escolas' => $grupo->map(fn (array $r): array => [
+                        'id' => $r['id'] ?? null,
+                        'id_escola' => $r['id_escola'],
+                        'vinculos_turma_componente' => $r['vinculos_turma_componente'] ?? [],
+                    ])->values()->all(),
+                    '_turnos_no_grupo' => $turnos->all(),
+                ];
+            })
+            ->values();
     }
 
     /** @return Collection<int, array<string, mixed>> */
@@ -207,48 +323,126 @@ class PessoaProfessorService
             ->values();
     }
 
-    private function finalizarProfessor(Servidor $servidor, array $registros, array $acesso): Servidor
+    private function pareceHierarquico(array $registros): bool
     {
-        $this->sincronizarRegistros($servidor, $registros);
-        $this->pessoaAcessoService->provisionarUsuarioProfessor($servidor->fresh(['professores']), $acesso);
-        $this->sincronizarVinculosFuncionaisSilenciosos($servidor->fresh(['professores']));
+        if ($registros === []) {
+            return false;
+        }
 
-        return $servidor->fresh(['professores.escola', 'user', 'vinculosAtivos']);
+        $first = collect($registros)->first(fn ($item) => is_array($item));
+
+        if (! is_array($first)) {
+            return false;
+        }
+
+        return array_key_exists('escolas', $first)
+            || array_key_exists('lotacoes', $first)
+            || (array_key_exists('matricula', $first) && array_key_exists('turno', $first) && ! array_key_exists('id_escola', $first));
     }
 
-    private function upsertProfessor(Servidor $servidor, array $registro): Professor
+    /** @param Collection<int, array<string, mixed>> $matriculas */
+    private function validarInvariantesMatriculas(Collection $matriculas): void
     {
-        $query = Professor::query()->where('servidor_id', $servidor->id);
+        if ($matriculas->count() > ProfessorMatricula::MAX_POR_PESSOA) {
+            throw ValidationException::withMessages([
+                'registros_professor' => 'Uma pessoa pode ter no máximo '
+                    . ProfessorMatricula::MAX_POR_PESSOA
+                    . ' matrículas de professor.',
+            ]);
+        }
 
-        if (filled($registro['id'] ?? null)) {
-            $professor = $query->whereKey($registro['id'])->first();
-        } else {
-            $professor = null;
+        foreach ($matriculas as $matricula) {
+            ProfessorMatricula::assertTurnoValido((string) $matricula['turno']);
+
+            if (isset($matricula['_turnos_no_grupo']) && count(array_unique($matricula['_turnos_no_grupo'])) > 1) {
+                throw ValidationException::withMessages([
+                    'registros_professor' => "A matrícula {$matricula['matricula']} não pode ter turnos diferentes.",
+                ]);
+            }
+
+            if (($matricula['escolas'] ?? []) === []) {
+                // Matrícula sem escola: permitido (acessa, lista vazio)
+                continue;
+            }
+        }
+
+        $duplicadas = $matriculas->pluck('matricula')->duplicates();
+        if ($duplicadas->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'registros_professor' => 'Matrículas duplicadas no formulário: ' . $duplicadas->unique()->implode(', '),
+            ]);
+        }
+    }
+
+    private function upsertMatricula(Pessoa|Servidor $pessoa, array $data): ProfessorMatricula
+    {
+        $query = ProfessorMatricula::query()->where('servidor_id', $pessoa->id);
+
+        $matricula = null;
+        if (filled($data['id'] ?? null)) {
+            $matricula = (clone $query)->whereKey($data['id'])->first();
+        }
+
+        if (! $matricula) {
+            $matricula = (clone $query)->where('matricula', $data['matricula'])->first();
+        }
+
+        $payload = [
+            'servidor_id' => $pessoa->id,
+            'matricula' => $data['matricula'],
+            'turno' => $data['turno'],
+        ];
+
+        if ($matricula) {
+            $matricula->update($payload);
+
+            return $matricula->fresh();
+        }
+
+        return ProfessorMatricula::query()->create($payload);
+    }
+
+    private function upsertProfessorLotacao(Pessoa|Servidor $pessoa, ProfessorMatricula $matricula, array $escolaData): Professor
+    {
+        $query = Professor::query()->where('servidor_id', $pessoa->id);
+
+        $professor = null;
+        if (filled($escolaData['id'] ?? null)) {
+            $professor = (clone $query)->whereKey($escolaData['id'])->first();
         }
 
         if (! $professor) {
             $professor = Professor::query()
-                ->where('id_escola', $registro['id_escola'])
-                ->where('matricula', $registro['matricula'])
+                ->where('servidor_id', $pessoa->id)
+                ->where('id_escola', $escolaData['id_escola'])
+                ->where('matricula', $matricula->matricula)
+                ->first();
+        }
+
+        if (! $professor) {
+            $professor = Professor::query()
+                ->where('id_escola', $escolaData['id_escola'])
+                ->where('matricula', $matricula->matricula)
                 ->first();
         }
 
         $payload = [
-            'servidor_id' => $servidor->id,
-            'id_escola' => $registro['id_escola'],
-            'matricula' => $registro['matricula'],
-            'turno' => $registro['turno'],
-            'nome' => $servidor->nome,
-            'email' => $servidor->email,
-            'telefone' => $servidor->telefone,
-            'user_id' => $servidor->user_id,
+            'servidor_id' => $pessoa->id,
+            'professor_matricula_id' => $matricula->id,
+            'id_escola' => $escolaData['id_escola'],
+            'matricula' => $matricula->matricula,
+            'turno' => $matricula->turno,
+            'nome' => $pessoa->nome,
+            'email' => $pessoa->email,
+            'telefone' => $pessoa->telefone,
+            'user_id' => $pessoa->user_id,
             'ativo' => true,
         ];
 
         if ($professor) {
-            if ((int) ($professor->servidor_id ?? 0) !== 0 && (int) $professor->servidor_id !== (int) $servidor->id) {
+            if ((int) ($professor->servidor_id ?? 0) !== 0 && (int) $professor->servidor_id !== (int) $pessoa->id) {
                 throw ValidationException::withMessages([
-                    'registros_professor' => "A matrícula {$registro['matricula']} já está vinculada a outra pessoa nesta escola.",
+                    'registros_professor' => "A matrícula {$matricula->matricula} já está vinculada a outra pessoa nesta escola.",
                 ]);
             }
 
@@ -260,9 +454,21 @@ class PessoaProfessorService
         return Professor::query()->create($payload);
     }
 
-    private function removerRegistrosAusentes(Servidor $servidor, Collection $idsMantidos): void
+    private function finalizarProfessor(Servidor $pessoa, array $registros, array $acesso): Servidor
     {
-        $paraRemover = $servidor->professores()
+        $this->sincronizarRegistros($pessoa, $registros);
+        $this->pessoaAcessoService->provisionarUsuarioProfessor($pessoa->fresh(['professores']), $acesso);
+        $this->sincronizarVinculosFuncionaisSilenciosos($pessoa->fresh(['professores']));
+
+        /** @var Servidor $fresh */
+        $fresh = $pessoa->fresh(['professores.escola', 'professorMatriculas', 'user', 'vinculosAtivos']);
+
+        return $fresh;
+    }
+
+    private function removerRegistrosAusentes(Pessoa|Servidor $pessoa, Collection $idsMantidos): void
+    {
+        $paraRemover = $pessoa->professores()
             ->when($idsMantidos->isNotEmpty(), fn ($query) => $query->whereNotIn('id', $idsMantidos->all()))
             ->when($idsMantidos->isEmpty(), fn ($query) => $query)
             ->get();
@@ -278,9 +484,30 @@ class PessoaProfessorService
         }
     }
 
-    private function validarRegistro(array $registro): void
+    private function removerMatriculasAusentes(Pessoa|Servidor $pessoa, Collection $idsMantidos): void
     {
-        $escola = Escola::query()->find($registro['id_escola'] ?? null);
+        if (! Schema::hasTable('professor_matriculas')) {
+            return;
+        }
+
+        $paraRemover = ProfessorMatricula::query()
+            ->where('servidor_id', $pessoa->id)
+            ->when($idsMantidos->isNotEmpty(), fn ($query) => $query->whereNotIn('id', $idsMantidos->all()))
+            ->when($idsMantidos->isEmpty(), fn ($query) => $query)
+            ->get();
+
+        foreach ($paraRemover as $matricula) {
+            if ($matricula->professores()->exists()) {
+                continue;
+            }
+
+            $matricula->delete();
+        }
+    }
+
+    private function validarEscola(int $escolaId): void
+    {
+        $escola = Escola::query()->find($escolaId);
 
         if (! $escola) {
             throw ValidationException::withMessages([
@@ -293,17 +520,19 @@ class PessoaProfessorService
                 'registros_professor' => "A escola {$escola->nome} não possui setor vinculado.",
             ]);
         }
-
-        if (! array_key_exists($registro['turno'], Professor::turnosOptions())) {
-            throw ValidationException::withMessages([
-                'registros_professor' => 'Turno informado é inválido.',
-            ]);
-        }
     }
 
-    private function atualizarEscopoAgregadoServidor(Servidor $servidor): void
+    private function turmaCompativelComTurno(Turma $turma, string $turnoMatricula): bool
     {
-        $escolaIds = $servidor->professores
+        $turnoTurma = (string) $turma->turno;
+        $compatveis = ProfessorMatricula::turnosTurmaCompativeis($turnoMatricula);
+
+        return in_array($turnoTurma, $compatveis, true);
+    }
+
+    private function atualizarEscopoAgregadoPessoa(Pessoa|Servidor $pessoa): void
+    {
+        $escolaIds = $pessoa->professores
             ->where('ativo', true)
             ->pluck('id_escola')
             ->filter()
@@ -311,7 +540,7 @@ class PessoaProfessorService
             ->unique()
             ->values();
 
-        $setorIds = $servidor->professores
+        $setorIds = $pessoa->professores
             ->where('ativo', true)
             ->loadMissing('escola')
             ->pluck('escola.setor_id')
@@ -320,29 +549,31 @@ class PessoaProfessorService
             ->unique()
             ->values();
 
-        $servidor->update([
+        $pessoa->update([
             'id_escola' => $escolaIds->first(),
             'setor_id' => $setorIds->first(),
         ]);
 
-        if ($servidor->user) {
-            $servidor->user->update([
+        if ($pessoa->user) {
+            $pessoa->user->update([
+                'name' => $pessoa->nome,
+                'email' => $pessoa->email,
                 'id_escola' => $escolaIds->first(),
                 'setor_id' => $setorIds->first(),
             ]);
 
-            app(ProfessorEscolaVinculoService::class)->sincronizarPorUsuario($servidor->user);
+            app(ProfessorEscolaVinculoService::class)->sincronizarPorUsuario($pessoa->user);
         }
     }
 
     private function dadosPessoa(array $data): array
     {
         return [
-            'cpf' => $data['cpf'] ?? null,
+            'cpf' => Pessoa::normalizarCpf($data['cpf'] ?? null),
             'nome' => $data['nome'] ?? null,
             'email' => filled($data['email'] ?? null) ? Professor::normalizarEmail((string) $data['email']) : null,
             'telefone' => $data['telefone'] ?? null,
-            'status' => $data['status'] ?? Servidor::STATUS_ATIVO,
+            'status' => $data['status'] ?? Pessoa::STATUS_ATIVO,
             'observacoes' => $data['observacoes'] ?? null,
         ];
     }

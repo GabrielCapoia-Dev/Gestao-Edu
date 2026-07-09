@@ -20,7 +20,7 @@ class PessoaProfessorCadastroTest extends TestCase
 
     public function test_cadastro_cria_registros_user_e_shadow_vinculo_com_setor_da_escola(): void
     {
-        $roleProfessor = Role::query()->create(['name' => 'Professor', 'guard_name' => 'web']);
+        $roleProfessor = Role::query()->firstOrCreate(['name' => 'Professor', 'guard_name' => 'web']);
         $funcao = FuncaoAdministrativa::professorPadrao();
         $funcao->update(['concede_acesso_sistema' => true, 'exige_professor' => true]);
         $funcao->rolesPadrao()->sync([$roleProfessor->id]);
@@ -74,7 +74,7 @@ class PessoaProfessorCadastroTest extends TestCase
 
     public function test_edicao_propaga_dados_do_servidor_para_professor_e_user(): void
     {
-        $roleProfessor = Role::query()->create(['name' => 'Professor', 'guard_name' => 'web']);
+        $roleProfessor = Role::query()->firstOrCreate(['name' => 'Professor', 'guard_name' => 'web']);
         $funcao = FuncaoAdministrativa::professorPadrao();
         $funcao->rolesPadrao()->sync([$roleProfessor->id]);
 

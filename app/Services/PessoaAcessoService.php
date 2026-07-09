@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\FuncaoAdministrativa;
+use App\Models\Pessoa;
 use App\Models\Professor;
 use App\Models\Role;
 use App\Models\Servidor;
@@ -25,23 +26,23 @@ class PessoaAcessoService
             ->map(fn ($id): int => (int) $id);
     }
 
-    public function usuarioEhProfessor(Servidor|User|null $referencia): bool
+    public function usuarioEhProfessor(Pessoa|Servidor|User|null $referencia): bool
     {
         if ($referencia instanceof User) {
-            return Servidor::query()
+            return Pessoa::query()
                 ->where('user_id', $referencia->id)
                 ->whereHas('professores', fn ($query) => $query->where('ativo', true))
                 ->exists();
         }
 
-        if ($referencia instanceof Servidor) {
+        if ($referencia instanceof Pessoa) {
             return $referencia->professores()->where('ativo', true)->exists();
         }
 
         return false;
     }
 
-    public function provisionarUsuarioProfessor(Servidor $servidor, array $acesso = []): void
+    public function provisionarUsuarioProfessor(Pessoa|Servidor $servidor, array $acesso = []): void
     {
         $servidor = $servidor->fresh(['user', 'professores']);
 
@@ -116,7 +117,7 @@ class PessoaAcessoService
             ->values()
             ->all();
     }
-    public function provisionarAcessosDoServidor(Servidor $servidor): void
+    public function provisionarAcessosDoServidor(Pessoa|Servidor $servidor): void
     {
         $servidor = $servidor->fresh([
             'user',
@@ -202,7 +203,7 @@ class PessoaAcessoService
         }
     }
 
-    private function resolverOuCriarUser(Servidor $servidor, array $acesso = []): ?User
+    private function resolverOuCriarUser(Pessoa|Servidor $servidor, array $acesso = []): ?User
     {
         if ($servidor->user) {
             $this->atualizarDadosBasicosDoUser($servidor->user, $servidor, $acesso);
@@ -230,7 +231,7 @@ class PessoaAcessoService
         ]);
     }
 
-    private function atualizarDadosBasicosDoUser(User $user, Servidor $servidor, array $acesso = []): void
+    private function atualizarDadosBasicosDoUser(User $user, Pessoa|Servidor $servidor, array $acesso = []): void
     {
         $payload = [
             'name' => $servidor->nome ?? $user->name,

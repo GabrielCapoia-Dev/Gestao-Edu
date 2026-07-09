@@ -19,6 +19,11 @@ class PessoaVinculoSchemaTest extends TestCase
         $this->assertTrue(Schema::hasColumn('setor', 'exige_vinculo_escola'));
         $this->assertTrue(Schema::hasColumn('servidor_funcao_administrativa', 'matricula'));
         $this->assertTrue(Schema::hasColumn('professores', 'servidor_funcao_administrativa_id'));
+        $this->assertTrue(Schema::hasTable('professor_matriculas'));
+        $this->assertTrue(Schema::hasColumn('professores', 'professor_matricula_id'));
+        $this->assertTrue(Schema::hasColumn('professor_matriculas', 'matricula'));
+        $this->assertTrue(Schema::hasColumn('professor_matriculas', 'turno'));
+        $this->assertTrue(Schema::hasColumn('professor_matriculas', 'servidor_id'));
     }
 
     public function test_setor_contexto_define_exigencia_de_escola(): void

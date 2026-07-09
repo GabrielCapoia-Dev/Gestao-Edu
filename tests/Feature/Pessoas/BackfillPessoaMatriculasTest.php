@@ -10,6 +10,7 @@ use App\Models\ServidorFuncaoAdministrativa;
 use App\Models\Setor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class BackfillPessoaMatriculasTest extends TestCase
@@ -20,23 +21,29 @@ class BackfillPessoaMatriculasTest extends TestCase
     {
         $setor = $this->criarSetor('Pedagógico');
 
-        $principal = Servidor::query()->create([
+        // Insere formatos legados distintos no banco (sem mutator de normalização de CPF)
+        // para validar consolidação por dígitos.
+        $principalId = DB::table('servidores')->insertGetId([
             'cpf' => '123.456.789-00',
             'nome' => 'Maria Duplicada',
             'status' => Servidor::STATUS_ATIVO,
             'setor_id' => $setor->id,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
-        $duplicata = Servidor::query()->create([
+        $duplicataId = DB::table('servidores')->insertGetId([
             'cpf' => '12345678900',
             'nome' => 'Maria Duplicada Cópia',
             'matricula' => 'MAT-LEGADA',
             'status' => Servidor::STATUS_ATIVO,
             'setor_id' => $setor->id,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         ServidorFuncaoAdministrativa::query()->create([
-            'servidor_id' => $duplicata->id,
+            'servidor_id' => $duplicataId,
             'funcao_administrativa_id' => $this->funcaoAuxiliar()->id,
             'matricula' => 'MAT-VINC',
             'setor_id' => $setor->id,
@@ -46,9 +53,9 @@ class BackfillPessoaMatriculasTest extends TestCase
         Artisan::call('pessoas:backfill-matriculas');
 
         $this->assertSame(1, Servidor::query()->where('cpf', 'like', '%123%')->count());
-        $this->assertDatabaseMissing('servidores', ['id' => $duplicata->id]);
+        $this->assertDatabaseMissing('servidores', ['id' => $duplicataId]);
         $this->assertDatabaseHas('servidor_funcao_administrativa', [
-            'servidor_id' => $principal->id,
+            'servidor_id' => $principalId,
             'matricula' => 'MAT-VINC',
         ]);
     }
@@ -102,13 +109,14 @@ class BackfillPessoaMatriculasTest extends TestCase
             'status' => ServidorFuncaoAdministrativa::STATUS_ATIVO,
         ]);
 
-        $professor = Professor::query()->create([
+        // Sem observer: evita shadow sync criar outro vínculo e mascarar o backfill.
+        $professor = Professor::withoutEvents(fn () => Professor::query()->create([
             'servidor_id' => $servidor->id,
             'id_escola' => $escola->id,
             'matricula' => 'PROF-001',
             'nome' => 'Professor Vinculado',
             'email' => 'professor.vinculado@edu.umuarama.pr.gov.br',
-        ]);
+        ]));
 
         Artisan::call('pessoas:backfill-matriculas');
 

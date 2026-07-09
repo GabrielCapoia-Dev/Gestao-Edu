@@ -131,7 +131,7 @@ class PessoaHubFilamentTest extends TestCase
             ->test(ManageServidores::class)
             ->mountAction('create')
             ->assertSchemaComponentExists('nome')
-            ->assertSchemaComponentExists('registros_professor')
+            ->assertSchemaComponentExists('matriculas_professor')
             ->assertSchemaComponentExists('email_approved')
             ->assertSchemaComponentDoesNotExist('password');
     }
@@ -157,7 +157,7 @@ class PessoaHubFilamentTest extends TestCase
         Livewire::actingAs($usuario)
             ->test(ManageServidores::class)
             ->mountTableAction('edit', $servidor)
-            ->assertSchemaComponentExists('registros_professor')
+            ->assertSchemaComponentExists('matriculas_professor')
             ->assertSchemaComponentExists('email_approved')
             ->assertSchemaStateSet([
                 'nome' => 'Servidor Editável',

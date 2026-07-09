@@ -24,6 +24,7 @@ class Professor extends Model
     protected $fillable = [
         'user_id',
         'servidor_id',
+        'professor_matricula_id',
         'servidor_funcao_administrativa_id',
         'id_escola',
         'matricula',
@@ -62,12 +63,71 @@ class Professor extends Model
 
     public function servidor(): BelongsTo
     {
+        // Instância concreta Servidor (extends Pessoa) para typehints legados.
         return $this->belongsTo(Servidor::class, 'servidor_id');
+    }
+
+    /** Centro da verdade da identidade (mesmo registro de servidores). */
+    public function pessoa(): BelongsTo
+    {
+        return $this->belongsTo(Pessoa::class, 'servidor_id');
+    }
+
+    public function professorMatricula(): BelongsTo
+    {
+        return $this->belongsTo(ProfessorMatricula::class, 'professor_matricula_id');
     }
 
     public function vinculoFuncional(): BelongsTo
     {
         return $this->belongsTo(ServidorFuncaoAdministrativa::class, 'servidor_funcao_administrativa_id');
+    }
+
+    /**
+     * Nome canônico: preferir Pessoa; colunas locais são espelho legado.
+     */
+    public function nomeCanonico(): string
+    {
+        $this->loadMissing('pessoa');
+
+        return filled($this->pessoa?->nome) ? (string) $this->pessoa->nome : (string) ($this->attributes['nome'] ?? '');
+    }
+
+    public function emailCanonico(): ?string
+    {
+        $this->loadMissing('pessoa');
+
+        if (filled($this->pessoa?->email)) {
+            return (string) $this->pessoa->email;
+        }
+
+        $email = $this->attributes['email'] ?? null;
+
+        return filled($email) ? (string) $email : null;
+    }
+
+    public function telefoneCanonico(): ?string
+    {
+        $this->loadMissing('pessoa');
+
+        if (filled($this->pessoa?->telefone)) {
+            return (string) $this->pessoa->telefone;
+        }
+
+        $telefone = $this->attributes['telefone'] ?? null;
+
+        return filled($telefone) ? (string) $telefone : null;
+    }
+
+    public function turnoEfetivo(): ?string
+    {
+        $this->loadMissing('professorMatricula');
+
+        if (filled($this->professorMatricula?->turno)) {
+            return (string) $this->professorMatricula->turno;
+        }
+
+        return filled($this->turno) ? (string) $this->turno : null;
     }
 
     /**

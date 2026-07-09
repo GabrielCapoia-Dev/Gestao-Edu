@@ -19,7 +19,11 @@ class ServidorService
         if ($this->fluxoProfessor($data, $vinculos)) {
             return app(PessoaProfessorService::class)->criarPessoaProfessor(
                 $data,
-                $vinculos['registros_professor'] ?? $vinculos,
+                $vinculos['matriculas_professor']
+                    ?? $vinculos['registros_professor']
+                    ?? $data['matriculas_professor']
+                    ?? $data['registros_professor']
+                    ?? $vinculos,
                 $this->dadosAcesso($data),
             );
         }
@@ -33,7 +37,11 @@ class ServidorService
             return app(PessoaProfessorService::class)->atualizarPessoaProfessor(
                 $servidor,
                 $data,
-                $vinculos['registros_professor'] ?? $vinculos,
+                $vinculos['matriculas_professor']
+                    ?? $vinculos['registros_professor']
+                    ?? $data['matriculas_professor']
+                    ?? $data['registros_professor']
+                    ?? $vinculos,
                 $this->dadosAcesso($data),
             );
         }
@@ -50,7 +58,9 @@ class ServidorService
         }
 
         return array_key_exists('registros_professor', $vinculos)
-            || array_key_exists('registros_professor', $data);
+            || array_key_exists('registros_professor', $data)
+            || array_key_exists('matriculas_professor', $vinculos)
+            || array_key_exists('matriculas_professor', $data);
     }
 
     private function dadosAcesso(array $data): array
@@ -126,6 +136,17 @@ class ServidorService
             $servidor = $servidor->fresh(['professores', 'escola']);
 
             if ($funcao->exige_professor) {
+                // Preferir escola/matrícula do contexto do vínculo (podem ainda não estar no agregado da pessoa).
+                if (filled($contexto['id_escola'] ?? null) && blank($servidor->id_escola)) {
+                    $servidor->id_escola = (int) $contexto['id_escola'];
+                }
+                if (filled($contexto['matricula'] ?? null) && blank($servidor->matricula)) {
+                    $servidor->matricula = (string) $contexto['matricula'];
+                }
+                if (filled($contexto['setor_id'] ?? null) && blank($servidor->setor_id)) {
+                    $servidor->setor_id = (int) $contexto['setor_id'];
+                }
+
                 $this->garantirProfessorParaServidor($servidor);
             }
 
