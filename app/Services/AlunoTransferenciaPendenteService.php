@@ -242,7 +242,7 @@ class AlunoTransferenciaPendenteService
                     ->orWhere(function ($observacoesObrigatorias): void {
                         $observacoesObrigatorias
                             ->where('alt.tem_observacao', true)
-                            ->whereRaw("TRIM(COALESCE(ar.observação, '')) = ''");
+                            ->whereRaw("TRIM(COALESCE(ar.observacao, '')) = ''");
                     });
             })
             ->exists();
