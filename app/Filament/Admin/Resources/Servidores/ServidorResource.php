@@ -379,55 +379,12 @@ class ServidorResource extends Resource
             ])
             ->recordActions([
                 ViewAction::make()
-                    ->modalHeading(fn (Servidor $record): string => "Detalhes - {$record->nome}")
-                    ->modalWidth('3xl')
-                    ->schema([
-                        Section::make('Informações da pessoa')
-                            ->schema([
-                                TextEntry::make('nome')->label('Nome'),
-                                TextEntry::make('cpf')->label('CPF')->placeholder('Não informado'),
-                                TextEntry::make('email')->label('E-mail')->placeholder('Não informado'),
-                                TextEntry::make('user.name')->label('Usuário')->placeholder('Sem acesso'),
-                                TextEntry::make('user.email')->label('Login')->placeholder('Sem acesso'),
-                                TextEntry::make('acesso_resumo')
-                                    ->label('Situação do acesso')
-                                    ->getStateUsing(function (Servidor $record): string {
-                                        if (! $record->user_id) {
-                                            return 'Sem usuário vinculado';
-                                        }
-
-                                        return $record->user?->email_approved
-                                            ? 'Acesso liberado'
-                                            : 'Aguardando verificação';
-                                    }),
-                                TextEntry::make('niveis_acesso')
-                                    ->label('Níveis de acesso')
-                                    ->getStateUsing(fn (Servidor $record): string => $record->user?->roles
-                                        ->pluck('name')
-                                        ->join(', ') ?: '—'),
-                                TextEntry::make('status')
-                                    ->label('Status')
-                                    ->formatStateUsing(fn (?string $state): string => Servidor::statusOptions()[$state] ?? 'Não informado'),
-                            ])
-                            ->columns(2),
-
-                        Section::make('Registros do professor')
-                            ->schema([
-                                TextEntry::make('registros_resumo')
-                                    ->label('Lotações')
-                                    ->getStateUsing(fn (Servidor $record): array => $record->professores
-                                        ->loadMissing('escola')
-                                        ->map(fn (Professor $professor): string => sprintf(
-                                            '%s — %s — %s',
-                                            $professor->matricula,
-                                            $professor->turnoLabel(),
-                                            $professor->escola?->nome ?? 'Sem escola',
-                                        ))
-                                        ->all())
-                                    ->badge()
-                                    ->separator(','),
-                            ]),
-                    ]),
+                    ->label('Visualizar')
+                    ->slideOver()
+                    ->modalWidth('5xl')
+                    ->modalHeading(fn (Servidor $record): string => "Pessoa — {$record->nome}")
+                    ->modalDescription('Ficha completa: identidade, cargo, matrículas, lotações e acesso.')
+                    ->schema(fn (Servidor $record): array => static::infolistDetalhesCompletos($record)),
 
                 EditAction::make()
                     ->model(Servidor::class)
@@ -479,12 +436,17 @@ class ServidorResource extends Resource
                     ->label('Excluir')
                     ->requiresConfirmation()
                     ->modalHeading('Excluir pessoa')
-                    ->modalDescription(fn (Servidor $record): string => app(ServidorService::class)->motivoBloqueioExclusao($record)
-                        ?? "Tem certeza que deseja excluir \"{$record->nome}\"? Lotações e vínculos de turma serão removidos. O usuário de login, se existir, não é apagado automaticamente.")
-                    ->disabled(fn (Servidor $record): bool => ! Gate::allows('delete', $record))
-                    ->visible(fn (): bool => Gate::allows('deleteAny', Servidor::class))
+                    ->modalDescription(fn (Servidor $record): string => "Excluir \"{$record->nome}\"? "
+                        .'Matrículas e lotações serão removidas; vínculos de turma e a referência do professor em avaliações serão apenas desassociados (avaliações/alunos permanecem). '
+                        .'A conta de login, se existir, não é apagada.')
+                    ->visible(fn (Servidor $record): bool => Gate::allows('delete', $record))
                     ->using(function (Servidor $record): void {
                         app(ServidorService::class)->excluirPessoa($record);
+
+                        Notification::make()
+                            ->title('Pessoa excluída')
+                            ->success()
+                            ->send();
                     }),
             ])
             ->toolbarActions([
@@ -492,7 +454,7 @@ class ServidorResource extends Resource
                     ->label('Excluir selecionados')
                     ->requiresConfirmation()
                     ->modalHeading('Excluir pessoas em massa')
-                    ->modalDescription('Pessoas com avaliações registradas serão ignoradas. Lotações e vínculos de turma dos demais serão limpos. Contas de usuário não são apagadas automaticamente.')
+                    ->modalDescription('Avaliações e alunos não são apagados: só se remove a ficha da pessoa e se desassocia o professor. Contas de login permanecem.')
                     ->visible(fn (): bool => Gate::allows('deleteAny', Servidor::class))
                     ->deselectRecordsAfterCompletion()
                     ->using(function ($records): void {
@@ -538,6 +500,190 @@ class ServidorResource extends Resource
         }
 
         return $query->whereRaw('1 = 0');
+    }
+
+    /**
+     * Infolist rico para o slide-over de visualização.
+     *
+     * @return array<int, \Filament\Schemas\Components\Component>
+     */
+    public static function infolistDetalhesCompletos(Servidor $record): array
+    {
+        $record->loadMissing([
+            'user.roles',
+            'user.escola',
+            'professores.escola',
+            'professorMatriculas',
+            'vinculosAtivos.funcaoAdministrativa',
+            'vinculosAtivos.escola',
+            'vinculosAtivos.setor',
+        ]);
+
+        $vinculosTcp = \App\Models\TurmaComponenteProfessor::query()
+            ->with(['turma:id,nome,turno,id_escola', 'componente:id,nome'])
+            ->whereIn('professor_id', $record->professores->pluck('id'))
+            ->where('tem_professor', true)
+            ->whereNotNull('professor_id')
+            ->get();
+
+        return [
+            Section::make('Identidade')
+                ->icon('heroicon-o-user')
+                ->schema([
+                    TextEntry::make('nome')->label('Nome')->columnSpan(2),
+                    TextEntry::make('cpf')
+                        ->label('CPF')
+                        ->formatStateUsing(fn (?string $state): string => \App\Models\Pessoa::formatarCpf($state) ?: 'Não informado'),
+                    TextEntry::make('email')->label('E-mail')->placeholder('Não informado')->copyable(),
+                    TextEntry::make('telefone')->label('Telefone')->placeholder('Não informado'),
+                    TextEntry::make('status')
+                        ->label('Status')
+                        ->badge()
+                        ->formatStateUsing(fn (?string $state): string => Servidor::statusOptions()[$state] ?? '—')
+                        ->color(fn (?string $state): string => match ($state) {
+                            Servidor::STATUS_ATIVO => 'success',
+                            Servidor::STATUS_INATIVO => 'gray',
+                            default => 'warning',
+                        }),
+                    TextEntry::make('observacoes')
+                        ->label('Observações')
+                        ->placeholder('—')
+                        ->columnSpanFull(),
+                ])
+                ->columns(2)
+                ->collapsible(),
+
+            Section::make('Cargo e acesso')
+                ->icon('heroicon-o-briefcase')
+                ->schema([
+                    TextEntry::make('cargo_view')
+                        ->label('Cargo')
+                        ->badge()
+                        ->getStateUsing(fn (): string => $record->professores->isNotEmpty() ? 'Professor' : 'Sem cargo pedagógico')
+                        ->color(fn (string $state): string => $state === 'Professor' ? 'info' : 'gray'),
+                    TextEntry::make('user.name')->label('Usuário')->placeholder('Sem conta de login'),
+                    TextEntry::make('user.email')->label('Login')->placeholder('—')->copyable(),
+                    TextEntry::make('acesso_view')
+                        ->label('Situação do acesso')
+                        ->badge()
+                        ->getStateUsing(function () use ($record): string {
+                            if (! $record->user_id) {
+                                return 'Sem usuário';
+                            }
+
+                            return $record->user?->email_approved ? 'Liberado' : 'Pendente';
+                        })
+                        ->color(fn (string $state): string => match ($state) {
+                            'Liberado' => 'success',
+                            'Pendente' => 'warning',
+                            default => 'gray',
+                        }),
+                    TextEntry::make('niveis_view')
+                        ->label('Níveis de acesso')
+                        ->getStateUsing(fn (): string => $record->user?->roles->pluck('name')->join(', ') ?: '—')
+                        ->columnSpanFull(),
+                    TextEntry::make('user.escola.nome')->label('Escola do usuário')->placeholder('—'),
+                    TextEntry::make('updated_at')->label('Atualizado em')->dateTime('d/m/Y H:i'),
+                ])
+                ->columns(2)
+                ->collapsible(),
+
+            Section::make('Matrículas')
+                ->icon('heroicon-o-identification')
+                ->schema([
+                    TextEntry::make('matriculas_view')
+                        ->label('Matrículas do professor')
+                        ->getStateUsing(function () use ($record): array {
+                            if ($record->professorMatriculas->isNotEmpty()) {
+                                return $record->professorMatriculas
+                                    ->map(fn ($m): string => sprintf('%s (%s)', $m->matricula, $m->turnoLabel()))
+                                    ->all();
+                            }
+
+                            return $record->professores
+                                ->pluck('matricula')
+                                ->filter()
+                                ->unique()
+                                ->values()
+                                ->all() ?: ['Nenhuma matrícula'];
+                        })
+                        ->badge()
+                        ->separator(',')
+                        ->columnSpanFull(),
+                ])
+                ->collapsible()
+                ->collapsed(fn (): bool => $record->professores->isEmpty()),
+
+            Section::make('Lotações (escola × matrícula × turno)')
+                ->icon('heroicon-o-building-library')
+                ->schema([
+                    TextEntry::make('lotacoes_view')
+                        ->label('Registros')
+                        ->getStateUsing(fn (): array => $record->professores
+                            ->loadMissing('escola')
+                            ->map(fn (Professor $p): string => sprintf(
+                                '%s · %s · %s%s',
+                                $p->matricula ?: 's/ matrícula',
+                                $p->turnoLabel(),
+                                $p->escola?->nome ?? 'Sem escola',
+                                $p->ativo ? '' : ' (inativo)',
+                            ))
+                            ->values()
+                            ->all() ?: ['Nenhuma lotação'])
+                        ->listWithLineBreaks()
+                        ->columnSpanFull(),
+                ])
+                ->collapsible()
+                ->collapsed(fn (): bool => $record->professores->isEmpty()),
+
+            Section::make('Turmas e componentes')
+                ->icon('heroicon-o-academic-cap')
+                ->schema([
+                    TextEntry::make('tcp_view')
+                        ->label('Vínculos pedagógicos ativos')
+                        ->getStateUsing(function () use ($vinculosTcp): array {
+                            if ($vinculosTcp->isEmpty()) {
+                                return ['Nenhum vínculo de turma/componente'];
+                            }
+
+                            return $vinculosTcp->map(function ($v): string {
+                                $turma = $v->turma?->nome ?? ('Turma #'.$v->turma_id);
+                                $comp = $v->componente?->nome ?? ('Comp. #'.$v->componente_curricular_id);
+                                $turno = $v->turma?->turno ? " ({$v->turma->turno})" : '';
+
+                                return "{$turma}{$turno} — {$comp}";
+                            })->values()->all();
+                        })
+                        ->listWithLineBreaks()
+                        ->columnSpanFull(),
+                ])
+                ->collapsible()
+                ->collapsed(),
+
+            Section::make('Vínculos funcionais')
+                ->icon('heroicon-o-link')
+                ->schema([
+                    TextEntry::make('sfa_view')
+                        ->label('Funções ativas')
+                        ->getStateUsing(fn (): array => $record->vinculosAtivos
+                            ->map(function ($v): string {
+                                $funcao = $v->funcaoAdministrativa?->nome ?? 'Função';
+                                $escola = $v->escola?->nome;
+                                $setor = $v->setor?->nome;
+                                $mat = $v->matricula;
+
+                                return collect([$funcao, $mat ? "mat. {$mat}" : null, $escola, $setor])
+                                    ->filter()
+                                    ->implode(' · ');
+                            })
+                            ->values()
+                            ->all() ?: ['Nenhum vínculo funcional ativo'])
+                        ->listWithLineBreaks()
+                        ->columnSpanFull(),
+                ])
+                ->collapsible()
+                ->collapsed(),
+        ];
     }
 
     /**

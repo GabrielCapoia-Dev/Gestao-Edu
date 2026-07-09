@@ -41,8 +41,7 @@ class ServidorPolicy
     public function delete(User $user, Servidor $servidor): bool
     {
         return $user->hasPermissionTo('Excluir Servidores')
-            && $this->podeAcessarServidor($user, $servidor)
-            && app(ServidorService::class)->pessoaPodeSerExcluida($servidor);
+            && $this->podeAcessarServidor($user, $servidor);
     }
 
     public function deleteAny(User $user): bool

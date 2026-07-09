@@ -311,77 +311,82 @@ class ServidorService
         });
     }
 
+    /**
+     * Usado só para impedir remoção parcial de lotação ainda com TCP ativo no form.
+     * Avaliações NÃO bloqueiam: professor_id é metadado de exportação e pode ser anulado.
+     */
     public function professorPossuiVinculosPedagogicos(Professor $professor): bool
     {
-        $checks = [
-            ['turma_componente_professor', 'professor_id'],
-            ['avaliacao_respostas', 'professor_id'],
-            ['avaliacao_informacoes_complementares', 'professor_id'],
-        ];
-
-        foreach ($checks as [$table, $column]) {
-            if (Schema::hasTable($table) && DB::table($table)->where($column, $professor->id)->exists()) {
-                return true;
-            }
+        if (
+            Schema::hasTable('turma_componente_professor')
+            && DB::table('turma_componente_professor')
+                ->where('professor_id', $professor->id)
+                ->where('tem_professor', true)
+                ->exists()
+        ) {
+            return true;
         }
 
         return false;
     }
 
     /**
-     * Bloqueia exclusão apenas quando há dados de avaliação irreversíveis.
-     * Vínculos de turma/componente são liberados (professor_id anulado).
+     * Pessoas com permissão de exclusão sempre podem ser excluídas.
+     * Avaliações/TCP apenas perdem a referência ao professor (null), não impedem o delete.
      */
     public function pessoaPodeSerExcluida(Servidor $pessoa): bool
     {
-        $professorIds = $pessoa->professores()->pluck('id');
-
-        if ($professorIds->isEmpty()) {
-            return true;
-        }
-
-        foreach (['avaliacao_respostas', 'avaliacao_informacoes_complementares'] as $table) {
-            if (
-                Schema::hasTable($table)
-                && DB::table($table)->whereIn('professor_id', $professorIds->all())->exists()
-            ) {
-                return false;
-            }
-        }
-
         return true;
     }
 
     public function motivoBloqueioExclusao(Servidor $pessoa): ?string
     {
-        if ($this->pessoaPodeSerExcluida($pessoa)) {
-            return null;
+        return null;
+    }
+
+    /**
+     * Anula referências ao professor em tabelas pedagógicas sem apagar avaliações/alunos.
+     *
+     * @param  list<int>  $professorIds
+     */
+    public function desvincularProfessorDePedagogico(array $professorIds): void
+    {
+        if ($professorIds === []) {
+            return;
         }
 
-        return "Não é possível excluir \"{$pessoa->nome}\" porque há avaliações ou informações complementares vinculadas aos registros de professor.";
+        if (Schema::hasTable('turma_componente_professor')) {
+            DB::table('turma_componente_professor')
+                ->whereIn('professor_id', $professorIds)
+                ->update([
+                    'professor_id' => null,
+                    'tem_professor' => false,
+                    'updated_at' => now(),
+                ]);
+        }
+
+        // Avaliação fica no aluno; professor é só referência para exportação.
+        foreach (['avaliacao_respostas', 'avaliacao_informacoes_complementares'] as $table) {
+            if (! Schema::hasTable($table) || ! Schema::hasColumn($table, 'professor_id')) {
+                continue;
+            }
+
+            DB::table($table)
+                ->whereIn('professor_id', $professorIds)
+                ->update([
+                    'professor_id' => null,
+                    'updated_at' => now(),
+                ]);
+        }
     }
 
     public function excluirPessoa(Servidor $pessoa): void
     {
-        if (! $this->pessoaPodeSerExcluida($pessoa)) {
-            throw ValidationException::withMessages([
-                'delete' => $this->motivoBloqueioExclusao($pessoa) ?? 'Pessoa não pode ser excluída.',
-            ]);
-        }
-
         DB::transaction(function () use ($pessoa): void {
             $pessoa = $pessoa->fresh(['professores', 'professorMatriculas', 'servidorFuncoes']);
-            $professorIds = $pessoa->professores->pluck('id')->all();
+            $professorIds = $pessoa->professores->pluck('id')->map(fn ($id): int => (int) $id)->all();
 
-            if ($professorIds !== [] && Schema::hasTable('turma_componente_professor')) {
-                DB::table('turma_componente_professor')
-                    ->whereIn('professor_id', $professorIds)
-                    ->update([
-                        'professor_id' => null,
-                        'tem_professor' => false,
-                        'updated_at' => now(),
-                    ]);
-            }
+            $this->desvincularProfessorDePedagogico($professorIds);
 
             if ($professorIds !== []) {
                 Professor::query()->whereIn('id', $professorIds)->delete();
@@ -403,6 +408,11 @@ class ServidorService
             ServidorFuncaoAdministrativa::query()
                 ->where('servidor_id', $pessoa->id)
                 ->delete();
+
+            // Desvincula login sem apagar a conta de usuário.
+            if (filled($pessoa->user_id)) {
+                $pessoa->update(['user_id' => null]);
+            }
 
             $pessoa->delete();
         });
