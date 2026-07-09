@@ -80,6 +80,9 @@ class DatabaseSeeder extends Seeder
 
         $this->seedDominios();
 
+        // Normaliza massa legada (professores → Pessoa + professor_matriculas). Idempotente.
+        $this->call(PessoaLegadoNormalizacaoSeeder::class);
+
         $this->call([
             // SetorSeeder::class,
             // TipoStatusSeeder::class,
