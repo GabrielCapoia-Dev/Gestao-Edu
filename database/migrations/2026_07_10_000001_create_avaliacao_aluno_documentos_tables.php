@@ -69,38 +69,12 @@ return new class extends Migration
             });
         }
 
-        if (! Schema::hasTable('avaliacao_resposta_fatos')) {
-            Schema::create('avaliacao_resposta_fatos', function (Blueprint $table): void {
-                $table->id();
-                $table->foreignId('documento_id')
-                    ->constrained('avaliacao_aluno_documentos')
-                    ->cascadeOnDelete();
-                $table->foreignId('avaliacao_id')->constrained('avaliacoes')->cascadeOnDelete();
-                $table->foreignId('aluno_id')->constrained('alunos')->cascadeOnDelete();
-                $table->foreignId('turma_id')->constrained('turmas')->cascadeOnDelete();
-                $table->foreignId('escola_id')->constrained('escolas')->cascadeOnDelete();
-                $table->foreignId('pauta_id')->constrained('pautas')->cascadeOnDelete();
-                $table->unsignedBigInteger('componente_curricular_id')->nullable();
-                $table->unsignedBigInteger('alternativa_id')->nullable();
-                $table->unsignedBigInteger('professor_id')->nullable();
-                $table->boolean('tem_observacao')->default(false);
-                $table->text('observacao')->nullable();
-                $table->timestamp('respondido_em')->nullable();
-                $table->timestamps();
-
-                $table->unique(['documento_id', 'pauta_id'], 'uniq_av_fato_documento_pauta');
-                $table->index(['avaliacao_id', 'turma_id', 'pauta_id'], 'idx_av_fato_avaliacao_turma_pauta');
-                $table->index(['avaliacao_id', 'alternativa_id'], 'idx_av_fato_avaliacao_alternativa');
-                $table->index(['avaliacao_id', 'professor_id'], 'idx_av_fato_avaliacao_professor');
-                $table->index(['avaliacao_id', 'aluno_id'], 'idx_av_fato_avaliacao_aluno');
-                $table->index(['avaliacao_id', 'escola_id'], 'idx_av_fato_avaliacao_escola');
-            });
-        }
+        // Não cria avaliacao_resposta_fatos: o armazenamento canônico é o documento.
+        // Ambientes intermediários que já tenham a tabela são limpos em 2026_07_13_000001.
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('avaliacao_resposta_fatos');
         Schema::dropIfExists('avaliacao_aluno_documentos_historico');
         Schema::dropIfExists('avaliacao_aluno_documentos');
     }

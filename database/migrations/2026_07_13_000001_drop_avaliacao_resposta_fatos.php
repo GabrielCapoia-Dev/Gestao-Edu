@@ -1,40 +1,24 @@
 <?php
 
-use App\Models\AvaliacaoAlunoDocumento;
-use App\Services\Avaliacoes\AvaliacaoAlunoDocumentoService;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Remove a projeção linha-por-resposta. Source of truth: avaliacao_aluno_documentos.payload.
- * Normaliza pauta_id dentro do payload para consultas JSON_TABLE do dashboard.
+ * Remove a projeção linha-por-resposta, se existir.
+ * Source of truth: avaliacao_aluno_documentos.payload.
+ * Sem recálculo em massa — o cutover já materializa as métricas no documento.
  */
 return new class extends Migration
 {
     public function up(): void
     {
-        if (Schema::hasTable('avaliacao_aluno_documentos')) {
-            /** @var AvaliacaoAlunoDocumentoService $service */
-            $service = app(AvaliacaoAlunoDocumentoService::class);
-
-            AvaliacaoAlunoDocumento::query()
-                ->orderBy('id')
-                ->chunkById(100, function (Collection $docs) use ($service): void {
-                    foreach ($docs as $doc) {
-                        $service->recalcularMetricas($doc);
-                    }
-                });
-        }
-
         Schema::dropIfExists('avaliacao_resposta_fatos');
     }
 
     public function down(): void
     {
         // Não recria fatos: o armazenamento canônico é o documento.
-        // Estrutura vazia opcional apenas para compatibilidade de rollback de código antigo.
         if (Schema::hasTable('avaliacao_resposta_fatos')) {
             return;
         }

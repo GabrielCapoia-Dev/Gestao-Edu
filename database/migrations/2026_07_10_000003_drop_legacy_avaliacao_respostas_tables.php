@@ -3,13 +3,12 @@
 use App\Support\Migrations\AvaliacaoDocumentosMigrator;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
 /**
  * Finaliza o cutover:
- * 1) reprocessa residual do legado (se ainda existir)
+ * 1) reprocessa residual do legado apenas se a conversão ainda não estiver completa
  * 2) valida consistência
  * 3) remove tabelas legadas
  *
@@ -28,21 +27,26 @@ return new class extends Migration
             );
         }
 
-        // Residual: se 000002 rodou parcial ou legado ainda tem dados, reprocessa.
-        if ($migrator->hasLegacyTables()) {
-            $stats = $migrator->migrateFromLegacy();
-            Log::info('avaliacao_documentos.cutover_pre_drop', $stats);
-            $migrator->assertMigracaoConsistente();
-            $migrator->dropLegacyTables();
-            Log::info('avaliacao_documentos.legacy_dropped', $migrator->stats());
+        if (! $migrator->hasLegacyTables()) {
+            Log::info('avaliacao_documentos.cutover_sem_legado', $migrator->stats());
+
+            return;
         }
+
+        // migrateFromLegacy já faz skip se conversão estiver completa (rápido).
+        $stats = $migrator->migrateFromLegacy();
+        Log::info('avaliacao_documentos.cutover_pre_drop', $stats);
+
+        $migrator->assertMigracaoConsistente();
+        $migrator->dropLegacyTables();
+
+        Log::info('avaliacao_documentos.legacy_dropped', $migrator->stats());
     }
 
     public function down(): void
     {
         // Recria estrutura legada mínima para rollback de código antigo.
-        // Dados de resposta NÃO são reconstruídos a partir dos documentos aqui
-        // (seria perda semântica). O restore operacional deve vir de backup.
+        // Dados de resposta NÃO são reconstruídos a partir dos documentos.
 
         if (! Schema::hasTable('avaliacao_respostas')) {
             Schema::create('avaliacao_respostas', function (Blueprint $table): void {

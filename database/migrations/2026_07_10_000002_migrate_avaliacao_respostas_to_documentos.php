@@ -2,15 +2,12 @@
 
 use App\Support\Migrations\AvaliacaoDocumentosMigrator;
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Converte avaliacao_respostas + infos complementares → documentos + fatos.
- * Idempotente. Seguro para deploy por FTP + migrate no entrypoint.
- *
- * Produção (última versão ~06/07/2026) ainda tem as tabelas legadas:
- * esta migration roda no próximo up e materializa o modelo novo sem dropar o legado.
+ * Converte avaliacao_respostas + infos complementares → documentos (payload).
+ * Idempotente e em lote. Seguro para deploy por FTP + migrate no entrypoint.
  */
 return new class extends Migration
 {
@@ -20,24 +17,21 @@ return new class extends Migration
             return;
         }
 
+        $started = microtime(true);
         $migrator = new AvaliacaoDocumentosMigrator();
-        $migrator->migrateFromLegacy();
+        $stats = $migrator->migrateFromLegacy();
+
+        Log::info('avaliacao_documentos.migration_000002', [
+            ...$stats,
+            'wall_ms' => (int) round((microtime(true) - $started) * 1000),
+        ]);
     }
 
     public function down(): void
     {
-        // Não recria o legado automaticamente (perda irreversível de formato).
-        // Apenas limpa o modelo novo se o deploy for revertido com as migrations.
-        if (Schema::hasTable(AvaliacaoDocumentosMigrator::FATOS)) {
-            DB::table(AvaliacaoDocumentosMigrator::FATOS)->delete();
-        }
-
+        // Não recria o legado automaticamente.
         if (Schema::hasTable(AvaliacaoDocumentosMigrator::HISTORICO)) {
-            DB::table(AvaliacaoDocumentosMigrator::HISTORICO)->delete();
-        }
-
-        if (Schema::hasTable(AvaliacaoDocumentosMigrator::DOCUMENTOS)) {
-            DB::table(AvaliacaoDocumentosMigrator::DOCUMENTOS)->delete();
+            // no-op: dados de histórico preservados no rollback de código
         }
     }
 };
