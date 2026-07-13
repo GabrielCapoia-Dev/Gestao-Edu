@@ -1377,7 +1377,7 @@ class AlunoService
                 ->whereNotExists(function ($respostas): void {
                     $respostas
                         ->selectRaw('1')
-                        ->from('avaliacao_respostas as ar')
+                        ->from('avaliacao_resposta_fatos as ar')
                         ->whereColumn('ar.avaliacao_id', 'at.avaliacao_id')
                         ->whereColumn('ar.pauta_id', 'p.id')
                         ->whereColumn('ar.turma_id', 'at.turma_id')

@@ -41,20 +41,24 @@ return new class extends Migration
             $table->index(['valor', 'created_at'], 'idx_feedback_export_valor_created');
         });
 
-        Schema::table('avaliacao_respostas', function (Blueprint $table): void {
-            $table->index(['avaliacao_id', 'turma_id', 'aluno_id'], 'idx_resp_export_avaliacao_turma_aluno');
-            $table->index(['avaliacao_id', 'alternativa_id'], 'idx_resp_export_avaliacao_alternativa');
-            $table->index(['avaliacao_id', 'pauta_id', 'aluno_id'], 'idx_resp_export_avaliacao_pauta_aluno');
-        });
+        if (Schema::hasTable('avaliacao_respostas')) {
+            Schema::table('avaliacao_respostas', function (Blueprint $table): void {
+                $table->index(['avaliacao_id', 'turma_id', 'aluno_id'], 'idx_resp_export_avaliacao_turma_aluno');
+                $table->index(['avaliacao_id', 'alternativa_id'], 'idx_resp_export_avaliacao_alternativa');
+                $table->index(['avaliacao_id', 'pauta_id', 'aluno_id'], 'idx_resp_export_avaliacao_pauta_aluno');
+            });
+        }
     }
 
     public function down(): void
     {
-        Schema::table('avaliacao_respostas', function (Blueprint $table): void {
-            $table->dropIndex('idx_resp_export_avaliacao_pauta_aluno');
-            $table->dropIndex('idx_resp_export_avaliacao_alternativa');
-            $table->dropIndex('idx_resp_export_avaliacao_turma_aluno');
-        });
+        if (Schema::hasTable('avaliacao_respostas')) {
+            Schema::table('avaliacao_respostas', function (Blueprint $table): void {
+                $table->dropIndex('idx_resp_export_avaliacao_pauta_aluno');
+                $table->dropIndex('idx_resp_export_avaliacao_alternativa');
+                $table->dropIndex('idx_resp_export_avaliacao_turma_aluno');
+            });
+        }
 
         Schema::table('feedback_pedidos', function (Blueprint $table): void {
             $table->dropIndex('idx_feedback_export_valor_created');

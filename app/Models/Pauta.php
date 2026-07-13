@@ -56,8 +56,8 @@ class Pauta extends Model
             ->withTimestamps();
     }
 
-    public function respostas(): HasMany
+    public function respostaFatos(): HasMany
     {
-        return $this->hasMany(AvaliacaoResposta::class, 'pauta_id');
+        return $this->hasMany(AvaliacaoRespostaFato::class, 'pauta_id');
     }
 }

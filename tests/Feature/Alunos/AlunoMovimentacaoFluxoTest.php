@@ -9,8 +9,10 @@ use App\Livewire\AlunoParecerTransferenciaModal;
 use App\Models\Aluno;
 use App\Models\Alternativa;
 use App\Models\Avaliacao;
-use App\Models\AvaliacaoInformacaoComplementar;
-use App\Models\AvaliacaoResposta;
+use App\Models\AvaliacaoAlunoDocumento;
+use App\Models\AvaliacaoAlunoDocumentoHistorico;
+use App\Models\AvaliacaoRespostaFato;
+use App\Services\Avaliacoes\AvaliacaoAlunoDocumentoService;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
 use App\Models\Pauta;
@@ -153,7 +155,7 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             'status' => Aluno::STATUS_TRANSFERIDO,
         ]);
 
-        AvaliacaoResposta::query()->create([
+        $this->criarRespostaDocumento([
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
             'turma_id' => $turmaOrigem->id,
@@ -173,18 +175,20 @@ class AlunoMovimentacaoFluxoTest extends TestCase
         $this->assertSame(Aluno::STATUS_MATRICULADO, $novoAluno->status);
         $this->assertSame($alunoTransferido->id, $novoAluno->aluno_origem_id);
 
-        $this->assertDatabaseHas('avaliacao_respostas', [
-            'avaliacao_id' => $avaliacao->id,
-            'pauta_id' => $pauta->id,
-            'turma_id' => $turmaDestino->id,
-            'aluno_id' => $novoAluno->id,
-            'alternativa_id' => $alternativa->id,
-            'observacao' => 'Resposta anterior',
-            'bloqueada' => false,
-            'aluno_origem_id' => $alunoTransferido->id,
-            'turma_origem_id' => $turmaOrigem->id,
-            'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_TRANSFERENCIA,
-        ]);
+        $this->assertDocumentoNoAluno(
+            (int) $avaliacao->id,
+            (int) $novoAluno->id,
+            (int) $turmaDestino->id,
+            (int) $pauta->id,
+            (int) $alternativa->id,
+            'Resposta anterior'
+        );
+        $this->assertHistoricoMovimentacao(
+            (int) $avaliacao->id,
+            (int) $alunoTransferido->id,
+            (int) $novoAluno->id,
+            AlunoMovimentacaoService::MOVIMENTACAO_TRANSFERENCIA
+        );
 
         $this->assertDatabaseHas('alunos', [
             'id' => $alunoTransferido->id,
@@ -203,7 +207,7 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             'id_turma' => $turmaOrigem->id,
         ]);
 
-        AvaliacaoResposta::query()->create([
+        $this->criarRespostaDocumento([
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
             'turma_id' => $turmaOrigem->id,
@@ -229,13 +233,22 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             'movimentacao_origem' => AlunoMovimentacaoService::MOVIMENTACAO_REMANEJAMENTO,
         ]);
 
-        $this->assertDatabaseHas('avaliacao_respostas', [
+        $this->assertDocumentoNoAluno(
+            (int) $avaliacao->id,
+            (int) $novoAluno->id,
+            (int) $turmaDestino->id,
+            (int) $pauta->id,
+            (int) $alternativa->id
+        );
+        $this->assertHistoricoMovimentacao(
+            (int) $avaliacao->id,
+            (int) $aluno->id,
+            (int) $novoAluno->id,
+            AlunoMovimentacaoService::MOVIMENTACAO_REMANEJAMENTO
+        );
+        $this->assertDatabaseMissing('avaliacao_aluno_documentos', [
             'avaliacao_id' => $avaliacao->id,
-            'pauta_id' => $pauta->id,
-            'turma_id' => $turmaDestino->id,
-            'aluno_id' => $novoAluno->id,
-            'bloqueada' => false,
-            'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_REMANEJAMENTO,
+            'aluno_id' => $aluno->id,
         ]);
     }
 
@@ -270,7 +283,7 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             'id_turma' => $turmaOrigem->id,
         ]);
 
-        $respostaOrigem = AvaliacaoResposta::query()->create([
+        $respostaOrigem = $this->criarRespostaDocumento([
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
             'turma_id' => $turmaOrigem->id,
@@ -280,7 +293,7 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             'respondido_em' => now(),
         ]);
 
-        $informacaoOrigem = AvaliacaoInformacaoComplementar::query()->create([
+        $informacaoOrigem = $this->criarInformacaoDocumento([
             'avaliacao_id' => $avaliacao->id,
             'turma_id' => $turmaOrigem->id,
             'aluno_id' => $aluno->id,
@@ -295,50 +308,32 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             'turma_id' => $turmaDestino->id,
         ]);
 
-        $this->assertDatabaseHas('avaliacao_respostas', [
-            'id' => $respostaOrigem->id,
-            'turma_id' => $turmaOrigem->id,
-            'aluno_id' => $aluno->id,
-            'alternativa_id' => $alternativa->id,
-            'observacao' => 'Resposta antes do remanejamento',
-            'bloqueada' => true,
-            'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_REMANEJAMENTO,
-        ]);
+        $this->assertHistoricoMovimentacao(
+            (int) $avaliacao->id,
+            (int) $aluno->id,
+            (int) $novoAluno->id,
+            AlunoMovimentacaoService::MOVIMENTACAO_REMANEJAMENTO
+        );
 
-        $this->assertDatabaseHas('avaliacao_respostas', [
+        $this->assertDocumentoNoAluno(
+            (int) $avaliacao->id,
+            (int) $novoAluno->id,
+            (int) $turmaDestino->id,
+            (int) $pauta->id,
+            (int) $alternativa->id,
+            'Resposta antes do remanejamento'
+        );
+
+        $documentoDestino = AvaliacaoAlunoDocumento::query()
+            ->where('avaliacao_id', $avaliacao->id)
+            ->where('aluno_id', $novoAluno->id)
+            ->first();
+        $this->assertNotNull($documentoDestino);
+        $info = $documentoDestino->informacaoDoComponente((int) $pauta->componente_curricular_id);
+        $this->assertSame('Informacao complementar antes do remanejamento', $info['texto'] ?? null);
+        $this->assertDatabaseMissing('avaliacao_aluno_documentos', [
             'avaliacao_id' => $avaliacao->id,
-            'pauta_id' => $pauta->id,
-            'turma_id' => $turmaDestino->id,
-            'aluno_id' => $novoAluno->id,
-            'alternativa_id' => $alternativa->id,
-            'observacao' => 'Resposta antes do remanejamento',
-            'bloqueada' => false,
-            'resposta_origem_id' => $respostaOrigem->id,
-            'aluno_origem_id' => $aluno->id,
-            'turma_origem_id' => $turmaOrigem->id,
-            'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_REMANEJAMENTO,
-        ]);
-
-        $this->assertDatabaseHas('avaliacao_informacoes_complementares', [
-            'id' => $informacaoOrigem->id,
-            'turma_id' => $turmaOrigem->id,
             'aluno_id' => $aluno->id,
-            'informacoes_complementares' => 'Informacao complementar antes do remanejamento',
-            'bloqueada' => true,
-            'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_REMANEJAMENTO,
-        ]);
-
-        $this->assertDatabaseHas('avaliacao_informacoes_complementares', [
-            'avaliacao_id' => $avaliacao->id,
-            'turma_id' => $turmaDestino->id,
-            'aluno_id' => $novoAluno->id,
-            'componente_curricular_id' => $pauta->componente_curricular_id,
-            'informacoes_complementares' => 'Informacao complementar antes do remanejamento',
-            'bloqueada' => false,
-            'informacao_origem_id' => $informacaoOrigem->id,
-            'aluno_origem_id' => $aluno->id,
-            'turma_origem_id' => $turmaOrigem->id,
-            'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_REMANEJAMENTO,
         ]);
     }
 
@@ -463,7 +458,7 @@ class AlunoMovimentacaoFluxoTest extends TestCase
         $service = app(AlunoMovimentacaoService::class);
         $contraTurno = $service->vincularContraTurno($aluno, $turmaContraTurno->id);
 
-        $resposta = AvaliacaoResposta::query()->create([
+        $resposta = $this->criarRespostaDocumento([
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
             'turma_id' => $turmaContraTurno->id,
@@ -472,7 +467,7 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             'respondido_em' => now(),
         ]);
 
-        $informacao = AvaliacaoInformacaoComplementar::query()->create([
+        $informacao = $this->criarInformacaoDocumento([
             'avaliacao_id' => $avaliacao->id,
             'turma_id' => $turmaContraTurno->id,
             'aluno_id' => $contraTurno->id,
@@ -495,17 +490,12 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             'cgm_matricula_ativa' => 'CGM-CT-END',
         ]);
 
-        $this->assertDatabaseHas('avaliacao_respostas', [
+        // Contra-turno não bloqueia mais documentos; a ficha permanece editável no repositório.
+        $this->assertDatabaseHas('avaliacao_aluno_documentos', [
             'id' => $resposta->id,
-            'bloqueada' => true,
-            'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_CONTRA_TURNO,
+            'aluno_id' => $contraTurno->id,
         ]);
-
-        $this->assertDatabaseHas('avaliacao_informacoes_complementares', [
-            'id' => $informacao->id,
-            'bloqueada' => true,
-            'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_CONTRA_TURNO,
-        ]);
+        $this->assertSame('Registro do contra turno', $informacao->fresh()->informacaoDoComponente((int) $pauta->componente_curricular_id)['texto'] ?? null);
     }
 
     public function test_voltar_para_turma_anterior_registra_novo_remanejamento(): void
@@ -561,7 +551,7 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             'id_turma' => $turmaOrigem->id,
         ]);
 
-        $respostaOrigem = AvaliacaoResposta::query()->create([
+        $respostaOrigem = $this->criarRespostaDocumento([
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
             'turma_id' => $turmaOrigem->id,
@@ -569,7 +559,7 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             'alternativa_id' => $alternativa->id,
             'respondido_em' => now(),
         ]);
-        $informacaoOrigem = AvaliacaoInformacaoComplementar::query()->create([
+        $informacaoOrigem = $this->criarInformacaoDocumento([
             'avaliacao_id' => $avaliacao->id,
             'turma_id' => $turmaOrigem->id,
             'aluno_id' => $aluno->id,
@@ -625,130 +615,64 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             'aluno_origem_id' => $aluno->id,
         ]);
 
-        $this->assertDatabaseHas('avaliacao_respostas', [
-            'id' => $respostaOrigem->id,
-            'turma_id' => $turmaOrigem->id,
-            'aluno_id' => $aluno->id,
-            'bloqueada' => true,
-            'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_TRANSFERENCIA,
-        ]);
-
-        $this->assertDatabaseHas('avaliacao_respostas', [
+        $this->assertDatabaseMissing('avaliacao_aluno_documentos', [
             'avaliacao_id' => $avaliacao->id,
-            'pauta_id' => $pauta->id,
-            'turma_id' => $turmaPendente->id,
-            'aluno_id' => $alunoPendente->id,
-            'alternativa_id' => $alternativa->id,
-            'bloqueada' => false,
-            'aluno_origem_id' => $aluno->id,
-            'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_TRANSFERENCIA,
-        ]);
-
-        $this->assertDatabaseHas('avaliacao_informacoes_complementares', [
-            'id' => $informacaoOrigem->id,
-            'turma_id' => $turmaOrigem->id,
             'aluno_id' => $aluno->id,
-            'bloqueada' => true,
-            'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_TRANSFERENCIA,
         ]);
 
-        $this->assertDatabaseHas('avaliacao_informacoes_complementares', [
-            'avaliacao_id' => $avaliacao->id,
-            'turma_id' => $turmaPendente->id,
-            'aluno_id' => $alunoPendente->id,
-            'componente_curricular_id' => $pauta->componente_curricular_id,
-            'informacoes_complementares' => 'Informacao complementar antes da transferencia',
-            'bloqueada' => false,
-            'aluno_origem_id' => $aluno->id,
-            'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_TRANSFERENCIA,
-        ]);
+        $this->assertDocumentoNoAluno(
+            (int) $avaliacao->id,
+            (int) $alunoPendente->id,
+            (int) $turmaPendente->id,
+            (int) $pauta->id,
+            (int) $alternativa->id
+        );
+        $this->assertHistoricoMovimentacao(
+            (int) $avaliacao->id,
+            (int) $aluno->id,
+            (int) $alunoPendente->id,
+            AlunoMovimentacaoService::MOVIMENTACAO_TRANSFERENCIA
+        );
+
+        $documentoDestino = AvaliacaoAlunoDocumento::query()
+            ->where('avaliacao_id', $avaliacao->id)
+            ->where('aluno_id', $alunoPendente->id)
+            ->first();
+        $this->assertNotNull($documentoDestino);
+        $this->assertSame(
+            'Informacao complementar antes da transferencia',
+            $documentoDestino->informacaoDoComponente((int) $pauta->componente_curricular_id)['texto'] ?? null
+        );
     }
 
-    public function test_backfill_desbloqueia_registros_legados_copiados_por_transferencia(): void
+    public function test_documento_unico_segue_aluno_sem_bloqueio_pos_rebind(): void
     {
         [$escola, $serie, $turmaOrigem, $turmaDestino, $avaliacao, $pauta, $alternativa] = $this->criarCenarioAvaliacaoDuasTurmas();
 
-        $alunoOrigem = Aluno::query()->create([
-            'nome' => 'Aluno Origem Legado',
-            'cgm' => 'CGM-LEG',
+        $aluno = Aluno::query()->create([
+            'nome' => 'Aluno Documento Unico',
+            'cgm' => 'CGM-DOC-UNICO',
             'data_nascimento' => '2015-01-01',
             'id_turma' => $turmaOrigem->id,
-            'status' => Aluno::STATUS_TRANSFERIDO,
-        ]);
-        $alunoDestino = Aluno::query()->create([
-            'nome' => 'Aluno Destino Legado',
-            'cgm' => 'CGM-LEG',
-            'data_nascimento' => '2015-01-01',
-            'id_turma' => $turmaDestino->id,
-            'status' => Aluno::STATUS_MATRICULADO,
-            'aluno_origem_id' => $alunoOrigem->id,
-            'turma_origem_id' => $turmaOrigem->id,
-            'movimentacao_origem' => AlunoMovimentacaoService::MOVIMENTACAO_TRANSFERENCIA,
-        ]);
-        $alunoRemanejado = Aluno::query()->create([
-            'nome' => 'Aluno Remanejado Legado',
-            'cgm' => 'CGM-LEG-REM',
-            'data_nascimento' => '2015-01-01',
-            'id_turma' => $turmaDestino->id,
-            'status' => Aluno::STATUS_MATRICULADO,
-            'aluno_origem_id' => $alunoOrigem->id,
-            'turma_origem_id' => $turmaOrigem->id,
-            'movimentacao_origem' => AlunoMovimentacaoService::MOVIMENTACAO_REMANEJAMENTO,
         ]);
 
-        AvaliacaoResposta::query()->create([
+        $this->criarRespostaDocumento([
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
-            'turma_id' => $turmaDestino->id,
-            'aluno_id' => $alunoDestino->id,
+            'turma_id' => $turmaOrigem->id,
+            'aluno_id' => $aluno->id,
             'alternativa_id' => $alternativa->id,
             'respondido_em' => now(),
-            'bloqueada' => true,
-            'aluno_origem_id' => $alunoOrigem->id,
-            'turma_origem_id' => $turmaOrigem->id,
-            'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_TRANSFERENCIA,
-        ]);
-        AvaliacaoInformacaoComplementar::query()->create([
-            'avaliacao_id' => $avaliacao->id,
-            'turma_id' => $turmaDestino->id,
-            'aluno_id' => $alunoDestino->id,
-            'componente_curricular_id' => $pauta->componente_curricular_id,
-            'informacoes_complementares' => 'Complementar legado',
-            'bloqueada' => true,
-            'aluno_origem_id' => $alunoOrigem->id,
-            'turma_origem_id' => $turmaOrigem->id,
-            'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_TRANSFERENCIA,
-        ]);
-        AvaliacaoResposta::query()->create([
-            'avaliacao_id' => $avaliacao->id,
-            'pauta_id' => $pauta->id,
-            'turma_id' => $turmaDestino->id,
-            'aluno_id' => $alunoRemanejado->id,
-            'alternativa_id' => $alternativa->id,
-            'respondido_em' => now(),
-            'bloqueada' => true,
-            'aluno_origem_id' => $alunoOrigem->id,
-            'turma_origem_id' => $turmaOrigem->id,
-            'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_REMANEJAMENTO,
         ]);
 
-        $migration = include database_path('migrations/2026_05_28_000001_unlock_transferencia_copied_avaliacao_records.php');
-        $migration->up();
+        $novoAluno = app(AlunoMovimentacaoService::class)->remanejar($aluno, $turmaDestino->id);
 
-        $this->assertDatabaseHas('avaliacao_respostas', [
-            'aluno_id' => $alunoDestino->id,
-            'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_TRANSFERENCIA,
-            'bloqueada' => false,
-        ]);
-        $this->assertDatabaseHas('avaliacao_informacoes_complementares', [
-            'aluno_id' => $alunoDestino->id,
-            'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_TRANSFERENCIA,
-            'bloqueada' => false,
-        ]);
-        $this->assertDatabaseHas('avaliacao_respostas', [
-            'aluno_id' => $alunoRemanejado->id,
-            'bloqueio_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_REMANEJAMENTO,
-            'bloqueada' => true,
+        $this->assertEquals(1, AvaliacaoAlunoDocumento::query()->where('avaliacao_id', $avaliacao->id)->whereIn('aluno_id', [$aluno->id, $novoAluno->id])->count());
+        $this->assertDocumentoNoAluno((int) $avaliacao->id, (int) $novoAluno->id, (int) $turmaDestino->id, (int) $pauta->id, (int) $alternativa->id);
+        $this->assertDatabaseHas('avaliacao_aluno_documentos_historico', [
+            'aluno_origem_id' => $aluno->id,
+            'aluno_destino_id' => $novoAluno->id,
+            'movimentacao_tipo' => AlunoMovimentacaoService::MOVIMENTACAO_REMANEJAMENTO,
         ]);
     }
 
@@ -786,23 +710,11 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             ->call('selecionarAluno', $aluno->id)
             ->set("respostasParecer.{$avaliacao->id}.{$pauta->id}", (string) $alternativa->id);
 
-        $this->assertDatabaseHas('avaliacao_respostas', [
-            'avaliacao_id' => $avaliacao->id,
-            'pauta_id' => $pauta->id,
-            'turma_id' => $turmaOrigem->id,
-            'aluno_id' => $aluno->id,
-            'alternativa_id' => $alternativa->id,
-        ]);
+        $this->assertDocumentoNoAluno((int) $avaliacao->id, (int) $aluno->id, (int) $turmaOrigem->id, (int) $pauta->id, (int) $alternativa->id);
 
         $component->call('gerarParecerTransferencia');
 
-        $this->assertDatabaseHas('avaliacao_respostas', [
-            'avaliacao_id' => $avaliacao->id,
-            'pauta_id' => $pauta->id,
-            'turma_id' => $turmaOrigem->id,
-            'aluno_id' => $aluno->id,
-            'alternativa_id' => $alternativa->id,
-        ]);
+        $this->assertDocumentoNoAluno((int) $avaliacao->id, (int) $aluno->id, (int) $turmaOrigem->id, (int) $pauta->id, (int) $alternativa->id);
 
         $this->assertDatabaseHas('alunos', [
             'id' => $aluno->id,
@@ -849,22 +761,23 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             ->set("observacoesParecer.{$avaliacao->id}.{$pauta->id}", 'Observacao obrigatoria registrada.')
             ->set("informacoesComplementaresParecer.{$avaliacao->id}.{$pauta->componente_curricular_id}", 'Informacao complementar do componente.');
 
-        $this->assertDatabaseHas('avaliacao_respostas', [
-            'avaliacao_id' => $avaliacao->id,
-            'pauta_id' => $pauta->id,
-            'turma_id' => $turmaOrigem->id,
-            'aluno_id' => $aluno->id,
-            'alternativa_id' => $alternativa->id,
-            'observacao' => 'Observacao obrigatoria registrada.',
-        ]);
+        $this->assertDocumentoNoAluno(
+            (int) $avaliacao->id,
+            (int) $aluno->id,
+            (int) $turmaOrigem->id,
+            (int) $pauta->id,
+            (int) $alternativa->id,
+            'Observacao obrigatoria registrada.'
+        );
 
-        $this->assertDatabaseHas('avaliacao_informacoes_complementares', [
-            'avaliacao_id' => $avaliacao->id,
-            'turma_id' => $turmaOrigem->id,
-            'aluno_id' => $aluno->id,
-            'componente_curricular_id' => $pauta->componente_curricular_id,
-            'informacoes_complementares' => 'Informacao complementar do componente.',
-        ]);
+        $documento = AvaliacaoAlunoDocumento::query()
+            ->where('avaliacao_id', $avaliacao->id)
+            ->where('aluno_id', $aluno->id)
+            ->first();
+        $this->assertSame(
+            'Informacao complementar do componente.',
+            $documento?->informacaoDoComponente((int) $pauta->componente_curricular_id)['texto'] ?? null
+        );
 
         $component->call('gerarParecerTransferencia');
     }
@@ -900,14 +813,19 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             'status' => Aluno::STATUS_TRANSFERIDO,
         ]);
 
-        $this->assertDatabaseHas('avaliacao_respostas', [
+        $this->assertDatabaseHas('avaliacao_resposta_fatos', [
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
             'turma_id' => $turmaOrigem->id,
             'aluno_id' => $aluno->id,
             'alternativa_id' => $alternativa->id,
-            'observacao' => null,
         ]);
+        $fato = AvaliacaoRespostaFato::query()
+            ->where('avaliacao_id', $avaliacao->id)
+            ->where('aluno_id', $aluno->id)
+            ->where('pauta_id', $pauta->id)
+            ->first();
+        $this->assertTrue($fato === null || blank($fato->observacao));
     }
 
     public function test_parecer_transferencia_filtra_por_escola_serie_turma_e_pendencia_sem_professor(): void
@@ -936,7 +854,7 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             'id_turma' => $turmaDestino->id,
         ]);
 
-        AvaliacaoResposta::query()->create([
+        $this->criarRespostaDocumento([
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
             'turma_id' => $turmaOrigem->id,
@@ -1012,7 +930,7 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             'id_turma' => $turmaSemAvaliacao->id,
         ]);
 
-        AvaliacaoResposta::query()->create([
+        $this->criarRespostaDocumento([
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
             'turma_id' => $turmaOrigem->id,
@@ -1068,13 +986,7 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             ->assertSee('Pauta de teste')
             ->set("respostasParecer.{$avaliacao->id}.{$pauta->id}", (string) $alternativa->id);
 
-        $this->assertDatabaseHas('avaliacao_respostas', [
-            'avaliacao_id' => $avaliacao->id,
-            'pauta_id' => $pauta->id,
-            'turma_id' => $turmaOrigem->id,
-            'aluno_id' => $aluno->id,
-            'alternativa_id' => $alternativa->id,
-        ]);
+        $this->assertDocumentoNoAluno((int) $avaliacao->id, (int) $aluno->id, (int) $turmaOrigem->id, (int) $pauta->id, (int) $alternativa->id);
     }
 
     public function test_tela_de_alunos_lista_todos_e_parecer_aparece_para_historico_com_avaliacao(): void
@@ -1097,7 +1009,7 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             'id_turma' => $turmaOrigem->id,
         ]);
 
-        AvaliacaoResposta::query()->create([
+        $this->criarRespostaDocumento([
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
             'turma_id' => $turmaOrigem->id,
@@ -1207,4 +1119,65 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             'id_escola' => $escola->id,
         ]);
     }
+
+    private function criarRespostaDocumento(array $dados): AvaliacaoAlunoDocumento
+    {
+        $aluno = Aluno::query()->findOrFail($dados['aluno_id']);
+        $service = app(AvaliacaoAlunoDocumentoService::class);
+        $documento = $service->obterOuCriar((int) $dados['avaliacao_id'], $aluno, somentePrincipal: false);
+
+        if (! empty($dados['alternativa_id'])) {
+            $service->salvarPauta($documento, (int) $dados['pauta_id'], [
+                'alternativa_id' => (int) $dados['alternativa_id'],
+                'observacao' => $dados['observacao'] ?? null,
+                'professor_id' => $dados['professor_id'] ?? null,
+                'respondido_em' => $dados['respondido_em'] ?? now(),
+            ]);
+        }
+
+        return $documento->fresh();
+    }
+
+    private function criarInformacaoDocumento(array $dados): AvaliacaoAlunoDocumento
+    {
+        $aluno = Aluno::query()->findOrFail($dados['aluno_id']);
+        $service = app(AvaliacaoAlunoDocumentoService::class);
+        $documento = $service->obterOuCriar((int) $dados['avaliacao_id'], $aluno, somentePrincipal: false);
+        $service->salvarInfoComplementar(
+            $documento,
+            (int) $dados['componente_curricular_id'],
+            $dados['informacoes_complementares'] ?? null,
+            $dados['professor_id'] ?? null,
+        );
+
+        return $documento->fresh();
+    }
+
+    private function assertDocumentoNoAluno(int $avaliacaoId, int $alunoId, int $turmaId, int $pautaId, int $alternativaId, ?string $observacao = null): void
+    {
+        $this->assertDatabaseHas('avaliacao_aluno_documentos', [
+            'avaliacao_id' => $avaliacaoId,
+            'aluno_id' => $alunoId,
+            'turma_id' => $turmaId,
+        ]);
+
+        $this->assertDatabaseHas('avaliacao_resposta_fatos', [
+            'avaliacao_id' => $avaliacaoId,
+            'aluno_id' => $alunoId,
+            'turma_id' => $turmaId,
+            'pauta_id' => $pautaId,
+            'alternativa_id' => $alternativaId,
+        ] + ($observacao !== null ? ['observacao' => $observacao] : []));
+    }
+
+    private function assertHistoricoMovimentacao(int $avaliacaoId, int $alunoOrigemId, int $alunoDestinoId, string $tipo): void
+    {
+        $this->assertDatabaseHas('avaliacao_aluno_documentos_historico', [
+            'avaliacao_id' => $avaliacaoId,
+            'aluno_origem_id' => $alunoOrigemId,
+            'aluno_destino_id' => $alunoDestinoId,
+            'movimentacao_tipo' => $tipo,
+        ]);
+    }
 }
+

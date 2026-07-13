@@ -72,13 +72,13 @@ class Turma extends Model
             ->withTimestamps();
     }
 
-    public function avaliacaoRespostas()
+    public function avaliacaoDocumentos()
     {
-        return $this->hasMany(AvaliacaoResposta::class, 'turma_id');
+        return $this->hasMany(AvaliacaoAlunoDocumento::class, 'turma_id');
     }
 
-    public function avaliacaoInformacoesComplementares()
+    public function avaliacaoRespostaFatos()
     {
-        return $this->hasMany(AvaliacaoInformacaoComplementar::class, 'turma_id');
+        return $this->hasMany(AvaliacaoRespostaFato::class, 'turma_id');
     }
 }

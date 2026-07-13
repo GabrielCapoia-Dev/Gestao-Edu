@@ -217,11 +217,10 @@ class AlunoTransferenciaPendenteService
         return DB::table('avaliacao_turma as at')
             ->join('avaliacao_pauta as ap', 'ap.avaliacao_id', '=', 'at.avaliacao_id')
             ->join('pautas as p', 'p.id', '=', 'ap.pauta_id')
-            ->leftJoin('avaliacao_respostas as ar', function ($join) use ($aluno): void {
+            ->leftJoin('avaliacao_resposta_fatos as ar', function ($join) use ($aluno): void {
                 $join
                     ->on('ar.avaliacao_id', '=', 'at.avaliacao_id')
                     ->on('ar.pauta_id', '=', 'p.id')
-                    ->on('ar.turma_id', '=', 'at.turma_id')
                     ->where('ar.aluno_id', (int) $aluno->id);
             })
             ->leftJoin('alternativas as alt', 'alt.id', '=', 'ar.alternativa_id')

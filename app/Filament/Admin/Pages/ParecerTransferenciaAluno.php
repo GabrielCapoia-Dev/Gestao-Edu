@@ -5,8 +5,9 @@ namespace App\Filament\Admin\Pages;
 use App\Models\Alternativa;
 use App\Models\Aluno;
 use App\Models\Avaliacao;
-use App\Models\AvaliacaoInformacaoComplementar;
-use App\Models\AvaliacaoResposta;
+use App\Models\AvaliacaoAlunoDocumento;
+use App\Models\AvaliacaoRespostaFato;
+use App\Services\Avaliacoes\AvaliacaoAlunoDocumentoService;
 use App\Models\Pauta;
 use App\Models\Turma;
 use App\Models\User;
@@ -496,10 +497,9 @@ class ParecerTransferenciaAluno extends Page
                 ->whereNotExists(function ($respostas): void {
                     $respostas
                         ->selectRaw('1')
-                        ->from('avaliacao_respostas as ar')
+                        ->from('avaliacao_resposta_fatos as ar')
                         ->whereColumn('ar.avaliacao_id', 'at.avaliacao_id')
                         ->whereColumn('ar.pauta_id', 'p.id')
-                        ->whereColumn('ar.turma_id', 'at.turma_id')
                         ->whereColumn('ar.aluno_id', 'alunos.id')
                         ->whereNotNull('ar.alternativa_id');
                 });
@@ -521,9 +521,9 @@ class ParecerTransferenciaAluno extends Page
                 ->values();
         }
 
-        $respostas = AvaliacaoResposta::query()
+        $documento = app(AvaliacaoAlunoDocumentoService::class)->obter((int) $avaliacao->id, (int) $aluno->id);
+        $respostas = AvaliacaoRespostaFato::query()
             ->where('avaliacao_id', (int) $avaliacao->id)
-            ->where('turma_id', (int) $aluno->id_turma)
             ->where('aluno_id', (int) $aluno->id)
             ->with('alternativa:id,nome')
             ->get()
@@ -655,20 +655,26 @@ class ParecerTransferenciaAluno extends Page
         $respostas = [];
         $observacoes = [];
 
-        AvaliacaoResposta::query()
+        AvaliacaoAlunoDocumento::query()
             ->whereIn('avaliacao_id', $avaliacoesIds)
-            ->where('turma_id', (int) $aluno->id_turma)
             ->where('aluno_id', (int) $aluno->id)
-            ->get(['avaliacao_id', 'pauta_id', 'alternativa_id', 'observacao'])
-            ->each(function (AvaliacaoResposta $resposta) use (&$respostas, &$observacoes): void {
-                $avaliacaoId = (int) $resposta->avaliacao_id;
-                $pautaId = (int) $resposta->pauta_id;
+            ->get()
+            ->each(function (AvaliacaoAlunoDocumento $documento) use (&$respostas, &$observacoes): void {
+                $avaliacaoId = (int) $documento->avaliacao_id;
 
-                if ($resposta->alternativa_id) {
-                    $respostas[$avaliacaoId][$pautaId] = (string) $resposta->alternativa_id;
+                foreach ($documento->pautasPayload() as $pautaId => $dados) {
+                    if (! is_array($dados)) {
+                        continue;
+                    }
+
+                    $pautaId = (int) $pautaId;
+
+                    if (! empty($dados['alternativa_id'])) {
+                        $respostas[$avaliacaoId][$pautaId] = (string) $dados['alternativa_id'];
+                    }
+
+                    $observacoes[$avaliacaoId][$pautaId] = (string) ($dados['observacao'] ?? '');
                 }
-
-                $observacoes[$avaliacaoId][$pautaId] = (string) ($resposta->observacao ?? '');
             });
 
         $this->respostasParecer = $respostas;
@@ -720,20 +726,13 @@ class ParecerTransferenciaAluno extends Page
                     continue;
                 }
 
-                $resposta = AvaliacaoResposta::query()
-                    ->where('avaliacao_id', (int) $avaliacao->id)
-                    ->where('pauta_id', $pautaId)
-                    ->where('turma_id', (int) $aluno->id_turma)
-                    ->where('aluno_id', (int) $aluno->id)
-                    ->first();
-
-                if ($resposta?->bloqueada) {
-                    continue;
-                }
+                $service = app(AvaliacaoAlunoDocumentoService::class);
+                $documento = $service->obterOuCriar((int) $avaliacao->id, $aluno);
+                $respostaAtual = $documento->respostaDaPauta($pautaId);
 
                 $alternativaId = (int) $alternativaId;
 
-                if ($alternativaId <= 0 && ! $resposta) {
+                if ($alternativaId <= 0 && ! $respostaAtual) {
                     continue;
                 }
 
@@ -750,28 +749,21 @@ class ParecerTransferenciaAluno extends Page
 
                 $temObservacao = (bool) ($alternativaSelecionada?->tem_observacao ?? false);
                 $observacao = $temObservacao
-                    ? $this->limitarTextoCampo($this->observacoesParecer[(int) $avaliacao->id][$pautaId] ?? $resposta?->observacao ?? '')
+                    ? $this->limitarTextoCampo($this->observacoesParecer[(int) $avaliacao->id][$pautaId] ?? $respostaAtual['observacao'] ?? '')
                     : null;
 
                 if ($temObservacao && $observacao === '') {
                     throw new RuntimeException('Preencha a observação obrigatória das alternativas que exigem observação.');
                 }
 
-                AvaliacaoResposta::query()->updateOrCreate(
-                    [
-                        'avaliacao_id' => (int) $avaliacao->id,
-                        'pauta_id' => $pautaId,
-                        'turma_id' => (int) $aluno->id_turma,
-                        'aluno_id' => (int) $aluno->id,
-                    ],
-                    [
-                        'professor_id' => $this->professorIdParaComponenteParecer($aluno, $pauta->componente_curricular_id ? (int) $pauta->componente_curricular_id : null)
-                            ?? $resposta?->professor_id,
-                        'alternativa_id' => $alternativaId > 0 ? $alternativaId : null,
-                        'observacao' => $observacao,
-                        'respondido_em' => $alternativaId > 0 ? now() : null,
-                    ]
-                );
+                $service->salvarPauta($documento, $pautaId, [
+                    'alternativa_id' => $alternativaId > 0 ? $alternativaId : null,
+                    'observacao' => $observacao,
+                    'professor_id' => $this->professorIdParaComponenteParecer($aluno, $pauta->componente_curricular_id ? (int) $pauta->componente_curricular_id : null)
+                        ?? ($respostaAtual['professor_id'] ?? null),
+                    'componente_curricular_id' => $pauta->componente_curricular_id ? (int) $pauta->componente_curricular_id : null,
+                    'respondido_em' => $alternativaId > 0 ? now() : null,
+                ]);
             }
         }
     }
@@ -830,16 +822,9 @@ class ParecerTransferenciaAluno extends Page
             return;
         }
 
-        $resposta = AvaliacaoResposta::query()
-            ->where('avaliacao_id', (int) $avaliacao->id)
-            ->where('pauta_id', (int) $pauta->id)
-            ->where('turma_id', (int) $aluno->id_turma)
-            ->where('aluno_id', (int) $aluno->id)
-            ->first();
-
-        if ($resposta?->bloqueada) {
-            return;
-        }
+        $service = app(AvaliacaoAlunoDocumentoService::class);
+        $documento = $service->obterOuCriar((int) $avaliacao->id, $aluno);
+        $resposta = $documento->respostaDaPauta((int) $pauta->id);
 
         $alternativaId = (int) ($this->respostasParecer[(int) $avaliacao->id][(int) $pauta->id] ?? 0);
 
@@ -860,28 +845,21 @@ class ParecerTransferenciaAluno extends Page
 
         $temObservacao = (bool) ($alternativaSelecionada?->tem_observacao ?? false);
         $observacao = $temObservacao
-            ? $this->limitarTextoCampo($this->observacoesParecer[(int) $avaliacao->id][(int) $pauta->id] ?? $resposta?->observacao ?? '')
+            ? $this->limitarTextoCampo($this->observacoesParecer[(int) $avaliacao->id][(int) $pauta->id] ?? $resposta['observacao'] ?? '')
             : null;
 
         if ($temObservacao && $validarObservacaoObrigatoria && $observacao === '') {
             throw new RuntimeException('Preencha a observação obrigatória das alternativas que exigem observação.');
         }
 
-        AvaliacaoResposta::query()->updateOrCreate(
-            [
-                'avaliacao_id' => (int) $avaliacao->id,
-                'pauta_id' => (int) $pauta->id,
-                'turma_id' => (int) $aluno->id_turma,
-                'aluno_id' => (int) $aluno->id,
-            ],
-            [
-                'professor_id' => $this->professorIdParaComponenteParecer($aluno, $pauta->componente_curricular_id ? (int) $pauta->componente_curricular_id : null)
-                    ?? $resposta?->professor_id,
-                'alternativa_id' => $alternativaId > 0 ? $alternativaId : null,
-                'observacao' => $observacao !== '' ? $observacao : null,
-                'respondido_em' => $alternativaId > 0 ? now() : null,
-            ]
-        );
+        $service->salvarPauta($documento, (int) $pauta->id, [
+            'alternativa_id' => $alternativaId > 0 ? $alternativaId : null,
+            'observacao' => $observacao !== '' ? $observacao : null,
+            'professor_id' => $this->professorIdParaComponenteParecer($aluno, $pauta->componente_curricular_id ? (int) $pauta->componente_curricular_id : null)
+                ?? ($resposta['professor_id'] ?? null),
+            'componente_curricular_id' => $pauta->componente_curricular_id ? (int) $pauta->componente_curricular_id : null,
+            'respondido_em' => $alternativaId > 0 ? now() : null,
+        ]);
     }
 
     private function carregarInformacoesComplementaresParecer(Aluno $aluno): void
@@ -909,17 +887,22 @@ class ParecerTransferenciaAluno extends Page
         $informacoes = [];
         $bloqueadas = [];
 
-        AvaliacaoInformacaoComplementar::query()
+        AvaliacaoAlunoDocumento::query()
             ->whereIn('avaliacao_id', $avaliacoesIds)
-            ->where('turma_id', (int) $aluno->id_turma)
             ->where('aluno_id', (int) $aluno->id)
-            ->get(['avaliacao_id', 'componente_curricular_id', 'informacoes_complementares', 'bloqueada'])
-            ->each(function (AvaliacaoInformacaoComplementar $registro) use (&$informacoes, &$bloqueadas): void {
-                $avaliacaoId = (int) $registro->avaliacao_id;
-                $componenteId = (int) ($registro->componente_curricular_id ?? 0);
+            ->get()
+            ->each(function (AvaliacaoAlunoDocumento $documento) use (&$informacoes, &$bloqueadas): void {
+                $avaliacaoId = (int) $documento->avaliacao_id;
 
-                $informacoes[$avaliacaoId][$componenteId] = (string) ($registro->informacoes_complementares ?? '');
-                $bloqueadas[$avaliacaoId][$componenteId] = (bool) ($registro->bloqueada ?? false);
+                foreach ($documento->informacoesComplementaresPayload() as $componenteId => $info) {
+                    if (! is_array($info)) {
+                        continue;
+                    }
+
+                    $componenteId = (int) $componenteId;
+                    $informacoes[$avaliacaoId][$componenteId] = (string) ($info['texto'] ?? '');
+                    $bloqueadas[$avaliacaoId][$componenteId] = false;
+                }
             });
 
         $this->informacoesComplementaresParecer = $informacoes;
@@ -984,45 +967,15 @@ class ParecerTransferenciaAluno extends Page
                     continue;
                 }
 
-                $registroQuery = AvaliacaoInformacaoComplementar::query()
-                    ->where('avaliacao_id', (int) $avaliacao->id)
-                    ->where('turma_id', (int) $aluno->id_turma)
-                    ->where('aluno_id', (int) $aluno->id);
-
-                if ($componenteId > 0) {
-                    $registroQuery->where('componente_curricular_id', $componenteId);
-                } else {
-                    $registroQuery->whereNull('componente_curricular_id');
-                }
-
-                $registro = $registroQuery->first();
-
-                if ($registro?->bloqueada) {
-                    continue;
-                }
-
+                $service = app(AvaliacaoAlunoDocumentoService::class);
+                $documento = $service->obterOuCriar((int) $avaliacao->id, $aluno);
                 $informacoes = $this->limitarTextoCampo($informacoes);
 
-                if ($informacoes === '') {
-                    if ($registro) {
-                        $registro->delete();
-                    }
-
-                    continue;
-                }
-
-                AvaliacaoInformacaoComplementar::query()->updateOrCreate(
-                    [
-                        'avaliacao_id' => (int) $avaliacao->id,
-                        'turma_id' => (int) $aluno->id_turma,
-                        'aluno_id' => (int) $aluno->id,
-                        'componente_curricular_id' => $componenteId > 0 ? $componenteId : null,
-                    ],
-                    [
-                        'professor_id' => $this->professorIdParaComponenteParecer($aluno, $componenteId > 0 ? $componenteId : null)
-                            ?? $registro?->professor_id,
-                        'informacoes_complementares' => $informacoes,
-                    ]
+                $service->salvarInfoComplementar(
+                    $documento,
+                    $componenteId,
+                    $informacoes !== '' ? $informacoes : null,
+                    $this->professorIdParaComponenteParecer($aluno, $componenteId > 0 ? $componenteId : null),
                 );
             }
         }
@@ -1066,45 +1019,15 @@ class ParecerTransferenciaAluno extends Page
             return;
         }
 
-        $registroQuery = AvaliacaoInformacaoComplementar::query()
-            ->where('avaliacao_id', (int) $avaliacao->id)
-            ->where('turma_id', (int) $aluno->id_turma)
-            ->where('aluno_id', (int) $aluno->id);
-
-        if ($componenteId > 0) {
-            $registroQuery->where('componente_curricular_id', $componenteId);
-        } else {
-            $registroQuery->whereNull('componente_curricular_id');
-        }
-
-        $registro = $registroQuery->first();
-
-        if ($registro?->bloqueada) {
-            return;
-        }
-
+        $service = app(AvaliacaoAlunoDocumentoService::class);
+        $documento = $service->obterOuCriar((int) $avaliacao->id, $aluno);
         $informacoes = $this->limitarTextoCampo($this->informacoesComplementaresParecer[(int) $avaliacao->id][$componenteId] ?? '');
 
-        if ($informacoes === '') {
-            if ($registro) {
-                $registro->delete();
-            }
-
-            return;
-        }
-
-        AvaliacaoInformacaoComplementar::query()->updateOrCreate(
-            [
-                'avaliacao_id' => (int) $avaliacao->id,
-                'turma_id' => (int) $aluno->id_turma,
-                'aluno_id' => (int) $aluno->id,
-                'componente_curricular_id' => $componenteId > 0 ? $componenteId : null,
-            ],
-            [
-                'professor_id' => $this->professorIdParaComponenteParecer($aluno, $componenteId > 0 ? $componenteId : null)
-                    ?? $registro?->professor_id,
-                'informacoes_complementares' => $informacoes,
-            ]
+        $service->salvarInfoComplementar(
+            $documento,
+            $componenteId,
+            $informacoes !== '' ? $informacoes : null,
+            $this->professorIdParaComponenteParecer($aluno, $componenteId > 0 ? $componenteId : null),
         );
     }
 
@@ -1170,7 +1093,7 @@ class ParecerTransferenciaAluno extends Page
         return $porPauta;
     }
 
-    private function alternativaSelecionadaId(int $avaliacaoId, int $pautaId, ?AvaliacaoResposta $resposta): ?int
+    private function alternativaSelecionadaId(int $avaliacaoId, int $pautaId, ?AvaliacaoRespostaFato $resposta): ?int
     {
         if (
             array_key_exists($avaliacaoId, $this->respostasParecer)
@@ -1187,7 +1110,7 @@ class ParecerTransferenciaAluno extends Page
         return $alternativaId > 0 ? $alternativaId : null;
     }
 
-    private function observacaoParecer(int $avaliacaoId, int $pautaId, ?AvaliacaoResposta $resposta): string
+    private function observacaoParecer(int $avaliacaoId, int $pautaId, ?AvaliacaoRespostaFato $resposta): string
     {
         if (
             array_key_exists($avaliacaoId, $this->observacoesParecer)

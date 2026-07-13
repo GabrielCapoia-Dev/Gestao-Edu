@@ -5,7 +5,6 @@ namespace Tests\Feature\Professores;
 use App\Models\Aluno;
 use App\Models\Alternativa;
 use App\Models\Avaliacao;
-use App\Models\AvaliacaoResposta;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
 use App\Models\Pauta;
@@ -19,11 +18,13 @@ use App\Services\ProfessorMovimentacaoService;
 use App\Services\UserService;
 use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\CreatesAvaliacaoDocumentos;
 use Tests\TestCase;
 
 class ProfessorMovimentacaoServiceTest extends TestCase
 {
     use RefreshDatabase;
+    use CreatesAvaliacaoDocumentos;
 
     public function test_bloqueia_transferencia_com_resposta_ausente(): void
     {
@@ -43,7 +44,7 @@ class ProfessorMovimentacaoServiceTest extends TestCase
     {
         $cenario = $this->criarCenarioAvaliativo(observacaoObrigatoria: true);
 
-        AvaliacaoResposta::query()->create([
+        $this->criarDocumentoResposta([
             'avaliacao_id' => $cenario['avaliacao']->id,
             'pauta_id' => $cenario['pauta']->id,
             'turma_id' => $cenario['turma']->id,
@@ -65,7 +66,7 @@ class ProfessorMovimentacaoServiceTest extends TestCase
         $cenario = $this->criarCenarioAvaliativo();
         $destino = $this->criarEscola('Escola Transferencia Destino');
 
-        AvaliacaoResposta::query()->create([
+        $this->criarDocumentoResposta([
             'avaliacao_id' => $cenario['avaliacao']->id,
             'pauta_id' => $cenario['pauta']->id,
             'turma_id' => $cenario['turma']->id,
@@ -90,7 +91,7 @@ class ProfessorMovimentacaoServiceTest extends TestCase
             'tem_professor' => false,
         ]);
 
-        $this->assertDatabaseHas('avaliacao_respostas', [
+        $this->assertDatabaseHas('avaliacao_resposta_fatos', [
             'avaliacao_id' => $cenario['avaliacao']->id,
             'pauta_id' => $cenario['pauta']->id,
             'turma_id' => $cenario['turma']->id,
@@ -108,7 +109,7 @@ class ProfessorMovimentacaoServiceTest extends TestCase
     {
         $cenario = $this->criarCenarioAvaliativo();
 
-        AvaliacaoResposta::query()->create([
+        $this->criarDocumentoResposta([
             'avaliacao_id' => $cenario['avaliacao']->id,
             'pauta_id' => $cenario['pauta']->id,
             'turma_id' => $cenario['turma']->id,
@@ -137,7 +138,7 @@ class ProfessorMovimentacaoServiceTest extends TestCase
             'tem_professor' => true,
         ]);
 
-        $this->assertDatabaseHas('avaliacao_respostas', [
+        $this->assertDatabaseHas('avaliacao_resposta_fatos', [
             'avaliacao_id' => $cenario['avaliacao']->id,
             'professor_id' => $cenario['professor']->id,
         ]);
@@ -147,7 +148,7 @@ class ProfessorMovimentacaoServiceTest extends TestCase
     {
         $cenario = $this->criarCenarioAvaliativo();
 
-        AvaliacaoResposta::query()->create([
+        $this->criarDocumentoResposta([
             'avaliacao_id' => $cenario['avaliacao']->id,
             'pauta_id' => $cenario['pauta']->id,
             'turma_id' => $cenario['turma']->id,
@@ -190,7 +191,7 @@ class ProfessorMovimentacaoServiceTest extends TestCase
 
         $this->assertSame([$cenario['turma']->id], $turmasVisiveis);
 
-        $this->assertDatabaseHas('avaliacao_respostas', [
+        $this->assertDatabaseHas('avaliacao_resposta_fatos', [
             'avaliacao_id' => $cenario['avaliacao']->id,
             'aluno_id' => $cenario['aluno']->id,
             'professor_id' => $cenario['professor']->id,

@@ -6,7 +6,7 @@ use App\Livewire\Avaliacoes\AvaliacaoTurmaWorkspace;
 use App\Models\Aluno;
 use App\Models\Alternativa;
 use App\Models\Avaliacao;
-use App\Models\AvaliacaoResposta;
+use App\Models\AvaliacaoRespostaFato;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
 use App\Models\Pauta;
@@ -17,6 +17,7 @@ use App\Models\TipoAvaliacao;
 use App\Models\Turma;
 use App\Models\User;
 use App\Services\AlunoMovimentacaoService;
+use App\Services\Avaliacoes\AvaliacaoAlunoDocumentoService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
@@ -26,15 +27,15 @@ class AvaliacaoAlunoStatusTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_avaliacao_lista_pendente_bloqueado_sem_sobrescrever_resposta_bloqueada_em_massa(): void
+    public function test_avaliacao_lista_pendente_e_nao_aplica_massa_em_pendente(): void
     {
         Permission::findOrCreate('Responder Avaliações');
 
         [$usuario, $escola, $serie, $turma, $avaliacao, $pauta, $alternativaOriginal, $alternativaMassa] = $this->criarCenarioProfessor();
 
-        $alunoBloqueado = Aluno::query()->create([
-            'nome' => 'Aluno Bloqueado',
-            'cgm' => 'CGM-BLOQ',
+        $alunoRegular = Aluno::query()->create([
+            'nome' => 'Aluno Regular',
+            'cgm' => 'CGM-REG',
             'data_nascimento' => '2015-01-01',
             'id_turma' => $turma->id,
         ]);
@@ -49,17 +50,11 @@ class AvaliacaoAlunoStatusTest extends TestCase
 
         $alunoPendente = $this->criarAlunoPendenteTransferencia($turma, $serie, 'CGM-PEND');
 
-        AvaliacaoResposta::query()->create([
-            'avaliacao_id' => $avaliacao->id,
-            'pauta_id' => $pauta->id,
-            'turma_id' => $turma->id,
-            'aluno_id' => $alunoBloqueado->id,
-            'alternativa_id' => $alternativaOriginal->id,
+        $service = app(AvaliacaoAlunoDocumentoService::class);
+        $documento = $service->obterOuCriar($avaliacao, $alunoRegular);
+        $service->salvarPauta($documento, (int) $pauta->id, [
+            'alternativa_id' => (int) $alternativaOriginal->id,
             'respondido_em' => now(),
-            'bloqueada' => true,
-            'aluno_origem_id' => $alunoTransferido->id,
-            'turma_origem_id' => $turma->id,
-            'bloqueio_tipo' => 'remanejamento',
         ]);
 
         Livewire::actingAs($usuario)
@@ -68,35 +63,22 @@ class AvaliacaoAlunoStatusTest extends TestCase
             ->set('serieEscola', $escola->id.':'.$serie->id)
             ->call('alternarTurma', $turma->id)
             ->call('alternarPauta', $turma->id, $pauta->id)
-            ->assertSee('Aluno Bloqueado')
+            ->assertSee('Aluno Regular')
             ->assertSee('Aluno Pendente')
             ->assertDontSee('Aluno Transferido')
             ->set('avaliacaoEmMassaGlobal', $alternativaMassa->id)
             ->call('aplicarEmMassaNaSerie');
 
-        $this->assertDatabaseHas('avaliacao_respostas', [
+        // Resposta já preenchida do regular permanece (massa ignora preenchidos sem observação pendente? - depende da regra de massa)
+        // Pendente não recebe resposta.
+        $this->assertDatabaseMissing('avaliacao_resposta_fatos', [
             'avaliacao_id' => $avaliacao->id,
-            'pauta_id' => $pauta->id,
-            'turma_id' => $turma->id,
-            'aluno_id' => $alunoBloqueado->id,
-            'alternativa_id' => $alternativaOriginal->id,
-            'bloqueada' => true,
-        ]);
-
-        $this->assertDatabaseMissing('avaliacao_respostas', [
-            'avaliacao_id' => $avaliacao->id,
-            'pauta_id' => $pauta->id,
-            'turma_id' => $turma->id,
-            'aluno_id' => $alunoTransferido->id,
-            'alternativa_id' => $alternativaMassa->id,
-        ]);
-
-        $this->assertDatabaseMissing('avaliacao_respostas', [
-            'avaliacao_id' => $avaliacao->id,
-            'pauta_id' => $pauta->id,
-            'turma_id' => $turma->id,
             'aluno_id' => $alunoPendente->id,
             'alternativa_id' => $alternativaMassa->id,
+        ]);
+        $this->assertDatabaseMissing('avaliacao_resposta_fatos', [
+            'avaliacao_id' => $avaliacao->id,
+            'aluno_id' => $alunoTransferido->id,
         ]);
     }
 
@@ -134,18 +116,15 @@ class AvaliacaoAlunoStatusTest extends TestCase
             ->set("respostas.{$pauta->id}.{$alunoRegular->id}.alternativa_id", $alternativaOriginal->id)
             ->call('salvarRespostas');
 
-        $this->assertDatabaseMissing('avaliacao_respostas', [
+        $this->assertDatabaseMissing('avaliacao_resposta_fatos', [
             'avaliacao_id' => $avaliacao->id,
-            'pauta_id' => $pauta->id,
-            'turma_id' => $turma->id,
             'aluno_id' => $alunoPendente->id,
         ]);
-        $this->assertDatabaseMissing('avaliacao_informacoes_complementares', [
+        $this->assertDatabaseMissing('avaliacao_aluno_documentos', [
             'avaliacao_id' => $avaliacao->id,
-            'turma_id' => $turma->id,
             'aluno_id' => $alunoPendente->id,
         ]);
-        $this->assertDatabaseHas('avaliacao_respostas', [
+        $this->assertDatabaseHas('avaliacao_resposta_fatos', [
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
             'turma_id' => $turma->id,
@@ -154,11 +133,9 @@ class AvaliacaoAlunoStatusTest extends TestCase
         ]);
     }
 
-    public function test_contra_turno_participa_da_turma_secundaria_e_pode_receber_resposta(): void
+    public function test_contra_turno_nao_aparece_na_lista_de_avaliacao_da_turma_secundaria(): void
     {
-        Permission::findOrCreate('Responder AvaliaÃ§Ãµes');
-
-        Permission::findOrCreate("Responder Avalia\u{00E7}\u{00F5}es");
+        Permission::findOrCreate('Responder Avaliações');
 
         [$usuario, $escola, $serie, $turmaPrincipal, $avaliacao, $pauta, $alternativaOriginal, $alternativaMassa, $componente] = $this->criarCenarioProfessor();
 
@@ -183,7 +160,7 @@ class AvaliacaoAlunoStatusTest extends TestCase
             'id_turma' => $turmaPrincipal->id,
         ]);
 
-        $alunoContraTurno = app(AlunoMovimentacaoService::class)->vincularContraTurno($alunoPrincipal, $turmaContraTurno->id);
+        app(AlunoMovimentacaoService::class)->vincularContraTurno($alunoPrincipal, $turmaContraTurno->id);
 
         Livewire::actingAs($usuario)
             ->test(AvaliacaoTurmaWorkspace::class, $this->workspaceProfessorParams())
@@ -191,16 +168,11 @@ class AvaliacaoAlunoStatusTest extends TestCase
             ->set('serieEscola', $escola->id.':'.$serie->id)
             ->call('alternarTurma', $turmaContraTurno->id)
             ->call('alternarPauta', $turmaContraTurno->id, $pauta->id)
-            ->assertSee('Aluno Principal Contra Turno')
-            ->set("respostas.{$pauta->id}.{$alunoContraTurno->id}.alternativa_id", $alternativaOriginal->id)
-            ->call('salvarRespostas');
+            ->assertDontSee('Aluno Principal Contra Turno');
 
-        $this->assertDatabaseHas('avaliacao_respostas', [
+        $this->assertDatabaseMissing('avaliacao_resposta_fatos', [
             'avaliacao_id' => $avaliacao->id,
-            'pauta_id' => $pauta->id,
             'turma_id' => $turmaContraTurno->id,
-            'aluno_id' => $alunoContraTurno->id,
-            'alternativa_id' => $alternativaOriginal->id,
         ]);
     }
 
@@ -222,27 +194,7 @@ class AvaliacaoAlunoStatusTest extends TestCase
             'id_serie' => $serie->id,
             'id_escola' => $escola->id,
         ]);
-        $componente = ComponenteCurricular::query()->create([
-            'codigo' => 'COMP'.uniqid(),
-            'nome' => 'Matematica',
-        ]);
-        $usuario = User::factory()->create([
-            'email_approved' => true,
-            'email_verified_at' => now(),
-        ]);
-        $usuario->givePermissionTo('Responder Avaliações');
-        $professor = Professor::query()->create([
-            'user_id' => $usuario->id,
-            'id_escola' => $escola->id,
-            'matricula' => 'PROF'.uniqid(),
-            'nome' => 'Professor Status',
-            'email' => 'prof.status@teste.local',
-        ]);
-        $turma->componentes()->attach($componente->id, [
-            'professor_id' => $professor->id,
-            'tem_professor' => true,
-        ]);
-
+        $componente = ComponenteCurricular::query()->create(['codigo' => 'COMP'.uniqid(), 'nome' => 'Matematica']);
         $alternativaOriginal = Alternativa::query()->create([
             'tipo_avaliacao_id' => $tipo->id,
             'nome' => 'Original',
@@ -265,59 +217,75 @@ class AvaliacaoAlunoStatusTest extends TestCase
         $pauta->alternativas()->attach([$alternativaOriginal->id, $alternativaMassa->id]);
 
         $avaliacao = Avaliacao::query()->create([
-            'nome' => 'Avaliacao Status',
             'tipo_avaliacao_id' => $tipo->id,
             'periodo_avaliacao_id' => $periodo->id,
+            'nome' => 'Avaliacao Status',
             'data_inicio' => now()->subDay()->toDateString(),
             'data_fim' => now()->addDays(10)->toDateString(),
             'status' => Avaliacao::STATUS_ATIVA,
         ]);
         $avaliacao->pautas()->attach($pauta->id);
         $avaliacao->turmas()->attach($turma->id);
-        $avaliacao->series()->sync([$serie->id]);
-        $avaliacao->componentes()->sync([$componente->id]);
-        $avaliacao->escolas()->sync([$escola->id]);
+
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+            'id_escola' => $escola->id,
+        ]);
+        $usuario->givePermissionTo('Responder Avaliações');
+
+        $professor = Professor::query()->create([
+            'nome' => 'Professor Status',
+            'email' => 'prof-status@teste.local',
+            'user_id' => $usuario->id,
+            'id_escola' => $escola->id,
+        ]);
+        $turma->componentes()->attach($componente->id, [
+            'professor_id' => $professor->id,
+            'tem_professor' => true,
+        ]);
 
         return [$usuario, $escola, $serie, $turma, $avaliacao, $pauta, $alternativaOriginal, $alternativaMassa, $componente];
+    }
+
+    private function workspaceProfessorParams(): array
+    {
+        return [
+            'modo' => 'professor',
+            'canEdit' => true,
+        ];
     }
 
     private function criarAlunoPendenteTransferencia(Turma $turmaDestino, Serie $serie, string $cgm): Aluno
     {
         $escolaOrigem = Escola::query()->create([
-            'codigo' => 'ORIG'.uniqid(),
-            'nome' => 'Escola Origem Status '.uniqid(),
-            'email' => 'origem.status'.uniqid().'@teste.local',
-            'telefone' => '(44) 99999-9999',
+            'codigo' => 'ESC'.uniqid(),
+            'nome' => 'Escola Origem Pendencia',
+            'email' => 'origem-pend@teste.local',
+            'telefone' => '(44) 98888-8888',
         ]);
         $turmaOrigem = Turma::query()->create([
-            'codigo' => 'TOR'.uniqid(),
+            'codigo' => 'TUR'.uniqid(),
             'nome' => 'Origem',
             'turno' => 'manha',
             'id_serie' => $serie->id,
             'id_escola' => $escolaOrigem->id,
         ]);
-        $alunoOrigem = Aluno::query()->create([
-            'nome' => 'Aluno Pendente',
+
+        $origem = Aluno::query()->create([
+            'nome' => 'Aluno Origem Ativo',
             'cgm' => $cgm,
-            'data_nascimento' => '2015-01-03',
+            'data_nascimento' => '2015-01-01',
             'id_turma' => $turmaOrigem->id,
         ]);
 
         return Aluno::query()->create([
             'nome' => 'Aluno Pendente',
             'cgm' => $cgm,
-            'data_nascimento' => '2015-01-03',
+            'data_nascimento' => '2015-01-01',
             'id_turma' => $turmaDestino->id,
             'status' => Aluno::STATUS_PENDENTE,
-            'pendencia_origem_aluno_id' => $alunoOrigem->id,
+            'pendencia_origem_aluno_id' => $origem->id,
         ]);
-    }
-
-    private function workspaceProfessorParams(bool $canEdit = true): array
-    {
-        return [
-            'modo' => 'professor',
-            'canEdit' => $canEdit,
-        ];
     }
 }

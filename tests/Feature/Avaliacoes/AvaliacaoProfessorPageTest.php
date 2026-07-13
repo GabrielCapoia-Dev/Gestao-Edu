@@ -19,11 +19,13 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
+use Tests\Concerns\CreatesAvaliacaoDocumentos;
 use Tests\TestCase;
 
 class AvaliacaoProfessorPageTest extends TestCase
 {
     use RefreshDatabase;
+    use CreatesAvaliacaoDocumentos;
 
     public function test_professor_visualiza_apenas_avaliacoes_pendentes_dos_componentes_que_leciona(): void
     {
@@ -515,7 +517,7 @@ class AvaliacaoProfessorPageTest extends TestCase
             ->set('avaliacaoEmMassaGlobal', $alternativaSim->id)
             ->call('aplicarEmMassaNaSerie');
 
-        $this->assertDatabaseHas('avaliacao_respostas', [
+        $this->assertDatabaseHas('avaliacao_resposta_fatos', [
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
             'turma_id' => $turmaA->id,
@@ -524,7 +526,7 @@ class AvaliacaoProfessorPageTest extends TestCase
             'observacao' => $observacaoLimitada,
         ]);
 
-        $this->assertDatabaseHas('avaliacao_respostas', [
+        $this->assertDatabaseHas('avaliacao_resposta_fatos', [
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
             'turma_id' => $turmaA->id,
@@ -532,7 +534,7 @@ class AvaliacaoProfessorPageTest extends TestCase
             'alternativa_id' => $alternativaSim->id,
         ]);
 
-        $this->assertDatabaseHas('avaliacao_respostas', [
+        $this->assertDatabaseHas('avaliacao_resposta_fatos', [
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
             'turma_id' => $turmaA->id,
@@ -540,7 +542,7 @@ class AvaliacaoProfessorPageTest extends TestCase
             'alternativa_id' => $alternativaSim->id,
         ]);
 
-        $this->assertDatabaseMissing('avaliacao_respostas', [
+        $this->assertDatabaseMissing('avaliacao_resposta_fatos', [
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
             'turma_id' => $turmaB->id,
@@ -639,7 +641,7 @@ class AvaliacaoProfessorPageTest extends TestCase
             ->set("respostas.{$pauta->id}.{$aluno->id}.observacao", 'Observação informada pelo professor.')
             ->call('salvarRespostas');
 
-        $this->assertDatabaseHas('avaliacao_respostas', [
+        $this->assertDatabaseHas('avaliacao_resposta_fatos', [
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
             'turma_id' => $turma->id,
@@ -649,7 +651,7 @@ class AvaliacaoProfessorPageTest extends TestCase
             'observacao' => 'Observação informada pelo professor.',
         ]);
 
-        $this->assertDatabaseMissing('avaliacao_respostas', [
+        $this->assertDatabaseMissing('avaliacao_resposta_fatos', [
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
             'turma_id' => $turma->id,
@@ -732,7 +734,7 @@ class AvaliacaoProfessorPageTest extends TestCase
             ->set("informacoesComplementares.{$componente->id}.{$aluno->id}", $informacoesComplementares)
             ->call('salvarRespostas');
 
-        $this->assertDatabaseHas('avaliacao_informacoes_complementares', [
+        $this->assertDatabaseHas('avaliacao_aluno_documentos', [
             'avaliacao_id' => $avaliacao->id,
             'turma_id' => $turma->id,
             'aluno_id' => $aluno->id,

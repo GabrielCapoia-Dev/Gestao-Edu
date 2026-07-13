@@ -4,7 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Alternativa;
 use App\Models\Avaliacao;
-use App\Models\AvaliacaoResposta;
+use App\Services\Avaliacoes\AvaliacaoAlunoDocumentoService;
 use App\Models\Aluno;
 use App\Models\ComponenteCurricular;
 use App\Models\DominioEmail;
@@ -404,38 +404,28 @@ class AvaliacaoFluxoSeeder extends Seeder
         $avaliacaoEncerrada->componentes()->sync([$componenteMatematica->id, $componenteHistoria->id]);
         $avaliacaoEncerrada->escolas()->sync([$escolaCentro->id]);
 
+        $documentoService = app(AvaliacaoAlunoDocumentoService::class);
+
         foreach ($alunosCentroA->take(6) as $aluno) {
-            AvaliacaoResposta::updateOrCreate(
-                [
-                    'avaliacao_id' => $avaliacaoDiagnostica->id,
-                    'pauta_id' => $pautaMatematica->id,
-                    'turma_id' => $turmaCentroA->id,
-                    'aluno_id' => $aluno->id,
-                ],
-                [
-                    'professor_id' => $professorMat->id,
-                    'alternativa_id' => $alternativaBom->id,
-                    'observacao' => 'Resposta inicial registrada pelo seeder.',
-                    'respondido_em' => now()->subHours(3),
-                ]
-            );
+            $documento = $documentoService->obterOuCriar($avaliacaoDiagnostica, $aluno);
+            $documentoService->salvarPauta($documento, (int) $pautaMatematica->id, [
+                'professor_id' => $professorMat->id,
+                'alternativa_id' => $alternativaBom->id,
+                'observacao' => 'Resposta inicial registrada pelo seeder.',
+                'componente_curricular_id' => $componenteMatematica->id,
+                'respondido_em' => now()->subHours(3),
+            ]);
         }
 
         foreach ($alunosCentroB->take(4) as $aluno) {
-            AvaliacaoResposta::updateOrCreate(
-                [
-                    'avaliacao_id' => $avaliacaoDiagnostica->id,
-                    'pauta_id' => $pautaHistoria->id,
-                    'turma_id' => $turmaCentroB->id,
-                    'aluno_id' => $aluno->id,
-                ],
-                [
-                    'professor_id' => $professorHist->id,
-                    'alternativa_id' => $alternativaRegular->id,
-                    'observacao' => 'Avaliacao parcial para testes de continuidade.',
-                    'respondido_em' => now()->subHours(2),
-                ]
-            );
+            $documento = $documentoService->obterOuCriar($avaliacaoDiagnostica, $aluno);
+            $documentoService->salvarPauta($documento, (int) $pautaHistoria->id, [
+                'professor_id' => $professorHist->id,
+                'alternativa_id' => $alternativaRegular->id,
+                'observacao' => 'Avaliacao parcial para testes de continuidade.',
+                'componente_curricular_id' => $componenteHistoria->id,
+                'respondido_em' => now()->subHours(2),
+            ]);
         }
 
         if ($this->command) {

@@ -1008,7 +1008,7 @@ class DashboardAvaliacoes extends Page implements HasForms
         if ($filtros['alternativas_ids'] !== []) {
             $query->whereExists(function (QueryBuilder $subQuery) use ($filtros): void {
                 $subQuery
-                    ->from('avaliacao_respostas as ar')
+                    ->from('avaliacao_resposta_fatos as ar')
                     ->whereColumn('ar.avaliacao_id', 'at.avaliacao_id')
                     ->whereColumn('ar.turma_id', 't.id')
                     ->whereColumn('ar.professor_id', 'tcp.professor_id')
@@ -1072,7 +1072,7 @@ class DashboardAvaliacoes extends Page implements HasForms
         if ($filtros['professores_ids'] !== [] || $filtros['alternativas_ids'] !== []) {
             $query->whereExists(function (QueryBuilder $subQuery) use ($filtros): void {
                 $subQuery
-                    ->from('avaliacao_respostas as ar')
+                    ->from('avaliacao_resposta_fatos as ar')
                     ->join('turmas as t2', 't2.id', '=', 'ar.turma_id')
                     ->whereColumn('ar.avaliacao_id', 'ap.avaliacao_id')
                     ->whereColumn('ar.pauta_id', 'p.id');
@@ -1396,7 +1396,7 @@ class DashboardAvaliacoes extends Page implements HasForms
         if (($filtros['alternativas_ids'] ?? []) !== []) {
             $query->whereExists(function (QueryBuilder $subQuery) use ($filtros): void {
                 $subQuery
-                    ->from('avaliacao_respostas as ar')
+                    ->from('avaliacao_resposta_fatos as ar')
                     ->whereColumn('ar.avaliacao_id', 'at.avaliacao_id')
                     ->whereColumn('ar.turma_id', 't.id')
                     ->whereIn('ar.alternativa_id', $filtros['alternativas_ids']);
@@ -1892,10 +1892,10 @@ class DashboardAvaliacoes extends Page implements HasForms
         $filtrosAtivos = $filtros ?? $this->filtros;
 
         if ($avaliacaoIds === []) {
-            return DB::table('avaliacao_respostas as ar')->whereRaw('1 = 0');
+            return DB::table('avaliacao_resposta_fatos as ar')->whereRaw('1 = 0');
         }
 
-        $query = DB::table('avaliacao_respostas as ar')
+        $query = DB::table('avaliacao_resposta_fatos as ar')
             ->join('turmas as t', 't.id', '=', 'ar.turma_id')
             ->join('alunos as aln', 'aln.id', '=', 'ar.aluno_id')
             ->join('pautas as p', 'p.id', '=', 'ar.pauta_id')

@@ -98,14 +98,14 @@ class Avaliacao extends Model
             ->withTimestamps();
     }
 
-    public function respostas(): HasMany
+    public function documentosAluno(): HasMany
     {
-        return $this->hasMany(AvaliacaoResposta::class, 'avaliacao_id');
+        return $this->hasMany(AvaliacaoAlunoDocumento::class, 'avaliacao_id');
     }
 
-    public function informacoesComplementares(): HasMany
+    public function respostaFatos(): HasMany
     {
-        return $this->hasMany(AvaliacaoInformacaoComplementar::class, 'avaliacao_id');
+        return $this->hasMany(AvaliacaoRespostaFato::class, 'avaliacao_id');
     }
 
     public function exportacoes(): HasMany

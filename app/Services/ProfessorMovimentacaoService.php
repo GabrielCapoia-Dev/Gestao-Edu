@@ -123,7 +123,7 @@ class ProfessorMovimentacaoService
     {
         return (int) DB::query()
             ->fromSub($this->preenchimentosEsperadosQuery($professor), 'esperados')
-            ->leftJoin('avaliacao_respostas as ar', function ($join): void {
+            ->leftJoin('avaliacao_resposta_fatos as ar', function ($join): void {
                 $join->on('ar.avaliacao_id', '=', 'esperados.avaliacao_id')
                     ->on('ar.turma_id', '=', 'esperados.turma_id')
                     ->on('ar.pauta_id', '=', 'esperados.pauta_id')

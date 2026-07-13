@@ -8,8 +8,6 @@ use App\Livewire\Avaliacoes\AvaliacaoTurmaWorkspace;
 use App\Models\Aluno;
 use App\Models\Alternativa;
 use App\Models\Avaliacao;
-use App\Models\AvaliacaoInformacaoComplementar;
-use App\Models\AvaliacaoResposta;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
 use App\Models\ExportRequest;
@@ -28,11 +26,13 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
+use Tests\Concerns\CreatesAvaliacaoDocumentos;
 use Tests\TestCase;
 
 class DashboardAvaliacoesPageTest extends TestCase
 {
     use RefreshDatabase;
+    use CreatesAvaliacaoDocumentos;
 
     public function test_dashboard_carrega_indicadores_de_pendencia_apos_selecionar_avaliacao(): void
     {
@@ -411,11 +411,20 @@ class DashboardAvaliacoesPageTest extends TestCase
 
         $this->assertSame(2, $service->versionFor($avaliacao->id));
 
-        AvaliacaoResposta::query()->firstOrFail()->update(['observacao' => 'Ajuste de cache']);
+        $doc = \App\Models\AvaliacaoAlunoDocumento::query()->firstOrFail();
+        $payload = $doc->payload;
+        $pautas = $payload['pautas'] ?? [];
+        if ($pautas !== []) {
+            $firstKey = array_key_first($pautas);
+            $pautas[$firstKey]['observacao'] = 'Ajuste de cache';
+            $payload['pautas'] = $pautas;
+            $doc->forceFill(['payload' => $payload])->save();
+            app(\App\Services\Avaliacoes\AvaliacaoAlunoDocumentoService::class)->recalcularMetricasEFatos($doc->fresh());
+        }
 
         $this->assertSame(3, $service->versionFor($avaliacao->id));
 
-        AvaliacaoInformacaoComplementar::query()->create([
+        $this->criarDocumentoResposta([
             'avaliacao_id' => $avaliacao->id,
             'turma_id' => $turma->id,
             'aluno_id' => $aluno->id,
@@ -643,7 +652,7 @@ class DashboardAvaliacoesPageTest extends TestCase
             ->set("respostas.{$pauta->id}.{$alunoUm->id}.alternativa_id", $alternativa->id)
             ->set("respostas.{$pauta->id}.{$alunoDois->id}.alternativa_id", $alternativa->id);
 
-        $this->assertDatabaseHas('avaliacao_respostas', [
+        $this->assertDatabaseHas('avaliacao_resposta_fatos', [
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
             'turma_id' => $turma->id,
@@ -652,7 +661,7 @@ class DashboardAvaliacoesPageTest extends TestCase
             'alternativa_id' => $alternativa->id,
         ]);
 
-        $this->assertDatabaseHas('avaliacao_respostas', [
+        $this->assertDatabaseHas('avaliacao_resposta_fatos', [
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
             'turma_id' => $turma->id,
@@ -767,7 +776,7 @@ class DashboardAvaliacoesPageTest extends TestCase
             ->set('avaliacaoEmMassaGlobal', $alternativa->id)
             ->call('aplicarEmMassaNaSerie');
 
-        $this->assertDatabaseHas('avaliacao_respostas', [
+        $this->assertDatabaseHas('avaliacao_resposta_fatos', [
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pautaUm->id,
             'turma_id' => $turmaPermitida->id,
@@ -775,7 +784,7 @@ class DashboardAvaliacoesPageTest extends TestCase
             'professor_id' => $professor->id,
             'alternativa_id' => $alternativa->id,
         ]);
-        $this->assertDatabaseMissing('avaliacao_respostas', [
+        $this->assertDatabaseMissing('avaliacao_resposta_fatos', [
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pautaDois->id,
             'turma_id' => $turmaPermitida->id,
@@ -790,7 +799,7 @@ class DashboardAvaliacoesPageTest extends TestCase
             ->set('avaliacaoEmMassaGlobal', $alternativa->id)
             ->call('aplicarEmMassaNaSerie');
 
-        $this->assertDatabaseHas('avaliacao_respostas', [
+        $this->assertDatabaseHas('avaliacao_resposta_fatos', [
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pautaDois->id,
             'turma_id' => $turmaPermitida->id,
@@ -1209,7 +1218,7 @@ class DashboardAvaliacoesPageTest extends TestCase
         Alternativa $alternativa,
         ?Professor $professor = null
     ): void {
-        AvaliacaoResposta::query()->create([
+        $this->criarDocumentoResposta([
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
             'turma_id' => $turma->id,

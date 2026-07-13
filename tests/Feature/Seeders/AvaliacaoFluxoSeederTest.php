@@ -4,7 +4,8 @@ namespace Tests\Feature\Seeders;
 
 use App\Models\Alternativa;
 use App\Models\Avaliacao;
-use App\Models\AvaliacaoResposta;
+use App\Models\AvaliacaoAlunoDocumento;
+use App\Models\AvaliacaoRespostaFato;
 use App\Models\PeriodoAvaliacao;
 use App\Models\Pauta;
 use App\Models\TipoAvaliacao;
@@ -29,7 +30,8 @@ class AvaliacaoFluxoSeederTest extends TestCase
         $this->assertTrue(TipoAvaliacao::query()->count() >= 1);
         $this->assertTrue(PeriodoAvaliacao::query()->count() >= 1);
         $this->assertTrue(Turma::query()->count() >= 3);
-        $this->assertTrue(AvaliacaoResposta::query()->count() > 0);
+        $this->assertTrue(AvaliacaoAlunoDocumento::query()->count() > 0);
+        $this->assertTrue(AvaliacaoRespostaFato::query()->count() > 0);
 
         $professor = User::query()
             ->where('email', 'prof.matematica@edu.umuarama.pr.gov.br')

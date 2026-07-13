@@ -6,8 +6,6 @@ use App\Models\Aluno;
 use App\Models\Alternativa;
 use App\Models\Avaliacao;
 use App\Models\AvaliacaoExportacao;
-use App\Models\AvaliacaoInformacaoComplementar;
-use App\Models\AvaliacaoResposta;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
 use App\Models\FuncaoAdministrativa;
@@ -24,11 +22,13 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use ReflectionMethod;
 use Spatie\Permission\Models\Permission;
+use Tests\Concerns\CreatesAvaliacaoDocumentos;
 use Tests\TestCase;
 
 class AvaliacaoDocumentoExportTest extends TestCase
 {
     use RefreshDatabase;
+    use CreatesAvaliacaoDocumentos;
 
     public function test_exporta_pdf_da_avaliacao_e_registra_log_simples(): void
     {
@@ -115,7 +115,7 @@ class AvaliacaoDocumentoExportTest extends TestCase
             'id_turma' => $turma->id,
         ]);
 
-        AvaliacaoResposta::query()->create([
+        $this->criarDocumentoResposta([
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
             'turma_id' => $turma->id,
@@ -133,7 +133,7 @@ class AvaliacaoDocumentoExportTest extends TestCase
             'id_turma' => $turma->id,
         ]);
 
-        AvaliacaoResposta::query()->create([
+        $this->criarDocumentoResposta([
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
             'turma_id' => $turma->id,
@@ -268,7 +268,7 @@ class AvaliacaoDocumentoExportTest extends TestCase
         $avaliacao->escolas()->sync([$escola->id]);
 
         foreach ([$pautaMatematica, $pautaHistoria] as $pauta) {
-            AvaliacaoResposta::query()->create([
+            $this->criarDocumentoResposta([
                 'avaliacao_id' => $avaliacao->id,
                 'pauta_id' => $pauta->id,
                 'turma_id' => $turma->id,
@@ -278,7 +278,7 @@ class AvaliacaoDocumentoExportTest extends TestCase
             ]);
         }
 
-        AvaliacaoInformacaoComplementar::query()->create([
+        $this->criarDocumentoResposta([
             'avaliacao_id' => $avaliacao->id,
             'turma_id' => $turma->id,
             'aluno_id' => $aluno->id,
@@ -370,7 +370,7 @@ class AvaliacaoDocumentoExportTest extends TestCase
         ]);
 
         foreach ([[$principal, $turmaPrincipal], [$contraTurno, $turmaContra]] as [$aluno, $turma]) {
-            AvaliacaoResposta::query()->create([
+            $this->criarDocumentoResposta([
                 'avaliacao_id' => $avaliacao->id,
                 'pauta_id' => $pauta->id,
                 'turma_id' => $turma->id,

@@ -4,12 +4,11 @@ namespace App\Services;
 
 use App\Exceptions\MatriculaAlunoBloqueadaException;
 use App\Models\Aluno;
-use App\Models\AvaliacaoInformacaoComplementar;
-use App\Models\AvaliacaoResposta;
-use App\Models\Pauta;
+use App\Models\AvaliacaoAlunoDocumentoHistorico;
 use App\Models\Turma;
 use App\Models\User;
 use App\Notifications\SistemaNotification;
+use App\Services\Avaliacoes\AvaliacaoAlunoDocumentoService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -63,10 +62,11 @@ class AlunoMovimentacaoService
             ]);
 
             if ($origemHistorica) {
-                $this->copiarDadosAvaliativosBloqueados(
+                $this->moverDocumentosAvaliativos(
                     origem: $origemHistorica,
                     destino: $aluno,
-                    tipo: $this->tipoOrigemPorStatus($origemHistorica)
+                    tipo: $this->tipoOrigemPorStatus($origemHistorica),
+                    usuario: $usuario
                 );
             }
 
@@ -165,10 +165,11 @@ class AlunoMovimentacaoService
             }
 
             if ($origemHistorica) {
-                $this->copiarDadosAvaliativosBloqueados(
+                $this->moverDocumentosAvaliativos(
                     origem: $origemHistorica,
                     destino: $aluno,
-                    tipo: $this->tipoOrigemPorStatus($origemHistorica)
+                    tipo: $this->tipoOrigemPorStatus($origemHistorica),
+                    usuario: $usuario
                 );
             }
         }
@@ -285,8 +286,6 @@ class AlunoMovimentacaoService
                 'status_motivo' => $motivo ?: 'Aluno remanejado para outra turma da mesma escola.',
             ])->save();
 
-            $this->bloquearDadosAvaliativosOrigem($aluno, self::MOVIMENTACAO_REMANEJAMENTO);
-
             $novoAluno = Aluno::query()->create([
                 'nome' => $aluno->nome,
                 'cgm' => $aluno->cgm,
@@ -306,7 +305,13 @@ class AlunoMovimentacaoService
                 'pendencia_origem_aluno_id' => $pendenciaOrigemId,
             ]);
 
-            $this->copiarDadosAvaliativosBloqueados($aluno, $novoAluno, self::MOVIMENTACAO_REMANEJAMENTO);
+            $this->garantirAvaliacoesDaOrigemNaTurmaDestino($aluno, $novoAluno);
+            $this->moverDocumentosAvaliativos(
+                $aluno,
+                $novoAluno,
+                AvaliacaoAlunoDocumentoHistorico::MOVIMENTACAO_REMANEJAMENTO,
+                $usuario
+            );
 
             return $novoAluno;
         });
@@ -332,7 +337,6 @@ class AlunoMovimentacaoService
                 'status_motivo' => $motivo ?: 'Parecer de transferencia gerado.',
             ])->save();
 
-            $this->bloquearDadosAvaliativosOrigem($aluno, self::MOVIMENTACAO_TRANSFERENCIA);
             $this->resolverPendenciasDeTransferencia($aluno, $usuario);
 
             return $aluno;
@@ -356,10 +360,9 @@ class AlunoMovimentacaoService
             'status_motivo' => $motivo,
         ])->save();
 
-        $this->bloquearDadosAvaliativosOrigem(
-            $aluno,
-            $status === Aluno::STATUS_TRANSFERIDO ? self::MOVIMENTACAO_TRANSFERENCIA : self::MOVIMENTACAO_HISTORICO
-        );
+        if ($status === Aluno::STATUS_TRANSFERIDO) {
+            $this->resolverPendenciasDeTransferencia($aluno, $usuario);
+        }
 
         return $aluno;
     }
@@ -449,8 +452,6 @@ class AlunoMovimentacaoService
                 throw new RuntimeException('Somente vinculos de contra turno ativos podem ser encerrados.');
             }
 
-            $this->bloquearDadosAvaliativosOrigem($aluno, self::MOVIMENTACAO_CONTRA_TURNO);
-
             $aluno->forceFill([
                 'status' => Aluno::STATUS_CONTRA_TURNO_ENCERRADO,
                 'status_alterado_em' => now(),
@@ -489,131 +490,43 @@ class AlunoMovimentacaoService
         );
     }
 
-    public function copiarDadosAvaliativosBloqueados(Aluno $origem, Aluno $destino, string $tipo): void
-    {
-        $origem->loadMissing('turma');
+    public function moverDocumentosAvaliativos(
+        Aluno $origem,
+        Aluno $destino,
+        string $tipo,
+        ?User $usuario = null,
+    ): void {
         $destino->loadMissing('turma');
 
         if (! $destino->turma) {
             return;
         }
 
-        $this->sincronizarAvaliacoesHistoricasComTurmaDestino($origem, $destino);
+        $this->garantirAvaliacoesDaOrigemNaTurmaDestino($origem, $destino);
 
-        $pautasCache = [];
-        $bloquearCopia = $this->copiaAvaliativaDeveFicarBloqueada($tipo);
-
-        $origem->avaliacaoRespostas()
-            ->whereNotNull('alternativa_id')
-            ->orderBy('id')
-            ->chunkById(200, function (Collection $respostas) use ($destino, $tipo, $bloquearCopia, &$pautasCache): void {
-                foreach ($respostas as $resposta) {
-                    if (! $this->respostaPodeIrParaTurma($resposta, $destino, $pautasCache)) {
-                        continue;
-                    }
-
-                    $existente = AvaliacaoResposta::query()
-                        ->where('avaliacao_id', (int) $resposta->avaliacao_id)
-                        ->where('pauta_id', (int) $resposta->pauta_id)
-                        ->where('turma_id', (int) $destino->id_turma)
-                        ->where('aluno_id', (int) $destino->id)
-                        ->first();
-
-                    if ($existente && ! $existente->bloqueada) {
-                        continue;
-                    }
-
-                    AvaliacaoResposta::query()->updateOrCreate(
-                        [
-                            'avaliacao_id' => (int) $resposta->avaliacao_id,
-                            'pauta_id' => (int) $resposta->pauta_id,
-                            'turma_id' => (int) $destino->id_turma,
-                            'aluno_id' => (int) $destino->id,
-                        ],
-                        [
-                            'professor_id' => $resposta->professor_id,
-                            'alternativa_id' => $resposta->alternativa_id,
-                            'observacao' => $resposta->observacao,
-                            'respondido_em' => $resposta->respondido_em,
-                            'bloqueada' => $bloquearCopia,
-                            'resposta_origem_id' => $resposta->resposta_origem_id ?: $resposta->id,
-                            'aluno_origem_id' => $resposta->aluno_origem_id ?: $resposta->aluno_id,
-                            'turma_origem_id' => $resposta->turma_origem_id ?: $resposta->turma_id,
-                            'bloqueio_tipo' => $tipo,
-                        ]
-                    );
-                }
-            });
-
-        $origem->avaliacaoInformacoesComplementares()
-            ->whereNotNull('informacoes_complementares')
-            ->orderBy('id')
-            ->chunkById(200, function (Collection $registros) use ($destino, $tipo, $bloquearCopia): void {
-                foreach ($registros as $registro) {
-                    if (! $this->turmaParticipaDaAvaliacao((int) $destino->id_turma, (int) $registro->avaliacao_id)) {
-                        continue;
-                    }
-
-                    $existente = AvaliacaoInformacaoComplementar::query()
-                        ->where('avaliacao_id', (int) $registro->avaliacao_id)
-                        ->where('turma_id', (int) $destino->id_turma)
-                        ->where('aluno_id', (int) $destino->id)
-                        ->where('componente_curricular_id', $registro->componente_curricular_id)
-                        ->first();
-
-                    if ($existente && ! $existente->bloqueada) {
-                        continue;
-                    }
-
-                    AvaliacaoInformacaoComplementar::query()->updateOrCreate(
-                        [
-                            'avaliacao_id' => (int) $registro->avaliacao_id,
-                            'turma_id' => (int) $destino->id_turma,
-                            'aluno_id' => (int) $destino->id,
-                            'componente_curricular_id' => $registro->componente_curricular_id,
-                        ],
-                        [
-                            'professor_id' => $registro->professor_id,
-                            'informacoes_complementares' => $registro->informacoes_complementares,
-                            'bloqueada' => $bloquearCopia,
-                            'informacao_origem_id' => $registro->informacao_origem_id ?: $registro->id,
-                            'aluno_origem_id' => $registro->aluno_origem_id ?: $registro->aluno_id,
-                            'turma_origem_id' => $registro->turma_origem_id ?: $registro->turma_id,
-                            'bloqueio_tipo' => $tipo,
-                        ]
-                    );
-                }
-            });
-    }
-
-    private function copiaAvaliativaDeveFicarBloqueada(string $tipo): bool
-    {
-        return ! in_array($tipo, [
+        $tipoHistorico = match ($tipo) {
             self::MOVIMENTACAO_TRANSFERENCIA,
-            self::MOVIMENTACAO_REMANEJAMENTO,
-        ], true);
+            AvaliacaoAlunoDocumentoHistorico::MOVIMENTACAO_TRANSFERENCIA => AvaliacaoAlunoDocumentoHistorico::MOVIMENTACAO_TRANSFERENCIA,
+            default => AvaliacaoAlunoDocumentoHistorico::MOVIMENTACAO_REMANEJAMENTO,
+        };
+
+        app(AvaliacaoAlunoDocumentoService::class)->moverDocumentosDoAluno(
+            $origem,
+            $destino,
+            $tipoHistorico,
+            $usuario
+        );
     }
 
-    private function bloquearDadosAvaliativosOrigem(Aluno $aluno, string $tipo): void
+    /**
+     * @deprecated Use moverDocumentosAvaliativos()
+     */
+    public function copiarDadosAvaliativosBloqueados(Aluno $origem, Aluno $destino, string $tipo): void
     {
-        AvaliacaoResposta::query()
-            ->where('aluno_id', (int) $aluno->id)
-            ->update([
-                'bloqueada' => true,
-                'bloqueio_tipo' => $tipo,
-                'updated_at' => now(),
-            ]);
-
-        AvaliacaoInformacaoComplementar::query()
-            ->where('aluno_id', (int) $aluno->id)
-            ->update([
-                'bloqueada' => true,
-                'bloqueio_tipo' => $tipo,
-                'updated_at' => now(),
-            ]);
+        $this->moverDocumentosAvaliativos($origem, $destino, $tipo);
     }
 
-    private function sincronizarAvaliacoesHistoricasComTurmaDestino(Aluno $origem, Aluno $destino): void
+    private function garantirAvaliacoesDaOrigemNaTurmaDestino(Aluno $origem, Aluno $destino): void
     {
         $turmaOrigemId = (int) $origem->id_turma;
         $turmaDestinoId = (int) $destino->id_turma;
@@ -625,8 +538,11 @@ class AlunoMovimentacaoService
         $avaliacoesIds = DB::table('avaliacao_turma')
             ->where('turma_id', $turmaOrigemId)
             ->pluck('avaliacao_id')
-            ->merge($origem->avaliacaoRespostas()->pluck('avaliacao_id'))
-            ->merge($origem->avaliacaoInformacoesComplementares()->pluck('avaliacao_id'))
+            ->merge(
+                DB::table('avaliacao_aluno_documentos')
+                    ->where('aluno_id', (int) $origem->id)
+                    ->pluck('avaliacao_id')
+            )
             ->map(fn ($id): int => (int) $id)
             ->filter()
             ->unique()
@@ -665,62 +581,58 @@ class AlunoMovimentacaoService
     private function tipoOrigemPorStatus(Aluno $origem): string
     {
         return $origem->status === Aluno::STATUS_TRANSFERIDO
-            ? self::MOVIMENTACAO_TRANSFERENCIA
-            : self::MOVIMENTACAO_HISTORICO;
+            ? AvaliacaoAlunoDocumentoHistorico::MOVIMENTACAO_TRANSFERENCIA
+            : AvaliacaoAlunoDocumentoHistorico::MOVIMENTACAO_REMANEJAMENTO;
     }
 
     private function resolverPendenciasDeTransferencia(Aluno $origem, ?User $usuario): void
     {
-        Aluno::query()
+        $pendentes = Aluno::query()
             ->where('pendencia_origem_aluno_id', (int) $origem->id)
             ->where('tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL)
             ->where('status', Aluno::STATUS_PENDENTE)
             ->orderBy('id')
-            ->get()
-            ->each(function (Aluno $pendente) use ($origem, $usuario): void {
-                $this->copiarDadosAvaliativosBloqueados($origem, $pendente, self::MOVIMENTACAO_TRANSFERENCIA);
+            ->get();
 
-                $pendente->forceFill([
-                    'status' => Aluno::STATUS_MATRICULADO,
-                    'status_alterado_em' => now(),
-                    'status_alterado_por' => $usuario?->id,
-                    'status_motivo' => 'Pendencia de transferencia resolvida pelo parecer da escola de origem.',
-                    'aluno_origem_id' => (int) $origem->id,
-                    'turma_origem_id' => (int) $origem->id_turma,
-                    'movimentacao_origem' => self::MOVIMENTACAO_TRANSFERENCIA,
-                    'pendencia_origem_aluno_id' => null,
-                ])->save();
-            });
-    }
-
-    private function respostaPodeIrParaTurma(AvaliacaoResposta $resposta, Aluno $destino, array &$pautasCache): bool
-    {
-        if (! $this->turmaParticipaDaAvaliacao((int) $destino->id_turma, (int) $resposta->avaliacao_id)) {
-            return false;
+        if ($pendentes->isEmpty()) {
+            return;
         }
 
-        $pautaId = (int) $resposta->pauta_id;
+        /** @var Aluno $destinoPrincipal */
+        $destinoPrincipal = $pendentes->first();
 
-        if (! array_key_exists($pautaId, $pautasCache)) {
-            $pautasCache[$pautaId] = Pauta::query()->find($pautaId);
-        }
+        $this->garantirAvaliacoesDaOrigemNaTurmaDestino($origem, $destinoPrincipal);
+        $this->moverDocumentosAvaliativos(
+            $origem,
+            $destinoPrincipal,
+            AvaliacaoAlunoDocumentoHistorico::MOVIMENTACAO_TRANSFERENCIA,
+            $usuario
+        );
 
-        $pauta = $pautasCache[$pautaId];
+        $destinoPrincipal->forceFill([
+            'status' => Aluno::STATUS_MATRICULADO,
+            'status_alterado_em' => now(),
+            'status_alterado_por' => $usuario?->id,
+            'status_motivo' => 'Pendencia de transferencia resolvida pelo parecer da escola de origem.',
+            'aluno_origem_id' => (int) $origem->id,
+            'turma_origem_id' => (int) $origem->id_turma,
+            'movimentacao_origem' => self::MOVIMENTACAO_TRANSFERENCIA,
+            'pendencia_origem_aluno_id' => null,
+        ])->save();
 
-        if (! $pauta) {
-            return false;
-        }
-
-        return is_null($pauta->serie_id)
-            || (int) $pauta->serie_id === (int) $destino->turma?->id_serie;
-    }
-
-    private function turmaParticipaDaAvaliacao(int $turmaId, int $avaliacaoId): bool
-    {
-        return DB::table('avaliacao_turma')
-            ->where('turma_id', $turmaId)
-            ->where('avaliacao_id', $avaliacaoId)
-            ->exists();
+        // Demais pendentes da mesma origem nao recebem o documento (um dono apenas).
+        $pendentes->skip(1)->each(function (Aluno $pendente) use ($origem, $usuario): void {
+            $pendente->forceFill([
+                'status' => Aluno::STATUS_MATRICULADO,
+                'status_alterado_em' => now(),
+                'status_alterado_por' => $usuario?->id,
+                'status_motivo' => 'Pendencia resolvida sem rebind de documento (destino principal ja recebeu a ficha avaliativa da origem #'.$origem->id.').',
+                'aluno_origem_id' => (int) $origem->id,
+                'turma_origem_id' => (int) $origem->id_turma,
+                'movimentacao_origem' => self::MOVIMENTACAO_TRANSFERENCIA,
+                'pendencia_origem_aluno_id' => null,
+            ])->save();
+        });
     }
 
     private function notificarImpedimentoMatricula(Aluno $alunoAtivo, int $turmaDestinoId, ?User $usuario): void

@@ -365,13 +365,9 @@ class ServidorService
                 ]);
         }
 
-        // Avaliação fica no aluno; professor é só referência para exportação.
-        foreach (['avaliacao_respostas', 'avaliacao_informacoes_complementares'] as $table) {
-            if (! Schema::hasTable($table) || ! Schema::hasColumn($table, 'professor_id')) {
-                continue;
-            }
-
-            DB::table($table)
+        // Avaliação fica no aluno; professor é só referência contextual nos fatos.
+        if (Schema::hasTable('avaliacao_resposta_fatos') && Schema::hasColumn('avaliacao_resposta_fatos', 'professor_id')) {
+            DB::table('avaliacao_resposta_fatos')
                 ->whereIn('professor_id', $professorIds)
                 ->update([
                     'professor_id' => null,

@@ -6,7 +6,6 @@ use App\Livewire\AlunoParecerTransferenciaModal;
 use App\Models\Alternativa;
 use App\Models\Aluno;
 use App\Models\Avaliacao;
-use App\Models\AvaliacaoResposta;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
 use App\Models\Pauta;
@@ -20,18 +19,20 @@ use App\Services\AlunoTransferenciaPendenteService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
+use Tests\Concerns\CreatesAvaliacaoDocumentos;
 use Tests\TestCase;
 
 class AlunoTransferenciaPendenteServiceTest extends TestCase
 {
     use RefreshDatabase;
+    use CreatesAvaliacaoDocumentos;
 
     public function test_professor_com_componente_completo_nao_fica_bloqueado_por_pendencia_de_outro_professor(): void
     {
         $cenario = $this->criarCenarioTransferenciaPendente();
         $service = app(AlunoTransferenciaPendenteService::class);
 
-        AvaliacaoResposta::query()->create([
+        $this->criarDocumentoResposta([
             'avaliacao_id' => $cenario['avaliacao']->id,
             'pauta_id' => $cenario['pauta_matematica']->id,
             'turma_id' => $cenario['turma_origem']->id,
@@ -64,7 +65,7 @@ class AlunoTransferenciaPendenteServiceTest extends TestCase
         ]);
         $cenario['pauta_matematica']->alternativas()->attach($alternativaComObservacao->id);
 
-        $resposta = AvaliacaoResposta::query()->create([
+        $resposta = $this->criarDocumentoResposta([
             'avaliacao_id' => $cenario['avaliacao']->id,
             'pauta_id' => $cenario['pauta_matematica']->id,
             'turma_id' => $cenario['turma_origem']->id,
@@ -99,7 +100,7 @@ class AlunoTransferenciaPendenteServiceTest extends TestCase
     {
         $cenario = $this->criarCenarioTransferenciaPendente();
 
-        AvaliacaoResposta::query()->create([
+        $this->criarDocumentoResposta([
             'avaliacao_id' => $cenario['avaliacao']->id,
             'pauta_id' => $cenario['pauta_matematica']->id,
             'turma_id' => $cenario['turma_origem']->id,

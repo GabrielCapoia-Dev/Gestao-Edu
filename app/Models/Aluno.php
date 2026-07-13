@@ -223,13 +223,13 @@ class Aluno extends Model
         return $this->belongsTo(Turma::class, 'turma_origem_id');
     }
 
-    public function avaliacaoRespostas()
+    public function avaliacaoDocumentos()
     {
-        return $this->hasMany(AvaliacaoResposta::class, 'aluno_id');
+        return $this->hasMany(AvaliacaoAlunoDocumento::class, 'aluno_id');
     }
 
-    public function avaliacaoInformacoesComplementares()
+    public function avaliacaoRespostaFatos()
     {
-        return $this->hasMany(AvaliacaoInformacaoComplementar::class, 'aluno_id');
+        return $this->hasMany(AvaliacaoRespostaFato::class, 'aluno_id');
     }
 }

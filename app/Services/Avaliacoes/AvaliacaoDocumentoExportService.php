@@ -6,8 +6,8 @@ use App\Models\Aluno;
 use App\Models\Alternativa;
 use App\Models\Avaliacao;
 use App\Models\AvaliacaoExportacao;
-use App\Models\AvaliacaoInformacaoComplementar;
-use App\Models\AvaliacaoResposta;
+use App\Models\AvaliacaoAlunoDocumento;
+use App\Models\AvaliacaoRespostaFato;
 use App\Models\Pauta;
 use App\Models\Professor;
 use App\Models\Servidor;
@@ -137,9 +137,9 @@ class AvaliacaoDocumentoExportService
                 $alunos = $turmaDados['alunos'];
                 /** @var Collection<int, Pauta> $pautas */
                 $pautas = $turmaDados['pautas'];
-                /** @var Collection<string, AvaliacaoResposta> $respostas */
+                /** @var Collection<string, AvaliacaoRespostaFato> $respostas */
                 $respostas = $turmaDados['respostas'];
-                /** @var Collection<string, AvaliacaoInformacaoComplementar> $informacoesComplementares */
+                /** @var Collection<string, object> $informacoesComplementares */
                 $informacoesComplementares = $turmaDados['informacoes_complementares'];
 
                 foreach ($alunos as $aluno) {
@@ -515,42 +515,40 @@ class AvaliacaoDocumentoExportService
         string $logoDataUri,
         ?string $documentoTipo = null
     ): array {
-        $respostas = AvaliacaoResposta::query()
+        $documento = AvaliacaoAlunoDocumento::query()
             ->where('avaliacao_id', (int) $avaliacao->id)
-            ->where('turma_id', (int) $turma->id)
+            ->where('aluno_id', (int) $aluno->id)
+            ->first();
+
+        $respostasFatos = AvaliacaoRespostaFato::query()
+            ->where('avaliacao_id', (int) $avaliacao->id)
             ->where('aluno_id', (int) $aluno->id)
             ->whereIn('pauta_id', $pautas->pluck('id')->map(fn ($id) => (int) $id)->all())
             ->with(['alternativa:id,nome', 'professor:id,nome'])
             ->get()
             ->keyBy('pauta_id');
 
-        $informacoesComplementares = AvaliacaoInformacaoComplementar::query()
-            ->where('avaliacao_id', (int) $avaliacao->id)
-            ->where('turma_id', (int) $turma->id)
-            ->where('aluno_id', (int) $aluno->id)
-            ->get(['aluno_id', 'componente_curricular_id', 'informacoes_complementares'])
-            ->keyBy(fn (AvaliacaoInformacaoComplementar $registro): string => ((int) ($registro->componente_curricular_id ?? 0)).'-'.((int) $registro->aluno_id));
-
+        $infosPayload = $documento?->informacoesComplementaresPayload() ?? [];
         $alunoId = (int) $aluno->id;
 
         $componentes = $pautas
             ->groupBy(fn (Pauta $pauta): string => $pauta->componente_curricular_id ? (string) $pauta->componente_curricular_id : 'geral')
-            ->map(function (Collection $pautasDoComponente) use ($turma, $respostas, $informacoesComplementares, $alunoId): array {
+            ->map(function (Collection $pautasDoComponente) use ($turma, $respostasFatos, $infosPayload): array {
                 /** @var Pauta $primeiraPauta */
                 $primeiraPauta = $pautasDoComponente->first();
                 $componenteId = $primeiraPauta->componente_curricular_id ? (int) $primeiraPauta->componente_curricular_id : null;
-                $informacaoComplementar = $informacoesComplementares->get(((int) ($componenteId ?? 0)).'-'.$alunoId);
+                $textoInfo = trim((string) ($infosPayload[(string) ((int) ($componenteId ?? 0))]['texto'] ?? ''));
 
                 return [
                     'nome' => $primeiraPauta->componente?->nome ?? 'Geral',
-                    'professor' => $this->professorDoComponente($turma, $componenteId, $pautasDoComponente, $respostas),
-                    'informacoes_complementares' => trim((string) ($informacaoComplementar?->informacoes_complementares ?? '')),
-                    'mostrar_informacoes_complementares' => trim((string) ($informacaoComplementar?->informacoes_complementares ?? '')) !== '',
+                    'professor' => $this->professorDoComponente($turma, $componenteId, $pautasDoComponente, $respostasFatos),
+                    'informacoes_complementares' => $textoInfo,
+                    'mostrar_informacoes_complementares' => $textoInfo !== '',
                     'pautas' => $pautasDoComponente
                         ->values()
-                        ->map(function (Pauta $pauta, int $index) use ($respostas): array {
-                            /** @var AvaliacaoResposta|null $resposta */
-                            $resposta = $respostas->get((int) $pauta->id);
+                        ->map(function (Pauta $pauta, int $index) use ($respostasFatos): array {
+                            /** @var AvaliacaoRespostaFato|null $resposta */
+                            $resposta = $respostasFatos->get((int) $pauta->id);
 
                             return [
                                 'ordem' => $index + 1,
@@ -590,7 +588,7 @@ class AvaliacaoDocumentoExportService
 
     /**
      * @param  Collection<int, Pauta>  $pautas
-     * @param  Collection<int, AvaliacaoResposta>  $respostas
+     * @param  Collection<int, AvaliacaoRespostaFato>  $respostas
      */
     private function professorDoComponente(Turma $turma, ?int $componenteId, Collection $pautas, Collection $respostas): string
     {
@@ -735,21 +733,33 @@ class AvaliacaoDocumentoExportService
                     return null;
                 }
 
-                $respostas = AvaliacaoResposta::query()
+                $respostas = AvaliacaoRespostaFato::query()
                     ->where('avaliacao_id', (int) $avaliacao->id)
-                    ->where('turma_id', (int) $turma->id)
                     ->whereIn('pauta_id', $pautas->pluck('id')->map(fn ($id) => (int) $id)->all())
                     ->whereIn('aluno_id', $alunos->pluck('id')->map(fn ($id) => (int) $id)->all())
                     ->with(['alternativa:id,nome'])
                     ->get()
-                    ->keyBy(fn (AvaliacaoResposta $resposta): string => $resposta->pauta_id.'-'.$resposta->aluno_id);
+                    ->keyBy(fn (AvaliacaoRespostaFato $resposta): string => $resposta->pauta_id.'-'.$resposta->aluno_id);
 
-                $informacoesComplementares = AvaliacaoInformacaoComplementar::query()
+                $documentos = AvaliacaoAlunoDocumento::query()
                     ->where('avaliacao_id', (int) $avaliacao->id)
-                    ->where('turma_id', (int) $turma->id)
                     ->whereIn('aluno_id', $alunos->pluck('id')->map(fn ($id) => (int) $id)->all())
-                    ->get(['aluno_id', 'componente_curricular_id', 'informacoes_complementares'])
-                    ->keyBy(fn (AvaliacaoInformacaoComplementar $registro): string => ((int) ($registro->componente_curricular_id ?? 0)).'-'.((int) $registro->aluno_id));
+                    ->get()
+                    ->keyBy(fn (AvaliacaoAlunoDocumento $doc) => (int) $doc->aluno_id);
+
+                $informacoesComplementares = collect();
+                foreach ($documentos as $alunoId => $documento) {
+                    foreach ($documento->informacoesComplementaresPayload() as $componenteId => $info) {
+                        $informacoesComplementares->put(
+                            ((int) $componenteId).'-'.(int) $alunoId,
+                            (object) [
+                                'aluno_id' => (int) $alunoId,
+                                'componente_curricular_id' => (int) $componenteId,
+                                'informacoes_complementares' => (string) ($info['texto'] ?? ''),
+                            ]
+                        );
+                    }
+                }
 
                 return [
                     'turma' => $turma,

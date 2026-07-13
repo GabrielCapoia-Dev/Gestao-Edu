@@ -4,8 +4,9 @@ namespace Database\Seeders;
 
 use App\Models\Alternativa;
 use App\Models\Avaliacao;
-use App\Models\AvaliacaoInformacaoComplementar;
-use App\Models\AvaliacaoResposta;
+use App\Models\Aluno;
+use App\Models\AvaliacaoAlunoDocumento;
+use App\Services\Avaliacoes\AvaliacaoAlunoDocumentoService;
 use App\Models\ComponenteCurricular;
 use App\Models\PeriodoAvaliacao;
 use App\Models\Pauta;
@@ -657,11 +658,7 @@ class AvaliacoesVariadasSeeder extends Seeder
         int $indiceBase,
         Carbon $agora
     ): array {
-        AvaliacaoResposta::query()
-            ->where('avaliacao_id', (int) $avaliacao->id)
-            ->delete();
-
-        AvaliacaoInformacaoComplementar::query()
+        AvaliacaoAlunoDocumento::query()
             ->where('avaliacao_id', (int) $avaliacao->id)
             ->delete();
 
@@ -845,49 +842,56 @@ class AvaliacoesVariadasSeeder extends Seeder
             }
         }
 
-        $chavesUnicasRespostas = $this->obterChavesUnicasDaTabela('avaliacao_respostas');
-        $chaveConflitoRespostas = $this->resolverChaveConflito(
-            $chavesUnicasRespostas,
-            ['avaliacao_id', 'pauta_id', 'turma_id', 'aluno_id'],
-            [
-                ['avaliacao_id', 'turma_id', 'aluno_id'],
-            ]
-        );
+        $documentosPorAluno = [];
 
-        $respostasPayload = $this->deduplicarPayloadPorChavesUnicas(
-            $respostasPayload,
-            $chavesUnicasRespostas !== [] ? $chavesUnicasRespostas : [$chaveConflitoRespostas]
-        );
-
-        if ($respostasPayload !== []) {
-            $this->upsertEmLotes(
-                modelClass: AvaliacaoResposta::class,
-                linhas: $respostasPayload,
-                uniqueBy: $chaveConflitoRespostas,
-                updateColumns: ['professor_id', 'alternativa_id', 'observacao', 'respondido_em', 'updated_at'],
-                tamanhoLote: 500
-            );
+        foreach ($respostasPayload as $linha) {
+            $alunoId = (int) $linha['aluno_id'];
+            $documentosPorAluno[$alunoId]['turma_id'] = (int) $linha['turma_id'];
+            $documentosPorAluno[$alunoId]['pautas'][(string) (int) $linha['pauta_id']] = array_filter([
+                'alternativa_id' => (int) $linha['alternativa_id'],
+                'observacao' => $linha['observacao'] ?? null,
+                'professor_id' => $linha['professor_id'] ?? null,
+                'respondido_em' => isset($linha['respondido_em'])
+                    ? \Carbon\Carbon::parse($linha['respondido_em'])->toIso8601String()
+                    : null,
+            ], fn ($value) => $value !== null && $value !== '');
         }
 
-        $chavesUnicasInformacoes = $this->obterChavesUnicasDaTabela('avaliacao_informacoes_complementares');
-        $chaveConflitoInformacoes = $this->resolverChaveConflito(
-            $chavesUnicasInformacoes,
-            ['avaliacao_id', 'turma_id', 'aluno_id']
-        );
+        foreach ($informacoesPayload as $linha) {
+            $alunoId = (int) $linha['aluno_id'];
+            $documentosPorAluno[$alunoId]['turma_id'] = (int) ($documentosPorAluno[$alunoId]['turma_id'] ?? $linha['turma_id']);
+            // Seeder antigo nao tinha componente; grava em componente 0
+            $documentosPorAluno[$alunoId]['informacoes_complementares']['0'] = array_filter([
+                'texto' => (string) ($linha['informacoes_complementares'] ?? ''),
+                'professor_id' => $linha['professor_id'] ?? null,
+                'atualizado_em' => now()->toIso8601String(),
+            ], fn ($value) => $value !== null && $value !== '');
+        }
 
-        $informacoesPayload = $this->deduplicarPayloadPorChavesUnicas(
-            $informacoesPayload,
-            $chavesUnicasInformacoes !== [] ? $chavesUnicasInformacoes : [$chaveConflitoInformacoes]
-        );
+        $service = app(AvaliacaoAlunoDocumentoService::class);
 
-        if ($informacoesPayload !== []) {
-            $this->upsertEmLotes(
-                modelClass: AvaliacaoInformacaoComplementar::class,
-                linhas: $informacoesPayload,
-                uniqueBy: $chaveConflitoInformacoes,
-                updateColumns: ['professor_id', 'informacoes_complementares', 'updated_at'],
-                tamanhoLote: 500
-            );
+        foreach ($documentosPorAluno as $alunoId => $dados) {
+            $aluno = Aluno::query()->find($alunoId);
+            if (! $aluno) {
+                continue;
+            }
+
+            $documento = $service->obterOuCriar($avaliacao, $aluno, somentePrincipal: false);
+
+            if (! empty($dados['pautas']) && is_array($dados['pautas'])) {
+                $service->salvarPautasEmMassa($documento, collect($dados['pautas'])->mapWithKeys(
+                    fn (array $pauta, string $pautaId): array => [(int) $pautaId => $pauta]
+                )->all());
+            }
+
+            if (! empty($dados['informacoes_complementares']['0']['texto'] ?? null)) {
+                $service->salvarInfoComplementar(
+                    $documento->fresh() ?? $documento,
+                    0,
+                    (string) $dados['informacoes_complementares']['0']['texto'],
+                    $dados['informacoes_complementares']['0']['professor_id'] ?? null,
+                );
+            }
         }
 
         return [

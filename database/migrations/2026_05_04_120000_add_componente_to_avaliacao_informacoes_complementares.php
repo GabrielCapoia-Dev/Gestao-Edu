@@ -16,6 +16,10 @@ return new class extends Migration
 
     public function up(): void
     {
+        if (! Schema::hasTable(self::TABLE)) {
+            return;
+        }
+
         if (! Schema::hasColumn(self::TABLE, 'componente_curricular_id')) {
             Schema::table(self::TABLE, function (Blueprint $table): void {
                 $table->foreignId('componente_curricular_id')

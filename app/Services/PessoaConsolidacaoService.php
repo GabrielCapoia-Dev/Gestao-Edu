@@ -284,8 +284,7 @@ class PessoaConsolidacaoService
 
         $tabelas = [
             ['turma_componente_professor', 'professor_id'],
-            ['avaliacao_respostas', 'professor_id'],
-            ['avaliacao_informacoes_complementares', 'professor_id'],
+            ['avaliacao_resposta_fatos', 'professor_id'],
         ];
 
         foreach ($tabelas as [$tabela, $coluna]) {

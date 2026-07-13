@@ -276,13 +276,8 @@ class Professor extends Model
         return $query->where('ativo', false);
     }
 
-    public function avaliacaoRespostas()
+    public function avaliacaoRespostaFatos()
     {
-        return $this->hasMany(AvaliacaoResposta::class, 'professor_id');
-    }
-
-    public function avaliacaoInformacoesComplementares()
-    {
-        return $this->hasMany(AvaliacaoInformacaoComplementar::class, 'professor_id');
+        return $this->hasMany(AvaliacaoRespostaFato::class, 'professor_id');
     }
 }
