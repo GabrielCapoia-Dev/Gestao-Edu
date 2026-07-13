@@ -6,7 +6,6 @@ use App\Models\Alternativa;
 use App\Models\Aluno;
 use App\Models\Avaliacao;
 use App\Models\AvaliacaoAlunoDocumento;
-use App\Models\AvaliacaoRespostaFato;
 use App\Services\Avaliacoes\AvaliacaoAlunoDocumentoService;
 use App\Models\Pauta;
 use App\Models\User;
@@ -272,12 +271,9 @@ class AlunoParecerTransferenciaModal extends Component
                 ->values();
         }
 
-        $respostas = AvaliacaoRespostaFato::query()
-            ->where('avaliacao_id', (int) $avaliacao->id)
-            ->where('aluno_id', (int) $aluno->id)
-            ->with('alternativa:id,nome')
-            ->get()
-            ->keyBy('pauta_id');
+        $documento = app(AvaliacaoAlunoDocumentoService::class)->obter((int) $avaliacao->id, (int) $aluno->id);
+        $respostas = collect($documento?->pautasPayload() ?? [])
+            ->mapWithKeys(fn (array $item, string|int $pautaId): array => [(int) ($item['pauta_id'] ?? $pautaId) => $item]);
 
         $alternativasPorPauta = $this->alternativasPorPauta($avaliacao, $pautas);
         $preenchidas = $pautas
@@ -360,11 +356,11 @@ class AlunoParecerTransferenciaModal extends Component
                                         ->values()
                                         ->all(),
                                     'alternativa_id' => $alternativaId ? (string) $alternativaId : '',
-                                    'resposta' => (string) ($alternativaSelecionada?->nome ?? $resposta?->alternativa?->nome ?? ''),
+                                    'resposta' => (string) ($alternativaSelecionada?->nome ?? ''),
                                     'observacao' => $this->observacaoParecer(
                                         (int) $avaliacao->id,
                                         (int) $pauta->id,
-                                        $resposta
+                                        is_array($resposta) ? $resposta : null
                                     ),
                                     'requer_observacao' => $requerObservacao,
                                     'bloqueada' => false,
@@ -748,7 +744,7 @@ class AlunoParecerTransferenciaModal extends Component
         return $porPauta;
     }
 
-    private function alternativaSelecionadaId(int $avaliacaoId, int $pautaId, ?AvaliacaoRespostaFato $resposta): ?int
+    private function alternativaSelecionadaId(int $avaliacaoId, int $pautaId, ?array $resposta): ?int
     {
         if (
             array_key_exists($avaliacaoId, $this->respostasParecer)
@@ -760,12 +756,12 @@ class AlunoParecerTransferenciaModal extends Component
             return $alternativaId > 0 ? $alternativaId : null;
         }
 
-        $alternativaId = (int) ($resposta?->alternativa_id ?? 0);
+        $alternativaId = (int) ($resposta['alternativa_id'] ?? 0);
 
         return $alternativaId > 0 ? $alternativaId : null;
     }
 
-    private function observacaoParecer(int $avaliacaoId, int $pautaId, ?AvaliacaoRespostaFato $resposta): string
+    private function observacaoParecer(int $avaliacaoId, int $pautaId, ?array $resposta): string
     {
         if (
             array_key_exists($avaliacaoId, $this->observacoesParecer)
@@ -775,7 +771,7 @@ class AlunoParecerTransferenciaModal extends Component
             return $this->limitarTextoCampo($this->observacoesParecer[$avaliacaoId][$pautaId]);
         }
 
-        return $this->limitarTextoCampo($resposta?->observacao ?? '');
+        return $this->limitarTextoCampo($resposta['observacao'] ?? '');
     }
 
     private function limitarTextoCampo(mixed $valor): string

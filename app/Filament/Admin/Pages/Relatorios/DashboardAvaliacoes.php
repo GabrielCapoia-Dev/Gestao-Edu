@@ -1008,14 +1008,38 @@ class DashboardAvaliacoes extends Page implements HasForms
         if ($filtros['alternativas_ids'] !== []) {
             $query->whereExists(function (QueryBuilder $subQuery) use ($filtros): void {
                 $subQuery
-                    ->from('avaliacao_resposta_fatos as ar')
-                    ->whereColumn('ar.avaliacao_id', 'at.avaliacao_id')
-                    ->whereColumn('ar.turma_id', 't.id')
-                    ->whereColumn('ar.professor_id', 'tcp.professor_id')
-                    ->whereIn('ar.alternativa_id', $filtros['alternativas_ids']);
+                    ->from('avaliacao_aluno_documentos as d')
+                    ->whereColumn('d.avaliacao_id', 'at.avaliacao_id')
+                    ->whereColumn('d.turma_id', 't.id')
+                    ->where(function (QueryBuilder $q) use ($filtros): void {
+                        foreach ($filtros['alternativas_ids'] as $alternativaId) {
+                            $q->orWhereRaw(
+                                'JSON_CONTAINS(COALESCE(d.alternativa_ids, JSON_ARRAY()), CAST(? AS JSON), \'$\')',
+                                [(string) (int) $alternativaId]
+                            );
+                        }
+                    });
 
                 if ($filtros['pautas_ids'] !== []) {
-                    $subQuery->whereIn('ar.pauta_id', $filtros['pautas_ids']);
+                    $subQuery->where(function (QueryBuilder $q) use ($filtros): void {
+                        foreach ($filtros['pautas_ids'] as $pautaId) {
+                            $q->orWhereRaw(
+                                'JSON_CONTAINS(COALESCE(d.pauta_ids_respondidas, JSON_ARRAY()), CAST(? AS JSON), \'$\')',
+                                [(string) (int) $pautaId]
+                            );
+                        }
+                    });
+                }
+
+                if (($filtros['professores_ids'] ?? []) !== []) {
+                    $subQuery->where(function (QueryBuilder $q) use ($filtros): void {
+                        foreach ($filtros['professores_ids'] as $professorId) {
+                            $q->orWhereRaw(
+                                'JSON_CONTAINS(COALESCE(d.professor_ids, JSON_ARRAY()), CAST(? AS JSON), \'$\')',
+                                [(string) (int) $professorId]
+                            );
+                        }
+                    });
                 }
             });
         }
@@ -1072,19 +1096,35 @@ class DashboardAvaliacoes extends Page implements HasForms
         if ($filtros['professores_ids'] !== [] || $filtros['alternativas_ids'] !== []) {
             $query->whereExists(function (QueryBuilder $subQuery) use ($filtros): void {
                 $subQuery
-                    ->from('avaliacao_resposta_fatos as ar')
-                    ->join('turmas as t2', 't2.id', '=', 'ar.turma_id')
-                    ->whereColumn('ar.avaliacao_id', 'ap.avaliacao_id')
-                    ->whereColumn('ar.pauta_id', 'p.id');
+                    ->from('avaliacao_aluno_documentos as d')
+                    ->join('turmas as t2', 't2.id', '=', 'd.turma_id')
+                    ->whereColumn('d.avaliacao_id', 'ap.avaliacao_id')
+                    ->whereRaw(
+                        'JSON_CONTAINS(COALESCE(d.pauta_ids_respondidas, JSON_ARRAY()), CAST(p.id AS JSON), \'$\')'
+                    );
 
                 $this->aplicarEscopoEscolarQuery($subQuery, 't2');
 
                 if ($filtros['professores_ids'] !== []) {
-                    $subQuery->whereIn('ar.professor_id', $filtros['professores_ids']);
+                    $subQuery->where(function (QueryBuilder $q) use ($filtros): void {
+                        foreach ($filtros['professores_ids'] as $professorId) {
+                            $q->orWhereRaw(
+                                'JSON_CONTAINS(COALESCE(d.professor_ids, JSON_ARRAY()), CAST(? AS JSON), \'$\')',
+                                [(int) $professorId]
+                            );
+                        }
+                    });
                 }
 
                 if ($filtros['alternativas_ids'] !== []) {
-                    $subQuery->whereIn('ar.alternativa_id', $filtros['alternativas_ids']);
+                    $subQuery->where(function (QueryBuilder $q) use ($filtros): void {
+                        foreach ($filtros['alternativas_ids'] as $alternativaId) {
+                            $q->orWhereRaw(
+                                'JSON_CONTAINS(COALESCE(d.alternativa_ids, JSON_ARRAY()), CAST(? AS JSON), \'$\')',
+                                [(int) $alternativaId]
+                            );
+                        }
+                    });
                 }
 
                 if ($filtros['turnos'] !== []) {
@@ -1396,17 +1436,38 @@ class DashboardAvaliacoes extends Page implements HasForms
         if (($filtros['alternativas_ids'] ?? []) !== []) {
             $query->whereExists(function (QueryBuilder $subQuery) use ($filtros): void {
                 $subQuery
-                    ->from('avaliacao_resposta_fatos as ar')
-                    ->whereColumn('ar.avaliacao_id', 'at.avaliacao_id')
-                    ->whereColumn('ar.turma_id', 't.id')
-                    ->whereIn('ar.alternativa_id', $filtros['alternativas_ids']);
+                    ->from('avaliacao_aluno_documentos as d')
+                    ->whereColumn('d.avaliacao_id', 'at.avaliacao_id')
+                    ->whereColumn('d.turma_id', 't.id')
+                    ->where(function (QueryBuilder $q) use ($filtros): void {
+                        foreach ($filtros['alternativas_ids'] as $alternativaId) {
+                            $q->orWhereRaw(
+                                'JSON_CONTAINS(COALESCE(d.alternativa_ids, JSON_ARRAY()), CAST(? AS JSON), \'$\')',
+                                [(int) $alternativaId]
+                            );
+                        }
+                    });
 
                 if (($filtros['pautas_ids'] ?? []) !== []) {
-                    $subQuery->whereIn('ar.pauta_id', $filtros['pautas_ids']);
+                    $subQuery->where(function (QueryBuilder $q) use ($filtros): void {
+                        foreach ($filtros['pautas_ids'] as $pautaId) {
+                            $q->orWhereRaw(
+                                'JSON_CONTAINS(COALESCE(d.pauta_ids_respondidas, JSON_ARRAY()), CAST(? AS JSON), \'$\')',
+                                [(int) $pautaId]
+                            );
+                        }
+                    });
                 }
 
                 if (($filtros['professores_ids'] ?? []) !== []) {
-                    $subQuery->whereIn('ar.professor_id', $filtros['professores_ids']);
+                    $subQuery->where(function (QueryBuilder $q) use ($filtros): void {
+                        foreach ($filtros['professores_ids'] as $professorId) {
+                            $q->orWhereRaw(
+                                'JSON_CONTAINS(COALESCE(d.professor_ids, JSON_ARRAY()), CAST(? AS JSON), \'$\')',
+                                [(int) $professorId]
+                            );
+                        }
+                    });
                 }
             });
         }
@@ -1892,10 +1953,39 @@ class DashboardAvaliacoes extends Page implements HasForms
         $filtrosAtivos = $filtros ?? $this->filtros;
 
         if ($avaliacaoIds === []) {
-            return DB::table('avaliacao_resposta_fatos as ar')->whereRaw('1 = 0');
+            return DB::table(DB::raw('(select 1 as avaliacao_id, 1 as turma_id, 1 as pauta_id, 1 as aluno_id, 1 as alternativa_id, null as professor_id, null as respondido_em where 1 = 0) as ar'))
+                ->whereRaw('1 = 0');
         }
 
-        $query = DB::table('avaliacao_resposta_fatos as ar')
+        // Expande payload.pautas via JSON_TABLE (MySQL 8) sem tabela linha-por-resposta.
+        $expanded = '
+            select
+                d.avaliacao_id,
+                d.aluno_id,
+                d.turma_id,
+                d.escola_id,
+                cast(jt.pauta_id as unsigned) as pauta_id,
+                cast(jt.alternativa_id as unsigned) as alternativa_id,
+                cast(jt.professor_id as unsigned) as professor_id,
+                jt.observacao,
+                jt.respondido_em,
+                cast(jt.componente_curricular_id as unsigned) as componente_curricular_id
+            from avaliacao_aluno_documentos d
+            cross join json_table(
+                coalesce(d.payload, json_object(\'pautas\', json_object())),
+                \'$.pautas.*\' columns (
+                    pauta_id int path \'$.pauta_id\' null on error,
+                    alternativa_id int path \'$.alternativa_id\' null on error,
+                    professor_id int path \'$.professor_id\' null on error,
+                    observacao text path \'$.observacao\' null on error,
+                    respondido_em varchar(64) path \'$.respondido_em\' null on error,
+                    componente_curricular_id int path \'$.componente_curricular_id\' null on error
+                )
+            ) as jt
+            where jt.alternativa_id is not null
+        ';
+
+        $query = DB::table(DB::raw("({$expanded}) as ar"))
             ->join('turmas as t', 't.id', '=', 'ar.turma_id')
             ->join('alunos as aln', 'aln.id', '=', 'ar.aluno_id')
             ->join('pautas as p', 'p.id', '=', 'ar.pauta_id')

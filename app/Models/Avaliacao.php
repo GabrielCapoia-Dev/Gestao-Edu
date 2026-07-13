@@ -103,10 +103,6 @@ class Avaliacao extends Model
         return $this->hasMany(AvaliacaoAlunoDocumento::class, 'avaliacao_id');
     }
 
-    public function respostaFatos(): HasMany
-    {
-        return $this->hasMany(AvaliacaoRespostaFato::class, 'avaliacao_id');
-    }
 
     public function exportacoes(): HasMany
     {

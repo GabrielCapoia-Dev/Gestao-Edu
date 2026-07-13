@@ -77,8 +77,4 @@ class Turma extends Model
         return $this->hasMany(AvaliacaoAlunoDocumento::class, 'turma_id');
     }
 
-    public function avaliacaoRespostaFatos()
-    {
-        return $this->hasMany(AvaliacaoRespostaFato::class, 'turma_id');
-    }
 }

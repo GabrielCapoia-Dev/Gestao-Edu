@@ -276,8 +276,4 @@ class Professor extends Model
         return $query->where('ativo', false);
     }
 
-    public function avaliacaoRespostaFatos()
-    {
-        return $this->hasMany(AvaliacaoRespostaFato::class, 'professor_id');
-    }
 }

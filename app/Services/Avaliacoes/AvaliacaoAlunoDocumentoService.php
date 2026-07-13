@@ -7,7 +7,6 @@ use App\Models\Alternativa;
 use App\Models\Avaliacao;
 use App\Models\AvaliacaoAlunoDocumento;
 use App\Models\AvaliacaoAlunoDocumentoHistorico;
-use App\Models\AvaliacaoRespostaFato;
 use App\Models\Pauta;
 use App\Models\Turma;
 use App\Models\User;
@@ -118,6 +117,7 @@ class AvaliacaoAlunoDocumentoService
                 }
 
                 $payload['pautas'][$chave] = array_filter([
+                    'pauta_id' => (int) $pautaId,
                     'alternativa_id' => $alternativaId,
                     'observacao' => $observacao,
                     'professor_id' => $professorId,
@@ -170,6 +170,7 @@ class AvaliacaoAlunoDocumentoService
                 }
 
                 $payload['pautas'][$chave] = array_filter([
+                    'pauta_id' => (int) $pautaId,
                     'alternativa_id' => $alternativaId,
                     'observacao' => array_key_exists('observacao', $dados)
                         ? $this->normalizarTexto($dados['observacao'] ?? null)
@@ -278,7 +279,7 @@ class AvaliacaoAlunoDocumentoService
                     'version' => (int) $documento->version + 1,
                 ])->save();
 
-                $this->recalcularMetricasEFatos($documento->fresh());
+                $this->recalcularMetricas($documento->fresh());
                 $this->dashboardMetricsService->forgetForAvaliacao((int) $documento->avaliacao_id);
                 $movidos++;
             }
@@ -287,7 +288,16 @@ class AvaliacaoAlunoDocumentoService
         });
     }
 
+    /**
+     * Recalcula métricas denormalizadas no próprio documento.
+     * Mantido como alias por compatibilidade com chamadas existentes.
+     */
     public function recalcularMetricasEFatos(AvaliacaoAlunoDocumento $documento): AvaliacaoAlunoDocumento
+    {
+        return $this->recalcularMetricas($documento);
+    }
+
+    public function recalcularMetricas(AvaliacaoAlunoDocumento $documento): AvaliacaoAlunoDocumento
     {
         $payload = $this->normalizarPayload($documento->payload);
         $pautas = $payload['pautas'];
@@ -298,6 +308,7 @@ class AvaliacaoAlunoDocumentoService
         $pautaIdsRespondidas = [];
         $datas = [];
         $observacoesPendentes = 0;
+        $pautasNormalizadas = [];
 
         $alternativaTemObservacao = [];
         $idsAlternativas = collect($pautas)
@@ -316,20 +327,17 @@ class AvaliacaoAlunoDocumentoService
                 ->all();
         }
 
-        $fatos = [];
-        $agora = now();
-
         foreach ($pautas as $pautaId => $resposta) {
             if (! is_array($resposta)) {
                 continue;
             }
 
+            $pautaIdInt = (int) $pautaId;
             $alternativaId = isset($resposta['alternativa_id']) ? (int) $resposta['alternativa_id'] : null;
             if (! $alternativaId) {
                 continue;
             }
 
-            $pautaIdInt = (int) $pautaId;
             $pautaIdsRespondidas[] = $pautaIdInt;
             $alternativaIds[] = $alternativaId;
 
@@ -354,27 +362,20 @@ class AvaliacaoAlunoDocumentoService
                 }
             }
 
-            $fatos[] = [
-                'documento_id' => (int) $documento->id,
-                'avaliacao_id' => (int) $documento->avaliacao_id,
-                'aluno_id' => (int) $documento->aluno_id,
-                'turma_id' => (int) $documento->turma_id,
-                'escola_id' => (int) $documento->escola_id,
+            // Garante pauta_id dentro do item para consultas JSON (JSON_TABLE) e leitura.
+            $pautasNormalizadas[(string) $pautaIdInt] = array_filter([
                 'pauta_id' => $pautaIdInt,
+                'alternativa_id' => $alternativaId,
+                'observacao' => $observacao,
+                'professor_id' => $professorId,
                 'componente_curricular_id' => isset($resposta['componente_curricular_id'])
                     ? (int) $resposta['componente_curricular_id']
                     : null,
-                'alternativa_id' => $alternativaId,
-                'professor_id' => $professorId,
-                'tem_observacao' => $temObservacao,
-                'observacao' => $observacao,
-                'respondido_em' => $respondidoEm
-                    ? (\Carbon\Carbon::parse($respondidoEm)->toDateTimeString())
-                    : null,
-                'created_at' => $agora,
-                'updated_at' => $agora,
-            ];
+                'respondido_em' => $respondidoEm ? (string) $respondidoEm : null,
+            ], fn ($value) => $value !== null && $value !== '');
         }
+
+        $payload['pautas'] = $pautasNormalizadas;
 
         foreach ($infos as $info) {
             if (! is_array($info)) {
@@ -425,14 +426,6 @@ class AvaliacaoAlunoDocumentoService
             'primeira_resposta_em' => $primeira,
             'ultima_resposta_em' => $ultima,
         ])->save();
-
-        AvaliacaoRespostaFato::query()->where('documento_id', (int) $documento->id)->delete();
-
-        if ($fatos !== []) {
-            foreach (array_chunk($fatos, 200) as $chunk) {
-                AvaliacaoRespostaFato::query()->insert($chunk);
-            }
-        }
 
         return $documento->fresh();
     }
@@ -506,7 +499,7 @@ class AvaliacaoAlunoDocumentoService
             'version' => (int) $documento->version + 1,
         ])->save();
 
-        $documento = $this->recalcularMetricasEFatos($documento->fresh());
+        $documento = $this->recalcularMetricas($documento->fresh());
         $this->dashboardMetricsService->forgetForAvaliacao((int) $documento->avaliacao_id);
 
         return $documento;
@@ -548,13 +541,11 @@ class AvaliacaoAlunoDocumentoService
         $scoreOrigem = (int) $vindoDaOrigem->total_pautas_respondidas + (int) $vindoDaOrigem->total_infos_complementares;
 
         if ($scoreOrigem >= $scoreExistente) {
-            AvaliacaoRespostaFato::query()->where('documento_id', (int) $existenteDestino->id)->delete();
             $existenteDestino->delete();
 
             return $vindoDaOrigem;
         }
 
-        AvaliacaoRespostaFato::query()->where('documento_id', (int) $vindoDaOrigem->id)->delete();
         $vindoDaOrigem->delete();
 
         return $existenteDestino;
@@ -581,7 +572,7 @@ class AvaliacaoAlunoDocumentoService
 
         if ($dirty) {
             $documento->save();
-            $this->recalcularMetricasEFatos($documento->fresh());
+            $this->recalcularMetricas($documento->fresh());
         }
 
         return $documento->fresh() ?? $documento;

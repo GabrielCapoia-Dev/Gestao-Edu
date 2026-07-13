@@ -7,7 +7,6 @@ use App\Models\Alternativa;
 use App\Models\Avaliacao;
 use App\Models\AvaliacaoExportacao;
 use App\Models\AvaliacaoAlunoDocumento;
-use App\Models\AvaliacaoRespostaFato;
 use App\Models\Pauta;
 use App\Models\Professor;
 use App\Models\Servidor;
@@ -137,7 +136,7 @@ class AvaliacaoDocumentoExportService
                 $alunos = $turmaDados['alunos'];
                 /** @var Collection<int, Pauta> $pautas */
                 $pautas = $turmaDados['pautas'];
-                /** @var Collection<string, AvaliacaoRespostaFato> $respostas */
+                /** @var Collection<string, object> $respostas */
                 $respostas = $turmaDados['respostas'];
                 /** @var Collection<string, object> $informacoesComplementares */
                 $informacoesComplementares = $turmaDados['informacoes_complementares'];
@@ -520,20 +519,24 @@ class AvaliacaoDocumentoExportService
             ->where('aluno_id', (int) $aluno->id)
             ->first();
 
-        $respostasFatos = AvaliacaoRespostaFato::query()
-            ->where('avaliacao_id', (int) $avaliacao->id)
-            ->where('aluno_id', (int) $aluno->id)
-            ->whereIn('pauta_id', $pautas->pluck('id')->map(fn ($id) => (int) $id)->all())
-            ->with(['alternativa:id,nome', 'professor:id,nome'])
-            ->get()
-            ->keyBy('pauta_id');
-
+        $pautasPayload = $documento?->pautasPayload() ?? [];
         $infosPayload = $documento?->informacoesComplementaresPayload() ?? [];
-        $alunoId = (int) $aluno->id;
+
+        $alternativaIds = collect($pautasPayload)
+            ->pluck('alternativa_id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        $nomesAlternativas = $alternativaIds === []
+            ? collect()
+            : Alternativa::query()->whereIn('id', $alternativaIds)->pluck('nome', 'id');
 
         $componentes = $pautas
             ->groupBy(fn (Pauta $pauta): string => $pauta->componente_curricular_id ? (string) $pauta->componente_curricular_id : 'geral')
-            ->map(function (Collection $pautasDoComponente) use ($turma, $respostasFatos, $infosPayload): array {
+            ->map(function (Collection $pautasDoComponente) use ($turma, $pautasPayload, $infosPayload, $nomesAlternativas): array {
                 /** @var Pauta $primeiraPauta */
                 $primeiraPauta = $pautasDoComponente->first();
                 $componenteId = $primeiraPauta->componente_curricular_id ? (int) $primeiraPauta->componente_curricular_id : null;
@@ -541,20 +544,20 @@ class AvaliacaoDocumentoExportService
 
                 return [
                     'nome' => $primeiraPauta->componente?->nome ?? 'Geral',
-                    'professor' => $this->professorDoComponente($turma, $componenteId, $pautasDoComponente, $respostasFatos),
+                    'professor' => $this->professorDoComponente($turma, $componenteId, $pautasDoComponente, collect($pautasPayload)),
                     'informacoes_complementares' => $textoInfo,
                     'mostrar_informacoes_complementares' => $textoInfo !== '',
                     'pautas' => $pautasDoComponente
                         ->values()
-                        ->map(function (Pauta $pauta, int $index) use ($respostasFatos): array {
-                            /** @var AvaliacaoRespostaFato|null $resposta */
-                            $resposta = $respostasFatos->get((int) $pauta->id);
+                        ->map(function (Pauta $pauta, int $index) use ($pautasPayload, $nomesAlternativas): array {
+                            $resposta = $pautasPayload[(string) (int) $pauta->id] ?? null;
+                            $alternativaId = (int) ($resposta['alternativa_id'] ?? 0);
 
                             return [
                                 'ordem' => $index + 1,
                                 'texto' => (string) $pauta->texto,
-                                'resultado' => (string) ($resposta?->alternativa?->nome ?? 'Não Avaliado'),
-                                'observacao' => (string) ($resposta?->observacao ?? ''),
+                                'resultado' => (string) ($nomesAlternativas[$alternativaId] ?? 'Não Avaliado'),
+                                'observacao' => (string) ($resposta['observacao'] ?? ''),
                             ];
                         })
                         ->all(),
@@ -588,9 +591,9 @@ class AvaliacaoDocumentoExportService
 
     /**
      * @param  Collection<int, Pauta>  $pautas
-     * @param  Collection<int, AvaliacaoRespostaFato>  $respostas
+     * @param  Collection<string, array>  $pautasPayload
      */
-    private function professorDoComponente(Turma $turma, ?int $componenteId, Collection $pautas, Collection $respostas): string
+    private function professorDoComponente(Turma $turma, ?int $componenteId, Collection $pautas, Collection $pautasPayload): string
     {
         if ($componenteId) {
             $vinculo = TurmaComponenteProfessor::query()
@@ -604,15 +607,19 @@ class AvaliacaoDocumentoExportService
             }
         }
 
+        $professorIds = [];
         foreach ($pautas as $pauta) {
-            $professor = $respostas->get((int) $pauta->id)?->professor;
-
-            if ($professor?->nome) {
-                return (string) $professor->nome;
+            $item = $pautasPayload->get((string) (int) $pauta->id) ?? $pautasPayload[(string) (int) $pauta->id] ?? null;
+            if (is_array($item) && ! empty($item['professor_id'])) {
+                $professorIds[] = (int) $item['professor_id'];
             }
         }
 
-        return '';
+        if ($professorIds === []) {
+            return '';
+        }
+
+        return (string) (Professor::query()->whereKey($professorIds[0])->value('nome') ?? '');
     }
 
     /**
@@ -733,22 +740,35 @@ class AvaliacaoDocumentoExportService
                     return null;
                 }
 
-                $respostas = AvaliacaoRespostaFato::query()
-                    ->where('avaliacao_id', (int) $avaliacao->id)
-                    ->whereIn('pauta_id', $pautas->pluck('id')->map(fn ($id) => (int) $id)->all())
-                    ->whereIn('aluno_id', $alunos->pluck('id')->map(fn ($id) => (int) $id)->all())
-                    ->with(['alternativa:id,nome'])
-                    ->get()
-                    ->keyBy(fn (AvaliacaoRespostaFato $resposta): string => $resposta->pauta_id.'-'.$resposta->aluno_id);
-
                 $documentos = AvaliacaoAlunoDocumento::query()
                     ->where('avaliacao_id', (int) $avaliacao->id)
                     ->whereIn('aluno_id', $alunos->pluck('id')->map(fn ($id) => (int) $id)->all())
                     ->get()
                     ->keyBy(fn (AvaliacaoAlunoDocumento $doc) => (int) $doc->aluno_id);
 
+                $respostas = collect();
                 $informacoesComplementares = collect();
+                $alternativaIds = [];
+
                 foreach ($documentos as $alunoId => $documento) {
+                    foreach ($documento->pautasPayload() as $pautaId => $item) {
+                        if (! is_array($item) || empty($item['alternativa_id'])) {
+                            continue;
+                        }
+
+                        $alternativaIds[] = (int) $item['alternativa_id'];
+                        $respostas->put($pautaId.'-'.$alunoId, (object) [
+                            'pauta_id' => (int) $pautaId,
+                            'aluno_id' => (int) $alunoId,
+                            'alternativa_id' => (int) $item['alternativa_id'],
+                            'observacao' => $item['observacao'] ?? null,
+                            'professor_id' => $item['professor_id'] ?? null,
+                            'respondido_em' => isset($item['respondido_em'])
+                                ? \Carbon\Carbon::parse($item['respondido_em'])
+                                : null,
+                        ]);
+                    }
+
                     foreach ($documento->informacoesComplementaresPayload() as $componenteId => $info) {
                         $informacoesComplementares->put(
                             ((int) $componenteId).'-'.(int) $alunoId,
@@ -760,6 +780,19 @@ class AvaliacaoDocumentoExportService
                         );
                     }
                 }
+
+                $nomesAlternativas = $alternativaIds === []
+                    ? collect()
+                    : Alternativa::query()->whereIn('id', array_unique($alternativaIds))->pluck('nome', 'id');
+
+                $respostas = $respostas->map(function (object $resposta) use ($nomesAlternativas): object {
+                    $resposta->alternativa = (object) [
+                        'id' => (int) $resposta->alternativa_id,
+                        'nome' => (string) ($nomesAlternativas[(int) $resposta->alternativa_id] ?? ''),
+                    ];
+
+                    return $resposta;
+                });
 
                 return [
                     'turma' => $turma,

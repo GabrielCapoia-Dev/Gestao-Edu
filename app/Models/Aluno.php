@@ -228,8 +228,4 @@ class Aluno extends Model
         return $this->hasMany(AvaliacaoAlunoDocumento::class, 'aluno_id');
     }
 
-    public function avaliacaoRespostaFatos()
-    {
-        return $this->hasMany(AvaliacaoRespostaFato::class, 'aluno_id');
-    }
 }

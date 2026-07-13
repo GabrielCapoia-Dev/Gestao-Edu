@@ -28,12 +28,6 @@ return new class extends Migration
             );
         }
 
-        if (! Schema::hasTable(AvaliacaoDocumentosMigrator::FATOS)) {
-            throw new \RuntimeException(
-                'Cutover de avaliacoes abortado: '.AvaliacaoDocumentosMigrator::FATOS.' ausente.'
-            );
-        }
-
         // Residual: se 000002 rodou parcial ou legado ainda tem dados, reprocessa.
         if ($migrator->hasLegacyTables()) {
             $stats = $migrator->migrateFromLegacy();
@@ -41,14 +35,6 @@ return new class extends Migration
             $migrator->assertMigracaoConsistente();
             $migrator->dropLegacyTables();
             Log::info('avaliacao_documentos.legacy_dropped', $migrator->stats());
-        }
-
-        // Garante fatos recalculados mesmo sem legado (ambientes que já droparam).
-        if ((int) DB::table(AvaliacaoDocumentosMigrator::DOCUMENTOS)->count() > 0
-            && (int) DB::table(AvaliacaoDocumentosMigrator::FATOS)->count() === 0
-        ) {
-            $migrator->migrateFromLegacy();
-            $migrator->assertMigracaoConsistente();
         }
     }
 

@@ -517,7 +517,7 @@ class AvaliacaoProfessorPageTest extends TestCase
             ->set('avaliacaoEmMassaGlobal', $alternativaSim->id)
             ->call('aplicarEmMassaNaSerie');
 
-        $this->assertDatabaseHas('avaliacao_resposta_fatos', [
+        $this->assertDatabaseHas('avaliacao_aluno_documentos', [
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
             'turma_id' => $turmaA->id,
@@ -526,7 +526,7 @@ class AvaliacaoProfessorPageTest extends TestCase
             'observacao' => $observacaoLimitada,
         ]);
 
-        $this->assertDatabaseHas('avaliacao_resposta_fatos', [
+        $this->assertDatabaseHas('avaliacao_aluno_documentos', [
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
             'turma_id' => $turmaA->id,
@@ -534,7 +534,7 @@ class AvaliacaoProfessorPageTest extends TestCase
             'alternativa_id' => $alternativaSim->id,
         ]);
 
-        $this->assertDatabaseHas('avaliacao_resposta_fatos', [
+        $this->assertDatabaseHas('avaliacao_aluno_documentos', [
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
             'turma_id' => $turmaA->id,
@@ -542,7 +542,7 @@ class AvaliacaoProfessorPageTest extends TestCase
             'alternativa_id' => $alternativaSim->id,
         ]);
 
-        $this->assertDatabaseMissing('avaliacao_resposta_fatos', [
+        $this->assertDatabaseMissing('avaliacao_aluno_documentos', [
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
             'turma_id' => $turmaB->id,
@@ -641,7 +641,7 @@ class AvaliacaoProfessorPageTest extends TestCase
             ->set("respostas.{$pauta->id}.{$aluno->id}.observacao", 'Observação informada pelo professor.')
             ->call('salvarRespostas');
 
-        $this->assertDatabaseHas('avaliacao_resposta_fatos', [
+        $this->assertDatabaseHas('avaliacao_aluno_documentos', [
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
             'turma_id' => $turma->id,
@@ -651,7 +651,7 @@ class AvaliacaoProfessorPageTest extends TestCase
             'observacao' => 'Observação informada pelo professor.',
         ]);
 
-        $this->assertDatabaseMissing('avaliacao_resposta_fatos', [
+        $this->assertDatabaseMissing('avaliacao_aluno_documentos', [
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
             'turma_id' => $turma->id,

@@ -82,10 +82,6 @@ class Alternativa extends Model
         return $this->belongsTo(TipoAvaliacao::class, 'tipo_avaliacao_id');
     }
 
-    public function respostaFatos(): HasMany
-    {
-        return $this->hasMany(AvaliacaoRespostaFato::class, 'alternativa_id');
-    }
 
     public function avaliacoesComOverride(): BelongsToMany
     {

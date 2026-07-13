@@ -91,7 +91,7 @@ class ProfessorMovimentacaoServiceTest extends TestCase
             'tem_professor' => false,
         ]);
 
-        $this->assertDatabaseHas('avaliacao_resposta_fatos', [
+        $this->assertDatabaseHas('avaliacao_aluno_documentos', [
             'avaliacao_id' => $cenario['avaliacao']->id,
             'pauta_id' => $cenario['pauta']->id,
             'turma_id' => $cenario['turma']->id,
@@ -138,7 +138,7 @@ class ProfessorMovimentacaoServiceTest extends TestCase
             'tem_professor' => true,
         ]);
 
-        $this->assertDatabaseHas('avaliacao_resposta_fatos', [
+        $this->assertDatabaseHas('avaliacao_aluno_documentos', [
             'avaliacao_id' => $cenario['avaliacao']->id,
             'professor_id' => $cenario['professor']->id,
         ]);
@@ -191,7 +191,7 @@ class ProfessorMovimentacaoServiceTest extends TestCase
 
         $this->assertSame([$cenario['turma']->id], $turmasVisiveis);
 
-        $this->assertDatabaseHas('avaliacao_resposta_fatos', [
+        $this->assertDatabaseHas('avaliacao_aluno_documentos', [
             'avaliacao_id' => $cenario['avaliacao']->id,
             'aluno_id' => $cenario['aluno']->id,
             'professor_id' => $cenario['professor']->id,

@@ -88,10 +88,6 @@ class AvaliacaoAlunoDocumento extends Model
         return $this->belongsTo(Serie::class, 'serie_id');
     }
 
-    public function fatos(): HasMany
-    {
-        return $this->hasMany(AvaliacaoRespostaFato::class, 'documento_id');
-    }
 
     public function historicos(): HasMany
     {

@@ -5,7 +5,6 @@ namespace App\Support\Migrations;
 use App\Models\Aluno;
 use App\Models\AvaliacaoAlunoDocumento;
 use App\Models\AvaliacaoAlunoDocumentoHistorico;
-use App\Models\AvaliacaoRespostaFato;
 use App\Services\Avaliacoes\AvaliacaoAlunoDocumentoService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +14,7 @@ use RuntimeException;
 use Throwable;
 
 /**
- * Migração segura legado (avaliacao_respostas / infos) → documentos + fatos.
+ * Migração segura legado (avaliacao_respostas / infos) → documentos (payload).
  * Idempotente: pode rodar mais de uma vez sem duplicar dono de ficha.
  */
 class AvaliacaoDocumentosMigrator
@@ -26,12 +25,10 @@ class AvaliacaoDocumentosMigrator
 
     public const DOCUMENTOS = 'avaliacao_aluno_documentos';
 
-    public const FATOS = 'avaliacao_resposta_fatos';
-
     public const HISTORICO = 'avaliacao_aluno_documentos_historico';
 
     /**
-     * @return array{documentos: int, fatos: int, legado_pares: int, legado_respostas: int, historicos: int}
+     * @return array{documentos: int, respondidas_payload: int, legado_pares: int, legado_respostas: int, historicos: int}
      */
     public function migrateFromLegacy(): array
     {
@@ -39,12 +36,18 @@ class AvaliacaoDocumentosMigrator
             throw new RuntimeException('Tabela '.self::DOCUMENTOS.' nao existe. Rode a migration de criacao antes.');
         }
 
-        if ($this->hasLegacyTables()) {
-            $this->migrarRespostasParaDocumentos();
-            $this->mesclarInformacoesComplementares();
-            $this->consolidarDocumentosDeAlunosInativos();
+        // Se já há documentos e não há legado, só recalcula métricas (boot rápido).
+        if (! $this->hasLegacyTables()) {
+            if ((int) DB::table(self::DOCUMENTOS)->count() > 0) {
+                $this->recalcularTodosDocumentos();
+            }
+
+            return $this->stats();
         }
 
+        $this->migrarRespostasParaDocumentos();
+        $this->mesclarInformacoesComplementares();
+        $this->consolidarDocumentosDeAlunosInativos();
         $this->recalcularTodosDocumentos();
 
         return $this->stats();
@@ -57,7 +60,7 @@ class AvaliacaoDocumentosMigrator
      */
     public function assertMigracaoConsistente(): void
     {
-        if (! Schema::hasTable(self::DOCUMENTOS) || ! Schema::hasTable(self::FATOS)) {
+        if (! Schema::hasTable(self::DOCUMENTOS)) {
             throw new RuntimeException('Estrutura de documentos avaliativos incompleta.');
         }
 
@@ -68,33 +71,24 @@ class AvaliacaoDocumentosMigrator
         }
 
         $legadoRespostas = $stats['legado_respostas'];
-        $fatos = $stats['fatos'];
         $legadoPares = $stats['legado_pares'];
         $documentos = $stats['documentos'];
+        $respondidas = $stats['respondidas_payload'];
 
-        // Sem respostas legadas respondidas: ok dropar.
         if ($legadoRespostas === 0 && $legadoPares === 0) {
             return;
         }
 
-        if ($legadoRespostas > 0 && $fatos === 0) {
-            throw new RuntimeException(
-                'Migracao de avaliacoes incompleta: ha respostas legadas com alternativa, mas zero fatos. Abortando drop.'
-            );
-        }
-
-        // Aceita pequena perda por consolidacao de alunos inativos (mesmo CGM).
         if ($legadoPares > 0 && $documentos === 0) {
             throw new RuntimeException(
                 'Migracao de avaliacoes incompleta: ha pares legados, mas zero documentos. Abortando drop.'
             );
         }
 
-        // Fatos nao podem ser absurdamente menores que respostas (tolerancia por consolidacao).
-        if ($legadoRespostas > 100 && $fatos < (int) floor($legadoRespostas * 0.90)) {
+        if ($legadoRespostas > 100 && $respondidas < (int) floor($legadoRespostas * 0.90)) {
             throw new RuntimeException(sprintf(
-                'Migracao de avaliacoes suspeita: fatos=%d vs respostas_legadas=%d (<90%%). Abortando drop.',
-                $fatos,
+                'Migracao de avaliacoes suspeita: respondidas_no_payload=%d vs respostas_legadas=%d (<90%%). Abortando drop.',
+                $respondidas,
                 $legadoRespostas
             ));
         }
@@ -116,15 +110,15 @@ class AvaliacaoDocumentosMigrator
     }
 
     /**
-     * @return array{documentos: int, fatos: int, legado_pares: int, legado_respostas: int, historicos: int}
+     * @return array{documentos: int, respondidas_payload: int, legado_pares: int, legado_respostas: int, historicos: int}
      */
     public function stats(): array
     {
         $documentos = Schema::hasTable(self::DOCUMENTOS)
             ? (int) DB::table(self::DOCUMENTOS)->count()
             : 0;
-        $fatos = Schema::hasTable(self::FATOS)
-            ? (int) DB::table(self::FATOS)->count()
+        $respondidasPayload = Schema::hasTable(self::DOCUMENTOS)
+            ? (int) DB::table(self::DOCUMENTOS)->sum('total_pautas_respondidas')
             : 0;
         $historicos = Schema::hasTable(self::HISTORICO)
             ? (int) DB::table(self::HISTORICO)->count()
@@ -147,7 +141,7 @@ class AvaliacaoDocumentosMigrator
 
         return [
             'documentos' => $documentos,
-            'fatos' => $fatos,
+            'respondidas_payload' => $respondidasPayload,
             'legado_pares' => $legadoPares,
             'legado_respostas' => $legadoRespostas,
             'historicos' => $historicos,
@@ -414,7 +408,7 @@ class AvaliacaoDocumentosMigrator
             ->orderBy('id')
             ->chunkById(100, function (Collection $documentos) use ($service): void {
                 foreach ($documentos as $documento) {
-                    $service->recalcularMetricasEFatos($documento);
+                    $service->recalcularMetricas($documento);
                 }
             });
     }

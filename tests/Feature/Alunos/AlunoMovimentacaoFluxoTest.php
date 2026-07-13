@@ -11,7 +11,6 @@ use App\Models\Alternativa;
 use App\Models\Avaliacao;
 use App\Models\AvaliacaoAlunoDocumento;
 use App\Models\AvaliacaoAlunoDocumentoHistorico;
-use App\Models\AvaliacaoRespostaFato;
 use App\Services\Avaliacoes\AvaliacaoAlunoDocumentoService;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
@@ -813,19 +812,17 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             'status' => Aluno::STATUS_TRANSFERIDO,
         ]);
 
-        $this->assertDatabaseHas('avaliacao_resposta_fatos', [
+        $this->assertDatabaseHas('avaliacao_aluno_documentos', [
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
             'turma_id' => $turmaOrigem->id,
             'aluno_id' => $aluno->id,
             'alternativa_id' => $alternativa->id,
         ]);
-        $fato = AvaliacaoRespostaFato::query()
-            ->where('avaliacao_id', $avaliacao->id)
-            ->where('aluno_id', $aluno->id)
-            ->where('pauta_id', $pauta->id)
-            ->first();
-        $this->assertTrue($fato === null || blank($fato->observacao));
+        $doc = AvaliacaoAlunoDocumento::query()->where('avaliacao_id', $avaliacao->id)->where('aluno_id', $aluno->id)->first();
+        $this->assertNotNull($doc);
+        $resp = $doc->respostaDaPauta((int) $pauta->id);
+        $this->assertTrue($resp === null || blank($resp['observacao'] ?? null));
     }
 
     public function test_parecer_transferencia_filtra_por_escola_serie_turma_e_pendencia_sem_professor(): void
@@ -1161,7 +1158,7 @@ class AlunoMovimentacaoFluxoTest extends TestCase
             'turma_id' => $turmaId,
         ]);
 
-        $this->assertDatabaseHas('avaliacao_resposta_fatos', [
+        $this->assertDatabaseHas('avaliacao_aluno_documentos', [
             'avaliacao_id' => $avaliacaoId,
             'aluno_id' => $alunoId,
             'turma_id' => $turmaId,

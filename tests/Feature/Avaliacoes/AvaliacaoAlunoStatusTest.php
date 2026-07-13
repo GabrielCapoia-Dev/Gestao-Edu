@@ -6,7 +6,6 @@ use App\Livewire\Avaliacoes\AvaliacaoTurmaWorkspace;
 use App\Models\Aluno;
 use App\Models\Alternativa;
 use App\Models\Avaliacao;
-use App\Models\AvaliacaoRespostaFato;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
 use App\Models\Pauta;
@@ -21,6 +20,7 @@ use App\Services\Avaliacoes\AvaliacaoAlunoDocumentoService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
+use App\Models\AvaliacaoAlunoDocumento;
 use Tests\TestCase;
 
 class AvaliacaoAlunoStatusTest extends TestCase
@@ -71,12 +71,12 @@ class AvaliacaoAlunoStatusTest extends TestCase
 
         // Resposta já preenchida do regular permanece (massa ignora preenchidos sem observação pendente? - depende da regra de massa)
         // Pendente não recebe resposta.
-        $this->assertDatabaseMissing('avaliacao_resposta_fatos', [
+        $this->assertDatabaseMissing('avaliacao_aluno_documentos', [
             'avaliacao_id' => $avaliacao->id,
             'aluno_id' => $alunoPendente->id,
             'alternativa_id' => $alternativaMassa->id,
         ]);
-        $this->assertDatabaseMissing('avaliacao_resposta_fatos', [
+        $this->assertDatabaseMissing('avaliacao_aluno_documentos', [
             'avaliacao_id' => $avaliacao->id,
             'aluno_id' => $alunoTransferido->id,
         ]);
@@ -116,7 +116,7 @@ class AvaliacaoAlunoStatusTest extends TestCase
             ->set("respostas.{$pauta->id}.{$alunoRegular->id}.alternativa_id", $alternativaOriginal->id)
             ->call('salvarRespostas');
 
-        $this->assertDatabaseMissing('avaliacao_resposta_fatos', [
+        $this->assertDatabaseMissing('avaliacao_aluno_documentos', [
             'avaliacao_id' => $avaliacao->id,
             'aluno_id' => $alunoPendente->id,
         ]);
@@ -124,7 +124,7 @@ class AvaliacaoAlunoStatusTest extends TestCase
             'avaliacao_id' => $avaliacao->id,
             'aluno_id' => $alunoPendente->id,
         ]);
-        $this->assertDatabaseHas('avaliacao_resposta_fatos', [
+        $this->assertDatabaseHas('avaliacao_aluno_documentos', [
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
             'turma_id' => $turma->id,
@@ -170,7 +170,7 @@ class AvaliacaoAlunoStatusTest extends TestCase
             ->call('alternarPauta', $turmaContraTurno->id, $pauta->id)
             ->assertDontSee('Aluno Principal Contra Turno');
 
-        $this->assertDatabaseMissing('avaliacao_resposta_fatos', [
+        $this->assertDatabaseMissing('avaliacao_aluno_documentos', [
             'avaliacao_id' => $avaliacao->id,
             'turma_id' => $turmaContraTurno->id,
         ]);

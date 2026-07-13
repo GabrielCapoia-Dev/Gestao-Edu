@@ -27,6 +27,7 @@ use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
 use Tests\Concerns\CreatesAvaliacaoDocumentos;
+use App\Models\AvaliacaoAlunoDocumento;
 use Tests\TestCase;
 
 class DashboardAvaliacoesPageTest extends TestCase
@@ -652,7 +653,7 @@ class DashboardAvaliacoesPageTest extends TestCase
             ->set("respostas.{$pauta->id}.{$alunoUm->id}.alternativa_id", $alternativa->id)
             ->set("respostas.{$pauta->id}.{$alunoDois->id}.alternativa_id", $alternativa->id);
 
-        $this->assertDatabaseHas('avaliacao_resposta_fatos', [
+        $this->assertDatabaseHas('avaliacao_aluno_documentos', [
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
             'turma_id' => $turma->id,
@@ -661,7 +662,7 @@ class DashboardAvaliacoesPageTest extends TestCase
             'alternativa_id' => $alternativa->id,
         ]);
 
-        $this->assertDatabaseHas('avaliacao_resposta_fatos', [
+        $this->assertDatabaseHas('avaliacao_aluno_documentos', [
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pauta->id,
             'turma_id' => $turma->id,
@@ -776,7 +777,7 @@ class DashboardAvaliacoesPageTest extends TestCase
             ->set('avaliacaoEmMassaGlobal', $alternativa->id)
             ->call('aplicarEmMassaNaSerie');
 
-        $this->assertDatabaseHas('avaliacao_resposta_fatos', [
+        $this->assertDatabaseHas('avaliacao_aluno_documentos', [
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pautaUm->id,
             'turma_id' => $turmaPermitida->id,
@@ -784,7 +785,7 @@ class DashboardAvaliacoesPageTest extends TestCase
             'professor_id' => $professor->id,
             'alternativa_id' => $alternativa->id,
         ]);
-        $this->assertDatabaseMissing('avaliacao_resposta_fatos', [
+        $this->assertDatabaseMissing('avaliacao_aluno_documentos', [
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pautaDois->id,
             'turma_id' => $turmaPermitida->id,
@@ -799,7 +800,7 @@ class DashboardAvaliacoesPageTest extends TestCase
             ->set('avaliacaoEmMassaGlobal', $alternativa->id)
             ->call('aplicarEmMassaNaSerie');
 
-        $this->assertDatabaseHas('avaliacao_resposta_fatos', [
+        $this->assertDatabaseHas('avaliacao_aluno_documentos', [
             'avaliacao_id' => $avaliacao->id,
             'pauta_id' => $pautaDois->id,
             'turma_id' => $turmaPermitida->id,

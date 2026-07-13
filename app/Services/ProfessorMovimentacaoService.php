@@ -123,24 +123,17 @@ class ProfessorMovimentacaoService
     {
         return (int) DB::query()
             ->fromSub($this->preenchimentosEsperadosQuery($professor), 'esperados')
-            ->leftJoin('avaliacao_resposta_fatos as ar', function ($join): void {
-                $join->on('ar.avaliacao_id', '=', 'esperados.avaliacao_id')
-                    ->on('ar.turma_id', '=', 'esperados.turma_id')
-                    ->on('ar.pauta_id', '=', 'esperados.pauta_id')
-                    ->on('ar.aluno_id', '=', 'esperados.aluno_id');
+            ->leftJoin('avaliacao_aluno_documentos as d', function ($join): void {
+                $join->on('d.avaliacao_id', '=', 'esperados.avaliacao_id')
+                    ->on('d.aluno_id', '=', 'esperados.aluno_id');
             })
-            ->leftJoin('alternativas as alt', 'alt.id', '=', 'ar.alternativa_id')
             ->where(function (QueryBuilder $query): void {
                 $query
-                    ->whereNull('ar.id')
-                    ->orWhereNull('ar.alternativa_id')
-                    ->orWhereNull('alt.id')
-                    ->orWhere('alt.status', false)
-                    ->orWhere(function (QueryBuilder $observacoes): void {
-                        $observacoes
-                            ->where('alt.tem_observacao', true)
-                            ->whereRaw("TRIM(COALESCE(ar.observacao, '')) = ''");
-                    });
+                    ->whereNull('d.id')
+                    ->orWhereRaw(
+                        'NOT JSON_CONTAINS(COALESCE(d.pauta_ids_respondidas, JSON_ARRAY()), CAST(esperados.pauta_id AS JSON), \'$\')'
+                    )
+                    ->orWhere('d.observacoes_obrigatorias_pendentes', '>', 0);
             })
             ->count();
     }

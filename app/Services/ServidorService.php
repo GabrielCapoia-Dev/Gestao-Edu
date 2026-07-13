@@ -365,15 +365,8 @@ class ServidorService
                 ]);
         }
 
-        // Avaliação fica no aluno; professor é só referência contextual nos fatos.
-        if (Schema::hasTable('avaliacao_resposta_fatos') && Schema::hasColumn('avaliacao_resposta_fatos', 'professor_id')) {
-            DB::table('avaliacao_resposta_fatos')
-                ->whereIn('professor_id', $professorIds)
-                ->update([
-                    'professor_id' => null,
-                    'updated_at' => now(),
-                ]);
-        }
+        // Avaliação fica no aluno (payload JSON). Professor no documento é só contexto
+        // denormalizado em professor_ids; não há tabela linha-por-resposta para limpar.
     }
 
     public function excluirPessoa(Servidor $pessoa): void

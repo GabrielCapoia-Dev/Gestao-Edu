@@ -1377,12 +1377,12 @@ class AlunoService
                 ->whereNotExists(function ($respostas): void {
                     $respostas
                         ->selectRaw('1')
-                        ->from('avaliacao_resposta_fatos as ar')
-                        ->whereColumn('ar.avaliacao_id', 'at.avaliacao_id')
-                        ->whereColumn('ar.pauta_id', 'p.id')
-                        ->whereColumn('ar.turma_id', 'at.turma_id')
-                        ->whereColumn('ar.aluno_id', 'alunos.id')
-                        ->whereNotNull('ar.alternativa_id');
+                        ->from('avaliacao_aluno_documentos as d')
+                        ->whereColumn('d.avaliacao_id', 'at.avaliacao_id')
+                        ->whereColumn('d.aluno_id', 'alunos.id')
+                        ->whereRaw(
+                            'JSON_CONTAINS(COALESCE(d.pauta_ids_respondidas, JSON_ARRAY()), CAST(p.id AS JSON), \'$\')'
+                        );
                 });
         });
     }

@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use App\Models\Alternativa;
 use App\Models\Aluno;
+use App\Models\AvaliacaoAlunoDocumento;
 use App\Models\TurmaComponenteProfessor;
 use App\Models\User;
 use App\Notifications\SistemaNotification;
@@ -214,16 +216,9 @@ class AlunoTransferenciaPendenteService
         $aluno->loadMissing('turma');
         $serieId = (int) ($aluno->turma?->id_serie ?? 0);
 
-        return DB::table('avaliacao_turma as at')
+        $pautasEsperadas = DB::table('avaliacao_turma as at')
             ->join('avaliacao_pauta as ap', 'ap.avaliacao_id', '=', 'at.avaliacao_id')
             ->join('pautas as p', 'p.id', '=', 'ap.pauta_id')
-            ->leftJoin('avaliacao_resposta_fatos as ar', function ($join) use ($aluno): void {
-                $join
-                    ->on('ar.avaliacao_id', '=', 'at.avaliacao_id')
-                    ->on('ar.pauta_id', '=', 'p.id')
-                    ->where('ar.aluno_id', (int) $aluno->id);
-            })
-            ->leftJoin('alternativas as alt', 'alt.id', '=', 'ar.alternativa_id')
             ->where('at.turma_id', (int) $aluno->id_turma)
             ->where('p.status', true)
             ->whereIn('p.componente_curricular_id', $componentesIds)
@@ -234,17 +229,54 @@ class AlunoTransferenciaPendenteService
                     $series->orWhere('p.serie_id', $serieId);
                 }
             })
-            ->where(function ($pendencias): void {
-                $pendencias
-                    ->whereNull('ar.id')
-                    ->orWhereNull('ar.alternativa_id')
-                    ->orWhere(function ($observacoesObrigatorias): void {
-                        $observacoesObrigatorias
-                            ->where('alt.tem_observacao', true)
-                            ->whereRaw("TRIM(COALESCE(ar.observacao, '')) = ''");
-                    });
-            })
-            ->exists();
+            ->get(['at.avaliacao_id', 'p.id as pauta_id']);
+
+        if ($pautasEsperadas->isEmpty()) {
+            return false;
+        }
+
+        $avaliacaoIds = $pautasEsperadas->pluck('avaliacao_id')->map(fn ($id) => (int) $id)->unique()->values()->all();
+        $documentos = AvaliacaoAlunoDocumento::query()
+            ->where('aluno_id', (int) $aluno->id)
+            ->whereIn('avaliacao_id', $avaliacaoIds)
+            ->get()
+            ->keyBy(fn (AvaliacaoAlunoDocumento $doc) => (int) $doc->avaliacao_id);
+
+        $alternativaIds = [];
+        foreach ($documentos as $documento) {
+            foreach ($documento->pautasPayload() as $item) {
+                if (is_array($item) && ! empty($item['alternativa_id'])) {
+                    $alternativaIds[] = (int) $item['alternativa_id'];
+                }
+            }
+        }
+
+        $temObservacaoPorAlt = $alternativaIds === []
+            ? []
+            : Alternativa::query()
+                ->whereIn('id', array_unique($alternativaIds))
+                ->pluck('tem_observacao', 'id')
+                ->map(fn ($v) => (bool) $v)
+                ->all();
+
+        foreach ($pautasEsperadas as $pauta) {
+            $avaliacaoId = (int) $pauta->avaliacao_id;
+            $pautaId = (int) $pauta->pauta_id;
+            $documento = $documentos->get($avaliacaoId);
+            $resposta = $documento?->respostaDaPauta($pautaId);
+            $alternativaId = (int) ($resposta['alternativa_id'] ?? 0);
+
+            if ($alternativaId <= 0) {
+                return true;
+            }
+
+            $observacao = trim((string) ($resposta['observacao'] ?? ''));
+            if (($temObservacaoPorAlt[$alternativaId] ?? false) && $observacao === '') {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function professorIdsDoUsuario(User $user): array
