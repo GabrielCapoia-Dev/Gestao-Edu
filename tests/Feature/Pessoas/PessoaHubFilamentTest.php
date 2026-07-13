@@ -84,7 +84,7 @@ class PessoaHubFilamentTest extends TestCase
         $this->assertSame('Nova pessoa', $actions[0]->getLabel());
     }
 
-    public function test_create_slideover_exibe_campos_de_servidor_e_acesso(): void
+    public function test_create_slideover_exibe_campos_de_servidor_sem_acesso(): void
     {
         $usuario = $this->usuarioHubAdmin(['Listar Servidores', 'Criar Servidores']);
 
@@ -93,7 +93,9 @@ class PessoaHubFilamentTest extends TestCase
             ->mountAction('create')
             ->assertSchemaComponentExists('nome')
             ->assertSchemaComponentExists('matriculas_professor')
-            ->assertSchemaComponentExists('email_approved')
+            ->assertSchemaComponentDoesNotExist('email_approved')
+            ->assertSchemaComponentDoesNotExist('roles_adicionais')
+            ->assertSchemaComponentDoesNotExist('usar_permissoes_extras')
             ->assertSchemaComponentDoesNotExist('password');
     }
 
@@ -119,7 +121,9 @@ class PessoaHubFilamentTest extends TestCase
             ->test(ManageServidores::class)
             ->mountTableAction('edit', $servidor)
             ->assertSchemaComponentExists('matriculas_professor')
-            ->assertSchemaComponentExists('email_approved')
+            ->assertSchemaComponentDoesNotExist('email_approved')
+            ->assertSchemaComponentDoesNotExist('roles_adicionais')
+            ->assertSchemaComponentDoesNotExist('usar_permissoes_extras')
             ->assertSchemaStateSet([
                 'nome' => 'Servidor Editável',
                 'cargo' => ServidorResource::CARGO_PROFESSOR,

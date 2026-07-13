@@ -342,13 +342,18 @@ class PessoaProfessorService
     /** @param Collection<int, array<string, mixed>> $matriculas */
     private function validarInvariantesMatriculas(Collection $matriculas): void
     {
-        // Legado pode ter > MAX_POR_PESSOA; não bloquear edição/salvamento.
-        // Preferência de cadastro novo permanece documentada no form (helper text).
+        $turnos = $matriculas
+            ->map(fn (array $m): string => (string) ($m['turno'] ?? ''))
+            ->filter()
+            ->values()
+            ->all();
+
+        ProfessorMatricula::assertConjuntoTurnosValido($turnos);
 
         foreach ($matriculas as $matricula) {
             if (blank($matricula['matricula'] ?? null) || blank($matricula['turno'] ?? null)) {
                 throw ValidationException::withMessages([
-                    'registros_professor' => 'Cada matrícula precisa de número e turno.',
+                    'matriculas_professor' => 'Cada matrícula precisa de número e turno.',
                 ]);
             }
 
@@ -356,7 +361,7 @@ class PessoaProfessorService
 
             if (isset($matricula['_turnos_no_grupo']) && count(array_unique($matricula['_turnos_no_grupo'])) > 1) {
                 throw ValidationException::withMessages([
-                    'registros_professor' => "A matrícula {$matricula['matricula']} não pode ter turnos diferentes.",
+                    'matriculas_professor' => "A matrícula {$matricula['matricula']} não pode ter turnos diferentes.",
                 ]);
             }
 
@@ -364,7 +369,7 @@ class PessoaProfessorService
             foreach ($matricula['escolas'] ?? [] as $escola) {
                 if (blank($escola['id_escola'] ?? null)) {
                     throw ValidationException::withMessages([
-                        'registros_professor' => 'Há uma lotação sem escola selecionada. Remova o item vazio ou escolha a escola.',
+                        'matriculas_professor' => 'Há uma lotação sem escola selecionada. Remova o item vazio ou escolha a escola.',
                     ]);
                 }
             }
@@ -373,7 +378,7 @@ class PessoaProfessorService
         $duplicadas = $matriculas->pluck('matricula')->duplicates();
         if ($duplicadas->isNotEmpty()) {
             throw ValidationException::withMessages([
-                'registros_professor' => 'Matrículas duplicadas no formulário: ' . $duplicadas->unique()->implode(', '),
+                'matriculas_professor' => 'Matrículas duplicadas no formulário: '.$duplicadas->unique()->implode(', '),
             ]);
         }
     }

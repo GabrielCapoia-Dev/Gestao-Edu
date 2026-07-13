@@ -146,6 +146,100 @@ class PessoaProfessorMatriculaInvariantesTest extends TestCase
         $this->assertSame(ProfessorMatricula::MAX_POR_PESSOA, $servidor->professorMatriculas->count());
     }
 
+    public function test_rejeita_matriculas_no_mesmo_turno(): void
+    {
+        $this->seedCargoProfessor();
+        $setor = $this->criarSetor('Pedagógico');
+        $escola = $this->criarEscola('Escola Turno Duplicado', $setor);
+
+        try {
+            app(PessoaProfessorService::class)->criarPessoaProfessor([
+                'nome' => 'Prof Mesmo Turno',
+                'email' => 'mesmo.turno@edu.umuarama.pr.gov.br',
+                'status' => Servidor::STATUS_ATIVO,
+            ], [
+                ['matricula' => 'MANHA-A', 'turno' => 'manha', 'escolas' => [['id_escola' => $escola->id]]],
+                ['matricula' => 'MANHA-B', 'turno' => 'manha', 'escolas' => [['id_escola' => $escola->id]]],
+            ]);
+        } catch (ValidationException $exception) {
+            $this->assertStringContainsString('Não é permitido duas matrículas no mesmo turno.', $this->mensagensValidacao($exception));
+
+            return;
+        }
+
+        $this->fail('Matrículas no mesmo turno deveriam ser rejeitadas.');
+    }
+
+    public function test_rejeita_integral_com_outra_matricula(): void
+    {
+        $this->seedCargoProfessor();
+        $setor = $this->criarSetor('Pedagógico');
+        $escola = $this->criarEscola('Escola Integral', $setor);
+
+        try {
+            app(PessoaProfessorService::class)->criarPessoaProfessor([
+                'nome' => 'Prof Integral Duplicado',
+                'email' => 'integral.duplicado@edu.umuarama.pr.gov.br',
+                'status' => Servidor::STATUS_ATIVO,
+            ], [
+                ['matricula' => 'INT-1', 'turno' => 'integral', 'escolas' => [['id_escola' => $escola->id]]],
+                ['matricula' => 'TARDE-2', 'turno' => 'tarde', 'escolas' => [['id_escola' => $escola->id]]],
+            ]);
+        } catch (ValidationException $exception) {
+            $this->assertStringContainsString('Matrícula integral já cobre manhã e tarde.', $this->mensagensValidacao($exception));
+
+            return;
+        }
+
+        $this->fail('Matrícula integral com outra matrícula deveria ser rejeitada.');
+    }
+
+    public function test_rejeita_turno_invalido(): void
+    {
+        $this->seedCargoProfessor();
+        $setor = $this->criarSetor('Pedagógico');
+        $escola = $this->criarEscola('Escola Turno Inválido', $setor);
+
+        try {
+            app(PessoaProfessorService::class)->criarPessoaProfessor([
+                'nome' => 'Prof Turno Inválido',
+                'email' => 'turno.invalido@edu.umuarama.pr.gov.br',
+                'status' => Servidor::STATUS_ATIVO,
+            ], [
+                ['matricula' => 'NOITE-1', 'turno' => 'noite', 'escolas' => [['id_escola' => $escola->id]]],
+            ]);
+        } catch (ValidationException $exception) {
+            $this->assertStringContainsString('Turno informado é inválido.', $this->mensagensValidacao($exception));
+
+            return;
+        }
+
+        $this->fail('Turno inválido deveria ser rejeitado.');
+    }
+
+    public function test_helpers_de_turno_para_nova_matricula(): void
+    {
+        $this->assertTrue(ProfessorMatricula::podeAdicionarMatricula([
+            ['matricula' => 'M1', 'turno' => 'manha'],
+        ]));
+        $this->assertFalse(ProfessorMatricula::podeAdicionarMatricula([
+            ['matricula' => 'M1', 'turno' => 'integral'],
+        ]));
+        $this->assertFalse(ProfessorMatricula::podeAdicionarMatricula([
+            ['matricula' => 'M1', 'turno' => 'manha'],
+            ['matricula' => 'M2', 'turno' => 'tarde'],
+        ]));
+
+        $this->assertSame(
+            ['tarde' => 'Tarde'],
+            ProfessorMatricula::turnosDisponiveisParaItem(['manha']),
+        );
+        $this->assertSame(
+            ['manha' => 'Manhã'],
+            ProfessorMatricula::turnosDisponiveisParaItem(['tarde']),
+        );
+    }
+
     public function test_user_name_email_sincronizam_com_pessoa(): void
     {
         $this->seedCargoProfessor();
@@ -193,6 +287,11 @@ class PessoaProfessorMatriculaInvariantesTest extends TestCase
         $funcao = FuncaoAdministrativa::professorPadrao();
         $funcao->update(['concede_acesso_sistema' => true, 'exige_professor' => true]);
         $funcao->rolesPadrao()->sync([$roleProfessor->id]);
+    }
+
+    private function mensagensValidacao(ValidationException $exception): string
+    {
+        return collect($exception->errors())->flatten()->implode(' ');
     }
 
     private function criarSetor(string $nome): Setor

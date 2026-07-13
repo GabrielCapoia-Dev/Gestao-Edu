@@ -12,12 +12,10 @@ use Illuminate\Support\Facades\Schema;
 
 class PessoaProfessorFormService
 {
-    public function __construct(private readonly PessoaAcessoService $acessoService) {}
-
     /** @return array<string, mixed> */
     public function dadosParaFormulario(Pessoa|Servidor $pessoa): array
     {
-        $pessoa->loadMissing(['professores.escola', 'user.roles', 'professorMatriculas']);
+        $pessoa->loadMissing(['professores.escola', 'professorMatriculas']);
 
         $professores = $pessoa->professores;
 
@@ -45,7 +43,7 @@ class PessoaProfessorFormService
                 ->all(),
         ])->values()->all();
 
-        $dados = [
+        return [
             'nome' => $pessoa->nome,
             'cpf' => Pessoa::formatarCpf($pessoa->cpf),
             'email' => $pessoa->email,
@@ -55,30 +53,7 @@ class PessoaProfessorFormService
             'cargo' => ServidorResource::CARGO_PROFESSOR,
             'matriculas_professor' => $matriculasProfessor,
             'registros_professor' => $registrosFlat,
-            'email_approved' => true,
-            'usar_permissoes_extras' => false,
-            'roles_adicionais' => [],
         ];
-
-        if ($pessoa->user) {
-            $imutaveis = $this->acessoService->rolesImutaveisProfessor();
-            $dados['roles_adicionais'] = $pessoa->user->roles
-                ->pluck('id')
-                ->map(fn ($id): int => (int) $id)
-                ->diff($imutaveis)
-                ->values()
-                ->all();
-            $dados['email_approved'] = (bool) $pessoa->user->email_approved;
-            $dados['usar_permissoes_extras'] = $pessoa->user->getDirectPermissions()->isNotEmpty();
-
-            foreach ($pessoa->user->getDirectPermissions()->pluck('name') as $permission) {
-                $grupo = explode(' ', (string) $permission)[0];
-                $dados["permissions_{$grupo}"] ??= [];
-                $dados["permissions_{$grupo}"][] = $permission;
-            }
-        }
-
-        return $dados;
     }
 
     /**

@@ -3,7 +3,8 @@
 namespace App\Filament\Admin\Resources\Servidores;
 
 use App\Filament\Admin\Resources\Servidores\Pages\ManageServidores;
-use App\Filament\Admin\Resources\Servidores\Schemas\ServidorAcessoForm;
+use App\Filament\Admin\Resources\Servidores\Schemas\ServidorMatriculasForm;
+use App\Filament\Admin\Resources\Users\UserResource;
 use App\Models\Professor;
 use App\Models\ProfessorMatricula;
 use App\Models\Servidor;
@@ -13,20 +14,17 @@ use App\Services\ServidorService;
 use App\Services\UserService;
 use BackedEnum;
 use Closure;
+use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
-use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -123,109 +121,7 @@ class ServidorResource extends Resource
                     ->compact()
                     ->collapsible(),
 
-                Section::make('Matrículas e lotações')
-                    ->description('Turno pertence à matrícula. Cada matrícula pode ter várias escolas. Vínculos de turma são opcionais.')
-                    ->icon('heroicon-o-academic-cap')
-                    ->schema([
-                        Repeater::make('matriculas_professor')
-                            ->label('Matrículas')
-                            ->schema([
-                                Hidden::make('id'),
-
-                                TextInput::make('matricula')
-                                    ->label('Matrícula')
-                                    ->required()
-                                    ->maxLength(255),
-
-                                Select::make('turno')
-                                    ->label('Turno')
-                                    ->options(Professor::turnosOptions())
-                                    ->required()
-                                    ->live(),
-
-                                Repeater::make('escolas')
-                                    ->label('Escolas desta matrícula')
-                                    ->schema([
-                                        Hidden::make('id'),
-
-                                        Select::make('id_escola')
-                                            ->label('Escola / CMEI')
-                                            ->options(fn (): array => app(UserService::class)->opcoesDeEscolasParaCampo(Auth::user()))
-                                            ->searchable()
-                                            ->preload()
-                                            ->required()
-                                            ->live()
-                                            ->columnSpanFull(),
-
-                                        Repeater::make('vinculos_turma_componente')
-                                            ->label('Turmas e componentes (opcional)')
-                                            ->schema([
-                                                Select::make('turma_id')
-                                                    ->label('Turma')
-                                                    ->options(function (Get $get): array {
-                                                        return static::turmasOptions(
-                                                            $get('../../id_escola') ?? $get('id_escola'),
-                                                            $get('../../../turno') ?? $get('../../turno'),
-                                                        );
-                                                    })
-                                                    ->searchable()
-                                                    ->preload()
-                                                    ->live(),
-
-                                                Select::make('componente_curricular_id')
-                                                    ->label('Componente')
-                                                    ->options(fn (Get $get): array => static::componentesOptions($get('turma_id')))
-                                                    ->searchable()
-                                                    ->preload()
-                                                    ->visible(fn (Get $get): bool => filled($get('turma_id'))),
-                                            ])
-                                            ->columns(2)
-                                            ->defaultItems(0)
-                                            ->addActionLabel('Vincular turma')
-                                            ->collapsible()
-                                            ->collapsed()
-                                            ->itemLabel(fn (array $state): ?string => filled($state['turma_id'] ?? null)
-                                                ? 'Vínculo de turma'
-                                                : 'Novo vínculo')
-                                            ->visible(fn (Get $get): bool => filled($get('id_escola')))
-                                            ->columnSpanFull()
-                                            ->reorderable(false),
-                                    ])
-                                    ->columns(1)
-                                    ->defaultItems(0)
-                                    ->minItems(0)
-                                    ->addActionLabel('Adicionar escola')
-                                    ->collapsible()
-                                    ->itemLabel(fn (array $state): ?string => filled($state['id_escola'] ?? null)
-                                        ? 'Escola #'.($state['id_escola'] ?? '')
-                                        : 'Nova escola')
-                                    ->columnSpanFull()
-                                    ->reorderable(false),
-                            ])
-                            ->columns(2)
-                            ->defaultItems(0)
-                            ->minItems(0)
-                            // NÃO usar maxItems(2) no form: legado pode ter 3+ matrículas e o save falhava em silêncio.
-                            ->addActionLabel('Adicionar matrícula')
-                            ->collapsible()
-                            ->itemLabel(fn (array $state): ?string => filled($state['matricula'] ?? null)
-                                ? sprintf('%s · %s', $state['matricula'], Professor::turnosOptions()[$state['turno'] ?? ''] ?? 'turno')
-                                : 'Nova matrícula')
-                            ->helperText('Cadastros novos: prefira no máximo 2 matrículas. Legado com mais matrículas é preservado e editável.')
-                            ->columnSpanFull()
-                            ->reorderable(false),
-
-                        Textarea::make('observacoes')
-                            ->label('Observações')
-                            ->rows(2)
-                            ->maxLength(2000)
-                            ->columnSpanFull(),
-                    ])
-                    ->visible(fn (Get $get): bool => ($get('cargo') ?? self::CARGO_PROFESSOR) === self::CARGO_PROFESSOR)
-                    ->columnSpanFull()
-                    ->collapsible(),
-
-                ServidorAcessoForm::section(),
+                ServidorMatriculasForm::section(),
             ]);
     }
 
@@ -306,15 +202,8 @@ class ServidorResource extends Resource
                         'Liberado' => 'success',
                         'Pendente' => 'warning',
                         default => 'gray',
-                    }),
-
-                TextColumn::make('user.roles')
-                    ->label('Níveis de acesso')
-                    ->getStateUsing(fn (Servidor $record): string => $record->user?->roles
-                        ->pluck('name')
-                        ->join(', ') ?: '—')
-                    ->wrap()
-                    ->toggleable(),
+                    })
+                    ->tooltip('Gerencie login e permissões em Acesso → Usuários'),
 
                 TextColumn::make('status')
                     ->label('Status')
@@ -383,14 +272,25 @@ class ServidorResource extends Resource
                     ->slideOver()
                     ->modalWidth('5xl')
                     ->modalHeading(fn (Servidor $record): string => "Pessoa — {$record->nome}")
-                    ->modalDescription('Ficha completa: identidade, cargo, matrículas, lotações e acesso.')
+                    ->modalDescription('Ficha: identidade, cargo, matrículas e lotações. Acesso ao sistema em Usuários.')
                     ->schema(fn (Servidor $record): array => static::infolistDetalhesCompletos($record)),
+
+                Action::make('gerenciarAcesso')
+                    ->label('Acesso')
+                    ->icon('heroicon-o-key')
+                    ->color('gray')
+                    ->url(fn (Servidor $record): ?string => $record->user_id
+                        ? UserResource::getUrl('edit', ['record' => $record->user_id])
+                        : null)
+                    ->visible(fn (Servidor $record): bool => (bool) $record->user_id)
+                    ->openUrlInNewTab(false),
 
                 EditAction::make()
                     ->model(Servidor::class)
                     ->slideOver()
                     ->modalWidth('5xl')
                     ->modalHeading(fn (Servidor $record): string => "Editar pessoa — {$record->nome}")
+                    ->modalDescription('Login e permissões: menu Acesso → Usuários.')
                     ->closeModalByClickingAway(false)
                     ->fillForm(fn (Servidor $record): array => app(PessoaProfessorFormService::class)->dadosParaFormulario($record))
                     ->using(function (Servidor $record, array $data): Servidor {
@@ -553,7 +453,7 @@ class ServidorResource extends Resource
                 ->columns(2)
                 ->collapsible(),
 
-            Section::make('Cargo e acesso')
+            Section::make('Cargo')
                 ->icon('heroicon-o-briefcase')
                 ->schema([
                     TextEntry::make('cargo_view')
@@ -561,29 +461,19 @@ class ServidorResource extends Resource
                         ->badge()
                         ->getStateUsing(fn (): string => $record->professores->isNotEmpty() ? 'Professor' : 'Sem cargo pedagógico')
                         ->color(fn (string $state): string => $state === 'Professor' ? 'info' : 'gray'),
-                    TextEntry::make('user.name')->label('Usuário')->placeholder('Sem conta de login'),
-                    TextEntry::make('user.email')->label('Login')->placeholder('—')->copyable(),
-                    TextEntry::make('acesso_view')
-                        ->label('Situação do acesso')
-                        ->badge()
+                    TextEntry::make('updated_at')->label('Atualizado em')->dateTime('d/m/Y H:i'),
+                    TextEntry::make('acesso_hint')
+                        ->label('Acesso ao sistema')
                         ->getStateUsing(function () use ($record): string {
                             if (! $record->user_id) {
-                                return 'Sem usuário';
+                                return 'Sem usuário vinculado. Crie/edite em Acesso → Usuários se necessário.';
                             }
 
-                            return $record->user?->email_approved ? 'Liberado' : 'Pendente';
+                            $status = $record->user?->email_approved ? 'Liberado' : 'Pendente';
+
+                            return "Conta: {$record->user->email} ({$status}). Edite login e permissões em Acesso → Usuários.";
                         })
-                        ->color(fn (string $state): string => match ($state) {
-                            'Liberado' => 'success',
-                            'Pendente' => 'warning',
-                            default => 'gray',
-                        }),
-                    TextEntry::make('niveis_view')
-                        ->label('Níveis de acesso')
-                        ->getStateUsing(fn (): string => $record->user?->roles->pluck('name')->join(', ') ?: '—')
                         ->columnSpanFull(),
-                    TextEntry::make('user.escola.nome')->label('Escola do usuário')->placeholder('—'),
-                    TextEntry::make('updated_at')->label('Atualizado em')->dateTime('d/m/Y H:i'),
                 ])
                 ->columns(2)
                 ->collapsible(),
@@ -699,6 +589,16 @@ class ServidorResource extends Resource
         }
 
         return array_values($data['registros_professor'] ?? []);
+    }
+
+    public static function turmasOptionsPublic(int|string|null $escolaId, int|string|null $turnoMatricula = null): array
+    {
+        return static::turmasOptions($escolaId, $turnoMatricula);
+    }
+
+    public static function componentesOptionsPublic(int|string|null $turmaId): array
+    {
+        return static::componentesOptions($turmaId);
     }
 
     private static function turmasOptions(int|string|null $escolaId, int|string|null $turnoMatricula = null): array
