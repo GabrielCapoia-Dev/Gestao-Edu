@@ -81,6 +81,76 @@
         background: rgba(15, 23, 42, 0.9);
     }
 
+    /* Modal de Pessoas alinhado ao padrão de formulários do CRM. */
+    .pessoa-modal-window {
+        border-radius: 1.5rem !important;
+        overflow: hidden;
+        border: 1px solid rgba(148, 163, 184, 0.22);
+        box-shadow: 0 28px 80px rgba(15, 23, 42, 0.16) !important;
+    }
+
+    .pessoa-modal-window .fi-modal-header {
+        padding: 1.5rem 1.5rem 1rem !important;
+        border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+        background:
+            linear-gradient(180deg, rgba(248, 250, 252, 0.98), rgba(255, 255, 255, 0.98)),
+            linear-gradient(135deg, rgba(15, 23, 42, 0.04), rgba(59, 130, 246, 0.08));
+    }
+
+    .pessoa-modal-window .fi-modal-content {
+        padding: 1.25rem 1.5rem 1.5rem !important;
+        background:
+            radial-gradient(circle at top right, rgba(59, 130, 246, 0.08), transparent 24%),
+            linear-gradient(180deg, rgba(248, 250, 252, 0.92), rgba(255, 255, 255, 1));
+    }
+
+    .pessoa-modal-window .fi-modal-footer {
+        border-top: 1px solid rgba(226, 232, 240, 0.9);
+        background: rgba(255, 255, 255, 0.98);
+    }
+
+    .pessoa-modal-window .fi-sc-tabs {
+        overflow: hidden;
+        border: 1px solid rgba(226, 232, 240, 0.92);
+        border-radius: 1rem;
+        background: rgba(255, 255, 255, 0.98);
+        box-shadow: 0 14px 32px rgba(15, 23, 42, 0.04);
+    }
+
+    .pessoa-modal-window .fi-sc-tabs > .fi-tabs {
+        padding-inline: 0.65rem;
+        border-bottom: 1px solid rgba(226, 232, 240, 0.92);
+        background: rgba(248, 250, 252, 0.9);
+    }
+
+    .pessoa-modal-window .fi-sc-tabs-tab {
+        padding: 1.25rem 1.5rem 1.5rem;
+    }
+
+    .pessoa-modal-window .fi-sc-component > .fi-section,
+    .pessoa-modal-window .fi-sc-component > .fi-section-content-ctn > .fi-section {
+        position: relative;
+        overflow: visible;
+        border-radius: 1.25rem;
+        border: 1px solid rgba(226, 232, 240, 0.92);
+        box-shadow: 0 14px 32px rgba(15, 23, 42, 0.05);
+        background: rgba(255, 255, 255, 0.96);
+    }
+
+    .dark .pessoa-modal-window .fi-modal-header,
+    .dark .pessoa-modal-window .fi-modal-content,
+    .dark .pessoa-modal-window .fi-modal-footer,
+    .dark .pessoa-modal-window .fi-sc-tabs,
+    .dark .pessoa-modal-window .fi-sc-tabs-tab {
+        border-color: rgba(148, 163, 184, 0.16);
+        background: rgba(15, 23, 42, 0.94);
+    }
+
+    .dark .pessoa-modal-window .fi-sc-tabs > .fi-tabs {
+        border-color: rgba(148, 163, 184, 0.16);
+        background: rgba(30, 41, 59, 0.88);
+    }
+
     /* Sections do formulário de pessoa */
     .fi-slide-over-content .fi-section,
     .fi-modal-content .fi-section {
@@ -292,6 +362,14 @@
 
         .pe-tabbed-repeater > .fi-fo-repeater-items > .fi-fo-repeater-item > .fi-fo-repeater-item-content {
             padding: 0.75rem;
+        }
+
+        .pessoa-modal-window .fi-modal-content,
+        .pessoa-modal-window .fi-modal-header,
+        .pessoa-modal-window .fi-modal-footer,
+        .pessoa-modal-window .fi-sc-tabs-tab {
+            padding-left: 0.85rem !important;
+            padding-right: 0.85rem !important;
         }
     }
 

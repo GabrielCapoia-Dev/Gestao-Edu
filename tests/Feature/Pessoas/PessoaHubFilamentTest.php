@@ -82,9 +82,16 @@ class PessoaHubFilamentTest extends TestCase
         $this->assertCount(1, $actions);
         $this->assertInstanceOf(CreateAction::class, $actions[0]);
         $this->assertSame('Nova pessoa', $actions[0]->getLabel());
+        $this->assertFalse($actions[0]->isModalSlideOver());
+        $this->assertSame('6xl', $actions[0]->getModalWidth());
+        $this->assertTrue($actions[0]->isModalHeaderSticky());
+        $this->assertStringContainsString(
+            'pessoa-modal-window',
+            (string) ($actions[0]->getExtraModalWindowAttributes()['class'] ?? ''),
+        );
     }
 
-    public function test_create_slideover_exibe_campos_de_servidor_sem_acesso(): void
+    public function test_create_modal_exibe_campos_de_servidor_sem_acesso(): void
     {
         $usuario = $this->usuarioHubAdmin(['Listar Servidores', 'Criar Servidores']);
 
@@ -99,7 +106,7 @@ class PessoaHubFilamentTest extends TestCase
             ->assertSchemaComponentDoesNotExist('password');
     }
 
-    public function test_edit_servidor_abre_slideover_com_registros(): void
+    public function test_edit_servidor_abre_modal_com_registros(): void
     {
         $usuario = $this->usuarioHubAdmin(['Listar Servidores', 'Editar Servidores']);
 

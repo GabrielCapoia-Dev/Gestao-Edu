@@ -45,9 +45,16 @@ class ManageServidores extends ManageRecords
             CreateAction::make()
                 ->label('Nova pessoa')
                 ->model(Servidor::class)
-                ->slideOver()
-                ->modalWidth('5xl')
+                ->modalWidth('6xl')
+                ->modalIcon(null)
                 ->modalHeading('Nova pessoa')
+                ->modalDescription('Identidade, cargo, matrículas e lotações no mesmo fluxo.')
+                ->modalCancelActionLabel('Cancelar')
+                ->modalSubmitActionLabel('Salvar pessoa')
+                ->extraModalWindowAttributes([
+                    'class' => 'pessoa-modal-window',
+                ])
+                ->stickyModalHeader()
                 ->closeModalByClickingAway(false)
                 ->using(function (array $data): Servidor {
                     try {

@@ -23,6 +23,8 @@ use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -58,68 +60,77 @@ class ServidorResource extends Resource
     {
         return $schema
             ->components([
-                Section::make('Identidade da pessoa')
-                    ->description('Dados básicos usados em todo o sistema.')
-                    ->icon('heroicon-o-user')
-                    ->schema([
-                        TextInput::make('nome')
-                            ->label('Nome')
-                            ->required()
-                            ->maxLength(255)
-                            ->columnSpan(2),
-
-                        TextInput::make('cpf')
-                            ->label('CPF')
-                            ->mask('999.999.999-99')
-                            ->maxLength(14),
-
-                        TextInput::make('email')
-                            ->label('E-mail')
-                            ->email()
-                            ->required()
-                            ->dehydrateStateUsing(fn (?string $state): ?string => filled($state) ? Professor::normalizarEmail($state) : null)
-                            ->rule(function (): Closure {
-                                return function (string $attribute, mixed $value, Closure $fail): void {
-                                    if (! Professor::emailInstitucionalValido((string) $value)) {
-                                        $fail('Use somente e-mail institucional @edu.umuarama.pr.gov.br.');
-                                    }
-                                };
-                            })
-                            ->maxLength(255),
-
-                        TextInput::make('telefone')
-                            ->label('Telefone')
-                            ->tel()
-                            ->mask('(99) 99999-9999')
-                            ->maxLength(255),
-
-                        Select::make('status')
-                            ->label('Status')
-                            ->options(Servidor::statusOptions())
-                            ->default(Servidor::STATUS_ATIVO)
-                            ->required(),
-                    ])
+                Tabs::make('Cadastro de pessoa')
                     ->columnSpanFull()
-                    ->columns(2)
-                    ->compact(),
+                    ->tabs([
+                        Tab::make('Dados pessoais')
+                            ->schema([
+                                Section::make('Identidade da pessoa')
+                                    ->description('Dados básicos usados em todo o sistema.')
+                                    ->icon('heroicon-o-user')
+                                    ->schema([
+                                        TextInput::make('nome')
+                                            ->label('Nome')
+                                            ->required()
+                                            ->maxLength(255)
+                                            ->columnSpan(2),
 
-                Section::make('Cargo')
-                    ->icon('heroicon-o-briefcase')
-                    ->schema([
-                        Select::make('cargo')
-                            ->label('Função / cargo')
-                            ->options(static::cargoOptions())
-                            ->default(self::CARGO_PROFESSOR)
-                            ->required()
-                            ->live()
-                            ->dehydrated()
-                            ->helperText('Nesta fase apenas Professor. Outros cargos poderão ser adicionados depois.'),
-                    ])
-                    ->columnSpanFull()
-                    ->compact()
-                    ->collapsible(),
+                                        TextInput::make('cpf')
+                                            ->label('CPF')
+                                            ->mask('999.999.999-99')
+                                            ->maxLength(14),
 
-                ServidorMatriculasForm::section(),
+                                        TextInput::make('email')
+                                            ->label('E-mail')
+                                            ->email()
+                                            ->required()
+                                            ->dehydrateStateUsing(fn (?string $state): ?string => filled($state) ? Professor::normalizarEmail($state) : null)
+                                            ->rule(function (): Closure {
+                                                return function (string $attribute, mixed $value, Closure $fail): void {
+                                                    if (! Professor::emailInstitucionalValido((string) $value)) {
+                                                        $fail('Use somente e-mail institucional @edu.umuarama.pr.gov.br.');
+                                                    }
+                                                };
+                                            })
+                                            ->maxLength(255),
+
+                                        TextInput::make('telefone')
+                                            ->label('Telefone')
+                                            ->tel()
+                                            ->mask('(99) 99999-9999')
+                                            ->maxLength(255),
+
+                                        Select::make('status')
+                                            ->label('Status')
+                                            ->options(Servidor::statusOptions())
+                                            ->default(Servidor::STATUS_ATIVO)
+                                            ->required(),
+                                    ])
+                                    ->columnSpanFull()
+                                    ->columns(2)
+                                    ->compact(),
+
+                                Section::make('Cargo')
+                                    ->icon('heroicon-o-briefcase')
+                                    ->schema([
+                                        Select::make('cargo')
+                                            ->label('Função / cargo')
+                                            ->options(static::cargoOptions())
+                                            ->default(self::CARGO_PROFESSOR)
+                                            ->required()
+                                            ->live()
+                                            ->dehydrated()
+                                            ->helperText('Nesta fase apenas Professor. Outros cargos poderão ser adicionados depois.'),
+                                    ])
+                                    ->columnSpanFull()
+                                    ->compact(),
+                            ]),
+
+                        Tab::make('Matrículas e lotações')
+                            ->schema([
+                                ServidorMatriculasForm::section(),
+                            ]),
+                    ]),
             ]);
     }
 
@@ -275,10 +286,16 @@ class ServidorResource extends Resource
 
                 EditAction::make()
                     ->model(Servidor::class)
-                    ->slideOver()
-                    ->modalWidth('5xl')
+                    ->modalWidth('6xl')
+                    ->modalIcon(null)
                     ->modalHeading(fn (Servidor $record): string => "Editar pessoa — {$record->nome}")
                     ->modalDescription('Login e permissões: menu Acesso → Usuários.')
+                    ->modalCancelActionLabel('Cancelar')
+                    ->modalSubmitActionLabel('Salvar alterações')
+                    ->extraModalWindowAttributes([
+                        'class' => 'pessoa-modal-window',
+                    ])
+                    ->stickyModalHeader()
                     ->closeModalByClickingAway(false)
                     ->fillForm(fn (Servidor $record): array => app(PessoaProfessorFormService::class)->dadosParaFormulario($record))
                     ->using(function (Servidor $record, array $data): Servidor {
