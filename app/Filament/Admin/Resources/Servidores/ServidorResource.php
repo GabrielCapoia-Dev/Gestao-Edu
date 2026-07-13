@@ -4,7 +4,6 @@ namespace App\Filament\Admin\Resources\Servidores;
 
 use App\Filament\Admin\Resources\Servidores\Pages\ManageServidores;
 use App\Filament\Admin\Resources\Servidores\Schemas\ServidorMatriculasForm;
-use App\Filament\Admin\Resources\Users\UserResource;
 use App\Models\Professor;
 use App\Models\ProfessorMatricula;
 use App\Models\Servidor;
@@ -14,7 +13,6 @@ use App\Services\ServidorService;
 use App\Services\UserService;
 use BackedEnum;
 use Closure;
-use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -274,16 +272,6 @@ class ServidorResource extends Resource
                     ->modalHeading(fn (Servidor $record): string => "Pessoa — {$record->nome}")
                     ->modalDescription('Ficha: identidade, cargo, matrículas e lotações. Acesso ao sistema em Usuários.')
                     ->schema(fn (Servidor $record): array => static::infolistDetalhesCompletos($record)),
-
-                Action::make('gerenciarAcesso')
-                    ->label('Acesso')
-                    ->icon('heroicon-o-key')
-                    ->color('gray')
-                    ->url(fn (Servidor $record): ?string => $record->user_id
-                        ? UserResource::getUrl('edit', ['record' => $record->user_id])
-                        : null)
-                    ->visible(fn (Servidor $record): bool => (bool) $record->user_id)
-                    ->openUrlInNewTab(false),
 
                 EditAction::make()
                     ->model(Servidor::class)

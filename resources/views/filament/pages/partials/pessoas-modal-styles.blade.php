@@ -137,6 +137,105 @@
         gap: 0.5rem;
     }
 
+    /* Matrículas e escolas: repeater hierárquico com navegação em abas. */
+    .pe-tabbed-repeater > .fi-fo-repeater-items {
+        display: grid !important;
+        grid-template-columns: repeat(var(--pe-tab-count, 1), minmax(0, 1fr));
+        grid-template-rows: auto auto;
+        gap: 0 !important;
+        overflow: hidden;
+        border: 1px solid #dbe4ee;
+        border-radius: 0.9rem;
+        background: #fff;
+    }
+
+    .pe-tabbed-repeater > .fi-fo-repeater-items > .fi-fo-repeater-item {
+        display: contents !important;
+    }
+
+    .pe-tabbed-repeater > .fi-fo-repeater-items > .fi-fo-repeater-item > .fi-fo-repeater-item-header {
+        grid-row: 1;
+        min-width: 0;
+        padding: 0.7rem 0.85rem;
+        border: 0;
+        border-right: 1px solid #dbe4ee;
+        border-bottom: 1px solid #dbe4ee;
+        border-radius: 0;
+        background: #f8fafc;
+        color: #475569;
+        cursor: pointer;
+        transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .pe-tabbed-repeater > .fi-fo-repeater-items > .fi-fo-repeater-item:last-child > .fi-fo-repeater-item-header {
+        border-right: 0;
+    }
+
+    .pe-tabbed-repeater > .fi-fo-repeater-items > .fi-fo-repeater-item.pe-tab-active > .fi-fo-repeater-item-header {
+        background: #fff;
+        color: #17368d;
+        box-shadow: inset 0 3px 0 #1a6bc7;
+    }
+
+    .pe-tabbed-repeater > .fi-fo-repeater-items > .fi-fo-repeater-item > .fi-fo-repeater-item-header:focus-visible {
+        position: relative;
+        z-index: 1;
+        outline: 2px solid #1a6bc7;
+        outline-offset: -2px;
+    }
+
+    .pe-tabbed-repeater > .fi-fo-repeater-items > .fi-fo-repeater-item > .fi-fo-repeater-item-header .fi-fo-repeater-item-header-label {
+        white-space: normal;
+        line-height: 1.25;
+    }
+
+    .pe-tabbed-repeater > .fi-fo-repeater-items > .fi-fo-repeater-item > .fi-fo-repeater-item-content {
+        grid-row: 2;
+        grid-column: 1 / -1;
+        padding: 1rem;
+        background: #fff;
+    }
+
+    .pe-tabbed-repeater > .fi-fo-repeater-items > .fi-fo-repeater-item.pe-tab-inactive > .fi-fo-repeater-item-content {
+        display: none !important;
+    }
+
+    .pe-tabbed-repeater > .fi-fo-repeater-add {
+        justify-content: flex-end;
+        padding-top: 0.65rem;
+    }
+
+    .pe-tabbed-repeater > .fi-fo-repeater-add .fi-btn {
+        border-radius: 0.65rem;
+        font-weight: 650;
+    }
+
+    .pe-escolas-tabs {
+        margin-top: 0.25rem;
+    }
+
+    .pe-escolas-tabs > .fi-fo-repeater-items > .fi-fo-repeater-item > .fi-fo-repeater-item-header {
+        padding-block: 0.6rem;
+        background: #f1f5f9;
+    }
+
+    .dark .pe-tabbed-repeater > .fi-fo-repeater-items {
+        border-color: #334155;
+        background: rgba(15, 23, 42, 0.75);
+    }
+
+    .dark .pe-tabbed-repeater > .fi-fo-repeater-items > .fi-fo-repeater-item > .fi-fo-repeater-item-header {
+        border-color: #334155;
+        background: rgba(30, 41, 59, 0.9);
+        color: #cbd5e1;
+    }
+
+    .dark .pe-tabbed-repeater > .fi-fo-repeater-items > .fi-fo-repeater-item.pe-tab-active > .fi-fo-repeater-item-header,
+    .dark .pe-tabbed-repeater > .fi-fo-repeater-items > .fi-fo-repeater-item > .fi-fo-repeater-item-content {
+        background: rgba(15, 23, 42, 0.92);
+        color: #dbeafe;
+    }
+
     /* Tabela da listagem de pessoas */
     .pe-pessoas-page .fi-ta-header-toolbar {
         gap: 0.65rem;
@@ -185,6 +284,15 @@
         .pe-pessoas-page .fi-ta-actions {
             flex-wrap: wrap;
         }
+
+        .pe-tabbed-repeater > .fi-fo-repeater-items > .fi-fo-repeater-item > .fi-fo-repeater-item-header {
+            padding: 0.6rem;
+            font-size: 0.78rem;
+        }
+
+        .pe-tabbed-repeater > .fi-fo-repeater-items > .fi-fo-repeater-item > .fi-fo-repeater-item-content {
+            padding: 0.75rem;
+        }
     }
 
     @media (max-width: 480px) {
@@ -211,3 +319,130 @@
         background: rgba(23, 54, 141, 0.06);
     }
 </style>
+
+<script>
+    (() => {
+        if (window.__peTabbedRepeatersInitialized) {
+            return;
+        }
+
+        window.__peTabbedRepeatersInitialized = true;
+
+        const itemSelector = ':scope > .fi-fo-repeater-items > .fi-fo-repeater-item';
+        const itemCounts = new WeakMap();
+
+        const directItems = (root) => Array.from(root.querySelectorAll(itemSelector));
+        const itemKey = (item, index) => item.getAttribute('x-sortable-item') || String(index);
+
+        const activate = (root, selectedItem) => {
+            const items = directItems(root);
+
+            items.forEach((item, index) => {
+                const active = item === selectedItem;
+                const header = item.querySelector(':scope > .fi-fo-repeater-item-header');
+                const content = item.querySelector(':scope > .fi-fo-repeater-item-content');
+
+                item.classList.toggle('pe-tab-active', active);
+                item.classList.toggle('pe-tab-inactive', ! active);
+
+                if (header) {
+                    header.setAttribute('role', 'tab');
+                    header.setAttribute('aria-selected', active ? 'true' : 'false');
+                    header.setAttribute('tabindex', active ? '0' : '-1');
+                }
+
+                if (content) {
+                    content.setAttribute('role', 'tabpanel');
+                    content.toggleAttribute('hidden', ! active);
+                }
+
+                if (active) {
+                    root.dataset.peActiveTab = itemKey(item, index);
+                }
+            });
+        };
+
+        const initializeRoot = (root) => {
+            const items = directItems(root);
+            const previousCount = itemCounts.get(root);
+            const savedKey = root.dataset.peActiveTab;
+            let selected = items.find((item, index) => itemKey(item, index) === savedKey);
+
+            if (previousCount !== undefined && items.length > previousCount) {
+                selected = items.at(-1);
+            }
+
+            selected ??= items[0];
+            root.style.setProperty('--pe-tab-count', Math.max(items.length, 1));
+
+            const list = root.querySelector(':scope > .fi-fo-repeater-items');
+            if (list) {
+                list.setAttribute('role', 'tablist');
+                list.setAttribute('aria-label', root.dataset.peTabsLabel || 'Opções');
+            }
+
+            if (selected) {
+                activate(root, selected);
+            }
+
+            itemCounts.set(root, items.length);
+        };
+
+        const initializeAll = () => {
+            document.querySelectorAll('.pe-tabbed-repeater').forEach(initializeRoot);
+        };
+
+        document.addEventListener('click', (event) => {
+            const header = event.target.closest('.pe-tabbed-repeater .fi-fo-repeater-item-header');
+            if (! header || event.target.closest('button, a, input, select, textarea')) {
+                return;
+            }
+
+            const item = header.closest('.fi-fo-repeater-item');
+            const root = item?.parentElement?.closest('.pe-tabbed-repeater');
+
+            if (root && directItems(root).includes(item)) {
+                activate(root, item);
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (! ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+                return;
+            }
+
+            const header = event.target.closest('.pe-tabbed-repeater .fi-fo-repeater-item-header');
+            const item = header?.closest('.fi-fo-repeater-item');
+            const root = item?.parentElement?.closest('.pe-tabbed-repeater');
+
+            if (! root) {
+                return;
+            }
+
+            const items = directItems(root);
+            const currentIndex = items.indexOf(item);
+            if (currentIndex < 0) {
+                return;
+            }
+
+            event.preventDefault();
+            const nextIndex = event.key === 'Home'
+                ? 0
+                : event.key === 'End'
+                    ? items.length - 1
+                    : (currentIndex + (event.key === 'ArrowRight' ? 1 : -1) + items.length) % items.length;
+
+            activate(root, items[nextIndex]);
+            items[nextIndex].querySelector(':scope > .fi-fo-repeater-item-header')?.focus();
+        });
+
+        new MutationObserver((mutations) => {
+            if (mutations.some((mutation) => mutation.type === 'childList')) {
+                requestAnimationFrame(initializeAll);
+            }
+        }).observe(document.body, { childList: true, subtree: true });
+
+        document.addEventListener('livewire:navigated', initializeAll);
+        requestAnimationFrame(initializeAll);
+    })();
+</script>

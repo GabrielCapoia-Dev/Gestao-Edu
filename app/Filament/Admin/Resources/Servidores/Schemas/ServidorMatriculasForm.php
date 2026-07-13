@@ -30,6 +30,10 @@ class ServidorMatriculasForm
             ->schema([
                 Repeater::make('matriculas_professor')
                     ->label('Matrículas')
+                    ->extraAttributes([
+                        'class' => 'pe-tabbed-repeater pe-matriculas-tabs',
+                        'data-pe-tabs-label' => 'Matrículas',
+                    ])
                     ->schema([
                         Hidden::make('id'),
 
@@ -55,6 +59,10 @@ class ServidorMatriculasForm
 
                         Repeater::make('escolas')
                             ->label('Escolas / lotações')
+                            ->extraAttributes([
+                                'class' => 'pe-tabbed-repeater pe-escolas-tabs',
+                                'data-pe-tabs-label' => 'Escolas',
+                            ])
                             ->schema([
                                 Hidden::make('id'),
 
@@ -119,7 +127,6 @@ class ServidorMatriculasForm
                             })
                             ->columnSpanFull()
                             ->reorderable(false)
-                            ->collapsible()
                             ->cloneable(false),
                     ])
                     ->columns(2)
@@ -140,7 +147,6 @@ class ServidorMatriculasForm
                     ->helperText('Máximo 2 matrículas: manhã e tarde. Integral é única (já cobre os dois turnos). Login e permissões ficam em Acesso → Usuários.')
                     ->columnSpanFull()
                     ->reorderable(false)
-                    ->collapsible()
                     ->cloneable(false)
                     ->live(),
 

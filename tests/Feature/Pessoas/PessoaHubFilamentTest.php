@@ -153,6 +153,15 @@ class PessoaHubFilamentTest extends TestCase
         $this->assertDatabaseMissing('professores', ['id' => $professor->id]);
     }
 
+    public function test_listagem_nao_exibe_atalho_de_acesso_por_pessoa(): void
+    {
+        $usuario = $this->usuarioComPermissaoListar();
+
+        Livewire::actingAs($usuario)
+            ->test(ManageServidores::class)
+            ->assertTableActionDoesNotExist('gerenciarAcesso');
+    }
+
     private function usuarioComPermissaoListar(): User
     {
         return $this->usuarioHubAdmin(['Listar Servidores']);
