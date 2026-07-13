@@ -1,7 +1,7 @@
 <x-filament-panels::page>
     <div class="av-livewire-root" x-data wire:init="carregarDashboardInicial" x-on:dashboard-acompanhamento-recarregar.window="$wire.atualizarAcompanhamentoTurmas()">
     <div class="dav-page">
-        <div class="dav-processing-overlay" wire:loading.flex wire:target="abrirWorkspaceAcompanhamento,fecharWorkspaceAcompanhamento,atualizarAcompanhamentoTurmas">
+        <div class="dav-processing-overlay" wire:loading.flex wire:target="abrirWorkspaceAcompanhamento,fecharWorkspaceAcompanhamento,atualizarAcompanhamentoTurmas,atualizarDadosRecentes">
             <div class="dav-processing-card">
                 <div class="dav-processing-spinner"></div>
                 <strong>Processando...</strong>
@@ -322,32 +322,54 @@
                 <header class="dav-card-header--split">
                     <div>
                         <h3>Acompanhamento de Pareceres</h3>
-                        <p>Andamento geral por escola, série e turma.</p>
+                        <p>
+                            Andamento por escola, série, turma, componente e professor.
+                            @if ($ultimaAtualizacaoIncremental ?? false)
+                                <span class="dav-refresh-meta">Última verificação: {{ $ultimaAtualizacaoIncremental }}</span>
+                            @elseif ($ultimaAtualizacao ?? false)
+                                <span class="dav-refresh-meta">Carregado em: {{ $ultimaAtualizacao }}</span>
+                            @endif
+                        </p>
                     </div>
 
-                    <label class="dav-page-size">
-                        <span>Itens por página</span>
-                        <select wire:model.live="acompanhamentoTurmasPorPagina" aria-label="Itens por página em acompanhamento de pareceres">
-                            @foreach ($acompanhamentoTurmasPorPaginaOptions as $opcao)
-                                <option value="{{ $opcao }}">{{ $opcao }}</option>
-                            @endforeach
-                        </select>
-                    </label>
+                    <div class="dav-card-header-actions">
+                        <button
+                            type="button"
+                            class="dav-action dav-action--refresh"
+                            wire:click="atualizarDadosRecentes"
+                            wire:loading.attr="disabled"
+                            wire:target="atualizarDadosRecentes"
+                            title="Verifica apenas o que mudou após o carregamento, sem recarregar a página">
+                            <span wire:loading.remove wire:target="atualizarDadosRecentes">Atualizar</span>
+                            <span wire:loading wire:target="atualizarDadosRecentes">Verificando...</span>
+                        </button>
+
+                        <label class="dav-page-size">
+                            <span>Itens por página</span>
+                            <select wire:model.live="acompanhamentoTurmasPorPagina" aria-label="Itens por página em acompanhamento de pareceres">
+                                @foreach ($acompanhamentoTurmasPorPaginaOptions as $opcao)
+                                    <option value="{{ $opcao }}">{{ $opcao }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                    </div>
                 </header>
 
                 <div class="dav-acompanhamento-filters">
                     {{ $this->filtrosAcompanhamentoForm }}
                 </div>
 
-                <div class="dav-table-wrap">
+                <div class="dav-table-wrap" wire:key="acompanhamento-tabela-{{ $ultimaAtualizacaoIncremental ?: $ultimaAtualizacao }}">
                     <table class="dav-table">
                         <thead>
                             <tr>
                                 <th>Escola</th>
                                 <th>Série</th>
                                 <th>Turma</th>
-                                <th class="text-right">% preenchimento da turma</th>
+                                <th class="text-right">Respondidos</th>
+                                <th class="text-right">% preenchimento</th>
                                 <th>Status</th>
+                                <th>Última resposta</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -358,18 +380,27 @@
                                         'em_andamento' => 'dav-badge--warn',
                                         default => 'dav-badge--danger',
                                     };
+                                    $linhaAlterada = ! empty($item['alterado_recentemente']);
                                 @endphp
-                                <tr>
+                                <tr class="{{ $linhaAlterada ? 'dav-row-changed' : '' }}" @if($linhaAlterada) title="Valor atualizado nesta verificação" @endif>
                                     <td>{{ $item['escola_nome'] }}</td>
                                     <td>{{ $item['serie_nome'] }}</td>
                                     <td>
                                         <strong>{{ $item['turma_nome'] }}</strong>
                                         <small>{{ ucfirst((string) $item['turno']) }}</small>
                                     </td>
-                                    <td class="text-right">{{ number_format((float) $item['percentual_preenchimento'], 1, ',', '.') }}%</td>
+                                    <td class="text-right{{ $linhaAlterada ? ' dav-cell-changed' : '' }}">
+                                        {{ (int) ($item['preenchimentos_respondidos'] ?? 0) }}/{{ (int) ($item['preenchimentos_esperados'] ?? 0) }}
+                                    </td>
+                                    <td class="text-right{{ $linhaAlterada ? ' dav-cell-changed' : '' }}">
+                                        {{ number_format((float) $item['percentual_preenchimento'], 1, ',', '.') }}%
+                                        @if ($linhaAlterada)
+                                            <span class="dav-changed-dot" aria-hidden="true"></span>
+                                        @endif
+                                    </td>
                                     <td>
                                         <div class="dav-status-actions">
-                                            <span class="dav-badge {{ $statusClass }}">
+                                            <span class="dav-badge {{ $statusClass }}{{ $linhaAlterada ? ' dav-badge--flash' : '' }}">
                                                 {{ $item['status_label'] }}
                                             </span>
                                             <button
@@ -393,10 +424,11 @@
                                             @endif
                                         </div>
                                     </td>
+                                    <td>{{ $item['ultima_resposta'] ?? '-' }}</td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5" class="dav-empty">Nenhuma turma encontrada para os filtros atuais.</td>
+                                    <td colspan="7" class="dav-empty">Nenhuma turma encontrada para os filtros atuais.</td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -719,6 +751,68 @@
 
         .dav-acompanhamento-filters .fi-fo {
             gap: 0.75rem;
+        }
+
+        .dav-card-header-actions {
+            display: flex;
+            align-items: end;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .dav-action--refresh {
+            white-space: nowrap;
+            background: #eff6ff;
+            border-color: #93c5fd;
+            color: #1d4ed8;
+            font-weight: 600;
+        }
+
+        .dav-action--refresh:hover {
+            background: #dbeafe;
+            border-color: #60a5fa;
+        }
+
+        .dav-refresh-meta {
+            display: inline-block;
+            margin-left: 0.35rem;
+            color: var(--gray-500);
+            font-size: 0.78rem;
+        }
+
+        .dav-row-changed {
+            background: linear-gradient(90deg, rgba(34, 197, 94, 0.12), rgba(34, 197, 94, 0.03));
+            animation: dav-row-highlight 1.4s ease-out;
+        }
+
+        .dav-cell-changed {
+            font-weight: 700;
+            color: #166534;
+        }
+
+        .dav-changed-dot {
+            display: inline-block;
+            width: 0.45rem;
+            height: 0.45rem;
+            margin-left: 0.3rem;
+            border-radius: 999px;
+            background: #22c55e;
+            box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.55);
+            animation: dav-pulse 1.4s ease-out 2;
+            vertical-align: middle;
+        }
+
+        .dav-badge--flash {
+            box-shadow: 0 0 0 0.15rem rgba(34, 197, 94, 0.25);
+        }
+
+        @keyframes dav-row-highlight {
+            from {
+                background: rgba(34, 197, 94, 0.28);
+            }
+            to {
+                background: linear-gradient(90deg, rgba(34, 197, 94, 0.12), rgba(34, 197, 94, 0.03));
+            }
         }
 
         .dav-filters-grid {

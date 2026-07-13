@@ -98,6 +98,14 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     public bool $workspaceAcompanhamentoTemAlteracoes = false;
 
+    /** @var array<string, array{percentual: float, status: string, respondidos: int}> */
+    public array $acompanhamentoSnapshot = [];
+
+    /** @var array<int, string> chaves de linhas alteradas no último refresh incremental */
+    public array $acompanhamentoLinhasAlteradas = [];
+
+    public string $ultimaAtualizacaoIncremental = '';
+
     public array $listagensPaginas = [
         'tabelaEscolas' => 1,
     ];
@@ -178,6 +186,7 @@ class DashboardAvaliacoes extends Page implements HasForms
     {
         $this->workspaceAcompanhamentoAberto = false;
         $this->workspaceAcompanhamentoLinha = null;
+        $this->acompanhamentoLinhasAlteradas = [];
         $this->resetarPaginacaoAcompanhamentoTurmas();
         $this->atualizarAcompanhamentoTurmas();
     }
@@ -394,10 +403,66 @@ class DashboardAvaliacoes extends Page implements HasForms
         $this->atualizarAcompanhamentoTurmas();
     }
 
+    /**
+     * Atualiza KPIs e listagem via Livewire (sem reload do browser).
+     * Compara com o snapshot da página e destaca apenas linhas com valores novos.
+     */
+    public function atualizarDadosRecentes(bool $silencioso = false): void
+    {
+        abort_unless(static::canAccess(), 403);
+
+        if (! $this->avaliacaoSelecionada()) {
+            if (! $silencioso) {
+                Notification::make()
+                    ->title('Selecione uma avaliação para atualizar os dados.')
+                    ->warning()
+                    ->send();
+            }
+
+            return;
+        }
+
+        $snapshotAnterior = $this->capturarSnapshotAcompanhamento($this->acompanhamentoTurmas);
+        $cardsAnteriores = $this->cards;
+
+        $avaliacaoId = (int) ($this->filtros['avaliacao_id'] ?? 0);
+        app(AvaliacaoDashboardMetricsService::class)->forgetForAvaliacao($avaliacaoId);
+
+        $this->parecerTurmaElegibilidade = [];
+        $this->atualizarMetricasLeves();
+
+        $this->acompanhamentoLinhasAlteradas = $this->diffSnapshotAcompanhamento(
+            $snapshotAnterior,
+            $this->capturarSnapshotAcompanhamento($this->acompanhamentoTurmas)
+        );
+
+        $cardsMudaram = $this->cardsDiferem($cardsAnteriores, $this->cards);
+        $this->ultimaAtualizacaoIncremental = now()->format('d/m/Y H:i:s');
+        $this->ultimaAtualizacao = $this->ultimaAtualizacaoIncremental;
+
+        if ($silencioso) {
+            return;
+        }
+
+        $alteracoes = count($this->acompanhamentoLinhasAlteradas);
+
+        Notification::make()
+            ->title($alteracoes > 0 || $cardsMudaram
+                ? 'Dados atualizados com alterações recentes.'
+                : 'Nenhuma alteração desde o último carregamento.')
+            ->body($alteracoes > 0
+                ? "{$alteracoes} turma(s) com preenchimento diferente."
+                : ($cardsMudaram ? 'Indicadores gerais foram atualizados.' : 'Os valores permanecem iguais.'))
+            ->success()
+            ->send();
+    }
+
     #[On('workspace-acompanhamento-alterado')]
     public function marcarWorkspaceAcompanhamentoComoAlterado(): void
     {
         $this->workspaceAcompanhamentoTemAlteracoes = true;
+        // Atualiza listagem/KPIs em silêncio, sem fechar o workspace nem notificar a cada save.
+        $this->atualizarDadosRecentes(silencioso: true);
     }
 
     protected function getForms(): array
@@ -468,6 +533,40 @@ class DashboardAvaliacoes extends Page implements HasForms
                     ->preload()
                     ->disabled(fn (): bool => ! $this->avaliacaoSelecionada())
                     ->live(),
+                Select::make('escolas_ids')
+                    ->label('Escolas')
+                    ->options(fn (): array => $this->escolasOptions)
+                    ->multiple()
+                    ->native(false)
+                    ->searchable()
+                    ->preload()
+                    ->disabled(fn (): bool => ! $this->avaliacaoSelecionada())
+                    ->live(),
+                Select::make('series_ids')
+                    ->label('Séries')
+                    ->options(fn (): array => $this->seriesOptions)
+                    ->multiple()
+                    ->native(false)
+                    ->searchable()
+                    ->preload()
+                    ->disabled(fn (): bool => ! $this->avaliacaoSelecionada())
+                    ->live(),
+                Select::make('turnos')
+                    ->label('Turnos')
+                    ->options(fn (): array => $this->turnosOptions)
+                    ->multiple()
+                    ->native(false)
+                    ->disabled(fn (): bool => ! $this->avaliacaoSelecionada())
+                    ->live(),
+                Select::make('componentes_ids')
+                    ->label('Componentes')
+                    ->options(fn (): array => $this->componentesOptions)
+                    ->multiple()
+                    ->native(false)
+                    ->searchable()
+                    ->preload()
+                    ->disabled(fn (): bool => ! $this->avaliacaoSelecionada())
+                    ->live(),
             ])
             ->columns(4)
             ->statePath('filtros');
@@ -478,7 +577,7 @@ class DashboardAvaliacoes extends Page implements HasForms
         return $schema
             ->components([
                 Select::make('escola_id')
-                    ->label('Escolas')
+                    ->label('Escola')
                     ->options(fn (): array => $this->escolasOptions)
                     ->placeholder('Todas')
                     ->native(false)
@@ -487,7 +586,7 @@ class DashboardAvaliacoes extends Page implements HasForms
                     ->disabled(fn (): bool => ! $this->avaliacaoSelecionada())
                     ->live(),
                 Select::make('serie_id')
-                    ->label('Séries')
+                    ->label('Série')
                     ->options(fn (): array => $this->seriesOptions)
                     ->placeholder('Todas')
                     ->native(false)
@@ -496,30 +595,83 @@ class DashboardAvaliacoes extends Page implements HasForms
                     ->disabled(fn (): bool => ! $this->avaliacaoSelecionada())
                     ->live(),
                 Select::make('turno')
-                    ->label('Turnos')
+                    ->label('Turno')
                     ->options(fn (): array => $this->turnosOptions)
                     ->placeholder('Todos')
                     ->native(false)
                     ->disabled(fn (): bool => ! $this->avaliacaoSelecionada())
                     ->live(),
+                Select::make('turma_id')
+                    ->label('Turma')
+                    ->options(fn (): array => $this->turmasAcompanhamentoOptions)
+                    ->placeholder('Todas')
+                    ->native(false)
+                    ->searchable()
+                    ->preload()
+                    ->disabled(fn (): bool => ! $this->avaliacaoSelecionada())
+                    ->live(),
+                Select::make('componente_id')
+                    ->label('Componente')
+                    ->options(fn (): array => $this->componentesOptions)
+                    ->placeholder('Todos')
+                    ->native(false)
+                    ->searchable()
+                    ->preload()
+                    ->disabled(fn (): bool => ! $this->avaliacaoSelecionada())
+                    ->live(),
+                Select::make('professor_id')
+                    ->label('Professor')
+                    ->options(fn (): array => $this->professoresOptions)
+                    ->placeholder('Todos')
+                    ->native(false)
+                    ->searchable()
+                    ->preload()
+                    ->disabled(fn (): bool => ! $this->avaliacaoSelecionada())
+                    ->live(),
+                Select::make('status')
+                    ->label('Status do preenchimento')
+                    ->options([
+                        '' => 'Todos',
+                        'concluido' => 'Concluído',
+                        'em_andamento' => 'Em andamento',
+                        'nao_iniciado' => 'Não iniciado',
+                    ])
+                    ->placeholder('Todos')
+                    ->native(false)
+                    ->disabled(fn (): bool => ! $this->avaliacaoSelecionada())
+                    ->live(),
             ])
-            ->columns(3)
+            ->columns(4)
             ->statePath('filtrosAcompanhamento');
     }
 
     public function getHeader(): ?\Illuminate\Contracts\View\View
     {
+        $quando = $this->ultimaAtualizacaoIncremental !== ''
+            ? $this->ultimaAtualizacaoIncremental
+            : ($this->ultimaAtualizacao ?: '-');
+
         return view('filament.admin.pages.partials.page-header', [
             'actions' => $this->getCachedHeaderActions(),
             'eyebrow' => 'Relatórios Pedagógicos',
             'title' => 'Acompanhamento de Pareceres',
-            'description' => 'Acompanhe o preenchimento dos pareceres por escola, turma, componente e professor. Atualizado em ' . ($this->ultimaAtualizacao ?: '-'),
+            'description' => 'Acompanhe o preenchimento dos pareceres por escola, turma, componente e professor. Use Atualizar para buscar só o que mudou. Atualizado em ' . $quando,
         ]);
     }
 
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('atualizarDadosRecentes')
+                ->label('Atualizar')
+                ->icon('heroicon-o-arrow-path')
+                ->color('gray')
+                ->tooltip(fn (): string => $this->ultimaAtualizacaoIncremental !== ''
+                    ? 'Última verificação: ' . $this->ultimaAtualizacaoIncremental
+                    : 'Verifica alterações após o carregamento inicial, sem recarregar a página')
+                ->visible(fn (): bool => $this->avaliacaoSelecionada())
+                ->action(fn () => $this->atualizarDadosRecentes()),
+
             Action::make('exportarPdf')
                 ->label('Exportar PDF')
                 ->icon('heroicon-o-document-text')
@@ -1708,6 +1860,51 @@ class DashboardAvaliacoes extends Page implements HasForms
     }
 
     /**
+     * Recarrega KPIs e listagem de acompanhamento sem depender do cache
+     * e sem montar exportações/PDF. Usado pelo botão Atualizar.
+     */
+    private function atualizarMetricasLeves(): void
+    {
+        $this->normalizarFiltros();
+        $this->normalizarFiltrosAcompanhamento();
+
+        if (! $this->avaliacaoSelecionada()) {
+            $this->aplicarDashboardData($this->dashboardVazio());
+
+            return;
+        }
+
+        $avaliacaoIds = $this->obterIdsAvaliacoesFiltradas();
+        $tabelaEscolas = $this->montarTabelaEscolas($avaliacaoIds);
+        $totaisPreenchimento = $this->calcularTotaisPreenchimento($avaliacaoIds, $tabelaEscolas);
+        $turnos = $this->calcularPreenchimentoPorTurno($avaliacaoIds);
+        $acompanhamentoTurmas = $this->montarAcompanhamentoTurmas($avaliacaoIds, paginar: true);
+
+        $this->cards = [
+            ...$totaisPreenchimento,
+            'percentual_turno_manha' => $turnos['manha']['percentual_preenchimento'] ?? 0.0,
+            'turno_manha_respondidas' => $turnos['manha']['respondidas'] ?? 0,
+            'turno_manha_esperadas' => $turnos['manha']['esperadas'] ?? 0,
+            'turno_manha_alunos_pendentes' => $turnos['manha']['alunos_pendentes'] ?? 0,
+            'turno_manha_alunos_total' => $turnos['manha']['alunos_total'] ?? 0,
+            'percentual_turno_tarde' => $turnos['tarde']['percentual_preenchimento'] ?? 0.0,
+            'turno_tarde_respondidas' => $turnos['tarde']['respondidas'] ?? 0,
+            'turno_tarde_esperadas' => $turnos['tarde']['esperadas'] ?? 0,
+            'turno_tarde_alunos_pendentes' => $turnos['tarde']['alunos_pendentes'] ?? 0,
+            'turno_tarde_alunos_total' => $turnos['tarde']['alunos_total'] ?? 0,
+        ];
+        $this->tabelaEscolas = $tabelaEscolas;
+        $this->preenchimentoPorComponentes = $this->montarPreenchimentoPorComponentes($avaliacaoIds);
+        $this->preenchimentoPorSeries = $this->montarPreenchimentoPorSeries($avaliacaoIds);
+        $this->turmasIncompletasPorEscola = $this->montarTurmasIncompletasPorEscola($tabelaEscolas);
+        $this->acompanhamentoTurmas = $acompanhamentoTurmas['itens'];
+        $this->acompanhamentoTurmasTotal = $acompanhamentoTurmas['total'];
+        $this->normalizarPaginacoesListagens();
+        $this->filtrosAplicados = $this->filtrosAplicadosFormatados();
+        $this->dashboardCarregado = true;
+    }
+
+    /**
      * @return array{
      *     cards: array<string, int|float>,
      *     tabela_escolas: array<int, array<string, int|float|string|bool>>,
@@ -2667,6 +2864,10 @@ class DashboardAvaliacoes extends Page implements HasForms
             ->leftJoin('series as s', 's.id', '=', 't.id_serie')
             ->leftJoin('componentes_curriculares as cc', 'cc.id', '=', 'p.componente_curricular_id');
 
+        if (($filtros['turma_id'] ?? null)) {
+            $esperadosQuery->where('t.id', (int) $filtros['turma_id']);
+        }
+
         if ($professoresIds !== []) {
             $esperadosQuery
                 ->leftJoin('turma_componente_professor as tcp_acomp', function ($join): void {
@@ -2728,29 +2929,36 @@ class DashboardAvaliacoes extends Page implements HasForms
             );
         }
 
-        $respondidosQuery = (clone $this->baseRespostasQuery($avaliacaoIds, ignorarAlternativas: true, filtros: $filtros))
-            ->groupBy('ar.avaliacao_id', 'ar.turma_id', 'p.componente_curricular_id')
-            ->groupByRaw('COALESCE(p.componente_curricular_id, 0)')
-            ->select(
-                'ar.avaliacao_id',
-                'ar.turma_id',
-                DB::raw('COALESCE(p.componente_curricular_id, 0) as componente_chave'),
-                DB::raw("{$professorRespostaChaveExpr} as professor_chave"),
-                DB::raw("COUNT(DISTINCT {$distinctRespondido}) as preenchimentos_respondidos"),
-                DB::raw('MAX(ar.respondido_em) as ultima_resposta_em')
-            );
+        // Progresso respondido a partir do documento (1 linha por aluno×avaliação×turma).
+        $respondidosQuery = DB::table('avaliacao_aluno_documentos as d')
+            ->join('alunos as aln', 'aln.id', '=', 'd.aluno_id')
+            ->join('turmas as t', 't.id', '=', 'd.turma_id')
+            ->whereIn('d.avaliacao_id', $avaliacaoIds)
+            ->where('aln.status', '!=', Aluno::STATUS_PENDENTE)
+            ->where('aln.tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL);
 
-        if ($professoresIds !== []) {
-            $respondidosQuery->groupByRaw($professorRespostaChaveExpr);
+        $this->aplicarFiltrosTurmaQuery($respondidosQuery, 't', $filtros);
+
+        if (($filtros['turma_id'] ?? null)) {
+            $respondidosQuery->where('d.turma_id', (int) $filtros['turma_id']);
         }
 
+        $respondidosQuery
+            ->groupBy('d.avaliacao_id', 'd.turma_id')
+            ->select(
+                'd.avaliacao_id',
+                'd.turma_id',
+                DB::raw('SUM(d.total_pautas_respondidas) as preenchimentos_respondidos'),
+                DB::raw('MAX(d.ultima_resposta_em) as ultima_resposta_em')
+            );
+
+        // Join só por avaliação+turma: o documento agrega todas as pautas do aluno.
+        // MAX evita multiplicar o mesmo total quando há várias linhas de componente no esperado.
         $query = DB::query()
             ->fromSub($esperadosQuery, 'esperados')
             ->leftJoinSub($respondidosQuery, 'respondidos', function ($join): void {
                 $join->on('respondidos.avaliacao_id', '=', 'esperados.avaliacao_id')
-                    ->on('respondidos.turma_id', '=', 'esperados.turma_id')
-                    ->on('respondidos.componente_chave', '=', 'esperados.componente_chave')
-                    ->on('respondidos.professor_chave', '=', 'esperados.professor_chave');
+                    ->on('respondidos.turma_id', '=', 'esperados.turma_id');
             })
             ->select(
                 'esperados.*',
@@ -2782,17 +2990,22 @@ class DashboardAvaliacoes extends Page implements HasForms
                 'acompanhamento.serie_id',
                 'acompanhamento.serie_nome',
                 DB::raw('SUM(acompanhamento.preenchimentos_esperados) as preenchimentos_esperados'),
-                DB::raw('SUM(acompanhamento.preenchimentos_respondidos) as preenchimentos_respondidos'),
+                DB::raw('MAX(acompanhamento.preenchimentos_respondidos) as preenchimentos_respondidos'),
                 DB::raw('SUM(acompanhamento.pautas_total) as pautas_total'),
                 DB::raw('MAX(acompanhamento.alunos_total) as alunos_total'),
                 DB::raw('MAX(acompanhamento.ultima_resposta_em) as ultima_resposta_em')
             );
 
-        $total = (int) DB::query()
-            ->fromSub(clone $query, 'acompanhamento')
-            ->count();
+        $statusFiltro = filled($filtros['status_preenchimento'] ?? null)
+            ? (string) $filtros['status_preenchimento']
+            : null;
 
-        if ($paginar) {
+        // Status é calculado em PHP; com esse filtro não paginamos no SQL.
+        $total = 0;
+        if ($paginar && $statusFiltro === null) {
+            $total = (int) DB::query()
+                ->fromSub(clone $query, 'acompanhamento')
+                ->count();
             $this->normalizarPaginaAcompanhamentoTurmas($total);
             $query->forPage($this->acompanhamentoTurmasPagina, $this->acompanhamentoTurmasPorPagina);
         }
@@ -2826,7 +3039,7 @@ class DashboardAvaliacoes extends Page implements HasForms
                     $turmasDaPagina->get((int) $item->turma_id)
                 );
 
-                return [
+                $linha = [
                     'avaliacao_id' => (int) $item->avaliacao_id,
                     'turma_id' => (int) $item->turma_id,
                     'escola_id' => (int) ($item->escola_id ?? 0),
@@ -2848,9 +3061,9 @@ class DashboardAvaliacoes extends Page implements HasForms
                     'alunos_total' => (int) ($item->alunos_total ?? 0),
                     'status' => $status,
                     'status_label' => match ($status) {
-                        'concluido' => 'Concluido',
+                        'concluido' => 'Concluído',
                         'em_andamento' => 'Em andamento',
-                        default => 'Nao iniciado',
+                        default => 'Não iniciado',
                     },
                     'parecer_exportavel' => $parecerElegibilidade['pode_exportar'],
                     'parecer_exportavel_motivo' => $parecerElegibilidade['motivo_bloqueio'],
@@ -2858,9 +3071,32 @@ class DashboardAvaliacoes extends Page implements HasForms
                         ? \Illuminate\Support\Carbon::parse($item->ultima_resposta_em)->format('d/m/Y H:i')
                         : '-',
                 ];
+
+                $linha['chave'] = $this->chaveLinhaAcompanhamento($linha);
+                $linha['alterado_recentemente'] = in_array($linha['chave'], $this->acompanhamentoLinhasAlteradas, true);
+
+                return $linha;
             })
+            ->when(
+                $statusFiltro !== null,
+                fn (Collection $colecao): Collection => $colecao->filter(
+                    fn (array $linha): bool => ($linha['status'] ?? '') === $statusFiltro
+                )->values()
+            )
             ->values()
             ->all();
+
+        if ($statusFiltro !== null) {
+            $total = count($itens);
+
+            if ($paginar) {
+                $this->normalizarPaginaAcompanhamentoTurmas($total);
+                $offset = max(($this->acompanhamentoTurmasPagina - 1) * $this->acompanhamentoTurmasPorPagina, 0);
+                $itens = array_slice($itens, $offset, $this->acompanhamentoTurmasPorPagina);
+            }
+        } elseif (! $paginar) {
+            $total = count($itens);
+        }
 
         return ['itens' => $itens, 'total' => $total];
     }
@@ -3026,24 +3262,167 @@ class DashboardAvaliacoes extends Page implements HasForms
             $this->filtrosAcompanhamento['escola_id'] ?? null
         );
         $this->filtrosAcompanhamento['serie_id'] = $this->normalizarId($this->filtrosAcompanhamento['serie_id'] ?? null);
+        $this->filtrosAcompanhamento['turma_id'] = $this->normalizarId($this->filtrosAcompanhamento['turma_id'] ?? null);
+        $this->filtrosAcompanhamento['componente_id'] = $this->normalizarId($this->filtrosAcompanhamento['componente_id'] ?? null);
+        $this->filtrosAcompanhamento['professor_id'] = $this->normalizarId($this->filtrosAcompanhamento['professor_id'] ?? null);
         $turno = $this->filtrosAcompanhamento['turno'] ?? null;
         $turno = filled($turno) ? (string) $turno : null;
         $this->filtrosAcompanhamento['turno'] = array_key_exists((string) $turno, $this->turnosOptions)
             ? $turno
             : null;
+        $status = (string) ($this->filtrosAcompanhamento['status'] ?? '');
+        $this->filtrosAcompanhamento['status'] = in_array($status, ['concluido', 'em_andamento', 'nao_iniciado'], true)
+            ? $status
+            : null;
     }
 
     private function filtrosDoAcompanhamento(): array
     {
+        $componentes = array_filter([(int) ($this->filtrosAcompanhamento['componente_id'] ?? 0)]);
+        $professores = array_filter([(int) ($this->filtrosAcompanhamento['professor_id'] ?? 0)]);
+
         return [
             ...$this->filtros,
-            'series_ids' => array_filter([(int) ($this->filtrosAcompanhamento['serie_id'] ?? 0)]),
-            'turnos' => filled($this->filtrosAcompanhamento['turno'] ?? null)
-                ? [(string) $this->filtrosAcompanhamento['turno']]
-                : [],
-            'componentes_ids' => [],
-            'escolas_ids' => array_filter([(int) ($this->filtrosAcompanhamento['escola_id'] ?? 0)]),
+            'series_ids' => array_values(array_unique(array_filter(array_merge(
+                $this->filtros['series_ids'] ?? [],
+                array_filter([(int) ($this->filtrosAcompanhamento['serie_id'] ?? 0)])
+            )))),
+            'turnos' => array_values(array_unique(array_filter(array_merge(
+                $this->filtros['turnos'] ?? [],
+                filled($this->filtrosAcompanhamento['turno'] ?? null)
+                    ? [(string) $this->filtrosAcompanhamento['turno']]
+                    : []
+            )))),
+            'componentes_ids' => array_values(array_unique(array_filter(array_merge(
+                $this->filtros['componentes_ids'] ?? [],
+                $componentes
+            )))),
+            'escolas_ids' => array_values(array_unique(array_filter(array_merge(
+                $this->filtros['escolas_ids'] ?? [],
+                array_filter([(int) ($this->filtrosAcompanhamento['escola_id'] ?? 0)])
+            )))),
+            'professores_ids' => array_values(array_unique(array_filter(array_merge(
+                $this->filtros['professores_ids'] ?? [],
+                $professores
+            )))),
+            'turma_id' => $this->filtrosAcompanhamento['turma_id'] ?? null,
+            'status_preenchimento' => $this->filtrosAcompanhamento['status'] ?? null,
         ];
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $itens
+     * @return array<string, array{percentual: float, status: string, respondidos: int}>
+     */
+    private function capturarSnapshotAcompanhamento(array $itens): array
+    {
+        $snapshot = [];
+
+        foreach ($itens as $item) {
+            $chave = $this->chaveLinhaAcompanhamento($item);
+            $snapshot[$chave] = [
+                'percentual' => (float) ($item['percentual_preenchimento'] ?? 0),
+                'status' => (string) ($item['status'] ?? ''),
+                'respondidos' => (int) ($item['preenchimentos_respondidos'] ?? 0),
+            ];
+        }
+
+        return $snapshot;
+    }
+
+    /**
+     * @param  array<string, array{percentual: float, status: string, respondidos: int}>  $antes
+     * @param  array<string, array{percentual: float, status: string, respondidos: int}>  $depois
+     * @return array<int, string>
+     */
+    private function diffSnapshotAcompanhamento(array $antes, array $depois): array
+    {
+        $alteradas = [];
+
+        foreach ($depois as $chave => $atual) {
+            $anterior = $antes[$chave] ?? null;
+
+            if ($anterior === null) {
+                $alteradas[] = $chave;
+
+                continue;
+            }
+
+            if (
+                (float) $anterior['percentual'] !== (float) $atual['percentual']
+                || (string) $anterior['status'] !== (string) $atual['status']
+                || (int) $anterior['respondidos'] !== (int) $atual['respondidos']
+            ) {
+                $alteradas[] = $chave;
+            }
+        }
+
+        return array_values($alteradas);
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     */
+    private function chaveLinhaAcompanhamento(array $item): string
+    {
+        return implode(':', [
+            (int) ($item['avaliacao_id'] ?? 0),
+            (int) ($item['turma_id'] ?? 0),
+            (int) ($item['escola_id'] ?? 0),
+            (int) ($item['serie_id'] ?? 0),
+            (int) ($item['componente_id'] ?? 0),
+            (int) ($item['professor_id'] ?? 0),
+        ]);
+    }
+
+    private function cardsDiferem(array $antes, array $depois): bool
+    {
+        $chaves = [
+            'preenchimentos_esperados',
+            'preenchimentos_respondidos',
+            'preenchimentos_pendentes',
+            'percentual_preenchimento_geral',
+            'turmas_preenchidas',
+            'turmas_esperadas',
+        ];
+
+        foreach ($chaves as $chave) {
+            if ((string) ($antes[$chave] ?? '') !== (string) ($depois[$chave] ?? '')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function getTurmasAcompanhamentoOptionsProperty(): array
+    {
+        $filtros = $this->filtrosIgnorandoCampo('series_ids');
+        $avaliacaoIds = $this->obterIdsAvaliacoesFiltradas(filtros: $filtros);
+
+        if ($avaliacaoIds === []) {
+            return [];
+        }
+
+        $query = (clone $this->baseTurmasContextoQuery($avaliacaoIds, $this->filtrosDoAcompanhamento()))
+            ->orderBy('t.nome');
+
+        if ($this->filtrosAcompanhamento['escola_id'] ?? null) {
+            $query->where('t.id_escola', (int) $this->filtrosAcompanhamento['escola_id']);
+        }
+
+        if ($this->filtrosAcompanhamento['serie_id'] ?? null) {
+            $query->where('t.id_serie', (int) $this->filtrosAcompanhamento['serie_id']);
+        }
+
+        if (filled($this->filtrosAcompanhamento['turno'] ?? null)) {
+            $query->where('t.turno', (string) $this->filtrosAcompanhamento['turno']);
+        }
+
+        return $query
+            ->pluck('t.nome', 't.id')
+            ->map(fn ($nome, $id): string => (string) $nome)
+            ->all();
     }
 
     private function normalizarId(mixed $value): ?int
@@ -3096,6 +3475,10 @@ class DashboardAvaliacoes extends Page implements HasForms
             'escola_id' => null,
             'serie_id' => null,
             'turno' => null,
+            'turma_id' => null,
+            'componente_id' => null,
+            'professor_id' => null,
+            'status' => null,
         ];
     }
 
