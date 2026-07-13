@@ -408,9 +408,18 @@
 
         const itemSelector = ':scope > .fi-fo-repeater-items > .fi-fo-repeater-item';
         const itemCounts = new WeakMap();
+        const activeTabs = new Map();
 
         const directItems = (root) => Array.from(root.querySelectorAll(itemSelector));
         const itemKey = (item, index) => item.getAttribute('x-sortable-item') || String(index);
+        const rootKey = (root) => {
+            const parentItem = root.parentElement?.closest('[x-sortable-item]');
+
+            return [
+                root.dataset.peTabsLabel || 'tabs',
+                parentItem?.getAttribute('x-sortable-item') || 'root',
+            ].join(':');
+        };
 
         const activate = (root, selectedItem) => {
             const items = directItems(root);
@@ -435,7 +444,9 @@
                 }
 
                 if (active) {
-                    root.dataset.peActiveTab = itemKey(item, index);
+                    const key = itemKey(item, index);
+                    root.dataset.peActiveTab = key;
+                    activeTabs.set(rootKey(root), key);
                 }
             });
         };
@@ -443,11 +454,16 @@
         const initializeRoot = (root) => {
             const items = directItems(root);
             const previousCount = itemCounts.get(root);
-            const savedKey = root.dataset.peActiveTab;
+            const savedKey = root.dataset.peActiveTab || activeTabs.get(rootKey(root));
             let selected = items.find((item, index) => itemKey(item, index) === savedKey);
 
-            if (previousCount !== undefined && items.length > previousCount) {
+            if (
+                root.dataset.peActivateNewest === 'true'
+                && previousCount !== undefined
+                && items.length > previousCount
+            ) {
                 selected = items.at(-1);
+                delete root.dataset.peActivateNewest;
             }
 
             selected ??= items[0];
@@ -471,6 +487,16 @@
         };
 
         document.addEventListener('click', (event) => {
+            const addContainer = event.target.closest('.pe-tabbed-repeater > .fi-fo-repeater-add');
+            const addRoot = addContainer?.parentElement;
+
+            if (addRoot?.matches('.pe-tabbed-repeater') && event.target.closest('button')) {
+                addRoot.dataset.peActivateNewest = 'true';
+                window.setTimeout(() => {
+                    delete addRoot.dataset.peActivateNewest;
+                }, 15000);
+            }
+
             const header = event.target.closest('.pe-tabbed-repeater .fi-fo-repeater-item-header');
             if (! header || event.target.closest('button, a, input, select, textarea')) {
                 return;

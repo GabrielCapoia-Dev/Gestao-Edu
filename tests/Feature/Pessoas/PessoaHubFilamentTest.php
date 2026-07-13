@@ -12,6 +12,7 @@ use App\Models\Setor;
 use App\Models\User;
 use App\Services\ServidorService;
 use Filament\Actions\CreateAction;
+use Filament\Schemas\Components\Tabs;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
@@ -167,6 +168,19 @@ class PessoaHubFilamentTest extends TestCase
         Livewire::actingAs($usuario)
             ->test(ManageServidores::class)
             ->assertTableActionDoesNotExist('gerenciarAcesso');
+    }
+
+    public function test_visualizacao_usa_a_mesma_estrutura_de_abas_do_formulario(): void
+    {
+        $setor = $this->criarSetor('Pedagógico');
+        $escola = $this->criarEscola('Escola Visualização', $setor);
+        $servidor = $this->criarServidor('Pessoa Visualização', $escola, $setor);
+
+        $schema = ServidorResource::infolistDetalhesCompletos($servidor);
+
+        $this->assertCount(1, $schema);
+        $this->assertInstanceOf(Tabs::class, $schema[0]);
+        $this->assertSame('Ficha da pessoa', $schema[0]->getLabel());
     }
 
     private function usuarioComPermissaoListar(): User

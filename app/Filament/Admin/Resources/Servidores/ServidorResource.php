@@ -278,10 +278,14 @@ class ServidorResource extends Resource
             ->recordActions([
                 ViewAction::make()
                     ->label('Visualizar')
-                    ->slideOver()
-                    ->modalWidth('5xl')
+                    ->modalWidth('6xl')
+                    ->modalIcon(null)
                     ->modalHeading(fn (Servidor $record): string => "Pessoa — {$record->nome}")
                     ->modalDescription('Ficha: identidade, cargo, matrículas e lotações. Acesso ao sistema em Usuários.')
+                    ->extraModalWindowAttributes([
+                        'class' => 'pessoa-modal-window pessoa-view-modal-window',
+                    ])
+                    ->stickyModalHeader()
                     ->schema(fn (Servidor $record): array => static::infolistDetalhesCompletos($record)),
 
                 EditAction::make()
@@ -431,7 +435,7 @@ class ServidorResource extends Resource
             ->whereNotNull('professor_id')
             ->get();
 
-        return [
+        $dadosPessoais = [
             Section::make('Identidade')
                 ->icon('heroicon-o-user')
                 ->schema([
@@ -455,8 +459,7 @@ class ServidorResource extends Resource
                         ->placeholder('—')
                         ->columnSpanFull(),
                 ])
-                ->columns(2)
-                ->collapsible(),
+                ->columns(2),
 
             Section::make('Cargo')
                 ->icon('heroicon-o-briefcase')
@@ -480,9 +483,10 @@ class ServidorResource extends Resource
                         })
                         ->columnSpanFull(),
                 ])
-                ->columns(2)
-                ->collapsible(),
+                ->columns(2),
+        ];
 
+        $matriculasELotacoes = [
             Section::make('Matrículas')
                 ->icon('heroicon-o-identification')
                 ->schema([
@@ -505,9 +509,7 @@ class ServidorResource extends Resource
                         ->badge()
                         ->separator(',')
                         ->columnSpanFull(),
-                ])
-                ->collapsible()
-                ->collapsed(fn (): bool => $record->professores->isEmpty()),
+                ]),
 
             Section::make('Lotações (escola × matrícula × turno)')
                 ->icon('heroicon-o-building-library')
@@ -527,9 +529,7 @@ class ServidorResource extends Resource
                             ->all() ?: ['Nenhuma lotação'])
                         ->listWithLineBreaks()
                         ->columnSpanFull(),
-                ])
-                ->collapsible()
-                ->collapsed(fn (): bool => $record->professores->isEmpty()),
+                ]),
 
             Section::make('Turmas e componentes')
                 ->icon('heroicon-o-academic-cap')
@@ -551,9 +551,7 @@ class ServidorResource extends Resource
                         })
                         ->listWithLineBreaks()
                         ->columnSpanFull(),
-                ])
-                ->collapsible()
-                ->collapsed(),
+                ]),
 
             Section::make('Vínculos funcionais')
                 ->icon('heroicon-o-link')
@@ -575,9 +573,18 @@ class ServidorResource extends Resource
                             ->all() ?: ['Nenhum vínculo funcional ativo'])
                         ->listWithLineBreaks()
                         ->columnSpanFull(),
-                ])
-                ->collapsible()
-                ->collapsed(),
+                ]),
+        ];
+
+        return [
+            Tabs::make('Ficha da pessoa')
+                ->columnSpanFull()
+                ->tabs([
+                    Tab::make('Dados pessoais')
+                        ->schema($dadosPessoais),
+                    Tab::make('Matrículas e lotações')
+                        ->schema($matriculasELotacoes),
+                ]),
         ];
     }
 
