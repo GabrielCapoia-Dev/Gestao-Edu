@@ -208,10 +208,21 @@
     }
 
     /* Matrículas e escolas: repeater hierárquico com navegação em abas. */
+    .pe-tabbed-repeater,
+    .pe-tabbed-repeater .fi-fo-repeater,
+    .pe-tabbed-repeater .fi-sc-component {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+    }
+
     .pe-tabbed-repeater > .fi-fo-repeater-items {
         display: grid !important;
         grid-template-columns: repeat(var(--pe-tab-count, 1), minmax(0, 1fr));
         grid-template-rows: auto auto;
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
         gap: 0 !important;
         overflow: hidden;
         border: 1px solid #dbe4ee;
@@ -225,7 +236,10 @@
 
     .pe-tabbed-repeater > .fi-fo-repeater-items > .fi-fo-repeater-item > .fi-fo-repeater-item-header {
         grid-row: 1;
+        width: 100%;
         min-width: 0;
+        max-width: 100%;
+        overflow: hidden;
         padding: 0.7rem 0.85rem;
         border: 0;
         border-right: 1px solid #dbe4ee;
@@ -262,6 +276,9 @@
     .pe-tabbed-repeater > .fi-fo-repeater-items > .fi-fo-repeater-item > .fi-fo-repeater-item-content {
         grid-row: 2;
         grid-column: 1 / -1;
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
         padding: 1rem;
         background: #fff;
     }
@@ -471,6 +488,11 @@
 
             const list = root.querySelector(':scope > .fi-fo-repeater-items');
             if (list) {
+                list.style.setProperty(
+                    'grid-template-columns',
+                    `repeat(${Math.max(items.length, 1)}, minmax(0, 1fr))`,
+                    'important',
+                );
                 list.setAttribute('role', 'tablist');
                 list.setAttribute('aria-label', root.dataset.peTabsLabel || 'Opções');
             }
@@ -546,7 +568,19 @@
             }
         }).observe(document.body, { childList: true, subtree: true });
 
+        const registerLivewireHook = () => {
+            if (! window.Livewire || window.__peTabbedRepeatersLivewireHookRegistered) {
+                return;
+            }
+
+            window.__peTabbedRepeatersLivewireHookRegistered = true;
+            window.Livewire.hook('morphed', () => requestAnimationFrame(initializeAll));
+        };
+
+        document.addEventListener('livewire:init', registerLivewireHook);
+        document.addEventListener('livewire:initialized', registerLivewireHook);
         document.addEventListener('livewire:navigated', initializeAll);
+        registerLivewireHook();
         requestAnimationFrame(initializeAll);
     })();
 </script>

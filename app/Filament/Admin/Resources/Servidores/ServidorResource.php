@@ -429,7 +429,11 @@ class ServidorResource extends Resource
         ]);
 
         $vinculosTcp = \App\Models\TurmaComponenteProfessor::query()
-            ->with(['turma:id,nome,turno,id_escola', 'componente:id,nome'])
+            ->with([
+                'turma:id,nome,turno,id_escola,id_serie',
+                'turma.serie:id,nome',
+                'componente:id,nome',
+            ])
             ->whereIn('professor_id', $record->professores->pluck('id'))
             ->where('tem_professor', true)
             ->whereNotNull('professor_id')
@@ -491,7 +495,7 @@ class ServidorResource extends Resource
                 ->icon('heroicon-o-identification')
                 ->schema([
                     TextEntry::make('matriculas_view')
-                        ->label('Matrículas do professor')
+                        ->hiddenLabel()
                         ->getStateUsing(function () use ($record): array {
                             if ($record->professorMatriculas->isNotEmpty()) {
                                 return $record->professorMatriculas
@@ -511,11 +515,11 @@ class ServidorResource extends Resource
                         ->columnSpanFull(),
                 ]),
 
-            Section::make('Lotações (escola × matrícula × turno)')
+            Section::make('Escolas / lotações')
                 ->icon('heroicon-o-building-library')
                 ->schema([
                     TextEntry::make('lotacoes_view')
-                        ->label('Registros')
+                        ->hiddenLabel()
                         ->getStateUsing(fn (): array => $record->professores
                             ->loadMissing('escola')
                             ->map(fn (Professor $p): string => sprintf(
@@ -535,18 +539,30 @@ class ServidorResource extends Resource
                 ->icon('heroicon-o-academic-cap')
                 ->schema([
                     TextEntry::make('tcp_view')
-                        ->label('Vínculos pedagógicos ativos')
+                        ->hiddenLabel()
                         ->getStateUsing(function () use ($vinculosTcp): array {
                             if ($vinculosTcp->isEmpty()) {
                                 return ['Nenhum vínculo de turma/componente'];
                             }
 
-                            return $vinculosTcp->map(function ($v): string {
-                                $turma = $v->turma?->nome ?? ('Turma #'.$v->turma_id);
+                            return $vinculosTcp->map(function ($v) use ($record): string {
+                                $professor = $record->professores->firstWhere('id', $v->professor_id);
+                                $turma = collect([
+                                    $v->turma?->serie?->nome,
+                                    $v->turma?->nome ?? ('Turma #'.$v->turma_id),
+                                ])->filter()->implode(' - ');
                                 $comp = $v->componente?->nome ?? ('Comp. #'.$v->componente_curricular_id);
-                                $turno = $v->turma?->turno ? " ({$v->turma->turno})" : '';
+                                $turno = $v->turma?->turno
+                                    ? mb_strtolower(Professor::turnosOptions()[$v->turma->turno] ?? $v->turma->turno)
+                                    : null;
+                                $turmaComTurno = $turno ? "{$turma} ({$turno})" : $turma;
 
-                                return "{$turma}{$turno} — {$comp}";
+                                return collect([
+                                    $professor?->matricula ? "Matrícula {$professor->matricula}" : null,
+                                    $professor?->escola?->nome,
+                                    $turmaComTurno,
+                                    $comp,
+                                ])->filter()->implode(' · ');
                             })->values()->all();
                         })
                         ->listWithLineBreaks()
@@ -557,15 +573,18 @@ class ServidorResource extends Resource
                 ->icon('heroicon-o-link')
                 ->schema([
                     TextEntry::make('sfa_view')
-                        ->label('Funções ativas')
+                        ->hiddenLabel()
                         ->getStateUsing(fn (): array => $record->vinculosAtivos
                             ->map(function ($v): string {
                                 $funcao = $v->funcaoAdministrativa?->nome ?? 'Função';
                                 $escola = $v->escola?->nome;
-                                $setor = $v->setor?->nome;
                                 $mat = $v->matricula;
 
-                                return collect([$funcao, $mat ? "mat. {$mat}" : null, $escola, $setor])
+                                return collect([
+                                    $funcao,
+                                    $mat ? "Matrícula {$mat}" : null,
+                                    $escola ?? $v->setor?->nome,
+                                ])
                                     ->filter()
                                     ->implode(' · ');
                             })
