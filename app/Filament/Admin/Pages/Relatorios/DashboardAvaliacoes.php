@@ -601,15 +601,6 @@ class DashboardAvaliacoes extends Page implements HasForms
                     ->native(false)
                     ->disabled(fn (): bool => ! $this->avaliacaoSelecionada())
                     ->live(),
-                Select::make('turma_id')
-                    ->label('Turma')
-                    ->options(fn (): array => $this->turmasAcompanhamentoOptions)
-                    ->placeholder('Todas')
-                    ->native(false)
-                    ->searchable()
-                    ->preload()
-                    ->disabled(fn (): bool => ! $this->avaliacaoSelecionada())
-                    ->live(),
                 Select::make('componente_id')
                     ->label('Componente')
                     ->options(fn (): array => $this->componentesOptions)
@@ -2864,10 +2855,6 @@ class DashboardAvaliacoes extends Page implements HasForms
             ->leftJoin('series as s', 's.id', '=', 't.id_serie')
             ->leftJoin('componentes_curriculares as cc', 'cc.id', '=', 'p.componente_curricular_id');
 
-        if (($filtros['turma_id'] ?? null)) {
-            $esperadosQuery->where('t.id', (int) $filtros['turma_id']);
-        }
-
         if ($professoresIds !== []) {
             $esperadosQuery
                 ->leftJoin('turma_componente_professor as tcp_acomp', function ($join): void {
@@ -2938,10 +2925,6 @@ class DashboardAvaliacoes extends Page implements HasForms
             ->where('aln.tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL);
 
         $this->aplicarFiltrosTurmaQuery($respondidosQuery, 't', $filtros);
-
-        if (($filtros['turma_id'] ?? null)) {
-            $respondidosQuery->where('d.turma_id', (int) $filtros['turma_id']);
-        }
 
         $respondidosQuery
             ->groupBy('d.avaliacao_id', 'd.turma_id')
@@ -3262,7 +3245,6 @@ class DashboardAvaliacoes extends Page implements HasForms
             $this->filtrosAcompanhamento['escola_id'] ?? null
         );
         $this->filtrosAcompanhamento['serie_id'] = $this->normalizarId($this->filtrosAcompanhamento['serie_id'] ?? null);
-        $this->filtrosAcompanhamento['turma_id'] = $this->normalizarId($this->filtrosAcompanhamento['turma_id'] ?? null);
         $this->filtrosAcompanhamento['componente_id'] = $this->normalizarId($this->filtrosAcompanhamento['componente_id'] ?? null);
         $this->filtrosAcompanhamento['professor_id'] = $this->normalizarId($this->filtrosAcompanhamento['professor_id'] ?? null);
         $turno = $this->filtrosAcompanhamento['turno'] ?? null;
@@ -3305,7 +3287,6 @@ class DashboardAvaliacoes extends Page implements HasForms
                 $this->filtros['professores_ids'] ?? [],
                 $professores
             )))),
-            'turma_id' => $this->filtrosAcompanhamento['turma_id'] ?? null,
             'status_preenchimento' => $this->filtrosAcompanhamento['status'] ?? null,
         ];
     }
@@ -3395,36 +3376,6 @@ class DashboardAvaliacoes extends Page implements HasForms
         return false;
     }
 
-    public function getTurmasAcompanhamentoOptionsProperty(): array
-    {
-        $filtros = $this->filtrosIgnorandoCampo('series_ids');
-        $avaliacaoIds = $this->obterIdsAvaliacoesFiltradas(filtros: $filtros);
-
-        if ($avaliacaoIds === []) {
-            return [];
-        }
-
-        $query = (clone $this->baseTurmasContextoQuery($avaliacaoIds, $this->filtrosDoAcompanhamento()))
-            ->orderBy('t.nome');
-
-        if ($this->filtrosAcompanhamento['escola_id'] ?? null) {
-            $query->where('t.id_escola', (int) $this->filtrosAcompanhamento['escola_id']);
-        }
-
-        if ($this->filtrosAcompanhamento['serie_id'] ?? null) {
-            $query->where('t.id_serie', (int) $this->filtrosAcompanhamento['serie_id']);
-        }
-
-        if (filled($this->filtrosAcompanhamento['turno'] ?? null)) {
-            $query->where('t.turno', (string) $this->filtrosAcompanhamento['turno']);
-        }
-
-        return $query
-            ->pluck('t.nome', 't.id')
-            ->map(fn ($nome, $id): string => (string) $nome)
-            ->all();
-    }
-
     private function normalizarId(mixed $value): ?int
     {
         $id = (int) $value;
@@ -3475,7 +3426,6 @@ class DashboardAvaliacoes extends Page implements HasForms
             'escola_id' => null,
             'serie_id' => null,
             'turno' => null,
-            'turma_id' => null,
             'componente_id' => null,
             'professor_id' => null,
             'status' => null,
