@@ -540,7 +540,7 @@ class ServidorResource extends Resource
                 ->schema([
                     TextEntry::make('tcp_view')
                         ->hiddenLabel()
-                        ->getStateUsing(function () use ($vinculosTcp): array {
+                        ->getStateUsing(function () use ($vinculosTcp, $record): array {
                             if ($vinculosTcp->isEmpty()) {
                                 return ['Nenhum vínculo de turma/componente'];
                             }

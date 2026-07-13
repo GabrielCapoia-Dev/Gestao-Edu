@@ -4,11 +4,15 @@ namespace Tests\Feature\Pessoas;
 
 use App\Filament\Admin\Resources\Servidores\Pages\ManageServidores;
 use App\Filament\Admin\Resources\Servidores\ServidorResource;
+use App\Models\ComponenteCurricular;
 use App\Models\Escola;
 use App\Models\Professor;
 use App\Models\Role;
+use App\Models\Serie;
 use App\Models\Servidor;
 use App\Models\Setor;
+use App\Models\Turma;
+use App\Models\TurmaComponenteProfessor;
 use App\Models\User;
 use App\Services\ServidorService;
 use Filament\Actions\CreateAction;
@@ -181,6 +185,46 @@ class PessoaHubFilamentTest extends TestCase
         $this->assertCount(1, $schema);
         $this->assertInstanceOf(Tabs::class, $schema[0]);
         $this->assertSame('Ficha da pessoa', $schema[0]->getLabel());
+    }
+
+    public function test_visualizacao_abre_com_vinculo_de_turma_e_componente(): void
+    {
+        $usuario = $this->usuarioHubAdmin(['Listar Servidores']);
+        $setor = $this->criarSetor('Pedagogico');
+        $escola = $this->criarEscola('Escola Visualizacao', $setor);
+        $servidor = $this->criarServidor('Pessoa Visualizacao', $escola, $setor);
+        $professor = Professor::query()->create([
+            'servidor_id' => $servidor->id,
+            'id_escola' => $escola->id,
+            'matricula' => 'VIEW-001',
+            'turno' => 'manha',
+            'nome' => $servidor->nome,
+            'email' => $servidor->email,
+            'ativo' => true,
+        ]);
+        $serie = Serie::query()->create(['codigo' => 'VIEW-SERIE', 'nome' => '1 Ano']);
+        $componente = ComponenteCurricular::query()->create([
+            'codigo' => 'VIEW-COMP',
+            'nome' => 'Matematica',
+        ]);
+        $turma = Turma::query()->create([
+            'codigo' => 'VIEW-TURMA',
+            'nome' => 'Turma A',
+            'turno' => 'manha',
+            'id_serie' => $serie->id,
+            'id_escola' => $escola->id,
+        ]);
+        TurmaComponenteProfessor::query()->create([
+            'turma_id' => $turma->id,
+            'componente_curricular_id' => $componente->id,
+            'professor_id' => $professor->id,
+            'tem_professor' => true,
+        ]);
+
+        Livewire::actingAs($usuario)
+            ->test(ManageServidores::class)
+            ->mountTableAction('view', $servidor)
+            ->assertHasNoErrors();
     }
 
     private function usuarioComPermissaoListar(): User
