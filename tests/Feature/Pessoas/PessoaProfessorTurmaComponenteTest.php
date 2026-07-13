@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Pessoas;
 
+use App\Filament\Admin\Resources\Servidores\Schemas\ServidorMatriculasForm;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
 use App\Models\FuncaoAdministrativa;
@@ -66,6 +67,13 @@ class PessoaProfessorTurmaComponenteTest extends TestCase
         ]);
 
         $this->assertSame(1, TurmaComponenteProfessor::query()->where('professor_id', $professor->id)->count());
+        $this->assertSame(
+            '1º Ano - Turma A (manhã) · Matemática',
+            ServidorMatriculasForm::vinculoTurmaComponenteLabel([
+                'turma_id' => $turma->id,
+                'componente_curricular_id' => $componente->id,
+            ]),
+        );
     }
 
     private function criarSetor(string $nome): Setor

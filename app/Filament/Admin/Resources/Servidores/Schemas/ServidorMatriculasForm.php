@@ -3,9 +3,11 @@
 namespace App\Filament\Admin\Resources\Servidores\Schemas;
 
 use App\Filament\Admin\Resources\Servidores\ServidorResource;
+use App\Models\ComponenteCurricular;
 use App\Models\Escola;
 use App\Models\Professor;
 use App\Models\ProfessorMatricula;
+use App\Models\Turma;
 use App\Services\UserService;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
@@ -102,13 +104,11 @@ class ServidorMatriculasForm
                                     ->addActionLabel('+ Turma')
                                     ->collapsible()
                                     ->collapsed()
-                                    ->itemLabel(fn (array $state): ?string => filled($state['turma_id'] ?? null)
-                                        ? 'Vínculo de turma'
-                                        : 'Novo vínculo')
+                                    ->itemHeaders()
+                                    ->itemLabel(fn (array $state): string => self::vinculoTurmaComponenteLabel($state))
                                     ->visible(fn (Get $get): bool => filled($get('id_escola')))
                                     ->columnSpanFull()
-                                    ->reorderable(false)
-                                    ->itemHeaders(false),
+                                    ->reorderable(false),
                             ])
                             ->columns(1)
                             ->defaultItems(0)
@@ -159,6 +159,34 @@ class ServidorMatriculasForm
             ->visible(fn (Get $get): bool => ($get('cargo') ?? ServidorResource::CARGO_PROFESSOR) === ServidorResource::CARGO_PROFESSOR)
             ->columnSpanFull()
             ->collapsible();
+    }
+
+    /** @param array<string, mixed> $state */
+    public static function vinculoTurmaComponenteLabel(array $state): string
+    {
+        $turmaId = $state['turma_id'] ?? null;
+        $componenteId = $state['componente_curricular_id'] ?? null;
+
+        $turma = filled($turmaId)
+            ? Turma::query()->with('serie:id,nome')->find((int) $turmaId)
+            : null;
+        $componente = filled($componenteId)
+            ? ComponenteCurricular::query()->whereKey((int) $componenteId)->value('nome')
+            : null;
+
+        $partesTurma = collect([
+            $turma?->serie?->nome,
+            $turma?->nome,
+        ])->filter()->implode(' - ');
+
+        if ($turma && filled($turma->turno)) {
+            $turno = mb_strtolower(Professor::turnosOptions()[$turma->turno] ?? (string) $turma->turno);
+            $partesTurma .= " ({$turno})";
+        }
+
+        return collect([$partesTurma, $componente])
+            ->filter()
+            ->implode(' · ') ?: 'Novo vínculo';
     }
 
     /**
