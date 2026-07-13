@@ -7,7 +7,9 @@ use App\Services\PessoaLegadoNormalizacaoService;
 use Illuminate\Database\Seeder;
 
 /**
- * Roda a cada migrate --seed (boot Docker). Idempotente e barato se já normalizado.
+ * Roda a cada migrate --seed (boot Docker).
+ * No boot só reprocessa pendências estruturais (professor sem pessoa / sem matrícula FK).
+ * Consolidação por e-mail duplicado fica para `php artisan pessoas:normalizar-legado`.
  */
 class PessoaLegadoNormalizacaoSeeder extends Seeder
 {
@@ -15,11 +17,12 @@ class PessoaLegadoNormalizacaoSeeder extends Seeder
     {
         $service = app(PessoaLegadoNormalizacaoService::class);
 
-        if ($service->haPendencias()) {
+        // Boot: só estrutura. Evita reprocessar 5+ min por anomalias de e-mail permanentes.
+        if ($service->haPendenciasEstruturais()) {
             $stats = $service->normalizar(dryRun: false);
 
             if ($this->command) {
-                $this->command->info('Pessoas legado normalizadas.');
+                $this->command->info('Pessoas legado normalizadas (pendências estruturais).');
                 $this->command->line('  professores_linkados: '.($stats['professores_linkados'] ?? 0));
                 $this->command->line('  pessoas_criadas: '.($stats['pessoas_criadas'] ?? 0));
                 $this->command->line('  pessoas_mescladas: '.($stats['pessoas_mescladas'] ?? 0));
@@ -32,10 +35,10 @@ class PessoaLegadoNormalizacaoSeeder extends Seeder
                 }
             }
         } elseif ($this->command) {
-            $this->command->info('Pessoas legado: sem pendências estruturais.');
+            $this->command->info('Pessoas legado: sem pendências estruturais (boot ok).');
         }
 
-        // Sempre sanitiza acesso de professores (só role Professor; limpa permissões diretas extras).
+        // Sanitização leve de roles de professor (idempotente).
         $sanit = app(PessoaAcessoService::class)->sanitizarAcessosSomenteProfessor();
         if ($this->command) {
             $this->command->info('Acessos de professor sanitizados: '.($sanit['usuarios'] ?? 0).' usuário(s).');

@@ -53,11 +53,13 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
+      # start_period alto: primeiro boot (composer + migrate + seed) pode passar de 5 min.
+      # Falhas durante o start_period não contam para retries.
       test: [ "CMD-SHELL", "test -s /var/www/bootstrap/cache/runtime-ready && test -s /var/www/bootstrap/cache/routes-v7.php && test -s /var/www/bootstrap/cache/config.php" ]
       interval: 5s
-      timeout: 3s
-      retries: 60
-      start_period: 10s
+      timeout: 5s
+      retries: 36
+      start_period: 900s
     networks:
       - laravel_gestao-edu
 

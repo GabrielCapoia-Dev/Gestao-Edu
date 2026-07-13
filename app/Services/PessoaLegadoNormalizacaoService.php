@@ -72,7 +72,11 @@ class PessoaLegadoNormalizacaoService
         return $stats;
     }
 
-    public function haPendencias(?string $somenteEmail = null): bool
+    /**
+     * Pendências leves usadas no boot (migrate --seed): apenas estrutura.
+     * Não inclui consolidação por e-mail (pode ser permanente e reprocessar minutos a cada up).
+     */
+    public function haPendenciasEstruturais(?string $somenteEmail = null): bool
     {
         $email = $somenteEmail ? $this->normalizarEmail($somenteEmail) : null;
 
@@ -99,6 +103,20 @@ class PessoaLegadoNormalizacaoService
                 return true;
             }
         }
+
+        return false;
+    }
+
+    /**
+     * Pendências completas (CLI / comando artisan), inclui e-mails duplicados em pessoas distintas.
+     */
+    public function haPendencias(?string $somenteEmail = null): bool
+    {
+        if ($this->haPendenciasEstruturais($somenteEmail)) {
+            return true;
+        }
+
+        $email = $somenteEmail ? $this->normalizarEmail($somenteEmail) : null;
 
         // Mesmo e-mail normalizado em mais de um servidor_id (ignora local-part vazio)
         $professores = Professor::query()
