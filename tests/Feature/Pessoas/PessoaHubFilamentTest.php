@@ -221,10 +221,20 @@ class PessoaHubFilamentTest extends TestCase
             'tem_professor' => true,
         ]);
 
+        $grupos = ServidorResource::gruposTurmasComponentes($servidor->fresh());
+
+        $this->assertCount(1, $grupos);
+        $this->assertSame('Escola Visualizacao', $grupos[0]['escola']);
+        $this->assertSame(['VIEW-001'], $grupos[0]['matriculas']);
+        $this->assertSame('1 Ano - Turma A', $grupos[0]['turmas'][0]['nome']);
+        $this->assertSame(['Matematica'], $grupos[0]['turmas'][0]['componentes']);
+
         Livewire::actingAs($usuario)
             ->test(ManageServidores::class)
             ->mountTableAction('view', $servidor)
-            ->assertHasNoErrors();
+            ->assertHasNoErrors()
+            ->assertDontSee('Escolas / lotações')
+            ->assertDontSee('Vínculos funcionais');
     }
 
     private function usuarioComPermissaoListar(): User

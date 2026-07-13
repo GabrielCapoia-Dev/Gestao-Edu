@@ -25,6 +25,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
@@ -428,17 +429,6 @@ class ServidorResource extends Resource
             'vinculosAtivos.setor',
         ]);
 
-        $vinculosTcp = \App\Models\TurmaComponenteProfessor::query()
-            ->with([
-                'turma:id,nome,turno,id_escola,id_serie',
-                'turma.serie:id,nome',
-                'componente:id,nome',
-            ])
-            ->whereIn('professor_id', $record->professores->pluck('id'))
-            ->where('tem_professor', true)
-            ->whereNotNull('professor_id')
-            ->get();
-
         $dadosPessoais = [
             Section::make('Identidade')
                 ->icon('heroicon-o-user')
@@ -490,107 +480,15 @@ class ServidorResource extends Resource
                 ->columns(2),
         ];
 
-        $matriculasELotacoes = [
-            Section::make('Matrículas')
-                ->icon('heroicon-o-identification')
-                ->schema([
-                    TextEntry::make('matriculas_view')
-                        ->hiddenLabel()
-                        ->getStateUsing(function () use ($record): array {
-                            if ($record->professorMatriculas->isNotEmpty()) {
-                                return $record->professorMatriculas
-                                    ->map(fn ($m): string => sprintf('%s (%s)', $m->matricula, $m->turnoLabel()))
-                                    ->all();
-                            }
+        $gruposTurmas = static::gruposTurmasComponentes($record);
 
-                            return $record->professores
-                                ->pluck('matricula')
-                                ->filter()
-                                ->unique()
-                                ->values()
-                                ->all() ?: ['Nenhuma matrícula'];
-                        })
-                        ->badge()
-                        ->separator(',')
-                        ->columnSpanFull(),
-                ]),
-
-            Section::make('Escolas / lotações')
-                ->icon('heroicon-o-building-library')
-                ->schema([
-                    TextEntry::make('lotacoes_view')
-                        ->hiddenLabel()
-                        ->getStateUsing(fn (): array => $record->professores
-                            ->loadMissing('escola')
-                            ->map(fn (Professor $p): string => sprintf(
-                                '%s · %s · %s%s',
-                                $p->matricula ?: 's/ matrícula',
-                                $p->turnoLabel(),
-                                $p->escola?->nome ?? 'Sem escola',
-                                $p->ativo ? '' : ' (inativo)',
-                            ))
-                            ->values()
-                            ->all() ?: ['Nenhuma lotação'])
-                        ->listWithLineBreaks()
-                        ->columnSpanFull(),
-                ]),
-
+        $turmasELotacoes = [
             Section::make('Turmas e componentes')
                 ->icon('heroicon-o-academic-cap')
+                ->description('Lotações organizadas por escola e turno.')
                 ->schema([
-                    TextEntry::make('tcp_view')
-                        ->hiddenLabel()
-                        ->getStateUsing(function () use ($vinculosTcp, $record): array {
-                            if ($vinculosTcp->isEmpty()) {
-                                return ['Nenhum vínculo de turma/componente'];
-                            }
-
-                            return $vinculosTcp->map(function ($v) use ($record): string {
-                                $professor = $record->professores->firstWhere('id', $v->professor_id);
-                                $turma = collect([
-                                    $v->turma?->serie?->nome,
-                                    $v->turma?->nome ?? ('Turma #'.$v->turma_id),
-                                ])->filter()->implode(' - ');
-                                $comp = $v->componente?->nome ?? ('Comp. #'.$v->componente_curricular_id);
-                                $turno = $v->turma?->turno
-                                    ? mb_strtolower(Professor::turnosOptions()[$v->turma->turno] ?? $v->turma->turno)
-                                    : null;
-                                $turmaComTurno = $turno ? "{$turma} ({$turno})" : $turma;
-
-                                return collect([
-                                    $professor?->matricula ? "Matrícula {$professor->matricula}" : null,
-                                    $professor?->escola?->nome,
-                                    $turmaComTurno,
-                                    $comp,
-                                ])->filter()->implode(' · ');
-                            })->values()->all();
-                        })
-                        ->listWithLineBreaks()
-                        ->columnSpanFull(),
-                ]),
-
-            Section::make('Vínculos funcionais')
-                ->icon('heroicon-o-link')
-                ->schema([
-                    TextEntry::make('sfa_view')
-                        ->hiddenLabel()
-                        ->getStateUsing(fn (): array => $record->vinculosAtivos
-                            ->map(function ($v): string {
-                                $funcao = $v->funcaoAdministrativa?->nome ?? 'Função';
-                                $escola = $v->escola?->nome;
-                                $mat = $v->matricula;
-
-                                return collect([
-                                    $funcao,
-                                    $mat ? "Matrícula {$mat}" : null,
-                                    $escola ?? $v->setor?->nome,
-                                ])
-                                    ->filter()
-                                    ->implode(' · ');
-                            })
-                            ->values()
-                            ->all() ?: ['Nenhum vínculo funcional ativo'])
-                        ->listWithLineBreaks()
+                    View::make('filament.admin.resources.servidores.partials.turmas-componentes-groups')
+                        ->viewData(['grupos' => $gruposTurmas])
                         ->columnSpanFull(),
                 ]),
         ];
@@ -601,10 +499,83 @@ class ServidorResource extends Resource
                 ->tabs([
                     Tab::make('Dados pessoais')
                         ->schema($dadosPessoais),
-                    Tab::make('Matrículas e lotações')
-                        ->schema($matriculasELotacoes),
+                    Tab::make('Turmas e componentes')
+                        ->schema($turmasELotacoes),
                 ]),
         ];
+    }
+
+    /**
+     * Agrupa a apresentação pedagógica por escola e turno sem alterar os vínculos persistidos.
+     *
+     * @return array<int, array{
+     *     escola: string,
+     *     turno: string,
+     *     matriculas: array<int, string>,
+     *     turmas: array<int, array{nome: string, componentes: array<int, string>}>
+     * }>
+     */
+    public static function gruposTurmasComponentes(Servidor $record): array
+    {
+        $record->loadMissing('professores.escola');
+
+        $vinculosPorProfessor = \App\Models\TurmaComponenteProfessor::query()
+            ->with([
+                'turma:id,nome,turno,id_escola,id_serie',
+                'turma.serie:id,nome',
+                'componente:id,nome',
+            ])
+            ->whereIn('professor_id', $record->professores->pluck('id'))
+            ->where('tem_professor', true)
+            ->whereNotNull('professor_id')
+            ->get()
+            ->groupBy('professor_id');
+
+        return $record->professores
+            ->groupBy(fn (Professor $professor): string => implode(':', [
+                $professor->id_escola ?: 'sem-escola',
+                $professor->turno ?: 'sem-turno',
+            ]))
+            ->map(function ($professores) use ($vinculosPorProfessor): array {
+                /** @var Professor $professor */
+                $professor = $professores->first();
+                $vinculosDoGrupo = $professores->flatMap(
+                    fn (Professor $item) => $vinculosPorProfessor->get($item->id, collect()),
+                );
+
+                $turmas = $vinculosDoGrupo
+                    ->groupBy('turma_id')
+                    ->map(function ($vinculos): array {
+                        $vinculo = $vinculos->first();
+                        $nomeTurma = collect([
+                            $vinculo->turma?->serie?->nome,
+                            $vinculo->turma?->nome ?? ('Turma #'.$vinculo->turma_id),
+                        ])->filter()->implode(' - ');
+
+                        return [
+                            'nome' => $nomeTurma,
+                            'componentes' => $vinculos
+                                ->map(fn ($item): string => $item->componente?->nome ?? ('Componente #'.$item->componente_curricular_id))
+                                ->unique()
+                                ->sort()
+                                ->values()
+                                ->all(),
+                        ];
+                    })
+                    ->sortBy('nome')
+                    ->values()
+                    ->all();
+
+                return [
+                    'escola' => $professor->escola?->nome ?? 'Sem escola definida',
+                    'turno' => $professor->turnoLabel(),
+                    'matriculas' => $professores->pluck('matricula')->filter()->unique()->values()->all(),
+                    'turmas' => $turmas,
+                ];
+            })
+            ->sortBy(fn (array $grupo): string => $grupo['escola'].'|'.$grupo['turno'])
+            ->values()
+            ->all();
     }
 
     /**
