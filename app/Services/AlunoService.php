@@ -266,7 +266,7 @@ class AlunoService
                 ->description(fn (Aluno $record): string => trim(collect([
                     filled($record->cgm) ? 'CGM: '.$record->cgm : null,
                 ])->filter()->join(' | ')))
-                ->searchable()
+                ->searchable(['nome', 'cgm'])
                 ->sortable()
                 ->copyable()
                 ->copyMessage('Copiado')
