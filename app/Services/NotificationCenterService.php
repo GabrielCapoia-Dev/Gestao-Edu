@@ -8,6 +8,7 @@ use App\Models\NotificacaoEnvio;
 use App\Models\Pedido;
 use App\Models\Professor;
 use App\Models\Role;
+use App\Models\Servidor;
 use App\Models\Setor;
 use App\Models\Turma;
 use App\Models\User;
@@ -34,6 +35,10 @@ class NotificationCenterService
         'permissoes' => 'Enviar Notificações: Usuários por Permissão',
         'setores' => 'Enviar Notificações: Setor Específico',
     ];
+
+    public function __construct(
+        private readonly PessoaScopeService $pessoaScopeService,
+    ) {}
 
     public function canView(?User $user): bool
     {
@@ -88,72 +93,71 @@ class NotificationCenterService
     public function formOptions(?User $user = null): array
     {
         $ttl = now()->addMinutes(5);
+        $scopeKey = $this->formOptionsScopeKey($user);
 
-        $globalOptions = Cache::remember('notifications:form-options', $ttl, function () use ($ttl): array {
-            return [
-                'usuarios' => $this->cacheRemember('notifications:form-options:usuarios', $ttl, fn (): array => User::query()
-                    ->orderBy('name')
-                    ->limit(1000)
-                    ->get(['id', 'name', 'email'])
-                    ->map(fn (User $user): array => [
-                        'id' => (string) $user->id,
-                        'label' => trim("{$user->name} - {$user->email}"),
-                    ])
-                    ->values()
-                    ->all()),
+        $globalOptions = [
+            'usuarios' => $this->cacheRemember('notifications:form-options:usuarios:'.$scopeKey, $ttl, fn (): array => $this->aplicarEscopoUsuarios(User::query(), $user)
+                ->orderBy('name')
+                ->limit(1000)
+                ->get(['id', 'name', 'email'])
+                ->map(fn (User $optionUser): array => [
+                    'id' => (string) $optionUser->id,
+                    'label' => trim("{$optionUser->name} - {$optionUser->email}"),
+                ])
+                ->values()
+                ->all()),
 
-                'roles' => $this->cacheRemember('notifications:form-options:roles', $ttl, fn (): array => Role::query()
-                    ->orderBy('name')
-                    ->get(['id', 'name'])
-                    ->map(fn (Role $role): array => [
-                        'id' => (string) $role->id,
-                        'label' => $role->name,
-                    ])
-                    ->values()
-                    ->all()),
+            'roles' => $this->cacheRemember('notifications:form-options:roles', $ttl, fn (): array => Role::query()
+                ->orderBy('name')
+                ->get(['id', 'name'])
+                ->map(fn (Role $role): array => [
+                    'id' => (string) $role->id,
+                    'label' => $role->name,
+                ])
+                ->values()
+                ->all()),
 
-                'escolas' => $this->cacheRemember('notifications:form-options:escolas', $ttl, fn (): array => Escola::query()
-                    ->where('ativo', true)
-                    ->orderBy('nome')
-                    ->get(['id', 'nome'])
-                    ->map(fn (Escola $escola): array => [
-                        'id' => (string) $escola->id,
-                        'label' => $escola->nome,
-                    ])
-                    ->values()
-                    ->all()),
+            'escolas' => $this->cacheRemember('notifications:form-options:escolas:'.$scopeKey, $ttl, fn (): array => $this->aplicarEscopoEscolas(Escola::query(), $user, 'escolas.id')
+                ->where('ativo', true)
+                ->orderBy('nome')
+                ->get(['id', 'nome'])
+                ->map(fn (Escola $escola): array => [
+                    'id' => (string) $escola->id,
+                    'label' => $escola->nome,
+                ])
+                ->values()
+                ->all()),
 
-                'turmas' => $this->cacheRemember('notifications:form-options:turmas', $ttl, fn (): array => Turma::query()
-                    ->with(['escola:id,nome', 'serie:id,nome'])
-                    ->orderBy('nome')
-                    ->get()
-                    ->map(function (Turma $turma): array {
-                        $partes = array_filter([
-                            $turma->escola?->nome,
-                            $turma->serie?->nome,
-                            $turma->nome,
-                            $turma->turno,
-                        ]);
+            'turmas' => $this->cacheRemember('notifications:form-options:turmas:'.$scopeKey, $ttl, fn (): array => $this->aplicarEscopoEscolas(Turma::query(), $user, 'turmas.id_escola')
+                ->with(['escola:id,nome', 'serie:id,nome'])
+                ->orderBy('nome')
+                ->get()
+                ->map(function (Turma $turma): array {
+                    $partes = array_filter([
+                        $turma->escola?->nome,
+                        $turma->serie?->nome,
+                        $turma->nome,
+                        $turma->turno,
+                    ]);
 
-                        return [
-                            'id' => (string) $turma->id,
-                            'label' => implode(' · ', $partes),
-                        ];
-                    })
-                    ->values()
-                    ->all()),
+                    return [
+                        'id' => (string) $turma->id,
+                        'label' => implode(' · ', $partes),
+                    ];
+                })
+                ->values()
+                ->all()),
 
-                'permissoes' => $this->cacheRemember('notifications:form-options:permissoes', $ttl, fn (): array => Permission::query()
-                    ->orderBy('name')
-                    ->pluck('name')
-                    ->map(fn (string $permission): array => [
-                        'id' => $permission,
-                        'label' => $permission,
-                    ])
-                    ->values()
-                    ->all()),
-            ];
-        });
+            'permissoes' => $this->cacheRemember('notifications:form-options:permissoes', $ttl, fn (): array => Permission::query()
+                ->orderBy('name')
+                ->pluck('name')
+                ->map(fn (string $permission): array => [
+                    'id' => $permission,
+                    'label' => $permission,
+                ])
+                ->values()
+                ->all()),
+        ];
 
         $globalOptions['setores'] = collect(app(UserSetorAccessService::class)->optionsForSelect($user))
             ->map(fn (string $label, int|string $id): array => [
@@ -180,6 +184,110 @@ class NotificationCenterService
         return Cache::remember($key, $ttl, $callback);
     }
 
+    private function formOptionsScopeKey(?User $user): string
+    {
+        if ($this->pessoaScopeService->hasGlobalAccess($user)) {
+            return 'global';
+        }
+
+        $escolaIds = $this->pessoaScopeService->escolaIdsDosVinculos($user);
+        sort($escolaIds);
+
+        return $escolaIds === []
+            ? 'sem-escopo'
+            : 'escolas-'.sha1(implode(',', $escolaIds));
+    }
+
+    private function aplicarEscopoEscolas(
+        EloquentBuilder $query,
+        ?User $user,
+        string $column,
+    ): EloquentBuilder {
+        if ($this->pessoaScopeService->hasGlobalAccess($user)) {
+            return $query;
+        }
+
+        $escolaIds = $this->pessoaScopeService->escolaIdsDosVinculos($user);
+
+        return $escolaIds === []
+            ? $query->whereRaw('1 = 0')
+            : $query->whereIn($column, $escolaIds);
+    }
+
+    private function aplicarEscopoUsuarios(EloquentBuilder $query, ?User $user): EloquentBuilder
+    {
+        if ($this->pessoaScopeService->hasGlobalAccess($user)) {
+            return $query;
+        }
+
+        return $this->aplicarEscopoUsuariosPorEscolas(
+            $query,
+            collect($this->pessoaScopeService->escolaIdsDosVinculos($user)),
+        );
+    }
+
+    private function aplicarEscopoUsuariosPorEscolas(
+        EloquentBuilder $query,
+        Collection $escolaIds,
+    ): EloquentBuilder {
+        $escolaIds = $escolaIds
+            ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->values();
+
+        if ($escolaIds->isEmpty()) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->where(function (EloquentBuilder $usuarios) use ($escolaIds): void {
+            $usuarios
+                ->whereIn('users.id_escola', $escolaIds)
+                ->orWhereHas('escolas', fn (EloquentBuilder $escolas) => $escolas->whereIn('escolas.id', $escolaIds))
+                ->orWhereHas('professores', fn (EloquentBuilder $professores) => $professores
+                    ->where('professores.ativo', true)
+                    ->whereIn('professores.id_escola', $escolaIds))
+                ->orWhereHas('servidores', fn (EloquentBuilder $servidores) => $servidores
+                    ->where('servidores.status', Servidor::STATUS_ATIVO)
+                    ->whereHas('vinculosAtivos', fn (EloquentBuilder $vinculos) => $vinculos
+                        ->whereIn('servidor_funcao_administrativa.id_escola', $escolaIds)));
+        });
+    }
+
+    private function validarEscopoDoAutor(User $autor): void
+    {
+        if ($this->pessoaScopeService->hasGlobalAccess($autor)) {
+            return;
+        }
+
+        if ($this->pessoaScopeService->escolaIdsDosVinculos($autor) !== []) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'destino_tipo' => 'Seu usuário não possui um escopo escolar válido para enviar notificações.',
+        ]);
+    }
+
+    private function validarIdsNoEscopo(
+        Collection $selecionados,
+        Collection $permitidos,
+        string $campo,
+    ): void {
+        $permitidos = $permitidos
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->values();
+
+        if ($selecionados->isNotEmpty() && $selecionados->diff($permitidos)->isEmpty()) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            $campo => 'Selecione apenas opções permitidas para o seu escopo escolar.',
+        ]);
+    }
+
     public function payload(User $user, array $filters): array
     {
         $mode = $this->normalizeMode($filters['modo'] ?? 'todas', $user);
@@ -188,7 +296,7 @@ class NotificationCenterService
         $stats = $this->stats($user);
 
         if ($mode === 'enviadas') {
-            $query = $this->enviosQuery($filters);
+            $query = $this->enviosQuery($user, $filters);
             $total = (clone $query)->count();
             $pagination = $this->pagination($page, $perPage, $total);
             $records = $query
@@ -244,7 +352,7 @@ class NotificationCenterService
         $urgentes = (int) ($row->urgentes ?? 0);
         $latestUpdatedAt = (string) ($row->latest_updated_at ?? '');
         $enviadas = $this->canCreate($user)
-            ? NotificacaoEnvio::query()->count()
+            ? $this->enviosBaseQuery($user)->count()
             : 0;
 
         return [
@@ -485,9 +593,29 @@ class NotificationCenterService
             ->orderByDesc('created_at');
     }
 
-    private function enviosQuery(array $filters): EloquentBuilder
+    private function enviosBaseQuery(User $user): EloquentBuilder
     {
-        $query = NotificacaoEnvio::query()
+        $query = NotificacaoEnvio::query();
+
+        if ($this->pessoaScopeService->hasGlobalAccess($user)) {
+            return $query;
+        }
+
+        $escolaIds = collect($this->pessoaScopeService->escolaIdsDosVinculos($user));
+
+        if ($escolaIds->isEmpty()) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereHas(
+            'autor',
+            fn (EloquentBuilder $autores): EloquentBuilder => $this->aplicarEscopoUsuariosPorEscolas($autores, $escolaIds),
+        );
+    }
+
+    private function enviosQuery(User $user, array $filters): EloquentBuilder
+    {
+        $query = $this->enviosBaseQuery($user)
             ->with('autor:id,name');
 
         $periodo = $filters['periodo'] ?? '30';
@@ -551,22 +679,36 @@ class NotificationCenterService
         $ids = collect();
         $query = User::query();
 
+        $this->validarEscopoDoAutor($autor);
+
         if ($tipo === 'usuarios') {
             $ids = $this->idsSelecionados($data['usuarios_ids'] ?? []);
+            $permitidos = $this->aplicarEscopoUsuarios(
+                User::query()->whereIn('users.id', $ids),
+                $autor,
+            )->pluck('users.id');
+            $this->validarIdsNoEscopo($ids, $permitidos, 'usuarios_ids');
             $query->whereIn('id', $ids);
         } elseif ($tipo === 'roles') {
             $ids = $this->idsSelecionados($data['roles_ids'] ?? []);
             $query->whereHas('roles', fn (EloquentBuilder $roles) => $roles->whereIn('roles.id', $ids));
         } elseif ($tipo === 'escolas') {
             $ids = $this->idsSelecionados($data['escolas_ids'] ?? []);
-            $query->where(function (EloquentBuilder $usuarios) use ($ids): void {
-                $usuarios
-                    ->whereIn('id_escola', $ids)
-                    ->orWhereHas('escolas', fn (EloquentBuilder $escolas) => $escolas->whereIn('escolas.id', $ids))
-                    ->orWhereHas('professores', fn (EloquentBuilder $professores) => $professores->whereIn('id_escola', $ids));
-            });
+            $permitidos = $this->aplicarEscopoEscolas(
+                Escola::query()->where('ativo', true)->whereIn('escolas.id', $ids),
+                $autor,
+                'escolas.id',
+            )->pluck('escolas.id');
+            $this->validarIdsNoEscopo($ids, $permitidos, 'escolas_ids');
+            $this->aplicarEscopoUsuariosPorEscolas($query, $ids);
         } elseif ($tipo === 'professores_turmas') {
             $ids = $this->idsSelecionados($data['turmas_ids'] ?? []);
+            $permitidos = $this->aplicarEscopoEscolas(
+                Turma::query()->whereIn('turmas.id', $ids),
+                $autor,
+                'turmas.id_escola',
+            )->pluck('turmas.id');
+            $this->validarIdsNoEscopo($ids, $permitidos, 'turmas_ids');
             $userIds = Professor::query()
                 ->whereNotNull('user_id')
                 ->where(function (EloquentBuilder $professores) use ($ids): void {
@@ -607,7 +749,7 @@ class NotificationCenterService
             });
         }
 
-        $destinatarios = $query
+        $destinatarios = $this->aplicarEscopoUsuarios($query, $autor)
             ->whereNotNull('email')
             ->orderBy('name')
             ->get()
@@ -626,6 +768,7 @@ class NotificationCenterService
         return collect($ids)
             ->filter(fn ($id): bool => filled($id))
             ->map(fn ($id): int => (int) $id)
+            ->filter(fn (int $id): bool => $id > 0)
             ->unique()
             ->values();
     }

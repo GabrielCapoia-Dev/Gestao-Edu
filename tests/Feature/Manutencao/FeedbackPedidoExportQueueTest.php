@@ -26,6 +26,7 @@ use Livewire\Livewire;
 use Mockery;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class FeedbackPedidoExportQueueTest extends TestCase
@@ -82,6 +83,7 @@ class FeedbackPedidoExportQueueTest extends TestCase
     {
         $dados = $this->criarFeedbacksParaFiltro();
         $user = $this->usuarioComPermissoes();
+        $user->update(['id_escola' => $dados['escola']->id]);
 
         Livewire::actingAs($user)
             ->test(FeedbackPedidoPage::class)
@@ -251,7 +253,10 @@ class FeedbackPedidoExportQueueTest extends TestCase
     {
         Storage::fake('local');
 
+        $dados = $this->criarFeedbacksParaFiltro();
+
         $user = User::factory()->create([
+            'id_escola' => $dados['escola']->id,
             'email_approved' => true,
             'email_verified_at' => now(),
         ]);
@@ -262,7 +267,7 @@ class FeedbackPedidoExportQueueTest extends TestCase
             'format' => 'pdf',
             'label' => 'Feedback - Satisfacao geral',
             'filters' => [
-                'report_type' => FeedbackPedidoAnalyticsService::REPORT_GERAL,
+                'report_type' => FeedbackPedidoAnalyticsService::REPORT_LISTAGEM,
                 'data_inicio' => '2026-05-01',
                 'data_fim' => '2026-05-31',
             ],
@@ -279,9 +284,14 @@ class FeedbackPedidoExportQueueTest extends TestCase
             $mock->shouldReceive('renderizarGraficoLocal')->andReturn(null);
         }));
 
-        app()->instance(FeedbackPedidoRelatorioService::class, tap(Mockery::mock(FeedbackPedidoRelatorioService::class), function ($mock): void {
+        app()->instance(FeedbackPedidoRelatorioService::class, tap(Mockery::mock(FeedbackPedidoRelatorioService::class), function ($mock) use ($dados): void {
             $mock->shouldReceive('gerarComGraficosEMatriz')
                 ->once()
+                ->withArgs(function (...$arguments) use ($dados): bool {
+                    $this->assertSame([$dados['feedback']->id], $arguments[3]->pluck('id')->all());
+
+                    return true;
+                })
                 ->andReturn(response('PDF CONTENT', 200, ['Content-Type' => 'application/pdf']));
         }));
 
@@ -290,6 +300,27 @@ class FeedbackPedidoExportQueueTest extends TestCase
         Storage::disk('local')->assertExists($result->path);
         $this->assertSame('application/pdf', $result->mime);
         $this->assertSame(strlen('PDF CONTENT'), $result->sizeBytes);
+    }
+
+    public function test_listagem_e_analytics_respeitam_escola_e_admin_mantem_escopo_global(): void
+    {
+        $dados = $this->criarFeedbacksParaFiltro();
+        $restrito = $this->usuarioComPermissoes();
+        $restrito->update(['id_escola' => $dados['escola']->id]);
+
+        $service = app(FeedbackPedidoAnalyticsService::class);
+
+        $this->assertSame([$dados['feedback']->id], $service->query([], $restrito)->pluck('id')->all());
+
+        Livewire::actingAs($restrito)
+            ->test(FeedbackPedidoPage::class)
+            ->assertCanSeeTableRecords([$dados['feedback']])
+            ->assertCanNotSeeTableRecords([$dados['outroFeedback']]);
+
+        $admin = $this->usuarioComPermissoes();
+        $admin->assignRole(Role::findOrCreate('Admin', 'web'));
+
+        $this->assertCount(2, $service->query([], $admin)->get());
     }
 
     private function usuarioComPermissoes(): User
@@ -319,6 +350,8 @@ class FeedbackPedidoExportQueueTest extends TestCase
             'email_approved' => true,
             'email_verified_at' => now(),
         ]);
+        $user->assignRole(Role::findOrCreate('Admin', 'web'));
+        $this->actingAs($user);
         $escola = Escola::query()->create(['codigo' => '001', 'nome' => 'Escola Central', 'ativo' => true]);
         $outraEscola = Escola::query()->create(['codigo' => '002', 'nome' => 'Escola Norte', 'ativo' => true]);
         $tipo = TipoManutencao::query()->create(['nome' => 'Eletrica', 'ativo' => true]);
@@ -363,7 +396,7 @@ class FeedbackPedidoExportQueueTest extends TestCase
         ]);
         $outroFeedback->forceFill(['created_at' => '2026-05-12 10:00:00'])->save();
 
-        return compact('user', 'empresa', 'escola', 'outraEscola', 'tipo', 'opcao', 'status', 'feedback');
+        return compact('user', 'empresa', 'escola', 'outraEscola', 'tipo', 'opcao', 'status', 'feedback', 'outroFeedback');
     }
 
     private function pedido(User $user, Escola $escola, TipoManutencao $tipo, TipoStatus $status, EmpresaContratada $empresa): Pedido

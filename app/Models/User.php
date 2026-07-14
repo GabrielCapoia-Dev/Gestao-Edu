@@ -20,6 +20,7 @@ use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 use Spatie\Permission\Traits\HasRoles;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Schema;
 
 class User extends Authenticatable implements FilamentUser, HasAvatar
 {
@@ -204,6 +205,12 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
 
     public function idsEscolasVinculadas(): array
     {
+        $idsEquipeGestora = $this->idsEscolasDaEquipeGestoraAtiva();
+
+        if ($idsEquipeGestora !== null) {
+            return $idsEquipeGestora;
+        }
+
         // Fluxo: primeiro usa o pivot escola_user; se ainda nao houver sincronizacao, cai para id_escola para manter compatibilidade com o modelo antigo.
         $ids = $this->escolas()
             ->pluck('escolas.id')
@@ -217,6 +224,98 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
         }
 
         return $ids;
+    }
+
+    /**
+     * @return array<int, int>|null Null indica que o usuario nao possui vinculo gestor ativo.
+     */
+    private function idsEscolasDaEquipeGestoraAtiva(): ?array
+    {
+        if (
+            ! Schema::hasTable('servidor_funcao_administrativa')
+            || ! Schema::hasTable('funcao_administrativa')
+        ) {
+            return null;
+        }
+
+        $flags = collect(['direcao_escolar', 'coordenacao_pedagogica', 'secretaria_escolar'])
+            ->filter(fn (string $column): bool => Schema::hasColumn('funcao_administrativa', $column));
+
+        if ($flags->isEmpty()) {
+            return null;
+        }
+
+        $todosServidorIds = $this->servidores()
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
+
+        if ($todosServidorIds === []) {
+            return null;
+        }
+
+        $servidorIds = $this->servidores()
+            ->where('status', Servidor::STATUS_ATIVO)
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
+
+        $temVinculoGestor = ServidorFuncaoAdministrativa::query()
+            ->whereIn('servidor_id', $todosServidorIds)
+            ->where('status', ServidorFuncaoAdministrativa::STATUS_ATIVO)
+            ->whereHas('funcaoAdministrativa', function ($query) use ($flags): void {
+                $query->where(function ($gestoras) use ($flags): void {
+                    foreach ($flags as $flag) {
+                        $gestoras->orWhere($flag, true);
+                    }
+                });
+            })
+            ->exists();
+
+        if (! $temVinculoGestor) {
+            return null;
+        }
+
+        if (count($servidorIds) !== 1) {
+            return [];
+        }
+
+        $idsGestores = ServidorFuncaoAdministrativa::query()
+            ->whereIn('servidor_id', $servidorIds)
+            ->where('status', ServidorFuncaoAdministrativa::STATUS_ATIVO)
+            ->whereNotNull('id_escola')
+            ->whereHas('funcaoAdministrativa', function ($query) use ($flags): void {
+                $query->where(function ($gestorasValidas) use ($flags): void {
+                    foreach ($flags as $flag) {
+                        $gestorasValidas->orWhere(function ($tipo) use ($flag, $flags): void {
+                            $tipo->where($flag, true);
+
+                            foreach ($flags->reject(fn (string $outra): bool => $outra === $flag) as $outra) {
+                                $tipo->where($outra, false);
+                            }
+                        });
+                    }
+                });
+            })
+            ->pluck('id_escola')
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        $idsTodosVinculos = ServidorFuncaoAdministrativa::query()
+            ->whereIn('servidor_id', $servidorIds)
+            ->where('status', ServidorFuncaoAdministrativa::STATUS_ATIVO)
+            ->whereNotNull('id_escola')
+            ->pluck('id_escola')
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        return count($idsGestores) === 1 && $idsGestores === $idsTodosVinculos
+            ? $idsGestores
+            : [];
     }
 
     public function professores()

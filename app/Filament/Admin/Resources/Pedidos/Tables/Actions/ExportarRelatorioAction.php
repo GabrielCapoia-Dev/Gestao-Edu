@@ -69,7 +69,7 @@ class ExportarRelatorioAction
                             return Escola::query()
                                 ->where('ativo', true)
                                 ->when(
-                                    ! $service->podeVerTodosOsPedidos($user) && $escolaIds !== [],
+                                    ! $service->podeVerTodosOsPedidos($user),
                                     fn ($query) => $query->whereIn('id', $escolaIds)
                                 )
                                 ->orderBy('nome')

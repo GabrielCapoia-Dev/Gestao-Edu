@@ -2,17 +2,17 @@
 
 namespace App\Filament\Admin\Pages\Relatorios;
 
-use App\Models\ComponenteCurricular;
 use App\Models\Escola;
 use App\Models\Professor;
 use App\Models\Serie;
 use App\Models\Turma;
-use App\Models\TurmaComponenteProfessor;
+use App\Services\PessoaScopeService;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -101,10 +101,14 @@ class RelatorioComponenteProfessorFaltando extends Page
 
     public function mount(): void
     {
-        $this->totalProfessores = Professor::count();
-        $this->totalTurmas = Turma::count();
-        $this->totalComponentes = ComponenteCurricular::count();
-        $this->totalEscolas = Escola::where('ativo', true)->count();
+        $this->totalProfessores = $this->scopeEloquentQuery(Professor::query(), 'professores.id_escola')->count();
+        $this->totalTurmas = $this->scopeEloquentQuery(Turma::query(), 'turmas.id_escola')->count();
+        $this->totalComponentes = $this->baseVinculosQuery()
+            ->distinct()
+            ->count('tcp.componente_curricular_id');
+        $this->totalEscolas = $this->scopeEloquentQuery(Escola::query(), 'escolas.id')
+            ->where('ativo', true)
+            ->count();
 
         $this->recarregarPagina();
     }
@@ -233,12 +237,21 @@ class RelatorioComponenteProfessorFaltando extends Page
 
     public function getEscolasProperty(): \Illuminate\Support\Collection
     {
-        return Escola::where('ativo', true)->orderBy('nome')->get();
+        return $this->scopeEloquentQuery(Escola::query(), 'escolas.id')
+            ->where('ativo', true)
+            ->orderBy('nome')
+            ->get();
     }
 
     public function getSeriesProperty(): \Illuminate\Support\Collection
     {
-        return Serie::orderBy('nome')->get();
+        $turmas = $this->scopeEloquentQuery(Turma::query(), 'turmas.id_escola')
+            ->select('id_serie');
+
+        return Serie::query()
+            ->whereIn('id', $turmas)
+            ->orderBy('nome')
+            ->get();
     }
 
     public function getSituacoesProperty(): array
@@ -343,6 +356,9 @@ class RelatorioComponenteProfessorFaltando extends Page
             ->join('turmas', 'turmas.id', '=', 'tcp.turma_id')
             ->join('escolas', 'escolas.id', '=', 'turmas.id_escola')
             ->join('series', 'series.id', '=', 'turmas.id_serie');
+
+        $query = app(PessoaScopeService::class)
+            ->applyEscolaScope($query, Auth::user(), 'turmas.id_escola');
 
         if ($this->escola_id) {
             $query->where('turmas.id_escola', $this->escola_id);
@@ -451,6 +467,12 @@ class RelatorioComponenteProfessorFaltando extends Page
             'turma_turno' => $query->orderBy('turma_turno', $direction)->orderBy('turma_nome'),
             default => $query->orderBy('componentes_sem_professor', $direction)->orderBy('escola_nome'),
         };
+    }
+
+    protected function scopeEloquentQuery(Builder $query, string $column): Builder
+    {
+        return app(PessoaScopeService::class)
+            ->applyEscolaScope($query, Auth::user(), $column);
     }
 
     protected function countSubquery(QueryBuilder $query): int
@@ -705,7 +727,9 @@ class RelatorioComponenteProfessorFaltando extends Page
             return 'Todas as escolas';
         }
 
-        return Escola::query()->whereKey($this->escola_id)->value('nome') ?? 'Escola não encontrada';
+        return $this->scopeEloquentQuery(Escola::query(), 'escolas.id')
+            ->whereKey($this->escola_id)
+            ->value('nome') ?? 'Escola não encontrada';
     }
 
     protected function selectedSerieLabel(): string

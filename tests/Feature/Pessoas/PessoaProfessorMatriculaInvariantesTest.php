@@ -146,6 +146,66 @@ class PessoaProfessorMatriculaInvariantesTest extends TestCase
         $this->assertSame(ProfessorMatricula::MAX_POR_PESSOA, $servidor->professorMatriculas->count());
     }
 
+    public function test_rejeita_substituicao_que_reteria_historico_acima_do_limite_da_pessoa(): void
+    {
+        $this->seedCargoProfessor();
+        $setor = $this->criarSetor('Pedagógico');
+        $escola = $this->criarEscola('Escola Histórico Matrículas', $setor);
+        $service = app(PessoaProfessorService::class);
+        $servidor = $service->criarPessoaProfessor([
+            'nome' => 'Prof Histórico de Matrículas',
+            'email' => 'historico.matriculas@edu.umuarama.pr.gov.br',
+            'status' => Servidor::STATUS_ATIVO,
+        ], [
+            ['matricula' => 'ANTIGA-M', 'turno' => 'manha', 'escolas' => [['id_escola' => $escola->id]]],
+            ['matricula' => 'ANTIGA-T', 'turno' => 'tarde', 'escolas' => [['id_escola' => $escola->id]]],
+        ]);
+        $servidor->professores()->update(['ativo' => false]);
+
+        try {
+            $service->atualizarPessoaProfessor($servidor, [
+                'nome' => $servidor->nome,
+                'email' => $servidor->email,
+                'status' => Servidor::STATUS_ATIVO,
+            ], [
+                ['matricula' => 'NOVA-M', 'turno' => 'manha', 'escolas' => [['id_escola' => $escola->id]]],
+                ['matricula' => 'NOVA-T', 'turno' => 'tarde', 'escolas' => [['id_escola' => $escola->id]]],
+            ]);
+            $this->fail('A substituição não deveria manter quatro matrículas na Pessoa.');
+        } catch (ValidationException $exception) {
+            $this->assertStringContainsString('Cada pessoa pode ter no máximo', $this->mensagensValidacao($exception));
+        }
+
+        $this->assertCount(2, $servidor->fresh()->matriculas);
+    }
+
+    public function test_substituicao_considera_estado_final_apos_remover_lotacoes_ativas(): void
+    {
+        $this->seedCargoProfessor();
+        $setor = $this->criarSetor('Pedagógico');
+        $escola = $this->criarEscola('Escola Substituição Ativa', $setor);
+        $service = app(PessoaProfessorService::class);
+        $servidor = $service->criarPessoaProfessor([
+            'nome' => 'Prof Substituição Ativa',
+            'email' => 'substituicao.ativa@edu.umuarama.pr.gov.br',
+            'status' => Servidor::STATUS_ATIVO,
+        ], [
+            ['matricula' => 'ATIVA-M', 'turno' => 'manha', 'escolas' => [['id_escola' => $escola->id]]],
+            ['matricula' => 'ATIVA-T', 'turno' => 'tarde', 'escolas' => [['id_escola' => $escola->id]]],
+        ]);
+
+        $atualizado = $service->atualizarPessoaProfessor($servidor, [
+            'nome' => $servidor->nome,
+            'email' => $servidor->email,
+            'status' => Servidor::STATUS_ATIVO,
+        ], [
+            ['matricula' => 'FINAL-M', 'turno' => 'manha', 'escolas' => [['id_escola' => $escola->id]]],
+            ['matricula' => 'FINAL-T', 'turno' => 'tarde', 'escolas' => [['id_escola' => $escola->id]]],
+        ]);
+
+        $this->assertSame(['FINAL-M', 'FINAL-T'], $atualizado->matriculas->pluck('matricula')->sort()->values()->all());
+    }
+
     public function test_rejeita_matriculas_no_mesmo_turno(): void
     {
         $this->seedCargoProfessor();

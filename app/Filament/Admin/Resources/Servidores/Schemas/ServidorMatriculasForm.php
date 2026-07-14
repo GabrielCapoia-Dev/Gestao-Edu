@@ -5,8 +5,8 @@ namespace App\Filament\Admin\Resources\Servidores\Schemas;
 use App\Filament\Admin\Resources\Servidores\ServidorResource;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
+use App\Models\PessoaMatricula;
 use App\Models\Professor;
-use App\Models\ProfessorMatricula;
 use App\Models\Turma;
 use App\Services\UserService;
 use Filament\Forms\Components\Hidden;
@@ -19,7 +19,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Illuminate\Support\Facades\Auth;
 
 /**
- * Matrículas e lotações do professor no modal de Pessoa.
+ * Matrículas funcionais da Pessoa e lotações pedagógicas do Professor.
  * UX em “abas” (item headers do Repeater) com + para nova matrícula/escola.
  */
 class ServidorMatriculasForm
@@ -27,7 +27,7 @@ class ServidorMatriculasForm
     public static function section(): Section
     {
         return Section::make('Matrículas e lotações')
-            ->description('Cada aba é uma matrícula (máx. 2). Dentro dela, cada aba é uma escola. Integral ocupa manhã e tarde — não combina com segunda matrícula.')
+            ->description('Cada aba é uma matrícula da Pessoa (máx. 2). Professor também informa as lotações por escola. Integral ocupa manhã e tarde.')
             ->icon('heroicon-o-academic-cap')
             ->schema([
                 Repeater::make('matriculas_professor')
@@ -52,7 +52,7 @@ class ServidorMatriculasForm
                                 $todosTurnos = self::turnosDoEstado(self::matriculasDoEstado($get));
                                 $turnosIrmaos = self::turnosExcetoUmaOcorrencia($todosTurnos, $atual);
 
-                                return ProfessorMatricula::turnosDisponiveisParaItem($turnosIrmaos, $atual ?: null);
+                                return PessoaMatricula::turnosDisponiveisParaItem($turnosIrmaos, $atual ?: null);
                             })
                             ->required()
                             ->live()
@@ -60,7 +60,7 @@ class ServidorMatriculasForm
                             ->helperText(fn (Get $get): ?string => self::helperTurnoItem($get)),
 
                         Repeater::make('escolas')
-                            ->label('Escolas / lotações')
+                            ->label('Escolas / lotações do Professor')
                             ->extraAttributes([
                                 'class' => 'pe-tabbed-repeater pe-escolas-tabs',
                                 'data-pe-tabs-label' => 'Escolas',
@@ -127,14 +127,15 @@ class ServidorMatriculasForm
                             })
                             ->columnSpanFull()
                             ->reorderable(false)
-                            ->cloneable(false),
+                            ->cloneable(false)
+                            ->visible(fn (Get $get): bool => self::cargoDoEstado($get) === ServidorResource::CARGO_PROFESSOR),
                     ])
                     ->columns(2)
                     ->defaultItems(0)
-                    ->minItems(0)
-                    ->maxItems(ProfessorMatricula::MAX_POR_PESSOA)
+                    ->minItems(1)
+                    ->maxItems(PessoaMatricula::MAX_POR_PESSOA)
                     ->addable(function (Get $get): bool {
-                        return ProfessorMatricula::podeAdicionarMatricula(self::matriculasDoEstado($get));
+                        return PessoaMatricula::podeAdicionarMatricula(self::matriculasDoEstado($get));
                     })
                     ->addActionLabel('+ Matrícula')
                     ->itemHeaders()
@@ -144,7 +145,7 @@ class ServidorMatriculasForm
 
                         return $turno ? "{$mat} · {$turno}" : $mat;
                     })
-                    ->helperText('Máximo 2 matrículas: manhã e tarde. Integral é única (já cobre os dois turnos). Login e permissões ficam em Acesso → Usuários.')
+                    ->helperText('Máximo de 2 matrículas: manhã e tarde. Integral é única e já cobre os dois turnos.')
                     ->columnSpanFull()
                     ->reorderable(false)
                     ->cloneable(false)
@@ -156,7 +157,6 @@ class ServidorMatriculasForm
                     ->maxLength(2000)
                     ->columnSpanFull(),
             ])
-            ->visible(fn (Get $get): bool => ($get('cargo') ?? ServidorResource::CARGO_PROFESSOR) === ServidorResource::CARGO_PROFESSOR)
             ->columnSpanFull()
             ->collapsible();
     }
@@ -268,6 +268,19 @@ class ServidorMatriculasForm
 
         if (in_array('tarde', $turnos, true) && ! in_array('manha', $turnos, true) && count($turnos) === 1) {
             return 'Com tarde, a segunda matrícula só pode ser manhã.';
+        }
+
+        return null;
+    }
+
+    private static function cargoDoEstado(Get $get): ?string
+    {
+        foreach (['../../cargo', '../../../cargo', '../../../../cargo', '../../../../../cargo', 'cargo'] as $path) {
+            $cargo = $get($path);
+
+            if (is_string($cargo) && $cargo !== '') {
+                return $cargo;
+            }
         }
 
         return null;

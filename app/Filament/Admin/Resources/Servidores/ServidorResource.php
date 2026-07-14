@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources\Servidores;
 
 use App\Filament\Admin\Resources\Servidores\Pages\ManageServidores;
+use App\Filament\Admin\Resources\Servidores\Schemas\ServidorEquipeGestoraForm;
 use App\Filament\Admin\Resources\Servidores\Schemas\ServidorMatriculasForm;
 use App\Models\Professor;
 use App\Models\ProfessorMatricula;
@@ -40,6 +41,8 @@ use UnitEnum;
 class ServidorResource extends Resource
 {
     public const CARGO_PROFESSOR = 'professor';
+
+    public const CARGO_EQUIPE_GESTORA = 'equipe_gestora';
 
     protected static ?string $model = Servidor::class;
 
@@ -116,20 +119,21 @@ class ServidorResource extends Resource
                                     ->schema([
                                         Select::make('cargo')
                                             ->label('Função / cargo')
-                                            ->options(static::cargoOptions())
+                                            ->options(fn (): array => static::cargoOptions())
                                             ->default(self::CARGO_PROFESSOR)
                                             ->required()
                                             ->live()
                                             ->dehydrated()
-                                            ->helperText('Nesta fase apenas Professor. Outros cargos poderão ser adicionados depois.'),
+                                            ->helperText('Professor e Equipe Gestora usam a mesma identidade e as mesmas matrículas.'),
                                     ])
                                     ->columnSpanFull()
                                     ->compact(),
                             ]),
 
-                        Tab::make('Matrículas e lotações')
+                        Tab::make('Matrículas e vínculos')
                             ->schema([
                                 ServidorMatriculasForm::section(),
+                                ServidorEquipeGestoraForm::section(),
                             ]),
                     ]),
             ]);
@@ -138,9 +142,15 @@ class ServidorResource extends Resource
     /** @return array<string, string> */
     public static function cargoOptions(): array
     {
-        return [
+        $options = [
             self::CARGO_PROFESSOR => 'Professor',
         ];
+
+        if (ServidorEquipeGestoraForm::usuarioPodeAdministrar()) {
+            $options[self::CARGO_EQUIPE_GESTORA] = 'Equipe Gestora';
+        }
+
+        return $options;
     }
 
     public static function table(Table $table): Table
@@ -152,6 +162,9 @@ class ServidorResource extends Resource
                 'user:id,name,email,email_approved',
                 'user.roles:id,name',
                 'professores.escola:id,nome',
+                'matriculas:id,servidor_id,matricula,turno',
+                'vinculosAtivos.funcaoAdministrativa:id,nome,direcao_escolar,coordenacao_pedagogica,secretaria_escolar',
+                'vinculosAtivos.escola:id,nome',
             ]))
             ->paginated([5, 10, 25, 50, 100])
             ->defaultPaginationPageOption(10)
@@ -164,10 +177,10 @@ class ServidorResource extends Resource
                 TextColumn::make('vinculos_resumo')
                     ->label('Matrículas')
                     ->getStateUsing(function (Servidor $record): string {
-                        $record->loadMissing(['professorMatriculas', 'professores']);
+                        $record->loadMissing(['matriculas', 'professores']);
 
-                        if ($record->professorMatriculas->isNotEmpty()) {
-                            return $record->professorMatriculas
+                        if ($record->matriculas->isNotEmpty()) {
+                            return $record->matriculas
                                 ->map(fn ($m): string => sprintf('%s (%s)', $m->matricula, $m->turnoLabel()))
                                 ->implode(', ');
                         }
@@ -188,7 +201,7 @@ class ServidorResource extends Resource
 
                 TextColumn::make('cargo_label')
                     ->label('Cargo')
-                    ->getStateUsing(fn (Servidor $record): string => $record->professores->isNotEmpty() ? 'Professor' : '—')
+                    ->getStateUsing(fn (Servidor $record): string => static::cargoLabel($record))
                     ->badge(),
 
                 TextColumn::make('email')
@@ -241,8 +254,15 @@ class ServidorResource extends Resource
                             return $query;
                         }
 
-                        return $query->whereHas('professores', fn (Builder $professores): Builder => $professores
-                            ->where('id_escola', (int) $data['value']));
+                        return $query->where(function (Builder $pessoas) use ($data): void {
+                            $escolaId = (int) $data['value'];
+
+                            $pessoas
+                                ->whereHas('professores', fn (Builder $professores): Builder => $professores
+                                    ->where('id_escola', $escolaId))
+                                ->orWhereHas('vinculosAtivos', fn (Builder $vinculos): Builder => $vinculos
+                                    ->where('id_escola', $escolaId));
+                        });
                     })
                     ->searchable()
                     ->preload(),
@@ -275,6 +295,23 @@ class ServidorResource extends Resource
                         false: fn (Builder $query): Builder => $query->whereDoesntHave('professores'),
                         blank: fn (Builder $query): Builder => $query,
                     ),
+
+                TernaryFilter::make('eh_equipe_gestora')
+                    ->label('Equipe Gestora')
+                    ->trueLabel('Somente Equipe Gestora')
+                    ->falseLabel('Sem cargo gestor')
+                    ->placeholder('Todos')
+                    ->queries(
+                        true: fn (Builder $query): Builder => $query->whereHas(
+                            'vinculosAtivos.funcaoAdministrativa',
+                            fn (Builder $funcoes): Builder => static::aplicarFiltroFuncaoGestora($funcoes),
+                        ),
+                        false: fn (Builder $query): Builder => $query->whereDoesntHave(
+                            'vinculosAtivos.funcaoAdministrativa',
+                            fn (Builder $funcoes): Builder => static::aplicarFiltroFuncaoGestora($funcoes),
+                        ),
+                        blank: fn (Builder $query): Builder => $query,
+                    ),
             ])
             ->recordActions([
                 ViewAction::make()
@@ -291,6 +328,8 @@ class ServidorResource extends Resource
 
                 EditAction::make()
                     ->model(Servidor::class)
+                    ->visible(fn (Servidor $record): bool => Gate::allows('update', $record)
+                        && (! static::ehEquipeGestora($record) || ServidorEquipeGestoraForm::usuarioPodeAdministrar()))
                     ->modalWidth('6xl')
                     ->modalIcon(null)
                     ->modalHeading(fn (Servidor $record): string => "Editar pessoa — {$record->nome}")
@@ -305,14 +344,12 @@ class ServidorResource extends Resource
                     ->fillForm(fn (Servidor $record): array => app(PessoaProfessorFormService::class)->dadosParaFormulario($record))
                     ->using(function (Servidor $record, array $data): Servidor {
                         try {
-                            $registros = static::extrairRegistrosProfessorDoForm($data);
-                            unset($data['registros_professor'], $data['matriculas_professor']);
-                            $data['cargo'] = $data['cargo'] ?? self::CARGO_PROFESSOR;
+                            [$data, $vinculos] = static::prepararDadosPersistencia($data, $record);
 
                             $atualizado = app(ServidorService::class)->atualizarServidorComFuncoes(
                                 $record,
                                 $data,
-                                ['registros_professor' => $registros],
+                                $vinculos,
                             );
 
                             Notification::make()
@@ -346,10 +383,36 @@ class ServidorResource extends Resource
                     ->label('Excluir')
                     ->requiresConfirmation()
                     ->modalHeading('Excluir pessoa')
-                    ->modalDescription(fn (Servidor $record): string => "Excluir \"{$record->nome}\"? "
-                        .'Matrículas e lotações serão removidas; vínculos de turma e a referência do professor em avaliações serão apenas desassociados (avaliações/alunos permanecem). '
-                        .'A conta de login, se existir, não é apagada.')
-                    ->visible(fn (Servidor $record): bool => Gate::allows('delete', $record))
+                    ->modalDescription(function (Servidor $record): string {
+                        $motivo = app(ServidorService::class)->motivoBloqueioExclusao($record);
+
+                        if ($motivo) {
+                            return $motivo;
+                        }
+
+                        return "Excluir \"{$record->nome}\"? "
+                            .'Matrículas e lotações serão removidas; vínculos de turma e a referência do professor em avaliações serão apenas desassociados (avaliações/alunos permanecem). '
+                            .'A conta de login, se existir, não é apagada.';
+                    })
+                    ->visible(fn (Servidor $record): bool => Gate::allows('delete', $record)
+                        && (app(ServidorService::class)->pessoaPodeSerExcluida($record)
+                            || ServidorEquipeGestoraForm::usuarioPodeAdministrar()))
+                    ->before(function (DeleteAction $action, Servidor $record): void {
+                        $motivo = app(ServidorService::class)->motivoBloqueioExclusao($record);
+
+                        if (! $motivo) {
+                            return;
+                        }
+
+                        Notification::make()
+                            ->title('Pessoa não pode ser excluída')
+                            ->body($motivo)
+                            ->warning()
+                            ->persistent()
+                            ->send();
+
+                        $action->halt();
+                    })
                     ->using(function (Servidor $record): void {
                         app(ServidorService::class)->excluirPessoa($record);
 
@@ -368,6 +431,15 @@ class ServidorResource extends Resource
                     ->visible(fn (): bool => Gate::allows('deleteAny', Servidor::class))
                     ->deselectRecordsAfterCompletion()
                     ->using(function ($records): void {
+                        if (! ServidorEquipeGestoraForm::usuarioPodeAdministrar()
+                            && $records->contains(
+                                fn (Servidor $record): bool => ! app(ServidorService::class)->pessoaPodeSerExcluida($record),
+                            )) {
+                            throw new \Illuminate\Auth\Access\AuthorizationException(
+                                'Você não possui permissão para excluir Pessoas da Equipe Gestora.',
+                            );
+                        }
+
                         $resultado = app(ServidorService::class)->excluirPessoasEmMassa($records);
 
                         if ($resultado['excluidos'] > 0) {
@@ -390,6 +462,51 @@ class ServidorResource extends Resource
             ])
             ->defaultSort('updated_at', 'desc')
             ->striped();
+    }
+
+    public static function ehEquipeGestora(Servidor $record): bool
+    {
+        $record->loadMissing('vinculosAtivos.funcaoAdministrativa');
+
+        return $record->vinculosAtivos
+            ->contains(fn ($vinculo): bool => (bool) (
+                $vinculo->funcaoAdministrativa?->direcao_escolar
+                || $vinculo->funcaoAdministrativa?->coordenacao_pedagogica
+                || $vinculo->funcaoAdministrativa?->secretaria_escolar
+            ));
+    }
+
+    public static function cargoLabel(Servidor $record): string
+    {
+        $record->loadMissing(['professores', 'vinculosAtivos.funcaoAdministrativa']);
+
+        $cargosGestores = $record->vinculosAtivos
+            ->filter(fn ($vinculo): bool => (bool) (
+                $vinculo->funcaoAdministrativa?->direcao_escolar
+                || $vinculo->funcaoAdministrativa?->coordenacao_pedagogica
+                || $vinculo->funcaoAdministrativa?->secretaria_escolar
+            ))
+            ->pluck('funcaoAdministrativa.nome')
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values();
+
+        if ($cargosGestores->isNotEmpty()) {
+            return $cargosGestores->implode(' + ');
+        }
+
+        return $record->professores->where('ativo', true)->isNotEmpty() ? 'Professor' : '—';
+    }
+
+    private static function aplicarFiltroFuncaoGestora(Builder $query): Builder
+    {
+        return $query->where(function (Builder $funcoes): void {
+            $funcoes
+                ->where('direcao_escolar', true)
+                ->orWhere('coordenacao_pedagogica', true)
+                ->orWhere('secretaria_escolar', true);
+        });
     }
 
     public static function getPages(): array
@@ -423,10 +540,11 @@ class ServidorResource extends Resource
             'user.roles',
             'user.escola',
             'professores.escola',
-            'professorMatriculas',
+            'matriculas',
             'vinculosAtivos.funcaoAdministrativa',
             'vinculosAtivos.escola',
             'vinculosAtivos.setor',
+            'vinculosAtivos.vinculosTurmaAtivos.turma.serie',
         ]);
 
         $dadosPessoais = [
@@ -461,8 +579,8 @@ class ServidorResource extends Resource
                     TextEntry::make('cargo_view')
                         ->label('Cargo')
                         ->badge()
-                        ->getStateUsing(fn (): string => $record->professores->isNotEmpty() ? 'Professor' : 'Sem cargo pedagógico')
-                        ->color(fn (string $state): string => $state === 'Professor' ? 'info' : 'gray'),
+                        ->getStateUsing(fn (): string => static::cargoLabel($record))
+                        ->color(fn (string $state): string => $state !== '—' ? 'info' : 'gray'),
                     TextEntry::make('updated_at')->label('Atualizado em')->dateTime('d/m/Y H:i'),
                     TextEntry::make('acesso_hint')
                         ->label('Acesso ao sistema')
@@ -512,12 +630,23 @@ class ServidorResource extends Resource
      *     escola: string,
      *     turno: string,
      *     matriculas: array<int, string>,
-     *     turmas: array<int, array{nome: string, componentes: array<int, string>}>
+     *     turmas: array<int, array{nome: string, componentes: array<int, string>}>,
+     *     cargos?: array<int, string>,
+     *     portaria?: string,
+     *     vigencia?: string
      * }>
      */
     public static function gruposTurmasComponentes(Servidor $record): array
     {
-        $record->loadMissing('professores.escola');
+        $record->loadMissing([
+            'professores.escola',
+            'matriculas',
+            'vinculosAtivos.funcaoAdministrativa',
+            'vinculosAtivos.escola',
+            'vinculosAtivos.vinculosTurmaAtivos.turma.serie',
+        ]);
+
+        $professoresAtivos = $record->professores->where('ativo', true)->values();
 
         $vinculosPorProfessor = \App\Models\TurmaComponenteProfessor::query()
             ->with([
@@ -525,13 +654,13 @@ class ServidorResource extends Resource
                 'turma.serie:id,nome',
                 'componente:id,nome',
             ])
-            ->whereIn('professor_id', $record->professores->pluck('id'))
+            ->whereIn('professor_id', $professoresAtivos->pluck('id'))
             ->where('tem_professor', true)
             ->whereNotNull('professor_id')
             ->get()
             ->groupBy('professor_id');
 
-        return $record->professores
+        $gruposProfessor = $professoresAtivos
             ->groupBy(fn (Professor $professor): string => implode(':', [
                 $professor->id_escola ?: 'sem-escola',
                 $professor->turno ?: 'sem-turno',
@@ -574,6 +703,74 @@ class ServidorResource extends Resource
                 ];
             })
             ->sortBy(fn (array $grupo): string => $grupo['escola'].'|'.$grupo['turno'])
+            ->values();
+
+        $vinculosGestores = $record->vinculosAtivos
+            ->filter(fn ($vinculo): bool => (bool) (
+                $vinculo->funcaoAdministrativa?->direcao_escolar
+                || $vinculo->funcaoAdministrativa?->coordenacao_pedagogica
+                || $vinculo->funcaoAdministrativa?->secretaria_escolar
+            ));
+        $matriculas = $record->matriculas->pluck('matricula')->filter()->unique()->values()->all();
+        $turnos = $record->matriculas
+            ->map(fn ($matricula): string => $matricula->turnoLabel())
+            ->filter()
+            ->unique()
+            ->implode(' + ') ?: 'Sem turno definido';
+
+        $gruposGestores = $vinculosGestores
+            ->groupBy(fn ($vinculo): string => (string) ($vinculo->id_escola ?: 'sem-escola'))
+            ->map(function ($vinculos) use ($matriculas, $turnos): array {
+                $primeiro = $vinculos->first();
+                $cargos = $vinculos
+                    ->map(function ($vinculo): string {
+                        $nome = (string) ($vinculo->funcaoAdministrativa?->nome ?? 'Função gestora');
+
+                        return $vinculo->principal ? $nome.' principal' : $nome;
+                    })
+                    ->unique()
+                    ->sort()
+                    ->values()
+                    ->all();
+                $turmas = $vinculos
+                    ->filter(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->coordenacao_pedagogica)
+                    ->flatMap(fn ($vinculo) => $vinculo->vinculosTurmaAtivos)
+                    ->map(function ($vinculoTurma): array {
+                        $turma = $vinculoTurma->turma;
+                        $nome = collect([$turma?->serie?->nome, $turma?->nome ?? ('Turma #'.$vinculoTurma->turma_id)])
+                            ->filter()
+                            ->implode(' - ');
+
+                        return [
+                            'nome' => $nome,
+                            'componentes' => [
+                                $vinculoTurma->principal ? 'Coordenação principal' : 'Coordenação',
+                            ],
+                        ];
+                    })
+                    ->sortBy('nome')
+                    ->values()
+                    ->all();
+
+                return [
+                    'escola' => $primeiro?->escola?->nome ?? 'Sem escola definida',
+                    'turno' => $turnos,
+                    'matriculas' => $matriculas,
+                    'turmas' => $turmas,
+                    'cargos' => $cargos,
+                    'portaria' => $vinculos->pluck('portaria')->filter()->unique()->implode(' / '),
+                    'vigencia' => $vinculos
+                        ->map(fn ($vinculo): ?string => $vinculo->data_inicio?->format('d/m/Y'))
+                        ->filter()
+                        ->unique()
+                        ->implode(' / '),
+                ];
+            })
+            ->values();
+
+        return $gruposProfessor
+            ->concat($gruposGestores)
+            ->sortBy(fn (array $grupo): string => $grupo['escola'].'|'.$grupo['turno'])
             ->values()
             ->all();
     }
@@ -591,6 +788,107 @@ class ServidorResource extends Resource
         }
 
         return array_values($data['registros_professor'] ?? []);
+    }
+
+    /**
+     * Converte o estado visual do hub no contrato dos serviços de domínio.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array{0: array<string, mixed>, 1: array<string, mixed>}
+     */
+    public static function prepararDadosPersistencia(array $data, ?Servidor $record = null): array
+    {
+        $cargo = (string) ($data['cargo'] ?? self::CARGO_PROFESSOR);
+        $matriculas = static::extrairRegistrosProfessorDoForm($data);
+        $recordEraGestor = $record ? static::ehEquipeGestora($record) : false;
+
+        if (($cargo === self::CARGO_EQUIPE_GESTORA || $recordEraGestor)
+            && ! ServidorEquipeGestoraForm::usuarioPodeAdministrar()) {
+            throw new \Illuminate\Auth\Access\AuthorizationException(
+                'Apenas Admin ou usuário com a permissão Gerenciar Funções de Servidores pode administrar a Equipe Gestora.',
+            );
+        }
+
+        unset($data['registros_professor'], $data['matriculas_professor']);
+        $data['cargo'] = $cargo;
+
+        if ($cargo !== self::CARGO_EQUIPE_GESTORA) {
+            return [$data, ['matriculas_professor' => $matriculas]];
+        }
+
+        $cargos = collect($data['cargos_gestores'] ?? [])
+            ->filter()
+            ->map(fn (mixed $cargoGestor): string => (string) $cargoGestor)
+            ->unique()
+            ->values();
+        $vinculosAtivos = $record?->vinculosAtivos ?? collect();
+        $jaEraDiretor = $vinculosAtivos->contains(
+            fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->direcao_escolar,
+        );
+        $coordenadorAtual = $vinculosAtivos->first(
+            fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->coordenacao_pedagogica,
+        );
+        $diretor = false;
+        if ($cargos->contains(ServidorEquipeGestoraForm::CARGO_DIRETOR)) {
+            $diretor = ['ativo' => true];
+
+            if ($jaEraDiretor || (bool) ($data['diretor_principal'] ?? false)) {
+                $diretor['principal'] = (bool) ($data['diretor_principal'] ?? false);
+            }
+        }
+
+        $coordenador = false;
+        if ($cargos->contains(ServidorEquipeGestoraForm::CARGO_COORDENADOR)) {
+            $turmasSelecionadas = collect($data['turma_ids'] ?? [])
+                ->map(fn (mixed $id): int => (int) $id)
+                ->filter()
+                ->unique()
+                ->values();
+            $coordenador = [
+                'ativo' => true,
+                'turma_ids' => $turmasSelecionadas->all(),
+            ];
+            $principais = collect($data['turmas_principais_ids'] ?? [])
+                ->map(fn (mixed $id): int => (int) $id)
+                ->filter()
+                ->unique()
+                ->values();
+            $principaisAtuais = $coordenadorAtual?->vinculosTurmaAtivos
+                ?->where('principal', true)
+                ->pluck('turma_id')
+                ->map(fn ($id): int => (int) $id)
+                ->values() ?? collect();
+            $vacanciasExplicitas = $principaisAtuais
+                ->diff($principais)
+                ->intersect($turmasSelecionadas)
+                ->values();
+
+            if ($principais->isNotEmpty()) {
+                $coordenador['turmas_principais_ids'] = $principais->all();
+            }
+            if ($vacanciasExplicitas->isNotEmpty()) {
+                $coordenador['turmas_vacancia_ids'] = $vacanciasExplicitas->all();
+            }
+        }
+
+        $equipeGestora = [
+            'id_escola' => $data['id_escola'] ?? null,
+            'matriculas' => collect($matriculas)
+                ->filter(fn (mixed $item): bool => is_array($item))
+                ->map(fn (array $item): array => collect($item)
+                    ->only(['id', 'matricula', 'turno'])
+                    ->all())
+                ->values()
+                ->all(),
+            'cargos' => $cargos->all(),
+            'diretor' => $diretor,
+            'coordenador' => $coordenador,
+            'secretario' => $cargos->contains(ServidorEquipeGestoraForm::CARGO_SECRETARIO),
+            'portaria' => $data['portaria'] ?? null,
+            'data_inicio' => $data['data_inicio'] ?? null,
+        ];
+
+        return [$data, ['equipe_gestora' => $equipeGestora]];
     }
 
     public static function turmasOptionsPublic(int|string|null $escolaId, int|string|null $turnoMatricula = null): array

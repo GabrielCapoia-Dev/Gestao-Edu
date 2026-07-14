@@ -13,6 +13,7 @@ use App\Models\TipoStatus;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
+use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 class PedidoRelatorioViewTest extends TestCase
@@ -178,6 +179,9 @@ class PedidoRelatorioViewTest extends TestCase
         ]);
 
         $usuario = User::factory()->create();
+        Permission::findOrCreate('Listar Pedidos');
+        Permission::findOrCreate('Listar Todos os Pedidos');
+        $usuario->givePermissionTo(['Listar Pedidos', 'Listar Todos os Pedidos']);
 
         $pedido = Pedido::create([
             'tipo_manutencao_id' => $tipo->id,

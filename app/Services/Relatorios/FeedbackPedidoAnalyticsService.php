@@ -12,6 +12,8 @@ use App\Models\PedidoProblema;
 use App\Models\TipoManutencao;
 use App\Models\TipoManutencaoOpcao;
 use App\Models\TipoStatus;
+use App\Models\User;
+use App\Services\PessoaScopeService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -30,6 +32,8 @@ class FeedbackPedidoAnalyticsService
 
     /** @var array<int, int>|null */
     private ?array $reabertoStatusIds = null;
+
+    public function __construct(private readonly PessoaScopeService $pessoaScopeService) {}
 
     /**
      * @return array<string, string>
@@ -110,7 +114,7 @@ class FeedbackPedidoAnalyticsService
     /**
      * @param array<string, mixed> $filters
      */
-    public function assertReportFilters(array $filters): void
+    public function assertReportFilters(array $filters, ?User $user = null): void
     {
         if (blank($filters['data_inicio'] ?? null) || blank($filters['data_fim'] ?? null)) {
             throw new InvalidArgumentException('Informe data de início e data de fim para gerar o relatório.');
@@ -119,11 +123,18 @@ class FeedbackPedidoAnalyticsService
         if (Carbon::parse($filters['data_inicio'])->gt(Carbon::parse($filters['data_fim']))) {
             throw new InvalidArgumentException('A data de início não pode ser maior que a data de fim.');
         }
+
+        if (
+            filled($filters['escola_id'] ?? null)
+            && ! $this->pessoaScopeService->canAccessEscola($this->resolveUser($user), (int) $filters['escola_id'])
+        ) {
+            throw new InvalidArgumentException('A escola selecionada não pertence ao seu escopo de acesso.');
+        }
     }
 
-    public function baseQuery(): Builder
+    public function baseQuery(?User $user = null): Builder
     {
-        return FeedbackPedido::query()
+        $query = FeedbackPedido::query()
             ->with([
                 'pedido.escola',
                 'pedido.tipoManutencao',
@@ -131,14 +142,16 @@ class FeedbackPedidoAnalyticsService
                 'pedido.historicos.statusNovo',
                 'itens.problema',
             ]);
+
+        return $this->applyFeedbackScope($query, $user);
     }
 
     /**
      * @param array<string, mixed> $filters
      */
-    public function query(array $filters = []): Builder
+    public function query(array $filters = [], ?User $user = null): Builder
     {
-        return $this->applyFilters($this->baseQuery(), $filters);
+        return $this->applyFilters($this->baseQuery($user), $filters);
     }
 
     /**
@@ -163,7 +176,7 @@ class FeedbackPedidoAnalyticsService
 
     public function firstPedidoDate(): ?string
     {
-        $date = Pedido::query()
+        $date = $this->pedidoQuery()
             ->min('data_solicitacao');
 
         return $date ? Carbon::parse($date)->toDateString() : null;
@@ -174,8 +187,7 @@ class FeedbackPedidoAnalyticsService
      */
     public function noteOptions(): array
     {
-        return FeedbackPedido::query()
-            ->whereHas('pedido')
+        return $this->baseQuery()
             ->select('valor')
             ->distinct()
             ->orderBy('valor')
@@ -189,7 +201,7 @@ class FeedbackPedidoAnalyticsService
      */
     public function priorityOptions(): array
     {
-        return Pedido::query()
+        return $this->pedidoQuery()
             ->whereHas('feedbacks')
             ->whereNotNull('nivel_prioridade')
             ->select('nivel_prioridade')
@@ -205,7 +217,7 @@ class FeedbackPedidoAnalyticsService
      */
     public function tipoManutencaoOptions(): array
     {
-        $ids = Pedido::query()
+        $ids = $this->pedidoQuery()
             ->whereHas('feedbacks')
             ->whereNotNull('tipo_manutencao_id')
             ->select('tipo_manutencao_id')
@@ -224,7 +236,7 @@ class FeedbackPedidoAnalyticsService
      */
     public function tipoManutencaoOpcaoOptions(null|int|string $tipoManutencaoId = null): array
     {
-        $ids = PedidoProblema::query()
+        $ids = $this->problemaQuery()
             ->whereNotNull('tipo_manutencao_opcao_id')
             ->whereHas('pedido.feedbacks')
             ->when($tipoManutencaoId, fn (Builder $query, mixed $tipoId): Builder => $query->where('tipo_manutencao_id', $tipoId))
@@ -244,14 +256,20 @@ class FeedbackPedidoAnalyticsService
      */
     public function escolaOptions(): array
     {
-        $ids = Pedido::query()
+        $ids = $this->pedidoQuery()
             ->whereHas('feedbacks')
             ->whereNotNull('escola_id')
             ->select('escola_id')
             ->distinct()
             ->pluck('escola_id');
 
-        return Escola::query()
+        $query = $this->pessoaScopeService->applyEscolaScope(
+            Escola::query(),
+            $this->resolveUser(null),
+            'escolas.id',
+        );
+
+        return $query
             ->where('ativo', true)
             ->whereIn('id', $ids)
             ->orderBy('nome')
@@ -264,7 +282,7 @@ class FeedbackPedidoAnalyticsService
      */
     public function empresaOptions(): array
     {
-        $ids = Pedido::query()
+        $ids = $this->pedidoQuery()
             ->whereHas('feedbacks')
             ->whereNotNull('empresa_contratada_id')
             ->select('empresa_contratada_id')
@@ -284,8 +302,7 @@ class FeedbackPedidoAnalyticsService
      */
     public function resultadoOptions(): array
     {
-        return FeedbackPedidoItem::query()
-            ->whereHas('feedback.pedido')
+        return $this->itemQuery()
             ->whereNotNull('resultado')
             ->select('resultado')
             ->distinct()
@@ -300,17 +317,19 @@ class FeedbackPedidoAnalyticsService
      */
     public function reabertoOptions(): array
     {
-        if (! FeedbackPedido::query()->whereHas('pedido')->exists()) {
+        $query = $this->baseQuery();
+
+        if (! (clone $query)->exists()) {
             return [];
         }
 
         $options = [];
 
-        if ($this->applyReabertoHistoricoFilter(FeedbackPedido::query()->whereHas('pedido'), false)->exists()) {
+        if ($this->applyReabertoHistoricoFilter(clone $query, false)->exists()) {
             $options['0'] = 'Nao';
         }
 
-        if ($this->applyReabertoHistoricoFilter(FeedbackPedido::query()->whereHas('pedido'), true)->exists()) {
+        if ($this->applyReabertoHistoricoFilter(clone $query, true)->exists()) {
             $options['1'] = 'Sim';
         }
 
@@ -638,6 +657,49 @@ class FeedbackPedidoAnalyticsService
         return $pedido->historicos()
             ->whereIn('status_novo_id', $statusIds)
             ->exists();
+    }
+
+    private function resolveUser(?User $user): ?User
+    {
+        return $user ?? Auth::user();
+    }
+
+    private function applyFeedbackScope(Builder $query, ?User $user = null): Builder
+    {
+        $user = $this->resolveUser($user);
+
+        return $query->whereHas('pedido', function (Builder $pedido) use ($user): void {
+            $this->pessoaScopeService->applyEscolaScope($pedido, $user, 'escola_id');
+        });
+    }
+
+    private function pedidoQuery(?User $user = null): Builder
+    {
+        return $this->pessoaScopeService->applyEscolaScope(
+            Pedido::query(),
+            $this->resolveUser($user),
+            'escola_id',
+        );
+    }
+
+    private function problemaQuery(?User $user = null): Builder
+    {
+        $user = $this->resolveUser($user);
+
+        return PedidoProblema::query()
+            ->whereHas('pedido', function (Builder $pedido) use ($user): void {
+                $this->pessoaScopeService->applyEscolaScope($pedido, $user, 'escola_id');
+            });
+    }
+
+    private function itemQuery(?User $user = null): Builder
+    {
+        $user = $this->resolveUser($user);
+
+        return FeedbackPedidoItem::query()
+            ->whereHas('feedback.pedido', function (Builder $pedido) use ($user): void {
+                $this->pessoaScopeService->applyEscolaScope($pedido, $user, 'escola_id');
+            });
     }
 
     /**

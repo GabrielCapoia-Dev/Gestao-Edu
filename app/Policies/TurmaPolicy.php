@@ -27,7 +27,8 @@ class TurmaPolicy
      */
     public function view(User $user, Turma $turma): bool
     {
-        return $user->hasPermissionTo('Listar Turmas');
+        return $user->hasPermissionTo('Listar Turmas')
+            && app(UserService::class)->podeAcessarTurma($user, $turma);
     }
 
     /**
@@ -43,7 +44,8 @@ class TurmaPolicy
      */
     public function update(User $user, Turma $turma): bool
     {
-        return $user->hasPermissionTo('Editar Turmas');
+        return $user->hasPermissionTo('Editar Turmas')
+            && app(UserService::class)->podeAcessarTurma($user, $turma);
     }
 
     /**
@@ -51,7 +53,8 @@ class TurmaPolicy
      */
     public function delete(User $user, Turma $turma): bool
     {
-        return $user->hasPermissionTo('Excluir Turmas');
+        return $user->hasPermissionTo('Excluir Turmas')
+            && app(UserService::class)->podeAcessarTurma($user, $turma);
     }
 
     public function filterBySchool(User $user): bool

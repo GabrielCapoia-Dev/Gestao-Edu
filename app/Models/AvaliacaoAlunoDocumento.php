@@ -24,6 +24,8 @@ class AvaliacaoAlunoDocumento extends Model
         'escola_id',
         'serie_id',
         'payload',
+        'responsaveis_snapshot',
+        'responsaveis_snapshot_em',
         'alternativa_ids',
         'professor_ids',
         'pauta_ids_respondidas',
@@ -41,6 +43,8 @@ class AvaliacaoAlunoDocumento extends Model
     {
         return [
             'payload' => 'array',
+            'responsaveis_snapshot' => 'array',
+            'responsaveis_snapshot_em' => 'datetime',
             'alternativa_ids' => 'array',
             'professor_ids' => 'array',
             'pauta_ids_respondidas' => 'array',

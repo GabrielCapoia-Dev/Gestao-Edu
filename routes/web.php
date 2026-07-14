@@ -16,16 +16,15 @@ use App\Http\Controllers\MaintenanceController;
 use App\Http\Controllers\NotificationCenterController;
 use App\Http\Controllers\PedidoArquivoController;
 use App\Http\Controllers\PedidoMerendaEmpenhoController;
+use App\Http\Controllers\PedidoRelatorioController;
 use App\Http\Controllers\PedidoRelatorioGeralController;
 use App\Http\Controllers\ProfilePreviewController;
 use App\Http\Controllers\UserPresenceController;
 use App\Http\Middleware\ApplyProfilePreviewUser;
 use App\Http\Middleware\BlockProfilePreviewWrites;
 use App\Http\Middleware\EnsurePasswordIsChanged;
-use App\Models\Pedido;
 use App\Models\User;
 use App\Notifications\SistemaNotification;
-use App\Services\Relatorios\PedidoRelatorioService;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Route;
@@ -155,9 +154,8 @@ Route::prefix('admin')
             ->name('exports.cancel')
             ->middleware('can:cancel,exportRequest');
 
-        Route::get('/pedidos/{pedido}/pdf', function (Pedido $pedido, PedidoRelatorioService $service) {
-            return $service->gerar($pedido);
-        })->name('pedidos.pdf');
+        Route::get('/pedidos/{pedido}/pdf', PedidoRelatorioController::class)
+            ->name('pedidos.pdf');
 
         Route::get('/pedidos/{pedido}/imagens.zip', [PedidoArquivoController::class, 'exportImages'])
             ->name('pedidos.imagens.export');

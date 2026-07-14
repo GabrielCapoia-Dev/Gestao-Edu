@@ -13,10 +13,14 @@ use App\Models\Pauta;
 use App\Models\PeriodoAvaliacao;
 use App\Models\Professor;
 use App\Models\Serie;
+use App\Models\Servidor;
+use App\Models\ServidorFuncaoAdministrativa;
+use App\Models\ServidorFuncaoTurma;
 use App\Models\TipoAvaliacao;
 use App\Models\Turma;
 use App\Models\User;
 use App\Services\Avaliacoes\AvaliacaoDocumentoExportService;
+use App\Services\Avaliacoes\AvaliacaoParecerSnapshotService;
 use App\Services\ServidorService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -48,6 +52,7 @@ class AvaliacaoDocumentoExportTest extends TestCase
         $usuario->escolas()->attach($escola->id);
         $serie = $this->criarSerie('SER-DOC', 'Infantil 4');
         $turma = $this->criarTurma($escola, $serie, 'A');
+        $this->criarResponsaveisParecer($escola, $turma);
 
         $componente = ComponenteCurricular::query()->create([
             'codigo' => 'COMP-DOC',
@@ -154,6 +159,14 @@ class AvaliacaoDocumentoExportTest extends TestCase
         $response
             ->assertOk()
             ->assertHeader('Content-Type', 'application/pdf');
+
+        $snapshot = $this->criarDocumentoResposta([
+            'avaliacao_id' => $avaliacao->id,
+            'turma_id' => $turma->id,
+            'aluno_id' => $aluno->id,
+        ])->fresh();
+        $this->assertNotEmpty($snapshot->responsaveis_snapshot);
+        $this->assertSame('Diretora Principal', $snapshot->responsaveis_snapshot['diretor']['nome']);
 
         $this->assertDatabaseHas('avaliacao_exportacoes', [
             'avaliacao_id' => $avaliacao->id,
@@ -425,74 +438,14 @@ class AvaliacaoDocumentoExportTest extends TestCase
     public function test_resolve_diretor_e_coordenador_por_funcoes_do_servidor_para_o_documento(): void
     {
         $escola = $this->criarEscola('Escola Servidor Documento');
-        $outraEscola = $this->criarEscola('Outra Escola Servidor');
         $serie = $this->criarSerie('SER-SERV-GEST', '1o Ano');
         $turma = $this->criarTurma($escola, $serie, 'A');
-
-        $funcaoDiretor = FuncaoAdministrativa::query()->create([
-            'nome' => 'Direcao Escolar',
-            'categoria' => FuncaoAdministrativa::CATEGORIA_ADMINISTRATIVO,
-            'ativo' => true,
-            'tem_relacao_turma' => false,
-            'direcao_escolar' => true,
-        ]);
-        $funcaoCoordenador = FuncaoAdministrativa::query()->create([
-            'nome' => 'Coordenacao Pedagogica',
-            'categoria' => FuncaoAdministrativa::CATEGORIA_PEDAGOGICO,
-            'ativo' => true,
-            'tem_relacao_turma' => true,
-            'coordenacao_pedagogica' => true,
-        ]);
-        $funcaoDirecaoSemFlag = FuncaoAdministrativa::query()->create([
-            'nome' => 'Direcao Sem Flag',
-            'categoria' => FuncaoAdministrativa::CATEGORIA_ADMINISTRATIVO,
-            'ativo' => true,
-            'tem_relacao_turma' => false,
-        ]);
-
-        app(ServidorService::class)->criarServidorComFuncoes([
-            'id_escola' => $escola->id,
-            'nome' => 'Diretora da Escola',
-            'matricula' => 'DIR-ESCOLA',
-            'status' => 'ativo',
-        ], [[
-            'funcao_administrativa_id' => $funcaoDiretor->id,
-            'portaria' => '111/2026',
-        ]]);
-
-        app(ServidorService::class)->criarServidorComFuncoes([
-            'id_escola' => $outraEscola->id,
-            'nome' => 'Diretora da Turma',
-            'matricula' => 'DIR-TURMA',
-            'status' => 'ativo',
-        ], [[
-            'funcao_administrativa_id' => $funcaoDiretor->id,
-            'portaria' => '222/2026',
-            'turma_ids' => [$turma->id],
-        ]]);
-
-        app(ServidorService::class)->criarServidorComFuncoes([
-            'id_escola' => $escola->id,
-            'nome' => 'Coordenadora Documento',
-            'matricula' => 'COORD-TURMA',
-            'status' => 'ativo',
-        ], [[
-            'funcao_administrativa_id' => $funcaoCoordenador->id,
-            'portaria' => '333/2026',
-            'turma_ids' => [$turma->id],
-        ]]);
-
-        app(ServidorService::class)->criarServidorComFuncoes([
-            'id_escola' => $escola->id,
-            'nome' => 'Servidor Sem Flag',
-            'matricula' => 'SEM-FLAG',
-            'status' => 'ativo',
-        ], [$funcaoDirecaoSemFlag->id]);
+        $this->criarResponsaveisParecer($escola, $turma);
 
         $gestores = (new AvaliacaoDocumentoExportService())->gestoresDaTurma($turma);
 
-        $this->assertSame('Diretora da Turma - 222/2026', $gestores['diretor']);
-        $this->assertSame('Coordenadora Documento - 333/2026', $gestores['coordenacao']);
+        $this->assertSame('Diretora Principal - PORT-DIR', $gestores['diretor']);
+        $this->assertSame('Coordenadora Principal - PORT-COORD', $gestores['coordenacao']);
         $this->assertTrue($gestores['tem_diretor']);
         $this->assertTrue($gestores['tem_coordenacao']);
         $this->assertTrue($gestores['pode_exportar']);
@@ -526,7 +479,7 @@ class AvaliacaoDocumentoExportTest extends TestCase
         $this->assertFalse($gestores['tem_diretor']);
         $this->assertFalse($gestores['tem_coordenacao']);
         $this->assertFalse($gestores['pode_exportar']);
-        $this->assertSame('A turma não possui vínculo com Diretor(a) ou Coordenador(a).', $gestores['motivo_bloqueio']);
+        $this->assertSame('A escola não possui direção principal ativa e vigente.', $gestores['motivo_bloqueio']);
     }
 
     public function test_exportacao_do_parecer_fica_bloqueada_quando_falta_coordenacao_na_turma(): void
@@ -535,32 +488,16 @@ class AvaliacaoDocumentoExportTest extends TestCase
         $serie = $this->criarSerie('SER-SEM-COORD', '1o Ano');
         $turma = $this->criarTurma($escola, $serie, 'A');
 
-        $funcaoDiretor = FuncaoAdministrativa::query()->create([
-            'nome' => 'Direcao Escolar',
-            'categoria' => FuncaoAdministrativa::CATEGORIA_ADMINISTRATIVO,
-            'ativo' => true,
-            'tem_relacao_turma' => false,
-            'direcao_escolar' => true,
-        ]);
-
-        app(ServidorService::class)->criarServidorComFuncoes([
-            'id_escola' => $escola->id,
-            'nome' => 'Diretora sem Coordenacao',
-            'matricula' => 'DIR-SEM-COORD',
-            'status' => 'ativo',
-        ], [[
-            'funcao_administrativa_id' => $funcaoDiretor->id,
-            'portaria' => '123/2026',
-        ]]);
+        $this->criarResponsaveisParecer($escola, $turma, comCoordenador: false);
 
         $gestores = (new AvaliacaoDocumentoExportService())->gestoresDaTurma($turma);
 
-        $this->assertSame('Diretora sem Coordenacao - 123/2026', $gestores['diretor']);
+        $this->assertSame('', $gestores['diretor']);
         $this->assertSame('', $gestores['coordenacao']);
-        $this->assertTrue($gestores['tem_diretor']);
+        $this->assertFalse($gestores['tem_diretor']);
         $this->assertFalse($gestores['tem_coordenacao']);
         $this->assertFalse($gestores['pode_exportar']);
-        $this->assertSame('A turma não possui vínculo com Diretor(a) ou Coordenador(a).', $gestores['motivo_bloqueio']);
+        $this->assertSame('A turma não possui coordenação principal ativa e vigente.', $gestores['motivo_bloqueio']);
     }
 
     public function test_documento_exibe_nao_avaliado_para_pauta_pendente(): void
@@ -595,6 +532,9 @@ class AvaliacaoDocumentoExportTest extends TestCase
             'data_nascimento' => '2015-01-01',
             'id_turma' => $turma->id,
         ]);
+
+        $this->criarResponsaveisParecer($escola, $turma);
+        app(AvaliacaoParecerSnapshotService::class)->capturarParaAluno($avaliacao, $turma, $aluno);
 
         $avaliacao->load('tipo');
         $pauta->load(['componente', 'alternativas']);
@@ -655,6 +595,9 @@ class AvaliacaoDocumentoExportTest extends TestCase
             'status' => Aluno::STATUS_TRANSFERIDO,
             'status_alterado_em' => '2026-05-20 09:00:00',
         ]);
+
+        $this->criarResponsaveisParecer($escola, $turma);
+        app(AvaliacaoParecerSnapshotService::class)->capturarParaAluno($avaliacao, $turma, $aluno);
 
         $avaliacao->load('tipo');
         $pauta->load(['componente', 'alternativas']);
@@ -865,6 +808,62 @@ class AvaliacaoDocumentoExportTest extends TestCase
             'escopo' => 'escola',
             'escola_id' => $escolaBloqueada->id,
         ]))->assertNotFound();
+    }
+
+    /**
+     * @return array{ServidorFuncaoAdministrativa, ServidorFuncaoAdministrativa|null}
+     */
+    private function criarResponsaveisParecer(
+        Escola $escola,
+        Turma $turma,
+        bool $comCoordenador = true,
+    ): array {
+        $diretora = Servidor::query()->create([
+            'id_escola' => $escola->id,
+            'nome' => 'Diretora Principal',
+            'email' => uniqid().'@edu.umuarama.pr.gov.br',
+            'status' => Servidor::STATUS_ATIVO,
+        ]);
+        $direcao = ServidorFuncaoAdministrativa::query()->create([
+            'servidor_id' => $diretora->id,
+            'funcao_administrativa_id' => FuncaoAdministrativa::direcaoPadrao()->id,
+            'id_escola' => $escola->id,
+            'status' => ServidorFuncaoAdministrativa::STATUS_ATIVO,
+            'origem' => 'teste',
+            'portaria' => 'PORT-DIR',
+            'principal' => true,
+            'data_inicio' => now()->subDay()->toDateString(),
+        ]);
+
+        if (! $comCoordenador) {
+            return [$direcao, null];
+        }
+
+        $coordenadora = Servidor::query()->create([
+            'id_escola' => $escola->id,
+            'nome' => 'Coordenadora Principal',
+            'email' => uniqid().'@edu.umuarama.pr.gov.br',
+            'status' => Servidor::STATUS_ATIVO,
+        ]);
+        $coordenacao = ServidorFuncaoAdministrativa::query()->create([
+            'servidor_id' => $coordenadora->id,
+            'funcao_administrativa_id' => FuncaoAdministrativa::coordenacaoPadrao()->id,
+            'id_escola' => $escola->id,
+            'status' => ServidorFuncaoAdministrativa::STATUS_ATIVO,
+            'origem' => 'teste',
+            'portaria' => 'PORT-COORD',
+            'principal' => false,
+            'data_inicio' => now()->subDay()->toDateString(),
+        ]);
+        ServidorFuncaoTurma::query()->create([
+            'servidor_funcao_administrativa_id' => $coordenacao->id,
+            'turma_id' => $turma->id,
+            'principal' => true,
+            'status' => ServidorFuncaoTurma::STATUS_ATIVO,
+            'data_inicio' => now()->subDay()->toDateString(),
+        ]);
+
+        return [$direcao, $coordenacao];
     }
 
     private function criarEscola(string $nome): Escola

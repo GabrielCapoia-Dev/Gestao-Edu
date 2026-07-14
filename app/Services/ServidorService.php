@@ -16,6 +16,13 @@ class ServidorService
 {
     public function criarServidorComFuncoes(array $data, array $vinculos = []): Servidor
     {
+        if ($this->fluxoEquipeGestora($data, $vinculos)) {
+            return app(PessoaEquipeGestoraService::class)->criarPessoaEquipeGestora(
+                $data,
+                $this->dadosEquipeGestora($data, $vinculos),
+            );
+        }
+
         if ($this->fluxoProfessor($data, $vinculos)) {
             return app(PessoaProfessorService::class)->criarPessoaProfessor(
                 $data,
@@ -33,15 +40,46 @@ class ServidorService
 
     public function atualizarServidorComFuncoes(Servidor $servidor, array $data, array $vinculos = []): Servidor
     {
+        if ($this->fluxoEquipeGestora($data, $vinculos)) {
+            $dadosGestao = $this->dadosEquipeGestora($data, $vinculos);
+
+            if ($servidor->professores()->where('ativo', true)->exists()) {
+                return app(PessoaEquipeGestoraService::class)->converterProfessorParaEquipeGestora(
+                    $servidor,
+                    $dadosGestao,
+                    $data,
+                );
+            }
+
+            return app(PessoaEquipeGestoraService::class)->atualizarPessoaEquipeGestora(
+                $servidor,
+                $data,
+                $dadosGestao,
+            );
+        }
+
         if ($this->fluxoProfessor($data, $vinculos)) {
+            $registros = $vinculos['matriculas_professor']
+                ?? $vinculos['registros_professor']
+                ?? $data['matriculas_professor']
+                ?? $data['registros_professor']
+                ?? $vinculos;
+
+            if ($servidor->vinculosAtivos()
+                ->whereHas('funcaoAdministrativa', fn ($funcoes) => $funcoes->equipeGestora())
+                ->exists()) {
+                return app(PessoaEquipeGestoraService::class)->converterEquipeGestoraParaProfessor(
+                    $servidor,
+                    $data,
+                    $registros,
+                    $this->dadosAcesso($data),
+                );
+            }
+
             return app(PessoaProfessorService::class)->atualizarPessoaProfessor(
                 $servidor,
                 $data,
-                $vinculos['matriculas_professor']
-                    ?? $vinculos['registros_professor']
-                    ?? $data['matriculas_professor']
-                    ?? $data['registros_professor']
-                    ?? $vinculos,
+                $registros,
                 $this->dadosAcesso($data),
             );
         }
@@ -61,6 +99,22 @@ class ServidorService
             || array_key_exists('registros_professor', $data)
             || array_key_exists('matriculas_professor', $vinculos)
             || array_key_exists('matriculas_professor', $data);
+    }
+
+    private function fluxoEquipeGestora(array $data, array $vinculos): bool
+    {
+        return ($data['cargo'] ?? null) === 'equipe_gestora'
+            || array_key_exists('equipe_gestora', $data)
+            || array_key_exists('equipe_gestora', $vinculos);
+    }
+
+    private function dadosEquipeGestora(array $data, array $vinculos): array
+    {
+        $dados = $vinculos['equipe_gestora']
+            ?? $data['equipe_gestora']
+            ?? $vinculos;
+
+        return is_array($dados) ? [...$data, ...$dados] : $data;
     }
 
     private function dadosAcesso(array $data): array
@@ -132,6 +186,12 @@ class ServidorService
             ? $funcao
             : FuncaoAdministrativa::query()->findOrFail($funcao);
 
+        if ($funcao->ehEquipeGestora()) {
+            throw ValidationException::withMessages([
+                'equipe_gestora' => 'Funções da Equipe Gestora só podem ser alteradas pelo fluxo próprio, que preserva vigência e principais.',
+            ]);
+        }
+
         return DB::transaction(function () use ($servidor, $funcao, $contexto): ServidorFuncaoAdministrativa {
             $servidor = $servidor->fresh(['professores', 'escola']);
 
@@ -202,6 +262,12 @@ class ServidorService
             ? $funcao
             : FuncaoAdministrativa::query()->findOrFail($funcao);
 
+        if ($funcao->ehEquipeGestora()) {
+            throw ValidationException::withMessages([
+                'equipe_gestora' => 'Funções da Equipe Gestora só podem ser encerradas pelo fluxo próprio.',
+            ]);
+        }
+
         DB::transaction(function () use ($servidor, $funcao): void {
             $servidor = $servidor->fresh(['professores']);
 
@@ -227,7 +293,11 @@ class ServidorService
 
             foreach ($vinculos as $vinculo) {
                 if (Schema::hasTable('servidor_funcao_turma')) {
-                    $vinculo->turmas()->detach();
+                    if (Schema::hasColumn('servidor_funcao_turma', 'status')) {
+                        app(PessoaEquipeGestoraService::class)->encerrarVinculo($vinculo);
+                    } else {
+                        $vinculo->turmas()->detach();
+                    }
                 }
             }
 
@@ -282,8 +352,24 @@ class ServidorService
             return $query;
         }
 
-        $setorIds = $scope->visibleSetorIds($user);
         $escolaIds = $scope->escolaIdsDosVinculos($user);
+
+        if ($scope->ehEquipeGestora($user)) {
+            if ($escolaIds === []) {
+                return $query->whereRaw('1 = 0');
+            }
+
+            return $query->where(function (Builder $servidores) use ($escolaIds): void {
+                $servidores
+                    ->whereIn('id_escola', $escolaIds)
+                    ->orWhereHas(
+                        'vinculosAtivos',
+                        fn (Builder $vinculos): Builder => $vinculos->whereIn('id_escola', $escolaIds)
+                    );
+            });
+        }
+
+        $setorIds = $scope->visibleSetorIds($user);
 
         if ($setorIds === [] && $escolaIds === []) {
             return $query->whereRaw('1 = 0');
@@ -330,18 +416,24 @@ class ServidorService
         return false;
     }
 
-    /**
-     * Pessoas com permissão de exclusão sempre podem ser excluídas.
-     * Avaliações/TCP apenas perdem a referência ao professor (null), não impedem o delete.
-     */
     public function pessoaPodeSerExcluida(Servidor $pessoa): bool
     {
-        return true;
+        return ! $pessoa->servidorFuncoes()
+            ->whereHas(
+                'funcaoAdministrativa',
+                fn (Builder $funcoes): Builder => $funcoes->equipeGestora(),
+            )
+            ->exists();
     }
 
     public function motivoBloqueioExclusao(Servidor $pessoa): ?string
     {
-        return null;
+        if ($this->pessoaPodeSerExcluida($pessoa)) {
+            return null;
+        }
+
+        return "{$pessoa->nome} não pode ser excluída porque possui histórico na Equipe Gestora. "
+            .'Inative a pessoa ou converta o cargo pelo fluxo próprio; os vínculos históricos devem ser preservados.';
     }
 
     /**
@@ -372,7 +464,17 @@ class ServidorService
     public function excluirPessoa(Servidor $pessoa): void
     {
         DB::transaction(function () use ($pessoa): void {
-            $pessoa = $pessoa->fresh(['professores', 'professorMatriculas', 'servidorFuncoes']);
+            $pessoa = Servidor::query()
+                ->lockForUpdate()
+                ->findOrFail($pessoa->getKey());
+
+            if ($motivo = $this->motivoBloqueioExclusao($pessoa)) {
+                throw ValidationException::withMessages([
+                    'pessoa' => $motivo,
+                ]);
+            }
+
+            $pessoa->load(['professores', 'professorMatriculas', 'servidorFuncoes']);
             $professorIds = $pessoa->professores->pluck('id')->map(fn ($id): int => (int) $id)->all();
 
             $this->desvincularProfessorDePedagogico($professorIds);

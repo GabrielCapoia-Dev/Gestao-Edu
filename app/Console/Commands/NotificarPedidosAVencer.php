@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Pedido;
 use App\Models\User;
 use App\Notifications\SistemaNotification;
+use App\Services\PedidoService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 
@@ -19,6 +20,7 @@ class NotificarPedidosAVencer extends Command
         $hoje = now()->startOfDay();
 
         $usuarios = User::permission('Visualizar Notificação: Vencimento de Pedidos')->get();
+        $pedidoService = app(PedidoService::class);
 
         foreach ($intervalos as $dias) {
 
@@ -38,6 +40,10 @@ class NotificarPedidosAVencer extends Command
                 }
 
                 foreach ($usuarios as $user) {
+                    if (! $pedidoService->registroVisivelNoPerfil($pedido, $user)) {
+                        continue;
+                    }
+
                     $user->notify(
                         new SistemaNotification(
                             titulo: 'Pedido Próximo do Vencimento',

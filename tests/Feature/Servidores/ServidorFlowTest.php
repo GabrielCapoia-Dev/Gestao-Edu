@@ -184,7 +184,7 @@ class ServidorFlowTest extends TestCase
         $this->assertSame(2, Servidor::query()->where('matricula', 'MAT-REPETIDA')->count());
     }
 
-    public function test_vinculo_funcional_salva_portaria_e_turmas(): void
+    public function test_fluxo_generico_rejeita_vinculo_da_equipe_gestora(): void
     {
         $escola = $this->criarEscola('Escola Vinculo Funcional');
         $serie = Serie::query()->create(['codigo' => 'SER-FUNC', 'nome' => 'Serie Funcional']);
@@ -204,7 +204,9 @@ class ServidorFlowTest extends TestCase
             'coordenacao_pedagogica' => true,
         ]);
 
-        $servidor = app(ServidorService::class)->criarServidorComFuncoes([
+        $this->expectException(ValidationException::class);
+
+        app(ServidorService::class)->criarServidorComFuncoes([
             'id_escola' => $escola->id,
             'setor_id' => $escola->setor_id,
             'nome' => 'Servidor Coordenacao',
@@ -219,16 +221,6 @@ class ServidorFlowTest extends TestCase
             'turma_ids' => [$turma->id],
         ]]);
 
-        $vinculo = ServidorFuncaoAdministrativa::query()
-            ->where('servidor_id', $servidor->id)
-            ->where('funcao_administrativa_id', $funcaoCoordenacao->id)
-            ->firstOrFail();
-
-        $this->assertSame('123/2026', $vinculo->portaria);
-        $this->assertDatabaseHas('servidor_funcao_turma', [
-            'servidor_funcao_administrativa_id' => $vinculo->id,
-            'turma_id' => $turma->id,
-        ]);
     }
 
     public function test_funcao_professor_cria_ou_vincula_cadastro_pedagogico(): void

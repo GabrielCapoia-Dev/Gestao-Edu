@@ -61,7 +61,7 @@ class PedidoService
             return [];
         }
 
-        return collect($user->idsEscolasVinculadas())
+        return collect(app(PessoaScopeService::class)->escolaIdsDosVinculos($user))
             ->filter(fn ($id): bool => filled($id))
             ->map(fn ($id): int => (int) $id)
             ->unique()
@@ -305,6 +305,13 @@ class PedidoService
         $escolaIds = $this->escolaIdsParaEscopo($user);
 
         if (
+            app(PessoaScopeService::class)->ehEquipeGestora($user)
+            && ! in_array((int) $pedido->escola_id, $escolaIds, true)
+        ) {
+            return false;
+        }
+
+        if (
             $escolaIds !== []
             && ! in_array((int) $pedido->escola_id, $escolaIds, true)
             && ! $this->podeListarTodos($user)
@@ -386,6 +393,10 @@ class PedidoService
         }
 
         $escolaIds = $this->escolaIdsParaEscopo($user);
+
+        if (app(PessoaScopeService::class)->ehEquipeGestora($user) && $escolaIds === []) {
+            return $query->whereRaw('1 = 0');
+        }
 
         $setorIds = app(SetorPedidoAccessService::class)
             ->allowedSetorIds($user, SetorAccessCapability::LISTAR);
@@ -569,6 +580,10 @@ class PedidoService
         }
 
         foreach ($usuarios as $usuario) {
+            if (! $this->registroVisivelNoPerfil($pedido, $usuario)) {
+                continue;
+            }
+
             $usuario->notify(new SistemaNotification(
                 titulo: 'Pedido adicional criado',
                 mensagem: "Pedido adicional {$pedido->numero_protocolo} foi criado.",
@@ -613,11 +628,7 @@ class PedidoService
 
     private function escolaIdDoSolicitante(User $solicitante): ?int
     {
-        if (filled($solicitante->id_escola)) {
-            return (int) $solicitante->id_escola;
-        }
-
-        $escolaIds = collect($solicitante->idsEscolasVinculadas())
+        $escolaIds = collect($this->escolaIdsParaEscopo($solicitante))
             ->map(fn ($id): int => (int) $id)
             ->filter()
             ->unique()

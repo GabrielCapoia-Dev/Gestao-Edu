@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Services\Avaliacoes\AvaliacaoDashboardMetricsService;
 use App\Services\Avaliacoes\AvaliacaoDocumentoExportService;
 use App\Services\Exports\ExportRequestService;
+use App\Services\PessoaScopeService;
 use App\Services\Relatorios\RelatorioPdfRenderer;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -123,7 +124,7 @@ class DashboardAvaliacoes extends Page implements HasForms
     public bool $dashboardCarregado = false;
 
     /**
-     * @var array<int, array{diretor: string, coordenacao: string, tem_diretor: bool, tem_coordenacao: bool, pode_exportar: bool, motivo_bloqueio: string}>
+     * @var array<string, array{diretor: string, coordenacao: string, tem_diretor: bool, tem_coordenacao: bool, pode_exportar: bool, motivo_bloqueio: string}>
      */
     private array $parecerTurmaElegibilidade = [];
 
@@ -349,7 +350,8 @@ class DashboardAvaliacoes extends Page implements HasForms
             return;
         }
 
-        $gestores = app(AvaliacaoDocumentoExportService::class)->gestoresDaTurma($turma);
+        $documentoService = app(AvaliacaoDocumentoExportService::class);
+        $gestores = $documentoService->gestoresDaTurma($turma, $avaliacaoId);
 
         if (! $gestores['pode_exportar']) {
             Notification::make()
@@ -367,15 +369,18 @@ class DashboardAvaliacoes extends Page implements HasForms
         }
 
         try {
+            $filtrosExportacao = [
+                'avaliacao_id' => $avaliacaoId,
+                'escopo' => 'turma',
+                'turma_id' => $turmaId,
+            ];
+            $documentoService->prepararSnapshotsParecer($filtrosExportacao, $user);
+
             $exportRequest = app(ExportRequestService::class)->queue(
                 user: $user,
                 type: 'avaliacao_documento',
                 format: 'pdf',
-                filters: [
-                    'avaliacao_id' => $avaliacaoId,
-                    'escopo' => 'turma',
-                    'turma_id' => $turmaId,
-                ],
+                filters: $filtrosExportacao,
                 label: 'Documento de avaliação',
                 metadata: ['route' => 'filament.admin.pages.dashboard-avaliacoes'],
             );
@@ -719,7 +724,7 @@ class DashboardAvaliacoes extends Page implements HasForms
     {
         $user ??= $this->usuarioAtual();
 
-        return Gate::allows('admin-only', $user);
+        return app(PessoaScopeService::class)->hasGlobalAccess($user);
     }
 
     /**
@@ -737,9 +742,7 @@ class DashboardAvaliacoes extends Page implements HasForms
             return null;
         }
 
-        $escolasIds = $user->idsEscolasVinculadas();
-
-        return $escolasIds === [] ? null : $escolasIds;
+        return app(PessoaScopeService::class)->escolaIdsDosVinculos($user);
     }
 
     private function avaliacaoIdInicialDaUrl(): ?int
@@ -3018,6 +3021,7 @@ class DashboardAvaliacoes extends Page implements HasForms
                     default => 'nao_iniciado',
                 };
                 $parecerElegibilidade = $this->parecerElegibilidadeDaTurma(
+                    (int) $item->avaliacao_id,
                     (int) $item->turma_id,
                     $turmasDaPagina->get((int) $item->turma_id)
                 );
@@ -3087,16 +3091,18 @@ class DashboardAvaliacoes extends Page implements HasForms
     /**
      * @return array{diretor: string, coordenacao: string, tem_diretor: bool, tem_coordenacao: bool, pode_exportar: bool, motivo_bloqueio: string}
      */
-    private function parecerElegibilidadeDaTurma(int $turmaId, ?Turma $turma = null): array
+    private function parecerElegibilidadeDaTurma(int $avaliacaoId, int $turmaId, ?Turma $turma = null): array
     {
-        if (array_key_exists($turmaId, $this->parecerTurmaElegibilidade)) {
-            return $this->parecerTurmaElegibilidade[$turmaId];
+        $chave = "{$avaliacaoId}-{$turmaId}";
+
+        if (array_key_exists($chave, $this->parecerTurmaElegibilidade)) {
+            return $this->parecerTurmaElegibilidade[$chave];
         }
 
         $turma ??= Turma::query()->find($turmaId);
 
         if (! $turma) {
-            return $this->parecerTurmaElegibilidade[$turmaId] = [
+            return $this->parecerTurmaElegibilidade[$chave] = [
                 'diretor' => '',
                 'coordenacao' => '',
                 'tem_diretor' => false,
@@ -3106,8 +3112,8 @@ class DashboardAvaliacoes extends Page implements HasForms
             ];
         }
 
-        return $this->parecerTurmaElegibilidade[$turmaId] = app(AvaliacaoDocumentoExportService::class)
-            ->gestoresDaTurma($turma);
+        return $this->parecerTurmaElegibilidade[$chave] = app(AvaliacaoDocumentoExportService::class)
+            ->gestoresDaTurma($turma, $avaliacaoId);
     }
 
     private function aplicarFiltrosTurmaQuery(QueryBuilder $query, string $alias = 't', ?array $filtros = null): void

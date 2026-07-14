@@ -64,8 +64,7 @@ class ProfessorResource extends Resource
 
     public static function getGlobalSearchEloquentQuery(): Builder
     {
-        return parent::getGlobalSearchEloquentQuery()
-            ->where('ativo', true)
+        return static::getEloquentQuery()
             ->with(['escola']);
     }
 

@@ -31,11 +31,13 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class TurmaService
 {
     public function __construct(
-        protected UserService $userService
+        protected UserService $userService,
+        protected PessoaScopeService $pessoaScopeService,
     ) {}
 
     public function configurarTabela(Table $table, ?User $user): Table
@@ -148,6 +150,7 @@ class TurmaService
                     return $data;
                 })
                 ->using(function (Turma $record, array $data): Turma {
+                    $data = $this->validarEscolaNoEscopo($data, Auth::user(), $record);
                     $componentes = $data['componentes'] ?? [];
                     unset($data['componentes']);
 
@@ -252,10 +255,20 @@ class TurmaService
                     ->schema([
                         Select::make('id_escola')
                             ->label('Escola')
-                            ->relationship('escola', 'nome', modifyQueryUsing: fn (Builder $query): Builder => $query
-                                ->where('ativo', true)
-                                ->orderBy('nome'))
-                            ->getOptionLabelUsing(fn ($value): ?string => Escola::query()->whereKey($value)->value('nome'))
+                            ->relationship('escola', 'nome', modifyQueryUsing: function (Builder $query) use ($user): Builder {
+                                $query = app(PessoaScopeService::class)
+                                    ->applyEscolaScope($query, $user, 'escolas.id');
+
+                                return $query
+                                    ->where('ativo', true)
+                                    ->orderBy('nome');
+                            })
+                            ->getOptionLabelUsing(function ($value) use ($user): ?string {
+                                $query = app(PessoaScopeService::class)
+                                    ->applyEscolaScope(Escola::query(), $user, 'escolas.id');
+
+                                return $query->whereKey($value)->value('nome');
+                            })
                             ->searchable()
                             ->required()
                             ->live()
@@ -487,10 +500,25 @@ class TurmaService
 
     public function forcarVinculoComEscola(array $data, ?User $auth): array
     {
-        // Impacto: usuario vinculado a escola nao pode criar turma em outra unidade; remover isso quebra isolamento entre escolas.
-        if ($auth && filled($auth->id_escola)) {
-            $data['id_escola'] = $auth->id_escola;
+        return $this->validarEscolaNoEscopo($data, $auth);
+    }
+
+    public function validarEscolaNoEscopo(array $data, ?User $user, ?Turma $turma = null): array
+    {
+        $escolaId = (int) ($data['id_escola'] ?? $turma?->id_escola ?? 0);
+        $mesmaEscola = $turma && (int) $turma->id_escola === $escolaId;
+        $escolaValida = Escola::query()
+            ->whereKey($escolaId)
+            ->when(! $mesmaEscola, fn (Builder $query): Builder => $query->where('ativo', true))
+            ->exists();
+
+        if (! $escolaValida || ! $this->pessoaScopeService->canAccessEscola($user, $escolaId)) {
+            throw ValidationException::withMessages([
+                'id_escola' => 'A escola selecionada não pertence ao seu escopo de acesso.',
+            ]);
         }
+
+        $data['id_escola'] = $escolaId;
 
         return $data;
     }

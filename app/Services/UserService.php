@@ -596,30 +596,57 @@ class UserService
 
     public function aplicarFiltroPorEscolaDoUsuario(Builder $query, ?User $user): Builder
     {
-        if ($user && ! $this->ehAdmin($user) && ! empty($user->id_escola)) {
-            $model = $query->getModel();
-            $table = $model->getTable();
-
-            if (Schema::hasColumn($table, 'id_escola')) {
-                return $query->where("{$table}.id_escola", $user->id_escola);
-            }
-
-            if (! method_exists($model, 'turma')) {
-                return $query;
-            }
-
-            $query->whereHas('turma', function (Builder $turmaQuery) use ($user) {
-                $turmaQuery->where('id_escola', $user->id_escola);
-            });
+        if (! $user) {
+            return $query->whereRaw('1 = 0');
         }
 
-        return $query;
+        $scope = app(PessoaScopeService::class);
+
+        if ($scope->hasGlobalAccess($user)) {
+            return $query;
+        }
+
+        $escolaIds = $scope->escolaIdsDosVinculos($user);
+
+        if ($escolaIds === []) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        $model = $query->getModel();
+        $table = $model->getTable();
+
+        if (Schema::hasColumn($table, 'id_escola')) {
+            return $query->whereIn("{$table}.id_escola", $escolaIds);
+        }
+
+        if (! method_exists($model, 'turma')) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereHas(
+            'turma',
+            fn (Builder $turmaQuery): Builder => $turmaQuery->whereIn('id_escola', $escolaIds),
+        );
     }
 
     public function aplicarFiltroTurmasDoUsuario(Builder $query, ?User $user): Builder
     {
-        if (! $user || $this->ehAdmin($user)) {
+        if (! $user) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        $scope = app(PessoaScopeService::class);
+
+        if ($scope->hasGlobalAccess($user)) {
             return $query;
+        }
+
+        if ($scope->ehEquipeGestora($user)) {
+            $escolaIds = $scope->escolaIdsDosVinculos($user);
+
+            return $escolaIds === []
+                ? $query->whereRaw('1 = 0')
+                : $query->whereIn('id_escola', $escolaIds);
         }
 
         // Impacto: professor ve turmas pelo vinculo componente-professor, nao por id_escola. Trocar para escola amplia ou restringe indevidamente avaliacoes e alunos visiveis.
@@ -632,17 +659,31 @@ class UserService
             });
         }
 
-        if (! empty($user->id_escola)) {
-            return $query->where('id_escola', $user->id_escola);
-        }
+        $escolaIds = $scope->escolaIdsDosVinculos($user);
 
-        return $query;
+        return $escolaIds === []
+            ? $query->whereRaw('1 = 0')
+            : $query->whereIn('id_escola', $escolaIds);
     }
 
     public function aplicarFiltroAlunosDoUsuario(Builder $query, ?User $user): Builder
     {
-        if (! $user || $this->ehAdmin($user)) {
+        if (! $user) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        $scope = app(PessoaScopeService::class);
+
+        if ($scope->hasGlobalAccess($user)) {
             return $query;
+        }
+
+        if ($scope->ehEquipeGestora($user)) {
+            $escolaIds = $scope->escolaIdsDosVinculos($user);
+
+            return $escolaIds === []
+                ? $query->whereRaw('1 = 0')
+                : $query->whereHas('turma', fn ($q) => $q->whereIn('id_escola', $escolaIds));
         }
 
         // Impacto: este filtro protege alunos por turmas lecionadas. Alterar para filtrar so por escola pode expor alunos de turmas sem vinculo com o professor.
@@ -655,13 +696,38 @@ class UserService
             });
         }
 
-        if (! empty($user->id_escola)) {
-            return $query->whereHas('turma', function ($q) use ($user) {
-                $q->where('id_escola', $user->id_escola);
-            });
+        $escolaIds = $scope->escolaIdsDosVinculos($user);
+
+        return $escolaIds === []
+            ? $query->whereRaw('1 = 0')
+            : $query->whereHas('turma', fn ($q) => $q->whereIn('id_escola', $escolaIds));
+    }
+
+    public function podeAcessarTurma(User $user, Turma $turma): bool
+    {
+        $scope = app(PessoaScopeService::class);
+
+        if ($scope->hasGlobalAccess($user)) {
+            return true;
         }
 
-        return $query;
+        if ($scope->ehEquipeGestora($user)) {
+            return $scope->canAccessEscola($user, (int) $turma->id_escola);
+        }
+
+        if ($user->ehProfessor()) {
+            return $turma->componentes()
+                ->whereIn('turma_componente_professor.professor_id', $this->professorIds($user))
+                ->where('turma_componente_professor.tem_professor', true)
+                ->exists();
+        }
+
+        return $scope->canAccessEscola($user, (int) $turma->id_escola);
+    }
+
+    public function podeAcessarProfessor(User $user, Professor $professor): bool
+    {
+        return app(PessoaScopeService::class)->canAccessEscola($user, (int) $professor->id_escola);
     }
 
     public function aplicarFiltroPorEscolaDoUsuarioEmTurma(Builder $query, ?User $user): Builder

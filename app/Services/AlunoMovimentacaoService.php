@@ -9,6 +9,7 @@ use App\Models\Turma;
 use App\Models\User;
 use App\Notifications\SistemaNotification;
 use App\Services\Avaliacoes\AvaliacaoAlunoDocumentoService;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -29,6 +30,7 @@ class AlunoMovimentacaoService
         return DB::transaction(function () use ($data, $usuario): Aluno {
             $cgm = Aluno::normalizarCgm((string) ($data['cgm'] ?? ''));
             $turmaId = (int) ($data['id_turma'] ?? 0);
+            $this->assertUsuarioPodeAcessarTurma($usuario, Turma::query()->find($turmaId));
 
             $origemPendente = $this->bloquearSeCgmAtivo(
                 cgm: $cgm,
@@ -87,6 +89,10 @@ class AlunoMovimentacaoService
         )));
 
         $turmas = Turma::query()->whereIn('id', $turmaIds)->get()->keyBy('id');
+
+        foreach ($turmaIds as $turmaId) {
+            $this->assertUsuarioPodeAcessarTurma($usuario, $turmas->get((int) $turmaId));
+        }
 
         $alunosCadastrados = Aluno::query()
             ->with('turma')
@@ -198,6 +204,7 @@ class AlunoMovimentacaoService
         }
 
         $turmaDestino = Turma::query()->find($turmaDestinoId);
+        $this->assertUsuarioPodeAcessarTurma($usuario, $turmaDestino);
         $escolaDestinoId = (int) ($turmaDestino?->id_escola ?? 0);
         $chaveUnidade = Aluno::chaveCgmUnidade($escolaDestinoId, $cgm);
 
@@ -256,6 +263,8 @@ class AlunoMovimentacaoService
         return DB::transaction(function () use ($aluno, $turmaDestinoId, $usuario, $motivo): Aluno {
             $aluno->refresh()->loadMissing('turma.escola', 'turma.serie');
             $turmaDestino = Turma::query()->with(['escola', 'serie'])->findOrFail($turmaDestinoId);
+            $this->assertUsuarioPodeAcessarTurma($usuario, $aluno->turma);
+            $this->assertUsuarioPodeAcessarTurma($usuario, $turmaDestino);
             $statusDestino = $aluno->estaPendente() ? Aluno::STATUS_PENDENTE : Aluno::STATUS_MATRICULADO;
             $pendenciaOrigemId = $aluno->pendencia_origem_aluno_id;
 
@@ -320,7 +329,8 @@ class AlunoMovimentacaoService
     public function transferir(Aluno $aluno, ?User $usuario = null, ?string $motivo = null): Aluno
     {
         return DB::transaction(function () use ($aluno, $usuario, $motivo): Aluno {
-            $aluno->refresh();
+            $aluno->refresh()->loadMissing('turma');
+            $this->assertUsuarioPodeAcessarTurma($usuario, $aluno->turma);
 
             $this->assertAlunoPrincipal($aluno, 'Somente o vinculo principal pode ser transferido.');
 
@@ -674,11 +684,10 @@ class AlunoMovimentacaoService
             ->whereNotNull('email')
             ->get()
             ->filter(function (User $user) use ($escolaId): bool {
-                $temPermissaoEscola = $user->hasPermissionLike('notificar impedimento de matricula por falta de transferencia')
-                    && $this->usuarioPertenceAEscola($user, $escolaId);
-                $temPermissaoGestao = $user->hasPermissionLike('gerenciar impedimento de matricula por falta de transferencia');
+                $temPermissao = $user->hasPermissionLike('notificar impedimento de matricula por falta de transferencia')
+                    || $user->hasPermissionLike('gerenciar impedimento de matricula por falta de transferencia');
 
-                return $temPermissaoEscola || $temPermissaoGestao;
+                return $temPermissao && $this->usuarioPertenceAEscola($user, $escolaId);
             })
             ->unique('id')
             ->values();
@@ -746,15 +755,6 @@ class AlunoMovimentacaoService
             return false;
         }
 
-        $ids = collect([$user->id_escola])
-            ->merge($user->escolas->pluck('id'))
-            ->merge($user->professores->pluck('id_escola'))
-            ->filter()
-            ->map(fn ($id): int => (int) $id)
-            ->unique()
-            ->values()
-            ->all();
-
-        return in_array($escolaId, $ids, true);
+        return app(PessoaScopeService::class)->canAccessEscola($user, $escolaId);
     }
 }

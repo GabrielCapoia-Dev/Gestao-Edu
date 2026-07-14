@@ -16,11 +16,13 @@ use App\Models\Pauta;
 use App\Models\PeriodoAvaliacao;
 use App\Models\Professor;
 use App\Models\Serie;
+use App\Models\Servidor;
+use App\Models\ServidorFuncaoAdministrativa;
+use App\Models\ServidorFuncaoTurma;
 use App\Models\TipoAvaliacao;
 use App\Models\Turma;
 use App\Models\User;
 use App\Services\Avaliacoes\AvaliacaoDashboardMetricsService;
-use App\Services\ServidorService;
 use Filament\Notifications\Notification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -942,6 +944,13 @@ class DashboardAvaliacoesPageTest extends TestCase
         $this->assertSame('turma', $exportRequest->filters['escopo']);
         $this->assertSame($linha['turma_id'], $exportRequest->filters['turma_id']);
 
+        $documento = AvaliacaoAlunoDocumento::query()
+            ->where('avaliacao_id', $linha['avaliacao_id'])
+            ->where('turma_id', $linha['turma_id'])
+            ->firstOrFail();
+        $this->assertNotEmpty($documento->responsaveis_snapshot);
+        $this->assertNotNull($documento->responsaveis_snapshot_em);
+
         $component->assertRedirect(route('filament.admin.pages.minhas-exportacoes', [
             'download' => $exportRequest->getKey(),
         ]));
@@ -958,7 +967,7 @@ class DashboardAvaliacoesPageTest extends TestCase
         $linha = $dados['linha'];
 
         $this->assertFalse($linha['parecer_exportavel']);
-        $this->assertSame('A turma não possui vínculo com Diretor(a) ou Coordenador(a).', $linha['parecer_exportavel_motivo']);
+        $this->assertSame('A turma não possui coordenação principal ativa e vigente.', $linha['parecer_exportavel_motivo']);
 
         $component->call(
             'exportarParecerTurma',
@@ -968,7 +977,7 @@ class DashboardAvaliacoesPageTest extends TestCase
             $linha['serie_id'],
             $linha['componente_id'],
             $linha['professor_id']
-        )->assertNotified('A turma não possui vínculo com Diretor(a) ou Coordenador(a).');
+        )->assertNotified('A turma não possui coordenação principal ativa e vigente.');
 
         $this->assertDatabaseCount('export_requests', 0);
         Queue::assertNothingPushed();
@@ -1098,44 +1107,48 @@ class DashboardAvaliacoesPageTest extends TestCase
         bool $comDiretor,
         bool $comCoordenacao
     ): void {
-        $funcaoDiretor = FuncaoAdministrativa::query()->create([
-            'nome' => 'Direção Escolar Parecer ' . $turma->id,
-            'categoria' => FuncaoAdministrativa::CATEGORIA_ADMINISTRATIVO,
-            'ativo' => true,
-            'tem_relacao_turma' => false,
-            'direcao_escolar' => true,
-        ]);
-        $funcaoCoordenador = FuncaoAdministrativa::query()->create([
-            'nome' => 'Coordenação Pedagógica Parecer ' . $turma->id,
-            'categoria' => FuncaoAdministrativa::CATEGORIA_PEDAGOGICO,
-            'ativo' => true,
-            'tem_relacao_turma' => true,
-            'coordenacao_pedagogica' => true,
-        ]);
-
         if ($comDiretor) {
-            app(ServidorService::class)->criarServidorComFuncoes([
+            $diretora = Servidor::query()->create([
                 'id_escola' => $escola->id,
                 'nome' => 'Diretora Parecer',
-                'matricula' => 'DIR-PARECER',
-                'status' => 'ativo',
-            ], [[
-                'funcao_administrativa_id' => $funcaoDiretor->id,
+                'email' => uniqid().'@edu.umuarama.pr.gov.br',
+                'status' => Servidor::STATUS_ATIVO,
+            ]);
+            ServidorFuncaoAdministrativa::query()->create([
+                'servidor_id' => $diretora->id,
+                'funcao_administrativa_id' => FuncaoAdministrativa::direcaoPadrao()->id,
+                'id_escola' => $escola->id,
+                'status' => ServidorFuncaoAdministrativa::STATUS_ATIVO,
+                'origem' => 'teste',
                 'portaria' => '111/2026',
-            ]]);
+                'principal' => true,
+                'data_inicio' => now()->subDay()->toDateString(),
+            ]);
         }
 
         if ($comCoordenacao) {
-            app(ServidorService::class)->criarServidorComFuncoes([
+            $coordenadora = Servidor::query()->create([
                 'id_escola' => $escola->id,
                 'nome' => 'Coordenadora Parecer',
-                'matricula' => 'COORD-PARECER',
-                'status' => 'ativo',
-            ], [[
-                'funcao_administrativa_id' => $funcaoCoordenador->id,
+                'email' => uniqid().'@edu.umuarama.pr.gov.br',
+                'status' => Servidor::STATUS_ATIVO,
+            ]);
+            $coordenacao = ServidorFuncaoAdministrativa::query()->create([
+                'servidor_id' => $coordenadora->id,
+                'funcao_administrativa_id' => FuncaoAdministrativa::coordenacaoPadrao()->id,
+                'id_escola' => $escola->id,
+                'status' => ServidorFuncaoAdministrativa::STATUS_ATIVO,
+                'origem' => 'teste',
                 'portaria' => '222/2026',
-                'turma_ids' => [$turma->id],
-            ]]);
+                'data_inicio' => now()->subDay()->toDateString(),
+            ]);
+            ServidorFuncaoTurma::query()->create([
+                'servidor_funcao_administrativa_id' => $coordenacao->id,
+                'turma_id' => $turma->id,
+                'principal' => true,
+                'status' => ServidorFuncaoTurma::STATUS_ATIVO,
+                'data_inicio' => now()->subDay()->toDateString(),
+            ]);
         }
     }
 

@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Models\Escola;
+use App\Models\Enums\ListaPermissoes;
 use App\Models\Servidor;
 use App\Models\User;
 use App\Services\PessoaScopeService;
@@ -51,7 +52,10 @@ class ServidorPolicy
 
     public function manageVinculos(User $user, ?Servidor $servidor = null): bool
     {
-        if (! $user->hasPermissionTo('Editar Servidores')) {
+        if (
+            ! $user->hasRole('Admin')
+            && ! $user->hasPermissionTo(ListaPermissoes::GerenciarFuncoesDeServidores->label())
+        ) {
             return false;
         }
 

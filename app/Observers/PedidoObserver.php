@@ -23,7 +23,7 @@ class PedidoObserver
             $pedido->wasChanged('nivel_prioridade') &&
             $pedido->nivel_prioridade === NivelEmergenciaPedido::EMERGENCIAL
         ) {
-            $usuarios = $this->usuariosComPermissao('Visualizar Notificação: Pedidos Emergenciais');
+            $usuarios = $this->usuariosComPermissao('Visualizar Notificação: Pedidos Emergenciais', $pedido);
 
             foreach ($usuarios as $user) {
                 $user->notify(
@@ -55,7 +55,7 @@ class PedidoObserver
                 );
             }
 
-            foreach ($this->usuariosComPermissao('Visualizar Notificação: Pedido Reaberto') as $user) {
+            foreach ($this->usuariosComPermissao('Visualizar Notificação: Pedido Reaberto', $pedido) as $user) {
                 if ($solicitante && (int) $user->id === (int) $solicitante->id) {
                     continue;
                 }
@@ -98,11 +98,15 @@ class PedidoObserver
         //
     }
 
-    private function usuariosComPermissao(string $permission): Collection
+    private function usuariosComPermissao(string $permission, Pedido $pedido): Collection
     {
         foreach ($this->aliasesTexto($permission) as $alias) {
             try {
-                return User::permission($alias)->get();
+                return User::permission($alias)
+                    ->get()
+                    ->filter(fn (User $user): bool => app(\App\Services\PedidoService::class)
+                        ->registroVisivelNoPerfil($pedido, $user))
+                    ->values();
             } catch (PermissionDoesNotExist) {
                 continue;
             }

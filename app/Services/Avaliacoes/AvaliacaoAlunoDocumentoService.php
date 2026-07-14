@@ -262,6 +262,14 @@ class AvaliacaoAlunoDocumentoService
                     ->first();
 
                 if ($conflito) {
+                    $this->registrarHistorico(
+                        $conflito,
+                        $destino,
+                        $destino,
+                        $movimentacaoTipo,
+                        $usuario,
+                    );
+
                     // Mantém o payload mais completo e descarta o vazio/conflitante.
                     $documento = $this->resolverConflitoDocumentos($conflito, $documento);
                 }
@@ -523,6 +531,8 @@ class AvaliacaoAlunoDocumentoService
             'serie_id' => $documento->serie_id ? (int) $documento->serie_id : null,
             'movimentacao_tipo' => $movimentacaoTipo,
             'payload' => $this->normalizarPayload($documento->payload),
+            'responsaveis_snapshot' => $documento->responsaveis_snapshot,
+            'responsaveis_snapshot_em' => $documento->responsaveis_snapshot_em,
             'alternativa_ids' => $documento->alternativa_ids ?? [],
             'total_pautas_esperadas' => (int) $documento->total_pautas_esperadas,
             'total_pautas_respondidas' => (int) $documento->total_pautas_respondidas,
@@ -541,9 +551,23 @@ class AvaliacaoAlunoDocumentoService
         $scoreOrigem = (int) $vindoDaOrigem->total_pautas_respondidas + (int) $vindoDaOrigem->total_infos_complementares;
 
         if ($scoreOrigem >= $scoreExistente) {
+            if (empty($vindoDaOrigem->responsaveis_snapshot) && ! empty($existenteDestino->responsaveis_snapshot)) {
+                $vindoDaOrigem->forceFill([
+                    'responsaveis_snapshot' => $existenteDestino->responsaveis_snapshot,
+                    'responsaveis_snapshot_em' => $existenteDestino->responsaveis_snapshot_em,
+                ])->save();
+            }
+
             $existenteDestino->delete();
 
             return $vindoDaOrigem;
+        }
+
+        if (empty($existenteDestino->responsaveis_snapshot) && ! empty($vindoDaOrigem->responsaveis_snapshot)) {
+            $existenteDestino->forceFill([
+                'responsaveis_snapshot' => $vindoDaOrigem->responsaveis_snapshot,
+                'responsaveis_snapshot_em' => $vindoDaOrigem->responsaveis_snapshot_em,
+            ])->save();
         }
 
         $vindoDaOrigem->delete();

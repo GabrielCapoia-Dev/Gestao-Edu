@@ -55,9 +55,21 @@ class ProfessorService
                     ->schema([
                         Select::make('id_escola')
                             ->label('Escola')
-                            ->relationship('escola', 'nome', modifyQueryUsing: fn (Builder $query): Builder => $query
-                                ->where('ativo', true)
-                                ->orderBy('nome'))
+                            ->relationship('escola', 'nome', modifyQueryUsing: function (Builder $query) use ($user): Builder {
+                                $query->where('ativo', true)->orderBy('nome');
+
+                                $scope = app(PessoaScopeService::class);
+
+                                if ($scope->hasGlobalAccess($user)) {
+                                    return $query;
+                                }
+
+                                $escolaIds = $scope->escolaIdsDosVinculos($user);
+
+                                return $escolaIds === []
+                                    ? $query->whereRaw('1 = 0')
+                                    : $query->whereIn('id', $escolaIds);
+                            })
                             ->getOptionLabelUsing(fn ($value): ?string => $value
                                 ? \App\Models\Escola::query()->whereKey($value)->value('nome')
                                 : null)

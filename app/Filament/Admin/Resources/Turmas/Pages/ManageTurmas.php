@@ -12,6 +12,7 @@ use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ManageRecords;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 
 class ManageTurmas extends ManageRecords
@@ -59,6 +60,7 @@ class ManageTurmas extends ManageRecords
                 ->label('Criar Turma')
                 ->icon(Heroicon::Plus)
                 ->using(function (array $data) {
+                    $data = app(TurmaService::class)->validarEscolaNoEscopo($data, Auth::user());
 
                     $componentes = $data['componentes'] ?? [];
                     unset($data['componentes']);

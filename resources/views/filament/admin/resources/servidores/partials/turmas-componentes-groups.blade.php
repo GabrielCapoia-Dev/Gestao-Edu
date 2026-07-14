@@ -1,5 +1,5 @@
 @php
-    /** @var array<int, array{escola: string, turno: string, matriculas: array<int, string>, turmas: array<int, array{nome: string, componentes: array<int, string>}>}> $grupos */
+    /** @var array<int, array{escola: string, turno: string, matriculas: array<int, string>, turmas: array<int, array{nome: string, componentes: array<int, string>}>, cargos?: array<int, string>, portaria?: string, vigencia?: string}> $grupos */
 @endphp
 
 <div class="pessoa-view-groups">
@@ -20,6 +20,18 @@
                             @foreach ($grupo['matriculas'] as $matricula)
                                 <span class="pessoa-view-group__registration">Matrícula {{ $matricula }}</span>
                             @endforeach
+
+                            @foreach ($grupo['cargos'] ?? [] as $cargo)
+                                <span class="pessoa-view-group__registration">{{ $cargo }}</span>
+                            @endforeach
+
+                            @if (filled($grupo['portaria'] ?? null))
+                                <span class="pessoa-view-group__registration">Portaria {{ $grupo['portaria'] }}</span>
+                            @endif
+
+                            @if (filled($grupo['vigencia'] ?? null))
+                                <span class="pessoa-view-group__registration">Desde {{ $grupo['vigencia'] }}</span>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -46,7 +58,7 @@
                 @empty
                     <div class="pessoa-view-group__empty">
                         <x-filament::icon icon="heroicon-o-information-circle" />
-                        Nenhuma turma ou componente vinculado nesta lotação.
+                        Nenhuma turma vinculada neste grupo.
                     </div>
                 @endforelse
             </div>
@@ -54,8 +66,8 @@
     @empty
         <div class="pessoa-view-groups__empty">
             <x-filament::icon icon="heroicon-o-academic-cap" />
-            <strong>Nenhuma lotação cadastrada</strong>
-            <span>Esta pessoa ainda não possui escola, matrícula ou turno vinculados.</span>
+            <strong>Nenhum vínculo ativo cadastrado</strong>
+            <span>Esta pessoa ainda não possui escola, matrícula, turma ou cargo gestor ativo.</span>
         </div>
     @endforelse
 </div>

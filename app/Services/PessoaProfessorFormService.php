@@ -4,8 +4,8 @@ namespace App\Services;
 
 use App\Filament\Admin\Resources\Servidores\ServidorResource;
 use App\Models\Pessoa;
+use App\Models\PessoaMatricula;
 use App\Models\Professor;
-use App\Models\ProfessorMatricula;
 use App\Models\Servidor;
 use App\Models\TurmaComponenteProfessor;
 use Illuminate\Support\Facades\Schema;
@@ -15,9 +15,16 @@ class PessoaProfessorFormService
     /** @return array<string, mixed> */
     public function dadosParaFormulario(Pessoa|Servidor $pessoa): array
     {
-        $pessoa->loadMissing(['professores.escola', 'professorMatriculas']);
+        $pessoa->loadMissing([
+            'professores.escola',
+            'matriculas',
+            'vinculosAtivos.funcaoAdministrativa',
+            'vinculosAtivos.vinculosTurmaAtivos',
+        ]);
 
-        $professores = $pessoa->professores;
+        $professores = $pessoa->professores
+            ->where('ativo', true)
+            ->values();
 
         $vinculosPorProfessor = TurmaComponenteProfessor::query()
             ->whereIn('professor_id', $professores->pluck('id'))
@@ -43,7 +50,7 @@ class PessoaProfessorFormService
                 ->all(),
         ])->values()->all();
 
-        return [
+        $dados = [
             'nome' => $pessoa->nome,
             'cpf' => Pessoa::formatarCpf($pessoa->cpf),
             'email' => $pessoa->email,
@@ -54,6 +61,47 @@ class PessoaProfessorFormService
             'matriculas_professor' => $matriculasProfessor,
             'registros_professor' => $registrosFlat,
         ];
+
+        $vinculosGestores = $pessoa->vinculosAtivos
+            ->filter(fn ($vinculo): bool => (bool) (
+                $vinculo->funcaoAdministrativa?->direcao_escolar
+                || $vinculo->funcaoAdministrativa?->coordenacao_pedagogica
+                || $vinculo->funcaoAdministrativa?->secretaria_escolar
+            ))
+            ->values();
+
+        if ($vinculosGestores->isEmpty()) {
+            return $dados;
+        }
+
+        $diretor = $vinculosGestores->first(
+            fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->direcao_escolar,
+        );
+        $coordenador = $vinculosGestores->first(
+            fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->coordenacao_pedagogica,
+        );
+        $secretario = $vinculosGestores->first(
+            fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->secretaria_escolar,
+        );
+        $escolas = $vinculosGestores->pluck('id_escola')->filter()->map(fn ($id): int => (int) $id)->unique()->values();
+        $cargos = collect([
+            $diretor ? 'diretor' : null,
+            $coordenador ? 'coordenador' : null,
+            $secretario ? 'secretario' : null,
+        ])->filter()->values()->all();
+
+        return array_merge($dados, [
+            'cargo' => ServidorResource::CARGO_EQUIPE_GESTORA,
+            'id_escola' => $escolas->count() === 1 ? $escolas->first() : null,
+            'cargos_gestores' => $cargos,
+            'portaria' => $vinculosGestores->pluck('portaria')->filter()->first(),
+            'data_inicio' => $vinculosGestores->pluck('data_inicio')->filter()->sort()->first(),
+            'diretor_principal' => (bool) ($diretor?->principal ?? false),
+            'turma_ids' => $coordenador?->vinculosTurmaAtivos
+                ?->pluck('turma_id')->map(fn ($id): int => (int) $id)->values()->all() ?? [],
+            'turmas_principais_ids' => $coordenador?->vinculosTurmaAtivos
+                ?->where('principal', true)->pluck('turma_id')->map(fn ($id): int => (int) $id)->values()->all() ?? [],
+        ]);
     }
 
     /**
@@ -63,9 +111,9 @@ class PessoaProfessorFormService
      */
     private function montarMatriculasHierarquicas(Pessoa|Servidor $pessoa, $professores, $vinculosPorProfessor): array
     {
-        if (Schema::hasTable('professor_matriculas') && $pessoa->professorMatriculas->isNotEmpty()) {
-            return $pessoa->professorMatriculas
-                ->map(function (ProfessorMatricula $matricula) use ($professores, $vinculosPorProfessor): array {
+        if (Schema::hasTable('professor_matriculas') && $pessoa->matriculas->isNotEmpty()) {
+            return $pessoa->matriculas
+                ->map(function (PessoaMatricula $matricula) use ($professores, $vinculosPorProfessor): array {
                     $lotacoes = $professores
                         ->filter(fn (Professor $p): bool => (int) ($p->professor_matricula_id ?? 0) === (int) $matricula->id
                             || ((string) $p->matricula === (string) $matricula->matricula))

@@ -5,10 +5,12 @@ namespace App\Models;
 use App\Models\Concerns\HasUuidCodigo;
 use App\Models\Role;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class FuncaoAdministrativa extends Model
 {
@@ -18,6 +20,10 @@ class FuncaoAdministrativa extends Model
     public const CATEGORIA_PEDAGOGICO = 'pedagogico';
     public const CATEGORIA_ADMINISTRATIVO = 'administrativo';
     public const CATEGORIA_OPERACIONAL = 'operacional';
+
+    public const TIPO_DIRECAO = 'direcao';
+    public const TIPO_COORDENACAO = 'coordenacao';
+    public const TIPO_SECRETARIA = 'secretaria';
 
     protected $table = 'funcao_administrativa';
 
@@ -31,6 +37,7 @@ class FuncaoAdministrativa extends Model
         'tem_relacao_turma',
         'direcao_escolar',
         'coordenacao_pedagogica',
+        'secretaria_escolar',
     ];
 
     protected function casts(): array
@@ -45,6 +52,7 @@ class FuncaoAdministrativa extends Model
             'tem_relacao_turma' => 'boolean',
             'direcao_escolar' => 'boolean',
             'coordenacao_pedagogica' => 'boolean',
+            'secretaria_escolar' => 'boolean',
         ];
     }
 
@@ -55,6 +63,16 @@ class FuncaoAdministrativa extends Model
 
             if (blank($funcao->categoria)) {
                 $funcao->categoria = static::CATEGORIA_GERAL;
+            }
+
+            if (collect([
+                $funcao->direcao_escolar,
+                $funcao->coordenacao_pedagogica,
+                $funcao->secretaria_escolar,
+            ])->filter()->count() > 1) {
+                throw ValidationException::withMessages([
+                    'funcao_administrativa' => 'Uma função pode representar apenas um tipo da Equipe Gestora.',
+                ]);
             }
         });
     }
@@ -134,6 +152,89 @@ class FuncaoAdministrativa extends Model
         ]);
     }
 
+    public static function direcaoPadrao(): self
+    {
+        return static::gestoraPadrao(
+            tipo: self::TIPO_DIRECAO,
+            codigo: 'diretor-escolar',
+            nome: 'Diretor Escolar',
+            categoria: self::CATEGORIA_ADMINISTRATIVO,
+        );
+    }
+
+    public static function coordenacaoPadrao(): self
+    {
+        return static::gestoraPadrao(
+            tipo: self::TIPO_COORDENACAO,
+            codigo: 'coordenador-pedagogico',
+            nome: 'Coordenador Pedagógico',
+            categoria: self::CATEGORIA_PEDAGOGICO,
+        );
+    }
+
+    public static function secretariaPadrao(): self
+    {
+        return static::gestoraPadrao(
+            tipo: self::TIPO_SECRETARIA,
+            codigo: 'secretario-escolar',
+            nome: 'Secretário Escolar',
+            categoria: self::CATEGORIA_ADMINISTRATIVO,
+        );
+    }
+
+    public function ehEquipeGestora(): bool
+    {
+        return (bool) ($this->direcao_escolar || $this->coordenacao_pedagogica || $this->secretaria_escolar);
+    }
+
+    public function temFlagsGestorasConflitantes(): bool
+    {
+        return collect([
+            $this->direcao_escolar,
+            $this->coordenacao_pedagogica,
+            $this->secretaria_escolar,
+        ])->filter()->count() > 1;
+    }
+
+    public function tipoEquipeGestora(): ?string
+    {
+        if ($this->temFlagsGestorasConflitantes()) {
+            return null;
+        }
+
+        return match (true) {
+            (bool) $this->direcao_escolar => self::TIPO_DIRECAO,
+            (bool) $this->coordenacao_pedagogica => self::TIPO_COORDENACAO,
+            (bool) $this->secretaria_escolar => self::TIPO_SECRETARIA,
+            default => null,
+        };
+    }
+
+    public function scopeEquipeGestora(Builder $query): Builder
+    {
+        return $query->where(function (Builder $funcoes): void {
+            $funcoes
+                ->where('direcao_escolar', true)
+                ->orWhere('coordenacao_pedagogica', true)
+                ->orWhere('secretaria_escolar', true);
+        });
+    }
+
+    public function scopeDirecao(Builder $query): Builder
+    {
+        return $query->where('direcao_escolar', true);
+    }
+
+    public function scopeCoordenacao(Builder $query): Builder
+    {
+        return $query->where('coordenacao_pedagogica', true);
+    }
+
+    public function scopeSecretaria(Builder $query): Builder
+    {
+        return $query->where('secretaria_escolar', true);
+    }
+
     public function servidorFuncoes(): HasMany
     {
         return $this->hasMany(ServidorFuncaoAdministrativa::class, 'funcao_administrativa_id');
@@ -170,10 +271,59 @@ class FuncaoAdministrativa extends Model
                 'status',
                 'origem',
                 'portaria',
+                'principal',
                 'data_inicio',
                 'data_fim',
             ])
             ->withTimestamps();
+    }
+
+    private static function gestoraPadrao(
+        string $tipo,
+        string $codigo,
+        string $nome,
+        string $categoria,
+    ): self {
+        $flag = match ($tipo) {
+            self::TIPO_DIRECAO => 'direcao_escolar',
+            self::TIPO_COORDENACAO => 'coordenacao_pedagogica',
+            self::TIPO_SECRETARIA => 'secretaria_escolar',
+        };
+
+        $funcao = static::query()->where('codigo', $codigo)->first()
+            ?? static::query()->where('nome', $nome)->first()
+            ?? static::query()
+                ->where('ativo', true)
+                ->where($flag, true)
+                ->where('direcao_escolar', $tipo === self::TIPO_DIRECAO)
+                ->where('coordenacao_pedagogica', $tipo === self::TIPO_COORDENACAO)
+                ->where('secretaria_escolar', $tipo === self::TIPO_SECRETARIA)
+                ->orderBy('id')
+                ->first()
+            ?? new static();
+
+        $payload = [
+            'exige_professor' => false,
+            'concede_acesso_sistema' => true,
+            'tem_relacao_turma' => $tipo === self::TIPO_COORDENACAO,
+            'direcao_escolar' => $tipo === self::TIPO_DIRECAO,
+            'coordenacao_pedagogica' => $tipo === self::TIPO_COORDENACAO,
+            'secretaria_escolar' => $tipo === self::TIPO_SECRETARIA,
+        ];
+
+        if (! $funcao->exists) {
+            $payload = [
+                'codigo' => $codigo,
+                'nome' => $nome,
+                'categoria' => $categoria,
+                'ativo' => true,
+                ...$payload,
+            ];
+        }
+
+        $funcao->fill($payload)->save();
+
+        return $funcao->fresh();
     }
 
 }

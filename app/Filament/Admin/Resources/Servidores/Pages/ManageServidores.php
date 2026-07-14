@@ -58,13 +58,11 @@ class ManageServidores extends ManageRecords
                 ->closeModalByClickingAway(false)
                 ->using(function (array $data): Servidor {
                     try {
-                        $registros = ServidorResource::extrairRegistrosProfessorDoForm($data);
-                        unset($data['registros_professor'], $data['matriculas_professor']);
-                        $data['cargo'] = $data['cargo'] ?? ServidorResource::CARGO_PROFESSOR;
+                        [$data, $vinculos] = ServidorResource::prepararDadosPersistencia($data);
 
                         $criado = app(ServidorService::class)->criarServidorComFuncoes(
                             $data,
-                            ['registros_professor' => $registros],
+                            $vinculos,
                         );
 
                         \Filament\Notifications\Notification::make()

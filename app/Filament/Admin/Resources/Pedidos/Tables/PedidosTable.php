@@ -155,7 +155,7 @@ class PedidosTable
                     return $query
                         ->where('ativo', true)
                         ->when(
-                            ! $service->podeVerTodosOsPedidos($user) && $escolaIds !== [],
+                            ! $service->podeVerTodosOsPedidos($user),
                             fn ($builder) => $builder->whereIn('id', $escolaIds)
                         )
                         ->orderBy('nome');

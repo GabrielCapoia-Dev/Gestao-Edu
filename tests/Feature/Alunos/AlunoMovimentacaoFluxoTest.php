@@ -14,9 +14,13 @@ use App\Models\AvaliacaoAlunoDocumentoHistorico;
 use App\Services\Avaliacoes\AvaliacaoAlunoDocumentoService;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
+use App\Models\FuncaoAdministrativa;
 use App\Models\Pauta;
 use App\Models\PeriodoAvaliacao;
 use App\Models\Serie;
+use App\Models\Servidor;
+use App\Models\ServidorFuncaoAdministrativa;
+use App\Models\ServidorFuncaoTurma;
 use App\Models\TipoAvaliacao;
 use App\Models\Turma;
 use App\Models\User;
@@ -540,6 +544,7 @@ class AlunoMovimentacaoFluxoTest extends TestCase
         $usuario = User::factory()->create([
             'email_approved' => true,
             'email_verified_at' => now(),
+            'id_escola' => $escola->id,
         ]);
         $usuario->givePermissionTo('Gerar Parecer de Transferencia');
 
@@ -1057,6 +1062,7 @@ class AlunoMovimentacaoFluxoTest extends TestCase
         $serie = Serie::query()->create(['codigo' => 'SER'.uniqid(), 'nome' => '1o Ano '.uniqid()]);
         $turmaOrigem = $this->criarTurma($escola, 'A', $serie, $turnoOrigem);
         $turmaDestino = $this->criarTurma($escola, 'B', $serie, $turnoDestino);
+        $this->criarResponsaveisParecer($escola, $turmaOrigem);
 
         $tipo = TipoAvaliacao::query()->create(['nome' => 'Parecer '.uniqid(), 'status' => true]);
         $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Periodo '.uniqid(), 'status' => true]);
@@ -1089,6 +1095,49 @@ class AlunoMovimentacaoFluxoTest extends TestCase
         $avaliacao->turmas()->attach([$turmaOrigem->id, $turmaDestino->id]);
 
         return [$escola, $serie, $turmaOrigem, $turmaDestino, $avaliacao, $pauta, $alternativa];
+    }
+
+    private function criarResponsaveisParecer(Escola $escola, Turma $turma): void
+    {
+        $diretora = Servidor::query()->create([
+            'id_escola' => $escola->id,
+            'nome' => 'Diretora Parecer',
+            'email' => uniqid().'@edu.umuarama.pr.gov.br',
+            'status' => Servidor::STATUS_ATIVO,
+        ]);
+        ServidorFuncaoAdministrativa::query()->create([
+            'servidor_id' => $diretora->id,
+            'funcao_administrativa_id' => FuncaoAdministrativa::direcaoPadrao()->id,
+            'id_escola' => $escola->id,
+            'status' => ServidorFuncaoAdministrativa::STATUS_ATIVO,
+            'origem' => 'teste',
+            'portaria' => 'PORT-DIR-TRF',
+            'principal' => true,
+            'data_inicio' => now()->subDay()->toDateString(),
+        ]);
+
+        $coordenadora = Servidor::query()->create([
+            'id_escola' => $escola->id,
+            'nome' => 'Coordenadora Parecer',
+            'email' => uniqid().'@edu.umuarama.pr.gov.br',
+            'status' => Servidor::STATUS_ATIVO,
+        ]);
+        $coordenacao = ServidorFuncaoAdministrativa::query()->create([
+            'servidor_id' => $coordenadora->id,
+            'funcao_administrativa_id' => FuncaoAdministrativa::coordenacaoPadrao()->id,
+            'id_escola' => $escola->id,
+            'status' => ServidorFuncaoAdministrativa::STATUS_ATIVO,
+            'origem' => 'teste',
+            'portaria' => 'PORT-COORD-TRF',
+            'data_inicio' => now()->subDay()->toDateString(),
+        ]);
+        ServidorFuncaoTurma::query()->create([
+            'servidor_funcao_administrativa_id' => $coordenacao->id,
+            'turma_id' => $turma->id,
+            'principal' => true,
+            'status' => ServidorFuncaoTurma::STATUS_ATIVO,
+            'data_inicio' => now()->subDay()->toDateString(),
+        ]);
     }
 
     private function criarEscola(string $nome): Escola
@@ -1152,19 +1201,21 @@ class AlunoMovimentacaoFluxoTest extends TestCase
 
     private function assertDocumentoNoAluno(int $avaliacaoId, int $alunoId, int $turmaId, int $pautaId, int $alternativaId, ?string $observacao = null): void
     {
-        $this->assertDatabaseHas('avaliacao_aluno_documentos', [
-            'avaliacao_id' => $avaliacaoId,
-            'aluno_id' => $alunoId,
-            'turma_id' => $turmaId,
-        ]);
+        $documento = AvaliacaoAlunoDocumento::query()
+            ->where('avaliacao_id', $avaliacaoId)
+            ->where('aluno_id', $alunoId)
+            ->where('turma_id', $turmaId)
+            ->first();
 
-        $this->assertDatabaseHas('avaliacao_aluno_documentos', [
-            'avaliacao_id' => $avaliacaoId,
-            'aluno_id' => $alunoId,
-            'turma_id' => $turmaId,
-            'pauta_id' => $pautaId,
-            'alternativa_id' => $alternativaId,
-        ] + ($observacao !== null ? ['observacao' => $observacao] : []));
+        $this->assertNotNull($documento);
+
+        $resposta = $documento->respostaDaPauta($pautaId);
+        $this->assertNotNull($resposta);
+        $this->assertSame($alternativaId, (int) ($resposta['alternativa_id'] ?? 0));
+
+        if ($observacao !== null) {
+            $this->assertSame($observacao, $resposta['observacao'] ?? null);
+        }
     }
 
     private function assertHistoricoMovimentacao(int $avaliacaoId, int $alunoOrigemId, int $alunoDestinoId, string $tipo): void
@@ -1177,4 +1228,3 @@ class AlunoMovimentacaoFluxoTest extends TestCase
         ]);
     }
 }
-

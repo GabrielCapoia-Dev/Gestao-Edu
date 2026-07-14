@@ -2,9 +2,12 @@
 
 namespace App\Console\Commands;
 
+use App\Models\FuncaoAdministrativa;
 use App\Models\Role;
+use App\Support\EquipeGestoraPermissionPreset;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -54,6 +57,8 @@ class CriarPermissoes extends Command
 
             $this->line("Nivel sincronizado: {$roleName} (".count($rolePermissions).' permissoes)');
         }
+
+        $this->sincronizarRoleEquipeGestoraComFuncoes();
 
         $this->sincronizarAdminComTodasAsPermissoes();
 
@@ -543,7 +548,74 @@ class CriarPermissoes extends Command
     {
         return [
             'Admin' => $permissions,
+            'Equipe Gestora' => $this->onlyPermissions($permissions, EquipeGestoraPermissionPreset::all()),
         ];
+    }
+
+    private function sincronizarRoleEquipeGestoraComFuncoes(): void
+    {
+        if (
+            ! Schema::hasTable('funcao_administrativa')
+            || ! Schema::hasTable('funcao_administrativa_role')
+        ) {
+            return;
+        }
+
+        $flags = collect([
+            'direcao_escolar',
+            'coordenacao_pedagogica',
+            'secretaria_escolar',
+        ])->filter(fn (string $column): bool => Schema::hasColumn('funcao_administrativa', $column));
+
+        if ($flags->isEmpty()) {
+            return;
+        }
+
+        // O comando deixa o domínio pronto para uso sem depender da abertura
+        // prévia do formulário de Pessoas.
+        FuncaoAdministrativa::direcaoPadrao();
+        FuncaoAdministrativa::coordenacaoPadrao();
+        FuncaoAdministrativa::secretariaPadrao();
+
+        $role = Role::query()
+            ->where('name', 'Equipe Gestora')
+            ->where('guard_name', 'web')
+            ->first();
+
+        if (! $role) {
+            return;
+        }
+
+        $funcaoIds = FuncaoAdministrativa::query()
+            ->where('ativo', true)
+            ->get()
+            ->filter(fn (FuncaoAdministrativa $funcao): bool =>
+                $funcao->ehEquipeGestora() && ! $funcao->temFlagsGestorasConflitantes()
+            )
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
+
+        DB::transaction(function () use ($role, $funcaoIds): void {
+            DB::table('funcao_administrativa_role')
+                ->where('role_id', $role->id)
+                ->when($funcaoIds !== [], fn ($query) => $query->whereNotIn('funcao_administrativa_id', $funcaoIds))
+                ->when($funcaoIds === [], fn ($query) => $query)
+                ->delete();
+
+            foreach ($funcaoIds as $funcaoId) {
+                DB::table('funcao_administrativa_role')->updateOrInsert(
+                    [
+                        'funcao_administrativa_id' => $funcaoId,
+                        'role_id' => $role->id,
+                    ],
+                    [
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ],
+                );
+            }
+        });
     }
 
     private function mergeGroups(array $groups, array $groupNames): array

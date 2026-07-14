@@ -24,6 +24,8 @@ class AvaliacaoAlunoDocumentoHistorico extends Model
         'serie_id',
         'movimentacao_tipo',
         'payload',
+        'responsaveis_snapshot',
+        'responsaveis_snapshot_em',
         'alternativa_ids',
         'total_pautas_esperadas',
         'total_pautas_respondidas',
@@ -37,6 +39,8 @@ class AvaliacaoAlunoDocumentoHistorico extends Model
     {
         return [
             'payload' => 'array',
+            'responsaveis_snapshot' => 'array',
+            'responsaveis_snapshot_em' => 'datetime',
             'alternativa_ids' => 'array',
             'total_pautas_esperadas' => 'integer',
             'total_pautas_respondidas' => 'integer',

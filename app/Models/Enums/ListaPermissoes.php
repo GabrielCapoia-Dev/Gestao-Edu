@@ -214,6 +214,7 @@ enum ListaPermissoes: string
     case EnviarPedidosParaEmpresa = 'enviar pedidos para empresa';
     case VincularPedidosAdicionais = 'vincular pedidos adicionais';
     case ResponderAvaliacoes = 'responder avaliações';
+    case PreencherAvaliacoesEmMassa = 'preencher avaliações em massa';
     case AprovarPedidosDeInventario = 'aprovar pedidos de inventário';
     case GerarRomaneiosDeInventario = 'gerar romaneios de inventário';
     case ConferirPedidosDeInventario = 'conferir pedidos de inventário';
@@ -441,6 +442,7 @@ enum ListaPermissoes: string
             self::EnviarPedidosParaEmpresa => 'Enviar Pedidos para Empresa',
             self::VincularPedidosAdicionais => 'Vincular Pedidos Adicionais',
             self::ResponderAvaliacoes => 'Responder Avaliações',
+            self::PreencherAvaliacoesEmMassa => 'Preencher Avaliações em Massa',
             self::AprovarPedidosDeInventario => 'Aprovar Pedidos de Inventário',
             self::GerarRomaneiosDeInventario => 'Gerar Romaneios de Inventário',
             self::ConferirPedidosDeInventario => 'Conferir Pedidos de Inventário',

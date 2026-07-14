@@ -5,6 +5,7 @@ namespace Tests\Feature\Notifications;
 use App\Jobs\SendManualNotificationBatchJob;
 use App\Models\NotificacaoEnvio;
 use App\Models\User;
+use App\Policies\SetorPolicy;
 use App\Services\NotificationCenterService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -25,6 +26,10 @@ class ManualNotificationQueueTest extends TestCase
         ]);
         $autor->givePermissionTo(Permission::firstOrCreate([
             'name' => NotificationCenterService::DESTINATION_PERMISSIONS['usuarios'],
+            'guard_name' => 'web',
+        ]));
+        $autor->givePermissionTo(Permission::firstOrCreate([
+            'name' => SetorPolicy::GLOBAL_SCOPE_PERMISSION,
             'guard_name' => 'web',
         ]));
         $destinatario = User::factory()->create([

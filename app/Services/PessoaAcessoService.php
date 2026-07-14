@@ -9,11 +9,11 @@ use App\Models\Role;
 use App\Models\Servidor;
 use App\Models\ServidorFuncaoAdministrativa;
 use App\Models\User;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use LogicException;
 use Spatie\Permission\PermissionRegistrar;
 
 class PessoaAcessoService
@@ -82,8 +82,6 @@ class PessoaAcessoService
             ->whereIn('id', $this->rolesImutaveisProfessor()->all())
             ->get();
 
-        // Fase atual: usuário professor fica somente com roles do cargo Professor
-        // (não reaproveita "Acessar Painel", "Visualizar Turmas..." legados).
         if ($forcarDefaults || $this->usuarioEhProfessor($user)) {
             $extrasPermitidos = collect($acesso['roles_adicionais'] ?? $acesso['roles'] ?? [])
                 ->filter(fn ($id): bool => filled($id))
@@ -92,16 +90,15 @@ class PessoaAcessoService
                 ->unique()
                 ->values();
 
-            // Por enquanto não adiciona extras no fluxo de professor, salvo forçar lista explícita vazia.
-            if ($forcarDefaults || $extrasPermitidos->isEmpty()) {
-                $user->syncRoles($rolesImutaveis);
-                $user->syncPermissions([]);
+            $rolesFuncionaisAtivas = $rolesImutaveis
+                ->pluck('id')
+                ->when(! $forcarDefaults, fn (Collection $ids) => $ids->merge($extrasPermitidos))
+                ->unique()
+                ->values();
 
-                return;
-            }
-
-            $finais = $rolesImutaveis->pluck('id')->merge($extrasPermitidos)->unique()->values();
-            $user->syncRoles(Role::query()->whereIn('id', $finais->all())->get());
+            // Remove apenas roles provenientes de cargos encerrados. Admin e roles
+            // independentes permanecem durante a conversão Equipe Gestora -> Professor.
+            $this->reconciliarRolesFuncionais($user, $rolesFuncionaisAtivas);
             $user->syncPermissions([]);
 
             return;
@@ -125,7 +122,7 @@ class PessoaAcessoService
     }
 
     /**
-     * Sanitiza em massa: usuários com vínculo de professor ficam só com role(s) do cargo.
+     * Reconcilia em massa as roles funcionais dos professores sem apagar roles independentes.
      *
      * @return array{usuarios: int}
      */
@@ -179,20 +176,21 @@ class PessoaAcessoService
         $vinculosComAcesso = $servidor->vinculosAtivos
             ->filter(fn (ServidorFuncaoAdministrativa $vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->concede_acesso_sistema);
 
-        if ($vinculosComAcesso->isEmpty()) {
-            return;
-        }
-
-        if (blank($servidor->email)) {
+        if (! $servidor->user && ($vinculosComAcesso->isEmpty() || blank($servidor->email))) {
             return;
         }
 
         DB::transaction(function () use ($servidor, $vinculosComAcesso): void {
-            $criouUser = ! $servidor->user;
-            $user = $this->resolverOuCriarUser($servidor);
+            $user = $servidor->user ?: $this->resolverOuCriarUser($servidor);
 
             if (! $user) {
                 return;
+            }
+
+            $this->garantirUserExclusivoDaPessoa($user, $servidor);
+
+            if ($servidor->user) {
+                $this->atualizarDadosBasicosDoUser($user, $servidor);
             }
 
             if ((int) ($servidor->user_id ?? 0) !== (int) $user->id) {
@@ -205,24 +203,107 @@ class PessoaAcessoService
                 }
             }
 
-            if (! $criouUser && $user->roles()->exists()) {
-                return;
-            }
+            $roleEquipeGestora = $this->garantirRoleEquipeGestoraNosVinculos($vinculosComAcesso);
 
             $roleIds = $vinculosComAcesso
-                ->flatMap(fn (ServidorFuncaoAdministrativa $vinculo) => $vinculo->funcaoAdministrativa?->rolesPadrao?->pluck('id') ?? collect())
+                ->flatMap(function (ServidorFuncaoAdministrativa $vinculo) use ($roleEquipeGestora): Collection {
+                    $funcao = $vinculo->funcaoAdministrativa;
+
+                    if ($funcao?->ehEquipeGestora()) {
+                        return $roleEquipeGestora
+                            ? collect([$roleEquipeGestora->id])
+                            : collect();
+                    }
+
+                    return $funcao?->rolesPadrao?->pluck('id') ?? collect();
+                })
+                ->when($roleEquipeGestora, fn (Collection $ids) => $ids->push($roleEquipeGestora->id))
                 ->map(fn ($id): int => (int) $id)
                 ->unique()
                 ->values();
 
-            if ($roleIds->isEmpty()) {
-                return;
-            }
-
-            $user->syncRoles(Role::query()->whereIn('id', $roleIds)->get());
+            $this->reconciliarRolesFuncionais($user, $roleIds);
+            $this->sincronizarEscopoEscolarDosVinculos($user, $servidor->vinculosAtivos);
 
             app(PermissionRegistrar::class)->forgetCachedPermissions();
         });
+    }
+
+    private function garantirRoleEquipeGestoraNosVinculos(Collection $vinculos): ?Role
+    {
+        $funcoesGestoras = $vinculos
+            ->map(fn (ServidorFuncaoAdministrativa $vinculo) => $vinculo->funcaoAdministrativa)
+            ->filter(fn (?FuncaoAdministrativa $funcao): bool => $funcao?->tipoEquipeGestora() !== null)
+            ->unique('id');
+
+        if ($funcoesGestoras->isEmpty()) {
+            return null;
+        }
+
+        $role = Role::query()
+            ->where('name', 'Equipe Gestora')
+            ->where('guard_name', 'web')
+            ->first();
+
+        if (! $role) {
+            throw new LogicException(
+                'A role Equipe Gestora ainda não foi criada. Execute o comando permissoes:criar antes de provisionar gestores.'
+            );
+        }
+
+        foreach ($funcoesGestoras as $funcao) {
+            $funcao->rolesPadrao()->syncWithoutDetaching([$role->id]);
+        }
+
+        return $role;
+    }
+
+    private function reconciliarRolesFuncionais(User $user, Collection $roleIdsAtivas): void
+    {
+        $rolesGerenciadas = DB::table('funcao_administrativa_role')
+            ->pluck('role_id')
+            ->map(fn ($id): int => (int) $id)
+            ->unique();
+
+        $adminIds = Role::query()
+            ->where('name', 'Admin')
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id);
+
+        $rolesPreservadas = $user->roles()
+            ->pluck('roles.id')
+            ->map(fn ($id): int => (int) $id)
+            ->reject(fn (int $id): bool => $rolesGerenciadas->contains($id) && ! $adminIds->contains($id));
+
+        $rolesFinais = $rolesPreservadas
+            ->merge($roleIdsAtivas)
+            ->unique()
+            ->values();
+
+        $user->syncRoles(Role::query()->whereIn('id', $rolesFinais->all())->get());
+    }
+
+    private function sincronizarEscopoEscolarDosVinculos(User $user, Collection $vinculosAtivos): void
+    {
+        $escolaIds = $vinculosAtivos
+            ->pluck('id_escola')
+            ->filter(fn ($id): bool => filled($id))
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->values();
+
+        $setorIds = $vinculosAtivos
+            ->pluck('setor_id')
+            ->filter(fn ($id): bool => filled($id))
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->values();
+
+        $user->escolas()->sync($escolaIds->all());
+        $user->forceFill([
+            'id_escola' => $escolaIds->count() === 1 ? $escolaIds->first() : null,
+            'setor_id' => $setorIds->count() === 1 ? $setorIds->first() : null,
+        ])->save();
     }
 
     public function vincularProfessorAoVinculo(ServidorFuncaoAdministrativa $vinculo): void
@@ -257,14 +338,19 @@ class PessoaAcessoService
     private function resolverOuCriarUser(Pessoa|Servidor $servidor, array $acesso = []): ?User
     {
         if ($servidor->user) {
+            $this->garantirUserExclusivoDaPessoa($servidor->user, $servidor);
             $this->atualizarDadosBasicosDoUser($servidor->user, $servidor, $acesso);
 
             return $servidor->user;
         }
 
-        $user = User::query()->where('email', $servidor->email)->first();
+        $user = User::query()
+            ->where('email', $servidor->email)
+            ->lockForUpdate()
+            ->first();
 
         if ($user) {
+            $this->garantirUserExclusivoDaPessoa($user, $servidor);
             $this->atualizarDadosBasicosDoUser($user, $servidor, $acesso);
 
             return $user;
@@ -280,6 +366,20 @@ class PessoaAcessoService
             'id_escola' => $servidor->id_escola,
             'setor_id' => $servidor->setor_id,
         ]);
+    }
+
+    private function garantirUserExclusivoDaPessoa(User $user, Pessoa|Servidor $servidor): void
+    {
+        $vinculadoAOutraPessoa = Pessoa::query()
+            ->where('user_id', $user->getKey())
+            ->where('id', '!=', $servidor->getKey())
+            ->exists();
+
+        if ($vinculadoAOutraPessoa) {
+            throw new LogicException(
+                'A conta encontrada para este e-mail já está vinculada a outra Pessoa. O conflito deve ser saneado antes de provisionar o acesso.'
+            );
+        }
     }
 
     private function atualizarDadosBasicosDoUser(User $user, Pessoa|Servidor $servidor, array $acesso = []): void

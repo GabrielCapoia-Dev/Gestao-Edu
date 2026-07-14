@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\Pivot;
+use Illuminate\Database\Eloquent\Builder;
 
 class ServidorFuncaoAdministrativa extends Pivot
 {
@@ -26,6 +27,7 @@ class ServidorFuncaoAdministrativa extends Pivot
         'status',
         'origem',
         'portaria',
+        'principal',
         'data_inicio',
         'data_fim',
     ];
@@ -37,6 +39,7 @@ class ServidorFuncaoAdministrativa extends Pivot
             'funcao_administrativa_id' => 'integer',
             'id_escola' => 'integer',
             'setor_id' => 'integer',
+            'principal' => 'boolean',
             'data_inicio' => 'date',
             'data_fim' => 'date',
         ];
@@ -77,6 +80,44 @@ class ServidorFuncaoAdministrativa extends Pivot
         return $this->status === self::STATUS_ATIVO;
     }
 
+    public function isVigente(): bool
+    {
+        $hoje = now()->startOfDay();
+
+        return $this->isAtivo()
+            && ($this->data_inicio === null || $this->data_inicio->startOfDay()->lte($hoje))
+            && ($this->data_fim === null || $this->data_fim->endOfDay()->gte($hoje));
+    }
+
+    public function scopeAtivos(Builder $query): Builder
+    {
+        return $query->where('status', self::STATUS_ATIVO);
+    }
+
+    public function scopeVigentes(Builder $query): Builder
+    {
+        $hoje = now()->toDateString();
+
+        return $query
+            ->where('status', self::STATUS_ATIVO)
+            ->where(function (Builder $inicio) use ($hoje): void {
+                $inicio->whereNull('data_inicio')->orWhereDate('data_inicio', '<=', $hoje);
+            })
+            ->where(function (Builder $fim) use ($hoje): void {
+                $fim->whereNull('data_fim')->orWhereDate('data_fim', '>=', $hoje);
+            });
+    }
+
+    public function vinculosTurma(): HasMany
+    {
+        return $this->hasMany(ServidorFuncaoTurma::class, 'servidor_funcao_administrativa_id');
+    }
+
+    public function vinculosTurmaAtivos(): HasMany
+    {
+        return $this->vinculosTurma()->where('status', ServidorFuncaoTurma::STATUS_ATIVO);
+    }
+
     public function turmas(): BelongsToMany
     {
         return $this->belongsToMany(
@@ -86,6 +127,8 @@ class ServidorFuncaoAdministrativa extends Pivot
             'turma_id',
         )
             ->using(ServidorFuncaoTurma::class)
+            ->wherePivot('status', ServidorFuncaoTurma::STATUS_ATIVO)
+            ->withPivot(['id', 'principal', 'status', 'data_inicio', 'data_fim'])
             ->withTimestamps();
     }
 }

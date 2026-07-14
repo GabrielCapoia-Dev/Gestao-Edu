@@ -7,6 +7,7 @@ use App\Models\Servidor;
 use App\Models\Setor;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\Gate;
 
 class PessoaScopeService
@@ -30,11 +31,14 @@ class PessoaScopeService
             return null;
         }
 
-        return Servidor::query()
+        $pessoas = Servidor::query()
             ->where('user_id', $user->getKey())
             ->where('status', Servidor::STATUS_ATIVO)
-            ->orderByDesc('updated_at')
-            ->first();
+            ->orderBy('id')
+            ->limit(2)
+            ->get();
+
+        return $pessoas->count() === 1 ? $pessoas->first() : null;
     }
 
     public function vinculosAtivos(?User $user)
@@ -46,18 +50,43 @@ class PessoaScopeService
         }
 
         return $servidor->vinculosAtivos()
-            ->with(['setor:id,nome,contexto,exige_vinculo_escola', 'escola:id,nome,setor_id'])
+            ->with([
+                'funcaoAdministrativa',
+                'setor:id,nome,contexto,exige_vinculo_escola',
+                'escola:id,nome,setor_id',
+            ])
             ->get();
+    }
+
+    public function ehEquipeGestora(?User $user): bool
+    {
+        return $this->temVinculoGestorEmQualquerPessoa($user);
     }
 
     public function usaEscopoPorVinculos(?User $user): bool
     {
-        return $this->vinculosAtivos($user)->isNotEmpty();
+        return $this->ehEquipeGestora($user) || $this->vinculosAtivos($user)->isNotEmpty();
     }
 
     public function primarySetorId(?User $user): ?int
     {
         $vinculos = $this->vinculosAtivos($user);
+
+        if ($this->ehEquipeGestora($user)) {
+            if ($this->escolaIdsDosVinculos($user) === []) {
+                return null;
+            }
+
+            $setoresGestores = $vinculos
+                ->filter(fn ($vinculo): bool => $vinculo->funcaoAdministrativa?->tipoEquipeGestora() !== null)
+                ->pluck('setor_id')
+                ->filter(fn ($id): bool => filled($id))
+                ->map(fn ($id): int => (int) $id)
+                ->unique()
+                ->values();
+
+            return $setoresGestores->count() === 1 ? $setoresGestores->first() : null;
+        }
 
         if ($vinculos->isNotEmpty()) {
             $setorId = $vinculos->pluck('setor_id')->filter()->map(fn ($id): int => (int) $id)->first();
@@ -85,7 +114,12 @@ class PessoaScopeService
     /** @return array<int, int> */
     public function escolaIdsDosVinculos(?User $user): array
     {
-        $escolasVinculo = $this->vinculosAtivos($user)
+        if (! $user) {
+            return [];
+        }
+
+        $vinculos = $this->vinculosAtivos($user);
+        $escolasVinculo = $vinculos
             ->pluck('id_escola')
             ->filter(fn ($id): bool => filled($id))
             ->map(fn ($id): int => (int) $id)
@@ -93,11 +127,67 @@ class PessoaScopeService
             ->values()
             ->all();
 
+        $vinculosGestores = $vinculos
+            ->filter(fn ($vinculo): bool => $vinculo->funcaoAdministrativa?->tipoEquipeGestora() !== null);
+        $escolasGestoras = $vinculosGestores
+            ->pluck('id_escola')
+            ->filter(fn ($id): bool => filled($id))
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+        $temVinculoGestor = $this->temVinculoGestorEmQualquerPessoa($user);
+
+        // Equipe gestora opera em uma unica escola. Massa legada ambigua falha fechada.
+        if ($temVinculoGestor) {
+            return $vinculosGestores->isNotEmpty()
+                && count($escolasGestoras) === 1
+                && count($escolasVinculo) === 1
+                && $escolasGestoras === $escolasVinculo
+                ? $escolasGestoras
+                : [];
+        }
+
         if ($escolasVinculo !== []) {
             return $escolasVinculo;
         }
 
-        return $user?->idsEscolasVinculadas() ?? [];
+        return $user->idsEscolasVinculadas();
+    }
+
+    public function canAccessEscola(?User $user, ?int $escolaId): bool
+    {
+        if (! $user || blank($escolaId)) {
+            return false;
+        }
+
+        if ($this->hasGlobalAccess($user)) {
+            return true;
+        }
+
+        return in_array((int) $escolaId, $this->escolaIdsDosVinculos($user), true);
+    }
+
+    public function applyEscolaScope(
+        Builder|QueryBuilder $query,
+        ?User $user,
+        string $column = 'id_escola',
+    ): Builder|QueryBuilder {
+        if (! $user) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        if ($this->hasGlobalAccess($user)) {
+            return $query;
+        }
+
+        $ids = $this->escolaIdsDosVinculos($user);
+
+        if ($ids === []) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereIn($column, $ids);
     }
 
     /** @return array<int, int> */
@@ -114,6 +204,24 @@ class PessoaScopeService
                 ->orderBy('id')
                 ->pluck('id')
                 ->map(fn ($id): int => (int) $id)
+                ->all();
+        }
+
+        if ($this->ehEquipeGestora($user)) {
+            $escolaIds = $this->escolaIdsDosVinculos($user);
+
+            if ($escolaIds === []) {
+                return [];
+            }
+
+            return $this->vinculosAtivos($user)
+                ->filter(fn ($vinculo): bool => $vinculo->funcaoAdministrativa?->tipoEquipeGestora() !== null)
+                ->whereIn('id_escola', $escolaIds)
+                ->pluck('setor_id')
+                ->filter(fn ($id): bool => filled($id))
+                ->map(fn ($id): int => (int) $id)
+                ->unique()
+                ->values()
                 ->all();
         }
 
@@ -174,10 +282,14 @@ class PessoaScopeService
             return true;
         }
 
+        if ($this->ehEquipeGestora($user) && $this->escolaIdsDosVinculos($user) === []) {
+            return false;
+        }
+
         $setorId = $this->primarySetorId($user);
 
         if (! $setorId) {
-            return blank($user->id_escola);
+            return false;
         }
 
         return Setor::query()->whereKey($setorId)->where('is_default_root', true)->exists();
@@ -209,5 +321,20 @@ class PessoaScopeService
             ->values();
 
         return $roleSetores->count() === 1 ? $roleSetores->first() : null;
+    }
+
+    private function temVinculoGestorEmQualquerPessoa(?User $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        return Servidor::query()
+            ->where('user_id', $user->getKey())
+            ->whereHas(
+                'vinculosAtivos.funcaoAdministrativa',
+                fn (Builder $funcoes): Builder => $funcoes->equipeGestora(),
+            )
+            ->exists();
     }
 }

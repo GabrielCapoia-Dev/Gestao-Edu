@@ -126,6 +126,12 @@ class Pessoa extends Model
         return $this->hasMany(ProfessorMatricula::class, 'servidor_id');
     }
 
+    /** Fonte canônica das matrículas funcionais da pessoa. */
+    public function matriculas(): HasMany
+    {
+        return $this->hasMany(PessoaMatricula::class, 'servidor_id');
+    }
+
     public function servidorFuncoes(): HasMany
     {
         return $this->hasMany(ServidorFuncaoAdministrativa::class, 'servidor_id');
@@ -176,6 +182,7 @@ class Pessoa extends Model
                 'status',
                 'origem',
                 'portaria',
+                'principal',
                 'data_inicio',
                 'data_fim',
             ])

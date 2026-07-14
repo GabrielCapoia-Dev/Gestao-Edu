@@ -8,15 +8,16 @@ use App\Models\Escola;
 use App\Models\FuncaoAdministrativa;
 use App\Models\Professor;
 use App\Models\Serie;
+use App\Models\ServidorFuncaoAdministrativa;
 use App\Models\Turma;
 use App\Models\User;
-use App\Services\ServidorService;
 use App\Services\TurmaService;
 use App\Services\UserService;
 use Filament\Forms\Components\Select;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class TurmaResourceScopeTest extends TestCase
@@ -47,6 +48,56 @@ class TurmaResourceScopeTest extends TestCase
 
         $this->assertContains($turmaA->id, $turmasVisiveis);
         $this->assertNotContains($turmaB->id, $turmasVisiveis);
+    }
+
+    public function test_criacao_limita_escolas_e_backend_rejeita_escola_fora_do_escopo(): void
+    {
+        Permission::findOrCreate('Listar Turmas');
+        Permission::findOrCreate('Criar Turmas');
+
+        $escolaA = $this->criarEscola('Escola Escopo A');
+        $escolaB = $this->criarEscola('Escola Escopo B');
+        $usuario = User::factory()->create([
+            'id_escola' => $escolaA->id,
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $usuario->givePermissionTo(['Listar Turmas', 'Criar Turmas']);
+
+        Livewire::actingAs($usuario)
+            ->test(ManageTurmas::class)
+            ->mountAction('create')
+            ->assertSchemaComponentExists('id_escola', null, function ($component) use ($escolaA, $escolaB): bool {
+                $options = $component->getSearchResults('Escola Escopo');
+
+                $this->assertSame([$escolaA->id => $escolaA->nome], $options);
+                $this->assertArrayNotHasKey($escolaB->id, $options);
+
+                return true;
+            });
+
+        $turma = $this->criarTurma($escolaA, 'Turma Escopo A');
+
+        foreach ([null, $turma] as $registro) {
+            try {
+                app(TurmaService::class)->validarEscolaNoEscopo(
+                    ['id_escola' => $escolaB->id],
+                    $usuario,
+                    $registro,
+                );
+                $this->fail('A escola fora do escopo deveria ser rejeitada.');
+            } catch (\Illuminate\Validation\ValidationException $exception) {
+                $this->assertArrayHasKey('id_escola', $exception->errors());
+            }
+        }
+
+        $admin = User::factory()->create();
+        $admin->assignRole(Role::findOrCreate('Admin', 'web'));
+
+        $this->assertSame(
+            $escolaB->id,
+            app(TurmaService::class)->validarEscolaNoEscopo(['id_escola' => $escolaB->id], $admin)['id_escola'],
+        );
     }
 
     public function test_professor_so_ve_as_turmas_que_esta_vinculado(): void
@@ -155,6 +206,7 @@ class TurmaResourceScopeTest extends TestCase
         ]);
 
         $usuario = User::factory()->create([
+            'id_escola' => $escola->id,
             'email_approved' => true,
             'email_verified_at' => now(),
         ]);
@@ -306,6 +358,7 @@ class TurmaResourceScopeTest extends TestCase
         ]);
 
         $usuario = User::factory()->create([
+            'id_escola' => $escola->id,
             'email_approved' => true,
             'email_verified_at' => now(),
         ]);
@@ -372,7 +425,16 @@ class TurmaResourceScopeTest extends TestCase
             'direcao_escolar' => true,
         ]);
 
-        app(ServidorService::class)->vincularFuncao($professor->fresh()->servidor, $funcaoDirecao);
+        // Fixture legado deliberado: o writer genérico não permite mais criar
+        // essa coexistência, mas a leitura ainda precisa tratar dados antigos.
+        ServidorFuncaoAdministrativa::query()->create([
+            'servidor_id' => $professor->fresh()->servidor_id,
+            'funcao_administrativa_id' => $funcaoDirecao->id,
+            'id_escola' => $escola->id,
+            'setor_id' => $escola->setor_id,
+            'status' => ServidorFuncaoAdministrativa::STATUS_ATIVO,
+            'origem' => 'legado_teste',
+        ]);
 
         $this->assertArrayNotHasKey(
             $professor->id,
@@ -393,6 +455,7 @@ class TurmaResourceScopeTest extends TestCase
         $turma = $this->criarTurma($escola, 'Turma Historica');
 
         $usuario = User::factory()->create([
+            'id_escola' => $escola->id,
             'email_approved' => true,
             'email_verified_at' => now(),
         ]);

@@ -2,6 +2,7 @@
 
 namespace App\Services\Avaliacoes;
 
+use App\Exceptions\ResponsaveisParecerInvalidosException;
 use App\Models\Aluno;
 use App\Models\Alternativa;
 use App\Models\Avaliacao;
@@ -9,11 +10,10 @@ use App\Models\AvaliacaoExportacao;
 use App\Models\AvaliacaoAlunoDocumento;
 use App\Models\Pauta;
 use App\Models\Professor;
-use App\Models\Servidor;
-use App\Models\ServidorFuncaoAdministrativa;
 use App\Models\Turma;
 use App\Models\TurmaComponenteProfessor;
 use App\Models\User;
+use App\Services\PessoaScopeService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Response;
@@ -36,6 +36,7 @@ class AvaliacaoDocumentoExportService
         $avaliacao = $this->buscarAvaliacao((int) ($params['avaliacao_id'] ?? 0));
         $escopo = (string) ($params['escopo'] ?? 'turma');
         $turmas = $this->resolverTurmas($avaliacao, $escopo, $params, $usuario);
+        $this->capturarSnapshotsParecer($avaliacao, $turmas, $escopo, $params);
         $documentos = $this->montarDocumentos($avaliacao, $turmas, $escopo, $params, $usuario);
 
         if ($documentos->isEmpty()) {
@@ -66,6 +67,20 @@ class AvaliacaoDocumentoExportService
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => sprintf('attachment; filename="%s"', addslashes($this->nomeArquivo($avaliacao, $escopo, $turmas, $documentosComPaginas))),
         ]);
+    }
+
+    /**
+     * Captura os responsáveis antes de uma solicitação assíncrona ser criada.
+     *
+     * @param  array<string, mixed>  $params
+     */
+    public function prepararSnapshotsParecer(array $params, ?User $usuario): void
+    {
+        $avaliacao = $this->buscarAvaliacao((int) ($params['avaliacao_id'] ?? 0));
+        $escopo = (string) ($params['escopo'] ?? 'turma');
+        $turmas = $this->resolverTurmas($avaliacao, $escopo, $params, $usuario);
+
+        $this->capturarSnapshotsParecer($avaliacao, $turmas, $escopo, $params);
     }
 
     /**
@@ -205,13 +220,18 @@ class AvaliacaoDocumentoExportService
             throw new NotFoundHttpException('Nenhuma pauta encontrada para a avaliação do aluno.');
         }
 
+        $documentoPersistido = app(AvaliacaoParecerSnapshotService::class)
+            ->capturarParaAluno($avaliacao, $turma, $aluno);
+        $gestores = app(ParecerResponsaveisResolver::class)
+            ->dadosParaDocumento($documentoPersistido->responsaveis_snapshot ?? []);
+
         $documento = $this->montarDocumentoAluno(
             $avaliacao,
             $turma,
             $aluno,
             $pautas,
             $this->montarLegenda($this->alternativasPorPauta($avaliacao, $pautas)),
-            $this->gestoresDaTurma($turma),
+            $gestores,
             $this->logoDataUri(),
             $prefixoArquivo === 'parecer-transferência' ? 'Parecer de Transferência' : null
         );
@@ -318,7 +338,9 @@ class AvaliacaoDocumentoExportService
 
     private function aplicarEscopoUsuario(Builder $query, ?User $usuario): void
     {
-        if ($usuario?->hasRole('Admin')) {
+        $scope = app(PessoaScopeService::class);
+
+        if ($scope->hasGlobalAccess($usuario)) {
             return;
         }
 
@@ -328,7 +350,7 @@ class AvaliacaoDocumentoExportService
             return;
         }
 
-        $escolasIds = $usuario->idsEscolasVinculadas();
+        $escolasIds = $scope->escolaIdsDosVinculos($usuario);
 
         if ($escolasIds !== []) {
             $query->whereIn('id_escola', $escolasIds);
@@ -337,6 +359,30 @@ class AvaliacaoDocumentoExportService
         }
 
         $query->whereRaw('1 = 0');
+    }
+
+    /**
+     * @param  Collection<int, Turma>  $turmas
+     * @param  array<string, mixed>  $params
+     */
+    private function capturarSnapshotsParecer(
+        Avaliacao $avaliacao,
+        Collection $turmas,
+        string $escopo,
+        array $params,
+    ): void {
+        DB::transaction(function () use ($avaliacao, $turmas, $escopo, $params): void {
+            foreach ($turmas as $turma) {
+                $alunos = $this->alunosDaTurma($turma, $escopo, $params);
+
+                if ($alunos->isEmpty() || $this->pautasDaTurma($avaliacao, $turma)->isEmpty()) {
+                    continue;
+                }
+
+                app(AvaliacaoParecerSnapshotService::class)
+                    ->capturarParaAlunos($avaliacao, $turma, $alunos);
+            }
+        });
     }
 
     /**
@@ -364,8 +410,6 @@ class AvaliacaoDocumentoExportService
 
             $alternativasPorPauta = $this->alternativasPorPauta($avaliacao, $pautas);
             $legenda = $this->montarLegenda($alternativasPorPauta);
-            $gestores = $this->gestoresDaTurma($turma);
-
             foreach ($alunos as $aluno) {
                 $documentos->push($this->montarDocumentoAluno(
                     $avaliacao,
@@ -373,7 +417,7 @@ class AvaliacaoDocumentoExportService
                     $aluno,
                     $pautas,
                     $legenda,
-                    $gestores,
+                    ['diretor' => '', 'coordenacao' => ''],
                     $logoDataUri
                 ));
             }
@@ -519,6 +563,22 @@ class AvaliacaoDocumentoExportService
             ->where('aluno_id', (int) $aluno->id)
             ->first();
 
+        if (! $documento || ! is_array($documento->responsaveis_snapshot) || empty($documento->responsaveis_snapshot)) {
+            throw new ResponsaveisParecerInvalidosException(
+                'O documento do aluno não possui snapshot de responsáveis do parecer.'
+            );
+        }
+
+        $snapshot = $documento->responsaveis_snapshot;
+        $gestores = app(ParecerResponsaveisResolver::class)->dadosParaDocumento($snapshot);
+        $escolaSnapshot = is_array($snapshot['escola'] ?? null) ? $snapshot['escola'] : [];
+        $turmaSnapshot = is_array($snapshot['turma'] ?? null) ? $snapshot['turma'] : [];
+        $serieSnapshot = is_array($snapshot['serie'] ?? null) ? $snapshot['serie'] : [];
+        $escolaNome = trim((string) ($escolaSnapshot['nome'] ?? ''));
+        $turmaNome = trim((string) ($turmaSnapshot['nome'] ?? ''));
+        $turmaTurno = trim((string) ($turmaSnapshot['turno'] ?? ''));
+        $serieNome = trim((string) ($serieSnapshot['nome'] ?? ''));
+
         $pautasPayload = $documento?->pautasPayload() ?? [];
         $infosPayload = $documento?->informacoesComplementaresPayload() ?? [];
 
@@ -571,13 +631,13 @@ class AvaliacaoDocumentoExportService
                 $avaliacao->tipo?->nome,
                 $avaliacao->nome,
             ])))),
-            'escola' => $turma->escola?->nome ?? '',
+            'escola' => $escolaNome !== '' ? $escolaNome : ($turma->escola?->nome ?? ''),
             'estudante' => (string) $aluno->nome,
             'cgm' => (string) $aluno->cgm,
             'vinculo' => $aluno->tipoVinculoLabel(),
-            'curso' => (string) ($turma->serie?->nome ?? ''),
-            'turma' => $this->rotuloTurma($turma),
-            'turno' => $this->formatarTurno($turma),
+            'curso' => $serieNome !== '' ? $serieNome : (string) ($turma->serie?->nome ?? ''),
+            'turma' => $turmaNome !== '' ? $this->rotuloTurmaNome($turmaNome) : $this->rotuloTurma($turma),
+            'turno' => $turmaTurno !== '' ? $this->formatarTurnoValor($turmaTurno) : $this->formatarTurno($turma),
             'documento_tipo' => $documentoTipo,
             'ano_letivo' => (string) ($avaliacao->data_inicio?->format('Y') ?? now()->format('Y')),
             'periodo_avaliacao' => $this->periodoAvaliacaoDoAluno($avaliacao, $aluno),
@@ -625,103 +685,44 @@ class AvaliacaoDocumentoExportService
     /**
      * @return array{diretor: string, coordenacao: string, tem_diretor: bool, tem_coordenacao: bool, pode_exportar: bool, motivo_bloqueio: string}
      */
-    public function gestoresDaTurma(Turma $turma): array
+    public function gestoresDaTurma(Turma $turma, ?int $avaliacaoId = null): array
     {
-        $gestores = ServidorFuncaoAdministrativa::query()
-            ->where('status', ServidorFuncaoAdministrativa::STATUS_ATIVO)
-            ->where(function (Builder $query) use ($turma): void {
-                $query
-                    ->where('id_escola', (int) $turma->id_escola)
-                    ->orWhereHas('turmas', fn (Builder $turmas): Builder => $turmas->whereKey((int) $turma->id));
-            })
-            ->whereHas('servidor', fn (Builder $servidor): Builder => $servidor->where('status', Servidor::STATUS_ATIVO))
-            ->whereHas('funcaoAdministrativa', function (Builder $funcao): void {
-                $funcao
-                    ->where('ativo', true)
-                    ->where(function (Builder $flags): void {
-                        $flags
-                            ->where('direcao_escolar', true)
-                            ->orWhere('coordenacao_pedagogica', true);
-                    });
-            })
-            ->with([
-                'funcaoAdministrativa:id,nome,direcao_escolar,coordenacao_pedagogica',
-                'servidor:id,nome,id_escola,status',
-                'turmas:id',
-            ])
-            ->get();
+        if ($avaliacaoId) {
+            $alunoIds = Aluno::query()
+                ->where('id_turma', (int) $turma->id)
+                ->where('status', '!=', Aluno::STATUS_PENDENTE)
+                ->pluck('id');
 
-        $diretor = $this->gestorPorFlag($gestores, $turma, 'direcao_escolar');
-        $coordenacao = $this->gestorPorFlag($gestores, $turma, 'coordenacao_pedagogica');
-        $diretorNome = $this->formatarGestor($diretor);
-        $coordenacaoNome = $this->formatarGestor($coordenacao);
-        $temDiretor = $diretorNome !== '';
-        $temCoordenacao = $coordenacaoNome !== '';
+            if ($alunoIds->isNotEmpty()) {
+                $documentos = AvaliacaoAlunoDocumento::query()
+                    ->where('avaliacao_id', $avaliacaoId)
+                    ->whereIn('aluno_id', $alunoIds->all())
+                    ->get(['id', 'aluno_id', 'responsaveis_snapshot']);
 
-        return [
-            'diretor' => $diretorNome,
-            'coordenacao' => $coordenacaoNome,
-            'tem_diretor' => $temDiretor,
-            'tem_coordenacao' => $temCoordenacao,
-            'pode_exportar' => $temDiretor && $temCoordenacao,
-            'motivo_bloqueio' => $this->motivoBloqueioGestores($temDiretor, $temCoordenacao),
-        ];
-    }
+                if ($documentos->count() === $alunoIds->count()) {
+                    try {
+                        $responsaveis = $documentos
+                            ->map(fn (AvaliacaoAlunoDocumento $documento): array =>
+                                app(ParecerResponsaveisResolver::class)
+                                    ->dadosParaDocumento($documento->responsaveis_snapshot ?? [])
+                            );
 
-    private function motivoBloqueioGestores(bool $temDiretor, bool $temCoordenacao): string
-    {
-        if ($temDiretor && $temCoordenacao) {
-            return '';
+                        return [
+                            ...$responsaveis->first(),
+                            'tem_diretor' => true,
+                            'tem_coordenacao' => true,
+                            'pode_exportar' => true,
+                            'motivo_bloqueio' => '',
+                        ];
+                    } catch (ResponsaveisParecerInvalidosException) {
+                        // Snapshot ausente/incompleto: a elegibilidade atual decide
+                        // se os documentos faltantes podem ser capturados.
+                    }
+                }
+            }
         }
 
-        return 'A turma não possui vínculo com Diretor(a) ou Coordenador(a).';
-    }
-
-    /**
-     * @param  Collection<int, ServidorFuncaoAdministrativa>  $gestores
-     */
-    private function gestorPorFlag(Collection $gestores, Turma $turma, string $flag): ?ServidorFuncaoAdministrativa
-    {
-        return $gestores
-            ->filter(fn (ServidorFuncaoAdministrativa $vinculo): bool => (bool) ($vinculo->funcaoAdministrativa?->{$flag} ?? false))
-            ->sort(function (ServidorFuncaoAdministrativa $a, ServidorFuncaoAdministrativa $b) use ($turma): int {
-                $score = $this->pontuacaoGestorDaTurma($b, $turma) <=> $this->pontuacaoGestorDaTurma($a, $turma);
-
-                return $score !== 0
-                    ? $score
-                    : strcmp((string) ($a->servidor?->nome ?? ''), (string) ($b->servidor?->nome ?? ''));
-            })
-            ->first();
-    }
-
-    private function pontuacaoGestorDaTurma(ServidorFuncaoAdministrativa $vinculo, Turma $turma): int
-    {
-        if ($vinculo->turmas->contains('id', (int) $turma->id)) {
-            return 2;
-        }
-
-        if ((int) ($vinculo->id_escola ?? $vinculo->servidor?->id_escola) === (int) $turma->id_escola) {
-            return 1;
-        }
-
-        return 0;
-    }
-
-    private function formatarGestor(?ServidorFuncaoAdministrativa $vinculo): string
-    {
-        $nome = $vinculo?->servidor?->nome;
-
-        if (! $nome) {
-            return '';
-        }
-
-        $portaria = trim((string) ($vinculo->portaria ?? ''));
-
-        if ($portaria === '') {
-            return (string) $nome;
-        }
-
-        return $nome.' - '.$portaria;
+        return app(ParecerResponsaveisResolver::class)->elegibilidade($turma);
     }
 
     /**
@@ -808,7 +809,12 @@ class AvaliacaoDocumentoExportService
 
     private function rotuloTurma(Turma $turma): string
     {
-        $nome = trim((string) $turma->nome);
+        return $this->rotuloTurmaNome((string) $turma->nome);
+    }
+
+    private function rotuloTurmaNome(string $nome): string
+    {
+        $nome = trim($nome);
 
         if ($nome === '') {
             return 'Turma';
@@ -828,7 +834,12 @@ class AvaliacaoDocumentoExportService
 
     private function formatarTurno(Turma $turma): string
     {
-        $turno = trim(str_replace('_', ' ', (string) $turma->turno));
+        return $this->formatarTurnoValor((string) $turma->turno);
+    }
+
+    private function formatarTurnoValor(string $turno): string
+    {
+        $turno = trim(str_replace('_', ' ', $turno));
 
         if ($turno === '') {
             return '';

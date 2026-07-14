@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\ResponsaveisParecerInvalidosException;
 use App\Models\Avaliacao;
 use App\Services\Avaliacoes\AvaliacaoDocumentoExportService;
 use App\Services\Exports\ExportRequestService;
@@ -24,10 +25,20 @@ class AvaliacaoDocumentoExportController extends Controller
         $params = $this->validarParametros($request);
 
         if ($request->boolean('async')) {
-            return $this->queueExport($request, $exports, $params, 'pdf');
+            return $this->queueExport($request, $service, $exports, $params, 'pdf');
         }
 
-        return $service->exportar($params, $request->user());
+        try {
+            return $service->exportar($params, $request->user());
+        } catch (ResponsaveisParecerInvalidosException $exception) {
+            Notification::make()
+                ->title('Não foi possível gerar o parecer')
+                ->body($exception->getMessage())
+                ->danger()
+                ->send();
+
+            return redirect()->back();
+        }
     }
 
     public function exportarCsv(
@@ -41,7 +52,7 @@ class AvaliacaoDocumentoExportController extends Controller
         $params = $this->validarParametros($request);
 
         if ($request->boolean('async')) {
-            return $this->queueExport($request, $exports, $params, 'csv');
+            return $this->queueExport($request, $service, $exports, $params, 'csv');
         }
 
         return $service->exportarCsv($params, $request->user());
@@ -66,11 +77,16 @@ class AvaliacaoDocumentoExportController extends Controller
      */
     private function queueExport(
         Request $request,
+        AvaliacaoDocumentoExportService $documentoService,
         ExportRequestService $exports,
         array $params,
         string $format,
     ): Response {
         try {
+            if ($format === 'pdf') {
+                $documentoService->prepararSnapshotsParecer($params, $request->user());
+            }
+
             $exportRequest = $exports->queue(
                 user: $request->user(),
                 type: 'avaliacao_documento',
@@ -97,7 +113,9 @@ class AvaliacaoDocumentoExportController extends Controller
 
             Notification::make()
                 ->title('Não foi possível iniciar a exportação')
-                ->body('Tente novamente em alguns instantes.')
+                ->body($e instanceof ResponsaveisParecerInvalidosException
+                    ? $e->getMessage()
+                    : 'Tente novamente em alguns instantes.')
                 ->danger()
                 ->send();
 

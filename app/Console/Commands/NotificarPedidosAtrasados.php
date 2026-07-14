@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Pedido;
 use App\Models\User;
 use App\Notifications\SistemaNotification;
+use App\Services\PedidoService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 
@@ -41,6 +42,7 @@ class NotificarPedidosAtrasados extends Command
         }
 
         $usuarios = User::permission('Visualizar Notificação: Pedidos Atrasados')->get();
+        $pedidoService = app(PedidoService::class);
 
         foreach ($pedidosAtrasados as $pedido) {
 
@@ -52,6 +54,10 @@ class NotificarPedidosAtrasados extends Command
             }
 
             foreach ($usuarios as $user) {
+                if (! $pedidoService->registroVisivelNoPerfil($pedido, $user)) {
+                    continue;
+                }
+
                 $user->notify(
                     new SistemaNotification(
                         titulo: 'Pedido Atrasado',

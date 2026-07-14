@@ -4,7 +4,9 @@ namespace App\Filament\Admin\Pages\Relatorios;
 
 use App\Models\Escola;
 use App\Models\Serie;
+use App\Models\Turma;
 use App\Models\TurmaComponenteProfessor;
+use App\Services\PessoaScopeService;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -75,7 +77,7 @@ class RelatorioProfessorComponenteTurma extends Page implements HasTable
 
     public function exportarRelatorioGeral()
     {
-        $dados = DB::table('turma_componente_professor as tcp')
+        $dadosQuery = DB::table('turma_componente_professor as tcp')
             ->join('turmas', 'turmas.id', '=', 'tcp.turma_id')
             ->join('escolas', 'escolas.id', '=', 'turmas.id_escola')
             ->join('series', 'series.id', '=', 'turmas.id_serie')
@@ -100,7 +102,10 @@ class RelatorioProfessorComponenteTurma extends Page implements HasTable
             ->orderBy('escolas.nome')
             ->orderBy('series.nome')
             ->orderBy('turmas.nome')
-            ->orderBy('cc.nome')
+            ->orderBy('cc.nome');
+
+        $dados = app(PessoaScopeService::class)
+            ->applyEscolaScope($dadosQuery, Auth::user(), 'turmas.id_escola')
             ->get();
 
         $spreadsheet = new Spreadsheet();
@@ -179,7 +184,7 @@ class RelatorioProfessorComponenteTurma extends Page implements HasTable
     public function table(Table $table): Table
     {
         return $table
-            ->query(
+            ->query($this->scopeQuery(
                 TurmaComponenteProfessor::query()
                     ->join('turmas', 'turmas.id', '=', 'turma_componente_professor.turma_id')
                     ->join('escolas', 'escolas.id', '=', 'turmas.id_escola')
@@ -197,7 +202,7 @@ class RelatorioProfessorComponenteTurma extends Page implements HasTable
                         'turmas.id_escola',
                         'turmas.id_serie',
                     ])
-            )
+            ))
             ->columns([
                 Tables\Columns\TextColumn::make('escola_nome')
                     ->label('Escola')
@@ -269,7 +274,7 @@ class RelatorioProfessorComponenteTurma extends Page implements HasTable
             ->filters([
                 Tables\Filters\SelectFilter::make('escola')
                     ->label('Escola')
-                    ->options(fn () => Escola::where('ativo', true)->orderBy('nome')->pluck('nome', 'id'))
+                    ->options(fn (): array => $this->escolaOptions())
                     ->searchable()
                     ->query(
                         fn (Builder $query, array $data) => $data['value']
@@ -279,7 +284,7 @@ class RelatorioProfessorComponenteTurma extends Page implements HasTable
 
                 Tables\Filters\SelectFilter::make('serie')
                     ->label('Série')
-                    ->options(fn () => Serie::pluck('nome', 'id'))
+                    ->options(fn (): array => $this->serieOptions())
                     ->searchable()
                     ->query(
                         fn (Builder $query, array $data) => $data['value']
@@ -303,6 +308,39 @@ class RelatorioProfessorComponenteTurma extends Page implements HasTable
             ])
             ->paginated([5, 10, 25, 50, 100])
             ->defaultPaginationPageOption(5);
+    }
+
+    protected function scopeQuery(Builder $query): Builder
+    {
+        return app(PessoaScopeService::class)
+            ->applyEscolaScope($query, Auth::user(), 'turmas.id_escola');
+    }
+
+    /** @return array<int, string> */
+    protected function escolaOptions(): array
+    {
+        $query = app(PessoaScopeService::class)
+            ->applyEscolaScope(Escola::query(), Auth::user(), 'escolas.id');
+
+        return $query
+            ->where('ativo', true)
+            ->orderBy('nome')
+            ->pluck('nome', 'id')
+            ->toArray();
+    }
+
+    /** @return array<int, string> */
+    protected function serieOptions(): array
+    {
+        $turmas = app(PessoaScopeService::class)
+            ->applyEscolaScope(Turma::query(), Auth::user(), 'turmas.id_escola')
+            ->select('id_serie');
+
+        return Serie::query()
+            ->whereIn('id', $turmas)
+            ->orderBy('nome')
+            ->pluck('nome', 'id')
+            ->toArray();
     }
 
     public function getTitle(): string

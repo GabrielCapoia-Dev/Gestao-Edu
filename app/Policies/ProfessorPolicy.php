@@ -41,7 +41,8 @@ class ProfessorPolicy
      */
     public function view(User $user, Professor $professor): bool
     {
-        return $user->hasPermissionTo('Listar Professores');
+        return $user->hasPermissionTo('Listar Professores')
+            && app(UserService::class)->podeAcessarProfessor($user, $professor);
     }
 
     /**
@@ -57,7 +58,8 @@ class ProfessorPolicy
      */
     public function update(User $user, Professor $professor): bool
     {
-        return $user->hasPermissionTo('Editar Professores');
+        return $user->hasPermissionTo('Editar Professores')
+            && app(UserService::class)->podeAcessarProfessor($user, $professor);
     }
 
     /**
@@ -65,7 +67,8 @@ class ProfessorPolicy
      */
     public function delete(User $user, Professor $professor): bool
     {
-        return $user->hasPermissionTo('Excluir Professores');
+        return $user->hasPermissionTo('Excluir Professores')
+            && app(UserService::class)->podeAcessarProfessor($user, $professor);
     }
 
     public function editMatricula(User $user): bool

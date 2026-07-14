@@ -137,12 +137,42 @@ class FuncaoAdministrativaResource extends Resource
                     ->label('Direção escolar')
                     ->helperText('Usada para preencher o campo de diretor(a) nos documentos de avaliação.')
                     ->default(false)
+                    ->live()
+                    ->afterStateUpdated(function (?bool $state, Set $set): void {
+                        if ($state) {
+                            $set('coordenacao_pedagogica', false);
+                            $set('secretaria_escolar', false);
+                            $set('tem_relacao_turma', false);
+                        }
+                    })
                     ->required(),
 
                 Toggle::make('coordenacao_pedagogica')
                     ->label('Coordenação pedagógica')
                     ->helperText('Usada para preencher o campo de coordenação pedagógica nos documentos de avaliação.')
                     ->default(false)
+                    ->live()
+                    ->afterStateUpdated(function (?bool $state, Set $set): void {
+                        if ($state) {
+                            $set('direcao_escolar', false);
+                            $set('secretaria_escolar', false);
+                            $set('tem_relacao_turma', true);
+                        }
+                    })
+                    ->required(),
+
+                Toggle::make('secretaria_escolar')
+                    ->label('Secretaria escolar')
+                    ->helperText('Identifica explicitamente a função de Secretário da Equipe Gestora.')
+                    ->default(false)
+                    ->live()
+                    ->afterStateUpdated(function (?bool $state, Set $set): void {
+                        if ($state) {
+                            $set('direcao_escolar', false);
+                            $set('coordenacao_pedagogica', false);
+                            $set('tem_relacao_turma', false);
+                        }
+                    })
                     ->required(),
             ]);
     }
@@ -179,6 +209,10 @@ class FuncaoAdministrativaResource extends Resource
 
                 IconColumn::make('coordenacao_pedagogica')
                     ->label('Coordenação pedagógica')
+                    ->boolean(),
+
+                IconColumn::make('secretaria_escolar')
+                    ->label('Secretaria escolar')
                     ->boolean(),
 
                 TextColumn::make('updated_at')

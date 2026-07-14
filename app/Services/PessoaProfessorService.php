@@ -52,6 +52,11 @@ class PessoaProfessorService
      */
     public function sincronizarRegistros(Pessoa|Servidor $pessoa, array $registros): void
     {
+        DB::transaction(fn (): mixed => $this->sincronizarRegistrosInterno($pessoa, $registros));
+    }
+
+    private function sincronizarRegistrosInterno(Pessoa|Servidor $pessoa, array $registros): void
+    {
         $matriculas = $this->normalizarMatriculas($registros);
         $this->validarInvariantesMatriculas($matriculas);
 
@@ -78,6 +83,7 @@ class PessoaProfessorService
 
         $this->removerRegistrosAusentes($pessoa, $idsProfessoresMantidos);
         $this->removerMatriculasAusentes($pessoa, $idsMatriculasMantidas);
+        $this->validarConjuntoPersistidoMatriculas($pessoa);
     }
 
     public function sincronizarTurmasComponentes(Professor $professor, array $vinculos, ?string $turnoMatricula = null): void
@@ -383,6 +389,29 @@ class PessoaProfessorService
         }
     }
 
+    private function validarConjuntoPersistidoMatriculas(Pessoa|Servidor $pessoa): void
+    {
+        $conjuntoFinal = ProfessorMatricula::query()
+            ->where('servidor_id', $pessoa->id)
+            ->get()
+            ->map(fn (ProfessorMatricula $matricula): array => [
+                'matricula' => (string) $matricula->matricula,
+                'turno' => (string) $matricula->turno,
+            ]);
+
+        ProfessorMatricula::assertConjuntoTurnosValido($conjuntoFinal->pluck('turno')->all());
+
+        $duplicadas = $conjuntoFinal
+            ->pluck('matricula')
+            ->map(fn (string $matricula): string => mb_strtolower(trim($matricula)))
+            ->duplicates();
+        if ($duplicadas->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'matriculas_professor' => 'O conjunto final da Pessoa não pode conter matrículas duplicadas.',
+            ]);
+        }
+    }
+
     private function upsertMatricula(Pessoa|Servidor $pessoa, array $data): ProfessorMatricula
     {
         $query = ProfessorMatricula::query()->where('servidor_id', $pessoa->id);
@@ -478,6 +507,7 @@ class PessoaProfessorService
     private function removerRegistrosAusentes(Pessoa|Servidor $pessoa, Collection $idsMantidos): void
     {
         $paraRemover = $pessoa->professores()
+            ->where('ativo', true)
             ->when($idsMantidos->isNotEmpty(), fn ($query) => $query->whereNotIn('id', $idsMantidos->all()))
             ->when($idsMantidos->isEmpty(), fn ($query) => $query)
             ->get();

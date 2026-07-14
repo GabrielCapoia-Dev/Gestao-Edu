@@ -58,7 +58,7 @@ class AlunoTransferenciaPendenteService
 
     public function professorPodeResponderComponente(?User $user, Aluno $aluno, ?int $componenteId): bool
     {
-        if ($this->usuarioTemVisibilidadeTotalParecer($user)) {
+        if ($this->usuarioTemVisibilidadeTotalParecer($user) && $this->usuarioPodeAcessarAluno($user, $aluno)) {
             return true;
         }
 
@@ -71,7 +71,7 @@ class AlunoTransferenciaPendenteService
 
     public function componentesVisiveisParaParecer(?User $user, Aluno $aluno): ?array
     {
-        if ($this->usuarioTemVisibilidadeTotalParecer($user)) {
+        if ($this->usuarioTemVisibilidadeTotalParecer($user) && $this->usuarioPodeAcessarAluno($user, $aluno)) {
             return null;
         }
 
@@ -318,15 +318,16 @@ class AlunoTransferenciaPendenteService
             return false;
         }
 
-        $ids = collect([$user->id_escola])
-            ->merge($user->escolas->pluck('id'))
-            ->merge($user->professores->pluck('id_escola'))
-            ->filter()
-            ->map(fn ($id): int => (int) $id)
-            ->unique()
-            ->values()
-            ->all();
+        return app(PessoaScopeService::class)->canAccessEscola($user, $escolaId);
+    }
 
-        return in_array($escolaId, $ids, true);
+    private function usuarioPodeAcessarAluno(?User $user, Aluno $aluno): bool
+    {
+        $aluno->loadMissing('turma');
+
+        return app(PessoaScopeService::class)->canAccessEscola(
+            $user,
+            (int) ($aluno->turma?->id_escola ?? 0),
+        );
     }
 }

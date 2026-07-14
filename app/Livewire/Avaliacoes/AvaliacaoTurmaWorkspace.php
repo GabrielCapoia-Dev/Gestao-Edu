@@ -12,6 +12,7 @@ use App\Models\Turma;
 use App\Models\TurmaComponenteProfessor;
 use App\Models\User;
 use App\Services\Avaliacoes\AvaliacaoAlunoDocumentoService;
+use App\Services\PessoaScopeService;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -1947,11 +1948,13 @@ class AvaliacaoTurmaWorkspace extends Component
             return [];
         }
 
-        if ($user->hasRole('Admin')) {
+        $scope = app(PessoaScopeService::class);
+
+        if ($scope->hasGlobalAccess($user)) {
             return null;
         }
 
-        $escolasIds = $user->idsEscolasVinculadas();
+        $escolasIds = $scope->escolaIdsDosVinculos($user);
 
         return $escolasIds === [] ? [] : $escolasIds;
     }

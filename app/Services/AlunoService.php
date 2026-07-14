@@ -1280,8 +1280,7 @@ class AlunoService
             return [];
         }
 
-        return collect([$user->id_escola])
-            ->merge($user->idsEscolasVinculadas())
+        return collect(app(PessoaScopeService::class)->escolaIdsDosVinculos($user))
             ->map(fn ($id): int => (int) $id)
             ->filter(fn (int $id): bool => $id > 0)
             ->unique()

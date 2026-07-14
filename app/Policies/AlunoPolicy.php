@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Models\Aluno;
 use App\Models\User;
+use App\Services\PessoaScopeService;
 
 class AlunoPolicy
 {
@@ -70,7 +71,8 @@ class AlunoPolicy
 
     public function remanejar(User $user, Aluno $aluno): bool
     {
-        return $user->hasPermissionLike('Realizar Remanejamento de Aluno');
+        return $user->hasPermissionLike('Realizar Remanejamento de Aluno')
+            && $this->pertenceAoEscopoDoUsuario($user, $aluno);
     }
 
     public function voltarTurma(User $user, Aluno $aluno): bool
@@ -80,27 +82,36 @@ class AlunoPolicy
 
     public function contraTurno(User $user, Aluno $aluno): bool
     {
-        return $this->updateAny($user);
+        return $this->updateAny($user)
+            && $this->pertenceAoEscopoDoUsuario($user, $aluno);
     }
 
     public function encerrarContraTurno(User $user, Aluno $aluno): bool
     {
-        return $this->updateAny($user);
+        return $this->updateAny($user)
+            && $this->pertenceAoEscopoDoUsuario($user, $aluno);
     }
 
     public function parecerTransferencia(User $user, Aluno $aluno): bool
     {
-        return $user->hasPermissionLike('realizar transferencia de aluno')
+        return ($user->hasPermissionLike('realizar transferencia de aluno')
             || $user->hasPermissionLike('realizar tranferencia de aluno')
-            || $user->hasPermissionLike('gerar parecer de transferencia');
+            || $user->hasPermissionLike('gerar parecer de transferencia'))
+            && $this->pertenceAoEscopoDoUsuario($user, $aluno);
     }
 
     private function pertenceAoEscopoDoUsuario(User $user, Aluno $aluno): bool
     {
         $aluno->loadMissing('turma.componentes');
 
-        if ($user->hasRole('Admin')) {
+        $scope = app(PessoaScopeService::class);
+
+        if ($scope->hasGlobalAccess($user)) {
             return true;
+        }
+
+        if ($scope->ehEquipeGestora($user)) {
+            return $scope->canAccessEscola($user, (int) $aluno->turma?->id_escola);
         }
 
         if ($user->ehProfessor()) {
@@ -112,10 +123,6 @@ class AlunoPolicy
                 ->isNotEmpty() ?? false;
         }
 
-        if (filled($user->id_escola)) {
-            return (int) $aluno->turma?->id_escola === (int) $user->id_escola;
-        }
-
-        return true;
+        return $scope->canAccessEscola($user, (int) $aluno->turma?->id_escola);
     }
 }

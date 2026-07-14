@@ -5,7 +5,10 @@ namespace App\Services;
 use App\Models\Aluno;
 use App\Models\User;
 use App\Services\Avaliacoes\AvaliacaoDocumentoExportService;
+use App\Services\Avaliacoes\AvaliacaoParecerSnapshotService;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -16,6 +19,7 @@ class AlunoTransferenciaParecerService
 {
     public function __construct(
         private readonly AvaliacaoDocumentoExportService $documentoExportService,
+        private readonly AvaliacaoParecerSnapshotService $snapshotService,
         private readonly AlunoMovimentacaoService $movimentacaoService,
     ) {}
 
@@ -31,6 +35,10 @@ class AlunoTransferenciaParecerService
             throw new NotFoundHttpException('Turma do aluno não encontrada.');
         }
 
+        if (! app(PessoaScopeService::class)->canAccessEscola($usuario, (int) $aluno->turma->id_escola)) {
+            throw new AuthorizationException('O aluno não pertence ao escopo escolar do usuário.');
+        }
+
         $avaliacoes = $aluno->turma->avaliacoes()
             ->orderBy('data_inicio')
             ->orderBy('avaliacoes.id')
@@ -39,6 +47,12 @@ class AlunoTransferenciaParecerService
         if ($avaliacoes->isEmpty()) {
             throw new NotFoundHttpException('Nenhuma avaliação encontrada para gerar o parecer de transferência.');
         }
+
+        DB::transaction(function () use ($avaliacoes, $aluno): void {
+            foreach ($avaliacoes as $avaliacao) {
+                $this->snapshotService->capturarParaAluno($avaliacao, $aluno->turma, $aluno);
+            }
+        });
 
         $zipPath = storage_path('app/parecer-transferencia-'.Str::uuid().'.zip');
         $zip = new ZipArchive();

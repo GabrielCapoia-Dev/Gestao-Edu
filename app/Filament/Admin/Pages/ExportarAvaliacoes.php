@@ -6,6 +6,7 @@ use App\Models\Aluno;
 use App\Models\Avaliacao;
 use App\Models\Turma;
 use App\Models\User;
+use App\Services\PessoaScopeService;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
@@ -340,7 +341,9 @@ class ExportarAvaliacoes extends Page
         /** @var User|null $user */
         $user = Auth::user();
 
-        if ($user?->hasRole('Admin')) {
+        $scope = app(PessoaScopeService::class);
+
+        if ($scope->hasGlobalAccess($user)) {
             return $query;
         }
 
@@ -348,7 +351,7 @@ class ExportarAvaliacoes extends Page
             return $query->whereRaw('1 = 0');
         }
 
-        $escolasIds = $user->idsEscolasVinculadas();
+        $escolasIds = $scope->escolaIdsDosVinculos($user);
 
         if ($escolasIds === []) {
             return $query->whereRaw('1 = 0');

@@ -31,11 +31,11 @@ class FeedbackPedidoExportHandler implements ExportHandler
         }
 
         $filters = $this->analytics->normalizeFilters($exportRequest->filters ?? []);
-        $this->analytics->assertReportFilters($filters);
+        $this->analytics->assertReportFilters($filters, $user);
 
         $exportRequest->updateProgress(10, 100, 'Preparando feedbacks.');
 
-        $query = $this->analytics->query($filters);
+        $query = $this->analytics->query($filters, $user);
         $feedbacks = (clone $query)->orderByDesc('created_at')->get();
         $metrics = $this->analytics->metrics(clone $query);
         $reportType = $filters['report_type'] ?? FeedbackPedidoAnalyticsService::REPORT_GERAL;

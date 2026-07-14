@@ -15,6 +15,13 @@ class PedidoRelatorioService
 
     public function gerar(Pedido $pedido)
     {
+        $usuario = Auth::user();
+
+        abort_unless(
+            $usuario && $this->pedidoService->podeListarRegistro($pedido, $usuario),
+            403,
+        );
+
         $pedido->load([
             'tipoManutencao',
             'tipoStatus',
@@ -39,7 +46,6 @@ class PedidoRelatorioService
             'ultimoFeedback.itens.problema',
         ]);
 
-        $usuario = Auth::user();
         $nomeUsuario = $usuario?->name ?? 'Sistema';
 
         $this->pedidoService->registrarHistorico(

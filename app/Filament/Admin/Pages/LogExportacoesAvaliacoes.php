@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Pages;
 use App\Models\Avaliacao;
 use App\Models\AvaliacaoExportacao;
 use App\Models\User;
+use App\Services\PessoaScopeService;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
@@ -140,11 +141,35 @@ class LogExportacoesAvaliacoes extends Page implements HasTable
                 'user:id,name,email',
             ]);
 
-        if ($user && ! Gate::forUser($user)->allows('viewAny', Avaliacao::class)) {
-            $query->where('user_id', (int) $user->id);
+        $scope = app(PessoaScopeService::class);
+
+        if ($scope->hasGlobalAccess($user)) {
+            return $query;
         }
 
-        return $query;
+        if (! $user) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        $escolaIds = $scope->escolaIdsDosVinculos($user);
+
+        if ($escolaIds === []) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->where(function (Builder $escopo) use ($escolaIds): void {
+            $escopo
+                ->whereIn('escola_id', $escolaIds)
+                ->orWhere(function (Builder $legado) use ($escolaIds): void {
+                    $legado
+                        ->whereNull('escola_id')
+                        ->where(function (Builder $relacao) use ($escolaIds): void {
+                            $relacao
+                                ->whereHas('turma', fn (Builder $turma): Builder => $turma->whereIn('id_escola', $escolaIds))
+                                ->orWhereHas('aluno.turma', fn (Builder $turma): Builder => $turma->whereIn('id_escola', $escolaIds));
+                        });
+                });
+        });
     }
 
     private function formatarAlvo(AvaliacaoExportacao $record): string
