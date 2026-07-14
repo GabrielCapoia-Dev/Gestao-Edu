@@ -40,6 +40,7 @@ use App\Models\User;
 use App\Observers\PedidoObserver;
 use App\Observers\ProfessorObserver;
 use App\Observers\TurmaComponenteProfessorObserver;
+use App\Observers\AvaliacaoDashboardSourceObserver;
 use App\Policies\AlternativaPolicy;
 use App\Policies\AlunoPolicy;
 use App\Policies\AvaliacaoPolicy;
@@ -140,6 +141,9 @@ class AppServiceProvider extends ServiceProvider
         Pedido::observe(PedidoObserver::class);
         Professor::observe(ProfessorObserver::class);
         TurmaComponenteProfessor::observe(TurmaComponenteProfessorObserver::class);
+        Avaliacao::observe(AvaliacaoDashboardSourceObserver::class);
+        Pauta::observe(AvaliacaoDashboardSourceObserver::class);
+        Turma::observe(AvaliacaoDashboardSourceObserver::class);
 
         // ── Gates ──────────────────────────────────────────────────────────────
         Gate::define('admin-only', fn ($user) => $user->hasRole('Admin'));

@@ -15,6 +15,7 @@ use App\Models\TipoAvaliacao;
 use App\Models\Turma;
 use App\Models\User;
 use App\Services\Avaliacoes\AvaliacaoDashboardMetricsService;
+use App\Services\Avaliacoes\AvaliacaoDashboardFactsService;
 use App\Services\Avaliacoes\AvaliacaoDocumentoExportService;
 use App\Services\Exports\ExportRequestService;
 use App\Services\PessoaScopeService;
@@ -122,6 +123,10 @@ class DashboardAvaliacoes extends Page implements HasForms
     public string $ultimaAtualizacao = '';
 
     public bool $dashboardCarregado = false;
+
+    public string $consolidacaoStatus = '';
+
+    public string $consolidadaEm = '';
 
     /**
      * @var array<string, array{diretor: string, coordenacao: string, tem_diretor: bool, tem_coordenacao: bool, pode_exportar: bool, motivo_bloqueio: string}>
@@ -424,6 +429,20 @@ class DashboardAvaliacoes extends Page implements HasForms
 
             return;
         }
+
+        $avaliacaoId = (int) ($this->filtros['avaliacao_id'] ?? 0);
+        app(AvaliacaoDashboardFactsService::class)->requestRebuild($avaliacaoId);
+        $this->atualizarStatusConsolidacao();
+
+        if (! $silencioso) {
+            Notification::make()
+                ->title('Consolidação solicitada.')
+                ->body('Os indicadores serão atualizados após o processamento da fila.')
+                ->success()
+                ->send();
+        }
+
+        return;
 
         $snapshotAnterior = $this->capturarSnapshotAcompanhamento($this->acompanhamentoTurmas);
         $cardsAnteriores = $this->cards;
@@ -1793,6 +1812,12 @@ class DashboardAvaliacoes extends Page implements HasForms
         $this->normalizarFiltros();
         $this->normalizarFiltrosAcompanhamento();
 
+        $this->atualizarStatusConsolidacao();
+        if ($this->avaliacaoSelecionada() && $this->consolidacaoStatus === '') {
+            app(AvaliacaoDashboardFactsService::class)->requestRebuild((int) $this->filtros['avaliacao_id']);
+            $this->atualizarStatusConsolidacao();
+        }
+
         $resolver = fn (): array => $this->montarDashboardData();
         $user = Auth::user();
 
@@ -1829,6 +1854,28 @@ class DashboardAvaliacoes extends Page implements HasForms
         $this->ultimaAtualizacao = $this->avaliacaoSelecionada()
             ? now()->format('d/m/Y H:i:s')
             : '';
+    }
+
+    private function atualizarStatusConsolidacao(): void
+    {
+        $status = $this->avaliacaoSelecionada()
+            ? app(AvaliacaoDashboardFactsService::class)->status((int) $this->filtros['avaliacao_id'])
+            : null;
+
+        $this->consolidacaoStatus = (string) ($status->status ?? '');
+        $this->consolidadaEm = $status?->consolidada_em
+            ? \Carbon\Carbon::parse($status->consolidada_em)->format('d/m/Y H:i:s')
+            : '';
+    }
+
+    public function verificarConsolidacao(): void
+    {
+        $anterior = $this->consolidacaoStatus;
+        $this->atualizarStatusConsolidacao();
+
+        if ($this->consolidacaoStatus === 'consolidado' && $anterior !== 'consolidado') {
+            $this->atualizarDashboard();
+        }
     }
 
     public function atualizarAcompanhamentoTurmas(): void
@@ -2146,6 +2193,30 @@ class DashboardAvaliacoes extends Page implements HasForms
                 ->whereRaw('1 = 0');
         }
 
+        $query = DB::table('avaliacao_dashboard_fatos as ar')
+            ->join('turmas as t', 't.id', '=', 'ar.turma_id')
+            ->join('alunos as aln', 'aln.id', '=', 'ar.aluno_id')
+            ->join('pautas as p', 'p.id', '=', 'ar.pauta_id')
+            ->join('alternativas as alt', 'alt.id', '=', 'ar.alternativa_id')
+            ->whereIn('ar.avaliacao_id', $avaliacaoIds)
+            ->where('ar.respondida', true)
+            ->where('aln.status', '!=', Aluno::STATUS_PENDENTE)
+            ->where('p.status', true)
+            ->where(function (QueryBuilder $query): void {
+                $query->whereNull('p.serie_id')->orWhereColumn('p.serie_id', 't.id_serie');
+            });
+
+        $this->aplicarEscopoEscolarQuery($query, 't');
+        if ($filtrosAtivos['series_ids'] !== []) $query->whereIn('t.id_serie', $filtrosAtivos['series_ids']);
+        if ($filtrosAtivos['turnos'] !== []) $query->whereIn('t.turno', $filtrosAtivos['turnos']);
+        if ($filtrosAtivos['componentes_ids'] !== []) $query->whereIn('p.componente_curricular_id', $filtrosAtivos['componentes_ids']);
+        if ($filtrosAtivos['escolas_ids'] !== []) $query->whereIn('t.id_escola', $filtrosAtivos['escolas_ids']);
+        if ($filtrosAtivos['professores_ids'] !== []) $query->whereIn('ar.professor_id', $filtrosAtivos['professores_ids']);
+        if ($filtrosAtivos['pautas_ids'] !== []) $query->whereIn('ar.pauta_id', $filtrosAtivos['pautas_ids']);
+        if (! $ignorarAlternativas && $filtrosAtivos['alternativas_ids'] !== []) $query->whereIn('ar.alternativa_id', $filtrosAtivos['alternativas_ids']);
+
+        return $query;
+
         // Expande payload.pautas via JSON_TABLE (MySQL 8) sem tabela linha-por-resposta.
         $expanded = '
             select
@@ -2228,11 +2299,14 @@ class DashboardAvaliacoes extends Page implements HasForms
             return DB::table('avaliacao_turma as at')->whereRaw('1 = 0');
         }
 
-        $query = DB::table('avaliacao_turma as at')
+        $query = DB::table('avaliacao_dashboard_fatos as f')
+            ->join('avaliacao_turma as at', function ($join): void {
+                $join->on('at.avaliacao_id', '=', 'f.avaliacao_id')
+                    ->on('at.turma_id', '=', 'f.turma_id');
+            })
             ->join('turmas as t', 't.id', '=', 'at.turma_id')
-            ->join('alunos as aln', 'aln.id_turma', '=', 't.id')
-            ->join('avaliacao_pauta as ap', 'ap.avaliacao_id', '=', 'at.avaliacao_id')
-            ->join('pautas as p', 'p.id', '=', 'ap.pauta_id')
+            ->join('alunos as aln', 'aln.id', '=', 'f.aluno_id')
+            ->join('pautas as p', 'p.id', '=', 'f.pauta_id')
             ->whereIn('at.avaliacao_id', $avaliacaoIds)
             ->where('aln.status', '!=', Aluno::STATUS_PENDENTE)
             ->where('p.status', true)

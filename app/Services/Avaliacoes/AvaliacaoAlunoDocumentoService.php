@@ -66,6 +66,7 @@ class AvaliacaoAlunoDocumentoService
         ]);
 
         $this->dashboardMetricsService->forgetForAvaliacao($avaliacaoId);
+        app(AvaliacaoDashboardFactsService::class)->requestRebuild($avaliacaoId);
 
         return $documento;
     }
@@ -289,11 +290,17 @@ class AvaliacaoAlunoDocumentoService
 
                 $this->recalcularMetricas($documento->fresh());
                 $this->dashboardMetricsService->forgetForAvaliacao((int) $documento->avaliacao_id);
+                $this->requestDashboardFacts((int) $documento->avaliacao_id);
                 $movidos++;
             }
 
             return $movidos;
         });
+    }
+
+    private function requestDashboardFacts(int $avaliacaoId): void
+    {
+        app(AvaliacaoDashboardFactsService::class)->requestRebuild($avaliacaoId);
     }
 
     /**
@@ -509,6 +516,7 @@ class AvaliacaoAlunoDocumentoService
 
         $documento = $this->recalcularMetricas($documento->fresh());
         $this->dashboardMetricsService->forgetForAvaliacao((int) $documento->avaliacao_id);
+        app(AvaliacaoDashboardFactsService::class)->requestRebuild((int) $documento->avaliacao_id);
 
         return $documento;
     }

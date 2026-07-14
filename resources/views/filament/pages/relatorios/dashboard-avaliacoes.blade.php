@@ -1,5 +1,5 @@
 <x-filament-panels::page>
-    <div class="av-livewire-root" x-data wire:init="carregarDashboardInicial" x-on:dashboard-acompanhamento-recarregar.window="$wire.atualizarAcompanhamentoTurmas()">
+    <div class="av-livewire-root" x-data wire:init="carregarDashboardInicial" wire:poll.10s="verificarConsolidacao" x-on:dashboard-acompanhamento-recarregar.window="$wire.atualizarAcompanhamentoTurmas()">
     <div class="dav-page">
         <div class="dav-processing-overlay" wire:loading.flex wire:target="abrirWorkspaceAcompanhamento,fecharWorkspaceAcompanhamento,atualizarAcompanhamentoTurmas,atualizarDadosRecentes">
             <div class="dav-processing-card">
@@ -64,6 +64,18 @@
                     </div>
                 </section>
             @else
+
+            @if (in_array($consolidacaoStatus ?? '', ['pendente', 'processando'], true))
+                <section class="dav-dashboard-loading">
+                    <div class="dav-dashboard-loading__pulse"></div>
+                    <div>
+                        <strong>Consolidando indicadores...</strong>
+                        <span>Os dados podem estar desatualizados enquanto a fila processa a avaliação.</span>
+                    </div>
+                </section>
+            @elseif (($consolidadaEm ?? '') !== '')
+                <div class="dav-refresh-meta">Indicadores consolidados em {{ $consolidadaEm }}</div>
+            @endif
 
             <section class="dav-panel dav-panel--legacy">
                 <div class="dav-panel-head">
