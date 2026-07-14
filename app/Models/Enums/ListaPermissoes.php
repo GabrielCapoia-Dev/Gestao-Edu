@@ -42,6 +42,7 @@ enum ListaPermissoes: string
     case ListarComponenteCurricular = 'listar componente curricular';
     case ListarSetores = 'listar setores';
     case ListarServidores = 'listar servidores';
+    case ListarPessoas = 'listar pessoas';
 
     case CriarEmpresaContratada = 'criar empresa contratada';
     case CriarAlunos = 'criar alunos';
@@ -78,6 +79,7 @@ enum ListaPermissoes: string
     case CriarComponenteCurricular = 'criar componente curricular';
     case CriarSetores = 'criar setores';
     case CriarServidores = 'criar servidores';
+    case CriarPessoas = 'criar pessoas';
 
     case EditarEmpresaContratada = 'editar empresa contratada';
     case EditarAlunos = 'editar alunos';
@@ -115,8 +117,12 @@ enum ListaPermissoes: string
     case EditarDadosDoProfessor = 'editar dados do professor';
     case EditarSetores = 'editar setores';
     case EditarServidores = 'editar servidores';
+    case EditarPessoas = 'editar pessoas';
+    case EditarDadosDePessoas = 'editar dados de pessoas';
+    case EditarTurmasEComponentesDePessoas = 'editar turmas e componentes de pessoas';
 
     case GerenciarFuncoesDeServidores = 'gerenciar funções de servidores';
+    case GerenciarVinculosEstruturaisDePessoas = 'gerenciar vínculos estruturais de pessoas';
     case TransferirProfessores = 'transferir professores';
     case DesativarProfessores = 'desativar professores';
 
@@ -141,6 +147,7 @@ enum ListaPermissoes: string
     case ExcluirContratos = 'excluir contratos';
     case ExcluirSetores = 'excluir setores';
     case ExcluirServidores = 'excluir servidores';
+    case ExcluirPessoas = 'excluir pessoas';
     case ExcluirComponenteCurricular = 'excluir componente curricular';
     case ExcluirPedidosMerenda = 'excluir pedidos: merenda';
     case ExcluirItens = 'excluir itens';
@@ -270,6 +277,7 @@ enum ListaPermissoes: string
             self::ListarComponenteCurricular => 'Listar Componente Curricular',
             self::ListarSetores => 'Listar Setores',
             self::ListarServidores => 'Listar Servidores',
+            self::ListarPessoas => 'Listar Pessoas',
 
             self::CriarEmpresaContratada => 'Criar Empresa Contratada',
             self::CriarAlunos => 'Criar Alunos',
@@ -306,6 +314,7 @@ enum ListaPermissoes: string
             self::CriarComponenteCurricular => 'Criar Componente Curricular',
             self::CriarSetores => 'Criar Setores',
             self::CriarServidores => 'Criar Servidores',
+            self::CriarPessoas => 'Criar Pessoas',
 
             self::EditarEmpresaContratada => 'Editar Empresa Contratada',
             self::EditarAlunos => 'Editar Alunos',
@@ -343,8 +352,12 @@ enum ListaPermissoes: string
             self::EditarDadosDoProfessor => 'Editar Dados do Professor',
             self::EditarSetores => 'Editar Setores',
             self::EditarServidores => 'Editar Servidores',
+            self::EditarPessoas => 'Editar Pessoas',
+            self::EditarDadosDePessoas => 'Editar Dados de Pessoas',
+            self::EditarTurmasEComponentesDePessoas => 'Editar Turmas e Componentes de Pessoas',
 
             self::GerenciarFuncoesDeServidores => 'Gerenciar Funções de Servidores',
+            self::GerenciarVinculosEstruturaisDePessoas => 'Gerenciar Vínculos Estruturais de Pessoas',
             self::TransferirProfessores => 'Transferir Professores',
             self::DesativarProfessores => 'Desativar Professores',
 
@@ -369,6 +382,7 @@ enum ListaPermissoes: string
             self::ExcluirContratos => 'Excluir Contratos',
             self::ExcluirSetores => 'Excluir Setores',
             self::ExcluirServidores => 'Excluir Servidores',
+            self::ExcluirPessoas => 'Excluir Pessoas',
             self::ExcluirComponenteCurricular => 'Excluir Componente Curricular',
             self::ExcluirPedidosMerenda => 'Excluir Pedidos: Merenda',
             self::ExcluirItens => 'Excluir Itens',

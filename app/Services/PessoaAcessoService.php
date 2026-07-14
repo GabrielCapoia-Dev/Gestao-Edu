@@ -27,6 +27,36 @@ class PessoaAcessoService
             ->map(fn ($id): int => (int) $id);
     }
 
+    public function rolesFuncionaisGerenciadasIds(): Collection
+    {
+        $idsPivot = DB::table('funcao_administrativa_role')
+            ->pluck('role_id')
+            ->map(fn ($id): int => (int) $id);
+
+        $idsPorNome = Role::query()
+            ->whereIn('name', ['Professor', 'Equipe Gestora', 'SecretÃ¡rio', 'Secretário'])
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id);
+
+        return $idsPivot
+            ->merge($idsPorNome)
+            ->unique()
+            ->values();
+    }
+
+    public function roleFuncionalGerenciada(Role|int|string|null $role): bool
+    {
+        if ($role instanceof Role) {
+            return $this->rolesFuncionaisGerenciadasIds()->contains((int) $role->id);
+        }
+
+        if (is_numeric($role)) {
+            return $this->rolesFuncionaisGerenciadasIds()->contains((int) $role);
+        }
+
+        return in_array((string) $role, ['Professor', 'Equipe Gestora', 'SecretÃ¡rio', 'Secretário'], true);
+    }
+
     public function usuarioEhProfessor(Pessoa|Servidor|User|null $referencia): bool
     {
         if ($referencia instanceof User) {
@@ -154,8 +184,30 @@ class PessoaAcessoService
 
     public function mesclarRolesComProfessor(User $user, array $roleIds): array
     {
+        $forjadas = collect($roleIds)
+            ->map(fn ($id): int => (int) $id)
+            ->intersect($this->rolesFuncionaisGerenciadasIds())
+            ->diff($user->roles()->pluck('roles.id')->map(fn ($id): int => (int) $id));
+
+        if ($forjadas->isNotEmpty()) {
+            throw new \Illuminate\Auth\Access\AuthorizationException(
+                'Roles funcionais devem ser alteradas apenas pelo fluxo de Pessoas.'
+            );
+        }
+
         if (! $this->usuarioEhProfessor($user)) {
-            return $roleIds;
+            $funcionaisAtuais = $user->roles()
+                ->pluck('roles.id')
+                ->map(fn ($id): int => (int) $id)
+                ->intersect($this->rolesFuncionaisGerenciadasIds());
+
+            return collect($roleIds)
+                ->map(fn ($id): int => (int) $id)
+                ->reject(fn (int $id): bool => $this->rolesFuncionaisGerenciadasIds()->contains($id))
+                ->merge($funcionaisAtuais)
+                ->unique()
+                ->values()
+                ->all();
         }
 
         return collect($roleIds)

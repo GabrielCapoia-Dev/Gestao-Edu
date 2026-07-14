@@ -342,59 +342,7 @@ class ServidorService
 
     public function aplicarEscopoVisibilidade(Builder $query, ?User $user): Builder
     {
-        $scope = app(PessoaScopeService::class);
-
-        if (! $user) {
-            return $query->whereRaw('1 = 0');
-        }
-
-        if ($scope->hasGlobalAccess($user)) {
-            return $query;
-        }
-
-        $escolaIds = $scope->escolaIdsDosVinculos($user);
-
-        if ($scope->ehEquipeGestora($user)) {
-            if ($escolaIds === []) {
-                return $query->whereRaw('1 = 0');
-            }
-
-            return $query->where(function (Builder $servidores) use ($escolaIds): void {
-                $servidores
-                    ->whereIn('id_escola', $escolaIds)
-                    ->orWhereHas(
-                        'vinculosAtivos',
-                        fn (Builder $vinculos): Builder => $vinculos->whereIn('id_escola', $escolaIds)
-                    );
-            });
-        }
-
-        $setorIds = $scope->visibleSetorIds($user);
-
-        if ($setorIds === [] && $escolaIds === []) {
-            return $query->whereRaw('1 = 0');
-        }
-
-        return $query->where(function (Builder $servidores) use ($setorIds, $escolaIds): void {
-            if ($setorIds !== []) {
-                $servidores
-                    ->whereIn('setor_id', $setorIds)
-                    ->orWhereHas('escola', fn (Builder $escola): Builder => $escola->whereIn('setor_id', $setorIds))
-                    ->orWhereHas(
-                        'vinculosAtivos',
-                        fn (Builder $vinculos): Builder => $vinculos->whereIn('setor_id', $setorIds)
-                    );
-            }
-
-            if ($escolaIds !== []) {
-                $servidores
-                    ->orWhereIn('id_escola', $escolaIds)
-                    ->orWhereHas(
-                        'vinculosAtivos',
-                        fn (Builder $vinculos): Builder => $vinculos->whereIn('id_escola', $escolaIds)
-                    );
-            }
-        });
+        return app(PessoaScopeService::class)->applyPessoaScope($query, $user);
     }
 
     /**

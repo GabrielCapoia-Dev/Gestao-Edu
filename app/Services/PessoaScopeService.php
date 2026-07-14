@@ -190,6 +190,58 @@ class PessoaScopeService
         return $query->whereIn($column, $ids);
     }
 
+    public function applyPessoaScope(Builder $query, ?User $user): Builder
+    {
+        if (! $user) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        if ($this->hasGlobalAccess($user)) {
+            return $query;
+        }
+
+        $escolaIds = $this->escolaIdsDosVinculos($user);
+
+        if ($escolaIds !== []) {
+            return $query->where(function (Builder $pessoas) use ($escolaIds): void {
+                $pessoas
+                    ->whereHas('professores', fn (Builder $professores): Builder => $professores
+                        ->where('ativo', true)
+                        ->whereIn('id_escola', $escolaIds))
+                    ->orWhereHas('vinculosAtivos', fn (Builder $vinculos): Builder => $vinculos
+                        ->whereIn('id_escola', $escolaIds));
+            });
+        }
+
+        if ($this->usaEscopoPorVinculos($user)) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        $setorIds = $this->visibleSetorIds($user);
+
+        if ($setorIds === []) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereHas('vinculosAtivos', fn (Builder $vinculos): Builder => $vinculos
+            ->whereIn('setor_id', $setorIds));
+    }
+
+    public function canAccessPessoa(?User $user, Servidor $pessoa): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        if ($this->hasGlobalAccess($user)) {
+            return true;
+        }
+
+        $query = Servidor::query()->whereKey($pessoa->getKey());
+
+        return $this->applyPessoaScope($query, $user)->exists();
+    }
+
     /** @return array<int, int> */
     public function visibleSetorIds(?User $user): array
     {

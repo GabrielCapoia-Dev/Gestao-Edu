@@ -8,6 +8,7 @@ use App\Models\PessoaMatricula;
 use App\Models\Professor;
 use App\Models\Servidor;
 use App\Models\TurmaComponenteProfessor;
+use App\Models\User;
 use Illuminate\Support\Facades\Schema;
 
 class PessoaProfessorFormService
@@ -98,6 +99,42 @@ class PessoaProfessorFormService
             'turma_ids' => $coordenador?->vinculosTurmaAtivos
                 ?->pluck('turma_id')->map(fn ($id): int => (int) $id)->values()->all() ?? [],
         ]);
+    }
+
+    /** @return array<string, mixed> */
+    public function dadosEscopadosParaFormulario(Pessoa|Servidor $pessoa, User $user): array
+    {
+        $escolaIds = app(PessoaScopeService::class)->escolaIdsDosVinculos($user);
+
+        $pessoa->loadMissing([
+            'professores.escola',
+            'matriculas',
+            'vinculosAtivos.funcaoAdministrativa',
+        ]);
+
+        $professores = $pessoa->professores
+            ->where('ativo', true)
+            ->filter(fn (Professor $professor): bool => in_array((int) $professor->id_escola, $escolaIds, true))
+            ->values();
+
+        $vinculosPorProfessor = TurmaComponenteProfessor::query()
+            ->whereIn('professor_id', $professores->pluck('id'))
+            ->where('tem_professor', true)
+            ->whereNotNull('professor_id')
+            ->get()
+            ->groupBy('professor_id');
+
+        return [
+            'nome' => $pessoa->nome,
+            'cpf' => Pessoa::formatarCpf($pessoa->cpf),
+            'email' => $pessoa->email,
+            'telefone' => $pessoa->telefone,
+            'status' => $pessoa->status,
+            'observacoes' => $pessoa->observacoes,
+            'cargo' => ServidorResource::CARGO_PROFESSOR,
+            'matriculas_professor' => $this->montarMatriculasHierarquicas($pessoa, $professores, $vinculosPorProfessor),
+            'registros_professor' => [],
+        ];
     }
 
     /**

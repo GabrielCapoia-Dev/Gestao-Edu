@@ -2,87 +2,48 @@
 
 namespace App\Services;
 
-use App\Models\Role;
-
 class RoleService
 {
-
     public function adminRole($record): bool
     {
-        $roles = [
-            'Admin',
-        ];
-
-        foreach ($roles as $role) {
-            if ($record->name == $role) {
-                return true;
-            }
-        }
-        return false;
+        return $record->name === 'Admin';
     }
 
     public function bloquearCampo($record, $context): bool
     {
-
-        if ($context == 'create') {
+        if ($context === 'create') {
             return false;
         }
 
-        $roles = [
-            'Admin',
-            'Secretário',
-            'Administrativo',
-        ];
-
-        foreach ($roles as $role) {
-            if ($record->name == $role) {
-                return true;
-            }
-        }
-
-        return false;
+        return $this->roleProtegida($record, ['Admin', 'SecretÃ¡rio', 'Administrativo']);
     }
 
     public function bloquearCampoEdit($record, $context): bool
     {
-
-        if ($context == 'create') {
+        if ($context === 'create') {
             return false;
         }
 
-        $roles = [
-            'Admin',
-        ];
-
-        foreach ($roles as $role) {
-            if ($record->name == $role) {
-                return true;
-            }
-        }
-
-        return false;
+        return $this->roleProtegida($record, ['Admin']);
     }
+
     public function bloquearExclusao($record): bool
     {
-
-        $roles = [
-            'Admin',
-            'Secretário',
-            'Administrativo',
-        ];
-
-        foreach ($roles as $role) {
-            if ($record->name == $role) {
-                return true;
-            }
-        }
-
-        return false;
+        return $this->roleProtegida($record, ['Admin', 'SecretÃ¡rio', 'Administrativo']);
     }
 
     public function bloquearSelecaoBulkActions($record): bool
     {
-        $bloqueados = ['Admin', 'Secretário', 'Administrativo'];
-        return !in_array($record->name, $bloqueados);
+        return ! $this->roleProtegida($record, ['Admin', 'SecretÃ¡rio', 'Administrativo']);
+    }
+
+    /** @param list<string> $nomes */
+    private function roleProtegida($record, array $nomes): bool
+    {
+        if (app(PessoaAcessoService::class)->roleFuncionalGerenciada($record)) {
+            return true;
+        }
+
+        return in_array($record->name, $nomes, true);
     }
 }

@@ -12,6 +12,7 @@ use Filament\Schemas\Components\RenderHook;
 use Filament\Schemas\Schema;
 use Filament\View\PanelsRenderHook;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Gate;
 
 class ManageServidores extends ManageRecords
 {
@@ -44,6 +45,7 @@ class ManageServidores extends ManageRecords
         return [
             CreateAction::make()
                 ->label('Nova pessoa')
+                ->visible(fn (): bool => Gate::allows('create', Servidor::class))
                 ->model(Servidor::class)
                 ->modalWidth('6xl')
                 ->modalIcon(null)

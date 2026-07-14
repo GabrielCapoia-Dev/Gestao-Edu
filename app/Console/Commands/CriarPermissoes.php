@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\FuncaoAdministrativa;
+use App\Models\Enums\ListaPermissoes;
 use App\Models\Role;
 use App\Support\EquipeGestoraPermissionPreset;
 use Illuminate\Console\Command;
@@ -71,6 +72,14 @@ class CriarPermissoes extends Command
 
     private function basePermissions(): array
     {
+        $obsolete = collect($this->obsoletePermissions());
+
+        return collect(ListaPermissoes::cases())
+            ->map(fn (ListaPermissoes $permission): string => $permission->label())
+            ->reject(fn (string $permission): bool => $obsolete->contains($permission))
+            ->values()
+            ->all();
+
         return [
             'Listar Alunos',
             'Listar Relatórios: Professor por Componente e Turma',
@@ -632,12 +641,32 @@ class CriarPermissoes extends Command
     private function migrarPermissoesLegadasDeGestao(): void
     {
         $map = [
+            'Listar Servidores' => ['Listar Pessoas'],
+            'Criar Servidores' => ['Criar Pessoas'],
+            'Editar Servidores' => ['Editar Pessoas'],
+            'Excluir Servidores' => ['Excluir Pessoas'],
+            'Gerenciar Funções de Servidores' => ['Gerenciar Vínculos Estruturais de Pessoas'],
+            'Gerenciar FunÃ§Ãµes de Servidores' => ['Gerenciar VÃ­nculos Estruturais de Pessoas'],
+            'Criar Professores' => ['Criar Pessoas'],
+            'Listar Equipe Gestora' => ['Listar Pessoas'],
+            'Criar Equipe Gestora' => ['Listar Pessoas', 'Criar Pessoas', 'Editar Pessoas', 'Gerenciar Vínculos Estruturais de Pessoas'],
+            'Editar Equipe Gestora' => ['Listar Pessoas', 'Editar Pessoas', 'Gerenciar Vínculos Estruturais de Pessoas'],
+            'Excluir Equipe Gestora' => ['Listar Pessoas', 'Editar Pessoas', 'Excluir Pessoas', 'Gerenciar Vínculos Estruturais de Pessoas'],
+            'Excluir Equipe Gestora em Massa' => ['Listar Pessoas', 'Editar Pessoas', 'Excluir Pessoas', 'Gerenciar Vínculos Estruturais de Pessoas'],
             'Listar Equipe Gestora' => ['Listar Servidores'],
             'Criar Equipe Gestora' => ['Listar Servidores', 'Editar Servidores', 'Gerenciar Funções de Servidores'],
             'Editar Equipe Gestora' => ['Listar Servidores', 'Editar Servidores', 'Gerenciar Funções de Servidores'],
             'Excluir Equipe Gestora' => ['Listar Servidores', 'Editar Servidores', 'Gerenciar Funções de Servidores'],
             'Excluir Equipe Gestora em Massa' => ['Listar Servidores', 'Editar Servidores', 'Gerenciar Funções de Servidores'],
         ];
+
+        $map = array_replace($map, [
+            'Listar Equipe Gestora' => ['Listar Pessoas'],
+            'Criar Equipe Gestora' => ['Listar Pessoas', 'Criar Pessoas', 'Editar Pessoas', 'Gerenciar Vínculos Estruturais de Pessoas'],
+            'Editar Equipe Gestora' => ['Listar Pessoas', 'Editar Pessoas', 'Gerenciar Vínculos Estruturais de Pessoas'],
+            'Excluir Equipe Gestora' => ['Listar Pessoas', 'Editar Pessoas', 'Excluir Pessoas', 'Gerenciar Vínculos Estruturais de Pessoas'],
+            'Excluir Equipe Gestora em Massa' => ['Listar Pessoas', 'Editar Pessoas', 'Excluir Pessoas', 'Gerenciar Vínculos Estruturais de Pessoas'],
+        ]);
 
         foreach ($map as $legacyName => $targetNames) {
             $legacyPermission = Permission::query()
@@ -684,6 +713,111 @@ class CriarPermissoes extends Command
                 $legacyPermission->delete();
             });
         }
+
+        $this->removerPermissoesObsoletas();
+    }
+
+    private function removerPermissoesObsoletas(): void
+    {
+        foreach ($this->obsoletePermissions() as $permissionName) {
+            $permission = Permission::query()
+                ->where('guard_name', 'web')
+                ->where('name', $permissionName)
+                ->first();
+
+            if (! $permission) {
+                continue;
+            }
+
+            $roles = DB::table('role_has_permissions')
+                ->where('permission_id', $permission->id)
+                ->join('roles', 'roles.id', '=', 'role_has_permissions.role_id')
+                ->pluck('roles.name')
+                ->all();
+            $users = DB::table('model_has_permissions')
+                ->where('permission_id', $permission->id)
+                ->pluck('model_id')
+                ->all();
+
+            DB::transaction(function () use ($permission): void {
+                DB::table('role_has_permissions')->where('permission_id', $permission->id)->delete();
+                DB::table('model_has_permissions')->where('permission_id', $permission->id)->delete();
+                $permission->delete();
+            });
+
+            if ($roles !== [] || $users !== []) {
+                $this->warn("Permissao obsoleta removida sem ampliar acesso: {$permissionName}. Roles: "
+                    .implode(', ', $roles).'. Usuarios: '.implode(', ', $users).'.');
+            }
+        }
+    }
+
+    /** @return list<string> */
+    private function obsoletePermissions(): array
+    {
+        $enumLabels = array_map(
+            fn (ListaPermissoes $permission): string => $permission->label(),
+            [
+                ListaPermissoes::ListarProfessores,
+                ListaPermissoes::EditarProfessores,
+                ListaPermissoes::EditarEscolaDoProfessor,
+                ListaPermissoes::EditarMatriculaDoProfessor,
+                ListaPermissoes::EditarNomeDoProfessor,
+                ListaPermissoes::EditarEspecializacoesDeProfessores,
+                ListaPermissoes::EditarDadosDoProfessor,
+                ListaPermissoes::TransferirProfessores,
+                ListaPermissoes::DesativarProfessores,
+                ListaPermissoes::ExcluirProfessores,
+                ListaPermissoes::ExcluirProfessoresEmMassa,
+                ListaPermissoes::ExportarProfessores,
+                ListaPermissoes::VisualizarProfessores,
+                ListaPermissoes::VisualizarEspecializacoesDeProfessores,
+                ListaPermissoes::VisualizarDetalhesDeProfessor,
+                ListaPermissoes::FiltrarProfessoresPorEscola,
+                ListaPermissoes::FiltrarProfessoresPorComponente,
+                ListaPermissoes::ListarFuncoesAdministrativas,
+                ListaPermissoes::CriarFuncoesAdministrativas,
+                ListaPermissoes::EditarFuncoesAdministrativas,
+                ListaPermissoes::ExcluirFuncoesAdministrativas,
+                ListaPermissoes::ExcluirFuncoesAdministrativasEmMassa,
+                ListaPermissoes::ListarServidores,
+                ListaPermissoes::CriarServidores,
+                ListaPermissoes::EditarServidores,
+                ListaPermissoes::ExcluirServidores,
+                ListaPermissoes::GerenciarFuncoesDeServidores,
+            ],
+        );
+
+        return array_values(array_unique([
+            ...$enumLabels,
+            'Listar Professores',
+            'Editar Professores',
+            'Editar Escola do Professor',
+            'Editar Matricula do Professor',
+            'Editar Nome do Professor',
+            'Editar EspecializaÃ§Ãµes de Professores',
+            'Editar Dados do Professor',
+            'Transferir Professores',
+            'Desativar Professores',
+            'Excluir Professores',
+            'Excluir Professores em Massa',
+            'Exportar Professores',
+            'Visualizar Professores',
+            'Visualizar EspecializaÃ§Ãµes de Professores',
+            'Visualizar Detalhes de Professor',
+            'Filtrar Professores por Escola',
+            'Filtrar Professores por Componente',
+            'Listar FunÃ§Ãµes Administrativas',
+            'Criar FunÃ§Ãµes Administrativas',
+            'Editar FunÃ§Ãµes Administrativas',
+            'Excluir FunÃ§Ãµes Administrativas',
+            'Excluir FunÃ§Ãµes Administrativas em Massa',
+            'Listar Servidores',
+            'Criar Servidores',
+            'Editar Servidores',
+            'Excluir Servidores',
+            'Gerenciar FunÃ§Ãµes de Servidores',
+        ]));
     }
 
     private function sincronizarSetorDaRole(Role $role, string $roleName): void

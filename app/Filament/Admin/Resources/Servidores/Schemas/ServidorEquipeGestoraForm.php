@@ -116,7 +116,9 @@ class ServidorEquipeGestoraForm
     {
         $user = Auth::user();
 
-        return (bool) ($user?->hasRole('Admin') || $user?->hasPermissionTo('Gerenciar Funções de Servidores'));
+        return (bool) ($user?->hasRole('Admin')
+            || $user?->hasPermissionTo('Gerenciar Vínculos Estruturais de Pessoas')
+            || $user?->hasPermissionTo('Gerenciar VÃ­nculos Estruturais de Pessoas'));
     }
 
     /** @return array<int, string> */

@@ -6,64 +6,25 @@ class SecretarioPermissionPreset
 {
     public static function base(): array
     {
-        return [
-            'Listar Alunos',
-            'Listar Pedidos',
-            'Listar Turmas',
-            'Listar Professores',
-            'Criar Alunos',
-            'Importar Alunos por Planilha',
-            'Realizar Transferencia de Aluno',
-            'Realizar Remanejamento de Aluno',
-            'Gerar Parecer de Transferencia',
-            'Notificar Status Pendente',
-            'Notificar Impedimento de Matricula por Falta de Transferencia',
-            'Criar Pedidos',
-            'Criar Turmas',
-            'Criar Professores',
-            'Editar Alunos',
-            'Editar Escola do Aluno',
-            'Editar Nome do Professor',
-            'Editar Especializações de Professores',
-            'Editar Turmas',
-            'Editar Professores',
-            'Excluir Alunos',
-            'Exportar Alunos',
-            'Exportar Modelo de Importacao de Alunos',
-            'Exportar Turmas',
-            'Exportar Professores',
-            'Filtrar Alunos por Escola',
-            'Filtrar Professores por Escola',
-            'Filtrar Professores por Componente',
-            'Filtrar Professores por Serie',
-            'Filtrar Turmas por Escola',
-            'Visualizar Detalhes de Aluno',
-            'Visualizar Especializações de Professores',
-            'Visualizar Detalhes de Professor',
-            'Visualizar Notificações',
-            'Visualizar Histórico de Pedidos',
-            'Visualizar Arquivos de Pedidos',
-            'Visualizar Notificação: Pedido Reaberto',
-            'Avaliar Pedidos',
-        ];
+        return [];
     }
 
     public static function gestaoEscolar(): array
     {
         return [
-            'Listar Gestão de Inventário',
-            'Listar Pedidos de Inventário',
-            'Criar Pedidos de Inventário',
-            'Conferir Pedidos de Inventário',
-            'Listar Balanços de Inventário',
-            'Criar Balanços de Inventário',
-            'Iniciar Balanços de Inventário',
-            'Registrar Contagem de Balanços de Inventário',
-            'Concluir Balanços de Inventário',
-            'Adiar Balanços de Inventário',
-            'Cancelar Balanços de Inventário',
-            'Acompanhar Avaliações',
-            'Exportar Relatórios',
+            'Listar GestÃ£o de InventÃ¡rio',
+            'Listar Pedidos de InventÃ¡rio',
+            'Criar Pedidos de InventÃ¡rio',
+            'Conferir Pedidos de InventÃ¡rio',
+            'Listar BalanÃ§os de InventÃ¡rio',
+            'Criar BalanÃ§os de InventÃ¡rio',
+            'Iniciar BalanÃ§os de InventÃ¡rio',
+            'Registrar Contagem de BalanÃ§os de InventÃ¡rio',
+            'Concluir BalanÃ§os de InventÃ¡rio',
+            'Adiar BalanÃ§os de InventÃ¡rio',
+            'Cancelar BalanÃ§os de InventÃ¡rio',
+            'Acompanhar AvaliaÃ§Ãµes',
+            'Exportar RelatÃ³rios',
         ];
     }
 

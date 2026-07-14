@@ -5,11 +5,14 @@ namespace App\Filament\Admin\Resources\Servidores;
 use App\Filament\Admin\Resources\Servidores\Pages\ManageServidores;
 use App\Filament\Admin\Resources\Servidores\Schemas\ServidorEquipeGestoraForm;
 use App\Filament\Admin\Resources\Servidores\Schemas\ServidorMatriculasForm;
+use App\Models\Escola;
 use App\Models\Professor;
 use App\Models\ProfessorMatricula;
 use App\Models\Servidor;
 use App\Models\Turma;
+use App\Services\PessoaEdicaoEscopadaService;
 use App\Services\PessoaProfessorFormService;
+use App\Services\PessoaScopeService;
 use App\Services\ServidorService;
 use App\Services\UserService;
 use BackedEnum;
@@ -153,6 +156,13 @@ class ServidorResource extends Resource
         return $options;
     }
 
+    public static function usuarioPodeGerenciarEstrutura(?Servidor $record = null): bool
+    {
+        return $record
+            ? Gate::allows('manageStructure', $record)
+            : Gate::allows('manageStructure', Servidor::class);
+    }
+
     public static function table(Table $table): Table
     {
         return $table
@@ -179,13 +189,13 @@ class ServidorResource extends Resource
                     ->getStateUsing(function (Servidor $record): string {
                         $record->loadMissing(['matriculas', 'professores']);
 
-                        if ($record->matriculas->isNotEmpty()) {
+                        if (app(PessoaScopeService::class)->hasGlobalAccess(Auth::user()) && $record->matriculas->isNotEmpty()) {
                             return $record->matriculas
                                 ->map(fn ($m): string => sprintf('%s (%s)', $m->matricula, $m->turnoLabel()))
                                 ->implode(', ');
                         }
 
-                        return $record->professores
+                        return static::professoresVisiveis($record)
                             ->map(fn (Professor $p): string => sprintf('%s (%s)', $p->matricula, $p->turnoLabel()))
                             ->unique()
                             ->implode(', ') ?: '—';
@@ -248,7 +258,7 @@ class ServidorResource extends Resource
             ->filters([
                 SelectFilter::make('id_escola')
                     ->label('Escola')
-                    ->options(fn (): array => app(UserService::class)->opcoesDeEscolasParaCampo(Auth::user()))
+                    ->options(fn (): array => static::escolasOptionsEscopadas())
                     ->query(function (Builder $query, array $data): Builder {
                         if (! filled($data['value'] ?? null)) {
                             return $query;
@@ -328,8 +338,7 @@ class ServidorResource extends Resource
 
                 EditAction::make()
                     ->model(Servidor::class)
-                    ->visible(fn (Servidor $record): bool => Gate::allows('update', $record)
-                        && (! static::ehEquipeGestora($record) || ServidorEquipeGestoraForm::usuarioPodeAdministrar()))
+                    ->visible(fn (Servidor $record): bool => Gate::allows('update', $record))
                     ->modalWidth('6xl')
                     ->modalIcon(null)
                     ->modalHeading(fn (Servidor $record): string => "Editar pessoa — {$record->nome}")
@@ -341,9 +350,30 @@ class ServidorResource extends Resource
                     ])
                     ->stickyModalHeader()
                     ->closeModalByClickingAway(false)
-                    ->fillForm(fn (Servidor $record): array => app(PessoaProfessorFormService::class)->dadosParaFormulario($record))
+                    ->fillForm(function (Servidor $record): array {
+                        if (static::usuarioPodeGerenciarEstrutura($record)) {
+                            return app(PessoaProfessorFormService::class)->dadosParaFormulario($record);
+                        }
+
+                        return app(PessoaProfessorFormService::class)->dadosEscopadosParaFormulario($record, Auth::user());
+                    })
                     ->using(function (Servidor $record, array $data): Servidor {
                         try {
+                            if (! static::usuarioPodeGerenciarEstrutura($record)) {
+                                $atualizado = app(PessoaEdicaoEscopadaService::class)->atualizar(
+                                    $record,
+                                    Auth::user(),
+                                    $data,
+                                );
+
+                                Notification::make()
+                                    ->title('Pessoa atualizada')
+                                    ->success()
+                                    ->send();
+
+                                return $atualizado;
+                            }
+
                             [$data, $vinculos] = static::prepararDadosPersistencia($data, $record);
 
                             $atualizado = app(ServidorService::class)->atualizarServidorComFuncoes(
@@ -431,6 +461,14 @@ class ServidorResource extends Resource
                     ->visible(fn (): bool => Gate::allows('deleteAny', Servidor::class))
                     ->deselectRecordsAfterCompletion()
                     ->using(function ($records): void {
+                        foreach ($records as $record) {
+                            if (! $record instanceof Servidor || ! Gate::allows('delete', $record)) {
+                                throw new \Illuminate\Auth\Access\AuthorizationException(
+                                    'Você não possui permissão para excluir uma ou mais Pessoas selecionadas.',
+                                );
+                            }
+                        }
+
                         if (! ServidorEquipeGestoraForm::usuarioPodeAdministrar()
                             && $records->contains(
                                 fn (Servidor $record): bool => ! app(ServidorService::class)->pessoaPodeSerExcluida($record),
@@ -480,7 +518,7 @@ class ServidorResource extends Resource
     {
         $record->loadMissing(['professores', 'vinculosAtivos.funcaoAdministrativa']);
 
-        $cargosGestores = $record->vinculosAtivos
+        $cargosGestores = static::vinculosVisiveis($record)
             ->filter(fn ($vinculo): bool => (bool) (
                 $vinculo->funcaoAdministrativa?->direcao_escolar
                 || $vinculo->funcaoAdministrativa?->coordenacao_pedagogica
@@ -496,7 +534,66 @@ class ServidorResource extends Resource
             return $cargosGestores->implode(' + ');
         }
 
-        return $record->professores->where('ativo', true)->isNotEmpty() ? 'Professor' : '—';
+        return static::professoresVisiveis($record)->isNotEmpty() ? 'Professor' : '—';
+    }
+
+    public static function escolasOptionsEscopadas(): array
+    {
+        $user = Auth::user();
+        $scope = app(PessoaScopeService::class);
+
+        if ($scope->hasGlobalAccess($user)) {
+            return app(UserService::class)->opcoesDeEscolasParaCampo($user);
+        }
+
+        $ids = $scope->escolaIdsDosVinculos($user);
+
+        if ($ids === []) {
+            return [];
+        }
+
+        return Escola::query()
+            ->where('ativo', true)
+            ->whereIn('id', $ids)
+            ->orderBy('nome')
+            ->pluck('nome', 'id')
+            ->toArray();
+    }
+
+    private static function professoresVisiveis(Servidor $record)
+    {
+        $record->loadMissing('professores');
+        $user = Auth::user();
+        $scope = app(PessoaScopeService::class);
+
+        if ($scope->hasGlobalAccess($user)) {
+            return $record->professores->where('ativo', true)->values();
+        }
+
+        $escolaIds = $scope->escolaIdsDosVinculos($user);
+
+        return $record->professores
+            ->where('ativo', true)
+            ->filter(fn (Professor $professor): bool => in_array((int) $professor->id_escola, $escolaIds, true))
+            ->values();
+    }
+
+    private static function vinculosVisiveis(Servidor $record)
+    {
+        $record->loadMissing('vinculosAtivos.funcaoAdministrativa');
+        $user = Auth::user();
+        $scope = app(PessoaScopeService::class);
+
+        if ($scope->hasGlobalAccess($user)) {
+            return $record->vinculosAtivos;
+        }
+
+        $escolaIds = $scope->escolaIdsDosVinculos($user);
+
+        return $record->vinculosAtivos
+            ->filter(fn ($vinculo): bool => filled($vinculo->id_escola)
+                && in_array((int) $vinculo->id_escola, $escolaIds, true))
+            ->values();
     }
 
     private static function aplicarFiltroFuncaoGestora(Builder $query): Builder
@@ -646,7 +743,7 @@ class ServidorResource extends Resource
             'vinculosAtivos.vinculosTurmaAtivos.turma.serie',
         ]);
 
-        $professoresAtivos = $record->professores->where('ativo', true)->values();
+        $professoresAtivos = static::professoresVisiveis($record);
 
         $vinculosPorProfessor = \App\Models\TurmaComponenteProfessor::query()
             ->with([
@@ -705,7 +802,7 @@ class ServidorResource extends Resource
             ->sortBy(fn (array $grupo): string => $grupo['escola'].'|'.$grupo['turno'])
             ->values();
 
-        $vinculosGestores = $record->vinculosAtivos
+        $vinculosGestores = static::vinculosVisiveis($record)
             ->filter(fn ($vinculo): bool => (bool) (
                 $vinculo->funcaoAdministrativa?->direcao_escolar
                 || $vinculo->funcaoAdministrativa?->coordenacao_pedagogica
@@ -798,7 +895,7 @@ class ServidorResource extends Resource
         if (($cargo === self::CARGO_EQUIPE_GESTORA || $recordEraGestor)
             && ! ServidorEquipeGestoraForm::usuarioPodeAdministrar()) {
             throw new \Illuminate\Auth\Access\AuthorizationException(
-                'Apenas Admin ou usuário com a permissão Gerenciar Funções de Servidores pode administrar a Equipe Gestora.',
+                'Apenas Admin ou usuário com a permissão Gerenciar Vínculos Estruturais de Pessoas pode administrar a Equipe Gestora.',
             );
         }
 

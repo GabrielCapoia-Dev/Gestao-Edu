@@ -8,6 +8,7 @@ use App\Models\Escola;
 use App\Models\PessoaMatricula;
 use App\Models\Professor;
 use App\Models\Turma;
+use App\Services\PessoaScopeService;
 use App\Services\UserService;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
@@ -42,6 +43,8 @@ class ServidorMatriculasForm
                         TextInput::make('matricula')
                             ->label('Nº da matrícula')
                             ->required()
+                            ->disabled(fn (): bool => ! ServidorResource::usuarioPodeGerenciarEstrutura())
+                            ->dehydrated(fn (): bool => ServidorResource::usuarioPodeGerenciarEstrutura())
                             ->maxLength(255)
                             ->live(onBlur: true),
 
@@ -55,6 +58,8 @@ class ServidorMatriculasForm
                                 return PessoaMatricula::turnosDisponiveisParaItem($turnosIrmaos, $atual ?: null);
                             })
                             ->required()
+                            ->disabled(fn (): bool => ! ServidorResource::usuarioPodeGerenciarEstrutura())
+                            ->dehydrated(fn (): bool => ServidorResource::usuarioPodeGerenciarEstrutura())
                             ->live()
                             ->native(false)
                             ->helperText(fn (Get $get): ?string => self::helperTurnoItem($get)),
@@ -70,10 +75,12 @@ class ServidorMatriculasForm
 
                                 Select::make('id_escola')
                                     ->label('Escola / CMEI')
-                                    ->options(fn (): array => app(UserService::class)->opcoesDeEscolasParaCampo(Auth::user()))
+                                    ->options(fn (): array => self::escolasOptions())
                                     ->searchable()
                                     ->preload()
                                     ->required()
+                                    ->disabled(fn (): bool => ! ServidorResource::usuarioPodeGerenciarEstrutura())
+                                    ->dehydrated(fn (): bool => ServidorResource::usuarioPodeGerenciarEstrutura())
                                     ->live()
                                     ->columnSpanFull(),
 
@@ -101,6 +108,8 @@ class ServidorMatriculasForm
                                     ])
                                     ->columns(2)
                                     ->defaultItems(0)
+                                    ->addable(fn (): bool => self::podeEditarTurmasComponentes())
+                                    ->deletable(fn (): bool => self::podeEditarTurmasComponentes())
                                     ->addActionLabel('+ Turma')
                                     ->collapsible()
                                     ->collapsed()
@@ -113,6 +122,8 @@ class ServidorMatriculasForm
                             ->columns(1)
                             ->defaultItems(0)
                             ->minItems(0)
+                            ->addable(fn (): bool => ServidorResource::usuarioPodeGerenciarEstrutura())
+                            ->deletable(fn (): bool => ServidorResource::usuarioPodeGerenciarEstrutura())
                             ->addActionLabel('+ Escola')
                             ->itemHeaders()
                             ->itemLabel(function (array $state): string {
@@ -135,8 +146,10 @@ class ServidorMatriculasForm
                     ->minItems(1)
                     ->maxItems(PessoaMatricula::MAX_POR_PESSOA)
                     ->addable(function (Get $get): bool {
-                        return PessoaMatricula::podeAdicionarMatricula(self::matriculasDoEstado($get));
+                        return ServidorResource::usuarioPodeGerenciarEstrutura()
+                            && PessoaMatricula::podeAdicionarMatricula(self::matriculasDoEstado($get));
                     })
+                    ->deletable(fn (): bool => ServidorResource::usuarioPodeGerenciarEstrutura())
                     ->addActionLabel('+ Matrícula')
                     ->itemHeaders()
                     ->itemLabel(function (array $state): string {
@@ -271,6 +284,38 @@ class ServidorMatriculasForm
         }
 
         return null;
+    }
+
+    /** @return array<int, string> */
+    private static function escolasOptions(): array
+    {
+        $user = Auth::user();
+        $scope = app(PessoaScopeService::class);
+
+        if ($scope->hasGlobalAccess($user)) {
+            return app(UserService::class)->opcoesDeEscolasParaCampo($user);
+        }
+
+        $ids = $scope->escolaIdsDosVinculos($user);
+
+        if ($ids === []) {
+            return [];
+        }
+
+        return Escola::query()
+            ->where('ativo', true)
+            ->whereIn('id', $ids)
+            ->orderBy('nome')
+            ->pluck('nome', 'id')
+            ->toArray();
+    }
+
+    private static function podeEditarTurmasComponentes(): bool
+    {
+        $user = Auth::user();
+
+        return ServidorResource::usuarioPodeGerenciarEstrutura()
+            || (bool) $user?->hasPermissionTo('Editar Turmas e Componentes de Pessoas');
     }
 
     private static function cargoDoEstado(Get $get): ?string

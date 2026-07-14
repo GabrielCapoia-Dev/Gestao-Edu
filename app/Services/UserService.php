@@ -180,6 +180,8 @@ class UserService
 
     public function opcoesDeRoles(Builder $base, ?User $user): Builder
     {
+        $base->whereNotIn('id', app(PessoaAcessoService::class)->rolesFuncionaisGerenciadasIds()->all());
+
         return $this->ehAdmin($user) ? $base : $base->where('name', '!=', 'Admin');
     }
 

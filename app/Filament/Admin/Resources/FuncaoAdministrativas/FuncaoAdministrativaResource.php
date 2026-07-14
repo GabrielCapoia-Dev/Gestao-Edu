@@ -44,7 +44,7 @@ class FuncaoAdministrativaResource extends Resource
 
     public static function canAccess(): bool
     {
-        return Gate::allows('viewAny', FuncaoAdministrativa::class);
+        return false;
     }
 
     public static function form(Schema $schema): Schema

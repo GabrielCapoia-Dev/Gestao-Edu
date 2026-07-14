@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources\Professors;
 
 use App\Filament\Admin\Resources\Professors\Pages\ManageProfessors;
 use App\Models\Professor;
+use App\Models\Servidor;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -29,6 +30,11 @@ class ProfessorResource extends Resource
     protected static ?string $slug = 'professores';
     protected static bool $shouldRegisterNavigation = false;
 
+    public static function canAccess(): bool
+    {
+        return Gate::allows('viewAny', Servidor::class);
+    }
+
     public static function getGloballySearchableAttributes(): array
     {
         return ['nome', 'escola.nome', 'matricula', 'email'];
@@ -52,9 +58,7 @@ class ProfessorResource extends Resource
 
     public static function canGloballySearch(): bool
     {
-        /** @var \App\Models\User */
-        $user = Auth::user();
-        return Gate::forUser($user)->allows('viewAny', Professor::class);
+        return false;
     }
 
     public static function professorService(): ProfessorService

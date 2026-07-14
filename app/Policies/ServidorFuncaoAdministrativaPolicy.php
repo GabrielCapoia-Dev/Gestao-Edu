@@ -9,12 +9,13 @@ class ServidorFuncaoAdministrativaPolicy
 {
     public function create(User $user): bool
     {
-        return $user->hasPermissionTo('Gerenciar Funções de Servidores');
+        return $user->hasPermissionTo('Gerenciar Vínculos Estruturais de Pessoas')
+            || $user->hasPermissionTo('Gerenciar VÃ­nculos Estruturais de Pessoas');
     }
 
     public function update(User $user, ServidorFuncaoAdministrativa $vinculo): bool
     {
-        return $user->hasPermissionTo('Gerenciar Funções de Servidores')
+        return $this->create($user)
             && $vinculo->servidor
             && app(ServidorPolicy::class)->view($user, $vinculo->servidor);
     }
