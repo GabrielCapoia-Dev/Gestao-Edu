@@ -3,7 +3,7 @@
 namespace App\Services\Avaliacoes;
 
 use App\Jobs\RebuildAvaliacaoDashboardFactsJob;
-use App\Models\AvaliacaoDashboardFato;
+use App\Models\Aluno;
 use Illuminate\Support\Facades\DB;
 
 class AvaliacaoDashboardFactsService
@@ -37,6 +37,17 @@ class AvaliacaoDashboardFactsService
 
     public function rebuild(int $avaliacaoId): void
     {
+        DB::table('avaliacao_dashboard_consolidacoes')->upsert([
+            [
+                'avaliacao_id' => $avaliacaoId,
+                'status' => 'processando',
+                'iniciada_em' => now(),
+                'erro' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ], ['avaliacao_id'], ['status', 'iniciada_em', 'erro', 'updated_at']);
+
         DB::table('avaliacao_dashboard_consolidacoes')
             ->where('avaliacao_id', $avaliacaoId)
             ->update(['status' => 'processando', 'iniciada_em' => now(), 'erro' => null, 'updated_at' => now()]);
@@ -51,8 +62,8 @@ class AvaliacaoDashboardFactsService
                     ->join('avaliacao_pauta as ap', 'ap.avaliacao_id', '=', 'at.avaliacao_id')
                     ->join('pautas as p', 'p.id', '=', 'ap.pauta_id')
                     ->where('at.avaliacao_id', $avaliacaoId)
-                    ->where('aln.status', '!=', 'pendente')
-                    ->where('aln.tipo_vinculo', 'principal')
+                    ->where('aln.status', '!=', Aluno::STATUS_PENDENTE)
+                    ->where('aln.tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL)
                     ->where('p.status', true)
                     ->where(function ($query): void {
                         $query->whereNull('p.serie_id')->orWhereColumn('p.serie_id', 't.id_serie');

@@ -75,6 +75,13 @@
                 </section>
             @elseif (($consolidadaEm ?? '') !== '')
                 <div class="dav-refresh-meta">Indicadores consolidados em {{ $consolidadaEm }}</div>
+            @elseif (($consolidacaoStatus ?? '') === 'erro')
+                <section class="dav-dashboard-loading">
+                    <div>
+                        <strong>Falha na consolidação dos indicadores.</strong>
+                        <span>{{ $consolidacaoErro ?: 'Execute novamente o build da avaliação.' }}</span>
+                    </div>
+                </section>
             @endif
 
             <section class="dav-panel dav-panel--legacy">

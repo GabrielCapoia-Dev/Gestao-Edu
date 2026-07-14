@@ -8,9 +8,11 @@ use Illuminate\Console\Command;
 
 class RebuildAvaliacaoDashboardFactsCommand extends Command
 {
-    protected $signature = 'avaliacoes:rebuild-dashboard-facts {avaliacaoId? : Avaliação específica}';
+    protected $signature = 'avaliacoes:rebuild-dashboard-facts {avaliacaoId? : Avaliação específica} {--queue : Apenas enfileira o processamento}';
 
-    protected $description = 'Solicita a consolidação dos fatos do acompanhamento de avaliações.';
+    protected $description = 'Calcula os fatos iniciais do acompanhamento de avaliações.';
+
+    protected $aliases = ['avaliacoes:build-dashboard-facts'];
 
     public function handle(AvaliacaoDashboardFactsService $service): int
     {
@@ -19,10 +21,16 @@ class RebuildAvaliacaoDashboardFactsCommand extends Command
             : Avaliacao::query()->pluck('id')->map(fn ($id): int => (int) $id)->all();
 
         foreach ($ids as $id) {
-            $service->requestRebuild($id);
+            if ($this->option('queue')) {
+                $service->requestRebuild($id);
+            } else {
+                $this->output->write("Consolidando avaliação {$id}... ");
+                $service->rebuild($id);
+                $this->info('ok');
+            }
         }
 
-        $this->info(count($ids) . ' avaliação(ões) enviada(s) para consolidação.');
+        $this->info(count($ids) . ' avaliação(ões) consolidada(s).');
 
         return self::SUCCESS;
     }

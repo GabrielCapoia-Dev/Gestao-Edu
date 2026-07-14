@@ -128,6 +128,8 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     public string $consolidadaEm = '';
 
+    public string $consolidacaoErro = '';
+
     /**
      * @var array<string, array{diretor: string, coordenacao: string, tem_diretor: bool, tem_coordenacao: bool, pode_exportar: bool, motivo_bloqueio: string}>
      */
@@ -1866,6 +1868,7 @@ class DashboardAvaliacoes extends Page implements HasForms
         $this->consolidadaEm = $status?->consolidada_em
             ? \Carbon\Carbon::parse($status->consolidada_em)->format('d/m/Y H:i:s')
             : '';
+        $this->consolidacaoErro = (string) ($status->erro ?? '');
     }
 
     public function verificarConsolidacao(): void
