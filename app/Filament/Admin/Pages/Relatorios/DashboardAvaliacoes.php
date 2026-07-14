@@ -391,9 +391,7 @@ class DashboardAvaliacoes extends Page implements HasForms
                 ->success()
                 ->send();
 
-            $this->redirectRoute('filament.admin.pages.minhas-exportacoes', [
-                'download' => $exportRequest->getKey(),
-            ]);
+            $this->redirect(url()->previous());
         } catch (Throwable $exception) {
             Notification::make()
                 ->title('Não foi possível iniciar a exportação')

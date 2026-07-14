@@ -95,12 +95,8 @@ class PessoaProfessorFormService
             'id_escola' => $escolas->count() === 1 ? $escolas->first() : null,
             'cargos_gestores' => $cargos,
             'portaria' => $vinculosGestores->pluck('portaria')->filter()->first(),
-            'data_inicio' => $vinculosGestores->pluck('data_inicio')->filter()->sort()->first(),
-            'diretor_principal' => (bool) ($diretor?->principal ?? false),
             'turma_ids' => $coordenador?->vinculosTurmaAtivos
                 ?->pluck('turma_id')->map(fn ($id): int => (int) $id)->values()->all() ?? [],
-            'turmas_principais_ids' => $coordenador?->vinculosTurmaAtivos
-                ?->where('principal', true)->pluck('turma_id')->map(fn ($id): int => (int) $id)->values()->all() ?? [],
         ]);
     }
 

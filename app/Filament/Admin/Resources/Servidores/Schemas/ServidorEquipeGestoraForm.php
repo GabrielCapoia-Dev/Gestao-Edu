@@ -8,10 +8,8 @@ use App\Models\Turma;
 use App\Services\UserService;
 use Closure;
 use Filament\Forms\Components\CheckboxList;
-use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
@@ -42,9 +40,7 @@ class ServidorEquipeGestoraForm
                         }
 
                         $set('turma_ids', []);
-                        $set('turmas_principais_ids', []);
-                        $set('diretor_principal', false);
-                        $set('data_inicio', null);
+                        $set('portaria', null);
                     })
                     ->columnSpanFull(),
 
@@ -60,6 +56,13 @@ class ServidorEquipeGestoraForm
                     ->maxItems(2)
                     ->columns(3)
                     ->live()
+                    ->afterStateUpdated(function (Set $set, mixed $state): void {
+                        $cargos = collect(is_array($state) ? $state : [])->filter();
+
+                        if (! $cargos->intersect([self::CARGO_DIRETOR, self::CARGO_COORDENADOR])->isNotEmpty()) {
+                            $set('portaria', null);
+                        }
+                    })
                     ->rule(static function (): Closure {
                         return static function (string $attribute, mixed $value, Closure $fail): void {
                             $cargos = collect(is_array($value) ? $value : [])->filter()->values();
@@ -85,25 +88,9 @@ class ServidorEquipeGestoraForm
                     ->label('Portaria')
                     ->helperText('Diretor e Coordenador compartilham a mesma portaria alfanumérica.')
                     ->required(fn (Get $get): bool => self::possuiCargoComPortaria($get))
+                    ->visible(fn (Get $get): bool => self::possuiCargoComPortaria($get))
                     ->live(onBlur: true)
-                    ->afterStateUpdated(function (Set $set, mixed $state, mixed $old): void {
-                        if ((string) $state !== (string) $old) {
-                            $set('data_inicio', null);
-                        }
-                    })
                     ->maxLength(255),
-
-                DatePicker::make('data_inicio')
-                    ->label('Início da vigência')
-                    ->required()
-                    ->native(false),
-
-                Toggle::make('diretor_principal')
-                    ->label('Diretor principal da escola')
-                    ->helperText('Ao marcar, a substituição é transacional. Sem Diretor principal, os pareceres da escola ficam bloqueados.')
-                    ->visible(fn (Get $get): bool => self::possuiCargo($get, self::CARGO_DIRETOR))
-                    ->default(false)
-                    ->columnSpanFull(),
 
                 CheckboxList::make('turma_ids')
                     ->label('Turmas da coordenação')
@@ -118,34 +105,6 @@ class ServidorEquipeGestoraForm
                     ->visible(fn (Get $get): bool => self::possuiCargo($get, self::CARGO_COORDENADOR))
                     ->columnSpanFull(),
 
-                CheckboxList::make('turmas_principais_ids')
-                    ->label('Coordenação principal por turma')
-                    ->helperText('Marque as turmas nas quais esta Pessoa será principal. Turmas sem principal ficam com parecer bloqueado.')
-                    ->options(function (Get $get): array {
-                        $selecionadas = collect($get('turma_ids') ?? [])
-                            ->map(fn (mixed $id): int => (int) $id)
-                            ->filter()
-                            ->values();
-
-                        return collect(self::turmasOptions($get('id_escola')))
-                            ->only($selecionadas->all())
-                            ->all();
-                    })
-                    ->bulkToggleable()
-                    ->searchable()
-                    ->columns(2)
-                    ->visible(fn (Get $get): bool => self::possuiCargo($get, self::CARGO_COORDENADOR))
-                    ->rule(static function (Get $get): Closure {
-                        return static function (string $attribute, mixed $value, Closure $fail) use ($get): void {
-                            $turmas = collect($get('turma_ids') ?? [])->map(fn (mixed $id): int => (int) $id);
-                            $principais = collect(is_array($value) ? $value : [])->map(fn (mixed $id): int => (int) $id);
-
-                            if ($principais->diff($turmas)->isNotEmpty()) {
-                                $fail('Uma turma principal precisa estar entre as turmas vinculadas à coordenação.');
-                            }
-                        };
-                    })
-                    ->columnSpanFull(),
             ])
             ->columns(2)
             ->visible(fn (Get $get): bool => ($get('cargo') ?? null) === ServidorResource::CARGO_EQUIPE_GESTORA)

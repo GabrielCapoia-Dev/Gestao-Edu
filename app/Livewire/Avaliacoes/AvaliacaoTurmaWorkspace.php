@@ -180,7 +180,8 @@ class AvaliacaoTurmaWorkspace extends Component
 
     public function podeResponder(): bool
     {
-        return $this->canEdit;
+        return $this->canEdit
+            && ($this->avaliacaoAtual?->estaAbertaParaPreenchimento() ?? false);
     }
 
     public function podePreencherEmMassa(): bool
@@ -188,7 +189,7 @@ class AvaliacaoTurmaWorkspace extends Component
         /** @var User|null $user */
         $user = Auth::user();
 
-        return $this->canEdit
+        return $this->podeResponder()
             && ($user && Gate::forUser($user)->allows('fillBulk', Avaliacao::class));
     }
 

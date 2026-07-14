@@ -951,9 +951,7 @@ class DashboardAvaliacoesPageTest extends TestCase
         $this->assertNotEmpty($documento->responsaveis_snapshot);
         $this->assertNotNull($documento->responsaveis_snapshot_em);
 
-        $component->assertRedirect(route('filament.admin.pages.minhas-exportacoes', [
-            'download' => $exportRequest->getKey(),
-        ]));
+        $component->assertRedirect();
 
         Queue::assertPushed(ProcessExportRequestJob::class, 1);
     }
@@ -967,7 +965,7 @@ class DashboardAvaliacoesPageTest extends TestCase
         $linha = $dados['linha'];
 
         $this->assertFalse($linha['parecer_exportavel']);
-        $this->assertSame('A turma não possui coordenação principal ativa e vigente.', $linha['parecer_exportavel_motivo']);
+        $this->assertSame('A turma não possui coordenação ativa e vigente.', $linha['parecer_exportavel_motivo']);
 
         $component->call(
             'exportarParecerTurma',
@@ -977,7 +975,7 @@ class DashboardAvaliacoesPageTest extends TestCase
             $linha['serie_id'],
             $linha['componente_id'],
             $linha['professor_id']
-        )->assertNotified('A turma não possui coordenação principal ativa e vigente.');
+        )->assertNotified('A turma não possui coordenação ativa e vigente.');
 
         $this->assertDatabaseCount('export_requests', 0);
         Queue::assertNothingPushed();

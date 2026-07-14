@@ -28,6 +28,8 @@ class Avaliacao extends Model
         'nome',
         'data_inicio',
         'data_fim',
+        'data_inicio_preenchimento',
+        'data_fim_preenchimento',
         'status',
     ];
 
@@ -38,6 +40,8 @@ class Avaliacao extends Model
             'periodo_avaliacao_id' => 'integer',
             'data_inicio' => 'date',
             'data_fim' => 'date',
+            'data_inicio_preenchimento' => 'date',
+            'data_fim_preenchimento' => 'date',
         ];
     }
 
@@ -117,7 +121,21 @@ class Avaliacao extends Model
 
         return $query
             ->where('status', self::STATUS_ATIVA)
-            ->whereDate('data_inicio', '<=', $referencia)
-            ->whereDate('data_fim', '>=', $referencia);
+            ->whereRaw('COALESCE(data_inicio_preenchimento, data_inicio) <= ?', [$referencia->toDateString()])
+            ->whereRaw('COALESCE(data_fim_preenchimento, data_fim) >= ?', [$referencia->toDateString()]);
+    }
+
+    public function estaAbertaParaPreenchimento(CarbonInterface|string|null $data = null): bool
+    {
+        $referencia = $data instanceof CarbonInterface
+            ? $data
+            : Carbon::parse($data ?? now());
+
+        $inicio = $this->data_inicio_preenchimento ?? $this->data_inicio;
+        $fim = $this->data_fim_preenchimento ?? $this->data_fim;
+
+        return $this->status === self::STATUS_ATIVA
+            && $inicio?->startOfDay()->lte($referencia)
+            && $fim?->endOfDay()->gte($referencia);
     }
 }

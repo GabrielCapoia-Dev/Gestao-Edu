@@ -150,8 +150,8 @@ class ProfessorMovimentacaoService
             ->where('tcp.professor_id', $professor->id)
             ->where('tcp.tem_professor', true)
             ->where('av.status', Avaliacao::STATUS_ATIVA)
-            ->whereDate('av.data_inicio', '<=', now()->toDateString())
-            ->whereDate('av.data_fim', '>=', now()->toDateString())
+            ->whereRaw('COALESCE(av.data_inicio_preenchimento, av.data_inicio) <= ?', [now()->toDateString()])
+            ->whereRaw('COALESCE(av.data_fim_preenchimento, av.data_fim) >= ?', [now()->toDateString()])
             ->where('p.status', true)
             ->whereIn('aln.status', [Aluno::STATUS_MATRICULADO, Aluno::STATUS_PENDENTE])
             ->where(function (QueryBuilder $alunos): void {

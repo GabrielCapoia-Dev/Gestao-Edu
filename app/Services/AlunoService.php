@@ -1358,6 +1358,8 @@ class AlunoService
                 ->join('turmas as t', 't.id', '=', 'at.turma_id')
                 ->whereColumn('at.turma_id', 'alunos.id_turma')
                 ->where('av.status', Avaliacao::STATUS_ATIVA)
+                ->whereRaw('COALESCE(av.data_inicio_preenchimento, av.data_inicio) <= ?', [now()->toDateString()])
+                ->whereRaw('COALESCE(av.data_fim_preenchimento, av.data_fim) >= ?', [now()->toDateString()])
                 ->where('p.status', true)
                 ->whereNotNull('p.componente_curricular_id')
                 ->where(function ($series): void {

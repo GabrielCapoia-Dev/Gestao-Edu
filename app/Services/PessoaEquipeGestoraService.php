@@ -14,7 +14,6 @@ use App\Models\Turma;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
 class PessoaEquipeGestoraService
@@ -234,8 +233,6 @@ class PessoaEquipeGestoraService
 
         $normalizado = $this->normalizarEValidar($dados);
         $matriculas = $this->sincronizarMatriculas($pessoa, $normalizado['matriculas']);
-        // Serializa todas as decisões de principal e mudança funcional da escola,
-        // inclusive quando ainda não existe linha principal para ser bloqueada.
         $escola = Escola::query()->lockForUpdate()->findOrFail($normalizado['escola']->id);
         $possuiOutroVinculoEmEscolaDiferente = ServidorFuncaoAdministrativa::query()
             ->where('servidor_id', $pessoa->id)
@@ -257,6 +254,12 @@ class PessoaEquipeGestoraService
         }
 
         $ativos = $this->vinculosGestoresAtivos($pessoa);
+        if ($ativos->isNotEmpty() && $ativos->every(
+            fn (ServidorFuncaoAdministrativa $vinculo): bool => (int) $vinculo->id_escola === (int) $escola->id
+        )) {
+            $normalizado['data_inicio'] = $ativos->first()->data_inicio?->toDateString()
+                ?? now()->toDateString();
+        }
         if ($ativos->contains(
             fn (ServidorFuncaoAdministrativa $vinculo): bool =>
                 (bool) $vinculo->funcaoAdministrativa?->temFlagsGestorasConflitantes()
@@ -269,8 +272,9 @@ class PessoaEquipeGestoraService
         $escolasAtuais = $ativos->pluck('id_escola')->filter()->map(fn ($id): int => (int) $id)->unique();
 
         if ($escolasAtuais->isNotEmpty() && ($escolasAtuais->count() > 1 || $escolasAtuais->first() !== (int) $escola->id)) {
+            $normalizado['data_inicio'] = now()->toDateString();
             $this->validarInicioPosteriorAosVinculos($normalizado['data_inicio'], $ativos);
-            $dataFimAnterior = $this->dataFimAnteriorAoInicio($normalizado['data_inicio']);
+            $dataFimAnterior = $this->dataFimParaEncerramento($normalizado['data_inicio'], $ativos);
 
             foreach ($ativos as $vinculo) {
                 $this->encerrarVinculo($vinculo, $dataFimAnterior);
@@ -295,6 +299,7 @@ class PessoaEquipeGestoraService
             );
 
         if ($portariaMudou) {
+            $normalizado['data_inicio'] = now()->toDateString();
             $vinculosComNovaPortaria = $ativos->filter(
                 fn (ServidorFuncaoAdministrativa $vinculo): bool => in_array(
                     $vinculo->funcaoAdministrativa?->tipoEquipeGestora(),
@@ -303,7 +308,7 @@ class PessoaEquipeGestoraService
                 ),
             );
             $this->validarInicioPosteriorAosVinculos($normalizado['data_inicio'], $vinculosComNovaPortaria);
-            $dataFimAnterior = $this->dataFimAnteriorAoInicio($normalizado['data_inicio']);
+            $dataFimAnterior = $this->dataFimParaEncerramento($normalizado['data_inicio'], $vinculosComNovaPortaria);
 
             foreach ($vinculosComNovaPortaria as $vinculo) {
                 $this->encerrarVinculo($vinculo, $dataFimAnterior);
@@ -344,24 +349,11 @@ class PessoaEquipeGestoraService
                 $this->encerrarVinculo($duplicado);
             }
 
-            $novo = ! $vinculo;
-
             $vinculo ??= new ServidorFuncaoAdministrativa([
                 'servidor_id' => $pessoa->id,
                 'funcao_administrativa_id' => $funcao->id,
                 'origem' => 'equipe_gestora',
             ]);
-
-            $principalDirecao = false;
-            if ($tipo === FuncaoAdministrativa::TIPO_DIRECAO) {
-                $principalDirecao = $this->resolverPrincipalDirecao(
-                    $vinculo,
-                    (int) $escola->id,
-                    $normalizado['diretor_principal'],
-                    $normalizado['diretor_principal_informado'],
-                    $novo,
-                );
-            }
 
             $vinculo->fill([
                 'matricula' => $matriculas->first()?->matricula,
@@ -371,7 +363,7 @@ class PessoaEquipeGestoraService
                 'portaria' => $tipo === FuncaoAdministrativa::TIPO_SECRETARIA
                     ? null
                     : $normalizado['portaria'],
-                'principal' => $principalDirecao,
+                'principal' => false,
                 'data_inicio' => $normalizado['data_inicio'],
                 'data_fim' => null,
             ])->save();
@@ -380,8 +372,6 @@ class PessoaEquipeGestoraService
                 $this->sincronizarTurmasCoordenacao(
                     $vinculo,
                     $normalizado['turma_ids'],
-                    $normalizado['turmas_principais_ids'],
-                    $normalizado['turmas_vacancia_ids'],
                     $normalizado['data_inicio'],
                 );
             }
@@ -428,18 +418,9 @@ class PessoaEquipeGestoraService
             ]);
         }
 
-        $validator = Validator::make($dados, [
-            'data_inicio' => ['required', 'date'],
-        ], [
-            'data_inicio.required' => 'Informe o início da vigência do cargo.',
-            'data_inicio.date' => 'O início da vigência é inválido.',
-        ]);
-        if ($validator->fails()) {
-            throw new ValidationException($validator);
-        }
-        $dataInicio = CarbonImmutable::parse($dados['data_inicio'])->toDateString();
+        $dataInicio = now()->toDateString();
 
-        $portaria = filled($dados['portaria'] ?? null)
+        $portaria = ($diretor || $coordenador) && filled($dados['portaria'] ?? null)
             ? preg_replace('/\s+/', ' ', trim((string) $dados['portaria']))
             : null;
         if (($diretor || $coordenador) && blank($portaria)) {
@@ -492,36 +473,6 @@ class PessoaEquipeGestoraService
             }
         }
 
-        $principais = collect(
-            $coordenacao['turmas_principais_ids']
-                ?? $dados['turmas_principais_ids']
-                ?? [],
-        )->filter()->map(fn ($id): int => (int) $id)->unique()->values();
-        if ($principais->diff($turmaIds)->isNotEmpty()) {
-            throw ValidationException::withMessages([
-                'turmas_principais_ids' => 'Uma turma principal precisa estar entre as turmas vinculadas ao Coordenador.',
-            ]);
-        }
-        $vacancias = collect(
-            $coordenacao['turmas_vacancia_ids']
-                ?? $dados['turmas_vacancia_ids']
-                ?? [],
-        )->filter()->map(fn ($id): int => (int) $id)->unique()->values();
-        if ($vacancias->diff($turmaIds)->isNotEmpty()) {
-            throw ValidationException::withMessages([
-                'turmas_vacancia_ids' => 'Uma vacância de Coordenação precisa estar entre as turmas vinculadas.',
-            ]);
-        }
-        if ($vacancias->intersect($principais)->isNotEmpty()) {
-            throw ValidationException::withMessages([
-                'turmas_vacancia_ids' => 'A mesma turma não pode ser marcada como principal e vacante.',
-            ]);
-        }
-
-        $direcao = is_array($dados['diretor'] ?? null) ? $dados['diretor'] : [];
-        $principalInformado = array_key_exists('principal', $direcao)
-            || array_key_exists('diretor_principal', $dados);
-
         return [
             'escola' => $escola,
             'matriculas' => $matriculas,
@@ -531,10 +482,6 @@ class PessoaEquipeGestoraService
             'portaria' => $portaria,
             'data_inicio' => $dataInicio,
             'turma_ids' => $turmaIds,
-            'turmas_principais_ids' => $principais,
-            'turmas_vacancia_ids' => $vacancias,
-            'diretor_principal' => (bool) ($direcao['principal'] ?? $dados['diretor_principal'] ?? false),
-            'diretor_principal_informado' => $principalInformado,
         ];
     }
 
@@ -636,43 +583,9 @@ class PessoaEquipeGestoraService
         return $mantidas;
     }
 
-    private function resolverPrincipalDirecao(
-        ServidorFuncaoAdministrativa $vinculo,
-        int $escolaId,
-        bool $solicitado,
-        bool $informado,
-        bool $novo,
-    ): bool {
-        $outrosPrincipais = ServidorFuncaoAdministrativa::query()
-            ->where('id_escola', $escolaId)
-            ->where('status', ServidorFuncaoAdministrativa::STATUS_ATIVO)
-            ->where('principal', true)
-            ->when($vinculo->exists, fn ($query) => $query->whereKeyNot($vinculo->id))
-            ->whereHas('funcaoAdministrativa', fn ($funcoes) => $funcoes->direcao())
-            ->lockForUpdate();
-
-        if ($informado && $solicitado) {
-            $outrosPrincipais->update(['principal' => false, 'updated_at' => now()]);
-
-            return true;
-        }
-
-        if ($informado) {
-            return false;
-        }
-
-        if (! $novo && $vinculo->principal) {
-            return true;
-        }
-
-        return ! $outrosPrincipais->exists();
-    }
-
     private function sincronizarTurmasCoordenacao(
         ServidorFuncaoAdministrativa $vinculo,
         Collection $turmaIds,
-        Collection $turmasPrincipaisIds,
-        Collection $turmasVacanciaIds,
         string $dataInicio,
     ): void {
         $ativos = ServidorFuncaoTurma::query()
@@ -691,45 +604,17 @@ class PessoaEquipeGestoraService
         }
 
         foreach ($turmaIds as $turmaId) {
-            // Lock da entidade pai evita corrida na criação do primeiro principal:
-            // lockForUpdate em uma consulta vazia de pivô não serializa concorrentes.
             Turma::query()->whereKey($turmaId)->lockForUpdate()->firstOrFail();
 
             /** @var ServidorFuncaoTurma|null $registro */
             $registro = $ativos->get($turmaId);
-            $novo = ! $registro;
             $registro ??= new ServidorFuncaoTurma([
                 'servidor_funcao_administrativa_id' => $vinculo->id,
                 'turma_id' => $turmaId,
             ]);
 
-            $principalSolicitado = $turmasPrincipaisIds->contains($turmaId);
-            $vacanciaSolicitada = $turmasVacanciaIds->contains($turmaId);
-            $outrosPrincipais = ServidorFuncaoTurma::query()
-                ->where('turma_id', $turmaId)
-                ->where('status', ServidorFuncaoTurma::STATUS_ATIVO)
-                ->where('principal', true)
-                ->when($registro->exists, fn ($query) => $query->whereKeyNot($registro->id))
-                ->whereHas('servidorFuncaoAdministrativa', function ($vinculos): void {
-                    $vinculos
-                        ->where('status', ServidorFuncaoAdministrativa::STATUS_ATIVO)
-                        ->whereHas('funcaoAdministrativa', fn ($funcoes) => $funcoes->coordenacao());
-                })
-                ->lockForUpdate();
-
-            if ($principalSolicitado) {
-                $outrosPrincipais->update(['principal' => false, 'updated_at' => now()]);
-            }
-
-            $principal = match (true) {
-                $principalSolicitado => true,
-                $vacanciaSolicitada => false,
-                ! $novo => (bool) $registro->principal,
-                default => ! $outrosPrincipais->exists(),
-            };
-
             $registro->fill([
-                'principal' => $principal,
+                'principal' => false,
                 'status' => ServidorFuncaoTurma::STATUS_ATIVO,
                 'data_inicio' => $dataInicio,
                 'data_fim' => null,
@@ -746,7 +631,9 @@ class PessoaEquipeGestoraService
                 return false;
             }
 
-            return ! $novoInicio->isAfter(CarbonImmutable::parse($vinculo->data_inicio)->startOfDay());
+            return CarbonImmutable::parse($novoInicio)->startOfDay()->isBefore(
+                CarbonImmutable::parse($vinculo->data_inicio)->startOfDay()
+            );
         });
 
         if ($inicioInvalido) {
@@ -759,6 +646,18 @@ class PessoaEquipeGestoraService
     private function dataFimAnteriorAoInicio(string $novoInicio): string
     {
         return CarbonImmutable::parse($novoInicio)->subDay()->toDateString();
+    }
+
+    private function dataFimParaEncerramento(string $novoInicio, Collection $vinculos): string
+    {
+        $novoInicioData = CarbonImmutable::parse($novoInicio)->startOfDay();
+
+        return $vinculos->contains(function (ServidorFuncaoAdministrativa $vinculo) use ($novoInicioData): bool {
+            return $vinculo->data_inicio
+                && CarbonImmutable::parse($vinculo->data_inicio)->startOfDay()->gte($novoInicioData);
+        })
+            ? $novoInicioData->toDateString()
+            : $this->dataFimAnteriorAoInicio($novoInicio);
     }
 
     /** @return Collection<int, ServidorFuncaoAdministrativa> */

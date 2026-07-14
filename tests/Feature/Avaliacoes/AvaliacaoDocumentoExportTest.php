@@ -479,7 +479,7 @@ class AvaliacaoDocumentoExportTest extends TestCase
         $this->assertFalse($gestores['tem_diretor']);
         $this->assertFalse($gestores['tem_coordenacao']);
         $this->assertFalse($gestores['pode_exportar']);
-        $this->assertSame('A escola não possui direção principal ativa e vigente.', $gestores['motivo_bloqueio']);
+        $this->assertSame('A escola não possui direção ativa e vigente.', $gestores['motivo_bloqueio']);
     }
 
     public function test_exportacao_do_parecer_fica_bloqueada_quando_falta_coordenacao_na_turma(): void
@@ -497,7 +497,7 @@ class AvaliacaoDocumentoExportTest extends TestCase
         $this->assertFalse($gestores['tem_diretor']);
         $this->assertFalse($gestores['tem_coordenacao']);
         $this->assertFalse($gestores['pode_exportar']);
-        $this->assertSame('A turma não possui coordenação principal ativa e vigente.', $gestores['motivo_bloqueio']);
+        $this->assertSame('A turma não possui coordenação ativa e vigente.', $gestores['motivo_bloqueio']);
     }
 
     public function test_documento_exibe_nao_avaliado_para_pauta_pendente(): void

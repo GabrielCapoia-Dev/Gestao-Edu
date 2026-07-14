@@ -43,7 +43,7 @@ class PessoaEquipeGestoraServiceTest extends TestCase
         ]));
     }
 
-    public function test_cria_diretor_e_coordenador_com_portaria_matriculas_e_principais(): void
+    public function test_cria_diretor_e_coordenador_sem_principalizacao(): void
     {
         $escola = $this->criarEscola('Escola Gestão');
         $turma = $this->criarTurma($escola, 'A');
@@ -59,15 +59,15 @@ class PessoaEquipeGestoraServiceTest extends TestCase
         $direcao = $this->vinculoPorTipo($pessoa, FuncaoAdministrativa::TIPO_DIRECAO);
         $coordenacao = $this->vinculoPorTipo($pessoa, FuncaoAdministrativa::TIPO_COORDENACAO);
 
-        $this->assertTrue($direcao->principal);
+        $this->assertFalse($direcao->principal);
         $this->assertSame('PORT-ABC/2026', $direcao->portaria);
         $this->assertSame($direcao->portaria, $coordenacao->portaria);
-        $this->assertSame('2026-07-01', $direcao->data_inicio->toDateString());
+        $this->assertSame(now()->toDateString(), $direcao->data_inicio->toDateString());
 
         $this->assertDatabaseHas('servidor_funcao_turma', [
             'servidor_funcao_administrativa_id' => $coordenacao->id,
             'turma_id' => $turma->id,
-            'principal' => true,
+            'principal' => false,
             'status' => ServidorFuncaoTurma::STATUS_ATIVO,
         ]);
     }
@@ -168,14 +168,6 @@ class PessoaEquipeGestoraServiceTest extends TestCase
         $novosDados = $this->dadosGestao($escola, [$turma->id], diretor: true);
         $novosDados['portaria'] = 'PORT-NOVA/2026';
 
-        try {
-            $service->sincronizar($pessoa, $novosDados);
-            $this->fail('A nova portaria não deveria reutilizar o início da vigência anterior.');
-        } catch (ValidationException $exception) {
-            $this->assertArrayHasKey('data_inicio', $exception->errors());
-        }
-
-        $novosDados['data_inicio'] = '2026-07-10';
         $service->sincronizar($pessoa, $novosDados);
 
         $vinculos = ServidorFuncaoAdministrativa::query()
@@ -190,10 +182,10 @@ class PessoaEquipeGestoraServiceTest extends TestCase
             fn (ServidorFuncaoAdministrativa $vinculo): bool => $vinculo->portaria === 'PORT-NOVA/2026'
         ));
         $this->assertTrue($vinculos->where('status', 'inativo')->every(
-            fn (ServidorFuncaoAdministrativa $vinculo): bool => $vinculo->data_fim?->toDateString() === '2026-07-09'
+            fn (ServidorFuncaoAdministrativa $vinculo): bool => $vinculo->data_fim?->toDateString() === now()->subDay()->toDateString()
         ));
         $this->assertTrue($vinculos->where('status', 'ativo')->every(
-            fn (ServidorFuncaoAdministrativa $vinculo): bool => $vinculo->data_inicio?->toDateString() === '2026-07-10'
+            fn (ServidorFuncaoAdministrativa $vinculo): bool => $vinculo->data_inicio?->toDateString() === now()->toDateString()
         ));
     }
 
@@ -209,14 +201,6 @@ class PessoaEquipeGestoraServiceTest extends TestCase
         ], $this->dadosGestao($escolaA, [$turmaA->id], diretor: true));
 
         $novosDados = $this->dadosGestao($escolaB, [$turmaB->id], diretor: true);
-        try {
-            $service->sincronizar($pessoa, $novosDados);
-            $this->fail('A mudança de escola não deveria reutilizar o início da vigência anterior.');
-        } catch (ValidationException $exception) {
-            $this->assertArrayHasKey('data_inicio', $exception->errors());
-        }
-
-        $novosDados['data_inicio'] = '2026-07-10';
         $atualizada = $service->sincronizar($pessoa, $novosDados);
         $vinculos = ServidorFuncaoAdministrativa::query()
             ->where('servidor_id', $pessoa->id)
@@ -227,12 +211,12 @@ class PessoaEquipeGestoraServiceTest extends TestCase
         $this->assertTrue($vinculos->where('id_escola', $escolaA->id)->every(
             fn (ServidorFuncaoAdministrativa $vinculo): bool =>
                 $vinculo->status === ServidorFuncaoAdministrativa::STATUS_INATIVO
-                && $vinculo->data_fim?->toDateString() === '2026-07-09'
+                && $vinculo->data_fim?->toDateString() === now()->subDay()->toDateString()
         ));
         $this->assertTrue($vinculos->where('id_escola', $escolaB->id)->every(
             fn (ServidorFuncaoAdministrativa $vinculo): bool =>
                 $vinculo->status === ServidorFuncaoAdministrativa::STATUS_ATIVO
-                && $vinculo->data_inicio?->toDateString() === '2026-07-10'
+                && $vinculo->data_inicio?->toDateString() === now()->toDateString()
         ));
     }
 
@@ -280,14 +264,14 @@ class PessoaEquipeGestoraServiceTest extends TestCase
         $service->sincronizar($pessoa, $dados);
 
         $coordenacao = $this->vinculoPorTipo($pessoa->fresh(), FuncaoAdministrativa::TIPO_COORDENACAO);
-        $this->assertTrue($coordenacao->vinculosTurmaAtivos()->where('turma_id', $turmaA->id)->firstOrFail()->principal);
-        $this->assertTrue($coordenacao->vinculosTurmaAtivos()->where('turma_id', $turmaB->id)->firstOrFail()->principal);
+        $this->assertFalse($coordenacao->vinculosTurmaAtivos()->where('turma_id', $turmaA->id)->firstOrFail()->principal);
+        $this->assertFalse($coordenacao->vinculosTurmaAtivos()->where('turma_id', $turmaB->id)->firstOrFail()->principal);
 
         $dados['coordenador']['turmas_vacancia_ids'] = [$turmaB->id];
         $service->sincronizar($pessoa, $dados);
 
         $coordenacao->refresh();
-        $this->assertTrue($coordenacao->vinculosTurmaAtivos()->where('turma_id', $turmaA->id)->firstOrFail()->principal);
+        $this->assertFalse($coordenacao->vinculosTurmaAtivos()->where('turma_id', $turmaA->id)->firstOrFail()->principal);
         $this->assertFalse($coordenacao->vinculosTurmaAtivos()->where('turma_id', $turmaB->id)->firstOrFail()->principal);
 
         unset($dados['coordenador']['turmas_vacancia_ids']);
@@ -358,12 +342,12 @@ class PessoaEquipeGestoraServiceTest extends TestCase
         ]);
 
         $this->assertFalse($this->vinculoPorTipo($primeira->fresh(), FuncaoAdministrativa::TIPO_DIRECAO)->principal);
-        $this->assertTrue($this->vinculoPorTipo($segunda->fresh(), FuncaoAdministrativa::TIPO_DIRECAO)->principal);
+        $this->assertFalse($this->vinculoPorTipo($segunda->fresh(), FuncaoAdministrativa::TIPO_DIRECAO)->principal);
 
         $coordPrimeira = $this->vinculoPorTipo($primeira->fresh(), FuncaoAdministrativa::TIPO_COORDENACAO);
         $coordSegunda = $this->vinculoPorTipo($segunda->fresh(), FuncaoAdministrativa::TIPO_COORDENACAO);
         $this->assertFalse($coordPrimeira->vinculosTurmaAtivos()->where('turma_id', $turma->id)->firstOrFail()->principal);
-        $this->assertTrue($coordSegunda->vinculosTurmaAtivos()->where('turma_id', $turma->id)->firstOrFail()->principal);
+        $this->assertFalse($coordSegunda->vinculosTurmaAtivos()->where('turma_id', $turma->id)->firstOrFail()->principal);
     }
 
     public function test_conversao_de_professor_bloqueia_vinculo_pedagogico_e_preserva_historico(): void

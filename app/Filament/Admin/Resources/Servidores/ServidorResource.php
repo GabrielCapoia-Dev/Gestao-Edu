@@ -724,9 +724,7 @@ class ServidorResource extends Resource
                 $primeiro = $vinculos->first();
                 $cargos = $vinculos
                     ->map(function ($vinculo): string {
-                        $nome = (string) ($vinculo->funcaoAdministrativa?->nome ?? 'Função gestora');
-
-                        return $vinculo->principal ? $nome.' principal' : $nome;
+                        return (string) ($vinculo->funcaoAdministrativa?->nome ?? 'Função gestora');
                     })
                     ->unique()
                     ->sort()
@@ -744,7 +742,7 @@ class ServidorResource extends Resource
                         return [
                             'nome' => $nome,
                             'componentes' => [
-                                $vinculoTurma->principal ? 'Coordenação principal' : 'Coordenação',
+                                'Coordenação',
                             ],
                         ];
                     })
@@ -759,11 +757,6 @@ class ServidorResource extends Resource
                     'turmas' => $turmas,
                     'cargos' => $cargos,
                     'portaria' => $vinculos->pluck('portaria')->filter()->unique()->implode(' / '),
-                    'vigencia' => $vinculos
-                        ->map(fn ($vinculo): ?string => $vinculo->data_inicio?->format('d/m/Y'))
-                        ->filter()
-                        ->unique()
-                        ->implode(' / '),
                 ];
             })
             ->values();
@@ -822,19 +815,9 @@ class ServidorResource extends Resource
             ->unique()
             ->values();
         $vinculosAtivos = $record?->vinculosAtivos ?? collect();
-        $jaEraDiretor = $vinculosAtivos->contains(
-            fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->direcao_escolar,
-        );
-        $coordenadorAtual = $vinculosAtivos->first(
-            fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->coordenacao_pedagogica,
-        );
         $diretor = false;
         if ($cargos->contains(ServidorEquipeGestoraForm::CARGO_DIRETOR)) {
             $diretor = ['ativo' => true];
-
-            if ($jaEraDiretor || (bool) ($data['diretor_principal'] ?? false)) {
-                $diretor['principal'] = (bool) ($data['diretor_principal'] ?? false);
-            }
         }
 
         $coordenador = false;
@@ -848,27 +831,6 @@ class ServidorResource extends Resource
                 'ativo' => true,
                 'turma_ids' => $turmasSelecionadas->all(),
             ];
-            $principais = collect($data['turmas_principais_ids'] ?? [])
-                ->map(fn (mixed $id): int => (int) $id)
-                ->filter()
-                ->unique()
-                ->values();
-            $principaisAtuais = $coordenadorAtual?->vinculosTurmaAtivos
-                ?->where('principal', true)
-                ->pluck('turma_id')
-                ->map(fn ($id): int => (int) $id)
-                ->values() ?? collect();
-            $vacanciasExplicitas = $principaisAtuais
-                ->diff($principais)
-                ->intersect($turmasSelecionadas)
-                ->values();
-
-            if ($principais->isNotEmpty()) {
-                $coordenador['turmas_principais_ids'] = $principais->all();
-            }
-            if ($vacanciasExplicitas->isNotEmpty()) {
-                $coordenador['turmas_vacancia_ids'] = $vacanciasExplicitas->all();
-            }
         }
 
         $equipeGestora = [
@@ -885,7 +847,6 @@ class ServidorResource extends Resource
             'coordenador' => $coordenador,
             'secretario' => $cargos->contains(ServidorEquipeGestoraForm::CARGO_SECRETARIO),
             'portaria' => $data['portaria'] ?? null,
-            'data_inicio' => $data['data_inicio'] ?? null,
         ];
 
         return [$data, ['equipe_gestora' => $equipeGestora]];

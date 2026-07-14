@@ -987,9 +987,7 @@ class PedidosTable
                             ->success()
                             ->send();
 
-                        return redirect()->route('filament.admin.pages.minhas-exportacoes', [
-                            'download' => $exportRequest->getKey(),
-                        ]);
+                        return redirect()->back();
                     } catch (\Throwable $exception) {
                         report($exception);
 

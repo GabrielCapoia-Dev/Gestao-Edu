@@ -35,10 +35,7 @@ class PessoaEquipeGestoraFormTest extends TestCase
             'id_escola' => 15,
             'cargos_gestores' => ['diretor', 'coordenador'],
             'portaria' => 'PORT-123/2026',
-            'data_inicio' => '2026-07-13',
-            'diretor_principal' => true,
             'turma_ids' => [8, 9],
-            'turmas_principais_ids' => [9],
             'matriculas_professor' => [[
                 'id' => 3,
                 'matricula' => 'MAT-001',
@@ -56,10 +53,9 @@ class PessoaEquipeGestoraFormTest extends TestCase
             'turno' => 'manha',
         ], $vinculos['equipe_gestora']['matriculas'][0]);
         $this->assertSame(['diretor', 'coordenador'], $vinculos['equipe_gestora']['cargos']);
-        $this->assertTrue($vinculos['equipe_gestora']['diretor']['principal']);
         $this->assertSame([8, 9], $vinculos['equipe_gestora']['coordenador']['turma_ids']);
-        $this->assertSame([9], $vinculos['equipe_gestora']['coordenador']['turmas_principais_ids']);
         $this->assertFalse($vinculos['equipe_gestora']['secretario']);
+        $this->assertArrayNotHasKey('data_inicio', $vinculos['equipe_gestora']);
     }
 
     public function test_bloqueia_payload_gestor_sem_autorizacao_especifica(): void

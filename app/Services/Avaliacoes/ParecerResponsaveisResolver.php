@@ -22,7 +22,6 @@ class ParecerResponsaveisResolver
         $diretores = ServidorFuncaoAdministrativa::query()
             ->where('id_escola', (int) $turma->id_escola)
             ->where('status', ServidorFuncaoAdministrativa::STATUS_ATIVO)
-            ->where('principal', true)
             ->whereNotNull('data_inicio')
             ->whereDate('data_inicio', '<=', $momento->toDateString())
             ->where(function ($query) use ($momento): void {
@@ -46,8 +45,8 @@ class ParecerResponsaveisResolver
         if ($diretores->count() !== 1) {
             throw new ResponsaveisParecerInvalidosException(
                 $diretores->isEmpty()
-                    ? 'A escola não possui direção principal ativa e vigente.'
-                    : 'A escola possui mais de uma direção principal ativa.'
+                    ? 'A escola não possui direção ativa e vigente.'
+                    : 'A escola possui mais de uma direção ativa.'
             );
         }
 
@@ -57,7 +56,6 @@ class ParecerResponsaveisResolver
         $coordenacoes = ServidorFuncaoTurma::query()
             ->where('turma_id', (int) $turma->id)
             ->where('status', ServidorFuncaoTurma::STATUS_ATIVO)
-            ->where('principal', true)
             ->whereNotNull('data_inicio')
             ->whereDate('data_inicio', '<=', $momento->toDateString())
             ->where(function ($query) use ($momento): void {
@@ -93,8 +91,8 @@ class ParecerResponsaveisResolver
         if ($coordenacoes->count() !== 1) {
             throw new ResponsaveisParecerInvalidosException(
                 $coordenacoes->isEmpty()
-                    ? 'A turma não possui coordenação principal ativa e vigente.'
-                    : 'A turma possui mais de uma coordenação principal ativa.'
+                    ? 'A turma não possui coordenação ativa e vigente.'
+                    : 'A turma possui mais de uma coordenação ativa.'
             );
         }
 
@@ -106,11 +104,11 @@ class ParecerResponsaveisResolver
         $portariaCoordenador = trim((string) $coordenador?->portaria);
 
         if ($portariaDiretor === '') {
-            throw new ResponsaveisParecerInvalidosException('A direção principal não possui portaria informada.');
+            throw new ResponsaveisParecerInvalidosException('A direção não possui portaria informada.');
         }
 
         if ($portariaCoordenador === '') {
-            throw new ResponsaveisParecerInvalidosException('A coordenação principal não possui portaria informada.');
+            throw new ResponsaveisParecerInvalidosException('A coordenação não possui portaria informada.');
         }
 
         if ((int) $diretor->servidor_id === (int) $coordenador?->servidor_id

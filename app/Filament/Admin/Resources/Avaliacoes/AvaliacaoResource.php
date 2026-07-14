@@ -68,6 +68,19 @@ class AvaliacaoResource extends Resource
                             ->displayFormat('d/m/Y')
                             ->afterOrEqual('data_inicio'),
 
+                        DatePicker::make('data_inicio_preenchimento')
+                            ->label('Início do preenchimento')
+                            ->required()
+                            ->native(false)
+                            ->displayFormat('d/m/Y'),
+
+                        DatePicker::make('data_fim_preenchimento')
+                            ->label('Fim do preenchimento')
+                            ->required()
+                            ->native(false)
+                            ->displayFormat('d/m/Y')
+                            ->afterOrEqual('data_inicio_preenchimento'),
+
                         Select::make('status')
                             ->label('Status')
                             ->required()

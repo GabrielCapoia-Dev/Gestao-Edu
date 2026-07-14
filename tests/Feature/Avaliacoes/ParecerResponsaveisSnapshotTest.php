@@ -150,7 +150,7 @@ class ParecerResponsaveisSnapshotTest extends TestCase
             app(AlunoTransferenciaParecerService::class)->exportarETransferir($aluno, $usuario);
             $this->fail('A transferência deveria ser bloqueada.');
         } catch (ResponsaveisParecerInvalidosException $exception) {
-            $this->assertStringContainsString('direção principal', $exception->getMessage());
+            $this->assertStringContainsString('direção ativa', $exception->getMessage());
         }
 
         $this->assertSame(Aluno::STATUS_MATRICULADO, $aluno->fresh()->status);

@@ -92,6 +92,22 @@
                             <p class="error">{{ $message }}</p>
                         @enderror
                     </label>
+
+                    <label class="gi-field">
+                        <span>Início do preenchimento</span>
+                        <input type="date" wire:model.defer="form.data_inicio_preenchimento" />
+                        @error('form.data_inicio_preenchimento')
+                            <p class="error">{{ $message }}</p>
+                        @enderror
+                    </label>
+
+                    <label class="gi-field">
+                        <span>Fim do preenchimento</span>
+                        <input type="date" wire:model.defer="form.data_fim_preenchimento" />
+                        @error('form.data_fim_preenchimento')
+                            <p class="error">{{ $message }}</p>
+                        @enderror
+                    </label>
                 </div>
 
                 <section class="av-form-section">

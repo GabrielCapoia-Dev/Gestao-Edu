@@ -111,9 +111,7 @@ class EstoqueRelatorioController extends Controller
                 ->success()
                 ->send();
 
-            return redirect()->route('filament.admin.pages.minhas-exportacoes', [
-                'download' => $exportRequest->getKey(),
-            ]);
+            return redirect()->back();
         } catch (Throwable $e) {
             Log::error('Falha ao enfileirar exportação de estoque.', [
                 'exception' => $e,
