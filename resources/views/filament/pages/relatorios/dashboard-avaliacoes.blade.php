@@ -1,7 +1,7 @@
 <x-filament-panels::page>
-    <div class="av-livewire-root" x-data wire:init="carregarDashboardInicial" wire:poll.10s="verificarConsolidacao" x-on:dashboard-acompanhamento-recarregar.window="$wire.atualizarAcompanhamentoTurmas()">
+    <div class="av-livewire-root" x-data wire:init="carregarDashboardInicial" x-on:dashboard-acompanhamento-recarregar.window="$wire.atualizarAcompanhamentoTurmas()" x-on:dashboard-detalhes-recarregar.window="$wire.carregarDetalhesDashboard()">
     <div class="dav-page">
-        <div class="dav-processing-overlay" wire:loading.flex wire:target="abrirWorkspaceAcompanhamento,fecharWorkspaceAcompanhamento,atualizarAcompanhamentoTurmas,atualizarDadosRecentes">
+        <div class="dav-processing-overlay" wire:loading.flex wire:target="carregarDashboardInicial,carregarResumoDashboard,carregarGraficosDashboard,carregarAcompanhamentoDashboard,carregarDetalhesDashboard,abrirWorkspaceAcompanhamento,fecharWorkspaceAcompanhamento,atualizarAcompanhamentoTurmas,atualizarDadosRecentes">
             <div class="dav-processing-card">
                 <div class="dav-processing-spinner"></div>
                 <strong>Processando...</strong>
@@ -99,7 +99,7 @@
                 <div class="dav-filters-grid">
                     <label class="dav-field">
                         <span>Avaliação</span>
-                        <select wire:model.live="filtros.avaliacao_id">
+                            <select wire:model.live.debounce.300ms="filtros.avaliacao_id">
                             <option value="">Selecione uma avaliação</option>
                             @foreach ($this->avaliacoesOptions as $id => $label)
                                 <option value="{{ $id }}">{{ $label }}</option>
@@ -109,7 +109,7 @@
 
                     <label class="dav-field">
                         <span>Período</span>
-                        <select wire:model.live="filtros.periodo_id" @disabled(! $avaliacaoSelecionada)>
+                        <select wire:model.live.debounce.300ms="filtros.periodo_id" @disabled(! $avaliacaoSelecionada)>
                             <option value="">Todos</option>
                             @foreach ($this->periodosOptions as $id => $label)
                                 <option value="{{ $id }}">{{ $label }}</option>
@@ -119,7 +119,7 @@
 
                     <label class="dav-field">
                         <span>Tipo</span>
-                        <select wire:model.live="filtros.tipo_id" @disabled(! $avaliacaoSelecionada)>
+                        <select wire:model.live.debounce.300ms="filtros.tipo_id" @disabled(! $avaliacaoSelecionada)>
                             <option value="">Todos</option>
                             @foreach ($this->tiposOptions as $id => $label)
                                 <option value="{{ $id }}">{{ $label }}</option>
@@ -129,7 +129,7 @@
 
                     <label class="dav-field">
                         <span>Status</span>
-                        <select wire:model.live="filtros.status" @disabled(! $avaliacaoSelecionada)>
+                        <select wire:model.live.debounce.300ms="filtros.status" @disabled(! $avaliacaoSelecionada)>
                             @foreach ($this->statusOptions as $id => $label)
                                 <option value="{{ $id }}">{{ $label }}</option>
                             @endforeach
@@ -138,7 +138,7 @@
 
                     <label class="dav-field">
                         <span>Professores</span>
-                        <select wire:model.live="filtros.professores_ids" multiple @disabled(! $avaliacaoSelecionada)>
+                        <select wire:model.live.debounce.300ms="filtros.professores_ids" multiple @disabled(! $avaliacaoSelecionada)>
                             @foreach ($this->professoresOptions as $id => $label)
                                 <option value="{{ $id }}">{{ $label }}</option>
                             @endforeach
@@ -147,7 +147,7 @@
 
                     <label class="dav-field">
                         <span>Pautas</span>
-                        <select wire:model.live="filtros.pautas_ids" multiple @disabled(! $avaliacaoSelecionada)>
+                        <select wire:model.live.debounce.300ms="filtros.pautas_ids" multiple @disabled(! $avaliacaoSelecionada)>
                             @foreach ($this->pautasOptions as $id => $label)
                                 <option value="{{ $id }}">{{ $label }}</option>
                             @endforeach
@@ -156,7 +156,7 @@
 
                     <label class="dav-field">
                         <span>Alternativas</span>
-                        <select wire:model.live="filtros.alternativas_ids" multiple @disabled(! $avaliacaoSelecionada)>
+                        <select wire:model.live.debounce.300ms="filtros.alternativas_ids" multiple @disabled(! $avaliacaoSelecionada)>
                             @foreach ($this->alternativasOptions as $id => $label)
                                 <option value="{{ $id }}">{{ $label }}</option>
                             @endforeach
@@ -192,7 +192,7 @@
                 </article>
             </section>
 
-            <section class="dav-chart-grid{{ $this->podeVerPendenciaPorEscola ? ' dav-chart-grid--three' : '' }}">
+            <section class="dav-chart-grid{{ $this->podeVerPendenciaPorEscola ? ' dav-chart-grid--three' : '' }}" wire:init="carregarGraficosDashboard">
                 @if ($this->podeVerPendenciaPorEscola)
                 <article class="dav-card dav-card--chart">
                     <header>
@@ -337,7 +337,7 @@
             </section>
             @endif
 
-            <section class="dav-card">
+            <section class="dav-card" wire:init="carregarAcompanhamentoDashboard">
                 <header class="dav-card-header--split">
                     <div>
                         <h3>Acompanhamento de Pareceres</h3>

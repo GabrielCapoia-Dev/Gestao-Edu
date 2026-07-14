@@ -124,6 +124,12 @@ class DashboardAvaliacoes extends Page implements HasForms
 
     public bool $dashboardCarregado = false;
 
+    public bool $resumoCarregado = false;
+
+    public bool $graficosCarregados = false;
+
+    public bool $acompanhamentoCarregado = false;
+
     public string $consolidacaoStatus = '';
 
     public string $consolidadaEm = '';
@@ -156,7 +162,77 @@ class DashboardAvaliacoes extends Page implements HasForms
             return;
         }
 
-        $this->atualizarDashboard();
+        $this->carregarResumoDashboard();
+    }
+
+    public function carregarResumoDashboard(): void
+    {
+        $this->dashboardCarregado = false;
+        $this->normalizarFiltros();
+        $this->normalizarFiltrosAcompanhamento();
+        $this->atualizarStatusConsolidacao();
+
+        if (! $this->avaliacaoSelecionada()) {
+            $this->aplicarDashboardData($this->dashboardVazio());
+            $this->dashboardCarregado = true;
+
+            return;
+        }
+
+        $avaliacaoIds = $this->obterIdsAvaliacoesFiltradas();
+        $tabelaEscolas = $this->montarTabelaEscolas($avaliacaoIds);
+        $totais = $this->calcularTotaisPreenchimento($avaliacaoIds, $tabelaEscolas);
+        $turnos = $this->calcularPreenchimentoPorTurno($avaliacaoIds);
+
+        $this->cards = [
+            ...$totais,
+            'percentual_turno_manha' => $turnos['manha']['percentual_preenchimento'] ?? 0.0,
+            'turno_manha_respondidas' => $turnos['manha']['respondidas'] ?? 0,
+            'turno_manha_esperadas' => $turnos['manha']['esperadas'] ?? 0,
+            'turno_manha_alunos_pendentes' => $turnos['manha']['alunos_pendentes'] ?? 0,
+            'turno_manha_alunos_total' => $turnos['manha']['alunos_total'] ?? 0,
+            'percentual_turno_tarde' => $turnos['tarde']['percentual_preenchimento'] ?? 0.0,
+            'turno_tarde_respondidas' => $turnos['tarde']['respondidas'] ?? 0,
+            'turno_tarde_esperadas' => $turnos['tarde']['esperadas'] ?? 0,
+            'turno_tarde_alunos_pendentes' => $turnos['tarde']['alunos_pendentes'] ?? 0,
+            'turno_tarde_alunos_total' => $turnos['tarde']['alunos_total'] ?? 0,
+        ];
+        $this->tabelaEscolas = $tabelaEscolas;
+        $this->turmasIncompletasPorEscola = $this->montarTurmasIncompletasPorEscola($tabelaEscolas);
+        $this->preenchimentoPorComponentes = [];
+        $this->preenchimentoPorSeries = [];
+        $this->acompanhamentoTurmas = [];
+        $this->acompanhamentoTurmasTotal = 0;
+        $this->resumoCarregado = true;
+        $this->graficosCarregados = false;
+        $this->acompanhamentoCarregado = false;
+        $this->filtrosAplicados = $this->filtrosAplicadosFormatados();
+        $this->dashboardCarregado = true;
+    }
+
+    public function carregarGraficosDashboard(): void
+    {
+        if (! $this->avaliacaoSelecionada()) {
+            return;
+        }
+
+        $this->normalizarFiltros();
+        $avaliacaoIds = $this->obterIdsAvaliacoesFiltradas();
+        $this->preenchimentoPorComponentes = $this->montarPreenchimentoPorComponentes($avaliacaoIds);
+        $this->preenchimentoPorSeries = $this->montarPreenchimentoPorSeries($avaliacaoIds);
+        $this->graficosCarregados = true;
+    }
+
+    public function carregarAcompanhamentoDashboard(): void
+    {
+        $this->atualizarAcompanhamentoTurmas();
+        $this->acompanhamentoCarregado = true;
+    }
+
+    public function carregarDetalhesDashboard(): void
+    {
+        $this->carregarGraficosDashboard();
+        $this->carregarAcompanhamentoDashboard();
     }
 
     public function updatedFiltros(mixed $value = null, ?string $key = null): void
@@ -169,7 +245,8 @@ class DashboardAvaliacoes extends Page implements HasForms
             $this->filtrosAcompanhamento = $this->filtrosAcompanhamentoPadrao();
         }
 
-        $this->atualizarDashboard();
+        $this->carregarResumoDashboard();
+        $this->dispatch('dashboard-detalhes-recarregar');
     }
 
     public function updatedFiltrosAvaliacaoId(): void
@@ -178,7 +255,8 @@ class DashboardAvaliacoes extends Page implements HasForms
         $this->fecharWorkspaceAcompanhamento();
         $this->limparFiltrosDependentes();
         $this->filtrosAcompanhamento = $this->filtrosAcompanhamentoPadrao();
-        $this->atualizarDashboard();
+        $this->carregarResumoDashboard();
+        $this->dispatch('dashboard-detalhes-recarregar');
     }
 
     public function limparFiltros(): void
@@ -187,7 +265,8 @@ class DashboardAvaliacoes extends Page implements HasForms
         $this->filtrosAcompanhamento = $this->filtrosAcompanhamentoPadrao();
         $this->resetarPaginacoesDashboard();
         $this->fecharWorkspaceAcompanhamento();
-        $this->atualizarDashboard();
+        $this->carregarResumoDashboard();
+        $this->dispatch('dashboard-detalhes-recarregar');
     }
 
     public function updatedFiltrosAcompanhamento(): void
