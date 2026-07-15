@@ -873,8 +873,10 @@ class ServidorResource extends Resource
      */
     public static function extrairRegistrosProfessorDoForm(array $data): array
     {
-        if (! empty($data['matriculas_professor']) && is_array($data['matriculas_professor'])) {
-            return array_values($data['matriculas_professor']);
+        if (array_key_exists('matriculas_professor', $data)) {
+            return is_array($data['matriculas_professor'])
+                ? array_values($data['matriculas_professor'])
+                : [];
         }
 
         return array_values($data['registros_professor'] ?? []);

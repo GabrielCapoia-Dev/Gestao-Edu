@@ -9,6 +9,7 @@ use App\Models\Professor;
 use App\Models\ProfessorMatricula;
 use App\Models\Servidor;
 use App\Models\ServidorFuncaoAdministrativa;
+use App\Models\ServidorFuncaoTurma;
 use App\Models\Turma;
 use App\Models\TurmaComponenteProfessor;
 use App\Models\User;
@@ -19,8 +20,9 @@ use Illuminate\Validation\ValidationException;
 
 class PessoaProfessorService
 {
+    private const MOTIVO_ENCERRAMENTO_LOTACAO = 'Matrícula ou lotação removida no cadastro da pessoa.';
+
     public function __construct(
-        private readonly ServidorService $servidorService,
         private readonly PessoaAcessoService $pessoaAcessoService,
     ) {}
 
@@ -37,10 +39,11 @@ class PessoaProfessorService
     public function atualizarPessoaProfessor(Pessoa|Servidor $pessoa, array $dadosPessoa, array $registros, array $acesso = []): Servidor
     {
         return DB::transaction(function () use ($pessoa, $dadosPessoa, $registros, $acesso): Servidor {
-            $pessoa->update($this->dadosPessoa($dadosPessoa));
-
             /** @var Servidor $fresh */
-            $fresh = Servidor::query()->findOrFail($pessoa->id);
+            $fresh = Servidor::query()
+                ->lockForUpdate()
+                ->findOrFail($pessoa->id);
+            $fresh->update($this->dadosPessoa($dadosPessoa));
 
             return $this->finalizarProfessor($fresh, $registros, $acesso);
         });
@@ -59,6 +62,23 @@ class PessoaProfessorService
     {
         $matriculas = $this->normalizarMatriculas($registros);
         $this->validarInvariantesMatriculas($matriculas);
+
+        /** @var Servidor $pessoa */
+        $pessoa = Servidor::query()
+            ->lockForUpdate()
+            ->findOrFail($pessoa->id);
+
+        ProfessorMatricula::query()
+            ->where('servidor_id', $pessoa->id)
+            ->lockForUpdate()
+            ->get();
+
+        Professor::query()
+            ->where('servidor_id', $pessoa->id)
+            ->lockForUpdate()
+            ->get();
+
+        $this->validarIdsPertencemPessoa($pessoa, $matriculas);
 
         $idsProfessoresMantidos = collect();
         $idsMatriculasMantidas = collect();
@@ -161,7 +181,6 @@ class PessoaProfessorService
         // Remove vínculos deste professor que saíram do formulário (sem apagar slots de outros).
         TurmaComponenteProfessor::query()
             ->where('professor_id', $professor->id)
-            ->where('tem_professor', true)
             ->get()
             ->each(function (TurmaComponenteProfessor $row) use ($vinculosMantidosKeys): void {
                 $key = "{$row->turma_id}-{$row->componente_curricular_id}";
@@ -216,22 +235,44 @@ class PessoaProfessorService
             $vinculo->save();
 
             if ((int) ($professor->servidor_funcao_administrativa_id ?? 0) !== (int) $vinculo->id) {
-                $professor->update(['servidor_funcao_administrativa_id' => $vinculo->id]);
+                $professor->forceFill([
+                    'servidor_funcao_administrativa_id' => $vinculo->id,
+                ])->saveQuietly();
             }
 
             $vinculosMantidos->push($vinculo->id);
         }
 
-        ServidorFuncaoAdministrativa::query()
+        $vinculosParaEncerrar = ServidorFuncaoAdministrativa::query()
             ->where('servidor_id', $pessoa->id)
             ->where('funcao_administrativa_id', $funcaoProfessor->id)
             ->where('status', ServidorFuncaoAdministrativa::STATUS_ATIVO)
             ->whereNotIn('id', $vinculosMantidos->all())
-            ->update([
-                'status' => ServidorFuncaoAdministrativa::STATUS_INATIVO,
-                'data_fim' => now()->toDateString(),
-                'updated_at' => now(),
-            ]);
+            ->lockForUpdate()
+            ->get();
+
+        if ($vinculosParaEncerrar->isNotEmpty() && Schema::hasTable('servidor_funcao_turma')) {
+            DB::table('servidor_funcao_turma')
+                ->whereIn('servidor_funcao_administrativa_id', $vinculosParaEncerrar->pluck('id')->all())
+                ->where('status', ServidorFuncaoTurma::STATUS_ATIVO)
+                ->update([
+                    'principal' => false,
+                    'status' => ServidorFuncaoTurma::STATUS_INATIVO,
+                    'data_fim' => now()->toDateString(),
+                    'updated_at' => now(),
+                ]);
+        }
+
+        if ($vinculosParaEncerrar->isNotEmpty()) {
+            ServidorFuncaoAdministrativa::query()
+                ->whereKey($vinculosParaEncerrar->pluck('id')->all())
+                ->update([
+                    'principal' => false,
+                    'status' => ServidorFuncaoAdministrativa::STATUS_INATIVO,
+                    'data_fim' => now()->toDateString(),
+                    'updated_at' => now(),
+                ]);
+        }
 
         $this->atualizarEscopoAgregadoPessoa($pessoa->fresh(['professores.escola']));
     }
@@ -348,6 +389,12 @@ class PessoaProfessorService
     /** @param Collection<int, array<string, mixed>> $matriculas */
     private function validarInvariantesMatriculas(Collection $matriculas): void
     {
+        if ($matriculas->isEmpty()) {
+            throw ValidationException::withMessages([
+                'matriculas_professor' => 'Um professor deve possuir ao menos uma matrícula.',
+            ]);
+        }
+
         $turnos = $matriculas
             ->map(fn (array $m): string => (string) ($m['turno'] ?? ''))
             ->filter()
@@ -398,6 +445,12 @@ class PessoaProfessorService
                 'matricula' => (string) $matricula->matricula,
                 'turno' => (string) $matricula->turno,
             ]);
+
+        if ($conjuntoFinal->isEmpty()) {
+            throw ValidationException::withMessages([
+                'matriculas_professor' => 'Um professor deve possuir ao menos uma matrícula.',
+            ]);
+        }
 
         ProfessorMatricula::assertConjuntoTurnosValido($conjuntoFinal->pluck('turno')->all());
 
@@ -475,6 +528,9 @@ class PessoaProfessorService
             'telefone' => $pessoa->telefone,
             'user_id' => $pessoa->user_id,
             'ativo' => true,
+            'desativado_em' => null,
+            'desativado_por_id' => null,
+            'motivo_desativacao' => null,
         ];
 
         if ($professor) {
@@ -484,19 +540,27 @@ class PessoaProfessorService
                 ]);
             }
 
-            $professor->update($payload);
+            $professor->updateQuietly($payload);
 
             return $professor->fresh();
         }
 
-        return Professor::query()->create($payload);
+        $professor = new Professor($payload);
+        $professor->saveQuietly();
+
+        return $professor->fresh();
     }
 
     private function finalizarProfessor(Servidor $pessoa, array $registros, array $acesso): Servidor
     {
         $this->sincronizarRegistros($pessoa, $registros);
-        $this->pessoaAcessoService->provisionarUsuarioProfessor($pessoa->fresh(['professores']), $acesso);
         $this->sincronizarVinculosFuncionaisSilenciosos($pessoa->fresh(['professores']));
+
+        if ($pessoa->professores()->where('ativo', true)->exists()) {
+            $this->pessoaAcessoService->provisionarUsuarioProfessor($pessoa->fresh(['professores']), $acesso);
+        }
+
+        $this->pessoaAcessoService->provisionarAcessosDoServidor($pessoa->fresh());
 
         /** @var Servidor $fresh */
         $fresh = $pessoa->fresh(['professores.escola', 'professorMatriculas', 'user', 'vinculosAtivos']);
@@ -510,16 +574,11 @@ class PessoaProfessorService
             ->where('ativo', true)
             ->when($idsMantidos->isNotEmpty(), fn ($query) => $query->whereNotIn('id', $idsMantidos->all()))
             ->when($idsMantidos->isEmpty(), fn ($query) => $query)
+            ->lockForUpdate()
             ->get();
 
         foreach ($paraRemover as $professor) {
-            if ($this->servidorService->professorPossuiVinculosPedagogicos($professor)) {
-                throw ValidationException::withMessages([
-                    'registros_professor' => 'Não é possível remover um registro com vínculos pedagógicos ativos.',
-                ]);
-            }
-
-            $professor->delete();
+            $this->encerrarLotacaoProfessor($professor);
         }
     }
 
@@ -533,14 +592,98 @@ class PessoaProfessorService
             ->where('servidor_id', $pessoa->id)
             ->when($idsMantidos->isNotEmpty(), fn ($query) => $query->whereNotIn('id', $idsMantidos->all()))
             ->when($idsMantidos->isEmpty(), fn ($query) => $query)
+            ->lockForUpdate()
             ->get();
 
         foreach ($paraRemover as $matricula) {
-            if ($matricula->professores()->exists()) {
-                continue;
-            }
+            $matricula->professores()
+                ->where('ativo', true)
+                ->lockForUpdate()
+                ->get()
+                ->each(fn (Professor $professor) => $this->encerrarLotacaoProfessor($professor));
+
+            Professor::query()
+                ->where('professor_matricula_id', $matricula->id)
+                ->update([
+                    'professor_matricula_id' => null,
+                    'updated_at' => now(),
+                ]);
 
             $matricula->delete();
+        }
+    }
+
+    private function encerrarLotacaoProfessor(Professor $professor): void
+    {
+        TurmaComponenteProfessor::query()
+            ->where('professor_id', $professor->id)
+            ->lockForUpdate()
+            ->get();
+
+        $this->sincronizarTurmasComponentes($professor, []);
+
+        foreach (['professor_turma', 'professor_funcao_turma'] as $tabela) {
+            if (Schema::hasTable($tabela)) {
+                DB::table($tabela)->where('professor_id', $professor->id)->delete();
+            }
+        }
+
+        $professor->forceFill([
+            'ativo' => false,
+            'desativado_em' => now(),
+            'desativado_por_id' => auth()->id(),
+            'motivo_desativacao' => self::MOTIVO_ENCERRAMENTO_LOTACAO,
+        ])->saveQuietly();
+
+        app(ProfessorEscolaVinculoService::class)->sincronizarPorProfessores([$professor->id]);
+    }
+
+    /** @param Collection<int, array<string, mixed>> $matriculas */
+    private function validarIdsPertencemPessoa(Pessoa|Servidor $pessoa, Collection $matriculas): void
+    {
+        $matriculaIds = $matriculas
+            ->pluck('id')
+            ->filter(fn ($id): bool => filled($id))
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->values();
+
+        if ($matriculaIds->isNotEmpty()) {
+            $idsValidos = ProfessorMatricula::query()
+                ->where('servidor_id', $pessoa->id)
+                ->whereKey($matriculaIds->all())
+                ->pluck('id')
+                ->map(fn ($id): int => (int) $id);
+
+            if ($matriculaIds->diff($idsValidos)->isNotEmpty()) {
+                throw ValidationException::withMessages([
+                    'matriculas_professor' => 'Uma das matrículas informadas não pertence a esta Pessoa.',
+                ]);
+            }
+        }
+
+        $professorIds = $matriculas
+            ->flatMap(fn (array $matricula): array => $matricula['escolas'] ?? [])
+            ->pluck('id')
+            ->filter(fn ($id): bool => filled($id))
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->values();
+
+        if ($professorIds->isEmpty()) {
+            return;
+        }
+
+        $idsValidos = Professor::query()
+            ->where('servidor_id', $pessoa->id)
+            ->whereKey($professorIds->all())
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id);
+
+        if ($professorIds->diff($idsValidos)->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'matriculas_professor' => 'Uma das lotações informadas não pertence a esta Pessoa.',
+            ]);
         }
     }
 

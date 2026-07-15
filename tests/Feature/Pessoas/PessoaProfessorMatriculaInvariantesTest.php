@@ -146,7 +146,7 @@ class PessoaProfessorMatriculaInvariantesTest extends TestCase
         $this->assertSame(ProfessorMatricula::MAX_POR_PESSOA, $servidor->professorMatriculas->count());
     }
 
-    public function test_rejeita_substituicao_que_reteria_historico_acima_do_limite_da_pessoa(): void
+    public function test_substituicao_remove_matriculas_canonicas_e_preserva_historico_desvinculado(): void
     {
         $this->seedCargoProfessor();
         $setor = $this->criarSetor('Pedagógico');
@@ -160,23 +160,35 @@ class PessoaProfessorMatriculaInvariantesTest extends TestCase
             ['matricula' => 'ANTIGA-M', 'turno' => 'manha', 'escolas' => [['id_escola' => $escola->id]]],
             ['matricula' => 'ANTIGA-T', 'turno' => 'tarde', 'escolas' => [['id_escola' => $escola->id]]],
         ]);
+        $matriculasAntigasIds = $servidor->matriculas->pluck('id')->all();
+        $professoresAntigosIds = $servidor->professores->pluck('id')->all();
         $servidor->professores()->update(['ativo' => false]);
 
-        try {
-            $service->atualizarPessoaProfessor($servidor, [
-                'nome' => $servidor->nome,
-                'email' => $servidor->email,
-                'status' => Servidor::STATUS_ATIVO,
-            ], [
-                ['matricula' => 'NOVA-M', 'turno' => 'manha', 'escolas' => [['id_escola' => $escola->id]]],
-                ['matricula' => 'NOVA-T', 'turno' => 'tarde', 'escolas' => [['id_escola' => $escola->id]]],
-            ]);
-            $this->fail('A substituição não deveria manter quatro matrículas na Pessoa.');
-        } catch (ValidationException $exception) {
-            $this->assertStringContainsString('Cada pessoa pode ter no máximo', $this->mensagensValidacao($exception));
-        }
+        $atualizado = $service->atualizarPessoaProfessor($servidor, [
+            'nome' => $servidor->nome,
+            'email' => $servidor->email,
+            'status' => Servidor::STATUS_ATIVO,
+        ], [
+            ['matricula' => 'NOVA-M', 'turno' => 'manha', 'escolas' => [['id_escola' => $escola->id]]],
+            ['matricula' => 'NOVA-T', 'turno' => 'tarde', 'escolas' => [['id_escola' => $escola->id]]],
+        ]);
 
-        $this->assertCount(2, $servidor->fresh()->matriculas);
+        $this->assertSame(['NOVA-M', 'NOVA-T'], $atualizado->matriculas->pluck('matricula')->sort()->values()->all());
+        $this->assertSame(0, ProfessorMatricula::query()->whereIn('id', $matriculasAntigasIds)->count());
+        $this->assertSame(2, $servidor->professores()
+            ->whereIn('id', $professoresAntigosIds)
+            ->where('ativo', false)
+            ->whereNull('professor_matricula_id')
+            ->count());
+        $this->assertSame(
+            ['ANTIGA-M', 'ANTIGA-T'],
+            $servidor->professores()
+                ->whereIn('id', $professoresAntigosIds)
+                ->pluck('matricula')
+                ->sort()
+                ->values()
+                ->all(),
+        );
     }
 
     public function test_substituicao_considera_estado_final_apos_remover_lotacoes_ativas(): void

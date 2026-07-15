@@ -95,12 +95,13 @@ class PessoaAcessoService
 
             foreach ($servidor->professores as $professor) {
                 if ((int) ($professor->user_id ?? 0) !== (int) $user->id) {
-                    $professor->update(['user_id' => $user->id]);
+                    $professor->updateQuietly(['user_id' => $user->id]);
                 }
             }
 
             $this->aplicarRolesProfessor($user, $acesso, $criouUser);
             $this->aplicarPermissoesExtras($user, $acesso);
+            app(ProfessorEscolaVinculoService::class)->sincronizarPorUsuario($user);
 
             app(PermissionRegistrar::class)->forgetCachedPermissions();
         });
@@ -251,7 +252,7 @@ class PessoaAcessoService
 
             foreach ($servidor->professores as $professor) {
                 if ((int) ($professor->user_id ?? 0) !== (int) $user->id) {
-                    $professor->update(['user_id' => $user->id]);
+                    $professor->updateQuietly(['user_id' => $user->id]);
                 }
             }
 
@@ -312,10 +313,7 @@ class PessoaAcessoService
 
     private function reconciliarRolesFuncionais(User $user, Collection $roleIdsAtivas): void
     {
-        $rolesGerenciadas = DB::table('funcao_administrativa_role')
-            ->pluck('role_id')
-            ->map(fn ($id): int => (int) $id)
-            ->unique();
+        $rolesGerenciadas = $this->rolesFuncionaisGerenciadasIds();
 
         $adminIds = Role::query()
             ->where('name', 'Admin')
