@@ -759,6 +759,7 @@ class CriarPermissoes extends Command
             fn (ListaPermissoes $permission): string => $permission->label(),
             [
                 ListaPermissoes::ListarProfessores,
+                ListaPermissoes::CriarProfessores,
                 ListaPermissoes::EditarProfessores,
                 ListaPermissoes::EditarEscolaDoProfessor,
                 ListaPermissoes::EditarMatriculaDoProfessor,
@@ -791,6 +792,7 @@ class CriarPermissoes extends Command
         return array_values(array_unique([
             ...$enumLabels,
             'Listar Professores',
+            'Criar Professores',
             'Editar Professores',
             'Editar Escola do Professor',
             'Editar Matricula do Professor',

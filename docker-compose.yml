@@ -35,6 +35,7 @@ services:
       dockerfile: Dockerfile
     image: laravel-app-gestao-edu
     container_name: laravel-app-gestao-edu
+    restart: unless-stopped
     working_dir: /var/www
     env_file:
       - .env
@@ -149,6 +150,7 @@ services:
   db:
     image: mysql:8.0
     container_name: laravel-db-gestao-edu
+    restart: unless-stopped
     env_file:
       - .env
     environment:
