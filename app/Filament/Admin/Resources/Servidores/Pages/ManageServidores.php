@@ -13,12 +13,20 @@ use Filament\Schemas\Schema;
 use Filament\View\PanelsRenderHook;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
+use Livewire\Attributes\On;
 
 class ManageServidores extends ManageRecords
 {
     protected static string $resource = ServidorResource::class;
 
     protected string $view = 'filament.admin.resources.servidores.pages.manage-pessoas';
+
+    #[On('pessoa-editor-fechar')]
+    public function fecharEditorPessoa(): void
+    {
+        $this->flushCachedTableRecords();
+        $this->unmountAction(false);
+    }
 
     public function getHeader(): ?View
     {

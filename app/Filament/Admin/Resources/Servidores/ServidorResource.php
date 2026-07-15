@@ -17,9 +17,9 @@ use App\Services\ServidorService;
 use App\Services\UserService;
 use BackedEnum;
 use Closure;
+use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
 use Filament\Forms\Components\Select;
@@ -336,78 +336,26 @@ class ServidorResource extends Resource
                     ->stickyModalHeader()
                     ->schema(fn (Servidor $record): array => static::infolistDetalhesCompletos($record)),
 
-                EditAction::make()
-                    ->model(Servidor::class)
+                Action::make('edit')
+                    ->label('Editar')
+                    ->icon('heroicon-o-pencil-square')
+                    ->color('primary')
                     ->visible(fn (Servidor $record): bool => Gate::allows('update', $record))
                     ->modalWidth('6xl')
                     ->modalIcon(null)
                     ->modalHeading(fn (Servidor $record): string => "Editar pessoa — {$record->nome}")
                     ->modalDescription('Login e permissões: menu Acesso → Usuários.')
-                    ->modalCancelActionLabel('Cancelar')
-                    ->modalSubmitActionLabel('Salvar alterações')
+                    ->formWrapper(false)
+                    ->modalSubmitAction(false)
+                    ->modalCancelAction(false)
                     ->extraModalWindowAttributes([
                         'class' => 'pessoa-modal-window',
                     ])
                     ->stickyModalHeader()
                     ->closeModalByClickingAway(false)
-                    ->fillForm(function (Servidor $record): array {
-                        if (static::usuarioPodeGerenciarEstrutura($record)) {
-                            return app(PessoaProfessorFormService::class)->dadosParaFormulario($record);
-                        }
-
-                        return app(PessoaProfessorFormService::class)->dadosEscopadosParaFormulario($record, Auth::user());
-                    })
-                    ->using(function (Servidor $record, array $data): Servidor {
-                        try {
-                            if (! static::usuarioPodeGerenciarEstrutura($record)) {
-                                $atualizado = app(PessoaEdicaoEscopadaService::class)->atualizar(
-                                    $record,
-                                    Auth::user(),
-                                    $data,
-                                );
-
-                                Notification::make()
-                                    ->title('Pessoa atualizada')
-                                    ->success()
-                                    ->send();
-
-                                return $atualizado;
-                            }
-
-                            [$data, $vinculos] = static::prepararDadosPersistencia($data, $record);
-
-                            $atualizado = app(ServidorService::class)->atualizarServidorComFuncoes(
-                                $record,
-                                $data,
-                                $vinculos,
-                            );
-
-                            Notification::make()
-                                ->title('Pessoa atualizada')
-                                ->success()
-                                ->send();
-
-                            return $atualizado;
-                        } catch (\Illuminate\Validation\ValidationException $e) {
-                            Notification::make()
-                                ->title('Não foi possível salvar')
-                                ->body(collect($e->errors())->flatten()->take(5)->implode(' '))
-                                ->danger()
-                                ->persistent()
-                                ->send();
-
-                            throw $e;
-                        } catch (\Throwable $e) {
-                            Notification::make()
-                                ->title('Erro ao salvar pessoa')
-                                ->body($e->getMessage())
-                                ->danger()
-                                ->persistent()
-                                ->send();
-
-                            throw $e;
-                        }
-                    }),
+                    ->modalContent(fn (Servidor $record) => view('components.pessoas.edit-form-modal', [
+                        'pessoa' => $record,
+                    ])),
 
                 DeleteAction::make()
                     ->label('Excluir')
