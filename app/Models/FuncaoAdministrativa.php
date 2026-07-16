@@ -182,6 +182,35 @@ class FuncaoAdministrativa extends Model
         );
     }
 
+    public static function manutencaoPadrao(): self
+    {
+        $funcao = static::query()->where('codigo', 'manutencao')->first()
+            ?? static::query()->where('nome', 'Manutenção')->first()
+            ?? new static();
+
+        $payload = [
+            'codigo' => 'manutencao',
+            'nome' => 'Manutenção',
+            'categoria' => self::CATEGORIA_OPERACIONAL,
+            'ativo' => true,
+            'exige_professor' => false,
+            'concede_acesso_sistema' => true,
+            'tem_relacao_turma' => false,
+            'direcao_escolar' => false,
+            'coordenacao_pedagogica' => false,
+            'secretaria_escolar' => false,
+        ];
+
+        $funcao->fill($payload)->save();
+
+        return $funcao->fresh();
+    }
+
+    public function ehManutencao(): bool
+    {
+        return (string) $this->codigo === 'manutencao';
+    }
+
     public function ehEquipeGestora(): bool
     {
         return (bool) ($this->direcao_escolar || $this->coordenacao_pedagogica || $this->secretaria_escolar);
@@ -233,6 +262,11 @@ class FuncaoAdministrativa extends Model
     public function scopeSecretaria(Builder $query): Builder
     {
         return $query->where('secretaria_escolar', true);
+    }
+
+    public function scopeManutencao(Builder $query): Builder
+    {
+        return $query->where('codigo', 'manutencao');
     }
 
     public function servidorFuncoes(): HasMany

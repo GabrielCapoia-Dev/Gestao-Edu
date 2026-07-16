@@ -16,6 +16,13 @@ class ServidorService
 {
     public function criarServidorComFuncoes(array $data, array $vinculos = []): Servidor
     {
+        if ($this->fluxoManutencao($data, $vinculos)) {
+            return app(PessoaManutencaoService::class)->criarPessoaManutencao(
+                $data,
+                $this->dadosManutencao($data, $vinculos),
+            );
+        }
+
         if ($this->fluxoEquipeGestora($data, $vinculos)) {
             return app(PessoaEquipeGestoraService::class)->criarPessoaEquipeGestora(
                 $data,
@@ -40,6 +47,34 @@ class ServidorService
 
     public function atualizarServidorComFuncoes(Servidor $servidor, array $data, array $vinculos = []): Servidor
     {
+        if ($this->fluxoManutencao($data, $vinculos)) {
+            $dadosManutencao = $this->dadosManutencao($data, $vinculos);
+
+            if ($servidor->professores()->where('ativo', true)->exists()) {
+                return app(PessoaManutencaoService::class)->converterProfessorParaManutencao(
+                    $servidor,
+                    $data,
+                    $dadosManutencao,
+                );
+            }
+
+            if ($servidor->vinculosAtivos()
+                ->whereHas('funcaoAdministrativa', fn ($funcoes) => $funcoes->equipeGestora())
+                ->exists()) {
+                return app(PessoaManutencaoService::class)->converterEquipeGestoraParaManutencao(
+                    $servidor,
+                    $data,
+                    $dadosManutencao,
+                );
+            }
+
+            return app(PessoaManutencaoService::class)->atualizarPessoaManutencao(
+                $servidor,
+                $data,
+                $dadosManutencao,
+            );
+        }
+
         if ($this->fluxoEquipeGestora($data, $vinculos)) {
             $dadosGestao = $this->dadosEquipeGestora($data, $vinculos);
 
@@ -49,6 +84,21 @@ class ServidorService
                     $dadosGestao,
                     $data,
                 );
+            }
+
+            if ($this->pessoaEhManutencao($servidor)) {
+                return DB::transaction(function () use ($servidor, $data, $dadosGestao): Servidor {
+                    app(PessoaManutencaoService::class)->encerrarVinculosManutencao(
+                        $servidor,
+                        reconciliarAcesso: false,
+                    );
+
+                    return app(PessoaEquipeGestoraService::class)->atualizarPessoaEquipeGestora(
+                        $servidor->fresh(),
+                        $data,
+                        $dadosGestao,
+                    );
+                });
             }
 
             return app(PessoaEquipeGestoraService::class)->atualizarPessoaEquipeGestora(
@@ -76,6 +126,22 @@ class ServidorService
                 );
             }
 
+            if ($this->pessoaEhManutencao($servidor)) {
+                return DB::transaction(function () use ($servidor, $data, $registros): Servidor {
+                    app(PessoaManutencaoService::class)->encerrarVinculosManutencao(
+                        $servidor,
+                        reconciliarAcesso: false,
+                    );
+
+                    return app(PessoaProfessorService::class)->atualizarPessoaProfessor(
+                        $servidor->fresh(),
+                        $data,
+                        $registros,
+                        $this->dadosAcesso($data),
+                    );
+                });
+            }
+
             return app(PessoaProfessorService::class)->atualizarPessoaProfessor(
                 $servidor,
                 $data,
@@ -101,6 +167,13 @@ class ServidorService
             || array_key_exists('matriculas_professor', $data);
     }
 
+    private function fluxoManutencao(array $data, array $vinculos): bool
+    {
+        return ($data['cargo'] ?? null) === 'manutencao'
+            || array_key_exists('manutencao', $data)
+            || array_key_exists('manutencao', $vinculos);
+    }
+
     private function fluxoEquipeGestora(array $data, array $vinculos): bool
     {
         return ($data['cargo'] ?? null) === 'equipe_gestora'
@@ -115,6 +188,22 @@ class ServidorService
             ?? $vinculos;
 
         return is_array($dados) ? [...$data, ...$dados] : $data;
+    }
+
+    private function dadosManutencao(array $data, array $vinculos): array
+    {
+        $dados = $vinculos['manutencao']
+            ?? $data['manutencao']
+            ?? $vinculos;
+
+        return is_array($dados) ? [...$data, ...$dados] : $data;
+    }
+
+    private function pessoaEhManutencao(Servidor $servidor): bool
+    {
+        return $servidor->vinculosAtivos()
+            ->whereHas('funcaoAdministrativa', fn ($funcoes) => $funcoes->manutencao())
+            ->exists();
     }
 
     private function dadosAcesso(array $data): array
@@ -367,10 +456,13 @@ class ServidorService
     public function pessoaPodeSerExcluida(Servidor $pessoa): bool
     {
         return ! $pessoa->servidorFuncoes()
-            ->whereHas(
-                'funcaoAdministrativa',
-                fn (Builder $funcoes): Builder => $funcoes->equipeGestora(),
-            )
+            ->whereHas('funcaoAdministrativa', function (Builder $funcoes): void {
+                $funcoes->where(function (Builder $cargos): void {
+                    $cargos
+                        ->equipeGestora()
+                        ->orWhere(fn (Builder $manutencao): Builder => $manutencao->manutencao());
+                });
+            })
             ->exists();
     }
 
@@ -380,7 +472,7 @@ class ServidorService
             return null;
         }
 
-        return "{$pessoa->nome} não pode ser excluída porque possui histórico na Equipe Gestora. "
+        return "{$pessoa->nome} não pode ser excluída porque possui histórico em cargo funcional protegido. "
             .'Inative a pessoa ou converta o cargo pelo fluxo próprio; os vínculos históricos devem ser preservados.';
     }
 

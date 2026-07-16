@@ -8,11 +8,13 @@ use App\Models\Pessoa;
 use App\Models\PessoaMatricula;
 use App\Models\Professor;
 use App\Models\Servidor;
+use App\Models\Setor;
 use App\Models\Turma;
 use App\Models\TurmaComponenteProfessor;
 use App\Models\User;
 use App\Services\PessoaEdicaoEscopadaService;
 use App\Services\PessoaProfessorFormService;
+use App\Services\PessoaScopeService;
 use App\Services\ServidorService;
 use Filament\Notifications\Notification;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -89,6 +91,8 @@ class PessoaForm extends Component
     public array $lotacoesAtivas = [];
 
     public ?int $idEscolaGestora = null;
+
+    public ?int $setorManutencaoId = null;
 
     /** @var list<string> */
     public array $cargosGestores = [];
@@ -188,6 +192,7 @@ class PessoaForm extends Component
 
         return view('livewire.pessoas.pessoa-form', [
             'escolasOptions' => $escolasOptions,
+            'setoresManutencaoOptions' => $this->setoresManutencaoOptions(),
             'turmasOptions' => $turmasOptions,
             'componentesOptions' => $componentesOptions,
             'turmasGestaoOptions' => $turmasGestaoOptions,
@@ -672,6 +677,7 @@ class PessoaForm extends Component
 
         if ($this->gerenciaEstrutura) {
             $this->idEscolaGestora = filled($dados['id_escola'] ?? null) ? (int) $dados['id_escola'] : null;
+            $this->setorManutencaoId = filled($dados['setor_id'] ?? null) ? (int) $dados['setor_id'] : null;
             $this->cargosGestores = array_values($dados['cargos_gestores'] ?? []);
             $this->cargosGestoresAnteriores = $this->cargosGestores;
             $this->portaria = $dados['portaria'] ?? null;
@@ -757,14 +763,18 @@ class PessoaForm extends Component
 
     private function aplicarCargo(string $cargo): void
     {
-        if (! in_array($cargo, [ServidorResource::CARGO_PROFESSOR, ServidorResource::CARGO_EQUIPE_GESTORA], true)) {
+        if (! in_array($cargo, [
+            ServidorResource::CARGO_PROFESSOR,
+            ServidorResource::CARGO_EQUIPE_GESTORA,
+            ServidorResource::CARGO_MANUTENCAO,
+        ], true)) {
             $this->cargo = ServidorResource::CARGO_PROFESSOR;
             $this->addError('cargo', 'O cargo informado é inválido.');
 
             return;
         }
 
-        if ($cargo === ServidorResource::CARGO_EQUIPE_GESTORA) {
+        if (in_array($cargo, [ServidorResource::CARGO_EQUIPE_GESTORA, ServidorResource::CARGO_MANUTENCAO], true)) {
             $this->autorizarEquipeGestora();
         } else {
             $this->autorizarEstruturaProfessor();
@@ -776,7 +786,7 @@ class PessoaForm extends Component
 
     private function validarPermissaoDoCargo(): void
     {
-        if ($this->cargo !== ServidorResource::CARGO_EQUIPE_GESTORA) {
+        if (! in_array($this->cargo, [ServidorResource::CARGO_EQUIPE_GESTORA, ServidorResource::CARGO_MANUTENCAO], true)) {
             return;
         }
 
@@ -827,6 +837,7 @@ class PessoaForm extends Component
             'cargo' => ['required', Rule::in([
                 ServidorResource::CARGO_PROFESSOR,
                 ServidorResource::CARGO_EQUIPE_GESTORA,
+                ServidorResource::CARGO_MANUTENCAO,
             ])],
             'matriculas' => ['required', 'array', 'min:1', 'max:'.PessoaMatricula::MAX_POR_PESSOA],
             'matriculas.*' => ['array'],
@@ -846,7 +857,7 @@ class PessoaForm extends Component
                 'matriculas.*.escolas.*.vinculos_turma_componente.*.turma_id' => ['required', 'integer'],
                 'matriculas.*.escolas.*.vinculos_turma_componente.*.componente_curricular_id' => ['required', 'integer'],
             ];
-        } else {
+        } elseif ($this->cargo === ServidorResource::CARGO_EQUIPE_GESTORA) {
             $rules += [
                 'idEscolaGestora' => ['required', 'integer'],
                 'cargosGestores' => ['required', 'array', 'min:1', 'max:2'],
@@ -859,12 +870,17 @@ class PessoaForm extends Component
                 'turmaIds' => ['array'],
                 'turmaIds.*' => ['integer'],
             ];
+        } else {
+            $rules += [
+                'setorManutencaoId' => ['required', 'integer'],
+            ];
         }
 
         $this->validate($rules, attributes: [
             'idEscolaGestora' => 'escola',
             'cargosGestores' => 'cargos gestores',
             'turmaIds' => 'turmas da coordenação',
+            'setorManutencaoId' => 'setor da Manutenção',
         ]);
 
         PessoaMatricula::assertConjuntoTurnosValido(
@@ -875,8 +891,10 @@ class PessoaForm extends Component
 
         if ($this->cargo === ServidorResource::CARGO_PROFESSOR) {
             $this->validarEstruturaProfessor();
-        } else {
+        } elseif ($this->cargo === ServidorResource::CARGO_EQUIPE_GESTORA) {
             $this->validarEstruturaEquipeGestora();
+        } else {
+            $this->validarEstruturaManutencao();
         }
     }
 
@@ -983,6 +1001,18 @@ class PessoaForm extends Component
         }
     }
 
+    private function validarEstruturaManutencao(): void
+    {
+        $this->autorizarEquipeGestora();
+        $options = $this->setoresManutencaoOptions();
+
+        if (! $this->setorManutencaoId || ! array_key_exists($this->setorManutencaoId, $options)) {
+            throw ValidationException::withMessages([
+                'setorManutencaoId' => 'Selecione um setor ativo, sem vínculo escolar e dentro do seu escopo.',
+            ]);
+        }
+    }
+
     private function validarEstadoSomenteLeitura(Servidor $pessoa): void
     {
         if (
@@ -991,6 +1021,7 @@ class PessoaForm extends Component
             || filled($this->observacoes)
             || $this->cargo !== ServidorResource::CARGO_PROFESSOR
             || $this->idEscolaGestora !== null
+            || $this->setorManutencaoId !== null
             || $this->cargosGestores !== []
             || filled($this->portaria)
             || $this->turmaIds !== []
@@ -1224,6 +1255,7 @@ class PessoaForm extends Component
             'cargo' => $this->cargo,
             'matriculas_professor' => $this->payloadMatriculas(),
             'id_escola' => $this->idEscolaGestora,
+            'setor_manutencao_id' => $this->setorManutencaoId,
             'cargos_gestores' => array_values($this->cargosGestores),
             'portaria' => $this->portaria,
             'turma_ids' => collect($this->turmaIds)->map(fn (mixed $id): int => (int) $id)->unique()->values()->all(),
@@ -1394,6 +1426,32 @@ class PessoaForm extends Component
     {
         return collect(ServidorResource::escolasOptionsEscopadas())
             ->mapWithKeys(fn (mixed $nome, mixed $id): array => [(int) $id => (string) $nome])
+            ->all();
+    }
+
+    /** @return array<int, string> */
+    private function setoresManutencaoOptions(): array
+    {
+        $user = $this->usuarioAutenticado();
+        $scope = app(PessoaScopeService::class);
+        $query = Setor::query()
+            ->where('ativo', true)
+            ->where('exige_vinculo_escola', false);
+
+        if (! $scope->hasGlobalAccess($user)) {
+            $ids = $scope->visibleSetorIds($user);
+
+            if ($ids === []) {
+                return [];
+            }
+
+            $query->whereIn('id', $ids);
+        }
+
+        return $query
+            ->orderedTree()
+            ->get()
+            ->mapWithKeys(fn (Setor $setor): array => [$setor->id => $setor->nome_completo])
             ->all();
     }
 

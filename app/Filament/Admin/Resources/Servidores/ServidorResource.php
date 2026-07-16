@@ -40,6 +40,8 @@ class ServidorResource extends Resource
 
     public const CARGO_EQUIPE_GESTORA = 'equipe_gestora';
 
+    public const CARGO_MANUTENCAO = 'manutencao';
+
     protected static ?string $model = Servidor::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::Briefcase;
@@ -65,6 +67,7 @@ class ServidorResource extends Resource
 
         if (ServidorEquipeGestoraForm::usuarioPodeAdministrar()) {
             $options[self::CARGO_EQUIPE_GESTORA] = 'Equipe Gestora';
+            $options[self::CARGO_MANUTENCAO] = 'Manutenção';
         }
 
         return $options;
@@ -87,7 +90,7 @@ class ServidorResource extends Resource
                 'user.roles:id,name',
                 'professores.escola:id,nome',
                 'matriculas:id,servidor_id,matricula,turno',
-                'vinculosAtivos.funcaoAdministrativa:id,nome,direcao_escolar,coordenacao_pedagogica,secretaria_escolar',
+                'vinculosAtivos.funcaoAdministrativa:id,codigo,nome,direcao_escolar,coordenacao_pedagogica,secretaria_escolar',
                 'vinculosAtivos.escola:id,nome',
             ]))
             ->paginated([5, 10, 25, 50, 100])
@@ -236,6 +239,23 @@ class ServidorResource extends Resource
                         ),
                         blank: fn (Builder $query): Builder => $query,
                     ),
+
+                TernaryFilter::make('eh_manutencao')
+                    ->label('Cargo Manutenção')
+                    ->trueLabel('Somente Manutenção')
+                    ->falseLabel('Sem cargo de Manutenção')
+                    ->placeholder('Todos')
+                    ->queries(
+                        true: fn (Builder $query): Builder => $query->whereHas(
+                            'vinculosAtivos.funcaoAdministrativa',
+                            fn (Builder $funcoes): Builder => $funcoes->manutencao(),
+                        ),
+                        false: fn (Builder $query): Builder => $query->whereDoesntHave(
+                            'vinculosAtivos.funcaoAdministrativa',
+                            fn (Builder $funcoes): Builder => $funcoes->manutencao(),
+                        ),
+                        blank: fn (Builder $query): Builder => $query,
+                    ),
             ])
             ->recordActions([
                 ViewAction::make()
@@ -377,9 +397,21 @@ class ServidorResource extends Resource
             ));
     }
 
+    public static function ehManutencao(Servidor $record): bool
+    {
+        $record->loadMissing('vinculosAtivos.funcaoAdministrativa');
+
+        return $record->vinculosAtivos
+            ->contains(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehManutencao());
+    }
+
     public static function cargoLabel(Servidor $record): string
     {
         $record->loadMissing(['professores', 'vinculosAtivos.funcaoAdministrativa']);
+
+        if (static::ehManutencao($record)) {
+            return 'Manutenção';
+        }
 
         $cargosGestores = static::vinculosVisiveis($record)
             ->filter(fn ($vinculo): bool => (bool) (
@@ -756,16 +788,33 @@ class ServidorResource extends Resource
         $cargo = (string) ($data['cargo'] ?? self::CARGO_PROFESSOR);
         $matriculas = static::extrairRegistrosProfessorDoForm($data);
         $recordEraGestor = $record ? static::ehEquipeGestora($record) : false;
+        $recordEraManutencao = $record ? static::ehManutencao($record) : false;
 
-        if (($cargo === self::CARGO_EQUIPE_GESTORA || $recordEraGestor)
+        if (($cargo === self::CARGO_EQUIPE_GESTORA
+            || $cargo === self::CARGO_MANUTENCAO
+            || $recordEraGestor
+            || $recordEraManutencao)
             && ! ServidorEquipeGestoraForm::usuarioPodeAdministrar()) {
             throw new \Illuminate\Auth\Access\AuthorizationException(
-                'Apenas Admin ou usuário com a permissão Gerenciar Vínculos Estruturais de Pessoas pode administrar a Equipe Gestora.',
+                'Apenas Admin ou usuário com a permissão Gerenciar Vínculos Estruturais de Pessoas pode administrar cargos funcionais.',
             );
         }
 
         unset($data['registros_professor'], $data['matriculas_professor']);
         $data['cargo'] = $cargo;
+
+        if ($cargo === self::CARGO_MANUTENCAO) {
+            return [$data, ['manutencao' => [
+                'setor_id' => $data['setor_manutencao_id'] ?? null,
+                'matriculas' => collect($matriculas)
+                    ->filter(fn (mixed $item): bool => is_array($item))
+                    ->map(fn (array $item): array => collect($item)
+                        ->only(['id', 'matricula', 'turno'])
+                        ->all())
+                    ->values()
+                    ->all(),
+            ]]];
+        }
 
         if ($cargo !== self::CARGO_EQUIPE_GESTORA) {
             return [$data, ['matriculas_professor' => $matriculas]];

@@ -3,7 +3,9 @@
 namespace Tests\Feature\Console;
 
 use App\Models\Role;
+use App\Models\FuncaoAdministrativa;
 use App\Services\PedidoService;
+use App\Support\ManutencaoPermissionPreset;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Spatie\Permission\Models\Permission;
@@ -74,6 +76,30 @@ class CriarPermissoesCommandTest extends TestCase
             'name' => PedidoService::PERMISSAO_NOTIFICAR_PEDIDO_ADICIONAL_CRIADO,
             'guard_name' => 'web',
         ]);
+    }
+
+    public function test_it_creates_maintenance_role_function_and_exact_permissions(): void
+    {
+        Artisan::call('permissoes:criar');
+
+        $role = Role::findByName('Manutenção', 'web');
+        $funcao = FuncaoAdministrativa::query()->where('codigo', 'manutencao')->firstOrFail();
+
+        $this->assertEqualsCanonicalizing(
+            ManutencaoPermissionPreset::all(),
+            $role->permissions()->pluck('name')->all(),
+        );
+        $this->assertFalse($role->hasPermissionTo('Editar Tipos de Avaliações'));
+        $this->assertFalse($role->hasPermissionTo('Criar Pedidos'));
+        $this->assertFalse($role->hasPermissionTo('Excluir Pedidos'));
+        $this->assertFalse($role->hasPermissionTo('Enviar Pedidos para Empresa'));
+        $this->assertDatabaseHas('funcao_administrativa_role', [
+            'funcao_administrativa_id' => $funcao->id,
+            'role_id' => $role->id,
+        ]);
+        $this->assertTrue($funcao->concedeAcessoSistema());
+        $this->assertFalse($funcao->exige_professor);
+        $this->assertFalse($funcao->tem_relacao_turma);
     }
 
     public function test_it_creates_acompanhamento_avaliacoes_permission_and_assigns_to_admin(): void

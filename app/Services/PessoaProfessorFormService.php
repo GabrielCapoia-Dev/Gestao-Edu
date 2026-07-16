@@ -63,6 +63,16 @@ class PessoaProfessorFormService
             'registros_professor' => $registrosFlat,
         ];
 
+        $vinculoManutencao = $pessoa->vinculosAtivos
+            ->first(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehManutencao());
+
+        if ($vinculoManutencao) {
+            return array_merge($dados, [
+                'cargo' => ServidorResource::CARGO_MANUTENCAO,
+                'setor_id' => $vinculoManutencao->setor_id,
+            ]);
+        }
+
         $vinculosGestores = $pessoa->vinculosAtivos
             ->filter(fn ($vinculo): bool => (bool) (
                 $vinculo->funcaoAdministrativa?->direcao_escolar
@@ -140,15 +150,24 @@ class PessoaProfessorFormService
                     || $vinculo->funcaoAdministrativa?->secretaria_escolar
                 ));
 
+        $ehManutencaoNoEscopo = $pessoa->vinculosAtivos
+            ->contains(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehManutencao());
+
         return [
             'nome' => $pessoa->nome,
             'cpf' => Pessoa::formatarCpf($pessoa->cpf),
             'email' => $pessoa->email,
             'telefone' => $pessoa->telefone,
             'status' => $pessoa->status,
-            'cargo' => $ehEquipeGestoraNoEscopo
-                ? ServidorResource::CARGO_EQUIPE_GESTORA
-                : ServidorResource::CARGO_PROFESSOR,
+            'cargo' => match (true) {
+                $ehManutencaoNoEscopo => ServidorResource::CARGO_MANUTENCAO,
+                $ehEquipeGestoraNoEscopo => ServidorResource::CARGO_EQUIPE_GESTORA,
+                default => ServidorResource::CARGO_PROFESSOR,
+            },
+            'setor_id' => $ehManutencaoNoEscopo
+                ? $pessoa->vinculosAtivos
+                    ->first(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehManutencao())?->setor_id
+                : null,
             'matriculas_professor' => $matriculasProfessor,
             'registros_professor' => [],
         ];

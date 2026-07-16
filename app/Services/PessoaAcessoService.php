@@ -38,8 +38,14 @@ class PessoaAcessoService
             ->pluck('id')
             ->map(fn ($id): int => (int) $id);
 
+        $idsManutencao = Role::query()
+            ->where('name', 'Manutenção')
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id);
+
         return $idsPivot
             ->merge($idsPorNome)
+            ->merge($idsManutencao)
             ->unique()
             ->values();
     }
@@ -52,6 +58,10 @@ class PessoaAcessoService
 
         if (is_numeric($role)) {
             return $this->rolesFuncionaisGerenciadasIds()->contains((int) $role);
+        }
+
+        if ((string) $role === 'Manutenção') {
+            return true;
         }
 
         return in_array((string) $role, ['Professor', 'Equipe Gestora', 'SecretÃ¡rio', 'Secretário'], true);

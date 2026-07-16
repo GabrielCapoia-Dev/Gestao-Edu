@@ -80,6 +80,8 @@
                 @include('livewire.pessoas.partials.matriculas-lotacoes')
 
                 @include('livewire.pessoas.partials.equipe-gestora')
+
+                @include('livewire.pessoas.partials.manutencao')
             </div>
         </div>
 

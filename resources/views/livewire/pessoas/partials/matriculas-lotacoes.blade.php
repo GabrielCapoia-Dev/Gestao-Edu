@@ -5,7 +5,9 @@
                 <x-filament::icon icon="heroicon-o-academic-cap" />
             </span>
             <div>
-                <h3 id="pessoa-form-matriculas-title">Matrículas e lotações</h3>
+                <h3 id="pessoa-form-matriculas-title">
+                    {{ $cargo === 'manutencao' ? 'Matrículas' : 'Matrículas e lotações' }}
+                </h3>
                 <p>Cada aba representa uma matrícula atual. Exclusões só são persistidas ao salvar.</p>
             </div>
         </div>
@@ -27,7 +29,9 @@
 
     @if ($matriculas === [])
         <div class="pe-person-form__empty" role="status">
-            Nenhuma matrícula desta unidade está disponível para edição.
+            {{ $cargo === 'manutencao'
+                ? 'Nenhuma matrícula está disponível para edição.'
+                : 'Nenhuma matrícula desta unidade está disponível para edição.' }}
         </div>
     @else
         <div class="pe-person-form__tab-strip" role="tablist" aria-label="Matrículas">
