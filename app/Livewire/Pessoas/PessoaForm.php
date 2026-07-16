@@ -238,6 +238,7 @@ class PessoaForm extends Component
         }
 
         unset($this->matriculas[$matriculaKey], $this->lotacoesAtivas[$matriculaKey]);
+        $this->completarTurnoLegadoAposRemocao();
         $this->matriculaAtiva = array_key_first($this->matriculas);
     }
 
@@ -1310,6 +1311,28 @@ class PessoaForm extends Component
             ->values();
 
         return $turnos->count() === 1 ? (string) $turnos->first() : '';
+    }
+
+    private function completarTurnoLegadoAposRemocao(): void
+    {
+        if (count($this->matriculas) !== PessoaMatricula::MAX_POR_PESSOA) {
+            return;
+        }
+
+        $semTurno = collect($this->matriculas)
+            ->filter(fn (mixed $matricula): bool => is_array($matricula)
+                && ! array_key_exists((string) ($matricula['turno'] ?? ''), PessoaMatricula::turnosOptions()));
+        $comTurno = collect($this->matriculas)
+            ->filter(fn (mixed $matricula): bool => is_array($matricula)
+                && in_array((string) ($matricula['turno'] ?? ''), ['manha', 'tarde'], true));
+
+        if ($semTurno->count() !== 1 || $comTurno->count() !== 1) {
+            return;
+        }
+
+        $matriculaKey = (string) $semTurno->keys()->first();
+        $turnoOcupado = (string) $comTurno->first()['turno'];
+        $this->matriculas[$matriculaKey]['turno'] = $turnoOcupado === 'manha' ? 'tarde' : 'manha';
     }
 
     private function capturarIdsPermitidos(): void

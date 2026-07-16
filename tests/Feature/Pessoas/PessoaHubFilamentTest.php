@@ -262,6 +262,51 @@ class PessoaHubFilamentTest extends TestCase
         $this->assertSame($escolaGestora->id, $servidor->fresh()->id_escola);
     }
 
+    public function test_formulario_saneia_turno_legado_ao_reduzir_tres_matriculas_para_duas(): void
+    {
+        $usuario = $this->usuarioHubAdmin([
+            'Listar Pessoas',
+            'Editar Pessoas',
+            'Gerenciar Vínculos Estruturais de Pessoas',
+        ]);
+        $setor = $this->criarSetor('Setor Saneamento de Matrículas');
+        $escola = $this->criarEscola('Escola Saneamento de Matrículas', $setor);
+        $servidor = $this->criarServidor('Pessoa com Três Matrículas', $escola, $setor);
+        $matriculaTarde = PessoaMatricula::query()->create([
+            'servidor_id' => $servidor->id,
+            'matricula' => '1082435',
+            'turno' => 'tarde',
+        ]);
+        $matriculaManha = PessoaMatricula::query()->create([
+            'servidor_id' => $servidor->id,
+            'matricula' => '925253',
+            'turno' => 'manha',
+        ]);
+        $matriculaSemTurno = PessoaMatricula::query()->create([
+            'servidor_id' => $servidor->id,
+            'matricula' => '1082453',
+            'turno' => '',
+        ]);
+
+        Livewire::actingAs($usuario)
+            ->test(PessoaForm::class, ['pessoaId' => $servidor->id])
+            ->assertCount('matriculas', 3)
+            ->call('removerMatricula', 'm'.$matriculaManha->id)
+            ->assertCount('matriculas', 2)
+            ->assertSet('matriculas.m'.$matriculaTarde->id.'.turno', 'tarde')
+            ->assertSet('matriculas.m'.$matriculaSemTurno->id.'.turno', 'manha')
+            ->call('salvar')
+            ->assertHasNoErrors()
+            ->assertDispatched('pessoa-form-salvo');
+
+        $this->assertDatabaseMissing('professor_matriculas', ['id' => $matriculaManha->id]);
+        $this->assertDatabaseHas('professor_matriculas', [
+            'id' => $matriculaSemTurno->id,
+            'turno' => 'manha',
+        ]);
+        $this->assertSame(2, PessoaMatricula::query()->where('servidor_id', $servidor->id)->count());
+    }
+
     public function test_eventos_do_formulario_fecham_o_modal_personalizado(): void
     {
         $usuario = $this->usuarioHubAdmin(['Listar Pessoas', 'Criar Pessoas']);
