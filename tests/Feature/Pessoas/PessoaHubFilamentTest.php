@@ -288,13 +288,19 @@ class PessoaHubFilamentTest extends TestCase
             'turno' => '',
         ]);
 
-        Livewire::actingAs($usuario)
-            ->test(PessoaForm::class, ['pessoaId' => $servidor->id])
+        $componente = Livewire::actingAs($usuario)
+            ->test(PessoaForm::class, ['pessoaId' => $servidor->id]);
+        $estadoAntesDaRemocao = $componente->get('matriculas');
+
+        $componente
             ->assertCount('matriculas', 3)
             ->call('removerMatricula', 'm'.$matriculaManha->id)
             ->assertCount('matriculas', 2)
             ->assertSet('matriculas.m'.$matriculaTarde->id.'.turno', 'tarde')
             ->assertSet('matriculas.m'.$matriculaSemTurno->id.'.turno', 'manha')
+            // Simula um update atrasado do Livewire reintroduzindo o estado anterior.
+            ->set('matriculas', $estadoAntesDaRemocao)
+            ->assertCount('matriculas', 3)
             ->call('salvar')
             ->assertHasNoErrors()
             ->assertDispatched('pessoa-form-salvo');

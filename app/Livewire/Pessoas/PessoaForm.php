@@ -58,6 +58,14 @@ class PessoaForm extends Component
     #[Locked]
     public array $cargosGestoresAnteriores = [];
 
+    /** @var list<string> */
+    #[Locked]
+    public array $matriculaKeysRemovidas = [];
+
+    /** @var list<int> */
+    #[Locked]
+    public array $matriculaIdsRemovidos = [];
+
     public string $nome = '';
 
     public ?string $cpf = null;
@@ -235,6 +243,22 @@ class PessoaForm extends Component
             $this->addError('matriculas', 'A pessoa deve permanecer com ao menos uma matrícula.');
 
             return;
+        }
+
+        $matriculaId = filled($this->matriculas[$matriculaKey]['id'] ?? null)
+            ? (int) $this->matriculas[$matriculaKey]['id']
+            : null;
+        $this->matriculaKeysRemovidas = collect($this->matriculaKeysRemovidas)
+            ->push($matriculaKey)
+            ->unique()
+            ->values()
+            ->all();
+        if ($matriculaId !== null) {
+            $this->matriculaIdsRemovidos = collect($this->matriculaIdsRemovidos)
+                ->push($matriculaId)
+                ->unique()
+                ->values()
+                ->all();
         }
 
         unset($this->matriculas[$matriculaKey], $this->lotacoesAtivas[$matriculaKey]);
@@ -507,6 +531,7 @@ class PessoaForm extends Component
     public function salvar(): void
     {
         $this->resetErrorBag();
+        $this->aplicarRemocoesPendentesDeMatriculas();
         $user = $this->usuarioAutenticado();
         $pessoa = null;
 
@@ -1333,6 +1358,26 @@ class PessoaForm extends Component
         $matriculaKey = (string) $semTurno->keys()->first();
         $turnoOcupado = (string) $comTurno->first()['turno'];
         $this->matriculas[$matriculaKey]['turno'] = $turnoOcupado === 'manha' ? 'tarde' : 'manha';
+    }
+
+    private function aplicarRemocoesPendentesDeMatriculas(): void
+    {
+        foreach ($this->matriculaKeysRemovidas as $matriculaKey) {
+            unset($this->matriculas[$matriculaKey], $this->lotacoesAtivas[$matriculaKey]);
+        }
+
+        if ($this->matriculaIdsRemovidos !== []) {
+            $this->matriculas = collect($this->matriculas)
+                ->reject(fn (mixed $matricula): bool => is_array($matricula)
+                    && filled($matricula['id'] ?? null)
+                    && in_array((int) $matricula['id'], $this->matriculaIdsRemovidos, true))
+                ->all();
+        }
+
+        $this->completarTurnoLegadoAposRemocao();
+        if (! array_key_exists((string) $this->matriculaAtiva, $this->matriculas)) {
+            $this->matriculaAtiva = array_key_first($this->matriculas);
+        }
     }
 
     private function capturarIdsPermitidos(): void
