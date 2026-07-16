@@ -4,33 +4,26 @@ namespace App\Filament\Admin\Resources\Servidores;
 
 use App\Filament\Admin\Resources\Servidores\Pages\ManageServidores;
 use App\Filament\Admin\Resources\Servidores\Schemas\ServidorEquipeGestoraForm;
-use App\Filament\Admin\Resources\Servidores\Schemas\ServidorMatriculasForm;
 use App\Models\Escola;
 use App\Models\Professor;
 use App\Models\ProfessorMatricula;
 use App\Models\Servidor;
 use App\Models\Turma;
-use App\Services\PessoaEdicaoEscopadaService;
-use App\Services\PessoaProfessorFormService;
 use App\Services\PessoaScopeService;
 use App\Services\ServidorService;
 use App\Services\UserService;
 use BackedEnum;
-use Closure;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\View;
-use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -62,85 +55,6 @@ class ServidorResource extends Resource
     protected static ?string $modelLabel = 'Pessoa';
 
     protected static ?string $slug = 'servidores';
-
-    public static function form(Schema $schema): Schema
-    {
-        return $schema
-            ->components([
-                Tabs::make('Cadastro de pessoa')
-                    ->columnSpanFull()
-                    ->tabs([
-                        Tab::make('Dados pessoais')
-                            ->schema([
-                                Section::make('Identidade da pessoa')
-                                    ->description('Dados básicos usados em todo o sistema.')
-                                    ->icon('heroicon-o-user')
-                                    ->schema([
-                                        TextInput::make('nome')
-                                            ->label('Nome')
-                                            ->required()
-                                            ->maxLength(255)
-                                            ->columnSpan(2),
-
-                                        TextInput::make('cpf')
-                                            ->label('CPF')
-                                            ->mask('999.999.999-99')
-                                            ->maxLength(14),
-
-                                        TextInput::make('email')
-                                            ->label('E-mail')
-                                            ->email()
-                                            ->required()
-                                            ->dehydrateStateUsing(fn (?string $state): ?string => filled($state) ? Professor::normalizarEmail($state) : null)
-                                            ->rule(function (): Closure {
-                                                return function (string $attribute, mixed $value, Closure $fail): void {
-                                                    if (! Professor::emailInstitucionalValido((string) $value)) {
-                                                        $fail('Use somente e-mail institucional @edu.umuarama.pr.gov.br.');
-                                                    }
-                                                };
-                                            })
-                                            ->maxLength(255),
-
-                                        TextInput::make('telefone')
-                                            ->label('Telefone')
-                                            ->tel()
-                                            ->mask('(99) 99999-9999')
-                                            ->maxLength(255),
-
-                                        Select::make('status')
-                                            ->label('Status')
-                                            ->options(Servidor::statusOptions())
-                                            ->default(Servidor::STATUS_ATIVO)
-                                            ->required(),
-                                    ])
-                                    ->columnSpanFull()
-                                    ->columns(2)
-                                    ->compact(),
-
-                                Section::make('Cargo')
-                                    ->icon('heroicon-o-briefcase')
-                                    ->schema([
-                                        Select::make('cargo')
-                                            ->label('Função / cargo')
-                                            ->options(fn (): array => static::cargoOptions())
-                                            ->default(self::CARGO_PROFESSOR)
-                                            ->required()
-                                            ->live()
-                                            ->dehydrated()
-                                            ->helperText('Professor e Equipe Gestora usam a mesma identidade e as mesmas matrículas.'),
-                                    ])
-                                    ->columnSpanFull()
-                                    ->compact(),
-                            ]),
-
-                        Tab::make('Matrículas e vínculos')
-                            ->schema([
-                                ServidorMatriculasForm::section(),
-                                ServidorEquipeGestoraForm::section(),
-                            ]),
-                    ]),
-            ]);
-    }
 
     /** @return array<string, string> */
     public static function cargoOptions(): array
@@ -353,8 +267,9 @@ class ServidorResource extends Resource
                     ])
                     ->stickyModalHeader()
                     ->closeModalByClickingAway(false)
-                    ->modalContent(fn (Servidor $record) => view('components.pessoas.edit-form-modal', [
-                        'pessoa' => $record,
+                    ->closeModalByEscaping(false)
+                    ->modalContent(fn (Servidor $record) => view('components.pessoas.form-modal', [
+                        'pessoaId' => $record->getKey(),
                     ])),
 
                 DeleteAction::make()

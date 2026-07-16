@@ -386,143 +386,6 @@
         color: #64748b !important;
     }
 
-    /* Repeaters mais legíveis */
-    .fi-slide-over-content .fi-fo-repeater-item,
-    .fi-modal-content .fi-fo-repeater-item {
-        border-radius: 0.85rem !important;
-        border: 1px solid #e2e8f0 !important;
-        background: #fff !important;
-        padding: 0.75rem !important;
-        margin-bottom: 0.55rem !important;
-    }
-
-    .dark .fi-slide-over-content .fi-fo-repeater-item,
-    .dark .fi-modal-content .fi-fo-repeater-item {
-        border-color: #334155 !important;
-        background: rgba(15, 23, 42, 0.75) !important;
-    }
-
-    .fi-slide-over-content .fi-fo-repeater-item-header,
-    .fi-modal-content .fi-fo-repeater-item-header {
-        gap: 0.5rem;
-    }
-
-    /* Matrículas e escolas: repeater hierárquico com navegação em abas. */
-    .pe-tabbed-repeater,
-    .pe-tabbed-repeater .fi-fo-repeater,
-    .pe-tabbed-repeater .fi-sc-component {
-        width: 100%;
-        min-width: 0;
-        max-width: 100%;
-    }
-
-    .pe-tabbed-repeater > .fi-fo-repeater-items {
-        display: grid !important;
-        grid-template-columns: repeat(var(--pe-tab-count, 1), minmax(0, 1fr));
-        grid-template-rows: auto auto;
-        width: 100%;
-        min-width: 0;
-        max-width: 100%;
-        gap: 0 !important;
-        overflow: hidden;
-        border: 1px solid #dbe4ee;
-        border-radius: 0.9rem;
-        background: #fff;
-    }
-
-    .pe-tabbed-repeater > .fi-fo-repeater-items > .fi-fo-repeater-item {
-        display: contents !important;
-    }
-
-    .pe-tabbed-repeater > .fi-fo-repeater-items > .fi-fo-repeater-item > .fi-fo-repeater-item-header {
-        grid-row: 1;
-        width: 100%;
-        min-width: 0;
-        max-width: 100%;
-        overflow: hidden;
-        padding: 0.7rem 0.85rem;
-        border: 0;
-        border-right: 1px solid #dbe4ee;
-        border-bottom: 1px solid #dbe4ee;
-        border-radius: 0;
-        background: #f8fafc;
-        color: #475569;
-        cursor: pointer;
-        transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
-    }
-
-    .pe-tabbed-repeater > .fi-fo-repeater-items > .fi-fo-repeater-item:last-child > .fi-fo-repeater-item-header {
-        border-right: 0;
-    }
-
-    .pe-tabbed-repeater > .fi-fo-repeater-items > .fi-fo-repeater-item.pe-tab-active > .fi-fo-repeater-item-header {
-        background: #fff;
-        color: #17368d;
-        box-shadow: inset 0 3px 0 #1a6bc7;
-    }
-
-    .pe-tabbed-repeater > .fi-fo-repeater-items > .fi-fo-repeater-item > .fi-fo-repeater-item-header:focus-visible {
-        position: relative;
-        z-index: 1;
-        outline: 2px solid #1a6bc7;
-        outline-offset: -2px;
-    }
-
-    .pe-tabbed-repeater > .fi-fo-repeater-items > .fi-fo-repeater-item > .fi-fo-repeater-item-header .fi-fo-repeater-item-header-label {
-        white-space: normal;
-        line-height: 1.25;
-    }
-
-    .pe-tabbed-repeater > .fi-fo-repeater-items > .fi-fo-repeater-item > .fi-fo-repeater-item-content {
-        grid-row: 2;
-        grid-column: 1 / -1;
-        width: 100%;
-        min-width: 0;
-        max-width: 100%;
-        padding: 1rem;
-        background: #fff;
-    }
-
-    .pe-tabbed-repeater > .fi-fo-repeater-items > .fi-fo-repeater-item.pe-tab-inactive > .fi-fo-repeater-item-content {
-        display: none !important;
-    }
-
-    .pe-tabbed-repeater > .fi-fo-repeater-add {
-        justify-content: flex-end;
-        padding-top: 0.65rem;
-    }
-
-    .pe-tabbed-repeater > .fi-fo-repeater-add .fi-btn {
-        border-radius: 0.65rem;
-        font-weight: 650;
-    }
-
-    .pe-escolas-tabs {
-        margin-top: 0.25rem;
-    }
-
-    .pe-escolas-tabs > .fi-fo-repeater-items > .fi-fo-repeater-item > .fi-fo-repeater-item-header {
-        padding-block: 0.6rem;
-        background: #f1f5f9;
-    }
-
-    .dark .pe-tabbed-repeater > .fi-fo-repeater-items {
-        border-color: #334155;
-        background: rgba(15, 23, 42, 0.75);
-    }
-
-    .dark .pe-tabbed-repeater > .fi-fo-repeater-items > .fi-fo-repeater-item > .fi-fo-repeater-item-header {
-        border-color: #334155;
-        background: rgba(30, 41, 59, 0.9);
-        color: #cbd5e1;
-    }
-
-    .dark .pe-tabbed-repeater > .fi-fo-repeater-items > .fi-fo-repeater-item.pe-tab-active > .fi-fo-repeater-item-header,
-    .dark .pe-tabbed-repeater > .fi-fo-repeater-items > .fi-fo-repeater-item > .fi-fo-repeater-item-content {
-        background: rgba(15, 23, 42, 0.92);
-        color: #dbeafe;
-    }
-
     /* Tabela da listagem de pessoas */
     .pe-pessoas-page .fi-ta-header-toolbar {
         gap: 0.65rem;
@@ -563,22 +426,8 @@
             padding-right: 0.85rem !important;
         }
 
-        .fi-slide-over-content .fi-fo-repeater-item,
-        .fi-modal-content .fi-fo-repeater-item {
-            padding: 0.6rem !important;
-        }
-
         .pe-pessoas-page .fi-ta-actions {
             flex-wrap: wrap;
-        }
-
-        .pe-tabbed-repeater > .fi-fo-repeater-items > .fi-fo-repeater-item > .fi-fo-repeater-item-header {
-            padding: 0.6rem;
-            font-size: 0.78rem;
-        }
-
-        .pe-tabbed-repeater > .fi-fo-repeater-items > .fi-fo-repeater-item > .fi-fo-repeater-item-content {
-            padding: 0.75rem;
         }
 
         .pessoa-modal-window .fi-modal-content,
@@ -613,174 +462,600 @@
     .fi-section-collapse-button:hover {
         background: rgba(23, 54, 141, 0.06);
     }
-</style>
 
-<script>
-    (() => {
-        if (window.__peTabbedRepeatersInitialized) {
-            return;
+    /* Formulário Livewire unificado de Pessoas. */
+    .pe-person-form,
+    .pe-person-form * {
+        box-sizing: border-box;
+    }
+
+    .pe-person-form {
+        position: relative;
+        margin: -1.5rem;
+        color: #111827;
+    }
+
+    .pe-person-form [x-cloak],
+    .pe-person-form [wire\:loading].pe-person-form__loading {
+        display: none;
+    }
+
+    .pe-person-form__form {
+        display: grid;
+        min-height: min(720px, calc(100vh - 10rem));
+        background: #f8fafc;
+    }
+
+    .pe-person-form__main-tabs {
+        display: flex;
+        gap: 0.35rem;
+        padding: 1rem 1.5rem 0;
+        border-bottom: 1px solid #dbe3ef;
+        background: #fff;
+    }
+
+    .pe-person-form__main-tabs button {
+        border: 0;
+        border-radius: 0.65rem 0.65rem 0 0;
+        background: transparent;
+        color: #687594;
+        padding: 0.7rem 0.9rem;
+        font-size: 0.875rem;
+        font-weight: 650;
+        cursor: pointer;
+    }
+
+    .pe-person-form__main-tabs button.is-active {
+        background: #f4f6fb;
+        color: #173f91;
+    }
+
+    .pe-person-form__main-tabs button:focus-visible,
+    .pe-person-form__tab button:focus-visible,
+    .pe-person-form__button:focus-visible,
+    .pe-person-form__text-button:focus-visible,
+    .pe-person-form__icon-button:focus-visible,
+    .pe-person-form__remove-assignment:focus-visible {
+        outline: 2px solid #2563eb;
+        outline-offset: 2px;
+    }
+
+    .pe-person-form__body {
+        display: grid;
+        align-content: start;
+        gap: 1.25rem;
+        padding: 1.5rem;
+        overflow: auto;
+    }
+
+    .pe-person-form__section {
+        overflow: hidden;
+        border: 1px solid #d6e0ef;
+        border-radius: 1rem;
+        background: #fff;
+        box-shadow: 0 12px 34px rgba(15, 23, 42, 0.045);
+    }
+
+    .pe-person-form__section + .pe-person-form__section {
+        margin-top: 1.25rem;
+    }
+
+    .pe-person-form__section-header,
+    .pe-person-form__section-title {
+        display: flex;
+        align-items: center;
+        gap: 0.9rem;
+    }
+
+    .pe-person-form__section-header {
+        padding: 1rem 1.2rem;
+        border-bottom: 1px solid #d6e0ef;
+    }
+
+    .pe-person-form__section-header--actions {
+        justify-content: space-between;
+    }
+
+    .pe-person-form__section-header h3,
+    .pe-person-form__section-header p,
+    .pe-person-form__subheader h4,
+    .pe-person-form__subheader p {
+        margin: 0;
+    }
+
+    .pe-person-form__section-header h3 {
+        font-size: 1rem;
+        font-weight: 700;
+    }
+
+    .pe-person-form__section-header p,
+    .pe-person-form__subheader p {
+        margin-top: 0.2rem;
+        color: #71809d;
+        font-size: 0.8rem;
+    }
+
+    .pe-person-form__section-icon {
+        display: grid;
+        width: 2rem;
+        height: 2rem;
+        flex: 0 0 2rem;
+        place-items: center;
+        border-radius: 0.6rem;
+        background: #eff5ff;
+        color: #49658f;
+    }
+
+    .pe-person-form__section-icon svg {
+        width: 1.15rem;
+        height: 1.15rem;
+    }
+
+    .pe-person-form__grid {
+        display: grid;
+        gap: 1rem;
+        padding: 1.15rem;
+    }
+
+    .pe-person-form__grid--2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .pe-person-form__grid--flush {
+        padding: 0;
+    }
+
+    .pe-person-form__span-2 {
+        grid-column: span 2;
+    }
+
+    .pe-person-form__field {
+        display: grid;
+        min-width: 0;
+        gap: 0.4rem;
+        margin: 0;
+        padding: 0;
+        border: 0;
+    }
+
+    .pe-person-form__field > span,
+    .pe-person-form__field legend,
+    .pe-person-form__field-heading > span {
+        color: #111827;
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+
+    .pe-person-form__field b {
+        color: #e11d48;
+    }
+
+    .pe-person-form__field input[type='text'],
+    .pe-person-form__field input[type='email'],
+    .pe-person-form__field select,
+    .pe-person-form__field textarea {
+        width: 100%;
+        min-height: 2.55rem;
+        border: 1px solid #cfd8e6;
+        border-radius: 0.65rem;
+        outline: none;
+        background: #fff;
+        color: #111827;
+        padding: 0.6rem 0.75rem;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    }
+
+    .pe-person-form__field textarea {
+        min-height: 5rem;
+        resize: vertical;
+    }
+
+    .pe-person-form__field input:focus,
+    .pe-person-form__field select:focus,
+    .pe-person-form__field textarea:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+
+    .pe-person-form__field input[aria-invalid='true'],
+    .pe-person-form__field select[aria-invalid='true'],
+    .pe-person-form__field textarea[aria-invalid='true'] {
+        border-color: #e11d48;
+    }
+
+    .pe-person-form__field input:disabled,
+    .pe-person-form__field select:disabled,
+    .pe-person-form__field textarea:disabled {
+        background: #f3f5f8;
+        color: #667085;
+        cursor: not-allowed;
+    }
+
+    .pe-person-form__field small {
+        color: #71809d;
+        font-size: 0.76rem;
+    }
+
+    .pe-person-form__field small.is-error,
+    .pe-person-form__error-block {
+        color: #e11d48;
+    }
+
+    .pe-person-form__field-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+
+    .pe-person-form__alert {
+        margin: 1rem 1.5rem 0;
+        border: 1px solid #fecdd3;
+        border-radius: 0.75rem;
+        background: #fff1f2;
+        color: #9f1239;
+        padding: 0.8rem 1rem;
+    }
+
+    .pe-person-form__alert ul {
+        margin: 0.4rem 0 0 1.1rem;
+        font-size: 0.82rem;
+    }
+
+    .pe-person-form__tab-strip {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+        border-bottom: 1px solid #d6e0ef;
+        background: #f8fafc;
+    }
+
+    .pe-person-form__tab-strip--schools {
+        border: 1px solid #d6e0ef;
+        border-radius: 0.8rem 0.8rem 0 0;
+    }
+
+    .pe-person-form__tab {
+        display: flex;
+        min-width: 0;
+        border-top: 3px solid transparent;
+        border-right: 1px solid #d6e0ef;
+    }
+
+    .pe-person-form__tab:last-child {
+        border-right: 0;
+    }
+
+    .pe-person-form__tab.is-active {
+        border-top-color: #1670dc;
+        background: #fff;
+    }
+
+    .pe-person-form__tab > button:first-child {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        border: 0;
+        background: transparent;
+        color: #111827;
+        padding: 0.7rem 0.85rem;
+        text-align: left;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        cursor: pointer;
+    }
+
+    .pe-person-form__icon-button {
+        display: grid;
+        width: 2.6rem;
+        flex: 0 0 2.6rem;
+        place-items: center;
+        border: 0;
+        background: transparent;
+        color: #e11d48;
+        cursor: pointer;
+    }
+
+    .pe-person-form__icon-button svg,
+    .pe-person-form__remove-assignment svg,
+    .pe-person-form__button svg {
+        width: 1rem;
+        height: 1rem;
+    }
+
+    .pe-person-form__error-block {
+        margin: 0.65rem 1rem 0;
+        font-size: 0.82rem;
+    }
+
+    .pe-person-form__registration {
+        padding: 1rem;
+    }
+
+    .pe-person-form__subheader {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-top: 1.2rem;
+        padding: 0.9rem 0 0.65rem;
+    }
+
+    .pe-person-form__subheader--assignments {
+        margin-top: 0.8rem;
+    }
+
+    .pe-person-form__subheader h4 {
+        font-size: 0.9rem;
+    }
+
+    .pe-person-form__placement {
+        border: 1px solid #d6e0ef;
+        border-top: 0;
+        border-radius: 0 0 0.8rem 0.8rem;
+        padding: 1rem;
+    }
+
+    .pe-person-form__assignments {
+        display: grid;
+        gap: 0.75rem;
+    }
+
+    .pe-person-form__assignment {
+        position: relative;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+        border: 1px solid #dbe3ef;
+        border-radius: 0.8rem;
+        background: #fbfcfe;
+        padding: 0.9rem 3rem 0.9rem 0.9rem;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+    }
+
+    .pe-person-form__remove-assignment {
+        position: absolute;
+        top: 0.65rem;
+        right: 0.7rem;
+        display: grid;
+        width: 1.8rem;
+        height: 1.8rem;
+        place-items: center;
+        border: 0;
+        border-radius: 0.45rem;
+        background: #fff1f2;
+        color: #e11d48;
+        cursor: pointer;
+    }
+
+    .pe-person-form__empty {
+        margin: 1rem;
+        border: 1px dashed #cbd5e1;
+        border-radius: 0.8rem;
+        background: #f8fafc;
+        color: #64748b;
+        padding: 1.2rem;
+        text-align: center;
+    }
+
+    .pe-person-form__empty--small {
+        margin: 0.5rem 0;
+        padding: 0.8rem;
+        font-size: 0.82rem;
+    }
+
+    .pe-person-form__button {
+        display: inline-flex;
+        min-height: 2.35rem;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
+        border-radius: 0.65rem;
+        padding: 0.5rem 0.85rem;
+        font-size: 0.85rem;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .pe-person-form__button:disabled,
+    .pe-person-form__text-button:disabled,
+    .pe-person-form__icon-button:disabled,
+    .pe-person-form__remove-assignment:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+    }
+
+    .pe-person-form__button--primary {
+        border: 1px solid #123b98;
+        background: #123b98;
+        color: #fff;
+        box-shadow: 0 5px 14px rgba(18, 59, 152, 0.22);
+    }
+
+    .pe-person-form__button--secondary,
+    .pe-person-form__button--cancel {
+        border: 1px solid #d4dce8;
+        background: #fff;
+        color: #26334d;
+        box-shadow: 0 2px 5px rgba(15, 23, 42, 0.08);
+    }
+
+    .pe-person-form__text-button {
+        border: 0;
+        background: transparent;
+        color: #1759b0;
+        font-size: 0.8rem;
+        font-weight: 650;
+        cursor: pointer;
+    }
+
+    .pe-person-form__checks {
+        display: grid;
+        gap: 0.6rem;
+    }
+
+    .pe-person-form__checks--3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .pe-person-form__checks--2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .pe-person-form__checks label {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        border: 1px solid #d6e0ef;
+        border-radius: 0.65rem;
+        padding: 0.65rem 0.75rem;
+        font-size: 0.84rem;
+    }
+
+    .pe-person-form__checks input[type='checkbox'] {
+        width: 1rem;
+        height: 1rem;
+        accent-color: #1759b0;
+    }
+
+    .pe-person-form__checks--scroll {
+        max-height: 15rem;
+        overflow: auto;
+    }
+
+    .pe-person-form__footer {
+        position: sticky;
+        bottom: 0;
+        z-index: 4;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        border-top: 1px solid #d6e0ef;
+        background: rgba(255, 255, 255, 0.97);
+        padding: 0.8rem 1.5rem;
+        backdrop-filter: blur(8px);
+    }
+
+    .pe-person-form__footer p {
+        margin: 0;
+        color: #71809d;
+        font-size: 0.76rem;
+    }
+
+    .pe-person-form__footer-actions {
+        display: flex;
+        gap: 0.65rem;
+    }
+
+    .pe-person-form__loading {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        align-items: center;
+        justify-content: center;
+        background: rgba(15, 23, 42, 0.45);
+    }
+
+    .pe-person-form__loading-card {
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        min-width: 18rem;
+        border-radius: 0.9rem;
+        background: #fff;
+        padding: 1rem 1.2rem;
+        box-shadow: 0 24px 70px rgba(15, 23, 42, 0.3);
+    }
+
+    .pe-person-form__loading-card div {
+        display: grid;
+        gap: 0.2rem;
+    }
+
+    .pe-person-form__loading-card small {
+        color: #71809d;
+    }
+
+    .pe-person-form__spinner {
+        width: 1.5rem;
+        height: 1.5rem;
+        border: 3px solid #dbe7f8;
+        border-top-color: #2563eb;
+        border-radius: 999px;
+        animation: pe-person-form-spin 0.7s linear infinite;
+    }
+
+    @keyframes pe-person-form-spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    .dark .pe-person-form__form,
+    .dark .pe-person-form__body {
+        background: #0f172a;
+    }
+
+    .dark .pe-person-form__main-tabs,
+    .dark .pe-person-form__section,
+    .dark .pe-person-form__tab.is-active,
+    .dark .pe-person-form__footer,
+    .dark .pe-person-form__loading-card {
+        border-color: #334155;
+        background: #111827;
+        color: #e5e7eb;
+    }
+
+    .dark .pe-person-form__tab-strip,
+    .dark .pe-person-form__assignment,
+    .dark .pe-person-form__empty,
+    .dark .pe-person-form__field input:disabled,
+    .dark .pe-person-form__field select:disabled,
+    .dark .pe-person-form__field textarea:disabled {
+        border-color: #334155;
+        background: #1e293b;
+        color: #cbd5e1;
+    }
+
+    .dark .pe-person-form__field > span,
+    .dark .pe-person-form__field legend,
+    .dark .pe-person-form__field-heading > span,
+    .dark .pe-person-form__tab > button:first-child {
+        color: #e5e7eb;
+    }
+
+    .dark .pe-person-form__field input,
+    .dark .pe-person-form__field select,
+    .dark .pe-person-form__field textarea {
+        border-color: #475569;
+        background: #111827;
+        color: #e5e7eb;
+    }
+
+    @media (max-width: 760px) {
+        .pe-person-form {
+            margin: -1rem;
         }
 
-        window.__peTabbedRepeatersInitialized = true;
+        .pe-person-form__grid--2,
+        .pe-person-form__assignment,
+        .pe-person-form__checks--2,
+        .pe-person-form__checks--3 {
+            grid-template-columns: 1fr;
+        }
 
-        const itemSelector = ':scope > .fi-fo-repeater-items > .fi-fo-repeater-item';
-        const itemCounts = new WeakMap();
-        const activeTabs = new Map();
+        .pe-person-form__span-2 {
+            grid-column: span 1;
+        }
 
-        const directItems = (root) => Array.from(root.querySelectorAll(itemSelector));
-        const itemKey = (item, index) => item.getAttribute('x-sortable-item') || String(index);
-        const rootKey = (root) => {
-            const parentItem = root.parentElement?.closest('[x-sortable-item]');
+        .pe-person-form__section-header--actions,
+        .pe-person-form__footer {
+            align-items: stretch;
+            flex-direction: column;
+        }
 
-            return [
-                root.dataset.peTabsLabel || 'tabs',
-                parentItem?.getAttribute('x-sortable-item') || 'root',
-            ].join(':');
-        };
-
-        const activate = (root, selectedItem) => {
-            const items = directItems(root);
-
-            items.forEach((item, index) => {
-                const active = item === selectedItem;
-                const header = item.querySelector(':scope > .fi-fo-repeater-item-header');
-                const content = item.querySelector(':scope > .fi-fo-repeater-item-content');
-
-                item.classList.toggle('pe-tab-active', active);
-                item.classList.toggle('pe-tab-inactive', ! active);
-
-                if (header) {
-                    header.setAttribute('role', 'tab');
-                    header.setAttribute('aria-selected', active ? 'true' : 'false');
-                    header.setAttribute('tabindex', active ? '0' : '-1');
-                }
-
-                if (content) {
-                    content.setAttribute('role', 'tabpanel');
-                    content.toggleAttribute('hidden', ! active);
-                }
-
-                if (active) {
-                    const key = itemKey(item, index);
-                    root.dataset.peActiveTab = key;
-                    activeTabs.set(rootKey(root), key);
-                }
-            });
-        };
-
-        const initializeRoot = (root) => {
-            const items = directItems(root);
-            const previousCount = itemCounts.get(root);
-            const savedKey = root.dataset.peActiveTab || activeTabs.get(rootKey(root));
-            let selected = items.find((item, index) => itemKey(item, index) === savedKey);
-
-            if (
-                root.dataset.peActivateNewest === 'true'
-                && previousCount !== undefined
-                && items.length > previousCount
-            ) {
-                selected = items.at(-1);
-                delete root.dataset.peActivateNewest;
-            }
-
-            selected ??= items[0];
-            root.style.setProperty('--pe-tab-count', Math.max(items.length, 1));
-
-            const list = root.querySelector(':scope > .fi-fo-repeater-items');
-            if (list) {
-                list.style.setProperty(
-                    'grid-template-columns',
-                    `repeat(${Math.max(items.length, 1)}, minmax(0, 1fr))`,
-                    'important',
-                );
-                list.setAttribute('role', 'tablist');
-                list.setAttribute('aria-label', root.dataset.peTabsLabel || 'Opções');
-            }
-
-            if (selected) {
-                activate(root, selected);
-            }
-
-            itemCounts.set(root, items.length);
-        };
-
-        const initializeAll = () => {
-            document.querySelectorAll('.pe-tabbed-repeater').forEach(initializeRoot);
-        };
-
-        document.addEventListener('click', (event) => {
-            const addContainer = event.target.closest('.pe-tabbed-repeater > .fi-fo-repeater-add');
-            const addRoot = addContainer?.parentElement;
-
-            if (addRoot?.matches('.pe-tabbed-repeater') && event.target.closest('button')) {
-                addRoot.dataset.peActivateNewest = 'true';
-                window.setTimeout(() => {
-                    delete addRoot.dataset.peActivateNewest;
-                }, 15000);
-            }
-
-            const header = event.target.closest('.pe-tabbed-repeater .fi-fo-repeater-item-header');
-            if (! header || event.target.closest('button, a, input, select, textarea')) {
-                return;
-            }
-
-            const item = header.closest('.fi-fo-repeater-item');
-            const root = item?.parentElement?.closest('.pe-tabbed-repeater');
-
-            if (root && directItems(root).includes(item)) {
-                activate(root, item);
-            }
-        });
-
-        document.addEventListener('keydown', (event) => {
-            if (! ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
-                return;
-            }
-
-            const header = event.target.closest('.pe-tabbed-repeater .fi-fo-repeater-item-header');
-            const item = header?.closest('.fi-fo-repeater-item');
-            const root = item?.parentElement?.closest('.pe-tabbed-repeater');
-
-            if (! root) {
-                return;
-            }
-
-            const items = directItems(root);
-            const currentIndex = items.indexOf(item);
-            if (currentIndex < 0) {
-                return;
-            }
-
-            event.preventDefault();
-            const nextIndex = event.key === 'Home'
-                ? 0
-                : event.key === 'End'
-                    ? items.length - 1
-                    : (currentIndex + (event.key === 'ArrowRight' ? 1 : -1) + items.length) % items.length;
-
-            activate(root, items[nextIndex]);
-            items[nextIndex].querySelector(':scope > .fi-fo-repeater-item-header')?.focus();
-        });
-
-        new MutationObserver((mutations) => {
-            if (mutations.some((mutation) => mutation.type === 'childList')) {
-                requestAnimationFrame(initializeAll);
-            }
-        }).observe(document.body, { childList: true, subtree: true });
-
-        const registerLivewireHook = () => {
-            if (! window.Livewire || window.__peTabbedRepeatersLivewireHookRegistered) {
-                return;
-            }
-
-            window.__peTabbedRepeatersLivewireHookRegistered = true;
-            window.Livewire.hook('morphed', () => requestAnimationFrame(initializeAll));
-        };
-
-        document.addEventListener('livewire:init', registerLivewireHook);
-        document.addEventListener('livewire:initialized', registerLivewireHook);
-        document.addEventListener('livewire:navigated', initializeAll);
-        registerLivewireHook();
-        requestAnimationFrame(initializeAll);
-    })();
-</script>
+        .pe-person-form__footer-actions {
+            justify-content: flex-end;
+        }
+    }
+</style>

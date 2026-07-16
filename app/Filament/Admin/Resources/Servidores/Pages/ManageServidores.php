@@ -4,8 +4,7 @@ namespace App\Filament\Admin\Resources\Servidores\Pages;
 
 use App\Filament\Admin\Resources\Servidores\ServidorResource;
 use App\Models\Servidor;
-use App\Services\ServidorService;
-use Filament\Actions\CreateAction;
+use Filament\Actions\Action;
 use Filament\Resources\Pages\ManageRecords;
 use Filament\Schemas\Components\EmbeddedTable;
 use Filament\Schemas\Components\RenderHook;
@@ -21,10 +20,16 @@ class ManageServidores extends ManageRecords
 
     protected string $view = 'filament.admin.resources.servidores.pages.manage-pessoas';
 
-    #[On('pessoa-editor-fechar')]
-    public function fecharEditorPessoa(): void
+    #[On('pessoa-form-salvo')]
+    public function finalizarFormularioPessoa(): void
     {
         $this->flushCachedTableRecords();
+        $this->unmountAction(false);
+    }
+
+    #[On('pessoa-form-cancelado')]
+    public function cancelarFormularioPessoa(): void
+    {
         $this->unmountAction(false);
     }
 
@@ -51,56 +56,25 @@ class ManageServidores extends ManageRecords
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make()
+            Action::make('create')
                 ->label('Nova pessoa')
                 ->visible(fn (): bool => Gate::allows('create', Servidor::class))
-                ->model(Servidor::class)
                 ->modalWidth('6xl')
                 ->modalIcon(null)
                 ->modalHeading('Nova pessoa')
                 ->modalDescription('Identidade, cargo, matrículas e lotações no mesmo fluxo.')
-                ->modalCancelActionLabel('Cancelar')
-                ->modalSubmitActionLabel('Salvar pessoa')
+                ->formWrapper(false)
+                ->modalSubmitAction(false)
+                ->modalCancelAction(false)
                 ->extraModalWindowAttributes([
                     'class' => 'pessoa-modal-window',
                 ])
                 ->stickyModalHeader()
                 ->closeModalByClickingAway(false)
-                ->using(function (array $data): Servidor {
-                    try {
-                        [$data, $vinculos] = ServidorResource::prepararDadosPersistencia($data);
-
-                        $criado = app(ServidorService::class)->criarServidorComFuncoes(
-                            $data,
-                            $vinculos,
-                        );
-
-                        \Filament\Notifications\Notification::make()
-                            ->title('Pessoa cadastrada')
-                            ->success()
-                            ->send();
-
-                        return $criado;
-                    } catch (\Illuminate\Validation\ValidationException $e) {
-                        \Filament\Notifications\Notification::make()
-                            ->title('Não foi possível cadastrar')
-                            ->body(collect($e->errors())->flatten()->take(5)->implode(' '))
-                            ->danger()
-                            ->persistent()
-                            ->send();
-
-                        throw $e;
-                    } catch (\Throwable $e) {
-                        \Filament\Notifications\Notification::make()
-                            ->title('Erro ao cadastrar pessoa')
-                            ->body($e->getMessage())
-                            ->danger()
-                            ->persistent()
-                            ->send();
-
-                        throw $e;
-                    }
-                }),
+                ->closeModalByEscaping(false)
+                ->modalContent(fn () => view('components.pessoas.form-modal', [
+                    'pessoaId' => null,
+                ])),
         ];
     }
 }

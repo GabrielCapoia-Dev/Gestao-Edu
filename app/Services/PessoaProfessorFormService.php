@@ -124,15 +124,32 @@ class PessoaProfessorFormService
             ->get()
             ->groupBy('professor_id');
 
+        $matriculasProfessor = collect(
+            $this->montarMatriculasHierarquicas($pessoa, $professores, $vinculosPorProfessor),
+        )
+            ->filter(fn (array $matricula): bool => ! empty($matricula['escolas']))
+            ->values()
+            ->all();
+
+        $ehEquipeGestoraNoEscopo = $pessoa->vinculosAtivos
+            ->contains(fn ($vinculo): bool => filled($vinculo->id_escola)
+                && in_array((int) $vinculo->id_escola, $escolaIds, true)
+                && (bool) (
+                    $vinculo->funcaoAdministrativa?->direcao_escolar
+                    || $vinculo->funcaoAdministrativa?->coordenacao_pedagogica
+                    || $vinculo->funcaoAdministrativa?->secretaria_escolar
+                ));
+
         return [
             'nome' => $pessoa->nome,
             'cpf' => Pessoa::formatarCpf($pessoa->cpf),
             'email' => $pessoa->email,
             'telefone' => $pessoa->telefone,
             'status' => $pessoa->status,
-            'observacoes' => $pessoa->observacoes,
-            'cargo' => ServidorResource::CARGO_PROFESSOR,
-            'matriculas_professor' => $this->montarMatriculasHierarquicas($pessoa, $professores, $vinculosPorProfessor),
+            'cargo' => $ehEquipeGestoraNoEscopo
+                ? ServidorResource::CARGO_EQUIPE_GESTORA
+                : ServidorResource::CARGO_PROFESSOR,
+            'matriculas_professor' => $matriculasProfessor,
             'registros_professor' => [],
         ];
     }

@@ -4,6 +4,7 @@ namespace Tests\Feature\Pessoas;
 
 use App\Filament\Admin\Resources\Servidores\Pages\ManageServidores;
 use App\Filament\Admin\Resources\Servidores\ServidorResource;
+use App\Livewire\Pessoas\PessoaForm;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
 use App\Models\Professor;
@@ -15,7 +16,7 @@ use App\Models\Turma;
 use App\Models\TurmaComponenteProfessor;
 use App\Models\User;
 use App\Services\ServidorService;
-use Filament\Actions\CreateAction;
+use Filament\Actions\Action;
 use Filament\Schemas\Components\Tabs;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -77,7 +78,7 @@ class PessoaHubFilamentTest extends TestCase
 
     public function test_header_nova_pessoa(): void
     {
-        $usuario = $this->usuarioComPermissaoListar();
+        $usuario = $this->usuarioHubAdmin(['Listar Pessoas', 'Criar Pessoas']);
 
         $actions = Livewire::actingAs($usuario)
             ->test(ManageServidores::class)
@@ -85,7 +86,8 @@ class PessoaHubFilamentTest extends TestCase
             ->getCachedHeaderActions();
 
         $this->assertCount(1, $actions);
-        $this->assertInstanceOf(CreateAction::class, $actions[0]);
+        $this->assertInstanceOf(Action::class, $actions[0]);
+        $this->assertSame('create', $actions[0]->getName());
         $this->assertSame('Nova pessoa', $actions[0]->getLabel());
         $this->assertFalse($actions[0]->isModalSlideOver());
         $this->assertSame('6xl', $actions[0]->getModalWidth());
@@ -98,22 +100,35 @@ class PessoaHubFilamentTest extends TestCase
 
     public function test_create_modal_exibe_campos_de_servidor_sem_acesso(): void
     {
-        $usuario = $this->usuarioHubAdmin(['Listar Servidores', 'Criar Servidores']);
+        $usuario = $this->usuarioHubAdmin(['Listar Pessoas', 'Criar Pessoas']);
 
         Livewire::actingAs($usuario)
             ->test(ManageServidores::class)
             ->mountAction('create')
-            ->assertSchemaComponentExists('nome')
-            ->assertSchemaComponentExists('matriculas_professor')
-            ->assertSchemaComponentDoesNotExist('email_approved')
-            ->assertSchemaComponentDoesNotExist('roles_adicionais')
-            ->assertSchemaComponentDoesNotExist('usar_permissoes_extras')
-            ->assertSchemaComponentDoesNotExist('password');
+            ->assertSeeLivewire(PessoaForm::class)
+            ->assertDontSee('email_approved')
+            ->assertDontSee('roles_adicionais')
+            ->assertDontSee('usar_permissoes_extras')
+            ->assertDontSee('password');
+    }
+
+    public function test_formulario_personalizado_renderiza_no_modo_criacao(): void
+    {
+        $usuario = $this->usuarioHubAdmin(['Listar Pessoas', 'Criar Pessoas']);
+
+        Livewire::actingAs($usuario)
+            ->test(PessoaForm::class, ['pessoaId' => null])
+            ->assertOk()
+            ->assertSet('pessoaId', null);
     }
 
     public function test_edit_servidor_abre_modal_com_registros(): void
     {
-        $usuario = $this->usuarioHubAdmin(['Listar Servidores', 'Editar Servidores']);
+        $usuario = $this->usuarioHubAdmin([
+            'Listar Pessoas',
+            'Editar Pessoas',
+            'Gerenciar Vínculos Estruturais de Pessoas',
+        ]);
 
         $setor = $this->criarSetor('Pedagógico');
         $escola = $this->criarEscola('Escola Edit', $setor);
@@ -132,19 +147,68 @@ class PessoaHubFilamentTest extends TestCase
         Livewire::actingAs($usuario)
             ->test(ManageServidores::class)
             ->mountTableAction('edit', $servidor)
-            ->assertSchemaComponentExists('matriculas_professor')
-            ->assertSchemaComponentDoesNotExist('email_approved')
-            ->assertSchemaComponentDoesNotExist('roles_adicionais')
-            ->assertSchemaComponentDoesNotExist('usar_permissoes_extras')
-            ->assertSchemaStateSet([
-                'nome' => 'Servidor Editável',
-                'cargo' => ServidorResource::CARGO_PROFESSOR,
-            ]);
+            ->assertSeeLivewire(PessoaForm::class)
+            ->assertDontSee('email_approved')
+            ->assertDontSee('roles_adicionais')
+            ->assertDontSee('usar_permissoes_extras')
+            ->assertDontSee('password');
+    }
+
+    public function test_formulario_personalizado_renderiza_no_modo_edicao(): void
+    {
+        $usuario = $this->usuarioHubAdmin([
+            'Listar Pessoas',
+            'Editar Pessoas',
+            'Gerenciar Vínculos Estruturais de Pessoas',
+        ]);
+        $setor = $this->criarSetor('Pedagógico');
+        $escola = $this->criarEscola('Escola Formulário', $setor);
+        $servidor = $this->criarServidor('Pessoa Formulário', $escola, $setor);
+
+        Professor::query()->create([
+            'servidor_id' => $servidor->id,
+            'id_escola' => $escola->id,
+            'matricula' => 'FORM-001',
+            'turno' => 'manha',
+            'nome' => $servidor->nome,
+            'email' => $servidor->email,
+            'ativo' => true,
+        ]);
+
+        Livewire::actingAs($usuario)
+            ->test(PessoaForm::class, ['pessoaId' => $servidor->id])
+            ->assertOk()
+            ->assertSet('pessoaId', $servidor->id)
+            ->assertSet('nome', 'Pessoa Formulário');
+    }
+
+    public function test_eventos_do_formulario_fecham_o_modal_personalizado(): void
+    {
+        $usuario = $this->usuarioHubAdmin(['Listar Pessoas', 'Criar Pessoas']);
+        $setor = $this->criarSetor('Pedagógico');
+        $escola = $this->criarEscola('Escola Eventos', $setor);
+
+        $componente = Livewire::actingAs($usuario)
+            ->test(ManageServidores::class)
+            ->mountAction('create')
+            ->assertSet('mountedActions.0.name', 'create');
+
+        $componente
+            ->dispatch('pessoa-form-cancelado')
+            ->assertSet('mountedActions', []);
+
+        $novaPessoa = $this->criarServidor('Pessoa criada no evento', $escola, $setor);
+
+        $componente
+            ->mountAction('create')
+            ->dispatch('pessoa-form-salvo')
+            ->assertSet('mountedActions', [])
+            ->assertCanSeeTableRecords([$novaPessoa]);
     }
 
     public function test_exclui_pessoa_sem_avaliacoes_e_limpa_lotacoes(): void
     {
-        $usuario = $this->usuarioHubAdmin(['Listar Servidores', 'Excluir Servidores']);
+        $usuario = $this->usuarioHubAdmin(['Listar Pessoas', 'Excluir Pessoas']);
         $setor = $this->criarSetor('Pedagógico');
         $escola = $this->criarEscola('Escola Del', $setor);
         $servidor = $this->criarServidor('Para Excluir', $escola, $setor);
@@ -189,7 +253,7 @@ class PessoaHubFilamentTest extends TestCase
 
     public function test_visualizacao_abre_com_vinculo_de_turma_e_componente(): void
     {
-        $usuario = $this->usuarioHubAdmin(['Listar Servidores']);
+        $usuario = $this->usuarioHubAdmin(['Listar Pessoas']);
         $setor = $this->criarSetor('Pedagogico');
         $escola = $this->criarEscola('Escola Visualizacao', $setor);
         $servidor = $this->criarServidor('Pessoa Visualizacao', $escola, $setor);
@@ -239,7 +303,7 @@ class PessoaHubFilamentTest extends TestCase
 
     private function usuarioComPermissaoListar(): User
     {
-        return $this->usuarioHubAdmin(['Listar Servidores']);
+        return $this->usuarioHubAdmin(['Listar Pessoas']);
     }
 
     /** @param array<int, string> $permissoes */
