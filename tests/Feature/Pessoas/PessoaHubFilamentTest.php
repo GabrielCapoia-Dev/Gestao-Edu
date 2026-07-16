@@ -20,7 +20,10 @@ use App\Models\TurmaComponenteProfessor;
 use App\Models\User;
 use App\Services\ServidorService;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Schemas\Components\Tabs;
+use Filament\Tables\Columns\Layout\Grid;
+use Filament\Tables\Enums\RecordActionsPosition;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
@@ -79,6 +82,216 @@ class PessoaHubFilamentTest extends TestCase
             ->assertCanSeeTableRecords([$comProfessor, $semProfessor]);
     }
 
+    public function test_lista_usa_layout_responsivo_e_menu_unico_de_acoes(): void
+    {
+        $usuario = $this->usuarioComPermissaoListar();
+        $table = Livewire::actingAs($usuario)
+            ->test(ManageServidores::class)
+            ->instance()
+            ->getTable();
+
+        $this->assertTrue($table->hasColumnsLayout());
+        $this->assertTrue(collect($table->getColumnsLayout())->contains(
+            fn ($column): bool => $column instanceof Grid,
+        ));
+        $this->assertSame(RecordActionsPosition::AfterContent, $table->getRecordActionsPosition());
+
+        $actions = $table->getRecordActions();
+        $this->assertCount(1, $actions);
+        $this->assertInstanceOf(ActionGroup::class, $actions[0]);
+        $this->assertSame('Ações', $actions[0]->getLabel());
+    }
+
+    public function test_filtros_de_cargo_quantidade_de_matriculas_e_turno(): void
+    {
+        $usuario = $this->usuarioComPermissaoListar();
+        $setor = $this->criarSetor('Setor dos filtros');
+        $escola = $this->criarEscola('Escola dos filtros', $setor);
+
+        $professor = $this->criarServidor('Pessoa Professora', $escola, $setor);
+        PessoaMatricula::query()->create([
+            'servidor_id' => $professor->id,
+            'matricula' => 'FILTRO-PROF',
+            'turno' => 'manha',
+        ]);
+        Professor::query()->create([
+            'servidor_id' => $professor->id,
+            'id_escola' => $escola->id,
+            'matricula' => 'FILTRO-PROF',
+            'turno' => 'manha',
+            'nome' => $professor->nome,
+            'email' => $professor->email,
+            'ativo' => true,
+        ]);
+
+        $gestora = $this->criarServidor('Pessoa Gestora', $escola, $setor);
+        foreach ([
+            ['FILTRO-GEST-M', 'manha'],
+            ['FILTRO-GEST-T', 'tarde'],
+        ] as [$matricula, $turno]) {
+            PessoaMatricula::query()->create([
+                'servidor_id' => $gestora->id,
+                'matricula' => $matricula,
+                'turno' => $turno,
+            ]);
+        }
+        $funcaoGestora = FuncaoAdministrativa::query()->create([
+            'codigo' => 'direcao-filtro-listagem',
+            'nome' => 'Direção para filtro',
+            'categoria' => FuncaoAdministrativa::CATEGORIA_ADMINISTRATIVO,
+            'ativo' => true,
+            'exige_professor' => false,
+            'concede_acesso_sistema' => true,
+            'tem_relacao_turma' => true,
+            'direcao_escolar' => true,
+            'coordenacao_pedagogica' => false,
+            'secretaria_escolar' => false,
+        ]);
+        ServidorFuncaoAdministrativa::query()->create([
+            'servidor_id' => $gestora->id,
+            'funcao_administrativa_id' => $funcaoGestora->id,
+            'id_escola' => $escola->id,
+            'setor_id' => $setor->id,
+            'status' => ServidorFuncaoAdministrativa::STATUS_ATIVO,
+            'origem' => 'teste',
+            'data_inicio' => now()->toDateString(),
+        ]);
+
+        $manutencao = $this->criarServidor('Pessoa Manutenção', $escola, $setor);
+        PessoaMatricula::query()->create([
+            'servidor_id' => $manutencao->id,
+            'matricula' => 'FILTRO-MAN',
+            'turno' => 'integral',
+        ]);
+        ServidorFuncaoAdministrativa::query()->create([
+            'servidor_id' => $manutencao->id,
+            'funcao_administrativa_id' => FuncaoAdministrativa::manutencaoPadrao()->id,
+            'setor_id' => $setor->id,
+            'status' => ServidorFuncaoAdministrativa::STATUS_ATIVO,
+            'origem' => 'teste',
+            'data_inicio' => now()->toDateString(),
+        ]);
+
+        $semCargo = $this->criarServidor('Pessoa Sem Cargo', $escola, $setor);
+
+        Livewire::actingAs($usuario)
+            ->test(ManageServidores::class)
+            ->assertTableFilterExists('cargo')
+            ->assertTableFilterExists('quantidade_matriculas')
+            ->assertTableFilterExists('turno_matricula')
+            ->assertTableFilterExists('setor_id')
+            ->assertTableFilterExists('periodo_cadastro')
+            ->filterTable('quantidade_matriculas', 'uma_ou_mais')
+            ->assertCanSeeTableRecords([$professor, $gestora, $manutencao])
+            ->assertCanNotSeeTableRecords([$semCargo]);
+
+        Livewire::actingAs($usuario)
+            ->test(ManageServidores::class)
+            ->filterTable('quantidade_matriculas', 'duas')
+            ->assertCanSeeTableRecords([$gestora])
+            ->assertCanNotSeeTableRecords([$professor, $manutencao, $semCargo]);
+
+        Livewire::actingAs($usuario)
+            ->test(ManageServidores::class)
+            ->filterTable('cargo', [ServidorResource::CARGO_PROFESSOR])
+            ->assertCanSeeTableRecords([$professor])
+            ->assertCanNotSeeTableRecords([$gestora, $manutencao, $semCargo]);
+
+        Livewire::actingAs($usuario)
+            ->test(ManageServidores::class)
+            ->filterTable('cargo', [ServidorResource::CARGO_EQUIPE_GESTORA])
+            ->assertCanSeeTableRecords([$gestora])
+            ->assertCanNotSeeTableRecords([$professor, $manutencao, $semCargo]);
+
+        Livewire::actingAs($usuario)
+            ->test(ManageServidores::class)
+            ->filterTable('cargo', [ServidorResource::CARGO_MANUTENCAO])
+            ->filterTable('turno_matricula', ['integral'])
+            ->assertCanSeeTableRecords([$manutencao])
+            ->assertCanNotSeeTableRecords([$professor, $gestora, $semCargo]);
+
+        Livewire::actingAs($usuario)
+            ->test(ManageServidores::class)
+            ->searchTable('FILTRO-MAN')
+            ->assertCanSeeTableRecords([$manutencao])
+            ->assertCanNotSeeTableRecords([$professor, $gestora, $semCargo]);
+    }
+
+    public function test_busca_e_contagem_de_matriculas_respeitam_escopo_escolar_e_permissao_de_usuario(): void
+    {
+        $setorA = $this->criarSetor('Setor escopo A');
+        $setorB = $this->criarSetor('Setor escopo B');
+        $escolaA = $this->criarEscola('Escola escopo A', $setorA);
+        $escolaB = $this->criarEscola('Escola escopo B', $setorB);
+        $contaAlvo = User::factory()->create();
+        $roleReservada = Role::query()->firstOrCreate([
+            'name' => 'Nível Reservado da Pessoa',
+            'guard_name' => 'web',
+        ]);
+        $contaAlvo->assignRole($roleReservada);
+
+        $pessoa = $this->criarServidor('Pessoa com matrícula por escopo', $escolaA, $setorA, $contaAlvo->id);
+        $matriculaVisivel = PessoaMatricula::query()->create([
+            'servidor_id' => $pessoa->id,
+            'matricula' => 'MATRICULA-VISIVEL',
+            'turno' => 'manha',
+        ]);
+        $matriculaOculta = PessoaMatricula::query()->create([
+            'servidor_id' => $pessoa->id,
+            'matricula' => 'MATRICULA-OCULTA',
+            'turno' => 'tarde',
+        ]);
+
+        foreach ([
+            [$matriculaVisivel, $escolaA, 'manha'],
+            [$matriculaOculta, $escolaB, 'tarde'],
+        ] as [$matricula, $escola, $turno]) {
+            Professor::query()->create([
+                'servidor_id' => $pessoa->id,
+                'professor_matricula_id' => $matricula->id,
+                'id_escola' => $escola->id,
+                'matricula' => $matricula->matricula,
+                'turno' => $turno,
+                'nome' => $pessoa->nome,
+                'email' => $pessoa->email,
+                'ativo' => true,
+            ]);
+        }
+
+        $restrito = User::factory()->create([
+            'id_escola' => $escolaA->id,
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $restrito->givePermissionTo($this->garantirPermissao('Listar Pessoas'));
+
+        Livewire::actingAs($restrito)
+            ->test(ManageServidores::class)
+            ->assertTableFilterHidden('nivel_acesso')
+            ->filterTable('quantidade_matriculas', 'uma')
+            ->assertCanSeeTableRecords([$pessoa]);
+
+        Livewire::actingAs($restrito)
+            ->test(ManageServidores::class)
+            ->filterTable('quantidade_matriculas', 'duas')
+            ->assertCanNotSeeTableRecords([$pessoa]);
+
+        Livewire::actingAs($restrito)
+            ->test(ManageServidores::class)
+            ->searchTable('MATRICULA-VISIVEL')
+            ->assertCanSeeTableRecords([$pessoa]);
+
+        Livewire::actingAs($restrito)
+            ->test(ManageServidores::class)
+            ->searchTable('MATRICULA-OCULTA')
+            ->assertCanNotSeeTableRecords([$pessoa]);
+
+        Livewire::actingAs($restrito)
+            ->test(ManageServidores::class)
+            ->searchTable('Nível Reservado da Pessoa')
+            ->assertCanNotSeeTableRecords([$pessoa]);
+    }
+
     public function test_header_nova_pessoa(): void
     {
         $usuario = $this->usuarioHubAdmin(['Listar Pessoas', 'Criar Pessoas']);
@@ -88,16 +301,18 @@ class PessoaHubFilamentTest extends TestCase
             ->instance()
             ->getCachedHeaderActions();
 
-        $this->assertCount(1, $actions);
-        $this->assertInstanceOf(Action::class, $actions[0]);
-        $this->assertSame('create', $actions[0]->getName());
-        $this->assertSame('Nova pessoa', $actions[0]->getLabel());
-        $this->assertFalse($actions[0]->isModalSlideOver());
-        $this->assertSame('6xl', $actions[0]->getModalWidth());
-        $this->assertTrue($actions[0]->isModalHeaderSticky());
+        $createAction = collect($actions)->first(
+            fn (Action $action): bool => $action->getName() === 'create',
+        );
+
+        $this->assertInstanceOf(Action::class, $createAction);
+        $this->assertSame('Nova pessoa', $createAction->getLabel());
+        $this->assertFalse($createAction->isModalSlideOver());
+        $this->assertSame('6xl', $createAction->getModalWidth());
+        $this->assertTrue($createAction->isModalHeaderSticky());
         $this->assertStringContainsString(
             'pessoa-modal-window',
-            (string) ($actions[0]->getExtraModalWindowAttributes()['class'] ?? ''),
+            (string) ($createAction->getExtraModalWindowAttributes()['class'] ?? ''),
         );
     }
 

@@ -6,31 +6,44 @@ use App\Filament\Admin\Resources\Servidores\Actions\PessoaAcessoActions;
 use App\Filament\Admin\Resources\Servidores\Pages\ManageServidores;
 use App\Filament\Admin\Resources\Servidores\Schemas\ServidorEquipeGestoraForm;
 use App\Models\Escola;
+use App\Models\Pessoa;
+use App\Models\PessoaMatricula;
 use App\Models\Professor;
 use App\Models\ProfessorMatricula;
 use App\Models\Role;
 use App\Models\Servidor;
+use App\Models\Setor;
 use App\Models\Turma;
+use App\Models\TurmaComponenteProfessor;
+use App\Models\User;
 use App\Services\PessoaScopeService;
 use App\Services\ServidorService;
 use App\Services\UserService;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\ViewAction;
-use Filament\Notifications\Notification;
+use Filament\Forms\Components\DatePicker;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\View;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\Layout\Grid;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\FiltersLayout;
+use Filament\Tables\Enums\RecordActionsPosition;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
@@ -97,123 +110,237 @@ class ServidorResource extends Resource
             ]))
             ->paginated([5, 10, 25, 50, 100])
             ->defaultPaginationPageOption(10)
+            ->searchable(static::camposBuscaTabela())
+            ->searchPlaceholder(static::placeholderBuscaTabela())
             ->columns([
-                TextColumn::make('cpf')
-                    ->label('CPF')
-                    ->searchable()
-                    ->toggleable(),
-
-                TextColumn::make('vinculos_resumo')
-                    ->label('Matrículas')
-                    ->getStateUsing(function (Servidor $record): string {
-                        $record->loadMissing(['matriculas', 'professores']);
-
-                        if (app(PessoaScopeService::class)->hasGlobalAccess(Auth::user()) && $record->matriculas->isNotEmpty()) {
-                            return $record->matriculas
-                                ->map(fn ($m): string => sprintf('%s (%s)', $m->matricula, $m->turnoLabel()))
-                                ->implode(', ');
-                        }
-
-                        return static::professoresVisiveis($record)
-                            ->map(fn (Professor $p): string => sprintf('%s (%s)', $p->matricula, $p->turnoLabel()))
-                            ->unique()
-                            ->implode(', ') ?: '—';
-                    })
-                    ->wrap(),
-
                 TextColumn::make('nome')
                     ->label('Nome')
-                    ->searchable()
+                    ->description(fn (Servidor $record): string => trim(collect([
+                        filled($record->cpf) ? 'CPF: '.(Servidor::formatarCpf($record->cpf) ?? $record->cpf) : 'CPF não informado',
+                    ])->join(' | ')))
+                    ->searchable(['nome', 'cpf'])
                     ->sortable()
                     ->wrap()
-                    ->copyable(),
+                    ->copyable()
+                    ->copyMessage('Nome copiado')
+                    ->copyMessageDuration(1500)
+                    ->tooltip('Clique para copiar o nome')
+                    ->weight('bold')
+                    ->extraAttributes(['class' => 'pessoa-card-name'], merge: true),
 
-                TextColumn::make('cargo_label')
-                    ->label('Cargo')
-                    ->getStateUsing(fn (Servidor $record): string => static::cargoLabel($record))
-                    ->badge(),
+                Grid::make([
+                    'default' => 1,
+                    'sm' => 2,
+                    'lg' => 3,
+                    'xl' => 4,
+                ])
+                    ->schema([
+                        TextColumn::make('cargo_label')
+                            ->label('Cargo')
+                            ->description('Cargo', position: 'above')
+                            ->getStateUsing(fn (Servidor $record): string => static::cargoLabel($record))
+                            ->badge()
+                            ->color(fn (string $state): string => $state !== '—' ? 'info' : 'gray')
+                            ->wrap()
+                            ->extraAttributes(['class' => 'pessoa-card-field pessoa-card-field--cargo'], merge: true),
 
-                TextColumn::make('email')
-                    ->label('E-mail')
-                    ->searchable()
-                    ->wrap()
-                    ->placeholder('—')
-                    ->toggleable(),
+                        TextColumn::make('vinculos_resumo')
+                            ->label('Matrículas')
+                            ->description('Matrículas', position: 'above')
+                            ->getStateUsing(function (Servidor $record): string {
+                                $record->loadMissing(['matriculas', 'professores']);
 
-                TextColumn::make('acesso_ao_sistema')
-                    ->label('Acesso')
-                    ->badge()
-                    ->getStateUsing(function (Servidor $record): string {
-                        if (! $record->user_id) {
-                            return 'Sem usuário';
-                        }
+                                if (app(PessoaScopeService::class)->hasGlobalAccess(Auth::user()) && $record->matriculas->isNotEmpty()) {
+                                    return $record->matriculas
+                                        ->map(fn ($m): string => sprintf('%s (%s)', $m->matricula, $m->turnoLabel()))
+                                        ->implode(', ');
+                                }
 
-                        return $record->user?->email_approved ? 'Liberado' : 'Pendente';
-                    })
-                    ->color(fn (string $state): string => match ($state) {
-                        'Liberado' => 'success',
-                        'Pendente' => 'warning',
-                        default => 'gray',
-                    })
-                    ->tooltip('Gerencie login, níveis e permissões nas ações desta pessoa.')
-                    ->visible(fn (): bool => Gate::allows('viewAny', \App\Models\User::class)),
+                                return static::professoresVisiveis($record)
+                                    ->map(fn (Professor $p): string => sprintf('%s (%s)', $p->matricula, $p->turnoLabel()))
+                                    ->unique()
+                                    ->implode(', ') ?: '—';
+                            })
+                            ->icon('heroicon-o-identification')
+                            ->wrap()
+                            ->extraAttributes(['class' => 'pessoa-card-field pessoa-card-field--matriculas'], merge: true),
 
-                TextColumn::make('user.roles.name')
-                    ->label('Níveis de acesso')
-                    ->badge()
-                    ->separator(',')
-                    ->placeholder('—')
-                    ->toggleable()
-                    ->visible(fn (): bool => Gate::allows('viewAny', \App\Models\User::class)),
+                        TextColumn::make('email')
+                            ->label('E-mail')
+                            ->description('E-mail', position: 'above')
+                            ->searchable()
+                            ->icon('heroicon-o-envelope')
+                            ->wrap()
+                            ->placeholder('—')
+                            ->toggleable()
+                            ->extraAttributes(['class' => 'pessoa-card-field pessoa-card-field--email'], merge: true),
 
-                TextColumn::make('status')
-                    ->label('Status')
-                    ->badge()
-                    ->formatStateUsing(fn (?string $state): string => Servidor::statusOptions()[$state] ?? 'Não informado')
-                    ->color(fn (?string $state): string => match ($state) {
-                        Servidor::STATUS_ATIVO => 'success',
-                        Servidor::STATUS_INATIVO => 'gray',
-                        default => 'warning',
-                    })
-                    ->sortable(),
+                        TextColumn::make('status')
+                            ->label('Status')
+                            ->description('Status', position: 'above')
+                            ->badge()
+                            ->formatStateUsing(fn (?string $state): string => Servidor::statusOptions()[$state] ?? 'Não informado')
+                            ->color(fn (?string $state): string => match ($state) {
+                                Servidor::STATUS_ATIVO => 'success',
+                                Servidor::STATUS_INATIVO => 'gray',
+                                default => 'warning',
+                            })
+                            ->sortable()
+                            ->extraAttributes(['class' => 'pessoa-card-field pessoa-card-field--status'], merge: true),
 
-                TextColumn::make('updated_at')
-                    ->label('Atualizado')
-                    ->dateTime('d/m/Y H:i')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                        TextColumn::make('acesso_ao_sistema')
+                            ->label('Acesso')
+                            ->description('Acesso', position: 'above')
+                            ->badge()
+                            ->getStateUsing(function (Servidor $record): string {
+                                if (! $record->user_id) {
+                                    return 'Sem usuário';
+                                }
+
+                                return $record->user?->email_approved ? 'Liberado' : 'Pendente';
+                            })
+                            ->color(fn (string $state): string => match ($state) {
+                                'Liberado' => 'success',
+                                'Pendente' => 'warning',
+                                default => 'gray',
+                            })
+                            ->tooltip('Gerencie login, níveis e permissões nas ações desta pessoa.')
+                            ->visible(fn (): bool => Gate::allows('viewAny', User::class))
+                            ->extraAttributes(['class' => 'pessoa-card-field pessoa-card-field--acesso'], merge: true),
+
+                        TextColumn::make('user.roles.name')
+                            ->label('Níveis de acesso')
+                            ->description('Níveis de acesso', position: 'above')
+                            ->badge()
+                            ->separator(',')
+                            ->placeholder('—')
+                            ->toggleable()
+                            ->visible(fn (): bool => Gate::allows('viewAny', User::class))
+                            ->extraAttributes(['class' => 'pessoa-card-field pessoa-card-field--niveis'], merge: true),
+
+                        TextColumn::make('updated_at')
+                            ->label('Atualizado em')
+                            ->description('Atualizado em', position: 'above')
+                            ->dateTime('d/m/Y H:i')
+                            ->sortable()
+                            ->toggleable(isToggledHiddenByDefault: true)
+                            ->extraAttributes(['class' => 'pessoa-card-field pessoa-card-field--data'], merge: true),
+                    ])
+                    ->extraAttributes(['class' => 'pessoa-card-main-grid']),
             ])
             ->filters([
+                SelectFilter::make('cargo')
+                    ->label('Cargo')
+                    ->columnSpan(3)
+                    ->options([
+                        self::CARGO_PROFESSOR => 'Professor',
+                        self::CARGO_EQUIPE_GESTORA => 'Equipe Gestora',
+                        self::CARGO_MANUTENCAO => 'Manutenção',
+                        'sem_cargo' => 'Sem cargo ativo',
+                    ])
+                    ->multiple()
+                    ->query(function (Builder $query, array $data): Builder {
+                        $cargos = collect($data['values'] ?? [])
+                            ->filter()
+                            ->map(fn ($cargo): string => (string) $cargo)
+                            ->values()
+                            ->all();
+
+                        return $cargos === [] ? $query : static::aplicarFiltroCargos($query, $cargos);
+                    })
+                    ->preload(),
+
+                SelectFilter::make('quantidade_matriculas')
+                    ->label('Quantidade de matrículas')
+                    ->columnSpan(3)
+                    ->options([
+                        'uma_ou_mais' => 'Uma matrícula ou mais',
+                        'uma' => 'Exatamente uma matrícula',
+                        'duas' => 'Duas matrículas',
+                        'sem' => 'Sem matrícula',
+                    ])
+                    ->query(fn (Builder $query, array $data): Builder => static::aplicarFiltroQuantidadeMatriculas(
+                        $query,
+                        $data['value'] ?? null,
+                    )),
+
+                SelectFilter::make('turno_matricula')
+                    ->label('Turno da matrícula')
+                    ->columnSpan(3)
+                    ->options(PessoaMatricula::turnosOptions())
+                    ->multiple()
+                    ->query(function (Builder $query, array $data): Builder {
+                        $turnos = collect($data['values'] ?? [])->filter()->values()->all();
+
+                        return $turnos === [] ? $query : static::aplicarFiltroTurnosMatriculas($query, $turnos);
+                    })
+                    ->preload(),
+
+                SelectFilter::make('status')
+                    ->label('Status')
+                    ->columnSpan(3)
+                    ->options(Servidor::statusOptions())
+                    ->multiple(),
+
                 SelectFilter::make('id_escola')
                     ->label('Escola')
+                    ->columnSpan(3)
                     ->options(fn (): array => static::escolasOptionsEscopadas())
+                    ->multiple()
                     ->query(function (Builder $query, array $data): Builder {
-                        if (! filled($data['value'] ?? null)) {
+                        $escolaIds = collect($data['values'] ?? [])
+                            ->filter()
+                            ->map(fn ($id): int => (int) $id)
+                            ->values()
+                            ->all();
+
+                        if ($escolaIds === []) {
                             return $query;
                         }
 
-                        return $query->where(function (Builder $pessoas) use ($data): void {
-                            $escolaId = (int) $data['value'];
-
+                        return $query->where(function (Builder $pessoas) use ($escolaIds): void {
                             $pessoas
                                 ->whereHas('professores', fn (Builder $professores): Builder => $professores
-                                    ->where('id_escola', $escolaId))
+                                    ->whereIn('id_escola', $escolaIds))
                                 ->orWhereHas('vinculosAtivos', fn (Builder $vinculos): Builder => $vinculos
-                                    ->where('id_escola', $escolaId));
+                                    ->whereIn('id_escola', $escolaIds));
                         });
                     })
                     ->searchable()
                     ->preload(),
 
-                SelectFilter::make('status')
-                    ->label('Status')
-                    ->options(Servidor::statusOptions()),
+                SelectFilter::make('setor_id')
+                    ->label('Setor')
+                    ->columnSpan(3)
+                    ->options(fn (): array => static::setoresOptionsEscopados())
+                    ->multiple()
+                    ->query(function (Builder $query, array $data): Builder {
+                        $setorIds = collect($data['values'] ?? [])
+                            ->filter()
+                            ->map(fn ($id): int => (int) $id)
+                            ->values()
+                            ->all();
+
+                        if ($setorIds === []) {
+                            return $query;
+                        }
+
+                        return $query->where(function (Builder $pessoas) use ($setorIds): void {
+                            $pessoas
+                                ->whereIn('setor_id', $setorIds)
+                                ->orWhereHas('vinculosAtivos', fn (Builder $vinculos): Builder => $vinculos
+                                    ->whereIn('setor_id', $setorIds));
+                        });
+                    })
+                    ->searchable()
+                    ->preload(),
 
                 TernaryFilter::make('user_id')
-                    ->label('Usuário vinculado')
-                    ->trueLabel('Com usuário')
-                    ->falseLabel('Sem usuário')
-                    ->placeholder('Todos')
+                    ->label('Conta de acesso')
+                    ->columnSpan(3)
+                    ->trueLabel('Com conta')
+                    ->falseLabel('Sem conta')
+                    ->placeholder('Todas')
                     ->queries(
                         true: fn (Builder $query): Builder => $query->whereNotNull('user_id'),
                         false: fn (Builder $query): Builder => $query->whereNull('user_id'),
@@ -222,6 +349,7 @@ class ServidorResource extends Resource
 
                 TernaryFilter::make('acesso_liberado')
                     ->label('Liberação de acesso')
+                    ->columnSpan(3)
                     ->trueLabel('Liberados')
                     ->falseLabel('Pendentes')
                     ->placeholder('Todos')
@@ -236,10 +364,11 @@ class ServidorResource extends Resource
                         ),
                         blank: fn (Builder $query): Builder => $query,
                     )
-                    ->visible(fn (): bool => Gate::allows('viewAny', \App\Models\User::class)),
+                    ->visible(fn (): bool => Gate::allows('viewAny', User::class)),
 
                 SelectFilter::make('nivel_acesso')
                     ->label('Nível de acesso')
+                    ->columnSpan(3)
                     ->options(fn (): array => Role::query()->orderBy('name')->pluck('name', 'id')->all())
                     ->multiple()
                     ->query(function (Builder $query, array $data): Builder {
@@ -254,136 +383,117 @@ class ServidorResource extends Resource
                     })
                     ->searchable()
                     ->preload()
-                    ->visible(fn (): bool => Gate::allows('viewAny', \App\Models\User::class)),
+                    ->visible(fn (): bool => Gate::allows('viewAny', User::class)),
 
-                TernaryFilter::make('eh_professor')
-                    ->label('Cargo professor')
-                    ->trueLabel('Professores')
-                    ->falseLabel('Sem cargo professor')
-                    ->placeholder('Todos')
-                    ->queries(
-                        true: fn (Builder $query): Builder => $query->whereHas(
-                            'professores',
-                            fn (Builder $professores): Builder => $professores->where('ativo', true),
-                        ),
-                        false: fn (Builder $query): Builder => $query->whereDoesntHave('professores'),
-                        blank: fn (Builder $query): Builder => $query,
-                    ),
-
-                TernaryFilter::make('eh_equipe_gestora')
-                    ->label('Equipe Gestora')
-                    ->trueLabel('Somente Equipe Gestora')
-                    ->falseLabel('Sem cargo gestor')
-                    ->placeholder('Todos')
-                    ->queries(
-                        true: fn (Builder $query): Builder => $query->whereHas(
-                            'vinculosAtivos.funcaoAdministrativa',
-                            fn (Builder $funcoes): Builder => static::aplicarFiltroFuncaoGestora($funcoes),
-                        ),
-                        false: fn (Builder $query): Builder => $query->whereDoesntHave(
-                            'vinculosAtivos.funcaoAdministrativa',
-                            fn (Builder $funcoes): Builder => static::aplicarFiltroFuncaoGestora($funcoes),
-                        ),
-                        blank: fn (Builder $query): Builder => $query,
-                    ),
-
-                TernaryFilter::make('eh_manutencao')
-                    ->label('Cargo Manutenção')
-                    ->trueLabel('Somente Manutenção')
-                    ->falseLabel('Sem cargo de Manutenção')
-                    ->placeholder('Todos')
-                    ->queries(
-                        true: fn (Builder $query): Builder => $query->whereHas(
-                            'vinculosAtivos.funcaoAdministrativa',
-                            fn (Builder $funcoes): Builder => $funcoes->manutencao(),
-                        ),
-                        false: fn (Builder $query): Builder => $query->whereDoesntHave(
-                            'vinculosAtivos.funcaoAdministrativa',
-                            fn (Builder $funcoes): Builder => $funcoes->manutencao(),
-                        ),
-                        blank: fn (Builder $query): Builder => $query,
-                    ),
-            ])
+                Filter::make('periodo_cadastro')
+                    ->label('Período de cadastro')
+                    ->columnSpan(6)
+                    ->columns(2)
+                    ->schema([
+                        DatePicker::make('data_inicio')
+                            ->label('Cadastrada a partir de'),
+                        DatePicker::make('data_fim')
+                            ->label('Cadastrada até'),
+                    ])
+                    ->query(fn (Builder $query, array $data): Builder => $query
+                        ->when(
+                            filled($data['data_inicio'] ?? null),
+                            fn (Builder $pessoas): Builder => $pessoas->whereDate('created_at', '>=', $data['data_inicio']),
+                        )
+                        ->when(
+                            filled($data['data_fim'] ?? null),
+                            fn (Builder $pessoas): Builder => $pessoas->whereDate('created_at', '<=', $data['data_fim']),
+                        )),
+            ], layout: FiltersLayout::AboveContent)
+            ->filtersFormColumns(12)
+            ->recordAction(null)
+            ->recordUrl(null)
             ->recordActions([
-                ViewAction::make()
-                    ->label('Visualizar')
-                    ->modalWidth('6xl')
-                    ->modalIcon(null)
-                    ->modalHeading(fn (Servidor $record): string => "Pessoa — {$record->nome}")
-                    ->modalDescription('Ficha completa de identidade, cargo, matrículas, lotações e acesso ao sistema.')
-                    ->extraModalWindowAttributes([
-                        'class' => 'pessoa-modal-window pessoa-view-modal-window',
-                    ])
-                    ->stickyModalHeader()
-                    ->schema(fn (Servidor $record): array => static::infolistDetalhesCompletos($record)),
+                ActionGroup::make([
+                    ViewAction::make()
+                        ->label('Visualizar')
+                        ->modalWidth('6xl')
+                        ->modalIcon(null)
+                        ->modalHeading(fn (Servidor $record): string => "Pessoa — {$record->nome}")
+                        ->modalDescription('Ficha completa de identidade, cargo, matrículas, lotações e acesso ao sistema.')
+                        ->extraModalWindowAttributes([
+                            'class' => 'pessoa-modal-window pessoa-view-modal-window',
+                        ])
+                        ->stickyModalHeader()
+                        ->schema(fn (Servidor $record): array => static::infolistDetalhesCompletos($record)),
 
-                Action::make('edit')
-                    ->label('Editar')
-                    ->icon('heroicon-o-pencil-square')
-                    ->color('primary')
-                    ->visible(fn (Servidor $record): bool => Gate::allows('update', $record))
-                    ->modalWidth('6xl')
-                    ->modalIcon(null)
-                    ->modalHeading(fn (Servidor $record): string => "Editar pessoa — {$record->nome}")
-                    ->modalDescription('Edite os dados funcionais; login, níveis e permissões ficam nas ações da pessoa.')
-                    ->formWrapper(false)
-                    ->modalSubmitAction(false)
-                    ->modalCancelAction(false)
-                    ->extraModalWindowAttributes([
-                        'class' => 'pessoa-modal-window',
-                    ])
-                    ->stickyModalHeader()
-                    ->closeModalByClickingAway(false)
-                    ->closeModalByEscaping(false)
-                    ->modalContent(fn (Servidor $record) => view('components.pessoas.form-modal', [
-                        'pessoaId' => $record->getKey(),
-                    ])),
+                    Action::make('edit')
+                        ->label('Editar')
+                        ->icon('heroicon-o-pencil-square')
+                        ->color('primary')
+                        ->visible(fn (Servidor $record): bool => Gate::allows('update', $record))
+                        ->modalWidth('6xl')
+                        ->modalIcon(null)
+                        ->modalHeading(fn (Servidor $record): string => "Editar pessoa — {$record->nome}")
+                        ->modalDescription('Edite os dados funcionais; login, níveis e permissões ficam nas ações da pessoa.')
+                        ->formWrapper(false)
+                        ->modalSubmitAction(false)
+                        ->modalCancelAction(false)
+                        ->extraModalWindowAttributes([
+                            'class' => 'pessoa-modal-window',
+                        ])
+                        ->stickyModalHeader()
+                        ->closeModalByClickingAway(false)
+                        ->closeModalByEscaping(false)
+                        ->modalContent(fn (Servidor $record) => view('components.pessoas.form-modal', [
+                            'pessoaId' => $record->getKey(),
+                        ])),
 
-                ...PessoaAcessoActions::recordActions(),
+                    ...PessoaAcessoActions::recordActions(),
 
-                DeleteAction::make()
-                    ->label('Excluir')
-                    ->requiresConfirmation()
-                    ->modalHeading('Excluir pessoa')
-                    ->modalDescription(function (Servidor $record): string {
-                        $motivo = app(ServidorService::class)->motivoBloqueioExclusao($record);
+                    DeleteAction::make()
+                        ->label('Excluir')
+                        ->requiresConfirmation()
+                        ->modalHeading('Excluir pessoa')
+                        ->modalDescription(function (Servidor $record): string {
+                            $motivo = app(ServidorService::class)->motivoBloqueioExclusao($record);
 
-                        if ($motivo) {
-                            return $motivo;
-                        }
+                            if ($motivo) {
+                                return $motivo;
+                            }
 
-                        return "Excluir \"{$record->nome}\"? "
-                            .'Matrículas e lotações serão removidas; vínculos de turma e a referência do professor em avaliações serão apenas desassociados (avaliações/alunos permanecem). '
-                            .'A conta de login, se existir, não é apagada.';
-                    })
-                    ->visible(fn (Servidor $record): bool => Gate::allows('delete', $record)
-                        && (app(ServidorService::class)->pessoaPodeSerExcluida($record)
-                            || ServidorEquipeGestoraForm::usuarioPodeAdministrar()))
-                    ->before(function (DeleteAction $action, Servidor $record): void {
-                        $motivo = app(ServidorService::class)->motivoBloqueioExclusao($record);
+                            return "Excluir \"{$record->nome}\"? "
+                                .'Matrículas e lotações serão removidas; vínculos de turma e a referência do professor em avaliações serão apenas desassociados (avaliações/alunos permanecem). '
+                                .'A conta de login, se existir, não é apagada.';
+                        })
+                        ->visible(fn (Servidor $record): bool => Gate::allows('delete', $record)
+                            && (app(ServidorService::class)->pessoaPodeSerExcluida($record)
+                                || ServidorEquipeGestoraForm::usuarioPodeAdministrar()))
+                        ->before(function (DeleteAction $action, Servidor $record): void {
+                            $motivo = app(ServidorService::class)->motivoBloqueioExclusao($record);
 
-                        if (! $motivo) {
-                            return;
-                        }
+                            if (! $motivo) {
+                                return;
+                            }
 
-                        Notification::make()
-                            ->title('Pessoa não pode ser excluída')
-                            ->body($motivo)
-                            ->warning()
-                            ->persistent()
-                            ->send();
+                            Notification::make()
+                                ->title('Pessoa não pode ser excluída')
+                                ->body($motivo)
+                                ->warning()
+                                ->persistent()
+                                ->send();
 
-                        $action->halt();
-                    })
-                    ->using(function (Servidor $record): void {
-                        app(ServidorService::class)->excluirPessoa($record);
+                            $action->halt();
+                        })
+                        ->using(function (Servidor $record): void {
+                            app(ServidorService::class)->excluirPessoa($record);
 
-                        Notification::make()
-                            ->title('Pessoa excluída')
-                            ->success()
-                            ->send();
-                    }),
-            ])
+                            Notification::make()
+                                ->title('Pessoa excluída')
+                                ->success()
+                                ->send();
+                        }),
+                ])
+                    ->label('Ações')
+                    ->icon('heroicon-m-ellipsis-vertical')
+                    ->button()
+                    ->color('gray'),
+            ], position: RecordActionsPosition::AfterContent)
             ->toolbarActions([
                 ...PessoaAcessoActions::bulkActions(),
 
@@ -397,7 +507,7 @@ class ServidorResource extends Resource
                     ->using(function ($records): void {
                         foreach ($records as $record) {
                             if (! $record instanceof Servidor || ! Gate::allows('delete', $record)) {
-                                throw new \Illuminate\Auth\Access\AuthorizationException(
+                                throw new AuthorizationException(
                                     'Você não possui permissão para excluir uma ou mais Pessoas selecionadas.',
                                 );
                             }
@@ -407,7 +517,7 @@ class ServidorResource extends Resource
                             && $records->contains(
                                 fn (Servidor $record): bool => ! app(ServidorService::class)->pessoaPodeSerExcluida($record),
                             )) {
-                            throw new \Illuminate\Auth\Access\AuthorizationException(
+                            throw new AuthorizationException(
                                 'Você não possui permissão para excluir Pessoas da Equipe Gestora.',
                             );
                         }
@@ -506,6 +616,191 @@ class ServidorResource extends Resource
             ->toArray();
     }
 
+    public static function setoresOptionsEscopados(): array
+    {
+        $ids = app(PessoaScopeService::class)->visibleSetorIds(Auth::user());
+
+        if ($ids === []) {
+            return [];
+        }
+
+        return Setor::query()
+            ->where('ativo', true)
+            ->whereIn('id', $ids)
+            ->orderBy('nome')
+            ->pluck('nome', 'id')
+            ->toArray();
+    }
+
+    /** @return array<int, string|callable> */
+    private static function camposBuscaTabela(): array
+    {
+        $scope = app(PessoaScopeService::class);
+        $acessoGlobal = $scope->hasGlobalAccess(Auth::user());
+        $campos = [
+            'nome',
+            'cpf',
+            'email',
+            'setor.nome',
+        ];
+
+        if ($acessoGlobal) {
+            $campos[] = 'matriculas.matricula';
+            $campos[] = 'professores.escola.nome';
+        } else {
+            $campos[] = function (Builder $query, string $search): Builder {
+                return $query->whereHas('matriculas', function (Builder $matriculas) use ($search): Builder {
+                    return static::restringirMatriculasAoEscopo($matriculas)
+                        ->where('matricula', 'like', "%{$search}%");
+                });
+            };
+        }
+
+        if (Gate::allows('viewAny', User::class)) {
+            $campos[] = 'user.roles.name';
+        }
+
+        return $campos;
+    }
+
+    private static function placeholderBuscaTabela(): string
+    {
+        $itens = ['nome', 'CPF', 'e-mail', 'matrícula', 'setor'];
+
+        if (app(PessoaScopeService::class)->hasGlobalAccess(Auth::user())) {
+            $itens[] = 'escola';
+        }
+
+        if (Gate::allows('viewAny', User::class)) {
+            $itens[] = 'nível de acesso';
+        }
+
+        return 'Buscar por '.collect($itens)->join(', ', ' ou ');
+    }
+
+    private static function aplicarFiltroQuantidadeMatriculas(Builder $query, mixed $quantidade): Builder
+    {
+        if (! in_array($quantidade, ['uma_ou_mais', 'uma', 'duas', 'sem'], true)) {
+            return $query;
+        }
+
+        if (app(PessoaScopeService::class)->hasGlobalAccess(Auth::user())) {
+            return match ($quantidade) {
+                'uma_ou_mais' => $query->has('matriculas', '>=', 1),
+                'uma' => $query->has('matriculas', '=', 1),
+                'duas' => $query->has('matriculas', '>=', 2),
+                'sem' => $query->doesntHave('matriculas'),
+            };
+        }
+
+        return match ($quantidade) {
+            'uma_ou_mais' => $query->whereHas(
+                'matriculas',
+                fn (Builder $matriculas): Builder => static::restringirMatriculasAoEscopo($matriculas),
+                '>=',
+                1,
+            ),
+            'uma' => $query->whereHas(
+                'matriculas',
+                fn (Builder $matriculas): Builder => static::restringirMatriculasAoEscopo($matriculas),
+                '=',
+                1,
+            ),
+            'duas' => $query->whereHas(
+                'matriculas',
+                fn (Builder $matriculas): Builder => static::restringirMatriculasAoEscopo($matriculas),
+                '>=',
+                2,
+            ),
+            'sem' => $query->whereDoesntHave(
+                'matriculas',
+                fn (Builder $matriculas): Builder => static::restringirMatriculasAoEscopo($matriculas),
+            ),
+        };
+    }
+
+    /** @param list<string> $turnos */
+    private static function aplicarFiltroTurnosMatriculas(Builder $query, array $turnos): Builder
+    {
+        return $query->whereHas('matriculas', function (Builder $matriculas) use ($turnos): Builder {
+            $matriculas->whereIn('turno', $turnos);
+
+            return app(PessoaScopeService::class)->hasGlobalAccess(Auth::user())
+                ? $matriculas
+                : static::restringirMatriculasAoEscopo($matriculas);
+        });
+    }
+
+    private static function restringirMatriculasAoEscopo(Builder $matriculas): Builder
+    {
+        $escolaIds = app(PessoaScopeService::class)->escolaIdsDosVinculos(Auth::user());
+
+        if ($escolaIds === []) {
+            return $matriculas->whereRaw('1 = 0');
+        }
+
+        return $matriculas->whereHas(
+            'professores',
+            fn (Builder $professores): Builder => $professores
+                ->where('ativo', true)
+                ->whereIn('id_escola', $escolaIds),
+        );
+    }
+
+    /** @param list<string> $cargos */
+    private static function aplicarFiltroCargos(Builder $query, array $cargos): Builder
+    {
+        return $query->where(function (Builder $pessoas) use ($cargos): void {
+            foreach (array_values($cargos) as $index => $cargo) {
+                $metodo = $index === 0 ? 'where' : 'orWhere';
+
+                $pessoas->{$metodo}(function (Builder $pessoasDoCargo) use ($cargo): void {
+                    if ($cargo === self::CARGO_PROFESSOR) {
+                        $pessoasDoCargo->whereHas(
+                            'professores',
+                            fn (Builder $professores): Builder => $professores->where('ativo', true),
+                        );
+
+                        return;
+                    }
+
+                    if ($cargo === self::CARGO_EQUIPE_GESTORA) {
+                        $pessoasDoCargo->whereHas(
+                            'vinculosAtivos.funcaoAdministrativa',
+                            fn (Builder $funcoes): Builder => static::aplicarFiltroFuncaoGestora($funcoes),
+                        );
+
+                        return;
+                    }
+
+                    if ($cargo === self::CARGO_MANUTENCAO) {
+                        $pessoasDoCargo->whereHas(
+                            'vinculosAtivos.funcaoAdministrativa',
+                            fn (Builder $funcoes): Builder => $funcoes->manutencao(),
+                        );
+
+                        return;
+                    }
+
+                    $pessoasDoCargo
+                        ->whereDoesntHave(
+                            'professores',
+                            fn (Builder $professores): Builder => $professores->where('ativo', true),
+                        )
+                        ->whereDoesntHave(
+                            'vinculosAtivos.funcaoAdministrativa',
+                            function (Builder $funcoes): Builder {
+                                return $funcoes->where(function (Builder $cargosReconhecidos): void {
+                                    static::aplicarFiltroFuncaoGestora($cargosReconhecidos);
+                                    $cargosReconhecidos->orWhere('codigo', 'manutencao');
+                                });
+                            },
+                        );
+                });
+            }
+        });
+    }
+
     private static function professoresVisiveis(Servidor $record)
     {
         $record->loadMissing('professores');
@@ -575,7 +870,7 @@ class ServidorResource extends Resource
     /**
      * Infolist rico para o slide-over de visualização.
      *
-     * @return array<int, \Filament\Schemas\Components\Component>
+     * @return array<int, Component>
      */
     public static function infolistDetalhesCompletos(Servidor $record): array
     {
@@ -597,7 +892,7 @@ class ServidorResource extends Resource
                     TextEntry::make('nome')->label('Nome')->columnSpan(2),
                     TextEntry::make('cpf')
                         ->label('CPF')
-                        ->formatStateUsing(fn (?string $state): string => \App\Models\Pessoa::formatarCpf($state) ?: 'Não informado'),
+                        ->formatStateUsing(fn (?string $state): string => Pessoa::formatarCpf($state) ?: 'Não informado'),
                     TextEntry::make('email')->label('E-mail')->placeholder('Não informado')->copyable(),
                     TextEntry::make('telefone')->label('Telefone')->placeholder('Não informado'),
                     TextEntry::make('status')
@@ -636,7 +931,7 @@ class ServidorResource extends Resource
 
                             return "Conta: {$record->user->email} ({$status}). Use as ações da pessoa para gerenciar níveis, permissões e senha.";
                         })
-                        ->visible(fn (): bool => Gate::allows('viewAny', \App\Models\User::class))
+                        ->visible(fn (): bool => Gate::allows('viewAny', User::class))
                         ->columnSpanFull(),
                 ])
                 ->columns(2),
@@ -692,7 +987,7 @@ class ServidorResource extends Resource
 
         $professoresAtivos = static::professoresVisiveis($record);
 
-        $vinculosPorProfessor = \App\Models\TurmaComponenteProfessor::query()
+        $vinculosPorProfessor = TurmaComponenteProfessor::query()
             ->with([
                 'turma:id,nome,turno,id_escola,id_serie',
                 'turma.serie:id,nome',
@@ -847,7 +1142,7 @@ class ServidorResource extends Resource
             || $recordEraGestor
             || $recordEraManutencao)
             && ! ServidorEquipeGestoraForm::usuarioPodeAdministrar()) {
-            throw new \Illuminate\Auth\Access\AuthorizationException(
+            throw new AuthorizationException(
                 'Apenas Admin ou usuário com a permissão Gerenciar Vínculos Estruturais de Pessoas pode administrar cargos funcionais.',
             );
         }
