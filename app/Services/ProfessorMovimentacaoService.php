@@ -121,19 +121,28 @@ class ProfessorMovimentacaoService
 
     private function contarPreenchimentosPendentes(Professor $professor): int
     {
+        $driver = DB::connection()->getDriverName();
+
         return (int) DB::query()
             ->fromSub($this->preenchimentosEsperadosQuery($professor), 'esperados')
             ->leftJoin('avaliacao_aluno_documentos as d', function ($join): void {
                 $join->on('d.avaliacao_id', '=', 'esperados.avaliacao_id')
                     ->on('d.aluno_id', '=', 'esperados.aluno_id');
             })
-            ->where(function (QueryBuilder $query): void {
-                $query
-                    ->whereNull('d.id')
-                    ->orWhereRaw(
+            ->where(function (QueryBuilder $query) use ($driver): void {
+                $query->whereNull('d.id');
+
+                if ($driver === 'sqlite') {
+                    $query->orWhereRaw(
+                        "NOT EXISTS (SELECT 1 FROM json_each(COALESCE(d.pauta_ids_respondidas, '[]')) AS respondida WHERE CAST(respondida.value AS INTEGER) = esperados.pauta_id)"
+                    );
+                } else {
+                    $query->orWhereRaw(
                         'NOT JSON_CONTAINS(COALESCE(d.pauta_ids_respondidas, JSON_ARRAY()), CAST(esperados.pauta_id AS JSON), \'$\')'
-                    )
-                    ->orWhere('d.observacoes_obrigatorias_pendentes', '>', 0);
+                    );
+                }
+
+                $query->orWhere('d.observacoes_obrigatorias_pendentes', '>', 0);
             })
             ->count();
     }

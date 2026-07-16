@@ -18,6 +18,7 @@ use App\Models\Turma;
 use App\Models\TurmaComponenteProfessor;
 use App\Models\User;
 use App\Services\PessoaEquipeGestoraService;
+use App\Services\ProfessorMovimentacaoService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
@@ -350,7 +351,7 @@ class PessoaEquipeGestoraServiceTest extends TestCase
         $this->assertFalse($coordSegunda->vinculosTurmaAtivos()->where('turma_id', $turma->id)->firstOrFail()->principal);
     }
 
-    public function test_conversao_de_professor_bloqueia_vinculo_pedagogico_e_preserva_historico(): void
+    public function test_conversao_de_professor_desassocia_vinculo_pedagogico_e_preserva_historico(): void
     {
         $escola = $this->criarEscola('Escola Conversão');
         $turma = $this->criarTurma($escola, 'A');
@@ -360,26 +361,11 @@ class PessoaEquipeGestoraServiceTest extends TestCase
         ]);
         [$pessoa, $professor] = $this->criarProfessor($escola);
 
-        TurmaComponenteProfessor::query()->create([
+        $vinculoPedagogico = TurmaComponenteProfessor::query()->create([
             'turma_id' => $turma->id,
             'componente_curricular_id' => $componente->id,
             'professor_id' => $professor->id,
             'tem_professor' => true,
-        ]);
-
-        try {
-            app(PessoaEquipeGestoraService::class)->converterProfessorParaEquipeGestora(
-                $pessoa,
-                $this->dadosGestao($escola, [$turma->id], diretor: false),
-            );
-            $this->fail('A conversão deveria ser bloqueada pelo vínculo pedagógico.');
-        } catch (ValidationException $exception) {
-            $this->assertTrue($professor->fresh()->ativo);
-        }
-
-        TurmaComponenteProfessor::query()->where('professor_id', $professor->id)->update([
-            'professor_id' => null,
-            'tem_professor' => false,
         ]);
 
         $dadosGestao = $this->dadosGestao($escola, [$turma->id], diretor: false);
@@ -398,7 +384,141 @@ class PessoaEquipeGestoraServiceTest extends TestCase
             'servidor_id' => $pessoa->id,
             'matricula' => 'PROF-1',
         ]);
+        $this->assertDatabaseHas('turma_componente_professor', [
+            'id' => $vinculoPedagogico->id,
+            'professor_id' => null,
+            'tem_professor' => false,
+        ]);
         $this->assertNotNull($this->vinculoPorTipo($convertida, FuncaoAdministrativa::TIPO_COORDENACAO));
+    }
+
+    public function test_converte_duas_matriculas_de_escolas_diferentes_e_desassocia_vinculos_pedagogicos(): void
+    {
+        $escolaManha = $this->criarEscola('Escola Manhã');
+        $escolaTarde = $this->criarEscola('Escola Tarde');
+        $escolaGestora = $this->criarEscola('Escola Gestora Destino');
+        $pessoa = Servidor::query()->create([
+            'nome' => 'Professora Promovida',
+            'status' => Servidor::STATUS_ATIVO,
+        ]);
+        [$matriculaManha, $professoraManha, $vinculoManha] = $this->adicionarLotacaoProfessor(
+            $pessoa,
+            $escolaManha,
+            'MAT-MANHA',
+            'manha',
+        );
+        [$matriculaTarde, $professoraTarde, $vinculoTarde] = $this->adicionarLotacaoProfessor(
+            $pessoa,
+            $escolaTarde,
+            'MAT-TARDE',
+            'tarde',
+        );
+        $turma = $this->criarTurma($escolaManha, 'Promoção');
+        $componente = ComponenteCurricular::query()->create([
+            'codigo' => 'COMP-PROMOCAO',
+            'nome' => 'Arte',
+        ]);
+        $vinculoPedagogico = TurmaComponenteProfessor::query()->create([
+            'turma_id' => $turma->id,
+            'componente_curricular_id' => $componente->id,
+            'professor_id' => $professoraManha->id,
+            'tem_professor' => true,
+        ]);
+        $dadosGestao = $this->dadosGestao($escolaGestora, [], diretor: true, coordenador: false);
+        $dadosGestao['matriculas'] = [
+            ['id' => $matriculaManha->id, 'matricula' => 'MAT-MANHA', 'turno' => 'manha'],
+            ['id' => $matriculaTarde->id, 'matricula' => 'MAT-TARDE', 'turno' => 'tarde'],
+        ];
+        $convertida = app(PessoaEquipeGestoraService::class)->converterProfessorParaEquipeGestora(
+            $pessoa,
+            $dadosGestao,
+        );
+
+        $this->assertFalse($professoraManha->fresh()->ativo);
+        $this->assertFalse($professoraTarde->fresh()->ativo);
+        $this->assertSame(ServidorFuncaoAdministrativa::STATUS_INATIVO, $vinculoManha->fresh()->status);
+        $this->assertSame(ServidorFuncaoAdministrativa::STATUS_INATIVO, $vinculoTarde->fresh()->status);
+        $this->assertDatabaseHas('turma_componente_professor', [
+            'id' => $vinculoPedagogico->id,
+            'professor_id' => null,
+            'tem_professor' => false,
+        ]);
+        $this->assertSame(
+            ['MAT-MANHA', 'MAT-TARDE'],
+            $convertida->matriculas->pluck('matricula')->sort()->values()->all(),
+        );
+        $this->assertSame($escolaGestora->id, $convertida->id_escola);
+        $this->assertSame($escolaGestora->id, $this->vinculoPorTipo(
+            $convertida,
+            FuncaoAdministrativa::TIPO_DIRECAO,
+        )->id_escola);
+    }
+
+    public function test_conversao_com_pendencia_avaliativa_nao_altera_nenhum_vinculo(): void
+    {
+        $escolaManha = $this->criarEscola('Escola Pendente Manhã');
+        $escolaTarde = $this->criarEscola('Escola Pendente Tarde');
+        $escolaGestora = $this->criarEscola('Escola Gestora Pendente');
+        $pessoa = Servidor::query()->create([
+            'nome' => 'Professora com Pendência',
+            'status' => Servidor::STATUS_ATIVO,
+        ]);
+        [$matriculaManha, $professoraManha, $vinculoManha] = $this->adicionarLotacaoProfessor(
+            $pessoa,
+            $escolaManha,
+            'PEND-MANHA',
+            'manha',
+        );
+        [$matriculaTarde, $professoraTarde, $vinculoTarde] = $this->adicionarLotacaoProfessor(
+            $pessoa,
+            $escolaTarde,
+            'PEND-TARDE',
+            'tarde',
+        );
+        $turma = $this->criarTurma($escolaManha, 'Pendente');
+        $componente = ComponenteCurricular::query()->create([
+            'codigo' => 'COMP-PENDENTE',
+            'nome' => 'Língua Portuguesa',
+        ]);
+        $vinculoPedagogico = TurmaComponenteProfessor::query()->create([
+            'turma_id' => $turma->id,
+            'componente_curricular_id' => $componente->id,
+            'professor_id' => $professoraManha->id,
+            'tem_professor' => true,
+        ]);
+        $movimentacao = $this->mock(ProfessorMovimentacaoService::class);
+        $movimentacao->shouldReceive('pendenciasAvaliativas')
+            ->twice()
+            ->andReturn(
+                ['preenchimentos_esperados' => 1, 'preenchimentos_pendentes' => 1],
+                ['preenchimentos_esperados' => 0, 'preenchimentos_pendentes' => 0],
+            );
+        $dadosGestao = $this->dadosGestao($escolaGestora, [], diretor: true, coordenador: false);
+        $dadosGestao['matriculas'] = [
+            ['id' => $matriculaManha->id, 'matricula' => 'PEND-MANHA', 'turno' => 'manha'],
+            ['id' => $matriculaTarde->id, 'matricula' => 'PEND-TARDE', 'turno' => 'tarde'],
+        ];
+
+        try {
+            app(PessoaEquipeGestoraService::class)->converterProfessorParaEquipeGestora($pessoa, $dadosGestao);
+            $this->fail('A conversão deveria ser bloqueada pelas avaliações pendentes.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('equipe_gestora', $exception->errors());
+            $this->assertStringContainsString('Pendências: 1', $exception->errors()['equipe_gestora'][0]);
+        }
+
+        $this->assertTrue($professoraManha->fresh()->ativo);
+        $this->assertTrue($professoraTarde->fresh()->ativo);
+        $this->assertSame(ServidorFuncaoAdministrativa::STATUS_ATIVO, $vinculoManha->fresh()->status);
+        $this->assertSame(ServidorFuncaoAdministrativa::STATUS_ATIVO, $vinculoTarde->fresh()->status);
+        $this->assertDatabaseHas('turma_componente_professor', [
+            'id' => $vinculoPedagogico->id,
+            'professor_id' => $professoraManha->id,
+            'tem_professor' => true,
+        ]);
+        $this->assertFalse($pessoa->fresh()->vinculosAtivos()
+            ->whereHas('funcaoAdministrativa', fn ($funcoes) => $funcoes->equipeGestora())
+            ->exists());
     }
 
     public function test_conversao_de_gestor_para_professor_encerra_gestao_e_reativa_lotacao(): void
@@ -651,6 +771,41 @@ class PessoaEquipeGestoraServiceTest extends TestCase
         ]);
 
         return [$pessoa, $professor];
+    }
+
+    /** @return array{PessoaMatricula, Professor, ServidorFuncaoAdministrativa} */
+    private function adicionarLotacaoProfessor(
+        Servidor $pessoa,
+        Escola $escola,
+        string $matricula,
+        string $turno,
+    ): array {
+        $registroMatricula = PessoaMatricula::query()->create([
+            'servidor_id' => $pessoa->id,
+            'matricula' => $matricula,
+            'turno' => $turno,
+        ]);
+        $vinculo = ServidorFuncaoAdministrativa::query()->create([
+            'servidor_id' => $pessoa->id,
+            'funcao_administrativa_id' => FuncaoAdministrativa::professorPadrao()->id,
+            'matricula' => $matricula,
+            'id_escola' => $escola->id,
+            'setor_id' => $escola->setor_id,
+            'status' => ServidorFuncaoAdministrativa::STATUS_ATIVO,
+            'origem' => 'professor',
+        ]);
+        $professor = Professor::query()->create([
+            'servidor_id' => $pessoa->id,
+            'professor_matricula_id' => $registroMatricula->id,
+            'servidor_funcao_administrativa_id' => $vinculo->id,
+            'id_escola' => $escola->id,
+            'matricula' => $matricula,
+            'turno' => $turno,
+            'nome' => $pessoa->nome,
+            'ativo' => true,
+        ]);
+
+        return [$registroMatricula, $professor, $vinculo];
     }
 
     private function vinculoPorTipo(Servidor $pessoa, string $tipo): ServidorFuncaoAdministrativa

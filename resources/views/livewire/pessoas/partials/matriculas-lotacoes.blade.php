@@ -70,18 +70,20 @@
         @enderror
 
         @foreach ($matriculas as $matriculaKey => $matricula)
-            @if ($matriculaAtiva === $matriculaKey)
-                <div
-                    id="pessoa-form-matricula-panel-{{ $matriculaKey }}"
-                    class="pe-person-form__registration"
-                    role="tabpanel"
-                    aria-labelledby="pessoa-form-matricula-tab-{{ $matriculaKey }}"
-                    wire:key="matricula-content-{{ $matriculaKey }}"
-                >
+            <div
+                id="pessoa-form-matricula-panel-{{ $matriculaKey }}"
+                class="pe-person-form__registration"
+                role="tabpanel"
+                aria-labelledby="pessoa-form-matricula-tab-{{ $matriculaKey }}"
+                aria-hidden="{{ $matriculaAtiva === $matriculaKey ? 'false' : 'true' }}"
+                wire:key="matricula-content-{{ $matriculaKey }}"
+                @if ($matriculaAtiva !== $matriculaKey) hidden @endif
+            >
                     <div class="pe-person-form__grid pe-person-form__grid--2 pe-person-form__grid--flush">
                         <label class="pe-person-form__field">
                             <span>Nº da matrícula <b aria-hidden="true">*</b></span>
                             <input
+                                id="pessoa-form-matricula-{{ $matriculaKey }}"
                                 type="text"
                                 wire:model.blur="matriculas.{{ $matriculaKey }}.matricula"
                                 maxlength="255"
@@ -97,6 +99,7 @@
                         <label class="pe-person-form__field">
                             <span>Turno <b aria-hidden="true">*</b></span>
                             <select
+                                id="pessoa-form-turno-{{ $matriculaKey }}"
                                 wire:change="turnoAlterado(@js($matriculaKey), $event.target.value)"
                                 wire:loading.attr="disabled"
                                 wire:target="turnoAlterado,salvar"
@@ -292,8 +295,7 @@
                             @endforeach
                         @endif
                     @endif
-                </div>
-            @endif
+            </div>
         @endforeach
     @endif
 </section>

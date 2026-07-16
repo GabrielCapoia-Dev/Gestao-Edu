@@ -7,10 +7,13 @@ use App\Filament\Admin\Resources\Servidores\ServidorResource;
 use App\Livewire\Pessoas\PessoaForm;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
+use App\Models\FuncaoAdministrativa;
+use App\Models\PessoaMatricula;
 use App\Models\Professor;
 use App\Models\Role;
 use App\Models\Serie;
 use App\Models\Servidor;
+use App\Models\ServidorFuncaoAdministrativa;
 use App\Models\Setor;
 use App\Models\Turma;
 use App\Models\TurmaComponenteProfessor;
@@ -180,6 +183,83 @@ class PessoaHubFilamentTest extends TestCase
             ->assertOk()
             ->assertSet('pessoaId', $servidor->id)
             ->assertSet('nome', 'Pessoa Formulário');
+    }
+
+    public function test_formulario_converte_duas_matriculas_em_um_vinculo_gestor_sem_perder_estado(): void
+    {
+        $usuario = $this->usuarioHubAdmin([
+            'Listar Pessoas',
+            'Editar Pessoas',
+            'Gerenciar Vínculos Estruturais de Pessoas',
+        ]);
+        Role::query()->firstOrCreate(['name' => 'Equipe Gestora', 'guard_name' => 'web']);
+        $setorManha = $this->criarSetor('Setor Manhã');
+        $setorTarde = $this->criarSetor('Setor Tarde');
+        $setorGestao = $this->criarSetor('Setor Gestão');
+        $escolaManha = $this->criarEscola('Escola Form Manhã', $setorManha);
+        $escolaTarde = $this->criarEscola('Escola Form Tarde', $setorTarde);
+        $escolaGestora = $this->criarEscola('Escola Form Gestão', $setorGestao);
+        $servidor = $this->criarServidor('Pessoa Duas Matrículas', $escolaManha, $setorManha);
+        $funcaoProfessor = FuncaoAdministrativa::professorPadrao();
+
+        foreach ([
+            [$escolaManha, 'FORM-MANHA', 'manha'],
+            [$escolaTarde, 'FORM-TARDE', 'tarde'],
+        ] as [$escola, $numero, $turno]) {
+            $matricula = PessoaMatricula::query()->create([
+                'servidor_id' => $servidor->id,
+                'matricula' => $numero,
+                'turno' => $turno,
+            ]);
+            $vinculo = ServidorFuncaoAdministrativa::query()->create([
+                'servidor_id' => $servidor->id,
+                'funcao_administrativa_id' => $funcaoProfessor->id,
+                'matricula' => $numero,
+                'id_escola' => $escola->id,
+                'setor_id' => $escola->setor_id,
+                'status' => ServidorFuncaoAdministrativa::STATUS_ATIVO,
+                'origem' => 'professor',
+            ]);
+            Professor::query()->create([
+                'servidor_id' => $servidor->id,
+                'professor_matricula_id' => $matricula->id,
+                'servidor_funcao_administrativa_id' => $vinculo->id,
+                'id_escola' => $escola->id,
+                'matricula' => $numero,
+                'turno' => $turno,
+                'nome' => $servidor->nome,
+                'email' => $servidor->email,
+                'ativo' => true,
+            ]);
+        }
+
+        $componente = Livewire::actingAs($usuario)->test(PessoaForm::class, ['pessoaId' => $servidor->id]);
+        $chaves = array_keys($componente->get('matriculas'));
+
+        $this->assertCount(2, $chaves);
+        foreach ($chaves as $chave) {
+            $componente
+                ->assertSeeHtml('id="pessoa-form-matricula-panel-'.$chave.'"')
+                ->assertSeeHtml('id="pessoa-form-matricula-'.$chave.'"')
+                ->assertSeeHtml('id="pessoa-form-turno-'.$chave.'"');
+        }
+
+        $componente
+            ->set('cargo', ServidorResource::CARGO_EQUIPE_GESTORA)
+            ->call('escolaGestoraAlterada', $escolaGestora->id)
+            ->set('cargosGestores', ['diretor'])
+            ->set('portaria', '678/2026')
+            ->call('salvar')
+            ->assertHasNoErrors()
+            ->assertDispatched('pessoa-form-salvo')
+            ->assertSet("matriculas.{$chaves[0]}.matricula", 'FORM-MANHA')
+            ->assertSet("matriculas.{$chaves[1]}.matricula", 'FORM-TARDE');
+
+        $this->assertSame(2, PessoaMatricula::query()->where('servidor_id', $servidor->id)->count());
+        $this->assertSame(1, $servidor->fresh()->vinculosAtivos()
+            ->whereHas('funcaoAdministrativa', fn ($funcoes) => $funcoes->equipeGestora())
+            ->count());
+        $this->assertSame($escolaGestora->id, $servidor->fresh()->id_escola);
     }
 
     public function test_eventos_do_formulario_fecham_o_modal_personalizado(): void

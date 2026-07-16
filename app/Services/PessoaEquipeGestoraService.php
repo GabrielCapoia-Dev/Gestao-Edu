@@ -21,6 +21,7 @@ class PessoaEquipeGestoraService
     public function __construct(
         private readonly PessoaAcessoService $pessoaAcessoService,
         private readonly PessoaProfessorService $pessoaProfessorService,
+        private readonly ProfessorMovimentacaoService $professorMovimentacaoService,
         private readonly ServidorService $servidorService,
     ) {}
 
@@ -66,36 +67,41 @@ class PessoaEquipeGestoraService
     ): Servidor {
         return DB::transaction(function () use ($pessoa, $dadosGestao, $dadosPessoa): Servidor {
             $pessoa = Servidor::query()->lockForUpdate()->findOrFail($pessoa->id);
-            if ($dadosPessoa !== []) {
-                $pessoa->update($this->dadosPessoa($dadosPessoa));
-            }
             $professores = $pessoa->professores()->where('ativo', true)->lockForUpdate()->get();
 
             if ($professores->isEmpty()) {
+                if ($dadosPessoa !== []) {
+                    $pessoa->update($this->dadosPessoa($dadosPessoa));
+                }
+
                 return $this->sincronizarInterno($pessoa, $dadosGestao, bloquearProfessorAtivo: false);
             }
 
-            $escolasProfessor = $professores
-                ->pluck('id_escola')
-                ->filter()
-                ->map(fn ($id): int => (int) $id)
-                ->unique()
-                ->values();
-            $escolaDestino = (int) ($dadosGestao['id_escola'] ?? 0);
+            // Valida escola, matrículas, cargos, portaria e turmas antes de alterar
+            // qualquer vínculo da pessoa.
+            $this->normalizarEValidar($dadosGestao);
 
-            if ($escolasProfessor->count() !== 1 || $escolasProfessor->first() !== $escolaDestino) {
+            $totalPendencias = $professores->sum(function (Professor $professor): int {
+                $pendencias = $this->professorMovimentacaoService->pendenciasAvaliativas($professor);
+
+                return (int) ($pendencias['preenchimentos_pendentes'] ?? 0);
+            });
+            if ($totalPendencias > 0) {
                 throw ValidationException::withMessages([
-                    'id_escola' => 'A conversão exige que todas as lotações ativas do professor pertençam à escola selecionada.',
+                    'equipe_gestora' => sprintf(
+                        'A promoção para Equipe Gestora exige a conclusão das avaliações pendentes. Pendências: %d.',
+                        $totalPendencias,
+                    ),
                 ]);
             }
 
-            foreach ($professores as $professor) {
-                if ($this->servidorService->professorPossuiVinculosPedagogicos($professor)) {
-                    throw ValidationException::withMessages([
-                        'equipe_gestora' => 'Não é possível converter o professor enquanto houver vínculos ativos com turmas e componentes.',
-                    ]);
-                }
+            if ($dadosPessoa !== []) {
+                $pessoa->update($this->dadosPessoa($dadosPessoa));
             }
+
+            $this->servidorService->desvincularProfessorDePedagogico(
+                $professores->pluck('id')->map(fn ($id): int => (int) $id)->all(),
+            );
 
             $vinculosProfessor = ServidorFuncaoAdministrativa::query()
                 ->where('servidor_id', $pessoa->id)
