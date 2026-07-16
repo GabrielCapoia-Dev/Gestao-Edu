@@ -26,16 +26,16 @@ class PessoaLegadoRedirectTest extends TestCase
         app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 
-    public function test_professores_nao_aparecem_no_menu_e_usuarios_voltam_ao_menu(): void
+    public function test_professores_e_usuarios_nao_duplicam_a_central_de_pessoas_no_menu(): void
     {
         $this->assertFalse(ProfessorResource::shouldRegisterNavigation());
-        $this->assertTrue(UserResource::shouldRegisterNavigation());
+        $this->assertFalse(UserResource::shouldRegisterNavigation());
         $this->assertSame('Usuários', UserResource::getNavigationLabel());
     }
 
     public function test_listagem_de_professores_redireciona_para_hub_pessoas(): void
     {
-        $usuario = $this->usuarioComPermissoes(['Listar Professores', 'Listar Servidores']);
+        $usuario = $this->usuarioComPermissoes(['Listar Professores', 'Listar Servidores', 'Listar Pessoas']);
 
         Livewire::actingAs($usuario)
             ->test(ManageProfessors::class)

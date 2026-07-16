@@ -96,57 +96,30 @@ class UserForm
                 ->dehydrateStateUsing(fn($state) => filled($state) ? Hash::make($state) : null)
                 ->dehydrated(fn($state) => filled($state))
                 ->required(fn(string $context): bool => $context === 'create')
+                ->visible(fn (?User $record, string $context): bool => $context === 'create'
+                    || ($record && Gate::allows('resetPassword', $record)))
                 ->validationMessages([
                     'max' => 'A senha deve ter no máximo 30 caracteres.',
                 ]),
 
             Select::make('roles')
-                ->label('Níveis de acesso')
-                ->helperText(fn (?User $record): string => app(PessoaAcessoService::class)->usuarioEhProfessor($record)
-                    ? 'Usuário professor: nesta fase permanece apenas com o nível do cargo Professor (sem extras).'
-                    : 'Você pode vincular um ou mais níveis de acesso ao usuário.')
+                ->label('Níveis de acesso adicionais')
+                ->helperText('O nível funcional do cargo é preservado automaticamente.')
                 ->options(fn () => $service->opcoesDeRolesParaSelect($user))
                 ->multiple()
                 ->searchable()
                 ->live()
                 ->preload()
-                ->required()
-                ->default(fn (?User $record) => $record?->roles->pluck('id')->all() ?? [])
-                ->afterStateHydrated(function (callable $set, ?User $record): void {
-                    if (! $record) {
-                        return;
+                ->default(fn (?User $record): array => $record ? $service->idsNiveisAdicionais($record) : [])
+                ->afterStateHydrated(function (callable $set, ?User $record) use ($service): void {
+                    if ($record) {
+                        $set('roles', $service->idsNiveisAdicionais($record));
                     }
-
-                    $acesso = app(PessoaAcessoService::class);
-                    if ($acesso->usuarioEhProfessor($record)) {
-                        $set('roles', $acesso->rolesImutaveisProfessor()->values()->all());
-
-                        return;
-                    }
-
-                    $set('roles', $record->roles()->pluck('roles.id')->all());
                 })
-                ->disableOptionWhen(function (string $value, ?User $record): bool {
-                    // Professor: trava todas as opções que não sejam do cargo e também as do cargo (não remove).
-                    $acesso = app(PessoaAcessoService::class);
-                    if (! $acesso->usuarioEhProfessor($record)) {
-                        return false;
-                    }
-
-                    // Só permite manter as roles imutáveis; demais opções ficam desabilitadas.
-                    return ! $acesso->rolesImutaveisProfessor()->contains((int) $value);
-                })
-                // disabled + required quebra o save no Filament se o state não for reenviado
                 ->dehydrated(true)
-                ->disabled(function (string $context, ?User $record) use ($service, $user): bool {
-                    if ($service->desabilitarCampoRole($user, $record, $context)) {
-                        return true;
-                    }
-
-                    // Professor: campo travado (roles forçadas no mutateFormDataBeforeSave)
-                    return app(PessoaAcessoService::class)->usuarioEhProfessor($record);
-                })
-                ->required(fn (?User $record): bool => ! app(PessoaAcessoService::class)->usuarioEhProfessor($record)),
+                ->visible(fn (?User $record): bool => $record
+                    ? Gate::allows('applyPermissions', $record)
+                    : Gate::allows('applyPermissionsAny', User::class)),
 
             Toggle::make('email_approved')
                 ->label('Verificação de acesso')
@@ -172,7 +145,9 @@ class UserForm
                 ->offColor('info')
                 ->onIcon('heroicon-s-lock-open')
                 ->offIcon('heroicon-s-lock-closed')
-                ->disabled(fn() => ! $service->ehAdmin($user))
+                ->visible(fn (?User $record): bool => $record
+                    ? Gate::allows('applyPermissions', $record)
+                    : Gate::allows('applyPermissionsAny', User::class))
                 ->live(),
 
             Components\Section::make('Permissões específicas')
@@ -181,11 +156,19 @@ class UserForm
                 ->description('As permissões herdadas dos níveis de acesso ficam destacadas.')
                 ->visible(fn(Get $get) => $get('usar_permissoes_extras') === true)
                 ->schema(function (Get $get, ?User $record) use ($service, $user) {
-                    if (! $user || ! $service->ehAdmin($user)) {
+                    if (! $user || ($record
+                        ? ! Gate::allows('applyPermissions', $record)
+                        : ! Gate::allows('applyPermissionsAny', User::class))) {
                         return [];
                     }
 
-                    $todasPermissoes = Permission::orderBy('name')->get();
+                    $todasPermissoes = $user->hasRole('Admin')
+                        ? Permission::orderBy('name')->get()
+                        : Permission::query()
+                            ->whereIn('name', $user->getAllPermissions()->pluck('name'))
+                            ->where('name', '!=', 'Aplicar Permissoes')
+                            ->orderBy('name')
+                            ->get();
 
                     $roleIds = collect($get('roles') ?? $record?->roles->pluck('id')->all() ?? [])
                         ->filter(fn($roleId) => filled($roleId))

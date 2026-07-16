@@ -6,6 +6,7 @@ use App\Filament\Admin\Resources\Users\UserResource;
 use App\Services\PessoaAcessoService;
 use App\Services\UserService;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 
 class EditUser extends EditRecord
@@ -17,29 +18,32 @@ class EditUser extends EditRecord
     protected function mutateFormDataBeforeFill(array $data): array
     {
         $record = $this->getRecord();
-        $acesso = app(PessoaAcessoService::class);
-
-        if ($acesso->usuarioEhProfessor($record)) {
-            $data['roles'] = $acesso->rolesImutaveisProfessor()->values()->all();
-            $data['usar_permissoes_extras'] = false;
-        } else {
-            $data['roles'] = $record->roles()->pluck('roles.id')->all();
-        }
+        $data['roles'] = app(UserService::class)->idsNiveisAdicionais($record);
 
         return $data;
     }
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        if (! empty($data['email_approved']) && empty($data['email_verified_at'])) {
-            $data['email_verified_at'] = now();
+        $record = $this->getRecord();
+
+        if (! Gate::allows('applyPermissions', $record)) {
+            unset($data['roles'], $data['usar_permissoes_extras']);
+            $data = collect($data)
+                ->reject(fn (mixed $value, string|int $key): bool => str_starts_with((string) $key, 'permissions_'))
+                ->all();
         }
 
-        $acesso = app(PessoaAcessoService::class);
-        if ($acesso->usuarioEhProfessor($this->getRecord())) {
-            // Garante payload coerente mesmo com select desabilitado.
-            $data['roles'] = $acesso->rolesImutaveisProfessor()->values()->all();
-            $data['usar_permissoes_extras'] = false;
+        if (! Gate::allows('resetPassword', $record)) {
+            unset($data['password']);
+        }
+
+        if (! Gate::allows('toggleEmailApproval', [$record, 'table'])) {
+            unset($data['email_approved'], $data['email_verified_at']);
+        }
+
+        if (! empty($data['email_approved']) && empty($data['email_verified_at'])) {
+            $data['email_verified_at'] = now();
         }
 
         // Não reenviar senha vazia / hash nulo
@@ -52,16 +56,7 @@ class EditUser extends EditRecord
 
     protected function afterSave(): void
     {
-        $data = $this->data;
-        $acesso = app(PessoaAcessoService::class);
-
-        if ($acesso->usuarioEhProfessor($this->record)) {
-            $acesso->aplicarRolesProfessor($this->record->fresh(), [], forcarDefaults: true);
-
-            return;
-        }
-
-        app(UserService::class)->sincronizarAcessosDoUsuario($this->record, $data);
+        app(UserService::class)->sincronizarAcessosDoUsuario($this->record, $this->data);
     }
 
     protected function getRedirectUrl(): string
@@ -120,9 +115,9 @@ class EditUser extends EditRecord
     public function getHighlights(): array
     {
         return [
-            'Cargos (ex.: Professor) são geridos em Pessoas',
-            'Roles do cargo professor não podem ser removidas aqui',
-            'Use níveis extras e permissões diretas só quando necessário',
+            'Cargos são geridos na Central de Pessoas',
+            'O nível funcional do cargo não pode ser removido pela gestão de acesso',
+            'Níveis adicionais e permissões diretas não alteram o cargo',
         ];
     }
 

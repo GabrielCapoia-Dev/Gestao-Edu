@@ -308,6 +308,7 @@ class CriarPermissoes extends Command
                 'Listar Usuários',
                 'Criar Usuários',
                 'Editar Usuários',
+                'Redefinir Senhas de Usuários',
                 'Excluir Usuários',
                 'Listar Níveis de Acesso',
                 'Criar Níveis de Acesso',

@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Models\Escola;
+use App\Models\Enums\ListaPermissoes;
 use App\Models\User;
 use App\Services\UserPresenceService;
 use App\Services\PessoaScopeService;
@@ -63,7 +64,8 @@ class UserPolicy
             return false;
         }
 
-        return $this->applyPermissionsAny($user);
+        return $this->applyPermissionsAny($user)
+            && $this->podeAcessarUsuario($user, $target);
     }
 
     public function applyPermissionsAny(User $user): bool
@@ -92,6 +94,22 @@ class UserPolicy
     {
         return $user->hasPermissionTo('Editar Usuários')
             || $user->hasPermissionTo('Editar Usuarios');
+    }
+
+    public function resetPassword(User $user, User $target): bool
+    {
+        if ($target->id === 1 || $target->id === $user->id || $target->hasRole('Admin')) {
+            return false;
+        }
+
+        return $this->resetPasswordAny($user)
+            && $this->podeAcessarUsuario($user, $target);
+    }
+
+    public function resetPasswordAny(User $user): bool
+    {
+        return $user->hasRole('Admin')
+            || $user->hasPermissionTo(ListaPermissoes::RedefinirSenhasDeUsuarios->label());
     }
 
     public function editSchool(User $user): bool

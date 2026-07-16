@@ -2,11 +2,13 @@
 
 namespace App\Filament\Admin\Resources\Servidores;
 
+use App\Filament\Admin\Resources\Servidores\Actions\PessoaAcessoActions;
 use App\Filament\Admin\Resources\Servidores\Pages\ManageServidores;
 use App\Filament\Admin\Resources\Servidores\Schemas\ServidorEquipeGestoraForm;
 use App\Models\Escola;
 use App\Models\Professor;
 use App\Models\ProfessorMatricula;
+use App\Models\Role;
 use App\Models\Servidor;
 use App\Models\Turma;
 use App\Services\PessoaScopeService;
@@ -153,7 +155,16 @@ class ServidorResource extends Resource
                         'Pendente' => 'warning',
                         default => 'gray',
                     })
-                    ->tooltip('Gerencie login e permissões em Acesso → Usuários'),
+                    ->tooltip('Gerencie login, níveis e permissões nas ações desta pessoa.')
+                    ->visible(fn (): bool => Gate::allows('viewAny', \App\Models\User::class)),
+
+                TextColumn::make('user.roles.name')
+                    ->label('Níveis de acesso')
+                    ->badge()
+                    ->separator(',')
+                    ->placeholder('—')
+                    ->toggleable()
+                    ->visible(fn (): bool => Gate::allows('viewAny', \App\Models\User::class)),
 
                 TextColumn::make('status')
                     ->label('Status')
@@ -209,6 +220,42 @@ class ServidorResource extends Resource
                         blank: fn (Builder $query): Builder => $query,
                     ),
 
+                TernaryFilter::make('acesso_liberado')
+                    ->label('Liberação de acesso')
+                    ->trueLabel('Liberados')
+                    ->falseLabel('Pendentes')
+                    ->placeholder('Todos')
+                    ->queries(
+                        true: fn (Builder $query): Builder => $query->whereHas(
+                            'user',
+                            fn (Builder $users): Builder => $users->where('email_approved', true),
+                        ),
+                        false: fn (Builder $query): Builder => $query->whereHas(
+                            'user',
+                            fn (Builder $users): Builder => $users->where('email_approved', false),
+                        ),
+                        blank: fn (Builder $query): Builder => $query,
+                    )
+                    ->visible(fn (): bool => Gate::allows('viewAny', \App\Models\User::class)),
+
+                SelectFilter::make('nivel_acesso')
+                    ->label('Nível de acesso')
+                    ->options(fn (): array => Role::query()->orderBy('name')->pluck('name', 'id')->all())
+                    ->multiple()
+                    ->query(function (Builder $query, array $data): Builder {
+                        $ids = collect($data['values'] ?? [])
+                            ->filter()
+                            ->map(fn ($id): int => (int) $id)
+                            ->all();
+
+                        return $ids === []
+                            ? $query
+                            : $query->whereHas('user.roles', fn (Builder $roles): Builder => $roles->whereIn('roles.id', $ids));
+                    })
+                    ->searchable()
+                    ->preload()
+                    ->visible(fn (): bool => Gate::allows('viewAny', \App\Models\User::class)),
+
                 TernaryFilter::make('eh_professor')
                     ->label('Cargo professor')
                     ->trueLabel('Professores')
@@ -263,7 +310,7 @@ class ServidorResource extends Resource
                     ->modalWidth('6xl')
                     ->modalIcon(null)
                     ->modalHeading(fn (Servidor $record): string => "Pessoa — {$record->nome}")
-                    ->modalDescription('Ficha: identidade, cargo, matrículas e lotações. Acesso ao sistema em Usuários.')
+                    ->modalDescription('Ficha completa de identidade, cargo, matrículas, lotações e acesso ao sistema.')
                     ->extraModalWindowAttributes([
                         'class' => 'pessoa-modal-window pessoa-view-modal-window',
                     ])
@@ -278,7 +325,7 @@ class ServidorResource extends Resource
                     ->modalWidth('6xl')
                     ->modalIcon(null)
                     ->modalHeading(fn (Servidor $record): string => "Editar pessoa — {$record->nome}")
-                    ->modalDescription('Login e permissões: menu Acesso → Usuários.')
+                    ->modalDescription('Edite os dados funcionais; login, níveis e permissões ficam nas ações da pessoa.')
                     ->formWrapper(false)
                     ->modalSubmitAction(false)
                     ->modalCancelAction(false)
@@ -291,6 +338,8 @@ class ServidorResource extends Resource
                     ->modalContent(fn (Servidor $record) => view('components.pessoas.form-modal', [
                         'pessoaId' => $record->getKey(),
                     ])),
+
+                ...PessoaAcessoActions::recordActions(),
 
                 DeleteAction::make()
                     ->label('Excluir')
@@ -336,6 +385,8 @@ class ServidorResource extends Resource
                     }),
             ])
             ->toolbarActions([
+                ...PessoaAcessoActions::bulkActions(),
+
                 DeleteBulkAction::make()
                     ->label('Excluir selecionados')
                     ->requiresConfirmation()
@@ -578,13 +629,14 @@ class ServidorResource extends Resource
                         ->label('Acesso ao sistema')
                         ->getStateUsing(function () use ($record): string {
                             if (! $record->user_id) {
-                                return 'Sem usuário vinculado. Crie/edite em Acesso → Usuários se necessário.';
+                                return 'Sem conta vinculada. Use a ação Criar acesso nesta pessoa, se necessário.';
                             }
 
                             $status = $record->user?->email_approved ? 'Liberado' : 'Pendente';
 
-                            return "Conta: {$record->user->email} ({$status}). Edite login e permissões em Acesso → Usuários.";
+                            return "Conta: {$record->user->email} ({$status}). Use as ações da pessoa para gerenciar níveis, permissões e senha.";
                         })
+                        ->visible(fn (): bool => Gate::allows('viewAny', \App\Models\User::class))
                         ->columnSpanFull(),
                 ])
                 ->columns(2),

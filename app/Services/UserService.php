@@ -16,7 +16,11 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password as PasswordRule;
+use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -215,20 +219,172 @@ class UserService
             ->values();
     }
 
+    /** @return array<int, int> */
+    public function idsNiveisAdicionais(User $user): array
+    {
+        $rolesFuncionais = app(PessoaAcessoService::class)->rolesFuncionaisGerenciadasIds();
+
+        return $user->roles()
+            ->pluck('roles.id')
+            ->map(fn ($id): int => (int) $id)
+            ->reject(fn (int $id): bool => $rolesFuncionais->contains($id))
+            ->values()
+            ->all();
+    }
+
+    public function sincronizarNiveisAdicionais(
+        User $record,
+        array $roleIds,
+        string $modo = 'replace',
+        ?User $operador = null,
+        bool $autorizar = true,
+    ): void {
+        $operador ??= Auth::user();
+
+        if ($autorizar && (! $operador || ! Gate::forUser($operador)->allows('applyPermissions', $record))) {
+            throw new \Illuminate\Auth\Access\AuthorizationException(
+                'Você não possui permissão para alterar os níveis de acesso desta pessoa.',
+            );
+        }
+
+        validator(
+            ['modo' => $modo],
+            ['modo' => [Rule::in(['add', 'replace', 'remove'])]],
+        )->validate();
+
+        $selecionadas = collect($roleIds)
+            ->filter(fn ($id): bool => filled($id))
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->values();
+        $permitidas = $this->opcoesDeRoles(Role::query(), $operador)
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id);
+
+        if ($selecionadas->diff($permitidas)->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'roles' => 'Um ou mais níveis selecionados são funcionais ou estão fora do seu escopo de administração.',
+            ]);
+        }
+
+        $atuais = $record->roles()
+            ->pluck('roles.id')
+            ->map(fn ($id): int => (int) $id);
+        $gerenciaveisAtuais = $atuais->intersect($permitidas);
+        $preservadas = $atuais->diff($gerenciaveisAtuais);
+        $gerenciaveisFinais = match ($modo) {
+            'add' => $gerenciaveisAtuais->merge($selecionadas),
+            'remove' => $gerenciaveisAtuais->diff($selecionadas),
+            default => $selecionadas,
+        };
+
+        $record->syncRoles(Role::query()
+            ->whereIn('id', $preservadas->merge($gerenciaveisFinais)->unique()->values()->all())
+            ->get());
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+    }
+
+    public function sincronizarPermissoesDiretas(
+        User $record,
+        array|Collection $permissoes,
+        string $modo = 'replace',
+        ?User $operador = null,
+        bool $autorizar = true,
+    ): void {
+        $operador ??= Auth::user();
+
+        if ($autorizar && (! $operador || ! Gate::forUser($operador)->allows('applyPermissions', $record))) {
+            throw new \Illuminate\Auth\Access\AuthorizationException(
+                'Você não possui permissão para alterar as permissões desta pessoa.',
+            );
+        }
+
+        validator(
+            ['modo' => $modo],
+            ['modo' => [Rule::in(['add', 'replace', 'remove'])]],
+        )->validate();
+
+        $selecionadas = collect($permissoes)
+            ->filter(fn ($permission): bool => filled($permission))
+            ->map(fn ($permission): string => (string) $permission)
+            ->unique()
+            ->values();
+        $permitidas = ((! $autorizar && ! $operador) || $operador?->hasRole('Admin')
+            ? Permission::query()
+            : Permission::query()->whereIn('name', $operador?->getAllPermissions()->pluck('name') ?? []))
+            ->when($autorizar && ! $operador?->hasRole('Admin'), fn (Builder $query): Builder => $query->where('name', '!=', 'Aplicar Permissoes'))
+            ->pluck('name');
+
+        if ($selecionadas->diff($permitidas)->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'permissions' => 'Uma ou mais permissões selecionadas estão fora do seu escopo de administração.',
+            ]);
+        }
+
+        $herdadas = $record->roles()
+            ->with('permissions:id,name')
+            ->get()
+            ->flatMap(fn (Role $role) => $role->permissions->pluck('name'))
+            ->unique();
+        $selecionadas = $selecionadas->diff($herdadas);
+        $atuais = $record->getDirectPermissions()->pluck('name');
+        $gerenciaveisAtuais = $atuais->intersect($permitidas);
+        $preservadas = $atuais->diff($gerenciaveisAtuais);
+        $gerenciaveisFinais = match ($modo) {
+            'add' => $gerenciaveisAtuais->merge($selecionadas),
+            'remove' => $gerenciaveisAtuais->diff($selecionadas),
+            default => $selecionadas,
+        };
+
+        $record->syncPermissions($preservadas->merge($gerenciaveisFinais)->unique()->values()->all());
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+    }
+
+    public function redefinirSenha(User $record, string $senha, ?User $operador = null): void
+    {
+        $operador ??= Auth::user();
+
+        if (! $operador || ! Gate::forUser($operador)->allows('resetPassword', $record)) {
+            throw new \Illuminate\Auth\Access\AuthorizationException(
+                'Você não possui permissão para redefinir a senha desta pessoa.',
+            );
+        }
+
+        validator(
+            ['senha' => $senha],
+            ['senha' => ['required', 'string', 'max:30', PasswordRule::min(8)->mixedCase()->numbers()->symbols()]],
+        )->validate();
+
+        $record->forceFill([
+            'password' => Hash::make($senha),
+            'must_change_password' => true,
+        ])->save();
+    }
+
+    public function definirAprovacao(User $record, bool $aprovado, ?User $operador = null): void
+    {
+        $operador ??= Auth::user();
+
+        if (! $operador || ! Gate::forUser($operador)->allows('toggleEmailApproval', [$record, 'table'])) {
+            throw new \Illuminate\Auth\Access\AuthorizationException(
+                'Você não possui permissão para alterar a liberação de acesso desta pessoa.',
+            );
+        }
+
+        $record->update(['email_approved' => $aprovado]);
+    }
+
     public function sincronizarAcessosDoUsuario(User $record, array $data): void
     {
         // Impacto: esta rotina e o ponto central de sincronizacao Spatie. Alterar ordem de roles/permissoes pode deixar permissoes herdadas gravadas como diretas.
         if (array_key_exists('roles', $data) || array_key_exists('role', $data)) {
-            $roleIds = app(PessoaAcessoService::class)->mesclarRolesComProfessor(
+            $this->sincronizarNiveisAdicionais(
                 $record,
                 $this->idsDeRolesSelecionadas($data),
+                operador: Auth::user(),
+                autorizar: Auth::check(),
             );
-
-            $roles = Role::query()
-                ->whereIn('id', $roleIds)
-                ->get();
-
-            $record->syncRoles($roles);
         }
 
         $record->load('roles.permissions');
@@ -242,25 +398,22 @@ class UserService
 
         // Impacto: desligar permissoes extras deve limpar somente permissoes diretas; as herdadas continuam vindo das roles do usuario.
         if (empty($data['usar_permissoes_extras'])) {
-            $record->syncPermissions([]);
-            app(PermissionRegistrar::class)->forgetCachedPermissions();
+            $this->sincronizarPermissoesDiretas(
+                $record,
+                [],
+                operador: Auth::user(),
+                autorizar: Auth::check(),
+            );
 
             return;
         }
 
-        $permissoesHerdadas = $record->roles
-            ->flatMap(fn ($role) => $role->permissions->pluck('name'))
-            ->unique()
-            ->values();
-
-        $permissoesDiretas = $this->permissoesSelecionadas($data)
-            ->diff($permissoesHerdadas)
-            ->values()
-            ->all();
-
-        $record->syncPermissions($permissoesDiretas);
-
-        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        $this->sincronizarPermissoesDiretas(
+            $record,
+            $this->permissoesSelecionadas($data),
+            operador: Auth::user(),
+            autorizar: Auth::check(),
+        );
     }
 
     public function desabilitarCampoRole(?User $user, ?User $record, string $context): bool

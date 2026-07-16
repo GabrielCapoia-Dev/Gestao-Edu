@@ -3,9 +3,11 @@
 namespace App\Filament\Admin\Resources\Users\Tables;
 
 use App\Filament\Admin\Actions\VincularSetorBulkAction;
-use App\Models\Role;
+use App\Models\Servidor;
 use App\Models\User;
 use App\Services\PessoaAcessoService;
+use App\Services\PessoaScopeService;
+use App\Services\PessoaUsuarioService;
 use App\Services\UserService;
 use App\Services\UserSetorAccessService;
 use Filament\Actions\Action;
@@ -26,7 +28,6 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password as PasswordRule;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -203,6 +204,23 @@ class UsersTable
                     blank: fn (Builder $query): Builder => $query,
                 ),
 
+            TernaryFilter::make('sem_pessoa')
+                ->label('Vínculo com Pessoa')
+                ->trueLabel('Sem Pessoa vinculada')
+                ->falseLabel('Com Pessoa vinculada')
+                ->placeholder('Todos')
+                ->queries(
+                    true: fn (Builder $query): Builder => $query
+                        ->whereDoesntHave('servidores')
+                        ->whereDoesntHave('professores'),
+                    false: fn (Builder $query): Builder => $query->where(function (Builder $vinculos): void {
+                        $vinculos
+                            ->whereHas('servidores')
+                            ->orWhereHas('professores');
+                    }),
+                    blank: fn (Builder $query): Builder => $query,
+                ),
+
             SelectFilter::make('roles')
                 ->label('Nível de acesso')
                 ->multiple()
@@ -232,6 +250,43 @@ class UsersTable
     private static function recordActions(UserService $service, User $user): array
     {
         return [
+
+            Action::make('vincular_pessoa')
+                ->label('Vincular à pessoa')
+                ->icon('heroicon-o-link')
+                ->color('primary')
+                ->visible(fn (User $record): bool => $record->servidores->isEmpty()
+                    && $record->professores->isEmpty()
+                    && Gate::forUser($user)->allows('update', $record)
+                    && Gate::forUser($user)->allows('viewAny', Servidor::class))
+                ->schema([
+                    Select::make('pessoa_id')
+                        ->label('Pessoa existente')
+                        ->helperText('Somente pessoas sem conta e com o mesmo e-mail poderão ser vinculadas.')
+                        ->options(function (User $record) use ($user): array {
+                            $query = Servidor::query()
+                                ->whereNull('user_id')
+                                ->whereRaw('LOWER(email) = ?', [mb_strtolower((string) $record->email)]);
+
+                            return app(PessoaScopeService::class)
+                                ->applyPessoaScope($query, $user)
+                                ->orderBy('nome')
+                                ->pluck('nome', 'id')
+                                ->all();
+                        })
+                        ->searchable()
+                        ->preload()
+                        ->required(),
+                ])
+                ->action(function (User $record, array $data) use ($user): void {
+                    $pessoa = Servidor::query()->findOrFail((int) ($data['pessoa_id'] ?? 0));
+                    app(PessoaUsuarioService::class)->vincularContaExistente($pessoa, $record, $user);
+
+                    Notification::make()
+                        ->title('Conta vinculada à pessoa')
+                        ->success()
+                        ->send();
+                }),
 
             Action::make('permissoes')
                 ->label('Permissões')
@@ -419,7 +474,7 @@ class UsersTable
                 ->icon('heroicon-o-key')
                 ->color('danger')
                 ->accessSelectedRecords()
-                ->visible(fn (): bool => Gate::allows('admin-only') || Gate::allows('updateAny', User::class))
+                ->visible(fn (): bool => Gate::allows('resetPasswordAny', User::class))
                 ->closeModalByClickingAway(false)
                 ->closeModalByEscaping(false)
                 ->modalCloseButton(false)
@@ -437,7 +492,7 @@ class UsersTable
                         ->required()
                         ->rules([PasswordRule::min(8)->mixedCase()->numbers()->symbols()]),
                 ])
-                ->action(function ($records, array $data) use ($user) {
+                ->action(function ($records, array $data) use ($service, $user) {
                     $senha = (string) ($data['nova_senha'] ?? '');
                     $afetados = 0;
                     $ignorados = 0;
@@ -447,18 +502,12 @@ class UsersTable
                             continue;
                         }
 
-                        if ($record->id === 1 || $record->id === $user->id || $record->hasRole('Admin')) {
+                        try {
+                            $service->redefinirSenha($record, $senha, $user);
+                            $afetados++;
+                        } catch (\Illuminate\Auth\Access\AuthorizationException) {
                             $ignorados++;
-
-                            continue;
                         }
-
-                        $record->forceFill([
-                            'password' => Hash::make($senha),
-                            'must_change_password' => true,
-                        ])->save();
-
-                        $afetados++;
                     }
 
                     Notification::make()
@@ -523,16 +572,11 @@ class UsersTable
                             continue;
                         }
 
-                        $roleIdsAtuais = $record->roles()->pluck('id')->map(fn ($roleId) => (int) $roleId);
-
-                        $novosRoleIds = match ($modo) {
-                            'replace' => collect($roleIds)->values(),
-                            'remove' => $roleIdsAtuais->diff($roleIds)->values(),
-                            default => $roleIdsAtuais->merge($roleIds)->unique()->values(),
-                        };
-
-                        $record->syncRoles(
-                            Role::query()->whereIn('id', $novosRoleIds->all())->get()
+                        $service->sincronizarNiveisAdicionais(
+                            $record,
+                            $roleIds,
+                            (string) $modo,
+                            $user,
                         );
 
                         $afetados++;
@@ -603,39 +647,12 @@ class UsersTable
                             continue;
                         }
 
-                        $record->load('roles.permissions');
-
-                        $permissoesHerdadas = $record->roles
-                            ->flatMap(fn ($role) => $role->permissions->pluck('name'))
-                            ->unique()
-                            ->values();
-
-                        $permissoesDiretas = $record->getDirectPermissions()->pluck('name');
-
-                        if ($modo === 'replace') {
-                            $record->syncPermissions(
-                                $permissoesSelecionadas->diff($permissoesHerdadas)->values()->all()
-                            );
-                        } elseif ($modo === 'remove') {
-                            $paraRemover = $permissoesDiretas
-                                ->intersect($permissoesSelecionadas)
-                                ->values()
-                                ->all();
-
-                            if (! empty($paraRemover)) {
-                                $record->revokePermissionTo($paraRemover);
-                            }
-                        } else {
-                            $paraAdicionar = $permissoesSelecionadas
-                                ->diff($permissoesHerdadas)
-                                ->diff($permissoesDiretas)
-                                ->values()
-                                ->all();
-
-                            if (! empty($paraAdicionar)) {
-                                $record->givePermissionTo($paraAdicionar);
-                            }
-                        }
+                        $service->sincronizarPermissoesDiretas(
+                            $record,
+                            $permissoesSelecionadas,
+                            (string) $modo,
+                            $user,
+                        );
 
                         $afetados++;
                     }

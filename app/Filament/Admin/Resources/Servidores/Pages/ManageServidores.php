@@ -3,7 +3,10 @@
 namespace App\Filament\Admin\Resources\Servidores\Pages;
 
 use App\Filament\Admin\Resources\Servidores\ServidorResource;
+use App\Filament\Admin\Resources\Users\UserResource;
 use App\Models\Servidor;
+use App\Models\User;
+use App\Services\PessoaUsuarioService;
 use Filament\Actions\Action;
 use Filament\Resources\Pages\ManageRecords;
 use Filament\Schemas\Components\EmbeddedTable;
@@ -39,7 +42,7 @@ class ManageServidores extends ManageRecords
             'actions' => $this->getCachedHeaderActions(),
             'eyebrow' => 'Pessoas',
             'title' => 'Central de pessoas',
-            'description' => 'Cadastre identidade, cargos e vínculos pedagógicos. Acesso ao sistema fica em Usuários.',
+            'description' => 'Gerencie identidade, cargos, vínculos, contas, níveis de acesso e permissões no mesmo lugar.',
         ]);
     }
 
@@ -56,6 +59,27 @@ class ManageServidores extends ManageRecords
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('solicitacoes_acesso')
+                ->label(function (): string {
+                    $user = auth()->user();
+                    $quantidade = $user
+                        ? app(PessoaUsuarioService::class)->usuariosSemPessoaQuery($user)->count()
+                        : 0;
+
+                    return $quantidade > 0
+                        ? "Solicitações de acesso ({$quantidade})"
+                        : 'Solicitações de acesso';
+                })
+                ->icon('heroicon-o-inbox-arrow-down')
+                ->color('gray')
+                ->visible(fn (): bool => Gate::allows('viewAny', User::class))
+                ->url(fn (): string => UserResource::getUrl('index', [
+                    'context' => 'solicitacoes',
+                    'tableFilters' => [
+                        'sem_pessoa' => ['value' => true],
+                    ],
+                ])),
+
             Action::make('create')
                 ->label('Nova pessoa')
                 ->visible(fn (): bool => Gate::allows('create', Servidor::class))

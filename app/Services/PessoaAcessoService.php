@@ -140,7 +140,6 @@ class PessoaAcessoService
             // Remove apenas roles provenientes de cargos encerrados. Admin e roles
             // independentes permanecem durante a conversão Equipe Gestora -> Professor.
             $this->reconciliarRolesFuncionais($user, $rolesFuncionaisAtivas);
-            $user->syncPermissions([]);
 
             return;
         }

@@ -78,6 +78,19 @@ class CriarPermissoesCommandTest extends TestCase
         ]);
     }
 
+    public function test_it_creates_password_reset_permission_and_assigns_it_to_admin(): void
+    {
+        Artisan::call('permissoes:criar');
+
+        $this->assertDatabaseHas('permissions', [
+            'name' => 'Redefinir Senhas de Usuários',
+            'guard_name' => 'web',
+        ]);
+        $this->assertTrue(
+            Role::findByName('Admin', 'web')->hasPermissionTo('Redefinir Senhas de Usuários'),
+        );
+    }
+
     public function test_it_creates_maintenance_role_function_and_exact_permissions(): void
     {
         Artisan::call('permissoes:criar');

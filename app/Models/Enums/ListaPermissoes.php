@@ -99,6 +99,7 @@ enum ListaPermissoes: string
     case EditarTipoStatus = 'editar tipo status';
     case EditarSetorDoUsuario = 'editar setor do usuário';
     case EditarUsuarios = 'editar usuários';
+    case RedefinirSenhasDeUsuarios = 'redefinir senhas de usuários';
     case EditarNiveisDeAcesso = 'editar níveis de acesso';
     case EditarPermissoesDeExecucao = 'editar permissões de execução';
     case EditarDominiosDeEmail = 'editar dominios de email';
@@ -334,6 +335,7 @@ enum ListaPermissoes: string
             self::EditarTipoStatus => 'Editar Tipo Status',
             self::EditarSetorDoUsuario => 'Editar Setor do Usuário',
             self::EditarUsuarios => 'Editar Usuários',
+            self::RedefinirSenhasDeUsuarios => 'Redefinir Senhas de Usuários',
             self::EditarNiveisDeAcesso => 'Editar Níveis de Acesso',
             self::EditarPermissoesDeExecucao => 'Editar Permissões de Execução',
             self::EditarDominiosDeEmail => 'Editar Dominios de Email',

@@ -31,6 +31,7 @@ class ForcePasswordChangeTest extends TestCase
         $admin = $this->userWithPermissions([
             'Listar Usuários',
             'Editar Usuários',
+            'Redefinir Senhas de Usuários',
             UserSetorAccessService::GLOBAL_SCOPE_PERMISSION,
         ]);
 

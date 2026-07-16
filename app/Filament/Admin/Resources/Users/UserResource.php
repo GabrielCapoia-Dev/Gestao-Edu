@@ -34,7 +34,7 @@ class UserResource extends Resource
     protected static ?int $navigationSort = 2;
     protected static ?string $recordTitleAttribute = 'name';
 
-    protected static bool $shouldRegisterNavigation = true;
+    protected static bool $shouldRegisterNavigation = false;
 
 
     /** Mantém sua sincronização antes da query base */
@@ -76,9 +76,18 @@ class UserResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return app(Service::class)->listarUsuariosQuery(
+        $query = app(Service::class)->listarUsuariosQuery(
             parent::getEloquentQuery(),
             Auth::user()
         );
+
+        if (request()->query('context') === 'solicitacoes') {
+            $query->whereKeyNot(Auth::id())
+                ->whereDoesntHave('roles', fn (Builder $roles): Builder => $roles->where('name', 'Admin'))
+                ->whereDoesntHave('servidores')
+                ->whereDoesntHave('professores');
+        }
+
+        return $query;
     }
 }
