@@ -14,6 +14,7 @@ use App\Models\Role;
 use App\Models\Serie;
 use App\Models\Servidor;
 use App\Models\ServidorFuncaoAdministrativa;
+use App\Models\ServidorFuncaoTurma;
 use App\Models\Setor;
 use App\Models\Turma;
 use App\Models\TurmaComponenteProfessor;
@@ -107,6 +108,10 @@ class PessoaHubFilamentTest extends TestCase
         $niveisDeAcesso = $table->getColumn('user.roles.name');
         $this->assertTrue($niveisDeAcesso->canWrap());
         $this->assertSame(2, $niveisDeAcesso->getColumnSpan('xl'));
+
+        foreach (['nome', 'cargo_label', 'vinculos_resumo', 'email', 'status', 'acesso_ao_sistema', 'user.roles.name', 'updated_at'] as $coluna) {
+            $this->assertTrue($table->getColumn($coluna)->isCopyable('valor'), "A coluna {$coluna} deve permitir cópia ao clicar.");
+        }
     }
 
     public function test_filtros_de_cargo_quantidade_de_matriculas_e_turno(): void
@@ -602,11 +607,80 @@ class PessoaHubFilamentTest extends TestCase
         $this->assertCount(1, $schema);
         $this->assertInstanceOf(Tabs::class, $schema[0]);
         $this->assertSame('Ficha da pessoa', $schema[0]->getLabel());
+        $this->assertSame(['Dados pessoais'], collect($schema[0]->getDefaultChildComponents())
+            ->map(fn ($tab): string => (string) $tab->getLabel())
+            ->all());
+    }
+
+    public function test_visualizacao_exibe_somente_as_turmas_vinculadas_ao_coordenador(): void
+    {
+        $usuario = $this->usuarioHubAdmin(['Listar Pessoas']);
+        $this->actingAs($usuario);
+        $setor = $this->criarSetor('Coordenação');
+        $escola = $this->criarEscola('Escola Coordenação', $setor);
+        $servidor = $this->criarServidor('Pessoa Coordenadora', $escola, $setor);
+        $funcao = FuncaoAdministrativa::coordenacaoPadrao();
+        $vinculo = ServidorFuncaoAdministrativa::query()->create([
+            'servidor_id' => $servidor->id,
+            'funcao_administrativa_id' => $funcao->id,
+            'id_escola' => $escola->id,
+            'setor_id' => $setor->id,
+            'status' => ServidorFuncaoAdministrativa::STATUS_ATIVO,
+            'portaria' => '123/2026',
+        ]);
+        $serie = Serie::query()->create(['codigo' => 'COORD-SERIE', 'nome' => '2º Ano']);
+        $turmaVinculada = Turma::query()->create([
+            'codigo' => 'COORD-A', 'nome' => 'Turma A', 'turno' => 'manha',
+            'id_serie' => $serie->id, 'id_escola' => $escola->id,
+        ]);
+        Turma::query()->create([
+            'codigo' => 'COORD-B', 'nome' => 'Turma B', 'turno' => 'manha',
+            'id_serie' => $serie->id, 'id_escola' => $escola->id,
+        ]);
+        ServidorFuncaoTurma::query()->create([
+            'servidor_funcao_administrativa_id' => $vinculo->id,
+            'turma_id' => $turmaVinculada->id,
+            'status' => ServidorFuncaoTurma::STATUS_ATIVO,
+        ]);
+
+        $grupos = ServidorResource::gruposTurmasCoordenacao($servidor->fresh());
+        $schema = ServidorResource::infolistDetalhesCompletos($servidor->fresh());
+
+        $this->assertSame(['2º Ano - Turma A'], $grupos[0]['turmas']);
+        $this->assertSame(['Dados pessoais', 'Turmas'], collect($schema[0]->getDefaultChildComponents())
+            ->map(fn ($tab): string => (string) $tab->getLabel())
+            ->all());
+    }
+
+    public function test_visualizacao_de_diretor_e_secretario_nao_exibe_aba_de_turmas(): void
+    {
+        $usuario = $this->usuarioHubAdmin(['Listar Pessoas']);
+        $this->actingAs($usuario);
+        $setor = $this->criarSetor('Gestão');
+        $escola = $this->criarEscola('Escola Gestão', $setor);
+
+        foreach ([FuncaoAdministrativa::direcaoPadrao(), FuncaoAdministrativa::secretariaPadrao()] as $indice => $funcao) {
+            $servidor = $this->criarServidor("Pessoa Gestora {$indice}", $escola, $setor);
+            ServidorFuncaoAdministrativa::query()->create([
+                'servidor_id' => $servidor->id,
+                'funcao_administrativa_id' => $funcao->id,
+                'id_escola' => $escola->id,
+                'setor_id' => $setor->id,
+                'status' => ServidorFuncaoAdministrativa::STATUS_ATIVO,
+                'portaria' => '456/2026',
+            ]);
+
+            $schema = ServidorResource::infolistDetalhesCompletos($servidor->fresh());
+            $this->assertSame(['Dados pessoais'], collect($schema[0]->getDefaultChildComponents())
+                ->map(fn ($tab): string => (string) $tab->getLabel())
+                ->all());
+        }
     }
 
     public function test_visualizacao_abre_com_vinculo_de_turma_e_componente(): void
     {
         $usuario = $this->usuarioHubAdmin(['Listar Pessoas']);
+        $this->actingAs($usuario);
         $setor = $this->criarSetor('Pedagogico');
         $escola = $this->criarEscola('Escola Visualizacao', $setor);
         $servidor = $this->criarServidor('Pessoa Visualizacao', $escola, $setor);

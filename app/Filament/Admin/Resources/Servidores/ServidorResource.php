@@ -140,6 +140,9 @@ class ServidorResource extends Resource
                             ->description('Cargo', position: 'above')
                             ->getStateUsing(fn (Servidor $record): string => static::cargoLabel($record))
                             ->badge()
+                            ->copyable()
+                            ->copyMessage('Cargo copiado')
+                            ->tooltip('Clique para copiar o cargo')
                             ->color(fn (string $state): string => $state !== '—' ? 'info' : 'gray')
                             ->wrap()
                             ->extraAttributes(['class' => 'pessoa-card-field pessoa-card-field--cargo'], merge: true),
@@ -162,6 +165,9 @@ class ServidorResource extends Resource
                                     ->implode(', ') ?: '—';
                             })
                             ->icon('heroicon-o-identification')
+                            ->copyable()
+                            ->copyMessage('Matrícula copiada')
+                            ->tooltip('Clique para copiar as matrículas')
                             ->wrap()
                             ->extraAttributes(['class' => 'pessoa-card-field pessoa-card-field--matriculas'], merge: true),
 
@@ -170,6 +176,9 @@ class ServidorResource extends Resource
                             ->description('E-mail', position: 'above')
                             ->searchable()
                             ->icon('heroicon-o-envelope')
+                            ->copyable()
+                            ->copyMessage('E-mail copiado')
+                            ->tooltip('Clique para copiar o e-mail')
                             ->wrap()
                             ->placeholder('—')
                             ->toggleable()
@@ -186,6 +195,9 @@ class ServidorResource extends Resource
                                 default => 'warning',
                             })
                             ->sortable()
+                            ->copyable()
+                            ->copyMessage('Status copiado')
+                            ->tooltip('Clique para copiar o status')
                             ->extraAttributes(['class' => 'pessoa-card-field pessoa-card-field--status'], merge: true),
 
                         TextColumn::make('acesso_ao_sistema')
@@ -205,6 +217,8 @@ class ServidorResource extends Resource
                                 default => 'gray',
                             })
                             ->tooltip('Gerencie login, níveis e permissões nas ações desta pessoa.')
+                            ->copyable()
+                            ->copyMessage('Situação do acesso copiada')
                             ->visible(fn (): bool => Gate::allows('viewAny', User::class))
                             ->extraAttributes(['class' => 'pessoa-card-field pessoa-card-field--acesso'], merge: true),
 
@@ -213,6 +227,9 @@ class ServidorResource extends Resource
                             ->description('Níveis de acesso', position: 'above')
                             ->badge()
                             ->separator(',')
+                            ->copyable()
+                            ->copyMessage('Nível de acesso copiado')
+                            ->tooltip('Clique para copiar os níveis de acesso')
                             ->wrap()
                             ->placeholder('—')
                             ->columnSpan([
@@ -229,6 +246,9 @@ class ServidorResource extends Resource
                             ->label('Atualizado em')
                             ->description('Atualizado em', position: 'above')
                             ->dateTime('d/m/Y H:i')
+                            ->copyable()
+                            ->copyMessage('Data copiada')
+                            ->tooltip('Clique para copiar a data')
                             ->sortable()
                             ->toggleable(isToggledHiddenByDefault: true)
                             ->extraAttributes(['class' => 'pessoa-card-field pessoa-card-field--data'], merge: true),
@@ -929,6 +949,11 @@ class ServidorResource extends Resource
                         ->badge()
                         ->getStateUsing(fn (): string => static::cargoLabel($record))
                         ->color(fn (string $state): string => $state !== '—' ? 'info' : 'gray'),
+                    TextEntry::make('portaria_view')
+                        ->label('Portaria')
+                        ->getStateUsing(fn (): string => static::portariasGestoras($record) ?: 'Não informada')
+                        ->visible(fn (): bool => static::possuiFuncaoGestora($record, 'direcao_escolar')
+                            || static::possuiFuncaoGestora($record, 'coordenacao_pedagogica')),
                     TextEntry::make('updated_at')->label('Atualizado em')->dateTime('d/m/Y H:i'),
                     TextEntry::make('acesso_hint')
                         ->label('Acesso ao sistema')
@@ -947,28 +972,35 @@ class ServidorResource extends Resource
                 ->columns(2),
         ];
 
-        $gruposTurmas = static::gruposTurmasComponentes($record);
+        $tabs = [Tab::make('Dados pessoais')->schema($dadosPessoais)];
 
-        $turmasELotacoes = [
-            Section::make('Turmas e componentes')
-                ->icon('heroicon-o-academic-cap')
-                ->description('Lotações organizadas por escola e turno.')
-                ->schema([
-                    View::make('filament.admin.resources.servidores.partials.turmas-componentes-groups')
-                        ->viewData(['grupos' => $gruposTurmas])
-                        ->columnSpanFull(),
-                ]),
-        ];
+        if (static::professoresVisiveis($record)->isNotEmpty()) {
+            $tabs[] = Tab::make('Turmas e componentes')->schema([
+                Section::make('Turmas e componentes')
+                    ->icon('heroicon-o-academic-cap')
+                    ->description('Lotações organizadas por escola e turno.')
+                    ->schema([
+                        View::make('filament.admin.resources.servidores.partials.turmas-componentes-groups')
+                            ->viewData(['grupos' => static::gruposTurmasComponentes($record)])
+                            ->columnSpanFull(),
+                    ]),
+            ]);
+        } elseif (static::possuiFuncaoGestora($record, 'coordenacao_pedagogica')) {
+            $tabs[] = Tab::make('Turmas')->schema([
+                Section::make('Turmas coordenadas')
+                    ->icon('heroicon-o-user-group')
+                    ->schema([
+                        View::make('filament.admin.resources.servidores.partials.turmas-coordenacao-groups')
+                            ->viewData(['grupos' => static::gruposTurmasCoordenacao($record)])
+                            ->columnSpanFull(),
+                    ]),
+            ]);
+        }
 
         return [
             Tabs::make('Ficha da pessoa')
                 ->columnSpanFull()
-                ->tabs([
-                    Tab::make('Dados pessoais')
-                        ->schema($dadosPessoais),
-                    Tab::make('Turmas e componentes')
-                        ->schema($turmasELotacoes),
-                ]),
+                ->tabs($tabs),
         ];
     }
 
@@ -1054,67 +1086,64 @@ class ServidorResource extends Resource
             ->sortBy(fn (array $grupo): string => $grupo['escola'].'|'.$grupo['turno'])
             ->values();
 
-        $vinculosGestores = static::vinculosVisiveis($record)
-            ->filter(fn ($vinculo): bool => (bool) (
-                $vinculo->funcaoAdministrativa?->direcao_escolar
-                || $vinculo->funcaoAdministrativa?->coordenacao_pedagogica
-                || $vinculo->funcaoAdministrativa?->secretaria_escolar
-            ));
-        $matriculas = $record->matriculas->pluck('matricula')->filter()->unique()->values()->all();
-        $turnos = $record->matriculas
-            ->map(fn ($matricula): string => $matricula->turnoLabel())
-            ->filter()
-            ->unique()
-            ->implode(' + ') ?: 'Sem turno definido';
+        return $gruposProfessor->all();
+    }
 
-        $gruposGestores = $vinculosGestores
+    /** @return array<int, array{escola: string, turmas: array<int, string>}> */
+    public static function gruposTurmasCoordenacao(Servidor $record): array
+    {
+        $record->loadMissing([
+            'vinculosAtivos.funcaoAdministrativa',
+            'vinculosAtivos.escola',
+            'vinculosAtivos.vinculosTurmaAtivos.turma.serie',
+        ]);
+
+        return static::vinculosVisiveis($record)
+            ->filter(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->coordenacao_pedagogica)
             ->groupBy(fn ($vinculo): string => (string) ($vinculo->id_escola ?: 'sem-escola'))
-            ->map(function ($vinculos) use ($matriculas, $turnos): array {
+            ->map(function ($vinculos): array {
                 $primeiro = $vinculos->first();
-                $cargos = $vinculos
-                    ->map(function ($vinculo): string {
-                        return (string) ($vinculo->funcaoAdministrativa?->nome ?? 'Função gestora');
-                    })
-                    ->unique()
-                    ->sort()
-                    ->values()
-                    ->all();
-                $turmas = $vinculos
-                    ->filter(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->coordenacao_pedagogica)
-                    ->flatMap(fn ($vinculo) => $vinculo->vinculosTurmaAtivos)
-                    ->map(function ($vinculoTurma): array {
-                        $turma = $vinculoTurma->turma;
-                        $nome = collect([$turma?->serie?->nome, $turma?->nome ?? ('Turma #'.$vinculoTurma->turma_id)])
-                            ->filter()
-                            ->implode(' - ');
-
-                        return [
-                            'nome' => $nome,
-                            'componentes' => [
-                                'Coordenação',
-                            ],
-                        ];
-                    })
-                    ->sortBy('nome')
-                    ->values()
-                    ->all();
 
                 return [
                     'escola' => $primeiro?->escola?->nome ?? 'Sem escola definida',
-                    'turno' => $turnos,
-                    'matriculas' => $matriculas,
-                    'turmas' => $turmas,
-                    'cargos' => $cargos,
-                    'portaria' => $vinculos->pluck('portaria')->filter()->unique()->implode(' / '),
+                    'turmas' => $vinculos
+                        ->flatMap(fn ($vinculo) => $vinculo->vinculosTurmaAtivos)
+                        ->map(function ($vinculoTurma): string {
+                            $turma = $vinculoTurma->turma;
+
+                            return collect([$turma?->serie?->nome, $turma?->nome ?? ('Turma #'.$vinculoTurma->turma_id)])
+                                ->filter()
+                                ->implode(' - ');
+                        })
+                        ->filter()
+                        ->unique()
+                        ->sort()
+                        ->values()
+                        ->all(),
                 ];
             })
-            ->values();
-
-        return $gruposProfessor
-            ->concat($gruposGestores)
-            ->sortBy(fn (array $grupo): string => $grupo['escola'].'|'.$grupo['turno'])
+            ->sortBy('escola')
             ->values()
             ->all();
+    }
+
+    private static function possuiFuncaoGestora(Servidor $record, string $atributo): bool
+    {
+        return static::vinculosVisiveis($record)
+            ->contains(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->{$atributo});
+    }
+
+    private static function portariasGestoras(Servidor $record): string
+    {
+        return static::vinculosVisiveis($record)
+            ->filter(fn ($vinculo): bool => (bool) (
+                $vinculo->funcaoAdministrativa?->direcao_escolar
+                || $vinculo->funcaoAdministrativa?->coordenacao_pedagogica
+            ))
+            ->pluck('portaria')
+            ->filter()
+            ->unique()
+            ->implode(' / ');
     }
 
     /**
