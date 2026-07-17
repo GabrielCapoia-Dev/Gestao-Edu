@@ -26,7 +26,7 @@
     }
 
     .pe-pessoas-page .fi-ta-content-ctn {
-        overflow-x: hidden !important;
+        overflow: visible !important;
     }
 
     .pe-pessoas-page .fi-ta-content {
@@ -55,17 +55,22 @@
     }
 
     .pe-pessoas-page .fi-ta-record {
+        position: relative;
+        z-index: 0;
         border: 1px solid var(--pessoa-card-border);
         border-radius: 0.65rem;
         background: var(--pessoa-card-surface);
         box-shadow: var(--pessoa-card-shadow);
-        transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
 
     .pe-pessoas-page .fi-ta-record:hover {
         border-color: color-mix(in oklab, var(--primary-300) 58%, var(--gray-200));
         background: var(--pessoa-card-surface);
-        transform: translateY(-1px);
+    }
+
+    .pe-pessoas-page .fi-ta-record:focus-within {
+        z-index: 30;
     }
 
     .dark .pe-pessoas-page .fi-ta-record:hover {
@@ -120,6 +125,37 @@
     .pe-pessoas-page .pessoa-card-field .fi-ta-text-item {
         max-width: 100%;
         white-space: normal;
+    }
+
+    .pe-pessoas-page .pessoa-card-field--niveis .fi-ta-text-has-badges,
+    .pe-pessoas-page .pessoa-card-field--niveis .fi-ta-text-has-badges ul {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        gap: 0.35rem;
+    }
+
+    .pe-pessoas-page .pessoa-card-field--niveis .fi-badge {
+        width: auto;
+        max-width: 100%;
+        flex: 0 1 auto;
+        white-space: normal;
+        overflow-wrap: normal;
+        word-break: normal;
+        hyphens: none;
+    }
+
+    .pe-pessoas-page .pessoa-card-field--niveis .fi-badge-label,
+    .pe-pessoas-page .pessoa-card-field--niveis .fi-badge-label-ctn {
+        max-width: 100%;
+        white-space: normal;
+        overflow-wrap: normal;
+        word-break: normal;
+        hyphens: none;
+    }
+
+    body:has(.pe-pessoas-page) .fi-dropdown-panel {
+        z-index: 80 !important;
     }
 
     .pe-pessoas-page .pessoa-card-field--email .fi-ta-text-item,

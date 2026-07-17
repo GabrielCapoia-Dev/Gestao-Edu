@@ -213,7 +213,14 @@ class ServidorResource extends Resource
                             ->description('Níveis de acesso', position: 'above')
                             ->badge()
                             ->separator(',')
+                            ->wrap()
                             ->placeholder('—')
+                            ->columnSpan([
+                                'default' => 1,
+                                'sm' => 2,
+                                'lg' => 2,
+                                'xl' => 2,
+                            ])
                             ->toggleable()
                             ->visible(fn (): bool => Gate::allows('viewAny', User::class))
                             ->extraAttributes(['class' => 'pessoa-card-field pessoa-card-field--niveis'], merge: true),
@@ -492,7 +499,10 @@ class ServidorResource extends Resource
                     ->label('Ações')
                     ->icon('heroicon-m-ellipsis-vertical')
                     ->button()
-                    ->color('gray'),
+                    ->color('gray')
+                    ->dropdownPlacement('bottom-end')
+                    ->dropdownOffset(6)
+                    ->dropdownTeleport(),
             ], position: RecordActionsPosition::AfterContent)
             ->toolbarActions([
                 ...PessoaAcessoActions::bulkActions(),

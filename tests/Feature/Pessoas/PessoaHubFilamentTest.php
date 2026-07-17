@@ -100,6 +100,13 @@ class PessoaHubFilamentTest extends TestCase
         $this->assertCount(1, $actions);
         $this->assertInstanceOf(ActionGroup::class, $actions[0]);
         $this->assertSame('Ações', $actions[0]->getLabel());
+        $this->assertSame('bottom-end', $actions[0]->getDropdownPlacement());
+        $this->assertSame(6, $actions[0]->getDropdownOffset());
+        $this->assertTrue($actions[0]->hasDropdownTeleport());
+
+        $niveisDeAcesso = $table->getColumn('user.roles.name');
+        $this->assertTrue($niveisDeAcesso->canWrap());
+        $this->assertSame(2, $niveisDeAcesso->getColumnSpan('xl'));
     }
 
     public function test_filtros_de_cargo_quantidade_de_matriculas_e_turno(): void
