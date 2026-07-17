@@ -16,6 +16,13 @@ class ServidorService
 {
     public function criarServidorComFuncoes(array $data, array $vinculos = []): Servidor
     {
+        if ($this->fluxoObras($data, $vinculos)) {
+            return app(PessoaObrasService::class)->criarPessoaObras(
+                $data,
+                $this->dadosObras($data, $vinculos),
+            );
+        }
+
         if ($this->fluxoManutencao($data, $vinculos)) {
             return app(PessoaManutencaoService::class)->criarPessoaManutencao(
                 $data,
@@ -47,8 +54,66 @@ class ServidorService
 
     public function atualizarServidorComFuncoes(Servidor $servidor, array $data, array $vinculos = []): Servidor
     {
+        if ($this->fluxoObras($data, $vinculos)) {
+            $dadosObras = $this->dadosObras($data, $vinculos);
+
+            if ($servidor->professores()->where('ativo', true)->exists()) {
+                return app(PessoaObrasService::class)->converterProfessorParaObras(
+                    $servidor,
+                    $data,
+                    $dadosObras,
+                );
+            }
+
+            if ($servidor->vinculosAtivos()
+                ->whereHas('funcaoAdministrativa', fn ($funcoes) => $funcoes->equipeGestora())
+                ->exists()) {
+                return app(PessoaObrasService::class)->converterEquipeGestoraParaObras(
+                    $servidor,
+                    $data,
+                    $dadosObras,
+                );
+            }
+
+            if ($this->pessoaEhManutencao($servidor)) {
+                return DB::transaction(function () use ($servidor, $data, $dadosObras): Servidor {
+                    app(PessoaManutencaoService::class)->encerrarVinculosManutencao(
+                        $servidor,
+                        reconciliarAcesso: false,
+                    );
+
+                    return app(PessoaObrasService::class)->atualizarPessoaObras(
+                        $servidor->fresh(),
+                        $data,
+                        $dadosObras,
+                    );
+                });
+            }
+
+            return app(PessoaObrasService::class)->atualizarPessoaObras(
+                $servidor,
+                $data,
+                $dadosObras,
+            );
+        }
+
         if ($this->fluxoManutencao($data, $vinculos)) {
             $dadosManutencao = $this->dadosManutencao($data, $vinculos);
+
+            if ($this->pessoaEhObras($servidor)) {
+                return DB::transaction(function () use ($servidor, $data, $dadosManutencao): Servidor {
+                    app(PessoaObrasService::class)->encerrarVinculosObras(
+                        $servidor,
+                        reconciliarAcesso: false,
+                    );
+
+                    return app(PessoaManutencaoService::class)->atualizarPessoaManutencao(
+                        $servidor->fresh(),
+                        $data,
+                        $dadosManutencao,
+                    );
+                });
+            }
 
             if ($servidor->professores()->where('ativo', true)->exists()) {
                 return app(PessoaManutencaoService::class)->converterProfessorParaManutencao(
@@ -89,6 +154,21 @@ class ServidorService
             if ($this->pessoaEhManutencao($servidor)) {
                 return DB::transaction(function () use ($servidor, $data, $dadosGestao): Servidor {
                     app(PessoaManutencaoService::class)->encerrarVinculosManutencao(
+                        $servidor,
+                        reconciliarAcesso: false,
+                    );
+
+                    return app(PessoaEquipeGestoraService::class)->atualizarPessoaEquipeGestora(
+                        $servidor->fresh(),
+                        $data,
+                        $dadosGestao,
+                    );
+                });
+            }
+
+            if ($this->pessoaEhObras($servidor)) {
+                return DB::transaction(function () use ($servidor, $data, $dadosGestao): Servidor {
+                    app(PessoaObrasService::class)->encerrarVinculosObras(
                         $servidor,
                         reconciliarAcesso: false,
                     );
@@ -142,6 +222,22 @@ class ServidorService
                 });
             }
 
+            if ($this->pessoaEhObras($servidor)) {
+                return DB::transaction(function () use ($servidor, $data, $registros): Servidor {
+                    app(PessoaObrasService::class)->encerrarVinculosObras(
+                        $servidor,
+                        reconciliarAcesso: false,
+                    );
+
+                    return app(PessoaProfessorService::class)->atualizarPessoaProfessor(
+                        $servidor->fresh(),
+                        $data,
+                        $registros,
+                        $this->dadosAcesso($data),
+                    );
+                });
+            }
+
             return app(PessoaProfessorService::class)->atualizarPessoaProfessor(
                 $servidor,
                 $data,
@@ -174,6 +270,13 @@ class ServidorService
             || array_key_exists('manutencao', $vinculos);
     }
 
+    private function fluxoObras(array $data, array $vinculos): bool
+    {
+        return ($data['cargo'] ?? null) === 'obras'
+            || array_key_exists('obras', $data)
+            || array_key_exists('obras', $vinculos);
+    }
+
     private function fluxoEquipeGestora(array $data, array $vinculos): bool
     {
         return ($data['cargo'] ?? null) === 'equipe_gestora'
@@ -199,10 +302,26 @@ class ServidorService
         return is_array($dados) ? [...$data, ...$dados] : $data;
     }
 
+    private function dadosObras(array $data, array $vinculos): array
+    {
+        $dados = $vinculos['obras']
+            ?? $data['obras']
+            ?? $vinculos;
+
+        return is_array($dados) ? [...$data, ...$dados] : $data;
+    }
+
     private function pessoaEhManutencao(Servidor $servidor): bool
     {
         return $servidor->vinculosAtivos()
             ->whereHas('funcaoAdministrativa', fn ($funcoes) => $funcoes->manutencao())
+            ->exists();
+    }
+
+    private function pessoaEhObras(Servidor $servidor): bool
+    {
+        return $servidor->vinculosAtivos()
+            ->whereHas('funcaoAdministrativa', fn ($funcoes) => $funcoes->obras())
             ->exists();
     }
 
@@ -460,7 +579,8 @@ class ServidorService
                 $funcoes->where(function (Builder $cargos): void {
                     $cargos
                         ->equipeGestora()
-                        ->orWhere(fn (Builder $manutencao): Builder => $manutencao->manutencao());
+                        ->orWhere(fn (Builder $manutencao): Builder => $manutencao->manutencao())
+                        ->orWhere(fn (Builder $obras): Builder => $obras->obras());
                 });
             })
             ->exists();

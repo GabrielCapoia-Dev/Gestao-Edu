@@ -94,6 +94,8 @@ class PessoaForm extends Component
 
     public ?int $setorManutencaoId = null;
 
+    public ?int $setorObrasId = null;
+
     /** @var list<string> */
     public array $cargosGestores = [];
 
@@ -193,6 +195,7 @@ class PessoaForm extends Component
         return view('livewire.pessoas.pessoa-form', [
             'escolasOptions' => $escolasOptions,
             'setoresManutencaoOptions' => $this->setoresManutencaoOptions(),
+            'setoresObrasOptions' => $this->setoresManutencaoOptions(),
             'turmasOptions' => $turmasOptions,
             'componentesOptions' => $componentesOptions,
             'turmasGestaoOptions' => $turmasGestaoOptions,
@@ -677,7 +680,13 @@ class PessoaForm extends Component
 
         if ($this->gerenciaEstrutura) {
             $this->idEscolaGestora = filled($dados['id_escola'] ?? null) ? (int) $dados['id_escola'] : null;
-            $this->setorManutencaoId = filled($dados['setor_id'] ?? null) ? (int) $dados['setor_id'] : null;
+            $setorOperacionalId = filled($dados['setor_id'] ?? null) ? (int) $dados['setor_id'] : null;
+            $this->setorManutencaoId = $this->cargo === ServidorResource::CARGO_MANUTENCAO
+                ? $setorOperacionalId
+                : null;
+            $this->setorObrasId = $this->cargo === ServidorResource::CARGO_OBRAS
+                ? $setorOperacionalId
+                : null;
             $this->cargosGestores = array_values($dados['cargos_gestores'] ?? []);
             $this->cargosGestoresAnteriores = $this->cargosGestores;
             $this->portaria = $dados['portaria'] ?? null;
@@ -767,6 +776,7 @@ class PessoaForm extends Component
             ServidorResource::CARGO_PROFESSOR,
             ServidorResource::CARGO_EQUIPE_GESTORA,
             ServidorResource::CARGO_MANUTENCAO,
+            ServidorResource::CARGO_OBRAS,
         ], true)) {
             $this->cargo = ServidorResource::CARGO_PROFESSOR;
             $this->addError('cargo', 'O cargo informado é inválido.');
@@ -774,7 +784,11 @@ class PessoaForm extends Component
             return;
         }
 
-        if (in_array($cargo, [ServidorResource::CARGO_EQUIPE_GESTORA, ServidorResource::CARGO_MANUTENCAO], true)) {
+        if (in_array($cargo, [
+            ServidorResource::CARGO_EQUIPE_GESTORA,
+            ServidorResource::CARGO_MANUTENCAO,
+            ServidorResource::CARGO_OBRAS,
+        ], true)) {
             $this->autorizarEquipeGestora();
         } else {
             $this->autorizarEstruturaProfessor();
@@ -786,7 +800,11 @@ class PessoaForm extends Component
 
     private function validarPermissaoDoCargo(): void
     {
-        if (! in_array($this->cargo, [ServidorResource::CARGO_EQUIPE_GESTORA, ServidorResource::CARGO_MANUTENCAO], true)) {
+        if (! in_array($this->cargo, [
+            ServidorResource::CARGO_EQUIPE_GESTORA,
+            ServidorResource::CARGO_MANUTENCAO,
+            ServidorResource::CARGO_OBRAS,
+        ], true)) {
             return;
         }
 
@@ -838,6 +856,7 @@ class PessoaForm extends Component
                 ServidorResource::CARGO_PROFESSOR,
                 ServidorResource::CARGO_EQUIPE_GESTORA,
                 ServidorResource::CARGO_MANUTENCAO,
+                ServidorResource::CARGO_OBRAS,
             ])],
             'matriculas' => ['required', 'array', 'min:1', 'max:'.PessoaMatricula::MAX_POR_PESSOA],
             'matriculas.*' => ['array'],
@@ -870,9 +889,13 @@ class PessoaForm extends Component
                 'turmaIds' => ['array'],
                 'turmaIds.*' => ['integer'],
             ];
-        } else {
+        } elseif ($this->cargo === ServidorResource::CARGO_MANUTENCAO) {
             $rules += [
                 'setorManutencaoId' => ['required', 'integer'],
+            ];
+        } else {
+            $rules += [
+                'setorObrasId' => ['required', 'integer'],
             ];
         }
 
@@ -881,6 +904,7 @@ class PessoaForm extends Component
             'cargosGestores' => 'cargos gestores',
             'turmaIds' => 'turmas da coordenação',
             'setorManutencaoId' => 'setor da Manutenção',
+            'setorObrasId' => 'setor de Obras',
         ]);
 
         PessoaMatricula::assertConjuntoTurnosValido(
@@ -893,8 +917,10 @@ class PessoaForm extends Component
             $this->validarEstruturaProfessor();
         } elseif ($this->cargo === ServidorResource::CARGO_EQUIPE_GESTORA) {
             $this->validarEstruturaEquipeGestora();
-        } else {
+        } elseif ($this->cargo === ServidorResource::CARGO_MANUTENCAO) {
             $this->validarEstruturaManutencao();
+        } else {
+            $this->validarEstruturaObras();
         }
     }
 
@@ -1013,6 +1039,18 @@ class PessoaForm extends Component
         }
     }
 
+    private function validarEstruturaObras(): void
+    {
+        $this->autorizarEquipeGestora();
+        $options = $this->setoresManutencaoOptions();
+
+        if (! $this->setorObrasId || ! array_key_exists($this->setorObrasId, $options)) {
+            throw ValidationException::withMessages([
+                'setorObrasId' => 'Selecione um setor ativo, sem vínculo escolar e dentro do seu escopo.',
+            ]);
+        }
+    }
+
     private function validarEstadoSomenteLeitura(Servidor $pessoa): void
     {
         if (
@@ -1022,6 +1060,7 @@ class PessoaForm extends Component
             || $this->cargo !== ServidorResource::CARGO_PROFESSOR
             || $this->idEscolaGestora !== null
             || $this->setorManutencaoId !== null
+            || $this->setorObrasId !== null
             || $this->cargosGestores !== []
             || filled($this->portaria)
             || $this->turmaIds !== []
@@ -1256,6 +1295,7 @@ class PessoaForm extends Component
             'matriculas_professor' => $this->payloadMatriculas(),
             'id_escola' => $this->idEscolaGestora,
             'setor_manutencao_id' => $this->setorManutencaoId,
+            'setor_obras_id' => $this->setorObrasId,
             'cargos_gestores' => array_values($this->cargosGestores),
             'portaria' => $this->portaria,
             'turma_ids' => collect($this->turmaIds)->map(fn (mixed $id): int => (int) $id)->unique()->values()->all(),

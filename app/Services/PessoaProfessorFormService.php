@@ -66,6 +66,16 @@ class PessoaProfessorFormService
         $vinculoManutencao = $pessoa->vinculosAtivos
             ->first(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehManutencao());
 
+        $vinculoObras = $pessoa->vinculosAtivos
+            ->first(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehObras());
+
+        if ($vinculoObras) {
+            return array_merge($dados, [
+                'cargo' => ServidorResource::CARGO_OBRAS,
+                'setor_id' => $vinculoObras->setor_id,
+            ]);
+        }
+
         if ($vinculoManutencao) {
             return array_merge($dados, [
                 'cargo' => ServidorResource::CARGO_MANUTENCAO,
@@ -152,6 +162,8 @@ class PessoaProfessorFormService
 
         $ehManutencaoNoEscopo = $pessoa->vinculosAtivos
             ->contains(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehManutencao());
+        $ehObrasNoEscopo = $pessoa->vinculosAtivos
+            ->contains(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehObras());
 
         return [
             'nome' => $pessoa->nome,
@@ -160,13 +172,17 @@ class PessoaProfessorFormService
             'telefone' => $pessoa->telefone,
             'status' => $pessoa->status,
             'cargo' => match (true) {
+                $ehObrasNoEscopo => ServidorResource::CARGO_OBRAS,
                 $ehManutencaoNoEscopo => ServidorResource::CARGO_MANUTENCAO,
                 $ehEquipeGestoraNoEscopo => ServidorResource::CARGO_EQUIPE_GESTORA,
                 default => ServidorResource::CARGO_PROFESSOR,
             },
-            'setor_id' => $ehManutencaoNoEscopo
+            'setor_id' => ($ehManutencaoNoEscopo || $ehObrasNoEscopo)
                 ? $pessoa->vinculosAtivos
-                    ->first(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehManutencao())?->setor_id
+                    ->first(fn ($vinculo): bool => (bool) (
+                        $vinculo->funcaoAdministrativa?->ehManutencao()
+                        || $vinculo->funcaoAdministrativa?->ehObras()
+                    ))?->setor_id
                 : null,
             'matriculas_professor' => $matriculasProfessor,
             'registros_professor' => [],

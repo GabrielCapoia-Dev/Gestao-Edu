@@ -57,6 +57,8 @@ class ServidorResource extends Resource
 
     public const CARGO_MANUTENCAO = 'manutencao';
 
+    public const CARGO_OBRAS = 'obras';
+
     protected static ?string $model = Servidor::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::Briefcase;
@@ -83,6 +85,7 @@ class ServidorResource extends Resource
         if (ServidorEquipeGestoraForm::usuarioPodeAdministrar()) {
             $options[self::CARGO_EQUIPE_GESTORA] = 'Equipe Gestora';
             $options[self::CARGO_MANUTENCAO] = 'Manutenção';
+            $options[self::CARGO_OBRAS] = 'Obras';
         }
 
         return $options;
@@ -263,6 +266,7 @@ class ServidorResource extends Resource
                         self::CARGO_PROFESSOR => 'Professor',
                         self::CARGO_EQUIPE_GESTORA => 'Equipe Gestora',
                         self::CARGO_MANUTENCAO => 'Manutenção',
+                        self::CARGO_OBRAS => 'Obras',
                         'sem_cargo' => 'Sem cargo ativo',
                     ])
                     ->multiple()
@@ -596,9 +600,21 @@ class ServidorResource extends Resource
             ->contains(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehManutencao());
     }
 
+    public static function ehObras(Servidor $record): bool
+    {
+        $record->loadMissing('vinculosAtivos.funcaoAdministrativa');
+
+        return $record->vinculosAtivos
+            ->contains(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehObras());
+    }
+
     public static function cargoLabel(Servidor $record): string
     {
         $record->loadMissing(['professores', 'vinculosAtivos.funcaoAdministrativa']);
+
+        if (static::ehObras($record)) {
+            return 'Obras';
+        }
 
         if (static::ehManutencao($record)) {
             return 'Manutenção';
@@ -812,6 +828,15 @@ class ServidorResource extends Resource
                         return;
                     }
 
+                    if ($cargo === self::CARGO_OBRAS) {
+                        $pessoasDoCargo->whereHas(
+                            'vinculosAtivos.funcaoAdministrativa',
+                            fn (Builder $funcoes): Builder => $funcoes->obras(),
+                        );
+
+                        return;
+                    }
+
                     $pessoasDoCargo
                         ->whereDoesntHave(
                             'professores',
@@ -822,7 +847,9 @@ class ServidorResource extends Resource
                             function (Builder $funcoes): Builder {
                                 return $funcoes->where(function (Builder $cargosReconhecidos): void {
                                     static::aplicarFiltroFuncaoGestora($cargosReconhecidos);
-                                    $cargosReconhecidos->orWhere('codigo', 'manutencao');
+                                    $cargosReconhecidos
+                                        ->orWhere('codigo', 'manutencao')
+                                        ->orWhere('codigo', 'obras');
                                 });
                             },
                         );
@@ -949,12 +976,26 @@ class ServidorResource extends Resource
                         ->badge()
                         ->getStateUsing(fn (): string => static::cargoLabel($record))
                         ->color(fn (string $state): string => $state !== '—' ? 'info' : 'gray'),
+                    TextEntry::make('setor_operacional_view')
+                        ->label('Setor')
+                        ->getStateUsing(fn (): string => static::setorOperacionalLabel($record))
+                        ->visible(fn (): bool => static::ehObras($record)),
+                    TextEntry::make('perfis_view')
+                        ->label('Perfis')
+                        ->badge()
+                        ->getStateUsing(fn (): array => $record->user?->roles
+                            ?->pluck('name')->sort()->values()->all() ?? [])
+                        ->placeholder('Nenhum perfil vinculado')
+                        ->visible(fn (): bool => static::ehObras($record) && Gate::allows('viewAny', User::class)),
                     TextEntry::make('portaria_view')
                         ->label('Portaria')
                         ->getStateUsing(fn (): string => static::portariasGestoras($record) ?: 'Não informada')
                         ->visible(fn (): bool => static::possuiFuncaoGestora($record, 'direcao_escolar')
                             || static::possuiFuncaoGestora($record, 'coordenacao_pedagogica')),
-                    TextEntry::make('updated_at')->label('Atualizado em')->dateTime('d/m/Y H:i'),
+                    TextEntry::make('updated_at')
+                        ->label('Atualizado em')
+                        ->dateTime('d/m/Y H:i')
+                        ->visible(fn (): bool => ! static::ehObras($record)),
                     TextEntry::make('acesso_hint')
                         ->label('Acesso ao sistema')
                         ->getStateUsing(function () use ($record): string {
@@ -966,7 +1007,7 @@ class ServidorResource extends Resource
 
                             return "Conta: {$record->user->email} ({$status}). Use as ações da pessoa para gerenciar níveis, permissões e senha.";
                         })
-                        ->visible(fn (): bool => Gate::allows('viewAny', User::class))
+                        ->visible(fn (): bool => ! static::ehObras($record) && Gate::allows('viewAny', User::class))
                         ->columnSpanFull(),
                 ])
                 ->columns(2),
@@ -1146,6 +1187,17 @@ class ServidorResource extends Resource
             ->implode(' / ');
     }
 
+    private static function setorOperacionalLabel(Servidor $record): string
+    {
+        $record->loadMissing('vinculosAtivos.funcaoAdministrativa', 'vinculosAtivos.setor');
+
+        return $record->vinculosAtivos
+            ->first(fn ($vinculo): bool => (bool) (
+                $vinculo->funcaoAdministrativa?->ehManutencao()
+                || $vinculo->funcaoAdministrativa?->ehObras()
+            ))?->setor?->nome_completo ?? 'Não informado';
+    }
+
     /**
      * Extrai payload de matrículas do form (hierárquico preferencial; flat legado como fallback).
      *
@@ -1175,11 +1227,14 @@ class ServidorResource extends Resource
         $matriculas = static::extrairRegistrosProfessorDoForm($data);
         $recordEraGestor = $record ? static::ehEquipeGestora($record) : false;
         $recordEraManutencao = $record ? static::ehManutencao($record) : false;
+        $recordEraObras = $record ? static::ehObras($record) : false;
 
         if (($cargo === self::CARGO_EQUIPE_GESTORA
             || $cargo === self::CARGO_MANUTENCAO
+            || $cargo === self::CARGO_OBRAS
             || $recordEraGestor
-            || $recordEraManutencao)
+            || $recordEraManutencao
+            || $recordEraObras)
             && ! ServidorEquipeGestoraForm::usuarioPodeAdministrar()) {
             throw new AuthorizationException(
                 'Apenas Admin ou usuário com a permissão Gerenciar Vínculos Estruturais de Pessoas pode administrar cargos funcionais.',
@@ -1192,6 +1247,19 @@ class ServidorResource extends Resource
         if ($cargo === self::CARGO_MANUTENCAO) {
             return [$data, ['manutencao' => [
                 'setor_id' => $data['setor_manutencao_id'] ?? null,
+                'matriculas' => collect($matriculas)
+                    ->filter(fn (mixed $item): bool => is_array($item))
+                    ->map(fn (array $item): array => collect($item)
+                        ->only(['id', 'matricula', 'turno'])
+                        ->all())
+                    ->values()
+                    ->all(),
+            ]]];
+        }
+
+        if ($cargo === self::CARGO_OBRAS) {
+            return [$data, ['obras' => [
+                'setor_id' => $data['setor_obras_id'] ?? null,
                 'matriculas' => collect($matriculas)
                     ->filter(fn (mixed $item): bool => is_array($item))
                     ->map(fn (array $item): array => collect($item)

@@ -6,6 +6,7 @@ use App\Models\Role;
 use App\Models\FuncaoAdministrativa;
 use App\Services\PedidoService;
 use App\Support\ManutencaoPermissionPreset;
+use App\Support\ObrasPermissionPreset;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Spatie\Permission\Models\Permission;
@@ -113,6 +114,26 @@ class CriarPermissoesCommandTest extends TestCase
         $this->assertTrue($funcao->concedeAcessoSistema());
         $this->assertFalse($funcao->exige_professor);
         $this->assertFalse($funcao->tem_relacao_turma);
+    }
+
+    public function test_it_creates_obras_role_function_and_exact_scoped_permissions(): void
+    {
+        Artisan::call('permissoes:criar');
+        Artisan::call('permissoes:criar');
+
+        $role = Role::findByName('Obras', 'web');
+        $funcao = FuncaoAdministrativa::query()->where('codigo', 'obras')->firstOrFail();
+
+        $this->assertEqualsCanonicalizing(
+            ObrasPermissionPreset::all(),
+            $role->permissions()->pluck('name')->all(),
+        );
+        $this->assertFalse($role->hasPermissionTo('Listar Todos os Pedidos'));
+        $this->assertFalse($role->hasPermissionTo('Editar Tipos de Avaliações'));
+        $this->assertFalse($role->hasPermissionTo('Acessar Escopo Global de Setores'));
+        $this->assertTrue($role->hasPermissionTo('Enviar Pedidos para Empresa'));
+        $this->assertSame(1, $funcao->rolesPadrao()->whereKey($role->id)->count());
+        $this->assertSame(1, FuncaoAdministrativa::query()->where('codigo', 'obras')->count());
     }
 
     public function test_it_creates_acompanhamento_avaliacoes_permission_and_assigns_to_admin(): void

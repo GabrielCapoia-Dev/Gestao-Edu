@@ -10,6 +10,7 @@ use App\Models\Servidor;
 use App\Models\ServidorFuncaoAdministrativa;
 use App\Models\Setor;
 use Illuminate\Support\Collection;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -44,13 +45,13 @@ class PessoaManutencaoService
 
             if ($pessoa->professores()->where('ativo', true)->exists()) {
                 throw ValidationException::withMessages([
-                    'manutencao' => 'Use a conversão de Professor para Manutenção para preservar o histórico funcional.',
+                    $this->campoValidacao() => "Use a conversão de Professor para {$this->nomeCargo()} para preservar o histórico funcional.",
                 ]);
             }
 
             if ($pessoa->vinculosAtivos()->whereHas('funcaoAdministrativa', fn ($query) => $query->equipeGestora())->exists()) {
                 throw ValidationException::withMessages([
-                    'manutencao' => 'Use a conversão da Equipe Gestora para Manutenção para preservar o histórico funcional.',
+                    $this->campoValidacao() => "Use a conversão da Equipe Gestora para {$this->nomeCargo()} para preservar o histórico funcional.",
                 ]);
             }
 
@@ -79,8 +80,8 @@ class PessoaManutencaoService
 
             if ($totalPendencias > 0) {
                 throw ValidationException::withMessages([
-                    'manutencao' => sprintf(
-                        'A mudança para Manutenção exige a conclusão das avaliações pendentes. Pendências: %d.',
+                    $this->campoValidacao() => sprintf(
+                        "A mudança para {$this->nomeCargo()} exige a conclusão das avaliações pendentes. Pendências: %d.",
                         $totalPendencias,
                     ),
                 ]);
@@ -108,7 +109,7 @@ class PessoaManutencaoService
                     'ativo' => false,
                     'desativado_em' => now(),
                     'desativado_por_id' => Auth::id(),
-                    'motivo_desativacao' => 'Conversão para Manutenção',
+                    'motivo_desativacao' => "Conversão para {$this->nomeCargo()}",
                     'updated_at' => now(),
                 ]);
 
@@ -163,11 +164,11 @@ class PessoaManutencaoService
     {
         $matriculas = $this->sincronizarMatriculas($pessoa, $normalizado['matriculas']);
         $setor = Setor::query()->lockForUpdate()->findOrFail($normalizado['setor']->id);
-        $funcao = FuncaoAdministrativa::manutencaoPadrao();
+        $funcao = $this->funcaoPadrao();
 
-        if (! $funcao->rolesPadrao()->where('name', 'Manutenção')->exists()) {
+        if (! $funcao->rolesPadrao()->where('name', $this->nomeRole())->exists()) {
             throw new LogicException(
-                'A role Manutenção ainda não foi vinculada ao cargo. Execute o comando permissoes:criar.',
+                "A role {$this->nomeRole()} ainda não foi vinculada ao cargo. Execute o comando permissoes:criar.",
             );
         }
 
@@ -180,7 +181,7 @@ class PessoaManutencaoService
 
         if ($outrosVinculos) {
             throw ValidationException::withMessages([
-                'manutencao' => 'Manutenção é um cargo exclusivo. Encerre o cargo funcional anterior antes de continuar.',
+                $this->campoValidacao() => "{$this->nomeCargo()} é um cargo exclusivo. Encerre o cargo funcional anterior antes de continuar.",
             ]);
         }
 
@@ -198,7 +199,7 @@ class PessoaManutencaoService
         $vinculo ??= new ServidorFuncaoAdministrativa([
             'servidor_id' => $pessoa->id,
             'funcao_administrativa_id' => $funcao->id,
-            'origem' => 'manutencao',
+            'origem' => $this->origemVinculo(),
             'data_inicio' => now()->toDateString(),
         ]);
 
@@ -366,9 +367,39 @@ class PessoaManutencaoService
         return ServidorFuncaoAdministrativa::query()
             ->where('servidor_id', $pessoa->id)
             ->where('status', ServidorFuncaoAdministrativa::STATUS_ATIVO)
-            ->whereHas('funcaoAdministrativa', fn ($query) => $query->manutencao())
+            ->whereHas('funcaoAdministrativa', fn (Builder $query) => $this->aplicarEscopoFuncao($query))
             ->lockForUpdate()
             ->get();
+    }
+
+    protected function nomeCargo(): string
+    {
+        return 'Manutenção';
+    }
+
+    protected function nomeRole(): string
+    {
+        return 'Manutenção';
+    }
+
+    protected function campoValidacao(): string
+    {
+        return 'manutencao';
+    }
+
+    protected function origemVinculo(): string
+    {
+        return 'manutencao';
+    }
+
+    protected function funcaoPadrao(): FuncaoAdministrativa
+    {
+        return FuncaoAdministrativa::manutencaoPadrao();
+    }
+
+    protected function aplicarEscopoFuncao(Builder $query): Builder
+    {
+        return $query->manutencao();
     }
 
     private function carregar(Servidor $pessoa): Servidor

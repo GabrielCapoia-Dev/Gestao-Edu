@@ -82,6 +82,8 @@
                 @include('livewire.pessoas.partials.equipe-gestora')
 
                 @include('livewire.pessoas.partials.manutencao')
+
+                @include('livewire.pessoas.partials.obras')
             </div>
         </div>
 

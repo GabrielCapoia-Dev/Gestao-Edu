@@ -7,6 +7,7 @@ use App\Models\Enums\ListaPermissoes;
 use App\Models\Role;
 use App\Support\EquipeGestoraPermissionPreset;
 use App\Support\ManutencaoPermissionPreset;
+use App\Support\ObrasPermissionPreset;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -62,6 +63,7 @@ class CriarPermissoes extends Command
 
         $this->sincronizarRoleEquipeGestoraComFuncoes();
         $this->sincronizarRoleManutencaoComFuncao();
+        $this->sincronizarRoleObrasComFuncao();
 
         $this->sincronizarAdminComTodasAsPermissoes();
 
@@ -562,7 +564,39 @@ class CriarPermissoes extends Command
             'Admin' => $permissions,
             'Equipe Gestora' => $this->onlyPermissions($permissions, EquipeGestoraPermissionPreset::all()),
             'Manutenção' => $this->onlyPermissions($permissions, ManutencaoPermissionPreset::all()),
+            'Obras' => $this->onlyPermissions($permissions, ObrasPermissionPreset::all()),
         ];
+    }
+
+    private function sincronizarRoleObrasComFuncao(): void
+    {
+        if (
+            ! Schema::hasTable('funcao_administrativa')
+            || ! Schema::hasTable('funcao_administrativa_role')
+        ) {
+            return;
+        }
+
+        $funcao = FuncaoAdministrativa::obrasPadrao();
+        $role = Role::query()
+            ->where('name', 'Obras')
+            ->where('guard_name', 'web')
+            ->first();
+
+        if (! $role) {
+            return;
+        }
+
+        DB::table('funcao_administrativa_role')->updateOrInsert(
+            [
+                'funcao_administrativa_id' => $funcao->id,
+                'role_id' => $role->id,
+            ],
+            [
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        );
     }
 
     private function sincronizarRoleManutencaoComFuncao(): void
