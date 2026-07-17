@@ -103,7 +103,7 @@
         </span>
         <div>
             <h3 id="pessoa-form-cargo-title">Cargo</h3>
-            <p>Professor, Equipe Gestora e Manutenção usam a mesma identidade e as mesmas matrículas.</p>
+            <p>Professor, Equipe Gestora, Manutenção e Obras usam a mesma identidade e as mesmas matrículas.</p>
         </div>
     </header>
 
@@ -121,6 +121,9 @@
                 @endif
                 @if ($podeGerenciarEquipeGestora || $cargo === 'manutencao')
                     <option value="manutencao" @selected($cargo === 'manutencao')>Manutenção</option>
+                @endif
+                @if ($podeGerenciarEquipeGestora || $cargo === 'obras')
+                    <option value="obras" @selected($cargo === 'obras')>Obras</option>
                 @endif
             </select>
             @error('cargo')

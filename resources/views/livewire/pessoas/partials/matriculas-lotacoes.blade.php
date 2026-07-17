@@ -6,7 +6,7 @@
             </span>
             <div>
                 <h3 id="pessoa-form-matriculas-title">
-                    {{ $cargo === 'manutencao' ? 'Matrículas' : 'Matrículas e lotações' }}
+                    {{ in_array($cargo, ['manutencao', 'obras'], true) ? 'Matrículas' : 'Matrículas e lotações' }}
                 </h3>
                 <p>Cada aba representa uma matrícula atual. Exclusões só são persistidas ao salvar.</p>
             </div>
@@ -29,7 +29,7 @@
 
     @if ($matriculas === [])
         <div class="pe-person-form__empty" role="status">
-            {{ $cargo === 'manutencao'
+            {{ in_array($cargo, ['manutencao', 'obras'], true)
                 ? 'Nenhuma matrícula está disponível para edição.'
                 : 'Nenhuma matrícula desta unidade está disponível para edição.' }}
         </div>
