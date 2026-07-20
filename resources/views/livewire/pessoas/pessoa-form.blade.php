@@ -116,7 +116,7 @@
                 <button
                     type="button"
                     class="pe-person-form__button pe-person-form__button--cancel"
-                    wire:click="cancelar"
+                    x-on:click="$dispatch('close-modal', { id: $el.closest('[data-fi-modal-id]').dataset.fiModalId })"
                     wire:loading.attr="disabled"
                 >
                     {{ $podeSalvar ? 'Cancelar' : 'Fechar' }}

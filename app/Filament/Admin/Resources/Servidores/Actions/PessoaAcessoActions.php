@@ -18,6 +18,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rules\Password as PasswordRule;
+use Illuminate\Validation\ValidationException;
 
 class PessoaAcessoActions
 {
@@ -196,6 +197,57 @@ class PessoaAcessoActions
     public static function bulkActions(): array
     {
         return [
+            BulkAction::make('criar_acessos_em_massa')
+                ->label('Criar acessos')
+                ->icon('heroicon-o-user-plus')
+                ->color('success')
+                ->visible(fn (): bool => Gate::allows('createUserAccess', Servidor::class)
+                    && Gate::allows('create', User::class))
+                ->modalHeading('Criar acessos ao sistema')
+                ->modalDescription('Cria ou vincula uma conta para cada pessoa selecionada. Pessoas que já possuem acesso serão ignoradas.')
+                ->schema([
+                    TextInput::make('senha')
+                        ->label('Senha inicial')
+                        ->default('Mudar@1234')
+                        ->password()
+                        ->revealable()
+                        ->required()
+                        ->maxLength(30)
+                        ->rules([PasswordRule::min(8)->mixedCase()->numbers()->symbols()]),
+                    Toggle::make('email_approved')
+                        ->label('Liberar acesso imediatamente')
+                        ->default(true)
+                        ->visible(fn (): bool => Gate::allows('toggleEmailApproval', [User::class, null, 'create'])),
+                ])
+                ->action(function ($records, array $data): void {
+                    $service = app(PessoaUsuarioService::class);
+                    $criados = 0;
+                    $ignorados = 0;
+
+                    foreach ($records as $record) {
+                        if (! $record instanceof Servidor || $record->user) {
+                            $ignorados++;
+
+                            continue;
+                        }
+
+                        try {
+                            $service->criarOuVincularAcesso(
+                                $record,
+                                Auth::user(),
+                                (string) ($data['senha'] ?? ''),
+                                (bool) ($data['email_approved'] ?? false),
+                            );
+                            $criados++;
+                        } catch (AuthorizationException|ValidationException) {
+                            $ignorados++;
+                        }
+                    }
+
+                    self::notificarResultado('Acessos criados', $criados, $ignorados);
+                })
+                ->deselectRecordsAfterCompletion(),
+
             BulkAction::make('verificacao_acesso_em_massa')
                 ->label('Verificação de acesso')
                 ->icon('heroicon-o-check-badge')

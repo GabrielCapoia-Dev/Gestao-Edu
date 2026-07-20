@@ -540,6 +540,16 @@ class PessoaHubFilamentTest extends TestCase
         $this->assertSame(2, PessoaMatricula::query()->where('servidor_id', $servidor->id)->count());
     }
 
+    public function test_botao_cancelar_fecha_modal_no_cliente_sem_requisicao_livewire_do_formulario(): void
+    {
+        $usuario = $this->usuarioHubAdmin(['Listar Pessoas', 'Criar Pessoas']);
+
+        Livewire::actingAs($usuario)
+            ->test(PessoaForm::class, ['pessoaId' => null])
+            ->assertSeeHtml('x-on:click="$dispatch(\'close-modal\'')
+            ->assertDontSeeHtml('wire:click="cancelar"');
+    }
+
     public function test_eventos_do_formulario_fecham_o_modal_personalizado(): void
     {
         $usuario = $this->usuarioHubAdmin(['Listar Pessoas', 'Criar Pessoas']);

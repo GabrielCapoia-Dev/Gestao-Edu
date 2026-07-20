@@ -90,6 +90,7 @@ class PessoaAcessoUnificadoTest extends TestCase
             ->assertTableActionVisible('gerenciar_acesso', $pessoa)
             ->assertTableActionVisible('redefinir_senha', $pessoa)
             ->assertTableActionVisible('excluir_acesso', $pessoa)
+            ->assertTableBulkActionVisible('criar_acessos_em_massa')
             ->assertTableBulkActionVisible('verificacao_acesso_em_massa')
             ->assertTableBulkActionVisible('redefinir_senha_em_massa')
             ->assertTableBulkActionVisible('niveis_em_massa')
@@ -119,6 +120,7 @@ class PessoaAcessoUnificadoTest extends TestCase
             ->assertTableActionHidden('gerenciar_acesso', $pessoa)
             ->assertTableActionHidden('redefinir_senha', $pessoa)
             ->assertTableActionHidden('excluir_acesso', $pessoa)
+            ->assertTableBulkActionHidden('criar_acessos_em_massa')
             ->assertTableBulkActionHidden('verificacao_acesso_em_massa')
             ->assertTableBulkActionHidden('redefinir_senha_em_massa')
             ->assertTableBulkActionHidden('niveis_em_massa')
@@ -159,6 +161,48 @@ class PessoaAcessoUnificadoTest extends TestCase
         $this->assertTrue($user->must_change_password);
         $this->assertTrue(Hash::check('Mudar@1234', $user->password));
         $this->assertFalse(UserResource::shouldRegisterNavigation());
+    }
+
+    public function test_cria_acessos_em_massa_e_ignora_pessoa_que_ja_possui_conta(): void
+    {
+        $pessoaSemAcesso = Servidor::query()->create([
+            'nome' => 'Pessoa sem acesso em massa',
+            'email' => 'sem.acesso.massa@edu.umuarama.pr.gov.br',
+            'status' => Servidor::STATUS_ATIVO,
+        ]);
+        $contaExistente = User::factory()->create([
+            'email' => 'com.acesso.massa@edu.umuarama.pr.gov.br',
+            'email_approved' => false,
+        ]);
+        $pessoaComAcesso = Servidor::query()->create([
+            'user_id' => $contaExistente->id,
+            'nome' => 'Pessoa com acesso em massa',
+            'email' => $contaExistente->email,
+            'status' => Servidor::STATUS_ATIVO,
+        ]);
+
+        Livewire::actingAs($this->admin)
+            ->test(ManageServidores::class)
+            ->mountTableBulkAction('criar_acessos_em_massa', [$pessoaSemAcesso, $pessoaComAcesso])
+            ->setTableBulkActionData([
+                'senha' => 'Senha@1234',
+                'email_approved' => true,
+            ])
+            ->callMountedTableBulkAction()
+            ->assertHasNoTableBulkActionErrors();
+
+        $contaCriada = $pessoaSemAcesso->fresh()->user;
+
+        $this->assertNotNull($contaCriada);
+        $this->assertTrue((bool) $contaCriada->email_approved);
+        $this->assertTrue($contaCriada->must_change_password);
+        $this->assertTrue(Hash::check('Senha@1234', $contaCriada->password));
+        $this->assertSame($contaExistente->id, $pessoaComAcesso->fresh()->user_id);
+        $this->assertFalse((bool) $contaExistente->fresh()->email_approved);
+        $this->assertSame(2, User::query()->whereIn('email', [
+            'sem.acesso.massa@edu.umuarama.pr.gov.br',
+            'com.acesso.massa@edu.umuarama.pr.gov.br',
+        ])->count());
     }
 
     public function test_vincula_solicitacao_de_acesso_a_pessoa_existente_com_mesmo_email(): void
