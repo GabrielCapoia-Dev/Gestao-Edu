@@ -60,6 +60,10 @@ class AvaliacaoTurmaWorkspace extends Component
 
     public ?int $turmaEmMassaGlobal = null;
 
+    public ?int $alunoEmMassaGlobal = null;
+
+    public ?int $componenteEmMassaGlobal = null;
+
     public array $pautasExpandidas = [];
 
     public array $alunosExpandidos = [];
@@ -243,6 +247,12 @@ class AvaliacaoTurmaWorkspace extends Component
         $this->sincronizarSerieEscola();
         $this->limparDadosDoEscopo(true);
         $this->carregarDadosDoEscopo();
+    }
+
+    public function updatedTurmaEmMassaGlobal(): void
+    {
+        $this->alunoEmMassaGlobal = null;
+        $this->componenteEmMassaGlobal = null;
     }
 
     public function updatedComponenteWorkspaceId(): void
@@ -488,10 +498,45 @@ class AvaliacaoTurmaWorkspace extends Component
             return;
         }
 
+        if (
+            $this->alunoEmMassaGlobal
+            && $turmasAlvo->every(fn (Turma $turma): bool => $this->alunosAlvoAvaliacaoEmMassa((int) $turma->id)->isEmpty())
+        ) {
+            Notification::make()
+                ->title('Selecione um aluno válido para aplicar em massa.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        if (
+            $this->componenteEmMassaGlobal !== null
+            && $turmasAlvo->every(fn (Turma $turma): bool => $this->pautasAlvoAvaliacaoEmMassa((int) $turma->id)->isEmpty())
+        ) {
+            Notification::make()
+                ->title('Selecione um componente válido para aplicar em massa.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        if ($turmasAlvo->every(fn (Turma $turma): bool => $this->alunosAlvoAvaliacaoEmMassa((int) $turma->id)->isEmpty()
+            || $this->pautasAlvoAvaliacaoEmMassa((int) $turma->id)->isEmpty()
+        )) {
+            Notification::make()
+                ->title('O aluno e o componente selecionados não pertencem ao mesmo escopo.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
         foreach ($turmasAlvo as $turma) {
             $turmaId = (int) $turma->id;
 
-            foreach ($this->pautasDaTurma($turmaId) as $pauta) {
+            foreach ($this->pautasAlvoAvaliacaoEmMassa($turmaId) as $pauta) {
                 $alternativa = $this->alternativaDaPauta((int) $pauta->id, $alternativaId);
 
                 if (! $alternativa) {
@@ -500,7 +545,7 @@ class AvaliacaoTurmaWorkspace extends Component
                     continue;
                 }
 
-                foreach ($this->alunosDaTurma($turmaId) as $aluno) {
+                foreach ($this->alunosAlvoAvaliacaoEmMassa($turmaId) as $aluno) {
                     $alunoId = (int) $aluno->id;
 
                     if ($this->alunoEstaBloqueadoParaAvaliacao($aluno)) {
@@ -532,7 +577,7 @@ class AvaliacaoTurmaWorkspace extends Component
                     }
 
                     if ($temObservacao && $observacaoInformada === '') {
-                        $pendencias[$turmaId . ':' . $pauta->id][] = $alunoId;
+                        $pendencias[$turmaId.':'.$pauta->id][] = $alunoId;
 
                         continue;
                     }
@@ -595,15 +640,15 @@ class AvaliacaoTurmaWorkspace extends Component
         $mensagens = [];
 
         if ($pautasIgnoradas > 0) {
-            $mensagens[] = $pautasIgnoradas . ' pauta(s) não possuem esta alternativa.';
+            $mensagens[] = $pautasIgnoradas.' pauta(s) não possuem esta alternativa.';
         }
 
         if ($alunosPendentesTransferenciaIgnorados !== []) {
-            $mensagens[] = count($alunosPendentesTransferenciaIgnorados) . ' aluno(s) pendente(s) de transferência foram ignorados.';
+            $mensagens[] = count($alunosPendentesTransferenciaIgnorados).' aluno(s) pendente(s) de transferência foram ignorados.';
         }
 
         if ($totalIgnoradoPorPreenchimento > 0) {
-            $mensagens[] = $totalIgnoradoPorPreenchimento . ' resposta(s) já preenchida(s) ou bloqueada(s) foram mantidas.';
+            $mensagens[] = $totalIgnoradoPorPreenchimento.' resposta(s) já preenchida(s) ou bloqueada(s) foram mantidas.';
         }
 
         Notification::make()
@@ -963,6 +1008,46 @@ class AvaliacaoTurmaWorkspace extends Component
         return $this->alunosPorTurma->get($turmaId, collect());
     }
 
+    public function getAlunosEmMassaDisponiveisProperty(): Collection
+    {
+        return $this->turmasAlvoAvaliacaoEmMassa()
+            ->filter(fn (Turma $turma): bool => $this->pautasAlvoAvaliacaoEmMassa((int) $turma->id)->isNotEmpty())
+            ->flatMap(fn (Turma $turma): Collection => $this->alunosRespondiveisDaTurma((int) $turma->id))
+            ->sortBy(fn (Aluno $aluno): string => mb_strtolower($this->rotuloAlunoEmMassa($aluno)))
+            ->values();
+    }
+
+    public function rotuloAlunoEmMassa(Aluno $aluno): string
+    {
+        $turma = $this->turmasDaSerieDisponiveis->firstWhere('id', (int) $aluno->id_turma);
+
+        return implode(' - ', array_filter([
+            $aluno->nome,
+            $turma ? $this->rotuloTurma($turma) : null,
+            $aluno->cgm ? 'CGM '.$aluno->cgm : null,
+        ]));
+    }
+
+    public function getComponentesEmMassaDisponiveisProperty(): array
+    {
+        $opcoes = [];
+
+        foreach ($this->turmasAlvoAvaliacaoEmMassa() as $turma) {
+            if ($this->alunosAlvoAvaliacaoEmMassa((int) $turma->id)->isEmpty()) {
+                continue;
+            }
+
+            foreach ($this->pautasDaTurma((int) $turma->id) as $pauta) {
+                $componenteId = (int) ($pauta->componente_curricular_id ?? 0);
+                $opcoes[$componenteId] = $pauta->componente?->nome ?? 'Geral (sem componente específico)';
+            }
+        }
+
+        asort($opcoes);
+
+        return $opcoes;
+    }
+
     public function alunoEstaBloqueadoParaAvaliacao(Aluno|int $aluno): bool
     {
         if (is_int($aluno)) {
@@ -1183,6 +1268,8 @@ class AvaliacaoTurmaWorkspace extends Component
         $this->informacoesComplementaresBloqueadas = [];
         $this->alternativasPorPauta = [];
         $this->avaliacaoEmMassaGlobal = null;
+        $this->alunoEmMassaGlobal = null;
+        $this->componenteEmMassaGlobal = null;
         $this->pautasExpandidas = [];
         $this->alunosExpandidos = [];
         $this->componentesExpandidos = [];
@@ -1772,6 +1859,35 @@ class AvaliacaoTurmaWorkspace extends Component
 
         return $this->turmasDaSerieDisponiveis
             ->filter(fn (Turma $turma): bool => (int) $turma->id === $turmaId)
+            ->values();
+    }
+
+    private function alunosAlvoAvaliacaoEmMassa(int $turmaId): Collection
+    {
+        $alunos = $this->alunosDaTurma($turmaId);
+        $alunoId = (int) ($this->alunoEmMassaGlobal ?? 0);
+
+        if ($alunoId <= 0) {
+            return $alunos;
+        }
+
+        return $alunos
+            ->filter(fn (Aluno $aluno): bool => (int) $aluno->id === $alunoId)
+            ->values();
+    }
+
+    private function pautasAlvoAvaliacaoEmMassa(int $turmaId): Collection
+    {
+        $pautas = $this->pautasDaTurma($turmaId);
+
+        if ($this->componenteEmMassaGlobal === null) {
+            return $pautas;
+        }
+
+        $componenteId = (int) $this->componenteEmMassaGlobal;
+
+        return $pautas
+            ->filter(fn (Pauta $pauta): bool => (int) ($pauta->componente_curricular_id ?? 0) === $componenteId)
             ->values();
     }
 

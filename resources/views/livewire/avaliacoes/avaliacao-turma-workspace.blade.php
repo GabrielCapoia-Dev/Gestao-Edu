@@ -105,7 +105,7 @@
 
                     <div class="av-mode-actions">
                         @if ($this->podePreencherEmMassa())
-                        <div class="av-bulk-control">
+                        <div class="av-bulk-control {{ $this->modoAcompanhamento() ? 'av-bulk-control--acompanhamento' : '' }}">
                             @if (! $this->modoAcompanhamento())
                                 <label class="gi-field av-bulk-turma-select">
                                     <span>Turma</span>
@@ -117,6 +117,26 @@
                                     </select>
                                 </label>
                             @endif
+
+                            <label class="gi-field av-bulk-select">
+                                <span>Aluno</span>
+                                <select wire:model.live="alunoEmMassaGlobal" @disabled(! $this->podePreencherEmMassa())>
+                                    <option value="">Todos os alunos</option>
+                                    @foreach ($this->alunosEmMassaDisponiveis as $alunoItem)
+                                        <option value="{{ $alunoItem->id }}">{{ $this->rotuloAlunoEmMassa($alunoItem) }}</option>
+                                    @endforeach
+                                </select>
+                            </label>
+
+                            <label class="gi-field av-bulk-select">
+                                <span>Componente</span>
+                                <select wire:model.live="componenteEmMassaGlobal" @disabled(! $this->podePreencherEmMassa())>
+                                    <option value="">Todos os componentes</option>
+                                    @foreach ($this->componentesEmMassaDisponiveis as $componenteId => $componenteNome)
+                                        <option value="{{ $componenteId }}">{{ $componenteNome }}</option>
+                                    @endforeach
+                                </select>
+                            </label>
 
                             <label class="gi-field av-bulk-select">
                                 <span>Avaliação em massa</span>

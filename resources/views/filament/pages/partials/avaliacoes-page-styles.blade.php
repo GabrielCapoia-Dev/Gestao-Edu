@@ -344,7 +344,7 @@
 
     .av-bulk-control {
         display: grid;
-        grid-template-columns: minmax(10rem, 14rem) minmax(18rem, 22rem) auto;
+        grid-template-columns: repeat(3, minmax(9rem, 12rem)) minmax(16rem, 20rem) auto;
         align-items: end;
         gap: 0.5rem;
         flex: 0 1 auto;
@@ -354,6 +354,10 @@
     .av-bulk-select {
         min-width: 0;
         width: 100%;
+    }
+
+    .av-bulk-control--acompanhamento {
+        grid-template-columns: repeat(2, minmax(9rem, 12rem)) minmax(16rem, 20rem) auto;
     }
 
     .av-bulk-control .gi-action {
