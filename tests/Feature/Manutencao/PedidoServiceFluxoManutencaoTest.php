@@ -1428,7 +1428,7 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
             ->assertCanSeeTableRecords([$principalComDois, $principalComUm])
             ->assertCanNotSeeTableRecords([$principalSemAdicional, $adicionalUm])
             ->assertSeeHtml('pedido-card--has-additionals')
-            ->assertSeeHtml('pedido-card-school-summary')
+            ->assertSeeHtml('pedido-card-field--additionals')
             ->sortTable('tipo_pedido_sort', 'asc')
             ->sortTable('pedidos_adicionais_count', 'desc')
             ->assertCanSeeTableRecords([$principalComDois, $principalComUm], inOrder: true);
@@ -1452,10 +1452,22 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
             'data_entrega' => '2026-07-20',
             'updated_at' => '2026-07-20 10:00:00',
         ])->save();
-        $concluidoRecente->feedbacks()->create([
+        $problemaConcluido = $concluidoRecente->problemas()->create([
+            'tipo_manutencao_id' => $this->tipo->id,
+            'tipo_manutencao_opcao_id' => $this->opcaoLuz->id,
+            'texto_problema' => $this->opcaoLuz->texto,
+        ]);
+        $feedback = $concluidoRecente->feedbacks()->create([
             'valor' => 5,
-            'descricao' => 'Serviço concluído e aprovado pela escola.',
+            'descricao' => 'Resumo geral que não deve substituir o comentário do problema.',
             'reabrir_pedido' => false,
+        ]);
+        $feedback->itens()->create([
+            'pedido_id' => $concluidoRecente->id,
+            'pedido_problema_id' => $problemaConcluido->id,
+            'valor' => 5,
+            'resultado' => ResultadoFeedbackPedido::Atendido,
+            'comentario' => 'Serviço concluído e aprovado pela escola.',
         ]);
 
         Livewire::actingAs($usuario)
@@ -1467,12 +1479,15 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
                 $pendenteAntigo,
                 $concluidoRecente,
             ], inOrder: true)
+            ->assertSeeHtml('pedido-card--completed')
+            ->assertSeeHtml('pedido-card-main-grid')
             ->assertSee('Escola solicitante')
-            ->assertSee('Descrição final da avaliação')
+            ->assertSee('Comentário do problema')
             ->assertSee('Serviço concluído e aprovado pela escola.')
-            ->assertSee('Ainda sem avaliação final.')
-            ->assertDontSee('Pedido de teste')
-            ->assertDontSee('Sem comentário');
+            ->assertDontSee('Resumo geral que não deve substituir o comentário do problema.')
+            ->assertSee('Descrição do pedido')
+            ->assertSee('Pedido de teste')
+            ->assertSee('Sem comentário');
     }
 
     public function test_aba_adicionais_aparece_depois_de_em_manutencao(): void
