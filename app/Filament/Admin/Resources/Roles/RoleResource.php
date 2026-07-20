@@ -33,7 +33,7 @@ class RoleResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::ShieldCheck;
 
-    protected static ?string $navigationParentItem = 'Pessoas';
+    protected static ?string $navigationParentItem = 'Servidores';
 
     public static ?string $modelLabel = 'Nível de acesso';
 

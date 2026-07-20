@@ -40,8 +40,8 @@ class ManageServidores extends ManageRecords
     {
         return view('filament.admin.pages.partials.page-header', [
             'actions' => $this->getCachedHeaderActions(),
-            'eyebrow' => 'Pessoas',
-            'title' => 'Central de pessoas',
+            'eyebrow' => 'Servidores',
+            'title' => 'Central de servidores',
             'description' => 'Gerencie identidade, cargos, vínculos, contas, níveis de acesso e permissões no mesmo lugar.',
         ]);
     }
@@ -81,11 +81,11 @@ class ManageServidores extends ManageRecords
                 ])),
 
             Action::make('create')
-                ->label('Nova pessoa')
+                ->label('Novo servidor')
                 ->visible(fn (): bool => Gate::allows('create', Servidor::class))
                 ->modalWidth('6xl')
                 ->modalIcon(null)
-                ->modalHeading('Nova pessoa')
+                ->modalHeading('Novo servidor')
                 ->modalDescription('Identidade, cargo, matrículas e lotações no mesmo fluxo.')
                 ->formWrapper(false)
                 ->modalSubmitAction(false)

@@ -141,7 +141,7 @@
             'route' => route('filament.admin.resources.servidores.index', ['tab' => 'com_acesso']),
             'tone' => 'slate',
             'icon' => 'heroicon-o-users',
-            'title' => 'Pessoas',
+            'title' => 'Servidores',
             'description' => 'Cadastro, vínculos pedagógicos e acesso ao sistema.',
         ],
         [

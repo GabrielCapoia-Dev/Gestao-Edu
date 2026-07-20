@@ -36,7 +36,7 @@ class DominioEmailResource extends Resource
 
     public static ?string $pluralLabel = 'Domínios permitidos';
 
-    protected static ?string $navigationParentItem = 'Pessoas';
+    protected static ?string $navigationParentItem = 'Servidores';
 
     public static ?string $modelLabel = 'Domínio permitido';
 

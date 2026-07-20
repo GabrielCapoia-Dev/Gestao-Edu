@@ -42,10 +42,10 @@ class PessoaHubFilamentTest extends TestCase
         app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 
-    public function test_resource_exibe_entrada_pessoas_no_menu(): void
+    public function test_resource_exibe_entrada_servidores_no_menu(): void
     {
-        $this->assertSame('Pessoas', ServidorResource::getNavigationLabel());
-        $this->assertSame('Pessoa', ServidorResource::getModelLabel());
+        $this->assertSame('Servidores', ServidorResource::getNavigationLabel());
+        $this->assertSame('Servidor', ServidorResource::getModelLabel());
     }
 
     public function test_hub_lista_unica_sem_metodo_de_abas_proprio(): void
@@ -109,9 +109,37 @@ class PessoaHubFilamentTest extends TestCase
         $this->assertTrue($niveisDeAcesso->canWrap());
         $this->assertSame(2, $niveisDeAcesso->getColumnSpan('xl'));
 
-        foreach (['nome', 'cargo_label', 'vinculos_resumo', 'email', 'status', 'acesso_ao_sistema', 'user.roles.name', 'updated_at'] as $coluna) {
+        foreach (['nome', 'cargo_label', 'escolas_resumo', 'vinculos_resumo', 'email', 'status', 'acesso_ao_sistema', 'user.roles.name', 'updated_at'] as $coluna) {
             $this->assertTrue($table->getColumn($coluna)->isCopyable('valor'), "A coluna {$coluna} deve permitir cópia ao clicar.");
         }
+    }
+
+    public function test_lista_exibe_os_nomes_das_escolas_da_pessoa(): void
+    {
+        $usuario = $this->usuarioComPermissaoListar();
+        $setor = $this->criarSetor('Setor escolas da listagem');
+        $escolaPrincipal = $this->criarEscola('Escola Principal', $setor);
+        $escolaAdicional = $this->criarEscola('Escola Adicional', $setor);
+        $servidor = $this->criarServidor('Servidor em duas escolas', $escolaPrincipal, $setor);
+
+        foreach ([$escolaPrincipal, $escolaAdicional] as $indice => $escola) {
+            Professor::query()->create([
+                'servidor_id' => $servidor->id,
+                'id_escola' => $escola->id,
+                'matricula' => 'ESCOLAS-00'.($indice + 1),
+                'turno' => 'manha',
+                'nome' => $servidor->nome,
+                'email' => $servidor->email,
+                'ativo' => true,
+            ]);
+        }
+
+        $this->actingAs($usuario);
+
+        $this->assertSame(
+            'Escola Adicional, Escola Principal',
+            ServidorResource::escolasLabel($servidor->fresh()),
+        );
     }
 
     public function test_filtros_de_cargo_quantidade_de_matriculas_e_turno(): void
@@ -302,9 +330,12 @@ class PessoaHubFilamentTest extends TestCase
             ->test(ManageServidores::class)
             ->searchTable('Nível Reservado da Pessoa')
             ->assertCanNotSeeTableRecords([$pessoa]);
+
+        $this->actingAs($restrito);
+        $this->assertSame('Escola escopo A', ServidorResource::escolasLabel($pessoa->fresh()));
     }
 
-    public function test_header_nova_pessoa(): void
+    public function test_header_novo_servidor(): void
     {
         $usuario = $this->usuarioHubAdmin(['Listar Pessoas', 'Criar Pessoas']);
 
@@ -318,7 +349,7 @@ class PessoaHubFilamentTest extends TestCase
         );
 
         $this->assertInstanceOf(Action::class, $createAction);
-        $this->assertSame('Nova pessoa', $createAction->getLabel());
+        $this->assertSame('Novo servidor', $createAction->getLabel());
         $this->assertFalse($createAction->isModalSlideOver());
         $this->assertSame('6xl', $createAction->getModalWidth());
         $this->assertTrue($createAction->isModalHeaderSticky());

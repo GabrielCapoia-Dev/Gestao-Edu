@@ -65,13 +65,13 @@ class ServidorResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = 'Acesso';
 
-    protected static ?string $navigationLabel = 'Pessoas';
+    protected static ?string $navigationLabel = 'Servidores';
 
     protected static ?int $navigationSort = 1;
 
-    protected static ?string $pluralModelLabel = 'Pessoas';
+    protected static ?string $pluralModelLabel = 'Servidores';
 
-    protected static ?string $modelLabel = 'Pessoa';
+    protected static ?string $modelLabel = 'Servidor';
 
     protected static ?string $slug = 'servidores';
 
@@ -149,6 +149,17 @@ class ServidorResource extends Resource
                             ->color(fn (string $state): string => $state !== '—' ? 'info' : 'gray')
                             ->wrap()
                             ->extraAttributes(['class' => 'pessoa-card-field pessoa-card-field--cargo'], merge: true),
+
+                        TextColumn::make('escolas_resumo')
+                            ->label('Escolas')
+                            ->description('Escolas', position: 'above')
+                            ->getStateUsing(fn (Servidor $record): string => static::escolasLabel($record))
+                            ->icon('heroicon-o-building-library')
+                            ->copyable()
+                            ->copyMessage('Escolas copiadas')
+                            ->tooltip('Clique para copiar as escolas')
+                            ->wrap()
+                            ->extraAttributes(['class' => 'pessoa-card-field pessoa-card-field--escolas'], merge: true),
 
                         TextColumn::make('vinculos_resumo')
                             ->label('Matrículas')
@@ -637,6 +648,35 @@ class ServidorResource extends Resource
         }
 
         return static::professoresVisiveis($record)->isNotEmpty() ? 'Professor' : '—';
+    }
+
+    public static function escolasLabel(Servidor $record): string
+    {
+        $record->loadMissing([
+            'escola:id,nome',
+            'professores.escola:id,nome',
+            'vinculosAtivos.escola:id,nome',
+        ]);
+
+        $scope = app(PessoaScopeService::class);
+        $user = Auth::user();
+        $escolas = collect();
+
+        if (filled($record->id_escola) && $scope->canAccessEscola($user, (int) $record->id_escola)) {
+            $nomeEscolaPrincipal = $record->escola?->nome
+                ?? Escola::query()->whereKey($record->id_escola)->value('nome');
+
+            $escolas->push($nomeEscolaPrincipal);
+        }
+
+        return $escolas
+            ->merge(static::professoresVisiveis($record)->pluck('escola.nome'))
+            ->merge(static::vinculosVisiveis($record)->pluck('escola.nome'))
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values()
+            ->implode(', ') ?: '—';
     }
 
     public static function escolasOptionsEscopadas(): array
