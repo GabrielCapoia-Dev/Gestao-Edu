@@ -78,7 +78,7 @@
                 @include('components.pedidos-merenda.table-partial-items', [
                     'itens' => $this->itensParciais,
                     'paginacao' => $this->paginacaoParcial,
-                    'seção' => 'parcial',
+                    'secao' => 'parcial',
                     'page' => $this,
                 ])
             </article>

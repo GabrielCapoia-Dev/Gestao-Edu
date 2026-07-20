@@ -46,6 +46,11 @@ class PedidoMerendaPolicy
             && $this->podeAcessar($user, $model);
     }
 
+    public function updateAny(User $user): bool
+    {
+        return $user->hasPermissionTo('Editar Pedidos: Merenda');
+    }
+
     /**
      * Determine whether the user can delete the model.
      */

@@ -7,6 +7,7 @@ use Closure;
 use Filament\Actions\BulkAction;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -34,7 +35,22 @@ class VincularSetorBulkAction
 
                 $user = Auth::user();
 
-                return $user && Gate::forUser($user)->allows($ability, $arguments);
+                if (! $user) {
+                    return false;
+                }
+
+                $visibilityAbility = $ability;
+
+                if (is_string($arguments) && is_subclass_of($arguments, Model::class)) {
+                    $policy = Gate::getPolicyFor($arguments);
+                    $bulkAbility = $ability.'Any';
+
+                    if ($policy && method_exists($policy, $bulkAbility)) {
+                        $visibilityAbility = $bulkAbility;
+                    }
+                }
+
+                return Gate::forUser($user)->allows($visibilityAbility, $arguments);
             })
             ->form([
                 Select::make('setor_id')
@@ -46,7 +62,7 @@ class VincularSetorBulkAction
             ->requiresConfirmation()
             ->modalHeading('Vincular registros ao setor')
             ->modalDescription("Os {$recordsLabel} passarão a usar o setor informado.")
-            ->action(function (array $data, $records) use ($recordsLabel, $updateRecord, $assertCanUse): void {
+            ->action(function (array $data, $records) use ($ability, $recordsLabel, $updateRecord, $assertCanUse): void {
                 $setorId = (int) ($data['setor_id'] ?? 0);
 
                 if ($assertCanUse) {
@@ -57,8 +73,12 @@ class VincularSetorBulkAction
 
                 $afetados = 0;
 
-                DB::transaction(function () use ($records, $setorId, $updateRecord, &$afetados): void {
+                DB::transaction(function () use ($ability, $records, $setorId, $updateRecord, &$afetados): void {
                     foreach ($records as $record) {
+                        if ($ability !== null) {
+                            Gate::authorize($ability, $record);
+                        }
+
                         $updated = true;
 
                         if ($updateRecord) {

@@ -69,6 +69,11 @@ class ContratoPolicy
             && $this->podeAcessarContrato($user, $model);
     }
 
+    public function updateAny(User $user): bool
+    {
+        return $user->hasPermissionTo('Editar Contratos');
+    }
+
     /**
      * Determine whether the user can delete the model.
      */

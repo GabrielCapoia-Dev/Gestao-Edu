@@ -50,6 +50,11 @@ class EscolaPolicy
         return $user->hasPermissionTo('Editar Escolas');
     }
 
+    public function updateAny(User $user): bool
+    {
+        return $user->hasPermissionTo('Editar Escolas');
+    }
+
     /**
      * Determine whether the user can delete the model.
      */

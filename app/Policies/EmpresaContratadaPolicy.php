@@ -48,6 +48,11 @@ class EmpresaContratadaPolicy
             && $this->pertenceAoSetorDoUsuario($user, $empresaContratada);
     }
 
+    public function updateAny(User $user): bool
+    {
+        return $user->hasPermissionTo('Editar Empresa Contratada');
+    }
+
     /**
      * Determine whether the user can delete the model.
      */
