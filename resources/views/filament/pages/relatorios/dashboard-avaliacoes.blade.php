@@ -1,7 +1,7 @@
 <x-filament-panels::page>
     <div class="av-livewire-root" x-data wire:init="carregarDashboardInicial" x-on:dashboard-acompanhamento-recarregar.window="$wire.atualizarAcompanhamentoTurmas()" x-on:dashboard-detalhes-recarregar.window="$wire.carregarDetalhesDashboard()">
     <div class="dav-page">
-        <div class="dav-processing-overlay" wire:loading.flex wire:target="carregarDashboardInicial,carregarResumoDashboard,carregarGraficosDashboard,carregarAcompanhamentoDashboard,carregarDetalhesDashboard,abrirWorkspaceAcompanhamento,fecharWorkspaceAcompanhamento,atualizarAcompanhamentoTurmas,atualizarDadosRecentes">
+        <div class="dav-processing-overlay" wire:loading.flex wire:target="carregarDashboardInicial,carregarResumoDashboard,carregarGraficosDashboard,carregarAcompanhamentoDashboard,carregarDetalhesDashboard,atualizarAcompanhamentoTurmas,atualizarDadosRecentes">
             <div class="dav-processing-card">
                 <div class="dav-processing-spinner"></div>
                 <strong>Processando...</strong>
@@ -471,8 +471,8 @@
             </section>
 
             @if ($workspaceAcompanhamentoAberto && $workspaceAcompanhamentoLinha)
-                <div class="dav-slideover-shell" x-data="{ open: true }" x-show="open" x-transition.opacity role="dialog" aria-modal="true">
-                    <button type="button" class="dav-slideover-backdrop" wire:click="fecharWorkspaceAcompanhamento" wire:loading.attr="disabled" wire:target="fecharWorkspaceAcompanhamento" aria-label="Fechar modal de avaliação"></button>
+                <div class="dav-slideover-shell" x-data="{ open: true }" x-show="open" x-transition.opacity x-on:keydown.escape.window="open = false; $wire.fecharWorkspaceAcompanhamento()" role="dialog" aria-modal="true">
+                    <button type="button" class="dav-slideover-backdrop" x-on:click="open = false; $wire.fecharWorkspaceAcompanhamento()" aria-label="Fechar modal de avaliação"></button>
 
                     <section class="dav-slideover-panel">
                         <header class="dav-slideover-header">
@@ -486,7 +486,7 @@
                                 </p>
                             </div>
 
-                            <button type="button" class="dav-slideover-close" x-on:click="open = false; $wire.fecharWorkspaceAcompanhamento()" wire:loading.attr="disabled" wire:target="fecharWorkspaceAcompanhamento" aria-label="Fechar">
+                            <button type="button" class="dav-slideover-close" x-on:click="open = false; $wire.fecharWorkspaceAcompanhamento()" aria-label="Fechar">
                                 ×
                             </button>
                         </header>
@@ -501,13 +501,14 @@
                                     'serieId' => (int) $workspaceAcompanhamentoLinha['serie_id'],
                                     'modo' => 'acompanhamento',
                                     'canEdit' => true,
+                                    'lazy' => 'on-load',
                                 ],
                                 key('acompanhamento-workspace-' . $workspaceAcompanhamentoKey)
                             )
                         </div>
 
                         <footer class="dav-slideover-footer">
-                            <button type="button" class="dav-action" x-on:click="open = false; $wire.fecharWorkspaceAcompanhamento()" wire:loading.attr="disabled" wire:target="fecharWorkspaceAcompanhamento">
+                            <button type="button" class="dav-action" x-on:click="open = false; $wire.fecharWorkspaceAcompanhamento()">
                                 Fechar
                             </button>
                         </footer>

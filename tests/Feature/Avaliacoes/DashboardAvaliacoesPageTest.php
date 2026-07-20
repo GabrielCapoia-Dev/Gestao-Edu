@@ -812,8 +812,10 @@ class DashboardAvaliacoesPageTest extends TestCase
         ]);
     }
 
-    public function test_workspace_do_acompanhamento_carrega_todos_os_componentes_no_primeiro_render_e_sem_validacao_manual(): void
+    public function test_workspace_do_acompanhamento_carrega_somente_o_escopo_solicitado_com_todos_os_componentes(): void
     {
+        Queue::fake();
+
         Permission::findOrCreate('Acompanhar AvaliaÃ§Ãµes');
 
         $user = User::factory()->create([
@@ -870,8 +872,17 @@ class DashboardAvaliacoesPageTest extends TestCase
         $avaliacao->series()->sync([$serie->id]);
         $avaliacao->componentes()->sync([$componenteUm->id, $componenteDois->id]);
         $avaliacao->escolas()->sync([$escola->id]);
-        $avaliacao->turmas()->sync([$turma->id]);
         $avaliacao->pautas()->sync([$pautaUm->id, $pautaDois->id]);
+
+        $turmaForaDoWorkspace = $this->criarTurma($escola, $serie, 'B', 'tarde');
+        $avaliacao->turmas()->sync([$turma->id, $turmaForaDoWorkspace->id]);
+
+        $avaliacaoForaDoWorkspace = $this->criarAvaliacao('Avaliacao Fora do Workspace', $tipo, $periodo);
+        $avaliacaoForaDoWorkspace->series()->sync([$serie->id]);
+        $avaliacaoForaDoWorkspace->componentes()->sync([$componenteUm->id]);
+        $avaliacaoForaDoWorkspace->escolas()->sync([$escola->id]);
+        $avaliacaoForaDoWorkspace->turmas()->sync([$turma->id]);
+        $avaliacaoForaDoWorkspace->pautas()->sync([$pautaUm->id]);
 
         $workspace = Livewire::actingAs($user)
             ->test(AvaliacaoTurmaWorkspace::class, [
@@ -893,6 +904,8 @@ class DashboardAvaliacoesPageTest extends TestCase
             ->assertDontSee('Pauta todos 2');
 
         $this->assertCount(2, $workspace->instance()->getPautasDisponiveisProperty());
+        $this->assertCount(1, $workspace->instance()->getAvaliacoesDisponiveisProperty());
+        $this->assertCount(1, $workspace->instance()->getAvaliacaoAtualProperty()->turmas);
 
         $workspace
             ->call('alternarComponente', $turma->id, $componenteUm->id)

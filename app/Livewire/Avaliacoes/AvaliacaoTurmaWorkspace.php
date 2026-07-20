@@ -125,7 +125,9 @@ class AvaliacaoTurmaWorkspace extends Component
         $this->modo = in_array($modo, ['professor', 'acompanhamento'], true) ? $modo : 'professor';
         $this->canEdit = $canEdit;
 
-        $this->sincronizarVinculosProfessor();
+        if (! $this->modoAcompanhamento()) {
+            $this->sincronizarVinculosProfessor();
+        }
 
         if ($this->modoAcompanhamento()) {
             $this->avaliacao = $avaliacaoId;
@@ -175,6 +177,19 @@ class AvaliacaoTurmaWorkspace extends Component
     public function render()
     {
         return view('livewire.avaliacoes.avaliacao-turma-workspace');
+    }
+
+    public function placeholder(): string
+    {
+        return <<<'HTML'
+            <div class="dav-dashboard-loading" role="status" aria-live="polite">
+                <div class="dav-dashboard-loading__pulse"></div>
+                <div>
+                    <strong>Carregando avaliação...</strong>
+                    <span>Aguarde enquanto os dados da turma são preparados.</span>
+                </div>
+            </div>
+        HTML;
     }
 
     public function modoAcompanhamento(): bool
@@ -818,12 +833,15 @@ class AvaliacaoTurmaWorkspace extends Component
             ->pendentesParaData(now());
 
         if ($this->modoAcompanhamento()) {
+            $query->whereKey((int) $this->avaliacao);
             $query->whereHas('turmas', function ($turmas): void {
+                if ($this->turma) {
+                    $turmas->whereKey((int) $this->turma);
+                }
+
                 $this->aplicarEscopoEscolasPermitidas($turmas);
             });
-        }
-
-        if (! $this->modoAcompanhamento()) {
+        } else {
             $query->whereHas('turmas', function ($turmas): void {
                 $this->aplicarEscopoEscolasPermitidas($turmas);
             });
@@ -842,6 +860,10 @@ class AvaliacaoTurmaWorkspace extends Component
                 ]),
                 'pautas' => fn ($pautas) => $pautas
                     ->where('status', true)
+                    ->when($this->modoAcompanhamento() && $this->serie, fn ($query) => $query
+                        ->where(fn ($serieQuery) => $serieQuery
+                            ->whereNull('serie_id')
+                            ->orWhere('serie_id', (int) $this->serie)))
                     ->with([
                         'componente:id,nome',
                         'tipo' => fn ($tipo) => $tipo->with([
@@ -849,7 +871,14 @@ class AvaliacaoTurmaWorkspace extends Component
                         ]),
                         'alternativas' => fn ($alternativas) => $alternativas->where('status', true),
                     ]),
-                'turmas' => fn ($turmas) => $turmas->with(['escola:id,nome', 'serie:id,nome']),
+                'turmas' => function ($turmas): void {
+                    if ($this->modoAcompanhamento() && $this->turma) {
+                        $turmas->whereKey((int) $this->turma);
+                        $this->aplicarEscopoEscolasPermitidas($turmas);
+                    }
+
+                    $turmas->with(['escola:id,nome', 'serie:id,nome']);
+                },
             ])
             ->orderBy('data_inicio')
             ->get();
