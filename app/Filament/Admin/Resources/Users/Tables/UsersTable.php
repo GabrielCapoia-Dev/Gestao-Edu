@@ -176,6 +176,7 @@ class UsersTable
         return [
             SelectFilter::make('setor_id')
                 ->label('Setor')
+                ->placeholder('Todos os setores')
                 ->options(fn () => app(UserSetorAccessService::class)->optionsForSelect($user))
                 ->searchable()
                 ->preload()
@@ -183,15 +184,29 @@ class UsersTable
 
             SelectFilter::make('id_escola')
                 ->label('Escola')
+                ->placeholder('Todas as escolas')
                 ->options(fn () => $service->opcoesDeEscolasParaCampo($user))
+                ->query(function (Builder $query, array $data): Builder {
+                    $escolaId = $data['value'] ?? null;
+
+                    if (blank($escolaId)) {
+                        return $query;
+                    }
+
+                    return $query->where(function (Builder $usuarios) use ($escolaId): void {
+                        $usuarios
+                            ->where('id_escola', $escolaId)
+                            ->orWhereHas('escolas', fn (Builder $escolas): Builder => $escolas->whereKey($escolaId));
+                    });
+                })
                 ->searchable()
                 ->preload(),
 
             TernaryFilter::make('cargo_professor')
-                ->label('Cargo professor')
-                ->trueLabel('Professores')
-                ->falseLabel('Sem cargo professor')
-                ->placeholder('Todos')
+                ->label('Vínculo de professor')
+                ->trueLabel('Com vínculo de professor')
+                ->falseLabel('Sem vínculo de professor')
+                ->placeholder('Todos os usuários')
                 ->queries(
                     true: fn (Builder $query): Builder => $query->whereHas(
                         'professores',
@@ -205,10 +220,10 @@ class UsersTable
                 ),
 
             TernaryFilter::make('sem_pessoa')
-                ->label('Vínculo com Pessoa')
-                ->trueLabel('Sem Pessoa vinculada')
-                ->falseLabel('Com Pessoa vinculada')
-                ->placeholder('Todos')
+                ->label('Vínculo com servidor')
+                ->trueLabel('Sem servidor vinculado')
+                ->falseLabel('Com servidor vinculado')
+                ->placeholder('Todos os usuários')
                 ->queries(
                     true: fn (Builder $query): Builder => $query
                         ->whereDoesntHave('servidores')
@@ -223,6 +238,7 @@ class UsersTable
 
             SelectFilter::make('roles')
                 ->label('Nível de acesso')
+                ->placeholder('Todos os níveis')
                 ->multiple()
                 ->relationship(
                     name: 'roles',
@@ -235,10 +251,10 @@ class UsersTable
                 ->preload(),
 
             TernaryFilter::make('email_approved')
-                ->label('Verificação')
-                ->trueLabel('Apenas aprovados')
-                ->falseLabel('Apenas pendentes')
-                ->placeholder('Todos')
+                ->label('Situação do acesso')
+                ->trueLabel('Acesso aprovado')
+                ->falseLabel('Acesso pendente')
+                ->placeholder('Todos os usuários')
                 ->visible(fn (): bool => Gate::allows('toggleEmailApproval', [User::class, null, 'table'])),
         ];
     }

@@ -273,6 +273,7 @@ class ServidorResource extends Resource
                 SelectFilter::make('cargo')
                     ->label('Cargo')
                     ->columnSpan(3)
+                    ->placeholder('Todos os cargos')
                     ->options([
                         self::CARGO_PROFESSOR => 'Professor',
                         self::CARGO_EQUIPE_GESTORA => 'Equipe Gestora',
@@ -295,10 +296,11 @@ class ServidorResource extends Resource
                 SelectFilter::make('quantidade_matriculas')
                     ->label('Quantidade de matrículas')
                     ->columnSpan(3)
+                    ->placeholder('Todas as quantidades')
                     ->options([
-                        'uma_ou_mais' => 'Uma matrícula ou mais',
-                        'uma' => 'Exatamente uma matrícula',
+                        'uma' => 'Uma matrícula',
                         'duas' => 'Duas matrículas',
+                        'tres_ou_mais' => 'Três ou mais matrículas',
                         'sem' => 'Sem matrícula',
                     ])
                     ->query(fn (Builder $query, array $data): Builder => static::aplicarFiltroQuantidadeMatriculas(
@@ -309,6 +311,7 @@ class ServidorResource extends Resource
                 SelectFilter::make('turno_matricula')
                     ->label('Turno da matrícula')
                     ->columnSpan(3)
+                    ->placeholder('Todos os turnos')
                     ->options(PessoaMatricula::turnosOptions())
                     ->multiple()
                     ->query(function (Builder $query, array $data): Builder {
@@ -321,12 +324,14 @@ class ServidorResource extends Resource
                 SelectFilter::make('status')
                     ->label('Status')
                     ->columnSpan(3)
+                    ->placeholder('Todos os status')
                     ->options(Servidor::statusOptions())
                     ->multiple(),
 
                 SelectFilter::make('id_escola')
                     ->label('Escola')
                     ->columnSpan(3)
+                    ->placeholder('Todas as escolas')
                     ->options(fn (): array => static::escolasOptionsEscopadas())
                     ->multiple()
                     ->query(function (Builder $query, array $data): Builder {
@@ -342,7 +347,8 @@ class ServidorResource extends Resource
 
                         return $query->where(function (Builder $pessoas) use ($escolaIds): void {
                             $pessoas
-                                ->whereHas('professores', fn (Builder $professores): Builder => $professores
+                                ->whereIn('id_escola', $escolaIds)
+                                ->orWhereHas('professores', fn (Builder $professores): Builder => $professores
                                     ->whereIn('id_escola', $escolaIds))
                                 ->orWhereHas('vinculosAtivos', fn (Builder $vinculos): Builder => $vinculos
                                     ->whereIn('id_escola', $escolaIds));
@@ -354,6 +360,7 @@ class ServidorResource extends Resource
                 SelectFilter::make('setor_id')
                     ->label('Setor')
                     ->columnSpan(3)
+                    ->placeholder('Todos os setores')
                     ->options(fn (): array => static::setoresOptionsEscopados())
                     ->multiple()
                     ->query(function (Builder $query, array $data): Builder {
@@ -382,7 +389,7 @@ class ServidorResource extends Resource
                     ->columnSpan(3)
                     ->trueLabel('Com conta')
                     ->falseLabel('Sem conta')
-                    ->placeholder('Todas')
+                    ->placeholder('Todas as situações')
                     ->queries(
                         true: fn (Builder $query): Builder => $query->whereNotNull('user_id'),
                         false: fn (Builder $query): Builder => $query->whereNull('user_id'),
@@ -390,11 +397,11 @@ class ServidorResource extends Resource
                     ),
 
                 TernaryFilter::make('acesso_liberado')
-                    ->label('Liberação de acesso')
+                    ->label('Acesso ao sistema')
                     ->columnSpan(3)
-                    ->trueLabel('Liberados')
-                    ->falseLabel('Pendentes')
-                    ->placeholder('Todos')
+                    ->trueLabel('Liberado')
+                    ->falseLabel('Pendente')
+                    ->placeholder('Todos os servidores')
                     ->queries(
                         true: fn (Builder $query): Builder => $query->whereHas(
                             'user',
@@ -411,6 +418,7 @@ class ServidorResource extends Resource
                 SelectFilter::make('nivel_acesso')
                     ->label('Nível de acesso')
                     ->columnSpan(3)
+                    ->placeholder('Todos os níveis')
                     ->options(fn (): array => Role::query()->orderBy('name')->pluck('name', 'id')->all())
                     ->multiple()
                     ->query(function (Builder $query, array $data): Builder {
@@ -433,9 +441,9 @@ class ServidorResource extends Resource
                     ->columns(2)
                     ->schema([
                         DatePicker::make('data_inicio')
-                            ->label('Cadastrada a partir de'),
+                            ->label('Cadastrado a partir de'),
                         DatePicker::make('data_fim')
-                            ->label('Cadastrada até'),
+                            ->label('Cadastrado até'),
                     ])
                     ->query(fn (Builder $query, array $data): Builder => $query
                         ->when(
@@ -766,7 +774,7 @@ class ServidorResource extends Resource
 
     private static function aplicarFiltroQuantidadeMatriculas(Builder $query, mixed $quantidade): Builder
     {
-        if (! in_array($quantidade, ['uma_ou_mais', 'uma', 'duas', 'sem'], true)) {
+        if (! in_array($quantidade, ['uma_ou_mais', 'uma', 'duas', 'tres_ou_mais', 'sem'], true)) {
             return $query;
         }
 
@@ -774,7 +782,8 @@ class ServidorResource extends Resource
             return match ($quantidade) {
                 'uma_ou_mais' => $query->has('matriculas', '>=', 1),
                 'uma' => $query->has('matriculas', '=', 1),
-                'duas' => $query->has('matriculas', '>=', 2),
+                'duas' => $query->has('matriculas', '=', 2),
+                'tres_ou_mais' => $query->has('matriculas', '>=', 3),
                 'sem' => $query->doesntHave('matriculas'),
             };
         }
@@ -795,8 +804,14 @@ class ServidorResource extends Resource
             'duas' => $query->whereHas(
                 'matriculas',
                 fn (Builder $matriculas): Builder => static::restringirMatriculasAoEscopo($matriculas),
-                '>=',
+                '=',
                 2,
+            ),
+            'tres_ou_mais' => $query->whereHas(
+                'matriculas',
+                fn (Builder $matriculas): Builder => static::restringirMatriculasAoEscopo($matriculas),
+                '>=',
+                3,
             ),
             'sem' => $query->whereDoesntHave(
                 'matriculas',

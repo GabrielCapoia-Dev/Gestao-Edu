@@ -79,6 +79,7 @@ class UserTableFiltersTest extends TestCase
             'email_approved' => true,
         ]);
         $matchingUser->assignRole($secretarioRole);
+        $matchingUser->escolas()->syncWithoutDetaching([$escolaB->id]);
 
         $pendingUser = User::factory()->create([
             'setor_id' => $pedagogico->id,
@@ -94,7 +95,7 @@ class UserTableFiltersTest extends TestCase
         ]);
         $otherUser->assignRole($administrativoRole);
 
-        Livewire::actingAs($admin)
+        $component = Livewire::actingAs($admin)
             ->test(ListUsers::class)
             ->filterTable('setor_id', $pedagogico->id)
             ->filterTable('id_escola', $escolaA->id)
@@ -102,5 +103,15 @@ class UserTableFiltersTest extends TestCase
             ->filterTable('email_approved', true)
             ->assertCanSeeTableRecords([$matchingUser])
             ->assertCanNotSeeTableRecords([$pendingUser, $otherUser]);
+
+        $table = $component->instance()->getTable();
+        $this->assertSame('Todas as escolas', $table->getFilter('id_escola')->getPlaceholder());
+        $this->assertSame('Vínculo com servidor', $table->getFilter('sem_pessoa')->getLabel());
+        $this->assertSame('Situação do acesso', $table->getFilter('email_approved')->getLabel());
+
+        Livewire::actingAs($admin)
+            ->test(ListUsers::class)
+            ->filterTable('id_escola', $escolaB->id)
+            ->assertCanSeeTableRecords([$matchingUser, $otherUser]);
     }
 }

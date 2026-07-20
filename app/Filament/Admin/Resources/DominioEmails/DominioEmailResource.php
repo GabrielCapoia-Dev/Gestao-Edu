@@ -103,7 +103,11 @@ class DominioEmailResource extends Resource
                     ->offIcon('heroicon-s-x-mark')
             ])
             ->filters([
-                //
+                Tables\Filters\TernaryFilter::make('status')
+                    ->label('Status')
+                    ->trueLabel('Ativos')
+                    ->falseLabel('Inativos')
+                    ->placeholder('Todos os domínios'),
             ])
             ->recordActions([
                 EditAction::make(),

@@ -214,22 +214,46 @@ class PessoaHubFilamentTest extends TestCase
 
         $semCargo = $this->criarServidor('Pessoa Sem Cargo', $escola, $setor);
 
-        Livewire::actingAs($usuario)
+        $tresMatriculas = $this->criarServidor('Pessoa com Três Matrículas', $escola, $setor);
+        foreach (range(1, 3) as $indice) {
+            PessoaMatricula::query()->create([
+                'servidor_id' => $tresMatriculas->id,
+                'matricula' => "FILTRO-TRES-{$indice}",
+                'turno' => 'manha',
+            ]);
+        }
+
+        $componente = Livewire::actingAs($usuario)
             ->test(ManageServidores::class)
             ->assertTableFilterExists('cargo')
             ->assertTableFilterExists('quantidade_matriculas')
             ->assertTableFilterExists('turno_matricula')
             ->assertTableFilterExists('setor_id')
             ->assertTableFilterExists('periodo_cadastro')
-            ->filterTable('quantidade_matriculas', 'uma_ou_mais')
-            ->assertCanSeeTableRecords([$professor, $gestora, $manutencao])
-            ->assertCanNotSeeTableRecords([$semCargo]);
+            ->filterTable('quantidade_matriculas', 'uma')
+            ->assertCanSeeTableRecords([$professor, $manutencao])
+            ->assertCanNotSeeTableRecords([$gestora, $tresMatriculas, $semCargo]);
+
+        $filtroQuantidade = $componente->instance()->getTable()->getFilter('quantidade_matriculas');
+        $this->assertSame([
+            'uma' => 'Uma matrícula',
+            'duas' => 'Duas matrículas',
+            'tres_ou_mais' => 'Três ou mais matrículas',
+            'sem' => 'Sem matrícula',
+        ], $filtroQuantidade->getOptions());
+        $this->assertSame('Todas as quantidades', $filtroQuantidade->getPlaceholder());
 
         Livewire::actingAs($usuario)
             ->test(ManageServidores::class)
             ->filterTable('quantidade_matriculas', 'duas')
             ->assertCanSeeTableRecords([$gestora])
-            ->assertCanNotSeeTableRecords([$professor, $manutencao, $semCargo]);
+            ->assertCanNotSeeTableRecords([$professor, $manutencao, $tresMatriculas, $semCargo]);
+
+        Livewire::actingAs($usuario)
+            ->test(ManageServidores::class)
+            ->filterTable('quantidade_matriculas', 'tres_ou_mais')
+            ->assertCanSeeTableRecords([$tresMatriculas])
+            ->assertCanNotSeeTableRecords([$professor, $gestora, $manutencao, $semCargo]);
 
         Livewire::actingAs($usuario)
             ->test(ManageServidores::class)
