@@ -26,8 +26,8 @@
 
     .fi-resource-pedidos.fi-resource-list-records-page .fi-ta-content {
         display: grid;
-        gap: 0.75rem;
-        padding: 0.75rem;
+        gap: 0.5rem;
+        padding: 0.5rem;
     }
 
     .fi-resource-pedidos.fi-resource-list-records-page .fi-ta-content-header {
@@ -75,9 +75,9 @@
 
     .fi-resource-pedidos.fi-resource-list-records-page .fi-ta-record-content {
         display: grid;
-        gap: 0.8rem;
+        gap: 0.5rem;
         width: 100%;
-        padding: 0.85rem;
+        padding: 0.65rem;
     }
 
     .fi-resource-pedidos.fi-resource-list-records-page .fi-ta-record-content-ctn > .fi-ta-actions {
@@ -91,9 +91,14 @@
     .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-top.fi-ta-split {
         align-items: center;
         justify-content: space-between;
-        gap: 0.75rem 1rem;
-        padding-bottom: 0.75rem;
+        gap: 0.5rem 0.75rem;
+        padding-bottom: 0.5rem;
         border-bottom: 1px solid var(--pedido-card-border);
+    }
+
+    .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-school-summary {
+        flex: 1 1 22rem;
+        min-width: min(16rem, 100%);
     }
 
     .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-comment-slot {
@@ -104,11 +109,11 @@
     .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-comment,
     .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-description {
         display: grid;
-        gap: 0.3rem;
+        gap: 0.2rem;
         min-width: 0;
         border: 1px solid color-mix(in srgb, var(--pedido-card-border) 82%, transparent);
         border-radius: 0.5rem;
-        padding: 0.65rem 0.75rem;
+        padding: 0.5rem 0.65rem;
     }
 
     .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-comment {
@@ -202,11 +207,11 @@
 
     .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-main-grid,
     .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-meta-grid {
-        gap: 0.7rem 0.85rem;
+        gap: 0.4rem 0.75rem;
     }
 
     .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-meta-grid {
-        padding-top: 0.2rem;
+        padding-top: 0;
     }
 
     .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-actions {
@@ -219,13 +224,13 @@
 
     .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-actions--footer {
         justify-content: flex-start;
-        padding-top: 0.75rem;
+        padding-top: 0.5rem;
         border-top: 1px solid var(--pedido-card-border);
     }
 
     .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-actions .fi-btn {
         max-width: 100%;
-        min-height: 2.25rem;
+        min-height: 2rem;
         border-radius: 0.5rem;
         white-space: normal;
     }
@@ -263,6 +268,11 @@
     .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-field--school .fi-ta-text-item {
         color: var(--gray-950);
         font-weight: var(--font-weight-medium);
+    }
+
+    .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-meta-grid .fi-ta-text-item {
+        font-size: var(--text-xs);
+        line-height: var(--text-xs--line-height);
     }
 
     .fi-resource-pedidos.fi-resource-list-records-page .pedido-card-field--additionals .fi-badge {

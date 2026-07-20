@@ -35,7 +35,6 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Colors\Color;
 use Filament\Tables\Columns\Layout\Grid;
 use Filament\Tables\Columns\Layout\Split;
-use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Columns\Layout\View as LayoutView;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
@@ -56,8 +55,8 @@ class PedidosTable
         $service = app(PedidoService::class);
 
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query
-                ->with([
+            ->modifyQueryUsing(fn (Builder $query): Builder => static::ordenarComConcluidosAoFinal(
+                $query->with([
                     'pedidoPrincipal.tipoManutencao',
                     'pedidoPrincipal.tipoStatus',
                     'pedidoPrincipal.escola',
@@ -77,8 +76,8 @@ class PedidosTable
                     'comentarioGestorUsuario',
                     'ultimoFeedback.itens.problema',
                     'feedbackItens.feedback.itens.problema',
-                ])
-                ->withCount(['pedidosAdicionais', 'problemas']))
+                ])->withCount(['pedidosAdicionais', 'problemas'])
+            ))
             ->paginated([10, 25, 50, 100])
             ->defaultPaginationPageOption(10)
             ->defaultSort('updated_at', 'desc')
@@ -300,8 +299,15 @@ class PedidosTable
                     ->grow(false)
                     ->extraAttributes(['class' => 'pedido-card-actions-slot']),
 
-                LayoutView::make('filament.admin.resources.pedidos.tables.pedido-card-comment')
-                    ->extraAttributes(['class' => 'pedido-card-comment-slot']),
+                TextColumn::make('escola.nome')
+                    ->label('Escola')
+                    ->description('Escola solicitante', position: 'above')
+                    ->icon('heroicon-o-building-office-2')
+                    ->state(fn (Pedido $record): ?string => static::nomeEscolaDoPedido($record))
+                    ->placeholder('Escola não informada')
+                    ->sortable()
+                    ->wrap()
+                    ->extraAttributes(['class' => 'pedido-card-field pedido-card-field--school pedido-card-school-summary'], merge: true),
 
                 TextColumn::make('numero_protocolo')
                     ->label('Protocolo')
@@ -318,112 +324,6 @@ class PedidosTable
             ])
                 ->from('md')
                 ->extraAttributes(['class' => 'pedido-card-top']),
-
-            Stack::make([
-                TextColumn::make('pedidoPrincipal.numero_protocolo')
-                    ->label('Pedido original')
-                    ->description('Pedido original', position: 'above')
-                    ->badge()
-                    ->color('gray')
-                    ->placeholder('Pedido principal')
-                    ->wrap()
-                    ->toggleable(isToggledHiddenByDefault: true)
-                    ->extraAttributes(['class' => 'pedido-card-field'], merge: true),
-            ])
-                ->extraAttributes(['class' => 'pedido-card-original-stack']),
-
-            Grid::make([
-                'default' => 1,
-                'md' => 2,
-                'xl' => 4,
-            ])
-                ->schema([
-                    TextColumn::make('tipoManutencao.nome')
-                        ->label('Tipo')
-                        ->description('Tipo', position: 'above')
-                        ->sortable()
-                        ->color('gray')
-                        ->wrap()
-                        ->extraAttributes(['class' => 'pedido-card-field'], merge: true),
-
-                    TextColumn::make('escola.nome')
-                        ->label('Escola')
-                        ->description('Escola', position: 'above')
-                        ->icon('heroicon-o-building-office-2')
-                        ->state(fn (Pedido $record): ?string => static::nomeEscolaDoPedido($record))
-                        ->placeholder('Escola não informada')
-                        ->sortable()
-                        ->wrap()
-                        ->extraAttributes(['class' => 'pedido-card-field pedido-card-field--school'], merge: true),
-
-                    TextColumn::make('setor.nome_completo')
-                        ->label('Setor atual')
-                        ->description('Setor atual', position: 'above')
-                        ->icon('heroicon-o-map-pin')
-                        ->badge()
-                        ->color('primary')
-                        ->placeholder('Setor não informado')
-                        ->wrap()
-                        ->extraAttributes(['class' => 'pedido-card-field pedido-card-field--sector'], merge: true),
-
-                    TextColumn::make('setorOrigem.nome_completo')
-                        ->label('Setor de origem')
-                        ->description('Setor de origem', position: 'above')
-                        ->icon('heroicon-o-arrow-uturn-left')
-                        ->placeholder('Origem não informada')
-                        ->wrap()
-                        ->extraAttributes(['class' => 'pedido-card-field pedido-card-field--sector'], merge: true),
-
-                    TextColumn::make('acesso_operacional')
-                        ->label('Seu acesso')
-                        ->description('Seu acesso', position: 'above')
-                        ->badge()
-                        ->icon(fn (Pedido $record): string => static::iconeAcessoOperacional($record, $user))
-                        ->state(fn (Pedido $record): string => static::rotuloAcessoOperacional($record, $user))
-                        ->color(fn (Pedido $record): string => static::corAcessoOperacional($record, $user))
-                        ->wrap()
-                        ->extraAttributes(['class' => 'pedido-card-field pedido-card-field--access'], merge: true),
-
-                    TextColumn::make('pedidos_adicionais_count')
-                        ->label('Adicionais')
-                        ->description('Adicionais', position: 'above')
-                        ->badge()
-                        ->icon(fn (Pedido $record): ?string => (int) ($record->pedidos_adicionais_count ?? 0) > 0
-                            ? 'heroicon-o-plus-circle'
-                            : null)
-                        ->color(fn (Pedido $record): string => (int) ($record->pedidos_adicionais_count ?? 0) > 0 ? 'warning' : 'gray')
-                        ->state(fn (Pedido $record): string => (int) ($record->pedidos_adicionais_count ?? 0).' adicional(is)')
-                        ->sortable(['pedidos_adicionais_count'])
-                        ->weight('bold')
-                        ->wrap()
-                        ->toggleable()
-                        ->extraAttributes(['class' => 'pedido-card-field pedido-card-field--additionals'], merge: true),
-
-                    TextColumn::make('tipoStatus.nome')
-                        ->label('Status')
-                        ->description('Status', position: 'above')
-                        ->badge()
-                        ->formatStateUsing(fn (Pedido $record): string => static::statusListagem($record))
-                        ->color(fn (Pedido $record) => Color::hex(static::corStatusListagem($record)))
-                        ->wrap()
-                        ->extraAttributes(['class' => 'pedido-card-field pedido-card-field--status'], merge: true),
-
-                    TextColumn::make('nivel_prioridade')
-                        ->label('Prioridade')
-                        ->description('Prioridade', position: 'above')
-                        ->badge()
-                        ->color(fn (Pedido $record) => Color::hex(
-                            match ($record->nivel_prioridade?->value) {
-                                'Emergencial' => '#a10000',
-                                'Corretivo' => '#973f00',
-                                'Preventivo' => '#013891',
-                                default => '#2b2b2b',
-                            }
-                        ))
-                        ->wrap()
-                        ->extraAttributes(['class' => 'pedido-card-field pedido-card-field--priority'], merge: true),
-                ])
-                ->extraAttributes(['class' => 'pedido-card-main-grid']),
 
             LayoutView::make('filament.admin.resources.pedidos.tables.pedido-card-description')
                 ->extraAttributes(['class' => 'pedido-card-description-slot']),
@@ -529,7 +429,23 @@ class PedidosTable
                 ->sortable(['updated_at'])
                 ->extraAttributes(['class' => 'pedido-card-sort-only'], merge: true),
 
+            TextColumn::make('pedidos_adicionais_count')
+                ->label('Quantidade de adicionais')
+                ->sortable(['pedidos_adicionais_count'])
+                ->extraAttributes(['class' => 'pedido-card-sort-only'], merge: true),
+
         ];
+    }
+
+    public static function ordenarComConcluidosAoFinal(Builder $query): Builder
+    {
+        return $query->orderBy(
+            TipoStatus::query()
+                ->select('finaliza_pedido')
+                ->whereColumn('tipo_status.id', 'pedidos.tipo_status_id')
+                ->limit(1),
+            'asc',
+        );
     }
 
     public static function actions(?User $user, PedidoService $service): array

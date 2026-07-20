@@ -3,20 +3,21 @@
 namespace App\Filament\Admin\Resources\Pedidos\Pages;
 
 use App\Filament\Admin\Resources\Pedidos\PedidoResource;
+use App\Filament\Admin\Resources\Pedidos\Tables\PedidosTable;
 use App\Models\Pedido;
 use App\Models\TipoStatus;
 use App\Models\User;
 use App\Services\PedidoService;
 use App\Services\ProfilePreviewService;
-use Illuminate\Support\Facades\Gate;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
+use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
 use Livewire\Attributes\On;
-use Illuminate\Contracts\View\View;
 
 class ListPedidos extends ListRecords
 {
@@ -28,7 +29,6 @@ class ListPedidos extends ListRecords
     {
         $this->dispatch('refreshComponent');
     }
-
 
     public function getHeader(): ?View
     {
@@ -67,7 +67,7 @@ class ListPedidos extends ListRecords
                 ->icon('heroicon-o-star')
                 ->visible(fn () => Gate::forUser($user)->allows('viewFeedback', Pedido::class))
                 ->color('warning')
-                ->url(fn() => route('filament.admin.pages.feedback-pedidos')),
+                ->url(fn () => route('filament.admin.pages.feedback-pedidos')),
         ];
     }
 
@@ -95,11 +95,15 @@ class ListPedidos extends ListRecords
 
         $tabs = [
             'todos' => Tab::make('Todos')
-                ->modifyQueryUsing(fn($query) => $query
-                    ->where('is_pedido_adicional', false)
-                    ->reorder()
-                    ->orderByDesc('updated_at'))
-                ->badge(fn() => (clone $tableQuery)->where('is_pedido_adicional', false)->count())
+                ->modifyQueryUsing(function (Builder $query): Builder {
+                    $query
+                        ->where('is_pedido_adicional', false)
+                        ->reorder();
+
+                    return PedidosTable::ordenarComConcluidosAoFinal($query)
+                        ->orderByDesc('updated_at');
+                })
+                ->badge(fn () => (clone $tableQuery)->where('is_pedido_adicional', false)->count())
                 ->extraAttributes([
                     'class' => $this->tabClassesForAll(),
                 ]),
@@ -137,7 +141,7 @@ class ListPedidos extends ListRecords
         ];
 
         $statusIdsOrdenados = collect($ordemStatus)
-            ->map(fn(string $nome) => $service->statusPorNome($nome))
+            ->map(fn (string $nome) => $service->statusPorNome($nome))
             ->filter()
             ->pluck('id')
             ->all();
@@ -145,7 +149,7 @@ class ListPedidos extends ListRecords
         $statuses = TipoStatus::query()
             ->where('ativo', true)
             ->get()
-            ->sortBy(fn(TipoStatus $status): int => array_search($status->id, $statusIdsOrdenados, true) !== false
+            ->sortBy(fn (TipoStatus $status): int => array_search($status->id, $statusIdsOrdenados, true) !== false
                 ? array_search($status->id, $statusIdsOrdenados, true)
                 : 999);
         $statusManutencao = $service->statusPorNome($ordemStatus[3]);

@@ -1428,10 +1428,51 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
             ->assertCanSeeTableRecords([$principalComDois, $principalComUm])
             ->assertCanNotSeeTableRecords([$principalSemAdicional, $adicionalUm])
             ->assertSeeHtml('pedido-card--has-additionals')
-            ->assertSeeHtml('pedido-card-field--additionals')
+            ->assertSeeHtml('pedido-card-school-summary')
             ->sortTable('tipo_pedido_sort', 'asc')
             ->sortTable('pedidos_adicionais_count', 'desc')
             ->assertCanSeeTableRecords([$principalComDois, $principalComUm], inOrder: true);
+    }
+
+    public function test_listagem_mantem_concluidos_por_ultimo_e_exibe_resumo_compacto_da_avaliacao(): void
+    {
+        $usuario = $this->usuarioComPermissoes([
+            'Listar Pedidos',
+            'Listar Todos os Pedidos',
+            'Visualizar Pedidos por Status',
+        ]);
+
+        $pendenteAntigo = $this->pedido(status: 'Em Aberto', setor: $this->educacao, escola: $this->escola);
+        $pendenteRecente = $this->pedido(status: 'Em Manutenção', setor: $this->educacao, escola: $this->escola);
+        $concluidoRecente = $this->pedido(status: 'Concluído', setor: $this->educacao, escola: $this->escola);
+
+        $pendenteAntigo->forceFill(['updated_at' => '2026-07-18 10:00:00'])->save();
+        $pendenteRecente->forceFill(['updated_at' => '2026-07-19 10:00:00'])->save();
+        $concluidoRecente->forceFill([
+            'data_entrega' => '2026-07-20',
+            'updated_at' => '2026-07-20 10:00:00',
+        ])->save();
+        $concluidoRecente->feedbacks()->create([
+            'valor' => 5,
+            'descricao' => 'Serviço concluído e aprovado pela escola.',
+            'reabrir_pedido' => false,
+        ]);
+
+        Livewire::actingAs($usuario)
+            ->test(ListPedidos::class)
+            ->set('activeTab', 'todos')
+            ->sortTable('created_at_sort', 'desc')
+            ->assertCanSeeTableRecords([
+                $pendenteRecente,
+                $pendenteAntigo,
+                $concluidoRecente,
+            ], inOrder: true)
+            ->assertSee('Escola solicitante')
+            ->assertSee('Descrição final da avaliação')
+            ->assertSee('Serviço concluído e aprovado pela escola.')
+            ->assertSee('Ainda sem avaliação final.')
+            ->assertDontSee('Pedido de teste')
+            ->assertDontSee('Sem comentário');
     }
 
     public function test_aba_adicionais_aparece_depois_de_em_manutencao(): void
