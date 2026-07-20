@@ -139,6 +139,34 @@
     border-radius: 50%;
 }
 
+.topbar-user-name {
+    display: inline-flex;
+    min-width: 0;
+    max-width: min(15rem, 24vw);
+    align-items: center;
+    color: var(--edu-white);
+    font-size: 0.8rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.topbar-user-name__value {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+    .topbar-user-name {
+        max-width: min(9rem, 38vw);
+        font-size: 0.72rem;
+    }
+
+    .topbar-user-name--with-online-users {
+        max-width: min(6.5rem, 22vw);
+    }
+}
+
 .online-users-wrapper {
     position: relative;
     display: inline-flex;

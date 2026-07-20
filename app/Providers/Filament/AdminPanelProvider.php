@@ -233,6 +233,7 @@ class AdminPanelProvider extends PanelProvider
                     }
 
                     return view('filament.partials.topbar-user-menu-before', [
+                        'userName' => $user?->name,
                         'showOnlineUsers' => $user ? Gate::forUser($user)->allows('viewOnlineUsers', User::class) : false,
                         'showNotifications' => $showNotifications,
                     ]);
