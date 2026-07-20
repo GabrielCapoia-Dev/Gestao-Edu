@@ -181,26 +181,9 @@
 
 <x-filament-panels::page>
     <div class="welcome-root">
-        <div class="hero">
-            <div class="hero-bg-grid"></div>
-            <div class="hero-bg-glow"></div>
+        <livewire:home.avisos-banner lazy />
 
-            <div class="hero-inner">
-                <div class="hero-eyebrow">
-                    <span class="pulse-dot"></span>
-                    Sistema ativo
-                </div>
-
-                <h1 class="hero-title">
-                    Bem-vindo ao<br>
-                    <span class="hero-title-accent">Gestão Edu</span>
-                </h1>
-
-                <p class="hero-subtitle">
-                    Central de gestão escolar. Acesse rapidamente os módulos do sistema abaixo.
-                </p>
-            </div>
-        </div>
+        <livewire:home.agenda-proximos-dias lazy />
 
         <div class="nav-section">
             <p class="nav-label">Acesso rápido</p>

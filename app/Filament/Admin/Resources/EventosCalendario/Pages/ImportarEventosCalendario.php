@@ -1,0 +1,167 @@
+<?php
+
+namespace App\Filament\Admin\Resources\EventosCalendario\Pages;
+
+use App\Filament\Admin\Resources\EventosCalendario\EventoCalendarioResource;
+use App\Models\ImportacaoEventoCalendario;
+use App\Services\Dashboard\Imports\EventoCalendarioImportService;
+use Filament\Notifications\Notification;
+use Filament\Resources\Pages\Page;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Collection;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\WithFileUploads;
+
+class ImportarEventosCalendario extends Page
+{
+    use WithFileUploads;
+
+    protected static string $resource = EventoCalendarioResource::class;
+
+    protected string $view = 'filament.admin.resources.eventos-calendario.pages.importar-eventos-calendario';
+
+    protected static ?string $title = 'Importar eventos';
+
+    public $arquivo = null;
+
+    public ?int $importacaoId = null;
+
+    public static function canAccess(array $parameters = []): bool
+    {
+        $user = EventoCalendarioResource::usuarioEfetivo();
+
+        return $user && Gate::forUser($user)->allows('create', ImportacaoEventoCalendario::class);
+    }
+
+    public function preVisualizar(): void
+    {
+        $this->validate([
+            'arquivo' => [
+                'required',
+                'file',
+                'max:'.(int) config('dashboard.imports.max_file_size_kb', 5120),
+                'extensions:xlsx,csv',
+                'mimes:xlsx,csv,txt',
+            ],
+        ], [
+            'arquivo.required' => 'Selecione uma planilha.',
+            'arquivo.max' => 'A planilha deve possuir no máximo 5 MB.',
+            'arquivo.mimes' => 'Envie um arquivo XLSX ou CSV.',
+        ]);
+
+        $user = EventoCalendarioResource::usuarioEfetivo();
+        abort_unless($user && $this->arquivo instanceof TemporaryUploadedFile, 403);
+
+        $importacao = app(EventoCalendarioImportService::class)->preview($this->arquivo, $user);
+        $this->importacaoId = (int) $importacao->getKey();
+        $this->arquivo = null;
+
+        Notification::make()
+            ->title($importacao->total_invalidas > 0 ? 'Planilha possui linhas inválidas' : 'Pré-visualização pronta')
+            ->body("{$importacao->total_validas} linha(s) válida(s) e {$importacao->total_invalidas} inválida(s).")
+            ->color($importacao->total_invalidas > 0 ? 'warning' : 'success')
+            ->send();
+    }
+
+    public function confirmar(): void
+    {
+        $importacao = $this->importacaoAutorizada();
+        $user = EventoCalendarioResource::usuarioEfetivo();
+        abort_unless($user, 403);
+
+        app(EventoCalendarioImportService::class)->confirm($importacao, $user);
+
+        Notification::make()->title('Importação concluída')->success()->send();
+    }
+
+    public function cancelar(): void
+    {
+        $importacao = $this->importacaoAutorizada();
+        $user = EventoCalendarioResource::usuarioEfetivo();
+        abort_unless($user, 403);
+
+        app(EventoCalendarioImportService::class)->cancel($importacao, $user);
+        $this->importacaoId = null;
+        Notification::make()->title('Importação cancelada')->success()->send();
+    }
+
+    public function baixarModelo()
+    {
+        $user = EventoCalendarioResource::usuarioEfetivo();
+        abort_unless($user, 403);
+
+        return app(EventoCalendarioImportService::class)->template($user);
+    }
+
+    public function abrirImportacao(int $id): void
+    {
+        $user = EventoCalendarioResource::usuarioEfetivo();
+        $importacao = ImportacaoEventoCalendario::query()->find($id);
+        abort_unless($user && $importacao && Gate::forUser($user)->allows('view', $importacao), 404);
+
+        $this->importacaoId = $id;
+    }
+
+    public function novaImportacao(): void
+    {
+        $this->importacaoId = null;
+        $this->arquivo = null;
+        $this->resetValidation();
+    }
+
+    public function podeBaixarModelo(): bool
+    {
+        $user = EventoCalendarioResource::usuarioEfetivo();
+
+        return $user && Gate::forUser($user)->allows('exportTemplate', ImportacaoEventoCalendario::class);
+    }
+
+    public function getHistoricoProperty(): Collection
+    {
+        $user = EventoCalendarioResource::usuarioEfetivo();
+
+        if (! $user || ! Gate::forUser($user)->allows('viewAny', ImportacaoEventoCalendario::class)) {
+            return collect();
+        }
+
+        $query = ImportacaoEventoCalendario::query()
+            ->with('usuario:id,name')
+            ->latest();
+
+        if (! app(\App\Services\PessoaScopeService::class)->hasGlobalAccess($user)) {
+            $query->where('usuario_id', $user->getKey());
+        }
+
+        return $query->limit(25)->get();
+    }
+
+    public function getImportacaoProperty(): ?ImportacaoEventoCalendario
+    {
+        if (! $this->importacaoId) {
+            return null;
+        }
+
+        $user = EventoCalendarioResource::usuarioEfetivo();
+
+        if (! $user) {
+            return null;
+        }
+
+        $importacao = ImportacaoEventoCalendario::query()
+            ->with('linhas')
+            ->find($this->importacaoId);
+
+        return $importacao && Gate::forUser($user)->allows('view', $importacao)
+            ? $importacao
+            : null;
+    }
+
+    private function importacaoAutorizada(): ImportacaoEventoCalendario
+    {
+        $importacao = $this->importacao;
+        $user = EventoCalendarioResource::usuarioEfetivo();
+        abort_unless($user && $importacao && Gate::forUser($user)->allows('view', $importacao), 404);
+
+        return $importacao;
+    }
+}

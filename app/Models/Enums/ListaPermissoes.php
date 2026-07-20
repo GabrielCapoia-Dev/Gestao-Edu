@@ -43,6 +43,8 @@ enum ListaPermissoes: string
     case ListarSetores = 'listar setores';
     case ListarServidores = 'listar servidores';
     case ListarPessoas = 'listar pessoas';
+    case ListarAvisos = 'listar avisos';
+    case ListarEventos = 'listar eventos';
 
     case CriarEmpresaContratada = 'criar empresa contratada';
     case CriarAlunos = 'criar alunos';
@@ -80,6 +82,8 @@ enum ListaPermissoes: string
     case CriarSetores = 'criar setores';
     case CriarServidores = 'criar servidores';
     case CriarPessoas = 'criar pessoas';
+    case CriarAvisos = 'criar avisos';
+    case CriarEventos = 'criar eventos';
 
     case EditarEmpresaContratada = 'editar empresa contratada';
     case EditarAlunos = 'editar alunos';
@@ -121,9 +125,13 @@ enum ListaPermissoes: string
     case EditarPessoas = 'editar pessoas';
     case EditarDadosDePessoas = 'editar dados de pessoas';
     case EditarTurmasEComponentesDePessoas = 'editar turmas e componentes de pessoas';
+    case EditarAvisos = 'editar avisos';
+    case EditarEventos = 'editar eventos';
 
     case GerenciarFuncoesDeServidores = 'gerenciar funções de servidores';
     case GerenciarVinculosEstruturaisDePessoas = 'gerenciar vínculos estruturais de pessoas';
+    case GerenciarPublicoAlvoDeAvisos = 'gerenciar público-alvo de avisos';
+    case GerenciarPublicoAlvoDeEventos = 'gerenciar público-alvo de eventos';
     case TransferirProfessores = 'transferir professores';
     case DesativarProfessores = 'desativar professores';
 
@@ -164,6 +172,8 @@ enum ListaPermissoes: string
     case ExcluirTiposDeAvaliacoesEmMassa = 'excluir tipos de avaliações em massa';
     case ExcluirSetoresEmMassa = 'excluir setores em massa';
     case ExcluirItensEmMassa = 'excluir itens em massa';
+    case ExcluirAvisos = 'excluir avisos';
+    case ExcluirEventos = 'excluir eventos';
 
     case ExportarAlunos = 'exportar alunos';
     case ExportarModeloDeImportacaoDeAlunos = 'exportar modelo de importacao de alunos';
@@ -174,6 +184,8 @@ enum ListaPermissoes: string
     case ExportarProfessores = 'exportar professores';
     case ExportarArquivosPedido = 'exportar arquivos pedido';
     case ExportarComponenteCurricular = 'exportar componente curricular';
+    case ExportarModeloDeImportacaoDeEventos = 'exportar modelo de importação de eventos';
+    case ImportarEventosPorPlanilha = 'importar eventos por planilha';
 
     case VisualizarDetalhesDeAluno = 'visualizar detalhes de aluno';
     case VisualizarProfessores = 'visualizar professores';
@@ -204,6 +216,8 @@ enum ListaPermissoes: string
     case VisualizarNotificacaoPedidoAdicionalCriado = 'visualizar notificação: pedido adicional criado';
     case VisualizarNotificacaoBalancoDeEstoque = 'visualizar notificação: balanço de estoque';
     case VisualizarTelaDeInicio = 'visualizar tela de inicio';
+    case PublicarAvisos = 'publicar avisos';
+    case PublicarEventos = 'publicar eventos';
 
     case AcessarPainel = 'acessar painel';
     case AcessarEscopoGlobalDeSetores = 'acessar escopo global de setores';
@@ -279,6 +293,8 @@ enum ListaPermissoes: string
             self::ListarSetores => 'Listar Setores',
             self::ListarServidores => 'Listar Servidores',
             self::ListarPessoas => 'Listar Pessoas',
+            self::ListarAvisos => 'Listar Avisos',
+            self::ListarEventos => 'Listar Eventos',
 
             self::CriarEmpresaContratada => 'Criar Empresa Contratada',
             self::CriarAlunos => 'Criar Alunos',
@@ -316,6 +332,8 @@ enum ListaPermissoes: string
             self::CriarSetores => 'Criar Setores',
             self::CriarServidores => 'Criar Servidores',
             self::CriarPessoas => 'Criar Pessoas',
+            self::CriarAvisos => 'Criar Avisos',
+            self::CriarEventos => 'Criar Eventos',
 
             self::EditarEmpresaContratada => 'Editar Empresa Contratada',
             self::EditarAlunos => 'Editar Alunos',
@@ -357,9 +375,13 @@ enum ListaPermissoes: string
             self::EditarPessoas => 'Editar Pessoas',
             self::EditarDadosDePessoas => 'Editar Dados de Pessoas',
             self::EditarTurmasEComponentesDePessoas => 'Editar Turmas e Componentes de Pessoas',
+            self::EditarAvisos => 'Editar Avisos',
+            self::EditarEventos => 'Editar Eventos',
 
             self::GerenciarFuncoesDeServidores => 'Gerenciar Funções de Servidores',
             self::GerenciarVinculosEstruturaisDePessoas => 'Gerenciar Vínculos Estruturais de Pessoas',
+            self::GerenciarPublicoAlvoDeAvisos => 'Gerenciar Público-alvo de Avisos',
+            self::GerenciarPublicoAlvoDeEventos => 'Gerenciar Público-alvo de Eventos',
             self::TransferirProfessores => 'Transferir Professores',
             self::DesativarProfessores => 'Desativar Professores',
 
@@ -400,6 +422,8 @@ enum ListaPermissoes: string
             self::ExcluirTiposDeAvaliacoesEmMassa => 'Excluir Tipos de Avaliações em Massa',
             self::ExcluirSetoresEmMassa => 'Excluir Setores em Massa',
             self::ExcluirItensEmMassa => 'Excluir Itens em Massa',
+            self::ExcluirAvisos => 'Excluir Avisos',
+            self::ExcluirEventos => 'Excluir Eventos',
 
             self::ExportarAlunos => 'Exportar Alunos',
             self::ExportarModeloDeImportacaoDeAlunos => 'Exportar Modelo de Importacao de Alunos',
@@ -410,6 +434,8 @@ enum ListaPermissoes: string
             self::ExportarProfessores => 'Exportar Professores',
             self::ExportarArquivosPedido => 'Exportar Arquivos Pedido',
             self::ExportarComponenteCurricular => 'Exportar Componente Curricular',
+            self::ExportarModeloDeImportacaoDeEventos => 'Exportar Modelo de Importação de Eventos',
+            self::ImportarEventosPorPlanilha => 'Importar Eventos por Planilha',
 
             self::VisualizarDetalhesDeAluno => 'Visualizar Detalhes de Aluno',
             self::VisualizarProfessores => 'Visualizar Professores',
@@ -440,6 +466,8 @@ enum ListaPermissoes: string
             self::VisualizarNotificacaoPedidoAdicionalCriado => 'Visualizar Notificação: Pedido Adicional Criado',
             self::VisualizarNotificacaoBalancoDeEstoque => 'Visualizar Notificação: Balanço de Estoque',
             self::VisualizarTelaDeInicio => 'Visualizar Tela de Inicio',
+            self::PublicarAvisos => 'Publicar Avisos',
+            self::PublicarEventos => 'Publicar Eventos',
 
             self::AcessarPainel => 'Acessar Painel',
             self::AcessarEscopoGlobalDeSetores => 'Acessar Escopo Global de Setores',
