@@ -4,7 +4,6 @@ namespace App\Filament\Admin\Resources\EventosCalendario\Tables;
 
 use App\Models\Enums\DashboardPrioridade;
 use App\Models\Enums\EventoCalendarioCategoria;
-use App\Models\Enums\EventoCalendarioStatus;
 use App\Models\EventoCalendario;
 use App\Models\User;
 use App\Services\Dashboard\EventoCalendarioService;
@@ -12,8 +11,8 @@ use App\Services\Dashboard\PublicoAlvoOptionsService;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
-use Filament\Notifications\Notification;
 use Filament\Forms\Components\DatePicker;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
@@ -32,14 +31,29 @@ class EventosCalendarioTable
                 TextColumn::make('titulo')->label('Título')->searchable()->sortable()->wrap(),
                 TextColumn::make('categoria')->label('Categoria')->badge()
                     ->formatStateUsing(fn ($state): string => $state?->label() ?? (string) $state),
-                TextColumn::make('status')->label('Status')->badge()
-                    ->formatStateUsing(fn (EventoCalendario $record): string => $record->statusEfetivo()->label()),
                 TextColumn::make('prioridade')->label('Prioridade')->badge()
                     ->formatStateUsing(fn ($state): string => $state?->label() ?? (string) $state),
-                TextColumn::make('data_inicio')->label('Início')->dateTime('d/m/Y H:i')->sortable(),
-                TextColumn::make('data_fim')->label('Fim')->dateTime('d/m/Y H:i')->sortable(),
-                TextColumn::make('escola.nome')->label('Escola')->placeholder('-')->toggleable(),
-                TextColumn::make('setor.nome')->label('Setor')->placeholder('-')->toggleable(),
+                TextColumn::make('data_inicio')->label('Data e horário')
+                    ->formatStateUsing(fn (EventoCalendario $record): string => sprintf(
+                        '%s, %s–%s',
+                        $record->data_inicio->format('d/m/Y'),
+                        $record->data_inicio->format('H:i'),
+                        $record->data_fim->format('H:i'),
+                    ))
+                    ->sortable(),
+                TextColumn::make('distribuicao_escolas')
+                    ->label('Escolas')
+                    ->getStateUsing(function (EventoCalendario $record): string {
+                        if ($record->enviar_todas_escolas) {
+                            return 'Todas as escolas do escopo';
+                        }
+
+                        return $record->escolasAgendadas
+                            ->pluck('escola.nome')
+                            ->filter()
+                            ->join(', ');
+                    })
+                    ->wrap(),
                 IconColumn::make('ativo')->label('Publicado')->boolean(),
                 TextColumn::make('criadoPor.name')->label('Criado por')->placeholder('-')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('atualizadoPor.name')->label('Alterado por')->placeholder('-')->toggleable(isToggledHiddenByDefault: true),
@@ -49,18 +63,29 @@ class EventosCalendarioTable
                 TernaryFilter::make('ativo')->label('Publicação')
                     ->trueLabel('Publicados')->falseLabel('Não publicados')->placeholder('Todos'),
                 SelectFilter::make('categoria')->label('Categoria')
-                    ->options(collect(EventoCalendarioCategoria::cases())->mapWithKeys(fn ($item): array => [$item->value => $item->label()])->all()),
-                SelectFilter::make('status')->label('Status')
-                    ->options(collect(EventoCalendarioStatus::cases())->mapWithKeys(fn ($item): array => [$item->value => $item->label()])->all()),
+                    ->options(collect(EventoCalendarioCategoria::cases())->mapWithKeys(
+                        fn ($item): array => [$item->value => $item->label()],
+                    )->all()),
                 SelectFilter::make('prioridade')->label('Prioridade')->options(DashboardPrioridade::options()),
-                SelectFilter::make('escola_id')->label('Escola')
+                SelectFilter::make('escola_agendada_id')->label('Escola')
                     ->options(fn (): array => $user ? app(PublicoAlvoOptionsService::class)->escolas($user) : [])
-                    ->searchable(),
-                SelectFilter::make('setor_id')->label('Setor')
-                    ->options(fn (): array => $user ? app(PublicoAlvoOptionsService::class)->setores($user) : [])
-                    ->searchable(),
+                    ->searchable()
+                    ->query(function (Builder $query, array $data): Builder {
+                        $escolaId = $data['value'] ?? null;
+
+                        return $query->when($escolaId, fn (Builder $eventos): Builder => $eventos
+                            ->where(function (Builder $distribuicao) use ($escolaId): void {
+                                $distribuicao
+                                    ->where('enviar_todas_escolas', true)
+                                    ->orWhereHas(
+                                        'escolasAgendadas',
+                                        fn (Builder $escolas): Builder => $escolas->where('escola_id', $escolaId),
+                                    );
+                            }));
+                    }),
                 SelectFilter::make('publico_alvo_tipo')->label('Público-alvo')
                     ->options(['todos' => 'Todos os usuários do escopo', 'segmentado' => 'Público segmentado'])
+                    ->visible($user && Gate::forUser($user)->allows('manageAudience', EventoCalendario::class))
                     ->query(function (Builder $query, array $data): Builder {
                         return $query->when(
                             $data['value'] ?? null,
@@ -78,7 +103,7 @@ class EventosCalendarioTable
                     ->query(fn (Builder $query, array $data): Builder => $query
                         ->when($data['inicio'] ?? null, fn (Builder $q, string $date): Builder => $q->whereDate('data_fim', '>=', $date))
                         ->when($data['fim'] ?? null, fn (Builder $q, string $date): Builder => $q->whereDate('data_inicio', '<=', $date))),
-                Filter::make('expirados')->label('Expirados')
+                Filter::make('realizados')->label('Realizados')
                     ->query(fn (Builder $query): Builder => $query->where('data_fim', '<', now())),
             ])
             ->recordActions([

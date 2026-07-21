@@ -112,13 +112,13 @@ class EventoCalendarioImportServiceTest extends TestCase
             $ator,
         );
 
-        $this->assertSame(1, $importacao->total_validas);
-        $this->assertSame(1, $importacao->total_invalidas);
-        $this->assertSame(ImportacaoEventoCalendarioAcao::CRIAR, $importacao->linhas[0]->acao);
+        $this->assertSame(0, $importacao->total_validas);
+        $this->assertSame(2, $importacao->total_invalidas);
+        $this->assertSame(ImportacaoEventoCalendarioAcao::INVALIDA, $importacao->linhas[0]->acao);
         $this->assertSame(ImportacaoEventoCalendarioAcao::INVALIDA, $importacao->linhas[1]->acao);
         $this->assertStringContainsString(
-            'também usado na linha 2',
-            $importacao->linhas[1]->erros['identificador_externo'][0],
+            'mesma chave externa',
+            $importacao->linhas[1]->erros['evento'][0],
         );
     }
 
@@ -151,27 +151,30 @@ class EventoCalendarioImportServiceTest extends TestCase
         $this->assertDatabaseCount('importacoes_eventos_calendario', 0);
     }
 
-    public function test_preview_nao_converte_valores_invalidos_de_progresso_ou_setor(): void
+    public function test_preview_rejeita_horarios_e_escopo_de_transporte_invalidos(): void
     {
         $ator = $this->criarAtorGlobal();
-        $progressoInvalido = [
-            ...$this->linhaValida('progresso-invalido'),
-            'progresso' => 'vinte e cinco',
+        $horarioInvalido = [
+            ...$this->linhaValida('horario-invalido'),
+            'hora_inicio' => '14:00',
+            'hora_fim' => '10:00',
         ];
-        $setorInvalido = [
-            ...$this->linhaValida('setor-invalido'),
-            'setor_id' => '1.5',
+        $transporteInvalido = [
+            ...$this->linhaValida('transporte-invalido'),
+            'enviar_todas_escolas' => 'Sim',
+            'precisa_transporte' => 'Sim',
+            'escopo_transporte' => 'toda_unidade',
         ];
 
         $importacao = $this->service()->preview(
-            $this->arquivoCsv([$progressoInvalido, $setorInvalido]),
+            $this->arquivoCsv([$horarioInvalido, $transporteInvalido]),
             $ator,
         );
 
         $this->assertSame(0, $importacao->total_validas);
         $this->assertSame(2, $importacao->total_invalidas);
-        $this->assertArrayHasKey('progresso', $importacao->linhas[0]->erros);
-        $this->assertArrayHasKey('setor_id', $importacao->linhas[1]->erros);
+        $this->assertArrayHasKey('hora_fim', $importacao->linhas[0]->erros);
+        $this->assertArrayHasKey('escola_codigo', $importacao->linhas[1]->erros);
         $this->assertDatabaseCount('eventos_calendario', 0);
     }
 
@@ -212,6 +215,8 @@ class EventoCalendarioImportServiceTest extends TestCase
     public function test_chave_externa_cria_e_depois_atualiza_o_mesmo_evento_idempotentemente(): void
     {
         $ator = $this->criarAtorGlobal();
+        $ator->revokePermissionTo(ListaPermissoes::GerenciarPublicoAlvoDeEventos->label());
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
         $service = $this->service();
         $primeiroLote = $service->preview(
             $this->arquivoCsv([$this->linhaValida('idempotente')]),
@@ -228,7 +233,7 @@ class EventoCalendarioImportServiceTest extends TestCase
         $linhaAtualizada = [
             ...$this->linhaValida('idempotente'),
             'titulo' => 'Título atualizado pela segunda importação',
-            'progresso' => '80',
+            'hora_fim' => '11:00',
         ];
         $segundoLote = $service->preview($this->arquivoCsv([$linhaAtualizada]), $ator);
 
@@ -239,12 +244,50 @@ class EventoCalendarioImportServiceTest extends TestCase
 
         $this->assertSame($evento->id, $eventoAtualizado->id);
         $this->assertSame('Título atualizado pela segunda importação', $eventoAtualizado->titulo);
-        $this->assertSame(80.0, $eventoAtualizado->progresso);
+        $this->assertNull($eventoAtualizado->progresso);
+        $this->assertSame('11:00', $eventoAtualizado->data_fim->format('H:i'));
         $this->assertSame($segundoLote->id, $eventoAtualizado->ultima_importacao_id);
         $this->assertSame(0, $segundoLote->total_criadas);
         $this->assertSame(1, $segundoLote->total_atualizadas);
         $this->assertDatabaseCount('eventos_calendario', 1);
         $this->assertDatabaseCount('publicos_alvo', 1);
+    }
+
+    public function test_linhas_com_mesma_chave_agrupam_escolas_e_horarios_em_um_evento(): void
+    {
+        $ator = $this->criarAtorGlobal();
+        $setor = $this->criarSetor('Setor das escolas agrupadas');
+        $escolaA = $this->criarEscola('Escola agrupada A', $setor);
+        $escolaB = $this->criarEscola('Escola agrupada B', $setor);
+        $base = [
+            ...$this->linhaValida('multiescola'),
+            'enviar_todas_escolas' => 'Não',
+        ];
+        $importacao = $this->service()->preview($this->arquivoCsv([
+            [
+                ...$base,
+                'escola_codigo' => $escolaA->codigo,
+                'hora_inicio_escola' => '08:00',
+                'hora_fim_escola' => '10:00',
+            ],
+            [
+                ...$base,
+                'escola_codigo' => $escolaB->codigo,
+                'hora_inicio_escola' => '10:00',
+                'hora_fim_escola' => '12:00',
+            ],
+        ]), $ator);
+
+        $this->assertSame(2, $importacao->total_validas);
+        $importacao = $this->service()->confirm($importacao, $ator);
+        $evento = EventoCalendario::query()->with('escolasAgendadas')->sole();
+
+        $this->assertSame(1, $importacao->total_criadas);
+        $this->assertCount(2, $evento->escolasAgendadas);
+        $this->assertSame(
+            [$escolaA->id, $escolaB->id],
+            $evento->escolasAgendadas->pluck('escola_id')->sort()->values()->all(),
+        );
     }
 
     public function test_preview_marca_como_invalida_chave_pertencente_a_evento_excluido(): void
@@ -302,6 +345,7 @@ class EventoCalendarioImportServiceTest extends TestCase
         [$ator, $escola, , $vinculo] = $this->criarAtorEscolar('revalidacao');
         $linha = [
             ...$this->linhaValida('revalidar-escopo'),
+            'enviar_todas_escolas' => 'Não',
             'escola_codigo' => $escola->codigo,
         ];
         $importacao = $this->service()->preview($this->arquivoCsv([$linha]), $ator);
@@ -357,7 +401,7 @@ class EventoCalendarioImportServiceTest extends TestCase
             $this->assertSame(['Eventos', 'Instruções', 'Referências'], $spreadsheet->getSheetNames());
             $this->assertSame(
                 EventoCalendarioImportService::HEADERS,
-                $spreadsheet->getSheetByName('Eventos')->rangeToArray('A1:Y1')[0],
+                $spreadsheet->getSheetByName('Eventos')->rangeToArray('A1:AB1')[0],
             );
 
             $referencias = collect($spreadsheet->getSheetByName('Referências')->toArray())
@@ -370,13 +414,9 @@ class EventoCalendarioImportServiceTest extends TestCase
             $nomes = $referencias->pluck(2)->all();
 
             $this->assertContains($escolaPermitida->codigo, $identificadores);
-            $this->assertContains((string) $setorPermitido->id, $identificadores);
             $this->assertContains($escolaPermitida->nome, $nomes);
-            $this->assertContains($setorPermitido->nome, $nomes);
             $this->assertNotContains($escolaBloqueada->codigo, $identificadores);
-            $this->assertNotContains((string) $setorBloqueado->id, $identificadores);
             $this->assertNotContains($escolaBloqueada->nome, $nomes);
-            $this->assertNotContains($setorBloqueado->nome, $nomes);
         } finally {
             $spreadsheet->disconnectWorksheets();
 
@@ -506,26 +546,29 @@ class EventoCalendarioImportServiceTest extends TestCase
             'titulo' => 'Evento '.$identificador,
             'descricao' => 'Descrição importada pelo teste.',
             'categoria' => 'administrativo',
-            'assunto' => 'Gestão escolar',
             'prioridade' => 'normal',
-            'data_inicio' => '21/07/2026 09:00',
-            'data_fim' => '21/07/2026 10:00',
+            'data_evento' => '21/07/2026',
+            'periodo' => 'manha',
+            'hora_inicio' => '09:00',
+            'hora_fim' => '10:00',
             'link_acao' => '/admin',
             'texto_botao' => 'Acessar',
-            'status' => 'agendado',
             'ativo' => 'Sim',
-            'progresso' => '25',
             'cor' => 'azul',
+            'enviar_todas_escolas' => 'Sim',
             'escola_codigo' => null,
-            'setor_id' => null,
+            'hora_inicio_escola' => null,
+            'hora_fim_escola' => null,
+            'precisa_transporte' => null,
+            'escopo_transporte' => null,
+            'series_codigos' => null,
+            'turmas_codigos' => null,
             'todos_usuarios' => 'Sim',
             'modo_correspondencia' => 'qualquer',
             'usuarios_emails' => null,
             'roles' => null,
             'permissoes' => null,
             'funcoes_administrativas' => null,
-            'escolas_publico_codigos' => null,
-            'setores_publico_ids' => null,
         ];
     }
 

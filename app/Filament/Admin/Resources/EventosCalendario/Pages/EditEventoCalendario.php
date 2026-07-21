@@ -3,9 +3,11 @@
 namespace App\Filament\Admin\Resources\EventosCalendario\Pages;
 
 use App\Filament\Admin\Resources\EventosCalendario\EventoCalendarioResource;
+use App\Filament\Admin\Resources\EventosCalendario\Schemas\EventoCalendarioForm;
 use App\Filament\Admin\Support\PublicoAlvoForm;
 use App\Models\EventoCalendario;
 use App\Services\Dashboard\EventoCalendarioService;
+use App\Services\Dashboard\EventoCalendarioEscolaService;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
@@ -17,7 +19,20 @@ class EditEventoCalendario extends EditRecord
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
-        $data[PublicoAlvoForm::STATE_PATH] = PublicoAlvoForm::paraFormulario($this->record->publicoAlvo);
+        $inicio = $this->record->data_inicio->format('H:i');
+        $fim = $this->record->data_fim->format('H:i');
+        $data['data_evento'] = $this->record->data_inicio->toDateString();
+        $data['hora_inicio'] = $inicio;
+        $data['hora_fim'] = $fim;
+        $data['periodo'] = EventoCalendarioForm::periodoCorrespondente($inicio, $fim);
+        $data['inserir_link'] = filled($this->record->link_acao);
+        $data['escolas_agendadas'] = app(EventoCalendarioEscolaService::class)
+            ->paraFormulario($this->record);
+        $user = EventoCalendarioResource::usuarioEfetivo();
+
+        if ($user && Gate::forUser($user)->allows('manageAudience', $this->record)) {
+            $data[PublicoAlvoForm::STATE_PATH] = PublicoAlvoForm::paraFormulario($this->record->publicoAlvo);
+        }
 
         return $data;
     }

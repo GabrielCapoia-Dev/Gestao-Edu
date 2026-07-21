@@ -54,7 +54,9 @@ class ManualCalendarEventSourceTest extends TestCase
         $this->assertSame([$visivel->id], $eventsA->map(
             static fn (CalendarEventData $event): int => (int) $event->reference,
         )->all());
-        $this->assertSame('manual:'.$visivel->id, $eventsA->first()->id);
+        $this->assertSame('manual:'.$visivel->id.':all', $eventsA->first()->id);
+        $this->assertNull($eventsA->first()->status);
+        $this->assertNull($eventsA->first()->progresso);
         $this->assertNull($source->detail($contextB, (string) $visivel->id));
     }
 
@@ -130,6 +132,35 @@ class ManualCalendarEventSourceTest extends TestCase
         $this->assertNull($source->detail($contexto, (string) $setorFora->id));
     }
 
+    public function test_evento_especifico_gera_uma_ocorrencia_com_horario_por_escola(): void
+    {
+        $agora = CarbonImmutable::parse('2026-07-20 10:00:00');
+        CarbonImmutable::setTestNow($agora);
+        $setor = $this->criarSetor('Setor das ocorrências escolares');
+        $escolaA = $this->criarEscola('Ocorrência A', $setor);
+        $escolaB = $this->criarEscola('Ocorrência B', $setor);
+        $admin = User::factory()->create();
+        $admin->assignRole(Role::findOrCreate('Admin', 'web'));
+        $publico = app(PublicoAlvoService::class)->criar($admin, ['todos_usuarios' => true]);
+        $evento = $this->criarEvento($publico->id, 'Evento com horários escolares', $agora->addDay());
+        $evento->update(['enviar_todas_escolas' => false]);
+        $evento->escolasAgendadas()->createMany([
+            ['escola_id' => $escolaA->id, 'hora_inicio' => '08:00', 'hora_fim' => '10:00'],
+            ['escola_id' => $escolaB->id, 'hora_inicio' => '10:00', 'hora_fim' => '12:00'],
+        ]);
+
+        $events = collect(app(ManualCalendarEventSource::class)->events(
+            $this->contexto($admin, $agora, $agora->addDays(6)->endOfDay()),
+        ));
+
+        $this->assertSame(2, $events->count());
+        $this->assertSame(['08:00', '10:00'], $events->pluck('inicio')->map->format('H:i')->sort()->values()->all());
+        $this->assertSame(
+            [$escolaA->id, $escolaB->id],
+            $events->pluck('escolaId')->sort()->values()->all(),
+        );
+    }
+
     /** @return array{0: User, 1: User} */
     private function usuariosDeEscolasDiferentes(): array
     {
@@ -179,10 +210,11 @@ class ManualCalendarEventSourceTest extends TestCase
         ?Escola $escola = null,
         ?Setor $setor = null,
     ): EventoCalendario {
-        return EventoCalendario::query()->create([
+        $evento = EventoCalendario::query()->create([
             'publico_alvo_id' => $publicoAlvoId,
             'escola_id' => $escola?->id,
             'setor_id' => $setor?->id,
+            'enviar_todas_escolas' => ! $escola,
             'titulo' => $titulo,
             'descricao' => 'Descrição do evento manual.',
             'categoria' => EventoCalendarioCategoria::ADMINISTRATIVO,
@@ -195,6 +227,17 @@ class ManualCalendarEventSourceTest extends TestCase
             'cor' => EventoCalendarioCor::AZUL,
             'origem' => EventoCalendarioOrigem::MANUAL,
         ]);
+
+        if ($escola) {
+            $evento->escolasAgendadas()->create([
+                'escola_id' => $escola->id,
+                'hora_inicio' => $inicio->format('H:i'),
+                'hora_fim' => $inicio->addHour()->format('H:i'),
+                'precisa_transporte' => false,
+            ]);
+        }
+
+        return $evento;
     }
 
     private function contexto(

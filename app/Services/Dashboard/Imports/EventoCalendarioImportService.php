@@ -6,7 +6,7 @@ use App\Models\Enums\DashboardPrioridade;
 use App\Models\Enums\EventoCalendarioCategoria;
 use App\Models\Enums\EventoCalendarioCor;
 use App\Models\Enums\EventoCalendarioOrigem;
-use App\Models\Enums\EventoCalendarioStatus;
+use App\Models\Enums\EventoCalendarioTransporteEscopo;
 use App\Models\Enums\ImportacaoEventoCalendarioAcao;
 use App\Models\Enums\ImportacaoEventoCalendarioStatus;
 use App\Models\Escola;
@@ -16,15 +16,19 @@ use App\Models\ImportacaoEventoCalendario;
 use App\Models\ImportacaoEventoCalendarioLinha;
 use App\Models\Permission;
 use App\Models\Role;
-use App\Models\Setor;
+use App\Models\Serie;
+use App\Models\Turma;
 use App\Models\User;
 use App\Services\Dashboard\EventoCalendarioService;
+use App\Services\Dashboard\EventoCalendarioEscolaService;
 use App\Services\Dashboard\DashboardUserContextFactory;
 use App\Services\Dashboard\PublicoAlvoService;
 use App\Services\Dashboard\PublicoAlvoOptionsService;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
@@ -51,37 +55,40 @@ class EventoCalendarioImportService
         'titulo',
         'descricao',
         'categoria',
-        'assunto',
         'prioridade',
-        'data_inicio',
-        'data_fim',
+        'data_evento',
+        'periodo',
+        'hora_inicio',
+        'hora_fim',
         'link_acao',
         'texto_botao',
-        'status',
         'ativo',
-        'progresso',
         'cor',
+        'enviar_todas_escolas',
         'escola_codigo',
-        'setor_id',
+        'hora_inicio_escola',
+        'hora_fim_escola',
+        'precisa_transporte',
+        'escopo_transporte',
+        'series_codigos',
+        'turmas_codigos',
         'todos_usuarios',
         'modo_correspondencia',
         'usuarios_emails',
         'roles',
         'permissoes',
         'funcoes_administrativas',
-        'escolas_publico_codigos',
-        'setores_publico_ids',
     ];
 
     public function __construct(
         private readonly EventoCalendarioService $eventos,
+        private readonly EventoCalendarioEscolaService $escolasEvento,
         private readonly PublicoAlvoService $publicos,
     ) {}
 
     public function preview(UploadedFile $arquivo, User $ator): ImportacaoEventoCalendario
     {
         Gate::forUser($ator)->authorize('create', ImportacaoEventoCalendario::class);
-        Gate::forUser($ator)->authorize('manageAudience', EventoCalendario::class);
         $this->assertArquivo($arquivo);
 
         $uuid = (string) Str::uuid();
@@ -152,7 +159,6 @@ class EventoCalendarioImportService
     public function confirm(ImportacaoEventoCalendario $importacao, User $ator): ImportacaoEventoCalendario
     {
         Gate::forUser($ator)->authorize('confirm', $importacao);
-        Gate::forUser($ator)->authorize('manageAudience', EventoCalendario::class);
 
         if ($importacao->status !== ImportacaoEventoCalendarioStatus::PRONTA || $importacao->total_invalidas > 0) {
             throw ValidationException::withMessages([
@@ -184,11 +190,27 @@ class EventoCalendarioImportService
 
                 $created = 0;
                 $updated = 0;
+                $processados = [];
 
                 foreach ($revalidated as $row) {
                     $payload = $row['normalizados'];
                     $eventData = $payload['evento'];
                     $publicData = $payload['publico_alvo'];
+                    $key = $eventData['fonte_externa'].'|'.$eventData['identificador_externo'];
+
+                    if (isset($processados[$key])) {
+                        $evento = $processados[$key]['evento'];
+                        $acao = $processados[$key]['acao'];
+                        $batch->linhas()->where('numero_linha', $row['numero_linha'])->firstOrFail()->update([
+                            'evento_calendario_id' => $evento->getKey(),
+                            'dados_normalizados' => $payload,
+                            'erros' => null,
+                            'acao' => $acao,
+                        ]);
+
+                        continue;
+                    }
+
                     $existing = EventoCalendario::query()
                         ->where('fonte_externa', $eventData['fonte_externa'])
                         ->where('identificador_externo', $eventData['identificador_externo'])
@@ -212,6 +234,8 @@ class EventoCalendarioImportService
                         $acao = ImportacaoEventoCalendarioAcao::CRIAR;
                         $created++;
                     }
+
+                    $processados[$key] = ['evento' => $evento, 'acao' => $acao];
 
                     $batch->linhas()->where('numero_linha', $row['numero_linha'])->firstOrFail()->update([
                         'evento_calendario_id' => $evento->getKey(),
@@ -294,9 +318,13 @@ class EventoCalendarioImportService
         $instructions->fromArray([
             ['Campo', 'Orientação'],
             ['fonte_externa + identificador_externo', 'Chave idempotente. Uma nova importação atualiza o mesmo evento.'],
-            ['data_inicio / data_fim', 'Use DD/MM/AAAA HH:MM. A data final é obrigatória.'],
+            ['data_evento', 'Use DD/MM/AAAA. Eventos manuais sempre ocorrem em um único dia.'],
+            ['período e horários', 'Período aceita manha, tarde, noite ou dia_todo. Horários informados manualmente têm precedência.'],
+            ['escolas', 'Para escolas específicas, repita a chave externa em uma linha por escola.'],
+            ['transporte', 'Use toda_unidade, series ou turmas. A estimativa é calculada pelo sistema.'],
             ['listas', 'Separe vários valores com |.'],
             ['todos_usuarios', 'Use Sim ou Não. Se Sim, deixe os demais critérios de público vazios.'],
+            ['público-alvo avançado', 'Usuários, níveis, permissões e cargos só são aplicados quando o responsável possui a permissão específica.'],
             ['segurança', 'Fórmulas, macros, referências fora do seu escopo e relacionamentos inativos são rejeitados.'],
         ], null, 'A1');
         $instructions->getColumnDimension('A')->setWidth(38);
@@ -313,17 +341,44 @@ class EventoCalendarioImportService
             $schools->whereKey($context->escolaIds);
         }
 
+        $audienceReferences = collect();
+
+        if (Gate::forUser($ator)->allows('manageAudience', EventoCalendario::class)) {
+            $audienceReferences = collect($options->roles())
+                ->map(fn (string $name): array => ['Nível de acesso', $name, $name])
+                ->merge(collect($options->permissoes())->map(
+                    fn (string $name): array => ['Permissão', $name, $name],
+                ))
+                ->merge(FuncaoAdministrativa::query()->where('ativo', true)->orderBy('nome')->get(['codigo', 'nome'])->map(
+                    fn (FuncaoAdministrativa $funcao): array => ['Função administrativa (código)', (string) $funcao->codigo, $funcao->nome],
+                ));
+        }
+
         $referenceRows = $schools->get()
             ->map(fn (Escola $school): array => ['Escola (código)', (string) $school->codigo, $school->nome])
-            ->merge(collect($options->setores($ator))->map(fn (string $name, int|string $id): array => ['Setor (ID)', (string) $id, $name]))
-            ->merge(collect($options->roles())->map(fn (string $name): array => ['Nível de acesso', $name, $name]))
-            ->merge(collect($options->permissoes())->map(fn (string $name): array => ['Permissão', $name, $name]))
-            ->merge(FuncaoAdministrativa::query()->where('ativo', true)->orderBy('nome')->get(['codigo', 'nome'])->map(
-                fn (FuncaoAdministrativa $funcao): array => ['Função administrativa (código)', (string) $funcao->codigo, $funcao->nome],
-            ))
+            ->merge($audienceReferences)
             ->merge(collect(EventoCalendarioCategoria::cases())->map(fn ($item): array => ['Categoria', $item->value, $item->label()]))
             ->merge(collect(DashboardPrioridade::cases())->map(fn ($item): array => ['Prioridade', $item->value, $item->label()]))
-            ->merge(collect(EventoCalendarioStatus::cases())->map(fn ($item): array => ['Status', $item->value, $item->label()]))
+            ->merge(Serie::query()
+                ->whereHas('turmas', function (Builder $query) use ($context): void {
+                    if (! $context->escopoGlobal) {
+                        $query->whereIn('id_escola', $context->escolaIds);
+                    }
+                })
+                ->orderBy('nome')
+                ->get(['codigo', 'nome'])
+                ->map(fn (Serie $serie): array => ['Série (código)', (string) $serie->codigo, $serie->nome]))
+            ->merge(Turma::query()
+                ->when(! $context->escopoGlobal, fn (Builder $query): Builder => $query->whereIn('id_escola', $context->escolaIds))
+                ->with(['serie:id,nome', 'escola:id,nome'])
+                ->orderBy('nome')
+                ->get(['id', 'codigo', 'nome', 'id_serie', 'id_escola'])
+                ->map(fn (Turma $turma): array => [
+                    'Turma (código)',
+                    (string) $turma->codigo,
+                    collect([$turma->escola?->nome, $turma->serie?->nome, $turma->nome])->filter()->join(' - '),
+                ]))
+            ->merge(collect(EventoCalendarioTransporteEscopo::cases())->map(fn ($item): array => ['Escopo de transporte', $item->value, $item->label()]))
             ->merge(collect(EventoCalendarioCor::cases())->map(fn ($item): array => ['Cor', $item->value, $item->label()]))
             ->values()
             ->all();
@@ -452,54 +507,30 @@ class EventoCalendarioImportService
      */
     private function normalizeRows(array $rows, User $ator): array
     {
-        $references = $this->referenceMaps($rows);
-        $seen = [];
+        $references = $this->referenceMapsNova($rows);
         $result = [];
-        $contextValidationCache = [];
         $audienceValidationCache = [];
+        $indicesPorChave = [];
 
         foreach ($rows as $row) {
             $raw = $row['dados'];
 
             try {
-                $normalized = $this->normalizeRow(
+                $normalized = $this->normalizeRowNova(
                     $raw,
                     $references,
                     $ator,
-                    $contextValidationCache,
                     $audienceValidationCache,
                 );
                 $key = $normalized['evento']['fonte_externa'].'|'.$normalized['evento']['identificador_externo'];
-
-                if (isset($seen[$key])) {
-                    throw ValidationException::withMessages([
-                        'identificador_externo' => 'Identificador duplicado na planilha (também usado na linha '.$seen[$key].').',
-                    ]);
-                }
-
-                $seen[$key] = $row['numero_linha'];
-                $existing = $references['eventos'][$key] ?? null;
-
-                if ($existing?->trashed()) {
-                    throw ValidationException::withMessages([
-                        'identificador_externo' => 'A chave externa pertence a um evento excluído. Restaure-o antes de importar.',
-                    ]);
-                }
-
-                if ($existing) {
-                    Gate::forUser($ator)->authorize('update', $existing);
-                    $action = ImportacaoEventoCalendarioAcao::ATUALIZAR;
-                } else {
-                    Gate::forUser($ator)->authorize('create', EventoCalendario::class);
-                    $action = ImportacaoEventoCalendarioAcao::CRIAR;
-                }
-
+                $indice = count($result);
+                $indicesPorChave[$key][] = $indice;
                 $result[] = [
                     'numero_linha' => $row['numero_linha'],
                     'originais' => $raw,
                     'normalizados' => $normalized,
                     'erros' => [],
-                    'acao' => $action,
+                    'acao' => ImportacaoEventoCalendarioAcao::CRIAR,
                 ];
             } catch (ValidationException $exception) {
                 $result[] = [
@@ -520,38 +551,172 @@ class EventoCalendarioImportService
             }
         }
 
+        foreach ($indicesPorChave as $key => $indices) {
+            try {
+                $primeiro = $result[$indices[0]]['normalizados'];
+                $eventoBase = Arr::except($primeiro['evento'], 'escolas_agendadas');
+                $publicoBase = $primeiro['publico_alvo'];
+                $todas = (bool) $eventoBase['enviar_todas_escolas'];
+                $agendamentos = [];
+                $escolasVistas = [];
+
+                foreach ($indices as $indice) {
+                    $payload = $result[$indice]['normalizados'];
+
+                    if (
+                        Arr::except($payload['evento'], 'escolas_agendadas') !== $eventoBase
+                        || $payload['publico_alvo'] !== $publicoBase
+                    ) {
+                        throw ValidationException::withMessages([
+                            'evento' => 'Linhas com a mesma chave externa devem repetir exatamente os dados gerais e o público-alvo.',
+                        ]);
+                    }
+
+                    $linhasEscola = $payload['evento']['escolas_agendadas'];
+
+                    if ($todas && (count($indices) > 1 || $linhasEscola !== [])) {
+                        throw ValidationException::withMessages([
+                            'enviar_todas_escolas' => 'Eventos enviados para todas as escolas devem ocupar uma única linha.',
+                        ]);
+                    }
+
+                    foreach ($linhasEscola as $linhaEscola) {
+                        $escolaId = (int) $linhaEscola['escola_id'];
+
+                        if (isset($escolasVistas[$escolaId])) {
+                            throw ValidationException::withMessages([
+                                'escola_codigo' => 'A mesma escola não pode aparecer duas vezes para a mesma chave externa.',
+                            ]);
+                        }
+
+                        $escolasVistas[$escolaId] = true;
+                        $agendamentos[] = $linhaEscola;
+                    }
+                }
+
+                $eventoBase['escolas_agendadas'] = $agendamentos;
+                $payloadAgrupado = ['evento' => $eventoBase, 'publico_alvo' => $publicoBase];
+                $existing = $references['eventos'][$key] ?? null;
+
+                if ($existing?->trashed()) {
+                    throw ValidationException::withMessages([
+                        'identificador_externo' => 'A chave externa pertence a um evento excluído. Restaure-o antes de importar.',
+                    ]);
+                }
+
+                if ($existing) {
+                    Gate::forUser($ator)->authorize('update', $existing);
+                    $acao = ImportacaoEventoCalendarioAcao::ATUALIZAR;
+                } else {
+                    Gate::forUser($ator)->authorize('create', EventoCalendario::class);
+                    $acao = ImportacaoEventoCalendarioAcao::CRIAR;
+                }
+
+                foreach ($indices as $indice) {
+                    $result[$indice]['normalizados'] = $payloadAgrupado;
+                    $result[$indice]['acao'] = $acao;
+                }
+            } catch (ValidationException $exception) {
+                foreach ($indices as $indice) {
+                    $result[$indice]['normalizados'] = null;
+                    $result[$indice]['erros'] = $exception->errors();
+                    $result[$indice]['acao'] = ImportacaoEventoCalendarioAcao::INVALIDA;
+                }
+            } catch (AuthorizationException) {
+                foreach ($indices as $indice) {
+                    $result[$indice]['normalizados'] = null;
+                    $result[$indice]['erros'] = ['autorizacao' => ['Você não possui autorização para criar ou atualizar este evento.']];
+                    $result[$indice]['acao'] = ImportacaoEventoCalendarioAcao::INVALIDA;
+                }
+            }
+        }
+
         return $result;
     }
 
     /**
      * @param array<string,mixed> $raw
      * @param array<string,mixed> $maps
-     * @param array<string,array{value:mixed,errors:?array}> $contextValidationCache
      * @param array<string,array{value:mixed,errors:?array}> $audienceValidationCache
      * @return array<string,mixed>
      */
-    private function normalizeRow(
+    private function normalizeRowNova(
         array $raw,
         array $maps,
         User $ator,
-        array &$contextValidationCache,
         array &$audienceValidationCache,
-    ): array
-    {
+    ): array {
         $source = mb_strtolower(trim((string) ($raw['fonte_externa'] ?? '')));
         $externalId = trim((string) ($raw['identificador_externo'] ?? ''));
-        $start = $this->date($raw['data_inicio'] ?? null, 'data_inicio');
-        $end = $this->date($raw['data_fim'] ?? null, 'data_fim');
+        $data = $this->dateOnly($raw['data_evento'] ?? null, 'data_evento');
+        $periodo = $this->periodo($raw['periodo'] ?? null);
+        $horaInicio = filled($raw['hora_inicio'] ?? null)
+            ? $this->time($raw['hora_inicio'], 'hora_inicio')
+            : ($periodo['inicio'] ?? null);
+        $horaFim = filled($raw['hora_fim'] ?? null)
+            ? $this->time($raw['hora_fim'], 'hora_fim')
+            : ($periodo['fim'] ?? null);
+
+        if (! $horaInicio || ! $horaFim || $horaFim <= $horaInicio) {
+            throw ValidationException::withMessages([
+                'hora_fim' => 'Informe horários válidos e mantenha o horário final posterior ao inicial.',
+            ]);
+        }
+
+        $enviarTodas = $this->boolean($raw['enviar_todas_escolas'] ?? null, 'enviar_todas_escolas');
         $schoolCode = trim((string) ($raw['escola_codigo'] ?? ''));
         $school = $schoolCode !== '' ? ($maps['escolas'][$schoolCode] ?? null) : null;
-        $sectorId = $this->nullablePositiveInt($raw['setor_id'] ?? null, 'setor_id');
-        $sector = $sectorId ? ($maps['setores'][$sectorId] ?? null) : null;
-        $progress = $raw['progresso'] ?? null;
+        $agendamentos = [];
 
-        if (filled($progress) && ! is_numeric($progress)) {
-            throw ValidationException::withMessages([
-                'progresso' => 'Informe um número entre 0 e 100.',
-            ]);
+        if ($enviarTodas) {
+            if ($schoolCode !== '' || filled($raw['precisa_transporte'] ?? null)) {
+                throw ValidationException::withMessages([
+                    'escola_codigo' => 'Deixe escola e transporte vazios quando o evento for enviado para todas as escolas.',
+                ]);
+            }
+
+            $contexto = app(DashboardUserContextFactory::class)->make($ator);
+
+            if (! $contexto->escopoGlobal && $contexto->escolaIds === []) {
+                throw ValidationException::withMessages([
+                    'enviar_todas_escolas' => 'Seu usuário não possui escolas autorizadas para importar este evento.',
+                ]);
+            }
+        } else {
+            if (! $school) {
+                throw ValidationException::withMessages([
+                    'escola_codigo' => 'Informe o código de uma escola ativa do seu contexto.',
+                ]);
+            }
+
+            $precisaTransporte = filled($raw['precisa_transporte'] ?? null)
+                ? $this->boolean($raw['precisa_transporte'], 'precisa_transporte')
+                : false;
+            $escopoTransporte = $precisaTransporte
+                ? mb_strtolower(trim((string) ($raw['escopo_transporte'] ?? '')))
+                : null;
+            $seriesIds = $precisaTransporte && $escopoTransporte === EventoCalendarioTransporteEscopo::SERIES->value
+                ? $this->resolveList($raw['series_codigos'] ?? null, $maps['series'], 'series_codigos')
+                : [];
+            $turmasIds = $precisaTransporte && $escopoTransporte === EventoCalendarioTransporteEscopo::TURMAS->value
+                ? $this->resolveList($raw['turmas_codigos'] ?? null, $maps['turmas'], 'turmas_codigos')
+                : [];
+            $horaInicioEscola = filled($raw['hora_inicio_escola'] ?? null)
+                ? $this->time($raw['hora_inicio_escola'], 'hora_inicio_escola')
+                : $horaInicio;
+            $horaFimEscola = filled($raw['hora_fim_escola'] ?? null)
+                ? $this->time($raw['hora_fim_escola'], 'hora_fim_escola')
+                : $horaFim;
+
+            $agendamentos = $this->escolasEvento->normalizar([[
+                'escola_id' => $school->getKey(),
+                'hora_inicio' => $horaInicioEscola,
+                'hora_fim' => $horaFimEscola,
+                'precisa_transporte' => $precisaTransporte,
+                'escopo_transporte' => $escopoTransporte,
+                'series_ids' => $seriesIds,
+                'turmas_ids' => $turmasIds,
+            ]], $ator, $horaInicio, $horaFim);
         }
 
         $event = [
@@ -560,18 +725,17 @@ class EventoCalendarioImportService
             'titulo' => trim((string) ($raw['titulo'] ?? '')),
             'descricao' => $this->nullableString($raw['descricao'] ?? null),
             'categoria' => mb_strtolower(trim((string) ($raw['categoria'] ?? ''))),
-            'assunto' => $this->nullableString($raw['assunto'] ?? null),
             'prioridade' => mb_strtolower(trim((string) ($raw['prioridade'] ?? ''))),
-            'data_inicio' => $start,
-            'data_fim' => $end,
+            'data_evento' => $data->toDateString(),
+            'hora_inicio' => $horaInicio,
+            'hora_fim' => $horaFim,
+            'inserir_link' => filled($raw['link_acao'] ?? null),
             'link_acao' => $this->nullableString($raw['link_acao'] ?? null),
             'texto_botao' => $this->nullableString($raw['texto_botao'] ?? null),
-            'status' => mb_strtolower(trim((string) ($raw['status'] ?? ''))),
             'ativo' => $this->boolean($raw['ativo'] ?? null, 'ativo'),
-            'progresso' => filled($progress) ? (float) $progress : null,
             'cor' => mb_strtolower(trim((string) ($raw['cor'] ?? ''))),
-            'escola_id' => $school?->getKey(),
-            'setor_id' => $sector?->getKey(),
+            'enviar_todas_escolas' => $enviarTodas,
+            'escolas_agendadas' => $agendamentos,
             'origem' => EventoCalendarioOrigem::PLANILHA->value,
         ];
 
@@ -581,36 +745,24 @@ class EventoCalendarioImportService
             'titulo' => ['required', 'string', 'max:160'],
             'descricao' => ['nullable', 'string', 'max:5000'],
             'categoria' => ['required', Rule::enum(EventoCalendarioCategoria::class)],
-            'assunto' => ['nullable', 'string', 'max:100'],
             'prioridade' => ['required', Rule::enum(DashboardPrioridade::class)],
-            'data_inicio' => ['required', 'date'],
-            'data_fim' => ['required', 'date', 'after_or_equal:data_inicio'],
             'link_acao' => ['nullable', 'string', 'max:2048'],
             'texto_botao' => ['nullable', 'string', 'max:80'],
-            'status' => ['required', Rule::enum(EventoCalendarioStatus::class)],
             'ativo' => ['required', 'boolean'],
-            'progresso' => ['nullable', 'numeric', 'between:0,100'],
             'cor' => ['required', Rule::enum(EventoCalendarioCor::class)],
         ], [
             'required' => 'Campo obrigatório.',
             'max' => 'Valor acima do limite permitido.',
-            'data_fim.after_or_equal' => 'A data final deve ser posterior ou igual à inicial.',
         ]);
 
         if ($validator->fails()) {
             throw new ValidationException($validator);
         }
 
-        if ($schoolCode !== '' && ! $school) {
-            throw ValidationException::withMessages(['escola_codigo' => 'Código de escola inexistente, inativo ou ambíguo.']);
-        }
-
-        if ($sectorId && ! $sector) {
-            throw ValidationException::withMessages(['setor_id' => 'Setor inexistente ou inativo.']);
-        }
-
         if ($event['link_acao'] && ! $this->safeLink($event['link_acao'])) {
-            throw ValidationException::withMessages(['link_acao' => 'Informe uma URL HTTP(S) ou caminho interno iniciado por /.']);
+            throw ValidationException::withMessages([
+                'link_acao' => 'Informe uma URL HTTP(S) ou caminho interno iniciado por /.',
+            ]);
         }
 
         if ($event['ativo'] && ! Gate::forUser($ator)->allows('publish', EventoCalendario::class)) {
@@ -619,27 +771,28 @@ class EventoCalendarioImportService
             ]);
         }
 
-        $contextKey = ($event['escola_id'] ?? 0).'|'.($event['setor_id'] ?? 0);
-        $this->rememberValidation(
-            $contextValidationCache,
-            $contextKey,
-            function () use ($event, $ator): bool {
-                $this->eventos->validarContextoRelacionado($event, $ator);
-
-                return true;
-            },
-        );
-
-        $public = [
-            'todos_usuarios' => $this->boolean($raw['todos_usuarios'] ?? null, 'todos_usuarios'),
-            'modo_correspondencia' => mb_strtolower(trim((string) ($raw['modo_correspondencia'] ?: 'qualquer'))),
-            'usuarios_ids' => $this->resolveList($raw['usuarios_emails'] ?? null, $maps['usuarios'], 'usuarios_emails'),
-            'roles_ids' => $this->resolveList($raw['roles'] ?? null, $maps['roles'], 'roles'),
-            'permissoes_ids' => $this->resolveList($raw['permissoes'] ?? null, $maps['permissoes'], 'permissoes'),
-            'funcoes_administrativas_ids' => $this->resolveList($raw['funcoes_administrativas'] ?? null, $maps['funcoes'], 'funcoes_administrativas'),
-            'escolas_ids' => $this->resolveList($raw['escolas_publico_codigos'] ?? null, $maps['escolas'], 'escolas_publico_codigos'),
-            'setores_ids' => $this->resolveList($raw['setores_publico_ids'] ?? null, $maps['setores'], 'setores_publico_ids', numeric: true),
-        ];
+        $podeGerenciarPublico = Gate::forUser($ator)->allows('manageAudience', EventoCalendario::class);
+        $public = $podeGerenciarPublico
+            ? [
+                'todos_usuarios' => $this->boolean($raw['todos_usuarios'] ?? null, 'todos_usuarios'),
+                'modo_correspondencia' => mb_strtolower(trim((string) ($raw['modo_correspondencia'] ?: 'qualquer'))),
+                'usuarios_ids' => $this->resolveList($raw['usuarios_emails'] ?? null, $maps['usuarios'], 'usuarios_emails'),
+                'roles_ids' => $this->resolveList($raw['roles'] ?? null, $maps['roles'], 'roles'),
+                'permissoes_ids' => $this->resolveList($raw['permissoes'] ?? null, $maps['permissoes'], 'permissoes'),
+                'funcoes_administrativas_ids' => $this->resolveList($raw['funcoes_administrativas'] ?? null, $maps['funcoes'], 'funcoes_administrativas'),
+                'escolas_ids' => [],
+                'setores_ids' => [],
+            ]
+            : [
+                'todos_usuarios' => $enviarTodas,
+                'modo_correspondencia' => 'qualquer',
+                'usuarios_ids' => [],
+                'roles_ids' => [],
+                'permissoes_ids' => [],
+                'funcoes_administrativas_ids' => [],
+                'escolas_ids' => $enviarTodas ? [] : collect($agendamentos)->pluck('escola_id')->all(),
+                'setores_ids' => [],
+            ];
         $public = $this->rememberValidation(
             $audienceValidationCache,
             $this->audienceCacheKey($public),
@@ -692,37 +845,49 @@ class EventoCalendarioImportService
     }
 
     /** @param list<array{numero_linha:int,dados:array<string,mixed>}> $rows @return array<string,mixed> */
-    private function referenceMaps(array $rows): array
+    private function referenceMapsNova(array $rows): array
     {
         $values = fn (string $field): array => collect($rows)
             ->flatMap(fn (array $row): array => $this->listValues($row['dados'][$field] ?? null))
-            ->unique()->values()->all();
-        $schoolCodes = collect([...$values('escola_codigo'), ...$values('escolas_publico_codigos')])->filter()->unique()->all();
-        $sectorIds = collect([...$values('setor_id'), ...$values('setores_publico_ids')])->filter(fn ($id): bool => is_numeric($id))->map(fn ($id): int => (int) $id)->unique()->all();
-        $sources = collect($rows)->pluck('dados.fonte_externa')->map(fn ($value): string => mb_strtolower(trim((string) $value)))->filter()->unique()->all();
-        $externalIds = collect($rows)->pluck('dados.identificador_externo')->map(fn ($value): string => trim((string) $value))->filter()->unique()->all();
+            ->unique()
+            ->values()
+            ->all();
+        $schoolCodes = $values('escola_codigo');
+        $serieCodes = $values('series_codigos');
+        $turmaCodes = $values('turmas_codigos');
+        $sources = collect($rows)->pluck('dados.fonte_externa')
+            ->map(fn ($value): string => mb_strtolower(trim((string) $value)))
+            ->filter()->unique()->all();
+        $externalIds = collect($rows)->pluck('dados.identificador_externo')
+            ->map(fn ($value): string => trim((string) $value))
+            ->filter()->unique()->all();
 
         return [
-            'usuarios' => User::query()->whereIn('email', $values('usuarios_emails'))->get()->keyBy(fn (User $item): string => mb_strtolower($item->email)),
+            'usuarios' => User::query()->whereIn('email', $values('usuarios_emails'))->get()
+                ->keyBy(fn (User $item): string => mb_strtolower($item->email)),
             'roles' => Role::query()->where('guard_name', 'web')->whereIn('name', $values('roles'))->get()->keyBy('name'),
             'permissoes' => Permission::query()->where('guard_name', 'web')->whereIn('name', $values('permissoes'))->get()->keyBy('name'),
-            'funcoes' => FuncaoAdministrativa::query()->where('ativo', true)->whereIn('codigo', $values('funcoes_administrativas'))->get()->keyBy('codigo'),
-            'escolas' => Escola::query()->where('ativo', true)->whereIn('codigo', $schoolCodes)->get()->groupBy('codigo')->map(fn ($items) => $items->count() === 1 ? $items->first() : null)->filter(),
-            'setores' => Setor::query()->where('ativo', true)->whereKey($sectorIds)->get()->keyBy('id'),
-            'eventos' => EventoCalendario::query()->withTrashed()->whereIn('fonte_externa', $sources)->whereIn('identificador_externo', $externalIds)->get()->keyBy(fn (EventoCalendario $event): string => $event->fonte_externa.'|'.$event->identificador_externo),
+            'funcoes' => FuncaoAdministrativa::query()->where('ativo', true)
+                ->whereIn('codigo', $values('funcoes_administrativas'))->get()->keyBy('codigo'),
+            'escolas' => Escola::query()->where('ativo', true)->whereIn('codigo', $schoolCodes)->get()
+                ->groupBy('codigo')->map(fn ($items) => $items->count() === 1 ? $items->first() : null)->filter(),
+            'series' => Serie::query()->whereIn('codigo', $serieCodes)->get()->keyBy('codigo'),
+            'turmas' => Turma::query()->whereIn('codigo', $turmaCodes)->get()->keyBy('codigo'),
+            'eventos' => EventoCalendario::query()->withTrashed()
+                ->whereIn('fonte_externa', $sources)
+                ->whereIn('identificador_externo', $externalIds)
+                ->get()
+                ->keyBy(fn (EventoCalendario $event): string => $event->fonte_externa.'|'.$event->identificador_externo),
         ];
     }
 
     /** @return list<int> */
-    private function resolveList(mixed $raw, $map, string $field, bool $numeric = false): array
+    private function resolveList(mixed $raw, $map, string $field): array
     {
         $resolved = [];
 
         foreach ($this->listValues($raw) as $value) {
-            $key = $numeric
-                ? $this->nullablePositiveInt($value, $field)
-                : $value;
-            $model = $map->get($key) ?? $map->get(mb_strtolower((string) $key));
+            $model = $map->get($value) ?? $map->get(mb_strtolower($value));
 
             if (! $model) {
                 throw ValidationException::withMessages([$field => "Referência não encontrada: {$value}."]);
@@ -745,32 +910,72 @@ class EventoCalendarioImportService
             ->all();
     }
 
-    private function date(mixed $value, string $field): CarbonImmutable
+    private function dateOnly(mixed $value, string $field): CarbonImmutable
     {
         try {
             if (is_numeric($value)) {
-                return CarbonImmutable::instance(ExcelDate::excelToDateTimeObject((float) $value));
+                return CarbonImmutable::instance(ExcelDate::excelToDateTimeObject((float) $value))->startOfDay();
             }
 
             $value = trim((string) $value);
 
-            foreach (['d/m/Y H:i', 'd/m/Y', 'Y-m-d H:i:s', 'Y-m-d H:i', 'Y-m-d'] as $format) {
-                try {
-                    $parsed = CarbonImmutable::createFromFormat('!'.$format, $value, config('dashboard.calendar.timezone'));
-                    $errors = \DateTimeImmutable::getLastErrors();
+            foreach (['d/m/Y', 'Y-m-d'] as $format) {
+                $parsed = CarbonImmutable::createFromFormat('!'.$format, $value, config('dashboard.calendar.timezone'));
+                $errors = \DateTimeImmutable::getLastErrors();
 
-                    if ($parsed && ($errors === false || ($errors['warning_count'] === 0 && $errors['error_count'] === 0))) {
-                        return $parsed;
-                    }
-                } catch (Throwable) {
-                    // Tenta o próximo formato permitido.
+                if ($parsed && ($errors === false || ($errors['warning_count'] === 0 && $errors['error_count'] === 0))) {
+                    return $parsed->startOfDay();
                 }
             }
         } catch (Throwable) {
-            // Converte para uma mensagem de validação por linha.
+            // A mensagem padronizada é emitida abaixo.
         }
 
-        throw ValidationException::withMessages([$field => 'Use uma data válida no formato DD/MM/AAAA HH:MM.']);
+        throw ValidationException::withMessages([$field => 'Use uma data válida no formato DD/MM/AAAA.']);
+    }
+
+    private function time(mixed $value, string $field): string
+    {
+        try {
+            if (is_numeric($value)) {
+                return ExcelDate::excelToDateTimeObject((float) $value)->format('H:i');
+            }
+
+            $value = trim((string) $value);
+
+            if (preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/', $value)) {
+                return substr($value, 0, 5);
+            }
+        } catch (Throwable) {
+            // A mensagem padronizada é emitida abaixo.
+        }
+
+        throw ValidationException::withMessages([$field => 'Use um horário válido no formato HH:MM.']);
+    }
+
+    /** @return array{inicio:string,fim:string}|null */
+    private function periodo(mixed $value): ?array
+    {
+        $normalizado = Str::of((string) $value)
+            ->ascii()
+            ->lower()
+            ->replace([' ', '-'], '_')
+            ->trim()
+            ->toString();
+
+        if ($normalizado === '') {
+            return null;
+        }
+
+        return match ($normalizado) {
+            'manha' => ['inicio' => '08:00', 'fim' => '12:00'],
+            'tarde' => ['inicio' => '13:30', 'fim' => '17:30'],
+            'noite' => ['inicio' => '19:00', 'fim' => '22:00'],
+            'dia_todo', 'diatodo' => ['inicio' => '08:00', 'fim' => '17:30'],
+            default => throw ValidationException::withMessages([
+                'periodo' => 'Use manha, tarde, noite ou dia_todo.',
+            ]),
+        };
     }
 
     private function boolean(mixed $value, string $field): bool
@@ -789,21 +994,6 @@ class EventoCalendarioImportService
         $value = trim((string) $value);
 
         return $value === '' ? null : $value;
-    }
-
-    private function nullablePositiveInt(mixed $value, string $field): ?int
-    {
-        if (blank($value)) {
-            return null;
-        }
-
-        if (! is_numeric($value) || (int) $value <= 0 || (float) $value !== (float) (int) $value) {
-            throw ValidationException::withMessages([
-                $field => 'Informe um identificador numérico positivo.',
-            ]);
-        }
-
-        return (int) $value;
     }
 
     private function safeLink(string $link): bool
@@ -847,11 +1037,34 @@ class EventoCalendarioImportService
     private function exampleRow(): array
     {
         return [
-            'secretaria-educacao', 'reuniao-2026-001', 'Reunião de gestores',
-            'Alinhamento mensal da equipe.', 'administrativo', 'Gestão escolar', 'normal',
-            now()->addWeek()->format('d/m/Y 09:00'), now()->addWeek()->format('d/m/Y 10:30'),
-            '/admin', 'Acessar', 'agendado', 'Sim', null, 'azul', null, null,
-            'Sim', 'qualquer', null, null, null, null, null, null,
+            'secretaria-educacao',
+            'reuniao-2026-001',
+            'Reunião de gestores',
+            'Alinhamento mensal da equipe.',
+            'administrativo',
+            'normal',
+            now()->addWeek()->format('d/m/Y'),
+            'manha',
+            '08:00',
+            '10:30',
+            '/admin',
+            'Acessar',
+            'Sim',
+            'azul',
+            'Sim',
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            'Sim',
+            'qualquer',
+            null,
+            null,
+            null,
+            null,
         ];
     }
 }

@@ -19,8 +19,8 @@ final readonly class CalendarEventData
         public string $categoria,
         public string $categoriaLabel,
         public ?string $assunto,
-        public string $status,
-        public string $statusLabel,
+        public ?string $status,
+        public ?string $statusLabel,
         public DashboardPrioridade $prioridade,
         public ?float $progresso,
         public string $cor,
@@ -31,6 +31,7 @@ final readonly class CalendarEventData
         public string $origem,
         public ?string $actionUrl = null,
         public ?string $actionLabel = null,
+        public ?int $transporteEstimado = null,
     ) {}
 
     /** @return array<string, mixed> */
@@ -61,6 +62,7 @@ final readonly class CalendarEventData
             'origem' => $this->origem,
             'action_url' => $this->actionUrl,
             'action_label' => $this->actionLabel,
+            'transporte_estimado' => $this->transporteEstimado,
         ];
     }
 }

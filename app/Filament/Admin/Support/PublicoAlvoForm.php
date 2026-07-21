@@ -23,19 +23,25 @@ final class PublicoAlvoForm
      *
      * @return array<int, Section>
      */
-    public static function schema(?User $user, bool $visivel = true): array
+    public static function schema(
+        ?User $user,
+        bool $visivel = true,
+        bool $incluirLocalizacao = true,
+    ): array
     {
+        if (! $visivel) {
+            return [];
+        }
+
         $options = app(PublicoAlvoOptionsService::class);
-        $escolas = $user ? $options->escolas($user) : [];
-        $setores = $user ? $options->setores($user) : [];
+        $escolas = $incluirLocalizacao && $user ? $options->escolas($user) : [];
+        $setores = $incluirLocalizacao && $user ? $options->setores($user) : [];
 
         return [
             Section::make('Público-alvo')
                 ->description('Combine critérios para definir quem receberá este conteúdo. O alcance nunca ultrapassa seu próprio contexto de acesso.')
                 ->statePath(self::STATE_PATH)
                 ->columns(2)
-                ->visible($visivel)
-                ->dehydrated($visivel)
                 ->schema([
                     Toggle::make('todos_usuarios')
                         ->label('Todos os usuários do meu escopo')
@@ -96,7 +102,7 @@ final class PublicoAlvoForm
                         ->multiple()
                         ->searchable()
                         ->preload()
-                        ->visible(fn (Get $get): bool => ! (bool) $get('todos_usuarios')),
+                        ->visible(fn (Get $get): bool => $incluirLocalizacao && ! (bool) $get('todos_usuarios')),
 
                     Select::make('setores_ids')
                         ->label('Setores')
@@ -104,7 +110,7 @@ final class PublicoAlvoForm
                         ->multiple()
                         ->searchable()
                         ->preload()
-                        ->visible(fn (Get $get): bool => ! (bool) $get('todos_usuarios')),
+                        ->visible(fn (Get $get): bool => $incluirLocalizacao && ! (bool) $get('todos_usuarios')),
                 ]),
         ];
     }

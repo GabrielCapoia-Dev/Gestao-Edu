@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Auth;
 
@@ -26,6 +27,7 @@ class EventoCalendario extends Model
         'publico_alvo_id',
         'escola_id',
         'setor_id',
+        'enviar_todas_escolas',
         'titulo',
         'descricao',
         'categoria',
@@ -57,6 +59,7 @@ class EventoCalendario extends Model
             'data_fim' => 'datetime',
             'status' => EventoCalendarioStatus::class,
             'ativo' => 'boolean',
+            'enviar_todas_escolas' => 'boolean',
             'progresso' => 'float',
             'cor' => EventoCalendarioCor::class,
             'origem' => EventoCalendarioOrigem::class,
@@ -76,6 +79,11 @@ class EventoCalendario extends Model
     public function setor(): BelongsTo
     {
         return $this->belongsTo(Setor::class);
+    }
+
+    public function escolasAgendadas(): HasMany
+    {
+        return $this->hasMany(EventoCalendarioEscola::class, 'evento_calendario_id');
     }
 
     public function criadoPor(): BelongsTo

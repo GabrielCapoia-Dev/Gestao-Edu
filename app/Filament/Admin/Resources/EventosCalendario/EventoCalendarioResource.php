@@ -53,7 +53,10 @@ class EventoCalendarioResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery()->with([
-            'publicoAlvo', 'escola:id,nome', 'setor:id,nome,path',
+            'publicoAlvo',
+            'escolasAgendadas.escola:id,nome',
+            'escolasAgendadas.series:id,nome',
+            'escolasAgendadas.turmas:id,nome',
             'criadoPor:id,name', 'atualizadoPor:id,name',
         ]);
         $user = static::usuarioEfetivo();

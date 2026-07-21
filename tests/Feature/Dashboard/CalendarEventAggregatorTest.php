@@ -85,6 +85,18 @@ class CalendarEventAggregatorTest extends TestCase
         $this->assertStringNotContainsString('agenda-event-detail', $html);
     }
 
+    public function test_dashboard_nao_renderiza_mais_a_grade_de_acesso_rapido(): void
+    {
+        $blade = file_get_contents(resource_path('views/filament/pages/dashboard.blade.php'));
+
+        $this->assertIsString($blade);
+        $this->assertStringContainsString('<livewire:home.avisos-banner', $blade);
+        $this->assertStringContainsString('<livewire:home.agenda-proximos-dias', $blade);
+        $this->assertStringNotContainsString('Acesso rápido', $blade);
+        $this->assertStringNotContainsString('quickLinks', $blade);
+        $this->assertStringNotContainsString('nav-card', file_get_contents(public_path('css/geral.css')));
+    }
+
     public function test_agregador_aplica_filtros_de_categoria_status_prioridade_e_assunto(): void
     {
         $inicio = CarbonImmutable::parse('2026-07-20 00:00:00');

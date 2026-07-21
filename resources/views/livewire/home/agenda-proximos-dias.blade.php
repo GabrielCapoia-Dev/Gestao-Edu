@@ -73,7 +73,7 @@
                                             </span>
                                         @endif
                                         <strong>{{ $event->titulo }}</strong>
-                                        <span>{{ $event->statusLabel }}</span>
+                                        @if ($event->statusLabel)<span>{{ $event->statusLabel }}</span>@endif
                                         @if ($event->progresso !== null)
                                             <progress
                                                 class="home-agenda__progress"
@@ -98,6 +98,9 @@
                                         </span>
                                         @if ($event->escola)<span><strong>Escola:</strong> {{ $event->escola }}</span>@endif
                                         @if ($event->setor)<span><strong>Setor:</strong> {{ $event->setor }}</span>@endif
+                                        @if ($event->transporteEstimado !== null)
+                                            <span><strong>Transporte:</strong> {{ $event->transporteEstimado }} estudante(s) estimado(s)</span>
+                                        @endif
                                         @if ($event->actionUrl)
                                             <a href="{{ $event->actionUrl }}">{{ $event->actionLabel ?: 'Acessar' }}</a>
                                         @endif
