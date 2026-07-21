@@ -25,37 +25,64 @@ class CalendarEventAggregatorTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_agenda_inicia_com_sete_dias_e_limita_selecao_a_trinta_e_um_dias(): void
+    public function test_agenda_inicia_com_cinco_dias_e_aceita_somente_periodos_configurados(): void
     {
-        config()->set('dashboard.calendar.default_days', 7);
-        config()->set('dashboard.calendar.max_days', 31);
+        config()->set('dashboard.calendar.default_days', 5);
+        config()->set('dashboard.calendar.max_days', 30);
+        config()->set('dashboard.calendar.period_options', [5, 10, 15, 20, 25, 30]);
         config()->set('dashboard.calendar.timezone', 'America/Sao_Paulo');
         CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-07-20 10:00:00', 'America/Sao_Paulo'));
 
         $component = new AgendaProximosDias();
         $component->mount();
 
-        $this->assertSame(7, $component->quantidadeDias);
-        $this->assertSame('2026-07-20', $component->dataInicial);
-        $this->assertSame('2026-07-26', $component->dataFinal);
+        $this->assertSame(5, $component->quantidadeDias);
 
-        $component->updatedQuantidadeDias(99);
+        $component->updatedQuantidadeDias(17);
 
-        $this->assertSame(31, $component->quantidadeDias);
-        $this->assertSame('2026-08-19', $component->dataFinal);
+        $this->assertSame(5, $component->quantidadeDias);
+
+        $component->updatedQuantidadeDias(30);
+
+        $this->assertSame(30, $component->quantidadeDias);
+
+        $this->contexto(
+            inicio: CarbonImmutable::parse('2026-07-01')->startOfDay(),
+            fim: CarbonImmutable::parse('2026-07-30')->endOfDay(),
+        );
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('no máximo 30 dias');
 
         $this->contexto(
             inicio: CarbonImmutable::parse('2026-07-01')->startOfDay(),
             fim: CarbonImmutable::parse('2026-07-31')->endOfDay(),
         );
+    }
 
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('no máximo 31 dias');
+    public function test_view_da_agenda_exibe_acordeao_resumido_e_destaca_fim_de_semana_sem_filtros_ou_modal(): void
+    {
+        $event = $this->evento('sabado');
+        $day = CarbonImmutable::parse('2026-07-25');
+        $html = view('livewire.home.agenda-proximos-dias', [
+            'days' => [[
+                'date' => $day,
+                'events' => [$event],
+                'remaining' => 0,
+                'expanded' => false,
+            ]],
+            'sourceErrors' => [],
+            'truncated' => false,
+            'periodOptions' => [5, 10, 15, 20, 25, 30],
+            'manageUrl' => null,
+            'erro' => null,
+        ])->render();
 
-        $this->contexto(
-            inicio: CarbonImmutable::parse('2026-07-01')->startOfDay(),
-            fim: CarbonImmutable::parse('2026-08-01')->endOfDay(),
-        );
+        $this->assertStringContainsString('home-agenda__day is-weekend', $html);
+        $this->assertStringContainsString('<details', $html);
+        $this->assertStringContainsString('home-agenda__event-detail', $html);
+        $this->assertStringNotContainsString('home-agenda__filters', $html);
+        $this->assertStringNotContainsString('agenda-event-detail', $html);
     }
 
     public function test_agregador_aplica_filtros_de_categoria_status_prioridade_e_assunto(): void

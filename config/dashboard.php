@@ -2,8 +2,9 @@
 
 return [
     'calendar' => [
-        'default_days' => 7,
-        'max_days' => 31,
+        'default_days' => 5,
+        'max_days' => 30,
+        'period_options' => [5, 10, 15, 20, 25, 30],
         'max_events' => 500,
         'timezone' => env('APP_TIMEZONE', 'America/Sao_Paulo'),
         'sources' => [

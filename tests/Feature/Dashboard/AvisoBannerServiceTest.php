@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Dashboard;
 
+use App\Filament\Admin\Resources\Avisos\AvisoResource;
 use App\Models\Aviso;
 use App\Models\Enums\ListaPermissoes;
 use App\Models\Escola;
@@ -96,6 +97,28 @@ class AvisoBannerServiceTest extends TestCase
         $this->assertTrue(
             $policy->applyViewAnyScope($usuarioB, Aviso::query())->doesntExist(),
         );
+    }
+
+    public function test_listagem_administrativa_carrega_publico_alvo_sem_erro_de_relacao(): void
+    {
+        [$usuario] = $this->criarUsuariosDeEscolasDiferentes();
+        $usuario->forceFill(['email_approved' => true])->save();
+        $this->darPermissoesDeAviso($usuario);
+        $publico = app(PublicoAlvoService::class)->criar($usuario, [
+            'todos_usuarios' => true,
+        ]);
+        $this->criarAviso(
+            $publico->id,
+            'Aviso disponível na administração',
+            'normal',
+            null,
+            now()->subHour(),
+        );
+
+        $this->actingAs($usuario)
+            ->get(AvisoResource::getUrl('index'))
+            ->assertOk()
+            ->assertSee('Aviso disponível na administração');
     }
 
     public function test_paginacao_preserva_layouts_de_um_dois_tres_e_mais_avisos(): void

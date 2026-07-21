@@ -15,6 +15,7 @@ use App\Support\Dashboard\Calendar\CalendarEventDetailData;
 use App\Support\Dashboard\Calendar\CalendarQueryContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Throwable;
@@ -40,8 +41,10 @@ class AvaliacaoCalendarEventSource implements CalendarEventSource
         $professorTurmaIds = $this->professorTurmaIds($context);
         $avaliacoes = $this->baseQuery($context, professorTurmaIds: $professorTurmaIds)
             ->with([
-                'turmas' => fn ($query) => $this->scopeTurmas($query, $context, $professorTurmaIds)
-                    ->select(['turmas.id', 'turmas.id_escola']),
+                'turmas' => function (BelongsToMany $query) use ($context, $professorTurmaIds): void {
+                    $this->scopeTurmas($query, $context, $professorTurmaIds);
+                    $query->select(['turmas.id', 'turmas.id_escola']);
+                },
                 'turmas.escola:id,nome',
             ])
             ->orderByRaw('COALESCE(data_inicio_preenchimento, data_inicio)')
@@ -68,8 +71,10 @@ class AvaliacaoCalendarEventSource implements CalendarEventSource
             ->with([
                 'tipo:id,nome',
                 'periodo:id,nome',
-                'turmas' => fn ($query) => $this->scopeTurmas($query, $context, $professorTurmaIds)
-                    ->select(['turmas.id', 'turmas.id_escola']),
+                'turmas' => function (BelongsToMany $query) use ($context, $professorTurmaIds): void {
+                    $this->scopeTurmas($query, $context, $professorTurmaIds);
+                    $query->select(['turmas.id', 'turmas.id_escola']);
+                },
                 'turmas.escola:id,nome',
             ])
             ->find($id);
@@ -101,11 +106,9 @@ class AvaliacaoCalendarEventSource implements CalendarEventSource
     {
         $query = Avaliacao::query()
             ->where('status', Avaliacao::STATUS_ATIVA)
-            ->whereHas('turmas', fn (Builder $turmas): Builder => $this->scopeTurmas(
-                $turmas,
-                $context,
-                $professorTurmaIds,
-            ));
+            ->whereHas('turmas', function (Builder $turmas) use ($context, $professorTurmaIds): void {
+                $this->scopeTurmas($turmas, $context, $professorTurmaIds);
+            });
 
         if ($period) {
             $query
@@ -118,10 +121,10 @@ class AvaliacaoCalendarEventSource implements CalendarEventSource
 
     /** @param list<int>|null $professorTurmaIds */
     private function scopeTurmas(
-        Builder $query,
+        Builder|BelongsToMany $query,
         CalendarQueryContext $context,
         ?array $professorTurmaIds = null,
-    ): Builder
+    ): void
     {
         $schoolIds = $context->escolaId
             ? [$context->escolaId]
@@ -138,8 +141,6 @@ class AvaliacaoCalendarEventSource implements CalendarEventSource
                 ? $query->whereRaw('1 = 0')
                 : $query->whereIn('turmas.id', $professorTurmaIds);
         }
-
-        return $query;
     }
 
     /** @return list<int>|null */

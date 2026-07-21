@@ -17,6 +17,7 @@ use App\Models\Turma;
 use App\Models\TurmaComponenteProfessor;
 use App\Models\User;
 use App\Services\Avaliacoes\AvaliacaoDashboardProgressService;
+use App\Services\Dashboard\Calendar\CalendarEventAggregator;
 use App\Services\Dashboard\Calendar\Sources\AvaliacaoCalendarEventSource;
 use App\Services\Dashboard\DashboardUserContextFactory;
 use App\Support\Dashboard\Calendar\CalendarEventData;
@@ -24,6 +25,7 @@ use App\Support\Dashboard\Calendar\CalendarQueryContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -35,6 +37,7 @@ class AvaliacaoCalendarEventSourceTest extends TestCase
     {
         parent::setUp();
 
+        Queue::fake();
         app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 
@@ -68,9 +71,11 @@ class AvaliacaoCalendarEventSourceTest extends TestCase
         $context = $this->contexto($userA, $agora, $agora->addDays(6)->endOfDay());
         $source = app(AvaliacaoCalendarEventSource::class);
 
-        $events = collect($source->events($context));
+        $result = (new CalendarEventAggregator([$source]))->aggregate($context);
+        $events = collect($result->events);
 
         $this->assertTrue($source->supports($context));
+        $this->assertSame([], $result->errors);
         $this->assertSame([$avaliacaoA->id], $events->map(
             static fn (CalendarEventData $event): int => (int) $event->reference,
         )->all());

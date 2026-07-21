@@ -13,6 +13,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 
@@ -54,7 +55,7 @@ class AvisoResource extends Resource
             ->with([
                 'criadoPor:id,name',
                 'atualizadoPor:id,name',
-                'publicoAlvo' => fn (Builder $publicos): Builder => $publicos
+                'publicoAlvo' => fn (BelongsTo $publicos): BelongsTo => $publicos
                     ->with([
                         'escopoEscolas:id',
                         'escopoSetores:id',
