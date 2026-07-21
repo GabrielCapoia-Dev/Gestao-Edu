@@ -26,7 +26,6 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Gate;
 
 class EventoCalendarioForm
 {
@@ -46,8 +45,6 @@ class EventoCalendarioForm
     /** @return array<int, \Filament\Schemas\Components\Component> */
     public static function components(?User $user): array
     {
-        $canManageAudience = $user && Gate::forUser($user)->allows('manageAudience', EventoCalendario::class);
-
         return [
             Section::make('Evento')
                 ->columns(2)
@@ -123,24 +120,6 @@ class EventoCalendarioForm
                         ->columnSpanFull(),
                 ]),
 
-            Section::make('Destinatários')
-                ->description('Escolha entre todos os usuários do seu escopo ou a distribuição por escola.')
-                ->columnSpanFull()
-                ->visible((bool) $canManageAudience)
-                ->schema([
-                    Toggle::make('enviar_todos_usuarios')
-                        ->label('Enviar para todos os usuários do meu escopo')
-                        ->helperText('Ao ativar, a distribuição por escola não será utilizada.')
-                        ->default(false)
-                        ->live()
-                        ->afterStateUpdated(function (bool $state, Set $set): void {
-                            if ($state) {
-                                $set('enviar_todas_escolas', true);
-                                $set('escolas_agendadas', []);
-                            }
-                        }),
-                ]),
-
             Section::make('Link de ação')
                 ->columns(2)
                 ->columnSpanFull()
@@ -175,7 +154,6 @@ class EventoCalendarioForm
             Section::make('Distribuição por escola')
                 ->description('Defina as escolas participantes e, quando necessário, horários e transporte específicos por unidade.')
                 ->columnSpanFull()
-                ->visible(fn (Get $get): bool => ! $canManageAudience || ! (bool) $get('enviar_todos_usuarios'))
                 ->schema([
                     Toggle::make('enviar_todas_escolas')
                         ->label('Enviar para todas as escolas do meu escopo')
@@ -292,6 +270,23 @@ class EventoCalendarioForm
                         ->columnSpanFull(),
                 ]),
 
+        ];
+    }
+
+    /** @param array<string, mixed> $data @return array<string, mixed> */
+    public static function dadosParaEdicao(EventoCalendario $evento, array $data): array
+    {
+        $inicio = $evento->data_inicio->format('H:i');
+        $fim = $evento->data_fim->format('H:i');
+
+        return [
+            ...$data,
+            'data_evento' => $evento->data_inicio->toDateString(),
+            'hora_inicio' => $inicio,
+            'hora_fim' => $fim,
+            'periodo' => self::periodoCorrespondente($inicio, $fim),
+            'inserir_link' => filled($evento->link_acao),
+            'escolas_agendadas' => app(EventoCalendarioEscolaService::class)->paraFormulario($evento),
         ];
     }
 

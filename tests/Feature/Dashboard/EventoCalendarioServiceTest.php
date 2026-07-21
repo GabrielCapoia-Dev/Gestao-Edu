@@ -168,7 +168,7 @@ class EventoCalendarioServiceTest extends TestCase
         $this->assertDatabaseCount('evento_calendario_escolas', 0);
     }
 
-    public function test_formulario_oculta_link_e_publico_avancado_sem_as_permissoes_correspondentes(): void
+    public function test_formulario_oculta_link_e_nao_expoe_destinatarios(): void
     {
         [$ator] = $this->atorEscolar('FORM');
 
@@ -181,21 +181,9 @@ class EventoCalendarioServiceTest extends TestCase
             ->assertDontSee('Publicado')
             ->fillForm(['inserir_link' => true])
             ->assertSee('Link de ação');
-
-        $permissao = Permission::findOrCreate(
-            ListaPermissoes::GerenciarPublicoAlvoDeEventos->label(),
-            'web',
-        );
-        $ator->givePermissionTo($permissao);
-        app(PermissionRegistrar::class)->forgetCachedPermissions();
-
-        Livewire::actingAs($ator)
-            ->test(CreateEventoCalendario::class)
-            ->assertSee('Destinatários')
-            ->assertSee('Enviar para todos os usuários do meu escopo');
     }
 
-    public function test_envio_para_todos_os_usuarios_exige_permissao_especifica(): void
+    public function test_rejeita_envio_paralelo_para_todos_os_usuarios(): void
     {
         [$ator] = $this->atorEscolar('PUBLICO');
 
@@ -209,21 +197,6 @@ class EventoCalendarioServiceTest extends TestCase
             $this->assertArrayHasKey('enviar_todos_usuarios', $exception->errors());
         }
 
-        $permissao = Permission::findOrCreate(
-            ListaPermissoes::GerenciarPublicoAlvoDeEventos->label(),
-            'web',
-        );
-        $ator->givePermissionTo($permissao);
-        app(PermissionRegistrar::class)->forgetCachedPermissions();
-
-        $evento = app(EventoCalendarioService::class)->criar([
-            ...$this->dadosBase(),
-            'enviar_todos_usuarios' => true,
-        ], [], $ator);
-
-        $this->assertTrue($evento->publicoAlvo->todos_usuarios);
-        $this->assertTrue($evento->ativo);
-        $this->assertDatabaseCount('publico_alvo_escola', 0);
     }
 
     /** @return array{0: User, 1: Escola} */

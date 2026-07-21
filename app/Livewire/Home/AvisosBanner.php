@@ -14,6 +14,15 @@ use Throwable;
 
 class AvisosBanner extends Component
 {
+    public function marcarComoLido(int $avisoId, int $versaoEnvio): void
+    {
+        /** @var User|null $user */
+        $user = Auth::user();
+        abort_unless($user, 403);
+
+        app(AvisoBannerService::class)->marcarComoLido($user, $avisoId, $versaoEnvio);
+    }
+
     public function placeholder(): View
     {
         return view('livewire.home.avisos-banner-placeholder');

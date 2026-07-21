@@ -17,11 +17,17 @@
         && parse_url($link, PHP_URL_HOST) !== request()->getHost();
 @endphp
 
-<article @class([
-    'ge-aviso-card',
-    'ge-aviso-card--'.$prioridade,
-    'ge-aviso-card--preview' => $preview,
-])>
+<article
+    {{ $attributes->class([
+        'ge-aviso-card',
+        'ge-aviso-card--'.$prioridade,
+        'ge-aviso-card--preview' => $preview,
+    ]) }}
+    @if (! $preview)
+        x-data="{ descartando: false }"
+        x-bind:class="{ 'is-dismissing': descartando }"
+    @endif
+>
     <div class="ge-aviso-card__topo">
         <span class="ge-aviso-card__prioridade">{{ $prioridadeLabel }}</span>
 
@@ -43,15 +49,37 @@
             </time>
         </span>
 
-        @if ($link)
-            <a
-                href="{{ $link }}"
-                class="ge-aviso-card__acao"
-                @if ($linkExterno) target="_blank" rel="noopener noreferrer" @endif
-            >
-                {{ filled($aviso->texto_botao) ? $aviso->texto_botao : 'Saiba mais' }}
-                <x-heroicon-o-arrow-right />
-            </a>
-        @endif
+        <div class="ge-aviso-card__acoes">
+            @if (! $preview)
+                <label class="ge-aviso-card__lido">
+                    <input
+                        type="checkbox"
+                        x-bind:disabled="descartando"
+                        wire:loading.attr="disabled"
+                        wire:target="marcarComoLido"
+                        x-on:change="
+                            descartando = true;
+                            const espera = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 520;
+                            window.setTimeout(() => {
+                                $wire.marcarComoLido({{ $aviso->getKey() }}, {{ (int) $aviso->versao_envio }})
+                                    .catch(() => { descartando = false });
+                            }, espera);
+                        "
+                    >
+                    <span>Lido</span>
+                </label>
+            @endif
+
+            @if ($link)
+                <a
+                    href="{{ $link }}"
+                    class="ge-aviso-card__acao"
+                    @if ($linkExterno) target="_blank" rel="noopener noreferrer" @endif
+                >
+                    {{ filled($aviso->texto_botao) ? $aviso->texto_botao : 'Saiba mais' }}
+                    <x-heroicon-o-arrow-right />
+                </a>
+            @endif
+        </div>
     </footer>
 </article>

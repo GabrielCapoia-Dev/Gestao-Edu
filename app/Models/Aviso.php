@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Auth;
 
@@ -28,6 +29,7 @@ class Aviso extends Model
         'inicio_exibicao',
         'fim_exibicao',
         'ativo',
+        'versao_envio',
         'criado_por_id',
         'atualizado_por_id',
         'excluido_por_id',
@@ -42,6 +44,7 @@ class Aviso extends Model
             'inicio_exibicao' => 'datetime',
             'fim_exibicao' => 'datetime',
             'ativo' => 'boolean',
+            'versao_envio' => 'integer',
         ];
     }
 
@@ -63,6 +66,11 @@ class Aviso extends Model
     public function excluidoPor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'excluido_por_id');
+    }
+
+    public function leituras(): HasMany
+    {
+        return $this->hasMany(AvisoLeitura::class);
     }
 
     public function scopeVigentes(Builder $query, ?CarbonInterface $agora = null): Builder

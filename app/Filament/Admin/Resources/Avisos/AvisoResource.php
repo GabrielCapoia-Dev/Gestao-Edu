@@ -52,6 +52,7 @@ class AvisoResource extends Resource
         }
 
         return $policy->applyViewAnyScope($user, $query)
+            ->withCount('leituras')
             ->with([
                 'criadoPor:id,name',
                 'atualizadoPor:id,name',

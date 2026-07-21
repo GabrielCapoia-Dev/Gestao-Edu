@@ -80,6 +80,13 @@ final class AvisosTable
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
 
+                TextColumn::make('leituras_count')
+                    ->label('Leituras')
+                    ->numeric()
+                    ->badge()
+                    ->color('info')
+                    ->tooltip('Total histórico de confirmações de leitura.'),
+
                 TextColumn::make('criadoPor.name')
                     ->label('Criado por')
                     ->placeholder('Usuário removido')
@@ -164,6 +171,54 @@ final class AvisosTable
                     ->modalContent(fn (Aviso $record) => view('filament.admin.resources.avisos.preview', [
                         'aviso' => $record,
                     ])),
+
+                Action::make('leituras')
+                    ->label('Quem leu')
+                    ->icon('heroicon-o-user-group')
+                    ->color('gray')
+                    ->visible(fn (Aviso $record): bool => Gate::allows('view', $record))
+                    ->slideOver()
+                    ->modalWidth('2xl')
+                    ->modalHeading(fn (Aviso $record): string => 'Leituras — '.$record->titulo)
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Fechar')
+                    ->modalContent(function (Aviso $record) {
+                        $record->load([
+                            'leituras' => fn ($leituras) => $leituras
+                                ->with('usuario:id,name,email')
+                                ->latest('lido_em'),
+                        ]);
+
+                        return view('filament.admin.resources.avisos.leituras', [
+                            'aviso' => $record,
+                        ]);
+                    }),
+
+                Action::make('reenviar')
+                    ->label('Enviar novamente')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('info')
+                    ->visible(fn (Aviso $record): bool => Gate::allows('publish', $record))
+                    ->disabled(fn (Aviso $record): bool => $record->statusExibicao() !== 'ativo')
+                    ->tooltip(fn (Aviso $record): ?string => $record->statusExibicao() !== 'ativo'
+                        ? 'Somente avisos ativos podem ser enviados novamente.'
+                        : 'Reexibe o aviso e preserva o histórico anterior de leituras.')
+                    ->requiresConfirmation()
+                    ->modalHeading('Enviar este aviso novamente?')
+                    ->modalDescription('O aviso voltará a aparecer para todos os destinatários atuais. O histórico das leituras anteriores será preservado.')
+                    ->modalSubmitActionLabel('Enviar novamente')
+                    ->action(function (Aviso $record): void {
+                        Gate::authorize('publish', $record);
+
+                        /** @var User $user */
+                        $user = Auth::user();
+                        app(AvisoService::class)->reenviar($record, $user);
+
+                        Notification::make()
+                            ->title('Aviso enviado novamente.')
+                            ->success()
+                            ->send();
+                    }),
 
                 Action::make('alterar_publicacao')
                     ->label(fn (Aviso $record): string => $record->ativo ? 'Desativar' : 'Publicar')

@@ -215,8 +215,6 @@ class EventoCalendarioImportServiceTest extends TestCase
     public function test_chave_externa_cria_e_depois_atualiza_o_mesmo_evento_idempotentemente(): void
     {
         $ator = $this->criarAtorGlobal();
-        $ator->revokePermissionTo(ListaPermissoes::GerenciarPublicoAlvoDeEventos->label());
-        app(PermissionRegistrar::class)->forgetCachedPermissions();
         $service = $this->service();
         $primeiroLote = $service->preview(
             $this->arquivoCsv([$this->linhaValida('idempotente')]),
@@ -401,7 +399,7 @@ class EventoCalendarioImportServiceTest extends TestCase
             $this->assertSame(['Eventos', 'Instruções', 'Referências'], $spreadsheet->getSheetNames());
             $this->assertSame(
                 EventoCalendarioImportService::HEADERS,
-                $spreadsheet->getSheetByName('Eventos')->rangeToArray('A1:AB1')[0],
+                $spreadsheet->getSheetByName('Eventos')->rangeToArray('A1:U1')[0],
             );
 
             $referencias = collect($spreadsheet->getSheetByName('Referências')->toArray())
@@ -495,7 +493,6 @@ class EventoCalendarioImportServiceTest extends TestCase
             ListaPermissoes::CriarEventos,
             ListaPermissoes::EditarEventos,
             ListaPermissoes::PublicarEventos,
-            ListaPermissoes::GerenciarPublicoAlvoDeEventos,
         ];
     }
 
@@ -562,12 +559,6 @@ class EventoCalendarioImportServiceTest extends TestCase
             'escopo_transporte' => null,
             'series_codigos' => null,
             'turmas_codigos' => null,
-            'todos_usuarios' => 'Sim',
-            'modo_correspondencia' => 'qualquer',
-            'usuarios_emails' => null,
-            'roles' => null,
-            'permissoes' => null,
-            'funcoes_administrativas' => null,
         ];
     }
 

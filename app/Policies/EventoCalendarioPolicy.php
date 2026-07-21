@@ -60,8 +60,7 @@ class EventoCalendarioPolicy
     public function duplicate(User $user, EventoCalendario $evento): bool
     {
         return $this->create($user)
-            && $this->view($user, $evento)
-            && $this->manageAudience($user, $evento);
+            && $this->view($user, $evento);
     }
 
     public function applyViewAnyScope(User $user, Builder $query): Builder

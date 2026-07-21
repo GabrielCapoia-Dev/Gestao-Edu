@@ -38,8 +38,7 @@
         <div class="gi-empty ge-avisos__vazio">
             <x-heroicon-o-megaphone />
             <div>
-                <strong>Nenhum aviso no momento</strong>
-                <span>Novas informações aparecerão aqui quando estiverem disponíveis.</span>
+                <strong>Sem avisos no quadro</strong>
             </div>
         </div>
     @else
@@ -57,7 +56,10 @@
                     x-bind:inert="pagina !== {{ $indice }}"
                 >
                     @foreach ($avisos as $aviso)
-                        <x-avisos.card :aviso="$aviso" />
+                        <x-avisos.card
+                            :aviso="$aviso"
+                            wire:key="aviso-{{ $aviso->getKey() }}-{{ $aviso->versao_envio }}"
+                        />
                     @endforeach
                 </div>
             @endforeach

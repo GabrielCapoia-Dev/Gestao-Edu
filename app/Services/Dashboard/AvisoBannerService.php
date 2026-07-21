@@ -3,6 +3,7 @@
 namespace App\Services\Dashboard;
 
 use App\Models\Aviso;
+use App\Models\AvisoLeitura;
 use App\Models\User;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
@@ -18,17 +19,10 @@ class AvisoBannerService
 
     public function queryPara(User $user, ?CarbonInterface $agora = null): Builder
     {
-        $query = Aviso::query()
-            ->vigentes($agora)
-            ->select('avisos.*');
-
-        $query = $this->publicoAlvoService->aplicarEscopo(
-            $query,
-            $user,
-            'publico_alvo_id',
-        );
-
-        return $query
+        return $this->queryVigentesPara($user, $agora)
+            ->whereDoesntHave('leituras', fn (Builder $leituras): Builder => $leituras
+                ->where('user_id', $user->getKey())
+                ->whereColumn('aviso_leituras.versao_envio', 'avisos.versao_envio'))
             ->orderByRaw("case prioridade
                 when 'urgente' then 4
                 when 'alta' then 3
@@ -42,6 +36,36 @@ class AvisoBannerService
             ->orderBy('ordem_manual')
             ->orderByDesc('created_at')
             ->orderByDesc('id');
+    }
+
+    public function marcarComoLido(User $user, int $avisoId, int $versaoEnvio): void
+    {
+        $aviso = $this->queryVigentesPara($user)
+            ->whereKey($avisoId)
+            ->where('versao_envio', $versaoEnvio)
+            ->firstOrFail();
+
+        AvisoLeitura::query()->updateOrCreate(
+            [
+                'aviso_id' => $aviso->getKey(),
+                'user_id' => $user->getKey(),
+                'versao_envio' => $aviso->versao_envio,
+            ],
+            ['lido_em' => now()],
+        );
+    }
+
+    private function queryVigentesPara(User $user, ?CarbonInterface $agora = null): Builder
+    {
+        $query = Aviso::query()
+            ->vigentes($agora)
+            ->select('avisos.*');
+
+        return $this->publicoAlvoService->aplicarEscopo(
+            $query,
+            $user,
+            'publico_alvo_id',
+        );
     }
 
     /** @return Collection<int, Aviso> */

@@ -2,13 +2,14 @@
 
 namespace App\Filament\Admin\Resources\EventosCalendario\Tables;
 
+use App\Filament\Admin\Resources\EventosCalendario\Schemas\EventoCalendarioForm;
 use App\Models\Enums\EventoCalendarioCategoria;
 use App\Models\EventoCalendario;
 use App\Models\User;
 use App\Services\Dashboard\EventoCalendarioService;
 use App\Services\Dashboard\PublicoAlvoOptionsService;
 use Filament\Actions\Action;
-use Filament\Actions\DeleteAction;
+use Filament\Actions\BulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Notifications\Notification;
@@ -41,10 +42,6 @@ class EventosCalendarioTable
                 TextColumn::make('distribuicao_escolas')
                     ->label('Distribuição')
                     ->getStateUsing(function (EventoCalendario $record): string {
-                        if ($record->publicoAlvo?->todos_usuarios) {
-                            return 'Todos os usuários do escopo';
-                        }
-
                         if ($record->enviar_todas_escolas) {
                             return 'Todas as escolas do escopo';
                         }
@@ -83,18 +80,6 @@ class EventosCalendarioTable
                                     );
                             }));
                     }),
-                SelectFilter::make('publico_alvo_tipo')->label('Público-alvo')
-                    ->options(['todos' => 'Todos os usuários do escopo', 'segmentado' => 'Público segmentado'])
-                    ->visible($user && Gate::forUser($user)->allows('manageAudience', EventoCalendario::class))
-                    ->query(function (Builder $query, array $data): Builder {
-                        return $query->when(
-                            $data['value'] ?? null,
-                            fn (Builder $filtered, string $value): Builder => $filtered->whereHas(
-                                'publicoAlvo',
-                                fn (Builder $publico): Builder => $publico->where('todos_usuarios', $value === 'todos'),
-                            ),
-                        );
-                    }),
                 Filter::make('periodo')->label('Período')
                     ->schema([
                         DatePicker::make('inicio')->label('De'),
@@ -115,9 +100,27 @@ class EventosCalendarioTable
                         'filament.admin.resources.eventos-calendario.partials.detalhes',
                         ['evento' => $record],
                     ))
+                    ->slideOver()
+                    ->modalWidth('3xl')
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Fechar'),
-                EditAction::make(),
+                EditAction::make()
+                    ->label('Editar')
+                    ->slideOver()
+                    ->modalWidth('3xl')
+                    ->closeModalByClickingAway(false)
+                    ->schema(fn (): array => EventoCalendarioForm::components($user))
+                    ->fillForm(fn (EventoCalendario $record): array => EventoCalendarioForm::dadosParaEdicao(
+                        $record,
+                        $record->attributesToArray(),
+                    ))
+                    ->authorize(fn (EventoCalendario $record): bool => $user && Gate::forUser($user)->allows('update', $record))
+                    ->using(function (EventoCalendario $record, array $data) use ($user): EventoCalendario {
+                        abort_unless($user, 403);
+
+                        return app(EventoCalendarioService::class)->atualizar($record, $data, [], $user);
+                    })
+                    ->successNotificationTitle('Evento atualizado'),
                 Action::make('publicar')
                     ->label(fn (EventoCalendario $record): string => $record->ativo ? 'Desativar' : 'Publicar')
                     ->icon(fn (EventoCalendario $record): string => $record->ativo ? 'heroicon-o-eye-slash' : 'heroicon-o-eye')
@@ -136,7 +139,26 @@ class EventosCalendarioTable
                         app(EventoCalendarioService::class)->duplicar($record, $user);
                         Notification::make()->title('Evento duplicado como não publicado')->success()->send();
                     }),
-                DeleteAction::make(),
+            ])
+            ->groupedBulkActions([
+                BulkAction::make('desativar')
+                    ->label('Desativar selecionados')
+                    ->icon('heroicon-o-eye-slash')
+                    ->color('warning')
+                    ->visible(fn (): bool => $user && Gate::forUser($user)->allows('publish', EventoCalendario::class))
+                    ->requiresConfirmation()
+                    ->modalHeading('Desativar eventos selecionados')
+                    ->modalDescription('Os eventos selecionados deixarão de aparecer na agenda. Esta ação não exclui nenhum registro.')
+                    ->action(function ($records) use ($user): void {
+                        abort_unless($user, 403);
+                        $quantidade = app(EventoCalendarioService::class)->desativarEmMassa($records, $user);
+
+                        Notification::make()
+                            ->title("{$quantidade} evento(s) desativado(s)")
+                            ->success()
+                            ->send();
+                    })
+                    ->deselectRecordsAfterCompletion(),
             ])
             ->defaultSort('data_inicio')
             ->paginated([10, 25, 50, 100])

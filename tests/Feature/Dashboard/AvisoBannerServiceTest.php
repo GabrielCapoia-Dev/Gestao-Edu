@@ -155,6 +155,40 @@ class AvisoBannerServiceTest extends TestCase
         }
     }
 
+    public function test_leitura_oculta_aviso_e_novo_envio_preserva_historico_e_reexibe(): void
+    {
+        $agora = CarbonImmutable::parse('2026-07-21 10:00:00');
+        CarbonImmutable::setTestNow($agora);
+        [$usuario] = $this->criarUsuariosDeEscolasDiferentes();
+        $this->darPermissoesDeAviso($usuario);
+        $publico = app(PublicoAlvoService::class)->criar($usuario, [
+            'todos_usuarios' => true,
+        ]);
+        $aviso = $this->criarAviso(
+            $publico->id,
+            'Aviso com confirmação',
+            'normal',
+            null,
+            $agora->subHour(),
+        );
+        $banner = app(AvisoBannerService::class);
+
+        $banner->marcarComoLido($usuario, $aviso->id, 1);
+
+        $this->assertTrue($banner->avisosPara($usuario, $agora)->isEmpty());
+        $this->assertDatabaseHas('aviso_leituras', [
+            'aviso_id' => $aviso->id,
+            'user_id' => $usuario->id,
+            'versao_envio' => 1,
+        ]);
+
+        $reenviado = app(AvisoService::class)->reenviar($aviso, $usuario);
+
+        $this->assertSame(2, $reenviado->versao_envio);
+        $this->assertSame([$aviso->id], $banner->avisosPara($usuario, $agora)->modelKeys());
+        $this->assertDatabaseCount('aviso_leituras', 1);
+    }
+
     public function test_status_inativo_tem_precedencia_sobre_expirado_e_link_rejeita_esquemas_inseguros(): void
     {
         $agora = CarbonImmutable::parse('2026-07-20 10:00:00');
