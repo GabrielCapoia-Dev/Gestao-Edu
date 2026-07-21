@@ -146,7 +146,9 @@ class AvaliacaoCalendarEventSource implements CalendarEventSource
     ): void {
         $schoolIds = $context->escolaId
             ? [$context->escolaId]
-            : ($context->userContext->escopoGlobal ? null : $context->userContext->escolaIds);
+            : ($context->redeCompleta || $context->userContext->escopoGlobal
+                ? null
+                : $context->userContext->escolaIds);
 
         if (is_array($schoolIds)) {
             $schoolIds === []
@@ -194,7 +196,9 @@ class AvaliacaoCalendarEventSource implements CalendarEventSource
 
         $schoolIds = $context->escolaId
             ? [$context->escolaId]
-            : ($context->userContext->escopoGlobal ? null : $context->userContext->escolaIds);
+            : ($context->redeCompleta || $context->userContext->escopoGlobal
+                ? null
+                : $context->userContext->escolaIds);
         $professorIds = Gate::forUser($context->user)->allows('follow', Avaliacao::class)
             ? null
             : $context->user->professores()->where('ativo', true)->pluck('id')->map(fn ($id): int => (int) $id)->all();

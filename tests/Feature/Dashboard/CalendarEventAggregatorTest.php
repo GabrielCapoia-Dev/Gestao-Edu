@@ -136,32 +136,6 @@ class CalendarEventAggregatorTest extends TestCase
         $this->assertFalse($result->truncated);
     }
 
-    public function test_contexto_rejeita_calendario_da_rede_para_usuario_sem_escopo_global(): void
-    {
-        $user = (new User)->forceFill(['id' => 9002]);
-        $userContext = new DashboardUserContext(
-            userId: 9002,
-            escopoGlobal: false,
-            roleIds: [],
-            permissionIds: [],
-            funcaoAdministrativaIds: [],
-            escolaIds: [10],
-            setorIds: [],
-            setorVisivelIds: [],
-        );
-
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('não possui acesso ao calendário de toda a rede');
-
-        new CalendarQueryContext(
-            user: $user,
-            userContext: $userContext,
-            inicio: CarbonImmutable::parse('2026-07-20')->startOfDay(),
-            fim: CarbonImmutable::parse('2026-07-24')->endOfDay(),
-            redeCompleta: true,
-        );
-    }
-
     public function test_falha_de_uma_fonte_nao_descarta_eventos_das_demais(): void
     {
         $context = $this->contexto();

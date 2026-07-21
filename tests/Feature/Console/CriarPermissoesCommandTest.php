@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Console;
 
+use App\Models\Enums\ListaPermissoes;
 use App\Models\Role;
 use App\Models\FuncaoAdministrativa;
 use App\Services\PedidoService;
@@ -148,6 +149,19 @@ class CriarPermissoesCommandTest extends TestCase
         $admin = Role::findByName('Admin', 'web');
 
         $this->assertTrue($admin->hasPermissionTo('Acompanhar Avaliações'));
+    }
+
+    public function test_it_creates_network_calendar_permission_and_assigns_it_to_admin(): void
+    {
+        Artisan::call('permissoes:criar');
+
+        $permission = ListaPermissoes::VisualizarAgendaDeTodaARede->label();
+
+        $this->assertDatabaseHas('permissions', [
+            'name' => $permission,
+            'guard_name' => 'web',
+        ]);
+        $this->assertTrue(Role::findByName('Admin', 'web')->hasPermissionTo($permission));
     }
 
     public function test_it_migrates_legacy_equipe_gestora_permissions_to_servidores(): void

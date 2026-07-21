@@ -216,6 +216,7 @@ enum ListaPermissoes: string
     case VisualizarNotificacaoPedidoAdicionalCriado = 'visualizar notificação: pedido adicional criado';
     case VisualizarNotificacaoBalancoDeEstoque = 'visualizar notificação: balanço de estoque';
     case VisualizarTelaDeInicio = 'visualizar tela de inicio';
+    case VisualizarAgendaDeTodaARede = 'visualizar agenda de toda a rede';
     case PublicarAvisos = 'publicar avisos';
     case PublicarEventos = 'publicar eventos';
 
@@ -466,6 +467,7 @@ enum ListaPermissoes: string
             self::VisualizarNotificacaoPedidoAdicionalCriado => 'Visualizar Notificação: Pedido Adicional Criado',
             self::VisualizarNotificacaoBalancoDeEstoque => 'Visualizar Notificação: Balanço de Estoque',
             self::VisualizarTelaDeInicio => 'Visualizar Tela de Inicio',
+            self::VisualizarAgendaDeTodaARede => 'Visualizar Agenda de Toda a Rede',
             self::PublicarAvisos => 'Publicar Avisos',
             self::PublicarEventos => 'Publicar Eventos',
 

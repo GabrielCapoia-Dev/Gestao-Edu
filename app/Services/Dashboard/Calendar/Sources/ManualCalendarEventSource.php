@@ -104,7 +104,7 @@ class ManualCalendarEventSource implements CalendarEventSource
             $this->publicos->aplicarEscopo($query, $context->user, 'eventos_calendario.publico_alvo_id');
         }
 
-        if (! $context->userContext->escopoGlobal) {
+        if (! $context->redeCompleta && ! $context->userContext->escopoGlobal) {
             $query->where(function (Builder $distribuicao) use ($context): void {
                 $distribuicao->where('eventos_calendario.enviar_todas_escolas', true);
 
@@ -155,7 +155,7 @@ class ManualCalendarEventSource implements CalendarEventSource
     {
         return [
             'escolasAgendadas' => function ($query) use ($context): void {
-                if (! $context->userContext->escopoGlobal) {
+                if (! $context->redeCompleta && ! $context->userContext->escopoGlobal) {
                     $query->whereIn('escola_id', $context->userContext->escolaIds);
                 }
 

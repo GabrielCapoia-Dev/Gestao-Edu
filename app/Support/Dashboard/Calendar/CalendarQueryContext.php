@@ -2,6 +2,7 @@
 
 namespace App\Support\Dashboard\Calendar;
 
+use App\Models\Enums\ListaPermissoes;
 use App\Models\User;
 use App\Support\Dashboard\DashboardUserContext;
 use Carbon\CarbonImmutable;
@@ -45,7 +46,7 @@ final readonly class CalendarQueryContext
             throw new InvalidArgumentException('O setor selecionado não pertence ao contexto do usuário.');
         }
 
-        if ($redeCompleta && ! $userContext->escopoGlobal) {
+        if ($redeCompleta && ! $user->hasPermissionTo(ListaPermissoes::VisualizarAgendaDeTodaARede->label())) {
             throw new InvalidArgumentException('Seu usuário não possui acesso ao calendário de toda a rede.');
         }
     }

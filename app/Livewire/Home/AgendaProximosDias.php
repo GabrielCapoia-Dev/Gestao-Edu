@@ -4,7 +4,9 @@ namespace App\Livewire\Home;
 
 use App\Filament\Admin\Resources\EventosCalendario\EventoCalendarioCreateAction;
 use App\Filament\Admin\Resources\EventosCalendario\EventoCalendarioResource;
+use App\Models\Enums\ListaPermissoes;
 use App\Models\EventoCalendario;
+use App\Models\User;
 use App\Services\Dashboard\Calendar\CalendarEventAggregator;
 use App\Services\Dashboard\DashboardUserContextFactory;
 use App\Services\ProfilePreviewService;
@@ -53,10 +55,7 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
 
         if ($escopo === 'rede') {
             $user = app(ProfilePreviewService::class)->effectiveUser();
-            abort_unless($user, 403);
-
-            $contexto = app(DashboardUserContextFactory::class)->make($user);
-            abort_unless($contexto->escopoGlobal, 403);
+            abort_unless($user && $this->podeVisualizarRede($user), 403);
         }
 
         $this->escopoAgenda = $escopo;
@@ -136,7 +135,9 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
             'truncated' => $result?->truncated ?? false,
             'periodOptions' => $this->periodOptions(),
             'manageUrl' => $this->manageUrl($context),
-            'podeVisualizarRede' => $context?->userContext->escopoGlobal ?? false,
+            'podeVisualizarRede' => $context
+                ? $this->podeVisualizarRede($context->user)
+                : false,
             'podeCriarEvento' => $context
                 ? Gate::forUser($context->user)->allows('create', EventoCalendario::class)
                 : false,
@@ -212,5 +213,10 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
         } catch (\Throwable) {
             return null;
         }
+    }
+
+    private function podeVisualizarRede(User $user): bool
+    {
+        return $user->hasPermissionTo(ListaPermissoes::VisualizarAgendaDeTodaARede->label());
     }
 }

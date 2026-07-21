@@ -7,6 +7,7 @@ use App\Models\Enums\EventoCalendarioCategoria;
 use App\Models\Enums\EventoCalendarioCor;
 use App\Models\Enums\EventoCalendarioOrigem;
 use App\Models\Enums\EventoCalendarioStatus;
+use App\Models\Enums\ListaPermissoes;
 use App\Models\Escola;
 use App\Models\EventoCalendario;
 use App\Models\Role;
@@ -19,6 +20,8 @@ use App\Support\Dashboard\Calendar\CalendarEventData;
 use App\Support\Dashboard\Calendar\CalendarQueryContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use InvalidArgumentException;
+use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 class ManualCalendarEventSourceTest extends TestCase
@@ -161,25 +164,38 @@ class ManualCalendarEventSourceTest extends TestCase
         );
     }
 
-    public function test_modo_rede_exibe_eventos_publicados_fora_do_publico_do_admin_global(): void
+    public function test_permissao_da_agenda_da_rede_libera_eventos_fora_do_escopo_global_do_usuario(): void
     {
         $agora = CarbonImmutable::parse('2026-07-20 10:00:00');
-        [$usuarioA] = $this->usuariosDeEscolasDiferentes();
-        $admin = User::factory()->create();
-        $admin->assignRole(Role::findOrCreate('Admin', 'web'));
+        [$usuarioA, $usuarioRede] = $this->usuariosDeEscolasDiferentes();
+        $usuarioRede->givePermissionTo(Permission::findOrCreate(
+            ListaPermissoes::VisualizarAgendaDeTodaARede->label(),
+            'web',
+        ));
         $publicoA = app(PublicoAlvoService::class)->criar($usuarioA, ['todos_usuarios' => true]);
         $evento = $this->criarEvento($publicoA->id, 'Evento de toda a rede', $agora->addDay());
         $source = app(ManualCalendarEventSource::class);
 
         $pessoal = collect($source->events(
-            $this->contexto($admin, $agora, $agora->addDays(4)->endOfDay()),
+            $this->contexto($usuarioRede, $agora, $agora->addDays(4)->endOfDay()),
         ));
         $rede = collect($source->events(
-            $this->contexto($admin, $agora, $agora->addDays(4)->endOfDay(), redeCompleta: true),
+            $this->contexto($usuarioRede, $agora, $agora->addDays(4)->endOfDay(), redeCompleta: true),
         ));
 
         $this->assertNotContains($evento->id, $pessoal->map(fn (CalendarEventData $item): int => (int) $item->reference));
         $this->assertContains($evento->id, $rede->map(fn (CalendarEventData $item): int => (int) $item->reference));
+    }
+
+    public function test_modo_rede_rejeita_usuario_sem_a_permissao_especifica(): void
+    {
+        $agora = CarbonImmutable::parse('2026-07-20 10:00:00');
+        [$usuario] = $this->usuariosDeEscolasDiferentes();
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('não possui acesso ao calendário de toda a rede');
+
+        $this->contexto($usuario, $agora, $agora->addDays(4)->endOfDay(), redeCompleta: true);
     }
 
     /** @return array{0: User, 1: User} */
