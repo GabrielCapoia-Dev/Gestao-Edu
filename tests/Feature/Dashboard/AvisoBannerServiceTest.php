@@ -189,6 +189,33 @@ class AvisoBannerServiceTest extends TestCase
         $this->assertDatabaseCount('aviso_leituras', 1);
     }
 
+    public function test_acoes_em_massa_publicam_desativam_e_reenviam_sem_excluir(): void
+    {
+        $agora = CarbonImmutable::parse('2026-07-21 11:00:00');
+        CarbonImmutable::setTestNow($agora);
+        [$usuario] = $this->criarUsuariosDeEscolasDiferentes();
+        $this->darPermissoesDeAviso($usuario);
+        $publico = app(PublicoAlvoService::class)->criar($usuario, [
+            'todos_usuarios' => true,
+        ]);
+        $avisos = collect([
+            $this->criarAviso($publico->id, 'Aviso em massa A', 'normal', null, $agora->subHour()),
+            $this->criarAviso($publico->id, 'Aviso em massa B', 'normal', null, $agora->subHour()),
+        ]);
+        $service = app(AvisoService::class);
+        $ids = $avisos->pluck('id')->all();
+
+        $this->assertSame(2, $service->definirPublicacaoEmMassa($avisos, $usuario, false));
+        $this->assertSame(0, Aviso::query()->whereKey($ids)->where('ativo', true)->count());
+
+        $this->assertSame(2, $service->definirPublicacaoEmMassa($avisos, $usuario, true));
+        $this->assertSame(2, Aviso::query()->whereKey($ids)->where('ativo', true)->count());
+
+        $this->assertSame(2, $service->reenviarEmMassa($avisos, $usuario));
+        $this->assertSame(2, Aviso::query()->whereKey($ids)->where('versao_envio', 2)->count());
+        $this->assertSame(2, Aviso::query()->whereKey($ids)->count());
+    }
+
     public function test_status_inativo_tem_precedencia_sobre_expirado_e_link_rejeita_esquemas_inseguros(): void
     {
         $agora = CarbonImmutable::parse('2026-07-20 10:00:00');

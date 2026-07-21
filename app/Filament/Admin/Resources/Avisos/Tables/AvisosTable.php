@@ -7,9 +7,9 @@ use App\Models\Enums\DashboardPrioridade;
 use App\Models\User;
 use App\Services\Dashboard\AvisoService;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Notifications\Notification;
@@ -159,121 +159,214 @@ final class AvisosTable
                     }),
             ])
             ->recordActions([
-                Action::make('visualizar')
-                    ->label('Pré-visualizar')
-                    ->icon('heroicon-o-eye')
-                    ->color('gray')
-                    ->visible(fn (Aviso $record): bool => Gate::allows('view', $record))
-                    ->modalHeading(fn (Aviso $record): string => $record->titulo)
-                    ->modalSubmitAction(false)
-                    ->modalCancelActionLabel('Fechar')
-                    ->modalWidth('3xl')
-                    ->modalContent(fn (Aviso $record) => view('filament.admin.resources.avisos.preview', [
-                        'aviso' => $record,
-                    ])),
-
-                Action::make('leituras')
-                    ->label('Quem leu')
-                    ->icon('heroicon-o-user-group')
-                    ->color('gray')
-                    ->visible(fn (Aviso $record): bool => Gate::allows('view', $record))
-                    ->slideOver()
-                    ->modalWidth('2xl')
-                    ->modalHeading(fn (Aviso $record): string => 'Leituras — '.$record->titulo)
-                    ->modalSubmitAction(false)
-                    ->modalCancelActionLabel('Fechar')
-                    ->modalContent(function (Aviso $record) {
-                        $record->load([
-                            'leituras' => fn ($leituras) => $leituras
-                                ->with('usuario:id,name,email')
-                                ->latest('lido_em'),
-                        ]);
-
-                        return view('filament.admin.resources.avisos.leituras', [
+                ActionGroup::make([
+                    Action::make('visualizar')
+                        ->label('Pré-visualizar')
+                        ->icon('heroicon-o-eye')
+                        ->color('gray')
+                        ->visible(fn (Aviso $record): bool => Gate::allows('view', $record))
+                        ->modalHeading(fn (Aviso $record): string => $record->titulo)
+                        ->modalSubmitAction(false)
+                        ->modalCancelActionLabel('Fechar')
+                        ->modalWidth('3xl')
+                        ->modalContent(fn (Aviso $record) => view('filament.admin.resources.avisos.preview', [
                             'aviso' => $record,
-                        ]);
-                    }),
+                        ])),
 
-                Action::make('reenviar')
-                    ->label('Enviar novamente')
-                    ->icon('heroicon-o-arrow-path')
-                    ->color('info')
-                    ->visible(fn (Aviso $record): bool => Gate::allows('publish', $record))
-                    ->disabled(fn (Aviso $record): bool => $record->statusExibicao() !== 'ativo')
-                    ->tooltip(fn (Aviso $record): ?string => $record->statusExibicao() !== 'ativo'
-                        ? 'Somente avisos ativos podem ser enviados novamente.'
-                        : 'Reexibe o aviso e preserva o histórico anterior de leituras.')
-                    ->requiresConfirmation()
-                    ->modalHeading('Enviar este aviso novamente?')
-                    ->modalDescription('O aviso voltará a aparecer para todos os destinatários atuais. O histórico das leituras anteriores será preservado.')
-                    ->modalSubmitActionLabel('Enviar novamente')
-                    ->action(function (Aviso $record): void {
-                        Gate::authorize('publish', $record);
+                    Action::make('leituras')
+                        ->label('Quem leu')
+                        ->icon('heroicon-o-user-group')
+                        ->color('gray')
+                        ->visible(fn (Aviso $record): bool => Gate::allows('view', $record))
+                        ->slideOver()
+                        ->modalWidth('2xl')
+                        ->modalHeading(fn (Aviso $record): string => 'Leituras — '.$record->titulo)
+                        ->modalSubmitAction(false)
+                        ->modalCancelActionLabel('Fechar')
+                        ->modalContent(function (Aviso $record) {
+                            $record->load([
+                                'leituras' => fn ($leituras) => $leituras
+                                    ->with('usuario:id,name,email')
+                                    ->latest('lido_em'),
+                            ]);
 
-                        /** @var User $user */
-                        $user = Auth::user();
-                        app(AvisoService::class)->reenviar($record, $user);
+                            return view('filament.admin.resources.avisos.leituras', [
+                                'aviso' => $record,
+                            ]);
+                        }),
 
-                        Notification::make()
-                            ->title('Aviso enviado novamente.')
-                            ->success()
-                            ->send();
-                    }),
+                    Action::make('reenviar')
+                        ->label('Enviar novamente')
+                        ->icon('heroicon-o-arrow-path')
+                        ->color('info')
+                        ->visible(fn (Aviso $record): bool => Gate::allows('publish', $record))
+                        ->disabled(fn (Aviso $record): bool => $record->statusExibicao() !== 'ativo')
+                        ->tooltip(fn (Aviso $record): ?string => $record->statusExibicao() !== 'ativo'
+                            ? 'Somente avisos ativos podem ser enviados novamente.'
+                            : 'Reexibe o aviso e preserva o histórico anterior de leituras.')
+                        ->requiresConfirmation()
+                        ->modalHeading('Enviar este aviso novamente?')
+                        ->modalDescription('O aviso voltará a aparecer para todos os destinatários atuais. O histórico das leituras anteriores será preservado.')
+                        ->modalSubmitActionLabel('Enviar novamente')
+                        ->action(function (Aviso $record): void {
+                            Gate::authorize('publish', $record);
 
-                Action::make('alterar_publicacao')
-                    ->label(fn (Aviso $record): string => $record->ativo ? 'Desativar' : 'Publicar')
-                    ->icon(fn (Aviso $record): string => $record->ativo ? 'heroicon-o-pause-circle' : 'heroicon-o-play-circle')
-                    ->color(fn (Aviso $record): string => $record->ativo ? 'warning' : 'success')
-                    ->visible(fn (Aviso $record): bool => Gate::allows('publish', $record))
-                    ->disabled(fn (Aviso $record): bool => ! $record->ativo && $record->fim_exibicao?->isPast())
-                    ->tooltip(fn (Aviso $record): ?string => ! $record->ativo && $record->fim_exibicao?->isPast()
-                        ? 'Edite o período antes de publicar este aviso expirado.'
-                        : null)
-                    ->requiresConfirmation()
-                    ->modalSubmitActionLabel(fn (Aviso $record): string => $record->ativo ? 'Desativar' : 'Publicar')
-                    ->action(function (Aviso $record): void {
-                        Gate::authorize('publish', $record);
+                            /** @var User $user */
+                            $user = Auth::user();
+                            app(AvisoService::class)->reenviar($record, $user);
 
-                        /** @var User $user */
-                        $user = Auth::user();
-                        $record->forceFill([
-                            'ativo' => ! $record->ativo,
-                            'atualizado_por_id' => $user->getKey(),
-                        ])->save();
+                            Notification::make()
+                                ->title('Aviso enviado novamente.')
+                                ->success()
+                                ->send();
+                        }),
 
-                        Notification::make()
-                            ->title($record->ativo ? 'Aviso publicado.' : 'Aviso desativado.')
-                            ->success()
-                            ->send();
-                    }),
+                    Action::make('alterar_publicacao')
+                        ->label(fn (Aviso $record): string => $record->ativo ? 'Desativar' : 'Publicar')
+                        ->icon(fn (Aviso $record): string => $record->ativo ? 'heroicon-o-pause-circle' : 'heroicon-o-play-circle')
+                        ->color(fn (Aviso $record): string => $record->ativo ? 'warning' : 'success')
+                        ->visible(fn (Aviso $record): bool => Gate::allows('publish', $record))
+                        ->disabled(fn (Aviso $record): bool => ! $record->ativo && $record->fim_exibicao?->isPast())
+                        ->tooltip(fn (Aviso $record): ?string => ! $record->ativo && $record->fim_exibicao?->isPast()
+                            ? 'Edite o período antes de publicar este aviso expirado.'
+                            : null)
+                        ->requiresConfirmation()
+                        ->modalSubmitActionLabel(fn (Aviso $record): string => $record->ativo ? 'Desativar' : 'Publicar')
+                        ->action(function (Aviso $record): void {
+                            Gate::authorize('publish', $record);
 
-                Action::make('duplicar')
-                    ->label('Duplicar')
-                    ->icon('heroicon-o-document-duplicate')
+                            /** @var User $user */
+                            $user = Auth::user();
+                            app(AvisoService::class)->definirPublicacaoEmMassa(
+                                [$record],
+                                $user,
+                                ! $record->ativo,
+                            );
+                            $record->refresh();
+
+                            Notification::make()
+                                ->title($record->ativo ? 'Aviso publicado.' : 'Aviso desativado.')
+                                ->success()
+                                ->send();
+                        }),
+
+                    Action::make('duplicar')
+                        ->label('Duplicar')
+                        ->icon('heroicon-o-document-duplicate')
+                        ->color('gray')
+                        ->visible(fn (Aviso $record): bool => Gate::allows('duplicate', $record))
+                        ->requiresConfirmation()
+                        ->modalDescription('A cópia será criada como inativa e manterá o conteúdo, o período e o público-alvo do aviso original.')
+                        ->action(function (Aviso $record): void {
+                            Gate::authorize('duplicate', $record);
+
+                            /** @var User $user */
+                            $user = Auth::user();
+
+                            app(AvisoService::class)->duplicar($record, $user);
+
+                            Notification::make()
+                                ->title('Aviso duplicado como inativo.')
+                                ->success()
+                                ->send();
+                        }),
+
+                    EditAction::make(),
+                ])
+                    ->label('Ações')
+                    ->icon('heroicon-m-ellipsis-vertical')
                     ->color('gray')
-                    ->visible(fn (Aviso $record): bool => Gate::allows('duplicate', $record))
-                    ->requiresConfirmation()
-                    ->modalDescription('A cópia será criada como inativa e manterá o conteúdo, o período e o público-alvo do aviso original.')
-                    ->action(function (Aviso $record): void {
-                        Gate::authorize('duplicate', $record);
-
-                        /** @var User $user */
-                        $user = Auth::user();
-
-                        app(AvisoService::class)->duplicar($record, $user);
-
-                        Notification::make()
-                            ->title('Aviso duplicado como inativo.')
-                            ->success()
-                            ->send();
-                    }),
-
-                EditAction::make(),
-                DeleteAction::make(),
+                    ->button(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    BulkAction::make('desativar')
+                        ->label('Desativar')
+                        ->icon('heroicon-o-pause-circle')
+                        ->color('warning')
+                        ->visible(fn (): bool => ($user = Auth::user())
+                            && Gate::forUser($user)->allows('publish', Aviso::class))
+                        ->requiresConfirmation()
+                        ->modalHeading('Desativar avisos selecionados')
+                        ->modalDescription('Os avisos selecionados deixarão de aparecer no quadro.')
+                        ->action(function ($records): void {
+                            /** @var User|null $user */
+                            $user = Auth::user();
+                            abort_unless($user, 403);
+
+                            $quantidade = app(AvisoService::class)
+                                ->definirPublicacaoEmMassa($records, $user, false);
+
+                            Notification::make()
+                                ->title("{$quantidade} aviso(s) desativado(s).")
+                                ->success()
+                                ->send();
+                        })
+                        ->deselectRecordsAfterCompletion(),
+
+                    BulkAction::make('publicar')
+                        ->label('Publicar')
+                        ->icon('heroicon-o-play-circle')
+                        ->color('success')
+                        ->visible(fn (): bool => ($user = Auth::user())
+                            && Gate::forUser($user)->allows('publish', Aviso::class))
+                        ->requiresConfirmation()
+                        ->modalHeading('Publicar avisos selecionados')
+                        ->modalDescription('Avisos expirados precisam ter o período atualizado antes da publicação.')
+                        ->action(function ($records): void {
+                            /** @var User|null $user */
+                            $user = Auth::user();
+                            abort_unless($user, 403);
+
+                            try {
+                                $quantidade = app(AvisoService::class)
+                                    ->definirPublicacaoEmMassa($records, $user, true);
+
+                                Notification::make()
+                                    ->title("{$quantidade} aviso(s) publicado(s).")
+                                    ->success()
+                                    ->send();
+                            } catch (\DomainException $exception) {
+                                Notification::make()
+                                    ->title('Não foi possível publicar os avisos.')
+                                    ->body($exception->getMessage())
+                                    ->danger()
+                                    ->send();
+                            }
+                        })
+                        ->deselectRecordsAfterCompletion(),
+
+                    BulkAction::make('reenviar')
+                        ->label('Enviar novamente')
+                        ->icon('heroicon-o-arrow-path')
+                        ->color('info')
+                        ->visible(fn (): bool => ($user = Auth::user())
+                            && Gate::forUser($user)->allows('publish', Aviso::class))
+                        ->requiresConfirmation()
+                        ->modalHeading('Enviar avisos selecionados novamente')
+                        ->modalDescription('Os avisos voltarão a aparecer para os destinatários e o histórico de leituras será preservado.')
+                        ->action(function ($records): void {
+                            /** @var User|null $user */
+                            $user = Auth::user();
+                            abort_unless($user, 403);
+
+                            try {
+                                $quantidade = app(AvisoService::class)
+                                    ->reenviarEmMassa($records, $user);
+
+                                Notification::make()
+                                    ->title("{$quantidade} aviso(s) enviado(s) novamente.")
+                                    ->success()
+                                    ->send();
+                            } catch (\DomainException $exception) {
+                                Notification::make()
+                                    ->title('Não foi possível enviar novamente.')
+                                    ->body($exception->getMessage())
+                                    ->danger()
+                                    ->send();
+                            }
+                        })
+                        ->deselectRecordsAfterCompletion(),
                 ]),
             ])
             ->defaultSort('created_at', 'desc')

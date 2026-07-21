@@ -7,7 +7,6 @@ use App\Filament\Admin\Support\PublicoAlvoForm;
 use App\Models\Aviso;
 use App\Models\User;
 use App\Services\Dashboard\PublicoAlvoService;
-use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
@@ -64,12 +63,5 @@ class EditAviso extends EditRecord
 
             return $record;
         });
-    }
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            DeleteAction::make(),
-        ];
     }
 }

@@ -652,6 +652,15 @@
     height: 1rem;
 }
 
+.ge-avisos__atalho-vazio {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.ge-avisos__atalho-vazio.is-hidden {
+    display: none;
+}
+
 .ge-avisos__viewport {
     display: grid;
     min-height: 14.5rem;

@@ -1,3 +1,13 @@
+@if (! $erroAoCarregar && $paginas->isEmpty())
+    <div @class(['ge-avisos__atalho-vazio', 'is-hidden' => ! $podeGerenciar])>
+        @if ($podeGerenciar)
+            <a href="{{ $urlGerenciar }}" class="gi-action ge-avisos__gerenciar">
+                <x-heroicon-o-cog-6-tooth />
+                <span>Gerenciar avisos</span>
+            </a>
+        @endif
+    </div>
+@else
 <section
     class="ge-avisos"
     aria-labelledby="ge-avisos-titulo"
@@ -33,13 +43,6 @@
                 <span>Tente novamente. Os demais recursos da página continuam disponíveis.</span>
             </div>
             <button type="button" class="gi-action" wire:click="$refresh">Tentar novamente</button>
-        </div>
-    @elseif ($paginas->isEmpty())
-        <div class="gi-empty ge-avisos__vazio">
-            <x-heroicon-o-megaphone />
-            <div>
-                <strong>Sem avisos no quadro</strong>
-            </div>
         </div>
     @else
         <div class="ge-avisos__viewport" aria-live="polite">
@@ -105,3 +108,4 @@
         @endif
     @endif
 </section>
+@endif

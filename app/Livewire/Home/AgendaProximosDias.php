@@ -2,8 +2,8 @@
 
 namespace App\Livewire\Home;
 
-use App\Filament\Admin\Resources\EventosCalendario\EventoCalendarioResource;
 use App\Filament\Admin\Resources\EventosCalendario\EventoCalendarioCreateAction;
+use App\Filament\Admin\Resources\EventosCalendario\EventoCalendarioResource;
 use App\Models\EventoCalendario;
 use App\Services\Dashboard\Calendar\CalendarEventAggregator;
 use App\Services\Dashboard\DashboardUserContextFactory;
@@ -118,6 +118,9 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
             'truncated' => $result?->truncated ?? false,
             'periodOptions' => $this->periodOptions(),
             'manageUrl' => $this->manageUrl($context),
+            'podeCriarEvento' => $context
+                ? Gate::forUser($context->user)->allows('create', EventoCalendario::class)
+                : false,
         ]);
     }
 
