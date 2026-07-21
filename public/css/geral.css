@@ -652,12 +652,16 @@
     height: 1rem;
 }
 
-.ge-avisos__atalho-vazio {
+.ge-avisos.ge-avisos--somente-atalho {
     display: flex;
     justify-content: flex-end;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
 }
 
-.ge-avisos__atalho-vazio.is-hidden {
+.ge-avisos.is-hidden {
     display: none;
 }
 

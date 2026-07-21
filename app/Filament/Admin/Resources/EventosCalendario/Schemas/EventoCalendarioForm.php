@@ -21,6 +21,8 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\TimePicker;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Component;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
@@ -42,12 +44,12 @@ class EventoCalendarioForm
         return $schema->components(self::components($user));
     }
 
-    /** @return array<int, \Filament\Schemas\Components\Component> */
+    /** @return array<int, Component> */
     public static function components(?User $user): array
     {
         return [
             Section::make('Evento')
-                ->columns(2)
+                ->columns(1)
                 ->columnSpanFull()
                 ->schema([
                     TextInput::make('titulo')
@@ -91,15 +93,21 @@ class EventoCalendarioForm
                             }
                         })
                         ->native(false),
-                    TimePicker::make('hora_inicio')
-                        ->label('Horário inicial')
-                        ->seconds(false)
-                        ->required(),
-                    TimePicker::make('hora_fim')
-                        ->label('Horário final')
-                        ->seconds(false)
-                        ->after('hora_inicio')
-                        ->required(),
+                    Grid::make([
+                        'default' => 1,
+                        'md' => 2,
+                    ])
+                        ->schema([
+                            TimePicker::make('hora_inicio')
+                                ->label('Início')
+                                ->seconds(false)
+                                ->required(),
+                            TimePicker::make('hora_fim')
+                                ->label('Fim')
+                                ->seconds(false)
+                                ->after('hora_inicio')
+                                ->required(),
+                        ]),
                     Select::make('cor')
                         ->label('Identificação visual')
                         ->options(collect(EventoCalendarioCor::cases())->mapWithKeys(
@@ -108,16 +116,31 @@ class EventoCalendarioForm
                         ->default(EventoCalendarioCor::AZUL->value)
                         ->required()
                         ->native(false),
-                    Toggle::make('inserir_link')
-                        ->label('Inserir link?')
-                        ->live()
-                        ->afterStateUpdated(function (bool $state, Set $set): void {
-                            if (! $state) {
-                                $set('link_acao', null);
-                                $set('texto_botao', null);
-                            }
-                        })
-                        ->columnSpanFull(),
+                    Grid::make([
+                        'default' => 1,
+                        'md' => 2,
+                    ])
+                        ->schema([
+                            Toggle::make('inserir_link')
+                                ->label('Inserir link?')
+                                ->live()
+                                ->afterStateUpdated(function (bool $state, Set $set): void {
+                                    if (! $state) {
+                                        $set('link_acao', null);
+                                        $set('texto_botao', null);
+                                    }
+                                }),
+                            Toggle::make('enviar_escolas_especificas')
+                                ->label('Enviar para escolas específicas')
+                                ->helperText('Desmarcado, o evento será enviado para todas as escolas do seu escopo.')
+                                ->default(false)
+                                ->live()
+                                ->afterStateUpdated(function (bool $state, Set $set): void {
+                                    if (! $state) {
+                                        $set('escolas_agendadas', []);
+                                    }
+                                }),
+                        ]),
                 ]),
 
             Section::make('Link de ação')
@@ -154,18 +177,11 @@ class EventoCalendarioForm
             Section::make('Distribuição por escola')
                 ->description('Defina as escolas participantes e, quando necessário, horários e transporte específicos por unidade.')
                 ->columnSpanFull()
+                ->visible(fn (Get $get): bool => (bool) $get('enviar_escolas_especificas'))
                 ->schema([
-                    Toggle::make('enviar_todas_escolas')
-                        ->label('Enviar para todas as escolas do meu escopo')
-                        ->helperText('Para acesso global, inclui todas as escolas ativas do sistema.')
-                        ->default(true)
-                        ->live()
-                        ->columnSpanFull(),
-
                     Repeater::make('escolas_agendadas')
                         ->label('Escolas específicas')
-                        ->visible(fn (Get $get): bool => ! (bool) $get('enviar_todas_escolas'))
-                        ->required(fn (Get $get): bool => ! (bool) $get('enviar_todas_escolas'))
+                        ->required(fn (Get $get): bool => (bool) $get('enviar_escolas_especificas'))
                         ->minItems(1)
                         ->defaultItems(0)
                         ->addActionLabel('+ Escola')
@@ -286,6 +302,7 @@ class EventoCalendarioForm
             'hora_fim' => $fim,
             'periodo' => self::periodoCorrespondente($inicio, $fim),
             'inserir_link' => filled($evento->link_acao),
+            'enviar_escolas_especificas' => ! $evento->enviar_todas_escolas,
             'escolas_agendadas' => app(EventoCalendarioEscolaService::class)->paraFormulario($evento),
         ];
     }

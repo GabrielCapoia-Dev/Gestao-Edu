@@ -208,7 +208,7 @@ class EventoCalendarioService
         } else {
             try {
                 if (! filled($dados['data_inicio'] ?? null) || ! filled($dados['data_fim'] ?? null)) {
-                    throw new \InvalidArgumentException();
+                    throw new \InvalidArgumentException;
                 }
 
                 $dados['data_inicio'] = CarbonImmutable::parse($dados['data_inicio'], config('app.timezone'));
@@ -235,6 +235,12 @@ class EventoCalendarioService
             throw ValidationException::withMessages([
                 'link_acao' => 'Informe uma URL HTTP(S) ou um caminho interno iniciado por /.',
             ]);
+        }
+
+        $enviarEspecificas = Arr::pull($dados, 'enviar_escolas_especificas');
+
+        if ($enviarEspecificas !== null) {
+            $dados['enviar_todas_escolas'] = ! filter_var($enviarEspecificas, FILTER_VALIDATE_BOOLEAN);
         }
 
         $enviarTodas = filter_var($dados['enviar_todas_escolas'] ?? true, FILTER_VALIDATE_BOOLEAN);
@@ -298,8 +304,7 @@ class EventoCalendarioService
         array $dados,
         array $agendamentos,
         User $ator,
-    ): array
-    {
+    ): array {
         $todas = (bool) ($dados['enviar_todas_escolas'] ?? true);
         $escolaIds = [];
 
@@ -385,7 +390,7 @@ class EventoCalendarioService
                 || ($erros !== false && ($erros['warning_count'] > 0 || $erros['error_count'] > 0))
                 || $valor->format('Y-m-d H:i') !== "{$data} {$hora}"
             ) {
-                throw new \InvalidArgumentException();
+                throw new \InvalidArgumentException;
             }
 
             return $valor;

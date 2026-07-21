@@ -49,7 +49,7 @@ class EventoCalendarioServiceTest extends TestCase
 
         $evento = app(EventoCalendarioService::class)->criar([
             ...$this->dadosBase(),
-            'enviar_todas_escolas' => false,
+            'enviar_escolas_especificas' => true,
             'escolas_agendadas' => [[
                 'escola_id' => $escola->id,
                 'hora_inicio' => '08:00',
@@ -175,12 +175,18 @@ class EventoCalendarioServiceTest extends TestCase
         Livewire::actingAs($ator)
             ->test(CreateEventoCalendario::class)
             ->assertSee('Inserir link?')
+            ->assertSee('Enviar para escolas específicas')
             ->assertDontSee('Link de ação')
+            ->assertDontSee('Distribuição por escola')
             ->assertDontSee('Destinatários')
             ->assertDontSee('Prioridade')
             ->assertDontSee('Publicado')
-            ->fillForm(['inserir_link' => true])
-            ->assertSee('Link de ação');
+            ->fillForm([
+                'inserir_link' => true,
+                'enviar_escolas_especificas' => true,
+            ])
+            ->assertSee('Link de ação')
+            ->assertSee('Distribuição por escola');
     }
 
     public function test_rejeita_envio_paralelo_para_todos_os_usuarios(): void

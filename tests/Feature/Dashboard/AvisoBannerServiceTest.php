@@ -3,6 +3,7 @@
 namespace Tests\Feature\Dashboard;
 
 use App\Filament\Admin\Resources\Avisos\AvisoResource;
+use App\Livewire\Home\AvisosBanner;
 use App\Models\Aviso;
 use App\Models\Enums\ListaPermissoes;
 use App\Models\Escola;
@@ -16,6 +17,7 @@ use App\Services\Dashboard\PublicoAlvoService;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -211,9 +213,23 @@ class AvisoBannerServiceTest extends TestCase
         $this->assertSame(2, $service->definirPublicacaoEmMassa($avisos, $usuario, true));
         $this->assertSame(2, Aviso::query()->whereKey($ids)->where('ativo', true)->count());
 
+        $banner = app(AvisoBannerService::class);
+
+        foreach ($avisos as $aviso) {
+            $banner->marcarComoLido($usuario, $aviso->id, 1);
+        }
+
+        $this->assertTrue($banner->avisosPara($usuario, $agora)->isEmpty());
         $this->assertSame(2, $service->reenviarEmMassa($avisos, $usuario));
         $this->assertSame(2, Aviso::query()->whereKey($ids)->where('versao_envio', 2)->count());
         $this->assertSame(2, Aviso::query()->whereKey($ids)->count());
+        $this->assertEqualsCanonicalizing($ids, $banner->avisosPara($usuario, $agora)->modelKeys());
+
+        Livewire::actingAs($usuario)
+            ->test(AvisosBanner::class)
+            ->assertSee('Aviso em massa A')
+            ->assertSee('Aviso em massa B')
+            ->assertSeeHtml('ge-avisos__pagina is-active');
     }
 
     public function test_status_inativo_tem_precedencia_sobre_expirado_e_link_rejeita_esquemas_inseguros(): void

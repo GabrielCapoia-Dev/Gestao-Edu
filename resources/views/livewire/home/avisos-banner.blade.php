@@ -1,25 +1,33 @@
-@if (! $erroAoCarregar && $paginas->isEmpty())
-    <div @class(['ge-avisos__atalho-vazio', 'is-hidden' => ! $podeGerenciar])>
+@php
+    $semAvisos = ! $erroAoCarregar && $paginas->isEmpty();
+@endphp
+
+<section
+    @class([
+        'ge-avisos',
+        'ge-avisos--somente-atalho' => $semAvisos && $podeGerenciar,
+        'is-hidden' => $semAvisos && ! $podeGerenciar,
+    ])
+    x-data="{ pagina: 0 }"
+    @if (! $semAvisos)
+        aria-labelledby="ge-avisos-titulo"
+    @endif
+    @if ($paginas->isNotEmpty())
+        x-on:keydown.right.prevent="pagina = (pagina + 1) % {{ $paginas->count() }}"
+        x-on:keydown.left.prevent="pagina = (pagina - 1 + {{ $paginas->count() }}) % {{ $paginas->count() }}"
+        tabindex="0"
+        role="region"
+        aria-roledescription="carrossel"
+    @endif
+>
+    @if ($semAvisos)
         @if ($podeGerenciar)
             <a href="{{ $urlGerenciar }}" class="gi-action ge-avisos__gerenciar">
                 <x-heroicon-o-cog-6-tooth />
                 <span>Gerenciar avisos</span>
             </a>
         @endif
-    </div>
-@else
-<section
-    class="ge-avisos"
-    aria-labelledby="ge-avisos-titulo"
-    @if ($paginas->isNotEmpty())
-        x-data="{ pagina: 0, total: {{ $paginas->count() }} }"
-        x-on:keydown.right.prevent="pagina = (pagina + 1) % total"
-        x-on:keydown.left.prevent="pagina = (pagina - 1 + total) % total"
-        tabindex="0"
-        role="region"
-        aria-roledescription="carrossel"
-    @endif
->
+    @else
     <header class="ge-avisos__cabecalho">
         <div>
             <p class="ge-avisos__eyebrow">Comunicação</p>
@@ -50,6 +58,7 @@
                 <div
                     @class([
                         'ge-avisos__pagina',
+                        'is-active' => $indice === 0,
                         'ge-avisos__pagina--um' => $avisos->count() === 1,
                         'ge-avisos__pagina--dois' => $avisos->count() === 2,
                         'ge-avisos__pagina--tres' => $avisos->count() >= 3,
@@ -91,14 +100,14 @@
                 <div class="ge-avisos__setas">
                     <button
                         type="button"
-                        x-on:click="pagina = (pagina - 1 + total) % total"
+                        x-on:click="pagina = (pagina - 1 + {{ $paginas->count() }}) % {{ $paginas->count() }}"
                         aria-label="Página anterior de avisos"
                     >
                         <x-heroicon-o-chevron-left />
                     </button>
                     <button
                         type="button"
-                        x-on:click="pagina = (pagina + 1) % total"
+                        x-on:click="pagina = (pagina + 1) % {{ $paginas->count() }}"
                         aria-label="Próxima página de avisos"
                     >
                         <x-heroicon-o-chevron-right />
@@ -107,5 +116,5 @@
             </footer>
         @endif
     @endif
+    @endif
 </section>
-@endif
