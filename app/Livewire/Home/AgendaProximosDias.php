@@ -27,6 +27,8 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
 
     public int $quantidadeDias = 5;
 
+    public string $escopoAgenda = 'pessoal';
+
     public ?string $erro = null;
 
     /** @var list<string> */
@@ -42,6 +44,22 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
     public function updatedQuantidadeDias(int|string $days): void
     {
         $this->quantidadeDias = $this->normalizarQuantidadeDias((int) $days);
+        $this->diasExpandidos = [];
+    }
+
+    public function definirEscopo(string $escopo): void
+    {
+        abort_unless(in_array($escopo, ['pessoal', 'rede'], true), 422);
+
+        if ($escopo === 'rede') {
+            $user = app(ProfilePreviewService::class)->effectiveUser();
+            abort_unless($user, 403);
+
+            $contexto = app(DashboardUserContextFactory::class)->make($user);
+            abort_unless($contexto->escopoGlobal, 403);
+        }
+
+        $this->escopoAgenda = $escopo;
         $this->diasExpandidos = [];
     }
 
@@ -118,6 +136,7 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
             'truncated' => $result?->truncated ?? false,
             'periodOptions' => $this->periodOptions(),
             'manageUrl' => $this->manageUrl($context),
+            'podeVisualizarRede' => $context?->userContext->escopoGlobal ?? false,
             'podeCriarEvento' => $context
                 ? Gate::forUser($context->user)->allows('create', EventoCalendario::class)
                 : false,
@@ -144,12 +163,14 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
             $timezone = (string) config('dashboard.calendar.timezone', config('app.timezone'));
             $inicio = CarbonImmutable::today($timezone);
             $quantidadeDias = $this->normalizarQuantidadeDias($this->quantidadeDias);
+            $userContext = app(DashboardUserContextFactory::class)->make($user);
 
             return new CalendarQueryContext(
                 user: $user,
-                userContext: app(DashboardUserContextFactory::class)->make($user),
+                userContext: $userContext,
                 inicio: $inicio->startOfDay(),
                 fim: $inicio->addDays($quantidadeDias - 1)->endOfDay(),
+                redeCompleta: $this->escopoAgenda === 'rede',
             );
         } catch (\Throwable $exception) {
             $this->erro = $exception instanceof InvalidArgumentException

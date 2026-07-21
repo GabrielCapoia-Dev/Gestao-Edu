@@ -33,7 +33,7 @@ class CalendarEventAggregatorTest extends TestCase
         config()->set('dashboard.calendar.timezone', 'America/Sao_Paulo');
         CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-07-20 10:00:00', 'America/Sao_Paulo'));
 
-        $component = new AgendaProximosDias();
+        $component = new AgendaProximosDias;
         $component->mount();
 
         $this->assertSame(5, $component->quantidadeDias);
@@ -79,7 +79,9 @@ class CalendarEventAggregatorTest extends TestCase
         ])->render();
 
         $this->assertStringContainsString('home-agenda__day is-weekend', $html);
-        $this->assertStringContainsString('<details', $html);
+        $this->assertStringNotContainsString('<details', $html);
+        $this->assertStringContainsString('x-bind:aria-expanded="aberto"', $html);
+        $this->assertStringContainsString('home-agenda__event-detail-transition', $html);
         $this->assertStringContainsString('home-agenda__event-detail', $html);
         $this->assertStringNotContainsString('home-agenda__filters', $html);
         $this->assertStringNotContainsString('agenda-event-detail', $html);
@@ -134,6 +136,32 @@ class CalendarEventAggregatorTest extends TestCase
         $this->assertFalse($result->truncated);
     }
 
+    public function test_contexto_rejeita_calendario_da_rede_para_usuario_sem_escopo_global(): void
+    {
+        $user = (new User)->forceFill(['id' => 9002]);
+        $userContext = new DashboardUserContext(
+            userId: 9002,
+            escopoGlobal: false,
+            roleIds: [],
+            permissionIds: [],
+            funcaoAdministrativaIds: [],
+            escolaIds: [10],
+            setorIds: [],
+            setorVisivelIds: [],
+        );
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('não possui acesso ao calendário de toda a rede');
+
+        new CalendarQueryContext(
+            user: $user,
+            userContext: $userContext,
+            inicio: CarbonImmutable::parse('2026-07-20')->startOfDay(),
+            fim: CarbonImmutable::parse('2026-07-24')->endOfDay(),
+            redeCompleta: true,
+        );
+    }
+
     public function test_falha_de_uma_fonte_nao_descarta_eventos_das_demais(): void
     {
         $context = $this->contexto();
@@ -165,7 +193,7 @@ class CalendarEventAggregatorTest extends TestCase
     ): CalendarQueryContext {
         $inicio ??= CarbonImmutable::parse('2026-07-20')->startOfDay();
         $fim ??= $inicio->addDays(6)->endOfDay();
-        $user = (new User())->forceFill(['id' => 9001]);
+        $user = (new User)->forceFill(['id' => 9001]);
         $userContext = new DashboardUserContext(
             userId: 9001,
             escopoGlobal: true,

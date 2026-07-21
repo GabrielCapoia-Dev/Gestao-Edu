@@ -54,7 +54,15 @@ class AvaliacaoCalendarEventSource implements CalendarEventSource
         $progressos = $this->progressos($avaliacoes->pluck('id')->all(), $context);
 
         foreach ($avaliacoes as $avaliacao) {
-            yield $this->map($avaliacao, $progressos[(int) $avaliacao->id] ?? null, $context);
+            foreach ($this->marcosNoPeriodo($avaliacao, $context) as $marco => $data) {
+                yield $this->map(
+                    $avaliacao,
+                    $progressos[(int) $avaliacao->id] ?? null,
+                    $context,
+                    $data,
+                    $marco,
+                );
+            }
         }
     }
 
@@ -84,9 +92,10 @@ class AvaliacaoCalendarEventSource implements CalendarEventSource
         }
 
         $progresso = $this->progressos([(int) $avaliacao->id], $context)[(int) $avaliacao->id] ?? null;
+        [$inicio] = $this->periodoPreenchimento($avaliacao);
 
         return new CalendarEventDetailData(
-            event: $this->map($avaliacao, $progresso, $context),
+            event: $this->map($avaliacao, $progresso, $context, $inicio, 'inicio'),
             descricao: 'Período de preenchimento da avaliação '.$avaliacao->nome.'.',
             metadata: [
                 'Tipo' => $avaliacao->tipo?->nome,
@@ -102,8 +111,7 @@ class AvaliacaoCalendarEventSource implements CalendarEventSource
         CalendarQueryContext $context,
         bool $period = true,
         ?array $professorTurmaIds = null,
-    ): Builder
-    {
+    ): Builder {
         $query = Avaliacao::query()
             ->where('status', Avaliacao::STATUS_ATIVA)
             ->whereHas('turmas', function (Builder $turmas) use ($context, $professorTurmaIds): void {
@@ -111,9 +119,20 @@ class AvaliacaoCalendarEventSource implements CalendarEventSource
             });
 
         if ($period) {
-            $query
-                ->whereRaw('COALESCE(data_inicio_preenchimento, data_inicio) <= ?', [$context->fim->toDateString()])
-                ->whereRaw('COALESCE(data_fim_preenchimento, data_fim) >= ?', [$context->inicio->toDateString()]);
+            $inicio = $context->inicio->toDateString();
+            $fim = $context->fim->toDateString();
+
+            $query->where(function (Builder $marcos) use ($inicio, $fim): void {
+                $marcos
+                    ->whereRaw(
+                        'COALESCE(data_inicio_preenchimento, data_inicio) between ? and ?',
+                        [$inicio, $fim],
+                    )
+                    ->orWhereRaw(
+                        'COALESCE(data_fim_preenchimento, data_fim) between ? and ?',
+                        [$inicio, $fim],
+                    );
+            });
         }
 
         return $query;
@@ -124,8 +143,7 @@ class AvaliacaoCalendarEventSource implements CalendarEventSource
         Builder|BelongsToMany $query,
         CalendarQueryContext $context,
         ?array $professorTurmaIds = null,
-    ): void
-    {
+    ): void {
         $schoolIds = $context->escolaId
             ? [$context->escolaId]
             : ($context->userContext->escopoGlobal ? null : $context->userContext->escolaIds);
@@ -188,36 +206,43 @@ class AvaliacaoCalendarEventSource implements CalendarEventSource
         Avaliacao $avaliacao,
         ?AvaliacaoDashboardProgressData $progressData,
         CalendarQueryContext $context,
-    ): CalendarEventData
-    {
+        CarbonImmutable $data,
+        string $marco,
+    ): CalendarEventData {
         $progresso = $progressData?->percentual;
-        $inicio = CarbonImmutable::parse($avaliacao->data_inicio_preenchimento ?? $avaliacao->data_inicio)->startOfDay();
-        $fim = CarbonImmutable::parse($avaliacao->data_fim_preenchimento ?? $avaliacao->data_fim)->endOfDay();
-        $status = $inicio->isFuture() ? 'agendado' : ($fim->isPast() ? 'concluido' : 'em_andamento');
+        [$inicioPreenchimento, $fimPreenchimento] = $this->periodoPreenchimento($avaliacao);
+        $mesmoDia = $inicioPreenchimento->isSameDay($fimPreenchimento);
+        $tipoMarco = $mesmoDia ? 'unico' : $marco;
+        $status = match ($tipoMarco) {
+            'inicio' => 'inicio_preenchimento',
+            'fim' => 'fim_preenchimento',
+            default => 'periodo_preenchimento',
+        };
+        $statusLabel = match ($tipoMarco) {
+            'inicio' => 'Início do preenchimento',
+            'fim' => 'Prazo final para preenchimento',
+            default => 'Período de preenchimento',
+        };
         $escolas = $avaliacao->turmas->pluck('escola')->filter()->unique('id')->values();
         $escola = $escolas->count() === 1 ? $escolas->first() : null;
 
         return new CalendarEventData(
-            id: $this->key().':'.$avaliacao->getKey(),
+            id: $this->key().':'.$avaliacao->getKey().':'.$tipoMarco,
             source: $this->key(),
             reference: (string) $avaliacao->getKey(),
             titulo: $avaliacao->nome,
             resumo: $progressData?->emAtualizacao()
-                ? 'Preenchimento de avaliação · Progresso em atualização'
-                : 'Preenchimento de avaliação'.($progresso !== null ? ' · '.number_format($progresso, 0).'% concluído' : ''),
-            inicio: $inicio,
-            fim: $fim,
+                ? $statusLabel.' · Progresso em atualização'
+                : $statusLabel.($progresso !== null ? ' · '.number_format($progresso, 0).'% concluído' : ''),
+            inicio: $data->startOfDay(),
+            fim: $data->endOfDay(),
             diaInteiro: true,
             categoria: 'avaliacao',
             categoriaLabel: 'Avaliação',
-            assunto: 'Período de preenchimento',
+            assunto: $statusLabel,
             status: $status,
-            statusLabel: match ($status) {
-                'agendado' => 'Agendada',
-                'concluido' => 'Encerrada',
-                default => 'Em andamento',
-            },
-            prioridade: $fim->lte(now()->addDays(2)->endOfDay()) ? DashboardPrioridade::Alta : DashboardPrioridade::Normal,
+            statusLabel: $statusLabel,
+            prioridade: $fimPreenchimento->lte(now()->addDays(2)->endOfDay()) ? DashboardPrioridade::Alta : DashboardPrioridade::Normal,
             progresso: $progresso,
             cor: 'verde',
             escolaId: $escola ? (int) $escola->id : null,
@@ -228,6 +253,32 @@ class AvaliacaoCalendarEventSource implements CalendarEventSource
             actionUrl: $actionUrl = $this->actionUrl($avaliacao, $context),
             actionLabel: $actionUrl ? 'Acessar avaliação' : null,
         );
+    }
+
+    /** @return array{0: CarbonImmutable, 1: CarbonImmutable} */
+    private function periodoPreenchimento(Avaliacao $avaliacao): array
+    {
+        return [
+            CarbonImmutable::parse($avaliacao->data_inicio_preenchimento ?? $avaliacao->data_inicio)->startOfDay(),
+            CarbonImmutable::parse($avaliacao->data_fim_preenchimento ?? $avaliacao->data_fim)->endOfDay(),
+        ];
+    }
+
+    /** @return array<string, CarbonImmutable> */
+    private function marcosNoPeriodo(Avaliacao $avaliacao, CalendarQueryContext $context): array
+    {
+        [$inicio, $fim] = $this->periodoPreenchimento($avaliacao);
+        $marcos = [];
+
+        if ($inicio->lte($context->fim) && $inicio->endOfDay()->gte($context->inicio)) {
+            $marcos['inicio'] = $inicio;
+        }
+
+        if (! $inicio->isSameDay($fim) && $fim->startOfDay()->lte($context->fim) && $fim->gte($context->inicio)) {
+            $marcos['fim'] = $fim;
+        }
+
+        return $marcos;
     }
 
     private function schoolLabel(Collection $turmas): ?string

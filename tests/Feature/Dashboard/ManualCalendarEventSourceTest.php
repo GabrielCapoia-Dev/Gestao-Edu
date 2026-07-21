@@ -161,6 +161,27 @@ class ManualCalendarEventSourceTest extends TestCase
         );
     }
 
+    public function test_modo_rede_exibe_eventos_publicados_fora_do_publico_do_admin_global(): void
+    {
+        $agora = CarbonImmutable::parse('2026-07-20 10:00:00');
+        [$usuarioA] = $this->usuariosDeEscolasDiferentes();
+        $admin = User::factory()->create();
+        $admin->assignRole(Role::findOrCreate('Admin', 'web'));
+        $publicoA = app(PublicoAlvoService::class)->criar($usuarioA, ['todos_usuarios' => true]);
+        $evento = $this->criarEvento($publicoA->id, 'Evento de toda a rede', $agora->addDay());
+        $source = app(ManualCalendarEventSource::class);
+
+        $pessoal = collect($source->events(
+            $this->contexto($admin, $agora, $agora->addDays(4)->endOfDay()),
+        ));
+        $rede = collect($source->events(
+            $this->contexto($admin, $agora, $agora->addDays(4)->endOfDay(), redeCompleta: true),
+        ));
+
+        $this->assertNotContains($evento->id, $pessoal->map(fn (CalendarEventData $item): int => (int) $item->reference));
+        $this->assertContains($evento->id, $rede->map(fn (CalendarEventData $item): int => (int) $item->reference));
+    }
+
     /** @return array{0: User, 1: User} */
     private function usuariosDeEscolasDiferentes(): array
     {
@@ -244,12 +265,14 @@ class ManualCalendarEventSourceTest extends TestCase
         User $user,
         CarbonImmutable $inicio,
         CarbonImmutable $fim,
+        bool $redeCompleta = false,
     ): CalendarQueryContext {
         return new CalendarQueryContext(
             user: $user,
             userContext: app(DashboardUserContextFactory::class)->make($user),
             inicio: $inicio->startOfDay(),
             fim: $fim->endOfDay(),
+            redeCompleta: $redeCompleta,
         );
     }
 }

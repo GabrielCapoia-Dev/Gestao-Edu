@@ -99,7 +99,10 @@ class ManualCalendarEventSource implements CalendarEventSource
     private function visibleQuery(CalendarQueryContext $context): Builder
     {
         $query = EventoCalendario::query()->publicados();
-        $this->publicos->aplicarEscopo($query, $context->user, 'eventos_calendario.publico_alvo_id');
+
+        if (! $context->redeCompleta) {
+            $this->publicos->aplicarEscopo($query, $context->user, 'eventos_calendario.publico_alvo_id');
+        }
 
         if (! $context->userContext->escopoGlobal) {
             $query->where(function (Builder $distribuicao) use ($context): void {

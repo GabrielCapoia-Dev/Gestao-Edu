@@ -10,9 +10,9 @@ use InvalidArgumentException;
 final readonly class CalendarQueryContext
 {
     /**
-     * @param list<string> $categorias
-     * @param list<string> $status
-     * @param list<string> $prioridades
+     * @param  list<string>  $categorias
+     * @param  list<string>  $status
+     * @param  list<string>  $prioridades
      */
     public function __construct(
         public User $user,
@@ -25,6 +25,7 @@ final readonly class CalendarQueryContext
         public ?int $escolaId = null,
         public ?int $setorId = null,
         public ?string $assunto = null,
+        public bool $redeCompleta = false,
     ) {
         if ($fim->lt($inicio)) {
             throw new InvalidArgumentException('A data final deve ser posterior ou igual à data inicial.');
@@ -42,6 +43,10 @@ final readonly class CalendarQueryContext
 
         if ($setorId && ! $userContext->escopoGlobal && ! in_array($setorId, $userContext->setorVisivelIds, true)) {
             throw new InvalidArgumentException('O setor selecionado não pertence ao contexto do usuário.');
+        }
+
+        if ($redeCompleta && ! $userContext->escopoGlobal) {
+            throw new InvalidArgumentException('Seu usuário não possui acesso ao calendário de toda a rede.');
         }
     }
 }

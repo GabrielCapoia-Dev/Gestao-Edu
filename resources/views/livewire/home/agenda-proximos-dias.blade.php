@@ -7,7 +7,29 @@
         </div>
 
         <div class="home-agenda__header-actions">
-            @if ($podeCriarEvento)
+            @if ($podeVisualizarRede ?? false)
+                <div class="home-agenda__scope" role="tablist" aria-label="Escopo da agenda">
+                    <button
+                        type="button"
+                        role="tab"
+                        @class(['is-active' => $escopoAgenda === 'pessoal'])
+                        aria-selected="{{ $escopoAgenda === 'pessoal' ? 'true' : 'false' }}"
+                        wire:click="definirEscopo('pessoal')"
+                    >
+                        Para mim
+                    </button>
+                    <button
+                        type="button"
+                        role="tab"
+                        @class(['is-active' => $escopoAgenda === 'rede'])
+                        aria-selected="{{ $escopoAgenda === 'rede' ? 'true' : 'false' }}"
+                        wire:click="definirEscopo('rede')"
+                    >
+                        Para a rede
+                    </button>
+                </div>
+            @endif
+            @if ($podeCriarEvento ?? false)
                 {{ $this->novoEventoAction }}
             @endif
             @if ($manageUrl)<a class="home-agenda__manage" href="{{ $manageUrl }}">Gerenciar agenda</a>@endif
@@ -59,11 +81,21 @@
 
                         <div class="home-agenda__events">
                             @forelse ($day['events'] as $event)
-                                <details
+                                @php($eventDomId = 'agenda-evento-'.md5($day['date']->toDateString().'-'.$event->id))
+                                <article
                                     class="home-agenda__event color-{{ $event->cor }}"
                                     wire:key="agenda-{{ $day['date']->toDateString() }}-{{ $event->id }}"
+                                    x-data="{ aberto: false }"
+                                    x-bind:class="{ 'is-open': aberto }"
                                 >
-                                    <summary title="{{ $event->resumo ?: $event->titulo }}">
+                                    <button
+                                        type="button"
+                                        class="home-agenda__event-toggle"
+                                        title="{{ $event->resumo ?: $event->titulo }}"
+                                        x-on:click="aberto = ! aberto"
+                                        x-bind:aria-expanded="aberto"
+                                        aria-controls="{{ $eventDomId }}"
+                                    >
                                         <span class="home-agenda__event-meta">
                                             {{ $event->diaInteiro ? 'Dia inteiro' : $event->inicio->format('H:i') }}
                                             · {{ $event->categoriaLabel }}
@@ -86,9 +118,21 @@
                                             ></progress>
                                             <small>{{ number_format($event->progresso, 0) }}% concluído</small>
                                         @endif
-                                    </summary>
+                                        <span class="home-agenda__event-indicator" aria-hidden="true"></span>
+                                    </button>
 
-                                    <div class="home-agenda__event-detail">
+                                    <div
+                                        id="{{ $eventDomId }}"
+                                        class="home-agenda__event-detail"
+                                        x-cloak
+                                        x-show="aberto"
+                                        x-transition:enter="home-agenda__event-detail-transition"
+                                        x-transition:enter-start="home-agenda__event-detail-collapsed"
+                                        x-transition:enter-end="home-agenda__event-detail-expanded"
+                                        x-transition:leave="home-agenda__event-detail-transition"
+                                        x-transition:leave-start="home-agenda__event-detail-expanded"
+                                        x-transition:leave-end="home-agenda__event-detail-collapsed"
+                                    >
                                         @if ($event->resumo)<p>{{ $event->resumo }}</p>@endif
                                         <span>
                                             <strong>Período:</strong>
@@ -108,7 +152,7 @@
                                             <a href="{{ $event->actionUrl }}">{{ $event->actionLabel ?: 'Acessar' }}</a>
                                         @endif
                                     </div>
-                                </details>
+                                </article>
                             @empty
                                 <p class="home-agenda__empty">Nenhum item</p>
                             @endforelse

@@ -76,9 +76,17 @@ class AvaliacaoCalendarEventSourceTest extends TestCase
 
         $this->assertTrue($source->supports($context));
         $this->assertSame([], $result->errors);
-        $this->assertSame([$avaliacaoA->id], $events->map(
+        $this->assertSame([$avaliacaoA->id, $avaliacaoA->id], $events->map(
             static fn (CalendarEventData $event): int => (int) $event->reference,
         )->all());
+        $this->assertSame(
+            [$agora->toDateString(), $agora->addDays(5)->toDateString()],
+            $events->pluck('inicio')->map->toDateString()->all(),
+        );
+        $this->assertSame(
+            ['Início do preenchimento', 'Prazo final para preenchimento'],
+            $events->pluck('statusLabel')->all(),
+        );
         $this->assertNull($events->first()->progresso);
         $this->assertStringContainsString('Progresso em atualização', (string) $events->first()->resumo);
         $this->assertSame($escolaA->id, $events->first()->escolaId);
@@ -221,8 +229,8 @@ class AvaliacaoCalendarEventSourceTest extends TestCase
             'nome' => $nome,
             'tipo_avaliacao_id' => $tipo->id,
             'periodo_avaliacao_id' => $periodo->id,
-            'data_inicio' => $inicio->toDateString(),
-            'data_fim' => $inicio->addDays(5)->toDateString(),
+            'data_inicio' => $inicio->subMonth()->toDateString(),
+            'data_fim' => $inicio->subDays(20)->toDateString(),
             'data_inicio_preenchimento' => $inicio->toDateString(),
             'data_fim_preenchimento' => $inicio->addDays(5)->toDateString(),
             'status' => $status,
