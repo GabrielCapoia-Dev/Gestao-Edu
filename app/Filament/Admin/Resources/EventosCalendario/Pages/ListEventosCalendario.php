@@ -3,9 +3,9 @@
 namespace App\Filament\Admin\Resources\EventosCalendario\Pages;
 
 use App\Filament\Admin\Resources\EventosCalendario\EventoCalendarioResource;
+use App\Filament\Admin\Resources\EventosCalendario\EventoCalendarioCreateAction;
 use App\Models\ImportacaoEventoCalendario;
 use Filament\Actions\Action;
-use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
@@ -34,7 +34,7 @@ class ListEventosCalendario extends ListRecords
                 ->icon('heroicon-o-arrow-up-tray')
                 ->visible(fn (): bool => $user && Gate::forUser($user)->allows('create', ImportacaoEventoCalendario::class))
                 ->url(EventoCalendarioResource::getUrl('import')),
-            CreateAction::make(),
+            EventoCalendarioCreateAction::make('criarEvento', $user),
         ];
     }
 }

@@ -55,7 +55,6 @@ class EventoCalendarioImportService
         'titulo',
         'descricao',
         'categoria',
-        'prioridade',
         'data_evento',
         'periodo',
         'hora_inicio',
@@ -230,6 +229,7 @@ class EventoCalendarioImportService
                             $ator,
                             EventoCalendarioOrigem::PLANILHA,
                             $batch,
+                            false,
                         );
                         $acao = ImportacaoEventoCalendarioAcao::CRIAR;
                         $created++;
@@ -358,7 +358,6 @@ class EventoCalendarioImportService
             ->map(fn (Escola $school): array => ['Escola (código)', (string) $school->codigo, $school->nome])
             ->merge($audienceReferences)
             ->merge(collect(EventoCalendarioCategoria::cases())->map(fn ($item): array => ['Categoria', $item->value, $item->label()]))
-            ->merge(collect(DashboardPrioridade::cases())->map(fn ($item): array => ['Prioridade', $item->value, $item->label()]))
             ->merge(Serie::query()
                 ->whereHas('turmas', function (Builder $query) use ($context): void {
                     if (! $context->escopoGlobal) {
@@ -725,7 +724,7 @@ class EventoCalendarioImportService
             'titulo' => trim((string) ($raw['titulo'] ?? '')),
             'descricao' => $this->nullableString($raw['descricao'] ?? null),
             'categoria' => mb_strtolower(trim((string) ($raw['categoria'] ?? ''))),
-            'prioridade' => mb_strtolower(trim((string) ($raw['prioridade'] ?? ''))),
+            'prioridade' => DashboardPrioridade::Normal->value,
             'data_evento' => $data->toDateString(),
             'hora_inicio' => $horaInicio,
             'hora_fim' => $horaFim,
@@ -1042,7 +1041,6 @@ class EventoCalendarioImportService
             'Reunião de gestores',
             'Alinhamento mensal da equipe.',
             'administrativo',
-            'normal',
             now()->addWeek()->format('d/m/Y'),
             'manha',
             '08:00',

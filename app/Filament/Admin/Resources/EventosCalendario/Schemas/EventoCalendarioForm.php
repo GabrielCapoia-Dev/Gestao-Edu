@@ -2,8 +2,6 @@
 
 namespace App\Filament\Admin\Resources\EventosCalendario\Schemas;
 
-use App\Filament\Admin\Support\PublicoAlvoForm;
-use App\Models\Enums\DashboardPrioridade;
 use App\Models\Enums\EventoCalendarioCategoria;
 use App\Models\Enums\EventoCalendarioCor;
 use App\Models\Enums\EventoCalendarioTransporteEscopo;
@@ -42,10 +40,15 @@ class EventoCalendarioForm
 
     public static function configure(Schema $schema, ?User $user): Schema
     {
-        $canPublish = $user && Gate::forUser($user)->allows('publish', EventoCalendario::class);
+        return $schema->components(self::components($user));
+    }
+
+    /** @return array<int, \Filament\Schemas\Components\Component> */
+    public static function components(?User $user): array
+    {
         $canManageAudience = $user && Gate::forUser($user)->allows('manageAudience', EventoCalendario::class);
 
-        return $schema->components([
+        return [
             Section::make('Evento')
                 ->columns(2)
                 ->columnSpanFull()
@@ -65,12 +68,6 @@ class EventoCalendarioForm
                         ->options(collect(EventoCalendarioCategoria::cases())->mapWithKeys(
                             fn ($item): array => [$item->value => $item->label()],
                         )->all())
-                        ->required()
-                        ->native(false),
-                    Select::make('prioridade')
-                        ->label('Prioridade')
-                        ->options(DashboardPrioridade::options())
-                        ->default(DashboardPrioridade::Normal->value)
                         ->required()
                         ->native(false),
                     DatePicker::make('data_evento')
@@ -114,12 +111,6 @@ class EventoCalendarioForm
                         ->default(EventoCalendarioCor::AZUL->value)
                         ->required()
                         ->native(false),
-                    Toggle::make('ativo')
-                        ->label('Publicado')
-                        ->helperText($canPublish ? 'Eventos publicados aparecem na agenda na data informada.' : 'Você não possui permissão para publicar eventos.')
-                        ->default(false)
-                        ->disabled(! $canPublish)
-                        ->dehydrated($canPublish),
                     Toggle::make('inserir_link')
                         ->label('Inserir link?')
                         ->live()
@@ -130,6 +121,24 @@ class EventoCalendarioForm
                             }
                         })
                         ->columnSpanFull(),
+                ]),
+
+            Section::make('Destinatários')
+                ->description('Escolha entre todos os usuários do seu escopo ou a distribuição por escola.')
+                ->columnSpanFull()
+                ->visible((bool) $canManageAudience)
+                ->schema([
+                    Toggle::make('enviar_todos_usuarios')
+                        ->label('Enviar para todos os usuários do meu escopo')
+                        ->helperText('Ao ativar, a distribuição por escola não será utilizada.')
+                        ->default(false)
+                        ->live()
+                        ->afterStateUpdated(function (bool $state, Set $set): void {
+                            if ($state) {
+                                $set('enviar_todas_escolas', true);
+                                $set('escolas_agendadas', []);
+                            }
+                        }),
                 ]),
 
             Section::make('Link de ação')
@@ -166,6 +175,7 @@ class EventoCalendarioForm
             Section::make('Distribuição por escola')
                 ->description('Defina as escolas participantes e, quando necessário, horários e transporte específicos por unidade.')
                 ->columnSpanFull()
+                ->visible(fn (Get $get): bool => ! $canManageAudience || ! (bool) $get('enviar_todos_usuarios'))
                 ->schema([
                     Toggle::make('enviar_todas_escolas')
                         ->label('Enviar para todas as escolas do meu escopo')
@@ -282,8 +292,7 @@ class EventoCalendarioForm
                         ->columnSpanFull(),
                 ]),
 
-            ...PublicoAlvoForm::schema($user, (bool) $canManageAudience, incluirLocalizacao: false),
-        ]);
+        ];
     }
 
     public static function periodoCorrespondente(string $inicio, string $fim): ?string

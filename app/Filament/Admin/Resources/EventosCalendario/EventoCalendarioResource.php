@@ -2,7 +2,6 @@
 
 namespace App\Filament\Admin\Resources\EventosCalendario;
 
-use App\Filament\Admin\Resources\EventosCalendario\Pages\CreateEventoCalendario;
 use App\Filament\Admin\Resources\EventosCalendario\Pages\EditEventoCalendario;
 use App\Filament\Admin\Resources\EventosCalendario\Pages\ImportarEventosCalendario;
 use App\Filament\Admin\Resources\EventosCalendario\Pages\ListEventosCalendario;
@@ -73,7 +72,6 @@ class EventoCalendarioResource extends Resource
     {
         return [
             'index' => ListEventosCalendario::route('/'),
-            'create' => CreateEventoCalendario::route('/create'),
             'edit' => EditEventoCalendario::route('/{record}/edit'),
             'import' => ImportarEventosCalendario::route('/importar'),
         ];

@@ -76,6 +76,7 @@
 .home-agenda__header h2 { margin: 0; color: #0f1729; font-size: 22px; font-weight: 750; }
 .home-agenda__header p { margin: 5px 0 0; color: #6b7694; font-size: 13px; }
 .home-agenda__manage { padding: 9px 12px; color: #17368d; font-size: 12px; font-weight: 750; text-decoration: none; background: #eef6fc; border: 1px solid #a2c7ef; border-radius: 9px; }
+.home-agenda__header-actions > .fi-btn { min-height: 36px; font-size: 12px; border-radius: 9px; }
 .home-agenda label { display: grid; gap: 5px; color: #47516e; font-size: 11px; font-weight: 700; }
 .home-agenda select { min-width: 125px; height: 36px; padding: 0 10px; color: #1a2340; font-size: 12px; background: #fff; border: 1px solid #d4d8e6; border-radius: 9px; }
 .home-agenda__more { width: 100%; height: auto; padding: 5px; color: #1a6bc7; font-size: 12px; font-weight: 750; cursor: pointer; background: transparent; border: 0; }

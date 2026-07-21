@@ -7,9 +7,19 @@
         <div><dt>Data</dt><dd>{{ $evento->data_inicio->format('d/m/Y') }}</dd></div>
         <div><dt>Horário geral</dt><dd>{{ $evento->data_inicio->format('H:i') }}–{{ $evento->data_fim->format('H:i') }}</dd></div>
         <div><dt>Categoria</dt><dd>{{ $evento->categoria->label() }}</dd></div>
-        <div><dt>Prioridade</dt><dd>{{ $evento->prioridade->label() }}</dd></div>
         <div><dt>Publicação</dt><dd>{{ $evento->ativo ? 'Publicado' : 'Não publicado' }}</dd></div>
-        <div><dt>Distribuição</dt><dd>{{ $evento->enviar_todas_escolas ? 'Todas as escolas do escopo' : 'Escolas específicas' }}</dd></div>
+        <div>
+            <dt>Distribuição</dt>
+            <dd>
+                @if ($evento->publicoAlvo?->todos_usuarios)
+                    Todos os usuários do escopo
+                @elseif ($evento->enviar_todas_escolas)
+                    Todas as escolas do escopo
+                @else
+                    Escolas específicas
+                @endif
+            </dd>
+        </div>
     </dl>
 
     @if (! $evento->enviar_todas_escolas && $evento->escolasAgendadas->isNotEmpty())

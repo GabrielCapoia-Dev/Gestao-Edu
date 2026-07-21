@@ -66,6 +66,8 @@ class EventoCalendarioServiceTest extends TestCase
         $this->assertSame([$turma->id], $agendamento->turmas->modelKeys());
         $this->assertFalse($evento->publicoAlvo->todos_usuarios);
         $this->assertSame([$escola->id], $evento->publicoAlvo->escolas()->pluck('escolas.id')->all());
+        $this->assertTrue($evento->ativo);
+        $this->assertSame('normal', $evento->prioridade->value);
         $this->assertNull($evento->assunto);
         $this->assertNull($evento->progresso);
     }
@@ -158,7 +160,9 @@ class EventoCalendarioServiceTest extends TestCase
 
         $this->assertSame('2026-07-25 08:00', $evento->data_inicio->format('Y-m-d H:i'));
         $this->assertSame('2026-07-25 14:00', $evento->data_fim->format('Y-m-d H:i'));
-        $this->assertTrue($evento->publicoAlvo->todos_usuarios);
+        $this->assertFalse($evento->publicoAlvo->todos_usuarios);
+        $this->assertSame([$ator->id_escola], $evento->publicoAlvo->escolas()->pluck('escolas.id')->all());
+        $this->assertTrue($evento->ativo);
         $this->assertNull($evento->link_acao);
         $this->assertNull($evento->texto_botao);
         $this->assertDatabaseCount('evento_calendario_escolas', 0);
@@ -172,7 +176,9 @@ class EventoCalendarioServiceTest extends TestCase
             ->test(CreateEventoCalendario::class)
             ->assertSee('Inserir link?')
             ->assertDontSee('Link de ação')
-            ->assertDontSee('Público-alvo')
+            ->assertDontSee('Destinatários')
+            ->assertDontSee('Prioridade')
+            ->assertDontSee('Publicado')
             ->fillForm(['inserir_link' => true])
             ->assertSee('Link de ação');
 
@@ -185,8 +191,39 @@ class EventoCalendarioServiceTest extends TestCase
 
         Livewire::actingAs($ator)
             ->test(CreateEventoCalendario::class)
-            ->assertSee('Público-alvo')
-            ->assertDontSee('Setores');
+            ->assertSee('Destinatários')
+            ->assertSee('Enviar para todos os usuários do meu escopo');
+    }
+
+    public function test_envio_para_todos_os_usuarios_exige_permissao_especifica(): void
+    {
+        [$ator] = $this->atorEscolar('PUBLICO');
+
+        try {
+            app(EventoCalendarioService::class)->criar([
+                ...$this->dadosBase(),
+                'enviar_todos_usuarios' => true,
+            ], [], $ator);
+            $this->fail('Era esperada uma falha de autorização do público.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('enviar_todos_usuarios', $exception->errors());
+        }
+
+        $permissao = Permission::findOrCreate(
+            ListaPermissoes::GerenciarPublicoAlvoDeEventos->label(),
+            'web',
+        );
+        $ator->givePermissionTo($permissao);
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $evento = app(EventoCalendarioService::class)->criar([
+            ...$this->dadosBase(),
+            'enviar_todos_usuarios' => true,
+        ], [], $ator);
+
+        $this->assertTrue($evento->publicoAlvo->todos_usuarios);
+        $this->assertTrue($evento->ativo);
+        $this->assertDatabaseCount('publico_alvo_escola', 0);
     }
 
     /** @return array{0: User, 1: Escola} */
@@ -244,12 +281,10 @@ class EventoCalendarioServiceTest extends TestCase
             'titulo' => 'Evento escolar',
             'descricao' => 'Descrição do evento.',
             'categoria' => 'administrativo',
-            'prioridade' => 'normal',
             'data_evento' => '2026-07-25',
             'hora_inicio' => '08:00',
             'hora_fim' => '12:00',
             'cor' => 'azul',
-            'ativo' => false,
             'inserir_link' => false,
             'link_acao' => 'javascript:alert(1)',
             'texto_botao' => 'Link forjado',

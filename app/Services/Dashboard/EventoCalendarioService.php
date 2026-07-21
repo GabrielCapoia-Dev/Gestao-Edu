@@ -7,6 +7,7 @@ use App\Models\Enums\EventoCalendarioCategoria;
 use App\Models\Enums\EventoCalendarioCor;
 use App\Models\Enums\EventoCalendarioOrigem;
 use App\Models\Enums\EventoCalendarioStatus;
+use App\Models\Escola;
 use App\Models\EventoCalendario;
 use App\Models\ImportacaoEventoCalendario;
 use App\Models\PublicoAlvo;
@@ -32,15 +33,19 @@ class EventoCalendarioService
         User $ator,
         EventoCalendarioOrigem $origem = EventoCalendarioOrigem::MANUAL,
         ?ImportacaoEventoCalendario $importacao = null,
+        bool $publicarAutomaticamente = true,
     ): EventoCalendario {
         Gate::forUser($ator)->authorize('create', EventoCalendario::class);
-        [$dados, $agendamentos] = $this->prepararDados($dados, $ator);
+        [$dados, $agendamentos, $enviarTodosUsuarios] = $this->prepararDados($dados, $ator);
         $podeGerenciarPublico = Gate::forUser($ator)->allows('manageAudience', EventoCalendario::class);
-        $publico = $podeGerenciarPublico
+        $usarPublicoImportado = $importacao && $podeGerenciarPublico && $publico !== [];
+        $publico = $usarPublicoImportado
             ? $this->validarPublicoAvancado($publico)
-            : $this->publicoPadrao($dados, $agendamentos);
+            : $this->publicoPadrao($dados, $agendamentos, $ator, $enviarTodosUsuarios);
 
-        if (! Gate::forUser($ator)->allows('publish', EventoCalendario::class)) {
+        if ($publicarAutomaticamente && $origem === EventoCalendarioOrigem::MANUAL) {
+            $dados['ativo'] = true;
+        } elseif (! Gate::forUser($ator)->allows('publish', EventoCalendario::class)) {
             $dados['ativo'] = false;
         }
 
@@ -69,8 +74,13 @@ class EventoCalendarioService
         ?ImportacaoEventoCalendario $importacao = null,
     ): EventoCalendario {
         Gate::forUser($ator)->authorize('update', $evento);
-        [$dados, $agendamentos] = $this->prepararDados($dados, $ator);
+        $evento->loadMissing('publicoAlvo');
+        [$dados, $agendamentos, $enviarTodosUsuarios] = $this->prepararDados($dados, $ator);
         $podeGerenciarPublico = Gate::forUser($ator)->allows('manageAudience', $evento);
+        $usarPublicoImportado = $importacao && $podeGerenciarPublico && $publico !== null;
+        $preservarPublicoAtual = ! $importacao
+            && ! $podeGerenciarPublico
+            && (bool) $evento->publicoAlvo?->todos_usuarios;
 
         if (! Gate::forUser($ator)->allows('publish', $evento)) {
             Arr::forget($dados, 'ativo');
@@ -83,19 +93,21 @@ class EventoCalendarioService
             $publico,
             $ator,
             $importacao,
-            $podeGerenciarPublico,
+            $usarPublicoImportado,
+            $enviarTodosUsuarios,
+            $preservarPublicoAtual,
         ): EventoCalendario {
-            if ($podeGerenciarPublico && $publico !== null) {
+            if ($usarPublicoImportado) {
                 $this->publicos->atualizar(
                     $evento->publicoAlvo,
                     $ator,
                     $this->validarPublicoAvancado($publico),
                 );
-            } elseif (! $podeGerenciarPublico) {
+            } elseif (! $preservarPublicoAtual) {
                 $this->publicos->atualizar(
                     $evento->publicoAlvo,
                     $ator,
-                    $this->publicoPadrao($dados, $agendamentos),
+                    $this->publicoPadrao($dados, $agendamentos, $ator, $enviarTodosUsuarios),
                 );
             }
 
@@ -126,6 +138,7 @@ class EventoCalendarioService
         ]);
         $dados['titulo'] = mb_substr('Cópia de '.$evento->titulo, 0, 160);
         $dados['ativo'] = false;
+        $dados['enviar_todos_usuarios'] = (bool) $evento->publicoAlvo->todos_usuarios;
         $dados['escolas_agendadas'] = $this->escolas->paraFormulario($evento);
 
         return $this->criar(
@@ -133,6 +146,8 @@ class EventoCalendarioService
             $this->payloadDoPublico($evento->publicoAlvo),
             $ator,
             EventoCalendarioOrigem::MANUAL,
+            null,
+            false,
         );
     }
 
@@ -169,14 +184,27 @@ class EventoCalendarioService
     }
 
     /**
-     * @return array{0: array<string, mixed>, 1: list<array<string, mixed>>}
+     * @return array{0: array<string, mixed>, 1: list<array<string, mixed>>, 2: bool}
      */
     private function prepararDados(array $dados, User $ator): array
     {
         $dataEvento = Arr::pull($dados, 'data_evento');
         $horaInicio = Arr::pull($dados, 'hora_inicio');
         $horaFim = Arr::pull($dados, 'hora_fim');
+        $enviarTodosUsuarios = filter_var(
+            Arr::pull($dados, 'enviar_todos_usuarios', false),
+            FILTER_VALIDATE_BOOLEAN,
+        );
         Arr::forget($dados, 'periodo');
+
+        if (
+            $enviarTodosUsuarios
+            && ! Gate::forUser($ator)->allows('manageAudience', EventoCalendario::class)
+        ) {
+            throw ValidationException::withMessages([
+                'enviar_todos_usuarios' => 'Você não possui permissão para enviar o evento a todos os usuários.',
+            ]);
+        }
 
         if (filled($dataEvento) || filled($horaInicio) || filled($horaFim)) {
             $data = trim((string) $dataEvento);
@@ -231,13 +259,18 @@ class EventoCalendarioService
             ]);
         }
 
-        $enviarTodas = filter_var($dados['enviar_todas_escolas'] ?? true, FILTER_VALIDATE_BOOLEAN);
+        $enviarTodas = $enviarTodosUsuarios
+            || filter_var($dados['enviar_todas_escolas'] ?? true, FILTER_VALIDATE_BOOLEAN);
         $linhas = Arr::pull($dados, 'escolas_agendadas', []);
 
         if ($enviarTodas) {
             $contexto = $this->contextos->make($ator);
 
-            if (! $contexto->escopoGlobal && $contexto->escolaIds === []) {
+            if (
+                ! $enviarTodosUsuarios
+                && ! $contexto->escopoGlobal
+                && $contexto->escolaIds === []
+            ) {
                 throw ValidationException::withMessages([
                     'enviar_todas_escolas' => 'Seu usuário não possui escolas autorizadas para cadastrar este evento.',
                 ]);
@@ -259,6 +292,7 @@ class EventoCalendarioService
         $dados['assunto'] = null;
         $dados['progresso'] = null;
         $dados['status'] = EventoCalendarioStatus::AGENDADO->value;
+        $dados['prioridade'] = DashboardPrioridade::Normal->value;
 
         $validator = validator($dados, [
             'titulo' => ['required', 'string', 'max:160'],
@@ -280,22 +314,54 @@ class EventoCalendarioService
             throw new ValidationException($validator);
         }
 
-        return [$dados, $agendamentos];
+        return [$dados, $agendamentos, $enviarTodosUsuarios];
     }
 
     /** @param list<array<string, mixed>> $agendamentos */
-    private function publicoPadrao(array $dados, array $agendamentos): array
+    private function publicoPadrao(
+        array $dados,
+        array $agendamentos,
+        User $ator,
+        bool $enviarTodosUsuarios,
+    ): array
     {
         $todas = (bool) ($dados['enviar_todas_escolas'] ?? true);
+        $escolaIds = [];
+
+        if (! $enviarTodosUsuarios) {
+            if ($todas) {
+                $contexto = $this->contextos->make($ator);
+                $escolas = Escola::query()->where('ativo', true);
+
+                if (! $contexto->escopoGlobal) {
+                    $escolas->whereKey($contexto->escolaIds);
+                }
+
+                $escolaIds = $escolas->pluck('id')->map(fn ($id): int => (int) $id)->all();
+            } else {
+                $escolaIds = collect($agendamentos)
+                    ->pluck('escola_id')
+                    ->map(fn ($id): int => (int) $id)
+                    ->unique()
+                    ->values()
+                    ->all();
+            }
+
+            if ($escolaIds === []) {
+                throw ValidationException::withMessages([
+                    'enviar_todas_escolas' => 'Selecione ao menos uma escola autorizada para este evento.',
+                ]);
+            }
+        }
 
         return [
             'modo_correspondencia' => 'qualquer',
-            'todos_usuarios' => $todas,
+            'todos_usuarios' => $enviarTodosUsuarios,
             'usuarios_ids' => [],
             'roles_ids' => [],
             'permissoes_ids' => [],
             'funcoes_administrativas_ids' => [],
-            'escolas_ids' => $todas ? [] : collect($agendamentos)->pluck('escola_id')->all(),
+            'escolas_ids' => $escolaIds,
             'setores_ids' => [],
         ];
     }

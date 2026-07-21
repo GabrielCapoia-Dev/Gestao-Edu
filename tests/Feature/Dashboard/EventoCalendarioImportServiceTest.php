@@ -546,7 +546,6 @@ class EventoCalendarioImportServiceTest extends TestCase
             'titulo' => 'Evento '.$identificador,
             'descricao' => 'Descrição importada pelo teste.',
             'categoria' => 'administrativo',
-            'prioridade' => 'normal',
             'data_evento' => '21/07/2026',
             'periodo' => 'manha',
             'hora_inicio' => '09:00',

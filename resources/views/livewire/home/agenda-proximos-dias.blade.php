@@ -7,6 +7,7 @@
         </div>
 
         <div class="home-agenda__header-actions">
+            {{ $this->novoEventoAction }}
             @if ($manageUrl)<a class="home-agenda__manage" href="{{ $manageUrl }}">Gerenciar agenda</a>@endif
             <label class="home-agenda__days">
                 <span>Período</span>
@@ -127,4 +128,6 @@
             </div>
         @endif
     </div>
+
+    <x-filament-actions::modals />
 </section>

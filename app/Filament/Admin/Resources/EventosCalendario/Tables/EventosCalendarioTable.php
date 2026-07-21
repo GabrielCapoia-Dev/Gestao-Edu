@@ -2,7 +2,6 @@
 
 namespace App\Filament\Admin\Resources\EventosCalendario\Tables;
 
-use App\Models\Enums\DashboardPrioridade;
 use App\Models\Enums\EventoCalendarioCategoria;
 use App\Models\EventoCalendario;
 use App\Models\User;
@@ -31,8 +30,6 @@ class EventosCalendarioTable
                 TextColumn::make('titulo')->label('Título')->searchable()->sortable()->wrap(),
                 TextColumn::make('categoria')->label('Categoria')->badge()
                     ->formatStateUsing(fn ($state): string => $state?->label() ?? (string) $state),
-                TextColumn::make('prioridade')->label('Prioridade')->badge()
-                    ->formatStateUsing(fn ($state): string => $state?->label() ?? (string) $state),
                 TextColumn::make('data_inicio')->label('Data e horário')
                     ->formatStateUsing(fn (EventoCalendario $record): string => sprintf(
                         '%s, %s–%s',
@@ -42,8 +39,12 @@ class EventosCalendarioTable
                     ))
                     ->sortable(),
                 TextColumn::make('distribuicao_escolas')
-                    ->label('Escolas')
+                    ->label('Distribuição')
                     ->getStateUsing(function (EventoCalendario $record): string {
+                        if ($record->publicoAlvo?->todos_usuarios) {
+                            return 'Todos os usuários do escopo';
+                        }
+
                         if ($record->enviar_todas_escolas) {
                             return 'Todas as escolas do escopo';
                         }
@@ -66,7 +67,6 @@ class EventosCalendarioTable
                     ->options(collect(EventoCalendarioCategoria::cases())->mapWithKeys(
                         fn ($item): array => [$item->value => $item->label()],
                     )->all()),
-                SelectFilter::make('prioridade')->label('Prioridade')->options(DashboardPrioridade::options()),
                 SelectFilter::make('escola_agendada_id')->label('Escola')
                     ->options(fn (): array => $user ? app(PublicoAlvoOptionsService::class)->escolas($user) : [])
                     ->searchable()

@@ -3,19 +3,28 @@
 namespace App\Livewire\Home;
 
 use App\Filament\Admin\Resources\EventosCalendario\EventoCalendarioResource;
+use App\Filament\Admin\Resources\EventosCalendario\EventoCalendarioCreateAction;
 use App\Models\EventoCalendario;
 use App\Services\Dashboard\Calendar\CalendarEventAggregator;
 use App\Services\Dashboard\DashboardUserContextFactory;
 use App\Services\ProfilePreviewService;
 use App\Support\Dashboard\Calendar\CalendarQueryContext;
 use Carbon\CarbonImmutable;
+use Filament\Actions\Concerns\InteractsWithActions;
+use Filament\Actions\Contracts\HasActions;
+use Filament\Actions\CreateAction;
+use Filament\Schemas\Concerns\InteractsWithSchemas;
+use Filament\Schemas\Contracts\HasSchemas;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
 use InvalidArgumentException;
 use Livewire\Component;
 
-class AgendaProximosDias extends Component
+class AgendaProximosDias extends Component implements HasActions, HasSchemas
 {
+    use InteractsWithActions;
+    use InteractsWithSchemas;
+
     public int $quantidadeDias = 5;
 
     public ?string $erro = null;
@@ -58,6 +67,14 @@ class AgendaProximosDias extends Component
     public function recarregar(): void
     {
         $this->erro = null;
+    }
+
+    public function novoEventoAction(): CreateAction
+    {
+        return EventoCalendarioCreateAction::make(
+            'novoEvento',
+            app(ProfilePreviewService::class)->effectiveUser(),
+        );
     }
 
     public function render(): View
