@@ -7,7 +7,7 @@
         <div><dt>Data</dt><dd>{{ $evento->data_inicio->format('d/m/Y') }}</dd></div>
         <div><dt>Horário geral</dt><dd>{{ $evento->data_inicio->format('H:i') }}–{{ $evento->data_fim->format('H:i') }}</dd></div>
         <div><dt>Categoria</dt><dd>{{ $evento->categoria->label() }}</dd></div>
-        <div><dt>Publicação</dt><dd>{{ $evento->ativo ? 'Publicado' : 'Não publicado' }}</dd></div>
+        <div><dt>Status</dt><dd>{{ $evento->status?->label() ?? 'Não informado' }}</dd></div>
         <div>
             <dt>Distribuição</dt>
             <dd>

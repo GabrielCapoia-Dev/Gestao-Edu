@@ -33,6 +33,6 @@ final class EventoCalendarioCreateAction
 
                 return app(EventoCalendarioService::class)->criar($data, [], $user);
             })
-            ->successNotificationTitle('Evento criado e publicado');
+            ->successNotificationTitle('Evento criado');
     }
 }

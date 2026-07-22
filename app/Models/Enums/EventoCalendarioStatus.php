@@ -4,18 +4,28 @@ namespace App\Models\Enums;
 
 enum EventoCalendarioStatus: string
 {
-    case AGENDADO = 'agendado';
-    case EM_ANDAMENTO = 'em_andamento';
-    case CONCLUIDO = 'concluido';
-    case CANCELADO = 'cancelado';
+    case PENDENTE_APROVACAO = 'pendente_aprovacao';
+    case PUBLICADO = 'publicado';
+    case INATIVO = 'inativo';
+    case REJEITADO = 'rejeitado';
 
     public function label(): string
     {
         return match ($this) {
-            self::AGENDADO => 'Agendado',
-            self::EM_ANDAMENTO => 'Em andamento',
-            self::CONCLUIDO => 'Concluído',
-            self::CANCELADO => 'Cancelado',
+            self::PENDENTE_APROVACAO => 'Pendente de aprovação',
+            self::PUBLICADO => 'Publicado',
+            self::INATIVO => 'Inativo',
+            self::REJEITADO => 'Rejeitado',
+        };
+    }
+
+    public function color(): string
+    {
+        return match ($this) {
+            self::PENDENTE_APROVACAO => 'warning',
+            self::PUBLICADO => 'success',
+            self::INATIVO => 'gray',
+            self::REJEITADO => 'danger',
         };
     }
 }

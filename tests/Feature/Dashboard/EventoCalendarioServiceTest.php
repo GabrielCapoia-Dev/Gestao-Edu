@@ -5,6 +5,8 @@ namespace Tests\Feature\Dashboard;
 use App\Filament\Admin\Resources\EventosCalendario\Pages\CreateEventoCalendario;
 use App\Filament\Admin\Resources\EventosCalendario\Schemas\EventoCalendarioForm;
 use App\Models\Aluno;
+use App\Models\Enums\EventoCalendarioHistoricoAcao;
+use App\Models\Enums\EventoCalendarioStatus;
 use App\Models\Enums\EventoCalendarioTransporteEscopo;
 use App\Models\Enums\ListaPermissoes;
 use App\Models\Escola;
@@ -67,10 +69,18 @@ class EventoCalendarioServiceTest extends TestCase
         $this->assertSame([$turma->id], $agendamento->turmas->modelKeys());
         $this->assertFalse($evento->publicoAlvo->todos_usuarios);
         $this->assertSame([$escola->id], $evento->publicoAlvo->escolas()->pluck('escolas.id')->all());
-        $this->assertTrue($evento->ativo);
+        $this->assertFalse($evento->ativo);
+        $this->assertSame(EventoCalendarioStatus::PENDENTE_APROVACAO, $evento->status);
         $this->assertSame('normal', $evento->prioridade->value);
         $this->assertNull($evento->assunto);
         $this->assertNull($evento->progresso);
+        $this->assertDatabaseHas('evento_calendario_historicos', [
+            'evento_calendario_id' => $evento->id,
+            'usuario_id' => $ator->id,
+            'acao' => EventoCalendarioHistoricoAcao::CRIADO->value,
+            'status_anterior' => null,
+            'status_novo' => EventoCalendarioStatus::PENDENTE_APROVACAO->value,
+        ]);
     }
 
     public function test_usa_horario_geral_e_rejeita_relacoes_escolares_invalidas(): void
@@ -160,9 +170,17 @@ class EventoCalendarioServiceTest extends TestCase
         $this->assertFalse($evento->publicoAlvo->todos_usuarios);
         $this->assertSame([$ator->id_escola], $evento->publicoAlvo->escolas()->pluck('escolas.id')->all());
         $this->assertTrue($evento->ativo);
+        $this->assertSame(EventoCalendarioStatus::PUBLICADO, $evento->status);
         $this->assertNull($evento->link_acao);
         $this->assertNull($evento->texto_botao);
         $this->assertDatabaseCount('evento_calendario_escolas', 0);
+        $this->assertDatabaseHas('evento_calendario_historicos', [
+            'evento_calendario_id' => $evento->id,
+            'usuario_id' => $ator->id,
+            'acao' => EventoCalendarioHistoricoAcao::CRIADO->value,
+            'status_anterior' => null,
+            'status_novo' => EventoCalendarioStatus::PUBLICADO->value,
+        ]);
     }
 
     public function test_filtros_de_serie_e_turno_geram_escolas_e_transporte_em_lote(): void
@@ -259,7 +277,7 @@ class EventoCalendarioServiceTest extends TestCase
             'email_approved' => true,
         ]);
         $permissoes = [
-            ListaPermissoes::ListarEventos->label(),
+            ListaPermissoes::ListarEventosGeral->label(),
             ListaPermissoes::CriarEventos->label(),
             ListaPermissoes::EditarEventos->label(),
         ];

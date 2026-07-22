@@ -86,6 +86,13 @@ class EventoCalendario extends Model
         return $this->hasMany(EventoCalendarioEscola::class, 'evento_calendario_id');
     }
 
+    public function historicos(): HasMany
+    {
+        return $this->hasMany(EventoCalendarioHistorico::class, 'evento_calendario_id')
+            ->latest('created_at')
+            ->latest('id');
+    }
+
     public function criadoPor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'criado_por_id');
@@ -115,26 +122,43 @@ class EventoCalendario extends Model
 
     public function scopePublicados(Builder $query): Builder
     {
-        return $query->where('ativo', true);
+        return $query
+            ->where('ativo', true)
+            ->where('status', EventoCalendarioStatus::PUBLICADO);
     }
 
-    public function statusEfetivo(?CarbonInterface $agora = null): EventoCalendarioStatus
+    public function scopeComTransporte(Builder $query): Builder
     {
-        $agora ??= now();
+        return $query->whereHas(
+            'escolasAgendadas',
+            fn (Builder $escolas): Builder => $escolas->where('precisa_transporte', true),
+        );
+    }
 
-        if (in_array($this->status, [EventoCalendarioStatus::CANCELADO, EventoCalendarioStatus::CONCLUIDO], true)) {
-            return $this->status;
+    public function scopeSemTransporte(Builder $query): Builder
+    {
+        return $query->whereDoesntHave(
+            'escolasAgendadas',
+            fn (Builder $escolas): Builder => $escolas->where('precisa_transporte', true),
+        );
+    }
+
+    public function scopeComStatus(Builder $query, EventoCalendarioStatus|string $status): Builder
+    {
+        return $query->where('status', $status instanceof EventoCalendarioStatus ? $status->value : $status);
+    }
+
+    public function possuiTransporte(): bool
+    {
+        if ($this->relationLoaded('escolasAgendadas')) {
+            return $this->escolasAgendadas->contains(
+                fn (EventoCalendarioEscola $escola): bool => $escola->precisa_transporte,
+            );
         }
 
-        if ($this->data_inicio?->gt($agora)) {
-            return EventoCalendarioStatus::AGENDADO;
-        }
-
-        if ($this->data_fim?->lt($agora)) {
-            return EventoCalendarioStatus::CONCLUIDO;
-        }
-
-        return EventoCalendarioStatus::EM_ANDAMENTO;
+        return $this->escolasAgendadas()
+            ->where('precisa_transporte', true)
+            ->exists();
     }
 
     public function linkAcaoSeguro(): ?string

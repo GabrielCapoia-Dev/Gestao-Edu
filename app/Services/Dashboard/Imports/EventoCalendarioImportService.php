@@ -651,7 +651,8 @@ class EventoCalendarioImportService
             'inserir_link' => filled($raw['link_acao'] ?? null),
             'link_acao' => $this->nullableString($raw['link_acao'] ?? null),
             'texto_botao' => $this->nullableString($raw['texto_botao'] ?? null),
-            'ativo' => true,
+            // Solicitações de transporte entram obrigatoriamente em análise.
+            'ativo' => ! $precisaTransporte,
             'cor' => mb_strtolower(trim((string) ($raw['cor'] ?? ''))),
             'enviar_todas_escolas' => ! $enviarEspecificas,
             'escolas_agendadas' => $agendamentos,
@@ -684,7 +685,7 @@ class EventoCalendarioImportService
             ]);
         }
 
-        if (! Gate::forUser($ator)->allows('publish', EventoCalendario::class)) {
+        if ($event['ativo'] && ! Gate::forUser($ator)->allows('publishCommon', EventoCalendario::class)) {
             throw ValidationException::withMessages([
                 'ativo' => 'Você não possui permissão para importar eventos publicados.',
             ]);
@@ -716,7 +717,9 @@ class EventoCalendarioImportService
                 ->groupBy('codigo')->map(fn ($items) => $items->count() === 1 ? $items->first() : null)->filter(),
             'series' => Serie::query()->whereIn('codigo', $serieCodes)->get()->keyBy('codigo'),
             'turmas' => Turma::query()->whereIn('codigo', $turmaCodes)->get()->keyBy('codigo'),
-            'eventos' => EventoCalendario::query()->withTrashed()
+            'eventos' => EventoCalendario::query()
+                ->withTrashed()
+                ->with('escolasAgendadas:id,evento_calendario_id,precisa_transporte')
                 ->whereIn('fonte_externa', $sources)
                 ->whereIn('identificador_externo', $externalIds)
                 ->get()

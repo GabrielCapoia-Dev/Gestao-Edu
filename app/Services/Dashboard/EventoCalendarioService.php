@@ -24,6 +24,7 @@ class EventoCalendarioService
         private readonly PublicoAlvoService $publicos,
         private readonly EventoCalendarioEscolaService $escolas,
         private readonly DashboardUserContextFactory $contextos,
+        private readonly EventoCalendarioWorkflowService $workflow,
     ) {}
 
     public function criar(
@@ -36,14 +37,19 @@ class EventoCalendarioService
     ): EventoCalendario {
         Gate::forUser($ator)->authorize('create', EventoCalendario::class);
         $this->rejeitarPublicoParalelo($publico, $dados);
+        $publicacaoSolicitada = array_key_exists('ativo', $dados)
+            ? filter_var($dados['ativo'], FILTER_VALIDATE_BOOLEAN)
+            : $publicarAutomaticamente;
         [$dados, $agendamentos] = $this->prepararDados($dados, $ator);
         $publico = $this->publicoPadrao($dados, $agendamentos, $ator);
-
-        if ($publicarAutomaticamente && $origem === EventoCalendarioOrigem::MANUAL) {
-            $dados['ativo'] = true;
-        } elseif (! Gate::forUser($ator)->allows('publish', EventoCalendario::class)) {
-            $dados['ativo'] = false;
-        }
+        $possuiTransporte = $this->agendamentosPossuemTransporte($agendamentos);
+        [$dados['status'], $dados['ativo']] = $this->estadoInicial(
+            $possuiTransporte,
+            $publicacaoSolicitada,
+            $origem,
+            $publicarAutomaticamente,
+            $ator,
+        );
 
         return DB::transaction(function () use ($dados, $agendamentos, $publico, $ator, $origem, $importacao): EventoCalendario {
             $publicoAlvo = $this->publicos->criar($ator, $publico);
@@ -57,6 +63,7 @@ class EventoCalendarioService
             ]);
 
             $this->escolas->sincronizar($evento, $agendamentos);
+            $this->workflow->registrarCriacao($evento, $ator);
 
             return $evento->refresh()->load('escolasAgendadas');
         });
@@ -69,22 +76,39 @@ class EventoCalendarioService
         User $ator,
         ?ImportacaoEventoCalendario $importacao = null,
     ): EventoCalendario {
-        Gate::forUser($ator)->authorize('update', $evento);
-        $evento->loadMissing('publicoAlvo');
-        $this->rejeitarPublicoParalelo($publico ?? [], $dados);
-        [$dados, $agendamentos] = $this->prepararDados($dados, $ator);
+        return DB::transaction(function () use ($evento, $dados, $publico, $ator, $importacao): EventoCalendario {
+            $evento = EventoCalendario::query()
+                ->with([
+                    'publicoAlvo',
+                    'escolasAgendadas.series:id',
+                    'escolasAgendadas.turmas:id',
+                ])
+                ->lockForUpdate()
+                ->findOrFail($evento->getKey());
 
-        if (! Gate::forUser($ator)->allows('publish', $evento)) {
-            Arr::forget($dados, 'ativo');
-        }
+            Gate::forUser($ator)->authorize('update', $evento);
 
-        return DB::transaction(function () use (
-            $evento,
-            $dados,
-            $agendamentos,
-            $ator,
-            $importacao,
-        ): EventoCalendario {
+            $statusAnterior = $evento->status;
+            $possuiaTransporte = $evento->possuiTransporte();
+            $assinaturaAnterior = $this->assinaturaTransporteAtual($evento);
+            $publicacaoSolicitada = array_key_exists('ativo', $dados)
+                ? filter_var($dados['ativo'], FILTER_VALIDATE_BOOLEAN)
+                : null;
+            $this->rejeitarPublicoParalelo($publico ?? [], $dados);
+            [$dados, $agendamentos] = $this->prepararDados($dados, $ator);
+            $possuiTransporte = $this->agendamentosPossuemTransporte($agendamentos);
+            $transporteAlterado = ($possuiaTransporte || $possuiTransporte)
+                && $assinaturaAnterior !== $this->assinaturaTransporteNova($dados, $agendamentos);
+            [$dados['status'], $dados['ativo']] = $this->estadoAposAtualizacao(
+                $evento,
+                $statusAnterior,
+                $possuiaTransporte,
+                $possuiTransporte,
+                $transporteAlterado,
+                $publicacaoSolicitada,
+                $ator,
+            );
+
             $this->publicos->atualizar(
                 $evento->publicoAlvo,
                 $ator,
@@ -98,78 +122,14 @@ class EventoCalendarioService
             ])->save();
 
             $this->escolas->sincronizar($evento, $agendamentos);
+            $this->workflow->registrarAtualizacao(
+                $evento,
+                $ator,
+                $statusAnterior,
+                $transporteAlterado,
+            );
 
             return $evento->refresh()->load('escolasAgendadas');
-        });
-    }
-
-    public function duplicar(EventoCalendario $evento, User $ator): EventoCalendario
-    {
-        Gate::forUser($ator)->authorize('duplicate', $evento);
-        $evento->loadMissing([
-            'escolasAgendadas.series:id',
-            'escolasAgendadas.turmas:id',
-        ]);
-
-        $dados = Arr::except($evento->getAttributes(), [
-            'id', 'publico_alvo_id', 'created_at', 'updated_at', 'deleted_at',
-            'criado_por_id', 'atualizado_por_id', 'excluido_por_id',
-            'fonte_externa', 'identificador_externo', 'ultima_importacao_id',
-        ]);
-        $dados['titulo'] = mb_substr('Cópia de '.$evento->titulo, 0, 160);
-        $dados['ativo'] = false;
-        $dados['escolas_agendadas'] = $this->escolas->paraFormulario($evento);
-
-        return $this->criar(
-            $dados,
-            [],
-            $ator,
-            EventoCalendarioOrigem::MANUAL,
-            null,
-            false,
-        );
-    }
-
-    public function alternarPublicacao(EventoCalendario $evento, User $ator): EventoCalendario
-    {
-        Gate::forUser($ator)->authorize('publish', $evento);
-
-        $evento->forceFill([
-            'ativo' => ! $evento->ativo,
-            'atualizado_por_id' => $ator->getKey(),
-        ])->save();
-
-        return $evento->refresh();
-    }
-
-    /** @param iterable<EventoCalendario> $eventos */
-    public function desativarEmMassa(iterable $eventos, User $ator): int
-    {
-        $eventos = collect($eventos)
-            ->filter(fn ($evento): bool => $evento instanceof EventoCalendario)
-            ->unique(fn (EventoCalendario $evento): int => (int) $evento->getKey())
-            ->values();
-
-        foreach ($eventos as $evento) {
-            Gate::forUser($ator)->authorize('publish', $evento);
-        }
-
-        return DB::transaction(function () use ($eventos, $ator): int {
-            $alterados = 0;
-
-            foreach ($eventos as $evento) {
-                if (! $evento->ativo) {
-                    continue;
-                }
-
-                $evento->forceFill([
-                    'ativo' => false,
-                    'atualizado_por_id' => $ator->getKey(),
-                ])->save();
-                $alterados++;
-            }
-
-            return $alterados;
         });
     }
 
@@ -178,6 +138,7 @@ class EventoCalendarioService
      */
     private function prepararDados(array $dados, User $ator): array
     {
+        Arr::forget($dados, ['status', 'ativo']);
         $dataEvento = Arr::pull($dados, 'data_evento');
         $horaInicio = Arr::pull($dados, 'hora_inicio');
         $horaFim = Arr::pull($dados, 'hora_fim');
@@ -273,7 +234,6 @@ class EventoCalendarioService
         $dados['setor_id'] = null;
         $dados['assunto'] = null;
         $dados['progresso'] = null;
-        $dados['status'] = EventoCalendarioStatus::AGENDADO->value;
         $dados['prioridade'] = DashboardPrioridade::Normal->value;
 
         $validator = validator($dados, [
@@ -297,6 +257,140 @@ class EventoCalendarioService
         }
 
         return [$dados, $agendamentos];
+    }
+
+    /** @param list<array<string, mixed>> $agendamentos */
+    private function agendamentosPossuemTransporte(array $agendamentos): bool
+    {
+        return collect($agendamentos)->contains(
+            fn (array $agendamento): bool => (bool) ($agendamento['precisa_transporte'] ?? false),
+        );
+    }
+
+    /** @return array{0: EventoCalendarioStatus, 1: bool} */
+    private function estadoInicial(
+        bool $possuiTransporte,
+        bool $publicacaoSolicitada,
+        EventoCalendarioOrigem $origem,
+        bool $publicarAutomaticamente,
+        User $ator,
+    ): array {
+        if ($possuiTransporte) {
+            return [EventoCalendarioStatus::PENDENTE_APROVACAO, false];
+        }
+
+        if ($origem === EventoCalendarioOrigem::MANUAL && $publicarAutomaticamente) {
+            return [EventoCalendarioStatus::PUBLICADO, true];
+        }
+
+        if ($publicacaoSolicitada) {
+            Gate::forUser($ator)->authorize('publishCommon', EventoCalendario::class);
+
+            return [EventoCalendarioStatus::PUBLICADO, true];
+        }
+
+        return [EventoCalendarioStatus::INATIVO, false];
+    }
+
+    /** @return array{0: EventoCalendarioStatus, 1: bool} */
+    private function estadoAposAtualizacao(
+        EventoCalendario $evento,
+        EventoCalendarioStatus $statusAnterior,
+        bool $possuiaTransporte,
+        bool $possuiTransporte,
+        bool $transporteAlterado,
+        ?bool $publicacaoSolicitada,
+        User $ator,
+    ): array {
+        if ($possuiTransporte) {
+            $precisaNovaAnalise = ! $possuiaTransporte
+                || $statusAnterior === EventoCalendarioStatus::REJEITADO
+                || ($transporteAlterado && ! Gate::forUser($ator)->allows('publish', $evento));
+
+            if ($precisaNovaAnalise) {
+                return [EventoCalendarioStatus::PENDENTE_APROVACAO, false];
+            }
+
+            return [
+                $statusAnterior,
+                $statusAnterior === EventoCalendarioStatus::PUBLICADO && (bool) $evento->ativo,
+            ];
+        }
+
+        if ($publicacaoSolicitada === true) {
+            Gate::forUser($ator)->authorize('publishCommon', EventoCalendario::class);
+
+            return [EventoCalendarioStatus::PUBLICADO, true];
+        }
+
+        if ($publicacaoSolicitada === false) {
+            if ($evento->ativo) {
+                Gate::forUser($ator)->authorize('deactivate', $evento);
+            }
+
+            return [EventoCalendarioStatus::INATIVO, false];
+        }
+
+        if ($possuiaTransporte) {
+            return $statusAnterior === EventoCalendarioStatus::PUBLICADO
+                ? [EventoCalendarioStatus::PUBLICADO, true]
+                : [EventoCalendarioStatus::INATIVO, false];
+        }
+
+        return [
+            $statusAnterior,
+            $statusAnterior === EventoCalendarioStatus::PUBLICADO && (bool) $evento->ativo,
+        ];
+    }
+
+    private function assinaturaTransporteAtual(EventoCalendario $evento): string
+    {
+        return $this->assinaturaTransporte([
+            'data_inicio' => $evento->data_inicio,
+            'data_fim' => $evento->data_fim,
+            'enviar_todas_escolas' => $evento->enviar_todas_escolas,
+        ], $evento->escolasAgendadas
+            ->map(fn ($agendamento): array => [
+                'escola_id' => (int) $agendamento->escola_id,
+                'precisa_transporte' => (bool) $agendamento->precisa_transporte,
+                'escopo_transporte' => $agendamento->escopo_transporte?->value,
+                'series_ids' => $agendamento->series->modelKeys(),
+                'turmas_ids' => $agendamento->turmas->modelKeys(),
+            ])
+            ->all());
+    }
+
+    /** @param list<array<string, mixed>> $agendamentos */
+    private function assinaturaTransporteNova(array $dados, array $agendamentos): string
+    {
+        return $this->assinaturaTransporte($dados, $agendamentos);
+    }
+
+    /** @param list<array<string, mixed>> $agendamentos */
+    private function assinaturaTransporte(array $dados, array $agendamentos): string
+    {
+        $linhas = collect($agendamentos)
+            ->map(fn (array $agendamento): array => [
+                'escola_id' => (int) ($agendamento['escola_id'] ?? 0),
+                'precisa_transporte' => (bool) ($agendamento['precisa_transporte'] ?? false),
+                'escopo_transporte' => $agendamento['escopo_transporte'] ?? null,
+                'series_ids' => collect($agendamento['series_ids'] ?? [])->map(fn ($id): int => (int) $id)->sort()->values()->all(),
+                'turmas_ids' => collect($agendamento['turmas_ids'] ?? [])->map(fn ($id): int => (int) $id)->sort()->values()->all(),
+            ])
+            ->sortBy('escola_id')
+            ->values()
+            ->all();
+
+        return hash('sha256', json_encode([
+            'data_inicio' => $dados['data_inicio'] instanceof \DateTimeInterface
+                ? $dados['data_inicio']->format('Y-m-d H:i:s')
+                : (string) ($dados['data_inicio'] ?? ''),
+            'data_fim' => $dados['data_fim'] instanceof \DateTimeInterface
+                ? $dados['data_fim']->format('Y-m-d H:i:s')
+                : (string) ($dados['data_fim'] ?? ''),
+            'enviar_todas_escolas' => (bool) ($dados['enviar_todas_escolas'] ?? true),
+            'escolas' => $linhas,
+        ], JSON_THROW_ON_ERROR));
     }
 
     /** @param list<array<string, mixed>> $agendamentos */

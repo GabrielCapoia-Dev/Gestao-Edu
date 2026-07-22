@@ -45,6 +45,9 @@ enum ListaPermissoes: string
     case ListarPessoas = 'listar pessoas';
     case ListarAvisos = 'listar avisos';
     case ListarEventos = 'listar eventos';
+    case ListarEventosTransporte = 'listar eventos: transporte';
+    case ListarEventosGeral = 'listar eventos: geral';
+    case ListarMeusEventos = 'listar eventos: meus eventos';
 
     case CriarEmpresaContratada = 'criar empresa contratada';
     case CriarAlunos = 'criar alunos';
@@ -132,8 +135,12 @@ enum ListaPermissoes: string
     case GerenciarVinculosEstruturaisDePessoas = 'gerenciar vínculos estruturais de pessoas';
     case GerenciarPublicoAlvoDeAvisos = 'gerenciar público-alvo de avisos';
     case GerenciarPublicoAlvoDeEventos = 'gerenciar público-alvo de eventos';
+    case GerenciarTransporteDeEventos = 'gerenciar transporte de eventos';
     case TransferirProfessores = 'transferir professores';
     case DesativarProfessores = 'desativar professores';
+    case DesativarEventos = 'desativar eventos';
+    case DesativarEventosTransporte = 'desativar eventos: transporte';
+    case RejeitarEventosTransporte = 'rejeitar eventos: transporte';
 
     case ExcluirEmpresaContratada = 'excluir empresa contratada';
     case ExcluirAlunos = 'excluir alunos';
@@ -219,6 +226,7 @@ enum ListaPermissoes: string
     case VisualizarAgendaDeTodaARede = 'visualizar agenda de toda a rede';
     case PublicarAvisos = 'publicar avisos';
     case PublicarEventos = 'publicar eventos';
+    case PublicarEventosTransporte = 'publicar eventos: transporte';
 
     case AcessarPainel = 'acessar painel';
     case AcessarEscopoGlobalDeSetores = 'acessar escopo global de setores';
@@ -296,6 +304,9 @@ enum ListaPermissoes: string
             self::ListarPessoas => 'Listar Pessoas',
             self::ListarAvisos => 'Listar Avisos',
             self::ListarEventos => 'Listar Eventos',
+            self::ListarEventosTransporte => 'Listar Eventos: Transporte',
+            self::ListarEventosGeral => 'Listar Eventos: Geral',
+            self::ListarMeusEventos => 'Listar Eventos: Meus Eventos',
 
             self::CriarEmpresaContratada => 'Criar Empresa Contratada',
             self::CriarAlunos => 'Criar Alunos',
@@ -383,8 +394,12 @@ enum ListaPermissoes: string
             self::GerenciarVinculosEstruturaisDePessoas => 'Gerenciar Vínculos Estruturais de Pessoas',
             self::GerenciarPublicoAlvoDeAvisos => 'Gerenciar Público-alvo de Avisos',
             self::GerenciarPublicoAlvoDeEventos => 'Gerenciar Público-alvo de Eventos',
+            self::GerenciarTransporteDeEventos => 'Gerenciar Transporte de Eventos',
             self::TransferirProfessores => 'Transferir Professores',
             self::DesativarProfessores => 'Desativar Professores',
+            self::DesativarEventos => 'Desativar Eventos',
+            self::DesativarEventosTransporte => 'Desativar Eventos: Transporte',
+            self::RejeitarEventosTransporte => 'Rejeitar Eventos: Transporte',
 
             self::ExcluirEmpresaContratada => 'Excluir Empresa Contratada',
             self::ExcluirAlunos => 'Excluir Alunos',
@@ -470,6 +485,7 @@ enum ListaPermissoes: string
             self::VisualizarAgendaDeTodaARede => 'Visualizar Agenda de Toda a Rede',
             self::PublicarAvisos => 'Publicar Avisos',
             self::PublicarEventos => 'Publicar Eventos',
+            self::PublicarEventosTransporte => 'Publicar Eventos: Transporte',
 
             self::AcessarPainel => 'Acessar Painel',
             self::AcessarEscopoGlobalDeSetores => 'Acessar Escopo Global de Setores',

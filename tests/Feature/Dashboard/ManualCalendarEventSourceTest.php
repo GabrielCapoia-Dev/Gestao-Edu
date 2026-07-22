@@ -85,6 +85,49 @@ class ManualCalendarEventSourceTest extends TestCase
         $this->assertNull($source->detail($contextA, (string) $evento->id));
     }
 
+    public function test_fonte_manual_oculta_eventos_pendentes_rejeitados_e_inativos(): void
+    {
+        $agora = CarbonImmutable::parse('2026-07-20 10:00:00');
+        CarbonImmutable::setTestNow($agora);
+        [$usuario] = $this->usuariosDeEscolasDiferentes();
+        $publico = app(PublicoAlvoService::class)->criar($usuario, ['todos_usuarios' => true]);
+        $publicado = $this->criarEvento(
+            $publico->id,
+            'Evento publicado',
+            $agora->addDay(),
+            status: EventoCalendarioStatus::PUBLICADO,
+        );
+        $pendente = $this->criarEvento(
+            $publico->id,
+            'Evento pendente',
+            $agora->addDays(2),
+            status: EventoCalendarioStatus::PENDENTE_APROVACAO,
+        );
+        $rejeitado = $this->criarEvento(
+            $publico->id,
+            'Evento rejeitado',
+            $agora->addDays(3),
+            status: EventoCalendarioStatus::REJEITADO,
+        );
+        $inativo = $this->criarEvento(
+            $publico->id,
+            'Evento inativo',
+            $agora->addDays(4),
+            status: EventoCalendarioStatus::INATIVO,
+        );
+        $contexto = $this->contexto($usuario, $agora, $agora->addDays(6)->endOfDay());
+        $source = app(ManualCalendarEventSource::class);
+
+        $ids = collect($source->events($contexto))
+            ->map(static fn (CalendarEventData $event): int => (int) str($event->reference)->before('@')->toString())
+            ->all();
+
+        $this->assertSame([$publicado->id], $ids);
+        $this->assertNull($source->detail($contexto, (string) $pendente->id));
+        $this->assertNull($source->detail($contexto, (string) $rejeitado->id));
+        $this->assertNull($source->detail($contexto, (string) $inativo->id));
+    }
+
     public function test_evento_manual_global_nao_ignora_escola_ou_setor_relacionado_fora_do_contexto(): void
     {
         $agora = CarbonImmutable::parse('2026-07-20 10:00:00');
@@ -288,6 +331,7 @@ class ManualCalendarEventSourceTest extends TestCase
         bool $ativo = true,
         ?Escola $escola = null,
         ?Setor $setor = null,
+        ?EventoCalendarioStatus $status = null,
     ): EventoCalendario {
         $evento = EventoCalendario::query()->create([
             'publico_alvo_id' => $publicoAlvoId,
@@ -301,7 +345,9 @@ class ManualCalendarEventSourceTest extends TestCase
             'prioridade' => DashboardPrioridade::Normal,
             'data_inicio' => $inicio,
             'data_fim' => $inicio->addHour(),
-            'status' => EventoCalendarioStatus::AGENDADO,
+            'status' => $status ?? ($ativo
+                ? EventoCalendarioStatus::PUBLICADO
+                : EventoCalendarioStatus::INATIVO),
             'ativo' => $ativo,
             'cor' => EventoCalendarioCor::AZUL,
             'origem' => EventoCalendarioOrigem::MANUAL,

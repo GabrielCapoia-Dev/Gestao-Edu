@@ -8,6 +8,7 @@ use App\Filament\Admin\Resources\EventosCalendario\Schemas\EventoCalendarioForm;
 use App\Filament\Admin\Resources\EventosCalendario\Tables\EventosCalendarioTable;
 use App\Models\EventoCalendario;
 use App\Models\User;
+use App\Services\Dashboard\EventoCalendarioAccessService;
 use App\Services\ProfilePreviewService;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -15,7 +16,6 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Gate;
 use UnitEnum;
 
 class EventoCalendarioResource extends Resource
@@ -53,15 +53,12 @@ class EventoCalendarioResource extends Resource
         $query = parent::getEloquentQuery()->with([
             'publicoAlvo',
             'escolasAgendadas.escola:id,nome',
-            'escolasAgendadas.series:id,nome',
-            'escolasAgendadas.turmas:id,nome',
             'criadoPor:id,name', 'atualizadoPor:id,name',
         ]);
         $user = static::usuarioEfetivo();
-        $policy = Gate::getPolicyFor(EventoCalendario::class);
 
-        if ($user && $policy && method_exists($policy, 'applyViewAnyScope')) {
-            return $policy->applyViewAnyScope($user, $query);
+        if ($user) {
+            return app(EventoCalendarioAccessService::class)->aplicarEscopo($user, $query);
         }
 
         return $query->whereRaw('1 = 0');
