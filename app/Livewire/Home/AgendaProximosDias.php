@@ -3,7 +3,7 @@
 namespace App\Livewire\Home;
 
 use App\Filament\Admin\Resources\EventosCalendario\EventoCalendarioCreateAction;
-use App\Filament\Admin\Resources\EventosCalendario\EventoCalendarioResource;
+use App\Filament\Admin\Pages\GerenciarEventos;
 use App\Models\Enums\ListaPermissoes;
 use App\Models\EventoCalendario;
 use App\Models\User;
@@ -209,7 +209,7 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
         }
 
         try {
-            return EventoCalendarioResource::getUrl('index');
+            return GerenciarEventos::getUrl();
         } catch (\Throwable) {
             return null;
         }

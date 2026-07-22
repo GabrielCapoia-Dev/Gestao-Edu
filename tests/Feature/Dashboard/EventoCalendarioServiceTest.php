@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Dashboard;
 
-use App\Filament\Admin\Resources\EventosCalendario\Pages\CreateEventoCalendario;
+use App\Filament\Admin\Pages\GerenciarEventos;
 use App\Filament\Admin\Resources\EventosCalendario\Schemas\EventoCalendarioForm;
 use App\Models\Aluno;
 use App\Models\Enums\EventoCalendarioHistoricoAcao;
@@ -223,7 +223,8 @@ class EventoCalendarioServiceTest extends TestCase
         [$ator] = $this->atorEscolar('FORM');
 
         Livewire::actingAs($ator)
-            ->test(CreateEventoCalendario::class)
+            ->test(GerenciarEventos::class)
+            ->mountAction('criarEvento')
             ->assertSee('Inserir link?')
             ->assertSee('Enviar para escolas específicas')
             ->assertDontSee('Link de ação')

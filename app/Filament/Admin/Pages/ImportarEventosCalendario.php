@@ -1,14 +1,16 @@
 <?php
 
-namespace App\Filament\Admin\Resources\EventosCalendario\Pages;
+namespace App\Filament\Admin\Pages;
 
-use App\Filament\Admin\Resources\EventosCalendario\EventoCalendarioResource;
 use App\Models\ImportacaoEventoCalendario;
+use App\Models\User;
 use App\Services\Dashboard\Imports\EventoCalendarioImportService;
+use App\Services\ProfilePreviewService;
 use Filament\Notifications\Notification;
-use Filament\Resources\Pages\Page;
-use Illuminate\Support\Facades\Gate;
+use Filament\Pages\Page;
+use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 
@@ -16,19 +18,31 @@ class ImportarEventosCalendario extends Page
 {
     use WithFileUploads;
 
-    protected static string $resource = EventoCalendarioResource::class;
+    protected static bool $shouldRegisterNavigation = false;
 
-    protected string $view = 'filament.admin.resources.eventos-calendario.pages.importar-eventos-calendario';
+    protected static ?string $slug = 'eventos-calendario/importar';
 
     protected static ?string $title = 'Importar eventos';
+
+    protected string $view = 'filament.admin.resources.eventos-calendario.pages.importar-eventos-calendario';
 
     public $arquivo = null;
 
     public ?int $importacaoId = null;
 
-    public static function canAccess(array $parameters = []): bool
+    public function getHeader(): ?View
     {
-        $user = EventoCalendarioResource::usuarioEfetivo();
+        return view('filament.admin.pages.partials.page-header', [
+            'actions' => $this->getCachedHeaderActions(),
+            'eyebrow' => 'Eventos da agenda',
+            'title' => 'Importar eventos',
+            'description' => 'Valide a planilha, confira cada linha e confirme a gravação somente depois da pré-visualização.',
+        ]);
+    }
+
+    public static function canAccess(): bool
+    {
+        $user = static::usuarioEfetivo();
 
         return $user && Gate::forUser($user)->allows('create', ImportacaoEventoCalendario::class);
     }
@@ -49,7 +63,7 @@ class ImportarEventosCalendario extends Page
             'arquivo.mimes' => 'Envie um arquivo XLSX ou CSV.',
         ]);
 
-        $user = EventoCalendarioResource::usuarioEfetivo();
+        $user = static::usuarioEfetivo();
         abort_unless($user && $this->arquivo instanceof TemporaryUploadedFile, 403);
 
         $importacao = app(EventoCalendarioImportService::class)->preview($this->arquivo, $user);
@@ -66,7 +80,7 @@ class ImportarEventosCalendario extends Page
     public function confirmar(): void
     {
         $importacao = $this->importacaoAutorizada();
-        $user = EventoCalendarioResource::usuarioEfetivo();
+        $user = static::usuarioEfetivo();
         abort_unless($user, 403);
 
         app(EventoCalendarioImportService::class)->confirm($importacao, $user);
@@ -77,7 +91,7 @@ class ImportarEventosCalendario extends Page
     public function cancelar(): void
     {
         $importacao = $this->importacaoAutorizada();
-        $user = EventoCalendarioResource::usuarioEfetivo();
+        $user = static::usuarioEfetivo();
         abort_unless($user, 403);
 
         app(EventoCalendarioImportService::class)->cancel($importacao, $user);
@@ -87,7 +101,7 @@ class ImportarEventosCalendario extends Page
 
     public function baixarModelo()
     {
-        $user = EventoCalendarioResource::usuarioEfetivo();
+        $user = static::usuarioEfetivo();
         abort_unless($user, 403);
 
         return app(EventoCalendarioImportService::class)->template($user);
@@ -95,7 +109,7 @@ class ImportarEventosCalendario extends Page
 
     public function abrirImportacao(int $id): void
     {
-        $user = EventoCalendarioResource::usuarioEfetivo();
+        $user = static::usuarioEfetivo();
         $importacao = ImportacaoEventoCalendario::query()->find($id);
         abort_unless($user && $importacao && Gate::forUser($user)->allows('view', $importacao), 404);
 
@@ -111,14 +125,14 @@ class ImportarEventosCalendario extends Page
 
     public function podeBaixarModelo(): bool
     {
-        $user = EventoCalendarioResource::usuarioEfetivo();
+        $user = static::usuarioEfetivo();
 
         return $user && Gate::forUser($user)->allows('exportTemplate', ImportacaoEventoCalendario::class);
     }
 
     public function getHistoricoProperty(): Collection
     {
-        $user = EventoCalendarioResource::usuarioEfetivo();
+        $user = static::usuarioEfetivo();
 
         if (! $user || ! Gate::forUser($user)->allows('viewAny', ImportacaoEventoCalendario::class)) {
             return collect();
@@ -141,7 +155,7 @@ class ImportarEventosCalendario extends Page
             return null;
         }
 
-        $user = EventoCalendarioResource::usuarioEfetivo();
+        $user = static::usuarioEfetivo();
 
         if (! $user) {
             return null;
@@ -159,9 +173,14 @@ class ImportarEventosCalendario extends Page
     private function importacaoAutorizada(): ImportacaoEventoCalendario
     {
         $importacao = $this->importacao;
-        $user = EventoCalendarioResource::usuarioEfetivo();
+        $user = static::usuarioEfetivo();
         abort_unless($user && $importacao && Gate::forUser($user)->allows('view', $importacao), 404);
 
         return $importacao;
+    }
+
+    private static function usuarioEfetivo(): ?User
+    {
+        return app(ProfilePreviewService::class)->effectiveUser();
     }
 }

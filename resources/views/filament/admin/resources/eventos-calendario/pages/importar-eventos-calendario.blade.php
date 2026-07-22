@@ -79,7 +79,7 @@
                             Confirmar importação
                         </x-filament::button>
                     @elseif ($importacao->status->value === 'concluida')
-                        <x-filament::button tag="a" :href="\App\Filament\Admin\Resources\EventosCalendario\EventoCalendarioResource::getUrl('index')">Ver eventos</x-filament::button>
+                        <x-filament::button tag="a" :href="\App\Filament\Admin\Pages\GerenciarEventos::getUrl()">Ver eventos</x-filament::button>
                     @else
                         <p class="ge-import__error">A confirmação só é liberada quando todas as linhas são válidas.</p>
                     @endif

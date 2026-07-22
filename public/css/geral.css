@@ -3348,3 +3348,402 @@
     }
 
 }
+
+/* Gerenciamento de eventos */
+.gi-event-management {
+    display: grid;
+    gap: 1rem;
+    min-width: 0;
+}
+
+.gi-event-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.9rem;
+}
+
+.gi-event-metric {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    min-width: 0;
+    border: 1px solid var(--edu-neutral-200);
+    border-radius: 0.9rem;
+    padding: 1rem;
+    background: #fff;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+}
+
+.gi-event-metric__icon {
+    display: grid;
+    flex: 0 0 2.65rem;
+    width: 2.65rem;
+    height: 2.65rem;
+    place-items: center;
+    border-radius: 0.75rem;
+}
+
+.gi-event-metric__icon svg {
+    width: 1.3rem;
+    height: 1.3rem;
+}
+
+.gi-event-metric span,
+.gi-event-metric small {
+    display: block;
+}
+
+.gi-event-metric span {
+    overflow: hidden;
+    color: var(--edu-neutral-600);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.gi-event-metric strong {
+    display: block;
+    margin-block: 0.2rem;
+    color: var(--edu-neutral-900);
+    font-size: 1.65rem;
+    line-height: 1;
+}
+
+.gi-event-metric small {
+    color: var(--edu-neutral-500);
+    font-size: 0.75rem;
+}
+
+.gi-event-metric--pending .gi-event-metric__icon {
+    background: var(--edu-warning-50);
+    color: var(--edu-warning-700);
+}
+
+.gi-event-metric--published .gi-event-metric__icon {
+    background: var(--edu-success-50);
+    color: var(--edu-success-700);
+}
+
+.gi-event-metric--rejected .gi-event-metric__icon {
+    background: var(--edu-danger-50);
+    color: var(--edu-danger-700);
+}
+
+.gi-event-metric--total .gi-event-metric__icon {
+    background: var(--edu-info-50);
+    color: var(--edu-info-700);
+}
+
+.gi-event-table-panel {
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--edu-neutral-200);
+    border-radius: 0.9rem;
+    background: #fff;
+    box-shadow: 0 8px 28px rgba(15, 23, 42, 0.05);
+}
+
+.gi-event-table-panel__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    border-bottom: 1px solid var(--edu-neutral-200);
+    padding: 1rem 1.15rem;
+}
+
+.gi-event-table-panel__header .gi-eyebrow {
+    margin-bottom: 0.25rem;
+}
+
+.gi-event-table-panel__header h2 {
+    margin: 0;
+    color: var(--edu-neutral-900);
+    font-size: 1.05rem;
+    font-weight: 800;
+}
+
+.gi-event-table-panel__header p:last-child {
+    margin: 0.2rem 0 0;
+    color: var(--edu-neutral-600);
+    font-size: 0.82rem;
+}
+
+.gi-event-table-panel > .fi-ta {
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.gi-event-row--attention .fi-ta-cell {
+    background: rgba(255, 251, 235, 0.72);
+}
+
+.gi-event-row--attention:hover .fi-ta-cell {
+    background: rgba(254, 243, 199, 0.75);
+}
+
+.gi-event-detail--management {
+    display: grid;
+    gap: 1rem;
+}
+
+.gi-event-detail__intro {
+    display: grid;
+    gap: 0.8rem;
+}
+
+.gi-event-detail__intro > div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.gi-event-detail__intro p {
+    margin: 0;
+    color: var(--edu-neutral-700);
+    line-height: 1.65;
+    white-space: pre-line;
+}
+
+.gi-event-detail__status,
+.gi-event-detail__transport,
+.gi-event-detail__count {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    width: fit-content;
+    border-radius: 9999px;
+    padding: 0.32rem 0.65rem;
+    font-size: 0.72rem;
+    font-weight: 800;
+}
+
+.gi-event-detail__status--pendente_aprovacao {
+    background: var(--edu-warning-50);
+    color: var(--edu-warning-700);
+}
+
+.gi-event-detail__status--publicado {
+    background: var(--edu-success-50);
+    color: var(--edu-success-700);
+}
+
+.gi-event-detail__status--rejeitado {
+    background: var(--edu-danger-50);
+    color: var(--edu-danger-700);
+}
+
+.gi-event-detail__status--inativo {
+    background: var(--edu-neutral-100);
+    color: var(--edu-neutral-700);
+}
+
+.gi-event-detail__transport {
+    background: var(--edu-info-50);
+    color: var(--edu-info-700);
+}
+
+.gi-event-detail__transport svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+.gi-event-detail__section {
+    overflow: hidden;
+    border: 1px solid var(--edu-neutral-200);
+    border-radius: 0.8rem;
+    background: #fff;
+}
+
+.gi-event-detail__section > header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    border-bottom: 1px solid var(--edu-neutral-200);
+    padding: 0.85rem 1rem;
+}
+
+.gi-event-detail__section .gi-eyebrow {
+    margin-bottom: 0.2rem;
+}
+
+.gi-event-detail__section h3 {
+    margin: 0;
+    color: var(--edu-neutral-900);
+    font-size: 0.95rem;
+    font-weight: 800;
+}
+
+.gi-event-detail__count {
+    background: var(--edu-neutral-100);
+    color: var(--edu-neutral-700);
+}
+
+.gi-event-detail__schools--management {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.7rem;
+    padding: 0.85rem;
+}
+
+.gi-event-detail__school {
+    min-width: 0;
+    border: 1px solid var(--edu-neutral-200);
+    border-radius: 0.7rem;
+    padding: 0.8rem;
+    background: var(--edu-neutral-50);
+}
+
+.gi-event-detail__school-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.gi-event-detail__school-heading strong {
+    overflow-wrap: anywhere;
+    color: var(--edu-neutral-900);
+}
+
+.gi-event-detail__school-heading span {
+    flex: 0 0 auto;
+    border-radius: 9999px;
+    padding: 0.2rem 0.5rem;
+    background: var(--edu-info-50);
+    color: var(--edu-info-700);
+    font-size: 0.7rem;
+    font-weight: 800;
+}
+
+.gi-event-detail__school p {
+    margin: 0.25rem 0 0;
+    color: var(--edu-neutral-600);
+    font-size: 0.78rem;
+}
+
+.gi-event-detail__empty {
+    margin: 0;
+    padding: 0.9rem 1rem;
+    color: var(--edu-neutral-500);
+    font-size: 0.82rem;
+}
+
+.gi-event-detail__muted {
+    color: var(--edu-neutral-500) !important;
+}
+
+.gi-event-history {
+    display: grid;
+    gap: 0;
+    margin: 0;
+    padding: 0.85rem 1rem;
+    list-style: none;
+}
+
+.gi-event-history li {
+    position: relative;
+    display: grid;
+    grid-template-columns: 0.8rem minmax(0, 1fr);
+    gap: 0.65rem;
+    padding-bottom: 0.85rem;
+}
+
+.gi-event-history li:not(:last-child)::after {
+    position: absolute;
+    top: 0.65rem;
+    bottom: 0;
+    left: 0.29rem;
+    width: 1px;
+    background: var(--edu-neutral-200);
+    content: '';
+}
+
+.gi-event-history__marker {
+    z-index: 1;
+    width: 0.65rem;
+    height: 0.65rem;
+    margin-top: 0.25rem;
+    border: 2px solid #fff;
+    border-radius: 9999px;
+    background: var(--edu-primary-600);
+    box-shadow: 0 0 0 1px var(--edu-primary-200);
+}
+
+.gi-event-history strong,
+.gi-event-history small {
+    display: block;
+}
+
+.gi-event-history strong {
+    color: var(--edu-neutral-900);
+    font-size: 0.84rem;
+}
+
+.gi-event-history small,
+.gi-event-history p {
+    color: var(--edu-neutral-500);
+    font-size: 0.75rem;
+}
+
+.gi-event-history p {
+    margin: 0.35rem 0 0;
+}
+
+.dark .gi-event-metric,
+.dark .gi-event-table-panel,
+.dark .gi-event-detail__section {
+    border-color: #334155;
+    background: #111827;
+}
+
+.dark .gi-event-metric strong,
+.dark .gi-event-table-panel__header h2,
+.dark .gi-event-detail__section h3,
+.dark .gi-event-detail__school-heading strong,
+.dark .gi-event-history strong {
+    color: #f8fafc;
+}
+
+.dark .gi-event-table-panel__header,
+.dark .gi-event-detail__section > header,
+.dark .gi-event-detail__school {
+    border-color: #334155;
+}
+
+.dark .gi-event-detail__school {
+    background: #1e293b;
+}
+
+.dark .gi-event-row--attention .fi-ta-cell {
+    background: rgba(120, 53, 15, 0.2);
+}
+
+@media (max-width: 1180px) {
+    .gi-event-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 700px) {
+    .gi-event-metrics,
+    .gi-event-detail__schools--management {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .gi-event-table-panel__header,
+    .gi-event-detail__section > header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .gi-event-table-panel .fi-ta-content {
+        overflow-x: auto;
+    }
+}

@@ -1,0 +1,190 @@
+<?php
+
+namespace Tests\Feature\Dashboard;
+
+use App\Filament\Admin\Pages\GerenciarEventos;
+use App\Models\Enums\DashboardPrioridade;
+use App\Models\Enums\EventoCalendarioCategoria;
+use App\Models\Enums\EventoCalendarioCor;
+use App\Models\Enums\EventoCalendarioOrigem;
+use App\Models\Enums\EventoCalendarioStatus;
+use App\Models\Enums\ListaPermissoes;
+use App\Models\Enums\PublicoAlvoModoCorrespondencia;
+use App\Models\Escola;
+use App\Models\EventoCalendario;
+use App\Models\Permission;
+use App\Models\PublicoAlvo;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
+use Spatie\Permission\PermissionRegistrar;
+use Tests\TestCase;
+
+class GerenciarEventosPageTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private Escola $escola;
+
+    private PublicoAlvo $publico;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config()->set('permission.cache.store', 'array');
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $this->escola = Escola::query()->create([
+            'codigo' => 'ESC-PAGE-EVENTOS',
+            'nome' => 'Escola da Page de Eventos',
+            'email' => 'eventos-page@teste.local',
+            'ativo' => true,
+        ]);
+
+        $this->publico = PublicoAlvo::query()->create([
+            'modo_correspondencia' => PublicoAlvoModoCorrespondencia::Qualquer,
+            'todos_usuarios' => true,
+            'escopo_global' => true,
+        ]);
+        $this->publico->escolas()->attach($this->escola);
+    }
+
+    public function test_page_exige_uma_das_permissoes_de_listagem(): void
+    {
+        $semAcesso = User::factory()->create(['email_approved' => true]);
+        $this->actingAs($semAcesso);
+        $this->assertFalse(GerenciarEventos::canAccess());
+
+        $comAcesso = $this->usuarioComPermissoes(ListaPermissoes::ListarMeusEventos);
+        $this->actingAs($comAcesso);
+        $this->assertTrue(GerenciarEventos::canAccess());
+    }
+
+    public function test_visao_de_transporte_renderiza_indicadores_e_somente_eventos_do_escopo(): void
+    {
+        $usuario = $this->usuarioComPermissoes(ListaPermissoes::ListarEventosTransporte);
+        $outro = User::factory()->create();
+        $transporte = $this->evento($outro, 'Solicitação de transporte', EventoCalendarioStatus::PENDENTE_APROVACAO, true);
+        $comum = $this->evento($outro, 'Evento geral sem transporte', EventoCalendarioStatus::PUBLICADO, false);
+
+        Livewire::actingAs($usuario)
+            ->test(GerenciarEventos::class)
+            ->assertCanSeeTableRecords([$transporte])
+            ->assertCanNotSeeTableRecords([$comum])
+            ->assertSee('Solicitações em aberto')
+            ->assertSee('Total com transporte');
+    }
+
+    public function test_visao_de_meus_eventos_nao_exibe_indicadores_exclusivos_do_transporte(): void
+    {
+        $usuario = $this->usuarioComPermissoes(ListaPermissoes::ListarMeusEventos);
+        $proprio = $this->evento($usuario, 'Meu evento', EventoCalendarioStatus::PUBLICADO, false);
+        $alheio = $this->evento(User::factory()->create(), 'Evento de outro usuário', EventoCalendarioStatus::PUBLICADO, false);
+
+        Livewire::actingAs($usuario)
+            ->test(GerenciarEventos::class)
+            ->assertCanSeeTableRecords([$proprio])
+            ->assertCanNotSeeTableRecords([$alheio])
+            ->assertDontSee('Solicitações em aberto');
+    }
+
+    public function test_publicacao_de_transporte_e_reautorizada_pela_action_da_page(): void
+    {
+        $usuario = $this->usuarioComPermissoes(
+            ListaPermissoes::ListarEventosTransporte,
+            ListaPermissoes::PublicarEventosTransporte,
+        );
+        $evento = $this->evento(
+            User::factory()->create(),
+            'Evento pendente para aprovação',
+            EventoCalendarioStatus::PENDENTE_APROVACAO,
+            true,
+        );
+
+        Livewire::actingAs($usuario)
+            ->test(GerenciarEventos::class)
+            ->assertTableActionVisible('publicar', $evento)
+            ->callTableAction('publicar', $evento)
+            ->assertHasNoTableActionErrors();
+
+        $evento->refresh();
+        $this->assertSame(EventoCalendarioStatus::PUBLICADO, $evento->status);
+        $this->assertTrue($evento->ativo);
+    }
+
+    public function test_detalhes_abrem_em_slideover_e_acoes_de_exclusao_e_duplicacao_nao_existem(): void
+    {
+        $usuario = $this->usuarioComPermissoes(ListaPermissoes::ListarEventosGeral);
+        $evento = $this->evento(
+            $usuario,
+            'Evento detalhado',
+            EventoCalendarioStatus::PUBLICADO,
+            false,
+            'Descrição completa e exclusiva do evento detalhado.',
+        );
+
+        Livewire::actingAs($usuario)
+            ->test(GerenciarEventos::class)
+            ->assertTableActionDoesNotExist('delete')
+            ->assertTableActionDoesNotExist('duplicate')
+            ->assertTableActionVisible('detalhes', $evento)
+            ->callTableAction('detalhes', $evento)
+            ->assertSee('Descrição completa e exclusiva do evento detalhado.');
+    }
+
+    private function usuarioComPermissoes(ListaPermissoes ...$permissoes): User
+    {
+        $usuario = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+        $nomes = [];
+
+        foreach ($permissoes as $permissao) {
+            Permission::findOrCreate($permissao->label(), 'web');
+            $nomes[] = $permissao->label();
+        }
+
+        $usuario->givePermissionTo($nomes);
+
+        return $usuario;
+    }
+
+    private function evento(
+        User $criador,
+        string $titulo,
+        EventoCalendarioStatus $status,
+        bool $transporte,
+        string $descricao = 'Descrição resumida do evento.',
+    ): EventoCalendario {
+        $evento = EventoCalendario::query()->create([
+            'publico_alvo_id' => $this->publico->id,
+            'enviar_todas_escolas' => ! $transporte,
+            'titulo' => $titulo,
+            'descricao' => $descricao,
+            'categoria' => EventoCalendarioCategoria::ADMINISTRATIVO,
+            'prioridade' => DashboardPrioridade::Normal,
+            'data_inicio' => '2026-07-30 08:00:00',
+            'data_fim' => '2026-07-30 12:00:00',
+            'status' => $status,
+            'ativo' => $status === EventoCalendarioStatus::PUBLICADO,
+            'cor' => EventoCalendarioCor::AZUL,
+            'origem' => EventoCalendarioOrigem::MANUAL,
+            'criado_por_id' => $criador->id,
+            'atualizado_por_id' => $criador->id,
+        ]);
+
+        if ($transporte) {
+            $evento->escolasAgendadas()->create([
+                'escola_id' => $this->escola->id,
+                'hora_inicio' => '08:00',
+                'hora_fim' => '12:00',
+                'precisa_transporte' => true,
+                'quantidade_estimada_transporte' => 42,
+            ]);
+        }
+
+        return $evento;
+    }
+}

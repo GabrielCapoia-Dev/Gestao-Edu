@@ -63,6 +63,11 @@ class EventoCalendario extends Model
             'progresso' => 'float',
             'cor' => EventoCalendarioCor::class,
             'origem' => EventoCalendarioOrigem::class,
+            'possui_transporte' => 'boolean',
+            'possui_inversao_fila' => 'boolean',
+            'escolas_agendadas_count' => 'integer',
+            'escolas_publico_count' => 'integer',
+            'total_estudantes_transporte' => 'integer',
         ];
     }
 
@@ -82,6 +87,15 @@ class EventoCalendario extends Model
     }
 
     public function escolasAgendadas(): HasMany
+    {
+        return $this->hasMany(EventoCalendarioEscola::class, 'evento_calendario_id');
+    }
+
+    /**
+     * Relação exclusiva da listagem. Mantém o carregamento parcial separado
+     * de escolasAgendadas para não alterar a semântica das regras de domínio.
+     */
+    public function escolasResumo(): HasMany
     {
         return $this->hasMany(EventoCalendarioEscola::class, 'evento_calendario_id');
     }
@@ -150,6 +164,10 @@ class EventoCalendario extends Model
 
     public function possuiTransporte(): bool
     {
+        if (array_key_exists('possui_transporte', $this->attributes)) {
+            return (bool) $this->getAttribute('possui_transporte');
+        }
+
         if ($this->relationLoaded('escolasAgendadas')) {
             return $this->escolasAgendadas->contains(
                 fn (EventoCalendarioEscola $escola): bool => $escola->precisa_transporte,
