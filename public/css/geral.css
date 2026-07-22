@@ -3785,6 +3785,342 @@
     box-shadow: none;
 }
 
+/* Lista de escolas dos eventos */
+.gi-school-popover__trigger {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    max-width: 20rem;
+    cursor: pointer;
+    text-align: left;
+}
+
+.gi-school-badge {
+    display: inline-flex;
+    align-items: center;
+    max-width: 11rem;
+    overflow: hidden;
+    border: 1px solid var(--edu-primary-100);
+    border-radius: 9999px;
+    padding: 0.25rem 0.55rem;
+    background: var(--edu-primary-50);
+    color: var(--edu-primary-700);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.gi-school-badge--count {
+    flex: 0 0 auto;
+    background: #fff;
+}
+
+.gi-school-badge--muted {
+    border-color: var(--edu-neutral-200);
+    background: var(--edu-neutral-100);
+    color: var(--edu-neutral-700);
+}
+
+.gi-school-popover__trigger:focus-visible {
+    border-radius: 0.45rem;
+    outline: 2px solid var(--edu-primary-500);
+    outline-offset: 3px;
+}
+
+.gi-school-popover__panel {
+    position: fixed;
+    z-index: 10000;
+    width: min(20rem, calc(100vw - 1.5rem));
+    max-height: 19rem;
+    overflow: hidden;
+    border: 1px solid var(--edu-neutral-200);
+    border-radius: 0.8rem;
+    background: #fff;
+    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.2);
+}
+
+.gi-school-popover__heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    border-bottom: 1px solid var(--edu-neutral-200);
+    padding: 0.75rem 0.85rem;
+    color: var(--edu-neutral-900);
+    font-size: 0.8rem;
+}
+
+.gi-school-popover__heading span {
+    border-radius: 9999px;
+    padding: 0.18rem 0.45rem;
+    background: var(--edu-primary-50);
+    color: var(--edu-primary-700);
+    font-weight: 800;
+}
+
+.gi-school-popover__list {
+    display: grid;
+    gap: 0.4rem;
+    max-height: 15rem;
+    overflow-y: auto;
+    padding: 0.65rem;
+}
+
+.gi-school-popover__item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.6rem;
+    background: var(--edu-neutral-50);
+    color: var(--edu-neutral-800);
+    font-size: 0.75rem;
+}
+
+.gi-school-popover__item small {
+    flex: 0 0 auto;
+    color: var(--edu-primary-700);
+    font-weight: 700;
+}
+
+/* Gestão de transporte diretamente por escola */
+.gi-school-transport-manager {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    padding: 0.85rem;
+}
+
+.gi-school-transport-card {
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--edu-neutral-200);
+    border-radius: 0.75rem;
+    background: var(--edu-neutral-50);
+}
+
+.gi-school-transport-card__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.65rem;
+    padding: 0.75rem;
+}
+
+.gi-school-transport-card__header > div {
+    display: grid;
+    gap: 0.25rem;
+}
+
+.gi-school-transport-card__header strong {
+    color: var(--edu-neutral-900);
+    font-size: 0.82rem;
+}
+
+.gi-school-transport-card__header span,
+.gi-school-transport-card__header small {
+    color: var(--edu-neutral-600);
+    font-size: 0.7rem;
+}
+
+.gi-school-transport-card__classes,
+.gi-school-transport-card__checks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    padding: 0 0.75rem 0.75rem;
+}
+
+.gi-school-transport-card__classes > span,
+.gi-school-transport-card__checks label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    border: 1px solid var(--edu-neutral-200);
+    border-radius: 9999px;
+    padding: 0.25rem 0.5rem;
+    background: #fff;
+    color: var(--edu-neutral-700);
+    font-size: 0.7rem;
+}
+
+.gi-school-transport-card__classes small,
+.gi-school-transport-card__checks small {
+    color: var(--edu-primary-700);
+    font-weight: 800;
+}
+
+.gi-school-transport-card__allocation {
+    margin: 0 0.75rem 0.65rem;
+    border: 1px solid var(--edu-success-100);
+    border-left: 3px solid var(--edu-success-600);
+    border-radius: 0.6rem;
+    padding: 0.65rem;
+    background: var(--edu-success-50);
+}
+
+.gi-school-transport-card__allocation.is-full {
+    border-color: var(--edu-warning-100);
+    border-left-color: var(--edu-warning-600);
+    background: var(--edu-warning-50);
+}
+
+.gi-school-transport-card__allocation.is-overloaded {
+    border-color: var(--edu-danger-100);
+    border-left-color: var(--edu-danger-600);
+    background: var(--edu-danger-50);
+}
+
+.gi-school-transport-card__allocation-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.gi-school-transport-card__allocation-heading span {
+    border-radius: 9999px;
+    padding: 0.18rem 0.45rem;
+    background: rgba(255, 255, 255, 0.75);
+    color: var(--edu-neutral-700);
+    font-size: 0.65rem;
+    font-weight: 800;
+}
+
+.gi-school-transport-card__allocation p {
+    margin: 0.3rem 0 0;
+    color: var(--edu-neutral-700);
+    font-size: 0.72rem;
+}
+
+.gi-school-transport-card__remove {
+    margin-top: 0.5rem;
+    color: var(--edu-danger-700);
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+
+.gi-school-transport-card__form {
+    display: grid;
+    gap: 0.65rem;
+    border-top: 1px solid var(--edu-neutral-200);
+    padding: 0.75rem;
+    background: #fff;
+}
+
+.gi-school-transport-card__form fieldset,
+.gi-school-transport-card__form legend {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+}
+
+.gi-school-transport-card__form legend,
+.gi-school-transport-card__field > span {
+    margin-bottom: 0.4rem;
+    color: var(--edu-neutral-700);
+    font-size: 0.7rem;
+    font-weight: 800;
+}
+
+.gi-school-transport-card__checks {
+    padding: 0;
+}
+
+.gi-school-transport-card__checks label {
+    cursor: pointer;
+}
+
+.gi-school-transport-card__checks input,
+.gi-school-transport-card__overload input {
+    accent-color: var(--edu-primary-600);
+}
+
+.gi-school-transport-card__selection-summary {
+    color: var(--edu-primary-700);
+    font-size: 0.72rem;
+    font-weight: 800;
+}
+
+.gi-school-transport-card__field {
+    display: grid;
+}
+
+.gi-school-transport-card__fixed-driver {
+    display: grid;
+    gap: 0.2rem;
+    border: 1px solid var(--edu-info-100);
+    border-radius: 0.5rem;
+    padding: 0.55rem 0.65rem;
+    background: var(--edu-info-50);
+}
+
+.gi-school-transport-card__fixed-driver span {
+    color: var(--edu-info-700);
+    font-size: 0.65rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.gi-school-transport-card__fixed-driver strong {
+    color: var(--edu-neutral-900);
+    font-size: 0.75rem;
+}
+
+.gi-school-transport-card__field select {
+    width: 100%;
+    border: 1px solid var(--edu-neutral-300);
+    border-radius: 0.5rem;
+    padding: 0.55rem 0.65rem;
+    background: #fff;
+    color: var(--edu-neutral-800);
+    font-size: 0.75rem;
+}
+
+.gi-school-transport-card__overload {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.45rem;
+    color: var(--edu-warning-700);
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+
+.gi-school-transport-card__submit {
+    border-radius: 0.5rem;
+    padding: 0.58rem 0.75rem;
+    background: var(--edu-primary-700);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 800;
+    box-shadow: 0 4px 10px rgba(30, 64, 175, 0.18);
+}
+
+.gi-school-transport-card__submit:disabled {
+    cursor: wait;
+    opacity: 0.6;
+}
+
+.gi-school-transport-card__error,
+.gi-school-transport-card__pending {
+    margin: 0;
+    color: var(--edu-danger-700);
+    font-size: 0.7rem;
+}
+
+.gi-school-transport-card__pending {
+    border-top: 1px solid var(--edu-neutral-200);
+    padding: 0.65rem 0.75rem;
+    color: var(--edu-neutral-500);
+}
+
+.fi-modal-window.gi-event-detail-modal-window {
+    width: 50vw !important;
+    max-width: 50vw !important;
+}
+
 .dark .gi-event-metric,
 .dark .gi-event-table-panel,
 .dark .gi-event-detail__section {
@@ -3820,6 +4156,32 @@
     background: #1e293b;
 }
 
+.dark .gi-school-popover__panel,
+.dark .gi-school-transport-card__form {
+    border-color: #334155;
+    background: #111827;
+}
+
+.dark .gi-school-popover__heading,
+.dark .gi-school-transport-card,
+.dark .gi-school-transport-card__classes > span,
+.dark .gi-school-transport-card__checks label {
+    border-color: #334155;
+    background: #1e293b;
+}
+
+.dark .gi-school-popover__heading,
+.dark .gi-school-popover__item,
+.dark .gi-school-transport-card__header strong,
+.dark .gi-school-transport-card__field select {
+    color: #f8fafc;
+}
+
+.dark .gi-school-popover__item,
+.dark .gi-school-transport-card__field select {
+    background: #0f172a;
+}
+
 .dark .gi-transport-allocation__metric strong {
     color: #f8fafc;
 }
@@ -3828,12 +4190,23 @@
     .gi-event-metrics {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+
+    .fi-modal-window.gi-event-detail-modal-window {
+        width: min(44rem, calc(100vw - 2rem)) !important;
+        max-width: min(44rem, calc(100vw - 2rem)) !important;
+    }
 }
 
 @media (max-width: 700px) {
     .gi-event-metrics,
-    .gi-event-detail__schools--management {
+    .gi-event-detail__schools--management,
+    .gi-school-transport-manager {
         grid-template-columns: minmax(0, 1fr);
+    }
+
+    .fi-modal-window.gi-event-detail-modal-window {
+        width: 100vw !important;
+        max-width: 100vw !important;
     }
 
     .gi-event-table-panel__header,

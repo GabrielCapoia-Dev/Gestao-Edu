@@ -32,6 +32,7 @@ use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ViewColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Enums\FiltersLayout;
@@ -164,11 +165,9 @@ class GerenciarEventos extends Page implements HasTable
                     ->toggleable()
                     ->wrap(),
 
-                TextColumn::make('resumo_escolas')
+                ViewColumn::make('resumo_escolas')
                     ->label('Escolas e estimativas')
-                    ->state(fn (EventoCalendario $record): array => $this->resumoEscolas($record))
-                    ->listWithLineBreaks()
-                    ->wrap(),
+                    ->view('filament.admin.pages.tables.columns.evento-escolas'),
 
                 TextColumn::make('total_estudantes_transporte')
                     ->label('Total de alunos')
@@ -391,7 +390,8 @@ class GerenciarEventos extends Page implements HasTable
                 ))
                 ->extraModalFooterActions(fn (EventoCalendario $record): array => $this->acoesDoDetalhe($user, $record))
                 ->slideOver()
-                ->modalWidth('4xl')
+                ->modalWidth('screen')
+                ->extraModalWindowAttributes(['class' => 'gi-event-detail-modal-window'], merge: true)
                 ->modalSubmitAction(false)
                 ->modalCancelActionLabel('Fechar'),
 
@@ -610,39 +610,6 @@ class GerenciarEventos extends Page implements HasTable
                 })
                 ->deselectRecordsAfterCompletion(),
         ];
-    }
-
-    /** @return list<string> */
-    private function resumoEscolas(EventoCalendario $evento): array
-    {
-        $totalEscolas = $evento->enviar_todas_escolas
-            ? (int) $evento->escolas_publico_count
-            : (int) $evento->escolas_agendadas_count;
-
-        if ($evento->enviar_todas_escolas) {
-            return [$totalEscolas > 0
-                ? "Todas as {$totalEscolas} escolas do escopo"
-                : 'Todas as escolas do escopo'];
-        }
-
-        $resumo = $evento->escolasResumo
-            ->map(function ($agendamento): string {
-                $nome = $agendamento->escola?->nome ?? 'Escola não informada';
-
-                return $agendamento->precisa_transporte
-                    ? $nome.' — '.number_format((int) $agendamento->quantidade_estimada_transporte, 0, ',', '.').' aluno(s)'
-                    : $nome;
-            })
-            ->values()
-            ->all();
-
-        $restantes = max(0, $totalEscolas - count($resumo));
-
-        if ($restantes > 0) {
-            $resumo[] = "+{$restantes} escola(s)";
-        }
-
-        return $resumo !== [] ? $resumo : ['Sem escola vinculada'];
     }
 
     /** @return EloquentCollection<int, EventoCalendario> */

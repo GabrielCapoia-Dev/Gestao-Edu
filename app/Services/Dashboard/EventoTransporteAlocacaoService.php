@@ -5,7 +5,9 @@ namespace App\Services\Dashboard;
 use App\Models\Enums\EventoCalendarioHistoricoAcao;
 use App\Models\Enums\EventoCalendarioStatus;
 use App\Models\Enums\EventoCalendarioTransporteEscopo;
+use App\Models\Aluno;
 use App\Models\EventoCalendario;
+use App\Models\EventoCalendarioEscola;
 use App\Models\EventoCalendarioTransporteAlocacao;
 use App\Models\FuncaoAdministrativa;
 use App\Models\Pessoa;
@@ -57,8 +59,10 @@ class EventoTransporteAlocacaoService
         int $veiculoId,
         int $motoristaId,
         array $turmaIds = [],
+        bool $permitirSuperlotacao = false,
+        ?int $agendamentoId = null,
     ): EventoCalendarioTransporteAlocacao {
-        return DB::transaction(function () use ($ator, $evento, $veiculoId, $motoristaId, $turmaIds): EventoCalendarioTransporteAlocacao {
+        return DB::transaction(function () use ($ator, $evento, $veiculoId, $motoristaId, $turmaIds, $permitirSuperlotacao, $agendamentoId): EventoCalendarioTransporteAlocacao {
             $evento = EventoCalendario::query()
                 ->with([
                     'escolasAgendadas:id,evento_calendario_id,escola_id,precisa_transporte,escopo_transporte',
@@ -75,6 +79,18 @@ class EventoTransporteAlocacaoService
             $this->validarRecursosAtivos($veiculo, $motorista);
             $turmaIds = collect($turmaIds)->map(fn ($id): int => (int) $id)->filter()->unique()->values()->all();
             $this->validarTurmas($evento, $turmaIds);
+            $this->validarEscolaDaAlocacao($evento, $agendamentoId, $turmaIds);
+
+            $totalEstudantes = $this->totalEstudantesDasTurmas($turmaIds);
+            if ($totalEstudantes > (int) $veiculo->capacidade_passageiros && ! $permitirSuperlotacao) {
+                throw ValidationException::withMessages([
+                    'veiculo_id' => sprintf(
+                        'O veículo possui %d lugares para %d estudantes. Marque a autorização de superlotação para continuar.',
+                        $veiculo->capacidade_passageiros,
+                        $totalEstudantes,
+                    ),
+                ]);
+            }
 
             $duplicada = EventoCalendarioTransporteAlocacao::query()
                 ->ativas()
@@ -124,6 +140,138 @@ class EventoTransporteAlocacaoService
                 'turmas.serie:id,nome',
                 'turmas.escola:id,nome',
             ]);
+        });
+    }
+
+    /** @param list<int|string> $turmaIds */
+    public function atribuirTurmasDaEscola(
+        User $ator,
+        EventoCalendario $evento,
+        int $agendamentoId,
+        int $veiculoId,
+        ?int $motoristaId,
+        array $turmaIds,
+        bool $permitirSuperlotacao = false,
+    ): EventoCalendarioTransporteAlocacao {
+        $existente = EventoCalendarioTransporteAlocacao::query()
+            ->ativas()
+            ->where('evento_calendario_id', $evento->getKey())
+            ->where('veiculo_transporte_id', $veiculoId)
+            ->first();
+
+        if (! $existente) {
+            if (! $motoristaId) {
+                throw ValidationException::withMessages([
+                    'motorista_id' => 'Selecione o motorista do veículo.',
+                ]);
+            }
+
+            return $this->adicionar(
+                $ator,
+                $evento,
+                $veiculoId,
+                $motoristaId,
+                $turmaIds,
+                $permitirSuperlotacao,
+                $agendamentoId,
+            );
+        }
+
+        return DB::transaction(function () use ($ator, $evento, $agendamentoId, $existente, $turmaIds, $permitirSuperlotacao): EventoCalendarioTransporteAlocacao {
+            $evento = EventoCalendario::query()
+                ->with([
+                    'escolasAgendadas:id,evento_calendario_id,escola_id,precisa_transporte,escopo_transporte',
+                    'escolasAgendadas.series:id',
+                    'escolasAgendadas.turmas:id',
+                ])
+                ->lockForUpdate()
+                ->findOrFail($evento->getKey());
+            Gate::forUser($ator)->authorize('create', [EventoCalendarioTransporteAlocacao::class, $evento]);
+            $this->validarEventoElegivel($evento);
+
+            $alocacao = EventoCalendarioTransporteAlocacao::query()
+                ->ativas()
+                ->with(['turmas:id', 'motorista:id,nome,status'])
+                ->lockForUpdate()
+                ->findOrFail($existente->getKey());
+            $veiculo = VeiculoTransporte::query()->lockForUpdate()->findOrFail($alocacao->veiculo_transporte_id);
+            $this->validarRecursosAtivos($veiculo, $alocacao->motorista);
+            $turmaIds = collect($turmaIds)->map(fn ($id): int => (int) $id)->filter()->unique()->values()->all();
+            $this->validarTurmas($evento, $turmaIds);
+            $this->validarEscolaDaAlocacao($evento, $agendamentoId, $turmaIds);
+
+            $todasAsTurmas = collect($alocacao->turmas->modelKeys())
+                ->merge($turmaIds)->map(fn ($id): int => (int) $id)->unique()->values()->all();
+            $totalEstudantes = $this->totalEstudantesDasTurmas($todasAsTurmas);
+
+            if ($totalEstudantes > (int) $veiculo->capacidade_passageiros && ! $permitirSuperlotacao) {
+                throw ValidationException::withMessages([
+                    'veiculo_id' => sprintf(
+                        'O veículo possui %d lugares e passaria a transportar %d estudantes. Autorize a superlotação para continuar.',
+                        $veiculo->capacidade_passageiros,
+                        $totalEstudantes,
+                    ),
+                ]);
+            }
+
+            $alocacao->turmas()->syncWithoutDetaching($turmaIds);
+            $this->workflow->registrarTransporte(
+                $evento,
+                $ator,
+                EventoCalendarioHistoricoAcao::ALOCACAO_TRANSPORTE_ADICIONADA,
+                "Turmas adicionadas ao veículo {$veiculo->placa}.",
+            );
+
+            return $alocacao->load([
+                'veiculo:id,placa,identificacao,capacidade_passageiros,ativo',
+                'motorista:id,nome,cpf,telefone,status',
+                'turmas:id,nome,id_serie,id_escola',
+                'turmas.serie:id,nome',
+                'turmas.escola:id,nome',
+            ]);
+        });
+    }
+
+    public function removerTurmasDaEscola(
+        User $ator,
+        EventoCalendarioTransporteAlocacao $alocacao,
+        int $agendamentoId,
+    ): void {
+        DB::transaction(function () use ($ator, $alocacao, $agendamentoId): void {
+            $alocacao = EventoCalendarioTransporteAlocacao::query()
+                ->ativas()
+                ->with([
+                    'evento.escolasAgendadas:id,evento_calendario_id,escola_id,precisa_transporte',
+                    'veiculo:id,placa',
+                    'turmas:id,id_escola',
+                ])
+                ->lockForUpdate()
+                ->findOrFail($alocacao->getKey());
+            Gate::forUser($ator)->authorize('remove', $alocacao);
+
+            $agendamento = $alocacao->evento->escolasAgendadas->firstWhere('id', $agendamentoId);
+            abort_unless($agendamento, 404);
+            $turmaIds = $alocacao->turmas
+                ->where('id_escola', $agendamento->escola_id)
+                ->pluck('id')->all();
+            abort_if($turmaIds === [], 404);
+
+            $alocacao->turmas()->detach($turmaIds);
+            $restantes = $alocacao->turmas()->count();
+
+            if ($restantes === 0) {
+                $alocacao->forceFill([
+                    'removido_por_id' => $ator->getKey(),
+                    'removido_em' => now(),
+                ])->save();
+            }
+
+            $this->workflow->registrarTransporte(
+                $alocacao->evento,
+                $ator,
+                EventoCalendarioHistoricoAcao::ALOCACAO_TRANSPORTE_REMOVIDA,
+                "Turmas da escola removidas do veículo {$alocacao->veiculo?->placa}.",
+            );
         });
     }
 
@@ -201,6 +349,20 @@ class EventoTransporteAlocacaoService
     /** @return array<int, string> */
     public function veiculoOptions(User $ator, EventoCalendario $evento): array
     {
+        return $this->veiculosDisponiveis($ator, $evento)
+            ->mapWithKeys(fn (VeiculoTransporte $veiculo): array => [
+                $veiculo->getKey() => trim(sprintf(
+                    '%s%s (%d lugares)',
+                    $veiculo->identificacao ? $veiculo->identificacao.' — ' : '',
+                    $veiculo->placa,
+                    $veiculo->capacidade_passageiros,
+                )),
+            ])->all();
+    }
+
+    /** @return EloquentCollection<int, VeiculoTransporte> */
+    public function veiculosDisponiveis(User $ator, EventoCalendario $evento): EloquentCollection
+    {
         $this->autorizarGerenciamento($ator, $evento);
         $jaAlocados = $evento->alocacoesTransporteAtivas()
             ->pluck('veiculo_transporte_id')
@@ -220,15 +382,7 @@ class EventoTransporteAlocacaoService
         return $candidatos
             ->when($ocupados['veiculos'] !== [], fn (Builder $veiculos): Builder => $veiculos->whereNotIn('id', $ocupados['veiculos']))
             ->orderBy('identificacao')->orderBy('placa')
-            ->get(['id', 'placa', 'identificacao', 'capacidade_passageiros'])
-            ->mapWithKeys(fn (VeiculoTransporte $veiculo): array => [
-                $veiculo->getKey() => trim(sprintf(
-                    '%s%s (%d lugares)',
-                    $veiculo->identificacao ? $veiculo->identificacao.' — ' : '',
-                    $veiculo->placa,
-                    $veiculo->capacidade_passageiros,
-                )),
-            ])->all();
+            ->get(['id', 'placa', 'identificacao', 'capacidade_passageiros']);
     }
 
     /** @return array<int, string> */
@@ -298,6 +452,9 @@ class EventoTransporteAlocacaoService
 
         return $this->turmasElegiveisQuery($evento)
             ->with(['serie:id,nome', 'escola:id,nome'])
+            ->withCount(['alunos as estudantes_transporte_count' => fn (Builder $alunos): Builder => $alunos
+                ->where('tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL)
+                ->where('status', Aluno::STATUS_MATRICULADO)])
             ->orderBy('id_escola')->orderBy('id_serie')->orderBy('nome')
             ->get();
     }
@@ -389,7 +546,9 @@ class EventoTransporteAlocacaoService
     private function validarTurmas(EventoCalendario $evento, array $turmaIds): void
     {
         if ($turmaIds === []) {
-            return;
+            throw ValidationException::withMessages([
+                'turma_ids' => 'Selecione ao menos uma turma para o veículo.',
+            ]);
         }
 
         Turma::query()
@@ -410,6 +569,39 @@ class EventoTransporteAlocacaoService
                 'turma_ids' => 'Uma turma não pertence ao evento ou já está vinculada a outro veículo.',
             ]);
         }
+    }
+
+    /** @param list<int> $turmaIds */
+    private function validarEscolaDaAlocacao(
+        EventoCalendario $evento,
+        ?int $agendamentoId,
+        array $turmaIds,
+    ): void {
+        if ($agendamentoId === null) {
+            return;
+        }
+
+        /** @var EventoCalendarioEscola|null $agendamento */
+        $agendamento = $evento->escolasAgendadas->firstWhere('id', $agendamentoId);
+        $escolas = Turma::query()->whereKey($turmaIds)->pluck('id_escola')->unique();
+
+        if (! $agendamento || ! $agendamento->precisa_transporte || $escolas->count() !== 1
+            || (int) $escolas->first() !== (int) $agendamento->escola_id) {
+            throw ValidationException::withMessages([
+                'turma_ids' => 'As turmas devem pertencer à mesma escola deste card.',
+            ]);
+        }
+    }
+
+    /** @param list<int> $turmaIds */
+    private function totalEstudantesDasTurmas(array $turmaIds): int
+    {
+        return Aluno::query()
+            ->whereIn('id_turma', $turmaIds)
+            ->where('tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL)
+            ->where('status', Aluno::STATUS_MATRICULADO)
+            ->distinct('id')
+            ->count('id');
     }
 
     private function turmasElegiveisQuery(EventoCalendario $evento): Builder

@@ -74,7 +74,12 @@
             </span>
         </header>
 
-        @if ($evento->enviar_todas_escolas)
+        @if ($evento->possuiTransporte() && ! $evento->enviar_todas_escolas)
+            <livewire:transporte.evento-transporte-escolas-manager
+                :evento-id="$evento->getKey()"
+                :key="'evento-transporte-escolas-'.$evento->getKey()"
+            />
+        @elseif ($evento->enviar_todas_escolas)
             <div class="gi-event-detail__schools gi-event-detail__schools--management">
                 @forelse ($escolasAbrangentes as $escola)
                     <article class="gi-event-detail__school">
@@ -121,22 +126,6 @@
             </div>
         @endif
     </section>
-
-    @if ($evento->possuiTransporte())
-        <section class="gi-event-detail__section gi-event-detail__section--allocations">
-            <header>
-                <div>
-                    <p class="gi-eyebrow">Planejamento</p>
-                    <h3>Alocação de transporte</h3>
-                </div>
-            </header>
-
-            <livewire:transporte.evento-transporte-alocacoes-table
-                :evento-id="$evento->getKey()"
-                :key="'evento-transporte-alocacoes-'.$evento->getKey()"
-            />
-        </section>
-    @endif
 
     <section class="gi-event-detail__section">
         <header>

@@ -76,6 +76,7 @@ class EventoCalendarioListQueryService
         $query = EventoCalendario::query()
             ->with([
                 'criadoPor:id,name,email',
+                'publicoAlvo.escolas:id,nome',
                 'escolasResumo' => function (HasMany $escolas): void {
                     $escolas->select([
                         'evento_calendario_escolas.id',
@@ -85,8 +86,7 @@ class EventoCalendarioListQueryService
                         'evento_calendario_escolas.quantidade_estimada_transporte',
                     ])
                         ->with('escola:id,nome')
-                        ->orderBy('evento_calendario_escolas.id')
-                        ->limit(2);
+                        ->orderBy('evento_calendario_escolas.id');
                 },
             ])
             ->withCount('escolasAgendadas')
