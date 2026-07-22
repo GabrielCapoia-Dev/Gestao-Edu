@@ -102,6 +102,22 @@
         @endif
     </section>
 
+    @if ($evento->possuiTransporte())
+        <section class="gi-event-detail__section gi-event-detail__section--allocations">
+            <header>
+                <div>
+                    <p class="gi-eyebrow">Planejamento</p>
+                    <h3>Alocação de transporte</h3>
+                </div>
+            </header>
+
+            <livewire:transporte.evento-transporte-alocacoes-table
+                :evento-id="$evento->getKey()"
+                :key="'evento-transporte-alocacoes-'.$evento->getKey()"
+            />
+        </section>
+    @endif
+
     <section class="gi-event-detail__section">
         <header>
             <div>

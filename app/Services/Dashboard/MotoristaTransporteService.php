@@ -2,6 +2,7 @@
 
 namespace App\Services\Dashboard;
 
+use App\Models\Enums\EventoCalendarioStatus;
 use App\Models\FuncaoAdministrativa;
 use App\Models\Pessoa;
 use App\Models\Servidor;
@@ -31,6 +32,13 @@ class MotoristaTransporteService
                 'servidorFuncoes as motorista_ativo' => fn (Builder $vinculos): Builder => $vinculos
                     ->ativos()
                     ->whereHas('funcaoAdministrativa', fn (Builder $funcoes): Builder => $funcoes->motorista()),
+            ])
+            ->withCount([
+                'alocacoesTransporteAtivas as eventos_transporte_count' => fn (Builder $alocacoes): Builder => $alocacoes
+                    ->whereHas('evento', fn (Builder $eventos): Builder => $eventos->whereIn('status', [
+                        EventoCalendarioStatus::PENDENTE_APROVACAO->value,
+                        EventoCalendarioStatus::PUBLICADO->value,
+                    ])),
             ]);
 
         $search = trim((string) $search);

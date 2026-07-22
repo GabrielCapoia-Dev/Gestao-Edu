@@ -81,6 +81,10 @@ class MotoristasTransporteTable extends TableWidget
                     ->badge()
                     ->formatStateUsing(fn ($state): string => (bool) $state ? 'Ativo' : 'Inativo')
                     ->color(fn ($state): string => (bool) $state ? 'success' : 'gray'),
+                TextColumn::make('eventos_transporte_count')
+                    ->label('Eventos em uso')
+                    ->numeric(locale: 'pt_BR')
+                    ->alignCenter(),
             ])
             ->recordActions([
                 ActionGroup::make([

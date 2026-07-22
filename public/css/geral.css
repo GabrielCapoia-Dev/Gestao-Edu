@@ -3696,6 +3696,95 @@
     margin: 0.35rem 0 0;
 }
 
+/* Alocação de transporte em eventos */
+.gi-event-detail__section--allocations {
+    overflow: visible;
+}
+
+.gi-transport-allocation {
+    padding: 0.85rem;
+}
+
+.gi-transport-allocation .fi-wi {
+    padding: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+}
+
+.gi-transport-allocation__summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.7rem;
+    margin-bottom: 0.75rem;
+}
+
+.gi-transport-allocation__metric {
+    min-width: 0;
+    padding: 0.8rem;
+    border: 1px solid var(--edu-neutral-200);
+    border-radius: 0.7rem;
+    background: var(--edu-neutral-50);
+}
+
+.gi-transport-allocation__metric span,
+.gi-transport-allocation__metric strong {
+    display: block;
+}
+
+.gi-transport-allocation__metric span {
+    overflow: hidden;
+    color: var(--edu-neutral-600);
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.gi-transport-allocation__metric strong {
+    margin-top: 0.35rem;
+    color: var(--edu-neutral-900);
+    font-size: 1.3rem;
+    line-height: 1;
+}
+
+.gi-transport-allocation__metric.is-warning {
+    border-color: var(--edu-warning-100);
+    background: var(--edu-warning-50);
+}
+
+.gi-transport-allocation__metric.is-warning strong {
+    color: var(--edu-warning-700);
+}
+
+.gi-transport-allocation__metric.is-success {
+    border-color: var(--edu-success-100);
+    background: var(--edu-success-50);
+}
+
+.gi-transport-allocation__metric.is-success strong {
+    color: var(--edu-success-700);
+}
+
+.gi-transport-allocation__alert {
+    margin: 0 0 0.75rem;
+    padding: 0.72rem 0.85rem;
+    color: var(--edu-warning-700);
+    font-size: 0.8rem;
+    line-height: 1.45;
+    background: var(--edu-warning-50);
+    border: 1px solid var(--edu-warning-100);
+    border-radius: 0.7rem;
+}
+
+.gi-transport-allocation .fi-ta {
+    border: 1px solid var(--edu-neutral-200);
+    border-radius: 0.7rem;
+    box-shadow: none;
+}
+
 .dark .gi-event-metric,
 .dark .gi-event-table-panel,
 .dark .gi-event-detail__section {
@@ -3725,6 +3814,16 @@
     background: rgba(120, 53, 15, 0.2);
 }
 
+.dark .gi-transport-allocation__metric,
+.dark .gi-transport-allocation .fi-ta {
+    border-color: #334155;
+    background: #1e293b;
+}
+
+.dark .gi-transport-allocation__metric strong {
+    color: #f8fafc;
+}
+
 @media (max-width: 1180px) {
     .gi-event-metrics {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3745,5 +3844,9 @@
 
     .gi-event-table-panel .fi-ta-content {
         overflow-x: auto;
+    }
+
+    .gi-transport-allocation__summary {
+        grid-template-columns: 1fr;
     }
 }

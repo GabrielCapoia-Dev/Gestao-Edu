@@ -13,11 +13,19 @@ use Illuminate\Validation\ValidationException;
 
 class EventoCalendarioWorkflowService
 {
+    public function __construct(
+        private readonly EventoTransporteDisponibilidadeService $disponibilidade,
+    ) {}
+
     public function publicar(EventoCalendario $evento, User $ator): EventoCalendario
     {
         return DB::transaction(function () use ($evento, $ator): EventoCalendario {
             $evento = $this->bloquear($evento);
             Gate::forUser($ator)->authorize('publish', $evento);
+
+            if ($evento->possuiTransporte()) {
+                $this->disponibilidade->validarAlocacoesAtivasDoEvento($evento, bloquear: true);
+            }
 
             if ($evento->status === EventoCalendarioStatus::PUBLICADO && $evento->ativo) {
                 return $evento;
@@ -121,6 +129,22 @@ class EventoCalendarioWorkflowService
                 : EventoCalendarioHistoricoAcao::ATUALIZADO,
             $statusAnterior,
             $evento->status,
+        );
+    }
+
+    public function registrarTransporte(
+        EventoCalendario $evento,
+        User $ator,
+        EventoCalendarioHistoricoAcao $acao,
+        ?string $motivo = null,
+    ): void {
+        $this->registrar(
+            $evento,
+            $ator,
+            $acao,
+            $evento->status,
+            $evento->status,
+            $motivo,
         );
     }
 

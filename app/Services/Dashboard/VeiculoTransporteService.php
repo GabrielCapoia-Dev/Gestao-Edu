@@ -2,6 +2,7 @@
 
 namespace App\Services\Dashboard;
 
+use App\Models\Enums\EventoCalendarioStatus;
 use App\Models\User;
 use App\Models\VeiculoTransporte;
 use Illuminate\Database\Eloquent\Builder;
@@ -17,7 +18,14 @@ class VeiculoTransporteService
     {
         Gate::forUser($ator)->authorize('viewAny', VeiculoTransporte::class);
 
-        $query = VeiculoTransporte::query();
+        $query = VeiculoTransporte::query()
+            ->withCount([
+                'alocacoesTransporteAtivas as eventos_transporte_count' => fn (Builder $alocacoes): Builder => $alocacoes
+                    ->whereHas('evento', fn (Builder $eventos): Builder => $eventos->whereIn('status', [
+                        EventoCalendarioStatus::PENDENTE_APROVACAO->value,
+                        EventoCalendarioStatus::PUBLICADO->value,
+                    ])),
+            ]);
         $search = trim((string) $search);
 
         if ($search !== '') {

@@ -25,6 +25,8 @@ class EventoCalendarioService
         private readonly EventoCalendarioEscolaService $escolas,
         private readonly DashboardUserContextFactory $contextos,
         private readonly EventoCalendarioWorkflowService $workflow,
+        private readonly EventoTransporteAlocacaoService $alocacoesTransporte,
+        private readonly EventoTransporteDisponibilidadeService $disponibilidadeTransporte,
     ) {}
 
     public function criar(
@@ -97,6 +99,8 @@ class EventoCalendarioService
             $this->rejeitarPublicoParalelo($publico ?? [], $dados);
             [$dados, $agendamentos] = $this->prepararDados($dados, $ator);
             $possuiTransporte = $this->agendamentosPossuemTransporte($agendamentos);
+            $dataHorarioAlterado = ! $evento->data_inicio->equalTo($dados['data_inicio'])
+                || ! $evento->data_fim->equalTo($dados['data_fim']);
             $transporteAlterado = ($possuiaTransporte || $possuiTransporte)
                 && $assinaturaAnterior !== $this->assinaturaTransporteNova($dados, $agendamentos);
             [$dados['status'], $dados['ativo']] = $this->estadoAposAtualizacao(
@@ -108,6 +112,22 @@ class EventoCalendarioService
                 $publicacaoSolicitada,
                 $ator,
             );
+
+            if ($possuiaTransporte && ! $possuiTransporte) {
+                $this->alocacoesTransporte->removerTodasDoEventoInternamente($evento, $ator);
+            } elseif ($possuiTransporte
+                && $dataHorarioAlterado
+                && in_array($dados['status'], [
+                    EventoCalendarioStatus::PENDENTE_APROVACAO,
+                    EventoCalendarioStatus::PUBLICADO,
+                ], true)) {
+                $this->disponibilidadeTransporte->validarAlocacoesAtivasDoEvento(
+                    $evento,
+                    $dados['data_inicio'],
+                    $dados['data_fim'],
+                    true,
+                );
+            }
 
             $this->publicos->atualizar(
                 $evento->publicoAlvo,

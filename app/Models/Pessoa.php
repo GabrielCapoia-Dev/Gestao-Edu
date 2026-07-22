@@ -142,6 +142,16 @@ class Pessoa extends Model
         return $this->servidorFuncoes()->where('status', ServidorFuncaoAdministrativa::STATUS_ATIVO);
     }
 
+    public function alocacoesTransporte(): HasMany
+    {
+        return $this->hasMany(EventoCalendarioTransporteAlocacao::class, 'motorista_id');
+    }
+
+    public function alocacoesTransporteAtivas(): HasMany
+    {
+        return $this->alocacoesTransporte()->whereNull('removido_em');
+    }
+
     /** @alias vínculos funcionais com matrícula */
     public function vinculos(): HasMany
     {

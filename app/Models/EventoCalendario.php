@@ -107,6 +107,16 @@ class EventoCalendario extends Model
             ->latest('id');
     }
 
+    public function alocacoesTransporte(): HasMany
+    {
+        return $this->hasMany(EventoCalendarioTransporteAlocacao::class, 'evento_calendario_id');
+    }
+
+    public function alocacoesTransporteAtivas(): HasMany
+    {
+        return $this->alocacoesTransporte()->whereNull('removido_em');
+    }
+
     public function criadoPor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'criado_por_id');

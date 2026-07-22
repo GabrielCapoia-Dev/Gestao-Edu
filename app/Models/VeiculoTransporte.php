@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class VeiculoTransporte extends Model
 {
@@ -37,5 +38,15 @@ class VeiculoTransporte extends Model
     public function scopeAtivos(Builder $query): Builder
     {
         return $query->where('ativo', true);
+    }
+
+    public function alocacoesTransporte(): HasMany
+    {
+        return $this->hasMany(EventoCalendarioTransporteAlocacao::class, 'veiculo_transporte_id');
+    }
+
+    public function alocacoesTransporteAtivas(): HasMany
+    {
+        return $this->alocacoesTransporte()->whereNull('removido_em');
     }
 }
