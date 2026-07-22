@@ -27,9 +27,24 @@
             this.top = Math.max(12, Math.min(rect.bottom + 8, window.innerHeight - 320));
             this.left = Math.max(12, Math.min(rect.left, window.innerWidth - 340));
         },
+        isInsidePanel(event) {
+            return this.$refs.panel?.contains(event.target) ?? false;
+        },
+        closeOnOutsideClick(event) {
+            if (! this.open || this.isInsidePanel(event) || this.$refs.trigger.contains(event.target)) return;
+
+            this.open = false;
+        },
+        closeOnOutsideScroll(event) {
+            if (! this.open || this.isInsidePanel(event)) return;
+
+            this.open = false;
+        },
     }"
     @keydown.escape.window="open = false"
     @resize.window="open = false"
+    @click.window="closeOnOutsideClick($event)"
+    @wheel.window.passive="closeOnOutsideScroll($event)"
 >
     <button
         type="button"
@@ -55,7 +70,7 @@
             x-cloak
             x-show="open"
             x-transition.opacity.duration.150ms
-            @click.outside="open = false"
+            x-ref="panel"
             class="gi-school-popover__panel"
             :style="`top: ${top}px; left: ${left}px`"
             role="tooltip"
