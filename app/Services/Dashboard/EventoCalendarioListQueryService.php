@@ -7,6 +7,7 @@ use App\Models\Escola;
 use App\Models\EventoCalendario;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
@@ -75,17 +76,18 @@ class EventoCalendarioListQueryService
         $query = EventoCalendario::query()
             ->with([
                 'criadoPor:id,name,email',
-                'escolasResumo' => fn (Builder $escolas): Builder => $escolas
-                    ->select([
+                'escolasResumo' => function (HasMany $escolas): void {
+                    $escolas->select([
                         'evento_calendario_escolas.id',
                         'evento_calendario_escolas.evento_calendario_id',
                         'evento_calendario_escolas.escola_id',
                         'evento_calendario_escolas.precisa_transporte',
                         'evento_calendario_escolas.quantidade_estimada_transporte',
                     ])
-                    ->with('escola:id,nome')
-                    ->orderBy('evento_calendario_escolas.id')
-                    ->limit(2),
+                        ->with('escola:id,nome')
+                        ->orderBy('evento_calendario_escolas.id')
+                        ->limit(2);
+                },
             ])
             ->withCount('escolasAgendadas')
             ->withExists([
@@ -122,8 +124,9 @@ class EventoCalendarioListQueryService
             'atualizadoPor:id,name,email',
             'escola:id,nome',
             'publicoAlvo.escolas:id,nome',
-            'escolasAgendadas' => fn (Builder $escolas): Builder => $escolas
-                ->orderBy('evento_calendario_escolas.escola_id'),
+            'escolasAgendadas' => function (HasMany $escolas): void {
+                $escolas->orderBy('evento_calendario_escolas.escola_id');
+            },
             'escolasAgendadas.escola:id,nome',
             'escolasAgendadas.series:id,nome',
             'escolasAgendadas.turmas:id,nome,id_escola,id_serie,turno',
