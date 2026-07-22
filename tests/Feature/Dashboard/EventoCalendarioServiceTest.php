@@ -14,6 +14,7 @@ use App\Models\Setor;
 use App\Models\Turma;
 use App\Models\User;
 use App\Services\Dashboard\EventoCalendarioService;
+use App\Services\Dashboard\EventoCalendarioEscolaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
@@ -72,7 +73,7 @@ class EventoCalendarioServiceTest extends TestCase
         $this->assertNull($evento->progresso);
     }
 
-    public function test_rejeita_turma_de_outra_escola_e_horario_invertido(): void
+    public function test_usa_horario_geral_e_rejeita_relacoes_escolares_invalidas(): void
     {
         [$ator, $escolaA] = $this->atorEscolar('A');
         [, $escolaB] = $this->atorEscolar('B');
@@ -85,23 +86,19 @@ class EventoCalendarioServiceTest extends TestCase
             'id_escola' => $escolaB->id,
         ]);
 
-        try {
-            app(EventoCalendarioService::class)->criar([
-                ...$this->dadosBase(),
-                'enviar_todas_escolas' => false,
-                'escolas_agendadas' => [[
-                    'escola_id' => $escolaA->id,
-                    'hora_inicio' => '11:00',
-                    'hora_fim' => '10:00',
-                    'precisa_transporte' => true,
-                    'escopo_transporte' => EventoCalendarioTransporteEscopo::TURMAS->value,
-                    'turmas_ids' => [$turmaB->id],
-                ]],
-            ], [], $ator);
-            $this->fail('Era esperada uma falha de validação.');
-        } catch (ValidationException $exception) {
-            $this->assertArrayHasKey('escolas_agendadas.0.hora_fim', $exception->errors());
-        }
+        $evento = app(EventoCalendarioService::class)->criar([
+            ...$this->dadosBase(),
+            'enviar_todas_escolas' => false,
+            'escolas_agendadas' => [[
+                'escola_id' => $escolaA->id,
+                'hora_inicio' => '11:00',
+                'hora_fim' => '10:00',
+                'precisa_transporte' => false,
+            ]],
+        ], [], $ator);
+        $agendamento = $evento->escolasAgendadas()->sole();
+        $this->assertSame($evento->data_inicio->format('H:i'), substr((string) $agendamento->hora_inicio, 0, 5));
+        $this->assertSame($evento->data_fim->format('H:i'), substr((string) $agendamento->hora_fim, 0, 5));
 
         try {
             app(EventoCalendarioService::class)->criar([
@@ -166,6 +163,41 @@ class EventoCalendarioServiceTest extends TestCase
         $this->assertNull($evento->link_acao);
         $this->assertNull($evento->texto_botao);
         $this->assertDatabaseCount('evento_calendario_escolas', 0);
+    }
+
+    public function test_filtros_de_serie_e_turno_geram_escolas_e_transporte_em_lote(): void
+    {
+        [$ator, $escola] = $this->atorEscolar('GRUPO');
+        $serie = Serie::query()->create(['codigo' => 'SER-GRUPO', 'nome' => '1º Ano']);
+        $manha = Turma::query()->create([
+            'codigo' => 'TUR-GRUPO-M',
+            'nome' => '1º Ano A',
+            'turno' => 'manha',
+            'id_serie' => $serie->id,
+            'id_escola' => $escola->id,
+        ]);
+        $tarde = Turma::query()->create([
+            'codigo' => 'TUR-GRUPO-T',
+            'nome' => '1º Ano B',
+            'turno' => 'tarde',
+            'id_serie' => $serie->id,
+            'id_escola' => $escola->id,
+        ]);
+        $this->aluno($manha, 'CGM-GRUPO-M', Aluno::TIPO_VINCULO_PRINCIPAL, Aluno::STATUS_MATRICULADO);
+        $this->aluno($tarde, 'CGM-GRUPO-T', Aluno::TIPO_VINCULO_PRINCIPAL, Aluno::STATUS_MATRICULADO);
+
+        $linhas = app(EventoCalendarioEscolaService::class)->gerarPorFiltros([
+            'selecionar_todas_escolas' => true,
+            'serie_ids' => [$serie->id],
+            'turnos' => ['manha'],
+            'precisa_transporte' => true,
+        ], $ator, '08:00', '12:00');
+
+        $this->assertCount(1, $linhas);
+        $this->assertSame($escola->id, $linhas[0]['escola_id']);
+        $this->assertSame(EventoCalendarioTransporteEscopo::TURMAS->value, $linhas[0]['escopo_transporte']);
+        $this->assertSame([$manha->id], $linhas[0]['turmas_ids']);
+        $this->assertSame(1, $linhas[0]['quantidade_estimada_transporte']);
     }
 
     public function test_formulario_oculta_link_e_nao_expoe_destinatarios(): void

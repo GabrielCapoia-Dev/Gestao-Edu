@@ -6,7 +6,6 @@ use App\Models\Enums\DashboardPrioridade;
 use App\Models\Enums\EventoCalendarioCategoria;
 use App\Models\Enums\EventoCalendarioCor;
 use App\Models\Enums\EventoCalendarioOrigem;
-use App\Models\Enums\EventoCalendarioTransporteEscopo;
 use App\Models\Enums\ImportacaoEventoCalendarioAcao;
 use App\Models\Enums\ImportacaoEventoCalendarioStatus;
 use App\Models\Escola;
@@ -23,7 +22,6 @@ use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
@@ -56,16 +54,13 @@ class EventoCalendarioImportService
         'hora_fim',
         'link_acao',
         'texto_botao',
-        'ativo',
         'cor',
-        'enviar_todas_escolas',
-        'escola_codigo',
-        'hora_inicio_escola',
-        'hora_fim_escola',
-        'precisa_transporte',
-        'escopo_transporte',
+        'enviar_escolas_especificas',
+        'escolas_codigos',
         'series_codigos',
+        'turnos',
         'turmas_codigos',
+        'precisa_transporte',
     ];
 
     public function __construct(
@@ -308,8 +303,9 @@ class EventoCalendarioImportService
             ['fonte_externa + identificador_externo', 'Chave idempotente. Uma nova importação atualiza o mesmo evento.'],
             ['data_evento', 'Use DD/MM/AAAA. Eventos manuais sempre ocorrem em um único dia.'],
             ['período e horários', 'Período aceita manha, tarde, noite ou dia_todo. Horários informados manualmente têm precedência.'],
-            ['escolas', 'Para escolas específicas, repita a chave externa em uma linha por escola.'],
-            ['transporte', 'Use toda_unidade, series ou turmas. A estimativa é calculada pelo sistema.'],
+            ['distribuição', 'Use Sim em enviar_escolas_especificas e combine escolas, séries, turnos e turmas na mesma linha. Campos vazios significam todas as opções disponíveis.'],
+            ['turnos', 'Valores aceitos: manha, tarde, noite e integral. Quando vazio, o turno é inferido pelos horários do evento.'],
+            ['transporte', 'Informe Sim para estimar os estudantes das turmas filtradas. A quantidade é calculada pelo sistema.'],
             ['listas', 'Separe vários valores com |.'],
             ['segurança', 'Fórmulas, macros, referências fora do seu escopo e relacionamentos inativos são rejeitados.'],
         ], null, 'A1');
@@ -348,7 +344,12 @@ class EventoCalendarioImportService
                     (string) $turma->codigo,
                     collect([$turma->escola?->nome, $turma->serie?->nome, $turma->nome])->filter()->join(' - '),
                 ]))
-            ->merge(collect(EventoCalendarioTransporteEscopo::cases())->map(fn ($item): array => ['Escopo de transporte', $item->value, $item->label()]))
+            ->merge(collect([
+                'manha' => 'Manhã',
+                'tarde' => 'Tarde',
+                'noite' => 'Noite',
+                'integral' => 'Integral',
+            ])->map(fn (string $nome, string $codigo): array => ['Turno', $codigo, $nome]))
             ->merge(collect(EventoCalendarioCor::cases())->map(fn ($item): array => ['Cor', $item->value, $item->label()]))
             ->values()
             ->all();
@@ -521,45 +522,13 @@ class EventoCalendarioImportService
 
         foreach ($indicesPorChave as $key => $indices) {
             try {
-                $primeiro = $result[$indices[0]]['normalizados'];
-                $eventoBase = Arr::except($primeiro['evento'], 'escolas_agendadas');
-                $todas = (bool) $eventoBase['enviar_todas_escolas'];
-                $agendamentos = [];
-                $escolasVistas = [];
-
-                foreach ($indices as $indice) {
-                    $payload = $result[$indice]['normalizados'];
-
-                    if (Arr::except($payload['evento'], 'escolas_agendadas') !== $eventoBase) {
-                        throw ValidationException::withMessages([
-                            'evento' => 'Linhas com a mesma chave externa devem repetir exatamente os dados gerais.',
-                        ]);
-                    }
-
-                    $linhasEscola = $payload['evento']['escolas_agendadas'];
-
-                    if ($todas && (count($indices) > 1 || $linhasEscola !== [])) {
-                        throw ValidationException::withMessages([
-                            'enviar_todas_escolas' => 'Eventos enviados para todas as escolas devem ocupar uma única linha.',
-                        ]);
-                    }
-
-                    foreach ($linhasEscola as $linhaEscola) {
-                        $escolaId = (int) $linhaEscola['escola_id'];
-
-                        if (isset($escolasVistas[$escolaId])) {
-                            throw ValidationException::withMessages([
-                                'escola_codigo' => 'A mesma escola não pode aparecer duas vezes para a mesma chave externa.',
-                            ]);
-                        }
-
-                        $escolasVistas[$escolaId] = true;
-                        $agendamentos[] = $linhaEscola;
-                    }
+                if (count($indices) > 1) {
+                    throw ValidationException::withMessages([
+                        'identificador_externo' => 'Cada chave externa deve ocupar uma única linha. Combine os filtros com | no mesmo evento.',
+                    ]);
                 }
 
-                $eventoBase['escolas_agendadas'] = $agendamentos;
-                $payloadAgrupado = ['evento' => $eventoBase];
+                $payload = $result[$indices[0]]['normalizados'];
                 $existing = $references['eventos'][$key] ?? null;
 
                 if ($existing?->trashed()) {
@@ -577,7 +546,7 @@ class EventoCalendarioImportService
                 }
 
                 foreach ($indices as $indice) {
-                    $result[$indice]['normalizados'] = $payloadAgrupado;
+                    $result[$indice]['normalizados'] = $payload;
                     $result[$indice]['acao'] = $acao;
                 }
             } catch (ValidationException $exception) {
@@ -625,15 +594,29 @@ class EventoCalendarioImportService
             ]);
         }
 
-        $enviarTodas = $this->boolean($raw['enviar_todas_escolas'] ?? null, 'enviar_todas_escolas');
-        $schoolCode = trim((string) ($raw['escola_codigo'] ?? ''));
-        $school = $schoolCode !== '' ? ($maps['escolas'][$schoolCode] ?? null) : null;
+        $enviarEspecificas = $this->boolean(
+            $raw['enviar_escolas_especificas'] ?? null,
+            'enviar_escolas_especificas',
+        );
+        $escolaIds = $this->resolveList($raw['escolas_codigos'] ?? null, $maps['escolas'], 'escolas_codigos');
+        $serieIds = $this->resolveList($raw['series_codigos'] ?? null, $maps['series'], 'series_codigos');
+        $turmaIds = $this->resolveList($raw['turmas_codigos'] ?? null, $maps['turmas'], 'turmas_codigos');
+        $turnos = collect($this->listValues($raw['turnos'] ?? null))
+            ->map(fn (string $turno): string => mb_strtolower($turno))
+            ->all();
+
+        if ($enviarEspecificas && $escolaIds === [] && $turnos === []) {
+            $turnos = $this->turnosPorHorario($horaInicio, $horaFim);
+        }
+        $precisaTransporte = filled($raw['precisa_transporte'] ?? null)
+            ? $this->boolean($raw['precisa_transporte'], 'precisa_transporte')
+            : false;
         $agendamentos = [];
 
-        if ($enviarTodas) {
-            if ($schoolCode !== '' || filled($raw['precisa_transporte'] ?? null)) {
+        if (! $enviarEspecificas) {
+            if ($escolaIds !== [] || $serieIds !== [] || $turmaIds !== [] || $turnos !== [] || $precisaTransporte) {
                 throw ValidationException::withMessages([
-                    'escola_codigo' => 'Deixe escola e transporte vazios quando o evento for enviado para todas as escolas.',
+                    'enviar_escolas_especificas' => 'Ative a distribuição específica antes de informar filtros escolares ou transporte.',
                 ]);
             }
 
@@ -641,44 +624,18 @@ class EventoCalendarioImportService
 
             if (! $contexto->escopoGlobal && $contexto->escolaIds === []) {
                 throw ValidationException::withMessages([
-                    'enviar_todas_escolas' => 'Seu usuário não possui escolas autorizadas para importar este evento.',
+                    'enviar_escolas_especificas' => 'Seu usuário não possui escolas autorizadas para importar este evento.',
                 ]);
             }
         } else {
-            if (! $school) {
-                throw ValidationException::withMessages([
-                    'escola_codigo' => 'Informe o código de uma escola ativa do seu contexto.',
-                ]);
-            }
-
-            $precisaTransporte = filled($raw['precisa_transporte'] ?? null)
-                ? $this->boolean($raw['precisa_transporte'], 'precisa_transporte')
-                : false;
-            $escopoTransporte = $precisaTransporte
-                ? mb_strtolower(trim((string) ($raw['escopo_transporte'] ?? '')))
-                : null;
-            $seriesIds = $precisaTransporte && $escopoTransporte === EventoCalendarioTransporteEscopo::SERIES->value
-                ? $this->resolveList($raw['series_codigos'] ?? null, $maps['series'], 'series_codigos')
-                : [];
-            $turmasIds = $precisaTransporte && $escopoTransporte === EventoCalendarioTransporteEscopo::TURMAS->value
-                ? $this->resolveList($raw['turmas_codigos'] ?? null, $maps['turmas'], 'turmas_codigos')
-                : [];
-            $horaInicioEscola = filled($raw['hora_inicio_escola'] ?? null)
-                ? $this->time($raw['hora_inicio_escola'], 'hora_inicio_escola')
-                : $horaInicio;
-            $horaFimEscola = filled($raw['hora_fim_escola'] ?? null)
-                ? $this->time($raw['hora_fim_escola'], 'hora_fim_escola')
-                : $horaFim;
-
-            $agendamentos = $this->escolasEvento->normalizar([[
-                'escola_id' => $school->getKey(),
-                'hora_inicio' => $horaInicioEscola,
-                'hora_fim' => $horaFimEscola,
+            $agendamentos = $this->escolasEvento->gerarPorFiltros([
+                'selecionar_todas_escolas' => $escolaIds === [],
+                'escola_ids' => $escolaIds,
+                'serie_ids' => $serieIds,
+                'turnos' => $turnos,
+                'turma_ids' => $turmaIds,
                 'precisa_transporte' => $precisaTransporte,
-                'escopo_transporte' => $escopoTransporte,
-                'series_ids' => $seriesIds,
-                'turmas_ids' => $turmasIds,
-            ]], $ator, $horaInicio, $horaFim);
+            ], $ator, $horaInicio, $horaFim);
         }
 
         $event = [
@@ -694,9 +651,9 @@ class EventoCalendarioImportService
             'inserir_link' => filled($raw['link_acao'] ?? null),
             'link_acao' => $this->nullableString($raw['link_acao'] ?? null),
             'texto_botao' => $this->nullableString($raw['texto_botao'] ?? null),
-            'ativo' => $this->boolean($raw['ativo'] ?? null, 'ativo'),
+            'ativo' => true,
             'cor' => mb_strtolower(trim((string) ($raw['cor'] ?? ''))),
-            'enviar_todas_escolas' => $enviarTodas,
+            'enviar_todas_escolas' => ! $enviarEspecificas,
             'escolas_agendadas' => $agendamentos,
             'origem' => EventoCalendarioOrigem::PLANILHA->value,
         ];
@@ -727,7 +684,7 @@ class EventoCalendarioImportService
             ]);
         }
 
-        if ($event['ativo'] && ! Gate::forUser($ator)->allows('publish', EventoCalendario::class)) {
+        if (! Gate::forUser($ator)->allows('publish', EventoCalendario::class)) {
             throw ValidationException::withMessages([
                 'ativo' => 'Você não possui permissão para importar eventos publicados.',
             ]);
@@ -744,7 +701,7 @@ class EventoCalendarioImportService
             ->unique()
             ->values()
             ->all();
-        $schoolCodes = $values('escola_codigo');
+        $schoolCodes = $values('escolas_codigos');
         $serieCodes = $values('series_codigos');
         $turmaCodes = $values('turmas_codigos');
         $sources = collect($rows)->pluck('dados.fonte_externa')
@@ -888,6 +845,34 @@ class EventoCalendarioImportService
             || in_array(strtolower((string) parse_url($link, PHP_URL_SCHEME)), ['http', 'https'], true);
     }
 
+    /** @return list<string> */
+    private function turnosPorHorario(string $inicio, string $fim): array
+    {
+        [$horaInicio, $minutoInicio] = array_map('intval', explode(':', $inicio));
+        [$horaFim, $minutoFim] = array_map('intval', explode(':', $fim));
+        $inicioMinutos = ($horaInicio * 60) + $minutoInicio;
+        $fimMinutos = ($horaFim * 60) + $minutoFim;
+        $turnos = [];
+
+        if ($inicioMinutos < 750 && $fimMinutos > 360) {
+            $turnos[] = 'manha';
+        }
+
+        if ($inicioMinutos < 1110 && $fimMinutos > 750) {
+            $turnos[] = 'tarde';
+        }
+
+        if ($fimMinutos > 1110) {
+            $turnos[] = 'noite';
+        }
+
+        if ($inicioMinutos <= 480 && $fimMinutos >= 1050) {
+            $turnos[] = 'integral';
+        }
+
+        return array_values(array_unique($turnos));
+    }
+
     private function header(string $value): string
     {
         return mb_strtolower(trim(str_replace("\xEF\xBB\xBF", '', $value)));
@@ -934,16 +919,13 @@ class EventoCalendarioImportService
             '10:30',
             '/admin',
             'Acessar',
-            'Sim',
             'azul',
             'Sim',
             null,
             null,
+            'manha',
             null,
-            null,
-            null,
-            null,
-            null,
+            'Não',
         ];
     }
 }

@@ -117,8 +117,8 @@ class EventoCalendarioImportServiceTest extends TestCase
         $this->assertSame(ImportacaoEventoCalendarioAcao::INVALIDA, $importacao->linhas[0]->acao);
         $this->assertSame(ImportacaoEventoCalendarioAcao::INVALIDA, $importacao->linhas[1]->acao);
         $this->assertStringContainsString(
-            'mesma chave externa',
-            $importacao->linhas[1]->erros['evento'][0],
+            'única linha',
+            $importacao->linhas[1]->erros['identificador_externo'][0],
         );
     }
 
@@ -161,9 +161,8 @@ class EventoCalendarioImportServiceTest extends TestCase
         ];
         $transporteInvalido = [
             ...$this->linhaValida('transporte-invalido'),
-            'enviar_todas_escolas' => 'Sim',
+            'enviar_escolas_especificas' => 'Não',
             'precisa_transporte' => 'Sim',
-            'escopo_transporte' => 'toda_unidade',
         ];
 
         $importacao = $this->service()->preview(
@@ -174,7 +173,7 @@ class EventoCalendarioImportServiceTest extends TestCase
         $this->assertSame(0, $importacao->total_validas);
         $this->assertSame(2, $importacao->total_invalidas);
         $this->assertArrayHasKey('hora_fim', $importacao->linhas[0]->erros);
-        $this->assertArrayHasKey('escola_codigo', $importacao->linhas[1]->erros);
+        $this->assertArrayHasKey('enviar_escolas_especificas', $importacao->linhas[1]->erros);
         $this->assertDatabaseCount('eventos_calendario', 0);
     }
 
@@ -251,7 +250,7 @@ class EventoCalendarioImportServiceTest extends TestCase
         $this->assertDatabaseCount('publicos_alvo', 1);
     }
 
-    public function test_linhas_com_mesma_chave_agrupam_escolas_e_horarios_em_um_evento(): void
+    public function test_uma_linha_pode_distribuir_o_evento_para_varias_escolas(): void
     {
         $ator = $this->criarAtorGlobal();
         $setor = $this->criarSetor('Setor das escolas agrupadas');
@@ -259,24 +258,12 @@ class EventoCalendarioImportServiceTest extends TestCase
         $escolaB = $this->criarEscola('Escola agrupada B', $setor);
         $base = [
             ...$this->linhaValida('multiescola'),
-            'enviar_todas_escolas' => 'Não',
+            'enviar_escolas_especificas' => 'Sim',
+            'escolas_codigos' => $escolaA->codigo.'|'.$escolaB->codigo,
         ];
-        $importacao = $this->service()->preview($this->arquivoCsv([
-            [
-                ...$base,
-                'escola_codigo' => $escolaA->codigo,
-                'hora_inicio_escola' => '08:00',
-                'hora_fim_escola' => '10:00',
-            ],
-            [
-                ...$base,
-                'escola_codigo' => $escolaB->codigo,
-                'hora_inicio_escola' => '10:00',
-                'hora_fim_escola' => '12:00',
-            ],
-        ]), $ator);
+        $importacao = $this->service()->preview($this->arquivoCsv([$base]), $ator);
 
-        $this->assertSame(2, $importacao->total_validas);
+        $this->assertSame(1, $importacao->total_validas);
         $importacao = $this->service()->confirm($importacao, $ator);
         $evento = EventoCalendario::query()->with('escolasAgendadas')->sole();
 
@@ -343,8 +330,8 @@ class EventoCalendarioImportServiceTest extends TestCase
         [$ator, $escola, , $vinculo] = $this->criarAtorEscolar('revalidacao');
         $linha = [
             ...$this->linhaValida('revalidar-escopo'),
-            'enviar_todas_escolas' => 'Não',
-            'escola_codigo' => $escola->codigo,
+            'enviar_escolas_especificas' => 'Sim',
+            'escolas_codigos' => $escola->codigo,
         ];
         $importacao = $this->service()->preview($this->arquivoCsv([$linha]), $ator);
 
@@ -399,7 +386,7 @@ class EventoCalendarioImportServiceTest extends TestCase
             $this->assertSame(['Eventos', 'Instruções', 'Referências'], $spreadsheet->getSheetNames());
             $this->assertSame(
                 EventoCalendarioImportService::HEADERS,
-                $spreadsheet->getSheetByName('Eventos')->rangeToArray('A1:U1')[0],
+                $spreadsheet->getSheetByName('Eventos')->rangeToArray('A1:R1')[0],
             );
 
             $referencias = collect($spreadsheet->getSheetByName('Referências')->toArray())
@@ -549,16 +536,13 @@ class EventoCalendarioImportServiceTest extends TestCase
             'hora_fim' => '10:00',
             'link_acao' => '/admin',
             'texto_botao' => 'Acessar',
-            'ativo' => 'Sim',
             'cor' => 'azul',
-            'enviar_todas_escolas' => 'Sim',
-            'escola_codigo' => null,
-            'hora_inicio_escola' => null,
-            'hora_fim_escola' => null,
-            'precisa_transporte' => null,
-            'escopo_transporte' => null,
+            'enviar_escolas_especificas' => 'Não',
+            'escolas_codigos' => null,
             'series_codigos' => null,
+            'turnos' => null,
             'turmas_codigos' => null,
+            'precisa_transporte' => null,
         ];
     }
 

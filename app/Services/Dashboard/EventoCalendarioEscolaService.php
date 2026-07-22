@@ -17,6 +17,8 @@ use Illuminate\Validation\ValidationException;
 
 class EventoCalendarioEscolaService
 {
+    private const TURNOS = ['manha', 'tarde', 'noite', 'integral'];
+
     public function __construct(private readonly PessoaScopeService $scope) {}
 
     /**
@@ -55,15 +57,10 @@ class EventoCalendarioEscolaService
             $this->assertEscolaAcessivel($ator, $escolaId, "{$prefixo}.escola_id");
             $escolasVistas[$escolaId] = true;
 
-            $horaInicio = $this->hora(
-                $linha['hora_inicio'] ?? $horaInicioPadrao,
-                "{$prefixo}.hora_inicio",
-            );
-            $horaFim = $this->hora(
-                $linha['hora_fim'] ?? $horaFimPadrao,
-                "{$prefixo}.hora_fim",
-            );
-            $this->assertOrdemHorarios($horaInicio, $horaFim, "{$prefixo}.hora_fim");
+            // A distribuição escolar usa o horário geral do evento. Os campos são
+            // mantidos na tabela apenas por compatibilidade e auditoria histórica.
+            $horaInicio = $horaInicioPadrao;
+            $horaFim = $horaFimPadrao;
 
             $precisaTransporte = filter_var(
                 $linha['precisa_transporte'] ?? false,
@@ -94,7 +91,6 @@ class EventoCalendarioEscolaService
                     : [];
 
                 $this->assertSelecaoTransporte($escolaId, $escopo, $serieIds, $turmaIds, $prefixo);
-                $estimativa = $this->contarEstudantes($escolaId, $escopo, $serieIds, $turmaIds);
             }
 
             $normalizadas[] = [
@@ -115,7 +111,154 @@ class EventoCalendarioEscolaService
             ]);
         }
 
+        $estimativas = $this->contarEstudantesPorEscola($normalizadas);
+
+        foreach ($normalizadas as &$linha) {
+            if ($linha['precisa_transporte']) {
+                $linha['quantidade_estimada_transporte'] = (int) ($estimativas[$linha['escola_id']] ?? 0);
+            }
+        }
+        unset($linha);
+
         return $normalizadas;
+    }
+
+    /**
+     * Resolve filtros acadêmicos em uma fotografia de escolas participantes.
+     * A mesma rotina atende o formulário e a importação por planilha.
+     *
+     * @param array<string, mixed> $filtros
+     * @return list<array<string, mixed>>
+     */
+    public function gerarPorFiltros(
+        array $filtros,
+        User $ator,
+        string $horaInicioPadrao,
+        string $horaFimPadrao,
+    ): array {
+        $todasEscolas = filter_var(
+            $filtros['selecionar_todas_escolas'] ?? false,
+            FILTER_VALIDATE_BOOLEAN,
+        );
+        $escolaIdsEntrada = $filtros['escola_ids'] ?? [];
+        $serieIdsEntrada = $filtros['serie_ids'] ?? [];
+        $turmaIdsEntrada = $filtros['turma_ids'] ?? [];
+
+        $escolaIds = $this->ids(is_iterable($escolaIdsEntrada) ? $escolaIdsEntrada : [], 'escolas_filtro_ids');
+        $serieIds = $this->ids(is_iterable($serieIdsEntrada) ? $serieIdsEntrada : [], 'series_filtro_ids');
+        $turmaIds = $this->ids(is_iterable($turmaIdsEntrada) ? $turmaIdsEntrada : [], 'turmas_filtro_ids');
+        $turnosEntrada = $filtros['turnos'] ?? [];
+        $turnos = collect(is_iterable($turnosEntrada) ? $turnosEntrada : [])
+            ->map(fn ($turno): string => mb_strtolower(trim((string) $turno)))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if (array_diff($turnos, self::TURNOS) !== []) {
+            throw ValidationException::withMessages([
+                'turnos_filtro' => 'Selecione apenas turnos válidos.',
+            ]);
+        }
+
+        $escolasAcessiveis = Escola::query()->where('ativo', true)->orderBy('nome');
+        $this->scope->applyEscolaScope($escolasAcessiveis, $ator, 'id');
+
+        if (! $todasEscolas) {
+            if ($escolaIds === []) {
+                throw ValidationException::withMessages([
+                    'escolas_filtro_ids' => 'Selecione ao menos uma escola ou marque a opção de considerar todas.',
+                ]);
+            }
+
+            $encontradas = (clone $escolasAcessiveis)->whereKey($escolaIds)->count();
+
+            if ($encontradas !== count($escolaIds)) {
+                throw ValidationException::withMessages([
+                    'escolas_filtro_ids' => 'A seleção contém escola inativa ou fora do seu contexto de acesso.',
+                ]);
+            }
+
+            $escolasAcessiveis->whereKey($escolaIds);
+        }
+
+        $idsNoEscopo = $escolasAcessiveis->pluck('id')->map(fn ($id): int => (int) $id)->all();
+
+        if ($idsNoEscopo === []) {
+            throw ValidationException::withMessages([
+                'escolas_filtro_ids' => 'Nenhuma escola disponível no seu contexto de acesso.',
+            ]);
+        }
+
+        $possuiFiltroAcademico = $serieIds !== [] || $turmaIds !== [] || $turnos !== [];
+        $turmas = Turma::query()
+            ->whereIn('id_escola', $idsNoEscopo)
+            ->when($serieIds !== [], fn (Builder $query): Builder => $query->whereIn('id_serie', $serieIds))
+            ->when($turnos !== [], fn (Builder $query): Builder => $query->whereIn('turno', $turnos))
+            ->when($turmaIds !== [], fn (Builder $query): Builder => $query->whereKey($turmaIds))
+            ->get(['id', 'id_escola', 'id_serie', 'turno']);
+
+        if ($serieIds !== [] && $turmas->pluck('id_serie')->unique()->count() !== count($serieIds)) {
+            throw ValidationException::withMessages([
+                'series_filtro_ids' => 'Uma ou mais séries não possuem turmas nos filtros e escolas informados.',
+            ]);
+        }
+
+        if ($turmaIds !== [] && $turmas->pluck('id')->unique()->count() !== count($turmaIds)) {
+            throw ValidationException::withMessages([
+                'turmas_filtro_ids' => 'Uma ou mais turmas não pertencem às escolas, séries ou turnos informados.',
+            ]);
+        }
+
+        $escolasSelecionadas = $possuiFiltroAcademico
+            ? $turmas->pluck('id_escola')->map(fn ($id): int => (int) $id)->unique()->values()->all()
+            : $idsNoEscopo;
+
+        if ($escolasSelecionadas === []) {
+            throw ValidationException::withMessages([
+                'escolas_agendadas' => 'Nenhuma escola possui turmas compatíveis com os filtros informados.',
+            ]);
+        }
+
+        $precisaTransporte = filter_var(
+            $filtros['precisa_transporte'] ?? false,
+            FILTER_VALIDATE_BOOLEAN,
+        );
+        $linhas = collect($escolasSelecionadas)->map(function (int $escolaId) use (
+            $horaInicioPadrao,
+            $horaFimPadrao,
+            $precisaTransporte,
+            $serieIds,
+            $turmaIds,
+            $turnos,
+            $turmas,
+        ): array {
+            $turmasDaEscola = $turmas->where('id_escola', $escolaId);
+            $usarTurmas = $turmaIds !== [] || $turnos !== [];
+            $usarSeries = ! $usarTurmas && $serieIds !== [];
+
+            return [
+                'escola_id' => $escolaId,
+                'hora_inicio' => $horaInicioPadrao,
+                'hora_fim' => $horaFimPadrao,
+                'precisa_transporte' => $precisaTransporte,
+                'escopo_transporte' => ! $precisaTransporte
+                    ? null
+                    : ($usarTurmas
+                        ? EventoCalendarioTransporteEscopo::TURMAS->value
+                        : ($usarSeries
+                            ? EventoCalendarioTransporteEscopo::SERIES->value
+                            : EventoCalendarioTransporteEscopo::TODA_UNIDADE->value)),
+                'series_ids' => $precisaTransporte && $usarSeries
+                    ? $turmasDaEscola->pluck('id_serie')->map(fn ($id): int => (int) $id)->unique()->values()->all()
+                    : [],
+                'turmas_ids' => $precisaTransporte && $usarTurmas
+                    ? $turmasDaEscola->pluck('id')->map(fn ($id): int => (int) $id)->unique()->values()->all()
+                    : [],
+            ];
+        })->values()->all();
+
+        return $this->normalizar($linhas, $ator, $horaInicioPadrao, $horaFimPadrao);
     }
 
     /** @param list<array<string, mixed>> $linhas */
@@ -156,10 +299,9 @@ class EventoCalendarioEscolaService
         return $evento->escolasAgendadas
             ->map(fn (EventoCalendarioEscola $item): array => [
                 'escola_id' => (int) $item->escola_id,
-                'hora_inicio' => substr((string) $item->hora_inicio, 0, 5),
-                'hora_fim' => substr((string) $item->hora_fim, 0, 5),
                 'precisa_transporte' => (bool) $item->precisa_transporte,
                 'escopo_transporte' => $item->escopo_transporte?->value,
+                'quantidade_estimada_transporte' => $item->quantidade_estimada_transporte,
                 'series_ids' => $item->series->modelKeys(),
                 'turmas_ids' => $item->turmas->modelKeys(),
             ])
@@ -220,6 +362,44 @@ class EventoCalendarioEscolaService
             )
             ->distinct('alunos.id')
             ->count('alunos.id');
+    }
+
+    /**
+     * @param list<array<string, mixed>> $linhas
+     * @return array<int, int>
+     */
+    private function contarEstudantesPorEscola(array $linhas): array
+    {
+        $transportes = collect($linhas)->where('precisa_transporte', true)->values();
+
+        if ($transportes->isEmpty()) {
+            return [];
+        }
+
+        return Aluno::query()
+            ->join('turmas', 'turmas.id', '=', 'alunos.id_turma')
+            ->where('alunos.tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL)
+            ->where('alunos.status', Aluno::STATUS_MATRICULADO)
+            ->where(function (Builder $selecoes) use ($transportes): void {
+                foreach ($transportes as $linha) {
+                    $selecoes->orWhere(function (Builder $escola) use ($linha): void {
+                        $escola->where('turmas.id_escola', (int) $linha['escola_id']);
+
+                        if ($linha['escopo_transporte'] === EventoCalendarioTransporteEscopo::SERIES->value) {
+                            $escola->whereIn('turmas.id_serie', $linha['series_ids']);
+                        }
+
+                        if ($linha['escopo_transporte'] === EventoCalendarioTransporteEscopo::TURMAS->value) {
+                            $escola->whereIn('turmas.id', $linha['turmas_ids']);
+                        }
+                    });
+                }
+            })
+            ->selectRaw('turmas.id_escola, COUNT(DISTINCT alunos.id) AS total')
+            ->groupBy('turmas.id_escola')
+            ->pluck('total', 'turmas.id_escola')
+            ->map(fn ($total): int => (int) $total)
+            ->all();
     }
 
     private function assertSelecaoTransporte(
