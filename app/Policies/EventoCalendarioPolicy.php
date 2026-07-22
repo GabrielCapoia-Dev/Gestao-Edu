@@ -66,6 +66,11 @@ class EventoCalendarioPolicy
             return false;
         }
 
+        if ($evento->status === EventoCalendarioStatus::INATIVO
+            && ! $evento->data_inicio->isFuture()) {
+            return false;
+        }
+
         return $possuiTransporte
             ? $user->hasPermissionTo(ListaPermissoes::PublicarEventosTransporte->label())
             : $this->publishCommon($user);

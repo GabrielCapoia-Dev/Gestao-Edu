@@ -521,12 +521,17 @@ class EventoTransporteAlocacaoService
             ]);
         }
 
-        if (! in_array($evento->status, [
+        $statusPermiteAlocacao = in_array($evento->status, [
             EventoCalendarioStatus::PENDENTE_APROVACAO,
             EventoCalendarioStatus::PUBLICADO,
-        ], true)) {
+        ], true) || (
+            $evento->status === EventoCalendarioStatus::INATIVO
+            && $evento->data_inicio->isFuture()
+        );
+
+        if (! $statusPermiteAlocacao) {
             throw ValidationException::withMessages([
-                'evento' => 'Só é possível alocar transporte em eventos pendentes ou publicados.',
+                'evento' => 'Só é possível alocar transporte em eventos pendentes, publicados ou inativos com início futuro.',
             ]);
         }
     }

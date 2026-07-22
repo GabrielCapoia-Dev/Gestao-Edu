@@ -420,21 +420,27 @@ class GerenciarEventos extends Page implements HasTable
                 ->successNotificationTitle('Evento atualizado'),
 
             Action::make('publicar')
-                ->label(fn (EventoCalendario $record): string => $record->status === EventoCalendarioStatus::PENDENTE_APROVACAO
-                    && $record->possui_transporte
-                    ? 'Aprovar e publicar'
-                    : 'Publicar')
+                ->label(fn (EventoCalendario $record): string => match (true) {
+                    $record->status === EventoCalendarioStatus::PENDENTE_APROVACAO
+                        && $record->possui_transporte => 'Aprovar e publicar',
+                    $record->status === EventoCalendarioStatus::INATIVO => 'Reativar e publicar',
+                    default => 'Publicar',
+                })
                 ->icon('heroicon-o-play-circle')
                 ->color('success')
                 ->visible(fn (EventoCalendario $record): bool => $record->status !== EventoCalendarioStatus::PUBLICADO
                     && Gate::forUser($user)->allows('publish', $record))
                 ->authorize(fn (EventoCalendario $record): bool => Gate::forUser($user)->allows('publish', $record))
                 ->requiresConfirmation()
-                ->modalHeading(fn (EventoCalendario $record): string => $record->possui_transporte
-                    ? 'Aprovar e publicar este evento?'
-                    : 'Publicar este evento?')
+                ->modalHeading(fn (EventoCalendario $record): string => match (true) {
+                    $record->status === EventoCalendarioStatus::INATIVO => 'Reativar e publicar este evento?',
+                    $record->possui_transporte => 'Aprovar e publicar este evento?',
+                    default => 'Publicar este evento?',
+                })
                 ->modalDescription('O evento ficará visível na agenda dos destinatários autorizados.')
-                ->modalSubmitActionLabel('Publicar')
+                ->modalSubmitActionLabel(fn (EventoCalendario $record): string => $record->status === EventoCalendarioStatus::INATIVO
+                    ? 'Reativar e publicar'
+                    : 'Publicar')
                 ->action(function (EventoCalendario $record) use ($user): void {
                     app(EventoCalendarioWorkflowService::class)->publicar($record, $user);
 
@@ -495,10 +501,15 @@ class GerenciarEventos extends Page implements HasTable
     /** @return array<int, Action> */
     private function acoesDoDetalhe(User $user, EventoCalendario $evento): array
     {
-        if (! in_array($evento->status, [
+        $statusElegivel = in_array($evento->status, [
             EventoCalendarioStatus::PENDENTE_APROVACAO,
             EventoCalendarioStatus::PUBLICADO,
-        ], true)
+        ], true) || (
+            $evento->status === EventoCalendarioStatus::INATIVO
+            && $evento->data_inicio->isFuture()
+        );
+
+        if (! $statusElegivel
             || ! $evento->possui_transporte) {
             return [];
         }
@@ -521,11 +532,32 @@ class GerenciarEventos extends Page implements HasTable
                 })
                 ->cancelParentActions(),
 
+            Action::make('reativarNoDetalhe')
+                ->label('Reativar e publicar')
+                ->icon('heroicon-o-arrow-path')
+                ->color('success')
+                ->visible(fn (EventoCalendario $record): bool => $record->status === EventoCalendarioStatus::INATIVO
+                    && $record->data_inicio->isFuture()
+                    && Gate::forUser($user)->allows('publish', $record))
+                ->authorize(fn (EventoCalendario $record): bool => Gate::forUser($user)->allows('publish', $record))
+                ->requiresConfirmation()
+                ->modalHeading('Reativar e publicar este evento?')
+                ->modalDescription('O evento voltará a ficar visível na agenda dos destinatários autorizados.')
+                ->modalSubmitActionLabel('Reativar e publicar')
+                ->action(function (EventoCalendario $record) use ($user): void {
+                    app(EventoCalendarioWorkflowService::class)->publicar($record, $user);
+                    Notification::make()->title('Evento reativado e publicado')->success()->send();
+                })
+                ->cancelParentActions(),
+
             Action::make('rejeitarNoDetalhe')
                 ->label('Rejeitar')
                 ->icon('heroicon-o-x-circle')
                 ->color('danger')
-                ->visible(fn (EventoCalendario $record): bool => Gate::forUser($user)->allows('reject', $record))
+                ->visible(fn (EventoCalendario $record): bool => in_array($record->status, [
+                    EventoCalendarioStatus::PENDENTE_APROVACAO,
+                    EventoCalendarioStatus::PUBLICADO,
+                ], true) && Gate::forUser($user)->allows('reject', $record))
                 ->authorize(fn (EventoCalendario $record): bool => Gate::forUser($user)->allows('reject', $record))
                 ->requiresConfirmation()
                 ->modalHeading('Rejeitar evento de transporte')
