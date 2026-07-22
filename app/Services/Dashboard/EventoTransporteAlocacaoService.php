@@ -24,7 +24,7 @@ class EventoTransporteAlocacaoService
         private readonly EventoCalendarioWorkflowService $workflow,
     ) {}
 
-    public function queryAtivas(User $ator, EventoCalendario $evento): Builder
+    public function queryAtivas(User $ator, EventoCalendario $evento): HasMany
     {
         $this->autorizarVisualizacao($ator, $evento);
 
