@@ -81,17 +81,6 @@
                 <small>{{ $item['turmas']->count() }} turma(s)</small>
             </header>
 
-            @if ($item['turmas']->isNotEmpty())
-                <div class="gi-school-transport-card__classes" aria-label="Turmas participantes">
-                    @foreach ($item['turmas'] as $turma)
-                        <span>
-                            {{ trim(($turma->serie?->nome ? $turma->serie->nome.' ' : '').$turma->nome) }}
-                            <small>{{ (int) $turma->estudantes_transporte_count }}</small>
-                        </span>
-                    @endforeach
-                </div>
-            @endif
-
             @foreach ($item['alocacoes'] as $alocacao)
                 @php
                     $alunosAlocados = (int) $turmas->whereIn('id', $alocacao->turmas->modelKeys())->sum('estudantes_transporte_count');
@@ -131,30 +120,20 @@
                 </div>
             @endforeach
 
+            @if (! $podeGerenciar && $item['turmas']->isNotEmpty())
+                <div class="gi-school-transport-card__classes" aria-label="Turmas participantes">
+                    @foreach ($item['turmas'] as $turma)
+                        <span>
+                            {{ trim(($turma->serie?->nome ? $turma->serie->nome.' ' : '').$turma->nome) }}
+                            <small>{{ (int) $turma->estudantes_transporte_count }}</small>
+                        </span>
+                    @endforeach
+                </div>
+            @endif
+
             @if ($item['disponiveis']->isNotEmpty())
                 @if ($podeGerenciar)
                     <div class="gi-school-transport-card__form">
-                        <fieldset>
-                            <legend>Turmas que este ônibus levará</legend>
-                            <div class="gi-school-transport-card__checks">
-                                @foreach ($item['disponiveis'] as $turma)
-                                    <label>
-                                        <input
-                                            type="checkbox"
-                                            value="{{ $turma->getKey() }}"
-                                            wire:model.live="turmasSelecionadas.{{ $agendamentoId }}"
-                                        >
-                                        <span>{{ trim(($turma->serie?->nome ? $turma->serie->nome.' ' : '').$turma->nome) }}</span>
-                                        <small>{{ (int) $turma->estudantes_transporte_count }} aluno(s)</small>
-                                    </label>
-                                @endforeach
-                            </div>
-                        </fieldset>
-
-                        <div class="gi-school-transport-card__selection-summary">
-                            {{ number_format($item['total_selecionado'], 0, ',', '.') }} estudante(s) selecionado(s)
-                        </div>
-
                         <label class="gi-school-transport-card__field">
                             <span>Veículo</span>
                             <select wire:model.live="veiculosSelecionados.{{ $agendamentoId }}">
@@ -167,13 +146,6 @@
                                 @endforeach
                             </select>
                         </label>
-
-                        @if ($item['necessita_superlotacao'])
-                            <label class="gi-school-transport-card__overload">
-                                <input type="checkbox" wire:model.live="permitirSuperlotacao.{{ $agendamentoId }}">
-                                <span>Confirmar superlotação deste veículo</span>
-                            </label>
-                        @endif
 
                         @php
                             $motoristaFixado = $motoristasPorVeiculo[(int) ($veiculosSelecionados[$agendamentoId] ?? 0)] ?? null;
@@ -195,6 +167,34 @@
                             </label>
                         @endif
 
+                        <fieldset>
+                            <legend>Turmas que este ônibus levará</legend>
+                            <div class="gi-school-transport-card__checks">
+                                @foreach ($item['disponiveis'] as $turma)
+                                    <label>
+                                        <input
+                                            type="checkbox"
+                                            value="{{ $turma->getKey() }}"
+                                            wire:model.live="turmasSelecionadas.{{ $agendamentoId }}"
+                                        >
+                                        <span>{{ trim(($turma->serie?->nome ? $turma->serie->nome.' ' : '').$turma->nome) }}</span>
+                                        <small>{{ (int) $turma->estudantes_transporte_count }} aluno(s)</small>
+                                    </label>
+                                @endforeach
+                            </div>
+                        </fieldset>
+
+                        <div class="gi-school-transport-card__selection-summary">
+                            {{ number_format($item['total_selecionado'], 0, ',', '.') }} estudante(s) selecionado(s)
+                        </div>
+
+                        @if ($item['necessita_superlotacao'])
+                            <label class="gi-school-transport-card__overload">
+                                <input type="checkbox" wire:model.live="permitirSuperlotacao.{{ $agendamentoId }}">
+                                <span>Confirmar superlotação deste veículo</span>
+                            </label>
+                        @endif
+
                         <button
                             type="button"
                             class="gi-school-transport-card__submit"
@@ -209,7 +209,13 @@
                         @error("veiculosSelecionados.{$agendamentoId}") <p class="gi-school-transport-card__error">{{ $message }}</p> @enderror
                         @error("motoristasSelecionados.{$agendamentoId}") <p class="gi-school-transport-card__error">{{ $message }}</p> @enderror
                         @error('veiculo_id') <p class="gi-school-transport-card__error">{{ $message }}</p> @enderror
+                        @error('motorista_id') <p class="gi-school-transport-card__error">{{ $message }}</p> @enderror
                         @error('turma_ids') <p class="gi-school-transport-card__error">{{ $message }}</p> @enderror
+                        @error('veiculo') <p class="gi-school-transport-card__error">{{ $message }}</p> @enderror
+                        @error('motorista') <p class="gi-school-transport-card__error">{{ $message }}</p> @enderror
+                        @error('alocacao') <p class="gi-school-transport-card__error">{{ $message }}</p> @enderror
+                        @error('transporte') <p class="gi-school-transport-card__error">{{ $message }}</p> @enderror
+                        @error('evento') <p class="gi-school-transport-card__error">{{ $message }}</p> @enderror
                     </div>
                 @else
                     <p class="gi-school-transport-card__pending">Aguardando atribuição de veículo e motorista.</p>

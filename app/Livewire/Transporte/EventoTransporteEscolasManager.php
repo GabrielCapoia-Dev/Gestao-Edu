@@ -74,6 +74,9 @@ class EventoTransporteEscolasManager extends Component
                 && (bool) ($this->permitirSuperlotacao[$agendamentoId] ?? false),
         );
 
+        $this->eventoResolvido = null;
+        $this->mostrarRelacaoVeiculos = true;
+
         unset(
             $this->turmasSelecionadas[$agendamentoId],
             $this->veiculosSelecionados[$agendamentoId],
@@ -95,6 +98,7 @@ class EventoTransporteEscolasManager extends Component
             ->findOrFail($alocacaoId);
 
         $this->service()->removerTurmasDaEscola($this->usuarioEfetivo(), $alocacao, $agendamentoId);
+        $this->eventoResolvido = null;
         $this->preencherTurmasDisponiveis();
 
         Notification::make()->title('Transporte removido da escola')->success()->send();
