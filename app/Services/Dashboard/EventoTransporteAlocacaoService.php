@@ -24,11 +24,13 @@ class EventoTransporteAlocacaoService
         private readonly EventoCalendarioWorkflowService $workflow,
     ) {}
 
-    public function queryAtivas(User $ator, EventoCalendario $evento): HasMany
+    public function queryAtivas(User $ator, EventoCalendario $evento): Builder
     {
         $this->autorizarVisualizacao($ator, $evento);
 
-        return $evento->alocacoesTransporteAtivas()
+        $alocacoes = $evento->alocacoesTransporteAtivas();
+
+        return $alocacoes->getQuery()
             ->with([
                 'veiculo:id,placa,identificacao,capacidade_passageiros,ativo',
                 'motorista:id,nome,cpf,telefone,status',
