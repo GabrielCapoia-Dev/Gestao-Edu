@@ -1,11 +1,74 @@
 <div class="gi-school-transport-manager">
+    <div class="gi-vehicle-relation-toolbar">
+        <div>
+            <strong>Transporte do evento</strong>
+            <span>{{ $relacaoVeiculos->count() }} veículo(s) atribuído(s)</span>
+        </div>
+        <button
+            type="button"
+            wire:click="alternarRelacaoVeiculos"
+            aria-expanded="{{ $mostrarRelacaoVeiculos ? 'true' : 'false' }}"
+        >
+            {{ $mostrarRelacaoVeiculos ? 'Ocultar relação' : 'Relação de veículos' }}
+        </button>
+    </div>
+
+    @if ($mostrarRelacaoVeiculos)
+        <section class="gi-vehicle-relation" aria-label="Relação de veículos do evento">
+            @forelse ($relacaoVeiculos as $rota)
+                @php
+                    $alocacaoRota = $rota['alocacao'];
+                    $diferencaRota = (int) $rota['diferenca'];
+                @endphp
+                <article @class([
+                    'gi-vehicle-relation__item',
+                    'is-full' => $diferencaRota === 0,
+                    'is-overloaded' => $diferencaRota < 0,
+                ])>
+                    <header>
+                        <div>
+                            <strong>{{ $alocacaoRota->veiculo?->identificacao ?: $alocacaoRota->veiculo?->placa }}</strong>
+                            <span>{{ $alocacaoRota->veiculo?->placa }} · {{ $alocacaoRota->motorista?->nome ?? 'Motorista não informado' }}</span>
+                        </div>
+                        <b>{{ $rota['total'] }}/{{ $rota['capacidade'] }} aluno(s)</b>
+                    </header>
+
+                    <div class="gi-vehicle-relation__schools">
+                        @foreach ($rota['escolas'] as $escolaRota)
+                            <div>
+                                <strong>{{ $escolaRota['nome'] }}</strong>
+                                <span>{{ implode(', ', $escolaRota['turmas']) }}</span>
+                                <small>{{ $escolaRota['alunos'] }} aluno(s)</small>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    <footer>
+                        @if ($diferencaRota < 0)
+                            Superlotação de {{ abs($diferencaRota) }} lugar(es)
+                        @elseif ($diferencaRota === 0)
+                            Lotação máxima atingida
+                        @else
+                            {{ $diferencaRota }} lugar(es) disponível(is)
+                        @endif
+                    </footer>
+                </article>
+            @empty
+                <p class="gi-event-detail__empty">Nenhum veículo foi atribuído ao evento.</p>
+            @endforelse
+        </section>
+    @endif
+
     @forelse ($escolas as $item)
         @php
             $agendamento = $item['agendamento'];
             $agendamentoId = (int) $agendamento->getKey();
         @endphp
 
-        <article class="gi-school-transport-card" wire:key="transporte-escola-{{ $agendamentoId }}">
+        <article @class([
+            'gi-school-transport-card',
+            'has-assignment' => $item['alocacoes']->isNotEmpty(),
+        ]) wire:key="transporte-escola-{{ $agendamentoId }}">
             <header class="gi-school-transport-card__header">
                 <div>
                     <strong>{{ $agendamento->escola?->nome ?? 'Escola não informada' }}</strong>
@@ -105,10 +168,10 @@
                             </select>
                         </label>
 
-                        @if ($item['ha_veiculo_menor'])
+                        @if ($item['necessita_superlotacao'])
                             <label class="gi-school-transport-card__overload">
                                 <input type="checkbox" wire:model.live="permitirSuperlotacao.{{ $agendamentoId }}">
-                                <span>Permitir superlotação para exibir veículos menores</span>
+                                <span>Confirmar superlotação deste veículo</span>
                             </label>
                         @endif
 

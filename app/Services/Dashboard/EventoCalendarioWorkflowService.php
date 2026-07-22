@@ -30,6 +30,7 @@ class EventoCalendarioWorkflowService
                     ]);
                 }
 
+                $this->disponibilidade->validarCoberturaCompletaDoEvento($evento);
                 $this->disponibilidade->validarAlocacoesAtivasDoEvento($evento, bloquear: true);
             }
 
@@ -157,7 +158,11 @@ class EventoCalendarioWorkflowService
     private function bloquear(EventoCalendario $evento): EventoCalendario
     {
         return EventoCalendario::query()
-            ->with('escolasAgendadas:id,evento_calendario_id,precisa_transporte')
+            ->with([
+                'escolasAgendadas:id,evento_calendario_id,escola_id,precisa_transporte,escopo_transporte',
+                'escolasAgendadas.series:id',
+                'escolasAgendadas.turmas:id',
+            ])
             ->lockForUpdate()
             ->findOrFail($evento->getKey());
     }

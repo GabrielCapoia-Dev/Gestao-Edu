@@ -3,9 +3,11 @@
 namespace App\Services\Dashboard;
 
 use App\Models\Enums\EventoCalendarioStatus;
+use App\Models\Enums\EventoCalendarioTransporteEscopo;
 use App\Models\EventoCalendario;
 use App\Models\EventoCalendarioTransporteAlocacao;
 use App\Models\Pessoa;
+use App\Models\Turma;
 use App\Models\VeiculoTransporte;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
@@ -170,6 +172,63 @@ class EventoTransporteDisponibilidadeService
             $evento->getKey(),
             $bloquear,
         );
+    }
+
+    public function validarCoberturaCompletaDoEvento(EventoCalendario $evento): void
+    {
+        $evento->loadMissing([
+            'escolasAgendadas.series:id',
+            'escolasAgendadas.turmas:id',
+        ]);
+        $agendamentos = $evento->escolasAgendadas->where('precisa_transporte', true);
+
+        if ($agendamentos->isEmpty()) {
+            return;
+        }
+
+        $alocacoes = $evento->alocacoesTransporteAtivas()
+            ->with('turmas:id')
+            ->get(['id', 'evento_calendario_id', 'veiculo_transporte_id', 'motorista_id']);
+
+        if ($alocacoes->isEmpty()) {
+            throw ValidationException::withMessages([
+                'transporte' => 'Atribua os veículos e motoristas antes de publicar o evento.',
+            ]);
+        }
+
+        $turmasEsperadas = Turma::query()
+            ->where(function (Builder $selecoes) use ($agendamentos): void {
+                foreach ($agendamentos as $agendamento) {
+                    $selecoes->orWhere(function (Builder $turmas) use ($agendamento): void {
+                        $turmas->where('id_escola', $agendamento->escola_id);
+
+                        if ($agendamento->escopo_transporte === EventoCalendarioTransporteEscopo::SERIES) {
+                            $turmas->whereIn('id_serie', $agendamento->series->modelKeys());
+                        }
+
+                        if ($agendamento->escopo_transporte === EventoCalendarioTransporteEscopo::TURMAS) {
+                            $turmas->whereKey($agendamento->turmas->modelKeys());
+                        }
+                    });
+                }
+            })
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->unique();
+        $turmasAlocadas = $alocacoes->flatMap->turmas
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->unique();
+        $pendentes = $turmasEsperadas->diff($turmasAlocadas);
+
+        if ($pendentes->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'transporte' => sprintf(
+                    'Ainda existem %d turma(s) sem veículo e motorista atribuídos.',
+                    $pendentes->count(),
+                ),
+            ]);
+        }
     }
 
     /** @param array<mixed> $ids @return list<int> */

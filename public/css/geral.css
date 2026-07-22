@@ -3893,12 +3893,164 @@
     padding: 0.85rem;
 }
 
+.gi-vehicle-relation-toolbar {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border: 1px solid var(--edu-neutral-200);
+    border-radius: 0.7rem;
+    padding: 0.65rem 0.75rem;
+    background: #fff;
+}
+
+.gi-vehicle-relation-toolbar > div {
+    display: grid;
+    gap: 0.15rem;
+}
+
+.gi-vehicle-relation-toolbar strong {
+    color: var(--edu-neutral-900);
+    font-size: 0.78rem;
+}
+
+.gi-vehicle-relation-toolbar span {
+    color: var(--edu-neutral-500);
+    font-size: 0.68rem;
+}
+
+.gi-vehicle-relation-toolbar button {
+    border: 1px solid var(--edu-primary-200);
+    border-radius: 0.5rem;
+    padding: 0.45rem 0.65rem;
+    background: var(--edu-primary-50);
+    color: var(--edu-primary-700);
+    font-size: 0.72rem;
+    font-weight: 800;
+}
+
+.gi-vehicle-relation {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+    border: 1px solid var(--edu-neutral-200);
+    border-radius: 0.75rem;
+    padding: 0.75rem;
+    background: var(--edu-neutral-50);
+}
+
+.gi-vehicle-relation__item {
+    overflow: hidden;
+    border: 1px solid var(--edu-success-100);
+    border-radius: 0.65rem;
+    background: #fff;
+}
+
+.gi-vehicle-relation__item.is-full {
+    border-color: var(--edu-warning-100);
+}
+
+.gi-vehicle-relation__item.is-overloaded {
+    border-color: var(--edu-danger-100);
+}
+
+.gi-vehicle-relation__item > header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.65rem;
+    border-bottom: 1px solid var(--edu-neutral-200);
+    padding: 0.65rem;
+}
+
+.gi-vehicle-relation__item > header > div {
+    display: grid;
+    gap: 0.18rem;
+}
+
+.gi-vehicle-relation__item > header strong,
+.gi-vehicle-relation__schools strong {
+    color: var(--edu-neutral-900);
+    font-size: 0.75rem;
+}
+
+.gi-vehicle-relation__item > header span,
+.gi-vehicle-relation__schools span,
+.gi-vehicle-relation__schools small {
+    color: var(--edu-neutral-600);
+    font-size: 0.67rem;
+}
+
+.gi-vehicle-relation__item > header b {
+    flex: 0 0 auto;
+    border-radius: 9999px;
+    padding: 0.22rem 0.48rem;
+    background: var(--edu-info-50);
+    color: var(--edu-info-700);
+    font-size: 0.68rem;
+}
+
+.gi-vehicle-relation__schools {
+    display: grid;
+    gap: 0.35rem;
+    padding: 0.65rem;
+}
+
+.gi-vehicle-relation__schools > div {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.15rem 0.5rem;
+    border-radius: 0.45rem;
+    padding: 0.45rem 0.5rem;
+    background: var(--edu-neutral-50);
+}
+
+.gi-vehicle-relation__schools span {
+    grid-column: 1;
+}
+
+.gi-vehicle-relation__schools small {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: center;
+    color: var(--edu-primary-700);
+    font-weight: 800;
+}
+
+.gi-vehicle-relation__item > footer {
+    border-top: 1px solid var(--edu-neutral-200);
+    padding: 0.45rem 0.65rem;
+    color: var(--edu-success-700);
+    font-size: 0.68rem;
+    font-weight: 800;
+}
+
+.gi-vehicle-relation__item.is-full > footer {
+    color: var(--edu-warning-700);
+}
+
+.gi-vehicle-relation__item.is-overloaded > footer {
+    color: var(--edu-danger-700);
+}
+
 .gi-school-transport-card {
     min-width: 0;
     overflow: hidden;
     border: 1px solid var(--edu-neutral-200);
     border-radius: 0.75rem;
     background: var(--edu-neutral-50);
+}
+
+.gi-school-transport-card.has-assignment {
+    border-color: var(--edu-success-100);
+    background: var(--edu-success-50);
+    box-shadow: inset 3px 0 0 var(--edu-success-600);
+}
+
+.gi-school-transport-card.has-assignment .gi-school-transport-card__header {
+    background: rgba(209, 250, 229, 0.45);
 }
 
 .gi-school-transport-card__header {
@@ -4157,7 +4309,9 @@
 }
 
 .dark .gi-school-popover__panel,
-.dark .gi-school-transport-card__form {
+.dark .gi-school-transport-card__form,
+.dark .gi-vehicle-relation-toolbar,
+.dark .gi-vehicle-relation__item {
     border-color: #334155;
     background: #111827;
 }
@@ -4165,7 +4319,9 @@
 .dark .gi-school-popover__heading,
 .dark .gi-school-transport-card,
 .dark .gi-school-transport-card__classes > span,
-.dark .gi-school-transport-card__checks label {
+.dark .gi-school-transport-card__checks label,
+.dark .gi-vehicle-relation,
+.dark .gi-vehicle-relation__schools > div {
     border-color: #334155;
     background: #1e293b;
 }
@@ -4173,7 +4329,10 @@
 .dark .gi-school-popover__heading,
 .dark .gi-school-popover__item,
 .dark .gi-school-transport-card__header strong,
-.dark .gi-school-transport-card__field select {
+.dark .gi-school-transport-card__field select,
+.dark .gi-vehicle-relation-toolbar strong,
+.dark .gi-vehicle-relation__item > header strong,
+.dark .gi-vehicle-relation__schools strong {
     color: #f8fafc;
 }
 
@@ -4200,8 +4359,14 @@
 @media (max-width: 700px) {
     .gi-event-metrics,
     .gi-event-detail__schools--management,
-    .gi-school-transport-manager {
+    .gi-school-transport-manager,
+    .gi-vehicle-relation {
         grid-template-columns: minmax(0, 1fr);
+    }
+
+    .gi-vehicle-relation-toolbar {
+        align-items: flex-start;
+        flex-direction: column;
     }
 
     .fi-modal-window.gi-event-detail-modal-window {

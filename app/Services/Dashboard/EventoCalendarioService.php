@@ -326,7 +326,7 @@ class EventoCalendarioService
         if ($possuiTransporte) {
             $precisaNovaAnalise = ! $possuiaTransporte
                 || $statusAnterior === EventoCalendarioStatus::REJEITADO
-                || ($transporteAlterado && ! Gate::forUser($ator)->allows('publish', $evento));
+                || $transporteAlterado;
 
             if ($precisaNovaAnalise) {
                 return [EventoCalendarioStatus::PENDENTE_APROVACAO, false];
