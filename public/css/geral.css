@@ -4077,6 +4077,21 @@
     font-size: 0.7rem;
 }
 
+.gi-school-transport-card__status {
+    display: grid;
+    justify-items: end;
+    gap: 0.25rem;
+}
+
+.gi-school-transport-card__status b {
+    border-radius: 9999px;
+    padding: 0.2rem 0.5rem;
+    background: var(--edu-success-100);
+    color: var(--edu-success-700);
+    font-size: 0.62rem;
+    font-weight: 800;
+}
+
 .gi-school-transport-card__classes,
 .gi-school-transport-card__checks {
     display: flex;
@@ -4130,6 +4145,18 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 0.5rem;
+}
+
+.gi-school-transport-card__allocation-heading > div {
+    display: grid;
+    gap: 0.15rem;
+}
+
+.gi-school-transport-card__allocation-heading small {
+    color: var(--edu-success-700);
+    font-size: 0.6rem;
+    font-weight: 800;
+    text-transform: uppercase;
 }
 
 .gi-school-transport-card__allocation-heading span {

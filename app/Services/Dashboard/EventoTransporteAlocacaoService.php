@@ -33,9 +33,9 @@ class EventoTransporteAlocacaoService
     {
         $this->autorizarVisualizacao($ator, $evento);
 
-        $alocacoes = $evento->alocacoesTransporteAtivas();
-
-        return $alocacoes->getQuery()
+        return EventoCalendarioTransporteAlocacao::query()
+            ->ativas()
+            ->where('evento_calendario_id', $evento->getKey())
             ->with([
                 'veiculo:id,placa,identificacao,capacidade_passageiros,ativo',
                 'motorista:id,nome,cpf,telefone,status',
@@ -364,7 +364,9 @@ class EventoTransporteAlocacaoService
     public function veiculosDisponiveis(User $ator, EventoCalendario $evento): EloquentCollection
     {
         $this->autorizarGerenciamento($ator, $evento);
-        $jaAlocados = $evento->alocacoesTransporteAtivas()
+        $jaAlocados = EventoCalendarioTransporteAlocacao::query()
+            ->ativas()
+            ->where('evento_calendario_id', $evento->getKey())
             ->pluck('veiculo_transporte_id')
             ->map(fn ($id): int => (int) $id)
             ->all();
@@ -389,7 +391,9 @@ class EventoTransporteAlocacaoService
     public function motoristaOptions(User $ator, EventoCalendario $evento): array
     {
         $this->autorizarGerenciamento($ator, $evento);
-        $jaAlocados = $evento->alocacoesTransporteAtivas()
+        $jaAlocados = EventoCalendarioTransporteAlocacao::query()
+            ->ativas()
+            ->where('evento_calendario_id', $evento->getKey())
             ->pluck('motorista_id')
             ->map(fn ($id): int => (int) $id)
             ->all();

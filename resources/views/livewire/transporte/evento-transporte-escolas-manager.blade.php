@@ -78,7 +78,12 @@
                             : 'Transporte não solicitado' }}
                     </span>
                 </div>
-                <small>{{ $item['turmas']->count() }} turma(s)</small>
+                <div class="gi-school-transport-card__status">
+                    @if ($item['alocacoes']->isNotEmpty())
+                        <b>Transporte atribuído</b>
+                    @endif
+                    <small>{{ $item['turmas']->count() }} turma(s)</small>
+                </div>
             </header>
 
             @foreach ($item['alocacoes'] as $alocacao)
@@ -93,7 +98,10 @@
                     'is-full' => $diferenca === 0,
                 ])>
                     <div class="gi-school-transport-card__allocation-heading">
-                        <strong>{{ $alocacao->veiculo?->identificacao ?: $alocacao->veiculo?->placa }}</strong>
+                        <div>
+                            <small>Veículo atribuído</small>
+                            <strong>{{ $alocacao->veiculo?->identificacao ?: $alocacao->veiculo?->placa }}</strong>
+                        </div>
                         <span>
                             @if ($diferenca < 0)
                                 Superlotado em {{ abs($diferenca) }}

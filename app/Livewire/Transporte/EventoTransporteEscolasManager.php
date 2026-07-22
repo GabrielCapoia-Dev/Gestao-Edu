@@ -120,6 +120,7 @@ class EventoTransporteEscolasManager extends Component
     {
         if (! $veiculoId || ! $this->podeGerenciar()) {
             $this->turmasSelecionadas[(int) $agendamentoId] = [];
+            unset($this->motoristasSelecionados[(int) $agendamentoId]);
 
             return;
         }
@@ -135,8 +136,15 @@ class EventoTransporteEscolasManager extends Component
 
         if (! $agendamento || ! $veiculo) {
             $this->turmasSelecionadas[(int) $agendamentoId] = [];
+            unset($this->motoristasSelecionados[(int) $agendamentoId]);
 
             return;
+        }
+
+        if ($alocacaoExistente) {
+            $this->motoristasSelecionados[(int) $agendamentoId] = (int) $alocacaoExistente->motorista_id;
+        } else {
+            unset($this->motoristasSelecionados[(int) $agendamentoId]);
         }
 
         $ocupadas = $alocacoes->flatMap->turmas->pluck('id')->map(fn ($id): int => (int) $id)->all();
@@ -258,13 +266,33 @@ class EventoTransporteEscolasManager extends Component
     private function preencherTurmasDisponiveis(): void
     {
         $evento = $this->evento();
-        $turmas = $this->service()->turmasParticipantes($this->usuarioEfetivo(), $evento);
-        $ocupadas = $this->service()->queryAtivas($this->usuarioEfetivo(), $evento)
-            ->get()->flatMap->turmas->pluck('id')->map(fn ($id): int => (int) $id)->all();
+        $alocacoes = $this->service()->queryAtivas($this->usuarioEfetivo(), $evento)->get();
+
+        if ($alocacoes->isNotEmpty()) {
+            $this->mostrarRelacaoVeiculos = true;
+        }
 
         foreach ($evento->escolasAgendadas->where('precisa_transporte', true) as $agendamento) {
-            $this->turmasSelecionadas[$agendamento->getKey()] = [];
-            $this->permitirSuperlotacao[$agendamento->getKey()] ??= false;
+            $agendamentoId = (int) $agendamento->getKey();
+            $alocacaoDaEscola = $alocacoes->first(
+                fn (EventoCalendarioTransporteAlocacao $alocacao): bool => $alocacao->turmas
+                    ->contains('id_escola', $agendamento->escola_id),
+            );
+
+            $this->turmasSelecionadas[$agendamentoId] = [];
+            $this->permitirSuperlotacao[$agendamentoId] = false;
+
+            if ($alocacaoDaEscola) {
+                $this->veiculosSelecionados[$agendamentoId] = (int) $alocacaoDaEscola->veiculo_transporte_id;
+                $this->motoristasSelecionados[$agendamentoId] = (int) $alocacaoDaEscola->motorista_id;
+
+                continue;
+            }
+
+            unset(
+                $this->veiculosSelecionados[$agendamentoId],
+                $this->motoristasSelecionados[$agendamentoId],
+            );
         }
     }
 
