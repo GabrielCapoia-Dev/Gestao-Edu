@@ -26,9 +26,6 @@ class EventoTransporteEscolasManager extends Component
     /** @var array<int, int|string|null> */
     public array $motoristasSelecionados = [];
 
-    /** @var array<int, bool> */
-    public array $permitirSuperlotacao = [];
-
     public bool $mostrarRelacaoVeiculos = false;
 
     private ?EventoCalendario $eventoResolvido = null;
@@ -54,7 +51,6 @@ class EventoTransporteEscolasManager extends Component
             "turmasSelecionadas.{$agendamentoId}" => ['required', 'array', 'min:1'],
             "veiculosSelecionados.{$agendamentoId}" => ['required', 'integer'],
             "motoristasSelecionados.{$agendamentoId}" => [$alocacaoExistente ? 'nullable' : 'required', 'integer'],
-            "permitirSuperlotacao.{$agendamentoId}" => ['boolean'],
         ], [
             "turmasSelecionadas.{$agendamentoId}.required" => 'Selecione ao menos uma turma.',
             "veiculosSelecionados.{$agendamentoId}.required" => 'Selecione o veículo.',
@@ -70,8 +66,6 @@ class EventoTransporteEscolasManager extends Component
                 ? (int) $this->motoristasSelecionados[$agendamentoId]
                 : null,
             $this->turmasSelecionadas[$agendamentoId] ?? [],
-            $this->superlotacaoNecessaria($agendamentoId)
-                && (bool) ($this->permitirSuperlotacao[$agendamentoId] ?? false),
         );
 
         $this->eventoResolvido = null;
@@ -81,7 +75,6 @@ class EventoTransporteEscolasManager extends Component
             $this->turmasSelecionadas[$agendamentoId],
             $this->veiculosSelecionados[$agendamentoId],
             $this->motoristasSelecionados[$agendamentoId],
-            $this->permitirSuperlotacao[$agendamentoId],
         );
         $this->preencherTurmasDisponiveis();
 
@@ -109,13 +102,6 @@ class EventoTransporteEscolasManager extends Component
         $this->mostrarRelacaoVeiculos = ! $this->mostrarRelacaoVeiculos;
     }
 
-    public function updatedTurmasSelecionadas(mixed $value, int|string $agendamentoId): void
-    {
-        if (! $this->superlotacaoNecessaria((int) $agendamentoId)) {
-            $this->permitirSuperlotacao[(int) $agendamentoId] = false;
-        }
-    }
-
     public function updatedVeiculosSelecionados(mixed $veiculoId, int|string $agendamentoId): void
     {
         if (! $veiculoId || ! $this->podeGerenciar()) {
@@ -128,7 +114,6 @@ class EventoTransporteEscolasManager extends Component
         $evento = $this->evento();
         $agendamento = $evento->escolasAgendadas->firstWhere('id', (int) $agendamentoId);
         $alocacoes = $this->service()->queryAtivas($this->usuarioEfetivo(), $evento)->get();
-        $turmasParticipantes = $this->service()->turmasParticipantes($this->usuarioEfetivo(), $evento);
         $alocacaoExistente = $alocacoes->firstWhere('veiculo_transporte_id', (int) $veiculoId);
         $veiculo = $alocacaoExistente?->veiculo
             ?? $this->service()->veiculosDisponiveis($this->usuarioEfetivo(), $evento)
@@ -147,21 +132,7 @@ class EventoTransporteEscolasManager extends Component
             unset($this->motoristasSelecionados[(int) $agendamentoId]);
         }
 
-        $ocupadas = $alocacoes->flatMap->turmas->pluck('id')->map(fn ($id): int => (int) $id)->all();
-        $turmas = $turmasParticipantes
-            ->where('id_escola', $agendamento->escola_id)
-            ->whereNotIn('id', $ocupadas)
-            ->values();
-        $ocupacaoAtual = $alocacaoExistente
-            ? (int) $turmasParticipantes->whereIn('id', $alocacaoExistente->turmas->modelKeys())
-                ->sum('estudantes_transporte_count')
-            : 0;
-
-        $this->turmasSelecionadas[(int) $agendamentoId] = $this->melhorCombinacaoDeTurmas(
-            $turmas,
-            max(0, (int) $veiculo->capacidade_passageiros - $ocupacaoAtual),
-        );
-        $this->permitirSuperlotacao[(int) $agendamentoId] = false;
+        $this->turmasSelecionadas[(int) $agendamentoId] ??= [];
     }
 
     public function render(): View
@@ -170,28 +141,27 @@ class EventoTransporteEscolasManager extends Component
         $user = $this->usuarioEfetivo();
         $turmas = $this->service()->turmasParticipantes($user, $evento);
         $alocacoes = $this->service()->queryAtivas($user, $evento)->get();
-        $ocupadas = $alocacoes->flatMap->turmas->pluck('id')->map(fn ($id): int => (int) $id)->all();
         $podeGerenciar = $this->podeGerenciar();
         $veiculosNovos = $podeGerenciar ? $this->service()->veiculosDisponiveis($user, $evento) : collect();
         $motoristas = $podeGerenciar ? $this->service()->motoristaOptions($user, $evento) : [];
-        $veiculos = $veiculosNovos->map(function ($veiculo) {
+        $veiculos = $veiculosNovos->mapWithKeys(function ($veiculo): array {
             $veiculo->setAttribute('lugares_disponiveis', (int) $veiculo->capacidade_passageiros);
             $veiculo->setAttribute('ja_alocado', false);
 
-            return $veiculo;
+            return [(int) $veiculo->getKey() => $veiculo];
         });
 
         foreach ($alocacoes->unique('veiculo_transporte_id') as $alocacao) {
             $ocupacao = (int) $turmas->whereIn('id', $alocacao->turmas->modelKeys())
                 ->sum('estudantes_transporte_count');
-            $veiculo = $alocacao->veiculo;
+            $veiculo = $veiculos->get((int) $alocacao->veiculo_transporte_id) ?? $alocacao->veiculo;
             if (! $veiculo) {
                 continue;
             }
 
             $veiculo->setAttribute('lugares_disponiveis', (int) $veiculo->capacidade_passageiros - $ocupacao);
             $veiculo->setAttribute('ja_alocado', true);
-            $veiculos->push($veiculo);
+            $veiculos->put((int) $veiculo->getKey(), $veiculo);
         }
 
         $motoristasPorVeiculo = $alocacoes->mapWithKeys(fn ($alocacao): array => [
@@ -220,21 +190,14 @@ class EventoTransporteEscolasManager extends Component
         })->values();
 
         $escolas = $evento->escolasAgendadas
-            ->map(function ($agendamento) use ($turmas, $alocacoes, $ocupadas, $veiculos): array {
+            ->map(function ($agendamento) use ($turmas, $alocacoes, $veiculos): array {
                 $turmasDaEscola = $turmas->where('id_escola', $agendamento->escola_id)->values();
-                $disponiveis = $turmasDaEscola->whereNotIn('id', $ocupadas)->values();
+                $disponiveis = $turmasDaEscola;
                 $selecionadas = collect($this->turmasSelecionadas[$agendamento->getKey()] ?? [])
                     ->map(fn ($id): int => (int) $id);
                 $totalSelecionado = (int) $disponiveis
                     ->whereIn('id', $selecionadas)
                     ->sum('estudantes_transporte_count');
-                $veiculoSelecionado = (int) ($this->veiculosSelecionados[$agendamento->getKey()] ?? 0);
-                $veiculoAtual = $veiculos->firstWhere('id', $veiculoSelecionado);
-                $necessitaSuperlotacao = $veiculoAtual
-                    && $totalSelecionado > (int) $veiculoAtual->lugares_disponiveis;
-                $aceitaSuperlotacao = $necessitaSuperlotacao
-                    && (bool) ($this->permitirSuperlotacao[$agendamento->getKey()] ?? false);
-
                 return [
                     'agendamento' => $agendamento,
                     'turmas' => $turmasDaEscola,
@@ -242,14 +205,7 @@ class EventoTransporteEscolasManager extends Component
                     'alocacoes' => $alocacoes->filter(fn ($alocacao): bool => $alocacao->turmas
                         ->contains('id_escola', $agendamento->escola_id))->values(),
                     'total_selecionado' => $totalSelecionado,
-                    'veiculos' => $veiculos
-                        ->when(! $aceitaSuperlotacao, fn ($lista) => $lista
-                            ->filter(fn ($veiculo): bool => (
-                                (int) $veiculo->lugares_disponiveis > 0
-                                && (int) $veiculo->lugares_disponiveis >= $totalSelecionado
-                            ) || (int) $veiculo->getKey() === $veiculoSelecionado))
-                        ->values(),
-                    'necessita_superlotacao' => $necessitaSuperlotacao,
+                    'veiculos' => $veiculos->values(),
                 ];
             })->values();
 
@@ -280,7 +236,6 @@ class EventoTransporteEscolasManager extends Component
             );
 
             $this->turmasSelecionadas[$agendamentoId] = [];
-            $this->permitirSuperlotacao[$agendamentoId] = false;
 
             if ($alocacaoDaEscola) {
                 $this->veiculosSelecionados[$agendamentoId] = (int) $alocacaoDaEscola->veiculo_transporte_id;
@@ -330,60 +285,4 @@ class EventoTransporteEscolasManager extends Component
         return app(EventoTransporteAlocacaoService::class);
     }
 
-    private function superlotacaoNecessaria(int $agendamentoId): bool
-    {
-        $veiculoId = (int) ($this->veiculosSelecionados[$agendamentoId] ?? 0);
-        $turmaIds = collect($this->turmasSelecionadas[$agendamentoId] ?? [])
-            ->map(fn ($id): int => (int) $id)->filter()->unique();
-
-        if (! $veiculoId || $turmaIds->isEmpty()) {
-            return false;
-        }
-
-        $evento = $this->evento();
-        $turmas = $this->service()->turmasParticipantes($this->usuarioEfetivo(), $evento);
-        $alocacao = $this->service()->queryAtivas($this->usuarioEfetivo(), $evento)
-            ->where('veiculo_transporte_id', $veiculoId)
-            ->first();
-        $veiculo = $alocacao?->veiculo
-            ?? $this->service()->veiculosDisponiveis($this->usuarioEfetivo(), $evento)->firstWhere('id', $veiculoId);
-
-        if (! $veiculo) {
-            return false;
-        }
-
-        $ocupacaoAtual = $alocacao
-            ? (int) $turmas->whereIn('id', $alocacao->turmas->modelKeys())->sum('estudantes_transporte_count')
-            : 0;
-        $novaOcupacao = (int) $turmas->whereIn('id', $turmaIds)->sum('estudantes_transporte_count');
-
-        return ($ocupacaoAtual + $novaOcupacao) > (int) $veiculo->capacidade_passageiros;
-    }
-
-    /**
-     * Seleciona turmas inteiras e maximiza a ocupação sem ultrapassar a capacidade.
-     *
-     * @param \Illuminate\Support\Collection<int, \App\Models\Turma> $turmas
-     * @return list<int>
-     */
-    private function melhorCombinacaoDeTurmas($turmas, int $capacidade): array
-    {
-        $combinacoes = [0 => []];
-
-        foreach ($turmas as $turma) {
-            $quantidade = max(0, (int) $turma->estudantes_transporte_count);
-            $atuais = $combinacoes;
-
-            foreach ($atuais as $total => $ids) {
-                $novoTotal = $total + $quantidade;
-                if ($novoTotal <= $capacidade && ! array_key_exists($novoTotal, $combinacoes)) {
-                    $combinacoes[$novoTotal] = [...$ids, (int) $turma->getKey()];
-                }
-            }
-        }
-
-        krsort($combinacoes);
-
-        return array_values(reset($combinacoes) ?: []);
-    }
 }

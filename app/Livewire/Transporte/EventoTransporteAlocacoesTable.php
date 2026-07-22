@@ -84,7 +84,7 @@ class EventoTransporteAlocacoesTable extends TableWidget
                             ->searchable()
                             ->preload()
                             ->required()
-                            ->helperText('Cada turma pode ser vinculada a somente um veículo neste evento.'),
+                            ->helperText('A capacidade do veículo é informativa e não bloqueia a atribuição.'),
                     ])
                     ->using(function (array $data): EventoCalendarioTransporteAlocacao {
                         return $this->service()->adicionar(

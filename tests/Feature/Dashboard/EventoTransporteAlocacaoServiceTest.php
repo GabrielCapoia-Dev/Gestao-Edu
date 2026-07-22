@@ -26,7 +26,6 @@ use App\Services\Dashboard\EventoCalendarioService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Validation\ValidationException;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -71,7 +70,7 @@ class EventoTransporteAlocacaoServiceTest extends TestCase
         $this->assertTrue($resumo['capacidade_insuficiente']);
     }
 
-    public function test_impede_conflito_no_intervalo_sem_expor_dados_do_outro_evento(): void
+    public function test_permite_reutilizar_veiculo_e_motorista_em_eventos_sobrepostos(): void
     {
         $ator = $this->ator();
         $veiculo = $this->veiculo('ABC1234', 40);
@@ -81,15 +80,11 @@ class EventoTransporteAlocacaoServiceTest extends TestCase
         $service = app(EventoTransporteAlocacaoService::class);
         $service->adicionar($ator, $ocupado, $veiculo->id, $motorista->id);
 
-        try {
-            $service->adicionar($ator, $destino, $veiculo->id, $motorista->id);
-            $this->fail('Era esperada indisponibilidade do recurso.');
-        } catch (ValidationException $exception) {
-            $mensagens = implode(' ', array_merge(...array_values($exception->errors())));
-            $this->assertStringNotContainsString('Evento confidencial', $mensagens);
-            $this->assertArrayHasKey('veiculo', $exception->errors());
-            $this->assertArrayHasKey('motorista', $exception->errors());
-        }
+        $segundaAlocacao = $service->adicionar($ator, $destino, $veiculo->id, $motorista->id);
+
+        $this->assertTrue($segundaAlocacao->estaAtiva());
+        $this->assertSame($veiculo->id, $segundaAlocacao->veiculo_transporte_id);
+        $this->assertSame($motorista->id, $segundaAlocacao->motorista_id);
     }
 
     public function test_permite_reutilizar_recursos_quando_um_evento_comeca_no_fim_do_outro(): void

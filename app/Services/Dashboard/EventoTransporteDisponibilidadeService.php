@@ -122,9 +122,6 @@ class EventoTransporteDisponibilidadeService
         ?CarbonInterface $fim = null,
         bool $bloquear = false,
     ): void {
-        $inicio ??= $evento->data_inicio;
-        $fim ??= $evento->data_fim;
-
         $alocacoes = $evento->alocacoesTransporteAtivas()
             ->select(['id', 'veiculo_transporte_id', 'motorista_id'])
             ->get();
@@ -163,15 +160,6 @@ class EventoTransporteDisponibilidadeService
                 'transporte' => 'Uma alocação de transporte possui um recurso inativo.',
             ]);
         }
-
-        $this->validarDisponibilidade(
-            $inicio,
-            $fim,
-            $veiculoIds,
-            $motoristaIds,
-            $evento->getKey(),
-            $bloquear,
-        );
     }
 
     public function validarCoberturaCompletaDoEvento(EventoCalendario $evento): void

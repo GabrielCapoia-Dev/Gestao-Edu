@@ -3992,6 +3992,14 @@
     font-size: 0.68rem;
 }
 
+.gi-vehicle-relation__item.is-full > header b,
+.gi-vehicle-relation__item.is-overloaded > header b,
+.gi-school-transport-card__allocation.is-full .gi-school-transport-card__allocation-heading span,
+.gi-school-transport-card__allocation.is-overloaded .gi-school-transport-card__allocation-heading span {
+    background: var(--edu-danger-50);
+    color: var(--edu-danger-700);
+}
+
 .gi-vehicle-relation__schools {
     display: grid;
     gap: 0.35rem;

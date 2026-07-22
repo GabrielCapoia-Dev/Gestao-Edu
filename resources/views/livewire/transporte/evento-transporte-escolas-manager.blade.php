@@ -150,7 +150,7 @@
                                     @foreach ($item['veiculos'] as $veiculo)
                                         @php $saldo = (int) $veiculo->lugares_disponiveis - $item['total_selecionado']; @endphp
                                         <option value="{{ $veiculo->getKey() }}">
-                                            {{ $veiculo->identificacao ? $veiculo->identificacao.' — ' : '' }}{{ $veiculo->placa }} · {{ $veiculo->lugares_disponiveis }} livre(s){{ $veiculo->ja_alocado ? ' · já em rota' : '' }}{{ $saldo < 0 ? ' · excede em '.abs($saldo) : '' }}
+                                            {{ $veiculo->identificacao ? $veiculo->identificacao.' — ' : '' }}{{ $veiculo->placa }} · {{ $veiculo->lugares_disponiveis >= 0 ? $veiculo->lugares_disponiveis.' livre(s)' : 'lotação excedida em '.abs($veiculo->lugares_disponiveis) }}{{ $veiculo->ja_alocado ? ' · já em rota' : '' }}{{ $saldo < 0 ? ' · seleção excede em '.abs($saldo) : '' }}
                                         </option>
                                     @endforeach
                                 </select>
@@ -197,13 +197,6 @@
                         <div class="gi-school-transport-card__selection-summary">
                             {{ number_format($item['total_selecionado'], 0, ',', '.') }} estudante(s) selecionado(s)
                         </div>
-
-                        @if ($item['necessita_superlotacao'])
-                            <label class="gi-school-transport-card__overload">
-                                <input type="checkbox" wire:model.live="permitirSuperlotacao.{{ $agendamentoId }}">
-                                <span>Confirmar superlotação deste veículo</span>
-                            </label>
-                        @endif
 
                         <button
                             type="button"
