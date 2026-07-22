@@ -31,7 +31,9 @@ class MotoristaTransporteService
             ->withExists([
                 'servidorFuncoes as motorista_ativo' => fn (Builder $vinculos): Builder => $vinculos
                     ->ativos()
-                    ->whereHas('funcaoAdministrativa', fn (Builder $funcoes): Builder => $funcoes->motorista()),
+                    ->whereHas('funcaoAdministrativa', fn (Builder $funcoes): Builder => $funcoes
+                        ->motorista()
+                        ->where('ativo', true)),
             ])
             ->withCount([
                 'alocacoesTransporteAtivas as eventos_transporte_count' => fn (Builder $alocacoes): Builder => $alocacoes

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Admin\Resources\EventosCalendario\Schemas;
+namespace App\Filament\Admin\Pages\Schemas;
 
 use App\Models\Enums\EventoCalendarioCategoria;
 use App\Models\Enums\EventoCalendarioCor;

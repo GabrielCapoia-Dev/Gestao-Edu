@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Filament\Admin\Resources\EventosCalendario;
+namespace App\Filament\Admin\Pages\Actions;
 
-use App\Filament\Admin\Resources\EventosCalendario\Schemas\EventoCalendarioForm;
+use App\Filament\Admin\Pages\Schemas\EventoCalendarioForm;
 use App\Models\EventoCalendario;
 use App\Models\User;
 use App\Services\Dashboard\EventoCalendarioService;

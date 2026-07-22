@@ -2,8 +2,8 @@
 
 namespace App\Filament\Admin\Pages;
 
-use App\Filament\Admin\Resources\EventosCalendario\EventoCalendarioCreateAction;
-use App\Filament\Admin\Resources\EventosCalendario\Schemas\EventoCalendarioForm;
+use App\Filament\Admin\Pages\Actions\EventoCalendarioCreateAction;
+use App\Filament\Admin\Pages\Schemas\EventoCalendarioForm;
 use App\Models\Enums\EventoCalendarioStatus;
 use App\Models\Enums\ListaPermissoes;
 use App\Models\EventoCalendario;
@@ -226,16 +226,19 @@ class GerenciarEventos extends Page implements HasTable
             ->toolbarActions([
                 BulkActionGroup::make($this->acoesEmMassa($user)),
             ])
-            ->defaultSort(function (Builder $query): Builder {
+            ->defaultSort(function (Builder $query) use ($user): Builder {
                 if ($this->getTableSortColumn()) {
                     return $query;
                 }
 
-                return $query
-                    ->orderByRaw(
+                if ($user->hasPermissionTo(ListaPermissoes::ListarEventosTransporte->label())) {
+                    $query->orderByRaw(
                         'CASE WHEN eventos_calendario.status = ? THEN 0 ELSE 1 END',
                         [EventoCalendarioStatus::PENDENTE_APROVACAO->value],
-                    )
+                    );
+                }
+
+                return $query
                     ->orderBy('eventos_calendario.data_inicio')
                     ->orderBy('eventos_calendario.created_at')
                     ->orderBy('eventos_calendario.id');

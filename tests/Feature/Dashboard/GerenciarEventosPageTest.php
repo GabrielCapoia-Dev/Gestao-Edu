@@ -89,6 +89,30 @@ class GerenciarEventosPageTest extends TestCase
             ->assertDontSee('Solicitações em aberto');
     }
 
+    public function test_visao_sem_permissao_de_transporte_ordena_pela_data_do_evento(): void
+    {
+        $usuario = $this->usuarioComPermissoes(ListaPermissoes::ListarMeusEventos);
+        $proximo = $this->evento($usuario, 'Evento mais próximo', EventoCalendarioStatus::PUBLICADO, false);
+        $proximo->forceFill([
+            'data_inicio' => '2026-07-25 08:00:00',
+            'data_fim' => '2026-07-25 12:00:00',
+        ])->save();
+        $pendenteDistante = $this->evento(
+            $usuario,
+            'Transporte pendente distante',
+            EventoCalendarioStatus::PENDENTE_APROVACAO,
+            true,
+        );
+        $pendenteDistante->forceFill([
+            'data_inicio' => '2026-08-10 08:00:00',
+            'data_fim' => '2026-08-10 12:00:00',
+        ])->save();
+
+        Livewire::actingAs($usuario)
+            ->test(GerenciarEventos::class)
+            ->assertCanSeeTableRecords([$proximo, $pendenteDistante], inOrder: true);
+    }
+
     public function test_publicacao_de_transporte_e_reautorizada_pela_action_da_page(): void
     {
         $usuario = $this->usuarioComPermissoes(
@@ -111,6 +135,24 @@ class GerenciarEventosPageTest extends TestCase
         $evento->refresh();
         $this->assertSame(EventoCalendarioStatus::PUBLICADO, $evento->status);
         $this->assertTrue($evento->ativo);
+    }
+
+    public function test_evento_de_transporte_rejeitado_nao_expoe_acao_de_publicacao(): void
+    {
+        $usuario = $this->usuarioComPermissoes(
+            ListaPermissoes::ListarEventosTransporte,
+            ListaPermissoes::PublicarEventosTransporte,
+        );
+        $evento = $this->evento(
+            User::factory()->create(),
+            'Evento rejeitado',
+            EventoCalendarioStatus::REJEITADO,
+            true,
+        );
+
+        Livewire::actingAs($usuario)
+            ->test(GerenciarEventos::class)
+            ->assertTableActionHidden('publicar', $evento);
     }
 
     public function test_detalhes_abrem_em_slideover_e_acoes_de_exclusao_e_duplicacao_nao_existem(): void

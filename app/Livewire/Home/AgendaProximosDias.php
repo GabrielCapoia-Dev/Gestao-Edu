@@ -2,7 +2,7 @@
 
 namespace App\Livewire\Home;
 
-use App\Filament\Admin\Resources\EventosCalendario\EventoCalendarioCreateAction;
+use App\Filament\Admin\Pages\Actions\EventoCalendarioCreateAction;
 use App\Filament\Admin\Pages\GerenciarEventos;
 use App\Models\Enums\ListaPermissoes;
 use App\Models\EventoCalendario;

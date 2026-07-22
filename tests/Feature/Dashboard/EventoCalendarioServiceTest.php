@@ -3,7 +3,7 @@
 namespace Tests\Feature\Dashboard;
 
 use App\Filament\Admin\Pages\GerenciarEventos;
-use App\Filament\Admin\Resources\EventosCalendario\Schemas\EventoCalendarioForm;
+use App\Filament\Admin\Pages\Schemas\EventoCalendarioForm;
 use App\Models\Aluno;
 use App\Models\Enums\EventoCalendarioHistoricoAcao;
 use App\Models\Enums\EventoCalendarioStatus;

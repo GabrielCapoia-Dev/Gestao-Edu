@@ -82,6 +82,19 @@ class EventoCalendarioWorkflowServiceTest extends TestCase
         ]);
     }
 
+    public function test_evento_de_transporte_rejeitado_precisa_ser_reenviado_antes_de_publicar(): void
+    {
+        $ator = $this->usuarioComPermissoes(
+            ListaPermissoes::ListarEventosGeral,
+            ListaPermissoes::PublicarEventosTransporte,
+        );
+        $evento = $this->evento(EventoCalendarioStatus::REJEITADO, false, transporte: true);
+
+        $this->expectException(AuthorizationException::class);
+
+        app(EventoCalendarioWorkflowService::class)->publicar($evento, $ator);
+    }
+
     public function test_desativa_evento_comum_publicado_e_registra_historico(): void
     {
         $ator = $this->usuarioComPermissoes(

@@ -24,7 +24,7 @@ class ImportarEventosCalendario extends Page
 
     protected static ?string $title = 'Importar eventos';
 
-    protected string $view = 'filament.admin.resources.eventos-calendario.pages.importar-eventos-calendario';
+    protected string $view = 'filament.admin.pages.importar-eventos-calendario';
 
     public $arquivo = null;
 

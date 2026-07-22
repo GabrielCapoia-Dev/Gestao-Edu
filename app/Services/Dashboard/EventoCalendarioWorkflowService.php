@@ -24,6 +24,12 @@ class EventoCalendarioWorkflowService
             Gate::forUser($ator)->authorize('publish', $evento);
 
             if ($evento->possuiTransporte()) {
+                if ($evento->status === EventoCalendarioStatus::REJEITADO) {
+                    throw ValidationException::withMessages([
+                        'evento' => 'Edite o evento rejeitado para reenviá-lo à análise antes de publicar.',
+                    ]);
+                }
+
                 $this->disponibilidade->validarAlocacoesAtivasDoEvento($evento, bloquear: true);
             }
 
@@ -33,10 +39,7 @@ class EventoCalendarioWorkflowService
 
             $anterior = $evento->status;
             $aprovacaoTransporte = $evento->possuiTransporte()
-                && in_array($anterior, [
-                    EventoCalendarioStatus::PENDENTE_APROVACAO,
-                    EventoCalendarioStatus::REJEITADO,
-                ], true);
+                && $anterior === EventoCalendarioStatus::PENDENTE_APROVACAO;
             $acao = match (true) {
                 $aprovacaoTransporte => EventoCalendarioHistoricoAcao::APROVADO,
                 $this->jaFoiPublicado($evento) => EventoCalendarioHistoricoAcao::REPUBLICADO,

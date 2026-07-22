@@ -78,6 +78,23 @@ class TransporteCadastrosServiceTest extends TestCase
         ]);
     }
 
+    public function test_funcao_de_motorista_inativa_nao_mantem_motorista_como_ativo(): void
+    {
+        $ator = $this->usuarioComPermissao();
+        $service = app(MotoristaTransporteService::class);
+        $motorista = $service->criar($ator, [
+            'nome' => 'Motorista com função inativa',
+            'cpf' => '14725836900',
+            'telefone' => null,
+        ]);
+
+        FuncaoAdministrativa::query()->motorista()->sole()->update(['ativo' => false]);
+
+        $resultado = $service->query($ator)->findOrFail($motorista->id);
+
+        $this->assertFalse((bool) $resultado->motorista_ativo);
+    }
+
     public function test_veiculo_normaliza_placa_e_nao_pode_ser_excluido(): void
     {
         $ator = $this->usuarioComPermissao();

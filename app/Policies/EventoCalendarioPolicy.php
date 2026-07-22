@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Models\Enums\EventoCalendarioStatus;
 use App\Models\Enums\ListaPermissoes;
 use App\Models\EventoCalendario;
 use App\Models\User;
@@ -59,7 +60,13 @@ class EventoCalendarioPolicy
             return false;
         }
 
-        return $evento->possuiTransporte()
+        $possuiTransporte = $evento->possuiTransporte();
+
+        if ($possuiTransporte && $evento->status === EventoCalendarioStatus::REJEITADO) {
+            return false;
+        }
+
+        return $possuiTransporte
             ? $user->hasPermissionTo(ListaPermissoes::PublicarEventosTransporte->label())
             : $this->publishCommon($user);
     }

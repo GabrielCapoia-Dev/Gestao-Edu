@@ -2,6 +2,9 @@
     $totalEstudantes = (int) $evento->escolasAgendadas
         ->where('precisa_transporte', true)
         ->sum('quantidade_estimada_transporte');
+    $escolasAbrangentes = $evento->enviar_todas_escolas
+        ? ($evento->publicoAlvo?->escolas ?? collect())
+        : collect();
 @endphp
 
 <div class="gi-event-detail gi-event-detail--management">
@@ -60,7 +63,7 @@
             </div>
             <span class="gi-event-detail__count">
                 @if ($evento->enviar_todas_escolas)
-                    Todas do escopo
+                    {{ $escolasAbrangentes->isNotEmpty() ? $escolasAbrangentes->count().' escola(s)' : 'Todas do escopo' }}
                 @else
                     {{ $evento->escolasAgendadas->count() }} escola(s)
                 @endif
@@ -68,8 +71,18 @@
         </header>
 
         @if ($evento->enviar_todas_escolas)
-            <div class="gi-event-detail__empty">
-                O evento foi enviado para todas as escolas autorizadas no escopo do criador.
+            <div class="gi-event-detail__schools gi-event-detail__schools--management">
+                @forelse ($escolasAbrangentes as $escola)
+                    <article class="gi-event-detail__school">
+                        <div class="gi-event-detail__school-heading">
+                            <strong>{{ $escola->nome }}</strong>
+                        </div>
+                    </article>
+                @empty
+                    <div class="gi-event-detail__empty">
+                        O evento foi enviado para todas as escolas autorizadas no escopo do criador.
+                    </div>
+                @endforelse
             </div>
         @else
             <div class="gi-event-detail__schools gi-event-detail__schools--management">
