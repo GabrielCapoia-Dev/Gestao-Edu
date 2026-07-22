@@ -101,7 +101,20 @@ class ManualCalendarEventSource implements CalendarEventSource
         $query = EventoCalendario::query()->publicados();
 
         if (! $context->redeCompleta) {
-            $this->publicos->aplicarEscopo($query, $context->user, 'eventos_calendario.publico_alvo_id');
+            $query->where(function (Builder $visiveis) use ($context): void {
+                $this->publicos->aplicarEscopo(
+                    $visiveis,
+                    $context->user,
+                    'eventos_calendario.publico_alvo_id',
+                );
+
+                // "Para mim" também inclui o que o próprio usuário publicou. Isso
+                // não transforma usuários globais em destinatários de todas as escolas.
+                $visiveis->orWhere(
+                    'eventos_calendario.criado_por_id',
+                    $context->user->getKey(),
+                );
+            });
         }
 
         if (! $context->redeCompleta && ! $context->userContext->escopoGlobal) {

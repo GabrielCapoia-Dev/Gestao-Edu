@@ -164,6 +164,48 @@ class ManualCalendarEventSourceTest extends TestCase
         );
     }
 
+    public function test_criador_global_visualiza_no_modo_pessoal_evento_destinado_a_escolas(): void
+    {
+        $agora = CarbonImmutable::parse('2026-07-20 10:00:00');
+        CarbonImmutable::setTestNow($agora);
+        $setor = $this->criarSetor('Setor do evento criado pelo administrador');
+        $escola = $this->criarEscola('Escola do evento criado pelo administrador', $setor);
+        $adminCriador = User::factory()->create();
+        $adminCriador->assignRole(Role::findOrCreate('Admin', 'web'));
+        $outroAdmin = User::factory()->create();
+        $outroAdmin->assignRole(Role::findOrCreate('Admin', 'web'));
+        $publico = app(PublicoAlvoService::class)->criar($adminCriador, [
+            'todos_usuarios' => false,
+            'escolas_ids' => [$escola->id],
+        ]);
+        $evento = $this->criarEvento($publico->id, 'Evento escolar do administrador', $agora->addDays(3));
+        $evento->update([
+            'criado_por_id' => $adminCriador->id,
+            'enviar_todas_escolas' => false,
+        ]);
+        $evento->escolasAgendadas()->create([
+            'escola_id' => $escola->id,
+            'hora_inicio' => '13:30',
+            'hora_fim' => '17:30',
+            'precisa_transporte' => false,
+        ]);
+        $source = app(ManualCalendarEventSource::class);
+
+        $doCriador = collect($source->events(
+            $this->contexto($adminCriador, $agora, $agora->addDays(4)->endOfDay()),
+        ));
+        $doOutroAdmin = collect($source->events(
+            $this->contexto($outroAdmin, $agora, $agora->addDays(4)->endOfDay()),
+        ));
+
+        $this->assertContains($evento->id, $doCriador->map(
+            static fn (CalendarEventData $item): int => (int) str($item->reference)->before('@')->toString(),
+        ));
+        $this->assertNotContains($evento->id, $doOutroAdmin->map(
+            static fn (CalendarEventData $item): int => (int) str($item->reference)->before('@')->toString(),
+        ));
+    }
+
     public function test_permissao_da_agenda_da_rede_libera_eventos_fora_do_escopo_global_do_usuario(): void
     {
         $agora = CarbonImmutable::parse('2026-07-20 10:00:00');
