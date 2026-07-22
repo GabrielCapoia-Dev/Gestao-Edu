@@ -3888,7 +3888,7 @@
 /* Gestão de transporte diretamente por escola */
 .gi-school-transport-manager {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
     gap: 0.75rem;
     padding: 0.85rem;
 }
@@ -4189,6 +4189,13 @@
     background: #fff;
 }
 
+.gi-school-transport-card__resources {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: end;
+    gap: 0.75rem;
+}
+
 .gi-school-transport-card__form fieldset,
 .gi-school-transport-card__form legend {
     min-width: 0;
@@ -4394,6 +4401,10 @@
     .gi-vehicle-relation-toolbar {
         align-items: flex-start;
         flex-direction: column;
+    }
+
+    .gi-school-transport-card__resources {
+        grid-template-columns: minmax(0, 1fr);
     }
 
     .fi-modal-window.gi-event-detail-modal-window {
