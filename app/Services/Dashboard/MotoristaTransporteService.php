@@ -9,6 +9,7 @@ use App\Models\ServidorFuncaoAdministrativa;
 use App\Models\User;
 use App\Services\ServidorService;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
@@ -256,9 +257,11 @@ class MotoristaTransporteService
     private function carregar(Servidor $motorista): Servidor
     {
         return $motorista->fresh([
-            'servidorFuncoes' => fn (Builder $vinculos): Builder => $vinculos
-                ->whereHas('funcaoAdministrativa', fn (Builder $funcoes): Builder => $funcoes->motorista())
-                ->latest('id'),
+            'servidorFuncoes' => function (HasMany $vinculos): void {
+                $vinculos
+                    ->whereHas('funcaoAdministrativa', fn (Builder $funcoes): Builder => $funcoes->motorista())
+                    ->latest('id');
+            },
             'servidorFuncoes.funcaoAdministrativa',
         ]);
     }
