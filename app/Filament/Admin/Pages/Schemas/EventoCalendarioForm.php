@@ -63,6 +63,11 @@ class EventoCalendarioForm
                         ->rows(4)
                         ->maxLength(5000)
                         ->columnSpanFull(),
+                    TextInput::make('local')
+                        ->label('Local do evento')
+                        ->placeholder('Ex.: Centro de Formação Municipal')
+                        ->maxLength(255)
+                        ->columnSpanFull(),
                     Select::make('categoria')
                         ->label('Categoria')
                         ->options(collect(EventoCalendarioCategoria::cases())->mapWithKeys(

@@ -112,6 +112,11 @@ class EventoCalendarioPolicy
         return ! $evento || ($this->view($user, $evento) && $evento->possuiTransporte());
     }
 
+    public function report(User $user, EventoCalendario $evento): bool
+    {
+        return $this->view($user, $evento);
+    }
+
     public function manageAudience(User $user, ?EventoCalendario $evento = null): bool
     {
         return $user->hasPermissionTo(ListaPermissoes::GerenciarPublicoAlvoDeEventos->label())

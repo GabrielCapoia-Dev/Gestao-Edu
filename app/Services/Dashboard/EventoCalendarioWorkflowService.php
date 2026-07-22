@@ -85,9 +85,12 @@ class EventoCalendarioWorkflowService
             $evento = $this->bloquear($evento);
             Gate::forUser($ator)->authorize('reject', $evento);
 
-            if ($evento->status !== EventoCalendarioStatus::PENDENTE_APROVACAO) {
+            if (! in_array($evento->status, [
+                EventoCalendarioStatus::PENDENTE_APROVACAO,
+                EventoCalendarioStatus::PUBLICADO,
+            ], true)) {
                 throw ValidationException::withMessages([
-                    'evento' => 'Somente solicitações pendentes podem ser rejeitadas.',
+                    'evento' => 'Somente eventos de transporte pendentes ou publicados podem ser rejeitados.',
                 ]);
             }
 

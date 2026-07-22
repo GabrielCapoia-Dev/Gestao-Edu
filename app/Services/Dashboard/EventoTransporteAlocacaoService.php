@@ -4,14 +4,17 @@ namespace App\Services\Dashboard;
 
 use App\Models\Enums\EventoCalendarioHistoricoAcao;
 use App\Models\Enums\EventoCalendarioStatus;
+use App\Models\Enums\EventoCalendarioTransporteEscopo;
 use App\Models\EventoCalendario;
 use App\Models\EventoCalendarioTransporteAlocacao;
 use App\Models\FuncaoAdministrativa;
 use App\Models\Pessoa;
 use App\Models\ServidorFuncaoAdministrativa;
+use App\Models\Turma;
 use App\Models\User;
 use App\Models\VeiculoTransporte;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -41,6 +44,9 @@ class EventoTransporteAlocacaoService
                             ->motorista()
                             ->where('ativo', true));
                 },
+                'turmas:id,nome,id_serie,id_escola',
+                'turmas.serie:id,nome',
+                'turmas.escola:id,nome',
             ])
             ->orderBy('id');
     }
@@ -50,10 +56,15 @@ class EventoTransporteAlocacaoService
         EventoCalendario $evento,
         int $veiculoId,
         int $motoristaId,
+        array $turmaIds = [],
     ): EventoCalendarioTransporteAlocacao {
-        return DB::transaction(function () use ($ator, $evento, $veiculoId, $motoristaId): EventoCalendarioTransporteAlocacao {
+        return DB::transaction(function () use ($ator, $evento, $veiculoId, $motoristaId, $turmaIds): EventoCalendarioTransporteAlocacao {
             $evento = EventoCalendario::query()
-                ->with('escolasAgendadas:id,evento_calendario_id,precisa_transporte')
+                ->with([
+                    'escolasAgendadas:id,evento_calendario_id,escola_id,precisa_transporte,escopo_transporte',
+                    'escolasAgendadas.series:id',
+                    'escolasAgendadas.turmas:id',
+                ])
                 ->lockForUpdate()
                 ->findOrFail($evento->getKey());
             Gate::forUser($ator)->authorize('create', [EventoCalendarioTransporteAlocacao::class, $evento]);
@@ -62,6 +73,8 @@ class EventoTransporteAlocacaoService
             $veiculo = VeiculoTransporte::query()->lockForUpdate()->findOrFail($veiculoId);
             $motorista = Pessoa::query()->lockForUpdate()->findOrFail($motoristaId);
             $this->validarRecursosAtivos($veiculo, $motorista);
+            $turmaIds = collect($turmaIds)->map(fn ($id): int => (int) $id)->filter()->unique()->values()->all();
+            $this->validarTurmas($evento, $turmaIds);
 
             $duplicada = EventoCalendarioTransporteAlocacao::query()
                 ->ativas()
@@ -95,6 +108,7 @@ class EventoTransporteAlocacaoService
                 'motorista_id' => $motorista->getKey(),
                 'criado_por_id' => $ator->getKey(),
             ]);
+            $alocacao->turmas()->sync($turmaIds);
 
             $this->workflow->registrarTransporte(
                 $evento,
@@ -106,6 +120,9 @@ class EventoTransporteAlocacaoService
             return $alocacao->load([
                 'veiculo:id,placa,identificacao,capacidade_passageiros,ativo',
                 'motorista:id,nome,cpf,telefone,status',
+                'turmas:id,nome,id_serie,id_escola',
+                'turmas.serie:id,nome',
+                'turmas.escola:id,nome',
             ]);
         });
     }
@@ -238,6 +255,53 @@ class EventoTransporteAlocacaoService
             ->pluck('nome', 'id')->all();
     }
 
+    /** @return array<int, string> */
+    public function turmaOptions(User $ator, EventoCalendario $evento): array
+    {
+        $this->autorizarGerenciamento($ator, $evento);
+        $evento->loadMissing([
+            'escolasAgendadas.series:id',
+            'escolasAgendadas.turmas:id',
+        ]);
+
+        $ocupadas = EventoCalendarioTransporteAlocacao::query()
+            ->ativas()
+            ->where('evento_calendario_id', $evento->getKey())
+            ->with('turmas:id')
+            ->get()
+            ->flatMap->turmas
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
+
+        return $this->turmasElegiveisQuery($evento)
+            ->whereNotIn('id', $ocupadas)
+            ->with(['serie:id,nome', 'escola:id,nome'])
+            ->orderBy('id_escola')->orderBy('id_serie')->orderBy('nome')
+            ->get()
+            ->mapWithKeys(fn (Turma $turma): array => [
+                $turma->getKey() => collect([
+                    $turma->escola?->nome,
+                    trim(($turma->serie?->nome ? $turma->serie->nome.' ' : '').$turma->nome),
+                ])->filter()->implode(' — '),
+            ])->all();
+    }
+
+    /** @return EloquentCollection<int, Turma> */
+    public function turmasParticipantes(User $ator, EventoCalendario $evento): EloquentCollection
+    {
+        $this->autorizarVisualizacao($ator, $evento);
+        $evento->loadMissing([
+            'escolasAgendadas.series:id',
+            'escolasAgendadas.turmas:id',
+        ]);
+
+        return $this->turmasElegiveisQuery($evento)
+            ->with(['serie:id,nome', 'escola:id,nome'])
+            ->orderBy('id_escola')->orderBy('id_serie')->orderBy('nome')
+            ->get();
+    }
+
     public function removerTodasDoEventoInternamente(EventoCalendario $evento, User $ator): int
     {
         Gate::forUser($ator)->authorize('update', $evento);
@@ -319,6 +383,58 @@ class EventoTransporteAlocacaoService
                 'motorista' => 'O motorista informado não possui vínculo ativo de motorista.',
             ]);
         }
+    }
+
+    /** @param list<int> $turmaIds */
+    private function validarTurmas(EventoCalendario $evento, array $turmaIds): void
+    {
+        if ($turmaIds === []) {
+            return;
+        }
+
+        Turma::query()
+            ->whereKey($turmaIds)
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get(['id']);
+
+        $validas = $this->turmasElegiveisQuery($evento)->whereKey($turmaIds)->count();
+        $ocupadas = EventoCalendarioTransporteAlocacao::query()
+            ->ativas()
+            ->where('evento_calendario_id', $evento->getKey())
+            ->whereHas('turmas', fn (Builder $turmas): Builder => $turmas->whereKey($turmaIds))
+            ->exists();
+
+        if ($validas !== count($turmaIds) || $ocupadas) {
+            throw ValidationException::withMessages([
+                'turma_ids' => 'Uma turma não pertence ao evento ou já está vinculada a outro veículo.',
+            ]);
+        }
+    }
+
+    private function turmasElegiveisQuery(EventoCalendario $evento): Builder
+    {
+        $agendamentos = $evento->escolasAgendadas->where('precisa_transporte', true);
+
+        if ($agendamentos->isEmpty()) {
+            return Turma::query()->whereRaw('1 = 0');
+        }
+
+        return Turma::query()->where(function (Builder $selecoes) use ($agendamentos): void {
+            foreach ($agendamentos as $agendamento) {
+                $selecoes->orWhere(function (Builder $turmas) use ($agendamento): void {
+                    $turmas->where('id_escola', $agendamento->escola_id);
+
+                    if ($agendamento->escopo_transporte === EventoCalendarioTransporteEscopo::SERIES) {
+                        $turmas->whereIn('id_serie', $agendamento->series->modelKeys());
+                    }
+
+                    if ($agendamento->escopo_transporte === EventoCalendarioTransporteEscopo::TURMAS) {
+                        $turmas->whereKey($agendamento->turmas->modelKeys());
+                    }
+                });
+            }
+        });
     }
 
     private function motoristaAtivo(Pessoa $motorista): bool

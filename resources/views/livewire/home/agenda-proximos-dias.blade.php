@@ -108,6 +108,7 @@
                                             </span>
                                         @endif
                                         <strong>{{ $event->titulo }}</strong>
+                                        @if ($event->local)<span>{{ $event->local }}</span>@endif
                                         @if ($event->statusLabel)<span>{{ $event->statusLabel }}</span>@endif
                                         @if ($event->progresso !== null)
                                             <progress
@@ -144,10 +145,14 @@
                                             @endif
                                         </span>
                                         @if ($event->escola)<span><strong>Escola:</strong> {{ $event->escola }}</span>@endif
+                                        @if ($event->local)<span><strong>Local:</strong> {{ $event->local }}</span>@endif
                                         @if ($event->setor)<span><strong>Setor:</strong> {{ $event->setor }}</span>@endif
                                         @if ($event->transporteEstimado !== null)
                                             <span><strong>Transporte:</strong> {{ $event->transporteEstimado }} estudante(s) estimado(s)</span>
                                         @endif
+                                        @foreach ($event->transporteAlocacoes as $alocacao)
+                                            <span><strong>Veículo:</strong> {{ $alocacao }}</span>
+                                        @endforeach
                                         @if ($event->actionUrl)
                                             <a href="{{ $event->actionUrl }}">{{ $event->actionLabel ?: 'Acessar' }}</a>
                                         @endif

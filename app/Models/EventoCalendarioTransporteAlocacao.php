@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class EventoCalendarioTransporteAlocacao extends Model
 {
@@ -50,6 +51,16 @@ class EventoCalendarioTransporteAlocacao extends Model
     public function removidoPor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'removido_por_id');
+    }
+
+    public function turmas(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            Turma::class,
+            'evento_transporte_alocacao_turma',
+            'alocacao_id',
+            'turma_id',
+        )->withTimestamps();
     }
 
     public function scopeAtivas(Builder $query): Builder

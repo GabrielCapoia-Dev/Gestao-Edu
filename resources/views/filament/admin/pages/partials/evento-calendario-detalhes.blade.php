@@ -50,6 +50,10 @@
             <dd>{{ $evento->categoria?->label() ?? 'Não informada' }}</dd>
         </div>
         <div>
+            <dt>Local</dt>
+            <dd>{{ $evento->local ?: 'Não informado' }}</dd>
+        </div>
+        <div>
             <dt>Total estimado</dt>
             <dd>{{ $evento->possuiTransporte() ? number_format($totalEstudantes, 0, ',', '.').' estudante(s)' : 'Transporte não solicitado' }}</dd>
         </div>
@@ -100,7 +104,10 @@
                         @endif
 
                         @if ($agendamento->turmas->isNotEmpty())
-                            <p><b>Turmas:</b> {{ $agendamento->turmas->pluck('nome')->join(', ') }}</p>
+                            <p>
+                                <b>Turmas:</b>
+                                {{ $agendamento->turmas->map(fn ($turma) => trim(($turma->serie?->nome ? $turma->serie->nome.' ' : '').$turma->nome))->join(', ') }}
+                            </p>
                         @endif
 
                         <p>

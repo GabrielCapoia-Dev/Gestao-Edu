@@ -30,6 +30,7 @@ class EventoCalendario extends Model
         'enviar_todas_escolas',
         'titulo',
         'descricao',
+        'local',
         'categoria',
         'assunto',
         'prioridade',

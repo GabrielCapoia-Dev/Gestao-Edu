@@ -259,6 +259,7 @@ class EventoCalendarioService
         $validator = validator($dados, [
             'titulo' => ['required', 'string', 'max:160'],
             'descricao' => ['nullable', 'string', 'max:5000'],
+            'local' => ['nullable', 'string', 'max:255'],
             'categoria' => ['required', Rule::enum(EventoCalendarioCategoria::class)],
             'prioridade' => ['required', Rule::enum(DashboardPrioridade::class)],
             'data_inicio' => ['required', 'date'],

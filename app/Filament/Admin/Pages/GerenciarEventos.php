@@ -12,7 +12,9 @@ use App\Models\User;
 use App\Livewire\Transporte\MotoristasTransporteTable;
 use App\Livewire\Transporte\VeiculosTransporteTable;
 use App\Services\Dashboard\EventoCalendarioListQueryService;
+use App\Services\Dashboard\EventoCalendarioAccessService;
 use App\Services\Dashboard\EventoCalendarioService;
+use App\Services\Dashboard\EventoCalendarioRelatorioService;
 use App\Services\Dashboard\EventoCalendarioWorkflowService;
 use App\Services\ProfilePreviewService;
 use BackedEnum;
@@ -39,6 +41,7 @@ use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
@@ -152,6 +155,13 @@ class GerenciarEventos extends Page implements HasTable
                     ->searchable(['titulo', 'descricao'])
                     ->sortable()
                     ->weight('bold')
+                    ->wrap(),
+
+                TextColumn::make('local')
+                    ->label('Local')
+                    ->placeholder('Não informado')
+                    ->searchable()
+                    ->toggleable()
                     ->wrap(),
 
                 TextColumn::make('resumo_escolas')
@@ -385,6 +395,14 @@ class GerenciarEventos extends Page implements HasTable
                 ->modalSubmitAction(false)
                 ->modalCancelActionLabel('Fechar'),
 
+            Action::make('relatorio')
+                ->label('Gerar relatório PDF')
+                ->icon('heroicon-o-document-arrow-down')
+                ->color('gray')
+                ->authorize(fn (EventoCalendario $record): bool => Gate::forUser($user)->allows('report', $record))
+                ->action(fn (EventoCalendario $record) => app(EventoCalendarioRelatorioService::class)
+                    ->download($user, $record)),
+
             EditAction::make('editar')
                 ->label('Editar')
                 ->icon('heroicon-o-pencil-square')
@@ -427,7 +445,11 @@ class GerenciarEventos extends Page implements HasTable
                 ->label('Rejeitar')
                 ->icon('heroicon-o-x-circle')
                 ->color('danger')
-                ->visible(fn (EventoCalendario $record): bool => $record->status === EventoCalendarioStatus::PENDENTE_APROVACAO
+                ->visible(fn (EventoCalendario $record): bool => in_array($record->status, [
+                    EventoCalendarioStatus::PENDENTE_APROVACAO,
+                    EventoCalendarioStatus::PUBLICADO,
+                ], true)
+                    && $record->possuiTransporte()
                     && Gate::forUser($user)->allows('reject', $record))
                 ->authorize(fn (EventoCalendario $record): bool => Gate::forUser($user)->allows('reject', $record))
                 ->requiresConfirmation()
@@ -473,7 +495,10 @@ class GerenciarEventos extends Page implements HasTable
     /** @return array<int, Action> */
     private function acoesDoDetalhe(User $user, EventoCalendario $evento): array
     {
-        if ($evento->status !== EventoCalendarioStatus::PENDENTE_APROVACAO
+        if (! in_array($evento->status, [
+            EventoCalendarioStatus::PENDENTE_APROVACAO,
+            EventoCalendarioStatus::PUBLICADO,
+        ], true)
             || ! $evento->possui_transporte) {
             return [];
         }
@@ -483,7 +508,8 @@ class GerenciarEventos extends Page implements HasTable
                 ->label('Aprovar e publicar')
                 ->icon('heroicon-o-check-circle')
                 ->color('success')
-                ->visible(fn (EventoCalendario $record): bool => Gate::forUser($user)->allows('publish', $record))
+                ->visible(fn (EventoCalendario $record): bool => $record->status === EventoCalendarioStatus::PENDENTE_APROVACAO
+                    && Gate::forUser($user)->allows('publish', $record))
                 ->authorize(fn (EventoCalendario $record): bool => Gate::forUser($user)->allows('publish', $record))
                 ->requiresConfirmation()
                 ->modalHeading('Aprovar e publicar este evento?')
@@ -536,8 +562,8 @@ class GerenciarEventos extends Page implements HasTable
                 ->requiresConfirmation()
                 ->modalHeading('Publicar eventos selecionados')
                 ->modalDescription('Todos os eventos selecionados precisam estar no seu escopo e respeitar a permissão específica de transporte.')
-                ->action(function ($records) use ($user): void {
-                    $records->loadMissing('escolasAgendadas:id,evento_calendario_id,precisa_transporte');
+                ->action(function (iterable $records) use ($user): void {
+                    $records = $this->eventosSelecionados($user, $records);
 
                     foreach ($records as $record) {
                         Gate::forUser($user)->authorize('publish', $record);
@@ -564,8 +590,8 @@ class GerenciarEventos extends Page implements HasTable
                 ->requiresConfirmation()
                 ->modalHeading('Desativar eventos selecionados')
                 ->modalDescription('Todos os eventos precisam estar publicados e dentro do seu escopo. Nenhum registro será excluído.')
-                ->action(function ($records) use ($user): void {
-                    $records->loadMissing('escolasAgendadas:id,evento_calendario_id,precisa_transporte');
+                ->action(function (iterable $records) use ($user): void {
+                    $records = $this->eventosSelecionados($user, $records);
 
                     foreach ($records as $record) {
                         Gate::forUser($user)->authorize('deactivate', $record);
@@ -617,6 +643,34 @@ class GerenciarEventos extends Page implements HasTable
         }
 
         return $resumo !== [] ? $resumo : ['Sem escola vinculada'];
+    }
+
+    /** @return EloquentCollection<int, EventoCalendario> */
+    private function eventosSelecionados(User $user, iterable $records): EloquentCollection
+    {
+        $ids = [];
+
+        foreach ($records as $record) {
+            if ($record instanceof EventoCalendario) {
+                $ids[] = (int) $record->getKey();
+            }
+        }
+
+        $ids = array_values(array_unique(array_filter($ids)));
+
+        $eventos = app(EventoCalendarioAccessService::class)
+            ->aplicarEscopo(
+                $user,
+                EventoCalendario::query()->with(
+                    'escolasAgendadas:id,evento_calendario_id,precisa_transporte',
+                ),
+            )
+            ->whereKey($ids)
+            ->get();
+
+        abort_unless($ids !== [] && $eventos->count() === count($ids), 403);
+
+        return $eventos;
     }
 
     /** @return array{pendentes: int, publicados: int, rejeitados: int, total_transporte: int} */

@@ -6,6 +6,7 @@ use App\Models\Concerns\HasUuidCodigo;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Turma extends Model
 {
@@ -70,6 +71,16 @@ class Turma extends Model
     {
         return $this->belongsToMany(Avaliacao::class, 'avaliacao_turma')
             ->withTimestamps();
+    }
+
+    public function alocacoesTransporte(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            EventoCalendarioTransporteAlocacao::class,
+            'evento_transporte_alocacao_turma',
+            'turma_id',
+            'alocacao_id',
+        )->withTimestamps();
     }
 
     public function avaliacaoDocumentos()

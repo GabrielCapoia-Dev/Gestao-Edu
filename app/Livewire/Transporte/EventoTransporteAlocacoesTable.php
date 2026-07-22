@@ -74,6 +74,17 @@ class EventoTransporteAlocacoesTable extends TableWidget
                             ->searchable()
                             ->preload()
                             ->required(),
+                        Select::make('turma_ids')
+                            ->label('Turmas atendidas por este veículo')
+                            ->options(fn (): array => $this->service()->turmaOptions(
+                                $this->usuarioEfetivo(),
+                                $this->evento(),
+                            ))
+                            ->multiple()
+                            ->searchable()
+                            ->preload()
+                            ->required()
+                            ->helperText('Cada turma pode ser vinculada a somente um veículo neste evento.'),
                     ])
                     ->using(function (array $data): EventoCalendarioTransporteAlocacao {
                         return $this->service()->adicionar(
@@ -81,6 +92,7 @@ class EventoTransporteAlocacoesTable extends TableWidget
                             $this->evento(),
                             (int) $data['veiculo_id'],
                             (int) $data['motorista_id'],
+                            $data['turma_ids'] ?? [],
                         );
                     })
                     ->after(function (): void {
@@ -102,6 +114,13 @@ class EventoTransporteAlocacoesTable extends TableWidget
                 TextColumn::make('motorista.nome')
                     ->label('Motorista')
                     ->placeholder('Não informado')
+                    ->wrap(),
+                TextColumn::make('turmas_resumo')
+                    ->label('Turmas')
+                    ->state(fn (EventoCalendarioTransporteAlocacao $record): array => $record->turmas
+                        ->map(fn ($turma): string => trim(($turma->serie?->nome ? $turma->serie->nome.' ' : '').$turma->nome))
+                        ->values()->all())
+                    ->listWithLineBreaks()
                     ->wrap(),
                 TextColumn::make('recursos_ativos')
                     ->label('Situação')

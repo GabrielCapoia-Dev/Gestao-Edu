@@ -32,6 +32,9 @@ final readonly class CalendarEventData
         public ?string $actionUrl = null,
         public ?string $actionLabel = null,
         public ?int $transporteEstimado = null,
+        public ?string $local = null,
+        /** @var list<string> */
+        public array $transporteAlocacoes = [],
     ) {}
 
     /** @return array<string, mixed> */
@@ -63,6 +66,8 @@ final readonly class CalendarEventData
             'action_url' => $this->actionUrl,
             'action_label' => $this->actionLabel,
             'transporte_estimado' => $this->transporteEstimado,
+            'local' => $this->local,
+            'transporte_alocacoes' => $this->transporteAlocacoes,
         ];
     }
 }

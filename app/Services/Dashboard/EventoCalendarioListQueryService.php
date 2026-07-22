@@ -130,6 +130,12 @@ class EventoCalendarioListQueryService
             'escolasAgendadas.escola:id,nome',
             'escolasAgendadas.series:id,nome',
             'escolasAgendadas.turmas:id,nome,id_escola,id_serie,turno',
+            'escolasAgendadas.turmas.serie:id,nome',
+            'alocacoesTransporteAtivas.veiculo:id,placa,identificacao,capacidade_passageiros',
+            'alocacoesTransporteAtivas.motorista:id,nome',
+            'alocacoesTransporteAtivas.turmas:id,nome,id_escola,id_serie',
+            'alocacoesTransporteAtivas.turmas.serie:id,nome',
+            'alocacoesTransporteAtivas.turmas.escola:id,nome',
             'historicos.usuario:id,name,email',
         ]);
     }

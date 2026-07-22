@@ -179,6 +179,10 @@ class ManualCalendarEventSource implements CalendarEventSource
                 $query->orderBy('escola_id');
             },
             'escolasAgendadas.escola:id,nome',
+            'alocacoesTransporteAtivas.veiculo:id,placa,identificacao',
+            'alocacoesTransporteAtivas.motorista:id,nome',
+            'alocacoesTransporteAtivas.turmas:id,nome,id_escola,id_serie',
+            'alocacoesTransporteAtivas.turmas.serie:id,nome',
         ];
     }
 
@@ -229,6 +233,25 @@ class ManualCalendarEventSource implements CalendarEventSource
             transporteEstimado: $agendamento?->precisa_transporte
                 ? (int) ($agendamento->quantidade_estimada_transporte ?? 0)
                 : null,
+            local: $evento->local,
+            transporteAlocacoes: $agendamento
+                ? $evento->alocacoesTransporteAtivas
+                    ->map(function ($alocacao) use ($agendamento): ?string {
+                        $turmas = $alocacao->turmas
+                            ->where('id_escola', $agendamento->escola_id)
+                            ->map(fn ($turma): string => trim(($turma->serie?->nome ? $turma->serie->nome.' ' : '').$turma->nome))
+                            ->join(', ');
+
+                        if ($turmas === '') {
+                            return null;
+                        }
+
+                        $veiculo = $alocacao->veiculo?->identificacao ?: $alocacao->veiculo?->placa;
+
+                        return collect([$veiculo, $alocacao->motorista?->nome, $turmas])->filter()->implode(' — ');
+                    })
+                    ->filter()->values()->all()
+                : [],
         );
     }
 
