@@ -40,6 +40,7 @@ use App\Models\TipoManutencao;
 use App\Models\Turma;
 use App\Models\TurmaComponenteProfessor;
 use App\Models\User;
+use App\Models\VeiculoTransporte;
 use App\Observers\PedidoObserver;
 use App\Observers\ProfessorObserver;
 use App\Observers\TurmaComponenteProfessorObserver;
@@ -80,6 +81,7 @@ use App\Policies\ServidorFuncaoAdministrativaPolicy;
 use App\Policies\TipoManutencaoPolicy;
 use App\Policies\TurmaPolicy;
 use App\Policies\UserPolicy;
+use App\Policies\VeiculoTransportePolicy;
 use App\Services\NotificationCenterService;
 use App\Services\UserPresenceService;
 use Filament\Auth\Http\Responses\Contracts\LoginResponse as LoginResponseContract;
@@ -145,6 +147,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(ImportacaoEventoCalendario::class, ImportacaoEventoCalendarioPolicy::class);
         Gate::policy(FeedbackPedido::class, FeedbackPedidoPolicy::class);
         Gate::policy(NotificacaoEnvio::class, NotificationPolicy::class);
+        Gate::policy(VeiculoTransporte::class, VeiculoTransportePolicy::class);
 
         // ── Observers ──────────────────────────────────────────────────────────
         Pedido::observe(PedidoObserver::class);

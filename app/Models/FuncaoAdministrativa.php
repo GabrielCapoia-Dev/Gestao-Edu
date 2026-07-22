@@ -228,6 +228,28 @@ class FuncaoAdministrativa extends Model
         return $funcao->fresh();
     }
 
+    public static function motoristaPadrao(): self
+    {
+        $funcao = static::query()->where('codigo', 'motorista')->first()
+            ?? static::query()->where('nome', 'Motorista')->first()
+            ?? new static();
+
+        $funcao->fill([
+            'codigo' => 'motorista',
+            'nome' => 'Motorista',
+            'categoria' => self::CATEGORIA_OPERACIONAL,
+            'ativo' => true,
+            'exige_professor' => false,
+            'concede_acesso_sistema' => false,
+            'tem_relacao_turma' => false,
+            'direcao_escolar' => false,
+            'coordenacao_pedagogica' => false,
+            'secretaria_escolar' => false,
+        ])->save();
+
+        return $funcao->fresh();
+    }
+
     public function ehManutencao(): bool
     {
         return (string) $this->codigo === 'manutencao';
@@ -236,6 +258,11 @@ class FuncaoAdministrativa extends Model
     public function ehObras(): bool
     {
         return (string) $this->codigo === 'obras';
+    }
+
+    public function ehMotorista(): bool
+    {
+        return (string) $this->codigo === 'motorista';
     }
 
     public function ehEquipeGestora(): bool
@@ -299,6 +326,11 @@ class FuncaoAdministrativa extends Model
     public function scopeObras(Builder $query): Builder
     {
         return $query->where('codigo', 'obras');
+    }
+
+    public function scopeMotorista(Builder $query): Builder
+    {
+        return $query->where('codigo', 'motorista');
     }
 
     public function servidorFuncoes(): HasMany

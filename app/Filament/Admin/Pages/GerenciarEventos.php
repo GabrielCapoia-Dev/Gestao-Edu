@@ -9,6 +9,8 @@ use App\Models\Enums\ListaPermissoes;
 use App\Models\EventoCalendario;
 use App\Models\ImportacaoEventoCalendario;
 use App\Models\User;
+use App\Livewire\Transporte\MotoristasTransporteTable;
+use App\Livewire\Transporte\VeiculosTransporteTable;
 use App\Services\Dashboard\EventoCalendarioListQueryService;
 use App\Services\Dashboard\EventoCalendarioService;
 use App\Services\Dashboard\EventoCalendarioWorkflowService;
@@ -23,6 +25,9 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\Livewire as LivewireComponent;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
@@ -75,6 +80,44 @@ class GerenciarEventos extends Page implements HasTable
         $user = static::usuarioEfetivo();
 
         return [
+            Action::make('gerenciarTransporte')
+                ->label('Gerenciar transporte')
+                ->icon('heroicon-o-truck')
+                ->color('gray')
+                ->visible(fn (): bool => $user !== null
+                    && Gate::forUser($user)->allows('manageTransport', EventoCalendario::class))
+                ->authorize(fn (): bool => $user !== null
+                    && Gate::forUser($user)->allows('manageTransport', EventoCalendario::class))
+                ->modalHeading('Gerenciar transporte')
+                ->modalDescription('Cadastre e mantenha os motoristas e veículos disponíveis para os eventos.')
+                ->modalIcon('heroicon-o-truck')
+                ->slideOver()
+                ->modalWidth('6xl')
+                ->stickyModalHeader()
+                ->closeModalByClickingAway(false)
+                ->formWrapper(false)
+                ->modalSubmitAction(false)
+                ->modalCancelActionLabel('Fechar')
+                ->schema([
+                    Tabs::make('Cadastros de transporte')
+                        ->contained(false)
+                        ->tabs([
+                            Tab::make('Motoristas')
+                                ->icon('heroicon-o-identification')
+                                ->schema([
+                                    LivewireComponent::make(MotoristasTransporteTable::class)
+                                        ->lazy()
+                                        ->key('motoristas-transporte'),
+                                ]),
+                            Tab::make('Veículos')
+                                ->icon('heroicon-o-truck')
+                                ->schema([
+                                    LivewireComponent::make(VeiculosTransporteTable::class)
+                                        ->lazy()
+                                        ->key('veiculos-transporte'),
+                                ]),
+                        ]),
+                ]),
             Action::make('importar')
                 ->label('Importar planilha')
                 ->icon('heroicon-o-arrow-up-tray')
