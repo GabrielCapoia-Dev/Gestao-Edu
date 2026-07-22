@@ -890,8 +890,8 @@
         position: relative;
         overflow: hidden;
         isolation: isolate;
-        min-height: 10rem;
-        align-items: end;
+        min-height: 8rem;
+        align-items: center;
         border-color: rgba(191, 219, 254, 0.28);
         background:
             linear-gradient(105deg, #11366f 0%, #174f8f 54%, #2f72ad 100%);
@@ -1003,8 +1003,8 @@
         position: relative;
         overflow: hidden;
         isolation: isolate;
-        align-items: end;
-        min-height: 10rem;
+        align-items: center;
+        min-height: 8rem;
         padding: 1.5rem;
         border: 1px solid rgba(191, 219, 254, 0.28);
         border-radius: 1rem;

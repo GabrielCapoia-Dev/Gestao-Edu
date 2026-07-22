@@ -3,14 +3,13 @@
 namespace App\Filament\Admin\Pages;
 
 use App\Models\User;
-
 use App\Services\UserService;
+use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Pages\Page;
-use Illuminate\Support\Facades\Gate;
-use BackedEnum;
 use Filament\Support\Icons\Heroicon;
-
+use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Gate;
 
 class Dashboard extends Page
 {
@@ -26,6 +25,15 @@ class Dashboard extends Page
     public function getHeading(): string
     {
         return '';
+    }
+
+    public function getHeader(): ?View
+    {
+        return view('filament.admin.pages.partials.page-header', [
+            'eyebrow' => 'Início',
+            'title' => 'Bem-vindo ao Gestão Edu',
+            'description' => 'Acompanhe avisos, eventos e atividades importantes para a sua rotina escolar.',
+        ]);
     }
 
     protected static ?string $navigationLabel = 'Início';
