@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -15,8 +16,6 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         app(PermissionRegistrar::class)->forgetCachedPermissions();
-
-        $password = 'Senha@123';
 
         $adminRole = Role::firstOrCreate([
             'name' => 'Admin',
@@ -41,42 +40,56 @@ class DatabaseSeeder extends Seeder
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-        $adminUser = User::firstOrCreate(
-            ['email' => 'admin@admin.com'],
-            [
-                'codigo' => 100,
-                'name' => 'Admin',
-                'password' => Hash::make($password),
-                'email_verified_at' => now(),
-                'email_approved' => true,
-            ]
-        );
+        if (app()->environment('local')) {
+            $password = Str::password(20);
 
-        $secretarioUser = User::firstOrCreate(
-            ['email' => 'secretario@secretario.com'],
-            [
-                'codigo' => 101,
-                'name' => 'Secretário',
-                'password' => Hash::make($password),
-                'email_verified_at' => now(),
-                'email_approved' => true,
-            ]
-        );
+            $adminUser = User::firstOrCreate(
+                ['email' => 'admin@admin.com'],
+                [
+                    'codigo' => 100,
+                    'name' => 'Admin',
+                    'password' => Hash::make($password),
+                    'email_verified_at' => now(),
+                    'email_approved' => true,
+                    'must_change_password' => true,
+                ]
+            );
 
-        $administrativoUser = User::firstOrCreate(
-            ['email' => 'administrativo@administrativo.com'],
-            [
-                'codigo' => 102,
-                'name' => 'Administrativo',
-                'password' => Hash::make($password),
-                'email_verified_at' => now(),
-                'email_approved' => true,
-            ]
-        );
+            $secretarioUser = User::firstOrCreate(
+                ['email' => 'secretario@secretario.com'],
+                [
+                    'codigo' => 101,
+                    'name' => 'Secretário',
+                    'password' => Hash::make($password),
+                    'email_verified_at' => now(),
+                    'email_approved' => true,
+                    'must_change_password' => true,
+                ]
+            );
 
-        $adminUser->syncRoles([$adminRole]);
-        $secretarioUser->syncRoles([$secretarioRole]);
-        $administrativoUser->syncRoles([$administrativoRole]);
+            $administrativoUser = User::firstOrCreate(
+                ['email' => 'administrativo@administrativo.com'],
+                [
+                    'codigo' => 102,
+                    'name' => 'Administrativo',
+                    'password' => Hash::make($password),
+                    'email_verified_at' => now(),
+                    'email_approved' => true,
+                    'must_change_password' => true,
+                ]
+            );
+
+            $adminUser->syncRoles([$adminRole]);
+            $secretarioUser->syncRoles([$secretarioRole]);
+            $administrativoUser->syncRoles([$administrativoRole]);
+
+            if (
+                $this->command
+                && ($adminUser->wasRecentlyCreated || $secretarioUser->wasRecentlyCreated || $administrativoUser->wasRecentlyCreated)
+            ) {
+                $this->command->warn('Novas contas locais criadas com senha temporária: '.$password);
+            }
+        }
 
         $this->seedDominios();
 

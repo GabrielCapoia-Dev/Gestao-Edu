@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class AuthController extends Controller
@@ -17,7 +19,7 @@ class AuthController extends Controller
 
         return view('mobile.auth.install', [
             'shareUrl' => $shareUrl,
-            'whatsAppUrl' => 'https://wa.me/?text=' . rawurlencode(
+            'whatsAppUrl' => 'https://wa.me/?text='.rawurlencode(
                 "Instale o Gestão Edu Mobile no seu celular: {$shareUrl}"
             ),
             'entryUrl' => $user ? route('mobile.home') : route('mobile.login'),
@@ -45,7 +47,22 @@ class AuthController extends Controller
             'password' => ['required', 'string'],
         ]);
 
+        $credentials['email'] = Str::lower($credentials['email']);
+        $throttleKey = $this->throttleKey($request, $credentials['email']);
+
+        if (RateLimiter::tooManyAttempts($throttleKey, 8)) {
+            $seconds = RateLimiter::availableIn($throttleKey);
+
+            return back()
+                ->withErrors([
+                    'email' => "Muitas tentativas. Tente novamente em {$seconds} segundos.",
+                ])
+                ->onlyInput('email');
+        }
+
         if (! Auth::attempt($credentials, $request->boolean('remember'))) {
+            RateLimiter::hit($throttleKey, 60);
+
             return back()
                 ->withErrors([
                     'email' => 'Credenciais invalidas. Confira o e-mail e a senha.',
@@ -53,6 +70,7 @@ class AuthController extends Controller
                 ->onlyInput('email');
         }
 
+        RateLimiter::clear($throttleKey);
         $request->session()->regenerate();
 
         $user = $request->user();
@@ -81,5 +99,10 @@ class AuthController extends Controller
         $request->session()->regenerateToken();
 
         return redirect()->route('mobile.login');
+    }
+
+    private function throttleKey(Request $request, string $email): string
+    {
+        return 'login:'.sha1(Str::lower($email).'|'.$request->ip());
     }
 }

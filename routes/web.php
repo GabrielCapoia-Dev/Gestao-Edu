@@ -12,7 +12,6 @@ use App\Http\Controllers\Exports\ExportRequestController;
 use App\Http\Controllers\FeedbackPedidoExportController;
 use App\Http\Controllers\InventarioRelatorioController;
 use App\Http\Controllers\InventarioRomaneioController;
-use App\Http\Controllers\MaintenanceController;
 use App\Http\Controllers\NotificationCenterController;
 use App\Http\Controllers\PedidoArquivoController;
 use App\Http\Controllers\PedidoMerendaEmpenhoController;
@@ -23,77 +22,11 @@ use App\Http\Controllers\UserPresenceController;
 use App\Http\Middleware\ApplyProfilePreviewUser;
 use App\Http\Middleware\BlockProfilePreviewWrites;
 use App\Http\Middleware\EnsurePasswordIsChanged;
-use App\Models\User;
-use App\Notifications\SistemaNotification;
-use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
-use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'public.home')->name('public.home');
 Route::view('/politica-de-privacidade', 'public.privacy')->name('public.privacy');
 Route::view('/termos-de-servico', 'public.terms')->name('public.terms');
-Route::get('/background', function () {
-    return view('background-page');
-});
-Route::get('/exemplo', function () {
-    return view('exemplo');
-});
-
-Route::get('/escopo', function () {
-    return view('escopo-merenda');
-});
-
-Route::get('/403', function () {
-    return view('errors.403');
-});
-
-Route::get('/404', function () {
-    return view('errors.404');
-});
-
-Route::get('/419', function () {
-    return view('errors.419');
-});
-
-Route::get('/test', function () {
-    return view('test');
-});
-
-Route::prefix('api/maintenance')
-    ->name('maintenance.')
-    ->middleware('throttle:10,1')
-    ->withoutMiddleware([
-        ValidateCsrfToken::class,
-        VerifyCsrfToken::class,
-    ])
-    ->group(function (): void {
-        Route::post('/login', [MaintenanceController::class, 'login'])
-            ->name('login');
-
-        Route::post('/cache/rebuild', [MaintenanceController::class, 'rebuildCache'])
-            ->name('cache.rebuild');
-
-        Route::post('/permissions/sync', [MaintenanceController::class, 'syncPermissions'])
-            ->name('permissions.sync');
-
-        Route::post('/migrate', [MaintenanceController::class, 'migrate'])
-            ->name('migrate');
-    });
-
-Route::post('/test/notify', function () {
-    $user = User::find(1);
-
-    $user->notify(
-        new SistemaNotification(
-            titulo: 'Novo Pedido',
-            mensagem: 'Um novo pedido foi criado.',
-            url: route('filament.admin.resources.pedidos.index')
-        )
-    );
-
-    return back()->with('success', 'Notificação enviada');
-})->name('test.notify');
-
 Route::get('/pedidos/relatorio-geral', [PedidoRelatorioGeralController::class, 'exportar'])
     ->middleware('auth')
     ->name('pedidos.relatorio-geral');
@@ -101,7 +34,7 @@ Route::get('/pedidos/relatorio-geral', [PedidoRelatorioGeralController::class, '
 Route::get('/oauth/redirect/google', [GoogleAuthController::class, 'redirect'])->name('google.redirect');
 Route::get('/oauth/callback/google', [GoogleAuthController::class, 'callback'])->name('google.callback');
 Route::post('/admin/login', [AdminLoginController::class, 'store'])
-    ->middleware('web')
+    ->middleware(['web', 'throttle:20,1'])
     ->name('admin.login.store');
 
 Route::prefix('admin')
@@ -218,15 +151,6 @@ Route::prefix('admin')
         Route::get('/balancos-estoque/{balanco}/relatorio/pdf', [BalancoEstoqueRelatorioController::class, 'exportarPdf'])
             ->name('balancos-estoque.relatorio.pdf');
     });
-
-Route::post('/notifications/{id}/read', function ($id) {
-    $user = User::find(1);
-
-    $user->unreadNotifications()
-        ->where('id', $id)
-        ->first()
-        ?->markAsRead();
-});
 
 Route::prefix('admin/feedback-pedidos')
     ->middleware(['auth', EnsurePasswordIsChanged::class])

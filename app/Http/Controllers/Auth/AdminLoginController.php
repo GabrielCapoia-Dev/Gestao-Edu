@@ -118,7 +118,7 @@ class AdminLoginController extends Controller
 
     private function throttleKey(Request $request, string $email): string
     {
-        return 'admin-login:'.sha1(Str::lower($email).'|'.$request->ip());
+        return 'login:'.sha1(Str::lower($email).'|'.$request->ip());
     }
 
     /**

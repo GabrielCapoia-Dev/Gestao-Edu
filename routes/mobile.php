@@ -12,7 +12,9 @@ Route::prefix('app')
     ->group(function (): void {
         Route::get('/instalar', [AuthController::class, 'showInstall'])->name('install');
         Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-        Route::post('/login', [AuthController::class, 'login'])->name('login.store');
+        Route::post('/login', [AuthController::class, 'login'])
+            ->middleware('throttle:20,1')
+            ->name('login.store');
         Route::post('/logout', [AuthController::class, 'logout'])
             ->middleware(AuthenticateMobile::class)
             ->name('logout');
