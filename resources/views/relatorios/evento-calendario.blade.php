@@ -53,7 +53,7 @@
         @forelse ($evento->alocacoesTransporteAtivas as $alocacao)
             <tr>
                 <td>{{ $alocacao->veiculo?->identificacao ?: 'Veículo' }} — {{ $alocacao->veiculo?->placa }}</td>
-                <td>{{ $alocacao->motorista?->nome ?? 'Não informado' }}</td>
+                <td>{{ $alocacao->motoristaNomeExibicao() }}</td>
                 <td>
                     {{ $alocacao->turmas->map(fn ($turma) => collect([$turma->escola?->nome, trim(($turma->serie?->nome ? $turma->serie->nome.' ' : '').$turma->nome)])->filter()->implode(' — '))->join('; ') ?: 'Nenhuma turma vinculada' }}
                 </td>

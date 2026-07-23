@@ -87,6 +87,8 @@ class PessoaForm extends Component
 
     public ?string $matriculaAtiva = null;
 
+    public ?string $matriculaMotorista = null;
+
     /** @var array<string, string|null> */
     public array $lotacoesAtivas = [];
 
@@ -633,6 +635,7 @@ class PessoaForm extends Component
         $this->status = Pessoa::STATUS_ATIVO;
         $this->observacoes = null;
         $this->cargo = ServidorResource::CARGO_PROFESSOR;
+        $this->matriculaMotorista = null;
         $key = $this->novaChave('m');
         $this->matriculas = [
             $key => [
@@ -660,6 +663,9 @@ class PessoaForm extends Component
         $this->status = (string) ($dados['status'] ?? $pessoa->status ?? Pessoa::STATUS_ATIVO);
         $this->observacoes = $this->gerenciaEstrutura ? ($dados['observacoes'] ?? $pessoa->observacoes) : null;
         $this->cargo = (string) ($dados['cargo'] ?? ServidorResource::CARGO_PROFESSOR);
+        $this->matriculaMotorista = filled($dados['matricula_motorista'] ?? null)
+            ? (string) $dados['matricula_motorista']
+            : null;
 
         $matriculas = is_array($dados['matriculas_professor'] ?? null)
             ? $dados['matriculas_professor']
@@ -777,6 +783,7 @@ class PessoaForm extends Component
             ServidorResource::CARGO_EQUIPE_GESTORA,
             ServidorResource::CARGO_MANUTENCAO,
             ServidorResource::CARGO_OBRAS,
+            ServidorResource::CARGO_MOTORISTA,
         ], true)) {
             $this->cargo = ServidorResource::CARGO_PROFESSOR;
             $this->addError('cargo', 'O cargo informado é inválido.');
@@ -788,6 +795,7 @@ class PessoaForm extends Component
             ServidorResource::CARGO_EQUIPE_GESTORA,
             ServidorResource::CARGO_MANUTENCAO,
             ServidorResource::CARGO_OBRAS,
+            ServidorResource::CARGO_MOTORISTA,
         ], true)) {
             $this->autorizarEquipeGestora();
         } else {
@@ -804,6 +812,7 @@ class PessoaForm extends Component
             ServidorResource::CARGO_EQUIPE_GESTORA,
             ServidorResource::CARGO_MANUTENCAO,
             ServidorResource::CARGO_OBRAS,
+            ServidorResource::CARGO_MOTORISTA,
         ], true)) {
             return;
         }
@@ -819,7 +828,9 @@ class PessoaForm extends Component
 
         $rules = [
             'cpf' => ['nullable', 'string', 'max:14'],
-            'email' => ['required', 'email', 'max:255'],
+            'email' => $this->cargo === ServidorResource::CARGO_MOTORISTA
+                ? ['nullable', 'email', 'max:255']
+                : ['required', 'email', 'max:255'],
             'telefone' => ['nullable', 'string', 'max:255'],
         ];
         if ($this->modoCriacao() || $this->gerenciaEstrutura) {
@@ -832,7 +843,7 @@ class PessoaForm extends Component
 
         $this->validate($rules);
 
-        if (! Professor::emailInstitucionalValido($this->email)) {
+        if (filled($this->email) && ! Professor::emailInstitucionalValido($this->email)) {
             throw ValidationException::withMessages([
                 'email' => 'Use somente e-mail institucional @edu.umuarama.pr.gov.br.',
             ]);
@@ -857,14 +868,24 @@ class PessoaForm extends Component
                 ServidorResource::CARGO_EQUIPE_GESTORA,
                 ServidorResource::CARGO_MANUTENCAO,
                 ServidorResource::CARGO_OBRAS,
+                ServidorResource::CARGO_MOTORISTA,
             ])],
-            'matriculas' => ['required', 'array', 'min:1', 'max:'.PessoaMatricula::MAX_POR_PESSOA],
-            'matriculas.*' => ['array'],
-            'matriculas.*.id' => ['nullable', 'integer'],
-            'matriculas.*.matricula' => ['required', 'string', 'max:255'],
-            'matriculas.*.turno' => ['required', Rule::in(array_keys(PessoaMatricula::turnosOptions()))],
-            'matriculas.*.escolas' => ['array'],
         ];
+
+        if ($this->cargo === ServidorResource::CARGO_MOTORISTA) {
+            $rules += [
+                'matriculaMotorista' => ['nullable', 'string', 'max:255'],
+            ];
+        } else {
+            $rules += [
+                'matriculas' => ['required', 'array', 'min:1', 'max:'.PessoaMatricula::MAX_POR_PESSOA],
+                'matriculas.*' => ['array'],
+                'matriculas.*.id' => ['nullable', 'integer'],
+                'matriculas.*.matricula' => ['required', 'string', 'max:255'],
+                'matriculas.*.turno' => ['required', Rule::in(array_keys(PessoaMatricula::turnosOptions()))],
+                'matriculas.*.escolas' => ['array'],
+            ];
+        }
 
         if ($this->cargo === ServidorResource::CARGO_PROFESSOR) {
             $rules += [
@@ -893,7 +914,7 @@ class PessoaForm extends Component
             $rules += [
                 'setorManutencaoId' => ['required', 'integer'],
             ];
-        } else {
+        } elseif ($this->cargo === ServidorResource::CARGO_OBRAS) {
             $rules += [
                 'setorObrasId' => ['required', 'integer'],
             ];
@@ -905,13 +926,16 @@ class PessoaForm extends Component
             'turmaIds' => 'turmas da coordenação',
             'setorManutencaoId' => 'setor da Manutenção',
             'setorObrasId' => 'setor de Obras',
+            'matriculaMotorista' => 'matrícula',
         ]);
 
-        PessoaMatricula::assertConjuntoTurnosValido(
-            collect($this->matriculas)->pluck('turno')->map(fn (mixed $turno): string => (string) $turno)->all(),
-        );
-        $this->validarMatriculasDuplicadas();
-        $this->validarIdsDasMatriculas();
+        if ($this->cargo !== ServidorResource::CARGO_MOTORISTA) {
+            PessoaMatricula::assertConjuntoTurnosValido(
+                collect($this->matriculas)->pluck('turno')->map(fn (mixed $turno): string => (string) $turno)->all(),
+            );
+            $this->validarMatriculasDuplicadas();
+            $this->validarIdsDasMatriculas();
+        }
 
         if ($this->cargo === ServidorResource::CARGO_PROFESSOR) {
             $this->validarEstruturaProfessor();
@@ -919,7 +943,7 @@ class PessoaForm extends Component
             $this->validarEstruturaEquipeGestora();
         } elseif ($this->cargo === ServidorResource::CARGO_MANUTENCAO) {
             $this->validarEstruturaManutencao();
-        } else {
+        } elseif ($this->cargo === ServidorResource::CARGO_OBRAS) {
             $this->validarEstruturaObras();
         }
     }
@@ -1292,6 +1316,7 @@ class PessoaForm extends Component
             'status' => $this->status,
             'observacoes' => $this->observacoes,
             'cargo' => $this->cargo,
+            'matricula_motorista' => $this->matriculaMotorista,
             'matriculas_professor' => $this->payloadMatriculas(),
             'id_escola' => $this->idEscolaGestora,
             'setor_manutencao_id' => $this->setorManutencaoId,

@@ -83,6 +83,9 @@ class EventoTransporteAlocacaoService
                 'evento_calendario_id' => $evento->getKey(),
                 'veiculo_transporte_id' => $veiculo->getKey(),
                 'motorista_id' => $motorista->getKey(),
+                'motorista_nome' => $motorista->nome,
+                'motorista_cpf' => $motorista->cpf,
+                'motorista_matricula' => $motorista->matricula,
                 'criado_por_id' => $ator->getKey(),
             ]);
             $alocacao->turmas()->sync($turmaIds);
@@ -136,7 +139,7 @@ class EventoTransporteAlocacaoService
             );
         }
 
-        return DB::transaction(function () use ($ator, $evento, $agendamentoId, $existente, $turmaIds): EventoCalendarioTransporteAlocacao {
+        return DB::transaction(function () use ($ator, $evento, $agendamentoId, $existente, $motoristaId, $turmaIds): EventoCalendarioTransporteAlocacao {
             $evento = EventoCalendario::query()
                 ->with([
                     'escolasAgendadas:id,evento_calendario_id,escola_id,precisa_transporte,escopo_transporte',
@@ -154,17 +157,32 @@ class EventoTransporteAlocacaoService
                 ->lockForUpdate()
                 ->findOrFail($existente->getKey());
             $veiculo = VeiculoTransporte::query()->lockForUpdate()->findOrFail($alocacao->veiculo_transporte_id);
-            $this->validarRecursosAtivos($veiculo, $alocacao->motorista);
+            $motorista = $motoristaId
+                ? Pessoa::query()->lockForUpdate()->findOrFail($motoristaId)
+                : $alocacao->motorista;
+            $this->validarRecursosAtivos($veiculo, $motorista);
             $turmaIds = collect($turmaIds)->map(fn ($id): int => (int) $id)->filter()->unique()->values()->all();
             $this->validarTurmas($evento, $turmaIds);
             $this->validarEscolaDaAlocacao($evento, $agendamentoId, $turmaIds);
+
+            $motoristaFoiSubstituido = (int) $alocacao->motorista_id !== (int) $motorista->getKey();
+            if ($motoristaFoiSubstituido) {
+                $alocacao->forceFill([
+                    'motorista_id' => $motorista->getKey(),
+                    'motorista_nome' => $motorista->nome,
+                    'motorista_cpf' => $motorista->cpf,
+                    'motorista_matricula' => $motorista->matricula,
+                ])->save();
+            }
 
             $alocacao->turmas()->syncWithoutDetaching($turmaIds);
             $this->workflow->registrarTransporte(
                 $evento,
                 $ator,
                 EventoCalendarioHistoricoAcao::ALOCACAO_TRANSPORTE_ADICIONADA,
-                "Turmas adicionadas ao veículo {$veiculo->placa}.",
+                $motoristaFoiSubstituido
+                    ? "Motorista do veículo {$veiculo->placa} substituído por {$motorista->nome}."
+                    : "Turmas adicionadas ao veículo {$veiculo->placa}.",
             );
 
             return $alocacao->load([
@@ -244,7 +262,7 @@ class EventoTransporteAlocacaoService
                     $alocacao->evento,
                     $ator,
                     EventoCalendarioHistoricoAcao::ALOCACAO_TRANSPORTE_REMOVIDA,
-                    "Veículo {$alocacao->veiculo?->placa} desvinculado do motorista {$alocacao->motorista?->nome}.",
+                    "Veículo {$alocacao->veiculo?->placa} desvinculado do motorista {$alocacao->motoristaNomeExibicao()}.",
                 );
             }
 

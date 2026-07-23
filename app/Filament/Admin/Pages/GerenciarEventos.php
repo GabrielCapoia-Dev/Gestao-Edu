@@ -8,6 +8,7 @@ use App\Models\Enums\EventoCalendarioStatus;
 use App\Models\Enums\ListaPermissoes;
 use App\Models\EventoCalendario;
 use App\Models\ImportacaoEventoCalendario;
+use App\Models\Pessoa;
 use App\Models\User;
 use App\Livewire\Transporte\MotoristasTransporteTable;
 use App\Livewire\Transporte\VeiculosTransporteTable;
@@ -394,6 +395,30 @@ class GerenciarEventos extends Page implements HasTable
                 ->options(fn (): array => $this->listagem()->creatorOptions($user))
                 ->searchable()
                 ->preload(),
+
+            SelectFilter::make('motorista_id')
+                ->label('Motorista')
+                ->visible(fn (): bool => Gate::forUser($user)->allows('manageTransport', EventoCalendario::class))
+                ->options(fn (): array => Pessoa::query()
+                    ->whereHas('servidorFuncoes.funcaoAdministrativa', fn (Builder $funcoes): Builder => $funcoes
+                        ->motorista())
+                    ->orderBy('nome')
+                    ->pluck('nome', 'id')
+                    ->all())
+                ->searchable()
+                ->preload()
+                ->query(function (Builder $query, array $data): Builder {
+                    $motoristaId = (int) ($data['value'] ?? 0);
+
+                    return $motoristaId > 0
+                        ? $query
+                            ->where('data_fim', '>=', now())
+                            ->whereHas(
+                                'alocacoesTransporteAtivas',
+                                fn (Builder $alocacoes): Builder => $alocacoes->where('motorista_id', $motoristaId),
+                            )
+                        : $query;
+                }),
 
             TernaryFilter::make('possui_transporte')
                 ->label('Transporte')

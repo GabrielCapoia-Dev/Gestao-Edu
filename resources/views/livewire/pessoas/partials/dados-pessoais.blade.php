@@ -44,7 +44,7 @@
         </label>
 
         <label class="pe-person-form__field">
-            <span>E-mail <b aria-hidden="true">*</b></span>
+            <span>E-mail @if ($cargo !== 'motorista') <b aria-hidden="true">*</b> @endif</span>
             <input
                 type="email"
                 wire:model.blur="email"
@@ -103,7 +103,7 @@
         </span>
         <div>
             <h3 id="pessoa-form-cargo-title">Cargo</h3>
-            <p>Professor, Equipe Gestora, Manutenção e Obras usam a mesma identidade e as mesmas matrículas.</p>
+            <p>O cargo define os vínculos necessários. Motoristas não precisam de acesso ao sistema nem de escola.</p>
         </div>
     </header>
 
@@ -124,6 +124,9 @@
                 @endif
                 @if ($podeGerenciarEquipeGestora || $cargo === 'obras')
                     <option value="obras" @selected($cargo === 'obras')>Obras</option>
+                @endif
+                @if ($podeGerenciarEquipeGestora || $cargo === 'motorista')
+                    <option value="motorista" @selected($cargo === 'motorista')>Motorista</option>
                 @endif
             </select>
             @error('cargo')

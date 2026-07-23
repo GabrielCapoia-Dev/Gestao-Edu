@@ -41,16 +41,11 @@ class EventoTransporteEscolasManager extends Component
         abort_unless($this->podeGerenciar(), 403);
 
         $veiculoId = (int) ($this->veiculosSelecionados[$agendamentoId] ?? 0);
-        $alocacaoExistente = EventoCalendarioTransporteAlocacao::query()
-            ->ativas()
-            ->where('evento_calendario_id', $this->eventoId)
-            ->where('veiculo_transporte_id', $veiculoId)
-            ->exists();
 
         $this->validate([
             "turmasSelecionadas.{$agendamentoId}" => ['required', 'array', 'min:1'],
             "veiculosSelecionados.{$agendamentoId}" => ['required', 'integer'],
-            "motoristasSelecionados.{$agendamentoId}" => [$alocacaoExistente ? 'nullable' : 'required', 'integer'],
+            "motoristasSelecionados.{$agendamentoId}" => ['required', 'integer'],
         ], [
             "turmasSelecionadas.{$agendamentoId}.required" => 'Selecione ao menos uma turma.',
             "veiculosSelecionados.{$agendamentoId}.required" => 'Selecione o veículo.',
@@ -164,9 +159,6 @@ class EventoTransporteEscolasManager extends Component
             $veiculos->put((int) $veiculo->getKey(), $veiculo);
         }
 
-        $motoristasPorVeiculo = $alocacoes->mapWithKeys(fn ($alocacao): array => [
-            (int) $alocacao->veiculo_transporte_id => $alocacao->motorista?->nome ?? 'Motorista não informado',
-        ])->all();
         $relacaoVeiculos = $alocacoes->map(function ($alocacao) use ($turmas): array {
             $turmasDaRota = $turmas->whereIn('id', $alocacao->turmas->modelKeys());
             $total = (int) $turmasDaRota->sum('estudantes_transporte_count');
@@ -212,7 +204,6 @@ class EventoTransporteEscolasManager extends Component
         return view('livewire.transporte.evento-transporte-escolas-manager', compact(
             'escolas',
             'motoristas',
-            'motoristasPorVeiculo',
             'podeGerenciar',
             'relacaoVeiculos',
             'turmas',

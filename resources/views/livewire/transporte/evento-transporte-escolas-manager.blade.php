@@ -28,7 +28,7 @@
                     <header>
                         <div>
                             <strong>{{ $alocacaoRota->veiculo?->identificacao ?: $alocacaoRota->veiculo?->placa }}</strong>
-                            <span>{{ $alocacaoRota->veiculo?->placa }} · {{ $alocacaoRota->motorista?->nome ?? 'Motorista não informado' }}</span>
+                            <span>{{ $alocacaoRota->veiculo?->placa }} · {{ $alocacaoRota->motoristaNomeExibicao() }}</span>
                         </div>
                         <b>{{ $rota['total'] }}/{{ $rota['capacidade'] }} aluno(s)</b>
                     </header>
@@ -112,7 +112,7 @@
                             @endif
                         </span>
                     </div>
-                    <p><b>Motorista:</b> {{ $alocacao->motorista?->nome ?? 'Não informado' }}</p>
+                    <p><b>Motorista:</b> {{ $alocacao->motoristaNomeExibicao() }}</p>
                     <p><b>Turmas:</b> {{ $alocacao->turmas->map(fn ($turma) => trim(($turma->serie?->nome ? $turma->serie->nome.' ' : '').$turma->nome))->join(', ') }}</p>
 
                     @if ($podeGerenciar)
@@ -156,25 +156,15 @@
                                 </select>
                             </label>
 
-                            @php
-                                $motoristaFixado = $motoristasPorVeiculo[(int) ($veiculosSelecionados[$agendamentoId] ?? 0)] ?? null;
-                            @endphp
-                            @if ($motoristaFixado)
-                                <div class="gi-school-transport-card__fixed-driver">
-                                    <span>Motorista da rota</span>
-                                    <strong>{{ $motoristaFixado }}</strong>
-                                </div>
-                            @else
-                                <label class="gi-school-transport-card__field">
-                                    <span>Motorista</span>
-                                    <select wire:model="motoristasSelecionados.{{ $agendamentoId }}">
-                                        <option value="">Selecione</option>
-                                        @foreach ($motoristas as $motoristaId => $motorista)
-                                            <option value="{{ $motoristaId }}">{{ $motorista }}</option>
-                                        @endforeach
-                                    </select>
-                                </label>
-                            @endif
+                            <label class="gi-school-transport-card__field">
+                                <span>Motorista</span>
+                                <select wire:model="motoristasSelecionados.{{ $agendamentoId }}">
+                                    <option value="">Selecione</option>
+                                    @foreach ($motoristas as $motoristaId => $motorista)
+                                        <option value="{{ $motoristaId }}">{{ $motorista }}</option>
+                                    @endforeach
+                                </select>
+                            </label>
                         </div>
 
                         <fieldset>

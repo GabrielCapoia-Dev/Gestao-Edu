@@ -652,6 +652,37 @@ class PessoaHubFilamentTest extends TestCase
         $this->assertDatabaseMissing('professores', ['id' => $professor->id]);
     }
 
+    public function test_cadastro_de_motorista_pelo_fluxo_de_pessoas_nao_cria_acesso_ou_vinculo_escolar(): void
+    {
+        $usuario = $this->usuarioHubAdmin([
+            'Listar Pessoas',
+            'Criar Pessoas',
+            'Gerenciar Vínculos Estruturais de Pessoas',
+        ]);
+        $this->actingAs($usuario);
+
+        [$dados, $vinculos] = ServidorResource::prepararDadosPersistencia([
+            'cargo' => ServidorResource::CARGO_MOTORISTA,
+            'nome' => 'Motorista da rede',
+            'cpf' => '98765432100',
+            'email' => null,
+            'telefone' => '(44) 99999-0000',
+            'status' => Servidor::STATUS_ATIVO,
+            'matricula_motorista' => 'MOT-123',
+            'matriculas_professor' => [],
+        ]);
+
+        $motorista = app(ServidorService::class)->criarServidorComFuncoes($dados, $vinculos);
+
+        $this->assertNull($motorista->user_id);
+        $this->assertNull($motorista->id_escola);
+        $this->assertNull($motorista->setor_id);
+        $this->assertNull($motorista->email);
+        $this->assertSame('MOT-123', $motorista->matricula);
+        $this->assertTrue(ServidorResource::ehMotorista($motorista));
+        $this->assertSame('Motorista', ServidorResource::cargoLabel($motorista));
+    }
+
     public function test_listagem_nao_exibe_atalho_de_acesso_por_pessoa(): void
     {
         $usuario = $this->usuarioComPermissaoListar();

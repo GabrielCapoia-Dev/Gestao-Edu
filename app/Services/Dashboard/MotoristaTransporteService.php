@@ -50,7 +50,8 @@ class MotoristaTransporteService
             $query->where(function (Builder $filtro) use ($search, $cpf): void {
                 $filtro
                     ->where('nome', 'like', "%{$search}%")
-                    ->orWhere('telefone', 'like', "%{$search}%");
+                    ->orWhere('telefone', 'like', "%{$search}%")
+                    ->orWhere('matricula', 'like', "%{$search}%");
 
                 if ($cpf !== null) {
                     $filtro->orWhere('cpf', 'like', "%{$cpf}%");
@@ -84,6 +85,9 @@ class MotoristaTransporteService
                 if (blank($motorista->telefone) && filled($dados['telefone'])) {
                     $motorista->forceFill(['telefone' => $dados['telefone']])->save();
                 }
+                if (blank($motorista->matricula) && filled($dados['matricula'])) {
+                    $motorista->forceFill(['matricula' => $dados['matricula']])->save();
+                }
 
                 if ($this->vinculoMotoristaQuery($motorista, somenteAtivo: true)->exists()) {
                     throw ValidationException::withMessages([
@@ -93,13 +97,22 @@ class MotoristaTransporteService
             } else {
                 $motorista = Servidor::query()->create([
                     ...$dados,
+                    'user_id' => null,
+                    'email' => null,
+                    'id_escola' => null,
+                    'setor_id' => null,
                     'status' => Pessoa::STATUS_ATIVO,
                 ]);
                 $motorista = Servidor::query()->lockForUpdate()->findOrFail($motorista->getKey());
             }
 
             $funcao = FuncaoAdministrativa::motoristaPadrao();
-            $vinculo = $this->servidores->vincularFuncao($motorista, $funcao, ['origem' => 'transporte']);
+            $vinculo = $this->servidores->vincularFuncao($motorista, $funcao, [
+                'origem' => 'transporte',
+                'matricula' => $dados['matricula'],
+                'id_escola' => null,
+                'setor_id' => null,
+            ]);
             Gate::forUser($ator)->authorize('activateMotorista', $vinculo);
 
             return $this->carregar($motorista);
@@ -115,7 +128,16 @@ class MotoristaTransporteService
             $vinculo = $this->vinculoMotorista($motorista, somenteAtivo: false, bloquear: true);
             Gate::forUser($ator)->authorize('updateMotorista', $vinculo);
 
-            $motorista->forceFill($dados)->save();
+            $motorista->forceFill([
+                ...$dados,
+                'id_escola' => null,
+                'setor_id' => null,
+            ])->save();
+            $vinculo->forceFill([
+                'matricula' => $dados['matricula'],
+                'id_escola' => null,
+                'setor_id' => null,
+            ])->save();
 
             return $this->carregar($motorista);
         });
@@ -158,7 +180,7 @@ class MotoristaTransporteService
         });
     }
 
-    /** @return array{nome: string, cpf: string, telefone: ?string} */
+    /** @return array{nome: string, cpf: string, telefone: ?string, matricula: ?string} */
     private function validarDados(
         array $dados,
         ?int $ignorarPessoaId = null,
@@ -170,6 +192,9 @@ class MotoristaTransporteService
             'cpf' => Pessoa::normalizarCpf($dados['cpf'] ?? null),
             'telefone' => filled($dados['telefone'] ?? null)
                 ? Str::of((string) $dados['telefone'])->squish()->toString()
+                : null,
+            'matricula' => filled($dados['matricula'] ?? null)
+                ? Str::of((string) $dados['matricula'])->squish()->toString()
                 : null,
         ];
 
@@ -188,6 +213,7 @@ class MotoristaTransporteService
             'nome' => ['required', 'string', 'max:255'],
             'cpf' => $regrasCpf,
             'telefone' => ['nullable', 'string', 'max:255'],
+            'matricula' => ['nullable', 'string', 'max:255'],
         ], [
             'cpf.digits' => 'O CPF deve conter exatamente 11 dígitos.',
             'cpf.unique' => 'Este CPF já está cadastrado para outra pessoa.',
@@ -202,6 +228,12 @@ class MotoristaTransporteService
 
     private function validarReutilizacao(Servidor $motorista, array $dados): void
     {
+        if (filled($motorista->user_id) || filled($motorista->id_escola) || filled($motorista->setor_id)) {
+            throw ValidationException::withMessages([
+                'cpf' => 'A pessoa localizada por este CPF possui acesso, escola ou setor vinculado. Ajuste o cadastro pelo fluxo de Pessoas antes de defini-la como motorista.',
+            ]);
+        }
+
         $nomeAtual = Str::of((string) $motorista->nome)->squish()->lower()->toString();
         $nomeInformado = Str::of((string) $dados['nome'])->squish()->lower()->toString();
 

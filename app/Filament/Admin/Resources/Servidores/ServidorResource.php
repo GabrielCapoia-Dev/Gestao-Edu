@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\Servidores;
 
+use App\Filament\Admin\Pages\GerenciarEventos;
 use App\Filament\Admin\Resources\Servidores\Actions\PessoaAcessoActions;
 use App\Filament\Admin\Resources\Servidores\Pages\ManageServidores;
 use App\Filament\Admin\Resources\Servidores\Schemas\ServidorEquipeGestoraForm;
@@ -59,6 +60,8 @@ class ServidorResource extends Resource
 
     public const CARGO_OBRAS = 'obras';
 
+    public const CARGO_MOTORISTA = 'motorista';
+
     protected static ?string $model = Servidor::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::Briefcase;
@@ -86,6 +89,7 @@ class ServidorResource extends Resource
             $options[self::CARGO_EQUIPE_GESTORA] = 'Equipe Gestora';
             $options[self::CARGO_MANUTENCAO] = 'Manutenção';
             $options[self::CARGO_OBRAS] = 'Obras';
+            $options[self::CARGO_MOTORISTA] = 'Motorista';
         }
 
         return $options;
@@ -279,6 +283,7 @@ class ServidorResource extends Resource
                         self::CARGO_EQUIPE_GESTORA => 'Equipe Gestora',
                         self::CARGO_MANUTENCAO => 'Manutenção',
                         self::CARGO_OBRAS => 'Obras',
+                        self::CARGO_MOTORISTA => 'Motorista',
                         'sem_cargo' => 'Sem cargo ativo',
                     ])
                     ->multiple()
@@ -509,6 +514,7 @@ class ServidorResource extends Resource
 
                             return "Excluir \"{$record->nome}\"? "
                                 .'Matrículas e lotações serão removidas; vínculos de turma e a referência do professor em avaliações serão apenas desassociados (avaliações/alunos permanecem). '
+                                .'A identificação do motorista em eventos já atendidos permanecerá preservada no histórico. '
                                 .'A conta de login, se existir, não é apagada.';
                         })
                         ->visible(fn (Servidor $record): bool => Gate::allows('delete', $record)
@@ -521,12 +527,27 @@ class ServidorResource extends Resource
                                 return;
                             }
 
-                            Notification::make()
+                            $notification = Notification::make()
                                 ->title('Pessoa não pode ser excluída')
                                 ->body($motivo)
                                 ->warning()
-                                ->persistent()
-                                ->send();
+                                ->persistent();
+
+                            if (app(ServidorService::class)->possuiEventosFuturosComoMotorista($record)
+                                && Gate::allows('manageTransport', \App\Models\EventoCalendario::class)) {
+                                $notification->actions([
+                                    Action::make('corrigirVinculos')
+                                        ->label('Corrigir vínculos nos eventos')
+                                        ->button()
+                                        ->url(GerenciarEventos::getUrl([
+                                            'tableFilters' => [
+                                                'motorista_id' => ['value' => $record->getKey()],
+                                            ],
+                                        ])),
+                                ]);
+                            }
+
+                            $notification->send();
 
                             $action->halt();
                         })
@@ -627,6 +648,14 @@ class ServidorResource extends Resource
             ->contains(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehObras());
     }
 
+    public static function ehMotorista(Servidor $record): bool
+    {
+        $record->loadMissing('vinculosAtivos.funcaoAdministrativa');
+
+        return $record->vinculosAtivos
+            ->contains(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehMotorista());
+    }
+
     public static function cargoLabel(Servidor $record): string
     {
         $record->loadMissing(['professores', 'vinculosAtivos.funcaoAdministrativa']);
@@ -637,6 +666,10 @@ class ServidorResource extends Resource
 
         if (static::ehManutencao($record)) {
             return 'Manutenção';
+        }
+
+        if (static::ehMotorista($record)) {
+            return 'Motorista';
         }
 
         $cargosGestores = static::vinculosVisiveis($record)
@@ -892,6 +925,15 @@ class ServidorResource extends Resource
                         return;
                     }
 
+                    if ($cargo === self::CARGO_MOTORISTA) {
+                        $pessoasDoCargo->whereHas(
+                            'vinculosAtivos.funcaoAdministrativa',
+                            fn (Builder $funcoes): Builder => $funcoes->motorista(),
+                        );
+
+                        return;
+                    }
+
                     $pessoasDoCargo
                         ->whereDoesntHave(
                             'professores',
@@ -904,7 +946,8 @@ class ServidorResource extends Resource
                                     static::aplicarFiltroFuncaoGestora($cargosReconhecidos);
                                     $cargosReconhecidos
                                         ->orWhere('codigo', 'manutencao')
-                                        ->orWhere('codigo', 'obras');
+                                        ->orWhere('codigo', 'obras')
+                                        ->orWhere('codigo', 'motorista');
                                 });
                             },
                         );
@@ -1283,13 +1326,16 @@ class ServidorResource extends Resource
         $recordEraGestor = $record ? static::ehEquipeGestora($record) : false;
         $recordEraManutencao = $record ? static::ehManutencao($record) : false;
         $recordEraObras = $record ? static::ehObras($record) : false;
+        $recordEraMotorista = $record ? static::ehMotorista($record) : false;
 
         if (($cargo === self::CARGO_EQUIPE_GESTORA
             || $cargo === self::CARGO_MANUTENCAO
             || $cargo === self::CARGO_OBRAS
+            || $cargo === self::CARGO_MOTORISTA
             || $recordEraGestor
             || $recordEraManutencao
-            || $recordEraObras)
+            || $recordEraObras
+            || $recordEraMotorista)
             && ! ServidorEquipeGestoraForm::usuarioPodeAdministrar()) {
             throw new AuthorizationException(
                 'Apenas Admin ou usuário com a permissão Gerenciar Vínculos Estruturais de Pessoas pode administrar cargos funcionais.',
@@ -1298,6 +1344,18 @@ class ServidorResource extends Resource
 
         unset($data['registros_professor'], $data['matriculas_professor']);
         $data['cargo'] = $cargo;
+
+        if ($cargo === self::CARGO_MOTORISTA) {
+            $data['matricula'] = filled($data['matricula_motorista'] ?? null)
+                ? trim((string) $data['matricula_motorista'])
+                : null;
+            $data['id_escola'] = null;
+            $data['setor_id'] = null;
+
+            return [$data, ['motorista' => [
+                'matricula' => $data['matricula'],
+            ]]];
+        }
 
         if ($cargo === self::CARGO_MANUTENCAO) {
             return [$data, ['manutencao' => [

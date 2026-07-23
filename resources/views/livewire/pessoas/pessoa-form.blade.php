@@ -55,7 +55,7 @@
                 aria-controls="pessoa-form-panel-vinculos"
                 @click="aba = 'vinculos'"
             >
-                Matrículas e vínculos
+                {{ $cargo === 'motorista' ? 'Vínculo funcional' : 'Matrículas e vínculos' }}
             </button>
         </div>
 
@@ -77,7 +77,11 @@
                 x-show="aba === 'vinculos'"
                 x-cloak
             >
-                @include('livewire.pessoas.partials.matriculas-lotacoes')
+                @if ($cargo === 'motorista')
+                    @include('livewire.pessoas.partials.motorista')
+                @else
+                    @include('livewire.pessoas.partials.matriculas-lotacoes')
+                @endif
 
                 @include('livewire.pessoas.partials.equipe-gestora')
 

@@ -248,7 +248,7 @@ class ManualCalendarEventSource implements CalendarEventSource
 
                         $veiculo = $alocacao->veiculo?->identificacao ?: $alocacao->veiculo?->placa;
 
-                        return collect([$veiculo, $alocacao->motorista?->nome, $turmas])->filter()->implode(' — ');
+                        return collect([$veiculo, $alocacao->motoristaNomeExibicao(), $turmas])->filter()->implode(' — ');
                     })
                     ->filter()->values()->all()
                 : [],

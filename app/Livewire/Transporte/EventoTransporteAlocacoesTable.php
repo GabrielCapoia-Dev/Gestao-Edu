@@ -111,9 +111,9 @@ class EventoTransporteAlocacoesTable extends TableWidget
                     ->numeric(locale: 'pt_BR')
                     ->suffix(' lugares')
                     ->alignCenter(),
-                TextColumn::make('motorista.nome')
+                TextColumn::make('motorista_historico')
                     ->label('Motorista')
-                    ->placeholder('Não informado')
+                    ->state(fn (EventoCalendarioTransporteAlocacao $record): string => $record->motoristaNomeExibicao())
                     ->wrap(),
                 TextColumn::make('turmas_resumo')
                     ->label('Turmas')

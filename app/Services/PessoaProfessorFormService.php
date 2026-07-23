@@ -69,6 +69,16 @@ class PessoaProfessorFormService
         $vinculoObras = $pessoa->vinculosAtivos
             ->first(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehObras());
 
+        $vinculoMotorista = $pessoa->vinculosAtivos
+            ->first(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehMotorista());
+
+        if ($vinculoMotorista) {
+            return array_merge($dados, [
+                'cargo' => ServidorResource::CARGO_MOTORISTA,
+                'matricula_motorista' => $vinculoMotorista->matricula ?? $pessoa->matricula,
+            ]);
+        }
+
         if ($vinculoObras) {
             return array_merge($dados, [
                 'cargo' => ServidorResource::CARGO_OBRAS,
@@ -164,6 +174,8 @@ class PessoaProfessorFormService
             ->contains(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehManutencao());
         $ehObrasNoEscopo = $pessoa->vinculosAtivos
             ->contains(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehObras());
+        $ehMotoristaNoEscopo = $pessoa->vinculosAtivos
+            ->contains(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehMotorista());
 
         return [
             'nome' => $pessoa->nome,
@@ -172,6 +184,7 @@ class PessoaProfessorFormService
             'telefone' => $pessoa->telefone,
             'status' => $pessoa->status,
             'cargo' => match (true) {
+                $ehMotoristaNoEscopo => ServidorResource::CARGO_MOTORISTA,
                 $ehObrasNoEscopo => ServidorResource::CARGO_OBRAS,
                 $ehManutencaoNoEscopo => ServidorResource::CARGO_MANUTENCAO,
                 $ehEquipeGestoraNoEscopo => ServidorResource::CARGO_EQUIPE_GESTORA,
@@ -185,6 +198,11 @@ class PessoaProfessorFormService
                     ))?->setor_id
                 : null,
             'matriculas_professor' => $matriculasProfessor,
+            'matricula_motorista' => $ehMotoristaNoEscopo
+                ? ($pessoa->vinculosAtivos
+                    ->first(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehMotorista())
+                    ?->matricula ?? $pessoa->matricula)
+                : null,
             'registros_professor' => [],
         ];
     }

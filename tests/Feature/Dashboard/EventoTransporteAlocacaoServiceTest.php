@@ -23,9 +23,11 @@ use App\Models\User;
 use App\Models\VeiculoTransporte;
 use App\Services\Dashboard\EventoTransporteAlocacaoService;
 use App\Services\Dashboard\EventoCalendarioService;
+use App\Services\ServidorService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -38,6 +40,69 @@ class EventoTransporteAlocacaoServiceTest extends TestCase
         parent::setUp();
         config()->set('permission.cache.store', 'array');
         app(PermissionRegistrar::class)->forgetCachedPermissions();
+    }
+
+    public function test_exclusao_da_pessoa_e_bloqueada_enquanto_motorista_estiver_em_evento_futuro(): void
+    {
+        $ator = $this->ator();
+        $evento = $this->evento($ator, 'Evento futuro');
+        $motorista = $this->motorista('12345678901', 'Motorista vinculado');
+        $veiculo = $this->veiculo('ABC1D23', 40);
+
+        EventoCalendarioTransporteAlocacao::query()->create([
+            'evento_calendario_id' => $evento->id,
+            'veiculo_transporte_id' => $veiculo->id,
+            'motorista_id' => $motorista->id,
+            'motorista_nome' => $motorista->nome,
+            'criado_por_id' => $ator->id,
+        ]);
+
+        try {
+            app(ServidorService::class)->excluirPessoa($motorista);
+            $this->fail('A exclusão deveria ser bloqueada.');
+        } catch (ValidationException $exception) {
+            $this->assertStringContainsString(
+                'Substitua o motorista',
+                $exception->errors()['pessoa'][0],
+            );
+        }
+
+        $this->assertDatabaseHas('servidores', ['id' => $motorista->id]);
+        $this->assertDatabaseHas('eventos_calendario', ['id' => $evento->id]);
+    }
+
+    public function test_exclusao_preserva_fotografia_do_motorista_em_evento_ja_atendido(): void
+    {
+        $ator = $this->ator();
+        $evento = $this->evento($ator, 'Evento atendido');
+        $evento->forceFill([
+            'data_inicio' => '2026-01-10 08:00:00',
+            'data_fim' => '2026-01-10 12:00:00',
+        ])->save();
+        $motorista = $this->motorista('10987654321', 'Motorista histórico');
+        $motorista->forceFill(['matricula' => 'MOT-10'])->save();
+        $veiculo = $this->veiculo('DEF4G56', 40);
+        $alocacao = EventoCalendarioTransporteAlocacao::query()->create([
+            'evento_calendario_id' => $evento->id,
+            'veiculo_transporte_id' => $veiculo->id,
+            'motorista_id' => $motorista->id,
+            'motorista_nome' => $motorista->nome,
+            'motorista_cpf' => $motorista->cpf,
+            'motorista_matricula' => $motorista->matricula,
+            'criado_por_id' => $ator->id,
+        ]);
+
+        app(ServidorService::class)->excluirPessoa($motorista);
+
+        $this->assertDatabaseMissing('servidores', ['id' => $motorista->id]);
+        $this->assertDatabaseHas('eventos_calendario', ['id' => $evento->id]);
+        $this->assertDatabaseHas('evento_calendario_transporte_alocacoes', [
+            'id' => $alocacao->id,
+            'motorista_id' => null,
+            'motorista_nome' => 'Motorista histórico',
+            'motorista_cpf' => '10987654321',
+            'motorista_matricula' => 'MOT-10',
+        ]);
     }
 
     public function test_aloca_recursos_ativos_e_calcula_alerta_de_capacidade_sem_bloquear(): void

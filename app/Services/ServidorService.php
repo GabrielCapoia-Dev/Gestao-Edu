@@ -16,6 +16,10 @@ class ServidorService
 {
     public function criarServidorComFuncoes(array $data, array $vinculos = []): Servidor
     {
+        if ($this->fluxoMotorista($data, $vinculos)) {
+            return $this->criarPessoaMotorista($data, $vinculos);
+        }
+
         if ($this->fluxoObras($data, $vinculos)) {
             return app(PessoaObrasService::class)->criarPessoaObras(
                 $data,
@@ -54,6 +58,10 @@ class ServidorService
 
     public function atualizarServidorComFuncoes(Servidor $servidor, array $data, array $vinculos = []): Servidor
     {
+        if ($this->fluxoMotorista($data, $vinculos)) {
+            return $this->atualizarPessoaMotorista($servidor, $data, $vinculos);
+        }
+
         if ($this->fluxoObras($data, $vinculos)) {
             $dadosObras = $this->dadosObras($data, $vinculos);
 
@@ -261,6 +269,113 @@ class ServidorService
             || array_key_exists('registros_professor', $data)
             || array_key_exists('matriculas_professor', $vinculos)
             || array_key_exists('matriculas_professor', $data);
+    }
+
+    private function fluxoMotorista(array $data, array $vinculos): bool
+    {
+        return ($data['cargo'] ?? null) === 'motorista'
+            || array_key_exists('motorista', $data)
+            || array_key_exists('motorista', $vinculos);
+    }
+
+    private function criarPessoaMotorista(array $data, array $vinculos): Servidor
+    {
+        $matricula = $vinculos['motorista']['matricula']
+            ?? $data['motorista']['matricula']
+            ?? $data['matricula']
+            ?? null;
+
+        return DB::transaction(function () use ($data, $matricula): Servidor {
+            $motorista = Servidor::query()->create([
+                ...collect($data)->only([
+                    'nome',
+                    'cpf',
+                    'email',
+                    'telefone',
+                    'status',
+                    'observacoes',
+                ])->all(),
+                'user_id' => null,
+                'id_escola' => null,
+                'setor_id' => null,
+                'matricula' => filled($matricula) ? trim((string) $matricula) : null,
+            ]);
+
+            $this->vincularFuncao($motorista, FuncaoAdministrativa::motoristaPadrao(), [
+                'origem' => 'pessoas',
+                'matricula' => $motorista->matricula,
+                'id_escola' => null,
+                'setor_id' => null,
+            ]);
+
+            return $motorista->fresh(['vinculosAtivos.funcaoAdministrativa']);
+        });
+    }
+
+    private function atualizarPessoaMotorista(Servidor $servidor, array $data, array $vinculos): Servidor
+    {
+        $matricula = $vinculos['motorista']['matricula']
+            ?? $data['motorista']['matricula']
+            ?? $data['matricula']
+            ?? null;
+
+        return DB::transaction(function () use ($servidor, $data, $matricula): Servidor {
+            $servidor = Servidor::query()
+                ->with('vinculosAtivos.funcaoAdministrativa')
+                ->lockForUpdate()
+                ->findOrFail($servidor->getKey());
+
+            $possuiOutroCargo = $servidor->professores()->where('ativo', true)->exists()
+                || $servidor->vinculosAtivos->contains(
+                    fn (ServidorFuncaoAdministrativa $vinculo): bool => ! (bool) $vinculo
+                        ->funcaoAdministrativa?->ehMotorista(),
+                );
+
+            if (filled($servidor->user_id)) {
+                throw ValidationException::withMessages([
+                    'cargo' => 'Remova primeiro o acesso desta pessoa ao sistema antes de defini-la como motorista.',
+                ]);
+            }
+
+            if ($possuiOutroCargo) {
+                throw ValidationException::withMessages([
+                    'cargo' => 'Converta ou encerre os outros vínculos funcionais antes de definir esta pessoa como motorista.',
+                ]);
+            }
+
+            $servidor->forceFill([
+                ...collect($data)->only([
+                    'nome',
+                    'cpf',
+                    'email',
+                    'telefone',
+                    'status',
+                    'observacoes',
+                ])->all(),
+                'id_escola' => null,
+                'setor_id' => null,
+                'matricula' => filled($matricula) ? trim((string) $matricula) : null,
+            ])->save();
+
+            $funcaoMotorista = FuncaoAdministrativa::motoristaPadrao();
+            $vinculo = $servidor->servidorFuncoes()
+                ->ativos()
+                ->where('funcao_administrativa_id', $funcaoMotorista->getKey())
+                ->first()
+                ?? $this->vincularFuncao($servidor, $funcaoMotorista, [
+                    'origem' => 'pessoas',
+                    'matricula' => $servidor->matricula,
+                    'id_escola' => null,
+                    'setor_id' => null,
+                ]);
+            $vinculo->forceFill([
+                'matricula' => $servidor->matricula,
+                'id_escola' => null,
+                'setor_id' => null,
+            ])->save();
+
+            return $servidor->fresh(['vinculosAtivos.funcaoAdministrativa']);
+        });
     }
 
     private function fluxoManutencao(array $data, array $vinculos): bool
@@ -574,7 +689,25 @@ class ServidorService
 
     public function pessoaPodeSerExcluida(Servidor $pessoa): bool
     {
-        return ! $pessoa->servidorFuncoes()
+        return ! $this->possuiCargoProtegidoContraExclusao($pessoa)
+            && ! $this->possuiEventosFuturosComoMotorista($pessoa);
+    }
+
+    public function possuiEventosFuturosComoMotorista(Servidor $pessoa): bool
+    {
+        if (! Schema::hasTable('evento_calendario_transporte_alocacoes')) {
+            return false;
+        }
+
+        return $pessoa->alocacoesTransporteAtivas()
+            ->whereHas('evento', fn (Builder $eventos): Builder => $eventos
+                ->where('data_fim', '>=', now()))
+            ->exists();
+    }
+
+    private function possuiCargoProtegidoContraExclusao(Servidor $pessoa): bool
+    {
+        return $pessoa->servidorFuncoes()
             ->whereHas('funcaoAdministrativa', function (Builder $funcoes): void {
                 $funcoes->where(function (Builder $cargos): void {
                     $cargos
@@ -588,12 +721,23 @@ class ServidorService
 
     public function motivoBloqueioExclusao(Servidor $pessoa): ?string
     {
-        if ($this->pessoaPodeSerExcluida($pessoa)) {
-            return null;
+        if ($this->possuiCargoProtegidoContraExclusao($pessoa)) {
+            return "{$pessoa->nome} não pode ser excluída porque possui histórico em cargo funcional protegido. "
+                .'Inative a pessoa ou converta o cargo pelo fluxo próprio; os vínculos históricos devem ser preservados.';
         }
 
-        return "{$pessoa->nome} não pode ser excluída porque possui histórico em cargo funcional protegido. "
-            .'Inative a pessoa ou converta o cargo pelo fluxo próprio; os vínculos históricos devem ser preservados.';
+        if ($this->possuiEventosFuturosComoMotorista($pessoa)) {
+            $quantidade = $pessoa->alocacoesTransporteAtivas()
+                ->whereHas('evento', fn (Builder $eventos): Builder => $eventos
+                    ->where('data_fim', '>=', now()))
+                ->distinct('evento_calendario_id')
+                ->count('evento_calendario_id');
+
+            return "{$pessoa->nome} possui vínculo como motorista em {$quantidade} evento(s) atual(is) ou futuro(s). "
+                .'Substitua o motorista nesses eventos antes de excluir a pessoa. Os eventos já atendidos permanecerão no histórico.';
+        }
+
+        return null;
     }
 
     /**
@@ -654,6 +798,18 @@ class ServidorService
                         ->whereIn('servidor_funcao_administrativa_id', $vinculoIds)
                         ->delete();
                 }
+            }
+
+            if (Schema::hasTable('evento_calendario_transporte_alocacoes')) {
+                DB::table('evento_calendario_transporte_alocacoes')
+                    ->where('motorista_id', $pessoa->id)
+                    ->update([
+                        'motorista_nome' => $pessoa->nome,
+                        'motorista_cpf' => $pessoa->cpf,
+                        'motorista_matricula' => $pessoa->matricula,
+                        'motorista_id' => null,
+                        'updated_at' => now(),
+                    ]);
             }
 
             ServidorFuncaoAdministrativa::query()

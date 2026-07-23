@@ -13,6 +13,7 @@ class EventoCalendarioTransporteAlocacao extends Model
 
     protected $fillable = [
         'evento_calendario_id', 'veiculo_transporte_id', 'motorista_id',
+        'motorista_nome', 'motorista_cpf', 'motorista_matricula',
         'criado_por_id', 'removido_por_id', 'removido_em',
     ];
 
@@ -76,5 +77,12 @@ class EventoCalendarioTransporteAlocacao extends Model
     public function estaAtiva(): bool
     {
         return $this->removido_em === null;
+    }
+
+    public function motoristaNomeExibicao(): string
+    {
+        return $this->motorista?->nome
+            ?? $this->motorista_nome
+            ?? 'Motorista não informado';
     }
 }

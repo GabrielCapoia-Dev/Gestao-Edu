@@ -76,6 +76,10 @@ class MotoristasTransporteTable extends TableWidget
                     ->label('Telefone')
                     ->searchable()
                     ->placeholder('—'),
+                TextColumn::make('matricula')
+                    ->label('Matrícula')
+                    ->searchable()
+                    ->placeholder('—'),
                 TextColumn::make('motorista_ativo')
                     ->label('Status')
                     ->badge()
@@ -100,6 +104,7 @@ class MotoristasTransporteTable extends TableWidget
                             'nome' => $record->nome,
                             'cpf' => Pessoa::formatarCpf($record->cpf),
                             'telefone' => $record->telefone,
+                            'matricula' => $record->matricula,
                         ])
                         ->using(fn (Servidor $record, array $data): Servidor => $this->service()->atualizar(
                             $this->usuarioEfetivo(),
@@ -175,6 +180,10 @@ class MotoristasTransporteTable extends TableWidget
             TextInput::make('telefone')
                 ->label('Telefone')
                 ->tel()
+                ->maxLength(255),
+            TextInput::make('matricula')
+                ->label('Matrícula')
+                ->helperText('Opcional.')
                 ->maxLength(255),
         ];
     }
