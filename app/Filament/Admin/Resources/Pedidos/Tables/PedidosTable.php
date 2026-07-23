@@ -101,7 +101,7 @@ class PedidosTable
             ->searchPlaceholder('Buscar por protocolo, escola, setor, status, tipo ou descrição')
             ->columns(static::columns($user))
             ->filters(static::filters($user), layout: FiltersLayout::AboveContent)
-            ->filtersFormColumns(12)
+            ->filtersFormColumns(5)
             ->recordClasses(fn (Pedido $record): ?string => static::pedidoConcluido($record)
                 ? 'pedido-card--completed'
                 : (! $record->is_pedido_adicional && (int) ($record->pedidos_adicionais_count ?? 0) > 0
@@ -126,7 +126,7 @@ class PedidosTable
         return [
             SelectFilter::make('tipo_status_id')
                 ->label('Status')
-                ->columnSpan(3)
+                ->columnSpan(1)
                 ->multiple()
                 ->relationship(
                     name: 'tipoStatus',
@@ -138,7 +138,7 @@ class PedidosTable
 
             SelectFilter::make('setor_id')
                 ->label('Setor')
-                ->columnSpan(3)
+                ->columnSpan(1)
                 ->options(fn () => app(SetorPedidoAccessService::class)->optionsForCapability(
                     $user,
                     SetorAccessCapability::LISTAR,
@@ -148,7 +148,7 @@ class PedidosTable
 
             SelectFilter::make('escola_id')
                 ->label('Escola')
-                ->columnSpan(3)
+                ->columnSpan(1)
                 ->relationship('escola', 'nome', modifyQueryUsing: function ($query) use ($user) {
                     $service = app(PedidoService::class);
                     $escolaIds = $service->escolaIdsParaEscopo($user);
@@ -166,7 +166,7 @@ class PedidosTable
 
             SelectFilter::make('empresa_contratada_id')
                 ->label('Empresa')
-                ->columnSpan(3)
+                ->columnSpan(1)
                 ->options(fn (): array => $user
                     ? EmpresaContratada::query()
                         ->where('ativo', true)
@@ -180,7 +180,7 @@ class PedidosTable
 
             SelectFilter::make('nivel_prioridade')
                 ->label('Prioridade')
-                ->columnSpan(3)
+                ->columnSpan(1)
                 ->options(
                     collect(NivelEmergenciaPedido::cases())
                         ->mapWithKeys(fn ($case) => [$case->value => $case->label()])
@@ -189,7 +189,7 @@ class PedidosTable
 
             SelectFilter::make('relacao_pedido')
                 ->label('Tipo de pedido')
-                ->columnSpan(3)
+                ->columnSpan(1)
                 ->options([
                     'principais' => 'Pedidos principais',
                     'com_adicionais' => 'Principais com adicionais',
@@ -210,7 +210,7 @@ class PedidosTable
 
             Filter::make('manutencao')
                 ->label('Manutenção')
-                ->columnSpan(6)
+                ->columnSpan(2)
                 ->columns(2)
                 ->schema([
                     Select::make('tipo_manutencao_nome')
@@ -272,7 +272,7 @@ class PedidosTable
 
             Filter::make('data_criacao')
                 ->label('Período de criação')
-                ->columnSpan(3)
+                ->columnSpan(1)
                 ->schema([
                     DatePicker::make('data_inicio')
                         ->label('De'),
