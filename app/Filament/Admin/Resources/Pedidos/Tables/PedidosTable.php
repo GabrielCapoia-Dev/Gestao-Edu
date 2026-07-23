@@ -273,6 +273,7 @@ class PedidosTable
             Filter::make('data_criacao')
                 ->label('Período de criação')
                 ->columnSpan(1)
+                ->columns(2)
                 ->schema([
                     DatePicker::make('data_inicio')
                         ->label('De'),

@@ -320,8 +320,10 @@
 
     /* A navegação por status permanece disponível durante a leitura da lista. */
     .fi-resource-pedidos.fi-resource-list-records-page .fi-tabs {
-        position: sticky;
-        top: 4.25rem;
+        position: sticky !important;
+        top: 4.25rem !important;
+        align-self: flex-start;
+        width: 100%;
         z-index: 20;
         padding: 0.35rem 0.45rem;
         border: 1px solid color-mix(in srgb, var(--gray-200) 88%, var(--primary-100));
@@ -331,7 +333,12 @@
         scroll-margin-top: 4.25rem;
     }
 
-    .fi-resource-pedidos.fi-resource-list-records-page .fi-tabs-item.gi-tab-pill > span:first-child {
+    .fi-resource-pedidos.fi-resource-list-records-page .fi-page-main,
+    .fi-resource-pedidos.fi-resource-list-records-page .fi-page-content {
+        overflow: visible;
+    }
+
+    .fi-resource-pedidos.fi-resource-list-records-page .fi-tabs-item.gi-tab-pill .fi-tabs-item-label {
         font-size: 0.94rem;
         font-weight: 800;
     }
@@ -342,14 +349,6 @@
         background: linear-gradient(135deg, var(--edu-info-50), #ffffff);
         color: var(--edu-info-700);
         box-shadow: 0 0 0 2px color-mix(in srgb, var(--edu-info-100) 72%, transparent);
-    }
-
-    .fi-resource-pedidos.fi-resource-list-records-page .fi-ta-filters .fi-fo {
-        grid-template-columns: repeat(5, minmax(0, 1fr));
-    }
-
-    .fi-resource-pedidos.fi-resource-list-records-page .fi-ta-filters .fi-fo > .fi-fo-field-wrp {
-        min-width: 0;
     }
 
     .fi-resource-pedidos.fi-resource-list-records-page .pedido-card--completed .fi-ta-record-content {
@@ -386,10 +385,6 @@
             top: 3.75rem;
             overflow-x: auto;
             justify-content: flex-start;
-        }
-
-        .fi-resource-pedidos.fi-resource-list-records-page .fi-ta-filters .fi-fo {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
         }
 
         .fi-resource-pedidos.fi-resource-list-records-page .fi-page-content {
@@ -432,10 +427,6 @@
     }
 
     @media (max-width: 24rem) {
-        .fi-resource-pedidos.fi-resource-list-records-page .fi-ta-filters .fi-fo {
-            grid-template-columns: minmax(0, 1fr);
-        }
-
         .fi-resource-pedidos.fi-resource-list-records-page .fi-page-content {
             padding-inline: 0.5rem;
         }
