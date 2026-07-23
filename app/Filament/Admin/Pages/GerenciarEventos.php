@@ -31,11 +31,14 @@ use Filament\Schemas\Components\Livewire as LivewireComponent;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\Layout\Grid;
+use Filament\Tables\Columns\Layout\Split;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ViewColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Enums\FiltersLayout;
+use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
@@ -142,79 +145,108 @@ class GerenciarEventos extends Page implements HasTable
         return $table
             ->query($this->listagem()->query($user))
             ->columns([
-                TextColumn::make('criadoPor.name')
-                    ->label('Criado por')
-                    ->placeholder('Usuário não informado')
-                    ->searchable()
-                    ->wrap(),
+                Split::make([
+                    TextColumn::make('titulo')
+                        ->label('Evento')
+                        ->description(fn (EventoCalendario $record): ?string => filled($record->descricao)
+                            ? Str::limit(trim((string) $record->descricao), 110)
+                            : null)
+                        ->searchable(['titulo', 'descricao'])
+                        ->sortable()
+                        ->weight('bold')
+                        ->wrap()
+                        ->extraAttributes(['class' => 'gi-event-card__title'], merge: true),
 
-                TextColumn::make('titulo')
-                    ->label('Evento')
-                    ->description(fn (EventoCalendario $record): ?string => filled($record->descricao)
-                        ? Str::limit(trim((string) $record->descricao), 110)
-                        : null)
-                    ->searchable(['titulo', 'descricao'])
-                    ->sortable()
-                    ->weight('bold')
-                    ->wrap(),
+                    TextColumn::make('status')
+                        ->label('Status')
+                        ->badge()
+                        ->formatStateUsing(fn (mixed $state): string => $state?->label() ?? (string) $state)
+                        ->color(fn (mixed $state): string => $state?->color() ?? 'gray')
+                        ->grow(false)
+                        ->extraAttributes(['class' => 'gi-event-card__status'], merge: true),
 
-                TextColumn::make('local')
-                    ->label('Local')
-                    ->placeholder('Não informado')
-                    ->searchable()
-                    ->toggleable()
-                    ->wrap(),
+                    IconColumn::make('possui_inversao_fila')
+                        ->label('Atenção')
+                        ->boolean()
+                        ->trueIcon('heroicon-o-exclamation-triangle')
+                        ->trueColor('warning')
+                        ->falseIcon(false)
+                        ->visible(fn (?EventoCalendario $record): bool => $record === null
+                            || $record->possui_inversao_fila)
+                        ->tooltip(fn (EventoCalendario $record): ?string => $record->possui_inversao_fila
+                            ? 'Este evento foi solicitado depois de outro evento já registrado, mas está agendado para uma data anterior.'
+                            : null)
+                        ->grow(false)
+                        ->extraAttributes(['class' => 'gi-event-card__attention'], merge: true),
+                ])
+                    ->from('md')
+                    ->extraAttributes(['class' => 'gi-event-card__top']),
 
-                ViewColumn::make('resumo_escolas')
-                    ->label('Escolas e estimativas')
-                    ->view('filament.admin.pages.tables.columns.evento-escolas'),
+                Grid::make([
+                    'default' => 1,
+                    'sm' => 2,
+                    'lg' => 3,
+                    '2xl' => 6,
+                ])
+                    ->schema([
+                        TextColumn::make('criadoPor.name')
+                            ->label('Criado por')
+                            ->description('Criado por', position: 'above')
+                            ->placeholder('Usuário não informado')
+                            ->searchable()
+                            ->wrap()
+                            ->extraAttributes(['class' => 'gi-event-card__field'], merge: true),
 
-                TextColumn::make('total_estudantes_transporte')
-                    ->label('Total de alunos')
-                    ->state(fn (EventoCalendario $record): string => $record->possui_transporte
-                        ? number_format((int) $record->total_estudantes_transporte, 0, ',', '.').' estimado(s)'
-                        : '—')
-                    ->alignCenter(),
+                        TextColumn::make('local')
+                            ->label('Local')
+                            ->description('Local', position: 'above')
+                            ->icon('heroicon-o-map-pin')
+                            ->placeholder('Não informado')
+                            ->searchable()
+                            ->toggleable()
+                            ->wrap()
+                            ->extraAttributes(['class' => 'gi-event-card__field'], merge: true),
 
-                TextColumn::make('hora_inicio')
-                    ->label('Início')
-                    ->state(fn (EventoCalendario $record): string => $record->data_inicio->format('H:i'))
-                    ->alignCenter(),
+                        ViewColumn::make('resumo_escolas')
+                            ->label('Escolas e estimativas')
+                            ->view('filament.admin.pages.tables.columns.evento-escolas')
+                            ->extraAttributes(['class' => 'gi-event-card__field gi-event-card__schools'], merge: true),
 
-                TextColumn::make('hora_fim')
-                    ->label('Fim')
-                    ->state(fn (EventoCalendario $record): string => $record->data_fim->format('H:i'))
-                    ->alignCenter(),
+                        TextColumn::make('total_estudantes_transporte')
+                            ->label('Total de alunos')
+                            ->description('Total de alunos', position: 'above')
+                            ->icon('heroicon-o-user-group')
+                            ->state(fn (EventoCalendario $record): string => $record->possui_transporte
+                                ? number_format((int) $record->total_estudantes_transporte, 0, ',', '.').' estimado(s)'
+                                : '—')
+                            ->wrap()
+                            ->extraAttributes(['class' => 'gi-event-card__field'], merge: true),
 
-                TextColumn::make('data_inicio')
-                    ->label('Data do evento')
-                    ->date('d/m/Y')
-                    ->sortable()
-                    ->alignCenter(),
+                        TextColumn::make('data_inicio')
+                            ->label('Data e horário')
+                            ->description('Data e horário', position: 'above')
+                            ->icon('heroicon-o-calendar-days')
+                            ->state(fn (EventoCalendario $record): string => sprintf(
+                                '%s · %s–%s',
+                                $record->data_inicio->format('d/m/Y'),
+                                $record->data_inicio->format('H:i'),
+                                $record->data_fim->format('H:i'),
+                            ))
+                            ->sortable()
+                            ->wrap()
+                            ->extraAttributes(['class' => 'gi-event-card__field'], merge: true),
 
-                TextColumn::make('created_at')
-                    ->label('Criado em')
-                    ->dateTime('d/m/Y H:i')
-                    ->sortable()
-                    ->alignCenter(),
+                        TextColumn::make('created_at')
+                            ->label('Criado em')
+                            ->description('Criado em', position: 'above')
+                            ->icon('heroicon-o-clock')
+                            ->dateTime('d/m/Y H:i')
+                            ->sortable()
+                            ->wrap()
+                            ->extraAttributes(['class' => 'gi-event-card__field'], merge: true),
 
-                TextColumn::make('status')
-                    ->label('Status')
-                    ->badge()
-                    ->formatStateUsing(fn (mixed $state): string => $state?->label() ?? (string) $state)
-                    ->color(fn (mixed $state): string => $state?->color() ?? 'gray')
-                    ->alignCenter(),
-
-                IconColumn::make('possui_inversao_fila')
-                    ->label('Atenção')
-                    ->boolean()
-                    ->trueIcon('heroicon-o-exclamation-triangle')
-                    ->trueColor('warning')
-                    ->falseIcon(false)
-                    ->tooltip(fn (EventoCalendario $record): ?string => $record->possui_inversao_fila
-                        ? 'Este evento foi solicitado depois de outro evento já registrado, mas está agendado para uma data anterior.'
-                        : null)
-                    ->alignCenter(),
+                    ])
+                    ->extraAttributes(['class' => 'gi-event-card__grid']),
             ])
             ->filters($this->filtros($user), layout: FiltersLayout::AboveContentCollapsible)
             ->filtersFormColumns([
@@ -225,13 +257,16 @@ class GerenciarEventos extends Page implements HasTable
             ->recordClasses(fn (EventoCalendario $record): ?string => $record->possui_inversao_fila
                 ? 'gi-event-row--attention'
                 : null)
-            ->recordActions([
-                ActionGroup::make($this->acoesDoRegistro($user))
-                    ->label('Ações')
-                    ->icon('heroicon-m-ellipsis-vertical')
-                    ->color('gray')
-                    ->button(),
-            ])
+            ->recordActions(
+                [
+                    ActionGroup::make($this->acoesDoRegistro($user))
+                        ->label('Ações')
+                        ->icon('heroicon-m-ellipsis-vertical')
+                        ->color('gray')
+                        ->button(),
+                ],
+                RecordActionsPosition::AfterContent,
+            )
             ->toolbarActions([
                 BulkActionGroup::make($this->acoesEmMassa($user)),
             ])
