@@ -28,6 +28,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\HtmlString;
 
 class EventoCalendarioForm
@@ -48,6 +49,9 @@ class EventoCalendarioForm
     /** @return array<int, Component> */
     public static function components(?User $user): array
     {
+        $somenteTransporte = $user !== null
+            && Gate::forUser($user)->allows('requiresTransport', EventoCalendario::class);
+
         return [
             Section::make('Evento')
                 ->columns(1)
@@ -151,7 +155,9 @@ class EventoCalendarioForm
                             Toggle::make('enviar_escolas_especificas')
                                 ->label('Enviar para escolas específicas')
                                 ->helperText('Desmarcado, o evento será enviado para todas as escolas do seu escopo.')
-                                ->default(false)
+                                ->default($somenteTransporte)
+                                ->disabled($somenteTransporte)
+                                ->dehydrated()
                                 ->live()
                                 ->afterStateUpdated(function (bool $state, Get $get, Set $set) use ($user): void {
                                     if (! $state) {
@@ -284,6 +290,8 @@ class EventoCalendarioForm
                         Toggle::make('precisa_transporte_grupo')
                             ->label('Precisa de transporte?')
                             ->helperText('A estimativa considera somente matrículas principais ativas dos filtros informados.')
+                            ->default($somenteTransporte)
+                            ->disabled($somenteTransporte)
                             ->dehydrated(false)
                             ->live()
                             ->afterStateUpdated(fn (Get $get, Set $set) => self::atualizarDistribuicao($user, $get, $set)),
@@ -319,6 +327,9 @@ class EventoCalendarioForm
                                 ->columnSpanFull(),
                             Toggle::make('precisa_transporte')
                                 ->label('Precisa de transporte?')
+                                ->default($somenteTransporte)
+                                ->disabled($somenteTransporte)
+                                ->dehydrated()
                                 ->live()
                                 ->afterStateUpdated(function (bool $state, Set $set): void {
                                     if (! $state) {

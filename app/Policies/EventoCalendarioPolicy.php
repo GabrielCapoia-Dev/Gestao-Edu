@@ -25,7 +25,22 @@ class EventoCalendarioPolicy
 
     public function create(User $user): bool
     {
+        return $this->createCommon($user) || $this->createTransport($user);
+    }
+
+    public function createCommon(User $user): bool
+    {
         return $user->hasPermissionTo(ListaPermissoes::CriarEventos->label());
+    }
+
+    public function createTransport(User $user): bool
+    {
+        return $user->hasPermissionTo(ListaPermissoes::CriarEventosTransporte->label());
+    }
+
+    public function requiresTransport(User $user): bool
+    {
+        return $this->createTransport($user) && ! $this->createCommon($user);
     }
 
     public function update(User $user, EventoCalendario $evento): bool

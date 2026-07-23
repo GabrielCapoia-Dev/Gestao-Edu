@@ -87,6 +87,7 @@ enum ListaPermissoes: string
     case CriarPessoas = 'criar pessoas';
     case CriarAvisos = 'criar avisos';
     case CriarEventos = 'criar eventos';
+    case CriarEventosTransporte = 'criar eventos: transporte';
 
     case EditarEmpresaContratada = 'editar empresa contratada';
     case EditarAlunos = 'editar alunos';
@@ -346,6 +347,7 @@ enum ListaPermissoes: string
             self::CriarPessoas => 'Criar Pessoas',
             self::CriarAvisos => 'Criar Avisos',
             self::CriarEventos => 'Criar Eventos',
+            self::CriarEventosTransporte => 'Criar Eventos: Transporte',
 
             self::EditarEmpresaContratada => 'Editar Empresa Contratada',
             self::EditarAlunos => 'Editar Alunos',

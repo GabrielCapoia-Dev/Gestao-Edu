@@ -5,9 +5,11 @@ namespace App\Console\Commands;
 use App\Models\FuncaoAdministrativa;
 use App\Models\Enums\ListaPermissoes;
 use App\Models\Role;
+use App\Support\AssessoriaPedagogicaPermissionPreset;
 use App\Support\EquipeGestoraPermissionPreset;
 use App\Support\ManutencaoPermissionPreset;
 use App\Support\ObrasPermissionPreset;
+use App\Support\TransportePermissionPreset;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -548,6 +550,7 @@ class CriarPermissoes extends Command
                 'Listar Eventos: Geral',
                 'Listar Eventos: Meus Eventos',
                 'Criar Eventos',
+                'Criar Eventos: Transporte',
                 'Editar Eventos',
                 'Excluir Eventos',
                 'Publicar Eventos',
@@ -589,6 +592,8 @@ class CriarPermissoes extends Command
             'Equipe Gestora' => $this->onlyPermissions($permissions, EquipeGestoraPermissionPreset::all()),
             'Manutenção' => $this->onlyPermissions($permissions, ManutencaoPermissionPreset::all()),
             'Obras' => $this->onlyPermissions($permissions, ObrasPermissionPreset::all()),
+            'Transporte' => $this->onlyPermissions($permissions, TransportePermissionPreset::all()),
+            'Assessoria Pedagógica' => $this->onlyPermissions($permissions, AssessoriaPedagogicaPermissionPreset::all()),
         ];
     }
 

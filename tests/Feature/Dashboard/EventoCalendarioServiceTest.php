@@ -83,6 +83,38 @@ class EventoCalendarioServiceTest extends TestCase
         ]);
     }
 
+    public function test_criador_restrito_rejeita_evento_comum_e_aceita_solicitacao_de_transporte(): void
+    {
+        [$ator, $escola] = $this->atorEscolar('TRANSPORTE-RESTRITO');
+        $ator->revokePermissionTo(ListaPermissoes::CriarEventos->label());
+        Permission::findOrCreate(ListaPermissoes::CriarEventosTransporte->label(), 'web');
+        $ator->givePermissionTo(ListaPermissoes::CriarEventosTransporte->label());
+
+        try {
+            app(EventoCalendarioService::class)->criar([
+                ...$this->dadosBase(),
+                'enviar_todas_escolas' => true,
+            ], [], $ator);
+            $this->fail('Era esperada uma falha para evento sem transporte.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('escolas_agendadas', $exception->errors());
+        }
+
+        $evento = app(EventoCalendarioService::class)->criar([
+            ...$this->dadosBase(),
+            'enviar_escolas_especificas' => true,
+            'escolas_agendadas' => [[
+                'escola_id' => $escola->id,
+                'precisa_transporte' => true,
+                'escopo_transporte' => EventoCalendarioTransporteEscopo::TODA_UNIDADE->value,
+            ]],
+        ], [], $ator);
+
+        $this->assertSame(EventoCalendarioStatus::PENDENTE_APROVACAO, $evento->status);
+        $this->assertFalse($evento->ativo);
+        $this->assertTrue($evento->possuiTransporte());
+    }
+
     public function test_usa_horario_geral_e_rejeita_relacoes_escolares_invalidas(): void
     {
         [$ator, $escolaA] = $this->atorEscolar('A');

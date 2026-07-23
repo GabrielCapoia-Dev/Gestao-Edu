@@ -6,8 +6,10 @@ use App\Models\Enums\ListaPermissoes;
 use App\Models\Role;
 use App\Models\FuncaoAdministrativa;
 use App\Services\PedidoService;
+use App\Support\AssessoriaPedagogicaPermissionPreset;
 use App\Support\ManutencaoPermissionPreset;
 use App\Support\ObrasPermissionPreset;
+use App\Support\TransportePermissionPreset;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Spatie\Permission\Models\Permission;
@@ -68,6 +70,36 @@ class CriarPermissoesCommandTest extends TestCase
         $this->assertTrue($turmasRole->hasPermissionTo('Editar Dados da Turma'));
         $this->assertTrue($turmasRole->hasPermissionTo('Filtrar Turmas por Escola'));
         $this->assertFalse($turmasRole->hasPermissionTo('Listar Pedidos'));
+    }
+
+    public function test_it_synchronizes_transport_and_pedagogical_advisory_roles_with_exact_permissions(): void
+    {
+        Artisan::call('permissoes:criar');
+        Artisan::call('permissoes:criar');
+
+        $transporte = Role::findByName('Transporte', 'web');
+        $assessoria = Role::findByName('Assessoria Pedagógica', 'web');
+
+        $this->assertEqualsCanonicalizing(
+            TransportePermissionPreset::all(),
+            $transporte->permissions()->pluck('name')->all(),
+        );
+        $this->assertEqualsCanonicalizing(
+            AssessoriaPedagogicaPermissionPreset::all(),
+            $assessoria->permissions()->pluck('name')->all(),
+        );
+
+        $this->assertFalse($transporte->hasPermissionTo(ListaPermissoes::ListarEscolas->label()));
+        $this->assertFalse($transporte->hasPermissionTo(ListaPermissoes::ListarTurmas->label()));
+        $this->assertFalse($transporte->hasPermissionTo(ListaPermissoes::ListarAlunos->label()));
+        $this->assertFalse($transporte->hasPermissionTo(ListaPermissoes::CriarEventos->label()));
+
+        $this->assertTrue($assessoria->hasPermissionTo(ListaPermissoes::CriarEventosTransporte->label()));
+        $this->assertFalse($assessoria->hasPermissionTo(ListaPermissoes::CriarEventos->label()));
+        $this->assertFalse($assessoria->hasPermissionTo(ListaPermissoes::EditarAlunos->label()));
+        $this->assertFalse($assessoria->hasPermissionTo(ListaPermissoes::ResponderAvaliacoes->label()));
+        $this->assertFalse($assessoria->hasPermissionTo(ListaPermissoes::PublicarEventosTransporte->label()));
+        $this->assertFalse($assessoria->hasPermissionTo(ListaPermissoes::GerenciarTransporteDeEventos->label()));
     }
 
     public function test_it_creates_additional_request_notification_permission(): void

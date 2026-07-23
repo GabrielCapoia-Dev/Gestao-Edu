@@ -192,6 +192,23 @@ Policy: `PautaPolicy` (registrada em `AppServiceProvider`)
 - Editar: `Editar Pautas`
 - Excluir: `Excluir Pautas`
 
+### Início -> Eventos da agenda
+
+Policy: `EventoCalendarioPolicy` (registrada em `AppServiceProvider`)
+
+- Listar próprios eventos: `Listar Eventos: Meus Eventos`
+- Listar solicitações com transporte: `Listar Eventos: Transporte`
+- Criar qualquer evento: `Criar Eventos`
+- Criar somente solicitação com transporte: `Criar Eventos: Transporte`
+- Gerenciar veículos, motoristas e alocações: `Gerenciar Transporte de Eventos`
+- Publicar, desativar e rejeitar transporte: permissões específicas com o sufixo `: Transporte`
+
+Observações:
+
+- Quem possui somente `Criar Eventos: Transporte` precisa selecionar escolas e solicitar transporte; o serviço rejeita eventos comuns.
+- O nível `Transporte` administra solicitações de transporte sem acesso aos cadastros pedagógicos.
+- O nível `Assessoria Pedagógica` possui leitura pedagógica de rede e cria solicitações de transporte, mas não publica nem aloca veículos.
+
 ### Manutencao -> Tipos de manutencao
 
 Policy: `TipoManutencaoPolicy` (registrada em `AppServiceProvider`)

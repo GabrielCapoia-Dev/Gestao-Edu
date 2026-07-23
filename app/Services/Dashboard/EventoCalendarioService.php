@@ -45,6 +45,16 @@ class EventoCalendarioService
         [$dados, $agendamentos] = $this->prepararDados($dados, $ator);
         $publico = $this->publicoPadrao($dados, $agendamentos, $ator);
         $possuiTransporte = $this->agendamentosPossuemTransporte($agendamentos);
+
+        if (
+            Gate::forUser($ator)->allows('requiresTransport', EventoCalendario::class)
+            && ! $possuiTransporte
+        ) {
+            throw ValidationException::withMessages([
+                'escolas_agendadas' => 'Seu nível de acesso permite criar somente eventos com transporte solicitado.',
+            ]);
+        }
+
         [$dados['status'], $dados['ativo']] = $this->estadoInicial(
             $possuiTransporte,
             $publicacaoSolicitada,

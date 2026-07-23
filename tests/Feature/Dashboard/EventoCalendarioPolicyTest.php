@@ -76,6 +76,24 @@ class EventoCalendarioPolicyTest extends TestCase
         $this->assertFalse(Gate::forUser($editor)->allows('update', $eventoAlheio));
     }
 
+    public function test_criador_restrito_pode_criar_somente_solicitacoes_de_transporte(): void
+    {
+        $assessoria = User::factory()->create();
+
+        $this->conceder(
+            $assessoria,
+            ListaPermissoes::ListarMeusEventos,
+            ListaPermissoes::CriarEventosTransporte,
+        );
+
+        $this->assertTrue(Gate::forUser($assessoria)->allows('create', EventoCalendario::class));
+        $this->assertTrue(Gate::forUser($assessoria)->allows('createTransport', EventoCalendario::class));
+        $this->assertTrue(Gate::forUser($assessoria)->allows('requiresTransport', EventoCalendario::class));
+        $this->assertFalse(Gate::forUser($assessoria)->allows('createCommon', EventoCalendario::class));
+        $this->assertFalse(Gate::forUser($assessoria)->allows('publish', EventoCalendario::class));
+        $this->assertFalse(Gate::forUser($assessoria)->allows('manageTransport', EventoCalendario::class));
+    }
+
     public function test_publicacao_e_desativacao_comuns_nao_autorizam_eventos_com_transporte(): void
     {
         $gestor = User::factory()->create();
