@@ -39,7 +39,7 @@ class PessoaAcessoService
             ->map(fn ($id): int => (int) $id);
 
         $idsOperacionais = Role::query()
-            ->whereIn('name', ['Manutenção', 'Obras'])
+            ->whereIn('name', ['Manutenção', 'Obras', 'Transporte', 'Assessoria Pedagógica'])
             ->pluck('id')
             ->map(fn ($id): int => (int) $id);
 
@@ -60,7 +60,7 @@ class PessoaAcessoService
             return $this->rolesFuncionaisGerenciadasIds()->contains((int) $role);
         }
 
-        if (in_array((string) $role, ['Manutenção', 'Obras'], true)) {
+        if (in_array((string) $role, ['Manutenção', 'Obras', 'Transporte', 'Assessoria Pedagógica'], true)) {
             return true;
         }
 

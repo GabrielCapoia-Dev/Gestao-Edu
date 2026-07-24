@@ -250,6 +250,50 @@ class FuncaoAdministrativa extends Model
         return $funcao->fresh();
     }
 
+    public static function transportePadrao(): self
+    {
+        $funcao = static::query()->where('codigo', 'transporte')->first()
+            ?? static::query()->where('nome', 'Transporte')->first()
+            ?? new static();
+
+        $funcao->fill([
+            'codigo' => 'transporte',
+            'nome' => 'Transporte',
+            'categoria' => self::CATEGORIA_OPERACIONAL,
+            'ativo' => true,
+            'exige_professor' => false,
+            'concede_acesso_sistema' => true,
+            'tem_relacao_turma' => false,
+            'direcao_escolar' => false,
+            'coordenacao_pedagogica' => false,
+            'secretaria_escolar' => false,
+        ])->save();
+
+        return $funcao->fresh();
+    }
+
+    public static function assessoriaPedagogicaPadrao(): self
+    {
+        $funcao = static::query()->where('codigo', 'assessoria-pedagogica')->first()
+            ?? static::query()->where('nome', 'Assessoria Pedagógica')->first()
+            ?? new static();
+
+        $funcao->fill([
+            'codigo' => 'assessoria-pedagogica',
+            'nome' => 'Assessoria Pedagógica',
+            'categoria' => self::CATEGORIA_PEDAGOGICO,
+            'ativo' => true,
+            'exige_professor' => false,
+            'concede_acesso_sistema' => true,
+            'tem_relacao_turma' => false,
+            'direcao_escolar' => false,
+            'coordenacao_pedagogica' => false,
+            'secretaria_escolar' => false,
+        ])->save();
+
+        return $funcao->fresh();
+    }
+
     public function ehManutencao(): bool
     {
         return (string) $this->codigo === 'manutencao';
@@ -263,6 +307,16 @@ class FuncaoAdministrativa extends Model
     public function ehMotorista(): bool
     {
         return (string) $this->codigo === 'motorista';
+    }
+
+    public function ehTransporte(): bool
+    {
+        return (string) $this->codigo === 'transporte';
+    }
+
+    public function ehAssessoriaPedagogica(): bool
+    {
+        return (string) $this->codigo === 'assessoria-pedagogica';
     }
 
     public function ehEquipeGestora(): bool

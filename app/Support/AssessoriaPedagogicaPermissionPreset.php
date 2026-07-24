@@ -33,7 +33,11 @@ class AssessoriaPedagogicaPermissionPreset
             ListaPermissoes::ListarRelatoriosComponentesComProfessoresFaltando,
             ListaPermissoes::ListarRelatoriosDashboard,
             ListaPermissoes::ListarMeusEventos,
+            ListaPermissoes::CriarEventos,
             ListaPermissoes::CriarEventosTransporte,
+            ListaPermissoes::EditarEventos,
+            ListaPermissoes::PublicarEventos,
+            ListaPermissoes::DesativarEventos,
         ];
     }
 

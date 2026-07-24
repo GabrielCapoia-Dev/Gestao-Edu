@@ -66,6 +66,8 @@ class CriarPermissoes extends Command
         $this->sincronizarRoleEquipeGestoraComFuncoes();
         $this->sincronizarRoleManutencaoComFuncao();
         $this->sincronizarRoleObrasComFuncao();
+        $this->sincronizarRoleTransporteComFuncao();
+        $this->sincronizarRoleAssessoriaPedagogicaComFuncao();
 
         $this->sincronizarAdminComTodasAsPermissoes();
 
@@ -609,6 +611,68 @@ class CriarPermissoes extends Command
         $funcao = FuncaoAdministrativa::obrasPadrao();
         $role = Role::query()
             ->where('name', 'Obras')
+            ->where('guard_name', 'web')
+            ->first();
+
+        if (! $role) {
+            return;
+        }
+
+        DB::table('funcao_administrativa_role')->updateOrInsert(
+            [
+                'funcao_administrativa_id' => $funcao->id,
+                'role_id' => $role->id,
+            ],
+            [
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        );
+    }
+
+    private function sincronizarRoleTransporteComFuncao(): void
+    {
+        if (
+            ! Schema::hasTable('funcao_administrativa')
+            || ! Schema::hasTable('funcao_administrativa_role')
+        ) {
+            return;
+        }
+
+        $funcao = FuncaoAdministrativa::transportePadrao();
+        $role = Role::query()
+            ->where('name', 'Transporte')
+            ->where('guard_name', 'web')
+            ->first();
+
+        if (! $role) {
+            return;
+        }
+
+        DB::table('funcao_administrativa_role')->updateOrInsert(
+            [
+                'funcao_administrativa_id' => $funcao->id,
+                'role_id' => $role->id,
+            ],
+            [
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        );
+    }
+
+    private function sincronizarRoleAssessoriaPedagogicaComFuncao(): void
+    {
+        if (
+            ! Schema::hasTable('funcao_administrativa')
+            || ! Schema::hasTable('funcao_administrativa_role')
+        ) {
+            return;
+        }
+
+        $funcao = FuncaoAdministrativa::assessoriaPedagogicaPadrao();
+        $role = Role::query()
+            ->where('name', 'Assessoria Pedagógica')
             ->where('guard_name', 'web')
             ->first();
 

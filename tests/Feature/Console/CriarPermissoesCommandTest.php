@@ -94,12 +94,65 @@ class CriarPermissoesCommandTest extends TestCase
         $this->assertFalse($transporte->hasPermissionTo(ListaPermissoes::ListarAlunos->label()));
         $this->assertFalse($transporte->hasPermissionTo(ListaPermissoes::CriarEventos->label()));
 
+        $this->assertTrue($assessoria->hasPermissionTo(ListaPermissoes::CriarEventos->label()));
         $this->assertTrue($assessoria->hasPermissionTo(ListaPermissoes::CriarEventosTransporte->label()));
-        $this->assertFalse($assessoria->hasPermissionTo(ListaPermissoes::CriarEventos->label()));
+        $this->assertTrue($assessoria->hasPermissionTo(ListaPermissoes::EditarEventos->label()));
+        $this->assertTrue($assessoria->hasPermissionTo(ListaPermissoes::PublicarEventos->label()));
+        $this->assertTrue($assessoria->hasPermissionTo(ListaPermissoes::DesativarEventos->label()));
         $this->assertFalse($assessoria->hasPermissionTo(ListaPermissoes::EditarAlunos->label()));
         $this->assertFalse($assessoria->hasPermissionTo(ListaPermissoes::ResponderAvaliacoes->label()));
         $this->assertFalse($assessoria->hasPermissionTo(ListaPermissoes::PublicarEventosTransporte->label()));
+        $this->assertFalse($assessoria->hasPermissionTo(ListaPermissoes::DesativarEventosTransporte->label()));
         $this->assertFalse($assessoria->hasPermissionTo(ListaPermissoes::GerenciarTransporteDeEventos->label()));
+    }
+
+    public function test_it_creates_transport_role_function_and_exact_permissions(): void
+    {
+        Artisan::call('permissoes:criar');
+        Artisan::call('permissoes:criar');
+
+        $role = Role::findByName('Transporte', 'web');
+        $funcao = FuncaoAdministrativa::query()->where('codigo', 'transporte')->firstOrFail();
+
+        $this->assertEqualsCanonicalizing(
+            TransportePermissionPreset::all(),
+            $role->permissions()->pluck('name')->all(),
+        );
+        $this->assertFalse($role->hasPermissionTo(ListaPermissoes::CriarEventos->label()));
+        $this->assertFalse($role->hasPermissionTo(ListaPermissoes::ListarAlunos->label()));
+        $this->assertDatabaseHas('funcao_administrativa_role', [
+            'funcao_administrativa_id' => $funcao->id,
+            'role_id' => $role->id,
+        ]);
+        $this->assertTrue($funcao->concedeAcessoSistema());
+        $this->assertFalse($funcao->exige_professor);
+        $this->assertFalse($funcao->tem_relacao_turma);
+    }
+
+    public function test_it_creates_assessoria_pedagogica_role_function_and_exact_permissions(): void
+    {
+        Artisan::call('permissoes:criar');
+        Artisan::call('permissoes:criar');
+
+        $role = Role::findByName('Assessoria Pedagógica', 'web');
+        $funcao = FuncaoAdministrativa::query()->where('codigo', 'assessoria-pedagogica')->firstOrFail();
+
+        $this->assertEqualsCanonicalizing(
+            AssessoriaPedagogicaPermissionPreset::all(),
+            $role->permissions()->pluck('name')->all(),
+        );
+        $this->assertTrue($role->hasPermissionTo(ListaPermissoes::CriarEventos->label()));
+        $this->assertTrue($role->hasPermissionTo(ListaPermissoes::EditarEventos->label()));
+        $this->assertTrue($role->hasPermissionTo(ListaPermissoes::PublicarEventos->label()));
+        $this->assertTrue($role->hasPermissionTo(ListaPermissoes::ListarMeusEventos->label()));
+        $this->assertFalse($role->hasPermissionTo(ListaPermissoes::EditarAlunos->label()));
+        $this->assertFalse($role->hasPermissionTo(ListaPermissoes::PublicarEventosTransporte->label()));
+        $this->assertDatabaseHas('funcao_administrativa_role', [
+            'funcao_administrativa_id' => $funcao->id,
+            'role_id' => $role->id,
+        ]);
+        $this->assertTrue($funcao->concedeAcessoSistema());
+        $this->assertFalse($funcao->exige_professor);
     }
 
     public function test_it_creates_additional_request_notification_permission(): void
