@@ -319,12 +319,15 @@
     }
 
     /* A navegação por status permanece disponível durante a leitura da lista. */
-    .fi-resource-pedidos.fi-resource-list-records-page .fi-tabs {
+    .fi-resource-pedidos.fi-resource-list-records-page .fi-sc-tabs {
         position: sticky !important;
         top: 4.25rem !important;
         align-self: flex-start;
         width: 100%;
         z-index: 20;
+    }
+
+    .fi-resource-pedidos.fi-resource-list-records-page .fi-sc-tabs > .fi-tabs {
         padding: 0.35rem 0.45rem;
         border: 1px solid color-mix(in srgb, var(--gray-200) 88%, var(--primary-100));
         border-radius: 0.75rem;
@@ -386,8 +389,11 @@
     }
 
     @media (max-width: 48rem) {
-        .fi-resource-pedidos.fi-resource-list-records-page .fi-tabs {
+        .fi-resource-pedidos.fi-resource-list-records-page .fi-sc-tabs {
             top: 3.75rem;
+        }
+
+        .fi-resource-pedidos.fi-resource-list-records-page .fi-sc-tabs > .fi-tabs {
             overflow-x: auto;
             justify-content: flex-start;
         }
