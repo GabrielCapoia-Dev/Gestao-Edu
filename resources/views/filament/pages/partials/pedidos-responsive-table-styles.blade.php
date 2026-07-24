@@ -320,11 +320,17 @@
 
     /* A navegação por status permanece disponível durante a leitura da lista. */
     .fi-resource-pedidos.fi-resource-list-records-page .fi-sc-tabs {
-        position: sticky !important;
-        top: 4.25rem !important;
+        position: sticky;
+        top: 4.25rem;
         align-self: flex-start;
         width: 100%;
         z-index: 20;
+    }
+
+    .fi-resource-pedidos.fi-resource-list-records-page .fi-sc-tabs.gi-tabs-floating {
+        position: fixed !important;
+        top: 4.25rem !important;
+        z-index: 40;
     }
 
     .fi-resource-pedidos.fi-resource-list-records-page .fi-sc-tabs > .fi-tabs {
@@ -452,3 +458,126 @@
         }
     }
 </style>
+
+<script>
+    (() => {
+        const selector = '.fi-resource-pedidos.fi-resource-list-records-page .fi-sc-tabs';
+        const placeholderClass = 'gi-tabs-sticky-placeholder';
+        const stateKey = '__giPedidosTabsSticky';
+
+        if (window[stateKey]) {
+            return;
+        }
+
+        window[stateKey] = true;
+
+        let frame = null;
+        let observerStarted = false;
+
+        const topOffset = () => {
+            const rootFontSize = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+
+            return rootFontSize * (window.matchMedia('(max-width: 48rem)').matches ? 3.75 : 4.25);
+        };
+
+        const scheduleUpdate = () => {
+            if (frame !== null) {
+                return;
+            }
+
+            frame = window.requestAnimationFrame(() => {
+                frame = null;
+                update();
+            });
+        };
+
+        const update = () => {
+            const tabs = document.querySelector(selector);
+
+            if (! tabs) {
+                return;
+            }
+
+            if (! tabs.dataset.giTabsStart) {
+                tabs.dataset.giTabsStart = String(tabs.getBoundingClientRect().top + window.scrollY);
+            }
+
+            const start = Number(tabs.dataset.giTabsStart);
+            const offset = topOffset();
+            const shouldFloat = window.scrollY > (start - offset);
+            let placeholder = tabs.previousElementSibling;
+
+            if (! placeholder || ! placeholder.classList.contains(placeholderClass)) {
+                placeholder = document.createElement('div');
+                placeholder.className = placeholderClass;
+                placeholder.setAttribute('aria-hidden', 'true');
+                placeholder.style.display = 'none';
+                tabs.parentNode.insertBefore(placeholder, tabs);
+            }
+
+            if (shouldFloat) {
+                const bounds = tabs.getBoundingClientRect();
+
+                placeholder.style.display = 'block';
+                placeholder.style.height = `${tabs.offsetHeight}px`;
+                placeholder.style.width = `${bounds.width}px`;
+                tabs.classList.add('gi-tabs-floating');
+                tabs.style.left = `${bounds.left}px`;
+                tabs.style.width = `${bounds.width}px`;
+            } else {
+                placeholder.style.display = 'none';
+                tabs.classList.remove('gi-tabs-floating');
+                tabs.style.left = '';
+                tabs.style.width = '';
+            }
+        };
+
+        const initialize = () => {
+            const tabs = document.querySelector(selector);
+
+            if (tabs) {
+                if (tabs.classList.contains('gi-tabs-floating')) {
+                    tabs.classList.remove('gi-tabs-floating');
+                    tabs.style.left = '';
+                    tabs.style.width = '';
+                }
+
+                const placeholder = tabs.previousElementSibling;
+
+                if (placeholder?.classList.contains(placeholderClass)) {
+                    placeholder.style.display = 'none';
+                }
+
+                delete tabs.dataset.giTabsStart;
+            }
+
+            scheduleUpdate();
+        };
+
+        const observeDom = () => {
+            if (observerStarted || ! document.body || ! window.MutationObserver) {
+                return;
+            }
+
+            observerStarted = true;
+            new MutationObserver(initialize).observe(document.body, {
+                childList: true,
+                subtree: true,
+            });
+        };
+
+        window.addEventListener('scroll', scheduleUpdate, { passive: true });
+        window.addEventListener('resize', initialize);
+        document.addEventListener('DOMContentLoaded', () => {
+            initialize();
+            observeDom();
+        }, { once: true });
+        document.addEventListener('livewire:navigated', initialize);
+
+        if (document.body) {
+            observeDom();
+        }
+
+        initialize();
+    })();
+</script>
