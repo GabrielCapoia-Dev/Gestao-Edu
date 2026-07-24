@@ -338,6 +338,11 @@
         overflow: visible;
     }
 
+    /* O layout do painel usa overflow-x: clip; nesta página isso impede o sticky de acompanhar o scroll vertical. */
+    .fi-layout:has(.fi-resource-pedidos.fi-resource-list-records-page) {
+        overflow-x: visible;
+    }
+
     .fi-resource-pedidos.fi-resource-list-records-page .fi-tabs-item.gi-tab-pill .fi-tabs-item-label {
         font-size: 0.94rem;
         font-weight: 800;
