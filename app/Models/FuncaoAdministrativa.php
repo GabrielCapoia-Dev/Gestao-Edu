@@ -387,6 +387,16 @@ class FuncaoAdministrativa extends Model
         return $query->where('codigo', 'motorista');
     }
 
+    public function scopeTransporte(Builder $query): Builder
+    {
+        return $query->where('codigo', 'transporte');
+    }
+
+    public function scopeAssessoriaPedagogica(Builder $query): Builder
+    {
+        return $query->where('codigo', 'assessoria-pedagogica');
+    }
+
     public function servidorFuncoes(): HasMany
     {
         return $this->hasMany(ServidorFuncaoAdministrativa::class, 'funcao_administrativa_id');

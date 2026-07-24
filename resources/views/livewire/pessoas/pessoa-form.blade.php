@@ -88,6 +88,10 @@
                 @include('livewire.pessoas.partials.manutencao')
 
                 @include('livewire.pessoas.partials.obras')
+
+                @include('livewire.pessoas.partials.transporte')
+
+                @include('livewire.pessoas.partials.assessoria-pedagogica')
             </div>
         </div>
 

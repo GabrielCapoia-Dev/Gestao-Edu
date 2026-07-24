@@ -72,10 +72,30 @@ class PessoaProfessorFormService
         $vinculoMotorista = $pessoa->vinculosAtivos
             ->first(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehMotorista());
 
+        $vinculoTransporte = $pessoa->vinculosAtivos
+            ->first(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehTransporte());
+
+        $vinculoAssessoriaPedagogica = $pessoa->vinculosAtivos
+            ->first(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehAssessoriaPedagogica());
+
         if ($vinculoMotorista) {
             return array_merge($dados, [
                 'cargo' => ServidorResource::CARGO_MOTORISTA,
                 'matricula_motorista' => $vinculoMotorista->matricula ?? $pessoa->matricula,
+            ]);
+        }
+
+        if ($vinculoTransporte) {
+            return array_merge($dados, [
+                'cargo' => ServidorResource::CARGO_TRANSPORTE,
+                'matricula_operacional' => $vinculoTransporte->matricula ?? $pessoa->matricula,
+            ]);
+        }
+
+        if ($vinculoAssessoriaPedagogica) {
+            return array_merge($dados, [
+                'cargo' => ServidorResource::CARGO_ASSESSORIA_PEDAGOGICA,
+                'matricula_operacional' => $vinculoAssessoriaPedagogica->matricula ?? $pessoa->matricula,
             ]);
         }
 
@@ -176,6 +196,10 @@ class PessoaProfessorFormService
             ->contains(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehObras());
         $ehMotoristaNoEscopo = $pessoa->vinculosAtivos
             ->contains(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehMotorista());
+        $ehTransporteNoEscopo = $pessoa->vinculosAtivos
+            ->contains(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehTransporte());
+        $ehAssessoriaPedagogicaNoEscopo = $pessoa->vinculosAtivos
+            ->contains(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehAssessoriaPedagogica());
 
         return [
             'nome' => $pessoa->nome,
@@ -185,6 +209,8 @@ class PessoaProfessorFormService
             'status' => $pessoa->status,
             'cargo' => match (true) {
                 $ehMotoristaNoEscopo => ServidorResource::CARGO_MOTORISTA,
+                $ehTransporteNoEscopo => ServidorResource::CARGO_TRANSPORTE,
+                $ehAssessoriaPedagogicaNoEscopo => ServidorResource::CARGO_ASSESSORIA_PEDAGOGICA,
                 $ehObrasNoEscopo => ServidorResource::CARGO_OBRAS,
                 $ehManutencaoNoEscopo => ServidorResource::CARGO_MANUTENCAO,
                 $ehEquipeGestoraNoEscopo => ServidorResource::CARGO_EQUIPE_GESTORA,
@@ -201,6 +227,14 @@ class PessoaProfessorFormService
             'matricula_motorista' => $ehMotoristaNoEscopo
                 ? ($pessoa->vinculosAtivos
                     ->first(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehMotorista())
+                    ?->matricula ?? $pessoa->matricula)
+                : null,
+            'matricula_operacional' => ($ehTransporteNoEscopo || $ehAssessoriaPedagogicaNoEscopo)
+                ? ($pessoa->vinculosAtivos
+                    ->first(fn ($vinculo): bool => (bool) (
+                        $vinculo->funcaoAdministrativa?->ehTransporte()
+                        || $vinculo->funcaoAdministrativa?->ehAssessoriaPedagogica()
+                    ))
                     ?->matricula ?? $pessoa->matricula)
                 : null,
             'registros_professor' => [],

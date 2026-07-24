@@ -89,6 +89,8 @@ class PessoaForm extends Component
 
     public ?string $matriculaMotorista = null;
 
+    public ?string $matriculaOperacional = null;
+
     /** @var array<string, string|null> */
     public array $lotacoesAtivas = [];
 
@@ -636,6 +638,7 @@ class PessoaForm extends Component
         $this->observacoes = null;
         $this->cargo = ServidorResource::CARGO_PROFESSOR;
         $this->matriculaMotorista = null;
+        $this->matriculaOperacional = null;
         $key = $this->novaChave('m');
         $this->matriculas = [
             $key => [
@@ -665,6 +668,9 @@ class PessoaForm extends Component
         $this->cargo = (string) ($dados['cargo'] ?? ServidorResource::CARGO_PROFESSOR);
         $this->matriculaMotorista = filled($dados['matricula_motorista'] ?? null)
             ? (string) $dados['matricula_motorista']
+            : null;
+        $this->matriculaOperacional = filled($dados['matricula_operacional'] ?? null)
+            ? (string) $dados['matricula_operacional']
             : null;
 
         $matriculas = is_array($dados['matriculas_professor'] ?? null)
@@ -784,6 +790,8 @@ class PessoaForm extends Component
             ServidorResource::CARGO_MANUTENCAO,
             ServidorResource::CARGO_OBRAS,
             ServidorResource::CARGO_MOTORISTA,
+            ServidorResource::CARGO_TRANSPORTE,
+            ServidorResource::CARGO_ASSESSORIA_PEDAGOGICA,
         ], true)) {
             $this->cargo = ServidorResource::CARGO_PROFESSOR;
             $this->addError('cargo', 'O cargo informado é inválido.');
@@ -796,6 +804,8 @@ class PessoaForm extends Component
             ServidorResource::CARGO_MANUTENCAO,
             ServidorResource::CARGO_OBRAS,
             ServidorResource::CARGO_MOTORISTA,
+            ServidorResource::CARGO_TRANSPORTE,
+            ServidorResource::CARGO_ASSESSORIA_PEDAGOGICA,
         ], true)) {
             $this->autorizarEquipeGestora();
         } else {
@@ -813,6 +823,8 @@ class PessoaForm extends Component
             ServidorResource::CARGO_MANUTENCAO,
             ServidorResource::CARGO_OBRAS,
             ServidorResource::CARGO_MOTORISTA,
+            ServidorResource::CARGO_TRANSPORTE,
+            ServidorResource::CARGO_ASSESSORIA_PEDAGOGICA,
         ], true)) {
             return;
         }
@@ -869,12 +881,16 @@ class PessoaForm extends Component
                 ServidorResource::CARGO_MANUTENCAO,
                 ServidorResource::CARGO_OBRAS,
                 ServidorResource::CARGO_MOTORISTA,
+                ServidorResource::CARGO_TRANSPORTE,
+                ServidorResource::CARGO_ASSESSORIA_PEDAGOGICA,
             ])],
         ];
 
-        if ($this->cargo === ServidorResource::CARGO_MOTORISTA) {
+        if ($this->cargo === ServidorResource::CARGO_MOTORISTA
+            || $this->cargo === ServidorResource::CARGO_TRANSPORTE
+            || $this->cargo === ServidorResource::CARGO_ASSESSORIA_PEDAGOGICA) {
             $rules += [
-                'matriculaMotorista' => ['nullable', 'string', 'max:255'],
+                'matriculaOperacional' => ['nullable', 'string', 'max:255'],
             ];
         } else {
             $rules += [
@@ -927,9 +943,16 @@ class PessoaForm extends Component
             'setorManutencaoId' => 'setor da Manutenção',
             'setorObrasId' => 'setor de Obras',
             'matriculaMotorista' => 'matrícula',
+            'matriculaOperacional' => 'matrícula',
         ]);
 
-        if ($this->cargo !== ServidorResource::CARGO_MOTORISTA) {
+        $cargosSemMatriculas = [
+            ServidorResource::CARGO_MOTORISTA,
+            ServidorResource::CARGO_TRANSPORTE,
+            ServidorResource::CARGO_ASSESSORIA_PEDAGOGICA,
+        ];
+
+        if (! in_array($this->cargo, $cargosSemMatriculas, true)) {
             PessoaMatricula::assertConjuntoTurnosValido(
                 collect($this->matriculas)->pluck('turno')->map(fn (mixed $turno): string => (string) $turno)->all(),
             );
@@ -1088,6 +1111,7 @@ class PessoaForm extends Component
             || $this->cargosGestores !== []
             || filled($this->portaria)
             || $this->turmaIds !== []
+            || filled($this->matriculaOperacional)
         ) {
             throw ValidationException::withMessages([
                 'formulario' => 'O formulário contém alterações estruturais não permitidas para este perfil.',
@@ -1317,6 +1341,7 @@ class PessoaForm extends Component
             'observacoes' => $this->observacoes,
             'cargo' => $this->cargo,
             'matricula_motorista' => $this->matriculaMotorista,
+            'matricula_operacional' => $this->matriculaOperacional,
             'matriculas_professor' => $this->payloadMatriculas(),
             'id_escola' => $this->idEscolaGestora,
             'setor_manutencao_id' => $this->setorManutencaoId,

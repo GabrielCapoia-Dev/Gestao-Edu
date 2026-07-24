@@ -62,6 +62,10 @@ class ServidorResource extends Resource
 
     public const CARGO_MOTORISTA = 'motorista';
 
+    public const CARGO_TRANSPORTE = 'transporte';
+
+    public const CARGO_ASSESSORIA_PEDAGOGICA = 'assessoria_pedagogica';
+
     protected static ?string $model = Servidor::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::Briefcase;
@@ -90,6 +94,8 @@ class ServidorResource extends Resource
             $options[self::CARGO_MANUTENCAO] = 'Manutenção';
             $options[self::CARGO_OBRAS] = 'Obras';
             $options[self::CARGO_MOTORISTA] = 'Motorista';
+            $options[self::CARGO_TRANSPORTE] = 'Transporte';
+            $options[self::CARGO_ASSESSORIA_PEDAGOGICA] = 'Assessoria Pedagógica';
         }
 
         return $options;
@@ -656,6 +662,22 @@ class ServidorResource extends Resource
             ->contains(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehMotorista());
     }
 
+    public static function ehTransporte(Servidor $record): bool
+    {
+        $record->loadMissing('vinculosAtivos.funcaoAdministrativa');
+
+        return $record->vinculosAtivos
+            ->contains(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehTransporte());
+    }
+
+    public static function ehAssessoriaPedagogica(Servidor $record): bool
+    {
+        $record->loadMissing('vinculosAtivos.funcaoAdministrativa');
+
+        return $record->vinculosAtivos
+            ->contains(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehAssessoriaPedagogica());
+    }
+
     public static function cargoLabel(Servidor $record): string
     {
         $record->loadMissing(['professores', 'vinculosAtivos.funcaoAdministrativa']);
@@ -670,6 +692,14 @@ class ServidorResource extends Resource
 
         if (static::ehMotorista($record)) {
             return 'Motorista';
+        }
+
+        if (static::ehTransporte($record)) {
+            return 'Transporte';
+        }
+
+        if (static::ehAssessoriaPedagogica($record)) {
+            return 'Assessoria Pedagógica';
         }
 
         $cargosGestores = static::vinculosVisiveis($record)
@@ -934,6 +964,24 @@ class ServidorResource extends Resource
                         return;
                     }
 
+                    if ($cargo === self::CARGO_TRANSPORTE) {
+                        $pessoasDoCargo->whereHas(
+                            'vinculosAtivos.funcaoAdministrativa',
+                            fn (Builder $funcoes): Builder => $funcoes->transporte(),
+                        );
+
+                        return;
+                    }
+
+                    if ($cargo === self::CARGO_ASSESSORIA_PEDAGOGICA) {
+                        $pessoasDoCargo->whereHas(
+                            'vinculosAtivos.funcaoAdministrativa',
+                            fn (Builder $funcoes): Builder => $funcoes->assessoriaPedagogica(),
+                        );
+
+                        return;
+                    }
+
                     $pessoasDoCargo
                         ->whereDoesntHave(
                             'professores',
@@ -947,7 +995,9 @@ class ServidorResource extends Resource
                                     $cargosReconhecidos
                                         ->orWhere('codigo', 'manutencao')
                                         ->orWhere('codigo', 'obras')
-                                        ->orWhere('codigo', 'motorista');
+                                        ->orWhere('codigo', 'motorista')
+                                        ->orWhere('codigo', 'transporte')
+                                        ->orWhere('codigo', 'assessoria-pedagogica');
                                 });
                             },
                         );
@@ -1327,15 +1377,21 @@ class ServidorResource extends Resource
         $recordEraManutencao = $record ? static::ehManutencao($record) : false;
         $recordEraObras = $record ? static::ehObras($record) : false;
         $recordEraMotorista = $record ? static::ehMotorista($record) : false;
+        $recordEraTransporte = $record ? static::ehTransporte($record) : false;
+        $recordEraAssessoriaPedagogica = $record ? static::ehAssessoriaPedagogica($record) : false;
 
         if (($cargo === self::CARGO_EQUIPE_GESTORA
             || $cargo === self::CARGO_MANUTENCAO
             || $cargo === self::CARGO_OBRAS
             || $cargo === self::CARGO_MOTORISTA
+            || $cargo === self::CARGO_TRANSPORTE
+            || $cargo === self::CARGO_ASSESSORIA_PEDAGOGICA
             || $recordEraGestor
             || $recordEraManutencao
             || $recordEraObras
-            || $recordEraMotorista)
+            || $recordEraMotorista
+            || $recordEraTransporte
+            || $recordEraAssessoriaPedagogica)
             && ! ServidorEquipeGestoraForm::usuarioPodeAdministrar()) {
             throw new AuthorizationException(
                 'Apenas Admin ou usuário com a permissão Gerenciar Vínculos Estruturais de Pessoas pode administrar cargos funcionais.',
@@ -1353,6 +1409,30 @@ class ServidorResource extends Resource
             $data['setor_id'] = null;
 
             return [$data, ['motorista' => [
+                'matricula' => $data['matricula'],
+            ]]];
+        }
+
+        if ($cargo === self::CARGO_TRANSPORTE) {
+            $data['matricula'] = filled($data['matricula_operacional'] ?? null)
+                ? trim((string) $data['matricula_operacional'])
+                : null;
+            $data['id_escola'] = null;
+            $data['setor_id'] = null;
+
+            return [$data, ['transporte' => [
+                'matricula' => $data['matricula'],
+            ]]];
+        }
+
+        if ($cargo === self::CARGO_ASSESSORIA_PEDAGOGICA) {
+            $data['matricula'] = filled($data['matricula_operacional'] ?? null)
+                ? trim((string) $data['matricula_operacional'])
+                : null;
+            $data['id_escola'] = null;
+            $data['setor_id'] = null;
+
+            return [$data, ['assessoria_pedagogica' => [
                 'matricula' => $data['matricula'],
             ]]];
         }

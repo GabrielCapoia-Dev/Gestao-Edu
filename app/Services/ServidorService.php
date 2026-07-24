@@ -20,6 +20,14 @@ class ServidorService
             return $this->criarPessoaMotorista($data, $vinculos);
         }
 
+        if ($this->fluxoTransporte($data, $vinculos)) {
+            return $this->criarPessoaOperacional($data, $vinculos, 'transporte');
+        }
+
+        if ($this->fluxoAssessoriaPedagogica($data, $vinculos)) {
+            return $this->criarPessoaOperacional($data, $vinculos, 'assessoria_pedagogica');
+        }
+
         if ($this->fluxoObras($data, $vinculos)) {
             return app(PessoaObrasService::class)->criarPessoaObras(
                 $data,
@@ -60,6 +68,14 @@ class ServidorService
     {
         if ($this->fluxoMotorista($data, $vinculos)) {
             return $this->atualizarPessoaMotorista($servidor, $data, $vinculos);
+        }
+
+        if ($this->fluxoTransporte($data, $vinculos)) {
+            return $this->atualizarPessoaOperacional($servidor, $data, $vinculos, 'transporte');
+        }
+
+        if ($this->fluxoAssessoriaPedagogica($data, $vinculos)) {
+            return $this->atualizarPessoaOperacional($servidor, $data, $vinculos, 'assessoria_pedagogica');
         }
 
         if ($this->fluxoObras($data, $vinculos)) {
@@ -278,6 +294,20 @@ class ServidorService
             || array_key_exists('motorista', $vinculos);
     }
 
+    private function fluxoTransporte(array $data, array $vinculos): bool
+    {
+        return ($data['cargo'] ?? null) === 'transporte'
+            || array_key_exists('transporte', $data)
+            || array_key_exists('transporte', $vinculos);
+    }
+
+    private function fluxoAssessoriaPedagogica(array $data, array $vinculos): bool
+    {
+        return ($data['cargo'] ?? null) === 'assessoria_pedagogica'
+            || array_key_exists('assessoria_pedagogica', $data)
+            || array_key_exists('assessoria_pedagogica', $vinculos);
+    }
+
     private function criarPessoaMotorista(array $data, array $vinculos): Servidor
     {
         $matricula = $vinculos['motorista']['matricula']
@@ -373,6 +403,95 @@ class ServidorService
                 'id_escola' => null,
                 'setor_id' => null,
             ])->save();
+
+            return $servidor->fresh(['vinculosAtivos.funcaoAdministrativa']);
+        });
+    }
+
+    private function criarPessoaOperacional(array $data, array $vinculos, string $tipo): Servidor
+    {
+        $dados = $vinculos[$tipo] ?? $data[$tipo] ?? $vinculos;
+        $matricula = $dados['matricula'] ?? $data['matricula'] ?? null;
+
+        return DB::transaction(function () use ($data, $matricula, $tipo): Servidor {
+            $pessoa = Servidor::query()->create([
+                ...collect($data)->only([
+                    'nome',
+                    'cpf',
+                    'email',
+                    'telefone',
+                    'status',
+                    'observacoes',
+                ])->all(),
+                'user_id' => null,
+                'id_escola' => null,
+                'setor_id' => null,
+                'matricula' => filled($matricula) ? trim((string) $matricula) : null,
+            ]);
+
+            $funcao = $tipo === 'transporte'
+                ? FuncaoAdministrativa::transportePadrao()
+                : FuncaoAdministrativa::assessoriaPedagogicaPadrao();
+
+            $this->vincularFuncao($pessoa, $funcao, [
+                'origem' => 'pessoas',
+                'matricula' => $pessoa->matricula,
+                'id_escola' => null,
+                'setor_id' => null,
+            ]);
+
+            app(PessoaAcessoService::class)->provisionarAcessosDoServidor($pessoa->fresh());
+
+            return $pessoa->fresh(['vinculosAtivos.funcaoAdministrativa']);
+        });
+    }
+
+    private function atualizarPessoaOperacional(Servidor $servidor, array $data, array $vinculos, string $tipo): Servidor
+    {
+        $dados = $vinculos[$tipo] ?? $data[$tipo] ?? $vinculos;
+        $matricula = $dados['matricula'] ?? $data['matricula'] ?? null;
+
+        return DB::transaction(function () use ($servidor, $data, $matricula, $tipo): Servidor {
+            $servidor = Servidor::query()
+                ->with('vinculosAtivos.funcaoAdministrativa')
+                ->lockForUpdate()
+                ->findOrFail($servidor->getKey());
+
+            $servidor->forceFill([
+                ...collect($data)->only([
+                    'nome',
+                    'cpf',
+                    'email',
+                    'telefone',
+                    'status',
+                    'observacoes',
+                ])->all(),
+                'id_escola' => null,
+                'setor_id' => null,
+                'matricula' => filled($matricula) ? trim((string) $matricula) : null,
+            ])->save();
+
+            $funcao = $tipo === 'transporte'
+                ? FuncaoAdministrativa::transportePadrao()
+                : FuncaoAdministrativa::assessoriaPedagogicaPadrao();
+
+            $vinculo = $servidor->servidorFuncoes()
+                ->ativos()
+                ->where('funcao_administrativa_id', $funcao->getKey())
+                ->first()
+                ?? $this->vincularFuncao($servidor, $funcao, [
+                    'origem' => 'pessoas',
+                    'matricula' => $servidor->matricula,
+                    'id_escola' => null,
+                    'setor_id' => null,
+                ]);
+            $vinculo->forceFill([
+                'matricula' => $servidor->matricula,
+                'id_escola' => null,
+                'setor_id' => null,
+            ])->save();
+
+            app(PessoaAcessoService::class)->provisionarAcessosDoServidor($servidor->fresh());
 
             return $servidor->fresh(['vinculosAtivos.funcaoAdministrativa']);
         });

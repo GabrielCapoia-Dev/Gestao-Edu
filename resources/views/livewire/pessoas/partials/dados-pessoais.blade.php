@@ -128,6 +128,12 @@
                 @if ($podeGerenciarEquipeGestora || $cargo === 'motorista')
                     <option value="motorista" @selected($cargo === 'motorista')>Motorista</option>
                 @endif
+                @if ($podeGerenciarEquipeGestora || $cargo === 'transporte')
+                    <option value="transporte" @selected($cargo === 'transporte')>Transporte</option>
+                @endif
+                @if ($podeGerenciarEquipeGestora || $cargo === 'assessoria_pedagogica')
+                    <option value="assessoria_pedagogica" @selected($cargo === 'assessoria_pedagogica')>Assessoria Pedagógica</option>
+                @endif
             </select>
             @error('cargo')
                 <small id="pessoa-form-cargo-error" class="is-error">{{ $message }}</small>
