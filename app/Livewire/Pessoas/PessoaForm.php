@@ -12,6 +12,7 @@ use App\Models\Setor;
 use App\Models\Turma;
 use App\Models\TurmaComponenteProfessor;
 use App\Models\User;
+use App\Services\DominioEmailService;
 use App\Services\PessoaEdicaoEscopadaService;
 use App\Services\PessoaProfessorFormService;
 use App\Services\PessoaScopeService;
@@ -855,9 +856,9 @@ class PessoaForm extends Component
 
         $this->validate($rules);
 
-        if (filled($this->email) && ! Professor::emailInstitucionalValido($this->email)) {
+        if (filled($this->email) && ! app(DominioEmailService::class)->isEmailAutorizado($this->email)) {
             throw ValidationException::withMessages([
-                'email' => 'Use somente e-mail institucional @edu.umuarama.pr.gov.br.',
+                'email' => 'O domínio deste e-mail não está autorizado para novos cadastros. Verifique os domínios permitidos.',
             ]);
         }
 

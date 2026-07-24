@@ -118,8 +118,8 @@ class ProfessorService
                             ->dehydrateStateUsing(fn(?string $state): string => Professor::normalizarEmail($state))
                             ->rule(function () {
                                 return function (string $attribute, mixed $value, Closure $fail): void {
-                                    if (! Professor::emailInstitucionalValido((string) $value)) {
-                                        $fail('Use somente e-mail institucional @edu.umuarama.pr.gov.br.');
+                                    if (! app(DominioEmailService::class)->isEmailAutorizado((string) $value)) {
+                                        $fail('O domínio deste e-mail não está autorizado para novos cadastros.');
                                     }
                                 };
                             })

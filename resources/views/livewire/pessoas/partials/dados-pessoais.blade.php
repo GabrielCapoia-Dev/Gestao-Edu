@@ -51,7 +51,7 @@
                 maxlength="255"
                 inputmode="email"
                 autocomplete="email"
-                placeholder="nome@edu.umuarama.pr.gov.br"
+                placeholder="nome@dominio-autorizado.gov.br"
                 @disabled(! $modoCriacao && ! $podeEditarDados)
                 @error('email') aria-invalid="true" aria-describedby="pessoa-form-email-error" @enderror
             >
