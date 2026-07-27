@@ -58,6 +58,7 @@ class ReservaVeiculoCalendarEventSourceTest extends TestCase
         $this->assertSame('Escola da Agenda', $eventos->first()->escola);
         $this->assertSame('Visita à escola', $eventos->first()->resumo);
         $this->assertSame('#A855F7', $eventos->first()->corDestaque);
+        $this->assertSame($criador->name, $eventos->first()->solicitante);
     }
 
     public function test_filtro_de_veiculos_exibe_todas_as_reservas_para_usuario_autorizado(): void
@@ -75,7 +76,8 @@ class ReservaVeiculoCalendarEventSourceTest extends TestCase
             'capacidade_passageiros' => 5,
             'ativo' => true,
         ]);
-        $this->reserva(User::factory()->create(), $veiculo, null, 'Reunião externa', 'Paço Municipal');
+        $solicitante = User::factory()->create();
+        $this->reserva($solicitante, $veiculo, null, 'Reunião externa', 'Paço Municipal');
 
         $contexto = new CalendarQueryContext(
             user: $usuario,
@@ -91,6 +93,7 @@ class ReservaVeiculoCalendarEventSourceTest extends TestCase
         $this->assertSame('veiculos', $eventos->first()->categoria);
         $this->assertSame('Paço Municipal', $eventos->first()->local);
         $this->assertSame('#F97316', $eventos->first()->corDestaque);
+        $this->assertSame($solicitante->name, $eventos->first()->solicitante);
     }
 
     private function reserva(

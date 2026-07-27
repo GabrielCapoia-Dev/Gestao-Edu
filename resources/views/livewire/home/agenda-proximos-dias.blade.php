@@ -95,6 +95,9 @@
                                     >
                                         <span class="home-agenda__event-meta">
                                             {{ $event->diaInteiro ? 'Dia inteiro' : $event->inicio->format('H:i') }}
+                                            @if ($event->source === 'reservas_veiculos' && filled($event->solicitante))
+                                                · {{ $event->solicitante }}
+                                            @endif
                                             · {{ $event->categoriaLabel }}
                                         </span>
                                         @if ($event->inicio->startOfDay()->lt($day['date']->startOfDay()) || $event->fim->startOfDay()->gt($day['date']->startOfDay()))

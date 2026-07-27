@@ -127,6 +127,7 @@ class ReservaVeiculoCalendarEventSource implements CalendarEventSource
             actionLabel: 'Gerenciar reservas',
             local: $reserva->local_nome,
             corDestaque: $reserva->veiculo?->cor,
+            solicitante: $reserva->usuario?->name,
         );
     }
 

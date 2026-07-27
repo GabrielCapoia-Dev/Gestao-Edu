@@ -36,6 +36,7 @@ final readonly class CalendarEventData
         /** @var list<string> */
         public array $transporteAlocacoes = [],
         public ?string $corDestaque = null,
+        public ?string $solicitante = null,
     ) {}
 
     public function precisaTransporte(): bool
@@ -75,6 +76,7 @@ final readonly class CalendarEventData
             'local' => $this->local,
             'transporte_alocacoes' => $this->transporteAlocacoes,
             'cor_destaque' => $this->corDestaque,
+            'solicitante' => $this->solicitante,
         ];
     }
 }
