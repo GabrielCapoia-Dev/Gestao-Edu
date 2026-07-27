@@ -652,7 +652,7 @@ class PessoaHubFilamentTest extends TestCase
         $this->assertDatabaseMissing('professores', ['id' => $professor->id]);
     }
 
-    public function test_cadastro_de_motorista_pelo_fluxo_de_pessoas_nao_cria_acesso_ou_vinculo_escolar(): void
+    public function test_cargo_motorista_nao_pode_mais_ser_atribuido_e_registros_historicos_sao_preservados(): void
     {
         $usuario = $this->usuarioHubAdmin([
             'Listar Pessoas',
@@ -661,18 +661,26 @@ class PessoaHubFilamentTest extends TestCase
         ]);
         $this->actingAs($usuario);
 
-        [$dados, $vinculos] = ServidorResource::prepararDadosPersistencia([
-            'cargo' => ServidorResource::CARGO_MOTORISTA,
+        $this->assertArrayNotHasKey(
+            ServidorResource::CARGO_MOTORISTA,
+            ServidorResource::cargoOptions(),
+        );
+
+        $motorista = Servidor::query()->create([
             'nome' => 'Motorista da rede',
             'cpf' => '98765432100',
             'email' => null,
             'telefone' => '(44) 99999-0000',
             'status' => Servidor::STATUS_ATIVO,
-            'matricula_motorista' => 'MOT-123',
-            'matriculas_professor' => [],
+            'matricula' => 'MOT-123',
         ]);
-
-        $motorista = app(ServidorService::class)->criarServidorComFuncoes($dados, $vinculos);
+        ServidorFuncaoAdministrativa::query()->create([
+            'servidor_id' => $motorista->id,
+            'funcao_administrativa_id' => FuncaoAdministrativa::motoristaPadrao()->id,
+            'status' => ServidorFuncaoAdministrativa::STATUS_ATIVO,
+            'origem' => 'legado',
+            'data_inicio' => now()->subYear()->toDateString(),
+        ]);
 
         $this->assertNull($motorista->user_id);
         $this->assertNull($motorista->id_escola);

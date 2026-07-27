@@ -22,6 +22,7 @@ class ManutencaoPermissionPreset
             ListaPermissoes::VisualizarStatusEncaminhadoAoSetor,
             ListaPermissoes::VisualizarHistoricoDePedidos,
             ListaPermissoes::VisualizarArquivosDePedidos,
+            ListaPermissoes::VisualizarAgendaDeTodaARede,
             ListaPermissoes::ExportarArquivosPedido,
             ListaPermissoes::ListarTipoManutencao,
             ListaPermissoes::CriarTipoManutencao,

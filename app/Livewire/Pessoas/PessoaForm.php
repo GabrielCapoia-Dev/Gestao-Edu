@@ -790,7 +790,6 @@ class PessoaForm extends Component
             ServidorResource::CARGO_EQUIPE_GESTORA,
             ServidorResource::CARGO_MANUTENCAO,
             ServidorResource::CARGO_OBRAS,
-            ServidorResource::CARGO_MOTORISTA,
             ServidorResource::CARGO_TRANSPORTE,
             ServidorResource::CARGO_ASSESSORIA_PEDAGOGICA,
         ], true)) {
@@ -804,7 +803,6 @@ class PessoaForm extends Component
             ServidorResource::CARGO_EQUIPE_GESTORA,
             ServidorResource::CARGO_MANUTENCAO,
             ServidorResource::CARGO_OBRAS,
-            ServidorResource::CARGO_MOTORISTA,
             ServidorResource::CARGO_TRANSPORTE,
             ServidorResource::CARGO_ASSESSORIA_PEDAGOGICA,
         ], true)) {
@@ -881,7 +879,6 @@ class PessoaForm extends Component
                 ServidorResource::CARGO_EQUIPE_GESTORA,
                 ServidorResource::CARGO_MANUTENCAO,
                 ServidorResource::CARGO_OBRAS,
-                ServidorResource::CARGO_MOTORISTA,
                 ServidorResource::CARGO_TRANSPORTE,
                 ServidorResource::CARGO_ASSESSORIA_PEDAGOGICA,
             ])],

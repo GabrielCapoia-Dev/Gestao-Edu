@@ -36,6 +36,7 @@ class EquipeGestoraPermissionPreset
             ListaPermissoes::RealizarTransferenciaDeAluno,
             ListaPermissoes::ResponderAvaliacoes,
             ListaPermissoes::VincularPedidosAdicionais,
+            ListaPermissoes::VisualizarAgendaDeTodaARede,
             ListaPermissoes::VisualizarHistoricoDePedidos,
             ListaPermissoes::VisualizarTelaDeInicio,
             ListaPermissoes::AcessarPainel,

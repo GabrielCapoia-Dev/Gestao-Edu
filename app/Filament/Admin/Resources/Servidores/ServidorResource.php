@@ -93,7 +93,6 @@ class ServidorResource extends Resource
             $options[self::CARGO_EQUIPE_GESTORA] = 'Equipe Gestora';
             $options[self::CARGO_MANUTENCAO] = 'Manutenção';
             $options[self::CARGO_OBRAS] = 'Obras';
-            $options[self::CARGO_MOTORISTA] = 'Motorista';
             $options[self::CARGO_TRANSPORTE] = 'Transporte';
             $options[self::CARGO_ASSESSORIA_PEDAGOGICA] = 'Assessoria Pedagógica';
         }
@@ -289,7 +288,6 @@ class ServidorResource extends Resource
                         self::CARGO_EQUIPE_GESTORA => 'Equipe Gestora',
                         self::CARGO_MANUTENCAO => 'Manutenção',
                         self::CARGO_OBRAS => 'Obras',
-                        self::CARGO_MOTORISTA => 'Motorista',
                         'sem_cargo' => 'Sem cargo ativo',
                     ])
                     ->multiple()

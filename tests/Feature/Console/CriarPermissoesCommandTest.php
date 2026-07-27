@@ -7,6 +7,7 @@ use App\Models\Role;
 use App\Models\FuncaoAdministrativa;
 use App\Services\PedidoService;
 use App\Support\AssessoriaPedagogicaPermissionPreset;
+use App\Support\EquipeGestoraPermissionPreset;
 use App\Support\ManutencaoPermissionPreset;
 use App\Support\ObrasPermissionPreset;
 use App\Support\TransportePermissionPreset;
@@ -105,6 +106,8 @@ class CriarPermissoesCommandTest extends TestCase
         $this->assertTrue($assessoria->hasPermissionTo(ListaPermissoes::EditarEventos->label()));
         $this->assertTrue($assessoria->hasPermissionTo(ListaPermissoes::PublicarEventos->label()));
         $this->assertTrue($assessoria->hasPermissionTo(ListaPermissoes::DesativarEventos->label()));
+        $this->assertTrue($transporte->hasPermissionTo(ListaPermissoes::VisualizarAgendaDeTodaARede->label()));
+        $this->assertTrue($assessoria->hasPermissionTo(ListaPermissoes::VisualizarAgendaDeTodaARede->label()));
         $this->assertFalse($assessoria->hasPermissionTo(ListaPermissoes::EditarAlunos->label()));
         $this->assertFalse($assessoria->hasPermissionTo(ListaPermissoes::ResponderAvaliacoes->label()));
         $this->assertFalse($assessoria->hasPermissionTo(ListaPermissoes::PublicarEventosTransporte->label()));
@@ -199,6 +202,7 @@ class CriarPermissoesCommandTest extends TestCase
         $this->assertFalse($role->hasPermissionTo('Criar Pedidos'));
         $this->assertFalse($role->hasPermissionTo('Excluir Pedidos'));
         $this->assertFalse($role->hasPermissionTo('Enviar Pedidos para Empresa'));
+        $this->assertTrue($role->hasPermissionTo(ListaPermissoes::VisualizarAgendaDeTodaARede->label()));
         $this->assertDatabaseHas('funcao_administrativa_role', [
             'funcao_administrativa_id' => $funcao->id,
             'role_id' => $role->id,
@@ -242,7 +246,7 @@ class CriarPermissoesCommandTest extends TestCase
         $this->assertTrue($admin->hasPermissionTo('Acompanhar Avaliações'));
     }
 
-    public function test_it_creates_network_calendar_permission_and_assigns_it_to_admin(): void
+    public function test_it_assigns_network_calendar_permission_to_authorized_roles(): void
     {
         Artisan::call('permissoes:criar');
 
@@ -253,6 +257,11 @@ class CriarPermissoesCommandTest extends TestCase
             'guard_name' => 'web',
         ]);
         $this->assertTrue(Role::findByName('Admin', 'web')->hasPermissionTo($permission));
+        $this->assertTrue(Role::findByName('Equipe Gestora', 'web')->hasPermissionTo($permission));
+        $this->assertTrue(Role::findByName('Manutenção', 'web')->hasPermissionTo($permission));
+        $this->assertTrue(Role::findByName('Transporte', 'web')->hasPermissionTo($permission));
+        $this->assertTrue(Role::findByName('Assessoria Pedagógica', 'web')->hasPermissionTo($permission));
+        $this->assertContains($permission, EquipeGestoraPermissionPreset::all());
     }
 
     public function test_it_migrates_legacy_equipe_gestora_permissions_to_servidores(): void
