@@ -5,6 +5,7 @@ namespace App\Livewire\Home;
 use App\Models\Enums\ListaPermissoes;
 use App\Models\User;
 use App\Services\Dashboard\Calendar\CalendarEventAggregator;
+use App\Services\Dashboard\Calendar\CalendarExportService;
 use App\Services\Dashboard\DashboardUserContextFactory;
 use App\Services\ProfilePreviewService;
 use App\Support\Dashboard\Calendar\CalendarAggregationResult;
@@ -13,7 +14,7 @@ use App\Support\Dashboard\Calendar\CalendarQueryContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Livewire\Component;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class CalendarioCompleto extends Component
 {
@@ -63,64 +64,19 @@ class CalendarioCompleto extends Component
         $this->visualizacao = 'mes';
     }
 
-    public function exportarCalendario(): StreamedResponse
+    public function exportarCalendario(string $formato): Response
     {
+        abort_unless(in_array($formato, ['xlsx', 'pdf'], true), 422);
+
         $user = $this->usuarioAutorizado();
         $referencia = $this->referenciaValida();
         [$inicio, $fim] = $this->intervalo($referencia);
         $result = $this->carregarEventos($user, $inicio, $fim);
-        $filename = 'calendario-rede-'.$this->identificadorPeriodo($inicio, $fim).'.csv';
-        $rows = array_map(fn (CalendarEventData $event): array => [
-            $event->inicio->format('d/m/Y'),
-            $event->diaInteiro ? '' : $event->inicio->format('H:i'),
-            $event->fim->format('d/m/Y'),
-            $event->diaInteiro ? '' : $event->fim->format('H:i'),
-            $event->diaInteiro ? 'Sim' : 'Não',
-            $this->valorCsv($event->categoriaLabel),
-            $this->valorCsv($event->titulo),
-            $this->valorCsv($event->resumo),
-            $this->valorCsv($event->escola),
-            $this->valorCsv($event->local),
-            $this->valorCsv($event->setor),
-            $this->valorCsv($event->statusLabel),
-            $this->valorCsv($event->solicitante),
-            $this->valorCsv($event->origem),
-        ], $result->events);
+        $exporter = app(CalendarExportService::class);
 
-        return response()->streamDownload(function () use ($rows): void {
-            echo "\xEF\xBB\xBF";
-
-            $output = fopen('php://output', 'w');
-
-            if ($output === false) {
-                return;
-            }
-
-            fputcsv($output, [
-                'Data inicial',
-                'Hora inicial',
-                'Data final',
-                'Hora final',
-                'Dia inteiro',
-                'Categoria',
-                'Evento',
-                'Resumo',
-                'Escola',
-                'Local',
-                'Setor',
-                'Status',
-                'Solicitante',
-                'Origem',
-            ], ';');
-
-            foreach ($rows as $row) {
-                fputcsv($output, $row, ';');
-            }
-
-            fclose($output);
-        }, $filename, [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-        ]);
+        return $formato === 'xlsx'
+            ? $exporter->exportarXlsx($result->events, $inicio, $fim, $this->visualizacao, $user)
+            : $exporter->exportarPdf($result->events, $inicio, $fim, $this->visualizacao, $user);
     }
 
     public function render(): View
@@ -268,22 +224,6 @@ class CalendarioCompleto extends Component
         abort_unless($date !== false && $date->format('Y-m-d') === $this->referencia, 422);
 
         return $date;
-    }
-
-    private function identificadorPeriodo(CarbonImmutable $inicio, CarbonImmutable $fim): string
-    {
-        return match ($this->visualizacao) {
-            'ano' => 'ano-'.$inicio->format('Y'),
-            'semana' => 'semana-'.$inicio->format('Y-m-d').'-a-'.$fim->format('Y-m-d'),
-            default => 'mes-'.$inicio->format('Y-m'),
-        };
-    }
-
-    private function valorCsv(?string $value): string
-    {
-        $value = trim((string) $value);
-
-        return preg_match('/^[=+\-@\t\r]/u', $value) === 1 ? "'".$value : $value;
     }
 
     private function usuarioAutorizado(): User

@@ -239,8 +239,11 @@ class CalendarEventAggregatorTest extends TestCase
 
         $this->assertStringContainsString('Julho de 2026', $html);
         $this->assertSame(3, substr_count($html, 'wire:click="definirVisualizacao'));
-        $this->assertStringContainsString('wire:click="exportarCalendario"', $html);
+        $this->assertSame(2, substr_count($html, 'wire:click="exportarCalendario'));
         $this->assertStringContainsString('Exportar calendÃ¡rio', $html);
+        $this->assertStringContainsString('Planilha', $html);
+        $this->assertStringContainsString('XLSX', $html);
+        $this->assertStringContainsString('PDF', $html);
         $this->assertSame(2, substr_count($html, 'full-calendar__day--empty'));
         $this->assertStringContainsString('Evento historico', $html);
     }

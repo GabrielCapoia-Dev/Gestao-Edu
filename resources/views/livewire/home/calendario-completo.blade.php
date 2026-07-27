@@ -8,9 +8,19 @@
         </div>
 
         <div class="full-calendar__toolbar-actions">
-            <button type="button" class="full-calendar__export" wire:click="exportarCalendario">
-                Exportar calendário
-            </button>
+            <details class="full-calendar__export-menu">
+                <summary class="full-calendar__export">Exportar calendário</summary>
+                <div>
+                    <button type="button" wire:click="exportarCalendario('xlsx')">
+                        <strong>Planilha (XLSX)</strong>
+                        <span>Eventos e resumo mensal</span>
+                    </button>
+                    <button type="button" wire:click="exportarCalendario('pdf')">
+                        <strong>PDF</strong>
+                        <span>Calendário para impressão</span>
+                    </button>
+                </div>
+            </details>
 
             <div class="full-calendar__views" role="tablist" aria-label="Visualização do calendário">
                 <button type="button" @class(['is-active' => $visualizacao === 'ano']) wire:click="definirVisualizacao('ano')">Ano</button>

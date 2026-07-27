@@ -5403,6 +5403,8 @@ html.dark {
 }
 
 .full-calendar__export {
+    display: inline-flex;
+    align-items: center;
     min-height: 2.65rem;
     padding: .55rem .9rem;
     border: 1px solid #1747a6;
@@ -5412,11 +5414,58 @@ html.dark {
     font-size: .78rem;
     font-weight: 800;
     box-shadow: 0 3px 9px rgba(23, 71, 166, .2);
+    cursor: pointer;
+    list-style: none;
+}
+
+.full-calendar__export::-webkit-details-marker {
+    display: none;
 }
 
 .full-calendar__export:hover,
 .full-calendar__export:focus-visible {
     background: #123a8a;
+}
+
+.full-calendar__export-menu {
+    position: relative;
+}
+
+.full-calendar__export-menu > div {
+    position: absolute;
+    top: calc(100% + .45rem);
+    right: 0;
+    z-index: 20;
+    display: grid;
+    min-width: 13rem;
+    padding: .35rem;
+    border: 1px solid #d5deeb;
+    border-radius: .75rem;
+    background: #fff;
+    box-shadow: 0 12px 30px rgba(15, 28, 50, .16);
+}
+
+.full-calendar__export-menu > div button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .65rem .75rem;
+    border-radius: .55rem;
+    color: #24324a;
+    text-align: left;
+}
+
+.full-calendar__export-menu > div button:hover,
+.full-calendar__export-menu > div button:focus-visible {
+    background: #edf4ff;
+    color: #1747a6;
+}
+
+.full-calendar__export-menu > div button span {
+    color: #71809a;
+    font-size: .68rem;
+    font-weight: 800;
 }
 
 .full-calendar__navigation button,
