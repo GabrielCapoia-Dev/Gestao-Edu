@@ -52,7 +52,7 @@
         <details @class([
             'gi-school-transport-card',
             'has-assignment' => $item['alocacoes']->isNotEmpty(),
-        ]) wire:key="transporte-escola-{{ $agendamentoId }}">
+        ]) wire:key="transporte-escola-{{ $agendamentoId }}" open>
             <summary class="gi-school-transport-card__header">
                 <div>
                     <strong>{{ $agendamento->escola?->nome ?? 'Escola não informada' }}</strong>
