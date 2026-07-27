@@ -13,10 +13,6 @@ use Illuminate\Validation\ValidationException;
 
 class EventoCalendarioWorkflowService
 {
-    public function __construct(
-        private readonly EventoTransporteDisponibilidadeService $disponibilidade,
-    ) {}
-
     public function publicar(EventoCalendario $evento, User $ator): EventoCalendario
     {
         return DB::transaction(function () use ($evento, $ator): EventoCalendario {
@@ -30,8 +26,6 @@ class EventoCalendarioWorkflowService
                     ]);
                 }
 
-                $this->disponibilidade->validarCoberturaCompletaDoEvento($evento);
-                $this->disponibilidade->validarAlocacoesAtivasDoEvento($evento, bloquear: true);
             }
 
             if ($evento->status === EventoCalendarioStatus::PUBLICADO && $evento->ativo) {

@@ -14,7 +14,6 @@ class TransportePermissionPreset
             ListaPermissoes::VisualizarTelaDeInicio,
             ListaPermissoes::VisualizarAgendaDeTodaARede,
             ListaPermissoes::ListarEventosTransporte,
-            ListaPermissoes::GerenciarTransporteDeEventos,
             ListaPermissoes::PublicarEventosTransporte,
             ListaPermissoes::DesativarEventosTransporte,
             ListaPermissoes::RejeitarEventosTransporte,

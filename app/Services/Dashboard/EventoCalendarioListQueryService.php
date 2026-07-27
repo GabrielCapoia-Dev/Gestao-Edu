@@ -3,8 +3,10 @@
 namespace App\Services\Dashboard;
 
 use App\Models\Enums\EventoCalendarioStatus;
+use App\Models\Enums\EventoCalendarioTransporteEscopo;
 use App\Models\Escola;
 use App\Models\EventoCalendario;
+use App\Models\Turma;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -119,7 +121,7 @@ class EventoCalendarioListQueryService
 
         Gate::forUser($user)->authorize('view', $evento);
 
-        return $evento->load([
+        $evento->load([
             'criadoPor:id,name,email',
             'atualizadoPor:id,name,email',
             'escola:id,nome',
@@ -131,13 +133,45 @@ class EventoCalendarioListQueryService
             'escolasAgendadas.series:id,nome',
             'escolasAgendadas.turmas:id,nome,id_escola,id_serie,turno',
             'escolasAgendadas.turmas.serie:id,nome',
-            'alocacoesTransporteAtivas.veiculo:id,placa,identificacao,capacidade_passageiros',
-            'alocacoesTransporteAtivas.motorista:id,nome',
-            'alocacoesTransporteAtivas.turmas:id,nome,id_escola,id_serie',
-            'alocacoesTransporteAtivas.turmas.serie:id,nome',
-            'alocacoesTransporteAtivas.turmas.escola:id,nome',
             'historicos.usuario:id,name,email',
         ]);
+
+        $escolasDoEvento = $evento->enviar_todas_escolas
+            ? ($evento->publicoAlvo?->escolas ?? collect())
+            : $evento->escolasAgendadas->pluck('escola')->filter();
+
+        $turmasPorEscola = Turma::query()
+            ->whereIn('id_escola', $escolasDoEvento->pluck('id')->all())
+            ->with('serie:id,nome')
+            ->orderBy('id_serie')
+            ->orderBy('nome')
+            ->get()
+            ->groupBy('id_escola');
+
+        foreach ($escolasDoEvento as $escola) {
+            $escola->setRelation(
+                'turmasDoEvento',
+                $turmasPorEscola->get($escola->getKey(), collect())->values(),
+            );
+        }
+
+        foreach ($evento->escolasAgendadas as $agendamento) {
+            $turmas = $turmasPorEscola->get($agendamento->escola_id, collect());
+
+            if ($agendamento->escopo_transporte === EventoCalendarioTransporteEscopo::SERIES) {
+                $turmas = $turmas->whereIn('id_serie', $agendamento->series->modelKeys());
+            } elseif ($agendamento->escopo_transporte === EventoCalendarioTransporteEscopo::TURMAS) {
+                $turmas = $turmas->whereIn('id', $agendamento->turmas->modelKeys());
+            } elseif (! $agendamento->precisa_transporte && $agendamento->turmas->isNotEmpty()) {
+                $turmas = $agendamento->turmas;
+            } elseif (! $agendamento->precisa_transporte && $agendamento->series->isNotEmpty()) {
+                $turmas = $turmas->whereIn('id_serie', $agendamento->series->modelKeys());
+            }
+
+            $agendamento->setRelation('turmasDoEscopo', $turmas->values());
+        }
+
+        return $evento;
     }
 
     /**

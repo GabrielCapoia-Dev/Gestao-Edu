@@ -53,10 +53,12 @@
             <dt>Local</dt>
             <dd>{{ $evento->local ?: 'Não informado' }}</dd>
         </div>
-        <div>
-            <dt>Total estimado</dt>
-            <dd>{{ $evento->possuiTransporte() ? number_format($totalEstudantes, 0, ',', '.').' estudante(s)' : 'Transporte não solicitado' }}</dd>
-        </div>
+        @if ($evento->possuiTransporte())
+            <div>
+                <dt>Total estimado</dt>
+                <dd>{{ number_format($totalEstudantes, 0, ',', '.') }} estudante(s)</dd>
+            </div>
+        @endif
     </dl>
 
     <section class="gi-event-detail__section">
@@ -74,27 +76,29 @@
             </span>
         </header>
 
-        @if ($evento->possuiTransporte() && ! $evento->enviar_todas_escolas)
-            <livewire:transporte.evento-transporte-escolas-manager
-                :evento-id="$evento->getKey()"
-                :key="'evento-transporte-escolas-'.$evento->getKey()"
-            />
-        @elseif ($evento->enviar_todas_escolas)
-            <div class="gi-event-detail__schools gi-event-detail__schools--management">
+        <div class="gi-event-detail__schools gi-event-detail__schools--management">
+            @if ($evento->enviar_todas_escolas)
                 @forelse ($escolasAbrangentes as $escola)
                     <article class="gi-event-detail__school">
                         <div class="gi-event-detail__school-heading">
                             <strong>{{ $escola->nome }}</strong>
                         </div>
+
+                        @if ($escola->turmasDoEvento->isNotEmpty())
+                            <p>
+                                <b>Turmas:</b>
+                                {{ $escola->turmasDoEvento->map(fn ($turma) => trim(($turma->serie?->nome ? $turma->serie->nome.' ' : '').$turma->nome))->join(', ') }}
+                            </p>
+                        @else
+                            <p class="gi-event-detail__muted">Nenhuma turma cadastrada nesta escola.</p>
+                        @endif
                     </article>
                 @empty
                     <div class="gi-event-detail__empty">
                         O evento foi enviado para todas as escolas autorizadas no escopo do criador.
                     </div>
                 @endforelse
-            </div>
-        @else
-            <div class="gi-event-detail__schools gi-event-detail__schools--management">
+            @else
                 @forelse ($evento->escolasAgendadas as $agendamento)
                     <article class="gi-event-detail__school">
                         <div class="gi-event-detail__school-heading">
@@ -104,27 +108,29 @@
                             @endif
                         </div>
 
+                        <p>
+                            <b>Horário:</b>
+                            {{ substr((string) $agendamento->hora_inicio, 0, 5) }}–{{ substr((string) $agendamento->hora_fim, 0, 5) }}
+                        </p>
+
                         @if ($agendamento->series->isNotEmpty())
                             <p><b>Séries:</b> {{ $agendamento->series->pluck('nome')->join(', ') }}</p>
                         @endif
 
-                        @if ($agendamento->turmas->isNotEmpty())
+                        @if ($agendamento->turmasDoEscopo->isNotEmpty())
                             <p>
                                 <b>Turmas:</b>
-                                {{ $agendamento->turmas->map(fn ($turma) => trim(($turma->serie?->nome ? $turma->serie->nome.' ' : '').$turma->nome))->join(', ') }}
+                                {{ $agendamento->turmasDoEscopo->map(fn ($turma) => trim(($turma->serie?->nome ? $turma->serie->nome.' ' : '').$turma->nome))->join(', ') }}
                             </p>
+                        @else
+                            <p class="gi-event-detail__muted">Nenhuma turma encontrada no escopo informado.</p>
                         @endif
-
-                        <p>
-                            <b>Transporte:</b>
-                            {{ $agendamento->precisa_transporte ? 'Solicitado' : 'Não solicitado' }}
-                        </p>
                     </article>
                 @empty
                     <div class="gi-event-detail__empty">Nenhuma escola vinculada a este evento.</div>
                 @endforelse
-            </div>
-        @endif
+            @endif
+        </div>
     </section>
 
     <section class="gi-event-detail__section">

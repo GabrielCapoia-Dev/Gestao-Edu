@@ -14,7 +14,10 @@ use App\Models\Escola;
 use App\Models\EventoCalendario;
 use App\Models\Permission;
 use App\Models\PublicoAlvo;
+use App\Models\Serie;
+use App\Models\Turma;
 use App\Models\User;
+use App\Services\Dashboard\EventoCalendarioListQueryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
@@ -173,6 +176,41 @@ class GerenciarEventosPageTest extends TestCase
             ->assertTableActionVisible('detalhes', $evento)
             ->callTableAction('detalhes', $evento)
             ->assertSee('Descrição completa e exclusiva do evento detalhado.');
+    }
+
+    public function test_detalhes_de_transporte_exibem_escola_e_turmas_sem_alocacao_de_veiculo(): void
+    {
+        $usuario = $this->usuarioComPermissoes(ListaPermissoes::ListarEventosTransporte);
+        $evento = $this->evento(
+            User::factory()->create(),
+            'Evento para conferência das turmas',
+            EventoCalendarioStatus::PENDENTE_APROVACAO,
+            true,
+        );
+        $serie = Serie::query()->create([
+            'codigo' => 'SER-PAGE-EVENTOS',
+            'nome' => '5º Ano',
+        ]);
+        Turma::query()->create([
+            'codigo' => 'TUR-PAGE-EVENTOS',
+            'nome' => 'Turma Azul',
+            'turno' => 'manha',
+            'id_serie' => $serie->id,
+            'id_escola' => $this->escola->id,
+        ]);
+
+        $detalhes = app(EventoCalendarioListQueryService::class)
+            ->detalhes($usuario, $evento->id);
+        $html = view(
+            'filament.admin.pages.partials.evento-calendario-detalhes',
+            ['evento' => $detalhes],
+        )->render();
+
+        $this->assertStringContainsString('Escola da Page de Eventos', $html);
+        $this->assertStringContainsString('5º Ano Turma Azul', $html);
+        $this->assertStringNotContainsString('Confirmar atribuição', $html);
+        $this->assertStringNotContainsString('Motorista:', $html);
+        $this->assertStringNotContainsString('Veículo atribuído', $html);
     }
 
     private function usuarioComPermissoes(ListaPermissoes ...$permissoes): User
