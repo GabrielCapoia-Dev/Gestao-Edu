@@ -54,7 +54,11 @@ class VeiculoTransporteService
                 throw ValidationException::withMessages(['placa' => 'Já existe um veículo com esta placa.']);
             }
 
-            $veiculo = VeiculoTransporte::query()->create([...$dados, 'ativo' => true]);
+            $veiculo = VeiculoTransporte::query()->create([
+                ...$dados,
+                'capacidade_passageiros' => 1,
+                'ativo' => true,
+            ]);
             $veiculo = VeiculoTransporte::query()->lockForUpdate()->findOrFail($veiculo->getKey());
             Gate::forUser($ator)->authorize('view', $veiculo);
 
@@ -86,7 +90,7 @@ class VeiculoTransporteService
         return $this->alterarStatus($ator, $veiculo, false);
     }
 
-    /** @return array{placa: string, identificacao: ?string, capacidade_passageiros: int} */
+    /** @return array{placa: string, identificacao: ?string} */
     private function validarDados(array $dados, ?int $ignorarVeiculoId = null): array
     {
         $normalizados = [
@@ -94,7 +98,6 @@ class VeiculoTransporteService
             'identificacao' => filled($dados['identificacao'] ?? null)
                 ? Str::of((string) $dados['identificacao'])->squish()->toString()
                 : null,
-            'capacidade_passageiros' => $dados['capacidade_passageiros'] ?? null,
         ];
 
         $placaUnica = Rule::unique('veiculos_transporte', 'placa');
@@ -110,19 +113,14 @@ class VeiculoTransporteService
                 $placaUnica,
             ],
             'identificacao' => ['nullable', 'string', 'max:120'],
-            'capacidade_passageiros' => ['required', 'integer', 'min:1', 'max:500'],
         ], [
             'placa.regex' => 'Informe uma placa válida no padrão antigo ou Mercosul.',
             'placa.unique' => 'Já existe um veículo com esta placa.',
-            'capacidade_passageiros.min' => 'A capacidade deve ser de pelo menos 1 passageiro.',
-            'capacidade_passageiros.max' => 'A capacidade não pode ultrapassar 500 passageiros.',
         ]);
 
         if ($validator->fails()) {
             throw new ValidationException($validator);
         }
-
-        $normalizados['capacidade_passageiros'] = (int) $normalizados['capacidade_passageiros'];
 
         return $normalizados;
     }

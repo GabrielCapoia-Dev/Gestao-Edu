@@ -103,10 +103,10 @@ class TransporteCadastrosServiceTest extends TestCase
         $veiculo = $service->criar($ator, [
             'placa' => 'abc-1d23',
             'identificacao' => 'Micro-ônibus 01',
-            'capacidade_passageiros' => 28,
         ]);
 
         $this->assertSame('ABC1D23', $veiculo->placa);
+        $this->assertSame(1, $veiculo->capacidade_passageiros);
         $this->assertTrue($veiculo->ativo);
         $this->assertFalse(Gate::forUser($ator)->allows('delete', $veiculo));
 
@@ -124,11 +124,10 @@ class TransporteCadastrosServiceTest extends TestCase
         app(VeiculoTransporteService::class)->criar($semPermissao, [
             'placa' => 'ABC1D23',
             'identificacao' => null,
-            'capacidade_passageiros' => 20,
         ]);
     }
 
-    public function test_nao_aceita_placa_duplicada_ou_capacidade_invalida(): void
+    public function test_nao_aceita_placa_duplicada(): void
     {
         $ator = $this->usuarioComPermissao();
         $service = app(VeiculoTransporteService::class);
@@ -136,31 +135,17 @@ class TransporteCadastrosServiceTest extends TestCase
         $service->criar($ator, [
             'placa' => 'ABC1D23',
             'identificacao' => null,
-            'capacidade_passageiros' => 20,
         ]);
 
         try {
             $service->criar($ator, [
                 'placa' => 'ABC-1D23',
                 'identificacao' => null,
-                'capacidade_passageiros' => 20,
             ]);
 
             $this->fail('A placa duplicada deveria ser rejeitada.');
         } catch (ValidationException $exception) {
             $this->assertArrayHasKey('placa', $exception->errors());
-        }
-
-        try {
-            $service->criar($ator, [
-                'placa' => 'XYZ9Z99',
-                'identificacao' => null,
-                'capacidade_passageiros' => 0,
-            ]);
-
-            $this->fail('A capacidade inválida deveria ser rejeitada.');
-        } catch (ValidationException $exception) {
-            $this->assertArrayHasKey('capacidade_passageiros', $exception->errors());
         }
     }
 

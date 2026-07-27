@@ -221,6 +221,8 @@ Policies: `ReservaVeiculoPolicy` e `VeiculoTransportePolicy` (registradas em `Ap
 Observações:
 
 - O preset `Assessoria Pedagógica` recebe essas permissões.
+- A gestão de reservas é acessada pelos botões da página inicial e não é registrada no menu lateral.
+- Reservas para vários dias geram uma reserva por dia do intervalo, sempre no mesmo horário, com limite de 31 dias.
 - Reservas destinadas a uma escola ou CMEI aparecem na agenda da unidade.
 - Reservas com outro local aparecem para o solicitante e no escopo de rede.
 - O backend impede duas reservas ativas sobrepostas para o mesmo veículo.

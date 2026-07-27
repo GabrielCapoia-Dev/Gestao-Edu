@@ -6,8 +6,8 @@ use App\Models\Escola;
 use App\Models\ReservaVeiculo;
 use App\Models\User;
 use App\Services\Dashboard\ReservaVeiculoService;
+use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -32,22 +32,28 @@ final class ReservaVeiculoForm
                         ->dehydrated(false)
                         ->columnSpanFull(),
 
-                    Repeater::make('datas')
-                        ->label('Datas da reserva')
-                        ->schema([
-                            DatePicker::make('data')
-                                ->label('Data')
-                                ->required()
-                                ->minDate(today())
-                                ->native(false)
-                                ->displayFormat('d/m/Y')
-                                ->live(),
-                        ])
-                        ->defaultItems(1)
-                        ->minItems(1)
-                        ->maxItems(31)
-                        ->addActionLabel('Adicionar outro dia')
-                        ->reorderable(false)
+                    DatePicker::make('data_inicial')
+                        ->label('Data da reserva')
+                        ->required()
+                        ->minDate(today())
+                        ->native(false)
+                        ->displayFormat('d/m/Y')
+                        ->live(),
+
+                    Checkbox::make('reservar_varios_dias')
+                        ->label('Reservar para vários dias')
+                        ->helperText('O mesmo horário será reservado em todos os dias do intervalo, por até 31 dias.')
+                        ->default(false)
+                        ->live(),
+
+                    DatePicker::make('data_final')
+                        ->label('Data final')
+                        ->required(fn (Get $get): bool => (bool) $get('reservar_varios_dias'))
+                        ->minDate(fn (Get $get): mixed => $get('data_inicial') ?: today())
+                        ->native(false)
+                        ->displayFormat('d/m/Y')
+                        ->visible(fn (Get $get): bool => (bool) $get('reservar_varios_dias'))
+                        ->live()
                         ->columnSpanFull(),
 
                     TimePicker::make('hora_inicio')
@@ -76,7 +82,8 @@ final class ReservaVeiculoForm
                         ->options(fn (Get $get): array => app(ReservaVeiculoService::class)
                             ->veiculosDisponiveis(
                                 $usuario,
-                                self::datasDoEstado($get('datas')),
+                                $get('data_inicial'),
+                                $get('reservar_varios_dias') ? $get('data_final') : $get('data_inicial'),
                                 $get('hora_inicio'),
                                 $get('hora_fim'),
                             ))
@@ -135,7 +142,8 @@ final class ReservaVeiculoForm
                         ->options(fn (Get $get): array => app(ReservaVeiculoService::class)
                             ->veiculosDisponiveis(
                                 $usuario,
-                                filled($get('data')) ? [(string) $get('data')] : [],
+                                $get('data'),
+                                $get('data'),
                                 $get('hora_inicio'),
                                 $get('hora_fim'),
                                 $reserva->id,
@@ -192,15 +200,4 @@ final class ReservaVeiculoForm
             ]);
     }
 
-    /** @return list<string> */
-    private static function datasDoEstado(mixed $estado): array
-    {
-        return collect(is_array($estado) ? $estado : [])
-            ->pluck('data')
-            ->filter()
-            ->map(fn ($data): string => (string) $data)
-            ->unique()
-            ->values()
-            ->all();
-    }
 }

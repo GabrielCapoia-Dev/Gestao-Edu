@@ -3,6 +3,7 @@
 namespace Tests\Feature\Dashboard;
 
 use App\Filament\Admin\Resources\ReservasVeiculos\Pages\ManageReservasVeiculos;
+use App\Filament\Admin\Resources\ReservasVeiculos\ReservaVeiculoResource;
 use App\Models\Enums\ListaPermissoes;
 use App\Models\Escola;
 use App\Models\Permission;
@@ -55,14 +56,12 @@ class ReservaVeiculoPageTest extends TestCase
             ->assertActionVisible('nova_reserva')
             ->assertActionVisible('gerenciar_frota')
             ->mountAction('nova_reserva');
-        $datas = $componente->get('mountedActions.0.data.datas');
-        $chaveData = array_key_first($datas);
 
         $componente
             ->setActionData([
-                'datas' => [
-                    $chaveData => ['data' => '2026-07-31'],
-                ],
+                'data_inicial' => today()->addDay()->toDateString(),
+                'reservar_varios_dias' => true,
+                'data_final' => today()->addDays(2)->toDateString(),
                 'hora_inicio' => '09:00',
                 'hora_fim' => '11:00',
                 'tipo_local' => 'escola',
@@ -74,6 +73,7 @@ class ReservaVeiculoPageTest extends TestCase
             ->callMountedAction()
             ->assertHasNoActionErrors();
 
+        $this->assertDatabaseCount('reservas_veiculos', 2);
         $this->assertDatabaseHas('reservas_veiculos', [
             'usuario_id' => $usuario->id,
             'escola_id' => $escola->id,
@@ -82,5 +82,6 @@ class ReservaVeiculoPageTest extends TestCase
             'atividade' => 'Acompanhamento no CMEI',
             'status' => 'ativa',
         ]);
+        $this->assertFalse(ReservaVeiculoResource::shouldRegisterNavigation());
     }
 }

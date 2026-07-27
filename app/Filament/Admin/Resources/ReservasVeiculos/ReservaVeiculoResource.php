@@ -15,6 +15,8 @@ class ReservaVeiculoResource extends Resource
 {
     protected static ?string $model = ReservaVeiculo::class;
 
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-truck';
 
     protected static string|UnitEnum|null $navigationGroup = 'Pedagógico';
@@ -35,7 +37,7 @@ class ReservaVeiculoResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->with([
-            'veiculo:id,placa,identificacao,capacidade_passageiros,ativo',
+            'veiculo:id,placa,identificacao,ativo',
             'usuario:id,name,email',
             'escola:id,nome',
             'canceladoPor:id,name',

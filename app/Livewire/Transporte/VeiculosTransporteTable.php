@@ -49,7 +49,7 @@ class VeiculosTransporteTable extends TableWidget
                     ->visible(fn (): bool => $this->podeCriar())
                     ->authorize(fn (): bool => $this->podeCriar())
                     ->modalHeading('Novo veículo')
-                    ->modalDescription('Informe a identificação e a capacidade do veículo.')
+                    ->modalDescription('Informe a placa e uma identificação para o veículo.')
                     ->modalWidth('lg')
                     ->closeModalByClickingAway(false)
                     ->schema($this->formSchema())
@@ -70,11 +70,6 @@ class VeiculosTransporteTable extends TableWidget
                     ->searchable()
                     ->placeholder('—')
                     ->wrap(),
-                TextColumn::make('capacidade_passageiros')
-                    ->label('Capacidade')
-                    ->suffix(' passageiros')
-                    ->numeric(locale: 'pt_BR')
-                    ->sortable(),
                 TextColumn::make('ativo')
                     ->label('Status')
                     ->badge()
@@ -175,12 +170,6 @@ class VeiculosTransporteTable extends TableWidget
                 ->maxLength(7)
                 ->placeholder('ABC1D23')
                 ->helperText('Informe somente letras e números.'),
-            TextInput::make('capacidade_passageiros')
-                ->label('Capacidade de passageiros')
-                ->required()
-                ->integer()
-                ->minValue(1)
-                ->maxValue(500),
             TextInput::make('identificacao')
                 ->label('Identificação')
                 ->placeholder('Ex.: Micro-ônibus 01')

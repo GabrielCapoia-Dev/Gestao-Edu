@@ -34,19 +34,12 @@ class ReservasVeiculosResumo extends Component implements HasActions, HasSchemas
             ->visible(fn (): bool => Gate::forUser($usuario)->allows('create', ReservaVeiculo::class))
             ->authorize(fn (): bool => Gate::forUser($usuario)->allows('create', ReservaVeiculo::class))
             ->modalHeading('Nova reserva de veículo')
-            ->modalDescription('Adicione quantas datas forem necessárias para repetir o deslocamento.')
+            ->modalDescription('Para vários dias, informe o intervalo. O horário será repetido diariamente.')
             ->modalWidth('3xl')
             ->closeModalByClickingAway(false)
             ->schema(ReservaVeiculoForm::criacao($usuario))
             ->action(function (array $data) use ($usuario): void {
-                $reservas = app(ReservaVeiculoService::class)->criarEmLote($usuario, [
-                    ...$data,
-                    'datas' => collect($data['datas'] ?? [])
-                        ->pluck('data')
-                        ->filter()
-                        ->values()
-                        ->all(),
-                ]);
+                $reservas = app(ReservaVeiculoService::class)->criarEmLote($usuario, $data);
 
                 Notification::make()
                     ->title($reservas->count() === 1

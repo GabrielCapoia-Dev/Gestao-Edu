@@ -61,8 +61,12 @@ class ReservaVeiculoServiceTest extends TestCase
 
     public function test_cria_reservas_para_varios_dias_com_servidor_e_destino_automaticos(): void
     {
+        $dataInicial = today()->addDay();
+        $dataFinal = today()->addDays(3);
         $reservas = $this->service->criarEmLote($this->usuario, [
-            'datas' => ['2026-07-28', '2026-07-30'],
+            'data_inicial' => $dataInicial->toDateString(),
+            'reservar_varios_dias' => true,
+            'data_final' => $dataFinal->toDateString(),
             'hora_inicio' => '08:00',
             'hora_fim' => '10:00',
             'atividade' => 'Acompanhamento pedagógico',
@@ -72,7 +76,7 @@ class ReservaVeiculoServiceTest extends TestCase
             'veiculo_transporte_id' => $this->veiculo->id,
         ]);
 
-        $this->assertCount(2, $reservas);
+        $this->assertCount(3, $reservas);
         $this->assertNotNull($reservas->first()->grupo_recorrencia);
         $this->assertSame(
             $reservas->first()->grupo_recorrencia,
@@ -84,6 +88,14 @@ class ReservaVeiculoServiceTest extends TestCase
                 && $reserva->local_nome === 'Escola Destino'
                 && $reserva->status === ReservaVeiculoStatus::ATIVA,
         ));
+        $this->assertSame(
+            [
+                $dataInicial->toDateString(),
+                $dataInicial->copy()->addDay()->toDateString(),
+                $dataFinal->toDateString(),
+            ],
+            $reservas->map(fn (ReservaVeiculo $reserva): string => $reserva->data_inicio->toDateString())->all(),
+        );
     }
 
     public function test_impede_conflito_de_horario_e_permite_intervalo_adjacente(): void
@@ -115,6 +127,25 @@ class ReservaVeiculoServiceTest extends TestCase
         $this->assertDatabaseCount('reservas_veiculos', 2);
     }
 
+    public function test_conflito_em_um_dia_impede_todo_o_intervalo(): void
+    {
+        $this->service->criarEmLote($this->usuario, $this->dados());
+
+        try {
+            $this->service->criarEmLote($this->usuario, $this->dados([
+                'data_inicial' => today()->addDay()->toDateString(),
+                'reservar_varios_dias' => true,
+                'data_final' => today()->addDays(3)->toDateString(),
+            ]));
+
+            $this->fail('Era esperado um conflito em um dos dias do intervalo.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('veiculo_transporte_id', $exception->errors());
+        }
+
+        $this->assertDatabaseCount('reservas_veiculos', 1);
+    }
+
     public function test_cancelamento_libera_o_veiculo_e_preserva_o_historico(): void
     {
         $reserva = $this->service->criarEmLote($this->usuario, $this->dados())->firstOrFail();
@@ -139,7 +170,9 @@ class ReservaVeiculoServiceTest extends TestCase
     private function dados(array $sobrescrever = []): array
     {
         return [
-            'datas' => ['2026-07-29'],
+            'data_inicial' => today()->addDays(2)->toDateString(),
+            'reservar_varios_dias' => false,
+            'data_final' => null,
             'hora_inicio' => '08:00',
             'hora_fim' => '10:00',
             'atividade' => 'Visita técnica',

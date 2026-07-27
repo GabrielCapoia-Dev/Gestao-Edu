@@ -61,19 +61,12 @@ class ManageReservasVeiculos extends ManageRecords
                 ->visible(fn (): bool => Gate::forUser($usuario)->allows('create', ReservaVeiculo::class))
                 ->authorize(fn (): bool => Gate::forUser($usuario)->allows('create', ReservaVeiculo::class))
                 ->modalHeading('Nova reserva de veículo')
-                ->modalDescription('Use “Adicionar outro dia” para repetir o mesmo deslocamento em várias datas.')
+                ->modalDescription('Para vários dias, informe o intervalo. O horário será repetido diariamente.')
                 ->modalWidth('3xl')
                 ->closeModalByClickingAway(false)
                 ->schema(ReservaVeiculoForm::criacao($usuario))
                 ->action(function (array $data) use ($usuario): void {
-                    $reservas = app(ReservaVeiculoService::class)->criarEmLote($usuario, [
-                        ...$data,
-                        'datas' => collect($data['datas'] ?? [])
-                            ->pluck('data')
-                            ->filter()
-                            ->values()
-                            ->all(),
-                    ]);
+                    $reservas = app(ReservaVeiculoService::class)->criarEmLote($usuario, $data);
 
                     Notification::make()
                         ->title($reservas->count() === 1

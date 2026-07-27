@@ -24,7 +24,7 @@ class ReservaVeiculoService
 
         return ReservaVeiculo::query()
             ->with([
-                'veiculo:id,placa,identificacao,capacidade_passageiros,ativo',
+                'veiculo:id,placa,identificacao,ativo',
                 'usuario:id,name,email',
                 'escola:id,nome',
                 'canceladoPor:id,name',
@@ -37,7 +37,11 @@ class ReservaVeiculoService
     {
         Gate::forUser($ator)->authorize('create', ReservaVeiculo::class);
         $dados = $this->validarCriacao($dados);
-        $periodos = $this->periodos($dados['datas'], $dados['hora_inicio'], $dados['hora_fim']);
+        $periodos = $this->periodos(
+            $this->datasDoIntervalo($dados['data_inicial'], $dados['data_final']),
+            $dados['hora_inicio'],
+            $dados['hora_fim'],
+        );
 
         return DB::transaction(function () use ($ator, $dados, $periodos): Collection {
             $veiculo = VeiculoTransporte::query()
@@ -135,19 +139,24 @@ class ReservaVeiculoService
     /** @return array<int, string> */
     public function veiculosDisponiveis(
         User $ator,
-        array $datas,
+        ?string $dataInicial,
+        ?string $dataFinal,
         ?string $horaInicio,
         ?string $horaFim,
         ?int $ignorarReservaId = null,
     ): array {
         Gate::forUser($ator)->authorize('viewAny', ReservaVeiculo::class);
 
-        if ($datas === [] || blank($horaInicio) || blank($horaFim)) {
+        if (blank($dataInicial) || blank($dataFinal) || blank($horaInicio) || blank($horaFim)) {
             return [];
         }
 
         try {
-            $periodos = $this->periodos($datas, $horaInicio, $horaFim);
+            $periodos = $this->periodos(
+                $this->datasDoIntervalo($dataInicial, $dataFinal),
+                $horaInicio,
+                $horaFim,
+            );
         } catch (\Throwable) {
             return [];
         }
@@ -193,11 +202,25 @@ class ReservaVeiculoService
     /** @return array<string, mixed> */
     private function validarCriacao(array $dados): array
     {
-        return validator($dados, [
-            'datas' => ['required', 'array', 'min:1', 'max:31'],
-            'datas.*' => ['required', 'date_format:Y-m-d', 'after_or_equal:today', 'distinct'],
+        $validados = validator($dados, [
+            'data_inicial' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
+            'reservar_varios_dias' => ['required', 'boolean'],
+            'data_final' => [
+                'nullable',
+                Rule::requiredIf(fn (): bool => (bool) ($dados['reservar_varios_dias'] ?? false)),
+                'date_format:Y-m-d',
+                'after_or_equal:data_inicial',
+            ],
             ...$this->regrasComuns(),
         ], $this->mensagens())->validate();
+
+        $validados['data_final'] = $validados['reservar_varios_dias']
+            ? $validados['data_final']
+            : $validados['data_inicial'];
+
+        $this->datasDoIntervalo($validados['data_inicial'], $validados['data_final']);
+
+        return $validados;
     }
 
     /** @return array<string, mixed> */
@@ -231,9 +254,9 @@ class ReservaVeiculoService
     private function mensagens(): array
     {
         return [
-            'datas.required' => 'Informe ao menos uma data para a reserva.',
-            'datas.*.after_or_equal' => 'As reservas devem ser feitas para hoje ou uma data futura.',
-            'datas.*.distinct' => 'A mesma data foi informada mais de uma vez.',
+            'data_inicial.after_or_equal' => 'A reserva deve começar hoje ou em uma data futura.',
+            'data_final.required' => 'Informe a data final do intervalo.',
+            'data_final.after_or_equal' => 'A data final deve ser igual ou posterior à data inicial.',
             'hora_fim.after' => 'O horário final deve ser posterior ao horário inicial.',
             'escola_id.required_if' => 'Selecione a escola ou o CMEI de destino.',
             'local_outro.required_if' => 'Informe o local da atividade.',
@@ -264,6 +287,34 @@ class ReservaVeiculoService
             })
             ->values()
             ->all();
+    }
+
+    /** @return list<string> */
+    private function datasDoIntervalo(string $dataInicial, string $dataFinal): array
+    {
+        $timezone = (string) config('dashboard.calendar.timezone', config('app.timezone'));
+        $inicio = CarbonImmutable::createFromFormat('!Y-m-d', $dataInicial, $timezone);
+        $fim = CarbonImmutable::createFromFormat('!Y-m-d', $dataFinal, $timezone);
+
+        if (! $inicio || ! $fim || $fim->lt($inicio)) {
+            throw ValidationException::withMessages([
+                'data_final' => 'A data final deve ser igual ou posterior à data inicial.',
+            ]);
+        }
+
+        if ($inicio->diffInDays($fim) > 30) {
+            throw ValidationException::withMessages([
+                'data_final' => 'O intervalo pode ter no máximo 31 dias.',
+            ]);
+        }
+
+        $datas = [];
+
+        for ($data = $inicio; $data->lte($fim); $data = $data->addDay()) {
+            $datas[] = $data->toDateString();
+        }
+
+        return $datas;
     }
 
     /**
