@@ -258,6 +258,38 @@
 
 .home-vehicle-booking__empty {
     grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 132px;
+    gap: 14px;
+    text-align: left;
+}
+
+.home-vehicle-booking__empty>svg {
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+    color: var(--edu-primary-500);
+}
+
+.home-vehicle-booking__empty>div {
+    display: grid;
+    gap: 3px;
+}
+
+.home-vehicle-booking__empty strong,
+.home-vehicle-booking__empty span {
+    display: block;
+}
+
+.home-vehicle-booking__empty strong {
+    color: var(--edu-neutral-800);
+}
+
+.home-vehicle-booking__empty span {
+    color: var(--edu-neutral-500);
+    font-size: 12px;
 }
 
 @media (max-width: 1100px) {
