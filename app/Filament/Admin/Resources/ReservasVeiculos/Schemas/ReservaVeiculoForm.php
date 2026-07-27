@@ -41,7 +41,7 @@ final class ReservaVeiculoForm
                         ->label('Data da reserva')
                         ->required()
                         ->minDate(today())
-                        ->native(false)
+                        ->native()
                         ->displayFormat('d/m/Y')
                         ->live()
                         ->columnSpan(fn (Get $get): int => $get('reservar_varios_dias') ? 1 : 2),
@@ -50,7 +50,7 @@ final class ReservaVeiculoForm
                         ->label('Data final')
                         ->required(fn (Get $get): bool => (bool) $get('reservar_varios_dias'))
                         ->minDate(fn (Get $get): mixed => $get('data_inicial') ?: today())
-                        ->native(false)
+                        ->native()
                         ->displayFormat('d/m/Y')
                         ->visible(fn (Get $get): bool => (bool) $get('reservar_varios_dias'))
                         ->live(),
@@ -59,14 +59,14 @@ final class ReservaVeiculoForm
                         ->label('Horário inicial')
                         ->required()
                         ->seconds(false)
-                        ->native(false)
+                        ->native()
                         ->live(),
 
                     TimePicker::make('hora_fim')
                         ->label('Horário final')
                         ->required()
                         ->seconds(false)
-                        ->native(false)
+                        ->native()
                         ->after('hora_inicio')
                         ->live(),
                 ]),
@@ -112,7 +112,7 @@ final class ReservaVeiculoForm
                         ->label('Data')
                         ->required()
                         ->minDate(today())
-                        ->native(false)
+                        ->native()
                         ->displayFormat('d/m/Y')
                         ->live(),
 
@@ -120,14 +120,14 @@ final class ReservaVeiculoForm
                         ->label('Horário inicial')
                         ->required()
                         ->seconds(false)
-                        ->native(false)
+                        ->native()
                         ->live(),
 
                     TimePicker::make('hora_fim')
                         ->label('Horário final')
                         ->required()
                         ->seconds(false)
-                        ->native(false)
+                        ->native()
                         ->after('hora_inicio')
                         ->live(),
                 ]),
