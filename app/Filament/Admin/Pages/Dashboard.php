@@ -6,6 +6,7 @@ use App\Filament\Admin\Resources\Avisos\AvisoResource;
 use App\Filament\Admin\Resources\ReservasVeiculos\ReservaVeiculoResource;
 use App\Filament\Admin\Resources\ReservasVeiculos\Schemas\ReservaVeiculoForm;
 use App\Models\Aviso;
+use App\Models\Enums\ListaPermissoes;
 use App\Models\EventoCalendario;
 use App\Models\ReservaVeiculo;
 use App\Models\User;
@@ -69,6 +70,23 @@ class Dashboard extends Page
                 ->visible(fn (): bool => $usuarioEfetivo !== null
                     && Gate::forUser($usuarioEfetivo)->allows('viewAny', EventoCalendario::class))
                 ->url(fn (): string => GerenciarEventos::getUrl()),
+
+            Action::make('visualizar_calendario')
+                ->label('Visualizar calendário')
+                ->icon('heroicon-o-calendar')
+                ->color('gray')
+                ->visible(fn (): bool => $usuarioEfetivo?->hasPermissionTo(
+                    ListaPermissoes::VisualizarAgendaDeTodaARede->label(),
+                ) ?? false)
+                ->authorize(fn (): bool => $usuarioEfetivo?->hasPermissionTo(
+                    ListaPermissoes::VisualizarAgendaDeTodaARede->label(),
+                ) ?? false)
+                ->modalHeading('Calendário da rede')
+                ->modalDescription('Consulte eventos por ano, mês ou semana. Pedidos de manutenção continuam limitados ao seu contexto de acesso.')
+                ->modalWidth('7xl')
+                ->modalSubmitAction(false)
+                ->modalCancelActionLabel('Fechar')
+                ->modalContent(fn (): View => view('livewire.home.calendario-completo-modal')),
 
             Action::make('gerenciar_reservas')
                 ->label('Gerenciar reservas')

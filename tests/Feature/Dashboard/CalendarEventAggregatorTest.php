@@ -143,10 +143,12 @@ class CalendarEventAggregatorTest extends TestCase
         $this->assertStringContainsString("'actions' => \$this->getCachedHeaderActions()", $dashboardPage);
         $this->assertStringContainsString("->label('Gerenciar avisos')", $dashboardPage);
         $this->assertStringContainsString("->label('Gerenciar agenda')", $dashboardPage);
+        $this->assertStringContainsString("->label('Visualizar calendário')", $dashboardPage);
         $this->assertStringContainsString("->label('Gerenciar reservas')", $dashboardPage);
         $this->assertStringContainsString("->label('Reservar veículo')", $dashboardPage);
         $this->assertStringNotContainsString('Gerenciar avisos', file_get_contents(resource_path('views/livewire/home/avisos-banner.blade.php')));
         $this->assertStringNotContainsString('Gerenciar agenda', file_get_contents(resource_path('views/livewire/home/agenda-proximos-dias.blade.php')));
+        $this->assertStringNotContainsString('Visualizar calendário', file_get_contents(resource_path('views/livewire/home/agenda-proximos-dias.blade.php')));
         $this->assertStringNotContainsString('Acesso rápido', $blade);
         $this->assertStringNotContainsString('quickLinks', $blade);
         $this->assertStringNotContainsString('nav-card', file_get_contents(public_path('css/geral.css')));
@@ -220,7 +222,7 @@ class CalendarEventAggregatorTest extends TestCase
         ));
     }
 
-    public function test_calendario_completo_renderiza_navegacao_mensal_e_semanal(): void
+    public function test_calendario_completo_renderiza_navegacao_e_exportacao_do_periodo_ativo(): void
     {
         $html = view('livewire.home.calendario-completo', [
             'days' => [[
@@ -236,9 +238,37 @@ class CalendarEventAggregatorTest extends TestCase
         ])->render();
 
         $this->assertStringContainsString('Julho de 2026', $html);
-        $this->assertSame(2, substr_count($html, 'wire:click="definirVisualizacao'));
+        $this->assertSame(3, substr_count($html, 'wire:click="definirVisualizacao'));
+        $this->assertStringContainsString('wire:click="exportarCalendario"', $html);
+        $this->assertStringContainsString('Exportar calendÃ¡rio', $html);
         $this->assertSame(2, substr_count($html, 'full-calendar__day--empty'));
         $this->assertStringContainsString('Evento historico', $html);
+    }
+
+    public function test_calendario_completo_renderiza_visao_anual_compacta_e_permite_abrir_o_mes(): void
+    {
+        $html = view('livewire.home.calendario-completo', [
+            'days' => [],
+            'months' => [[
+                'date' => CarbonImmutable::parse('2026-01-01'),
+                'offset' => 3,
+                'days' => [[
+                    'date' => CarbonImmutable::parse('2026-01-01'),
+                    'events' => [$this->evento('anual')],
+                ]],
+            ]],
+            'offsetInicial' => 0,
+            'tituloPeriodo' => '2026',
+            'sourceErrors' => [],
+            'truncated' => false,
+            'visualizacao' => 'ano',
+            'erro' => null,
+        ])->render();
+
+        $this->assertStringContainsString('full-calendar__year-grid', $html);
+        $this->assertStringContainsString('Janeiro', $html);
+        $this->assertStringContainsString('wire:click="abrirMes', $html);
+        $this->assertStringContainsString('1 evento(s)', $html);
     }
 
     public function test_falha_de_uma_fonte_nao_descarta_eventos_das_demais(): void

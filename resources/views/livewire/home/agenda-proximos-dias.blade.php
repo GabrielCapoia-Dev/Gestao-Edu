@@ -26,9 +26,6 @@
                     @endforeach
                 </div>
             @endif
-            @if ($podeVisualizarRede ?? false)
-                {{ $this->calendarioCompletoAction }}
-            @endif
             @if ($podeCriarEvento ?? false)
                 {{ $this->novoEventoAction }}
             @endif

@@ -12,7 +12,6 @@ use App\Services\ProfilePreviewService;
 use App\Support\Dashboard\Calendar\CalendarAggregationResult;
 use App\Support\Dashboard\Calendar\CalendarQueryContext;
 use Carbon\CarbonImmutable;
-use Filament\Actions\Action;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\Contracts\HasActions;
 use Filament\Actions\CreateAction;
@@ -106,24 +105,6 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
         );
     }
 
-    public function calendarioCompletoAction(): Action
-    {
-        $user = app(ProfilePreviewService::class)->effectiveUser();
-
-        return Action::make('calendarioCompleto')
-            ->label('Visualizar calendário')
-            ->icon('heroicon-o-calendar-days')
-            ->color('gray')
-            ->visible($user && $this->podeVisualizarRede($user))
-            ->authorize(fn (): bool => (bool) ($user && $this->podeVisualizarRede($user)))
-            ->modalHeading('Calendário da rede')
-            ->modalDescription('Consulte eventos por mês ou semana. Pedidos de manutenção continuam limitados ao seu contexto de acesso.')
-            ->modalWidth('7xl')
-            ->modalSubmitAction(false)
-            ->modalCancelActionLabel('Fechar')
-            ->modalContent(fn (): View => view('livewire.home.calendario-completo-modal'));
-    }
-
     public function render(): View
     {
         $context = $this->makeContext($this->escopoAgenda);
@@ -193,9 +174,6 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
             'periodOptions' => $this->periodOptions(),
             'tabsAgenda' => $tabsAgenda,
             'escopoAgendaAtivo' => $escopoAgendaAtivo ?? $this->escopoAgenda,
-            'podeVisualizarRede' => $context
-                ? $this->podeVisualizarRede($context->user)
-                : false,
             'podeCriarEvento' => $context
                 ? Gate::forUser($context->user)->allows('create', EventoCalendario::class)
                 : false,
