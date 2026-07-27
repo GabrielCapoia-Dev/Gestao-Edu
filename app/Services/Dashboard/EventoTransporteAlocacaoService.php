@@ -36,7 +36,7 @@ class EventoTransporteAlocacaoService
             ->ativas()
             ->where('evento_calendario_id', $evento->getKey())
             ->with([
-                'veiculo:id,placa,identificacao,capacidade_passageiros,ativo',
+                'veiculo:id,placa,identificacao,ativo',
                 'motorista:id,nome,cpf,telefone,status',
                 'motorista.servidorFuncoes' => function (HasMany $vinculos): void {
                     $vinculos
@@ -98,7 +98,7 @@ class EventoTransporteAlocacaoService
             );
 
             return $alocacao->load([
-                'veiculo:id,placa,identificacao,capacidade_passageiros,ativo',
+                'veiculo:id,placa,identificacao,ativo',
                 'motorista:id,nome,cpf,telefone,status',
                 'turmas:id,nome,id_serie,id_escola',
                 'turmas.serie:id,nome',
@@ -186,7 +186,7 @@ class EventoTransporteAlocacaoService
             );
 
             return $alocacao->load([
-                'veiculo:id,placa,identificacao,capacidade_passageiros,ativo',
+                'veiculo:id,placa,identificacao,ativo',
                 'motorista:id,nome,cpf,telefone,status',
                 'turmas:id,nome,id_serie,id_escola',
                 'turmas.serie:id,nome',
@@ -267,29 +267,16 @@ class EventoTransporteAlocacaoService
             }
 
             return $alocacao->fresh([
-                'veiculo:id,placa,identificacao,capacidade_passageiros,ativo',
+                'veiculo:id,placa,identificacao,ativo',
                 'motorista:id,nome,cpf,telefone,status',
             ]);
         });
     }
 
-    /** @return array{estudantes: int, capacidade: int, diferenca: int, capacidade_insuficiente: bool, possui_recursos_inativos: bool, alocacoes: \Illuminate\Support\Collection<int, EventoCalendarioTransporteAlocacao>} */
+    /** @return array{possui_recursos_inativos: bool, alocacoes: \Illuminate\Support\Collection<int, EventoCalendarioTransporteAlocacao>} */
     public function resumo(User $ator, EventoCalendario $evento): array
     {
         $alocacoes = $this->queryAtivas($ator, $evento)->get();
-        $estudantes = $evento->relationLoaded('escolasAgendadas')
-            ? (int) $evento->escolasAgendadas
-                ->where('precisa_transporte', true)
-                ->sum('quantidade_estimada_transporte')
-            : (int) $evento->escolasAgendadas()
-                ->where('precisa_transporte', true)
-                ->sum('quantidade_estimada_transporte');
-        $capacidade = (int) $alocacoes->sum(
-            fn (EventoCalendarioTransporteAlocacao $alocacao): int => $alocacao->veiculo?->ativo
-                ? (int) $alocacao->veiculo->capacidade_passageiros
-                : 0,
-        );
-        $diferenca = $capacidade - $estudantes;
         $possuiRecursosInativos = $alocacoes->contains(
             fn (EventoCalendarioTransporteAlocacao $alocacao): bool => ! (bool) $alocacao->veiculo?->ativo
                 || $alocacao->motorista?->status !== Pessoa::STATUS_ATIVO
@@ -300,10 +287,6 @@ class EventoTransporteAlocacaoService
         );
 
         return [
-            'estudantes' => $estudantes,
-            'capacidade' => $capacidade,
-            'diferenca' => $diferenca,
-            'capacidade_insuficiente' => $diferenca < 0,
             'possui_recursos_inativos' => $possuiRecursosInativos,
             'alocacoes' => $alocacoes,
         ];
@@ -315,10 +298,9 @@ class EventoTransporteAlocacaoService
         return $this->veiculosDisponiveis($ator, $evento)
             ->mapWithKeys(fn (VeiculoTransporte $veiculo): array => [
                 $veiculo->getKey() => trim(sprintf(
-                    '%s%s (%d lugares)',
+                    '%s%s',
                     $veiculo->identificacao ? $veiculo->identificacao.' — ' : '',
                     $veiculo->placa,
-                    $veiculo->capacidade_passageiros,
                 )),
             ])->all();
     }
@@ -330,7 +312,7 @@ class EventoTransporteAlocacaoService
         return VeiculoTransporte::query()
             ->ativos()
             ->orderBy('identificacao')->orderBy('placa')
-            ->get(['id', 'placa', 'identificacao', 'capacidade_passageiros']);
+            ->get(['id', 'placa', 'identificacao']);
     }
 
     /** @return array<int, string> */

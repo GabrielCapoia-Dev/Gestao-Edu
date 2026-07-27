@@ -111,39 +111,6 @@ class EventoTransporteEscolasManager extends Component
             ->all();
     }
 
-    public function updatedVeiculosSelecionados(mixed $veiculoId, int|string $agendamentoId): void
-    {
-        if (! $veiculoId || ! $this->podeGerenciar()) {
-            $this->turmasSelecionadas[(int) $agendamentoId] = [];
-            unset($this->motoristasSelecionados[(int) $agendamentoId]);
-
-            return;
-        }
-
-        $evento = $this->evento();
-        $agendamento = $evento->escolasAgendadas->firstWhere('id', (int) $agendamentoId);
-        $alocacoes = $this->service()->queryAtivas($this->usuarioEfetivo(), $evento)->get();
-        $alocacaoExistente = $alocacoes->firstWhere('veiculo_transporte_id', (int) $veiculoId);
-        $veiculo = $alocacaoExistente?->veiculo
-            ?? $this->service()->veiculosDisponiveis($this->usuarioEfetivo(), $evento)
-                ->firstWhere('id', (int) $veiculoId);
-
-        if (! $agendamento || ! $veiculo) {
-            $this->turmasSelecionadas[(int) $agendamentoId] = [];
-            unset($this->motoristasSelecionados[(int) $agendamentoId]);
-
-            return;
-        }
-
-        if ($alocacaoExistente) {
-            $this->motoristasSelecionados[(int) $agendamentoId] = (int) $alocacaoExistente->motorista_id;
-        } else {
-            unset($this->motoristasSelecionados[(int) $agendamentoId]);
-        }
-
-        $this->turmasSelecionadas[(int) $agendamentoId] ??= [];
-    }
-
     public function render(): View
     {
         $evento = $this->evento();
@@ -154,35 +121,25 @@ class EventoTransporteEscolasManager extends Component
         $veiculosNovos = $podeGerenciar ? $this->service()->veiculosDisponiveis($user, $evento) : collect();
         $motoristas = $podeGerenciar ? $this->service()->motoristaOptions($user, $evento) : [];
         $veiculos = $veiculosNovos->mapWithKeys(function ($veiculo): array {
-            $veiculo->setAttribute('lugares_disponiveis', (int) $veiculo->capacidade_passageiros);
             $veiculo->setAttribute('ja_alocado', false);
 
             return [(int) $veiculo->getKey() => $veiculo];
         });
 
         foreach ($alocacoes->unique('veiculo_transporte_id') as $alocacao) {
-            $ocupacao = (int) $turmas->whereIn('id', $alocacao->turmas->modelKeys())
-                ->sum('estudantes_transporte_count');
             $veiculo = $veiculos->get((int) $alocacao->veiculo_transporte_id) ?? $alocacao->veiculo;
             if (! $veiculo) {
                 continue;
             }
 
-            $veiculo->setAttribute('lugares_disponiveis', (int) $veiculo->capacidade_passageiros - $ocupacao);
             $veiculo->setAttribute('ja_alocado', true);
             $veiculos->put((int) $veiculo->getKey(), $veiculo);
         }
 
         $relacaoVeiculos = $alocacoes->map(function ($alocacao) use ($turmas): array {
             $turmasDaRota = $turmas->whereIn('id', $alocacao->turmas->modelKeys());
-            $total = (int) $turmasDaRota->sum('estudantes_transporte_count');
-            $capacidade = (int) $alocacao->veiculo?->capacidade_passageiros;
-
             return [
                 'alocacao' => $alocacao,
-                'total' => $total,
-                'capacidade' => $capacidade,
-                'diferenca' => $capacidade - $total,
                 'escolas' => $turmasDaRota->groupBy('id_escola')->map(function ($turmasEscola): array {
                     return [
                         'nome' => $turmasEscola->first()?->escola?->nome ?? 'Escola não informada',
@@ -199,18 +156,12 @@ class EventoTransporteEscolasManager extends Component
             ->map(function ($agendamento) use ($turmas, $alocacoes, $veiculos): array {
                 $turmasDaEscola = $turmas->where('id_escola', $agendamento->escola_id)->values();
                 $disponiveis = $turmasDaEscola;
-                $selecionadas = collect($this->turmasSelecionadas[$agendamento->getKey()] ?? [])
-                    ->map(fn ($id): int => (int) $id);
-                $totalSelecionado = (int) $disponiveis
-                    ->whereIn('id', $selecionadas)
-                    ->sum('estudantes_transporte_count');
                 return [
                     'agendamento' => $agendamento,
                     'turmas' => $turmasDaEscola,
                     'disponiveis' => $disponiveis,
                     'alocacoes' => $alocacoes->filter(fn ($alocacao): bool => $alocacao->turmas
                         ->contains('id_escola', $agendamento->escola_id))->values(),
-                    'total_selecionado' => $totalSelecionado,
                     'veiculos' => $veiculos->values(),
                 ];
             })->values();
@@ -220,7 +171,6 @@ class EventoTransporteEscolasManager extends Component
             'motoristas',
             'podeGerenciar',
             'relacaoVeiculos',
-            'turmas',
         ));
     }
 

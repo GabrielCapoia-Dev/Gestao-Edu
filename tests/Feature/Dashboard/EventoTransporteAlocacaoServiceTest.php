@@ -109,18 +109,22 @@ class EventoTransporteAlocacaoServiceTest extends TestCase
         ]);
     }
 
-    public function test_aloca_recursos_ativos_e_calcula_alerta_de_capacidade_sem_bloquear(): void
+    public function test_aloca_recursos_ativos_sem_bloqueio_por_capacidade(): void
     {
         $ator = $this->ator();
         $evento = $this->evento($ator, 'Evento com transporte');
-        $veiculo = $this->veiculo('ABC1234', 10);
+        $agendamento = $evento->escolasAgendadas()->firstOrFail();
+        $turma = $this->turma((int) $agendamento->escola_id);
+        $veiculo = $this->veiculo('ABC1234', 1);
         $motorista = $this->motorista('11111111111', 'Motorista A');
 
-        $alocacao = app(EventoTransporteAlocacaoService::class)->adicionar(
+        $alocacao = app(EventoTransporteAlocacaoService::class)->atribuirTurmasDaEscola(
             $ator,
             $evento,
+            (int) $agendamento->getKey(),
             $veiculo->id,
             $motorista->id,
+            [$turma->id],
         );
 
         $this->assertTrue($alocacao->estaAtiva());
@@ -133,10 +137,8 @@ class EventoTransporteAlocacaoServiceTest extends TestCase
         ]);
 
         $resumo = app(EventoTransporteAlocacaoService::class)->resumo($ator, $evento);
-        $this->assertSame(20, $resumo['estudantes']);
-        $this->assertSame(10, $resumo['capacidade']);
-        $this->assertSame(-10, $resumo['diferenca']);
-        $this->assertTrue($resumo['capacidade_insuficiente']);
+        $this->assertCount(1, $resumo['alocacoes']);
+        $this->assertFalse($resumo['possui_recursos_inativos']);
     }
 
     public function test_gestor_consegue_ocultar_relacao_de_veiculos_ja_alocados(): void
@@ -165,13 +167,13 @@ class EventoTransporteAlocacaoServiceTest extends TestCase
             ->assertSet('mostrarRelacaoVeiculos', false);
     }
 
-    public function test_gestor_vincula_turma_a_veiculo_com_lugares_disponiveis_pelo_componente(): void
+    public function test_gestor_vincula_turma_independentemente_da_capacidade_do_veiculo(): void
     {
         $ator = $this->ator();
         $evento = $this->evento($ator, 'Evento para atribuição');
         $agendamento = $evento->escolasAgendadas()->firstOrFail();
         $turma = $this->turma((int) $agendamento->escola_id);
-        $veiculo = $this->veiculo('VIN1B23', 40);
+        $veiculo = $this->veiculo('VIN1B23', 1);
         $motorista = $this->motorista('13131313131', 'Motorista da atribuição');
 
         $this->actingAs($ator);
@@ -279,7 +281,7 @@ class EventoTransporteAlocacaoServiceTest extends TestCase
         );
     }
 
-    public function test_recurso_inativo_permanece_visivel_mas_nao_compoe_capacidade_disponivel(): void
+    public function test_recurso_inativo_permanece_visivel_no_resumo(): void
     {
         $ator = $this->ator();
         $evento = $this->evento($ator, 'Evento com recurso posteriormente inativo');
@@ -296,9 +298,7 @@ class EventoTransporteAlocacaoServiceTest extends TestCase
         $resumo = $service->resumo($ator, $evento);
 
         $this->assertCount(1, $resumo['alocacoes']);
-        $this->assertSame(0, $resumo['capacidade']);
         $this->assertTrue($resumo['possui_recursos_inativos']);
-        $this->assertTrue($resumo['capacidade_insuficiente']);
     }
 
     public function test_edicao_que_remove_transporte_libera_alocacoes_ativas_sem_permissao_de_gerencia(): void
@@ -423,7 +423,7 @@ class EventoTransporteAlocacaoServiceTest extends TestCase
 
         return Turma::query()->create([
             'nome' => fake()->unique()->bothify('Turma ??'),
-            'turno' => 'Manhã',
+            'turno' => 'manha',
             'id_serie' => $serie->id,
             'id_escola' => $escolaId,
         ]);

@@ -44,7 +44,7 @@ class EventoTransporteAlocacoesTable extends TableWidget
         return $table
             ->query($this->service()->queryAtivas($user, $evento))
             ->heading('Veículos e motoristas')
-            ->description('Acompanhe a capacidade disponível para este evento de transporte.')
+            ->description('Gerencie os veículos, motoristas e turmas deste evento.')
             ->headerActions([
                 CreateAction::make('adicionarVeiculo')
                     ->label('Adicionar veículo')
@@ -83,8 +83,7 @@ class EventoTransporteAlocacoesTable extends TableWidget
                             ->multiple()
                             ->searchable()
                             ->preload()
-                            ->required()
-                            ->helperText('A capacidade do veículo é informativa e não bloqueia a atribuição.'),
+                            ->required(),
                     ])
                     ->using(function (array $data): EventoCalendarioTransporteAlocacao {
                         return $this->service()->adicionar(
@@ -106,11 +105,6 @@ class EventoTransporteAlocacoesTable extends TableWidget
                     ->description(fn (EventoCalendarioTransporteAlocacao $record): string => $record->veiculo?->identificacao ?: 'Sem identificação')
                     ->weight('bold')
                     ->wrap(),
-                TextColumn::make('veiculo.capacidade_passageiros')
-                    ->label('Capacidade')
-                    ->numeric(locale: 'pt_BR')
-                    ->suffix(' lugares')
-                    ->alignCenter(),
                 TextColumn::make('motorista_historico')
                     ->label('Motorista')
                     ->state(fn (EventoCalendarioTransporteAlocacao $record): string => $record->motoristaNomeExibicao())
@@ -164,9 +158,7 @@ class EventoTransporteAlocacoesTable extends TableWidget
             ->defaultPaginationPageOption(5);
     }
 
-    /**
-     * @return array{estudantes: int, capacidade: int, diferenca: int, capacidade_insuficiente: bool, possui_recursos_inativos: bool, alocacoes: \Illuminate\Support\Collection<int, EventoCalendarioTransporteAlocacao>}
-     */
+    /** @return array{possui_recursos_inativos: bool, alocacoes: \Illuminate\Support\Collection<int, EventoCalendarioTransporteAlocacao>} */
     public function resumo(): array
     {
         return $this->service()->resumo($this->usuarioEfetivo(), $this->evento());

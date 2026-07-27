@@ -18,19 +18,13 @@
             @forelse ($relacaoVeiculos as $rota)
                 @php
                     $alocacaoRota = $rota['alocacao'];
-                    $diferencaRota = (int) $rota['diferenca'];
                 @endphp
-                <article @class([
-                    'gi-vehicle-relation__item',
-                    'is-full' => $diferencaRota === 0,
-                    'is-overloaded' => $diferencaRota < 0,
-                ])>
+                <article class="gi-vehicle-relation__item">
                     <header>
                         <div>
                             <strong>{{ $alocacaoRota->veiculo?->identificacao ?: $alocacaoRota->veiculo?->placa }}</strong>
                             <span>{{ $alocacaoRota->veiculo?->placa }} · {{ $alocacaoRota->motoristaNomeExibicao() }}</span>
                         </div>
-                        <b>{{ $rota['total'] }}/{{ $rota['capacidade'] }} aluno(s)</b>
                     </header>
 
                     <div class="gi-vehicle-relation__schools">
@@ -42,16 +36,6 @@
                             </div>
                         @endforeach
                     </div>
-
-                    <footer>
-                        @if ($diferencaRota < 0)
-                            Superlotação de {{ abs($diferencaRota) }} lugar(es)
-                        @elseif ($diferencaRota === 0)
-                            Lotação máxima atingida
-                        @else
-                            {{ $diferencaRota }} lugar(es) disponível(is)
-                        @endif
-                    </footer>
                 </article>
             @empty
                 <p class="gi-event-detail__empty">Nenhum veículo foi atribuído ao evento.</p>
@@ -93,30 +77,12 @@
             <div class="gi-school-transport-card__body">
 
             @foreach ($item['alocacoes'] as $alocacao)
-                @php
-                    $alunosAlocados = (int) $turmas->whereIn('id', $alocacao->turmas->modelKeys())->sum('estudantes_transporte_count');
-                    $capacidade = (int) $alocacao->veiculo?->capacidade_passageiros;
-                    $diferenca = $capacidade - $alunosAlocados;
-                @endphp
-                <div @class([
-                    'gi-school-transport-card__allocation',
-                    'is-overloaded' => $diferenca < 0,
-                    'is-full' => $diferenca === 0,
-                ])>
+                <div class="gi-school-transport-card__allocation">
                     <div class="gi-school-transport-card__allocation-heading">
                         <div>
                             <small>Veículo atribuído</small>
                             <strong>{{ $alocacao->veiculo?->identificacao ?: $alocacao->veiculo?->placa }}</strong>
                         </div>
-                        <span>
-                            @if ($diferenca < 0)
-                                Superlotado em {{ abs($diferenca) }}
-                            @elseif ($diferenca === 0)
-                                Lotação máxima
-                            @else
-                                {{ $diferenca }} lugar(es) livre(s)
-                            @endif
-                        </span>
                     </div>
                     <p><b>Motorista:</b> {{ $alocacao->motoristaNomeExibicao() }}</p>
                     <p><b>Turmas:</b> {{ $alocacao->turmas->map(fn ($turma) => trim(($turma->serie?->nome ? $turma->serie->nome.' ' : '').$turma->nome))->join(', ') }}</p>
@@ -152,14 +118,13 @@
                             <label class="gi-school-transport-card__field">
                                 <span>Veículo</span>
                                 <select
-                                    wire:model.live="veiculosSelecionados.{{ $agendamentoId }}"
+                                    wire:model="veiculosSelecionados.{{ $agendamentoId }}"
                                     wire:key="veiculo-escola-{{ $agendamentoId }}"
                                 >
                                     <option value="">Selecione</option>
                                     @foreach ($item['veiculos'] as $veiculo)
-                                        @php $saldo = (int) $veiculo->lugares_disponiveis - $item['total_selecionado']; @endphp
                                         <option value="{{ $veiculo->getKey() }}">
-                                            {{ $veiculo->identificacao ? $veiculo->identificacao.' — ' : '' }}{{ $veiculo->placa }} · {{ $veiculo->lugares_disponiveis >= 0 ? $veiculo->lugares_disponiveis.' livre(s)' : 'lotação excedida em '.abs($veiculo->lugares_disponiveis) }}{{ $veiculo->ja_alocado ? ' · já em rota' : '' }}{{ $saldo < 0 ? ' · seleção excede em '.abs($saldo) : '' }}
+                                            {{ $veiculo->identificacao ? $veiculo->identificacao.' — ' : '' }}{{ $veiculo->placa }}{{ $veiculo->ja_alocado ? ' · já atribuído ao evento' : '' }}
                                         </option>
                                     @endforeach
                                 </select>
@@ -199,7 +164,7 @@
                         </fieldset>
 
                         <div class="gi-school-transport-card__selection-summary">
-                            {{ number_format($item['total_selecionado'], 0, ',', '.') }} estudante(s) selecionado(s)
+                            {{ count($turmasSelecionadas[$agendamentoId] ?? []) }} turma(s) selecionada(s)
                         </div>
 
                         <button
