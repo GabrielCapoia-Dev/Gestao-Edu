@@ -168,7 +168,11 @@ class TransporteCadastrosServiceTest extends TestCase
     {
         $user = User::factory()->create();
         Permission::findOrCreate(ListaPermissoes::GerenciarTransporteDeEventos->label(), 'web');
-        $user->givePermissionTo(ListaPermissoes::GerenciarTransporteDeEventos->label());
+        Permission::findOrCreate(ListaPermissoes::GerenciarFrotaVeiculos->label(), 'web');
+        $user->givePermissionTo([
+            ListaPermissoes::GerenciarTransporteDeEventos->label(),
+            ListaPermissoes::GerenciarFrotaVeiculos->label(),
+        ]);
 
         return $user;
     }

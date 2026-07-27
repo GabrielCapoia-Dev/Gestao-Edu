@@ -27,6 +27,7 @@ final readonly class CalendarQueryContext
         public ?int $setorId = null,
         public ?string $assunto = null,
         public bool $redeCompleta = false,
+        public bool $somenteReservasVeiculos = false,
     ) {
         if ($fim->lt($inicio)) {
             throw new InvalidArgumentException('A data final deve ser posterior ou igual à data inicial.');
@@ -48,6 +49,11 @@ final readonly class CalendarQueryContext
 
         if ($redeCompleta && ! $user->hasPermissionTo(ListaPermissoes::VisualizarAgendaDeTodaARede->label())) {
             throw new InvalidArgumentException('Seu usuário não possui acesso ao calendário de toda a rede.');
+        }
+
+        if ($somenteReservasVeiculos
+            && ! $user->hasPermissionTo(ListaPermissoes::ListarReservasVeiculos->label())) {
+            throw new InvalidArgumentException('Seu usuário não possui acesso às reservas de veículos.');
         }
     }
 }

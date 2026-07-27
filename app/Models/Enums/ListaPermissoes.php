@@ -48,6 +48,7 @@ enum ListaPermissoes: string
     case ListarEventosTransporte = 'listar eventos: transporte';
     case ListarEventosGeral = 'listar eventos: geral';
     case ListarMeusEventos = 'listar eventos: meus eventos';
+    case ListarReservasVeiculos = 'listar reservas de veículos';
 
     case CriarEmpresaContratada = 'criar empresa contratada';
     case CriarAlunos = 'criar alunos';
@@ -88,6 +89,7 @@ enum ListaPermissoes: string
     case CriarAvisos = 'criar avisos';
     case CriarEventos = 'criar eventos';
     case CriarEventosTransporte = 'criar eventos: transporte';
+    case CriarReservasVeiculos = 'criar reservas de veículos';
 
     case EditarEmpresaContratada = 'editar empresa contratada';
     case EditarAlunos = 'editar alunos';
@@ -131,12 +133,15 @@ enum ListaPermissoes: string
     case EditarTurmasEComponentesDePessoas = 'editar turmas e componentes de pessoas';
     case EditarAvisos = 'editar avisos';
     case EditarEventos = 'editar eventos';
+    case EditarReservasVeiculos = 'editar reservas de veículos';
 
     case GerenciarFuncoesDeServidores = 'gerenciar funções de servidores';
     case GerenciarVinculosEstruturaisDePessoas = 'gerenciar vínculos estruturais de pessoas';
     case GerenciarPublicoAlvoDeAvisos = 'gerenciar público-alvo de avisos';
     case GerenciarPublicoAlvoDeEventos = 'gerenciar público-alvo de eventos';
     case GerenciarTransporteDeEventos = 'gerenciar transporte de eventos';
+    case GerenciarFrotaVeiculos = 'gerenciar frota de veículos';
+    case CancelarReservasVeiculos = 'cancelar reservas de veículos';
     case TransferirProfessores = 'transferir professores';
     case DesativarProfessores = 'desativar professores';
     case DesativarEventos = 'desativar eventos';
@@ -308,6 +313,7 @@ enum ListaPermissoes: string
             self::ListarEventosTransporte => 'Listar Eventos: Transporte',
             self::ListarEventosGeral => 'Listar Eventos: Geral',
             self::ListarMeusEventos => 'Listar Eventos: Meus Eventos',
+            self::ListarReservasVeiculos => 'Listar Reservas de Veículos',
 
             self::CriarEmpresaContratada => 'Criar Empresa Contratada',
             self::CriarAlunos => 'Criar Alunos',
@@ -348,6 +354,7 @@ enum ListaPermissoes: string
             self::CriarAvisos => 'Criar Avisos',
             self::CriarEventos => 'Criar Eventos',
             self::CriarEventosTransporte => 'Criar Eventos: Transporte',
+            self::CriarReservasVeiculos => 'Criar Reservas de Veículos',
 
             self::EditarEmpresaContratada => 'Editar Empresa Contratada',
             self::EditarAlunos => 'Editar Alunos',
@@ -391,12 +398,15 @@ enum ListaPermissoes: string
             self::EditarTurmasEComponentesDePessoas => 'Editar Turmas e Componentes de Pessoas',
             self::EditarAvisos => 'Editar Avisos',
             self::EditarEventos => 'Editar Eventos',
+            self::EditarReservasVeiculos => 'Editar Reservas de Veículos',
 
             self::GerenciarFuncoesDeServidores => 'Gerenciar Funções de Servidores',
             self::GerenciarVinculosEstruturaisDePessoas => 'Gerenciar Vínculos Estruturais de Pessoas',
             self::GerenciarPublicoAlvoDeAvisos => 'Gerenciar Público-alvo de Avisos',
             self::GerenciarPublicoAlvoDeEventos => 'Gerenciar Público-alvo de Eventos',
             self::GerenciarTransporteDeEventos => 'Gerenciar Transporte de Eventos',
+            self::GerenciarFrotaVeiculos => 'Gerenciar Frota de Veículos',
+            self::CancelarReservasVeiculos => 'Cancelar Reservas de Veículos',
             self::TransferirProfessores => 'Transferir Professores',
             self::DesativarProfessores => 'Desativar Professores',
             self::DesativarEventos => 'Desativar Eventos',

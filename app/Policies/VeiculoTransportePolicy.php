@@ -50,6 +50,6 @@ class VeiculoTransportePolicy
 
     private function podeGerenciar(User $user): bool
     {
-        return $user->hasPermissionTo(ListaPermissoes::GerenciarTransporteDeEventos->label());
+        return $user->hasPermissionTo(ListaPermissoes::GerenciarFrotaVeiculos->label());
     }
 }

@@ -7,6 +7,7 @@ use App\Services\Dashboard\Calendar\CalendarEventAggregator;
 use App\Services\Dashboard\Calendar\Sources\AvaliacaoCalendarEventSource;
 use App\Services\Dashboard\Calendar\Sources\ManualCalendarEventSource;
 use App\Services\Dashboard\Calendar\Sources\PedidoManutencaoCalendarEventSource;
+use App\Services\Dashboard\Calendar\Sources\ReservaVeiculoCalendarEventSource;
 use App\Services\Dashboard\DashboardUserContextFactory;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
@@ -21,6 +22,7 @@ class DashboardServiceProvider extends ServiceProvider
             ManualCalendarEventSource::class,
             AvaliacaoCalendarEventSource::class,
             PedidoManutencaoCalendarEventSource::class,
+            ReservaVeiculoCalendarEventSource::class,
         ], CalendarEventSource::class);
 
         $this->app->scoped(

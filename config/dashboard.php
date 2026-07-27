@@ -11,6 +11,7 @@ return [
             'manual' => true,
             'avaliacoes' => true,
             'pedidos_manutencao' => true,
+            'reservas_veiculos' => true,
         ],
     ],
 

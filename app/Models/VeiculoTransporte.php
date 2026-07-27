@@ -49,4 +49,14 @@ class VeiculoTransporte extends Model
     {
         return $this->alocacoesTransporte()->whereNull('removido_em');
     }
+
+    public function reservas(): HasMany
+    {
+        return $this->hasMany(ReservaVeiculo::class, 'veiculo_transporte_id');
+    }
+
+    public function reservasAtivas(): HasMany
+    {
+        return $this->reservas()->ativas();
+    }
 }

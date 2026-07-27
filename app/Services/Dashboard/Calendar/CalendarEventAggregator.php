@@ -22,6 +22,10 @@ class CalendarEventAggregator
 
         foreach ($this->sources as $source) {
             try {
+                if ($context->somenteReservasVeiculos && $source->key() !== 'reservas_veiculos') {
+                    continue;
+                }
+
                 if (! $source->supports($context)) {
                     continue;
                 }

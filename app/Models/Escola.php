@@ -63,6 +63,11 @@ class Escola extends Model
         return $this->hasMany(Turma::class, 'id_escola');
     }
 
+    public function reservasVeiculos(): HasMany
+    {
+        return $this->hasMany(ReservaVeiculo::class);
+    }
+
     public function setor(): BelongsTo
     {
         return $this->belongsTo(Setor::class);

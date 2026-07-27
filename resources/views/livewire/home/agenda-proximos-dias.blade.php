@@ -27,6 +27,38 @@
                     >
                         Para a rede
                     </button>
+                    @if ($podeVisualizarVeiculos ?? false)
+                        <button
+                            type="button"
+                            role="tab"
+                            @class(['is-active' => $escopoAgenda === 'veiculos'])
+                            aria-selected="{{ $escopoAgenda === 'veiculos' ? 'true' : 'false' }}"
+                            wire:click="definirEscopo('veiculos')"
+                        >
+                            Veículos
+                        </button>
+                    @endif
+                </div>
+            @elseif ($podeVisualizarVeiculos ?? false)
+                <div class="home-agenda__scope" role="tablist" aria-label="Escopo da agenda">
+                    <button
+                        type="button"
+                        role="tab"
+                        @class(['is-active' => $escopoAgenda === 'pessoal'])
+                        aria-selected="{{ $escopoAgenda === 'pessoal' ? 'true' : 'false' }}"
+                        wire:click="definirEscopo('pessoal')"
+                    >
+                        Para mim
+                    </button>
+                    <button
+                        type="button"
+                        role="tab"
+                        @class(['is-active' => $escopoAgenda === 'veiculos'])
+                        aria-selected="{{ $escopoAgenda === 'veiculos' ? 'true' : 'false' }}"
+                        wire:click="definirEscopo('veiculos')"
+                    >
+                        Veículos
+                    </button>
                 </div>
             @endif
             @if ($podeCriarEvento ?? false)

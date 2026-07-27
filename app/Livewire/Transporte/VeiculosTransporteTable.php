@@ -2,7 +2,6 @@
 
 namespace App\Livewire\Transporte;
 
-use App\Models\EventoCalendario;
 use App\Models\User;
 use App\Models\VeiculoTransporte;
 use App\Services\Dashboard\VeiculoTransporteService;
@@ -32,7 +31,6 @@ class VeiculosTransporteTable extends TableWidget
         $user = app(ProfilePreviewService::class)->effectiveUser();
 
         return $user instanceof User
-            && Gate::forUser($user)->allows('manageTransport', EventoCalendario::class)
             && Gate::forUser($user)->allows('viewAny', VeiculoTransporte::class);
     }
 
@@ -43,7 +41,7 @@ class VeiculosTransporteTable extends TableWidget
         return $table
             ->query($this->service()->query($user, null))
             ->heading('Veículos cadastrados')
-            ->description('Veículos disponíveis para atender os eventos de transporte.')
+            ->description('Frota disponível para as reservas da Assessoria Pedagógica.')
             ->headerActions([
                 CreateAction::make('novoVeiculo')
                     ->label('Novo veículo')
@@ -82,8 +80,8 @@ class VeiculosTransporteTable extends TableWidget
                     ->badge()
                     ->formatStateUsing(fn (bool $state): string => $state ? 'Ativo' : 'Inativo')
                     ->color(fn (bool $state): string => $state ? 'success' : 'gray'),
-                TextColumn::make('eventos_transporte_count')
-                    ->label('Eventos em uso')
+                TextColumn::make('reservas_ativas_count')
+                    ->label('Próximas reservas')
                     ->numeric(locale: 'pt_BR')
                     ->alignCenter(),
             ])
@@ -113,10 +111,20 @@ class VeiculosTransporteTable extends TableWidget
                         ->authorize(fn (VeiculoTransporte $record): bool => $this->podeDesativar($record))
                         ->requiresConfirmation()
                         ->modalHeading('Desativar este veículo?')
-                        ->modalDescription('Ele deixará de aparecer para novos vínculos, sem alterar o histórico dos eventos.')
+                        ->modalDescription('Ele deixará de aparecer para novas reservas, sem alterar o histórico existente.')
                         ->modalSubmitActionLabel('Desativar')
                         ->action(function (VeiculoTransporte $record): void {
-                            $this->service()->desativar($this->usuarioEfetivo(), $record);
+                            try {
+                                $this->service()->desativar($this->usuarioEfetivo(), $record);
+                            } catch (\DomainException $exception) {
+                                Notification::make()
+                                    ->title('Não foi possível desativar o veículo')
+                                    ->body($exception->getMessage())
+                                    ->danger()
+                                    ->send();
+
+                                return;
+                            }
 
                             Notification::make()
                                 ->title('Veículo desativado')
@@ -152,7 +160,7 @@ class VeiculosTransporteTable extends TableWidget
             ->searchPlaceholder('Buscar por placa ou identificação')
             ->emptyStateIcon('heroicon-o-truck')
             ->emptyStateHeading('Nenhum veículo cadastrado')
-            ->emptyStateDescription('Cadastre um veículo para utilizá-lo nos eventos de transporte.')
+            ->emptyStateDescription('Cadastre um veículo para disponibilizá-lo nas reservas.')
             ->paginated([10, 25])
             ->defaultPaginationPageOption(10);
     }
@@ -186,7 +194,6 @@ class VeiculosTransporteTable extends TableWidget
         $user = app(ProfilePreviewService::class)->effectiveUser();
 
         abort_unless($user instanceof User, 403);
-        abort_unless(Gate::forUser($user)->allows('manageTransport', EventoCalendario::class), 403);
 
         return $user;
     }

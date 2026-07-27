@@ -2,9 +2,9 @@
 
 namespace App\Services\Dashboard;
 
-use App\Models\Enums\EventoCalendarioStatus;
 use App\Models\User;
 use App\Models\VeiculoTransporte;
+use DomainException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -20,11 +20,8 @@ class VeiculoTransporteService
 
         $query = VeiculoTransporte::query()
             ->withCount([
-                'alocacoesTransporteAtivas as eventos_transporte_count' => fn (Builder $alocacoes): Builder => $alocacoes
-                    ->whereHas('evento', fn (Builder $eventos): Builder => $eventos->whereIn('status', [
-                        EventoCalendarioStatus::PENDENTE_APROVACAO->value,
-                        EventoCalendarioStatus::PUBLICADO->value,
-                    ])),
+                'reservasAtivas as reservas_ativas_count' => fn (Builder $reservas): Builder => $reservas
+                    ->where('data_fim', '>=', now()),
             ]);
         $search = trim((string) $search);
 
@@ -138,6 +135,10 @@ class VeiculoTransporteService
         return DB::transaction(function () use ($ator, $veiculo, $ativo): VeiculoTransporte {
             $veiculo = VeiculoTransporte::query()->lockForUpdate()->findOrFail($veiculo->getKey());
             Gate::forUser($ator)->authorize($ativo ? 'activate' : 'deactivate', $veiculo);
+
+            if (! $ativo && $veiculo->reservasAtivas()->where('data_fim', '>=', now())->exists()) {
+                throw new DomainException('O veículo possui reservas futuras e não pode ser desativado.');
+            }
 
             if ((bool) $veiculo->ativo !== $ativo) {
                 $veiculo->forceFill(['ativo' => $ativo])->save();

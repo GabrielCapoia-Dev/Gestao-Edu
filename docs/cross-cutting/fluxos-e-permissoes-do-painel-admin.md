@@ -200,14 +200,30 @@ Policy: `EventoCalendarioPolicy` (registrada em `AppServiceProvider`)
 - Listar solicitações com transporte: `Listar Eventos: Transporte`
 - Criar qualquer evento: `Criar Eventos`
 - Criar somente solicitação com transporte: `Criar Eventos: Transporte`
-- Gerenciar veículos, motoristas e alocações: `Gerenciar Transporte de Eventos`
 - Publicar, desativar e rejeitar transporte: permissões específicas com o sufixo `: Transporte`
 
 Observações:
 
 - Quem possui somente `Criar Eventos: Transporte` precisa selecionar escolas e solicitar transporte; o serviço rejeita eventos comuns.
-- O nível `Transporte` administra solicitações de transporte sem acesso aos cadastros pedagógicos.
+- O nível `Transporte` analisa, publica, desativa e rejeita solicitações de transporte sem acesso aos cadastros pedagógicos.
 - O nível `Assessoria Pedagógica` possui leitura pedagógica de rede e cria solicitações de transporte, mas não publica nem aloca veículos.
+
+### Pedagógico -> Reserva de veículos
+
+Policies: `ReservaVeiculoPolicy` e `VeiculoTransportePolicy` (registradas em `AppServiceProvider`)
+
+- Listar reservas e acessar o filtro `Veículos` da agenda: `Listar Reservas de Veículos`
+- Criar reservas, inclusive para vários dias: `Criar Reservas de Veículos`
+- Editar reservas ativas: `Editar Reservas de Veículos`
+- Cancelar reservas e liberar o horário: `Cancelar Reservas de Veículos`
+- Cadastrar, editar, ativar e desativar a frota: `Gerenciar Frota de Veículos`
+
+Observações:
+
+- O preset `Assessoria Pedagógica` recebe essas permissões.
+- Reservas destinadas a uma escola ou CMEI aparecem na agenda da unidade.
+- Reservas com outro local aparecem para o solicitante e no escopo de rede.
+- O backend impede duas reservas ativas sobrepostas para o mesmo veículo.
 
 ### Manutencao -> Tipos de manutencao
 

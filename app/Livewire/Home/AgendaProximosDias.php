@@ -50,11 +50,16 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
 
     public function definirEscopo(string $escopo): void
     {
-        abort_unless(in_array($escopo, ['pessoal', 'rede'], true), 422);
+        abort_unless(in_array($escopo, ['pessoal', 'rede', 'veiculos'], true), 422);
 
         if ($escopo === 'rede') {
             $user = app(ProfilePreviewService::class)->effectiveUser();
             abort_unless($user && $this->podeVisualizarRede($user), 403);
+        }
+
+        if ($escopo === 'veiculos') {
+            $user = app(ProfilePreviewService::class)->effectiveUser();
+            abort_unless($user && $this->podeVisualizarVeiculos($user), 403);
         }
 
         $this->escopoAgenda = $escopo;
@@ -139,6 +144,9 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
             'podeCriarEvento' => $context
                 ? Gate::forUser($context->user)->allows('create', EventoCalendario::class)
                 : false,
+            'podeVisualizarVeiculos' => $context
+                ? $this->podeVisualizarVeiculos($context->user)
+                : false,
         ]);
     }
 
@@ -170,6 +178,7 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
                 inicio: $inicio->startOfDay(),
                 fim: $inicio->addDays($quantidadeDias - 1)->endOfDay(),
                 redeCompleta: $this->escopoAgenda === 'rede',
+                somenteReservasVeiculos: $this->escopoAgenda === 'veiculos',
             );
         } catch (\Throwable $exception) {
             $this->erro = $exception instanceof InvalidArgumentException
@@ -203,5 +212,10 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
     private function podeVisualizarRede(User $user): bool
     {
         return $user->hasPermissionTo(ListaPermissoes::VisualizarAgendaDeTodaARede->label());
+    }
+
+    private function podeVisualizarVeiculos(User $user): bool
+    {
+        return $user->hasPermissionTo(ListaPermissoes::ListarReservasVeiculos->label());
     }
 }
