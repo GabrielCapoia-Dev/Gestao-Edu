@@ -87,6 +87,10 @@ final class ReservaVeiculoForm
                                 $get('hora_fim'),
                             ))
                         ->searchable()
+                        ->noOptionsMessage(fn (Get $get): string => $get('reservar_varios_dias')
+                            ? 'Não há veículos disponíveis para os dias e o horário selecionados.'
+                            : 'Não há veículos disponíveis para o dia e o horário selecionados.')
+                        ->noSearchResultsMessage('Nenhum veículo disponível corresponde à busca.')
                         ->native(false)
                         ->required()
                         ->helperText('Se nenhum veículo aparecer, revise as datas e os horários ou cadastre a frota.'),
@@ -148,6 +152,8 @@ final class ReservaVeiculoForm
                                 $reserva->id,
                             ))
                         ->searchable()
+                        ->noOptionsMessage('Não há veículos disponíveis para o dia e o horário selecionados.')
+                        ->noSearchResultsMessage('Nenhum veículo disponível corresponde à busca.')
                         ->native(false)
                         ->required(),
                 ]),
