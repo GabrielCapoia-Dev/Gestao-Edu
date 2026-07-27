@@ -35,7 +35,13 @@ final readonly class CalendarEventData
         public ?string $local = null,
         /** @var list<string> */
         public array $transporteAlocacoes = [],
+        public ?string $corDestaque = null,
     ) {}
+
+    public function precisaTransporte(): bool
+    {
+        return $this->transporteEstimado !== null;
+    }
 
     /** @return array<string, mixed> */
     public function toArray(): array
@@ -68,6 +74,7 @@ final readonly class CalendarEventData
             'transporte_estimado' => $this->transporteEstimado,
             'local' => $this->local,
             'transporte_alocacoes' => $this->transporteAlocacoes,
+            'cor_destaque' => $this->corDestaque,
         ];
     }
 }

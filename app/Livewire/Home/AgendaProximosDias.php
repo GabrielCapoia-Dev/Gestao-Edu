@@ -27,11 +27,11 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
     use InteractsWithActions;
     use InteractsWithSchemas;
 
-    private const ESCOPOS = ['pessoal', 'rede', 'transporte', 'manutencao', 'pedagogico'];
+    private const ESCOPOS = ['pessoal', 'rede', 'veiculos', 'transporte', 'manutencao', 'pedagogico'];
 
     private const CATEGORIAS_MANUTENCAO = ['manutencao'];
 
-    private const CATEGORIAS_PEDAGOGICAS = ['avaliacao', 'pedagogico', 'veiculos'];
+    private const CATEGORIAS_PEDAGOGICAS = ['avaliacao', 'pedagogico'];
 
     public int $quantidadeDias = 5;
 
@@ -64,7 +64,7 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
             abort_unless($user && $this->podeVisualizarRede($user), 403);
         }
 
-        if ($escopo === 'transporte') {
+        if ($escopo === 'veiculos') {
             $user = app(ProfilePreviewService::class)->effectiveUser();
             abort_unless($user && $this->podeVisualizarVeiculos($user), 403);
         }
@@ -117,6 +117,10 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
                 $resultadoPessoal = $aggregator->aggregate($this->contextoObrigatorio('pessoal'));
                 $resultados = [
                     'pessoal' => $resultadoPessoal,
+                    'transporte' => $this->filtrarResultadoPor(
+                        $resultadoPessoal,
+                        static fn ($evento): bool => $evento->precisaTransporte(),
+                    ),
                     'manutencao' => $this->filtrarResultado($resultadoPessoal, self::CATEGORIAS_MANUTENCAO),
                     'pedagogico' => $this->filtrarResultado($resultadoPessoal, self::CATEGORIAS_PEDAGOGICAS),
                 ];
@@ -126,7 +130,7 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
                 }
 
                 if ($this->podeVisualizarVeiculos($context->user)) {
-                    $resultados['transporte'] = $aggregator->aggregate($this->contextoObrigatorio('transporte'));
+                    $resultados['veiculos'] = $aggregator->aggregate($this->contextoObrigatorio('veiculos'));
                 }
 
                 $result = $resultados[$this->escopoAgenda] ?? $resultadoPessoal;
@@ -205,7 +209,7 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
                 inicio: $inicio->startOfDay(),
                 fim: $inicio->addDays($quantidadeDias - 1)->endOfDay(),
                 redeCompleta: $escopo === 'rede',
-                somenteReservasVeiculos: $escopo === 'transporte',
+                somenteReservasVeiculos: $escopo === 'veiculos',
             );
         } catch (\Throwable $exception) {
             $this->erro = $exception instanceof InvalidArgumentException
@@ -259,11 +263,18 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
         CalendarAggregationResult $resultado,
         array $categorias,
     ): CalendarAggregationResult {
+        return $this->filtrarResultadoPor(
+            $resultado,
+            static fn ($evento): bool => in_array($evento->categoria, $categorias, true),
+        );
+    }
+
+    private function filtrarResultadoPor(
+        CalendarAggregationResult $resultado,
+        callable $filtro,
+    ): CalendarAggregationResult {
         return new CalendarAggregationResult(
-            events: array_values(array_filter(
-                $resultado->events,
-                static fn ($evento): bool => in_array($evento->categoria, $categorias, true),
-            )),
+            events: array_values(array_filter($resultado->events, $filtro)),
             errors: $resultado->errors,
             truncated: $resultado->truncated,
         );
@@ -284,9 +295,10 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
         }
 
         if ($this->podeVisualizarVeiculos($user)) {
-            $abas[] = ['key' => 'transporte', 'label' => 'Transporte'];
+            $abas[] = ['key' => 'veiculos', 'label' => 'Veículos'];
         }
 
+        $abas[] = ['key' => 'transporte', 'label' => 'Transporte'];
         $abas[] = ['key' => 'manutencao', 'label' => 'Manutenção'];
         $abas[] = ['key' => 'pedagogico', 'label' => 'Pedagógico'];
 

@@ -12,6 +12,7 @@ use Filament\Actions\ActionGroup;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
+use Filament\Tables\Columns\ColorColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -24,6 +25,10 @@ final class ReservasVeiculosTable
     {
         return $table
             ->columns([
+                ColorColumn::make('veiculo.cor')
+                    ->label('Cor')
+                    ->alignCenter(),
+
                 TextColumn::make('data_inicio')
                     ->label('Data e horário')
                     ->dateTime('d/m/Y H:i')

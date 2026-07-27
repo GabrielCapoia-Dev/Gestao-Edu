@@ -10,8 +10,10 @@ use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Filament\Tables\Columns\ColorColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget;
@@ -49,7 +51,7 @@ class VeiculosTransporteTable extends TableWidget
                     ->visible(fn (): bool => $this->podeCriar())
                     ->authorize(fn (): bool => $this->podeCriar())
                     ->modalHeading('Novo veículo')
-                    ->modalDescription('Informe a placa e uma identificação para o veículo.')
+                    ->modalDescription('Informe a placa, a identificação e a cor do veículo.')
                     ->modalWidth('lg')
                     ->closeModalByClickingAway(false)
                     ->schema($this->formSchema())
@@ -60,6 +62,9 @@ class VeiculosTransporteTable extends TableWidget
                     ->successNotificationTitle('Veículo cadastrado'),
             ])
             ->columns([
+                ColorColumn::make('cor')
+                    ->label('Cor')
+                    ->alignCenter(),
                 TextColumn::make('placa')
                     ->label('Placa')
                     ->searchable()
@@ -160,7 +165,7 @@ class VeiculosTransporteTable extends TableWidget
             ->defaultPaginationPageOption(10);
     }
 
-    /** @return array<int, TextInput> */
+    /** @return array<int, TextInput|ColorPicker> */
     private function formSchema(): array
     {
         return [
@@ -174,6 +179,11 @@ class VeiculosTransporteTable extends TableWidget
                 ->placeholder('Ex.: Micro-ônibus 01')
                 ->maxLength(120)
                 ->columnSpanFull(),
+            ColorPicker::make('cor')
+                ->label('Cor do veículo')
+                ->default('#2563EB')
+                ->hex()
+                ->required(),
         ];
     }
 

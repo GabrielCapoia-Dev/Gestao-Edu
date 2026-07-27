@@ -80,6 +80,7 @@
                                 @php($eventDomId = 'agenda-evento-'.md5($day['date']->toDateString().'-'.$event->id))
                                 <article
                                     class="home-agenda__event color-{{ $event->cor }}"
+                                    @style(["--agenda-event-color: {$event->corDestaque}" => filled($event->corDestaque)])
                                     wire:key="agenda-{{ $day['date']->toDateString() }}-{{ $event->id }}"
                                     x-data="{ aberto: false }"
                                     x-bind:class="{ 'is-open': aberto }"

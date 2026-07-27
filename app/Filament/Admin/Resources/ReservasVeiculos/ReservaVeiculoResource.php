@@ -37,7 +37,7 @@ class ReservaVeiculoResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->with([
-            'veiculo:id,placa,identificacao,ativo',
+            'veiculo:id,placa,identificacao,cor,ativo',
             'usuario:id,name,email',
             'escola:id,nome',
             'canceladoPor:id,name',

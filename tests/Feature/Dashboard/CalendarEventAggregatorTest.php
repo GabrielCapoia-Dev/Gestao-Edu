@@ -108,6 +108,8 @@ class CalendarEventAggregatorTest extends TestCase
             'periodOptions' => [5],
             'tabsAgenda' => [
                 ['key' => 'pessoal', 'label' => 'Para mim', 'count' => 4],
+                ['key' => 'veiculos', 'label' => 'Veículos', 'count' => 2],
+                ['key' => 'transporte', 'label' => 'Transporte', 'count' => 0],
                 ['key' => 'manutencao', 'label' => 'Manutenção', 'count' => 2],
                 ['key' => 'pedagogico', 'label' => 'Pedagógico', 'count' => 1],
             ],
@@ -119,8 +121,11 @@ class CalendarEventAggregatorTest extends TestCase
         $this->assertStringContainsString('home-agenda__scope-count', $html);
         $this->assertStringContainsString('Manutenção', $html);
         $this->assertStringContainsString('Pedagógico', $html);
+        $this->assertStringContainsString('Veículos', $html);
+        $this->assertStringContainsString('Transporte', $html);
         $this->assertStringContainsString('Mostrar mais', $html);
         $this->assertStringContainsString('overflow-y: auto', $css);
+        $this->assertStringContainsString('grid-auto-rows: max-content', $css);
         $this->assertStringContainsString('.home-agenda__day.is-expanded', $css);
         $this->assertStringContainsString('grid-template-columns: repeat(2, minmax(0, 1fr))', $css);
         $this->assertStringContainsString('.home-agenda__scope button:last-child:nth-child(odd)', $css);
@@ -133,11 +138,13 @@ class CalendarEventAggregatorTest extends TestCase
         $this->assertIsString($blade);
         $this->assertStringContainsString('<livewire:home.avisos-banner', $blade);
         $this->assertStringContainsString('<livewire:home.agenda-proximos-dias', $blade);
-        $this->assertStringContainsString('<livewire:home.reservas-veiculos-resumo', $blade);
+        $this->assertStringNotContainsString('<livewire:home.reservas-veiculos-resumo', $blade);
         $dashboardPage = file_get_contents(app_path('Filament/Admin/Pages/Dashboard.php'));
         $this->assertStringContainsString("'actions' => \$this->getCachedHeaderActions()", $dashboardPage);
         $this->assertStringContainsString("->label('Gerenciar avisos')", $dashboardPage);
         $this->assertStringContainsString("->label('Gerenciar agenda')", $dashboardPage);
+        $this->assertStringContainsString("->label('Gerenciar reservas')", $dashboardPage);
+        $this->assertStringContainsString("->label('Reservar veículo')", $dashboardPage);
         $this->assertStringNotContainsString('Gerenciar avisos', file_get_contents(resource_path('views/livewire/home/avisos-banner.blade.php')));
         $this->assertStringNotContainsString('Gerenciar agenda', file_get_contents(resource_path('views/livewire/home/agenda-proximos-dias.blade.php')));
         $this->assertStringNotContainsString('Acesso rápido', $blade);
@@ -203,6 +210,12 @@ class CalendarEventAggregatorTest extends TestCase
         );
     }
 
+    public function test_evento_so_e_classificado_como_transporte_quando_solicita_transporte(): void
+    {
+        $this->assertFalse($this->evento('sem-transporte')->precisaTransporte());
+        $this->assertTrue($this->evento('com-transporte', transporteEstimado: 0)->precisaTransporte());
+    }
+
     private function contexto(
         ?CarbonImmutable $inicio = null,
         ?CarbonImmutable $fim = null,
@@ -243,6 +256,7 @@ class CalendarEventAggregatorTest extends TestCase
         string $status = 'em_andamento',
         DashboardPrioridade $prioridade = DashboardPrioridade::Alta,
         ?string $assunto = 'Preenchimento',
+        ?int $transporteEstimado = null,
     ): CalendarEventData {
         $inicio = CarbonImmutable::parse('2026-07-21 08:00:00');
 
@@ -268,6 +282,7 @@ class CalendarEventAggregatorTest extends TestCase
             setorId: null,
             setor: null,
             origem: 'Teste',
+            transporteEstimado: $transporteEstimado,
         );
     }
 }

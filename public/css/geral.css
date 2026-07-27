@@ -440,6 +440,7 @@
 
 .home-agenda__events {
     display: grid;
+    grid-auto-rows: max-content;
     min-height: 0;
     flex: 1;
     align-content: start;
@@ -465,7 +466,7 @@
     text-align: left;
     background: #fff;
     border: 0;
-    border-left: 4px solid #2563eb;
+    border-left: 4px solid var(--agenda-event-color, #2563eb);
     border-radius: 8px;
     box-shadow: 0 2px 7px rgba(15, 34, 97, .08);
     transform-origin: top center;

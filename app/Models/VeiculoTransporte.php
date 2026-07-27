@@ -13,6 +13,7 @@ class VeiculoTransporte extends Model
     protected $fillable = [
         'placa',
         'identificacao',
+        'cor',
         'capacidade_passageiros',
         'ativo',
     ];

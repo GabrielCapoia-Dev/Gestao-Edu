@@ -36,6 +36,7 @@ class ReservaVeiculoCalendarEventSourceTest extends TestCase
         $veiculo = VeiculoTransporte::query()->create([
             'placa' => 'DEF4G56',
             'identificacao' => 'Van Pedagógica',
+            'cor' => '#A855F7',
             'capacidade_passageiros' => 12,
             'ativo' => true,
         ]);
@@ -56,6 +57,7 @@ class ReservaVeiculoCalendarEventSourceTest extends TestCase
         $this->assertSame('Van Pedagógica', $eventos->first()->titulo);
         $this->assertSame('Escola da Agenda', $eventos->first()->escola);
         $this->assertSame('Visita à escola', $eventos->first()->resumo);
+        $this->assertSame('#A855F7', $eventos->first()->corDestaque);
     }
 
     public function test_filtro_de_veiculos_exibe_todas_as_reservas_para_usuario_autorizado(): void
@@ -69,6 +71,7 @@ class ReservaVeiculoCalendarEventSourceTest extends TestCase
         $veiculo = VeiculoTransporte::query()->create([
             'placa' => 'GHI7J89',
             'identificacao' => 'Automóvel 02',
+            'cor' => '#F97316',
             'capacidade_passageiros' => 5,
             'ativo' => true,
         ]);
@@ -87,6 +90,7 @@ class ReservaVeiculoCalendarEventSourceTest extends TestCase
         $this->assertCount(1, $eventos);
         $this->assertSame('veiculos', $eventos->first()->categoria);
         $this->assertSame('Paço Municipal', $eventos->first()->local);
+        $this->assertSame('#F97316', $eventos->first()->corDestaque);
     }
 
     private function reserva(

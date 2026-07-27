@@ -57,7 +57,7 @@ class VeiculoTransporteService
 
     public function atualizar(User $ator, VeiculoTransporte $veiculo, array $dados): VeiculoTransporte
     {
-        $dados = $this->validarDados($dados, $veiculo->getKey());
+        $dados = $this->validarDados($dados, $veiculo->getKey(), $veiculo->cor);
 
         return DB::transaction(function () use ($ator, $veiculo, $dados): VeiculoTransporte {
             $veiculo = VeiculoTransporte::query()->lockForUpdate()->findOrFail($veiculo->getKey());
@@ -79,14 +79,19 @@ class VeiculoTransporteService
         return $this->alterarStatus($ator, $veiculo, false);
     }
 
-    /** @return array{placa: string, identificacao: ?string} */
-    private function validarDados(array $dados, ?int $ignorarVeiculoId = null): array
+    /** @return array{placa: string, identificacao: ?string, cor: string} */
+    private function validarDados(
+        array $dados,
+        ?int $ignorarVeiculoId = null,
+        ?string $corAtual = null,
+    ): array
     {
         $normalizados = [
             'placa' => VeiculoTransporte::normalizarPlaca($dados['placa'] ?? null),
             'identificacao' => filled($dados['identificacao'] ?? null)
                 ? Str::of((string) $dados['identificacao'])->squish()->toString()
                 : null,
+            'cor' => strtoupper((string) ($dados['cor'] ?? $corAtual ?? '#2563EB')),
         ];
 
         $placaUnica = Rule::unique('veiculos_transporte', 'placa');
@@ -102,8 +107,10 @@ class VeiculoTransporteService
                 $placaUnica,
             ],
             'identificacao' => ['nullable', 'string', 'max:120'],
+            'cor' => ['required', 'string', 'regex:/^#[0-9A-F]{6}$/'],
         ], [
             'placa.unique' => 'Já existe um veículo com esta placa.',
+            'cor.regex' => 'Selecione uma cor válida para o veículo.',
         ]);
 
         if ($validator->fails()) {

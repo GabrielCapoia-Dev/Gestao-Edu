@@ -30,7 +30,7 @@ class ReservaVeiculoCalendarEventSource implements CalendarEventSource
             ->where('data_inicio', '<=', $context->fim)
             ->where('data_fim', '>=', $context->inicio)
             ->with([
-                'veiculo:id,placa,identificacao',
+                'veiculo:id,placa,identificacao,cor',
                 'usuario:id,name',
                 'escola:id,nome',
             ])
@@ -54,7 +54,7 @@ class ReservaVeiculoCalendarEventSource implements CalendarEventSource
         }
 
         $reserva = $this->visibleQuery($context)
-            ->with(['veiculo:id,placa,identificacao', 'usuario:id,name', 'escola:id,nome'])
+            ->with(['veiculo:id,placa,identificacao,cor', 'usuario:id,name', 'escola:id,nome'])
             ->find($id);
 
         if (! $reserva) {
@@ -126,6 +126,7 @@ class ReservaVeiculoCalendarEventSource implements CalendarEventSource
                 : null,
             actionLabel: 'Gerenciar reservas',
             local: $reserva->local_nome,
+            corDestaque: $reserva->veiculo?->cor,
         );
     }
 

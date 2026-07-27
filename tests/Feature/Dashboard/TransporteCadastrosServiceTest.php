@@ -103,9 +103,11 @@ class TransporteCadastrosServiceTest extends TestCase
         $veiculo = $service->criar($ator, [
             'placa' => '12ab-345',
             'identificacao' => 'Micro-ônibus 01',
+            'cor' => '#ab12cd',
         ]);
 
         $this->assertSame('12AB345', $veiculo->placa);
+        $this->assertSame('#AB12CD', $veiculo->cor);
         $this->assertSame(1, $veiculo->capacidade_passageiros);
         $this->assertTrue($veiculo->ativo);
         $this->assertFalse(Gate::forUser($ator)->allows('delete', $veiculo));
