@@ -98,12 +98,11 @@ class VeiculoTransporteService
             'placa' => [
                 'required',
                 'string',
-                'regex:/^(?:[A-Z]{3}[0-9]{4}|[A-Z]{3}[0-9][A-Z][0-9]{2})$/',
+                'max:7',
                 $placaUnica,
             ],
             'identificacao' => ['nullable', 'string', 'max:120'],
         ], [
-            'placa.regex' => 'Informe uma placa válida no padrão antigo ou Mercosul.',
             'placa.unique' => 'Já existe um veículo com esta placa.',
         ]);
 

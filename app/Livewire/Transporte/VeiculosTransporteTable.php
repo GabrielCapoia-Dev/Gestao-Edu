@@ -168,8 +168,7 @@ class VeiculosTransporteTable extends TableWidget
                 ->label('Placa')
                 ->required()
                 ->maxLength(7)
-                ->placeholder('ABC1D23')
-                ->helperText('Informe somente letras e números.'),
+                ->placeholder('ABC1D23'),
             TextInput::make('identificacao')
                 ->label('Identificação')
                 ->placeholder('Ex.: Micro-ônibus 01')

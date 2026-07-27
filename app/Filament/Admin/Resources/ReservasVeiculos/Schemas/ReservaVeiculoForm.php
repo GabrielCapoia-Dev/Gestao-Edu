@@ -29,8 +29,13 @@ final class ReservaVeiculoForm
                         ->label('Servidor')
                         ->default($usuario->name)
                         ->disabled()
-                        ->dehydrated(false)
-                        ->columnSpanFull(),
+                        ->dehydrated(false),
+
+                    Checkbox::make('reservar_varios_dias')
+                        ->label('Reservar para vários dias')
+                        ->helperText('O mesmo horário será reservado em todos os dias do intervalo, por até 31 dias.')
+                        ->default(false)
+                        ->live(),
 
                     DatePicker::make('data_inicial')
                         ->label('Data da reserva')
@@ -38,13 +43,8 @@ final class ReservaVeiculoForm
                         ->minDate(today())
                         ->native(false)
                         ->displayFormat('d/m/Y')
-                        ->live(),
-
-                    Checkbox::make('reservar_varios_dias')
-                        ->label('Reservar para vários dias')
-                        ->helperText('O mesmo horário será reservado em todos os dias do intervalo, por até 31 dias.')
-                        ->default(false)
-                        ->live(),
+                        ->live()
+                        ->columnSpan(fn (Get $get): int => $get('reservar_varios_dias') ? 1 : 2),
 
                     DatePicker::make('data_final')
                         ->label('Data final')
@@ -53,8 +53,7 @@ final class ReservaVeiculoForm
                         ->native(false)
                         ->displayFormat('d/m/Y')
                         ->visible(fn (Get $get): bool => (bool) $get('reservar_varios_dias'))
-                        ->live()
-                        ->columnSpanFull(),
+                        ->live(),
 
                     TimePicker::make('hora_inicio')
                         ->label('Horário inicial')

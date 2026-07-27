@@ -122,6 +122,8 @@ class CalendarEventAggregatorTest extends TestCase
         $this->assertStringContainsString('Mostrar mais', $html);
         $this->assertStringContainsString('overflow-y: auto', $css);
         $this->assertStringContainsString('.home-agenda__day.is-expanded', $css);
+        $this->assertStringContainsString('grid-template-columns: repeat(2, minmax(0, 1fr))', $css);
+        $this->assertStringContainsString('.home-agenda__scope button:last-child:nth-child(odd)', $css);
     }
 
     public function test_dashboard_nao_renderiza_mais_a_grade_de_acesso_rapido(): void
