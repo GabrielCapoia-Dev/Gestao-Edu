@@ -7,58 +7,22 @@
         </div>
 
         <div class="home-agenda__header-actions">
-            @if ($podeVisualizarRede ?? false)
+            @if (($tabsAgenda ?? []) !== [])
                 <div class="home-agenda__scope" role="tablist" aria-label="Escopo da agenda">
-                    <button
-                        type="button"
-                        role="tab"
-                        @class(['is-active' => $escopoAgenda === 'pessoal'])
-                        aria-selected="{{ $escopoAgenda === 'pessoal' ? 'true' : 'false' }}"
-                        wire:click="definirEscopo('pessoal')"
-                    >
-                        Para mim
-                    </button>
-                    <button
-                        type="button"
-                        role="tab"
-                        @class(['is-active' => $escopoAgenda === 'rede'])
-                        aria-selected="{{ $escopoAgenda === 'rede' ? 'true' : 'false' }}"
-                        wire:click="definirEscopo('rede')"
-                    >
-                        Para a rede
-                    </button>
-                    @if ($podeVisualizarVeiculos ?? false)
+                    @foreach ($tabsAgenda as $aba)
                         <button
                             type="button"
                             role="tab"
-                            @class(['is-active' => $escopoAgenda === 'veiculos'])
-                            aria-selected="{{ $escopoAgenda === 'veiculos' ? 'true' : 'false' }}"
-                            wire:click="definirEscopo('veiculos')"
+                            @class(['is-active' => $escopoAgenda === $aba['key']])
+                            aria-selected="{{ $escopoAgenda === $aba['key'] ? 'true' : 'false' }}"
+                            wire:click="definirEscopo('{{ $aba['key'] }}')"
                         >
-                            Veículos
+                            <span>{{ $aba['label'] }}</span>
+                            <span class="home-agenda__scope-count" aria-label="{{ $aba['count'] }} evento(s)">
+                                {{ $aba['count'] > 99 ? '99+' : $aba['count'] }}
+                            </span>
                         </button>
-                    @endif
-                </div>
-            @elseif ($podeVisualizarVeiculos ?? false)
-                <div class="home-agenda__scope" role="tablist" aria-label="Escopo da agenda">
-                    <button
-                        type="button"
-                        role="tab"
-                        @class(['is-active' => $escopoAgenda === 'pessoal'])
-                        aria-selected="{{ $escopoAgenda === 'pessoal' ? 'true' : 'false' }}"
-                        wire:click="definirEscopo('pessoal')"
-                    >
-                        Para mim
-                    </button>
-                    <button
-                        type="button"
-                        role="tab"
-                        @class(['is-active' => $escopoAgenda === 'veiculos'])
-                        aria-selected="{{ $escopoAgenda === 'veiculos' ? 'true' : 'false' }}"
-                        wire:click="definirEscopo('veiculos')"
-                    >
-                        Veículos
-                    </button>
+                    @endforeach
                 </div>
             @endif
             @if ($podeCriarEvento ?? false)
@@ -103,6 +67,7 @@
                         'home-agenda__day',
                         'is-today' => $day['date']->isToday(),
                         'is-weekend' => $day['date']->isWeekend(),
+                        'is-expanded' => $day['expanded'],
                     ])>
                         <header>
                             <span>{{ mb_strtoupper($day['date']->locale('pt_BR')->translatedFormat('D')) }}</span>
@@ -192,14 +157,14 @@
                             @empty
                                 <p class="home-agenda__empty">Nenhum item</p>
                             @endforelse
-                            @if ($day['remaining'] > 0)
-                                <button type="button" class="home-agenda__more" wire:click="alternarDia('{{ $day['date']->toDateString() }}')">
-                                    +{{ $day['remaining'] }} {{ $day['remaining'] === 1 ? 'evento' : 'eventos' }}
-                                </button>
-                            @elseif ($day['expanded'] && count($day['events']) > 3)
-                                <button type="button" class="home-agenda__more" wire:click="alternarDia('{{ $day['date']->toDateString() }}')">Mostrar menos</button>
-                            @endif
                         </div>
+                        @if ($day['hasOverflow'])
+                            <footer class="home-agenda__day-footer">
+                                <button type="button" class="home-agenda__more" wire:click="alternarDia('{{ $day['date']->toDateString() }}')">
+                                    {{ $day['expanded'] ? 'Mostrar menos' : 'Mostrar mais' }}
+                                </button>
+                            </footer>
+                        @endif
                     </article>
                 @empty
                     <div class="home-agenda__empty-state">

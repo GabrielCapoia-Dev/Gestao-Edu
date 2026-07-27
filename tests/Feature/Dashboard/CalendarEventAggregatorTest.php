@@ -68,12 +68,13 @@ class CalendarEventAggregatorTest extends TestCase
             'days' => [[
                 'date' => $day,
                 'events' => [$event],
-                'remaining' => 0,
+                'hasOverflow' => false,
                 'expanded' => false,
             ]],
             'sourceErrors' => [],
             'truncated' => false,
             'periodOptions' => [5, 10, 15, 20, 25, 30],
+            'tabsAgenda' => [],
             'erro' => null,
         ])->render();
 
@@ -84,6 +85,43 @@ class CalendarEventAggregatorTest extends TestCase
         $this->assertStringContainsString('home-agenda__event-detail', $html);
         $this->assertStringNotContainsString('home-agenda__filters', $html);
         $this->assertStringNotContainsString('agenda-event-detail', $html);
+    }
+
+    public function test_agenda_exibe_contadores_nas_abas_e_expande_a_altura_do_dia_com_scroll_interno(): void
+    {
+        $day = CarbonImmutable::parse('2026-07-27');
+        $events = [
+            $this->evento('um'),
+            $this->evento('dois'),
+            $this->evento('tres'),
+            $this->evento('quatro'),
+        ];
+        $html = view('livewire.home.agenda-proximos-dias', [
+            'days' => [[
+                'date' => $day,
+                'events' => $events,
+                'hasOverflow' => true,
+                'expanded' => false,
+            ]],
+            'sourceErrors' => [],
+            'truncated' => false,
+            'periodOptions' => [5],
+            'tabsAgenda' => [
+                ['key' => 'pessoal', 'label' => 'Para mim', 'count' => 4],
+                ['key' => 'manutencao', 'label' => 'Manutenção', 'count' => 2],
+                ['key' => 'pedagogico', 'label' => 'Pedagógico', 'count' => 1],
+            ],
+            'escopoAgenda' => 'pessoal',
+            'erro' => null,
+        ])->render();
+        $css = file_get_contents(public_path('css/geral.css'));
+
+        $this->assertStringContainsString('home-agenda__scope-count', $html);
+        $this->assertStringContainsString('Manutenção', $html);
+        $this->assertStringContainsString('Pedagógico', $html);
+        $this->assertStringContainsString('Mostrar mais', $html);
+        $this->assertStringContainsString('overflow-y: auto', $css);
+        $this->assertStringContainsString('.home-agenda__day.is-expanded', $css);
     }
 
     public function test_dashboard_nao_renderiza_mais_a_grade_de_acesso_rapido(): void

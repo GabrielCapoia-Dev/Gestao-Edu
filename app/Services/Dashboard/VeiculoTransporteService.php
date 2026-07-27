@@ -44,25 +44,14 @@ class VeiculoTransporteService
         Gate::forUser($ator)->authorize('create', VeiculoTransporte::class);
         $dados = $this->validarDados($dados);
 
-        return DB::transaction(function () use ($ator, $dados): VeiculoTransporte {
-            $existente = VeiculoTransporte::query()
-                ->where('placa', $dados['placa'])
-                ->lockForUpdate()
-                ->exists();
-
-            if ($existente) {
-                throw ValidationException::withMessages(['placa' => 'Já existe um veículo com esta placa.']);
-            }
-
+        return DB::transaction(function () use ($dados): VeiculoTransporte {
             $veiculo = VeiculoTransporte::query()->create([
                 ...$dados,
                 'capacidade_passageiros' => 1,
                 'ativo' => true,
             ]);
-            $veiculo = VeiculoTransporte::query()->lockForUpdate()->findOrFail($veiculo->getKey());
-            Gate::forUser($ator)->authorize('view', $veiculo);
 
-            return $veiculo;
+            return $veiculo->fresh();
         });
     }
 

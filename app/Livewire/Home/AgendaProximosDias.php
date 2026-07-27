@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\Dashboard\Calendar\CalendarEventAggregator;
 use App\Services\Dashboard\DashboardUserContextFactory;
 use App\Services\ProfilePreviewService;
+use App\Support\Dashboard\Calendar\CalendarAggregationResult;
 use App\Support\Dashboard\Calendar\CalendarQueryContext;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Concerns\InteractsWithActions;
@@ -25,6 +26,12 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
 {
     use InteractsWithActions;
     use InteractsWithSchemas;
+
+    private const ESCOPOS = ['pessoal', 'rede', 'transporte', 'manutencao', 'pedagogico'];
+
+    private const CATEGORIAS_MANUTENCAO = ['manutencao'];
+
+    private const CATEGORIAS_PEDAGOGICAS = ['avaliacao', 'pedagogico', 'veiculos'];
 
     public int $quantidadeDias = 5;
 
@@ -50,14 +57,14 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
 
     public function definirEscopo(string $escopo): void
     {
-        abort_unless(in_array($escopo, ['pessoal', 'rede', 'veiculos'], true), 422);
+        abort_unless(in_array($escopo, self::ESCOPOS, true), 422);
 
         if ($escopo === 'rede') {
             $user = app(ProfilePreviewService::class)->effectiveUser();
             abort_unless($user && $this->podeVisualizarRede($user), 403);
         }
 
-        if ($escopo === 'veiculos') {
+        if ($escopo === 'transporte') {
             $user = app(ProfilePreviewService::class)->effectiveUser();
             abort_unless($user && $this->podeVisualizarVeiculos($user), 403);
         }
@@ -100,12 +107,30 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
 
     public function render(): View
     {
-        $context = $this->makeContext();
+        $context = $this->makeContext($this->escopoAgenda);
         $result = null;
+        $tabsAgenda = [];
 
         if ($context) {
             try {
-                $result = app(CalendarEventAggregator::class)->aggregate($context);
+                $aggregator = app(CalendarEventAggregator::class);
+                $resultadoPessoal = $aggregator->aggregate($this->contextoObrigatorio('pessoal'));
+                $resultados = [
+                    'pessoal' => $resultadoPessoal,
+                    'manutencao' => $this->filtrarResultado($resultadoPessoal, self::CATEGORIAS_MANUTENCAO),
+                    'pedagogico' => $this->filtrarResultado($resultadoPessoal, self::CATEGORIAS_PEDAGOGICAS),
+                ];
+
+                if ($this->podeVisualizarRede($context->user)) {
+                    $resultados['rede'] = $aggregator->aggregate($this->contextoObrigatorio('rede'));
+                }
+
+                if ($this->podeVisualizarVeiculos($context->user)) {
+                    $resultados['transporte'] = $aggregator->aggregate($this->contextoObrigatorio('transporte'));
+                }
+
+                $result = $resultados[$this->escopoAgenda] ?? $resultadoPessoal;
+                $tabsAgenda = $this->montarAbas($context->user, $resultados);
             } catch (\Throwable $exception) {
                 report($exception);
                 $this->erro = 'Não foi possível carregar a agenda agora. Tente novamente.';
@@ -126,8 +151,8 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
                 $expanded = in_array($dateKey, $this->diasExpandidos, true);
                 $days[] = [
                     'date' => $date,
-                    'events' => $expanded ? $allEvents : array_slice($allEvents, 0, 3),
-                    'remaining' => $expanded ? 0 : max(0, count($allEvents) - 3),
+                    'events' => $allEvents,
+                    'hasOverflow' => count($allEvents) > 3,
                     'expanded' => $expanded,
                 ];
             }
@@ -138,6 +163,7 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
             'sourceErrors' => $result?->errors ?? [],
             'truncated' => $result?->truncated ?? false,
             'periodOptions' => $this->periodOptions(),
+            'tabsAgenda' => $tabsAgenda,
             'podeVisualizarRede' => $context
                 ? $this->podeVisualizarRede($context->user)
                 : false,
@@ -155,10 +181,11 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
         return view('livewire.home.agenda-proximos-dias-placeholder');
     }
 
-    private function makeContext(): ?CalendarQueryContext
+    private function makeContext(?string $escopo = null): ?CalendarQueryContext
     {
         $this->erro = null;
         $user = app(ProfilePreviewService::class)->effectiveUser();
+        $escopo ??= $this->escopoAgenda;
 
         if (! $user) {
             $this->erro = 'Não foi possível identificar o usuário autenticado.';
@@ -177,8 +204,8 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
                 userContext: $userContext,
                 inicio: $inicio->startOfDay(),
                 fim: $inicio->addDays($quantidadeDias - 1)->endOfDay(),
-                redeCompleta: $this->escopoAgenda === 'rede',
-                somenteReservasVeiculos: $this->escopoAgenda === 'veiculos',
+                redeCompleta: $escopo === 'rede',
+                somenteReservasVeiculos: $escopo === 'transporte',
             );
         } catch (\Throwable $exception) {
             $this->erro = $exception instanceof InvalidArgumentException
@@ -217,5 +244,58 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
     private function podeVisualizarVeiculos(User $user): bool
     {
         return $user->hasPermissionTo(ListaPermissoes::ListarReservasVeiculos->label());
+    }
+
+    private function contextoObrigatorio(string $escopo): CalendarQueryContext
+    {
+        return $this->makeContext($escopo)
+            ?? throw new InvalidArgumentException('Não foi possível montar o contexto da agenda.');
+    }
+
+    /**
+     * @param  list<string>  $categorias
+     */
+    private function filtrarResultado(
+        CalendarAggregationResult $resultado,
+        array $categorias,
+    ): CalendarAggregationResult {
+        return new CalendarAggregationResult(
+            events: array_values(array_filter(
+                $resultado->events,
+                static fn ($evento): bool => in_array($evento->categoria, $categorias, true),
+            )),
+            errors: $resultado->errors,
+            truncated: $resultado->truncated,
+        );
+    }
+
+    /**
+     * @param  array<string, CalendarAggregationResult>  $resultados
+     * @return list<array{key: string, label: string, count: int}>
+     */
+    private function montarAbas(User $user, array $resultados): array
+    {
+        $abas = [
+            ['key' => 'pessoal', 'label' => 'Para mim'],
+        ];
+
+        if ($this->podeVisualizarRede($user)) {
+            $abas[] = ['key' => 'rede', 'label' => 'Para a rede'];
+        }
+
+        if ($this->podeVisualizarVeiculos($user)) {
+            $abas[] = ['key' => 'transporte', 'label' => 'Transporte'];
+        }
+
+        $abas[] = ['key' => 'manutencao', 'label' => 'Manutenção'];
+        $abas[] = ['key' => 'pedagogico', 'label' => 'Pedagógico'];
+
+        return array_map(
+            static fn (array $aba): array => [
+                ...$aba,
+                'count' => count($resultados[$aba['key']]?->events ?? []),
+            ],
+            $abas,
+        );
     }
 }
