@@ -16,11 +16,14 @@ use App\Models\FuncaoAdministrativa;
 use App\Models\Permission;
 use App\Models\PublicoAlvo;
 use App\Models\Role;
+use App\Models\Serie;
 use App\Models\Servidor;
 use App\Models\ServidorFuncaoAdministrativa;
 use App\Models\Setor;
+use App\Models\Turma;
 use App\Models\User;
 use App\Models\VeiculoTransporte;
+use App\Livewire\Transporte\EventoTransporteEscolasManager;
 use App\Services\Dashboard\EventoTransporteAlocacaoService;
 use App\Services\Dashboard\EventoCalendarioService;
 use App\Services\ServidorService;
@@ -28,6 +31,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
+use Livewire\Livewire;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -133,6 +137,62 @@ class EventoTransporteAlocacaoServiceTest extends TestCase
         $this->assertSame(10, $resumo['capacidade']);
         $this->assertSame(-10, $resumo['diferenca']);
         $this->assertTrue($resumo['capacidade_insuficiente']);
+    }
+
+    public function test_gestor_consegue_ocultar_relacao_de_veiculos_ja_alocados(): void
+    {
+        $ator = $this->ator();
+        $evento = $this->evento($ator, 'Evento com relação de veículos');
+        $agendamento = $evento->escolasAgendadas()->firstOrFail();
+        $turma = $this->turma((int) $agendamento->escola_id);
+
+        app(EventoTransporteAlocacaoService::class)->atribuirTurmasDaEscola(
+            $ator,
+            $evento,
+            (int) $agendamento->getKey(),
+            $this->veiculo('REL1A23', 40)->id,
+            $this->motorista('12121212121', 'Motorista da relação')->id,
+            [$turma->id],
+        );
+
+        $this->actingAs($ator);
+
+        Livewire::test(EventoTransporteEscolasManager::class, ['eventoId' => $evento->id])
+            ->assertSet('mostrarRelacaoVeiculos', false)
+            ->call('alternarRelacaoVeiculos')
+            ->assertSet('mostrarRelacaoVeiculos', true)
+            ->call('alternarRelacaoVeiculos')
+            ->assertSet('mostrarRelacaoVeiculos', false);
+    }
+
+    public function test_gestor_vincula_turma_a_veiculo_com_lugares_disponiveis_pelo_componente(): void
+    {
+        $ator = $this->ator();
+        $evento = $this->evento($ator, 'Evento para atribuição');
+        $agendamento = $evento->escolasAgendadas()->firstOrFail();
+        $turma = $this->turma((int) $agendamento->escola_id);
+        $veiculo = $this->veiculo('VIN1B23', 40);
+        $motorista = $this->motorista('13131313131', 'Motorista da atribuição');
+
+        $this->actingAs($ator);
+
+        Livewire::test(EventoTransporteEscolasManager::class, ['eventoId' => $evento->id])
+            ->set("veiculosSelecionados.{$agendamento->id}", $veiculo->id)
+            ->set("motoristasSelecionados.{$agendamento->id}", $motorista->id)
+            ->call('alternarTurma', $agendamento->id, $turma->id, true)
+            ->assertSet("turmasSelecionadas.{$agendamento->id}", [$turma->id])
+            ->call('alocar', $agendamento->id)
+            ->assertHasNoErrors();
+
+        $alocacao = EventoCalendarioTransporteAlocacao::query()
+            ->where('evento_calendario_id', $evento->id)
+            ->where('veiculo_transporte_id', $veiculo->id)
+            ->firstOrFail();
+
+        $this->assertDatabaseHas('evento_transporte_alocacao_turma', [
+            'alocacao_id' => $alocacao->id,
+            'turma_id' => $turma->id,
+        ]);
     }
 
     public function test_permite_reutilizar_veiculo_e_motorista_em_eventos_sobrepostos(): void
@@ -352,6 +412,20 @@ class EventoTransporteAlocacaoServiceTest extends TestCase
             'identificacao' => 'Veículo '.$placa,
             'capacidade_passageiros' => $capacidade,
             'ativo' => true,
+        ]);
+    }
+
+    private function turma(int $escolaId): Turma
+    {
+        $serie = Serie::query()->create([
+            'nome' => '1º Ano',
+        ]);
+
+        return Turma::query()->create([
+            'nome' => fake()->unique()->bothify('Turma ??'),
+            'turno' => 'Manhã',
+            'id_serie' => $serie->id,
+            'id_escola' => $escolaId,
         ]);
     }
 

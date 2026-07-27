@@ -4706,17 +4706,12 @@ html.dark {
     overflow: hidden;
     border: 1px solid var(--edu-neutral-200);
     border-radius: 0.75rem;
-    background: var(--edu-neutral-50);
+    background: #fff;
 }
 
 .gi-school-transport-card.has-assignment {
     border-color: var(--edu-success-100);
-    background: var(--edu-success-50);
     box-shadow: inset 3px 0 0 var(--edu-success-600);
-}
-
-.gi-school-transport-card.has-assignment .gi-school-transport-card__header {
-    background: rgba(209, 250, 229, 0.45);
 }
 
 .gi-school-transport-card__header {
@@ -4725,6 +4720,32 @@ html.dark {
     justify-content: space-between;
     gap: 0.65rem;
     padding: 0.75rem;
+    cursor: pointer;
+    list-style: none;
+}
+
+.gi-school-transport-card__header::-webkit-details-marker {
+    display: none;
+}
+
+.gi-school-transport-card__header::after {
+    content: "";
+    flex: 0 0 auto;
+    width: 0.45rem;
+    height: 0.45rem;
+    margin-top: 0.3rem;
+    border-right: 2px solid var(--edu-neutral-400);
+    border-bottom: 2px solid var(--edu-neutral-400);
+    transform: rotate(45deg);
+    transition: transform 150ms ease;
+}
+
+.gi-school-transport-card[open] .gi-school-transport-card__header::after {
+    transform: rotate(225deg);
+}
+
+.gi-school-transport-card__body {
+    border-top: 1px solid var(--edu-neutral-200);
 }
 
 .gi-school-transport-card__header>div {
@@ -4744,9 +4765,10 @@ html.dark {
 }
 
 .gi-school-transport-card__status {
-    display: grid;
-    justify-items: end;
+    display: flex;
+    align-items: center;
     gap: 0.25rem;
+    margin-left: auto;
 }
 
 .gi-school-transport-card__status b {
@@ -4850,7 +4872,6 @@ html.dark {
 .gi-school-transport-card__form {
     display: grid;
     gap: 0.65rem;
-    border-top: 1px solid var(--edu-neutral-200);
     padding: 0.75rem;
     background: #fff;
 }
@@ -4941,13 +4962,14 @@ html.dark {
 }
 
 .gi-school-transport-card__submit {
+    justify-self: start;
     border-radius: 0.5rem;
     padding: 0.58rem 0.75rem;
     background: var(--edu-primary-700);
     color: #fff;
     font-size: 0.75rem;
     font-weight: 800;
-    box-shadow: 0 4px 10px rgba(30, 64, 175, 0.18);
+    box-shadow: none;
 }
 
 .gi-school-transport-card__submit:disabled {

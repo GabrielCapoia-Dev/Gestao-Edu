@@ -64,8 +64,6 @@ class EventoTransporteEscolasManager extends Component
         );
 
         $this->eventoResolvido = null;
-        $this->mostrarRelacaoVeiculos = true;
-
         unset(
             $this->turmasSelecionadas[$agendamentoId],
             $this->veiculosSelecionados[$agendamentoId],
@@ -95,6 +93,22 @@ class EventoTransporteEscolasManager extends Component
     public function alternarRelacaoVeiculos(): void
     {
         $this->mostrarRelacaoVeiculos = ! $this->mostrarRelacaoVeiculos;
+    }
+
+    public function alternarTurma(int $agendamentoId, int $turmaId, bool $selecionada): void
+    {
+        abort_unless($this->podeGerenciar(), 403);
+
+        $selecionadas = collect($this->turmasSelecionadas[$agendamentoId] ?? [])
+            ->map(fn ($id): int => (int) $id);
+
+        $this->turmasSelecionadas[$agendamentoId] = ($selecionada
+            ? $selecionadas->push($turmaId)
+            : $selecionadas->reject(fn (int $id): bool => $id === $turmaId))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
     }
 
     public function updatedVeiculosSelecionados(mixed $veiculoId, int|string $agendamentoId): void
@@ -214,10 +228,6 @@ class EventoTransporteEscolasManager extends Component
     {
         $evento = $this->evento();
         $alocacoes = $this->service()->queryAtivas($this->usuarioEfetivo(), $evento)->get();
-
-        if ($alocacoes->isNotEmpty()) {
-            $this->mostrarRelacaoVeiculos = true;
-        }
 
         foreach ($evento->escolasAgendadas->where('precisa_transporte', true) as $agendamento) {
             $agendamentoId = (int) $agendamento->getKey();

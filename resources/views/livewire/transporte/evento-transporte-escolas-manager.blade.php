@@ -65,11 +65,11 @@
             $agendamentoId = (int) $agendamento->getKey();
         @endphp
 
-        <article @class([
+        <details @class([
             'gi-school-transport-card',
             'has-assignment' => $item['alocacoes']->isNotEmpty(),
         ]) wire:key="transporte-escola-{{ $agendamentoId }}">
-            <header class="gi-school-transport-card__header">
+            <summary class="gi-school-transport-card__header">
                 <div>
                     <strong>{{ $agendamento->escola?->nome ?? 'Escola não informada' }}</strong>
                     <span>
@@ -80,11 +80,17 @@
                 </div>
                 <div class="gi-school-transport-card__status">
                     @if ($item['alocacoes']->isNotEmpty())
-                        <b>Transporte atribuído</b>
+                        <b>Atribuído</b>
                     @endif
-                    <small>{{ $item['turmas']->count() }} turma(s)</small>
+                    <small>
+                        {{ $item['turmas']->count() }} turma(s)
+                        <span aria-hidden="true">·</span>
+                        <span class="gi-school-transport-card__action-label">Gerenciar</span>
+                    </small>
                 </div>
-            </header>
+            </summary>
+
+            <div class="gi-school-transport-card__body">
 
             @foreach ($item['alocacoes'] as $alocacao)
                 @php
@@ -145,7 +151,10 @@
                         <div class="gi-school-transport-card__resources">
                             <label class="gi-school-transport-card__field">
                                 <span>Veículo</span>
-                                <select wire:model.live="veiculosSelecionados.{{ $agendamentoId }}">
+                                <select
+                                    wire:model.live="veiculosSelecionados.{{ $agendamentoId }}"
+                                    wire:key="veiculo-escola-{{ $agendamentoId }}"
+                                >
                                     <option value="">Selecione</option>
                                     @foreach ($item['veiculos'] as $veiculo)
                                         @php $saldo = (int) $veiculo->lugares_disponiveis - $item['total_selecionado']; @endphp
@@ -158,7 +167,10 @@
 
                             <label class="gi-school-transport-card__field">
                                 <span>Motorista</span>
-                                <select wire:model="motoristasSelecionados.{{ $agendamentoId }}">
+                                <select
+                                    wire:model="motoristasSelecionados.{{ $agendamentoId }}"
+                                    wire:key="motorista-escola-{{ $agendamentoId }}"
+                                >
                                     <option value="">Selecione</option>
                                     @foreach ($motoristas as $motoristaId => $motorista)
                                         <option value="{{ $motoristaId }}">{{ $motorista }}</option>
@@ -175,7 +187,9 @@
                                         <input
                                             type="checkbox"
                                             value="{{ $turma->getKey() }}"
-                                            wire:model.live="turmasSelecionadas.{{ $agendamentoId }}"
+                                            wire:key="turma-escola-{{ $agendamentoId }}-{{ $turma->getKey() }}"
+                                            wire:change="alternarTurma({{ $agendamentoId }}, {{ $turma->getKey() }}, $event.target.checked)"
+                                            @checked(in_array((int) $turma->getKey(), array_map('intval', $turmasSelecionadas[$agendamentoId] ?? []), true))
                                         >
                                         <span>{{ trim(($turma->serie?->nome ? $turma->serie->nome.' ' : '').$turma->nome) }}</span>
                                         <small>{{ (int) $turma->estudantes_transporte_count }} aluno(s)</small>
@@ -195,7 +209,7 @@
                             wire:loading.attr="disabled"
                             wire:target="alocar({{ $agendamentoId }})"
                         >
-                            Atribuir veículo e motorista
+                            Confirmar atribuição
                         </button>
 
                         @error("turmasSelecionadas.{$agendamentoId}") <p class="gi-school-transport-card__error">{{ $message }}</p> @enderror
@@ -214,7 +228,8 @@
                     <p class="gi-school-transport-card__pending">Aguardando atribuição de veículo e motorista.</p>
                 @endif
             @endif
-        </article>
+            </div>
+        </details>
     @empty
         <div class="gi-event-detail__empty">Nenhuma escola solicitou transporte neste evento.</div>
     @endforelse
