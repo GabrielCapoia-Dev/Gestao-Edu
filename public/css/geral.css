@@ -5445,7 +5445,7 @@ html.dark {
     box-shadow: 0 12px 30px rgba(15, 28, 50, .16);
 }
 
-.full-calendar__export-menu > div button {
+.full-calendar__export-menu > div a {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -5456,13 +5456,13 @@ html.dark {
     text-align: left;
 }
 
-.full-calendar__export-menu > div button:hover,
-.full-calendar__export-menu > div button:focus-visible {
+.full-calendar__export-menu > div a:hover,
+.full-calendar__export-menu > div a:focus-visible {
     background: #edf4ff;
     color: #1747a6;
 }
 
-.full-calendar__export-menu > div button span {
+.full-calendar__export-menu > div a span {
     color: #71809a;
     font-size: .68rem;
     font-weight: 800;

@@ -11,14 +11,14 @@
             <details class="full-calendar__export-menu">
                 <summary class="full-calendar__export">Exportar calendário</summary>
                 <div>
-                    <button type="button" wire:click="exportarCalendario('xlsx')">
+                    <a href="{{ route('dashboard.calendar.export', ['formato' => 'xlsx', 'visualizacao' => $visualizacao, 'referencia' => $referencia]) }}">
                         <strong>Planilha (XLSX)</strong>
                         <span>Eventos e resumo mensal</span>
-                    </button>
-                    <button type="button" wire:click="exportarCalendario('pdf')">
+                    </a>
+                    <a href="{{ route('dashboard.calendar.export', ['formato' => 'pdf', 'visualizacao' => $visualizacao, 'referencia' => $referencia]) }}">
                         <strong>PDF</strong>
                         <span>Calendário para impressão</span>
-                    </button>
+                    </a>
                 </div>
             </details>
 

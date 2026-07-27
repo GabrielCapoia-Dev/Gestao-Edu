@@ -4,17 +4,13 @@ namespace App\Livewire\Home;
 
 use App\Models\Enums\ListaPermissoes;
 use App\Models\User;
-use App\Services\Dashboard\Calendar\CalendarEventAggregator;
-use App\Services\Dashboard\Calendar\CalendarExportService;
-use App\Services\Dashboard\DashboardUserContextFactory;
+use App\Services\Dashboard\Calendar\CalendarNetworkEventLoader;
 use App\Services\ProfilePreviewService;
 use App\Support\Dashboard\Calendar\CalendarAggregationResult;
 use App\Support\Dashboard\Calendar\CalendarEventData;
-use App\Support\Dashboard\Calendar\CalendarQueryContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
 use Livewire\Component;
-use Symfony\Component\HttpFoundation\Response;
 
 class CalendarioCompleto extends Component
 {
@@ -62,21 +58,6 @@ class CalendarioCompleto extends Component
 
         $this->referencia = $date->toDateString();
         $this->visualizacao = 'mes';
-    }
-
-    public function exportarCalendario(string $formato): Response
-    {
-        abort_unless(in_array($formato, ['xlsx', 'pdf'], true), 422);
-
-        $user = $this->usuarioAutorizado();
-        $referencia = $this->referenciaValida();
-        [$inicio, $fim] = $this->intervalo($referencia);
-        $result = $this->carregarEventos($user, $inicio, $fim);
-        $exporter = app(CalendarExportService::class);
-
-        return $formato === 'xlsx'
-            ? $exporter->exportarXlsx($result->events, $inicio, $fim, $this->visualizacao, $user)
-            : $exporter->exportarPdf($result->events, $inicio, $fim, $this->visualizacao, $user);
     }
 
     public function render(): View
@@ -147,47 +128,7 @@ class CalendarioCompleto extends Component
         CarbonImmutable $inicio,
         CarbonImmutable $fim,
     ): CalendarAggregationResult {
-        $aggregator = app(CalendarEventAggregator::class);
-        $userContext = app(DashboardUserContextFactory::class)->make($user);
-        $events = [];
-        $errors = [];
-        $truncated = false;
-
-        for ($cursor = $inicio->startOfMonth(); $cursor->lte($fim); $cursor = $cursor->addMonth()) {
-            $chunkInicio = $cursor->max($inicio)->startOfDay();
-            $chunkFim = $cursor->endOfMonth()->min($fim)->endOfDay();
-            $result = $aggregator->aggregate(new CalendarQueryContext(
-                user: $user,
-                userContext: $userContext,
-                inicio: $chunkInicio,
-                fim: $chunkFim,
-                redeCompleta: true,
-                manutencaoSomenteEscolasUsuario: true,
-            ));
-
-            foreach ($result->events as $event) {
-                $events[$event->id] = $event;
-            }
-
-            $errors = [...$errors, ...$result->errors];
-            $truncated = $truncated || $result->truncated;
-        }
-
-        $events = array_values($events);
-        usort(
-            $events,
-            static fn (CalendarEventData $left, CalendarEventData $right): int => [
-                $left->inicio->getTimestamp(),
-                $left->titulo,
-                $left->id,
-            ] <=> [
-                $right->inicio->getTimestamp(),
-                $right->titulo,
-                $right->id,
-            ],
-        );
-
-        return new CalendarAggregationResult($events, $errors, $truncated);
+        return app(CalendarNetworkEventLoader::class)->load($user, $inicio, $fim);
     }
 
     /**

@@ -10,6 +10,7 @@ use App\Support\Dashboard\Calendar\CalendarEventData;
 use Carbon\CarbonImmutable;
 use Mockery;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Tests\TestCase;
 
 class CalendarExportServiceTest extends TestCase
@@ -27,6 +28,7 @@ class CalendarExportServiceTest extends TestCase
             'mes',
             $user,
         );
+        $this->assertInstanceOf(BinaryFileResponse::class, $response);
         $path = $response->getFile()->getPathname();
 
         try {
@@ -82,7 +84,17 @@ class CalendarExportServiceTest extends TestCase
             $user,
         );
 
-        $this->assertSame('pdf', $response->getContent());
+        $this->assertInstanceOf(BinaryFileResponse::class, $response);
+        $path = $response->getFile()->getPathname();
+
+        try {
+            $this->assertSame('pdf', file_get_contents($path));
+            $this->assertSame('application/pdf', $response->headers->get('Content-Type'));
+        } finally {
+            if (is_file($path)) {
+                unlink($path);
+            }
+        }
     }
 
     /** @return list<CalendarEventData> */

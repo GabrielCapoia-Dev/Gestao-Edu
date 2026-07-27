@@ -7,6 +7,7 @@ use App\Http\Controllers\AvaliacaoDocumentoExportController;
 use App\Http\Controllers\BaixasEstoqueRelatorioController;
 use App\Http\Controllers\BalancoEstoqueRelatorioController;
 use App\Http\Controllers\BalancoInventarioRelatorioController;
+use App\Http\Controllers\CalendarExportController;
 use App\Http\Controllers\EstoqueRelatorioController;
 use App\Http\Controllers\Exports\ExportRequestController;
 use App\Http\Controllers\FeedbackPedidoExportController;
@@ -82,6 +83,9 @@ Route::prefix('admin')
         Route::get('/exports/{exportRequest}/download', [ExportRequestController::class, 'download'])
             ->name('exports.download')
             ->middleware('can:download,exportRequest');
+
+        Route::get('/calendario/exportar', CalendarExportController::class)
+            ->name('dashboard.calendar.export');
 
         Route::post('/exports/{exportRequest}/cancel', [ExportRequestController::class, 'cancel'])
             ->name('exports.cancel')

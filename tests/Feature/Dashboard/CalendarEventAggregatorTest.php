@@ -234,12 +234,13 @@ class CalendarEventAggregatorTest extends TestCase
             'sourceErrors' => [],
             'truncated' => false,
             'visualizacao' => 'mes',
+            'referencia' => '2026-07-01',
             'erro' => null,
         ])->render();
 
         $this->assertStringContainsString('Julho de 2026', $html);
         $this->assertSame(3, substr_count($html, 'wire:click="definirVisualizacao'));
-        $this->assertSame(2, substr_count($html, 'wire:click="exportarCalendario'));
+        $this->assertSame(2, substr_count($html, route('dashboard.calendar.export')));
         $this->assertStringContainsString('Exportar calendÃ¡rio', $html);
         $this->assertStringContainsString('Planilha', $html);
         $this->assertStringContainsString('XLSX', $html);
@@ -265,6 +266,7 @@ class CalendarEventAggregatorTest extends TestCase
             'sourceErrors' => [],
             'truncated' => false,
             'visualizacao' => 'ano',
+            'referencia' => '2026-01-01',
             'erro' => null,
         ])->render();
 

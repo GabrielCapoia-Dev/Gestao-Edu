@@ -15,6 +15,7 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use RuntimeException;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Response;
 
 class CalendarExportService
@@ -95,10 +96,11 @@ class CalendarExportService
         CarbonImmutable $fim,
         string $visualizacao,
         User $user,
-    ): Response {
+    ): BinaryFileResponse {
         $periodo = $this->periodoLabel($inicio, $fim, $visualizacao);
+        $fileName = $this->nomeArquivo($inicio, $fim, $visualizacao, 'pdf');
 
-        return $this->pdfRenderer->download(
+        $response = $this->pdfRenderer->download(
             'relatorios.Calendario.eventos',
             [
                 'reportTitle' => 'Calendário de eventos da rede',
@@ -115,8 +117,23 @@ class CalendarExportService
                 'visualizacao' => $visualizacao,
                 'calendarios' => $this->montarCalendarios($events, $inicio, $fim, $visualizacao),
             ],
-            $this->nomeArquivo($inicio, $fim, $visualizacao, 'pdf'),
+            $fileName,
         );
+        $contents = $response->getContent();
+
+        if (! is_string($contents) || $contents === '') {
+            throw new RuntimeException('O processamento terminou sem gerar conteúdo para o PDF.');
+        }
+
+        $tempPath = tempnam(sys_get_temp_dir(), 'calendario_eventos_pdf_');
+
+        if ($tempPath === false || file_put_contents($tempPath, $contents) === false) {
+            throw new RuntimeException('Não foi possível criar o arquivo temporário do PDF.');
+        }
+
+        return response()
+            ->download($tempPath, $fileName, ['Content-Type' => 'application/pdf'])
+            ->deleteFileAfterSend(true);
     }
 
     /**
