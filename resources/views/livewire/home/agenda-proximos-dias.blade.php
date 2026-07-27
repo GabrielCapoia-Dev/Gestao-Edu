@@ -10,11 +10,12 @@
             @if (($tabsAgenda ?? []) !== [])
                 <div class="home-agenda__scope" role="tablist" aria-label="Escopo da agenda">
                     @foreach ($tabsAgenda as $aba)
+                        @continue($aba['count'] < 1)
                         <button
                             type="button"
                             role="tab"
-                            @class(['is-active' => $escopoAgenda === $aba['key']])
-                            aria-selected="{{ $escopoAgenda === $aba['key'] ? 'true' : 'false' }}"
+                            @class(['is-active' => ($escopoAgendaAtivo ?? $escopoAgenda) === $aba['key']])
+                            aria-selected="{{ ($escopoAgendaAtivo ?? $escopoAgenda) === $aba['key'] ? 'true' : 'false' }}"
                             wire:click="definirEscopo('{{ $aba['key'] }}')"
                         >
                             <span>{{ $aba['label'] }}</span>
@@ -24,6 +25,9 @@
                         </button>
                     @endforeach
                 </div>
+            @endif
+            @if ($podeVisualizarRede ?? false)
+                {{ $this->calendarioCompletoAction }}
             @endif
             @if ($podeCriarEvento ?? false)
                 {{ $this->novoEventoAction }}

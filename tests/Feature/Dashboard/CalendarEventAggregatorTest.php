@@ -122,7 +122,7 @@ class CalendarEventAggregatorTest extends TestCase
         $this->assertStringContainsString('Manutenção', $html);
         $this->assertStringContainsString('Pedagógico', $html);
         $this->assertStringContainsString('Veículos', $html);
-        $this->assertStringContainsString('Transporte', $html);
+        $this->assertStringNotContainsString('<span>Transporte</span>', $html);
         $this->assertStringContainsString('Mostrar mais', $html);
         $this->assertStringContainsString('overflow-y: auto', $css);
         $this->assertStringContainsString('grid-auto-rows: max-content', $css);
@@ -189,6 +189,58 @@ class CalendarEventAggregatorTest extends TestCase
         $this->assertFalse($result->truncated);
     }
 
+    public function test_resumo_exclui_eventos_ja_encerrados_mas_mantem_eventos_em_andamento_e_futuros(): void
+    {
+        config()->set('dashboard.calendar.timezone', 'America/Sao_Paulo');
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-07-21 10:00:00', 'America/Sao_Paulo'));
+        $context = $this->contexto(somenteNaoEncerrados: true);
+        $source = new CalendarSourceStub('fonte', [
+            $this->evento(
+                'encerrado',
+                inicio: CarbonImmutable::parse('2026-07-21 08:00:00', 'America/Sao_Paulo'),
+                fim: CarbonImmutable::parse('2026-07-21 09:00:00', 'America/Sao_Paulo'),
+            ),
+            $this->evento(
+                'em-andamento',
+                inicio: CarbonImmutable::parse('2026-07-21 09:00:00', 'America/Sao_Paulo'),
+                fim: CarbonImmutable::parse('2026-07-21 11:00:00', 'America/Sao_Paulo'),
+            ),
+            $this->evento(
+                'futuro',
+                inicio: CarbonImmutable::parse('2026-07-22 08:00:00', 'America/Sao_Paulo'),
+                fim: CarbonImmutable::parse('2026-07-22 09:00:00', 'America/Sao_Paulo'),
+            ),
+        ]);
+
+        $result = (new CalendarEventAggregator([$source]))->aggregate($context);
+
+        $this->assertSame(['em-andamento', 'futuro'], array_map(
+            static fn (CalendarEventData $event): string => $event->id,
+            $result->events,
+        ));
+    }
+
+    public function test_calendario_completo_renderiza_navegacao_mensal_e_semanal(): void
+    {
+        $html = view('livewire.home.calendario-completo', [
+            'days' => [[
+                'date' => CarbonImmutable::parse('2026-07-01'),
+                'events' => [$this->evento('historico')],
+            ]],
+            'offsetInicial' => 2,
+            'tituloPeriodo' => 'Julho de 2026',
+            'sourceErrors' => [],
+            'truncated' => false,
+            'visualizacao' => 'mes',
+            'erro' => null,
+        ])->render();
+
+        $this->assertStringContainsString('Julho de 2026', $html);
+        $this->assertSame(2, substr_count($html, 'wire:click="definirVisualizacao'));
+        $this->assertSame(2, substr_count($html, 'full-calendar__day--empty'));
+        $this->assertStringContainsString('Evento historico', $html);
+    }
+
     public function test_falha_de_uma_fonte_nao_descarta_eventos_das_demais(): void
     {
         $context = $this->contexto();
@@ -223,6 +275,7 @@ class CalendarEventAggregatorTest extends TestCase
         array $status = [],
         array $prioridades = [],
         ?string $assunto = null,
+        bool $somenteNaoEncerrados = false,
     ): CalendarQueryContext {
         $inicio ??= CarbonImmutable::parse('2026-07-20')->startOfDay();
         $fim ??= $inicio->addDays(6)->endOfDay();
@@ -247,6 +300,7 @@ class CalendarEventAggregatorTest extends TestCase
             status: $status,
             prioridades: $prioridades,
             assunto: $assunto,
+            somenteNaoEncerrados: $somenteNaoEncerrados,
         );
     }
 
@@ -257,8 +311,11 @@ class CalendarEventAggregatorTest extends TestCase
         DashboardPrioridade $prioridade = DashboardPrioridade::Alta,
         ?string $assunto = 'Preenchimento',
         ?int $transporteEstimado = null,
+        ?CarbonImmutable $inicio = null,
+        ?CarbonImmutable $fim = null,
     ): CalendarEventData {
-        $inicio = CarbonImmutable::parse('2026-07-21 08:00:00');
+        $inicio ??= CarbonImmutable::parse('2026-07-21 08:00:00');
+        $fim ??= $inicio->addHour();
 
         return new CalendarEventData(
             id: $id,
@@ -267,7 +324,7 @@ class CalendarEventAggregatorTest extends TestCase
             titulo: 'Evento '.$id,
             resumo: null,
             inicio: $inicio,
-            fim: $inicio->addHour(),
+            fim: $fim,
             diaInteiro: false,
             categoria: $categoria,
             categoriaLabel: ucfirst($categoria),

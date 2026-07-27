@@ -110,6 +110,14 @@ class PedidoManutencaoCalendarEventSource implements CalendarEventSource
                 ->where('finaliza_pedido', false)
                 ->where('cancela_pedido', false));
 
+        if ($context->manutencaoSomenteEscolasUsuario) {
+            if ($context->userContext->escolaIds === []) {
+                return $query->whereRaw('1 = 0');
+            }
+
+            $query->whereIn('escola_id', $context->userContext->escolaIds);
+        }
+
         if ($context->escolaId) {
             $query->where('escola_id', $context->escolaId);
         }

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Dashboard;
 
+use App\Models\Enums\ListaPermissoes;
 use App\Models\Enums\NivelEmergenciaPedido;
 use App\Models\Escola;
 use App\Models\Pedido;
@@ -54,6 +55,10 @@ class PedidoManutencaoCalendarEventSourceTest extends TestCase
         ]);
         $this->darPermissaoDeListagem($userA);
         $this->darPermissaoDeListagem($userB);
+        $userA->givePermissionTo(Permission::findOrCreate(
+            ListaPermissoes::VisualizarAgendaDeTodaARede->label(),
+            'web',
+        ));
         $tipo = TipoManutencao::query()->create([
             'nome' => 'Elétrica da agenda',
             'descricao' => 'Manutenção elétrica',
@@ -85,9 +90,23 @@ class PedidoManutencaoCalendarEventSourceTest extends TestCase
         $source = app(PedidoManutencaoCalendarEventSource::class);
 
         $events = collect($source->events($contextA));
+        $userA->givePermissionTo(Permission::findOrCreate(
+            ListaPermissoes::ListarTodosOsPedidos->label(),
+            'web',
+        ));
+        $eventsRede = collect($source->events($this->contexto(
+            $userA,
+            $agora,
+            $agora->addDays(6)->endOfDay(),
+            redeCompleta: true,
+            manutencaoSomenteEscolasUsuario: true,
+        )));
 
         $this->assertTrue($source->supports($contextA));
         $this->assertSame([$elegivel->id], $events->map(
+            static fn (CalendarEventData $event): int => (int) $event->reference,
+        )->all());
+        $this->assertSame([$elegivel->id], $eventsRede->map(
             static fn (CalendarEventData $event): int => (int) $event->reference,
         )->all());
         $this->assertSame($escolaA->id, $events->first()->escolaId);
@@ -174,6 +193,8 @@ class PedidoManutencaoCalendarEventSourceTest extends TestCase
         CarbonImmutable $fim,
         ?int $escolaId = null,
         ?int $setorId = null,
+        bool $redeCompleta = false,
+        bool $manutencaoSomenteEscolasUsuario = false,
     ): CalendarQueryContext {
         return new CalendarQueryContext(
             user: $user,
@@ -182,6 +203,8 @@ class PedidoManutencaoCalendarEventSourceTest extends TestCase
             fim: $fim->endOfDay(),
             escolaId: $escolaId,
             setorId: $setorId,
+            redeCompleta: $redeCompleta,
+            manutencaoSomenteEscolasUsuario: $manutencaoSomenteEscolasUsuario,
         );
     }
 

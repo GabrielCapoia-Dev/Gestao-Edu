@@ -100,6 +100,11 @@ class CalendarEventAggregator
 
     private function matchesFilters(CalendarEventData $event, CalendarQueryContext $context): bool
     {
+        if ($context->somenteNaoEncerrados
+            && $event->fim->lt(now((string) config('dashboard.calendar.timezone', config('app.timezone'))))) {
+            return false;
+        }
+
         if ($context->categorias !== [] && ! in_array($event->categoria, $context->categorias, true)) {
             return false;
         }
