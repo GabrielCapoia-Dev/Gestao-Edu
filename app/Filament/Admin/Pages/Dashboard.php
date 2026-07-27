@@ -2,7 +2,11 @@
 
 namespace App\Filament\Admin\Pages;
 
+use App\Filament\Admin\Resources\Avisos\AvisoResource;
+use App\Models\Aviso;
+use App\Models\EventoCalendario;
 use App\Models\User;
+use App\Services\ProfilePreviewService;
 use App\Services\UserService;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -30,10 +34,35 @@ class Dashboard extends Page
     public function getHeader(): ?View
     {
         return view('filament.admin.pages.partials.page-header', [
+            'actions' => $this->getCachedHeaderActions(),
             'eyebrow' => 'Início',
             'title' => 'Bem-vindo ao Gestão Edu',
             'description' => 'Acompanhe avisos, eventos e atividades importantes para a sua rotina escolar.',
         ]);
+    }
+
+    protected function getHeaderActions(): array
+    {
+        /** @var User|null $usuario */
+        $usuario = auth()->user();
+        $usuarioEfetivo = app(ProfilePreviewService::class)->effectiveUser();
+
+        return [
+            Action::make('gerenciar_avisos')
+                ->label('Gerenciar avisos')
+                ->icon('heroicon-o-megaphone')
+                ->color('gray')
+                ->visible(fn (): bool => $usuario !== null
+                    && Gate::forUser($usuario)->allows('viewAny', Aviso::class))
+                ->url(fn (): string => AvisoResource::getUrl()),
+
+            Action::make('gerenciar_agenda')
+                ->label('Gerenciar agenda')
+                ->icon('heroicon-o-calendar-days')
+                ->visible(fn (): bool => $usuarioEfetivo !== null
+                    && Gate::forUser($usuarioEfetivo)->allows('viewAny', EventoCalendario::class))
+                ->url(fn (): string => GerenciarEventos::getUrl()),
+        ];
     }
 
     protected static ?string $navigationLabel = 'Início';

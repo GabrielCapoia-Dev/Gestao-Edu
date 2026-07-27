@@ -3,7 +3,6 @@
 namespace App\Livewire\Home;
 
 use App\Filament\Admin\Pages\Actions\EventoCalendarioCreateAction;
-use App\Filament\Admin\Pages\GerenciarEventos;
 use App\Models\Enums\ListaPermissoes;
 use App\Models\EventoCalendario;
 use App\Models\User;
@@ -134,7 +133,6 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
             'sourceErrors' => $result?->errors ?? [],
             'truncated' => $result?->truncated ?? false,
             'periodOptions' => $this->periodOptions(),
-            'manageUrl' => $this->manageUrl($context),
             'podeVisualizarRede' => $context
                 ? $this->podeVisualizarRede($context->user)
                 : false,
@@ -200,19 +198,6 @@ class AgendaProximosDias extends Component implements HasActions, HasSchemas
         $options = $this->periodOptions();
 
         return in_array($days, $options, true) ? $days : $options[0];
-    }
-
-    private function manageUrl(?CalendarQueryContext $context): ?string
-    {
-        if (! $context || ! Gate::forUser($context->user)->allows('viewAny', EventoCalendario::class)) {
-            return null;
-        }
-
-        try {
-            return GerenciarEventos::getUrl();
-        } catch (\Throwable) {
-            return null;
-        }
     }
 
     private function podeVisualizarRede(User $user): bool

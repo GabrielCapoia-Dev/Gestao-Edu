@@ -5,8 +5,7 @@
 <section
     @class([
         'ge-avisos',
-        'ge-avisos--somente-atalho' => $semAvisos && $podeGerenciar,
-        'is-hidden' => $semAvisos && ! $podeGerenciar,
+        'is-hidden' => $semAvisos,
     ])
     x-data="{ pagina: 0 }"
     @if (! $semAvisos)
@@ -20,27 +19,13 @@
         aria-roledescription="carrossel"
     @endif
 >
-    @if ($semAvisos)
-        @if ($podeGerenciar)
-            <a href="{{ $urlGerenciar }}" class="gi-action ge-avisos__gerenciar">
-                <x-heroicon-o-cog-6-tooth />
-                <span>Gerenciar avisos</span>
-            </a>
-        @endif
-    @else
+    @unless ($semAvisos)
     <header class="ge-avisos__cabecalho">
         <div>
             <p class="ge-avisos__eyebrow">Comunicação</p>
             <h2 id="ge-avisos-titulo">Avisos</h2>
             <p>Informações relevantes para o seu contexto de acesso.</p>
         </div>
-
-        @if ($podeGerenciar)
-            <a href="{{ $urlGerenciar }}" class="gi-action ge-avisos__gerenciar">
-                <x-heroicon-o-cog-6-tooth />
-                <span>Gerenciar avisos</span>
-            </a>
-        @endif
     </header>
 
     @if ($erroAoCarregar)

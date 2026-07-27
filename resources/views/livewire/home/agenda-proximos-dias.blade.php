@@ -32,7 +32,6 @@
             @if ($podeCriarEvento ?? false)
                 {{ $this->novoEventoAction }}
             @endif
-            @if ($manageUrl)<a class="home-agenda__manage" href="{{ $manageUrl }}">Gerenciar agenda</a>@endif
             <label class="home-agenda__days">
                 <span>Período</span>
                 <select wire:model.live="quantidadeDias" aria-label="Quantidade de dias">

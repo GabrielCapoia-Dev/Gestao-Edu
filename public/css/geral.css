@@ -101,17 +101,6 @@
     font-size: 13px;
 }
 
-.home-agenda__manage {
-    padding: 9px 12px;
-    color: #17368d;
-    font-size: 12px;
-    font-weight: 750;
-    text-decoration: none;
-    background: #eef6fc;
-    border: 1px solid #a2c7ef;
-    border-radius: 9px;
-}
-
 .home-agenda__header-actions>.fi-btn {
     min-height: 36px;
     font-size: 12px;
@@ -1067,20 +1056,6 @@
     text-transform: uppercase;
 }
 
-.ge-avisos__gerenciar svg {
-    width: 1rem;
-    height: 1rem;
-}
-
-.ge-avisos.ge-avisos--somente-atalho {
-    display: flex;
-    justify-content: flex-end;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    box-shadow: none;
-}
-
 .ge-avisos.is-hidden {
     display: none;
 }
@@ -1554,7 +1529,6 @@
         flex-direction: column;
     }
 
-    .ge-avisos__gerenciar,
     .ge-aviso-card__acao {
         width: 100%;
     }

@@ -74,7 +74,6 @@ class CalendarEventAggregatorTest extends TestCase
             'sourceErrors' => [],
             'truncated' => false,
             'periodOptions' => [5, 10, 15, 20, 25, 30],
-            'manageUrl' => null,
             'erro' => null,
         ])->render();
 
@@ -94,6 +93,12 @@ class CalendarEventAggregatorTest extends TestCase
         $this->assertIsString($blade);
         $this->assertStringContainsString('<livewire:home.avisos-banner', $blade);
         $this->assertStringContainsString('<livewire:home.agenda-proximos-dias', $blade);
+        $dashboardPage = file_get_contents(app_path('Filament/Admin/Pages/Dashboard.php'));
+        $this->assertStringContainsString("'actions' => \$this->getCachedHeaderActions()", $dashboardPage);
+        $this->assertStringContainsString("->label('Gerenciar avisos')", $dashboardPage);
+        $this->assertStringContainsString("->label('Gerenciar agenda')", $dashboardPage);
+        $this->assertStringNotContainsString('Gerenciar avisos', file_get_contents(resource_path('views/livewire/home/avisos-banner.blade.php')));
+        $this->assertStringNotContainsString('Gerenciar agenda', file_get_contents(resource_path('views/livewire/home/agenda-proximos-dias.blade.php')));
         $this->assertStringNotContainsString('Acesso rápido', $blade);
         $this->assertStringNotContainsString('quickLinks', $blade);
         $this->assertStringNotContainsString('nav-card', file_get_contents(public_path('css/geral.css')));
