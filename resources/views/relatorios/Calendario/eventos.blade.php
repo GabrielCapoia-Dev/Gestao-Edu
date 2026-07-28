@@ -1,6 +1,25 @@
 @extends('relatorios.layouts.base-pdf')
 
 @section('styles')
+    .pdf-logo-left {
+        height: 52px;
+        max-width: 220px;
+    }
+
+    .pdf-logo-right-image {
+        height: 56px;
+        max-width: 230px;
+    }
+
+    .pdf-header-table {
+        margin-bottom: 3px;
+    }
+
+    .pdf-header-text {
+        margin-top: 0;
+        margin-bottom: 10px;
+    }
+
     .calendar-table {
         width: 100%;
         border-collapse: collapse;
@@ -19,8 +38,8 @@
 
     .calendar-block-title {
         padding: 3px 4px;
-        background: #f3c48f;
-        color: #172033;
+        background: #1747a6;
+        color: #ffffff;
         font-size: {{ $visualizacao === 'ano' ? '8px' : '12px' }};
         font-weight: bold;
         text-align: center;
@@ -83,14 +102,14 @@
     .calendar-summary-item {
         margin: 0 0 1px;
         color: #334155;
-        font-size: {{ $visualizacao === 'ano' ? '4.5px' : '8px' }};
-        line-height: 1.2;
+        font-size: {{ $visualizacao === 'ano' ? '5.5px' : '9px' }};
+        line-height: 1.3;
     }
 
     .calendar-summary-dot {
         display: inline-block;
-        width: 5px;
-        height: 5px;
+        width: {{ $visualizacao === 'ano' ? '5px' : '7px' }};
+        height: {{ $visualizacao === 'ano' ? '5px' : '7px' }};
         margin-right: 3px;
     }
 

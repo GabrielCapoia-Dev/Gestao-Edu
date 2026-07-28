@@ -1,3 +1,10 @@
+@php
+    $resumosVisiveis = array_filter(
+        $calendario['resumo'],
+        static fn (array $item): bool => ($item['count'] ?? 0) > 0,
+    );
+@endphp
+
 <div class="calendar-block">
     <div class="calendar-block-title">{{ $calendario['label'] }}</div>
 
@@ -37,13 +44,15 @@
         </tbody>
     </table>
 
-    <div class="calendar-summary">
-        @foreach ($calendario['resumo'] as $item)
-            <p class="calendar-summary-item">
-                <span class="calendar-summary-dot" style="background: {{ $item['color'] }};"></span>
-                <strong>{{ $item['count'] }}</strong>
-                {{ $item['count'] === 1 ? $item['singular'] : $item['plural'] }}
-            </p>
-        @endforeach
-    </div>
+    @if ($resumosVisiveis !== [])
+        <div class="calendar-summary">
+            @foreach ($resumosVisiveis as $item)
+                <p class="calendar-summary-item">
+                    <span class="calendar-summary-dot" style="background: {{ $item['color'] }};"></span>
+                    <strong>{{ $item['count'] }}</strong>
+                    {{ $item['count'] === 1 ? $item['singular'] : $item['plural'] }}
+                </p>
+            @endforeach
+        </div>
+    @endif
 </div>

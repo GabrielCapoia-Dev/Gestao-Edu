@@ -99,27 +99,29 @@ class RelatorioPdfRenderer
     protected function applyPagination(Dompdf $dompdf): void
     {
         $canvas = $dompdf->getCanvas();
-        $fontMetrics = $dompdf->getFontMetrics();
-        $font = $fontMetrics->getFont('DejaVu Sans', 'normal');
-
         $size = 8;
-        $text = 'Pagina {PAGE_NUM} de {PAGE_COUNT}';
-        $textWidth = $fontMetrics->getTextWidth($text, $font, $size);
-        $fontHeight = $fontMetrics->getFontHeight($font, $size);
 
-        $width = $canvas->get_width();
-        $height = $canvas->get_height();
+        $canvas->page_script(static function (
+            int $pageNumber,
+            int $pageCount,
+            $pageCanvas,
+            $fontMetrics,
+        ) use ($size): void {
+            $font = $fontMetrics->getFont('DejaVu Sans', 'normal');
+            $text = "Página {$pageNumber} de {$pageCount}";
+            $textWidth = $fontMetrics->getTextWidth($text, $font, $size);
+            $fontHeight = $fontMetrics->getFontHeight($font, $size);
+            $x = ($pageCanvas->get_width() - $textWidth) / 2;
+            $y = $pageCanvas->get_height() - 32 - $fontHeight;
 
-        $x = ($width - $textWidth) / 2;
-        $y = $height - 32 - $fontHeight;
-
-        $canvas->page_text(
-            $x,
-            $y,
-            $text,
-            $font,
-            $size,
-            [0.42, 0.45, 0.50]
-        );
+            $pageCanvas->text(
+                $x,
+                $y,
+                $text,
+                $font,
+                $size,
+                [0.42, 0.45, 0.50],
+            );
+        });
     }
 }

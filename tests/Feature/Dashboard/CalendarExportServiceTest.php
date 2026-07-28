@@ -15,6 +15,38 @@ use Tests\TestCase;
 
 class CalendarExportServiceTest extends TestCase
 {
+    public function test_resumo_mensal_do_pdf_oculta_contadores_zerados(): void
+    {
+        $item = [
+            'singular' => 'evento',
+            'plural' => 'eventos',
+            'color' => '#1747a6',
+            'count' => 0,
+        ];
+        $calendario = [
+            'label' => 'Julho de 2026',
+            'weeks' => [],
+            'resumo' => [
+                'manutencao' => $item,
+                'transporte' => $item,
+                'veiculo_escola' => $item,
+                'veiculo_outros' => $item,
+                'pedagogico' => $item,
+            ],
+        ];
+
+        $semEventos = view('relatorios.Calendario.partials.mes', compact('calendario'))->render();
+
+        $this->assertStringNotContainsString('calendar-summary', $semEventos);
+
+        $calendario['resumo']['pedagogico']['count'] = 2;
+        $comEventos = view('relatorios.Calendario.partials.mes', compact('calendario'))->render();
+
+        $this->assertStringContainsString('calendar-summary', $comEventos);
+        $this->assertStringContainsString('<strong>2</strong>', $comEventos);
+        $this->assertStringNotContainsString('<strong>0</strong>', $comEventos);
+    }
+
     public function test_planilha_exporta_eventos_detalhados_e_resumo_mensal(): void
     {
         $service = new CalendarExportService(Mockery::mock(RelatorioPdfRenderer::class));
