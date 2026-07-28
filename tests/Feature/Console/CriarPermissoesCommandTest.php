@@ -95,6 +95,10 @@ class CriarPermissoesCommandTest extends TestCase
         $this->assertFalse($transporte->hasPermissionTo(ListaPermissoes::ListarAlunos->label()));
         $this->assertFalse($transporte->hasPermissionTo(ListaPermissoes::CriarEventos->label()));
         $this->assertFalse($transporte->hasPermissionTo(ListaPermissoes::GerenciarTransporteDeEventos->label()));
+        $this->assertTrue($transporte->hasPermissionTo(ListaPermissoes::ListarReservasVeiculos->label()));
+        $this->assertFalse($transporte->hasPermissionTo(ListaPermissoes::CriarReservasVeiculos->label()));
+        $this->assertFalse($transporte->hasPermissionTo(ListaPermissoes::EditarReservasVeiculos->label()));
+        $this->assertFalse($transporte->hasPermissionTo(ListaPermissoes::CancelarReservasVeiculos->label()));
 
         $this->assertTrue($assessoria->hasPermissionTo(ListaPermissoes::CriarEventos->label()));
         $this->assertTrue($assessoria->hasPermissionTo(ListaPermissoes::CriarEventosTransporte->label()));
