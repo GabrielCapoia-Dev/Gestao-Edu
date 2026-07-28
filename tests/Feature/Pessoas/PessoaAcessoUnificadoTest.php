@@ -12,6 +12,7 @@ use App\Models\ServidorFuncaoAdministrativa;
 use App\Models\User;
 use App\Services\PessoaUsuarioService;
 use App\Services\UserService;
+use Filament\Forms\Components\Select;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Hash;
@@ -97,9 +98,22 @@ class PessoaAcessoUnificadoTest extends TestCase
             ->assertTableBulkActionVisible('permissoes_em_massa')
             ->assertTableBulkActionVisible('excluir_acessos_em_massa');
 
-        Livewire::actingAs($this->admin)
+        $component = Livewire::actingAs($this->admin)
             ->test(ManageServidores::class)
-            ->mountTableBulkAction('niveis_em_massa', [$pessoa])
+            ->mountTableBulkAction('niveis_em_massa', [$pessoa]);
+
+        $rolesSelect = $component->instance()
+            ->getMountedTableBulkActionForm()
+            ?->getComponent(
+                fn ($field): bool => $field instanceof Select && $field->getName() === 'roles',
+                withHidden: true,
+            );
+
+        $this->assertInstanceOf(Select::class, $rolesSelect);
+        $this->assertFalse($rolesSelect->hasDynamicOptions());
+        $this->assertSame('Nível em Massa', $rolesSelect->getOptions()[$roleExtra->id] ?? null);
+
+        $component
             ->setTableBulkActionData([
                 'modo' => 'add',
                 'roles' => [$roleExtra->id],

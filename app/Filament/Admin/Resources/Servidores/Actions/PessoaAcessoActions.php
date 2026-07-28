@@ -94,7 +94,7 @@ class PessoaAcessoActions
                         Select::make('roles')
                             ->label('Níveis adicionais')
                             ->helperText('O nível funcional do cargo é preservado e não pode ser removido aqui.')
-                            ->options(fn (): array => $service->opcoesDeRolesParaSelect(Auth::user()))
+                            ->options($service->opcoesDeRolesParaSelect(Auth::user()))
                             ->multiple()
                             ->searchable()
                             ->preload(),
@@ -328,7 +328,7 @@ class PessoaAcessoActions
                 ->color('primary')
                 ->visible(fn (): bool => Gate::allows('viewAny', User::class)
                     && Gate::allows('applyPermissionsAny', User::class))
-                ->schema([
+                ->schema(fn (): array => [
                     Select::make('modo')
                         ->label('Como aplicar')
                         ->options([
@@ -340,7 +340,7 @@ class PessoaAcessoActions
                         ->required(),
                     Select::make('roles')
                         ->label('Níveis de acesso')
-                        ->options(fn (): array => app(UserService::class)->opcoesDeRolesParaSelect(Auth::user()))
+                        ->options(app(UserService::class)->opcoesDeRolesParaSelect(Auth::user()))
                         ->multiple()
                         ->searchable()
                         ->preload()
