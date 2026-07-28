@@ -248,7 +248,7 @@ class PedidosTable
                             ->unique()
                             ->mapWithKeys(fn (string $texto): array => [$texto => $texto])
                             ->toArray())
-                        ->visible(fn (Get $get): bool => filled($get('tipo_manutencao_nome')))
+                        ->disabled(fn (Get $get): bool => blank($get('tipo_manutencao_nome')))
                         ->searchable()
                         ->preload(),
                 ])
