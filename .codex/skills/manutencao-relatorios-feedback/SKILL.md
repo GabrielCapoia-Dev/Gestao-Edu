@@ -24,7 +24,8 @@ Preservar consistencia entre manutencao operacional e saidas de relatorio em:
 2. Ler [`docs/context-skills/regras-criticas-pedidos.md`](../../../docs/context-skills/regras-criticas-pedidos.md).
 3. Ler [`docs/context-skills/padrao-relatorios-pdf.md`](../../../docs/context-skills/padrao-relatorios-pdf.md).
 4. Se a saida depender de permissao ou escopo, acionar `$gestao-edu-acesso-permissoes-flow`.
-5. Confirmar models e services:
+5. Se a saida usar `ExportRequest` ou fila, acionar `$gestao-edu-exportacoes-flow`.
+6. Confirmar models e services:
    - `app/Models/FeedbackPedido.php`
    - `app/Models/FeedbackPedidoItem.php`
    - `app/Models/PedidoArquivo.php`
@@ -34,7 +35,7 @@ Preservar consistencia entre manutencao operacional e saidas de relatorio em:
    - `app/Services/Relatorios/FeedbackPedidoAnalyticsService.php`
    - `app/Services/Relatorios/FeedbackGraficoService.php`
    - `app/Services/Relatorios/RelatorioPdfRenderer.php`
-6. Revisar controllers, pages e views:
+7. Revisar controllers, pages e views:
    - `app/Http/Controllers/PedidoRelatorioGeralController.php`
    - `app/Http/Controllers/FeedbackPedidoExportController.php`
    - `app/Filament/Admin/Pages/FeedbackPedido.php`
@@ -51,6 +52,7 @@ Preservar consistencia entre manutencao operacional e saidas de relatorio em:
 - Para Dompdf, preferir `Storage::disk('public')` com conteudo em base64/data URI para imagens locais.
 - Separar grade de imagens de tabela de arquivos nao-imagem quando houver anexos variados.
 - Confirmar que relationships necessarios foram carregados no service, nao apenas usados na view.
+- Preservar o contrato de `ExportFileResult`, nome de arquivo, disk e autorizacao do download.
 
 ## Saida esperada
 

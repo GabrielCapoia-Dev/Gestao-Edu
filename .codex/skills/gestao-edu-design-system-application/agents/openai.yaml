@@ -1,0 +1,4 @@
+interface:
+  display_name: "Aplicacao do Design System"
+  short_description: "Aplica o design system sem alterar regras"
+  default_prompt: "Use $gestao-edu-design-system-application para aplicar o design system com seguranca."

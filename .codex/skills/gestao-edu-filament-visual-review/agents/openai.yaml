@@ -1,0 +1,4 @@
+interface:
+  display_name: "Revisao Visual Filament"
+  short_description: "Revisa componentes Filament com seguranca"
+  default_prompt: "Use $gestao-edu-filament-visual-review para revisar esta interface Filament."

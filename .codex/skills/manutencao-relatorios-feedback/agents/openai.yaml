@@ -1,0 +1,4 @@
+interface:
+  display_name: "Relatorios de Manutencao"
+  short_description: "Analisa relatorios, feedbacks e graficos"
+  default_prompt: "Use $manutencao-relatorios-feedback para analisar este relatorio ou feedback."

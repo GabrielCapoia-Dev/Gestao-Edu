@@ -1,0 +1,4 @@
+interface:
+  display_name: "Revisao de Copy UI"
+  short_description: "Revisa labels e mensagens da interface"
+  default_prompt: "Use $gestao-edu-ui-copy-review para revisar os textos desta interface."

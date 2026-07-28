@@ -1,0 +1,4 @@
+interface:
+  display_name: "Estoque, Merenda e Inventario"
+  short_description: "Mapeia estoque, merenda e inventario escolar"
+  default_prompt: "Use $estoque-flow-mapper para analisar esta tarefa no Gestao-Edu e propor uma alteracao segura."

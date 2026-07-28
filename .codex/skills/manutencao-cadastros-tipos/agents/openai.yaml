@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cadastros de Manutencao"
+  short_description: "Analisa tipos, status, setores e empresas"
+  default_prompt: "Use $manutencao-cadastros-tipos para analisar este cadastro de manutencao."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Exportacoes"
+  short_description: "Analisa filas, handlers, arquivos e downloads"
+  default_prompt: "Use $gestao-edu-exportacoes-flow para analisar esta exportacao no Gestao-Edu."

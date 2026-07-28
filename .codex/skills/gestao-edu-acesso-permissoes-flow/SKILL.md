@@ -1,6 +1,6 @@
 ---
 name: gestao-edu-acesso-permissoes-flow
-description: Use para analisar ou evoluir login, Google OAuth, aprovacao de acesso, Spatie roles e permissions, policies, User::canAccessPanel, menus Filament, filtros por escola ou setor e catalogo permissoes:criar no Gestao-Edu.
+description: Use para analisar ou evoluir login, Google OAuth, troca obrigatoria de senha, aprovacao de acesso, Spatie roles e permissions, policies, preview de perfil, menus Filament e escopos por escola, setor, pessoa ou professor no Gestao-Edu.
 ---
 
 # Gestao-Edu Acesso e Permissoes Flow
@@ -17,6 +17,7 @@ Mapear rapidamente o controle de acesso para evitar regressao em:
 - policies e registro em provider
 - menus e acoes Filament
 - filtros por escola, setor e professor
+- troca obrigatoria de senha, sessao e preview de perfil sem escrita
 
 ## Sequencia recomendada
 
@@ -28,6 +29,9 @@ Mapear rapidamente o controle de acesso para evitar regressao em:
    - `app/Http/Controllers/Auth/GoogleAuthController.php`
    - `app/Services/GoogleService.php`
    - `app/Services/DominioEmailService.php`
+   - `app/Http/Middleware/EnsurePasswordIsChanged.php`
+   - `app/Http/Middleware/ApplyProfilePreviewUser.php`
+   - `app/Http/Middleware/BlockProfilePreviewWrites.php`
 4. Revisar catalogo, presets e policies:
    - `app/Console/Commands/CriarPermissoes.php`
    - `database/seeders/DatabaseSeeder.php`
@@ -37,6 +41,8 @@ Mapear rapidamente o controle de acesso para evitar regressao em:
 5. Se a mudanca tocar visibilidade de dados, revisar tambem:
    - `app/Services/UserService.php`
    - `app/Services/UserSetorAccessService.php`
+   - `app/Services/SetorPedidoAccessService.php`
+   - `app/Services/PessoaScopeService.php`
    - `docs/cross-cutting/fluxos-e-permissoes-do-painel-admin.md`
 
 ## Checklist de analise
@@ -46,6 +52,8 @@ Mapear rapidamente o controle de acesso para evitar regressao em:
 - Confirmar se a policy esta registrada em `AppServiceProvider`.
 - Confirmar se a UI apenas esconde a acao ou se a execucao tambem e bloqueada.
 - Confirmar se o escopo final depende de `id_escola`, pivot `escola_user`, `setor_id` ou professor vinculado.
+- Confirmar heranca de setores pela hierarquia e capacidades de `SetorAccessCapability`.
+- No preview de perfil, preservar bloqueio de escrita no servidor; esconder botoes na UI nao e controle suficiente.
 - Revisar nomes de permissoes com acentuacao, mojibake ou busca por fragmento.
 
 ## Saida esperada

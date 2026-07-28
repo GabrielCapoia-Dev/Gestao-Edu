@@ -1,6 +1,6 @@
 ---
 name: gestao-edu-kit
-description: Use antes de mudancas grandes no Gestao-Edu em Laravel, Filament, Livewire, policies, services, relatorios ou dados, escolhendo skills de dominio, confirmando o comportamento atual no codigo e definindo validacao focada.
+description: Use antes de mudancas amplas ou transversais no Gestao-Edu em Laravel 12 e Filament 5, escolhendo skills de dominio, confirmando o comportamento atual no codigo e definindo validacao focada.
 ---
 
 # Gestao-Edu Kit
@@ -16,6 +16,7 @@ Escolher a skill especializada correta e montar uma sequencia segura de analise 
 - policies, roles, permissoes e filtros por escola ou setor
 - relatorios PDF, XLSX, CSV e exportacoes em fila
 - fluxos de dados com alunos, professores, turmas, avaliacoes, estoque ou manutencao
+- pessoas e servidores, calendario, avisos, transporte e exportacoes em fila
 
 ## Sequencia recomendada
 
@@ -29,10 +30,13 @@ Escolher a skill especializada correta e montar uma sequencia segura de analise 
    - `$gestao-edu-professores-turmas-componentes-flow` para professores, turmas, series e componentes
    - `$gestao-edu-avaliacoes-flow` para avaliacoes, pautas, alternativas, respostas e pareceres
    - `$gestao-edu-transferencia-remanejamento-flow` para matricula pendente, transferencia, remanejamento e parecer de transferencia
-   - `$estoque-flow-mapper` para estoque, merenda, inventarios, reservas e romaneios
+   - `$gestao-edu-pessoas-servidores-flow` para Pessoa, Servidor, matriculas, funcoes, equipes e consolidacao de legados
+   - `$gestao-edu-dashboard-calendario-flow` para dashboard, calendario, avisos, publico-alvo, transporte e reservas
+   - `$estoque-flow-mapper` para contratos, estoque, merenda, inventarios escolares, balancos e romaneios
    - `$manutencao-fluxo-pedidos` para pedidos de manutencao, status, anexos, historico e notificacoes
    - `$manutencao-cadastros-tipos` para tipos, status, setores, empresas, seeders e permissoes de manutencao
    - `$manutencao-relatorios-feedback` para PDFs, exportacoes, dashboards, anexos e feedbacks de manutencao
+   - `$gestao-edu-exportacoes-flow` para infraestrutura compartilhada de exportacoes em fila, armazenamento, download e monitoramento
    - `$gestao-edu-revisao-lingua-portuguesa` sempre que a tarefa criar, alterar ou revisar textos visiveis
 5. Confirmar no codigo atual os pontos canonicos antes de propor alteracao.
 
@@ -41,6 +45,7 @@ Escolher a skill especializada correta e montar uma sequencia segura de analise 
 - Identificar o dominio principal e os dominios transversais.
 - Confirmar se a mudanca toca permissao, policy, role, menu, `id_escola` ou `setor_id`.
 - Confirmar se ha efeito em dados historicos, exportacoes, notificacoes ou filas.
+- Tratar `app/Filament/Admin` como superficie canonica; consultar caminhos legados em `app/Filament` apenas se ainda forem referenciados.
 - Revisar com `$gestao-edu-revisao-lingua-portuguesa` labels, mensagens, validacoes, notificacoes e saidas geradas que forem alteradas.
 - Localizar testes existentes antes de criar novos.
 - Preferir validacao focada por arquivo ou grupo pequeno de feature tests.

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Avaliacoes"
+  short_description: "Mapeia avaliacoes, pareceres e exportacoes"
+  default_prompt: "Use $gestao-edu-avaliacoes-flow para analisar esta tarefa no Gestao-Edu e propor uma alteracao segura."

@@ -34,6 +34,7 @@ Mapear o ciclo de vida de `Pedido` para evitar regressao em:
    - `app/Services/PedidoService.php`
    - `app/Observers/PedidoObserver.php`
    - `app/Services/UserSetorAccessService.php`
+   - `app/Services/SetorPedidoAccessService.php`
    - `app/Filament/Admin/Resources/Pedidos`
    - `app/Http/Controllers/PedidoArquivoController.php`
 6. Se tocar anexos, fotos ou relatorio, acionar tambem `$manutencao-relatorios-feedback`.
@@ -46,6 +47,8 @@ Mapear o ciclo de vida de `Pedido` para evitar regressao em:
 - Confirmar se pedidos adicionais devem aparecer no vinculo, relatorio e feedback.
 - Confirmar se historico, observer e notificacoes sao preservados.
 - Confirmar se anexos usam `Storage::disk('public')` e diretorios `pedidos`, `pedidos/adicionais` ou `pedidos/conclusao`.
+- Confirmar acesso herdado pela hierarquia de setores e capacidade exigida para cada transicao.
+- Tratar `PedidoArquivoUpload` como componente canonico de upload e preservar validacao por tipo de arquivo.
 - Para upload real, preferir validar `PedidoService` com `UploadedFile::fake()` e `Storage::fake('public')`.
 
 ## Saida esperada

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Revisao de Portugues"
+  short_description: "Revisa textos visiveis em portugues brasileiro"
+  default_prompt: "Use $gestao-edu-revisao-lingua-portuguesa para revisar estes textos visiveis."
