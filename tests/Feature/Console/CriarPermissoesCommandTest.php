@@ -3,8 +3,8 @@
 namespace Tests\Feature\Console;
 
 use App\Models\Enums\ListaPermissoes;
-use App\Models\Role;
 use App\Models\FuncaoAdministrativa;
+use App\Models\Role;
 use App\Services\PedidoService;
 use App\Support\AssessoriaPedagogicaPermissionPreset;
 use App\Support\EquipeGestoraPermissionPreset;
@@ -203,6 +203,11 @@ class CriarPermissoesCommandTest extends TestCase
         $this->assertFalse($role->hasPermissionTo('Excluir Pedidos'));
         $this->assertFalse($role->hasPermissionTo('Enviar Pedidos para Empresa'));
         $this->assertTrue($role->hasPermissionTo(ListaPermissoes::VisualizarAgendaDeTodaARede->label()));
+        $this->assertTrue($role->hasPermissionTo(ListaPermissoes::ListarReservasVeiculos->label()));
+        $this->assertTrue($role->hasPermissionTo(ListaPermissoes::CriarReservasVeiculos->label()));
+        $this->assertTrue($role->hasPermissionTo(ListaPermissoes::EditarReservasVeiculos->label()));
+        $this->assertTrue($role->hasPermissionTo(ListaPermissoes::CancelarReservasVeiculos->label()));
+        $this->assertFalse($role->hasPermissionTo(ListaPermissoes::GerenciarFrotaVeiculos->label()));
         $this->assertDatabaseHas('funcao_administrativa_role', [
             'funcao_administrativa_id' => $funcao->id,
             'role_id' => $role->id,

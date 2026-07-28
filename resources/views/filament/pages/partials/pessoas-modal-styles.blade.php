@@ -21,7 +21,6 @@
     .fi-modal-window,
     .fi-slide-over-window {
         border-radius: 1.15rem !important;
-        overflow: hidden;
         box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22) !important;
     }
 

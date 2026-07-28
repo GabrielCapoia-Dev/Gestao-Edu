@@ -475,6 +475,8 @@ class ServidorService
                 ? FuncaoAdministrativa::transportePadrao()
                 : FuncaoAdministrativa::assessoriaPedagogicaPadrao();
 
+            $this->encerrarVinculosOperacionaisIncompativeis($servidor, $funcao);
+
             $vinculo = $servidor->servidorFuncoes()
                 ->ativos()
                 ->where('funcao_administrativa_id', $funcao->getKey())
@@ -495,6 +497,32 @@ class ServidorService
 
             return $servidor->fresh(['vinculosAtivos.funcaoAdministrativa']);
         });
+    }
+
+    private function encerrarVinculosOperacionaisIncompativeis(
+        Servidor $servidor,
+        FuncaoAdministrativa $funcaoAtual,
+    ): void {
+        $funcaoIdsExclusivas = FuncaoAdministrativa::query()
+            ->whereIn('codigo', [
+                'manutencao',
+                'obras',
+                'transporte',
+                'assessoria-pedagogica',
+            ])
+            ->whereKeyNot($funcaoAtual->getKey())
+            ->pluck('id');
+
+        ServidorFuncaoAdministrativa::query()
+            ->where('servidor_id', $servidor->getKey())
+            ->whereIn('funcao_administrativa_id', $funcaoIdsExclusivas)
+            ->where('status', ServidorFuncaoAdministrativa::STATUS_ATIVO)
+            ->lockForUpdate()
+            ->update([
+                'status' => ServidorFuncaoAdministrativa::STATUS_INATIVO,
+                'data_fim' => now()->toDateString(),
+                'updated_at' => now(),
+            ]);
     }
 
     private function fluxoManutencao(array $data, array $vinculos): bool

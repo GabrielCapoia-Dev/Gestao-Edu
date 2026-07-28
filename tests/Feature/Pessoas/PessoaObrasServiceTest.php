@@ -5,9 +5,9 @@ namespace Tests\Feature\Pessoas;
 use App\Filament\Admin\Resources\Servidores\Pages\ManageServidores;
 use App\Filament\Admin\Resources\Servidores\ServidorResource;
 use App\Livewire\Pessoas\PessoaForm;
+use App\Models\Enums\SetorAccessCapability;
 use App\Models\Escola;
 use App\Models\FuncaoAdministrativa;
-use App\Models\Enums\SetorAccessCapability;
 use App\Models\Role;
 use App\Models\Servidor;
 use App\Models\ServidorFuncaoAdministrativa;
@@ -23,8 +23,8 @@ use App\Services\SetorPedidoAccessService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Validation\ValidationException;
-use Mockery\MockInterface;
 use Livewire\Livewire;
+use Mockery\MockInterface;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
@@ -133,6 +133,50 @@ class PessoaObrasServiceTest extends TestCase
             'servidor_id' => $pessoa->id,
             'status' => ServidorFuncaoAdministrativa::STATUS_ATIVO,
             'setor_id' => $setorB->id,
+        ]);
+    }
+
+    public function test_mudanca_de_obras_para_transporte_remove_role_anterior_e_preserva_role_independente(): void
+    {
+        $setor = $this->criarSetorCentral('Obras para Transporte');
+        $pessoa = app(PessoaObrasService::class)->criarPessoaObras([
+            'nome' => 'Pessoa convertida para Transporte',
+            'email' => 'obras.transporte@edu.umuarama.pr.gov.br',
+            'status' => Servidor::STATUS_ATIVO,
+        ], [
+            'setor_id' => $setor->id,
+            'matriculas' => [['matricula' => 'OBR-TRANS-1', 'turno' => 'integral']],
+        ]);
+        $vinculoObrasId = $pessoa->vinculosAtivos->first()->id;
+        $roleIndependente = Role::query()->create([
+            'name' => 'Auditoria Independente Transporte',
+            'guard_name' => 'web',
+        ]);
+        $pessoa->user->assignRole($roleIndependente);
+
+        $atualizada = app(ServidorService::class)->atualizarServidorComFuncoes($pessoa, [
+            'cargo' => 'transporte',
+            'nome' => $pessoa->nome,
+            'email' => $pessoa->email,
+            'status' => Servidor::STATUS_ATIVO,
+        ], [
+            'transporte' => ['matricula' => 'TRANS-1'],
+        ]);
+
+        $this->assertTrue($atualizada->user->hasRole('Transporte'));
+        $this->assertFalse($atualizada->user->hasRole('Obras'));
+        $this->assertTrue($atualizada->user->hasRole($roleIndependente));
+        $this->assertSame('Transporte', ServidorResource::cargoLabel($atualizada));
+        $this->assertNull($atualizada->setor_id);
+        $this->assertNull($atualizada->user->setor_id);
+        $this->assertDatabaseHas('servidor_funcao_administrativa', [
+            'id' => $vinculoObrasId,
+            'status' => ServidorFuncaoAdministrativa::STATUS_INATIVO,
+        ]);
+        $this->assertDatabaseHas('servidor_funcao_administrativa', [
+            'servidor_id' => $pessoa->id,
+            'funcao_administrativa_id' => FuncaoAdministrativa::transportePadrao()->id,
+            'status' => ServidorFuncaoAdministrativa::STATUS_ATIVO,
         ]);
     }
 

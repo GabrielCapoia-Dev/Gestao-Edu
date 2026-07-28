@@ -103,7 +103,7 @@
         </span>
         <div>
             <h3 id="pessoa-form-cargo-title">Cargo</h3>
-            <p>O cargo define os vínculos necessários. Motoristas não precisam de acesso ao sistema nem de escola.</p>
+            <p>O cargo define os vínculos e as permissões necessários.</p>
         </div>
     </header>
 
@@ -124,9 +124,6 @@
                 @endif
                 @if ($podeGerenciarEquipeGestora || $cargo === 'obras')
                     <option value="obras" @selected($cargo === 'obras')>Obras</option>
-                @endif
-                @if ($podeGerenciarEquipeGestora || $cargo === 'motorista')
-                    <option value="motorista" @selected($cargo === 'motorista')>Motorista</option>
                 @endif
                 @if ($podeGerenciarEquipeGestora || $cargo === 'transporte')
                     <option value="transporte" @selected($cargo === 'transporte')>Transporte</option>

@@ -665,6 +665,9 @@ class PessoaHubFilamentTest extends TestCase
             ServidorResource::CARGO_MOTORISTA,
             ServidorResource::cargoOptions(),
         );
+        Livewire::actingAs($usuario)
+            ->test(PessoaForm::class, ['pessoaId' => null])
+            ->assertDontSeeHtml('value="motorista"');
 
         $motorista = Servidor::query()->create([
             'nome' => 'Motorista da rede',
