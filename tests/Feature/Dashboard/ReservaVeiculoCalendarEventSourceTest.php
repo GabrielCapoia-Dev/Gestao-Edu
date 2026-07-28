@@ -96,6 +96,50 @@ class ReservaVeiculoCalendarEventSourceTest extends TestCase
         $this->assertSame($solicitante->name, $eventos->first()->solicitante);
     }
 
+    public function test_calendario_preserva_reserva_concluida_e_oculta_cancelada_no_historico(): void
+    {
+        $usuario = User::factory()->create();
+        $veiculo = VeiculoTransporte::query()->create([
+            'placa' => 'HIS1T23',
+            'identificacao' => 'Veículo Histórico',
+            'capacidade_passageiros' => 5,
+            'ativo' => true,
+        ]);
+
+        $this->reserva(
+            $usuario,
+            $veiculo,
+            null,
+            'Reserva concluída',
+            'Secretaria',
+            status: ReservaVeiculoStatus::CONCLUIDA,
+        );
+        $this->reserva(
+            $usuario,
+            $veiculo,
+            null,
+            'Reserva cancelada',
+            'Prefeitura',
+            inicio: '13:00',
+            fim: '14:00',
+            status: ReservaVeiculoStatus::CANCELADA,
+        );
+
+        $contexto = new CalendarQueryContext(
+            user: $usuario,
+            userContext: $this->contextoUsuario($usuario),
+            inicio: CarbonImmutable::parse('2026-07-29 00:00:00'),
+            fim: CarbonImmutable::parse('2026-07-29 23:59:59'),
+        );
+
+        $eventos = collect(app(ReservaVeiculoCalendarEventSource::class)->events($contexto));
+
+        $this->assertCount(1, $eventos);
+        $this->assertSame('Reserva concluída', $eventos->first()->resumo);
+        $this->assertSame(ReservaVeiculoStatus::CONCLUIDA->value, $eventos->first()->status);
+        $this->assertSame(ReservaVeiculoStatus::CONCLUIDA->label(), $eventos->first()->statusLabel);
+    }
+
     private function reserva(
         User $usuario,
         VeiculoTransporte $veiculo,
@@ -104,6 +148,7 @@ class ReservaVeiculoCalendarEventSourceTest extends TestCase
         string $local,
         string $inicio = '08:00',
         string $fim = '10:00',
+        ReservaVeiculoStatus $status = ReservaVeiculoStatus::ATIVA,
     ): ReservaVeiculo {
         return ReservaVeiculo::query()->create([
             'veiculo_transporte_id' => $veiculo->id,
@@ -113,7 +158,7 @@ class ReservaVeiculoCalendarEventSourceTest extends TestCase
             'atividade' => $atividade,
             'data_inicio' => "2026-07-29 {$inicio}:00",
             'data_fim' => "2026-07-29 {$fim}:00",
-            'status' => ReservaVeiculoStatus::ATIVA,
+            'status' => $status,
             'criado_por_id' => $usuario->id,
             'atualizado_por_id' => $usuario->id,
         ]);

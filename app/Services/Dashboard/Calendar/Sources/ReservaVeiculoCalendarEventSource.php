@@ -5,6 +5,7 @@ namespace App\Services\Dashboard\Calendar\Sources;
 use App\Contracts\Dashboard\CalendarEventSource;
 use App\Filament\Admin\Resources\ReservasVeiculos\ReservaVeiculoResource;
 use App\Models\Enums\DashboardPrioridade;
+use App\Models\Enums\ReservaVeiculoStatus;
 use App\Models\ReservaVeiculo;
 use App\Support\Dashboard\Calendar\CalendarEventData;
 use App\Support\Dashboard\Calendar\CalendarEventDetailData;
@@ -76,7 +77,10 @@ class ReservaVeiculoCalendarEventSource implements CalendarEventSource
 
     private function visibleQuery(CalendarQueryContext $context): Builder
     {
-        $query = ReservaVeiculo::query()->ativas();
+        $query = ReservaVeiculo::query()->whereIn('status', [
+            ReservaVeiculoStatus::ATIVA->value,
+            ReservaVeiculoStatus::CONCLUIDA->value,
+        ]);
 
         if ($context->somenteReservasVeiculos || $context->redeCompleta) {
             return $query;
