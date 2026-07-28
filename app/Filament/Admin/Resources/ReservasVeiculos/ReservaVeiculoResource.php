@@ -36,6 +36,8 @@ class ReservaVeiculoResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
+        ReservaVeiculo::concluirExpiradas();
+
         return parent::getEloquentQuery()->with([
             'veiculo:id,placa,identificacao,cor,ativo',
             'usuario:id,name,email',

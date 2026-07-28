@@ -2,9 +2,9 @@
 
 namespace App\Services\Dashboard;
 
+use App\Models\Enums\ReservaVeiculoStatus;
 use App\Models\Escola;
 use App\Models\ReservaVeiculo;
-use App\Models\Enums\ReservaVeiculoStatus;
 use App\Models\User;
 use App\Models\VeiculoTransporte;
 use Carbon\CarbonImmutable;
@@ -21,6 +21,7 @@ class ReservaVeiculoService
     public function query(User $ator): Builder
     {
         Gate::forUser($ator)->authorize('viewAny', ReservaVeiculo::class);
+        ReservaVeiculo::concluirExpiradas();
 
         return ReservaVeiculo::query()
             ->with([
@@ -42,6 +43,7 @@ class ReservaVeiculoService
             $dados['hora_inicio'],
             $dados['hora_fim'],
         );
+        $this->validarPeriodosFuturos($periodos);
 
         return DB::transaction(function () use ($ator, $dados, $periodos): Collection {
             $veiculo = VeiculoTransporte::query()
@@ -73,6 +75,7 @@ class ReservaVeiculoService
     {
         $dados = $this->validarEdicao($dados);
         $periodo = $this->periodos([$dados['data']], $dados['hora_inicio'], $dados['hora_fim']);
+        $this->validarPeriodosFuturos($periodo);
 
         return DB::transaction(function () use ($ator, $reserva, $dados, $periodo): ReservaVeiculo {
             $reserva = ReservaVeiculo::query()->lockForUpdate()->findOrFail($reserva->id);
@@ -146,6 +149,7 @@ class ReservaVeiculoService
         ?int $ignorarReservaId = null,
     ): array {
         Gate::forUser($ator)->authorize('viewAny', ReservaVeiculo::class);
+        ReservaVeiculo::concluirExpiradas();
 
         if (blank($dataInicial) || blank($dataFinal) || blank($horaInicio) || blank($horaFim)) {
             return [];
@@ -189,6 +193,7 @@ class ReservaVeiculoService
     public function proximas(User $ator, int $limite = 4): Collection
     {
         Gate::forUser($ator)->authorize('viewAny', ReservaVeiculo::class);
+        ReservaVeiculo::concluirExpiradas();
 
         return ReservaVeiculo::query()
             ->ativas()
@@ -358,6 +363,20 @@ class ReservaVeiculoService
             )
             ->where('data_inicio', '<', $fim)
             ->where('data_fim', '>', $inicio);
+    }
+
+    /**
+     * @param  list<array{inicio: CarbonImmutable, fim: CarbonImmutable}>  $periodos
+     */
+    private function validarPeriodosFuturos(array $periodos): void
+    {
+        if (collect($periodos)->contains(
+            fn (array $periodo): bool => $periodo['inicio']->lte(now()),
+        )) {
+            throw ValidationException::withMessages([
+                'hora_inicio' => 'O horário inicial da reserva deve ser posterior ao horário atual.',
+            ]);
+        }
     }
 
     /** @return array{0: int|null, 1: string} */

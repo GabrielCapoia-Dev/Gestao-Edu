@@ -10,7 +10,9 @@ use App\Models\ReservaVeiculo;
 use App\Models\User;
 use App\Models\VeiculoTransporte;
 use App\Services\Dashboard\ReservaVeiculoService;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
@@ -164,6 +166,93 @@ class ReservaVeiculoServiceTest extends TestCase
 
         $this->assertCount(1, $nova);
         $this->assertDatabaseCount('reservas_veiculos', 2);
+    }
+
+    public function test_usuario_nao_edita_nem_cancela_reserva_de_outro_usuario(): void
+    {
+        $reserva = $this->service->criarEmLote($this->usuario, $this->dados())->firstOrFail();
+        $outroUsuario = User::factory()->create();
+
+        foreach ([
+            ListaPermissoes::EditarReservasVeiculos,
+            ListaPermissoes::CancelarReservasVeiculos,
+        ] as $permissao) {
+            $outroUsuario->givePermissionTo($permissao->label());
+        }
+
+        $this->assertFalse($outroUsuario->can('update', $reserva));
+        $this->assertFalse($outroUsuario->can('cancel', $reserva));
+
+        $this->expectException(AuthorizationException::class);
+        $this->service->cancelar($outroUsuario, $reserva);
+    }
+
+    public function test_reserva_e_concluida_e_nao_pode_ser_alterada_quando_chega_o_horario_inicial(): void
+    {
+        Carbon::setTestNow('2026-07-28 07:00:00');
+        $reserva = $this->service->criarEmLote($this->usuario, $this->dados([
+            'data_inicial' => '2026-07-28',
+            'hora_inicio' => '08:00',
+            'hora_fim' => '10:00',
+        ]))->firstOrFail();
+
+        Carbon::setTestNow('2026-07-28 08:00:00');
+        ReservaVeiculo::concluirExpiradas();
+        $reserva->refresh();
+
+        $this->assertSame(ReservaVeiculoStatus::CONCLUIDA, $reserva->status);
+        $this->assertFalse($this->usuario->can('update', $reserva));
+        $this->assertFalse($this->usuario->can('cancel', $reserva));
+    }
+
+    public function test_nao_permite_criar_reserva_para_horario_que_ja_passou(): void
+    {
+        Carbon::setTestNow('2026-07-28 09:00:00');
+
+        try {
+            $this->service->criarEmLote($this->usuario, $this->dados([
+                'data_inicial' => '2026-07-28',
+                'hora_inicio' => '08:00',
+                'hora_fim' => '10:00',
+            ]));
+            $this->fail('Era esperado o bloqueio do horário passado.');
+        } catch (ValidationException $exception) {
+            $this->assertSame(
+                'O horário inicial da reserva deve ser posterior ao horário atual.',
+                $exception->errors()['hora_inicio'][0],
+            );
+        }
+
+        $this->assertDatabaseCount('reservas_veiculos', 0);
+    }
+
+    public function test_nao_permite_editar_reserva_para_data_e_horario_anteriores_ao_atual(): void
+    {
+        Carbon::setTestNow('2026-07-28 09:00:00');
+        $reserva = $this->service->criarEmLote($this->usuario, $this->dados([
+            'data_inicial' => '2026-07-29',
+        ]))->firstOrFail();
+
+        try {
+            $this->service->atualizar($this->usuario, $reserva, [
+                'data' => '2026-07-28',
+                'hora_inicio' => '08:00',
+                'hora_fim' => '10:00',
+                'atividade' => 'Visita técnica',
+                'tipo_local' => 'outros',
+                'escola_id' => null,
+                'local_outro' => 'Secretaria Municipal',
+                'veiculo_transporte_id' => $this->veiculo->id,
+            ]);
+            $this->fail('Era esperado o bloqueio da edição para horário passado.');
+        } catch (ValidationException $exception) {
+            $this->assertSame(
+                'O horário inicial da reserva deve ser posterior ao horário atual.',
+                $exception->errors()['hora_inicio'][0],
+            );
+        }
+
+        $this->assertSame('2026-07-29', $reserva->fresh()->data_inicio->toDateString());
     }
 
     /** @return array<string, mixed> */

@@ -25,13 +25,15 @@ class ReservaVeiculoPolicy
 
     public function update(User $user, ReservaVeiculo $reserva): bool
     {
-        return $reserva->estaAtiva()
+        return $reserva->pertenceAo($user)
+            && $reserva->aindaPodeSerAlterada()
             && $user->hasPermissionTo(ListaPermissoes::EditarReservasVeiculos->label());
     }
 
     public function cancel(User $user, ReservaVeiculo $reserva): bool
     {
-        return $reserva->estaAtiva()
+        return $reserva->pertenceAo($user)
+            && $reserva->aindaPodeSerAlterada()
             && $user->hasPermissionTo(ListaPermissoes::CancelarReservasVeiculos->label());
     }
 

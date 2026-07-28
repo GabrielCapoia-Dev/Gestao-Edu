@@ -67,15 +67,18 @@ final class ReservasVeiculosTable
                     ->label('Status')
                     ->badge()
                     ->formatStateUsing(fn (ReservaVeiculoStatus $state): string => $state->label())
-                    ->color(fn (ReservaVeiculoStatus $state): string => $state === ReservaVeiculoStatus::ATIVA
-                        ? 'success'
-                        : 'gray'),
+                    ->color(fn (ReservaVeiculoStatus $state): string => match ($state) {
+                        ReservaVeiculoStatus::ATIVA => 'success',
+                        ReservaVeiculoStatus::CONCLUIDA => 'info',
+                        ReservaVeiculoStatus::CANCELADA => 'gray',
+                    }),
             ])
             ->filters([
                 SelectFilter::make('status')
                     ->label('Status')
                     ->options([
                         ReservaVeiculoStatus::ATIVA->value => ReservaVeiculoStatus::ATIVA->label(),
+                        ReservaVeiculoStatus::CONCLUIDA->value => ReservaVeiculoStatus::CONCLUIDA->label(),
                         ReservaVeiculoStatus::CANCELADA->value => ReservaVeiculoStatus::CANCELADA->label(),
                     ])
                     ->default(ReservaVeiculoStatus::ATIVA->value),

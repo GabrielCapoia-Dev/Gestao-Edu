@@ -26,6 +26,8 @@ class ReservaVeiculoCalendarEventSource implements CalendarEventSource
 
     public function events(CalendarQueryContext $context): iterable
     {
+        ReservaVeiculo::concluirExpiradas();
+
         $reservas = $this->visibleQuery($context)
             ->where('data_inicio', '<=', $context->fim)
             ->where('data_fim', '>=', $context->inicio)

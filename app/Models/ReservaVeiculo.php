@@ -77,4 +77,25 @@ class ReservaVeiculo extends Model
     {
         return $this->status === ReservaVeiculoStatus::ATIVA;
     }
+
+    public function pertenceAo(User $usuario): bool
+    {
+        return $this->usuario_id === $usuario->id;
+    }
+
+    public function aindaPodeSerAlterada(): bool
+    {
+        return $this->estaAtiva() && $this->data_inicio->isFuture();
+    }
+
+    public static function concluirExpiradas(): int
+    {
+        return static::query()
+            ->where('status', ReservaVeiculoStatus::ATIVA->value)
+            ->where('data_inicio', '<=', now())
+            ->update([
+                'status' => ReservaVeiculoStatus::CONCLUIDA->value,
+                'updated_at' => now(),
+            ]);
+    }
 }

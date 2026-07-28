@@ -59,6 +59,9 @@ final class ReservaVeiculoForm
                         ->label('Horário inicial')
                         ->required()
                         ->seconds(false)
+                        ->extraInputAttributes(fn (Get $get): array => self::atributosHorarioMinimo(
+                            $get('data_inicial'),
+                        ))
                         ->native()
                         ->live(),
 
@@ -124,6 +127,9 @@ final class ReservaVeiculoForm
                         ->label('Horário inicial')
                         ->required()
                         ->seconds(false)
+                        ->extraInputAttributes(fn (Get $get): array => self::atributosHorarioMinimo(
+                            $get('data'),
+                        ))
                         ->native()
                         ->live(),
 
@@ -205,4 +211,13 @@ final class ReservaVeiculoForm
             ]);
     }
 
+    /** @return array{min: string}|array{} */
+    private static function atributosHorarioMinimo(mixed $data): array
+    {
+        if ((string) $data !== today()->toDateString()) {
+            return [];
+        }
+
+        return ['min' => now()->format('H:i')];
+    }
 }
