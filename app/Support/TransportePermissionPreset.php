@@ -13,7 +13,6 @@ class TransportePermissionPreset
             ListaPermissoes::AcessarPainel,
             ListaPermissoes::VisualizarTelaDeInicio,
             ListaPermissoes::VisualizarAgendaDeTodaARede,
-            ListaPermissoes::ListarReservasVeiculos,
             ListaPermissoes::ListarEventosTransporte,
             ListaPermissoes::PublicarEventosTransporte,
             ListaPermissoes::DesativarEventosTransporte,

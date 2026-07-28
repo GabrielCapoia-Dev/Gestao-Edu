@@ -154,7 +154,7 @@
         hyphens: none;
     }
 
-    body:has(.pe-pessoas-page) .fi-dropdown-panel {
+    body:has(.pe-pessoas-page) .fi-dropdown-panel:not(.fi-select-dropdown-portal) {
         z-index: 80 !important;
     }
 

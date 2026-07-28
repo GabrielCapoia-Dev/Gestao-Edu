@@ -114,6 +114,23 @@ class PessoaHubFilamentTest extends TestCase
         }
     }
 
+    public function test_dropdown_de_select_em_modal_fica_acima_da_sobreposicao(): void
+    {
+        $styles = file_get_contents(
+            resource_path('views/filament/pages/partials/pessoas-responsive-table-styles.blade.php'),
+        );
+
+        $this->assertIsString($styles);
+        $this->assertStringContainsString(
+            'body:has(.pe-pessoas-page) .fi-dropdown-panel:not(.fi-select-dropdown-portal)',
+            $styles,
+        );
+        $this->assertStringNotContainsString(
+            'body:has(.pe-pessoas-page) .fi-dropdown-panel {',
+            $styles,
+        );
+    }
+
     public function test_lista_exibe_os_nomes_das_escolas_da_pessoa(): void
     {
         $usuario = $this->usuarioComPermissaoListar();
