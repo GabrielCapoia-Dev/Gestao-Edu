@@ -141,6 +141,7 @@ class ServidorResource extends Resource
             })
             ->paginated([5, 10, 25, 50, 100])
             ->defaultPaginationPageOption(10)
+            ->checkIfRecordIsSelectableUsing(fn (Servidor $record): bool => static::pessoaPodeSerSelecionada($record))
             ->searchable(static::camposBuscaTabela())
             ->searchPlaceholder(static::placeholderBuscaTabela())
             ->columns([
@@ -708,6 +709,19 @@ class ServidorResource extends Resource
             ])
             ->defaultSort('updated_at', 'desc')
             ->striped();
+    }
+
+    public static function pessoaPodeSerSelecionada(Servidor $record): bool
+    {
+        if (! $record->user) {
+            return true;
+        }
+
+        if ($record->user->id === 1 || $record->user->id === Auth::id()) {
+            return false;
+        }
+
+        return app(UserService::class)->podeSelecionarRegistro(Auth::user(), $record->user);
     }
 
     public static function ehEquipeGestora(Servidor $record): bool

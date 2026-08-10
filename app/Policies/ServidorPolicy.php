@@ -38,6 +38,10 @@ class ServidorPolicy
 
     public function delete(User $user, Servidor $servidor): bool
     {
+        if ($this->pessoaComUsuarioProtegido($user, $servidor)) {
+            return false;
+        }
+
         return $user->hasPermissionTo(ListaPermissoes::ExcluirPessoas->label())
             && $this->podeAcessarServidor($user, $servidor);
     }
@@ -49,6 +53,10 @@ class ServidorPolicy
 
     public function restore(User $user, Servidor $servidor): bool
     {
+        if ($this->pessoaComUsuarioProtegido($user, $servidor)) {
+            return false;
+        }
+
         return $user->hasPermissionTo(ListaPermissoes::ExcluirPessoas->label())
             && $this->podeAcessarServidor($user, $servidor);
     }
@@ -95,6 +103,10 @@ class ServidorPolicy
             return false;
         }
 
+        if ($servidor && $this->pessoaComUsuarioProtegido($user, $servidor)) {
+            return false;
+        }
+
         return $servidor === null || $this->update($user, $servidor);
     }
 
@@ -124,5 +136,15 @@ class ServidorPolicy
     private function podeAcessarServidor(User $user, Servidor $servidor): bool
     {
         return app(PessoaScopeService::class)->canAccessPessoa($user, $servidor);
+    }
+
+    private function pessoaComUsuarioProtegido(User $operador, Servidor $servidor): bool
+    {
+        $alvo = $servidor->user;
+
+        return $alvo
+            && ($alvo->id === 1
+                || $alvo->id === $operador->id
+                || $alvo->hasRole('Admin'));
     }
 }

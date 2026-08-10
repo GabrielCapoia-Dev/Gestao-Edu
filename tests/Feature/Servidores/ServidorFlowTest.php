@@ -3,10 +3,12 @@
 namespace Tests\Feature\Servidores;
 
 use App\Filament\Admin\Resources\Servidores\Pages\ManageServidores;
+use App\Filament\Admin\Resources\Servidores\ServidorResource;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
 use App\Models\FuncaoAdministrativa;
 use App\Models\Professor;
+use App\Models\Role;
 use App\Models\Serie;
 use App\Models\Servidor;
 use App\Models\ServidorFuncaoAdministrativa;
@@ -393,6 +395,47 @@ class ServidorFlowTest extends TestCase
         $this->assertSame(Servidor::STATUS_INATIVO, $primeiro->fresh()->status);
         $this->assertSame(Servidor::STATUS_INATIVO, $segundo->fresh()->status);
         $this->assertSame(Servidor::STATUS_ATIVO, $naoSelecionado->fresh()->status);
+    }
+
+    public function test_pessoa_vinculada_a_admin_nao_pode_ser_selecionada_nem_sofrer_acoes_destrutivas(): void
+    {
+        foreach ([
+            'Listar Pessoas',
+            'Editar Pessoas',
+            'Excluir Pessoas',
+            'Gerenciar Vínculos Estruturais de Pessoas',
+        ] as $permissao) {
+            Permission::findOrCreate($permissao);
+        }
+
+        $roleAdmin = Role::query()->firstOrCreate([
+            'name' => 'Admin',
+            'guard_name' => 'web',
+        ]);
+        $operador = User::factory()->create();
+        $operador->assignRole($roleAdmin);
+        $operador->givePermissionTo([
+            'Listar Pessoas',
+            'Editar Pessoas',
+            'Excluir Pessoas',
+            'Gerenciar Vínculos Estruturais de Pessoas',
+        ]);
+
+        $adminProtegido = User::factory()->create();
+        $adminProtegido->assignRole($roleAdmin);
+        $pessoaAdmin = Servidor::query()->create([
+            'user_id' => $adminProtegido->id,
+            'nome' => 'Pessoa Administradora Protegida',
+            'email' => $adminProtegido->email,
+            'status' => Servidor::STATUS_ATIVO,
+        ]);
+
+        $this->actingAs($operador);
+
+        $this->assertFalse(ServidorResource::pessoaPodeSerSelecionada($pessoaAdmin->load('user.roles')));
+        $this->assertFalse(Gate::forUser($operador)->allows('manageStructure', $pessoaAdmin));
+        $this->assertFalse(Gate::forUser($operador)->allows('delete', $pessoaAdmin));
+        $this->assertFalse(Gate::forUser($operador)->allows('restore', $pessoaAdmin));
     }
 
     private function criarSetor(string $nome, ?Setor $parent = null): Setor

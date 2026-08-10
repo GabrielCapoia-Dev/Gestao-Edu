@@ -96,6 +96,14 @@ class AvaliacoesCustomPagesTest extends TestCase
             ->assertOk();
     }
 
+    public function test_modal_de_pautas_usa_o_identificador_canonico_da_aba_de_configuracao(): void
+    {
+        $view = file_get_contents(resource_path('views/filament/pages/gestao-pautas.blade.php'));
+
+        $this->assertSame(4, substr_count($view, "\$abaPautas === 'configuracao'"));
+        $this->assertStringNotContainsString("\$abaPautas === 'configuração'", $view);
+    }
+
     public function test_gestao_alternativas_delega_acesso_para_policy(): void
     {
         Permission::findOrCreate('Listar Alternativas');

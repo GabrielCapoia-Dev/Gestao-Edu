@@ -25,7 +25,7 @@
                     class="{{ $abaPautas === 'configuracao' ? 'is-active' : '' }}"
                     wire:click="abrirAbaPautas('configuracao')"
                     role="tab"
-                    aria-selected="{{ $abaPautas === 'configuração' ? 'true' : 'false' }}"
+                    aria-selected="{{ $abaPautas === 'configuracao' ? 'true' : 'false' }}"
                 >
                     <span class="av-tab-index">01</span>
                     <span>Configuração da pauta</span>
@@ -44,7 +44,7 @@
             </div>
 
             <div class="gi-modal-body">
-                @if ($abaPautas === 'configuração')
+                @if ($abaPautas === 'configuracao')
                     <div class="av-stack">
                         <section class="av-form-section av-form-section--plain">
                             <h4>Configuração da pauta</h4>
@@ -226,7 +226,7 @@
                     Cancelar
                 </button>
 
-                @if ($abaPautas === 'configuração')
+                @if ($abaPautas === 'configuracao')
                     <button type="button" class="gi-action gi-action--primary" wire:click="avancarParaTextosPautas">
                         Próximo
                     </button>
