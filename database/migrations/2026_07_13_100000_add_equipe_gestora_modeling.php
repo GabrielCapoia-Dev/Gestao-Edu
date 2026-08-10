@@ -51,6 +51,16 @@ return new class extends Migration
             }
         });
 
+        // Este índice também sustenta a FK e deve existir antes da remoção do UNIQUE.
+        if (! $this->indexExists('servidor_funcao_turma', 'idx_sft_vinculo_turma_status')) {
+            Schema::table('servidor_funcao_turma', function (Blueprint $table): void {
+                $table->index(
+                    ['servidor_funcao_administrativa_id', 'turma_id', 'status'],
+                    'idx_sft_vinculo_turma_status',
+                );
+            });
+        }
+
         // A restrição antiga impedia manter mais de um período histórico para
         // a mesma coordenação/turma. A unicidade de vínculos ativos é garantida
         // transacionalmente pelo serviço de domínio.
@@ -60,12 +70,8 @@ return new class extends Migration
             });
         }
 
-        if (! $this->indexExists('servidor_funcao_turma', 'idx_sft_vinculo_turma_status')) {
+        if (! $this->indexExists('servidor_funcao_turma', 'idx_sft_turma_principal_status')) {
             Schema::table('servidor_funcao_turma', function (Blueprint $table): void {
-                $table->index(
-                    ['servidor_funcao_administrativa_id', 'turma_id', 'status'],
-                    'idx_sft_vinculo_turma_status',
-                );
                 $table->index(
                     ['turma_id', 'principal', 'status'],
                     'idx_sft_turma_principal_status',
