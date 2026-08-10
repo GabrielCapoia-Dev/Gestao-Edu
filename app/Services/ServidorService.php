@@ -14,6 +14,54 @@ use Illuminate\Validation\ValidationException;
 
 class ServidorService
 {
+    public function alterarStatus(Servidor $servidor, string $status): Servidor
+    {
+        if (! array_key_exists($status, Servidor::statusOptions())) {
+            throw ValidationException::withMessages([
+                'status' => 'Selecione um status válido.',
+            ]);
+        }
+
+        if ($servidor->trashed()) {
+            throw ValidationException::withMessages([
+                'status' => 'Restaure a pessoa antes de alterar o status.',
+            ]);
+        }
+
+        $servidor->forceFill(['status' => $status])->save();
+
+        return $servidor->fresh();
+    }
+
+    public function alterarStatusEmMassa(iterable $servidores, string $status): int
+    {
+        $ids = collect($servidores)
+            ->filter(fn ($servidor): bool => $servidor instanceof Servidor)
+            ->map(fn (Servidor $servidor): int => (int) $servidor->getKey())
+            ->unique()
+            ->values();
+
+        return DB::transaction(function () use ($ids, $status): int {
+            $alterados = 0;
+
+            $servidores = Servidor::query()
+                ->whereKey($ids)
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($servidores as $servidor) {
+                if ($servidor->status === $status) {
+                    continue;
+                }
+
+                $this->alterarStatus($servidor, $status);
+                $alterados++;
+            }
+
+            return $alterados;
+        });
+    }
+
     public function criarServidorComFuncoes(array $data, array $vinculos = []): Servidor
     {
         if ($this->fluxoMotorista($data, $vinculos)) {

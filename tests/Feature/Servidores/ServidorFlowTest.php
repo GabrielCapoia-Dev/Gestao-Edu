@@ -345,6 +345,56 @@ class ServidorFlowTest extends TestCase
         $this->assertTrue(Gate::forUser($usuario)->allows('update', $servidor));
     }
 
+    public function test_altera_status_de_apenas_um_servidor(): void
+    {
+        $escola = $this->criarEscola('Escola Status Individual');
+        $servidorAlterado = Servidor::query()->create([
+            'id_escola' => $escola->id,
+            'nome' => 'Servidor Status Individual',
+            'status' => Servidor::STATUS_ATIVO,
+        ]);
+        $servidorPreservado = Servidor::query()->create([
+            'id_escola' => $escola->id,
+            'nome' => 'Servidor Status Preservado',
+            'status' => Servidor::STATUS_ATIVO,
+        ]);
+
+        app(ServidorService::class)->alterarStatus($servidorAlterado, Servidor::STATUS_INATIVO);
+
+        $this->assertSame(Servidor::STATUS_INATIVO, $servidorAlterado->fresh()->status);
+        $this->assertSame(Servidor::STATUS_ATIVO, $servidorPreservado->fresh()->status);
+    }
+
+    public function test_altera_status_em_massa_de_todos_os_servidores_informados(): void
+    {
+        $escola = $this->criarEscola('Escola Status em Massa');
+        $primeiro = Servidor::query()->create([
+            'id_escola' => $escola->id,
+            'nome' => 'Servidor Status Massa Um',
+            'status' => Servidor::STATUS_ATIVO,
+        ]);
+        $segundo = Servidor::query()->create([
+            'id_escola' => $escola->id,
+            'nome' => 'Servidor Status Massa Dois',
+            'status' => Servidor::STATUS_ATIVO,
+        ]);
+        $naoSelecionado = Servidor::query()->create([
+            'id_escola' => $escola->id,
+            'nome' => 'Servidor Status Fora da Massa',
+            'status' => Servidor::STATUS_ATIVO,
+        ]);
+
+        $alterados = app(ServidorService::class)->alterarStatusEmMassa(
+            collect([$primeiro, $segundo]),
+            Servidor::STATUS_INATIVO,
+        );
+
+        $this->assertSame(2, $alterados);
+        $this->assertSame(Servidor::STATUS_INATIVO, $primeiro->fresh()->status);
+        $this->assertSame(Servidor::STATUS_INATIVO, $segundo->fresh()->status);
+        $this->assertSame(Servidor::STATUS_ATIVO, $naoSelecionado->fresh()->status);
+    }
+
     private function criarSetor(string $nome, ?Setor $parent = null): Setor
     {
         return Setor::query()->create([

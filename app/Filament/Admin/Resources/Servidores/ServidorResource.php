@@ -7,6 +7,7 @@ use App\Filament\Admin\Resources\Servidores\Actions\PessoaAcessoActions;
 use App\Filament\Admin\Resources\Servidores\Pages\ManageServidores;
 use App\Filament\Admin\Resources\Servidores\Schemas\ServidorEquipeGestoraForm;
 use App\Models\Escola;
+use App\Models\EventoCalendario;
 use App\Models\Pessoa;
 use App\Models\PessoaMatricula;
 use App\Models\Professor;
@@ -23,12 +24,14 @@ use App\Services\UserService;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\RestoreAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
@@ -494,6 +497,37 @@ class ServidorResource extends Resource
 
                     ...PessoaAcessoActions::recordActions(),
 
+                    Action::make('alterar_status')
+                        ->label('Alterar status')
+                        ->icon('heroicon-o-arrow-path')
+                        ->color('warning')
+                        ->visible(fn (Servidor $record): bool => ! $record->trashed()
+                            && static::usuarioPodeGerenciarEstrutura($record))
+                        ->modalHeading('Alterar status da pessoa')
+                        ->modalDescription(fn (Servidor $record): string => "Selecione o novo status de {$record->nome}.")
+                        ->fillForm(fn (Servidor $record): array => [
+                            'status' => $record->status,
+                        ])
+                        ->schema([
+                            Select::make('status')
+                                ->label('Status')
+                                ->options(Servidor::statusOptions())
+                                ->required(),
+                        ])
+                        ->action(function (Servidor $record, array $data): void {
+                            Gate::authorize('manageStructure', $record);
+
+                            app(ServidorService::class)->alterarStatus(
+                                $record,
+                                (string) ($data['status'] ?? ''),
+                            );
+
+                            Notification::make()
+                                ->title('Status atualizado')
+                                ->success()
+                                ->send();
+                        }),
+
                     DeleteAction::make()
                         ->label('Arquivar')
                         ->requiresConfirmation()
@@ -526,7 +560,7 @@ class ServidorResource extends Resource
                                 ->persistent();
 
                             if (app(ServidorService::class)->possuiEventosFuturosComoMotorista($record)
-                                && Gate::allows('manageTransport', \App\Models\EventoCalendario::class)) {
+                                && Gate::allows('manageTransport', EventoCalendario::class)) {
                                 $notification->actions([
                                     Action::make('corrigirVinculos')
                                         ->label('Corrigir vínculos nos eventos')
@@ -573,6 +607,43 @@ class ServidorResource extends Resource
             ->toolbarActions([
                 ...PessoaAcessoActions::bulkActions(),
 
+                BulkAction::make('alterar_status_em_massa')
+                    ->label('Alterar status')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('warning')
+                    ->visible(fn (): bool => static::usuarioPodeGerenciarEstrutura())
+                    ->modalHeading('Alterar status das pessoas selecionadas')
+                    ->modalDescription('O novo status será aplicado a todas as pessoas selecionadas.')
+                    ->schema([
+                        Select::make('status')
+                            ->label('Status')
+                            ->options(Servidor::statusOptions())
+                            ->required(),
+                    ])
+                    ->action(function ($records, array $data): void {
+                        foreach ($records as $record) {
+                            if (! $record instanceof Servidor || $record->trashed()) {
+                                throw new AuthorizationException(
+                                    'Não é possível alterar o status de uma ou mais pessoas selecionadas.',
+                                );
+                            }
+
+                            Gate::authorize('manageStructure', $record);
+                        }
+
+                        $alterados = app(ServidorService::class)->alterarStatusEmMassa(
+                            $records,
+                            (string) ($data['status'] ?? ''),
+                        );
+
+                        Notification::make()
+                            ->title('Status atualizado em massa')
+                            ->body("{$alterados} pessoa(s) alterada(s).")
+                            ->success()
+                            ->send();
+                    })
+                    ->deselectRecordsAfterCompletion(),
+
                 DeleteBulkAction::make()
                     ->label('Arquivar selecionados')
                     ->requiresConfirmation()
@@ -614,7 +685,7 @@ class ServidorResource extends Resource
                                 ->body(collect($resultado['bloqueados'])->take(5)->implode("\n"))
                                 ->warning()
                                 ->persistent()
-                            ->send();
+                                ->send();
                         }
                     }),
 

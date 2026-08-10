@@ -901,14 +901,6 @@ WHERE p.tipo_avaliacao_id = @tipo_parecer_id
 GROUP BY s.codigo, c.codigo
 ORDER BY s.codigo, c.codigo;
 
-SELECT
-    m.avaliacao_id,
-    CONCAT('php artisan avaliacoes:rebuild-dashboard-facts ', m.avaliacao_id)
-        AS comando_pos_commit_se_houver_mudanca
-FROM tmp_avaliacoes_com_mudanca m
-WHERE @tem_erros = 0
-ORDER BY m.avaliacao_id;
-
 COMMIT;
 
 DROP TEMPORARY TABLE IF EXISTS tmp_avaliacao_pauta_remover;
@@ -920,3 +912,21 @@ DROP TEMPORARY TABLE IF EXISTS tmp_avaliacoes_alvo;
 DROP TEMPORARY TABLE IF EXISTS tmp_pares_habilidades;
 DROP TEMPORARY TABLE IF EXISTS tmp_habilidades_resolvidas;
 DROP TEMPORARY TABLE IF EXISTS tmp_habilidades_2tri_2026;
+
+-- Esta é intencionalmente a última consulta do arquivo para o phpMyAdmin exibir
+-- o estado realmente persistido, e não um conjunto vazio de comandos opcionais.
+SELECT
+    IF(COUNT(*) = 257,
+       'OK - 257 pautas de habilidades ativas e persistidas',
+       'ERRO - carga não aplicada integralmente; consulte o diagnóstico anterior') AS resultado_final,
+    COUNT(*) AS pautas_ativas_persistidas
+FROM pautas p
+JOIN series s ON s.id = p.serie_id
+WHERE p.tipo_avaliacao_id = (
+        SELECT ta.id
+        FROM tipos_avaliacao ta
+        WHERE BINARY ta.nome = BINARY 'Parecer' AND ta.status = 1
+        LIMIT 1
+    )
+  AND p.status = 1
+  AND s.codigo IN ('SER005', 'SER006', 'SER007', 'SER008', 'SER009');
