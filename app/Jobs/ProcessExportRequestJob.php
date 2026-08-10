@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\ExportRequest;
 use App\Notifications\SistemaNotification;
 use App\Services\Exports\ExportManager;
+use App\Support\UserActorSnapshot;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -121,7 +122,13 @@ class ProcessExportRequestJob implements ShouldQueue
 
     private function notifySuccess(ExportRequest $exportRequest): void
     {
-        $exportRequest->user?->notify(new SistemaNotification(
+        $user = $exportRequest->user;
+
+        if (! UserActorSnapshot::canReceiveNotification($user)) {
+            return;
+        }
+
+        $user->notify(new SistemaNotification(
             titulo: 'Exportação pronta',
             mensagem: ($exportRequest->label ?: 'Seu arquivo') . ' já pode ser baixado.',
             url: route('exports.download', $exportRequest),
@@ -133,7 +140,13 @@ class ProcessExportRequestJob implements ShouldQueue
 
     private function notifyFailure(ExportRequest $exportRequest): void
     {
-        $exportRequest->user?->notify(new SistemaNotification(
+        $user = $exportRequest->user;
+
+        if (! UserActorSnapshot::canReceiveNotification($user)) {
+            return;
+        }
+
+        $user->notify(new SistemaNotification(
             titulo: 'Falha na exportação',
             mensagem: ($exportRequest->label ?: 'O arquivo solicitado') . ' não pode ser gerado.',
             url: route('filament.admin.pages.minhas-exportacoes'),

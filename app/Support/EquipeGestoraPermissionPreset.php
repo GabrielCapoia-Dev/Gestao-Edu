@@ -39,7 +39,6 @@ class EquipeGestoraPermissionPreset
             ListaPermissoes::VisualizarAgendaDeTodaARede,
             ListaPermissoes::VisualizarHistoricoDePedidos,
             ListaPermissoes::VisualizarTelaDeInicio,
-            ListaPermissoes::AcessarPainel,
         ];
     }
 

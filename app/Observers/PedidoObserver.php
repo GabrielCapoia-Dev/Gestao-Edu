@@ -7,6 +7,7 @@ use App\Models\Pedido;
 use App\Models\TipoStatus;
 use App\Models\User;
 use App\Notifications\SistemaNotification;
+use App\Support\UserActorSnapshot;
 use Illuminate\Support\Collection;
 use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
@@ -45,7 +46,7 @@ class PedidoObserver
         $solicitante = $pedido->solicitante;
 
         if ($statusReaberto && (int) $pedido->tipo_status_id === (int) $statusReaberto->id) {
-            if ($solicitante) {
+            if (UserActorSnapshot::canReceiveNotification($solicitante)) {
                 $solicitante->notify(
                     new SistemaNotification(
                         titulo: 'Pedido Reaberto',
@@ -72,7 +73,7 @@ class PedidoObserver
             return;
         }
 
-        if ($solicitante && $statusAtual) {
+        if (UserActorSnapshot::canReceiveNotification($solicitante) && $statusAtual) {
             $solicitante->notify(
                 new SistemaNotification(
                     titulo: 'Atualização no Pedido',
@@ -104,8 +105,8 @@ class PedidoObserver
             try {
                 return User::permission($alias)
                     ->get()
-                    ->filter(fn (User $user): bool => app(\App\Services\PedidoService::class)
-                        ->registroVisivelNoPerfil($pedido, $user))
+                    ->filter(fn (User $user): bool => UserActorSnapshot::canReceiveNotification($user)
+                        && app(\App\Services\PedidoService::class)->registroVisivelNoPerfil($pedido, $user))
                     ->values();
             } catch (PermissionDoesNotExist) {
                 continue;

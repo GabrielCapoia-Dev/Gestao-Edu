@@ -17,7 +17,7 @@ class BackfillPessoaMatriculasTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_consolida_pessoas_duplicadas_por_cpf(): void
+    public function test_nao_consolida_pessoas_duplicadas_por_cpf(): void
     {
         $setor = $this->criarSetor('Pedagógico');
 
@@ -52,10 +52,11 @@ class BackfillPessoaMatriculasTest extends TestCase
 
         Artisan::call('pessoas:backfill-matriculas');
 
-        $this->assertSame(1, Servidor::query()->where('cpf', 'like', '%123%')->count());
-        $this->assertDatabaseMissing('servidores', ['id' => $duplicataId]);
+        $this->assertSame(2, Servidor::query()->where('cpf', 'like', '%123%')->count());
+        $this->assertDatabaseHas('servidores', ['id' => $principalId]);
+        $this->assertDatabaseHas('servidores', ['id' => $duplicataId]);
         $this->assertDatabaseHas('servidor_funcao_administrativa', [
-            'servidor_id' => $principalId,
+            'servidor_id' => $duplicataId,
             'matricula' => 'MAT-VINC',
         ]);
     }

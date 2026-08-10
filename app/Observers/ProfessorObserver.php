@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\Professor;
+use App\Models\Servidor;
 use App\Services\ProfessorEscolaVinculoService;
 use App\Services\ServidorService;
 
@@ -11,6 +12,12 @@ class ProfessorObserver
     public function saved(Professor $professor): void
     {
         $this->sincronizarUsuariosRelacionados($professor);
+
+        if (filled($professor->servidor_id)
+            && Servidor::withTrashed()->whereKey($professor->servidor_id)->onlyTrashed()->exists()) {
+            return;
+        }
+
         app(ServidorService::class)->sincronizarProfessor($professor);
     }
 

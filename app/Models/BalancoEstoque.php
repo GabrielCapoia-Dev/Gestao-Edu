@@ -38,22 +38,22 @@ class BalancoEstoque extends Model
 
     public function criadoPor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'criado_por_id');
+        return $this->belongsTo(User::class, 'criado_por_id')->withTrashed();
     }
 
     public function iniciadoPor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'iniciado_por_id');
+        return $this->belongsTo(User::class, 'iniciado_por_id')->withTrashed();
     }
 
     public function concluidoPor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'concluido_por_id');
+        return $this->belongsTo(User::class, 'concluido_por_id')->withTrashed();
     }
 
     public function canceladoPor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'cancelado_por_id');
+        return $this->belongsTo(User::class, 'cancelado_por_id')->withTrashed();
     }
 
     public function itens(): HasMany

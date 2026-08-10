@@ -17,7 +17,7 @@ class AuthenticateMobile
 
         $user = $request->user();
 
-        if (! $user?->email_approved) {
+        if (! $user?->canAuthenticate()) {
             Auth::logout();
 
             $request->session()->invalidate();
@@ -26,7 +26,7 @@ class AuthenticateMobile
             return redirect()
                 ->route('mobile.login')
                 ->withErrors([
-                    'email' => 'Seu acesso ainda aguarda aprovacao do administrador.',
+                    'email' => 'Seu cadastro de servidor está inativo. Entre em contato com o administrador.',
                 ]);
         }
 

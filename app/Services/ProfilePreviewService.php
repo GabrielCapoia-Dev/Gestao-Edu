@@ -23,13 +23,13 @@ class ProfilePreviewService
         }
 
         $targetUser = User::query()
+            ->canAuthenticate()
             ->whereKey($targetUserId)
-            ->where('email_approved', true)
             ->first();
 
         if (! $targetUser) {
             throw ValidationException::withMessages([
-                'target_user_id' => 'Selecione um usuário aprovado para visualizar.',
+                'target_user_id' => 'Selecione um usuário com cadastro de servidor ativo.',
             ]);
         }
 
@@ -86,7 +86,9 @@ class ProfilePreviewService
     {
         $id = $this->realUserId();
 
-        return $id ? User::query()->find($id) : null;
+        $user = $id ? User::query()->find($id) : null;
+
+        return $user?->canAuthenticate() ? $user : null;
     }
 
     public function targetUser(): ?User
@@ -98,8 +100,8 @@ class ProfilePreviewService
         }
 
         $user = User::query()
+            ->canAuthenticate()
             ->whereKey($id)
-            ->where('email_approved', true)
             ->first();
 
         if (! $user) {

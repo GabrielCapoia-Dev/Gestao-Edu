@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Enums\TipoArquivoPedido;
 use App\Support\PedidoImageUpload;
+use App\Support\UserActorSnapshot;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
@@ -27,6 +28,9 @@ class PedidoArquivo extends Model
         'mime_type', // image/jpeg, application/pdf
 
         'descricao', // Descrição opcional
+        'usuario_id_legado',
+        'usuario_nome_snapshot',
+        'usuario_email_snapshot',
     ];
 
     protected $casts = [
@@ -40,7 +44,7 @@ class PedidoArquivo extends Model
 
     public function usuario()
     {
-        return $this->belongsTo(User::class);
+        return UserActorSnapshot::relation($this->belongsTo(User::class));
     }
 
     protected static function booted()
@@ -51,6 +55,13 @@ class PedidoArquivo extends Model
 
             if (! $arquivo->usuario_id && $user) {
                 $arquivo->usuario_id = $user->id;
+            }
+
+            if ($arquivo->usuario_id) {
+                $arquivo->usuario_id_legado ??= $arquivo->usuario_id;
+                $snapshot = UserActorSnapshot::values(UserActorSnapshot::find((int) $arquivo->usuario_id));
+                $arquivo->usuario_nome_snapshot ??= $snapshot['nome'];
+                $arquivo->usuario_email_snapshot ??= $snapshot['email'];
             }
 
             if ($arquivo->caminho) {
@@ -147,5 +158,20 @@ class PedidoArquivo extends Model
                 $arquivo->usuario_id
             );
         });
+    }
+
+    public function usuarioNomeExibicao(): string
+    {
+        return UserActorSnapshot::displayName(
+            $this->usuario,
+            $this->usuario_nome_snapshot,
+            $this->usuario_id_legado,
+            $this->usuario_id,
+        );
+    }
+
+    public function usuarioEmailExibicao(): ?string
+    {
+        return UserActorSnapshot::displayEmail($this->usuario, $this->usuario_email_snapshot);
     }
 }

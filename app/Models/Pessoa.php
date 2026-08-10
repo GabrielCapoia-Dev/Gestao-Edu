@@ -2,12 +2,17 @@
 
 namespace App\Models;
 
+use App\Services\PessoaEmailService;
+use App\Services\UserService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Centro da verdade da identidade física no sistema.
@@ -17,8 +22,11 @@ use Illuminate\Support\Str;
  */
 class Pessoa extends Model
 {
+    use SoftDeletes;
+
     public const STATUS_ATIVO = 'ativo';
     public const STATUS_INATIVO = 'inativo';
+    public const CARGO_PENDENTE_CODIGO = 'cargo_pendente';
 
     protected $table = 'servidores';
 
@@ -41,7 +49,68 @@ class Pessoa extends Model
             'user_id' => 'integer',
             'id_escola' => 'integer',
             'setor_id' => 'integer',
+            'email_duplicado' => 'boolean',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::saving(function (Pessoa $pessoa): void {
+            app(PessoaEmailService::class)->assertDisponivel($pessoa);
+
+            if ($pessoa->exists && $pessoa->isDirty('status') && $pessoa->status === self::STATUS_ATIVO) {
+                if (blank($pessoa->email) || filter_var($pessoa->email, FILTER_VALIDATE_EMAIL) === false) {
+                    throw ValidationException::withMessages([
+                        'status' => 'Informe um e-mail válido antes de ativar a pessoa.',
+                    ]);
+                }
+
+                $possuiCargoValido = $pessoa->professores()->where('ativo', true)->exists()
+                    || $pessoa->vinculosAtivos()
+                        ->whereHas('funcaoAdministrativa', fn (Builder $cargos): Builder => $cargos
+                            ->where('codigo', '<>', self::CARGO_PENDENTE_CODIGO))
+                        ->exists();
+
+                if (! $possuiCargoValido) {
+                    throw ValidationException::withMessages([
+                        'status' => 'Defina um cargo antes de ativar a pessoa.',
+                    ]);
+                }
+
+                if (blank($pessoa->user_id) || ! $pessoa->user || $pessoa->user->trashed()) {
+                    throw ValidationException::withMessages([
+                        'status' => 'A pessoa precisa possuir um usuário válido antes de ser ativada.',
+                    ]);
+                }
+            }
+
+            if (! $pessoa->isDirty('status') || $pessoa->status !== self::STATUS_INATIVO) {
+                return;
+            }
+
+            $operador = Auth::user();
+            $alvo = $pessoa->user;
+
+            if ($operador instanceof User && $alvo instanceof User) {
+                if ((int) $operador->getKey() === (int) $alvo->getKey()) {
+                    throw ValidationException::withMessages([
+                        'status' => 'Você não pode inativar o próprio cadastro.',
+                    ]);
+                }
+
+                if (((int) $alvo->getKey() === 1 || $alvo->hasRole('Admin')) && ! $operador->hasRole('Admin')) {
+                    throw ValidationException::withMessages([
+                        'status' => 'Somente um administrador pode inativar outro administrador.',
+                    ]);
+                }
+            }
+        });
+
+        static::saved(function (Pessoa $pessoa): void {
+            if ($pessoa->wasChanged('status') && $pessoa->status === self::STATUS_INATIVO && $pessoa->user) {
+                app(UserService::class)->invalidarCredenciais($pessoa->user);
+            }
+        });
     }
 
     public static function statusOptions(): array
@@ -91,14 +160,34 @@ class Pessoa extends Model
 
     public function setEmailAttribute(?string $value): void
     {
-        $email = Str::lower(trim((string) $value));
+        $this->attributes['email'] = static::normalizarEmail($value);
+    }
 
-        $this->attributes['email'] = $email !== '' ? $email : null;
+    public static function normalizarEmail(?string $email): ?string
+    {
+        $normalizado = Str::lower(trim((string) $email));
+
+        return $normalizado !== '' ? $normalizado : null;
+    }
+
+    public function scopeComEmailDuplicado(Builder $query): Builder
+    {
+        $table = $query->getModel()->getTable();
+
+        return $query
+            ->whereNotNull("{$table}.email_normalizado")
+            ->whereExists(function ($duplicados) use ($table): void {
+                $duplicados
+                    ->selectRaw('1')
+                    ->from("{$table} as pessoa_email_duplicado")
+                    ->whereColumn('pessoa_email_duplicado.email_normalizado', "{$table}.email_normalizado")
+                    ->whereColumn('pessoa_email_duplicado.id', '<>', "{$table}.id");
+            });
     }
 
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class)->withTrashed();
     }
 
     public function escola(): BelongsTo

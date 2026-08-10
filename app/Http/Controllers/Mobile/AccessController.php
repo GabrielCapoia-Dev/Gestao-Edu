@@ -52,7 +52,7 @@ class AccessController extends Controller
             'users' => $users,
             'stats' => [
                 'total' => (clone $statsQuery)->count(),
-                'approved' => (clone $statsQuery)->where('email_approved', true)->count(),
+                'approved' => (clone $statsQuery)->canAuthenticate()->count(),
                 'multiRole' => (clone $statsQuery)->has('roles', '>', 1)->count(),
                 'directPermissions' => (clone $statsQuery)->has('permissions')->count(),
             ],

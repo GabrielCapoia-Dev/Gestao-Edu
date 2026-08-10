@@ -23,7 +23,6 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
-use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 use UnitEnum;
 
@@ -86,7 +85,8 @@ class RoleResource extends Resource
 
                         Group::make()
                             ->schema(function (?Role $record, Get $get) {
-                                $todasPermissoes = Permission::orderBy('name')->get();
+                                $todasPermissoes = app(RoleService::class)
+                                    ->permissoesDisponiveisPara(Auth::user());
                                 $busca = $get('search_permissions');
 
                                 // Filtra permissões se houver busca
@@ -218,7 +218,8 @@ class RoleResource extends Resource
                             Group::make()
                                 ->schema(function (Get $get) {
 
-                                    $todasPermissoes = Permission::orderBy('name')->get();
+                                    $todasPermissoes = app(RoleService::class)
+                                        ->permissoesDisponiveisPara(Auth::user());
                                     $busca = strtolower($get('search_permissions') ?? '');
 
                                     $porGrupo = $todasPermissoes->groupBy(
@@ -274,85 +275,13 @@ class RoleResource extends Resource
                         ];
                     })
 
-                    ->action(function (Role $record, array $data) {
+                    ->action(function (Role $record, array $data): void {
+                        app(RoleService::class)->atualizarRole($record, $data, Auth::user());
 
-                        $alteracoes = [];
-
-                        /*
-                      |--------------------------------------------------------------------------
-                      | 1. Verificar alteração de nome
-                      |--------------------------------------------------------------------------
-                      */
-                        $novoNome = $data['name'] ?? $record->name;
-                        if ($record->name !== $novoNome) {
-                            $alteracoes[] = "Nome alterado de '{$record->name}' para '{$novoNome}'";
-                            $record->update(['name' => $novoNome]);
-                        }
-
-                        /*
-                     |--------------------------------------------------------------------------
-                     | 2. Consolidar permissões enviadas
-                     |--------------------------------------------------------------------------
-                     */
-                        $permissoesSelecionadas = collect($data ?? [])
-                            ->filter(fn ($_, $key) => str_starts_with($key, 'permissions_'))
-                            ->flatten()
-                            ->unique()
-                            ->values();
-
-                        $permissoesAtuais = $record->permissions()->pluck('name');
-
-                        $paraRemover = $permissoesAtuais->diff($permissoesSelecionadas);
-                        $paraAdicionar = $permissoesSelecionadas->diff($permissoesAtuais);
-
-                        /*
-                     |--------------------------------------------------------------------------
-                     | 3. Aplicar alterações
-                     |--------------------------------------------------------------------------
-                     */
-                        if ($paraRemover->isNotEmpty()) {
-                            $record->revokePermissionTo($paraRemover->toArray());
-                            app(PermissionRegistrar::class)->forgetCachedPermissions();
-                            $alteracoes[] = 'Permissões removidas: '.$paraRemover->implode(', ');
-                        }
-
-                        if ($paraAdicionar->isNotEmpty()) {
-                            $record->givePermissionTo($paraAdicionar->toArray());
-                            app(PermissionRegistrar::class)->forgetCachedPermissions();
-                            $alteracoes[] = 'Permissões adicionadas: '.$paraAdicionar->implode(', ');
-                        }
-
-                        /*
-                      |--------------------------------------------------------------------------
-                      | 4. Notificação
-                      |--------------------------------------------------------------------------
-                      */
-                        if ($paraRemover->isNotEmpty()) {
-                            Notification::make()
-                                ->title('Permissões removidas')
-                                ->body($paraRemover->implode(', '))
-                                ->danger()
-                                ->color('danger')
-                                ->icon('heroicon-s-x-mark')
-                                ->send();
-                        }
-
-                        if ($paraAdicionar->isNotEmpty()) {
-                            Notification::make()
-                                ->title('Permissões adicionadas')
-                                ->body($paraAdicionar->implode(', '))
-                                ->success()
-                                ->color('success')
-                                ->icon('heroicon-s-check')
-                                ->send();
-                        }
-
-                        if ($paraRemover->isEmpty() && $paraAdicionar->isEmpty()) {
-                            Notification::make()
-                                ->title('Nenhuma alteração foi realizada')
-                                ->info()
-                                ->send();
-                        }
+                        Notification::make()
+                            ->title('Nível de acesso atualizado')
+                            ->success()
+                            ->send();
                     }),
 
                 Actions\DeleteAction::make()

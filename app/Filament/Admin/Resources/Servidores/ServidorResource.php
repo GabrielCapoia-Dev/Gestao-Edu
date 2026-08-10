@@ -25,6 +25,8 @@ use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\RestoreAction;
+use Filament\Actions\RestoreBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Infolists\Components\TextEntry;
@@ -42,7 +44,7 @@ use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Filters\TernaryFilter;
+use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
@@ -110,16 +112,30 @@ class ServidorResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
-                'escola:id,nome,setor_id',
-                'setor:id,nome',
-                'user:id,name,email,email_approved',
-                'user.roles:id,name',
-                'professores.escola:id,nome',
-                'matriculas:id,servidor_id,matricula,turno',
-                'vinculosAtivos.funcaoAdministrativa:id,codigo,nome,direcao_escolar,coordenacao_pedagogica,secretaria_escolar',
-                'vinculosAtivos.escola:id,nome',
-            ]))
+            ->modifyQueryUsing(function (Builder $query): Builder {
+                $table = $query->getModel()->getTable();
+
+                return $query
+                    ->select("{$table}.*")
+                    ->selectSub(function ($duplicados) use ($table): void {
+                        $duplicados
+                            ->selectRaw('1')
+                            ->from("{$table} as pessoa_email_duplicado")
+                            ->whereColumn('pessoa_email_duplicado.email_normalizado', "{$table}.email_normalizado")
+                            ->whereColumn('pessoa_email_duplicado.id', '<>', "{$table}.id")
+                            ->limit(1);
+                    }, 'email_duplicado')
+                    ->with([
+                        'escola:id,nome,setor_id',
+                        'setor:id,nome',
+                        'user:id,name,email,email_approved,ativo,deleted_at',
+                        'user.roles:id,name',
+                        'professores.escola:id,nome',
+                        'matriculas:id,servidor_id,matricula,turno',
+                        'vinculosAtivos.funcaoAdministrativa:id,codigo,nome,direcao_escolar,coordenacao_pedagogica,secretaria_escolar',
+                        'vinculosAtivos.escola:id,nome',
+                    ]);
+            })
             ->paginated([5, 10, 25, 50, 100])
             ->defaultPaginationPageOption(10)
             ->searchable(static::camposBuscaTabela())
@@ -207,14 +223,28 @@ class ServidorResource extends Resource
                             ->toggleable()
                             ->extraAttributes(['class' => 'pessoa-card-field pessoa-card-field--email'], merge: true),
 
+                        TextColumn::make('email_duplicado')
+                            ->label('Conflito de e-mail')
+                            ->description('Conflito', position: 'above')
+                            ->getStateUsing(fn (Servidor $record): ?string => $record->email_duplicado ? 'E-mail duplicado' : null)
+                            ->badge()
+                            ->color('danger')
+                            ->placeholder('—')
+                            ->extraAttributes(['class' => 'pessoa-card-field pessoa-card-field--email-conflito'], merge: true),
+
                         TextColumn::make('status')
                             ->label('Status')
                             ->description('Status', position: 'above')
                             ->badge()
-                            ->formatStateUsing(fn (?string $state): string => Servidor::statusOptions()[$state] ?? 'Não informado')
+                            ->getStateUsing(fn (Servidor $record): string => $record->trashed() ? 'arquivado' : (string) $record->status)
+                            ->formatStateUsing(fn (?string $state): string => match ($state) {
+                                'arquivado' => 'Arquivado',
+                                default => Servidor::statusOptions()[$state] ?? 'Não informado',
+                            })
                             ->color(fn (?string $state): string => match ($state) {
                                 Servidor::STATUS_ATIVO => 'success',
                                 Servidor::STATUS_INATIVO => 'gray',
+                                'arquivado' => 'danger',
                                 default => 'warning',
                             })
                             ->sortable()
@@ -222,28 +252,6 @@ class ServidorResource extends Resource
                             ->copyMessage('Status copiado')
                             ->tooltip('Clique para copiar o status')
                             ->extraAttributes(['class' => 'pessoa-card-field pessoa-card-field--status'], merge: true),
-
-                        TextColumn::make('acesso_ao_sistema')
-                            ->label('Acesso')
-                            ->description('Acesso', position: 'above')
-                            ->badge()
-                            ->getStateUsing(function (Servidor $record): string {
-                                if (! $record->user_id) {
-                                    return 'Sem usuário';
-                                }
-
-                                return $record->user?->email_approved ? 'Liberado' : 'Pendente';
-                            })
-                            ->color(fn (string $state): string => match ($state) {
-                                'Liberado' => 'success',
-                                'Pendente' => 'warning',
-                                default => 'gray',
-                            })
-                            ->tooltip('Gerencie login, níveis e permissões nas ações desta pessoa.')
-                            ->copyable()
-                            ->copyMessage('Situação do acesso copiada')
-                            ->visible(fn (): bool => Gate::allows('viewAny', User::class))
-                            ->extraAttributes(['class' => 'pessoa-card-field pessoa-card-field--acesso'], merge: true),
 
                         TextColumn::make('user.roles.name')
                             ->label('Níveis de acesso')
@@ -337,6 +345,13 @@ class ServidorResource extends Resource
                     ->options(Servidor::statusOptions())
                     ->multiple(),
 
+                TrashedFilter::make()
+                    ->label('Cadastros arquivados')
+                    ->columnSpan(3)
+                    ->placeholder('Sem arquivados')
+                    ->trueLabel('Com arquivados')
+                    ->falseLabel('Somente arquivados'),
+
                 SelectFilter::make('id_escola')
                     ->label('Escola')
                     ->columnSpan(3)
@@ -393,37 +408,6 @@ class ServidorResource extends Resource
                     ->searchable()
                     ->preload(),
 
-                TernaryFilter::make('user_id')
-                    ->label('Conta de acesso')
-                    ->columnSpan(3)
-                    ->trueLabel('Com conta')
-                    ->falseLabel('Sem conta')
-                    ->placeholder('Todas as situações')
-                    ->queries(
-                        true: fn (Builder $query): Builder => $query->whereNotNull('user_id'),
-                        false: fn (Builder $query): Builder => $query->whereNull('user_id'),
-                        blank: fn (Builder $query): Builder => $query,
-                    ),
-
-                TernaryFilter::make('acesso_liberado')
-                    ->label('Acesso ao sistema')
-                    ->columnSpan(3)
-                    ->trueLabel('Liberado')
-                    ->falseLabel('Pendente')
-                    ->placeholder('Todos os servidores')
-                    ->queries(
-                        true: fn (Builder $query): Builder => $query->whereHas(
-                            'user',
-                            fn (Builder $users): Builder => $users->where('email_approved', true),
-                        ),
-                        false: fn (Builder $query): Builder => $query->whereHas(
-                            'user',
-                            fn (Builder $users): Builder => $users->where('email_approved', false),
-                        ),
-                        blank: fn (Builder $query): Builder => $query,
-                    )
-                    ->visible(fn (): bool => Gate::allows('viewAny', User::class)),
-
                 SelectFilter::make('nivel_acesso')
                     ->label('Nível de acesso')
                     ->columnSpan(3)
@@ -463,6 +447,11 @@ class ServidorResource extends Resource
                             filled($data['data_fim'] ?? null),
                             fn (Builder $pessoas): Builder => $pessoas->whereDate('created_at', '<=', $data['data_fim']),
                         )),
+
+                Filter::make('email_duplicado')
+                    ->label('E-mail duplicado')
+                    ->columnSpan(3)
+                    ->query(fn (Builder $query): Builder => $query->comEmailDuplicado()),
             ], layout: FiltersLayout::AboveContent)
             ->filtersFormColumns(12)
             ->recordAction(null)
@@ -485,7 +474,7 @@ class ServidorResource extends Resource
                         ->label('Editar')
                         ->icon('heroicon-o-pencil-square')
                         ->color('primary')
-                        ->visible(fn (Servidor $record): bool => Gate::allows('update', $record))
+                        ->visible(fn (Servidor $record): bool => ! $record->trashed() && Gate::allows('update', $record))
                         ->modalWidth('6xl')
                         ->modalIcon(null)
                         ->modalHeading(fn (Servidor $record): string => "Editar pessoa — {$record->nome}")
@@ -506,9 +495,9 @@ class ServidorResource extends Resource
                     ...PessoaAcessoActions::recordActions(),
 
                     DeleteAction::make()
-                        ->label('Excluir')
+                        ->label('Arquivar')
                         ->requiresConfirmation()
-                        ->modalHeading('Excluir pessoa')
+                        ->modalHeading('Arquivar pessoa')
                         ->modalDescription(function (Servidor $record): string {
                             $motivo = app(ServidorService::class)->motivoBloqueioExclusao($record);
 
@@ -516,12 +505,11 @@ class ServidorResource extends Resource
                                 return $motivo;
                             }
 
-                            return "Excluir \"{$record->nome}\"? "
-                                .'Matrículas e lotações serão removidas; vínculos de turma e a referência do professor em avaliações serão apenas desassociados (avaliações/alunos permanecem). '
-                                .'A identificação do motorista em eventos já atendidos permanecerá preservada no histórico. '
-                                .'A conta de login, se existir, não é apagada.';
+                            return "Arquivar \"{$record->nome}\"? "
+                                .'A pessoa ficará inativa e oculta da listagem padrão. Matrículas, lotações, vínculos, histórico e conta de login serão preservados.';
                         })
-                        ->visible(fn (Servidor $record): bool => Gate::allows('delete', $record)
+                        ->visible(fn (Servidor $record): bool => ! $record->trashed()
+                            && Gate::allows('delete', $record)
                             && (app(ServidorService::class)->pessoaPodeSerExcluida($record)
                                 || ServidorEquipeGestoraForm::usuarioPodeAdministrar()))
                         ->before(function (DeleteAction $action, Servidor $record): void {
@@ -532,7 +520,7 @@ class ServidorResource extends Resource
                             }
 
                             $notification = Notification::make()
-                                ->title('Pessoa não pode ser excluída')
+                                ->title('Pessoa não pode ser arquivada')
                                 ->body($motivo)
                                 ->warning()
                                 ->persistent();
@@ -555,14 +543,24 @@ class ServidorResource extends Resource
 
                             $action->halt();
                         })
-                        ->using(function (Servidor $record): void {
-                            app(ServidorService::class)->excluirPessoa($record);
+                        ->using(function (Servidor $record): bool {
+                            app(ServidorService::class)->arquivarPessoa($record);
 
                             Notification::make()
-                                ->title('Pessoa excluída')
+                                ->title('Pessoa arquivada')
                                 ->success()
                                 ->send();
+
+                            return true;
                         }),
+
+                    RestoreAction::make()
+                        ->label('Restaurar')
+                        ->modalHeading('Restaurar pessoa')
+                        ->modalDescription('A pessoa voltará à listagem como inativa. Cargos, lotações e acessos não serão reativados automaticamente.')
+                        ->visible(fn (Servidor $record): bool => $record->trashed() && Gate::allows('restore', $record))
+                        ->using(fn (Servidor $record): Servidor => app(ServidorService::class)->restaurarPessoa($record))
+                        ->successNotificationTitle('Pessoa restaurada como inativa'),
                 ])
                     ->label('Ações')
                     ->icon('heroicon-m-ellipsis-vertical')
@@ -576,17 +574,17 @@ class ServidorResource extends Resource
                 ...PessoaAcessoActions::bulkActions(),
 
                 DeleteBulkAction::make()
-                    ->label('Excluir selecionados')
+                    ->label('Arquivar selecionados')
                     ->requiresConfirmation()
-                    ->modalHeading('Excluir pessoas em massa')
-                    ->modalDescription('Avaliações e alunos não são apagados: só se remove a ficha da pessoa e se desassocia o professor. Contas de login permanecem.')
+                    ->modalHeading('Arquivar pessoas em massa')
+                    ->modalDescription('As pessoas ficarão inativas e ocultas da listagem padrão. Matrículas, vínculos, histórico e contas de login serão preservados.')
                     ->visible(fn (): bool => Gate::allows('deleteAny', Servidor::class))
                     ->deselectRecordsAfterCompletion()
                     ->using(function ($records): void {
                         foreach ($records as $record) {
                             if (! $record instanceof Servidor || ! Gate::allows('delete', $record)) {
                                 throw new AuthorizationException(
-                                    'Você não possui permissão para excluir uma ou mais Pessoas selecionadas.',
+                                    'Você não possui permissão para arquivar uma ou mais pessoas selecionadas.',
                                 );
                             }
                         }
@@ -596,7 +594,7 @@ class ServidorResource extends Resource
                                 fn (Servidor $record): bool => ! app(ServidorService::class)->pessoaPodeSerExcluida($record),
                             )) {
                             throw new AuthorizationException(
-                                'Você não possui permissão para excluir Pessoas da Equipe Gestora.',
+                                'Você não possui permissão para arquivar pessoas da Equipe Gestora.',
                             );
                         }
 
@@ -604,21 +602,38 @@ class ServidorResource extends Resource
 
                         if ($resultado['excluidos'] > 0) {
                             Notification::make()
-                                ->title('Exclusão concluída')
-                                ->body("{$resultado['excluidos']} pessoa(s) excluída(s).")
+                                ->title('Arquivamento concluído')
+                                ->body("{$resultado['excluidos']} pessoa(s) arquivada(s).")
                                 ->success()
                                 ->send();
                         }
 
                         if ($resultado['bloqueados'] !== []) {
                             Notification::make()
-                                ->title('Algumas pessoas não foram excluídas')
+                                ->title('Algumas pessoas não foram arquivadas')
                                 ->body(collect($resultado['bloqueados'])->take(5)->implode("\n"))
                                 ->warning()
                                 ->persistent()
-                                ->send();
+                            ->send();
                         }
                     }),
+
+                RestoreBulkAction::make()
+                    ->label('Restaurar selecionados')
+                    ->modalHeading('Restaurar pessoas')
+                    ->modalDescription('As pessoas voltarão como inativas; cargos, lotações e acessos permanecerão inativos.')
+                    ->using(function ($records): void {
+                        foreach ($records as $record) {
+                            if (! $record instanceof Servidor || ! Gate::allows('restore', $record)) {
+                                throw new AuthorizationException(
+                                    'Você não possui permissão para restaurar uma ou mais pessoas selecionadas.',
+                                );
+                            }
+
+                            app(ServidorService::class)->restaurarPessoa($record);
+                        }
+                    })
+                    ->successNotificationTitle('Pessoas restauradas como inativas'),
             ])
             ->defaultSort('updated_at', 'desc')
             ->striped();
@@ -1142,19 +1157,6 @@ class ServidorResource extends Resource
                         ->label('Atualizado em')
                         ->dateTime('d/m/Y H:i')
                         ->visible(fn (): bool => ! static::ehObras($record)),
-                    TextEntry::make('acesso_hint')
-                        ->label('Acesso ao sistema')
-                        ->getStateUsing(function () use ($record): string {
-                            if (! $record->user_id) {
-                                return 'Sem conta vinculada. Use a ação Criar acesso nesta pessoa, se necessário.';
-                            }
-
-                            $status = $record->user?->email_approved ? 'Liberado' : 'Pendente';
-
-                            return "Conta: {$record->user->email} ({$status}). Use as ações da pessoa para gerenciar níveis, permissões e senha.";
-                        })
-                        ->visible(fn (): bool => ! static::ehObras($record) && Gate::allows('viewAny', User::class))
-                        ->columnSpanFull(),
                 ])
                 ->columns(2),
         ];

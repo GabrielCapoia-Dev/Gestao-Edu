@@ -128,10 +128,10 @@ class EditUser extends EditRecord
 
         return [
             [
-                'title' => 'Situação atual do acesso',
-                'description' => $record->email_approved
-                    ? 'O usuário está com acesso liberado ao sistema.'
-                    : 'O usuário ainda não está liberado para acessar o sistema.',
+                'title' => 'Status do servidor',
+                'description' => $record->canAuthenticate()
+                    ? 'O cadastro de servidor está ativo.'
+                    : 'O cadastro de servidor está inativo.',
             ],
             [
                 'title' => $ehProfessor ? 'Cargo Professor vinculado' : 'Sem cargo pedagógico',

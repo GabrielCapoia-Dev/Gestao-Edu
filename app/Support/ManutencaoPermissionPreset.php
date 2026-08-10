@@ -10,7 +10,6 @@ class ManutencaoPermissionPreset
     public static function permissions(): array
     {
         return [
-            ListaPermissoes::AcessarPainel,
             ListaPermissoes::AcessarEscopoGlobalDeSetores,
             ListaPermissoes::VisualizarTelaDeInicio,
             ListaPermissoes::ListarPedidos,

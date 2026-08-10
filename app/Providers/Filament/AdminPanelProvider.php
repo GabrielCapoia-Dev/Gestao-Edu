@@ -65,7 +65,7 @@ class AdminPanelProvider extends PanelProvider
                         Select::make('target_user_id')
                             ->label('Usuário para visualizar')
                             ->options(fn () => User::query()
-                                ->where('email_approved', true)
+                                ->canAuthenticate()
                                 ->orderBy('name')
                                 ->pluck('name', 'id')
                                 ->mapWithKeys(fn ($name, $id) => [$id => $name.' (#'.$id.')']))

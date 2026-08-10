@@ -47,6 +47,9 @@ class ExportRequestServiceTest extends TestCase
         $this->assertDatabaseHas('export_requests', [
             'id' => $first->getKey(),
             'user_id' => $user->id,
+            'user_id_legado' => $user->id,
+            'user_nome_snapshot' => $user->name,
+            'user_email_snapshot' => $user->email,
             'type' => 'pedido_relatorio_geral',
             'format' => 'pdf',
             'status' => ExportRequest::STATUS_QUEUED,

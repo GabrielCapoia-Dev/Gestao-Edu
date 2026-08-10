@@ -424,7 +424,7 @@
 
                     <div class="pedido-adicionais-modal__field pedido-adicionais-modal__field--wide">
                         <span class="pedido-adicionais-modal__label">Escola</span>
-                        <span class="pedido-adicionais-modal__value">{{ $adicional->escola?->nome ?? '-' }}</span>
+                        <span class="pedido-adicionais-modal__value">{{ $adicional->escolaNomeExibicao() }}</span>
                     </div>
 
                     <div class="pedido-adicionais-modal__field">

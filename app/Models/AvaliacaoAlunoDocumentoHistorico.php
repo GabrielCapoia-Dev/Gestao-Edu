@@ -71,6 +71,6 @@ class AvaliacaoAlunoDocumentoHistorico extends Model
 
     public function movimentadoPor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'movimentado_por');
+        return $this->belongsTo(User::class, 'movimentado_por')->withTrashed();
     }
 }

@@ -22,7 +22,7 @@ class ProfilePreviewTopbar extends Component
             'active' => $preview->isActive(),
             'targetUser' => $preview->targetUser(),
             'users' => User::query()
-                ->where('email_approved', true)
+                ->canAuthenticate()
                 ->orderBy('name')
                 ->limit(250)
                 ->get(['id', 'name', 'email']),

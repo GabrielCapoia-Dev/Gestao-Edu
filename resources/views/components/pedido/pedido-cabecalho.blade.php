@@ -241,7 +241,7 @@
 
         <div class="pedido-header__field pedido-header__field--wide">
             <span class="pedido-header__label">Escola</span>
-            <span class="pedido-header__value">{{ $escola?->nome ?? 'Não informado' }}</span>
+            <span class="pedido-header__value">{{ $record->escolaNomeExibicao() }}</span>
         </div>
 
         <div class="pedido-header__field">
@@ -251,7 +251,7 @@
 
         <div class="pedido-header__field">
             <span class="pedido-header__label">E-mail</span>
-            <span class="pedido-header__value">{{ $record->solicitante?->email ?? 'Não informado' }}</span>
+            <span class="pedido-header__value">{{ $record->solicitanteUsuarioEmailExibicao() ?? 'Não informado' }}</span>
         </div>
 
         <div class="pedido-header__field">

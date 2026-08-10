@@ -10,7 +10,6 @@ class AssessoriaPedagogicaPermissionPreset
     public static function permissions(): array
     {
         return [
-            ListaPermissoes::AcessarPainel,
             ListaPermissoes::VisualizarTelaDeInicio,
             ListaPermissoes::VisualizarAgendaDeTodaARede,
             ListaPermissoes::AcessarEscopoGlobalDeSetores,

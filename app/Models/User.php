@@ -10,6 +10,8 @@ use Filament\Models\Contracts\FilamentUser;
 use Filament\Notifications\Notification;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\RedirectResponse;
@@ -28,11 +30,18 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
     use HasFactory;
     use HasUuidCodigo;
     use Notifiable;
+    use SoftDeletes;
     use HasRoles {
         hasPermissionTo as protected traitHasPermissionTo;
     }
 
     private ?bool $ehProfessorCache = null;
+
+    /** @var array<string, mixed> */
+    protected $attributes = [
+        'ativo' => true,
+        'auth_version' => 0,
+    ];
 
     /**
      * The attributes that are mass assignable.
@@ -45,6 +54,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
         'name',
         'email',
         'email_approved',
+        'ativo',
         'email_verified_at',
         'last_login_at',
         'last_seen_at',
@@ -72,12 +82,13 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
             'last_seen_at' => 'datetime',
             'password' => 'hashed',
             'must_change_password' => 'boolean',
+            'ativo' => 'boolean',
+            'auth_version' => 'integer',
         ];
     }
 
     public function canAccessPanel(Panel $panel, ?bool $register = false): bool
     {
-        // Fluxo: Filament chama este metodo no acesso ao painel; se canAccessAdminPanel falhar, o usuario e deslogado, notificado e redirecionado para login.
         if ($this->canAccessAdminPanel()) {
             return true;
         }
@@ -87,16 +98,16 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
         if ($register) {
             Notification::make()
                 ->title('Cadastro Realizado')
-                ->body('Usuário cadastrado com sucesso. Solicite aprovação do administrador para acessar o painel.')
+                ->body('Usuário cadastrado com sucesso.')
                 ->success()
                 ->send();
         }
         Notification::make()
-            ->title('Aguardando aprovação')
-            ->body('Entre em contato com o administrador para solicitar a aprovação do seu e-mail.')
-            ->icon('heroicon-o-arrow-path')
+            ->title('Acesso indisponível')
+            ->body('Seu cadastro de servidor está inativo. Entre em contato com o administrador.')
+            ->icon('heroicon-o-no-symbol')
             ->duration(10000)
-            ->warning()
+            ->danger()
             ->send();
 
 
@@ -114,10 +125,53 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
 
     public function canAccessAdminPanel(): bool
     {
-        // Impacto: este e o gate final do painel admin. email_approved, permissao direta ou role de acesso liberam login; alterar aqui afeta GoogleAuthController e Filament.
-        return (bool) $this->email_approved
-            || $this->hasPermissionTo('Acessar Painel')
-            || $this->hasRole('Acessar Painel');
+        return $this->canAuthenticate();
+    }
+
+    public function isOperationallyActive(): bool
+    {
+        return $this->canAuthenticate();
+    }
+
+    public function canAuthenticate(): bool
+    {
+        if ($this->trashed()) {
+            return false;
+        }
+
+        $pessoasAtivas = $this->servidores()
+            ->where('status', Pessoa::STATUS_ATIVO)
+            ->where(function (Builder $pessoas): void {
+                $pessoas
+                    ->whereHas('professores', fn (Builder $professores): Builder => $professores->where('ativo', true))
+                    ->orWhereHas('vinculosAtivos', fn (Builder $vinculos): Builder => $vinculos
+                        ->whereHas('funcaoAdministrativa', fn (Builder $cargos): Builder => $cargos
+                            ->where('codigo', '<>', Pessoa::CARGO_PENDENTE_CODIGO)));
+            })
+            ->limit(2)
+            ->count();
+
+        return $pessoasAtivas === 1;
+    }
+
+    public function scopeCanAuthenticate(Builder $query): Builder
+    {
+        return $query
+            ->whereNull($query->getModel()->qualifyColumn('deleted_at'))
+            ->whereHas(
+                'servidores',
+                fn (Builder $pessoas): Builder => $pessoas
+                    ->where('status', Pessoa::STATUS_ATIVO)
+                    ->where(function (Builder $comCargo): void {
+                        $comCargo
+                            ->whereHas('professores', fn (Builder $professores): Builder => $professores->where('ativo', true))
+                            ->orWhereHas('vinculosAtivos', fn (Builder $vinculos): Builder => $vinculos
+                                ->whereHas('funcaoAdministrativa', fn (Builder $cargos): Builder => $cargos
+                                    ->where('codigo', '<>', Pessoa::CARGO_PENDENTE_CODIGO)));
+                    }),
+                '=',
+                1,
+            );
     }
 
     public function hasPermissionTo($permission, $guardName = null): bool
@@ -151,21 +205,6 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
             return str_contains($name, $needle);
         });
     }
-
-    protected static function booted()
-    {
-        static::updating(function (User $user) {
-            // Impacto: aprovar e-mail tambem marca verificacao. Remover isso pode deixar usuario aprovado sem email_verified_at, afetando regras futuras de acesso.
-            if (
-                $user->isDirty('email_approved') &&
-                $user->email_approved &&
-                is_null($user->getOriginal('email_verified_at'))
-            ) {
-                $user->email_verified_at = now();
-            }
-        });
-    }
-
 
     public function getFilamentAvatarUrl(): ?string
     {

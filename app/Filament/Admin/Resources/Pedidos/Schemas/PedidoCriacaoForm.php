@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Resources\Pedidos\Schemas;
 
 use App\Models\TipoManutencao;
 use App\Models\TipoManutencaoOpcao;
+use App\Services\PedidoService;
 use App\Support\PedidoImageUpload;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -13,6 +14,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Auth;
 
 class PedidoCriacaoForm
 {
@@ -24,6 +26,25 @@ class PedidoCriacaoForm
                     ->columnSpanFull()
                     ->description('Informe o problema encontrado')
                     ->schema([
+
+                        Select::make('escola_id')
+                            ->label('Escola')
+                            ->options(fn (): array => app(PedidoService::class)
+                                ->escolasDisponiveisParaCriacao(Auth::user())
+                                ->pluck('nome', 'id')
+                                ->all())
+                            ->default(function (): ?int {
+                                $escolas = app(PedidoService::class)
+                                    ->escolasDisponiveisParaCriacao(Auth::user());
+
+                                return $escolas->count() === 1
+                                    ? (int) $escolas->first()->id
+                                    : null;
+                            })
+                            ->helperText('Quando houver mais de uma escola disponível, selecione a unidade à qual o pedido pertence.')
+                            ->required()
+                            ->searchable()
+                            ->preload(),
 
                         Select::make('tipo_manutencao_id')
                             ->label('Tipo de Manutenção')

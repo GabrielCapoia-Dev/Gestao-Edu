@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Str;
 
 class GenerateLoadTestUsers extends Command
@@ -27,7 +28,6 @@ class GenerateLoadTestUsers extends Command
      * @var array<int, string>
      */
     private const LOAD_TEST_ROLES = [
-        'Acessar Painel',
         'Secretário',
     ];
 
@@ -52,7 +52,7 @@ class GenerateLoadTestUsers extends Command
         }
 
         if (! $this->rolesExist()) {
-            $this->error('As roles "Acessar Painel" e/ou "Secretário" nao existem.');
+            $this->error('A role "Secretário" não existe.');
             $this->line('Execute "php artisan permissoes:criar" antes de gerar a massa de carga.');
 
             return self::FAILURE;
@@ -100,6 +100,7 @@ class GenerateLoadTestUsers extends Command
             $rows[] = [$email, $password, $profile];
         }
 
+        Artisan::call('pessoas:sincronizar-acessos', ['--apply' => true]);
         $this->writeCsv($rows, (string) $this->option('output'));
         $this->info("Usuarios de carga prontos: {$count}");
         $this->line('Roles: '.implode(', ', self::LOAD_TEST_ROLES));

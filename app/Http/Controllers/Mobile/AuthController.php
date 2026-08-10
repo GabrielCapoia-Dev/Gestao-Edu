@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Mobile;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -60,7 +61,11 @@ class AuthController extends Controller
                 ->onlyInput('email');
         }
 
-        if (! Auth::attempt($credentials, $request->boolean('remember'))) {
+        if (! Auth::attemptWhen(
+            $credentials,
+            fn (mixed $user): bool => $user instanceof User && $user->canAuthenticate(),
+            $request->boolean('remember'),
+        )) {
             RateLimiter::hit($throttleKey, 60);
 
             return back()
@@ -72,21 +77,6 @@ class AuthController extends Controller
 
         RateLimiter::clear($throttleKey);
         $request->session()->regenerate();
-
-        $user = $request->user();
-
-        if (! $user?->email_approved) {
-            Auth::logout();
-
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-
-            return back()
-                ->withErrors([
-                    'email' => 'Seu acesso ainda aguarda aprovacao do administrador.',
-                ])
-                ->onlyInput('email');
-        }
 
         return redirect()->intended(route('mobile.home'));
     }

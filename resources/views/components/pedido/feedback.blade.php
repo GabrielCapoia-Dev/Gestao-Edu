@@ -163,7 +163,7 @@
 
         <div class="pedido-feedback__field pedido-feedback__field--wide">
             <span class="pedido-feedback__label">Escola</span>
-            <span class="pedido-feedback__value">{{ $pedido->escola?->nome ?? 'Não informada' }}</span>
+            <span class="pedido-feedback__value">{{ $pedido->escolaNomeExibicao() }}</span>
         </div>
 
         <div class="pedido-feedback__field">

@@ -25,21 +25,52 @@ class UserPolicy
 
     public function create(User $user): bool
     {
-        return $user->hasPermissionTo('Criar Usuarios')
-            || $user->hasPermissionTo('Criar Usuários');
+        return false;
     }
 
     public function update(User $user, User $model): bool
     {
-        return ($user->hasPermissionTo('Editar Usuarios')
+        return ! $model->trashed()
+            && ($user->hasPermissionTo('Editar Usuarios')
                 || $user->hasPermissionTo('Editar Usuários'))
             && $this->podeAcessarUsuario($user, $model);
     }
 
     public function delete(User $user, User $model): bool
     {
+        if ($model->trashed() || $this->usuarioProtegido($user, $model)) {
+            return false;
+        }
+
         return ($user->hasPermissionTo('Excluir Usuarios')
                 || $user->hasPermissionTo('Excluir Usuários'))
+            && $this->podeAcessarUsuario($user, $model);
+    }
+
+    public function restore(User $user, User $model): bool
+    {
+        if (! $model->trashed() || $this->usuarioProtegido($user, $model)) {
+            return false;
+        }
+
+        return ($user->hasPermissionTo('Excluir Usuarios')
+                || $user->hasPermissionTo('Excluir Usuários'))
+            && $this->podeAcessarUsuario($user, $model);
+    }
+
+    public function forceDelete(User $user, User $model): bool
+    {
+        return false;
+    }
+
+    public function changeOperationalStatus(User $user, User $model): bool
+    {
+        if ($model->trashed() || $this->usuarioProtegido($user, $model)) {
+            return false;
+        }
+
+        return ($user->hasPermissionTo('Editar Usuarios')
+                || $user->hasPermissionTo('Editar Usuários'))
             && $this->podeAcessarUsuario($user, $model);
     }
 
@@ -60,7 +91,7 @@ class UserPolicy
 
     public function applyPermissions(User $user, User $target): bool
     {
-        if ($target->id === $user->id || $target->hasRole('Admin')) {
+        if ($target->trashed() || $target->id === 1 || $target->id === $user->id || $target->hasRole('Admin')) {
             return false;
         }
 
@@ -83,7 +114,7 @@ class UserPolicy
             return false;
         }
 
-        if ($target && ($target->hasRole('Admin') || $target->id === $user->id)) {
+        if ($target && ($target->trashed() || $target->hasRole('Admin') || $target->id === $user->id)) {
             return false;
         }
 
@@ -98,7 +129,7 @@ class UserPolicy
 
     public function resetPassword(User $user, User $target): bool
     {
-        if ($target->id === 1 || $target->id === $user->id || $target->hasRole('Admin')) {
+        if ($target->trashed() || $target->id === 1 || $target->id === $user->id || $target->hasRole('Admin')) {
             return false;
         }
 
@@ -159,5 +190,12 @@ class UserPolicy
         }
 
         return filled($setorId) && $access->canAccessSetor($user, (int) $setorId);
+    }
+
+    private function usuarioProtegido(User $user, User $model): bool
+    {
+        return $model->id === 1
+            || $model->id === $user->id
+            || $model->hasRole('Admin');
     }
 }

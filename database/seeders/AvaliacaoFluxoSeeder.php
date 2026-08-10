@@ -181,12 +181,11 @@ class AvaliacaoFluxoSeeder extends Seeder
         );
 
         $roleGestaoPedagogica = Role::findOrCreate('Gestao Pedagogica', 'web');
-        $roleAcessarPainel = Role::findOrCreate('Acessar Painel', 'web');
         $roleVisualizarTurmasAlunos = Role::findOrCreate('Visualizar Turmas e Alunos', 'web');
 
         $gestorUser->syncRoles([$roleGestaoPedagogica]);
-        $professorMatUser->syncRoles([$roleAcessarPainel, $roleVisualizarTurmasAlunos]);
-        $professorHistUser->syncRoles([$roleAcessarPainel, $roleVisualizarTurmasAlunos]);
+        $professorMatUser->syncRoles([$roleVisualizarTurmasAlunos]);
+        $professorHistUser->syncRoles([$roleVisualizarTurmasAlunos]);
 
         $professorMat = Professor::updateOrCreate(
             ['id_escola' => $escolaCentro->id, 'matricula' => 'PROF-MAT-01'],

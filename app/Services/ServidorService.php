@@ -361,12 +361,6 @@ class ServidorService
                         ->funcaoAdministrativa?->ehMotorista(),
                 );
 
-            if (filled($servidor->user_id)) {
-                throw ValidationException::withMessages([
-                    'cargo' => 'Remova primeiro o acesso desta pessoa ao sistema antes de defini-la como motorista.',
-                ]);
-            }
-
             if ($possuiOutroCargo) {
                 throw ValidationException::withMessages([
                     'cargo' => 'Converta ou encerre os outros vínculos funcionais antes de definir esta pessoa como motorista.',
@@ -612,6 +606,14 @@ class ServidorService
             return null;
         }
 
+        if (filled($professor->servidor_id)) {
+            $pessoaExistente = Servidor::withTrashed()->find($professor->servidor_id);
+
+            if ($pessoaExistente?->trashed()) {
+                return null;
+            }
+        }
+
         return DB::transaction(function () use ($professor): Servidor {
             $servidor = $this->criarOuAtualizarServidorDoProfessor($professor);
 
@@ -721,6 +723,7 @@ class ServidorService
             $vinculo = $vinculo->fresh(['turmas']);
 
             app(PessoaAcessoService::class)->vincularProfessorAoVinculo($vinculo);
+            app(PessoaUsuarioService::class)->garantirUsuario($servidor->fresh());
 
             return $vinculo;
         });
@@ -759,6 +762,21 @@ class ServidorService
 
             if ($vinculos->isEmpty()) {
                 return;
+            }
+
+            $possuiOutroCargoAtivo = ServidorFuncaoAdministrativa::query()
+                ->where('servidor_id', $servidor->id)
+                ->where('status', ServidorFuncaoAdministrativa::STATUS_ATIVO)
+                ->where('funcao_administrativa_id', '<>', $funcao->id)
+                ->whereHas('funcaoAdministrativa', fn (Builder $cargos): Builder => $cargos
+                    ->where('codigo', '<>', Servidor::CARGO_PENDENTE_CODIGO))
+                ->exists();
+            $possuiProfessorAtivo = $servidor->professores()->where('ativo', true)->exists();
+
+            if ($servidor->status === Servidor::STATUS_ATIVO && ! $possuiOutroCargoAtivo && ! $possuiProfessorAtivo) {
+                throw ValidationException::withMessages([
+                    'vinculos_funcionais' => 'Uma pessoa ativa precisa manter ao menos um cargo.',
+                ]);
             }
 
             foreach ($vinculos as $vinculo) {
@@ -869,7 +887,7 @@ class ServidorService
     public function motivoBloqueioExclusao(Servidor $pessoa): ?string
     {
         if ($this->possuiCargoProtegidoContraExclusao($pessoa)) {
-            return "{$pessoa->nome} não pode ser excluída porque possui histórico em cargo funcional protegido. "
+            return "{$pessoa->nome} não pode ser arquivada porque possui histórico em cargo funcional protegido. "
                 .'Inative a pessoa ou converta o cargo pelo fluxo próprio; os vínculos históricos devem ser preservados.';
         }
 
@@ -881,7 +899,7 @@ class ServidorService
                 ->count('evento_calendario_id');
 
             return "{$pessoa->nome} possui vínculo como motorista em {$quantidade} evento(s) atual(is) ou futuro(s). "
-                .'Substitua o motorista nesses eventos antes de excluir a pessoa. Os eventos já atendidos permanecerão no histórico.';
+                .'Substitua o motorista nesses eventos antes de arquivar a pessoa. Os eventos já atendidos permanecerão no histórico.';
         }
 
         return null;
@@ -912,12 +930,16 @@ class ServidorService
         // denormalizado em professor_ids; não há tabela linha-por-resposta para limpar.
     }
 
-    public function excluirPessoa(Servidor $pessoa): void
+    public function arquivarPessoa(Servidor $pessoa): void
     {
         DB::transaction(function () use ($pessoa): void {
-            $pessoa = Servidor::query()
+            $pessoa = Servidor::withTrashed()
                 ->lockForUpdate()
                 ->findOrFail($pessoa->getKey());
+
+            if ($pessoa->trashed()) {
+                return;
+            }
 
             if ($motivo = $this->motivoBloqueioExclusao($pessoa)) {
                 throw ValidationException::withMessages([
@@ -925,50 +947,79 @@ class ServidorService
                 ]);
             }
 
-            $pessoa->load(['professores', 'professorMatriculas', 'servidorFuncoes']);
-            $professorIds = $pessoa->professores->pluck('id')->map(fn ($id): int => (int) $id)->all();
+            Professor::query()
+                ->where('servidor_id', $pessoa->id)
+                ->where('ativo', true)
+                ->update([
+                    'ativo' => false,
+                    'desativado_em' => now(),
+                    'desativado_por_id' => auth()->id(),
+                    'motivo_desativacao' => 'Pessoa arquivada.',
+                    'updated_at' => now(),
+                ]);
 
-            $this->desvincularProfessorDePedagogico($professorIds);
+            $vinculoIds = ServidorFuncaoAdministrativa::query()
+                ->where('servidor_id', $pessoa->id)
+                ->where('status', ServidorFuncaoAdministrativa::STATUS_ATIVO)
+                ->pluck('id');
 
-            if ($professorIds !== []) {
-                Professor::query()->whereIn('id', $professorIds)->delete();
-            }
-
-            if (Schema::hasTable('professor_matriculas')) {
-                DB::table('professor_matriculas')->where('servidor_id', $pessoa->id)->delete();
-            }
-
-            if (Schema::hasTable('servidor_funcao_turma')) {
-                $vinculoIds = $pessoa->servidorFuncoes->pluck('id')->all();
-                if ($vinculoIds !== []) {
-                    DB::table('servidor_funcao_turma')
-                        ->whereIn('servidor_funcao_administrativa_id', $vinculoIds)
-                        ->delete();
-                }
-            }
-
-            if (Schema::hasTable('evento_calendario_transporte_alocacoes')) {
-                DB::table('evento_calendario_transporte_alocacoes')
-                    ->where('motorista_id', $pessoa->id)
+            if ($vinculoIds->isNotEmpty() && Schema::hasTable('servidor_funcao_turma')) {
+                DB::table('servidor_funcao_turma')
+                    ->whereIn('servidor_funcao_administrativa_id', $vinculoIds->all())
+                    ->where('status', 'ativo')
                     ->update([
-                        'motorista_nome' => $pessoa->nome,
-                        'motorista_cpf' => $pessoa->cpf,
-                        'motorista_matricula' => $pessoa->matricula,
-                        'motorista_id' => null,
+                        'status' => 'inativo',
+                        'data_fim' => now()->toDateString(),
                         'updated_at' => now(),
                     ]);
             }
 
             ServidorFuncaoAdministrativa::query()
                 ->where('servidor_id', $pessoa->id)
-                ->delete();
+                ->where('status', ServidorFuncaoAdministrativa::STATUS_ATIVO)
+                ->update([
+                    'status' => ServidorFuncaoAdministrativa::STATUS_INATIVO,
+                    'data_fim' => now()->toDateString(),
+                    'updated_at' => now(),
+                ]);
 
-            // Desvincula login sem apagar a conta de usuário.
-            if (filled($pessoa->user_id)) {
-                $pessoa->update(['user_id' => null]);
+            $pessoa->update(['status' => Servidor::STATUS_INATIVO]);
+
+            if ($pessoa->user_id && $pessoa->user && ! $pessoa->user->trashed()) {
+                $possuiOutraPessoaAtiva = Servidor::query()
+                    ->where('user_id', $pessoa->user_id)
+                    ->whereKeyNot($pessoa->getKey())
+                    ->where('status', Servidor::STATUS_ATIVO)
+                    ->exists();
+
+                if (! $possuiOutraPessoaAtiva) {
+                    app(UserService::class)->inativarPorAusenciaDePessoaAtiva($pessoa->user);
+                }
             }
 
             $pessoa->delete();
+        });
+    }
+
+    /** @deprecated Use arquivarPessoa(). */
+    public function excluirPessoa(Servidor $pessoa): void
+    {
+        $this->arquivarPessoa($pessoa);
+    }
+
+    public function restaurarPessoa(Servidor $pessoa): Servidor
+    {
+        return DB::transaction(function () use ($pessoa): Servidor {
+            $pessoa = Servidor::withTrashed()
+                ->lockForUpdate()
+                ->findOrFail($pessoa->getKey());
+
+            if ($pessoa->trashed()) {
+                $pessoa->forceFill(['status' => Servidor::STATUS_INATIVO]);
+                $pessoa->restore();
+            }
+
+            return $pessoa->fresh();
         });
     }
 

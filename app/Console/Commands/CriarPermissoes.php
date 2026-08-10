@@ -18,9 +18,17 @@ use Spatie\Permission\PermissionRegistrar;
 
 class CriarPermissoes extends Command
 {
+    private const CONFIGURABLE_ROLES = [
+        'Visitante',
+        'RH',
+        'Documentação Escolar',
+        'Educação Infantil',
+        'Psicólogas',
+    ];
+
     protected $signature = 'permissoes:criar';
 
-    protected $description = 'Cria permissoes base e sincroniza niveis de acesso por contexto';
+    protected $description = 'Cria permissões base e sincroniza níveis de acesso por contexto';
 
     public function handle(): int
     {
@@ -31,9 +39,12 @@ class CriarPermissoes extends Command
         $rolePresets = $this->rolePresets($permissions, $permissionGroups);
 
         $this->normalizarPermissoesComMojibake($permissions);
-        $this->normalizarNiveisComMojibake(array_keys($rolePresets));
+        $this->normalizarNiveisComMojibake([
+            ...array_keys($rolePresets),
+            ...self::CONFIGURABLE_ROLES,
+        ]);
 
-        $this->info('Criando permissoes...');
+        $this->info('Criando permissões...');
 
         foreach ($permissions as $permissionName) {
             $permission = Permission::firstOrCreate([
@@ -48,7 +59,7 @@ class CriarPermissoes extends Command
 
         $this->migrarPermissoesLegadasDeGestao();
 
-        $this->info('Sincronizando niveis de acesso...');
+        $this->info('Sincronizando níveis de acesso...');
 
         foreach ($rolePresets as $roleName => $rolePermissions) {
             $role = Role::firstOrCreate([
@@ -60,8 +71,10 @@ class CriarPermissoes extends Command
 
             $role->syncPermissions($rolePermissions);
 
-            $this->line("Nivel sincronizado: {$roleName} (".count($rolePermissions).' permissoes)');
+            $this->line("Nível sincronizado: {$roleName} (".count($rolePermissions).' permissões)');
         }
+
+        $this->garantirRolesConfiguraveis();
 
         $this->sincronizarRoleEquipeGestoraComFuncoes();
         $this->sincronizarRoleManutencaoComFuncao();
@@ -73,7 +86,7 @@ class CriarPermissoes extends Command
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-        $this->info('Permissoes e niveis de acesso sincronizados com sucesso.');
+        $this->info('Permissões e níveis de acesso sincronizados com sucesso.');
 
         return Command::SUCCESS;
     }
@@ -275,7 +288,6 @@ class CriarPermissoes extends Command
             'Visualizar Notificação: Pedido Adicional Criado',
             'Visualizar Notificação: Balanço de Estoque',
             'Visualizar Tela de Inicio',
-            'Acessar Painel',
             'Acessar Escopo Global de Setores',
             'Baixar App',
             'Filtrar Alunos por Escola',
@@ -597,6 +609,22 @@ class CriarPermissoes extends Command
             'Transporte' => $this->onlyPermissions($permissions, TransportePermissionPreset::all()),
             'Assessoria Pedagógica' => $this->onlyPermissions($permissions, AssessoriaPedagogicaPermissionPreset::all()),
         ];
+    }
+
+    private function garantirRolesConfiguraveis(): void
+    {
+        foreach (self::CONFIGURABLE_ROLES as $roleName) {
+            $role = Role::firstOrCreate([
+                'name' => $roleName,
+                'guard_name' => 'web',
+            ]);
+
+            $this->line(
+                $role->wasRecentlyCreated
+                    ? "Nível configurável criado: {$roleName}"
+                    : "Nível configurável preservado: {$roleName}",
+            );
+        }
     }
 
     private function sincronizarRoleObrasComFuncao(): void
@@ -1175,6 +1203,6 @@ class CriarPermissoes extends Command
 
         $admin->syncPermissions($allPermissions);
 
-        $this->line('Nivel sincronizado: Admin ('.count($allPermissions).' permissoes totais)');
+        $this->line('Nível sincronizado: Admin ('.count($allPermissions).' permissões totais)');
     }
 }

@@ -839,9 +839,7 @@ class PessoaForm extends Component
 
         $rules = [
             'cpf' => ['nullable', 'string', 'max:14'],
-            'email' => $this->cargo === ServidorResource::CARGO_MOTORISTA
-                ? ['nullable', 'email', 'max:255']
-                : ['required', 'email', 'max:255'],
+            'email' => ['required', 'email', 'max:255'],
             'telefone' => ['nullable', 'string', 'max:255'],
         ];
         if ($this->modoCriacao() || $this->gerenciaEstrutura) {
@@ -879,6 +877,7 @@ class PessoaForm extends Component
                 ServidorResource::CARGO_EQUIPE_GESTORA,
                 ServidorResource::CARGO_MANUTENCAO,
                 ServidorResource::CARGO_OBRAS,
+                ServidorResource::CARGO_MOTORISTA,
                 ServidorResource::CARGO_TRANSPORTE,
                 ServidorResource::CARGO_ASSESSORIA_PEDAGOGICA,
             ])],

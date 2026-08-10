@@ -56,17 +56,17 @@ class InventarioPedido extends Model
 
     public function solicitadoPor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'solicitado_por_id');
+        return $this->belongsTo(User::class, 'solicitado_por_id')->withTrashed();
     }
 
     public function aprovadoPor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'aprovado_por_id');
+        return $this->belongsTo(User::class, 'aprovado_por_id')->withTrashed();
     }
 
     public function entreguePor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'entregue_por_id');
+        return $this->belongsTo(User::class, 'entregue_por_id')->withTrashed();
     }
 
     public function isPendente(): bool

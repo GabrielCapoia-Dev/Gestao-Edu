@@ -99,9 +99,9 @@ class ArquivosRelationManager extends RelationManager
                     ->limit(50)
                     ->wrap(),
 
-                Tables\Columns\TextColumn::make('usuario.name')
+                Tables\Columns\TextColumn::make('usuario_exibicao')
                     ->label('Enviado por')
-                    ->sortable(),
+                    ->state(fn ($record): string => $record->usuarioNomeExibicao()),
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Enviado em')

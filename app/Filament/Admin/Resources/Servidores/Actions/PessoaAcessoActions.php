@@ -30,9 +30,7 @@ class PessoaAcessoActions
                 ->label('Criar acesso')
                 ->icon('heroicon-o-user-plus')
                 ->color('success')
-                ->visible(fn (Servidor $record): bool => ! $record->user
-                    && Gate::allows('createUserAccess', $record)
-                    && Gate::allows('create', User::class))
+                ->visible(false)
                 ->slideOver()
                 ->modalHeading('Criar acesso ao sistema')
                 ->modalDescription(fn (Servidor $record): string => "Crie ou vincule a conta de {$record->nome} usando o e-mail da ficha.")
@@ -69,7 +67,9 @@ class PessoaAcessoActions
                 ->label('Gerenciar acesso')
                 ->icon('heroicon-o-shield-check')
                 ->color('warning')
-                ->visible(fn (Servidor $record): bool => $record->user
+                ->visible(fn (Servidor $record): bool => ! $record->trashed()
+                    && $record->user
+                    && ! $record->user->trashed()
                     && Gate::allows('viewAny', User::class)
                     && Gate::allows('applyPermissions', $record->user))
                 ->slideOver()
@@ -77,7 +77,6 @@ class PessoaAcessoActions
                 ->modalDescription(fn (Servidor $record): string => "{$record->nome} • {$record->user?->email}")
                 ->fillForm(fn (Servidor $record): array => [
                     'roles' => app(UserService::class)->idsNiveisAdicionais($record->user),
-                    'email_approved' => (bool) $record->user?->email_approved,
                 ])
                 ->schema(function (Servidor $record): array {
                     $service = app(UserService::class);
@@ -88,9 +87,6 @@ class PessoaAcessoActions
                     }
 
                     return [
-                        Toggle::make('email_approved')
-                            ->label('Acesso liberado')
-                            ->visible(fn (): bool => Gate::allows('toggleEmailApproval', [$user, 'table'])),
                         Select::make('roles')
                             ->label('Níveis adicionais')
                             ->helperText('O nível funcional do cargo é preservado e não pode ser removido aqui.')
@@ -125,14 +121,6 @@ class PessoaAcessoActions
                         operador: Auth::user(),
                     );
 
-                    if (array_key_exists('email_approved', $data)) {
-                        $service->definirAprovacao(
-                            $user->fresh(),
-                            (bool) $data['email_approved'],
-                            Auth::user(),
-                        );
-                    }
-
                     Notification::make()
                         ->title('Acesso atualizado')
                         ->success()
@@ -143,7 +131,9 @@ class PessoaAcessoActions
                 ->label('Redefinir senha')
                 ->icon('heroicon-o-key')
                 ->color('danger')
-                ->visible(fn (Servidor $record): bool => $record->user
+                ->visible(fn (Servidor $record): bool => ! $record->trashed()
+                    && $record->user
+                    && ! $record->user->trashed()
                     && Gate::allows('viewAny', User::class)
                     && Gate::allows('resetPassword', $record->user))
                 ->modalHeading('Redefinir senha')
@@ -173,20 +163,18 @@ class PessoaAcessoActions
                 }),
 
             Action::make('excluir_acesso')
-                ->label('Excluir acesso')
+                ->label('Arquivar acesso')
                 ->icon('heroicon-o-user-minus')
                 ->color('danger')
                 ->requiresConfirmation()
-                ->modalHeading('Excluir conta de acesso')
+                ->modalHeading('Arquivar conta de acesso')
                 ->modalDescription('A ficha da pessoa, o cargo, as matrículas e o histórico serão preservados.')
-                ->visible(fn (Servidor $record): bool => $record->user
-                    && Gate::allows('viewAny', User::class)
-                    && app(UserService::class)->podeDeletar(Auth::user(), $record->user))
+                ->visible(false)
                 ->action(function (Servidor $record): void {
-                    app(PessoaUsuarioService::class)->excluirContaDaPessoa($record, Auth::user());
+                    app(PessoaUsuarioService::class)->arquivarContaDaPessoa($record, Auth::user());
 
                     Notification::make()
-                        ->title('Conta de acesso excluída')
+                        ->title('Conta de acesso arquivada')
                         ->success()
                         ->send();
                 }),
@@ -201,8 +189,7 @@ class PessoaAcessoActions
                 ->label('Criar acessos')
                 ->icon('heroicon-o-user-plus')
                 ->color('success')
-                ->visible(fn (): bool => Gate::allows('createUserAccess', Servidor::class)
-                    && Gate::allows('create', User::class))
+                ->visible(false)
                 ->modalHeading('Criar acessos ao sistema')
                 ->modalDescription('Cria ou vincula uma conta para cada pessoa selecionada. Pessoas que já possuem acesso serão ignoradas.')
                 ->schema([
@@ -225,7 +212,7 @@ class PessoaAcessoActions
                     $ignorados = 0;
 
                     foreach ($records as $record) {
-                        if (! $record instanceof Servidor || $record->user) {
+                        if (! $record instanceof Servidor || $record->trashed() || $record->user) {
                             $ignorados++;
 
                             continue;
@@ -252,8 +239,7 @@ class PessoaAcessoActions
                 ->label('Verificação de acesso')
                 ->icon('heroicon-o-check-badge')
                 ->color('success')
-                ->visible(fn (): bool => Gate::allows('viewAny', User::class)
-                    && Gate::allows('toggleEmailApproval', [User::class, null, 'table']))
+                ->visible(false)
                 ->schema([
                     Select::make('acao')
                         ->label('Ação')
@@ -271,7 +257,7 @@ class PessoaAcessoActions
 
                     foreach ($records as $record) {
                         try {
-                            if (! $record instanceof Servidor || ! $record->user) {
+                            if (! $record instanceof Servidor || $record->trashed() || ! $record->user) {
                                 $ignorados++;
 
                                 continue;
@@ -402,13 +388,12 @@ class PessoaAcessoActions
                 ->deselectRecordsAfterCompletion(),
 
             BulkAction::make('excluir_acessos_em_massa')
-                ->label('Excluir contas de acesso')
+                ->label('Arquivar contas de acesso')
                 ->icon('heroicon-o-user-minus')
                 ->color('danger')
                 ->requiresConfirmation()
                 ->modalDescription('As fichas de Pessoas, cargos, matrículas e históricos serão preservados.')
-                ->visible(fn (): bool => Gate::allows('viewAny', User::class)
-                    && (Auth::user()?->hasAnyPermissionTo(['Excluir Usuários', 'Excluir Usuarios']) ?? false))
+                ->visible(false)
                 ->action(function ($records): void {
                     $service = app(PessoaUsuarioService::class);
                     $afetados = 0;
@@ -416,20 +401,20 @@ class PessoaAcessoActions
 
                     foreach ($records as $record) {
                         try {
-                            if (! $record instanceof Servidor || ! $record->user) {
+                            if (! $record instanceof Servidor || $record->trashed() || ! $record->user) {
                                 $ignorados++;
 
                                 continue;
                             }
 
-                            $service->excluirContaDaPessoa($record, Auth::user());
+                            $service->arquivarContaDaPessoa($record, Auth::user());
                             $afetados++;
                         } catch (AuthorizationException) {
                             $ignorados++;
                         }
                     }
 
-                    self::notificarResultado('Contas de acesso excluídas', $afetados, $ignorados);
+                    self::notificarResultado('Contas de acesso arquivadas', $afetados, $ignorados);
                 })
                 ->deselectRecordsAfterCompletion(),
         ];
@@ -443,7 +428,7 @@ class PessoaAcessoActions
 
         foreach ($records as $record) {
             try {
-                if (! $record instanceof Servidor || ! $record->user) {
+                if (! $record instanceof Servidor || $record->trashed() || ! $record->user) {
                     $ignorados++;
 
                     continue;

@@ -114,6 +114,10 @@ class AppServiceProvider extends ServiceProvider
             URL::forceScheme('https');
         }
 
+        Gate::before(
+            fn (User $user): ?bool => $user->isOperationallyActive() ? null : false,
+        );
+
         // ── Policies ───────────────────────────────────────────────────────────
         Gate::policy(User::class, UserPolicy::class);
         Gate::policy(Role::class, RolePolicy::class);
@@ -168,7 +172,11 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('exportReports', fn (User $user): bool => app(UserPolicy::class)->exportReports($user));
 
         Event::listen(Login::class, function (Login $event): void {
-            if ($event->user instanceof User) {
+            if ($event->user instanceof User && $event->user->isOperationallyActive()) {
+                if (request()->hasSession()) {
+                    request()->session()->put('auth_version', (int) $event->user->auth_version);
+                }
+
                 app(UserPresenceService::class)->touch($event->user, markLogin: true);
             }
         });

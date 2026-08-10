@@ -54,6 +54,6 @@ class NotificacaoEnvio extends Model
 
     public function autor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(User::class, 'user_id')->withTrashed();
     }
 }

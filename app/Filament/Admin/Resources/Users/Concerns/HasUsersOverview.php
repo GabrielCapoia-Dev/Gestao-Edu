@@ -60,7 +60,7 @@ trait HasUsersOverview
 
         return [
             'total' => (clone $query)->count(),
-            'approved' => (clone $query)->where('email_approved', true)->count(),
+            'approved' => (clone $query)->canAuthenticate()->count(),
             'multi_role' => (clone $query)->has('roles', '>', 1)->count(),
             'direct_permissions' => (clone $query)->has('permissions')->count(),
         ];

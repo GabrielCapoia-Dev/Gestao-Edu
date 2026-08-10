@@ -6,7 +6,6 @@ use App\Models\FuncaoAdministrativa;
 use App\Models\Professor;
 use App\Models\Servidor;
 use App\Models\ServidorFuncaoAdministrativa;
-use App\Services\PessoaConsolidacaoService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -20,20 +19,10 @@ class BackfillPessoaMatriculas extends Command
     {
         $dryRun = (bool) $this->option('dry-run');
         $stats = [
-            'grupos_consolidados' => 0,
-            'pessoas_removidas' => 0,
-            'vinculos_realocados' => 0,
-            'professores_mesclados' => 0,
             'vinculos_atualizados' => 0,
             'vinculos_criados' => 0,
             'professores_vinculados' => 0,
         ];
-
-        $consolidacao = app(PessoaConsolidacaoService::class)->consolidarDuplicatas($dryRun);
-        $stats['grupos_consolidados'] = $consolidacao['grupos_processados'];
-        $stats['pessoas_removidas'] = $consolidacao['pessoas_removidas'];
-        $stats['vinculos_realocados'] = $consolidacao['vinculos_realocados'];
-        $stats['professores_mesclados'] = $consolidacao['professores_mesclados'];
 
         Servidor::query()
             ->with(['servidorFuncoesAtivas.funcaoAdministrativa', 'professores'])
@@ -45,10 +34,6 @@ class BackfillPessoaMatriculas extends Command
             });
 
         $this->info('Backfill de pessoas/vínculos concluído.');
-        $this->line("Grupos consolidados: {$stats['grupos_consolidados']}");
-        $this->line("Pessoas removidas: {$stats['pessoas_removidas']}");
-        $this->line("Vínculos realocados: {$stats['vinculos_realocados']}");
-        $this->line("Professores mesclados: {$stats['professores_mesclados']}");
         $this->line("Vínculos criados: {$stats['vinculos_criados']}");
         $this->line("Vínculos atualizados: {$stats['vinculos_atualizados']}");
         $this->line("Professores ligados ao vínculo: {$stats['professores_vinculados']}");

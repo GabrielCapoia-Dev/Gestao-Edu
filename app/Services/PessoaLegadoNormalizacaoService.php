@@ -4,15 +4,14 @@ namespace App\Services;
 
 use App\Models\Escola;
 use App\Models\FuncaoAdministrativa;
+use App\Models\Pessoa;
 use App\Models\Professor;
 use App\Models\ProfessorMatricula;
 use App\Models\Servidor;
 use App\Models\ServidorFuncaoAdministrativa;
 use App\Models\User;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Str;
 
 /**
  * Normaliza massa legada para o padrão Pessoa + professor_matriculas + lotações.
@@ -31,6 +30,27 @@ class PessoaLegadoNormalizacaoService
      * @return array<string, int|list<string>>
      */
     public function normalizar(bool $dryRun = false, ?string $somenteEmail = null): array
+    {
+        $stats = $this->normalizarEstrutura($dryRun, $somenteEmail);
+
+        if (! Schema::hasTable('servidores')) {
+            return $stats;
+        }
+
+        $stats['grupos_email'] = $this->auditarConflitosPorEmail($somenteEmail);
+        $stats['anomalias'] = $this->anomalias;
+
+        return $stats;
+    }
+
+    /**
+     * Normaliza apenas estruturas legadas inequívocas.
+     *
+     * Conflitos de identidade são auditados, nunca mesclados automaticamente.
+     *
+     * @return array<string, int|list<string>>
+     */
+    public function normalizarEstrutura(bool $dryRun = false, ?string $somenteEmail = null): array
     {
         $stats = [
             'pendencias_iniciais' => 0,
@@ -54,7 +74,7 @@ class PessoaLegadoNormalizacaoService
             return $stats;
         }
 
-        if (! $this->haPendencias($somenteEmail)) {
+        if (! $this->haPendenciasEstruturais($somenteEmail)) {
             $stats['early_exit'] = 1;
 
             return $stats;
@@ -63,7 +83,6 @@ class PessoaLegadoNormalizacaoService
         $stats['pendencias_iniciais'] = 1;
 
         $stats['professores_linkados'] = $this->garantirPessoaParaProfessores($dryRun, $somenteEmail, $stats);
-        $stats['grupos_email'] = $this->consolidarPorEmail($dryRun, $somenteEmail, $stats);
         $stats['matriculas_criadas'] = $this->materializarMatriculas($dryRun, $somenteEmail, $stats);
         $stats['sfa_sincronizados'] = $this->sincronizarShadowEAcesso($dryRun, $somenteEmail, $stats);
 
@@ -83,7 +102,9 @@ class PessoaLegadoNormalizacaoService
         $semServidor = Professor::query()
             ->when($email, fn ($q) => $q->whereRaw('LOWER(TRIM(email)) = ?', [$email]))
             ->whereNull('servidor_id')
-            ->exists();
+            ->orderBy('id')
+            ->get(['id', 'email', 'user_id'])
+            ->contains(fn (Professor $professor): bool => $this->professorPodeReceberPessoaSemConsolidacao($professor));
 
         if ($semServidor) {
             return true;
@@ -96,6 +117,7 @@ class PessoaLegadoNormalizacaoService
                 ->where('email', '!=', '')
                 ->whereNotNull('matricula')
                 ->where('matricula', '!=', '')
+                ->whereNotNull('servidor_id')
                 ->whereNull('professor_matricula_id')
                 ->exists();
 
@@ -105,6 +127,35 @@ class PessoaLegadoNormalizacaoService
         }
 
         return false;
+    }
+
+    private function professorPodeReceberPessoaSemConsolidacao(Professor $professor): bool
+    {
+        if (filled($professor->user_id)) {
+            $pessoasDoUser = Servidor::withTrashed()
+                ->where('user_id', $professor->user_id)
+                ->orderBy('id')
+                ->limit(2)
+                ->get();
+
+            if ($pessoasDoUser->count() === 1) {
+                return ! $pessoasDoUser->first()->trashed();
+            }
+
+            if ($pessoasDoUser->isNotEmpty()) {
+                return false;
+            }
+        }
+
+        $email = $this->normalizarEmail($professor->email);
+
+        if (! $this->emailValido($email)) {
+            return true;
+        }
+
+        return ! Servidor::withTrashed()
+            ->whereRaw('LOWER(TRIM(email)) = ?', [$email])
+            ->exists();
     }
 
     /**
@@ -161,19 +212,52 @@ class PessoaLegadoNormalizacaoService
             ->chunkById(100, function ($professores) use ($dryRun, &$linkados, &$stats): void {
                 foreach ($professores as $professor) {
                     $email = $this->normalizarEmail($professor->email);
+                    $servidor = null;
 
-                    if (! $this->emailValido($email)) {
-                        // Pessoa isolada sem e-mail usable
-                        if ($dryRun) {
-                            $linkados++;
-                            $stats['pessoas_criadas']++;
+                    if (filled($professor->user_id)) {
+                        $candidatasPorUser = Servidor::withTrashed()
+                            ->where('user_id', $professor->user_id)
+                            ->orderBy('id')
+                            ->get();
+
+                        if ($candidatasPorUser->count() > 1) {
+                            $this->anomalias[] = "Professor #{$professor->id} não vinculado: o usuário #{$professor->user_id} pertence a mais de uma Pessoa.";
 
                             continue;
                         }
 
+                        $servidor = $candidatasPorUser->first();
+
+                        if ($servidor?->trashed()) {
+                            $this->anomalias[] = "Professor #{$professor->id} não vinculado: a Pessoa #{$servidor->id} associada ao usuário está arquivada.";
+
+                            continue;
+                        }
+                    }
+
+                    if (! $servidor && $this->emailValido($email)) {
+                        $conflitoPorEmail = Servidor::withTrashed()
+                            ->whereRaw('LOWER(TRIM(email)) = ?', [$email])
+                            ->exists();
+
+                        if ($conflitoPorEmail) {
+                            $this->anomalias[] = "Professor #{$professor->id} não vinculado automaticamente: o e-mail {$email} já pertence a uma Pessoa e não é identificador seguro para consolidação.";
+
+                            continue;
+                        }
+                    }
+
+                    if ($dryRun) {
+                        $stats['pessoas_criadas'] += $servidor ? 0 : 1;
+                        $linkados++;
+
+                        continue;
+                    }
+
+                    if (! $servidor) {
                         $servidor = Servidor::query()->create([
                             'nome' => $professor->nome ?: 'Sem nome',
-                            'email' => null,
+                            'email' => $this->emailValido($email) ? $email : null,
                             'telefone' => $professor->telefone,
                             'id_escola' => $professor->id_escola,
                             'matricula' => $professor->matricula,
@@ -181,63 +265,12 @@ class PessoaLegadoNormalizacaoService
                             'status' => Servidor::STATUS_ATIVO,
                         ]);
                         $stats['pessoas_criadas']++;
-                        $professor->update(['servidor_id' => $servidor->id]);
-                        $linkados++;
-
-                        continue;
                     }
 
-                    if ($dryRun) {
-                        $exists = Servidor::query()
-                            ->whereRaw('LOWER(TRIM(email)) = ?', [$email])
-                            ->exists();
-                        if (! $exists) {
-                            $stats['pessoas_criadas']++;
-                        }
-                        $linkados++;
-
-                        continue;
-                    }
-
-                    $servidor = Servidor::query()
-                        ->whereRaw('LOWER(TRIM(email)) = ?', [$email])
-                        ->orderBy('id')
-                        ->first();
-
-                    if (! $servidor) {
-                        $user = User::query()->whereRaw('LOWER(TRIM(email)) = ?', [$email])->orderBy('id')->first();
-
-                        $servidor = Servidor::query()->create([
-                            'nome' => $professor->nome ?: ($user?->name ?? 'Sem nome'),
-                            'email' => $email,
-                            'telefone' => $professor->telefone,
-                            'id_escola' => $professor->id_escola,
-                            'matricula' => $professor->matricula,
-                            'user_id' => $professor->user_id ?: $user?->id,
-                            'status' => Servidor::STATUS_ATIVO,
-                        ]);
-                        $stats['pessoas_criadas']++;
-                    } else {
-                        $updates = [];
-                        if (blank($servidor->user_id) && filled($professor->user_id)) {
-                            $updates['user_id'] = $professor->user_id;
-                        }
-                        if (blank($servidor->telefone) && filled($professor->telefone)) {
-                            $updates['telefone'] = $professor->telefone;
-                        }
-                        if (blank($servidor->nome) && filled($professor->nome)) {
-                            $updates['nome'] = $professor->nome;
-                        }
-                        if ($updates !== []) {
-                            $servidor->update($updates);
-                        }
-                    }
-
-                    $professor->update([
+                    $professor->forceFill([
                         'servidor_id' => $servidor->id,
                         'user_id' => $professor->user_id ?: $servidor->user_id,
-                        'email' => $email,
-                    ]);
+                    ])->saveQuietly();
                     $linkados++;
                 }
             });
@@ -245,18 +278,17 @@ class PessoaLegadoNormalizacaoService
         return $linkados;
     }
 
-    private function consolidarPorEmail(bool $dryRun, ?string $somenteEmail, array &$stats): int
+    private function auditarConflitosPorEmail(?string $somenteEmail): int
     {
-        $grupos = 0;
         $emailFiltro = $somenteEmail ? $this->normalizarEmail($somenteEmail) : null;
 
-        $mapa = Professor::query()
+        $grupos = Servidor::withTrashed()
             ->whereNotNull('email')
             ->where('email', '!=', '')
-            ->whereNotNull('servidor_id')
-            ->get(['id', 'email', 'servidor_id', 'nome'])
-            ->map(function (Professor $p) use ($emailFiltro): ?array {
-                $norm = $this->normalizarEmail($p->email);
+            ->orderBy('id')
+            ->get(['id', 'email'])
+            ->map(function (Servidor $pessoa) use ($emailFiltro): ?array {
+                $norm = $this->normalizarEmail($pessoa->email);
                 if (! $this->emailValido($norm)) {
                     return null;
                 }
@@ -266,346 +298,19 @@ class PessoaLegadoNormalizacaoService
 
                 return [
                     'email' => $norm,
-                    'servidor_id' => (int) $p->servidor_id,
-                    'nome' => $p->nome,
-                    'id' => (int) $p->id,
+                    'id' => (int) $pessoa->id,
                 ];
             })
             ->filter()
-            ->groupBy('email');
-
-        foreach ($mapa as $email => $rows) {
-            $servidorIds = $rows->pluck('servidor_id')->unique()->values();
-            if ($servidorIds->count() < 2) {
-                continue;
-            }
-
-            $grupos++;
-
-            // Normaliza e-mails gravados com espaço no meio
-            if (! $dryRun) {
-                Professor::query()
-                    ->whereIn('id', $rows->pluck('id')->all())
-                    ->update(['email' => $email]);
-                Servidor::query()
-                    ->whereIn('id', $servidorIds->all())
-                    ->update(['email' => $email]);
-            }
-
-            $servidores = Servidor::query()
-                ->whereIn('id', $servidorIds->all())
-                ->with(['user', 'professores', 'servidorFuncoes'])
-                ->get();
-
-            $canonica = $this->escolherCanonica($servidores);
-
-            foreach ($servidores as $duplicata) {
-                if ((int) $duplicata->id === (int) $canonica->id) {
-                    continue;
-                }
-
-                if ($dryRun) {
-                    $stats['pessoas_mescladas']++;
-
-                    continue;
-                }
-
-                $this->mesclarParaCanonica($canonica, $duplicata, $stats);
-            }
-
-            $nomes = $rows->pluck('nome')->filter()->unique()->count();
-            if ($nomes > 3) {
-                $this->anomalias[] = "E-mail {$email} consolidado com {$nomes} nomes distintos (possível e-mail institucional).";
-            }
-        }
-
-        // Também consolida servidores com mesmo e-mail mesmo sem multi servidor_id em professores
-        if (! $dryRun) {
-            $stats['pessoas_mescladas'] += $this->consolidarServidoresPorEmailDireto($emailFiltro);
-        }
-
-        return $grupos;
-    }
-
-    private function consolidarServidoresPorEmailDireto(?string $emailFiltro): int
-    {
-        $mesclados = 0;
-
-        $servidores = Servidor::query()
-            ->whereNotNull('email')
-            ->where('email', '!=', '')
-            ->orderBy('id')
-            ->get();
-
-        $grupos = $servidores
-            ->map(function (Servidor $s) use ($emailFiltro): ?array {
-                $norm = $this->normalizarEmail($s->email);
-                if (! $this->emailValido($norm)) {
-                    return null;
-                }
-                if ($emailFiltro && $norm !== $emailFiltro) {
-                    return null;
-                }
-
-                return ['email' => $norm, 'model' => $s];
-            })
-            ->filter()
             ->groupBy('email')
-            ->filter(fn (Collection $g) => $g->count() > 1);
+            ->filter(fn (Collection $grupo): bool => $grupo->count() > 1);
 
-        foreach ($grupos as $email => $grupo) {
-            /** @var Collection<int, array{email: string, model: Servidor}> $grupo */
-            $models = $grupo->pluck('model')->values();
-            Servidor::query()->whereIn('id', $models->pluck('id')->all())->update(['email' => $email]);
-
-            $canonica = $this->escolherCanonica($models);
-            $statsLocal = ['pessoas_mescladas' => 0, 'professores_linkados' => 0];
-
-            foreach ($models as $duplicata) {
-                if ((int) $duplicata->id === (int) $canonica->id) {
-                    continue;
-                }
-                $this->mesclarParaCanonica($canonica, $duplicata, $statsLocal);
-                $mesclados++;
-            }
+        foreach ($grupos as $email => $pessoas) {
+            $ids = $pessoas->pluck('id')->implode(', ');
+            $this->anomalias[] = "E-mail {$email} duplicado nas Pessoas #{$ids}; nenhuma consolidação automática foi realizada.";
         }
 
-        return $mesclados;
-    }
-
-    /** @param Collection<int, Servidor> $servidores */
-    private function escolherCanonica(Collection $servidores): Servidor
-    {
-        return $servidores->sortBy(function (Servidor $s): array {
-            $userApproved = $s->user?->email_approved ? 0 : 1;
-            $hasUser = filled($s->user_id) ? 0 : 1;
-
-            return [$hasUser, $userApproved, (int) $s->id];
-        })->first();
-    }
-
-    private function mesclarParaCanonica(Servidor $canonica, Servidor $duplicata, array &$stats): void
-    {
-        DB::transaction(function () use ($canonica, $duplicata, &$stats): void {
-            $canonica = $canonica->fresh(['user']);
-            $duplicata = $duplicata->fresh(['user', 'professores', 'servidorFuncoes', 'professorMatriculas']);
-
-            if (! $canonica || ! $duplicata || (int) $canonica->id === (int) $duplicata->id) {
-                return;
-            }
-
-            $this->preencherCamposVazios($canonica, $duplicata);
-            $this->alinharUsers($canonica, $duplicata);
-
-            foreach ($duplicata->servidorFuncoes as $vinculo) {
-                if ($this->vinculoEquivalenteExiste($canonica, $vinculo)) {
-                    $vinculo->update([
-                        'status' => ServidorFuncaoAdministrativa::STATUS_INATIVO,
-                        'data_fim' => now()->toDateString(),
-                    ]);
-
-                    continue;
-                }
-
-                $vinculo->update(['servidor_id' => $canonica->id]);
-            }
-
-            if (Schema::hasTable('professor_matriculas')) {
-                foreach ($duplicata->professorMatriculas as $mat) {
-                    $existente = ProfessorMatricula::query()
-                        ->where('servidor_id', $canonica->id)
-                        ->where('matricula', $mat->matricula)
-                        ->first();
-
-                    if ($existente) {
-                        Professor::query()
-                            ->where('professor_matricula_id', $mat->id)
-                            ->update(['professor_matricula_id' => $existente->id]);
-                        $mat->delete();
-                    } else {
-                        $mat->update(['servidor_id' => $canonica->id]);
-                    }
-                }
-            }
-
-            foreach ($duplicata->professores as $professor) {
-                $equivalente = Professor::query()
-                    ->where('servidor_id', $canonica->id)
-                    ->where('id_escola', $professor->id_escola)
-                    ->where('matricula', $professor->matricula)
-                    ->where('id', '!=', $professor->id)
-                    ->first();
-
-                if ($equivalente) {
-                    $this->realocarReferenciasProfessor($professor, $equivalente);
-                    $professor->delete();
-                } else {
-                    $professor->update([
-                        'servidor_id' => $canonica->id,
-                        'user_id' => $professor->user_id ?: $canonica->user_id,
-                        'email' => $this->normalizarEmail($professor->email) ?: $canonica->email,
-                    ]);
-                }
-            }
-
-            // Se ainda restam FKs, não apaga
-            $aindaTem = Professor::query()->where('servidor_id', $duplicata->id)->exists()
-                || ServidorFuncaoAdministrativa::query()->where('servidor_id', $duplicata->id)->exists();
-
-            if (! $aindaTem) {
-                $duplicata->delete();
-                $stats['pessoas_mescladas'] = ($stats['pessoas_mescladas'] ?? 0) + 1;
-            } else {
-                $this->anomalias[] = "Servidor #{$duplicata->id} não removido após merge para #{$canonica->id} (ainda há FKs).";
-            }
-        });
-    }
-
-    private function preencherCamposVazios(Servidor $canonica, Servidor $duplicata): void
-    {
-        $updates = [];
-        foreach (['cpf', 'email', 'telefone', 'user_id', 'matricula', 'id_escola', 'setor_id', 'nome'] as $campo) {
-            if (blank($canonica->{$campo}) && filled($duplicata->{$campo})) {
-                $updates[$campo] = $duplicata->{$campo};
-            }
-        }
-        if ($updates !== []) {
-            $canonica->update($updates);
-        }
-    }
-
-    private function alinharUsers(Servidor $canonica, Servidor $duplicata): void
-    {
-        if (filled($canonica->user_id) && filled($duplicata->user_id) && (int) $canonica->user_id !== (int) $duplicata->user_id) {
-            $preferido = $this->escolherUserPreferido(
-                User::query()->find($canonica->user_id),
-                User::query()->find($duplicata->user_id),
-            );
-
-            if ($preferido && (int) $preferido->id !== (int) $canonica->user_id) {
-                $canonica->update(['user_id' => $preferido->id]);
-            }
-
-            $descartadoId = (int) $duplicata->user_id === (int) $canonica->user_id
-                ? null
-                : (int) $duplicata->user_id;
-
-            if ($descartadoId && $preferido && $descartadoId !== (int) $preferido->id) {
-                $descartado = User::query()->find($descartadoId);
-                if ($descartado) {
-                    // Evita unique email: sufixo legado
-                    $novoEmail = $this->emailLegadoUnico($descartado->email, $descartado->id);
-                    $descartado->update([
-                        'email' => $novoEmail,
-                        'email_approved' => false,
-                    ]);
-                }
-            }
-        } elseif (blank($canonica->user_id) && filled($duplicata->user_id)) {
-            $canonica->update(['user_id' => $duplicata->user_id]);
-        }
-
-        Professor::query()
-            ->where('servidor_id', $canonica->id)
-            ->whereNull('user_id')
-            ->when(filled($canonica->user_id), fn ($q) => $q->update(['user_id' => $canonica->user_id]));
-    }
-
-    private function escolherUserPreferido(?User $a, ?User $b): ?User
-    {
-        if (! $a) {
-            return $b;
-        }
-        if (! $b) {
-            return $a;
-        }
-
-        $score = function (User $u): array {
-            return [
-                $u->email_approved ? 0 : 1,
-                $u->last_login_at ? 0 : 1,
-                - (int) $u->id,
-            ];
-        };
-
-        return $score($a) <= $score($b) ? $a : $b;
-    }
-
-    private function emailLegadoUnico(string $email, int $userId): string
-    {
-        $email = $this->normalizarEmail($email) ?? "user{$userId}@legado.local";
-        if (! str_contains($email, '@')) {
-            return "legado+{$userId}@invalid.local";
-        }
-        [$local, $domain] = explode('@', $email, 2);
-        $candidato = "{$local}.legado{$userId}@{$domain}";
-        $i = 0;
-        while (User::query()->where('email', $candidato)->where('id', '!=', $userId)->exists()) {
-            $i++;
-            $candidato = "{$local}.legado{$userId}.{$i}@{$domain}";
-        }
-
-        return $candidato;
-    }
-
-    private function vinculoEquivalenteExiste(Servidor $canonica, ServidorFuncaoAdministrativa $vinculo): bool
-    {
-        return $canonica->servidorFuncoesAtivas()
-            ->where('funcao_administrativa_id', $vinculo->funcao_administrativa_id)
-            ->when(filled($vinculo->id_escola), fn ($q) => $q->where('id_escola', $vinculo->id_escola))
-            ->when(filled($vinculo->matricula), fn ($q) => $q->where('matricula', $vinculo->matricula))
-            ->exists();
-    }
-
-    private function realocarReferenciasProfessor(Professor $duplicata, Professor $canonica): void
-    {
-        $tabelas = [
-            ['turma_componente_professor', 'professor_id'],
-
-        ];
-
-        foreach ($tabelas as [$tabela, $coluna]) {
-            if (! Schema::hasTable($tabela) || ! Schema::hasColumn($tabela, $coluna)) {
-                continue;
-            }
-
-            // turma_componente_professor tem unique (turma_id, componente) — evita conflito
-            if ($tabela === 'turma_componente_professor') {
-                $rows = DB::table($tabela)->where($coluna, $duplicata->id)->get();
-                foreach ($rows as $row) {
-                    $exists = DB::table($tabela)
-                        ->where('turma_id', $row->turma_id)
-                        ->where('componente_curricular_id', $row->componente_curricular_id)
-                        ->where('professor_id', $canonica->id)
-                        ->exists();
-
-                    if ($exists) {
-                        DB::table($tabela)->where('id', $row->id)->update([
-                            'professor_id' => null,
-                            'tem_professor' => false,
-                        ]);
-                    } else {
-                        DB::table($tabela)->where('id', $row->id)->update(['professor_id' => $canonica->id]);
-                    }
-                }
-
-                continue;
-            }
-
-            DB::table($tabela)
-                ->where($coluna, $duplicata->id)
-                ->update([$coluna => $canonica->id]);
-        }
-
-        if (
-            Schema::hasColumn('professores', 'servidor_funcao_administrativa_id')
-            && blank($canonica->servidor_funcao_administrativa_id)
-            && filled($duplicata->servidor_funcao_administrativa_id)
-        ) {
-            $canonica->update([
-                'servidor_funcao_administrativa_id' => $duplicata->servidor_funcao_administrativa_id,
-            ]);
-        }
+        return $grupos->count();
     }
 
     private function materializarMatriculas(bool $dryRun, ?string $somenteEmail, array &$stats): int
@@ -775,17 +480,49 @@ class PessoaLegadoNormalizacaoService
                 $sincronizados++;
             }
 
-            // Alinha user_id e roles sem resetar senha
+            // Alinha user_id e roles sem usar e-mail como identificador de pessoa.
             $email = $this->normalizarEmail($servidor->email);
             if ($email && $this->emailValido($email)) {
-                $user = $servidor->user
-                    ?: User::query()->whereRaw('LOWER(TRIM(email)) = ?', [$email])->orderBy('id')->first();
+                $user = $servidor->user;
+                $acessoBloqueado = false;
 
-                if ($user && (int) ($servidor->user_id ?? 0) !== (int) $user->id) {
+                if (! $user) {
+                    $userIds = $servidor->professores()
+                        ->whereNotNull('user_id')
+                        ->distinct()
+                        ->pluck('user_id')
+                        ->map(fn ($id): int => (int) $id)
+                        ->values();
+
+                    if ($userIds->count() > 1) {
+                        $this->anomalias[] = "Pessoa #{$servidor->id} não teve acesso alinhado: seus professores apontam para mais de um usuário.";
+                        $acessoBloqueado = true;
+                    } elseif ($userIds->count() === 1) {
+                        $candidato = User::withTrashed()->find($userIds->first());
+                        $pertenceAOutraPessoa = $candidato && Pessoa::withTrashed()
+                            ->where('user_id', $candidato->id)
+                            ->whereKeyNot($servidor->id)
+                            ->exists();
+
+                        if (! $candidato || $candidato->trashed() || $pertenceAOutraPessoa) {
+                            $this->anomalias[] = "Pessoa #{$servidor->id} não teve acesso alinhado: o user_id dos professores está indisponível ou pertence a outra Pessoa.";
+                            $acessoBloqueado = true;
+                        } else {
+                            $user = $candidato;
+                        }
+                    }
+                }
+
+                if ($user?->trashed()) {
+                    $this->anomalias[] = "Pessoa #{$servidor->id} não teve acesso alinhado: a conta vinculada está arquivada.";
+                    $acessoBloqueado = true;
+                }
+
+                if (! $acessoBloqueado && $user && (int) ($servidor->user_id ?? 0) !== (int) $user->id) {
                     $servidor->update(['user_id' => $user->id]);
                 }
 
-                if ($user) {
+                if (! $acessoBloqueado && $user) {
                     Professor::query()
                         ->where('servidor_id', $servidor->id)
                         ->where(function ($q) use ($user): void {
@@ -804,13 +541,21 @@ class PessoaLegadoNormalizacaoService
                         // best-effort
                     }
                 } elseif (
-                    $servidor->professores()->where('ativo', true)->exists()
+                    ! $acessoBloqueado
+                    && $servidor->professores()->where('ativo', true)->exists()
                     && filled($servidor->email)
                     && Professor::emailInstitucionalValido($servidor->email)
                 ) {
-                    // Cria user só se não existir — provisionarUsuarioProfessor não reseta se já houver
-                    $this->acessoService->provisionarUsuarioProfessor($servidor->fresh(['professores', 'user']));
-                    $stats['users_alinhados'] = ($stats['users_alinhados'] ?? 0) + 1;
+                    $contaComMesmoEmail = User::withTrashed()
+                        ->whereRaw('LOWER(TRIM(email)) = ?', [$email])
+                        ->first();
+
+                    if ($contaComMesmoEmail) {
+                        $this->anomalias[] = "Pessoa #{$servidor->id} não foi vinculada automaticamente à conta #{$contaComMesmoEmail->id}: e-mail não é identificador seguro.";
+                    } else {
+                        $this->acessoService->provisionarUsuarioProfessor($servidor->fresh(['professores', 'user']));
+                        $stats['users_alinhados'] = ($stats['users_alinhados'] ?? 0) + 1;
+                    }
                 }
             }
 
@@ -848,13 +593,6 @@ class PessoaLegadoNormalizacaoService
 
     private function normalizarEmail(?string $email): ?string
     {
-        if (blank($email)) {
-            return null;
-        }
-
-        // Remove espaços internos comuns em legado: "nome @dominio"
-        $email = Str::lower(preg_replace('/\s+/', '', trim((string) $email)) ?? '');
-
-        return $email !== '' ? $email : null;
+        return Pessoa::normalizarEmail($email);
     }
 }

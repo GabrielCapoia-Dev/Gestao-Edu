@@ -121,19 +121,6 @@ class UserForm
                     ? Gate::allows('applyPermissions', $record)
                     : Gate::allows('applyPermissionsAny', User::class)),
 
-            Toggle::make('email_approved')
-                ->label('Verificação de acesso')
-                ->helperText('Ative para permittir o acesso ao sistema.')
-                ->onColor('success')
-                ->offColor('danger')
-                ->onIcon('heroicon-s-check')
-                ->offIcon('heroicon-s-x-mark')
-                ->default(true)
-                ->visible(
-                    fn(?User $record, string $context) =>
-                    $service->podeVerToggleAprovacaoEmail($user, $record, $context)
-                ),
-
             Toggle::make('usar_permissoes_extras')
                 ->label('Permissões adicionais')
                 ->helperText('Ative para conceder permissões específicas além do nível de acesso.')

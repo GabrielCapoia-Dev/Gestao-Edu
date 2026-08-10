@@ -43,7 +43,7 @@ class PessoaMatricula extends Model
 
     public function pessoa(): BelongsTo
     {
-        return $this->belongsTo(Pessoa::class, 'servidor_id');
+        return $this->belongsTo(Pessoa::class, 'servidor_id')->withTrashed();
     }
 
     /** @alias compatibilidade */

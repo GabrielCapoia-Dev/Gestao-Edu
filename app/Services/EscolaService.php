@@ -118,7 +118,8 @@ class EscolaService
                         DB::table('users')->where('id_escola', $record->id)->exists() ||
                         DB::table('escola_user')->where('escola_id', $record->id)->exists() ||
                         DB::table('turmas')->where('id_escola', $record->id)->exists() ||
-                        DB::table('professores')->where('id_escola', $record->id)->exists();
+                        DB::table('professores')->where('id_escola', $record->id)->exists() ||
+                        DB::table('pedidos')->where('escola_id', $record->id)->exists();
 
                     if ($possuiVinculo) {
                         Notification::make()

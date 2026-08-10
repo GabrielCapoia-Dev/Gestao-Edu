@@ -306,7 +306,7 @@
         <div>
             <div class="pedido-view__title">Protocolo {{ $pedido->numero_protocolo }}</div>
             <div class="pedido-view__subtitle">
-                {{ $pedido->tipoManutencao?->nome ?? 'Tipo não informado' }} | {{ $pedido->escola?->nome ?? 'Escola não informada' }}
+                {{ $pedido->tipoManutencao?->nome ?? 'Tipo não informado' }} | {{ $pedido->escolaNomeExibicao() }}
             </div>
         </div>
 
@@ -356,7 +356,7 @@
             </div>
             <div class="pedido-view__field pedido-view__field--wide">
                 <span class="pedido-view__label">Solicitante</span>
-                <span class="pedido-view__value">{{ $pedido->nome_solicitante ?? '-' }} | {{ $pedido->solicitante?->email ?? 'sem e-mail' }}</span>
+                <span class="pedido-view__value">{{ $pedido->nome_solicitante ?? '-' }} | {{ $pedido->solicitanteUsuarioEmailExibicao() ?? 'sem e-mail' }}</span>
             </div>
             <div class="pedido-view__field">
                 <span class="pedido-view__label">Setor</span>
@@ -417,7 +417,7 @@
                 </div>
                 <div class="pedido-view__field">
                     <span class="pedido-view__label">Escola</span>
-                    <span class="pedido-view__value">{{ $pedidoOriginal->escola?->nome ?? '-' }}</span>
+                    <span class="pedido-view__value">{{ $pedidoOriginal->escolaNomeExibicao() }}</span>
                 </div>
                 <div class="pedido-view__field">
                     <span class="pedido-view__label">Setor atual</span>
@@ -429,7 +429,7 @@
                 </div>
                 <div class="pedido-view__field pedido-view__field--wide">
                     <span class="pedido-view__label">Solicitante</span>
-                    <span class="pedido-view__value">{{ $pedidoOriginal->nome_solicitante ?? '-' }} | {{ $pedidoOriginal->solicitante?->email ?? 'sem e-mail' }}</span>
+                    <span class="pedido-view__value">{{ $pedidoOriginal->nome_solicitante ?? '-' }} | {{ $pedidoOriginal->solicitanteUsuarioEmailExibicao() ?? 'sem e-mail' }}</span>
                 </div>
                 <div class="pedido-view__field">
                     <span class="pedido-view__label">Solicitado em</span>
@@ -471,7 +471,7 @@
                                 alt="{{ $arquivo->nome_original }}"
                                 x-on:click="fullscreen = '{{ Storage::url($arquivo->caminho) }}'">
                             <span class="pedido-view__value">{{ $arquivo->nome_original }}</span>
-                            <span class="pedido-view__subtitle">{{ $arquivo->created_at?->format('d/m/Y H:i') }} | {{ $arquivo->usuario?->name ?? 'Sistema' }}</span>
+                            <span class="pedido-view__subtitle">{{ $arquivo->created_at?->format('d/m/Y H:i') }} | {{ $arquivo->usuarioNomeExibicao() }}</span>
                         </div>
                     @endforeach
                 </div>
@@ -505,7 +505,7 @@
                                 </span>
                             </td>
                             <td>{{ $item->setor?->nome ?? '-' }}</td>
-                            <td>{{ $item->usuario?->name ?? 'Sistema' }}</td>
+                            <td>{{ $item->usuarioNomeExibicao() }}</td>
                             <td>{{ $item->descricao_alteracao ?? '-' }}</td>
                         </tr>
                     @empty

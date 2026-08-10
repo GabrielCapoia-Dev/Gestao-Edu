@@ -98,11 +98,11 @@ class EventoTransporteAlocacaoServiceTest extends TestCase
 
         app(ServidorService::class)->excluirPessoa($motorista);
 
-        $this->assertDatabaseMissing('servidores', ['id' => $motorista->id]);
+        $this->assertSoftDeleted('servidores', ['id' => $motorista->id]);
         $this->assertDatabaseHas('eventos_calendario', ['id' => $evento->id]);
         $this->assertDatabaseHas('evento_calendario_transporte_alocacoes', [
             'id' => $alocacao->id,
-            'motorista_id' => null,
+            'motorista_id' => $motorista->id,
             'motorista_nome' => 'Motorista histórico',
             'motorista_cpf' => '10987654321',
             'motorista_matricula' => 'MOT-10',

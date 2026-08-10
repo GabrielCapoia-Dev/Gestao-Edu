@@ -120,17 +120,17 @@ class EventoCalendario extends Model
 
     public function criadoPor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'criado_por_id');
+        return $this->belongsTo(User::class, 'criado_por_id')->withTrashed();
     }
 
     public function atualizadoPor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'atualizado_por_id');
+        return $this->belongsTo(User::class, 'atualizado_por_id')->withTrashed();
     }
 
     public function excluidoPor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'excluido_por_id');
+        return $this->belongsTo(User::class, 'excluido_por_id')->withTrashed();
     }
 
     public function ultimaImportacao(): BelongsTo

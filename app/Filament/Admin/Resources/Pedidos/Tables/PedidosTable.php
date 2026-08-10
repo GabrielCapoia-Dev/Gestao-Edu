@@ -72,8 +72,7 @@ class PedidosTable
                     'setor',
                     'setorOrigem',
                     'empresaContratada',
-                    'solicitante.escola',
-                    'solicitante.escolas',
+                    'solicitante',
                     'comentarioGestorUsuario',
                     'ultimoFeedback.itens.problema',
                     'feedbackItens.feedback.itens.problema',
@@ -1410,16 +1409,8 @@ class PedidosTable
 
     private static function nomeEscolaDoPedido(Pedido $record): ?string
     {
-        if (filled($record->escola?->nome)) {
-            return $record->escola->nome;
-        }
-
-        if (filled($record->solicitante?->escola?->nome)) {
-            return $record->solicitante->escola->nome;
-        }
-
-        $escolas = $record->solicitante?->escolas;
-
-        return $escolas?->count() === 1 ? $escolas->first()?->nome : null;
+        return filled($record->escola?->nome)
+            ? $record->escola->nome
+            : (filled($record->escola_nome_snapshot) ? $record->escola_nome_snapshot : null);
     }
 }

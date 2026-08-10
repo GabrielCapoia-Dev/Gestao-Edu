@@ -237,9 +237,49 @@ class PessoaScopeService
             return true;
         }
 
+        if ($pessoa->trashed()) {
+            return $this->applyPessoaArchivedScope(
+                Servidor::withTrashed()->whereKey($pessoa->getKey()),
+                $user,
+            )->exists();
+        }
+
         $query = Servidor::query()->whereKey($pessoa->getKey());
 
         return $this->applyPessoaScope($query, $user)->exists();
+    }
+
+    private function applyPessoaArchivedScope(Builder $query, User $user): Builder
+    {
+        $escolaIds = $this->escolaIdsDosVinculos($user);
+
+        if ($escolaIds !== []) {
+            return $query->where(function (Builder $pessoas) use ($escolaIds): void {
+                $pessoas
+                    ->whereIn('id_escola', $escolaIds)
+                    ->orWhereHas('professores', fn (Builder $professores): Builder => $professores
+                        ->whereIn('id_escola', $escolaIds))
+                    ->orWhereHas('vinculos', fn (Builder $vinculos): Builder => $vinculos
+                        ->whereIn('id_escola', $escolaIds));
+            });
+        }
+
+        if ($this->usaEscopoPorVinculos($user)) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        $setorIds = $this->visibleSetorIds($user);
+
+        if ($setorIds === []) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->where(function (Builder $pessoas) use ($setorIds): void {
+            $pessoas
+                ->whereIn('setor_id', $setorIds)
+                ->orWhereHas('vinculos', fn (Builder $vinculos): Builder => $vinculos
+                    ->whereIn('setor_id', $setorIds));
+        });
     }
 
     /** @return array<int, int> */

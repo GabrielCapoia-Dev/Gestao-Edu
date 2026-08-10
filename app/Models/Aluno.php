@@ -200,7 +200,7 @@ class Aluno extends Model
 
     public function statusAlteradoPor()
     {
-        return $this->belongsTo(User::class, 'status_alterado_por');
+        return $this->belongsTo(User::class, 'status_alterado_por')->withTrashed();
     }
 
     public function alunoOrigem()

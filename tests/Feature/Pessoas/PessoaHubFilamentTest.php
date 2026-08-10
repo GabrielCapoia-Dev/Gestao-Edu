@@ -646,7 +646,7 @@ class PessoaHubFilamentTest extends TestCase
             ->assertCanSeeTableRecords([$novaPessoa]);
     }
 
-    public function test_exclui_pessoa_sem_avaliacoes_e_limpa_lotacoes(): void
+    public function test_arquiva_pessoa_e_preserva_registro_profissional(): void
     {
         $usuario = $this->usuarioHubAdmin(['Listar Pessoas', 'Excluir Pessoas']);
         $setor = $this->criarSetor('Pedagógico');
@@ -665,8 +665,12 @@ class PessoaHubFilamentTest extends TestCase
 
         app(ServidorService::class)->excluirPessoa($servidor->fresh());
 
-        $this->assertDatabaseMissing('servidores', ['id' => $servidor->id]);
-        $this->assertDatabaseMissing('professores', ['id' => $professor->id]);
+        $this->assertSoftDeleted('servidores', ['id' => $servidor->id]);
+        $this->assertDatabaseHas('professores', [
+            'id' => $professor->id,
+            'servidor_id' => $servidor->id,
+            'ativo' => false,
+        ]);
     }
 
     public function test_cargo_motorista_nao_pode_mais_ser_atribuido_e_registros_historicos_sao_preservados(): void

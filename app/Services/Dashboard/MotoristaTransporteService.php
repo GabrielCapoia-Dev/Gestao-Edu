@@ -68,12 +68,18 @@ class MotoristaTransporteService
         $dados = $this->validarDados($dados, permitirPessoaExistente: true);
 
         return DB::transaction(function () use ($ator, $dados): Servidor {
-            $motorista = Servidor::query()
+            $motorista = Servidor::withTrashed()
                 ->where('cpf', $dados['cpf'])
                 ->lockForUpdate()
                 ->first();
 
             if ($motorista) {
+                if ($motorista->trashed()) {
+                    throw ValidationException::withMessages([
+                        'cpf' => 'A pessoa localizada por este CPF está arquivada. Restaure o cadastro antes de criar o vínculo de motorista.',
+                    ]);
+                }
+
                 $this->validarReutilizacao($motorista, $dados);
 
                 if ($motorista->status !== Pessoa::STATUS_ATIVO) {

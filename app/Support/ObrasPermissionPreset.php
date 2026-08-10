@@ -10,7 +10,6 @@ class ObrasPermissionPreset
     public static function permissions(): array
     {
         return [
-            ListaPermissoes::AcessarPainel,
             ListaPermissoes::VisualizarTelaDeInicio,
             ListaPermissoes::ComentarPedidos,
             ListaPermissoes::CriarNotificacoes,

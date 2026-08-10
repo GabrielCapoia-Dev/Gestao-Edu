@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Enums\TipoArquivoPedido;
 use App\Models\EmpresaContratada;
+use App\Support\UserActorSnapshot;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 
@@ -49,6 +50,18 @@ class Pedido extends Model
 
         'quantidade_dias_prorrogado',
 
+        'escola_id_legado',
+        'escola_nome_snapshot',
+        'escola_codigo_snapshot',
+        'solicitante_id_legado',
+        'solicitante_nome_snapshot',
+        'solicitante_email_snapshot',
+        'responsavel_id_legado',
+        'responsavel_nome_snapshot',
+        'responsavel_email_snapshot',
+        'comentario_gestor_user_id_legado',
+        'comentario_gestor_user_nome_snapshot',
+        'comentario_gestor_user_email_snapshot',
         'ativo',
     ];
 
@@ -100,7 +113,11 @@ class Pedido extends Model
                     : null)
                     ?: User::query()->whereKey($pedido->solicitante_id)->value('setor_id');
             }
+
+            self::sincronizarSnapshots($pedido);
         });
+
+        static::updating(fn (Pedido $pedido) => self::sincronizarSnapshots($pedido));
     }
 
     // public static function gerarProtocolo(): string
@@ -188,17 +205,17 @@ class Pedido extends Model
 
     public function solicitante()
     {
-        return $this->belongsTo(User::class, 'solicitante_id');
+        return UserActorSnapshot::relation($this->belongsTo(User::class, 'solicitante_id'));
     }
 
     public function responsavel()
     {
-        return $this->belongsTo(User::class, 'responsavel_id');
+        return UserActorSnapshot::relation($this->belongsTo(User::class, 'responsavel_id'));
     }
 
     public function comentarioGestorUsuario()
     {
-        return $this->belongsTo(User::class, 'comentario_gestor_user_id');
+        return UserActorSnapshot::relation($this->belongsTo(User::class, 'comentario_gestor_user_id'));
     }
 
     public function setor()
@@ -244,5 +261,127 @@ class Pedido extends Model
     public function empresaContratada()
     {
         return $this->belongsTo(EmpresaContratada::class, 'empresa_contratada_id');
+    }
+
+    public function solicitanteUsuarioNomeExibicao(): string
+    {
+        return UserActorSnapshot::displayName(
+            $this->solicitante,
+            $this->solicitante_nome_snapshot,
+            $this->solicitante_id_legado,
+            $this->solicitante_id,
+        );
+    }
+
+    public function solicitanteUsuarioEmailExibicao(): ?string
+    {
+        return UserActorSnapshot::displayEmail($this->solicitante, $this->solicitante_email_snapshot);
+    }
+
+    public function responsavelNomeExibicao(): string
+    {
+        return UserActorSnapshot::displayName(
+            $this->responsavel,
+            $this->responsavel_nome_snapshot,
+            $this->responsavel_id_legado,
+            $this->responsavel_id,
+        );
+    }
+
+    public function comentarioGestorUsuarioNomeExibicao(): string
+    {
+        return UserActorSnapshot::displayName(
+            $this->comentarioGestorUsuario,
+            $this->comentario_gestor_user_nome_snapshot,
+            $this->comentario_gestor_user_id_legado,
+            $this->comentario_gestor_user_id,
+        );
+    }
+
+    public function escolaNomeExibicao(): string
+    {
+        return filled($this->escola?->nome)
+            ? (string) $this->escola->nome
+            : (filled($this->escola_nome_snapshot) ? (string) $this->escola_nome_snapshot : 'Escola não disponível');
+    }
+
+    private static function sincronizarSnapshots(Pedido $pedido): void
+    {
+        self::sincronizarSnapshotUsuario(
+            $pedido,
+            'solicitante_id',
+            'solicitante_id_legado',
+            'solicitante_nome_snapshot',
+            'solicitante_email_snapshot',
+        );
+        self::sincronizarSnapshotUsuario(
+            $pedido,
+            'responsavel_id',
+            'responsavel_id_legado',
+            'responsavel_nome_snapshot',
+            'responsavel_email_snapshot',
+        );
+        self::sincronizarSnapshotUsuario(
+            $pedido,
+            'comentario_gestor_user_id',
+            'comentario_gestor_user_id_legado',
+            'comentario_gestor_user_nome_snapshot',
+            'comentario_gestor_user_email_snapshot',
+        );
+
+        $escolaId = (int) $pedido->escola_id;
+
+        if (! $escolaId) {
+            return;
+        }
+
+        $escolaMudou = $pedido->isDirty('escola_id');
+        $pedido->escola_id_legado = $escolaMudou || blank($pedido->escola_id_legado)
+            ? $escolaId
+            : $pedido->escola_id_legado;
+
+        if (! $escolaMudou && filled($pedido->escola_nome_snapshot) && filled($pedido->escola_codigo_snapshot)) {
+            return;
+        }
+
+        $escola = Escola::query()->find($escolaId);
+
+        if ($escola) {
+            $pedido->escola_nome_snapshot = $escola->nome;
+            $pedido->escola_codigo_snapshot = $escola->codigo;
+        }
+    }
+
+    private static function sincronizarSnapshotUsuario(
+        Pedido $pedido,
+        string $idColumn,
+        string $legacyColumn,
+        string $nameColumn,
+        string $emailColumn,
+    ): void {
+        $userId = (int) $pedido->{$idColumn};
+
+        if (! $userId) {
+            return;
+        }
+
+        $actorMudou = $pedido->isDirty($idColumn);
+        $pedido->{$legacyColumn} = $actorMudou || blank($pedido->{$legacyColumn})
+            ? $userId
+            : $pedido->{$legacyColumn};
+
+        if (! $actorMudou && filled($pedido->{$nameColumn}) && filled($pedido->{$emailColumn})) {
+            return;
+        }
+
+        $snapshot = UserActorSnapshot::values(UserActorSnapshot::find($userId));
+
+        if ($snapshot['nome']) {
+            $pedido->{$nameColumn} = $snapshot['nome'];
+        }
+
+        if ($snapshot['email']) {
+            $pedido->{$emailColumn} = $snapshot['email'];
+        }
     }
 }

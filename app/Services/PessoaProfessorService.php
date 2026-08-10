@@ -736,7 +736,7 @@ class PessoaProfessorService
             'setor_id' => $setorIds->first(),
         ]);
 
-        if ($pessoa->user) {
+        if ($pessoa->user && ! $pessoa->user->trashed()) {
             $payload = [
                 'name' => $pessoa->nome,
                 'id_escola' => $escolaIds->first() ?: $pessoa->user->id_escola,
@@ -747,7 +747,7 @@ class PessoaProfessorService
             $email = filled($pessoa->email) ? Professor::normalizarEmail((string) $pessoa->email) : null;
             if (
                 $email
-                && ! User::query()
+                && ! User::withTrashed()
                     ->where('email', $email)
                     ->where('id', '!=', $pessoa->user->id)
                     ->exists()

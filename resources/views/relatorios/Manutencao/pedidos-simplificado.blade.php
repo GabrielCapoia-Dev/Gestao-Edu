@@ -189,7 +189,7 @@
                 <tr>
                     <td>
                         <strong>Escola:</strong>
-                        {{ $escola?->nome ?? 'Não informado' }}
+                        {{ $pedido->escolaNomeExibicao() }}
                     </td>
                     <td>
                         <strong>Solicitante:</strong>
@@ -203,7 +203,7 @@
                 <tr>
                     <td>
                         <strong>E-mail:</strong>
-                        {{ $pedido->solicitante?->email ?? 'Não informado' }}
+                        {{ $pedido->solicitanteUsuarioEmailExibicao() ?? 'Não informado' }}
                     </td>
                     <td colspan="2">
                         <strong>Endereco:</strong>

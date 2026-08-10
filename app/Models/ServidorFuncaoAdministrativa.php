@@ -47,7 +47,7 @@ class ServidorFuncaoAdministrativa extends Pivot
 
     public function servidor(): BelongsTo
     {
-        return $this->belongsTo(Servidor::class, 'servidor_id');
+        return $this->belongsTo(Servidor::class, 'servidor_id')->withTrashed();
     }
 
     public function funcaoAdministrativa(): BelongsTo

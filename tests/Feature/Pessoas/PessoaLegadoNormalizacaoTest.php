@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\PessoaLegadoNormalizacaoService;
 use Database\Seeders\PessoaLegadoNormalizacaoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class PessoaLegadoNormalizacaoTest extends TestCase
@@ -47,7 +48,7 @@ class PessoaLegadoNormalizacaoTest extends TestCase
         $this->assertGreaterThanOrEqual(1, $stats['pessoas_criadas']);
     }
 
-    public function test_mesmo_email_duas_escolas_vira_uma_pessoa(): void
+    public function test_mesmo_email_sem_identificador_forte_nao_mescla_professores(): void
     {
         $this->seedCargo();
         $escolaA = $this->criarEscola('Escola Norte');
@@ -70,24 +71,29 @@ class PessoaLegadoNormalizacaoTest extends TestCase
             'ativo' => true,
         ]));
 
-        app(PessoaLegadoNormalizacaoService::class)->normalizar();
+        $stats = app(PessoaLegadoNormalizacaoService::class)->normalizar();
 
         $p1->refresh();
         $p2->refresh();
 
         $this->assertNotNull($p1->servidor_id);
-        $this->assertSame((int) $p1->servidor_id, (int) $p2->servidor_id);
+        $this->assertNull($p2->servidor_id);
         $this->assertSame(1, Servidor::query()->where('email', 'bruno.multi@edu.umuarama.pr.gov.br')->count());
         $this->assertSame(1, ProfessorMatricula::query()->where('servidor_id', $p1->servidor_id)->count());
-        $this->assertCount(2, Professor::query()->where('servidor_id', $p1->servidor_id)->get());
+        $this->assertCount(1, Professor::query()->where('servidor_id', $p1->servidor_id)->get());
+        $this->assertNotEmpty($stats['anomalias']);
     }
 
     public function test_mesmo_email_duas_matriculas_cria_duas_professor_matriculas(): void
     {
         $this->seedCargo();
         $escola = $this->criarEscola('Escola Dupla');
+        $user = User::factory()->create([
+            'email' => 'carla.dupla@edu.umuarama.pr.gov.br',
+        ]);
 
         Professor::withoutEvents(fn () => Professor::query()->create([
+            'user_id' => $user->id,
             'id_escola' => $escola->id,
             'matricula' => 'MAT-MANHA',
             'turno' => 'manha',
@@ -96,6 +102,7 @@ class PessoaLegadoNormalizacaoTest extends TestCase
             'ativo' => true,
         ]));
         Professor::withoutEvents(fn () => Professor::query()->create([
+            'user_id' => $user->id,
             'id_escola' => $escola->id,
             'matricula' => 'MAT-TARDE',
             'turno' => 'tarde',
@@ -115,7 +122,7 @@ class PessoaLegadoNormalizacaoTest extends TestCase
         );
     }
 
-    public function test_mescla_servidores_duplicados_do_mesmo_email(): void
+    public function test_apenas_audita_servidores_duplicados_do_mesmo_email(): void
     {
         $this->seedCargo();
         $escolaA = $this->criarEscola('Escola TCP A');
@@ -132,11 +139,14 @@ class PessoaLegadoNormalizacaoTest extends TestCase
             'user_id' => $user->id,
             'status' => Servidor::STATUS_ATIVO,
         ]);
-        $s2 = Servidor::query()->create([
+        $s2Id = DB::table('servidores')->insertGetId([
             'nome' => 'TCP Dois',
             'email' => 'tcp.prof@edu.umuarama.pr.gov.br',
             'status' => Servidor::STATUS_ATIVO,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
+        $s2 = Servidor::query()->findOrFail($s2Id);
 
         $p1 = Professor::withoutEvents(fn () => Professor::query()->create([
             'servidor_id' => $s1->id,
@@ -158,12 +168,14 @@ class PessoaLegadoNormalizacaoTest extends TestCase
             'ativo' => true,
         ]));
 
-        app(PessoaLegadoNormalizacaoService::class)->normalizar();
+        $stats = app(PessoaLegadoNormalizacaoService::class)->normalizar();
 
-        $this->assertSame(1, Servidor::query()->where('email', 'tcp.prof@edu.umuarama.pr.gov.br')->count());
-        $this->assertDatabaseMissing('servidores', ['id' => $s2->id]);
-        $this->assertSame((int) $p1->fresh()->servidor_id, (int) $p2->fresh()->servidor_id);
-        $this->assertSame(1, ProfessorMatricula::query()->where('matricula', 'TCP-1')->count());
+        $this->assertSame(2, Servidor::query()->where('email', 'tcp.prof@edu.umuarama.pr.gov.br')->count());
+        $this->assertDatabaseHas('servidores', ['id' => $s2->id]);
+        $this->assertNotSame((int) $p1->fresh()->servidor_id, (int) $p2->fresh()->servidor_id);
+        $this->assertSame(2, ProfessorMatricula::query()->where('matricula', 'TCP-1')->count());
+        $this->assertSame(1, $stats['grupos_email']);
+        $this->assertNotEmpty($stats['anomalias']);
     }
 
     public function test_rerun_e_noop_quando_normalizado(): void

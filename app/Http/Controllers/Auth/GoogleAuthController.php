@@ -53,14 +53,13 @@ class GoogleAuthController extends Controller
             $oauthUser = Socialite::driver('google')->user();
             $user = $service->registrarOuLogar($oauthUser);
 
-            // Impacto: login Google pode criar/localizar usuario antes da aprovacao. Este bloqueio impede acesso ao painel ate email_approved/permissoes estarem validos.
             if (! $user->canAccessAdminPanel()) {
                 session()->forget('google_auth.redirect_to');
 
                 Notification::make()
-                    ->title('Aguardando aprovação')
-                    ->body('Seu cadastro foi localizado, mas o acesso ainda depende da aprovação do administrador.')
-                    ->warning()
+                    ->title('Acesso indisponível')
+                    ->body('Seu cadastro de servidor está inativo.')
+                    ->danger()
                     ->persistent()
                     ->send();
 

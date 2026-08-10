@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\UserActorSnapshot;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -30,6 +31,9 @@ class ExportRequest extends Model
 
     protected $fillable = [
         'user_id',
+        'user_id_legado',
+        'user_nome_snapshot',
+        'user_email_snapshot',
         'type',
         'format',
         'label',
@@ -78,6 +82,14 @@ class ExportRequest extends Model
             if (! $exportRequest->getKey()) {
                 $exportRequest->{$exportRequest->getKeyName()} = (string) Str::uuid();
             }
+
+            if (filled($exportRequest->user_id)) {
+                $user = UserActorSnapshot::find((int) $exportRequest->user_id);
+
+                $exportRequest->user_id_legado ??= $exportRequest->user_id;
+                $exportRequest->user_nome_snapshot ??= $user?->name;
+                $exportRequest->user_email_snapshot ??= $user?->email;
+            }
         });
 
         static::saved(fn (ExportRequest $exportRequest): mixed => static::forgetActiveExportsCache($exportRequest));
@@ -95,7 +107,17 @@ class ExportRequest extends Model
 
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return UserActorSnapshot::relation($this->belongsTo(User::class));
+    }
+
+    public function autorNome(): string
+    {
+        return UserActorSnapshot::displayName(
+            $this->user,
+            $this->user_nome_snapshot,
+            $this->user_id_legado,
+            $this->user_id,
+        );
     }
 
     public function getProgressPercentageAttribute(): int

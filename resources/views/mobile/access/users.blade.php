@@ -5,9 +5,9 @@
 @section('content')
     <section class="mobile-page-intro">
         <p class="mobile-page-intro__eyebrow">Usuários</p>
-        <h1 class="mobile-page-intro__title">Visao resumida dos acessos ativos.</h1>
+        <h1 class="mobile-page-intro__title">Visão resumida dos usuários.</h1>
         <p class="mobile-page-intro__subtitle">
-            Consulte o status de liberacao, escola, setor e níveis sem depender das telas administrativas do desktop.
+            Consulte o status do servidor, escola, setor e níveis sem depender das telas administrativas do desktop.
         </p>
     </section>
 
@@ -17,7 +17,7 @@
             <strong>{{ number_format($stats['total'], 0, ',', '.') }}</strong>
         </article>
         <article class="mobile-stat-card">
-            <small>Acessos liberados</small>
+            <small>Servidores ativos</small>
             <strong>{{ number_format($stats['approved'], 0, ',', '.') }}</strong>
         </article>
         <article class="mobile-stat-card">
@@ -44,8 +44,8 @@
                         <p>{{ $user->email }}</p>
                     </div>
 
-                    <span class="mobile-status-badge {{ $user->email_approved ? 'is-success' : 'is-warning' }}">
-                        {{ $user->email_approved ? 'Liberado' : 'Pendente' }}
+                    <span class="mobile-status-badge {{ $user->canAuthenticate() ? 'is-success' : 'is-warning' }}">
+                        {{ $user->canAuthenticate() ? 'Ativo' : 'Inativo' }}
                     </span>
                 </div>
 

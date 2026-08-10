@@ -45,7 +45,7 @@ class ReservaVeiculo extends Model
 
     public function usuario(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'usuario_id');
+        return $this->belongsTo(User::class, 'usuario_id')->withTrashed();
     }
 
     public function escola(): BelongsTo
@@ -55,17 +55,17 @@ class ReservaVeiculo extends Model
 
     public function criadoPor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'criado_por_id');
+        return $this->belongsTo(User::class, 'criado_por_id')->withTrashed();
     }
 
     public function atualizadoPor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'atualizado_por_id');
+        return $this->belongsTo(User::class, 'atualizado_por_id')->withTrashed();
     }
 
     public function canceladoPor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'cancelado_por_id');
+        return $this->belongsTo(User::class, 'cancelado_por_id')->withTrashed();
     }
 
     public function scopeAtivas(Builder $query): Builder

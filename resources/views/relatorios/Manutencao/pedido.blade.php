@@ -183,7 +183,7 @@
         <tr>
             <td class="espaco-line">
                 <strong>Escola:</strong><br>
-                {{ $escola?->nome ?? 'Não informado' }}
+                {{ $pedido->escolaNomeExibicao() }}
             </td>
             <td class="espaco-line">
                 <strong>Solicitante:</strong><br>
@@ -198,7 +198,7 @@
         <tr>
             <td class="espaco-line">
                 <strong>E-mail:</strong><br>
-                {{ $pedido->solicitante?->email ?? 'Não informado' }}
+                {{ $pedido->solicitanteUsuarioEmailExibicao() ?? 'Não informado' }}
             </td>
             <td colspan="2" class="espaco-line">
                 <strong>Endereco:</strong><br>
@@ -366,7 +366,7 @@
                                     <td>{{ $formatarTipoArquivo($arquivo) }}</td>
                                     <td>{{ $arquivo->nome_original ?? basename((string) $arquivo->caminho) }}</td>
                                     <td>{{ $arquivo->descricao ?: '-' }}</td>
-                                    <td>{{ $arquivo->usuario?->name ?? 'Sistema' }}</td>
+                                    <td>{{ $arquivo->usuarioNomeExibicao() }}</td>
                                     <td>{{ $arquivo->created_at?->format('d/m/Y H:i') ?? '-' }}</td>
                                 </tr>
                             @endforeach
@@ -414,7 +414,7 @@
                             <td>{{ $item->statusAnterior?->nome ?? '-' }}</td>
                             <td>{{ $item->statusNovo?->nome ?? '-' }}</td>
                             <td>{{ $item->setor?->nome ?? '-' }}</td>
-                            <td>{{ $item->usuario?->name ?? 'Sistema' }}</td>
+                            <td>{{ $item->usuarioNomeExibicao() }}</td>
                             <td>{{ $item->descricao_alteracao ?? '-' }}</td>
                         </tr>
                     @endforeach
@@ -478,7 +478,7 @@
                             <td>{{ $formatarTipoArquivo($arquivo) }}</td>
                             <td>{{ $arquivo->nome_original ?? basename((string) $arquivo->caminho) }}</td>
                             <td>{{ $arquivo->descricao ?: '-' }}</td>
-                            <td>{{ $arquivo->usuario?->name ?? 'Sistema' }}</td>
+                            <td>{{ $arquivo->usuarioNomeExibicao() }}</td>
                             <td>{{ $arquivo->created_at?->format('d/m/Y H:i') ?? '-' }}</td>
                         </tr>
                     @endforeach

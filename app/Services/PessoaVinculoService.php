@@ -16,6 +16,8 @@ class PessoaVinculoService
 
     public function criarPessoaComVinculos(array $dadosPessoa, array $vinculos = []): Servidor
     {
+        $this->validarCargoObrigatorio($vinculos);
+
         return DB::transaction(function () use ($dadosPessoa, $vinculos): Servidor {
             $servidor = Servidor::query()->create($this->dadosPessoa($dadosPessoa));
             $this->sincronizarVinculos($servidor, $vinculos);
@@ -26,6 +28,8 @@ class PessoaVinculoService
 
     public function atualizarPessoaComVinculos(Servidor $servidor, array $dadosPessoa, array $vinculos = []): Servidor
     {
+        $this->validarCargoObrigatorio($vinculos);
+
         return DB::transaction(function () use ($servidor, $dadosPessoa, $vinculos): Servidor {
             $servidor->update($this->dadosPessoa($dadosPessoa));
             $this->sincronizarVinculos($servidor->fresh(), $vinculos);
@@ -37,6 +41,12 @@ class PessoaVinculoService
     public function sincronizarVinculos(Servidor $servidor, array $vinculos): void
     {
         $normalizados = $this->normalizarVinculos($vinculos);
+
+        if ($normalizados->isEmpty()) {
+            throw ValidationException::withMessages([
+                'vinculos_funcionais' => 'Toda pessoa precisa possuir ao menos um cargo.',
+            ]);
+        }
 
         foreach ($normalizados as $vinculo) {
             $this->validarVinculo($vinculo);
@@ -157,5 +167,14 @@ class PessoaVinculoService
             'setor_id' => $data['setor_id'] ?? null,
             'matricula' => $data['matricula'] ?? null,
         ];
+    }
+
+    private function validarCargoObrigatorio(array $vinculos): void
+    {
+        if ($this->normalizarVinculos($vinculos)->isEmpty()) {
+            throw ValidationException::withMessages([
+                'vinculos_funcionais' => 'Toda pessoa precisa possuir ao menos um cargo.',
+            ]);
+        }
     }
 }

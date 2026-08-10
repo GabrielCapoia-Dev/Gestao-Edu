@@ -46,7 +46,7 @@ class ImportacaoEventoCalendario extends Model
 
     public function usuario(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class)->withTrashed();
     }
 
     public function linhas(): HasMany

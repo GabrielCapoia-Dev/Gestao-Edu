@@ -87,6 +87,10 @@ class PessoaAcessoService
     {
         $servidor = $servidor->fresh(['user', 'professores']);
 
+        if ($servidor->user?->trashed()) {
+            return;
+        }
+
         if ($servidor->professores->where('ativo', true)->isEmpty() || blank($servidor->email)) {
             return;
         }
@@ -235,10 +239,17 @@ class PessoaAcessoService
             'professores',
         ]);
 
-        $vinculosComAcesso = $servidor->vinculosAtivos
-            ->filter(fn (ServidorFuncaoAdministrativa $vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->concede_acesso_sistema);
+        if ($servidor->user?->trashed()) {
+            return;
+        }
 
-        if (! $servidor->user && ($vinculosComAcesso->isEmpty() || blank($servidor->email))) {
+        $vinculosComAcesso = $servidor->vinculosAtivos;
+
+        if (! $servidor->user && blank($servidor->email)) {
+            return;
+        }
+
+        if (! $servidor->user && $vinculosComAcesso->isEmpty() && $servidor->professores->where('ativo', true)->isEmpty()) {
             return;
         }
 
@@ -403,10 +414,14 @@ class PessoaAcessoService
             return $servidor->user;
         }
 
-        $user = User::query()
+        $user = User::withTrashed()
             ->where('email', $servidor->email)
             ->lockForUpdate()
             ->first();
+
+        if ($user?->trashed()) {
+            return null;
+        }
 
         if ($user) {
             $this->garantirUserExclusivoDaPessoa($user, $servidor);
@@ -419,7 +434,6 @@ class PessoaAcessoService
             'name' => $servidor->nome,
             'email' => $servidor->email,
             'password' => Hash::make(Str::password(16)),
-            'email_approved' => $acesso['email_approved'] ?? true,
             'email_verified_at' => now(),
             'must_change_password' => true,
             'id_escola' => $servidor->id_escola,
@@ -429,7 +443,7 @@ class PessoaAcessoService
 
     private function garantirUserExclusivoDaPessoa(User $user, Pessoa|Servidor $servidor): void
     {
-        $vinculadoAOutraPessoa = Pessoa::query()
+        $vinculadoAOutraPessoa = Pessoa::withTrashed()
             ->where('user_id', $user->getKey())
             ->where('id', '!=', $servidor->getKey())
             ->exists();
@@ -454,7 +468,7 @@ class PessoaAcessoService
             : null;
 
         if ($email && $email !== $user->email) {
-            $conflito = User::query()
+            $conflito = User::withTrashed()
                 ->where('email', $email)
                 ->where('id', '!=', $user->id)
                 ->exists();
@@ -462,10 +476,6 @@ class PessoaAcessoService
             if (! $conflito) {
                 $payload['email'] = $email;
             }
-        }
-
-        if (array_key_exists('email_approved', $acesso)) {
-            $payload['email_approved'] = (bool) $acesso['email_approved'];
         }
 
         $user->update($payload);

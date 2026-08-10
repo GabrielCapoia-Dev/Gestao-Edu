@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\UserActorSnapshot;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 
@@ -21,7 +22,26 @@ class PedidoHistorico extends Model
         'setor_id', // Setor que realizou a alteração
 
         'descricao_alteracao', // Descrição detalhando o que aconteceu
+        'usuario_id_legado',
+        'usuario_nome_snapshot',
+        'usuario_email_snapshot',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (PedidoHistorico $historico): void {
+            $userId = (int) $historico->usuario_id;
+
+            if (! $userId) {
+                return;
+            }
+
+            $historico->usuario_id_legado ??= $userId;
+            $snapshot = UserActorSnapshot::values(UserActorSnapshot::find($userId));
+            $historico->usuario_nome_snapshot ??= $snapshot['nome'];
+            $historico->usuario_email_snapshot ??= $snapshot['email'];
+        });
+    }
 
 
     public static function registrarAlteracaoArquivo(
@@ -62,11 +82,26 @@ class PedidoHistorico extends Model
 
     public function usuario()
     {
-        return $this->belongsTo(User::class, 'usuario_id');
+        return UserActorSnapshot::relation($this->belongsTo(User::class, 'usuario_id'));
     }
 
     public function setor()
     {
         return $this->belongsTo(Setor::class, 'setor_id');
+    }
+
+    public function usuarioNomeExibicao(): string
+    {
+        return UserActorSnapshot::displayName(
+            $this->usuario,
+            $this->usuario_nome_snapshot,
+            $this->usuario_id_legado,
+            $this->usuario_id,
+        );
+    }
+
+    public function usuarioEmailExibicao(): ?string
+    {
+        return UserActorSnapshot::displayEmail($this->usuario, $this->usuario_email_snapshot);
     }
 }

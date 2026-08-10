@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Str;
 
 class Professor extends Model
 {
@@ -58,19 +57,19 @@ class Professor extends Model
      */
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(User::class, 'user_id')->withTrashed();
     }
 
     public function servidor(): BelongsTo
     {
         // Instância concreta Servidor (extends Pessoa) para typehints legados.
-        return $this->belongsTo(Servidor::class, 'servidor_id');
+        return $this->belongsTo(Servidor::class, 'servidor_id')->withTrashed();
     }
 
     /** Centro da verdade da identidade (mesmo registro de servidores). */
     public function pessoa(): BelongsTo
     {
-        return $this->belongsTo(Pessoa::class, 'servidor_id');
+        return $this->belongsTo(Pessoa::class, 'servidor_id')->withTrashed();
     }
 
     public function professorMatricula(): BelongsTo
@@ -158,7 +157,7 @@ class Professor extends Model
 
     public static function normalizarEmail(?string $email): string
     {
-        return Str::lower(trim((string) $email));
+        return Pessoa::normalizarEmail($email) ?? '';
     }
 
     public static function emailInstitucionalValido(?string $email): bool
@@ -206,7 +205,7 @@ class Professor extends Model
 
     public function desativadoPor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'desativado_por_id');
+        return $this->belongsTo(User::class, 'desativado_por_id')->withTrashed();
     }
 
     public function turmas()

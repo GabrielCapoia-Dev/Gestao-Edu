@@ -98,7 +98,7 @@
                         </span>
                     </td>
                     <td>{{ $item->setor?->nome ?? '-' }}</td>
-                    <td>{{ $item->usuario?->name ?? 'Sistema' }}</td>
+                    <td>{{ $item->usuarioNomeExibicao() }}</td>
                     <td>{{ $item->descricao_alteracao ?? '-' }}</td>
                 </tr>
                 @empty

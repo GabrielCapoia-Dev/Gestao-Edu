@@ -6,6 +6,7 @@ use App\Models\Pedido;
 use App\Models\User;
 use App\Notifications\SistemaNotification;
 use App\Services\PedidoService;
+use App\Support\UserActorSnapshot;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 
@@ -40,7 +41,10 @@ class NotificarPedidosAVencer extends Command
                 }
 
                 foreach ($usuarios as $user) {
-                    if (! $pedidoService->registroVisivelNoPerfil($pedido, $user)) {
+                    if (
+                        ! UserActorSnapshot::canReceiveNotification($user)
+                        || ! $pedidoService->registroVisivelNoPerfil($pedido, $user)
+                    ) {
                         continue;
                     }
 

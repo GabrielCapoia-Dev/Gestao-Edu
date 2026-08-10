@@ -41,17 +41,17 @@ class EventoCalendarioTransporteAlocacao extends Model
 
     public function motorista(): BelongsTo
     {
-        return $this->belongsTo(Pessoa::class, 'motorista_id');
+        return $this->belongsTo(Pessoa::class, 'motorista_id')->withTrashed();
     }
 
     public function criadoPor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'criado_por_id');
+        return $this->belongsTo(User::class, 'criado_por_id')->withTrashed();
     }
 
     public function removidoPor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'removido_por_id');
+        return $this->belongsTo(User::class, 'removido_por_id')->withTrashed();
     }
 
     public function turmas(): BelongsToMany

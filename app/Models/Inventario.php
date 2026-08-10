@@ -60,7 +60,7 @@ class Inventario extends Model
 
     public function criadoPor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'criado_por_id');
+        return $this->belongsTo(User::class, 'criado_por_id')->withTrashed();
     }
 
     public function estoques(): HasMany

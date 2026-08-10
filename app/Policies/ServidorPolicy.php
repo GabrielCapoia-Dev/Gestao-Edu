@@ -47,6 +47,27 @@ class ServidorPolicy
         return $user->hasPermissionTo(ListaPermissoes::ExcluirPessoas->label());
     }
 
+    public function restore(User $user, Servidor $servidor): bool
+    {
+        return $user->hasPermissionTo(ListaPermissoes::ExcluirPessoas->label())
+            && $this->podeAcessarServidor($user, $servidor);
+    }
+
+    public function restoreAny(User $user): bool
+    {
+        return $this->deleteAny($user);
+    }
+
+    public function forceDelete(User $user, Servidor $servidor): bool
+    {
+        return false;
+    }
+
+    public function forceDeleteAny(User $user): bool
+    {
+        return false;
+    }
+
     public function editBasicData(User $user, ?Servidor $servidor = null): bool
     {
         if (! $user->hasPermissionTo(ListaPermissoes::EditarDadosDePessoas->label())) {

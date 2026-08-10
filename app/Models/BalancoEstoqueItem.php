@@ -47,7 +47,7 @@ class BalancoEstoqueItem extends Model
 
     public function contadoPor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'contado_por_id');
+        return $this->belongsTo(User::class, 'contado_por_id')->withTrashed();
     }
 
     public function getStatusContagemAttribute(): string

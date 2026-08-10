@@ -1,6 +1,6 @@
 @php
     $user = $this->getUser();
-    $isApproved = (bool) $user->email_approved;
+    $isApproved = $user->canAuthenticate();
 @endphp
 
 <div class="edu-profile-shell">
@@ -15,7 +15,7 @@
                 <span class="edu-profile-avatar-initials">{{ $this->getProfileInitials() }}</span>
                 <span
                     class="edu-profile-avatar-status {{ $isApproved ? 'is-approved' : 'is-pending' }}"
-                    aria-label="Status: {{ $isApproved ? 'aprovado' : 'pendente' }}"
+                    aria-label="Status: {{ $isApproved ? 'ativo' : 'inativo' }}"
                 ></span>
             </div>
 
@@ -28,7 +28,7 @@
 
         <div class="edu-profile-heading-meta">
             <span class="edu-profile-status-pill {{ $isApproved ? 'is-approved' : 'is-pending' }}">
-                {{ $isApproved ? 'Aprovado' : 'Pendente' }}
+                {{ $isApproved ? 'Ativo' : 'Inativo' }}
             </span>
             <span>{{ $user->codigo ?: 'Sem codigo' }}</span>
         </div>

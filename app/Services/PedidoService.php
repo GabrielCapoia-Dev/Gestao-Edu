@@ -19,6 +19,7 @@ use App\Models\TipoStatus;
 use App\Models\User;
 use App\Notifications\SistemaNotification;
 use App\Support\PedidoImageUpload;
+use App\Support\UserActorSnapshot;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Http\UploadedFile;
@@ -67,6 +68,33 @@ class PedidoService
             ->unique()
             ->values()
             ->all();
+    }
+
+    public function escolasDisponiveisParaCriacao(?User $user): Collection
+    {
+        if (! $user) {
+            return collect();
+        }
+
+        $query = Escola::query()
+            ->where('ativo', true)
+            ->orderBy('nome');
+
+        $pessoaScope = app(PessoaScopeService::class);
+
+        if ($pessoaScope->hasGlobalAccess($user) || $this->podeListarTodos($user)) {
+            return $query->get(['id', 'nome', 'codigo', 'setor_id']);
+        }
+
+        $escolaIds = $this->escolaIdsParaEscopo($user);
+
+        if ($escolaIds === []) {
+            return collect();
+        }
+
+        return $query
+            ->whereKey($escolaIds)
+            ->get(['id', 'nome', 'codigo', 'setor_id']);
     }
 
     public function podeGerenciarPedidos(?User $user): bool
@@ -434,9 +462,9 @@ class PedidoService
         return DB::transaction(function () use ($data, $solicitante): Pedido {
             $statusInicial = $this->statusPorNome('Em Aberto', true);
             $setorInicial = Setor::setorGeral();
-            $escolaId = $this->escolaIdDoSolicitante($solicitante);
-            $setorOrigemId = app(UserSetorAccessService::class)->primarySetorId($solicitante)
-                ?: ($escolaId ? Escola::query()->whereKey($escolaId)->value('setor_id') : null);
+            $escola = $this->resolverEscolaParaCriacao($data, $solicitante);
+            $setorOrigemId = $escola->setor_id
+                ?: app(UserSetorAccessService::class)->primarySetorId($solicitante);
 
             if (! $setorInicial) {
                 throw new \RuntimeException('Nenhum setor foi configurado para receber os pedidos iniciais.');
@@ -452,7 +480,13 @@ class PedidoService
                 'nome_solicitante' => $data['nome_solicitante'],
                 'nivel_prioridade' => NivelEmergenciaPedido::INDEFINIDO,
                 'solicitante_id' => $solicitante->id,
-                'escola_id' => $escolaId,
+                'solicitante_id_legado' => $solicitante->id,
+                'solicitante_nome_snapshot' => $solicitante->name,
+                'solicitante_email_snapshot' => $solicitante->email,
+                'escola_id' => $escola->id,
+                'escola_id_legado' => $escola->id,
+                'escola_nome_snapshot' => $escola->nome,
+                'escola_codigo_snapshot' => $escola->codigo,
                 'tipo_status_id' => $statusInicial->id,
                 'setor_id' => $setorInicial->id,
                 'setor_origem_id' => $setorOrigemId,
@@ -493,6 +527,17 @@ class PedidoService
             ]);
         }
 
+        $escolaPrincipal = Escola::query()
+            ->whereKey($pedidoPrincipal->escola_id)
+            ->where('ativo', true)
+            ->first();
+
+        if (! $escolaPrincipal) {
+            throw ValidationException::withMessages([
+                'pedidos_adicionais' => 'O pedido principal não possui uma escola ativa válida. Regularize-o antes de incluir pedidos adicionais.',
+            ]);
+        }
+
         $this->validarPedidosAdicionais($adicionais, exigirAvaliacao: false);
 
         foreach (array_values($adicionais) as $index => $data) {
@@ -502,7 +547,7 @@ class PedidoService
             );
         }
 
-        return DB::transaction(function () use ($pedidoPrincipal, $adicionais, $usuario): Collection {
+        return DB::transaction(function () use ($pedidoPrincipal, $adicionais, $usuario, $escolaPrincipal): Collection {
             $statusAdicional = $this->statusPedidoAdicional();
             $criados = collect();
 
@@ -519,7 +564,13 @@ class PedidoService
                     'nome_solicitante' => $data['nome_solicitante'] ?? $usuario->name,
                     'nivel_prioridade' => NivelEmergenciaPedido::INDEFINIDO,
                     'solicitante_id' => $usuario->id,
-                    'escola_id' => $pedidoPrincipal->escola_id,
+                    'solicitante_id_legado' => $usuario->id,
+                    'solicitante_nome_snapshot' => $usuario->name,
+                    'solicitante_email_snapshot' => $usuario->email,
+                    'escola_id' => $escolaPrincipal->id,
+                    'escola_id_legado' => $escolaPrincipal->id,
+                    'escola_nome_snapshot' => $escolaPrincipal->nome,
+                    'escola_codigo_snapshot' => $escolaPrincipal->codigo,
                     'tipo_status_id' => $statusAdicional->id,
                     'setor_id' => $pedidoPrincipal->setor_id,
                     'setor_origem_id' => $pedidoPrincipal->setor_origem_id,
@@ -580,7 +631,10 @@ class PedidoService
         }
 
         foreach ($usuarios as $usuario) {
-            if (! $this->registroVisivelNoPerfil($pedido, $usuario)) {
+            if (
+                ! UserActorSnapshot::canReceiveNotification($usuario)
+                || ! $this->registroVisivelNoPerfil($pedido, $usuario)
+            ) {
                 continue;
             }
 
@@ -626,15 +680,39 @@ class PedidoService
         ]);
     }
 
-    private function escolaIdDoSolicitante(User $solicitante): ?int
+    private function resolverEscolaParaCriacao(array $data, User $solicitante): Escola
     {
-        $escolaIds = collect($this->escolaIdsParaEscopo($solicitante))
-            ->map(fn ($id): int => (int) $id)
-            ->filter()
-            ->unique()
-            ->values();
+        $escolas = $this->escolasDisponiveisParaCriacao($solicitante);
 
-        return $escolaIds->count() === 1 ? $escolaIds->first() : null;
+        if ($escolas->isEmpty()) {
+            throw ValidationException::withMessages([
+                'escola_id' => 'Seu usuário não possui uma escola ativa disponível para criar pedidos.',
+            ]);
+        }
+
+        $escolaIdInformada = filled($data['escola_id'] ?? null)
+            ? (int) $data['escola_id']
+            : null;
+
+        if (! $escolaIdInformada && $escolas->count() === 1) {
+            return $escolas->first();
+        }
+
+        if (! $escolaIdInformada) {
+            throw ValidationException::withMessages([
+                'escola_id' => 'Selecione a escola à qual o pedido pertence.',
+            ]);
+        }
+
+        $escola = $escolas->firstWhere('id', $escolaIdInformada);
+
+        if (! $escola) {
+            throw ValidationException::withMessages([
+                'escola_id' => 'A escola selecionada está inativa ou fora do seu escopo de acesso.',
+            ]);
+        }
+
+        return $escola;
     }
 
     /*
@@ -1038,6 +1116,9 @@ class PedidoService
             'status_anterior_id' => $statusAnteriorId,
             'status_novo_id' => $statusNovoId,
             'usuario_id' => $usuario->id,
+            'usuario_id_legado' => $usuario->id,
+            'usuario_nome_snapshot' => $usuario->name,
+            'usuario_email_snapshot' => $usuario->email,
             'setor_id' => $pedido->setor_id,
             'descricao_alteracao' => $descricao,
         ]);
@@ -1213,8 +1294,13 @@ class PedidoService
             }
         }
 
+        $usuario = UserActorSnapshot::find($usuarioId);
+
         $pedido->arquivos()->create([
             'usuario_id' => $usuarioId,
+            'usuario_id_legado' => $usuarioId,
+            'usuario_nome_snapshot' => $usuario?->name,
+            'usuario_email_snapshot' => $usuario?->email,
             'tipo_arquivo' => $tipo,
             'caminho' => $path,
             'nome_original' => $nomeOriginal,

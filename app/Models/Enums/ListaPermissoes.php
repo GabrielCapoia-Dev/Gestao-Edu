@@ -234,7 +234,6 @@ enum ListaPermissoes: string
     case PublicarEventos = 'publicar eventos';
     case PublicarEventosTransporte = 'publicar eventos: transporte';
 
-    case AcessarPainel = 'acessar painel';
     case AcessarEscopoGlobalDeSetores = 'acessar escopo global de setores';
     case BaixarApp = 'baixar app';
 
@@ -499,7 +498,6 @@ enum ListaPermissoes: string
             self::PublicarEventos => 'Publicar Eventos',
             self::PublicarEventosTransporte => 'Publicar Eventos: Transporte',
 
-            self::AcessarPainel => 'Acessar Painel',
             self::AcessarEscopoGlobalDeSetores => 'Acessar Escopo Global de Setores',
             self::BaixarApp => 'Baixar App',
 

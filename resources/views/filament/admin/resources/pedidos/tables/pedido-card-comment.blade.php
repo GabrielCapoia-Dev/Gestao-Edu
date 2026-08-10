@@ -3,7 +3,9 @@
 
     $record = $getRecord();
     $comentario = $record instanceof Pedido ? trim((string) ($record->comentario_gestor ?? '')) : '';
-    $usuario = $record instanceof Pedido ? $record->comentarioGestorUsuario : null;
+    $autor = $record instanceof Pedido && $comentario !== ''
+        ? $record->comentarioGestorUsuarioNomeExibicao()
+        : null;
 @endphp
 
 <div class="pedido-card-comment">
@@ -12,10 +14,10 @@
     @if ($comentario !== '')
         <div class="pedido-card-comment-text">{{ $comentario }}</div>
 
-        @if ($usuario || ($record instanceof Pedido && $record->comentario_gestor_at))
+        @if ($autor || ($record instanceof Pedido && $record->comentario_gestor_at))
             <div class="pedido-card-comment-meta">
-                @if ($usuario)
-                    {{ $usuario->name }}
+                @if ($autor)
+                    {{ $autor }}
                 @endif
 
                 @if ($record instanceof Pedido && $record->comentario_gestor_at)

@@ -33,27 +33,48 @@ class PessoaUsuarioService
             throw new AuthorizationException('Você não possui permissão para criar o acesso desta pessoa.');
         }
 
+        return $this->garantirUsuario($pessoa, $senha);
+    }
+
+    public function garantirUsuario(Pessoa|Servidor $pessoa, ?string $senha = null): User
+    {
         if (blank($pessoa->email)) {
             throw ValidationException::withMessages([
-                'email' => 'Informe um e-mail institucional antes de criar o acesso.',
+                'email' => 'Toda pessoa precisa de um e-mail válido para possuir acesso.',
             ]);
         }
 
-        return DB::transaction(function () use ($pessoa, $senha, $aprovado): User {
+        return DB::transaction(function () use ($pessoa, $senha): User {
             $pessoa = Servidor::query()->lockForUpdate()->findOrFail($pessoa->id);
 
-            if ($pessoa->user) {
+            if ($pessoa->user?->trashed()) {
                 throw ValidationException::withMessages([
-                    'acesso' => 'Esta pessoa já possui uma conta de acesso vinculada.',
+                    'acesso' => 'A conta vinculada está arquivada. Restaure-a na gestão de usuários antes de continuar.',
                 ]);
             }
 
-            $user = User::query()
+            if ($pessoa->user) {
+                $pessoa->user->forceFill([
+                    'name' => $pessoa->nome,
+                    'email' => $pessoa->email,
+                ])->save();
+                $this->pessoaAcessoService->provisionarAcessosDoServidor($pessoa->fresh());
+
+                return $pessoa->user->fresh(['roles.permissions', 'permissions']);
+            }
+
+            $user = User::withTrashed()
                 ->whereRaw('LOWER(email) = ?', [mb_strtolower((string) $pessoa->email)])
                 ->lockForUpdate()
                 ->first();
 
-            if ($user && Pessoa::query()->where('user_id', $user->id)->whereKeyNot($pessoa->id)->exists()) {
+            if ($user?->trashed()) {
+                throw ValidationException::withMessages([
+                    'email' => 'Já existe uma conta arquivada com este e-mail. Restaure essa conta antes de vinculá-la.',
+                ]);
+            }
+
+            if ($user && Pessoa::withTrashed()->where('user_id', $user->id)->whereKeyNot($pessoa->id)->exists()) {
                 throw ValidationException::withMessages([
                     'email' => 'A conta encontrada para este e-mail já está vinculada a outra pessoa.',
                 ]);
@@ -64,24 +85,47 @@ class PessoaUsuarioService
                 'name' => $pessoa->nome,
                 'email' => $pessoa->email,
                 'password' => Hash::make($senhaInicial),
-                'email_approved' => $aprovado,
-                'email_verified_at' => $aprovado ? now() : null,
+                'email_verified_at' => now(),
                 'must_change_password' => true,
             ]);
 
             $pessoa->update(['user_id' => $user->id]);
             $this->pessoaAcessoService->provisionarAcessosDoServidor($pessoa->fresh());
 
-            $user->forceFill([
-                'email_approved' => $aprovado,
-                'email_verified_at' => $aprovado ? ($user->email_verified_at ?? now()) : $user->email_verified_at,
-            ])->save();
-
             return $user->fresh(['roles.permissions', 'permissions']);
         });
     }
 
-    public function excluirContaDaPessoa(Pessoa|Servidor $pessoa, User $operador): void
+    public function garantirUsuarioInativoSemEmail(Pessoa|Servidor $pessoa): User
+    {
+        return DB::transaction(function () use ($pessoa): User {
+            $pessoa = Servidor::withTrashed()->lockForUpdate()->findOrFail($pessoa->id);
+
+            if ($pessoa->status !== Pessoa::STATUS_INATIVO) {
+                throw ValidationException::withMessages([
+                    'status' => 'Cadastros sem e-mail único precisam estar inativos.',
+                ]);
+            }
+
+            if ($pessoa->user) {
+                return $pessoa->user;
+            }
+
+            $user = User::query()->create([
+                'name' => $pessoa->nome,
+                'email' => null,
+                'password' => Hash::make(Str::password(32)),
+                'email_verified_at' => null,
+                'must_change_password' => true,
+            ]);
+
+            $pessoa->forceFill(['user_id' => $user->id])->save();
+
+            return $user;
+        });
+    }
+
+    public function arquivarContaDaPessoa(Pessoa|Servidor $pessoa, User $operador): void
     {
         $user = $pessoa->user;
 
@@ -92,8 +136,20 @@ class PessoaUsuarioService
         $this->userService->excluirUsuario($user);
     }
 
+    /** @deprecated Use arquivarContaDaPessoa(). */
+    public function excluirContaDaPessoa(Pessoa|Servidor $pessoa, User $operador): void
+    {
+        $this->arquivarContaDaPessoa($pessoa, $operador);
+    }
+
     public function vincularContaExistente(Pessoa|Servidor $pessoa, User $conta, User $operador): User
     {
+        if ($conta->trashed()) {
+            throw ValidationException::withMessages([
+                'pessoa_id' => 'Restaure a conta arquivada antes de vinculá-la a uma pessoa.',
+            ]);
+        }
+
         if (
             ! Gate::forUser($operador)->allows('update', $pessoa)
             || ! Gate::forUser($operador)->allows('update', $conta)
@@ -109,9 +165,15 @@ class PessoaUsuarioService
 
         return DB::transaction(function () use ($pessoa, $conta): User {
             $pessoa = Servidor::query()->lockForUpdate()->findOrFail($pessoa->id);
-            $conta = User::query()->lockForUpdate()->findOrFail($conta->id);
+            $conta = User::withTrashed()->lockForUpdate()->findOrFail($conta->id);
 
-            if ($pessoa->user_id || Pessoa::query()->where('user_id', $conta->id)->whereKeyNot($pessoa->id)->exists()) {
+            if ($conta->trashed()) {
+                throw ValidationException::withMessages([
+                    'pessoa_id' => 'Restaure a conta arquivada antes de vinculá-la a uma pessoa.',
+                ]);
+            }
+
+            if ($pessoa->user_id || Pessoa::withTrashed()->where('user_id', $conta->id)->whereKeyNot($pessoa->id)->exists()) {
                 throw ValidationException::withMessages([
                     'pessoa_id' => 'A pessoa ou a conta selecionada já possui outro vínculo de acesso.',
                 ]);
@@ -130,7 +192,7 @@ class PessoaUsuarioService
             ->listarUsuariosQuery(User::query(), $operador)
             ->whereKeyNot($operador->id)
             ->whereDoesntHave('roles', fn (Builder $roles): Builder => $roles->where('name', 'Admin'))
-            ->whereDoesntHave('servidores')
+            ->whereDoesntHave('servidores', fn (Builder $pessoas): Builder => $pessoas->withTrashed())
             ->whereDoesntHave('professores');
     }
 }

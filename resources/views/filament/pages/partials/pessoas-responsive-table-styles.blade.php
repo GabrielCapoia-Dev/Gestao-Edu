@@ -56,7 +56,6 @@
 
     .pe-pessoas-page .fi-ta-record {
         position: relative;
-        z-index: 0;
         border: 1px solid var(--pessoa-card-border);
         border-radius: 0.65rem;
         background: var(--pessoa-card-surface);

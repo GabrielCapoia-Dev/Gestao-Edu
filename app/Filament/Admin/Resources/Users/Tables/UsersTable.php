@@ -11,8 +11,6 @@ use App\Services\PessoaUsuarioService;
 use App\Services\UserService;
 use App\Services\UserSetorAccessService;
 use Filament\Actions\Action;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -20,7 +18,6 @@ use Filament\Notifications\Notification;
 use Filament\Schemas\Components;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
@@ -119,33 +116,17 @@ class UsersTable
                 ->grow(false)
                 ->searchable(),
 
-            ToggleColumn::make('email_approved')
-                ->label('Verificação')
-                ->sortable()
-                ->alignCenter()
-                ->grow(false)
-                ->disabled(
-                    fn (User $record) => $service->desabilitarToggleAprovacaoEmail(Auth::user(), $record)
-                )
-                ->visible(fn () => Gate::allows('toggleEmailApproval', [User::class, null, 'table']))
-                ->inline(false)
-                ->onColor('success')
-                ->offColor('danger')
-                ->onIcon('heroicon-s-check')
-                ->offIcon('heroicon-s-x-mark')
-                ->columnSpan(1),
-
-            TextColumn::make('email_verified_at')
-                ->label('Verificado em')
-                ->grow(false)
-                ->sortable()
-                ->toggleable(isToggledHiddenByDefault: true)
-                ->formatStateUsing(function ($state, User $record) {
-                    if (! $record->email_approved) {
-                        return '--/--/-- --:--:--';
-                    }
-
-                    return $state ? $state->format('d/m/Y H:i:s') : '-';
+            TextColumn::make('estado_operacional')
+                ->label('Status')
+                ->badge()
+                ->getStateUsing(fn (User $record): string => $record->canAuthenticate() ? 'Ativo' : 'Inativo')
+                ->color(fn (string $state): string => match ($state) {
+                    'Ativo' => 'success',
+                    default => 'gray',
+                })
+                ->icon(fn (string $state): string => match ($state) {
+                    'Ativo' => 'heroicon-o-check-circle',
+                    default => 'heroicon-o-archive-box',
                 }),
 
             TextColumn::make('roles')
@@ -250,12 +231,20 @@ class UsersTable
                 ->searchable()
                 ->preload(),
 
-            TernaryFilter::make('email_approved')
-                ->label('Situação do acesso')
-                ->trueLabel('Acesso aprovado')
-                ->falseLabel('Acesso pendente')
-                ->placeholder('Todos os usuários')
-                ->visible(fn (): bool => Gate::allows('toggleEmailApproval', [User::class, null, 'table'])),
+            SelectFilter::make('estado_operacional')
+                ->label('Status')
+                ->placeholder('Todos os status')
+                ->options([
+                    'ativo' => 'Ativos',
+                    'inativo' => 'Inativos',
+                ])
+                ->query(function (Builder $query, array $data): Builder {
+                    return match ($data['value'] ?? null) {
+                        'ativo' => $query->whereHas('servidores', fn (Builder $pessoas): Builder => $pessoas->where('status', Servidor::STATUS_ATIVO)),
+                        'inativo' => $query->whereDoesntHave('servidores', fn (Builder $pessoas): Builder => $pessoas->where('status', Servidor::STATUS_ATIVO)),
+                        default => $query,
+                    };
+                }),
         ];
     }
 
@@ -271,7 +260,8 @@ class UsersTable
                 ->label('Vincular à pessoa')
                 ->icon('heroicon-o-link')
                 ->color('primary')
-                ->visible(fn (User $record): bool => $record->servidores->isEmpty()
+                ->visible(fn (User $record): bool => ! $record->trashed()
+                    && $record->servidores->isEmpty()
                     && $record->professores->isEmpty()
                     && Gate::forUser($user)->allows('update', $record)
                     && Gate::forUser($user)->allows('viewAny', Servidor::class))
@@ -311,7 +301,8 @@ class UsersTable
                 ->slideOver()
                 ->modalSubmitActionLabel('Salvar')
                 ->modalSubmitAction(fn (Action $action) => $action->color('primary'))
-                ->visible(fn (User $record): bool => Gate::forUser($user)->allows('applyPermissions', $record))
+                ->visible(fn (User $record): bool => ! $record->trashed()
+                    && Gate::forUser($user)->allows('applyPermissions', $record))
                 ->modalHeading(fn (User $record) => 'Permissões do usuário')
                 ->modalDescription(fn (User $record) => "{$record->name} • {$record->email}")
                 ->modalIcon('heroicon-o-key')
@@ -332,84 +323,87 @@ class UsersTable
                             }),
                     ];
                 })
-                ->action(function (User $record, array $data) {
-                    $permissoesSelecionadas = collect($data)
-                        ->filter(fn ($_, $key) => str_starts_with($key, 'permissions_'))
-                        ->flatten()
-                        ->unique()
-                        ->values();
+                ->action(function (User $record, array $data) use ($service, $user): void {
+                    $service->sincronizarPermissoesDiretas(
+                        $record,
+                        $service->permissoesSelecionadas($data),
+                        operador: $user,
+                    );
 
-                    $permissoesAtuais = $record->getDirectPermissions()->pluck('name');
-
-                    $permissoesDaRole = $record->roles
-                        ->flatMap(fn ($role) => $role->permissions)
-                        ->pluck('name')
-                        ->toArray();
-
-                    $paraRemover = $permissoesAtuais->diff($permissoesSelecionadas);
-
-                    $paraAdicionar = $permissoesSelecionadas
-                        ->diff($permissoesAtuais)
-                        ->diff($permissoesDaRole);
-
-                    if ($paraRemover->isNotEmpty()) {
-                        $record->revokePermissionTo($paraRemover->toArray());
-                    }
-
-                    if ($paraAdicionar->isNotEmpty()) {
-                        $record->givePermissionTo($paraAdicionar->toArray());
-                    }
-
-                    if ($paraRemover->isNotEmpty()) {
-                        Notification::make()
-                            ->title('Permissões removidas')
-                            ->body($paraRemover->map(fn ($p) => "• {$p}")->implode('<br>'))
-                            ->danger()
-                            ->icon('heroicon-s-x-mark')
-                            ->send();
-                    }
-
-                    if ($paraAdicionar->isNotEmpty()) {
-                        Notification::make()
-                            ->title('Permissões adicionadas')
-                            ->body($paraAdicionar->map(fn ($p) => "• {$p}")->implode('<br>'))
-                            ->success()
-                            ->icon('heroicon-s-check')
-                            ->send();
-                    }
-
-                    if ($paraRemover->isEmpty() && $paraAdicionar->isEmpty()) {
-                        Notification::make()
-                            ->title('Nenhuma alteração foi realizada')
-                            ->info()
-                            ->send();
-                    }
+                    Notification::make()
+                        ->title('Permissões atualizadas')
+                        ->success()
+                        ->send();
                 }),
 
             EditAction::make()
-                ->visible(fn (User $record): bool => Gate::forUser($user)->allows('update', $record)),
+                ->visible(fn (User $record): bool => ! $record->trashed()
+                    && Gate::forUser($user)->allows('update', $record)),
 
-            DeleteAction::make()
-                ->label('Excluir')
+            Action::make('inativar')
+                ->label('Inativar')
+                ->icon('heroicon-o-pause-circle')
+                ->color('warning')
                 ->requiresConfirmation()
-                ->modalHeading('Excluir usuário')
-                ->modalDescription(fn (User $record): string => "Excluir a conta \"{$record->email}\"? A ficha em Pessoas e lotações de professor são mantidas; apenas o login é removido.")
-                ->visible(fn (User $record): bool => $service->podeDeletar($user, $record))
-                ->disabled(fn (User $record): bool => ($record->id === 1) || (Auth::id() === $record->id))
-                ->using(function (User $record) use ($service, $user): void {
-                    if (! $service->podeDeletar($user, $record)) {
-                        Notification::make()
-                            ->title('Exclusão não permitida')
-                            ->danger()
-                            ->send();
-
-                        return;
-                    }
-
-                    $service->excluirUsuario($record);
+                ->modalHeading('Inativar usuário')
+                ->modalDescription(fn (User $record): string => "Inativar a conta \"{$record->email}\"? As sessões abertas serão encerradas e todos os vínculos serão preservados.")
+                ->visible(false)
+                ->action(function (User $record) use ($service, $user): void {
+                    $service->inativarUsuario($record, $user);
 
                     Notification::make()
-                        ->title('Usuário excluído')
+                        ->title('Usuário inativado')
+                        ->success()
+                        ->send();
+                }),
+
+            Action::make('ativar')
+                ->label('Ativar')
+                ->icon('heroicon-o-play-circle')
+                ->color('success')
+                ->requiresConfirmation()
+                ->modalHeading('Ativar usuário')
+                ->modalDescription('A aprovação de acesso continuará sendo controlada separadamente.')
+                ->visible(false)
+                ->action(function (User $record) use ($service, $user): void {
+                    $service->ativarUsuario($record, $user);
+
+                    Notification::make()
+                        ->title('Usuário ativado')
+                        ->success()
+                        ->send();
+                }),
+
+            Action::make('arquivar')
+                ->label('Arquivar')
+                ->icon('heroicon-o-archive-box')
+                ->color('danger')
+                ->requiresConfirmation()
+                ->modalHeading('Arquivar usuário')
+                ->modalDescription(fn (User $record): string => "Arquivar a conta \"{$record->email}\"? O acesso será bloqueado, mas Pessoa, escolas, roles, permissões e histórico serão preservados.")
+                ->visible(false)
+                ->action(function (User $record) use ($service, $user): void {
+                    $service->arquivarUsuario($record, $user);
+
+                    Notification::make()
+                        ->title('Usuário arquivado')
+                        ->success()
+                        ->send();
+                }),
+
+            Action::make('restaurar')
+                ->label('Restaurar')
+                ->icon('heroicon-o-arrow-uturn-left')
+                ->color('primary')
+                ->requiresConfirmation()
+                ->modalHeading('Restaurar usuário')
+                ->modalDescription('A conta será restaurada como inativa e precisará ser reativada explicitamente.')
+                ->visible(false)
+                ->action(function (User $record) use ($service, $user): void {
+                    $service->restaurarUsuario($record, $user);
+
+                    Notification::make()
+                        ->title('Usuário restaurado como inativo')
                         ->success()
                         ->send();
                 }),
@@ -430,7 +424,7 @@ class UsersTable
                 ->color('success')
                 ->accessSelectedRecords()
                 ->slideOver()
-                ->visible(fn () => Gate::allows('toggleEmailApproval', [User::class, null, 'table']))
+                ->visible(false)
                 ->closeModalByClickingAway(false)
                 ->closeModalByEscaping(false)
                 ->modalCloseButton(false)
@@ -572,7 +566,7 @@ class UsersTable
                         ->preload()
                         ->required(),
                 ])
-                ->action(function ($records, array $data) use ($service) {
+                ->action(function ($records, array $data) use ($service, $user) {
                     $roleIds = $service->idsDeRolesSelecionadas($data);
 
                     if (empty($roleIds)) {
@@ -648,7 +642,7 @@ class UsersTable
                             ...$service->checkboxesPermissoesEmMassa($get, $user),
                         ]),
                 ])
-                ->action(function ($records, array $data) use ($service) {
+                ->action(function ($records, array $data) use ($service, $user) {
                     $modo = $data['modo_permissoes'] ?? 'add';
                     $permissoesSelecionadas = $service->permissoesSelecionadas($data);
 
@@ -688,15 +682,17 @@ class UsersTable
                 recordsLabel: 'usuários selecionados',
             ),
 
-            DeleteBulkAction::make()
-                ->label('Excluir selecionados')
+            Action::make('arquivar_em_massa')
+                ->label('Arquivar selecionados')
+                ->icon('heroicon-o-archive-box')
+                ->color('danger')
+                ->accessSelectedRecords()
                 ->requiresConfirmation()
-                ->modalDescription('Remove apenas as contas de login. Pessoas e professores vinculados permanecem no sistema.')
+                ->modalDescription('Bloqueia o acesso e preserva Pessoas, escolas, roles, permissões e histórico.')
                 ->visible(fn (): bool => $user->hasPermissionTo('Excluir Usuarios')
                     || $user->hasPermissionTo('Excluir Usuários')
                     || $service->ehAdmin($user))
-                ->deselectRecordsAfterCompletion()
-                ->using(function ($records) use ($service, $user): void {
+                ->action(function ($records) use ($service, $user): void {
                     $ok = 0;
                     $falha = 0;
 
@@ -708,7 +704,7 @@ class UsersTable
                         }
 
                         try {
-                            $service->excluirUsuario($record);
+                            $service->arquivarUsuario($record, $user);
                             $ok++;
                         } catch (\Throwable) {
                             $falha++;
@@ -716,8 +712,8 @@ class UsersTable
                     }
 
                     Notification::make()
-                        ->title('Exclusão em massa')
-                        ->body("{$ok} excluído(s)".($falha > 0 ? ", {$falha} ignorado(s)." : '.'))
+                        ->title('Arquivamento em massa')
+                        ->body("{$ok} arquivado(s)".($falha > 0 ? ", {$falha} ignorado(s)." : '.'))
                         ->success()
                         ->send();
                 }),

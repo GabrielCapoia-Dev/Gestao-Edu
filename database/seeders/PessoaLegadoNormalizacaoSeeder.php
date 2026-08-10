@@ -9,7 +9,7 @@ use Illuminate\Database\Seeder;
 /**
  * Roda a cada migrate --seed (boot Docker).
  * No boot só reprocessa pendências estruturais (professor sem pessoa / sem matrícula FK).
- * Consolidação por e-mail duplicado fica para `php artisan pessoas:normalizar-legado`.
+ * Conflitos de identidade são apenas auditados e nunca consolidados automaticamente.
  */
 class PessoaLegadoNormalizacaoSeeder extends Seeder
 {
@@ -19,13 +19,12 @@ class PessoaLegadoNormalizacaoSeeder extends Seeder
 
         // Boot: só estrutura. Evita reprocessar 5+ min por anomalias de e-mail permanentes.
         if ($service->haPendenciasEstruturais()) {
-            $stats = $service->normalizar(dryRun: false);
+            $stats = $service->normalizarEstrutura(dryRun: false);
 
             if ($this->command) {
                 $this->command->info('Pessoas legado normalizadas (pendências estruturais).');
                 $this->command->line('  professores_linkados: '.($stats['professores_linkados'] ?? 0));
                 $this->command->line('  pessoas_criadas: '.($stats['pessoas_criadas'] ?? 0));
-                $this->command->line('  pessoas_mescladas: '.($stats['pessoas_mescladas'] ?? 0));
                 $this->command->line('  matriculas_criadas: '.($stats['matriculas_criadas'] ?? 0));
                 $this->command->line('  sfa_sincronizados: '.($stats['sfa_sincronizados'] ?? 0));
 

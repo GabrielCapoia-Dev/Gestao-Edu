@@ -3,6 +3,7 @@
 
 namespace App\Livewire;
 
+use App\Models\User;
 use Filament\Facades\Filament;
 use Filament\Http\Responses\Auth\Contracts\LoginResponse;
 use Illuminate\Support\Facades\Auth;
@@ -22,7 +23,11 @@ class LoginForm extends Component
             'password' => $this->password,
         ];
 
-        if (! Auth::guard(Filament::getAuthGuard())->attempt($credentials, $this->remember)) {
+        if (! Auth::guard(Filament::getAuthGuard())->attemptWhen(
+            $credentials,
+            fn (mixed $user): bool => $user instanceof User && $user->canAuthenticate(),
+            $this->remember,
+        )) {
             throw ValidationException::withMessages([
                 'email' => __('auth.failed'),
             ]);

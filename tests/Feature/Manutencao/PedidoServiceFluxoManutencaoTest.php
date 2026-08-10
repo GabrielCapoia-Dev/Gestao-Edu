@@ -28,6 +28,9 @@ use App\Services\Relatorios\RelatorioPdfRenderer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
@@ -134,6 +137,11 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
         $this->assertSame('Em Aberto', $pedido->tipoStatus->nome);
         $this->assertTrue($pedido->setor->is($this->educacao));
         $this->assertFalse((bool) $pedido->is_pedido_adicional);
+        $this->assertSame($usuario->id, $pedido->solicitante_id_legado);
+        $this->assertSame($usuario->name, $pedido->solicitante_nome_snapshot);
+        $this->assertSame($usuario->email, $pedido->solicitante_email_snapshot);
+        $this->assertSame($this->escola->id, $pedido->escola_id_legado);
+        $this->assertSame($this->escola->nome, $pedido->escola_nome_snapshot);
         $this->assertSame([
             'Sem luz na unidade',
             'Disjuntor queimado',
@@ -160,34 +168,105 @@ class PedidoServiceFluxoManutencaoTest extends TestCase
         $this->assertSame($this->escola->setor_id, $pedido->setor_origem_id);
     }
 
-    public function test_listagem_exibe_escola_do_solicitante_para_pedido_antigo_sem_escola_id(): void
+    public function test_criacao_exige_escolha_quando_usuario_possui_multiplas_escolas(): void
     {
-        $solicitante = User::factory()->create([
-            'id_escola' => $this->escola->id,
+        $outraEscola = Escola::create([
+            'codigo' => '002',
+            'nome' => 'Outra Escola',
+            'setor_id' => $this->escola->setor_id,
+            'ativo' => true,
+        ]);
+        $usuario = User::factory()->create([
+            'id_escola' => null,
+            'email_approved' => true,
+        ]);
+        $usuario->escolas()->attach([$this->escola->id, $outraEscola->id]);
+
+        $dados = [
+            'tipo_manutencao_id' => $this->tipo->id,
+            'tipo_manutencao_opcao_ids' => [$this->opcaoLuz->id],
+            'data_identificacao_problema' => '2026-05-01',
+            'descricao_pedido' => 'Pedido com escolha explícita de escola.',
+            'nome_solicitante' => 'Direção',
+        ];
+
+        try {
+            $this->service->criarPedido($dados, $usuario);
+            $this->fail('Era esperada validação da escola.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('escola_id', $exception->errors());
+        }
+
+        $pedido = $this->service->criarPedido($dados + ['escola_id' => $outraEscola->id], $usuario);
+
+        $this->assertSame($outraEscola->id, $pedido->escola_id);
+    }
+
+    public function test_criacao_bloqueia_usuario_sem_escola_no_escopo(): void
+    {
+        $usuario = User::factory()->create([
+            'id_escola' => null,
             'email_approved' => true,
         ]);
 
-        $pedido = Pedido::create([
+        $this->expectException(ValidationException::class);
+
+        $this->service->criarPedido([
             'tipo_manutencao_id' => $this->tipo->id,
-            'tipo_status_id' => $this->service->statusPorNome('Em Aberto', true)->id,
-            'descricao_pedido' => 'Pedido antigo sem escola_id.',
-            'nome_solicitante' => 'Solicitante',
-            'nivel_prioridade' => NivelEmergenciaPedido::INDEFINIDO,
-            'escola_id' => null,
-            'solicitante_id' => $solicitante->id,
-            'setor_id' => $this->educacao->id,
-            'setor_origem_id' => $this->escola->setor_id,
-            'data_solicitacao' => now(),
-            'data_identificacao_problema' => now(),
-            'ativo' => true,
+            'tipo_manutencao_opcao_ids' => [$this->opcaoLuz->id],
+            'data_identificacao_problema' => '2026-05-01',
+            'descricao_pedido' => 'Pedido sem escola vinculada.',
+            'nome_solicitante' => 'Direção',
+        ], $usuario);
+    }
+
+    public function test_backfill_estrutural_preserva_id_orfao_antes_de_limpar_relacao(): void
+    {
+        $usuario = User::factory()->create([
+            'id_escola' => $this->escola->id,
+            'email_approved' => true,
+        ]);
+        $pedido = $this->service->criarPedido([
+            'tipo_manutencao_id' => $this->tipo->id,
+            'tipo_manutencao_opcao_ids' => [$this->opcaoLuz->id],
+            'data_identificacao_problema' => '2026-05-01',
+            'descricao_pedido' => 'Pedido com autor legado.',
+            'nome_solicitante' => 'Direção',
+        ], $usuario);
+
+        if (DB::getDriverName() === 'sqlite') {
+            DB::statement('PRAGMA defer_foreign_keys = ON');
+
+            Schema::table('pedidos', function ($table): void {
+                $table->dropForeign(['solicitante_id']);
+            });
+        } else {
+            Schema::disableForeignKeyConstraints();
+        }
+
+        DB::table('pedidos')->where('id', $pedido->id)->update([
+            'solicitante_id' => 999999,
+            'solicitante_id_legado' => null,
+            'solicitante_nome_snapshot' => null,
+            'solicitante_email_snapshot' => null,
+        ]);
+        if (DB::getDriverName() !== 'sqlite') {
+            Schema::enableForeignKeyConstraints();
+        }
+
+        $this->assertSame(0, Artisan::call('dados:backfill-estrutural'));
+        $this->assertDatabaseHas('pedidos', [
+            'id' => $pedido->id,
+            'solicitante_id' => 999999,
+            'solicitante_id_legado' => null,
         ]);
 
-        $usuario = $this->usuarioComPermissoes(['Listar Pedidos', 'Listar Todos os Pedidos']);
-
-        Livewire::actingAs($usuario)
-            ->test(ListPedidos::class)
-            ->assertSee($pedido->numero_protocolo)
-            ->assertSee($this->escola->nome);
+        $this->assertSame(0, Artisan::call('dados:backfill-estrutural', ['--apply' => true]));
+        $this->assertDatabaseHas('pedidos', [
+            'id' => $pedido->id,
+            'solicitante_id' => null,
+            'solicitante_id_legado' => 999999,
+        ]);
     }
 
     public function test_listagem_diferencia_pedido_encaminhado_do_aberto(): void

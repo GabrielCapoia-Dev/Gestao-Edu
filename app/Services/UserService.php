@@ -6,18 +6,22 @@ use App\Models\Aluno;
 use App\Models\Escola;
 use App\Models\IgnoredUser;
 use App\Models\Item;
+use App\Models\Pessoa;
 use App\Models\Professor;
 use App\Models\Role;
 use App\Models\Turma;
 use App\Models\User;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Schemas\Components\Utilities\Get;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\Validation\ValidationException;
@@ -186,7 +190,30 @@ class UserService
     {
         $base->whereNotIn('id', app(PessoaAcessoService::class)->rolesFuncionaisGerenciadasIds()->all());
 
-        return $this->ehAdmin($user) ? $base : $base->where('name', '!=', 'Admin');
+        if ($this->ehAdmin($user)) {
+            return $base;
+        }
+
+        $base->where('name', '!=', 'Admin');
+
+        if (! $user) {
+            return $base;
+        }
+
+        $permissoesPermitidas = $user->getAllPermissions()
+            ->pluck('name')
+            ->reject(fn (string $name): bool => $name === 'Aplicar Permissoes')
+            ->values();
+
+        if ($permissoesPermitidas->isEmpty()) {
+            return $base->whereDoesntHave('permissions');
+        }
+
+        return $base->whereDoesntHave(
+            'permissions',
+            fn (Builder $permissions): Builder => $permissions
+                ->whereNotIn('permissions.name', $permissoesPermitidas->all()),
+        );
     }
 
     public function opcoesDeRolesParaSelect(?User $user): array
@@ -457,7 +484,11 @@ class UserService
 
     public function desabilitarToggleAprovacaoEmail(?User $user, ?User $record): bool
     {
-        return $user && $record && $user->id === $record->id;
+        return ! $user
+            || ! $record
+            || $record->trashed()
+            || $record->hasRole('Admin')
+            || $user->id === $record->id;
     }
 
     public function opcoesDeEscolasParaCampo(?User $currentUser): array
@@ -514,7 +545,7 @@ class UserService
 
     public function podeSelecionarRegistro(?User $user, User $record): bool
     {
-        if ($record->hasRole('Admin')) {
+        if ($record->trashed() || $record->hasRole('Admin')) {
             return false;
         }
 
@@ -547,6 +578,20 @@ class UserService
         return Gate::forUser($user)->allows('delete', $record);
     }
 
+    public function podeAlterarStatus(?User $user, User $record): bool
+    {
+        return $user
+            && ! $record->trashed()
+            && Gate::forUser($user)->allows('changeOperationalStatus', $record);
+    }
+
+    public function podeRestaurar(?User $user, User $record): bool
+    {
+        return $user
+            && $record->trashed()
+            && Gate::forUser($user)->allows('restore', $record);
+    }
+
     public function podeDeletarEmLote(?User $user, iterable $records): bool
     {
         if (! $user) {
@@ -566,36 +611,130 @@ class UserService
         return true;
     }
 
-    /**
-     * Exclui usuário desvinculando FKs amigáveis (pessoa/professor permanecem).
-     */
-    public function excluirUsuario(User $record): void
+    public function inativarUsuario(User $record, ?User $operador = null): void
     {
-        if ($record->id === 1) {
-            throw new \RuntimeException('O usuário raiz não pode ser excluído.');
+        $operador ??= Auth::user();
+        $this->autorizarAlteracaoStatus($record, $operador);
+
+        $this->inativarPreservandoVinculos($record);
+    }
+
+    public function inativarPorAusenciaDePessoaAtiva(User $record): void
+    {
+        if ($record->id === 1 || $record->hasRole('Admin')) {
+            return;
         }
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($record): void {
-            if (Schema::hasTable('servidores') && Schema::hasColumn('servidores', 'user_id')) {
-                \App\Models\Servidor::query()->where('user_id', $record->id)->update(['user_id' => null]);
-            }
+        $this->inativarPreservandoVinculos($record);
+    }
 
-            if (Schema::hasTable('professores') && Schema::hasColumn('professores', 'user_id')) {
-                Professor::query()->where('user_id', $record->id)->update(['user_id' => null]);
-            }
-
-            if (Schema::hasTable('escola_user')) {
-                \Illuminate\Support\Facades\DB::table('escola_user')->where('user_id', $record->id)->delete();
-            }
-
-            if (Schema::hasTable('socialite_users')) {
-                \Illuminate\Support\Facades\DB::table('socialite_users')->where('user_id', $record->id)->delete();
-            }
-
-            $record->roles()->detach();
-            $record->permissions()->detach();
-            $record->delete();
+    private function inativarPreservandoVinculos(User $record): void
+    {
+        DB::transaction(function () use ($record): void {
+            $record->servidores()
+                ->where('status', Pessoa::STATUS_ATIVO)
+                ->get()
+                ->each(fn (Pessoa $pessoa): bool => $pessoa->forceFill(['status' => Pessoa::STATUS_INATIVO])->save());
+            $record->forceFill(['ativo' => false])->save();
+            $this->invalidarCredenciais($record);
         });
+    }
+
+    public function ativarUsuario(User $record, ?User $operador = null): void
+    {
+        $operador ??= Auth::user();
+        $this->autorizarAlteracaoStatus($record, $operador);
+
+        if ($record->trashed()) {
+            throw new \RuntimeException('Restaure a conta antes de reativá-la.');
+        }
+
+        $pessoas = $record->servidores()->limit(2)->get();
+        if ($pessoas->count() !== 1) {
+            throw ValidationException::withMessages([
+                'status' => 'O usuário precisa estar vinculado a exatamente uma Pessoa para ser ativado.',
+            ]);
+        }
+
+        DB::transaction(function () use ($record, $pessoas): void {
+            $pessoas->first()->forceFill(['status' => Pessoa::STATUS_ATIVO])->save();
+            $record->forceFill(['ativo' => true])->save();
+        });
+    }
+
+    public function arquivarUsuario(User $record, ?User $operador = null): void
+    {
+        $operador ??= Auth::user();
+
+        if (! $operador || ! Gate::forUser($operador)->allows('delete', $record)) {
+            throw new AuthorizationException('Você não possui permissão para arquivar esta conta.');
+        }
+
+        DB::transaction(function () use ($record): void {
+            $record->servidores()
+                ->where('status', Pessoa::STATUS_ATIVO)
+                ->get()
+                ->each(fn (Pessoa $pessoa): bool => $pessoa->forceFill(['status' => Pessoa::STATUS_INATIVO])->save());
+            $record->forceFill(['ativo' => false])->save();
+            $this->invalidarCredenciais($record);
+            $record->delete();
+            app(PermissionRegistrar::class)->forgetCachedPermissions();
+        });
+    }
+
+    public function restaurarUsuario(User $record, ?User $operador = null): void
+    {
+        $operador ??= Auth::user();
+
+        if (! $operador || ! Gate::forUser($operador)->allows('restore', $record)) {
+            throw new AuthorizationException('Você não possui permissão para restaurar esta conta.');
+        }
+
+        if (! $record->trashed()) {
+            throw new \RuntimeException('A conta informada não está arquivada.');
+        }
+
+        DB::transaction(function () use ($record): void {
+            $record->restore();
+            $record->servidores()
+                ->where('status', Pessoa::STATUS_ATIVO)
+                ->get()
+                ->each(fn (Pessoa $pessoa): bool => $pessoa->forceFill(['status' => Pessoa::STATUS_INATIVO])->save());
+            $record->forceFill(['ativo' => false])->save();
+            $this->invalidarCredenciais($record);
+            app(PermissionRegistrar::class)->forgetCachedPermissions();
+        });
+    }
+
+    /** @deprecated Use arquivarUsuario(). */
+    public function excluirUsuario(User $record): void
+    {
+        $this->arquivarUsuario($record, Auth::user());
+    }
+
+    private function autorizarAlteracaoStatus(User $record, ?User $operador): void
+    {
+        if (! $operador || ! Gate::forUser($operador)->allows('changeOperationalStatus', $record)) {
+            throw new AuthorizationException('Você não possui permissão para alterar o estado desta conta.');
+        }
+    }
+
+    public function invalidarCredenciais(User $record): void
+    {
+        $credentials = [
+            'remember_token' => Str::random(60),
+            'last_seen_at' => null,
+        ];
+
+        if (Schema::hasColumn('users', 'auth_version')) {
+            $credentials['auth_version'] = ((int) $record->auth_version) + 1;
+        }
+
+        $record->forceFill($credentials)->save();
+
+        if (Schema::hasTable('sessions') && Schema::hasColumn('sessions', 'user_id')) {
+            DB::table('sessions')->where('user_id', $record->getKey())->delete();
+        }
     }
 
     // =========================================================================
@@ -723,14 +862,7 @@ class UserService
 
     public function badgeNavegacaoParaNovosUsuarios(?User $user): ?string
     {
-        if (! $user || ! $this->ehAdmin($user)) {
-            return null;
-        }
-
-        $ignorados = IgnoredUser::where('admin_id', $user->id)->pluck('user_id')->toArray();
-        $count = User::where('email_approved', false)->whereNotIn('id', $ignorados)->count();
-
-        return $count > 0 ? (string) $count : null;
+        return null;
     }
 
     public function sincronizarIgnoradosParaAdmin(User $admin): void
@@ -739,7 +871,7 @@ class UserService
             return;
         }
 
-        $pendentes = User::where('email_approved', false)->pluck('id');
+        $pendentes = collect();
 
         foreach ($pendentes as $userId) {
             IgnoredUser::firstOrCreate([

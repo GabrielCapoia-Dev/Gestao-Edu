@@ -62,6 +62,9 @@ class ExportRequestService
 
             $exportRequest = ExportRequest::query()->create([
                 'user_id' => $user->id,
+                'user_id_legado' => $user->id,
+                'user_nome_snapshot' => $user->name,
+                'user_email_snapshot' => $user->email,
                 'type' => $type,
                 'format' => $format,
                 'label' => $label,

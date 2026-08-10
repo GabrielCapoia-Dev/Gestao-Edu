@@ -31,6 +31,6 @@ class InventarioRomaneio extends Model
 
     public function geradoPor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'gerado_por_id');
+        return $this->belongsTo(User::class, 'gerado_por_id')->withTrashed();
     }
 }
