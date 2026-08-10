@@ -181,7 +181,8 @@ class Pessoa extends Model
                     ->selectRaw('1')
                     ->from("{$table} as pessoa_email_duplicado")
                     ->whereColumn('pessoa_email_duplicado.email_normalizado', "{$table}.email_normalizado")
-                    ->whereColumn('pessoa_email_duplicado.id', '<>', "{$table}.id");
+                    ->whereColumn('pessoa_email_duplicado.id', '<>', "{$table}.id")
+                    ->whereNull('pessoa_email_duplicado.deleted_at');
             });
     }
 

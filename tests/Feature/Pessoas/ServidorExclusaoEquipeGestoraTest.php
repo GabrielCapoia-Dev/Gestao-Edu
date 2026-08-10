@@ -33,7 +33,7 @@ class ServidorExclusaoEquipeGestoraTest extends TestCase
         } catch (ValidationException $exception) {
             $mensagem = collect($exception->errors())->flatten()->implode(' ');
 
-            $this->assertStringContainsString('histórico na Equipe Gestora', $mensagem);
+            $this->assertStringContainsString('histórico em cargo funcional protegido', $mensagem);
             $this->assertStringContainsString('Inative a pessoa ou converta o cargo', $mensagem);
         }
 
@@ -57,6 +57,28 @@ class ServidorExclusaoEquipeGestoraTest extends TestCase
         $this->assertDatabaseHas('servidores', ['id' => $pessoa->id]);
         $this->assertDatabaseHas('servidor_funcao_administrativa', ['id' => $vinculo->id]);
         $this->assertDatabaseHas('servidor_funcao_turma', ['id' => $vinculoTurma->id]);
+    }
+
+    public function test_arquiva_pessoa_inativa_com_historico_gestor_sem_apagar_vinculos(): void
+    {
+        [$pessoa, $vinculo, $vinculoTurma] = $this->criarPessoaComHistoricoGestor(
+            ServidorFuncaoAdministrativa::STATUS_ATIVO,
+        );
+        $pessoa->forceFill(['status' => Servidor::STATUS_INATIVO])->save();
+
+        $resultado = app(ServidorService::class)->excluirPessoasEmMassa([$pessoa]);
+
+        $this->assertSame(1, $resultado['excluidos']);
+        $this->assertSame([], $resultado['bloqueados']);
+        $this->assertSoftDeleted('servidores', ['id' => $pessoa->id]);
+        $this->assertDatabaseHas('servidor_funcao_administrativa', [
+            'id' => $vinculo->id,
+            'status' => ServidorFuncaoAdministrativa::STATUS_INATIVO,
+        ]);
+        $this->assertDatabaseHas('servidor_funcao_turma', [
+            'id' => $vinculoTurma->id,
+            'status' => ServidorFuncaoAdministrativa::STATUS_INATIVO,
+        ]);
     }
 
     /** @return array{Servidor, ServidorFuncaoAdministrativa, ServidorFuncaoTurma, User} */

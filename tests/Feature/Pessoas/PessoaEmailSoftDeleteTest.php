@@ -116,4 +116,28 @@ class PessoaEmailSoftDeleteTest extends TestCase
         $this->assertFalse($user->fresh()->ativo);
         $this->assertSame($matricula->id, $restaurada->matriculas()->firstOrFail()->id);
     }
+
+    public function test_pessoa_arquivada_nao_mantem_alerta_de_email_duplicado_na_pessoa_ativa(): void
+    {
+        $agora = now();
+        $ids = [];
+
+        foreach (['Pessoa mantida', 'Pessoa arquivada'] as $nome) {
+            $ids[] = DB::table('servidores')->insertGetId([
+                'nome' => $nome,
+                'email' => 'legado.duplicado@exemplo.com',
+                'status' => Servidor::STATUS_INATIVO,
+                'created_at' => $agora,
+                'updated_at' => $agora,
+            ]);
+        }
+
+        Servidor::query()->findOrFail($ids[1])->delete();
+
+        $this->assertSame(0, Servidor::query()->comEmailDuplicado()->count());
+        $this->assertDatabaseHas('servidores', [
+            'id' => $ids[0],
+            'deleted_at' => null,
+        ]);
+    }
 }

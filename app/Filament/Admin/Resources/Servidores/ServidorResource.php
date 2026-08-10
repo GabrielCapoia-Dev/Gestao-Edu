@@ -126,6 +126,7 @@ class ServidorResource extends Resource
                             ->from("{$table} as pessoa_email_duplicado")
                             ->whereColumn('pessoa_email_duplicado.email_normalizado', "{$table}.email_normalizado")
                             ->whereColumn('pessoa_email_duplicado.id', '<>', "{$table}.id")
+                            ->whereNull('pessoa_email_duplicado.deleted_at')
                             ->limit(1);
                     }, 'email_duplicado')
                     ->with([
@@ -622,31 +623,32 @@ class ServidorResource extends Resource
                             ->required(),
                     ])
                     ->action(function ($records, array $data): void {
-                        foreach ($records as $record) {
-                            if (! $record instanceof Servidor || $record->trashed()) {
-                                throw new AuthorizationException(
-                                    'Não é possível alterar o status de uma ou mais pessoas selecionadas.',
-                                );
-                            }
-
-                            Gate::authorize('manageStructure', $record);
-                        }
+                        $records = collect($records);
+                        $autorizados = $records
+                            ->filter(fn ($record): bool => $record instanceof Servidor
+                                && ! $record->trashed()
+                                && Gate::allows('manageStructure', $record))
+                            ->values();
+                        $ignorados = $records->count() - $autorizados->count();
 
                         $alterados = app(ServidorService::class)->alterarStatusEmMassa(
-                            $records,
+                            $autorizados,
                             (string) ($data['status'] ?? ''),
                         );
 
-                        Notification::make()
+                        $notification = Notification::make()
                             ->title('Status atualizado em massa')
-                            ->body("{$alterados} pessoa(s) alterada(s).")
-                            ->success()
-                            ->send();
+                            ->body($ignorados > 0
+                                ? "{$alterados} pessoa(s) alterada(s); {$ignorados} registro(s) protegido(s) ignorado(s)."
+                                : "{$alterados} pessoa(s) alterada(s).");
+
+                        ($ignorados > 0 ? $notification->warning() : $notification->success())->send();
                     })
                     ->deselectRecordsAfterCompletion(),
 
                 DeleteBulkAction::make()
                     ->label('Arquivar selecionados')
+                    ->modalSubmitActionLabel('Arquivar')
                     ->requiresConfirmation()
                     ->modalHeading('Arquivar pessoas em massa')
                     ->modalDescription('As pessoas ficarão inativas e ocultas da listagem padrão. Matrículas, vínculos, histórico e contas de login serão preservados.')

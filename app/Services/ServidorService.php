@@ -920,6 +920,10 @@ class ServidorService
 
     private function possuiCargoProtegidoContraExclusao(Servidor $pessoa): bool
     {
+        if ($pessoa->status === Servidor::STATUS_INATIVO) {
+            return false;
+        }
+
         return $pessoa->servidorFuncoes()
             ->whereHas('funcaoAdministrativa', function (Builder $funcoes): void {
                 $funcoes->where(function (Builder $cargos): void {
@@ -1098,7 +1102,7 @@ class ServidorService
 
         return [
             'excluidos' => $excluidos,
-            'bloqueados' => $bloqueados,
+            'bloqueados' => array_values(array_unique($bloqueados)),
         ];
     }
 
