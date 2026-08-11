@@ -22,6 +22,7 @@ use App\Models\ServidorFuncaoTurma;
 use App\Models\TipoAvaliacao;
 use App\Models\Turma;
 use App\Models\User;
+use App\Services\Avaliacoes\AvaliacaoDashboardFactsService;
 use App\Services\Avaliacoes\AvaliacaoDashboardMetricsService;
 use Filament\Notifications\Notification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -36,6 +37,91 @@ class DashboardAvaliacoesPageTest extends TestCase
 {
     use RefreshDatabase;
     use CreatesAvaliacaoDocumentos;
+
+    public function test_turma_integral_vazia_usa_alunos_da_turma_base_no_workspace_e_dashboard(): void
+    {
+        Queue::fake();
+        Permission::findOrCreate('Acompanhar Avaliações');
+
+        $user = User::factory()->create(['email_approved' => true, 'email_verified_at' => now()]);
+        $user->givePermissionTo('Acompanhar Avaliações');
+
+        $tipo = TipoAvaliacao::query()->create(['nome' => 'Parecer Integral', 'status' => true]);
+        $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Periodo Integral', 'status' => true]);
+        $serieBase = $this->criarSerie('SER-BASE-INT', '1º Ano');
+        $serieIntegral = $this->criarSerie('SER-INT', '1º Ano - Integral');
+        $componente = ComponenteCurricular::query()->create([
+            'codigo' => 'COMP-INT',
+            'nome' => 'Recomposição - Matemática',
+        ]);
+        $escola = $this->criarEscola('Escola Integral');
+        $user->escolas()->attach($escola->id);
+
+        $turmaBase = $this->criarTurma($escola, $serieBase, 'A', 'integral');
+        $turmaIntegral = $this->criarTurma($escola, $serieIntegral, 'A', 'integral');
+        $aluno = $this->criarAluno($turmaBase, 'Aluno Integral', 'CGM-INT-001');
+
+        $professor = Professor::query()->create([
+            'id_escola' => $escola->id,
+            'matricula' => 'PROF-INT',
+            'nome' => 'Professor Integral',
+            'email' => 'prof.integral@edu.umuarama.pr.gov.br',
+        ]);
+        $turmaIntegral->componentes()->attach($componente->id, [
+            'professor_id' => $professor->id,
+            'tem_professor' => true,
+        ]);
+
+        $alternativa = Alternativa::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'nome' => 'Atende',
+            'tem_observacao' => false,
+            'status' => true,
+        ]);
+        $pauta = $this->criarPauta($tipo, $serieIntegral, $componente, 'Pauta integral');
+        $pauta->alternativas()->attach($alternativa->id);
+
+        $avaliacao = $this->criarAvaliacao('Avaliação Integral', $tipo, $periodo);
+        $avaliacao->series()->sync([$serieBase->id, $serieIntegral->id]);
+        $avaliacao->componentes()->sync([$componente->id]);
+        $avaliacao->escolas()->sync([$escola->id]);
+        $avaliacao->turmas()->sync([$turmaBase->id, $turmaIntegral->id]);
+        $avaliacao->pautas()->sync([$pauta->id]);
+
+        app(AvaliacaoDashboardFactsService::class)->rebuild((int) $avaliacao->id);
+
+        $this->assertDatabaseHas('avaliacao_dashboard_fatos', [
+            'avaliacao_id' => $avaliacao->id,
+            'aluno_id' => $aluno->id,
+            'turma_id' => $turmaIntegral->id,
+            'serie_id' => $serieIntegral->id,
+            'pauta_id' => $pauta->id,
+        ]);
+
+        $workspace = Livewire::actingAs($user)
+            ->test(AvaliacaoTurmaWorkspace::class, [
+                'avaliacaoId' => $avaliacao->id,
+                'turmaId' => $turmaIntegral->id,
+                'escolaId' => $escola->id,
+                'serieId' => $serieIntegral->id,
+                'initialComponenteId' => $componente->id,
+                'modo' => 'acompanhamento',
+                'canEdit' => true,
+            ]);
+
+        $this->assertTrue($workspace->instance()->alunosDaTurma((int) $turmaIntegral->id)->contains('id', $aluno->id));
+
+        $workspace->set("respostas.{$pauta->id}.{$aluno->id}.alternativa_id", $alternativa->id);
+
+        $documento = AvaliacaoAlunoDocumento::query()
+            ->where('avaliacao_id', $avaliacao->id)
+            ->where('aluno_id', $aluno->id)
+            ->firstOrFail();
+
+        $this->assertSame($alternativa->id, (int) $documento->payload['pautas'][(string) $pauta->id]['alternativa_id']);
+        $this->assertSame($professor->id, (int) $documento->payload['pautas'][(string) $pauta->id]['professor_id']);
+        $this->assertSame(1, $documento->total_pautas_esperadas);
+    }
 
     public function test_dashboard_carrega_indicadores_de_pendencia_apos_selecionar_avaliacao(): void
     {

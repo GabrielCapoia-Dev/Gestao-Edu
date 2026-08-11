@@ -12,6 +12,7 @@ use App\Models\Turma;
 use App\Models\TurmaComponenteProfessor;
 use App\Models\User;
 use App\Services\Avaliacoes\AvaliacaoAlunoDocumentoService;
+use App\Services\Avaliacoes\TurmaAvaliacaoAlunoScopeService;
 use App\Services\PessoaScopeService;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Collection;
@@ -1001,7 +1002,8 @@ class AvaliacaoTurmaWorkspace extends Component
             return $this->alunosPorTurmaCache;
         }
 
-        $turmasIds = $this->turmasDaSerieDisponiveis
+        $turmas = $this->turmasDaSerieDisponiveis;
+        $turmasIds = $turmas
             ->pluck('id')
             ->map(fn ($id): int => (int) $id)
             ->values()
@@ -1011,14 +1013,20 @@ class AvaliacaoTurmaWorkspace extends Component
             return $this->alunosPorTurmaCache = collect();
         }
 
-        return $this->alunosPorTurmaCache = Aluno::query()
-            ->whereIn('id_turma', $turmasIds)
+        $origens = app(TurmaAvaliacaoAlunoScopeService::class)->origensPorTurma($turmas);
+        $alunosPorOrigem = Aluno::query()
+            ->whereIn('id_turma', array_values($origens))
             ->where('tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL)
             ->whereIn('status', [Aluno::STATUS_MATRICULADO, Aluno::STATUS_PENDENTE])
             ->orderBy('nome')
             ->get(['id', 'nome', 'cgm', 'id_turma', 'status', 'pendencia_origem_aluno_id', 'tipo_vinculo'])
             ->groupBy('id_turma')
             ->map(fn (Collection $alunos): Collection => $alunos->values());
+
+        return $this->alunosPorTurmaCache = collect($origens)
+            ->mapWithKeys(fn (int $origemId, int $turmaId): array => [
+                $turmaId => $alunosPorOrigem->get($origemId, collect()),
+            ]);
     }
 
     public function getAlunosDaSerieProperty(): Collection
@@ -1037,6 +1045,17 @@ class AvaliacaoTurmaWorkspace extends Component
         return $this->alunosPorTurma->get($turmaId, collect());
     }
 
+    private function turmaAvaliativaDoAluno(Aluno $aluno): ?Turma
+    {
+        foreach ($this->alunosPorTurma as $turmaId => $alunos) {
+            if ($alunos->contains('id', (int) $aluno->id)) {
+                return $this->turmasDaSerieDisponiveis->firstWhere('id', (int) $turmaId);
+            }
+        }
+
+        return null;
+    }
+
     public function getAlunosEmMassaDisponiveisProperty(): Collection
     {
         return $this->turmasAlvoAvaliacaoEmMassa()
@@ -1048,7 +1067,7 @@ class AvaliacaoTurmaWorkspace extends Component
 
     public function rotuloAlunoEmMassa(Aluno $aluno): string
     {
-        $turma = $this->turmasDaSerieDisponiveis->firstWhere('id', (int) $aluno->id_turma);
+        $turma = $this->turmaAvaliativaDoAluno($aluno);
 
         return implode(' - ', array_filter([
             $aluno->nome,
@@ -1701,7 +1720,7 @@ class AvaliacaoTurmaWorkspace extends Component
             return;
         }
 
-        $turmaId = (int) $aluno->id_turma;
+        $turmaId = (int) ($this->turmaAvaliativaDoAluno($aluno)?->id ?? $aluno->id_turma);
         $pauta = $this->pautasDaTurma($turmaId)->firstWhere('id', $pautaId);
 
         if (! $pauta) {
@@ -1759,7 +1778,7 @@ class AvaliacaoTurmaWorkspace extends Component
             return;
         }
 
-        $turmaId = (int) $aluno->id_turma;
+        $turmaId = (int) ($this->turmaAvaliativaDoAluno($aluno)?->id ?? $aluno->id_turma);
         $informacoes = $this->limitarTextoCampo($this->informacoesComplementares[$componenteId][$alunoId] ?? '');
         $service = app(AvaliacaoAlunoDocumentoService::class);
         $documento = $service->obterOuCriar((int) $this->avaliacao, $aluno);

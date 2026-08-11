@@ -432,8 +432,11 @@ class AvaliacaoDocumentoExportService
      */
     private function alunosDaTurma(Turma $turma, string $escopo, array $params): Collection
     {
+        $origemTurmaId = app(TurmaAvaliacaoAlunoScopeService::class)
+            ->origensPorTurma(collect([$turma]))[(int) $turma->id] ?? (int) $turma->id;
+
         $query = Aluno::query()
-            ->where('id_turma', (int) $turma->id)
+            ->where('id_turma', $origemTurmaId)
             ->where('status', '!=', Aluno::STATUS_PENDENTE)
             ->orderBy('nome');
 

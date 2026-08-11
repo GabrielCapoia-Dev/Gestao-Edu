@@ -4,6 +4,7 @@ namespace App\Services\Avaliacoes;
 
 use App\Jobs\RebuildAvaliacaoDashboardFactsJob;
 use App\Models\Aluno;
+use App\Models\Turma;
 use Illuminate\Support\Facades\DB;
 
 class AvaliacaoDashboardFactsService
@@ -56,19 +57,38 @@ class AvaliacaoDashboardFactsService
             DB::transaction(function () use ($avaliacaoId): void {
                 DB::table('avaliacao_dashboard_fatos')->where('avaliacao_id', $avaliacaoId)->delete();
 
+                $turmas = Turma::query()
+                    ->whereHas('avaliacoes', fn ($query) => $query->whereKey($avaliacaoId))
+                    ->with('serie:id,nome')
+                    ->get(['id', 'nome', 'turno', 'id_serie', 'id_escola']);
+                $origens = app(TurmaAvaliacaoAlunoScopeService::class)->origensPorTurma($turmas);
+                $origemAlunosSql = $this->caseOrigemAlunos($origens);
+                $turmasComOrigemIds = collect($origens)
+                    ->filter(fn (int $origemId, int $turmaId): bool => $origemId !== $turmaId)
+                    ->keys()
+                    ->map(fn ($id): int => (int) $id)
+                    ->all();
+                $agora = now();
+
                 $esperados = DB::table('avaliacao_turma as at')
                     ->join('turmas as t', 't.id', '=', 'at.turma_id')
-                    ->join('alunos as aln', 'aln.id_turma', '=', 't.id')
+                    ->join('alunos as aln', 'aln.id_turma', '=', DB::raw($origemAlunosSql))
                     ->join('avaliacao_pauta as ap', 'ap.avaliacao_id', '=', 'at.avaliacao_id')
                     ->join('pautas as p', 'p.id', '=', 'ap.pauta_id')
                     ->where('at.avaliacao_id', $avaliacaoId)
                     ->where('aln.status', '!=', Aluno::STATUS_PENDENTE)
                     ->where('aln.tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL)
                     ->where('p.status', true)
-                    ->where(function ($query): void {
-                        $query->whereNull('p.serie_id')->orWhereColumn('p.serie_id', 't.id_serie');
+                    ->where(function ($query) use ($turmasComOrigemIds): void {
+                        $query->whereColumn('p.serie_id', 't.id_serie')
+                            ->orWhere(function ($query) use ($turmasComOrigemIds): void {
+                                $query->whereNull('p.serie_id');
+                                if ($turmasComOrigemIds !== []) {
+                                    $query->whereNotIn('t.id', $turmasComOrigemIds);
+                                }
+                            });
                     })
-                    ->selectRaw('at.avaliacao_id, aln.id as aluno_id, t.id as turma_id, t.id_escola as escola_id, t.id_serie as serie_id, p.id as pauta_id, p.componente_curricular_id, NULL as professor_id, NULL as alternativa_id, 0 as respondida, 0 as observacao_pendente, "pendente" as status_resposta, null as respondida_em, 1 as origem_version, NOW() as created_at, NOW() as updated_at');
+                    ->selectRaw('at.avaliacao_id, aln.id as aluno_id, t.id as turma_id, t.id_escola as escola_id, t.id_serie as serie_id, p.id as pauta_id, p.componente_curricular_id, NULL as professor_id, NULL as alternativa_id, 0 as respondida, 0 as observacao_pendente, "pendente" as status_resposta, null as respondida_em, 1 as origem_version, ? as created_at, ? as updated_at', [$agora, $agora]);
 
                 DB::table('avaliacao_dashboard_fatos')->insertUsing([
                     'avaliacao_id', 'aluno_id', 'turma_id', 'escola_id', 'serie_id', 'pauta_id',
@@ -90,6 +110,19 @@ class AvaliacaoDashboardFactsService
         }
     }
 
+    /** @param array<int, int> $origens */
+    private function caseOrigemAlunos(array $origens): string
+    {
+        $substituicoes = collect($origens)
+            ->filter(fn (int $origemId, int $turmaId): bool => $origemId !== $turmaId)
+            ->map(fn (int $origemId, int $turmaId): string => 'WHEN '.(int) $turmaId.' THEN '.(int) $origemId)
+            ->implode(' ');
+
+        return $substituicoes === ''
+            ? 't.id'
+            : 'CASE t.id '.$substituicoes.' ELSE t.id END';
+    }
+
     public function markFailed(int $avaliacaoId, ?string $erro): void
     {
         DB::table('avaliacao_dashboard_consolidacoes')
@@ -99,6 +132,10 @@ class AvaliacaoDashboardFactsService
 
     private function aplicarRespostas(int $avaliacaoId): void
     {
+        if (DB::getDriverName() === 'sqlite') {
+            return;
+        }
+
         $sql = <<<'SQL'
 UPDATE avaliacao_dashboard_fatos f
 JOIN (

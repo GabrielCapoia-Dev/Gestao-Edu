@@ -57,7 +57,11 @@ class AvaliacaoAlunoDocumentoService
             'alternativa_ids' => [],
             'professor_ids' => [],
             'pauta_ids_respondidas' => [],
-            'total_pautas_esperadas' => $this->contarPautasEsperadas($avaliacaoId, $contexto['serie_id']),
+            'total_pautas_esperadas' => $this->contarPautasEsperadas(
+                $avaliacaoId,
+                $contexto['serie_id'],
+                $contexto['turma_id'],
+            ),
             'total_pautas_respondidas' => 0,
             'total_infos_complementares' => 0,
             'status_preenchimento' => AvaliacaoAlunoDocumento::STATUS_VAZIO,
@@ -283,7 +287,8 @@ class AvaliacaoAlunoDocumentoService
                     'serie_id' => $contextoDestino['serie_id'],
                     'total_pautas_esperadas' => $this->contarPautasEsperadas(
                         (int) $documento->avaliacao_id,
-                        $contextoDestino['serie_id']
+                        $contextoDestino['serie_id'],
+                        $contextoDestino['turma_id'],
                     ),
                     'version' => (int) $documento->version + 1,
                 ])->save();
@@ -410,7 +415,11 @@ class AvaliacaoAlunoDocumentoService
         $totalRespondidas = count($pautaIdsRespondidas);
         $totalEsperadas = max(
             (int) $documento->total_pautas_esperadas,
-            $this->contarPautasEsperadas((int) $documento->avaliacao_id, $documento->serie_id ? (int) $documento->serie_id : null)
+            $this->contarPautasEsperadas(
+                (int) $documento->avaliacao_id,
+                $documento->serie_id ? (int) $documento->serie_id : null,
+                $documento->turma_id ? (int) $documento->turma_id : null,
+            )
         );
         $totalInfos = count(array_filter($infos, fn ($item) => is_array($item) && filled($item['texto'] ?? null)));
 
@@ -468,16 +477,34 @@ class AvaliacaoAlunoDocumentoService
         ];
     }
 
-    public function contarPautasEsperadas(int $avaliacaoId, ?int $serieId): int
+    public function contarPautasEsperadas(int $avaliacaoId, ?int $serieId, ?int $turmaId = null): int
     {
+        $seriesIds = collect([$serieId])->filter()->map(fn ($id): int => (int) $id);
+
+        if ($turmaId) {
+            $turmasAvaliativas = Turma::query()
+                ->whereHas('avaliacoes', fn ($query) => $query->whereKey($avaliacaoId))
+                ->with('serie:id,nome')
+                ->get(['id', 'nome', 'turno', 'id_serie', 'id_escola']);
+            $origens = app(TurmaAvaliacaoAlunoScopeService::class)->origensPorTurma($turmasAvaliativas);
+
+            $seriesIds = $seriesIds->merge(
+                $turmasAvaliativas
+                    ->filter(fn (Turma $turma): bool => ($origens[(int) $turma->id] ?? (int) $turma->id) === $turmaId)
+                    ->pluck('id_serie')
+            );
+        }
+
+        $seriesIds = $seriesIds->filter()->map(fn ($id): int => (int) $id)->unique()->values()->all();
+
         return (int) DB::table('avaliacao_pauta as ap')
             ->join('pautas as p', 'p.id', '=', 'ap.pauta_id')
             ->where('ap.avaliacao_id', $avaliacaoId)
             ->where('p.status', true)
-            ->where(function ($query) use ($serieId): void {
+            ->where(function ($query) use ($seriesIds): void {
                 $query->whereNull('p.serie_id');
-                if ($serieId) {
-                    $query->orWhere('p.serie_id', $serieId);
+                if ($seriesIds !== []) {
+                    $query->orWhereIn('p.serie_id', $seriesIds);
                 }
             })
             ->count();
