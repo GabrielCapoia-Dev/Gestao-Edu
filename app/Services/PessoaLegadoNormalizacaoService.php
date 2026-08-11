@@ -380,7 +380,7 @@ class PessoaLegadoNormalizacaoService
                             $payload['turno'] = $turno;
                         }
                     }
-                    $professor->update($payload);
+                    $professor->updateQuietly($payload);
                     $stats['matriculas_vinculadas'] = ($stats['matriculas_vinculadas'] ?? 0) + 1;
                 }
 
@@ -474,7 +474,7 @@ class PessoaLegadoNormalizacaoService
                 }
 
                 if ((int) ($professor->servidor_funcao_administrativa_id ?? 0) !== (int) $vinculo->id) {
-                    $professor->update(['servidor_funcao_administrativa_id' => $vinculo->id]);
+                    $professor->updateQuietly(['servidor_funcao_administrativa_id' => $vinculo->id]);
                 }
 
                 $sincronizados++;

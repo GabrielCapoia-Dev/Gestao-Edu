@@ -221,6 +221,32 @@ class PessoaLegadoNormalizacaoTest extends TestCase
         ]);
     }
 
+    public function test_seeder_materializa_matricula_legada_sem_exigir_acesso_para_pessoa_sem_email(): void
+    {
+        $this->seedCargo();
+        $escola = $this->criarEscola('Escola Legado Sem Email');
+        $servidorId = DB::table('servidores')->insertGetId([
+            'nome' => 'Professor Legado Sem Email',
+            'status' => Servidor::STATUS_ATIVO,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $professor = Professor::withoutEvents(fn () => Professor::query()->create([
+            'servidor_id' => $servidorId,
+            'id_escola' => $escola->id,
+            'matricula' => 'LEGADO-SEM-EMAIL',
+            'turno' => 'manha',
+            'nome' => 'Professor Legado Sem Email',
+            'email' => 'professor.legado@edu.umuarama.pr.gov.br',
+            'ativo' => true,
+        ]));
+
+        $this->seed(PessoaLegadoNormalizacaoSeeder::class);
+
+        $this->assertNotNull($professor->fresh()->professor_matricula_id);
+        $this->assertNull(Servidor::query()->findOrFail($servidorId)->user_id);
+    }
+
     private function seedCargo(): void
     {
         Role::query()->firstOrCreate(['name' => 'Professor', 'guard_name' => 'web']);

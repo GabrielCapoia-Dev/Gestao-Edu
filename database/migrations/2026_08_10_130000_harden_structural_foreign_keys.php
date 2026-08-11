@@ -1,5 +1,6 @@
 <?php
 
+use App\Services\PedidoEstruturalBackfillService;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -41,6 +42,7 @@ return new class extends Migration
     {
         $this->restoreSqliteNormalizedEmailColumn();
         $this->assertStructuralSchemaReady();
+        app(PedidoEstruturalBackfillService::class)->run(apply: true);
         $this->assertHistoricalPreservation();
         $this->assertPedidoSchoolIntegrity();
 
