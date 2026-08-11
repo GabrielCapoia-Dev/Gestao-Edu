@@ -38,6 +38,37 @@ class DashboardAvaliacoesPageTest extends TestCase
     use RefreshDatabase;
     use CreatesAvaliacaoDocumentos;
 
+    public function test_dashboard_lista_serie_do_escopo_mesmo_sem_alunos_ou_fatos(): void
+    {
+        $user = User::factory()->create(['email_approved' => true, 'email_verified_at' => now()]);
+        $this->actingAs($user);
+
+        $tipo = TipoAvaliacao::query()->create(['nome' => 'Parecer SRM', 'status' => true]);
+        $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Periodo SRM', 'status' => true]);
+        $serie = $this->criarSerie('SER-SRM-VAZIA', 'Sala de Recursos Multifuncionais');
+        $componente = ComponenteCurricular::query()->create(['codigo' => 'COMP-SRM', 'nome' => 'SRM']);
+        $escola = $this->criarEscola('Escola SRM');
+        $user->escolas()->attach($escola->id);
+        $turma = $this->criarTurma($escola, $serie, 'A', 'manha');
+        $pauta = $this->criarPauta($tipo, $serie, $componente, 'Pauta SRM');
+
+        $avaliacao = $this->criarAvaliacao('Avaliação SRM', $tipo, $periodo);
+        $avaliacao->series()->sync([$serie->id]);
+        $avaliacao->componentes()->sync([$componente->id]);
+        $avaliacao->escolas()->sync([$escola->id]);
+        $avaliacao->turmas()->sync([$turma->id]);
+        $avaliacao->pautas()->sync([$pauta->id]);
+
+        $page = app(DashboardAvaliacoes::class);
+        $filtrosPadrao = new \ReflectionMethod($page, 'filtrosPadrao');
+        $page->filtros = $filtrosPadrao->invoke($page);
+        $montarSeries = new \ReflectionMethod($page, 'montarPreenchimentoPorSeries');
+        $series = collect($montarSeries->invoke($page, [$avaliacao->id]))->keyBy('nome');
+
+        $this->assertSame(0, $series->get('Sala de Recursos Multifuncionais')['preenchimentos_esperados']);
+        $this->assertSame(0, $series->get('Sala de Recursos Multifuncionais')['preenchimentos_pendentes']);
+    }
+
     public function test_turma_integral_vazia_usa_alunos_da_turma_base_no_workspace_e_dashboard(): void
     {
         Queue::fake();

@@ -2530,6 +2530,64 @@ class DashboardAvaliacoes extends Page implements HasForms
             ->get()
             ->keyBy(fn ($item): int => (int) $item->agrupamento_id);
 
+        $seriesSemFatos = DB::table('avaliacao_turma as at')
+            ->join('turmas as t', 't.id', '=', 'at.turma_id')
+            ->join('series as s', 's.id', '=', 't.id_serie')
+            ->join('avaliacao_pauta as ap', 'ap.avaliacao_id', '=', 'at.avaliacao_id')
+            ->join('pautas as p', 'p.id', '=', 'ap.pauta_id')
+            ->whereIn('at.avaliacao_id', $avaliacaoIds)
+            ->where('p.status', true)
+            ->where(function (QueryBuilder $query): void {
+                $query->whereNull('p.serie_id')
+                    ->orWhereColumn('p.serie_id', 't.id_serie');
+            });
+
+        $this->aplicarEscopoEscolarQuery($seriesSemFatos, 't');
+
+        if ($this->filtros['series_ids'] !== []) {
+            $seriesSemFatos->whereIn('t.id_serie', $this->filtros['series_ids']);
+        }
+
+        if ($this->filtros['turnos'] !== []) {
+            $seriesSemFatos->whereIn('t.turno', $this->filtros['turnos']);
+        }
+
+        if ($this->filtros['escolas_ids'] !== []) {
+            $seriesSemFatos->whereIn('t.id_escola', $this->filtros['escolas_ids']);
+        }
+
+        if ($this->filtros['componentes_ids'] !== []) {
+            $seriesSemFatos->whereIn('p.componente_curricular_id', $this->filtros['componentes_ids']);
+        }
+
+        if ($this->filtros['pautas_ids'] !== []) {
+            $seriesSemFatos->whereIn('p.id', $this->filtros['pautas_ids']);
+        }
+
+        if ($this->filtros['professores_ids'] !== []) {
+            $seriesSemFatos
+                ->join('turma_componente_professor as tcp', 'tcp.turma_id', '=', 't.id')
+                ->whereIn('tcp.professor_id', $this->filtros['professores_ids'])
+                ->where('tcp.tem_professor', true)
+                ->whereColumn('tcp.componente_curricular_id', 'p.componente_curricular_id');
+        }
+
+        $seriesSemFatos
+            ->select('t.id_serie as agrupamento_id', 's.nome')
+            ->distinct()
+            ->get()
+            ->each(function (object $serie) use ($esperados): void {
+                $serieId = (int) $serie->agrupamento_id;
+
+                if (! $esperados->has($serieId)) {
+                    $esperados->put($serieId, (object) [
+                        'agrupamento_id' => $serieId,
+                        'nome' => (string) $serie->nome,
+                        'preenchimentos_esperados' => 0,
+                    ]);
+                }
+            });
+
         $respondidos = (clone $this->baseRespostasQuery($avaliacaoIds, ignorarAlternativas: true))
             ->leftJoin('series as s', 's.id', '=', 't.id_serie')
             ->groupBy('t.id_serie', 's.nome')
