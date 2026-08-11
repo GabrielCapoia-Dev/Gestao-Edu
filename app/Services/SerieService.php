@@ -129,7 +129,7 @@ class SerieService
             BulkAction::make('adicionar_componentes_curriculares')
                 ->label('Adicionar componentes')
                 ->icon('heroicon-o-plus-circle')
-                ->visible(fn (): bool => $user && Gate::forUser($user)->allows('update', Serie::class))
+                ->visible(fn (): bool => $user && Gate::forUser($user)->allows('updateAny', Serie::class))
                 ->form([
                     Select::make('componentes_curriculares')
                         ->label('Componentes curriculares')

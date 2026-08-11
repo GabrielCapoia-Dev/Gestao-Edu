@@ -43,6 +43,14 @@ class SeriePolicy
     }
 
     /**
+     * Determine whether the user can update models in bulk.
+     */
+    public function updateAny(User $user): bool
+    {
+        return $user->hasPermissionTo('Editar Séries');
+    }
+
+    /**
      * Determine whether the user can delete the model.
      */
     public function delete(User $user, Serie $model): bool
