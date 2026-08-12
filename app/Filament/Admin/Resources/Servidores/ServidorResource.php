@@ -2,6 +2,7 @@
 
 namespace App\Filament\Admin\Resources\Servidores;
 
+use App\Filament\Admin\Actions\ExportSelectedRecordsBulkAction;
 use App\Filament\Admin\Pages\GerenciarEventos;
 use App\Filament\Admin\Resources\Servidores\Actions\PessoaAcessoActions;
 use App\Filament\Admin\Resources\Servidores\Pages\ManageServidores;
@@ -607,6 +608,12 @@ class ServidorResource extends Resource
                     ->dropdownTeleport(),
             ], position: RecordActionsPosition::AfterContent)
             ->toolbarActions([
+                ExportSelectedRecordsBulkAction::make(
+                    'servidores_selecionados',
+                    'XLSX de servidores selecionados',
+                    'servidores.bulk_action',
+                ),
+
                 ...PessoaAcessoActions::bulkActions(),
 
                 BulkAction::make('alterar_status_em_massa')

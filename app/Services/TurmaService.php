@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Filament\Admin\Actions\ExportSelectedRecordsBulkAction;
 use App\Models\Escola;
 use App\Models\Professor;
 use App\Models\Serie;
@@ -221,6 +222,12 @@ class TurmaService
     private function acoesEmMassa(?User $user): array
     {
         return [
+            ExportSelectedRecordsBulkAction::make(
+                'turmas_selecionadas',
+                'XLSX de turmas selecionadas',
+                'turmas.bulk_action',
+            ),
+
             DeleteBulkAction::make()
                 ->before(function ($records, $action) {
                     foreach ($records as $record) {

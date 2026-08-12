@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Filament\Admin\Actions\ExportSelectedRecordsBulkAction;
 use App\Exceptions\MatriculaAlunoBloqueadaException;
 use App\Jobs\DeleteAlunosEmMassaJob;
 use App\Models\Aluno;
@@ -780,6 +781,12 @@ class AlunoService
     private function acoesEmMassa(?User $user): array
     {
         return [
+            ExportSelectedRecordsBulkAction::make(
+                'alunos_selecionados',
+                'XLSX de alunos selecionados',
+                'alunos.bulk_action',
+            ),
+
             BulkAction::make('marcar_contra_turno_massa')
                 ->label('Marcar contra turno')
                 ->icon('heroicon-o-sparkles')
