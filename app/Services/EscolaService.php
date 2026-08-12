@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Gate;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -342,6 +343,32 @@ class EscolaService
                                         'regex' => 'Use apenas letras e um espaço simples entre palavras.',
                                     ]),
                             ]),
+                    ]),
+
+                Section::make('Lotações')
+                    ->description('Cadastre os códigos de lotação vinculados a esta escola.')
+                    ->columnSpanFull()
+                    ->schema([
+                        Repeater::make('lotacoes')
+                            ->label('Lotações')
+                            ->relationship()
+                            ->schema([
+                                TextInput::make('codigo')
+                                    ->label('Código')
+                                    ->required()
+                                    ->maxLength(100)
+                                    ->distinct(),
+
+                                TextInput::make('nome')
+                                    ->label('Nome da lotação')
+                                    ->required()
+                                    ->maxLength(150),
+                            ])
+                            ->columns(2)
+                            ->defaultItems(0)
+                            ->addActionLabel('Adicionar lotação')
+                            ->reorderable(false)
+                            ->columnSpanFull(),
                     ]),
             ]);
     }

@@ -6,37 +6,45 @@
 --   Sala de Recursos Multifuncionais.
 --
 -- O script e idempotente e preserva documentos, historicos e respostas.
--- Em fatos ja existentes, altera somente as dimensoes derivadas do escopo.
+-- Fatos ja existentes nao sao apagados, substituidos nem movidos.
 
-SET NAMES utf8mb4;
+SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;
 SET @avaliacao_id := 3;
+
+-- A tentativa anterior pode ter parado depois de START TRANSACTION.
+-- ROLLBACK e inofensivo quando nao existe transacao aberta e impede que
+-- escritas parciais da tentativa com erro sejam confirmadas por engano.
+ROLLBACK;
 
 DROP TEMPORARY TABLE IF EXISTS tmp_series_alvo;
 CREATE TEMPORARY TABLE tmp_series_alvo (
     ordem tinyint unsigned NOT NULL PRIMARY KEY,
     nome varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-    tipo_escopo enum('regular', 'integral', 'srm') NOT NULL,
+    tipo_escopo enum('regular', 'integral', 'srm')
+        CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
     serie_id bigint unsigned NULL,
     correspondencias int unsigned NOT NULL DEFAULT 0
 ) ENGINE=InnoDB;
 
-INSERT INTO tmp_series_alvo (ordem, nome, tipo_escopo)
-VALUES
-    (1, '1º Ano', 'regular'),
-    (2, '2º Ano', 'regular'),
-    (3, '1º Ano - Integral', 'integral'),
-    (4, '2º Ano - Integral', 'integral'),
-    (5, 'Sala de Recursos Multifuncionais', 'srm');
-
-UPDATE tmp_series_alvo alvo
-JOIN (
-    SELECT alvo_interno.ordem, MIN(s.id) AS serie_id, COUNT(s.id) AS correspondencias
-    FROM tmp_series_alvo alvo_interno
-    LEFT JOIN series s ON BINARY s.nome = BINARY alvo_interno.nome
-    GROUP BY alvo_interno.ordem
-) resolvida ON resolvida.ordem = alvo.ordem
-SET alvo.serie_id = resolvida.serie_id,
-    alvo.correspondencias = resolvida.correspondencias;
+-- Resolve nomes e IDs durante a insercao. Isso evita o erro MySQL #1137
+-- causado por atualizar e reler a mesma tabela temporaria na mesma instrucao.
+INSERT INTO tmp_series_alvo
+    (ordem, nome, tipo_escopo, serie_id, correspondencias)
+SELECT
+    alvo.ordem,
+    alvo.nome,
+    alvo.tipo_escopo,
+    MIN(s.id) AS serie_id,
+    COUNT(s.id) AS correspondencias
+FROM (
+    SELECT 1 AS ordem, '1º Ano' AS nome, 'regular' AS tipo_escopo
+    UNION ALL SELECT 2, '2º Ano', 'regular'
+    UNION ALL SELECT 3, '1º Ano - Integral', 'integral'
+    UNION ALL SELECT 4, '2º Ano - Integral', 'integral'
+    UNION ALL SELECT 5, 'Sala de Recursos Multifuncionais', 'srm'
+) alvo
+LEFT JOIN series s ON BINARY s.nome = BINARY alvo.nome
+GROUP BY alvo.ordem, alvo.nome, alvo.tipo_escopo;
 
 SET @avaliacao_correspondencias := (
     SELECT COUNT(*) FROM avaliacoes WHERE id = @avaliacao_id
@@ -73,7 +81,8 @@ CREATE TEMPORARY TABLE tmp_turmas_alvo (
     escola_id bigint unsigned NOT NULL,
     serie_id bigint unsigned NOT NULL,
     serie_nome varchar(255) NOT NULL,
-    tipo_escopo enum('regular', 'integral', 'srm') NOT NULL,
+    tipo_escopo enum('regular', 'integral', 'srm')
+        CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
     turma_nome varchar(255) NOT NULL,
     turno varchar(255) NOT NULL
 ) ENGINE=InnoDB;
@@ -99,8 +108,10 @@ DROP TEMPORARY TABLE IF EXISTS tmp_turma_origem;
 CREATE TEMPORARY TABLE tmp_turma_origem (
     turma_avaliativa_id bigint unsigned NOT NULL PRIMARY KEY,
     turma_origem_id bigint unsigned NULL,
-    tipo_vinculo enum('principal', 'contra_turno') NOT NULL,
-    tipo_origem enum('direta', 'integral_base', 'srm', 'sem_origem') NOT NULL
+    tipo_vinculo enum('principal', 'contra_turno')
+        CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+    tipo_origem enum('direta', 'integral_base', 'srm', 'sem_origem')
+        CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL
 ) ENGINE=InnoDB;
 
 INSERT INTO tmp_turma_origem
@@ -197,8 +208,9 @@ JOIN serie_componente_curricular scc
  AND scc.componente_curricular_id = p.componente_curricular_id
 WHERE av.id = @avaliacao_id;
 
--- Fatos esperados das cinco series. Em conflito, somente dimensoes derivadas mudam.
-INSERT INTO avaliacao_dashboard_fatos (
+-- Acrescenta somente fatos ausentes. Fatos regulares, integrais ou SRM que ja
+-- existem nao sao substituidos nem movidos para outra turma/serie.
+INSERT IGNORE INTO avaliacao_dashboard_fatos (
     avaliacao_id,
     aluno_id,
     turma_id,
@@ -239,7 +251,7 @@ JOIN tmp_turma_origem origem
  AND origem.turma_origem_id IS NOT NULL
 JOIN alunos aluno
   ON aluno.id_turma = origem.turma_origem_id
- AND aluno.tipo_vinculo = origem.tipo_vinculo
+ AND BINARY aluno.tipo_vinculo = BINARY origem.tipo_vinculo
  AND (
      (origem.tipo_vinculo = 'contra_turno' AND aluno.status = 'matriculado')
      OR
@@ -255,13 +267,7 @@ JOIN avaliacao_componente ac
  AND ac.componente_curricular_id = p.componente_curricular_id
 JOIN serie_componente_curricular scc
   ON scc.serie_id = turma.serie_id
- AND scc.componente_curricular_id = p.componente_curricular_id
-ON DUPLICATE KEY UPDATE
-    turma_id = VALUES(turma_id),
-    escola_id = VALUES(escola_id),
-    serie_id = VALUES(serie_id),
-    componente_curricular_id = VALUES(componente_curricular_id),
-    updated_at = NOW();
+ AND scc.componente_curricular_id = p.componente_curricular_id;
 
 -- Reaplica as respostas dos documentos JSON canonicos nos fatos criados agora.
 UPDATE avaliacao_dashboard_fatos fato
@@ -349,7 +355,7 @@ LEFT JOIN tmp_turmas_alvo turma ON turma.serie_id = alvo.serie_id
 LEFT JOIN tmp_turma_origem origem ON origem.turma_avaliativa_id = turma.turma_id
 LEFT JOIN alunos aluno
   ON aluno.id_turma = origem.turma_origem_id
- AND aluno.tipo_vinculo = origem.tipo_vinculo
+ AND BINARY aluno.tipo_vinculo = BINARY origem.tipo_vinculo
 LEFT JOIN avaliacao_pauta ap ON ap.avaliacao_id = @avaliacao_id
 LEFT JOIN pautas pauta
   ON pauta.id = ap.pauta_id
@@ -366,39 +372,50 @@ SELECT
     alvo.nome AS `Serie`,
     NULL AS `Escola`,
     NULL AS `Turma`,
-    'Serie sem turma vinculada' AS `Pendencia`
+    CONCAT_WS('; ',
+        IF(NOT EXISTS (
+            SELECT 1
+            FROM avaliacao_turma av_turma
+            JOIN turmas t ON t.id = av_turma.turma_id
+            WHERE av_turma.avaliacao_id = @avaliacao_id
+              AND t.id_serie = alvo.serie_id
+        ), 'Serie sem turma vinculada', NULL),
+        IF(NOT EXISTS (
+            SELECT 1
+            FROM avaliacao_pauta ap
+            JOIN pautas p ON p.id = ap.pauta_id
+            WHERE ap.avaliacao_id = @avaliacao_id
+              AND p.serie_id = alvo.serie_id
+              AND p.status = 1
+        ), 'Serie sem pauta ativa vinculada', NULL),
+        IF(NOT EXISTS (
+            SELECT 1
+            FROM avaliacao_dashboard_fatos f
+            WHERE f.avaliacao_id = @avaliacao_id
+              AND f.serie_id = alvo.serie_id
+        ), 'Serie sem fatos gerados', NULL)
+    ) AS `Pendencia`
 FROM tmp_series_alvo alvo
 WHERE NOT EXISTS (
-    SELECT 1 FROM avaliacao_turma av_turma
-    JOIN turmas t ON t.id = av_turma.turma_id
-    WHERE av_turma.avaliacao_id = @avaliacao_id
-      AND t.id_serie = alvo.serie_id
-)
-UNION ALL
-SELECT
-    alvo.nome,
-    NULL,
-    NULL,
-    'Serie sem pauta ativa vinculada'
-FROM tmp_series_alvo alvo
-WHERE NOT EXISTS (
-    SELECT 1 FROM avaliacao_pauta ap
-    JOIN pautas p ON p.id = ap.pauta_id
-    WHERE ap.avaliacao_id = @avaliacao_id
-      AND p.serie_id = alvo.serie_id
-      AND p.status = 1
-)
-UNION ALL
-SELECT
-    alvo.nome,
-    NULL,
-    NULL,
-    'Serie sem fatos gerados'
-FROM tmp_series_alvo alvo
-WHERE NOT EXISTS (
-    SELECT 1 FROM avaliacao_dashboard_fatos f
-    WHERE f.avaliacao_id = @avaliacao_id
-      AND f.serie_id = alvo.serie_id
+        SELECT 1
+        FROM avaliacao_turma av_turma
+        JOIN turmas t ON t.id = av_turma.turma_id
+        WHERE av_turma.avaliacao_id = @avaliacao_id
+          AND t.id_serie = alvo.serie_id
+    )
+   OR NOT EXISTS (
+        SELECT 1
+        FROM avaliacao_pauta ap
+        JOIN pautas p ON p.id = ap.pauta_id
+        WHERE ap.avaliacao_id = @avaliacao_id
+          AND p.serie_id = alvo.serie_id
+          AND p.status = 1
+    )
+   OR NOT EXISTS (
+        SELECT 1
+        FROM avaliacao_dashboard_fatos f
+        WHERE f.avaliacao_id = @avaliacao_id
+          AND f.serie_id = alvo.serie_id
 )
 UNION ALL
 SELECT
