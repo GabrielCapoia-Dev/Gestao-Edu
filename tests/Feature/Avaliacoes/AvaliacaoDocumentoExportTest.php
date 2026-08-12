@@ -440,12 +440,6 @@ class AvaliacaoDocumentoExportTest extends TestCase
         $alunosRegulares = $alunosDaTurma->invoke($servico, $turmaPrincipal, 'turma', []);
         $alunosSrm = $alunosDaTurma->invoke($servico, $turmaContra, 'turma', []);
 
-        $conteudo = 'Aluno VÃ­nculo Principal Contra turno';
-
-        $this->assertStringContainsString('Aluno Vínculo', $conteudo);
-        $this->assertStringContainsString('Principal', $conteudo);
-        $this->assertStringContainsString('Contra turno', $conteudo);
-
         $this->assertSame([$principal->id], $alunosRegulares->pluck('id')->all());
         $this->assertSame([$contraTurno->id], $alunosSrm->pluck('id')->all());
         $this->assertSame(Aluno::TIPO_VINCULO_CONTRA_TURNO, $alunosSrm->first()->tipo_vinculo);
