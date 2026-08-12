@@ -163,6 +163,11 @@ class Pessoa extends Model
         $this->attributes['email'] = static::normalizarEmail($value);
     }
 
+    public function setNomeAttribute(string $value): void
+    {
+        $this->attributes['nome'] = Str::upper($value);
+    }
+
     public static function normalizarEmail(?string $email): ?string
     {
         $normalizado = Str::lower(trim((string) $email));

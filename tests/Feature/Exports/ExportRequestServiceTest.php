@@ -2,10 +2,13 @@
 
 namespace Tests\Feature\Exports;
 
+use App\Contracts\Exports\ExportHandler;
 use App\Jobs\ProcessExportRequestJob;
 use App\Models\ExportRequest;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\Exports\ExportFileResult;
+use App\Services\Exports\ExportManager;
 use App\Services\Exports\ExportRequestService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -174,6 +177,48 @@ class ExportRequestServiceTest extends TestCase
         $this->assertNotNull($exportRequest->finished_at);
     }
 
+    public function test_job_mantem_exportacao_na_fila_quando_uma_tentativa_falha(): void
+    {
+        config()->set('exports.handlers.teste_falha_temporaria', TemporaryFailingExportHandler::class);
+
+        $user = User::factory()->create([
+            'email_approved' => true,
+            'email_verified_at' => now(),
+        ]);
+
+        $exportRequest = ExportRequest::query()->create([
+            'user_id' => $user->id,
+            'type' => 'teste_falha_temporaria',
+            'format' => 'pdf',
+            'label' => 'Exportacao temporaria',
+            'filters' => [],
+            'metadata' => [],
+            'fingerprint' => fake()->uuid(),
+            'status' => ExportRequest::STATUS_QUEUED,
+            'status_message' => 'Aguardando processamento.',
+            'progress_current' => 0,
+            'progress_total' => 100,
+        ]);
+
+        $job = new ProcessExportRequestJob($exportRequest->getKey());
+
+        try {
+            $job->handle(app(ExportManager::class));
+            $this->fail('A falha temporaria do handler deveria ser propagada ao worker.');
+        } catch (\RuntimeException $exception) {
+            $this->assertSame('Falha temporaria de teste.', $exception->getMessage());
+        }
+
+        $exportRequest->refresh();
+
+        $this->assertSame(3, $job->tries);
+        $this->assertFalse($job->failOnTimeout);
+        $this->assertSame(ExportRequest::STATUS_QUEUED, $exportRequest->status);
+        $this->assertSame('Falha temporária. Uma nova tentativa será executada automaticamente.', $exportRequest->status_message);
+        $this->assertSame('Falha temporaria de teste.', $exportRequest->error_message);
+        $this->assertNull($exportRequest->finished_at);
+    }
+
     private function finishedExportRequest(User $user): ExportRequest
     {
         $exportRequest = ExportRequest::query()->create([
@@ -200,5 +245,13 @@ class ExportRequestServiceTest extends TestCase
         ]);
 
         return $exportRequest->refresh();
+    }
+}
+
+class TemporaryFailingExportHandler implements ExportHandler
+{
+    public function handle(ExportRequest $exportRequest): ExportFileResult
+    {
+        throw new \RuntimeException('Falha temporaria de teste.');
     }
 }

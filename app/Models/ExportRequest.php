@@ -159,6 +159,17 @@ class ExportRequest extends Model
         ])->save();
     }
 
+    public function markQueuedForRetry(string $message, ?string $errorMessage = null): void
+    {
+        $this->forceFill([
+            'status' => self::STATUS_QUEUED,
+            'status_message' => $message,
+            'error_message' => $errorMessage !== null ? Str::limit($errorMessage, 4000, '') : null,
+            'started_at' => null,
+            'finished_at' => null,
+        ])->save();
+    }
+
     public function updateProgress(int $current, ?int $total = null, ?string $message = null): void
     {
         $this->forceFill(array_filter([
@@ -169,7 +180,7 @@ class ExportRequest extends Model
     }
 
     /**
-     * @param array{disk:string,path:string,file_name:string,mime:string|null,size_bytes:int|null,checksum:string|null} $file
+     * @param  array{disk:string,path:string,file_name:string,mime:string|null,size_bytes:int|null,checksum:string|null}  $file
      */
     public function markFinished(array $file): void
     {

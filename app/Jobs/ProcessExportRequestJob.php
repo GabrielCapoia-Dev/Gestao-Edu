@@ -22,11 +22,14 @@ class ProcessExportRequestJob implements ShouldQueue
     use Queueable;
     use SerializesModels;
 
-    public int $tries = 2;
+    public int $tries = 3;
 
     public int $timeout;
 
-    public bool $failOnTimeout = true;
+    public bool $failOnTimeout = false;
+
+    /** @var array<int, int> */
+    public array $backoff = [30, 120, 300];
 
     public function __construct(
         public readonly string $exportRequestId,
@@ -44,7 +47,7 @@ class ProcessExportRequestJob implements ShouldQueue
         }
 
         return [
-            (new WithoutOverlapping('export:' . $exportRequest->fingerprint))
+            (new WithoutOverlapping('export:'.$exportRequest->fingerprint))
                 ->expireAfter((int) config('exports.lock_expiration', 1200)),
         ];
     }
@@ -77,16 +80,17 @@ class ProcessExportRequestJob implements ShouldQueue
             $exportRequest->refresh()->markFinished($result->toDatabasePayload());
             $this->notifySuccess($exportRequest->refresh());
         } catch (Throwable $exception) {
-            $exportRequest->refresh()->markFailed($exception->getMessage());
+            $exportRequest->refresh()->markQueuedForRetry(
+                'Falha temporária. Uma nova tentativa será executada automaticamente.',
+                $exception->getMessage(),
+            );
 
-            Log::error('Falha ao processar exportação.', [
+            Log::warning('Falha temporária ao processar exportação; o job será tentado novamente.', [
                 'export_request_id' => $exportRequest->getKey(),
                 'type' => $exportRequest->type,
                 'format' => $exportRequest->format,
                 'exception' => $exception,
             ]);
-
-            $this->notifyFailure($exportRequest->refresh());
 
             throw $exception;
         }
@@ -130,7 +134,7 @@ class ProcessExportRequestJob implements ShouldQueue
 
         $user->notify(new SistemaNotification(
             titulo: 'Exportação pronta',
-            mensagem: ($exportRequest->label ?: 'Seu arquivo') . ' já pode ser baixado.',
+            mensagem: ($exportRequest->label ?: 'Seu arquivo').' já pode ser baixado.',
             url: route('exports.download', $exportRequest),
             label: 'Baixar arquivo',
             escopo: 'exports',
@@ -148,7 +152,7 @@ class ProcessExportRequestJob implements ShouldQueue
 
         $user->notify(new SistemaNotification(
             titulo: 'Falha na exportação',
-            mensagem: ($exportRequest->label ?: 'O arquivo solicitado') . ' não pode ser gerado.',
+            mensagem: ($exportRequest->label ?: 'O arquivo solicitado').' não pode ser gerado.',
             url: route('filament.admin.pages.minhas-exportacoes'),
             label: 'Ver exportacoes',
             prioridade: 'alta',

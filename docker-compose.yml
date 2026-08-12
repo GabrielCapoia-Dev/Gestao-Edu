@@ -14,7 +14,8 @@ x-production-env: &production-env
   REDIS_DB: 0
   REDIS_CACHE_DB: 1
   REDIS_QUEUE_CONNECTION: default
-  REDIS_QUEUE_RETRY_AFTER: 1200
+  REDIS_QUEUE_RETRY_AFTER: 2100
+  IMPORTS_QUEUE: imports
   PERMISSION_CACHE_STORE: redis
   PERF_HEARTBEAT_INTERVAL: 45
   PERF_PRESENCE_TOUCH_MIN_INTERVAL: 35
@@ -96,6 +97,7 @@ services:
     environment:
       <<: *production-env
     entrypoint: []
+    init: true
     command: >
       sh -c "mkdir -p storage/logs bootstrap/cache
       && chown -R www-data:www-data storage/logs bootstrap/cache
@@ -103,7 +105,7 @@ services:
       && case \"$$notification_memory\" in ''|*[!0-9]*) notification_memory=384 ;; esac
       && if [ \"$$notification_memory\" -lt 384 ]; then notification_memory=384; fi
       && export NOTIFICATIONS_QUEUE_MEMORY_MB_EFFECTIVE=\"$$notification_memory\"
-      && exec su -s /bin/sh www-data -c 'php artisan queue:work $${QUEUE_CONNECTION:-redis} --queue=$${NOTIFICATIONS_QUEUE:-notifications},default --sleep=$${NOTIFICATIONS_QUEUE_SLEEP:-3} --rest=$${NOTIFICATIONS_QUEUE_REST:-0} --timeout=$${NOTIFICATIONS_QUEUE_TIMEOUT:-60} --tries=$${NOTIFICATIONS_QUEUE_TRIES:-3} --memory=$${NOTIFICATIONS_QUEUE_MEMORY_MB_EFFECTIVE}'"
+      && exec su -s /bin/sh www-data -c 'php artisan queue:work $${QUEUE_CONNECTION:-redis} --queue=$${NOTIFICATIONS_QUEUE:-notifications} --sleep=$${NOTIFICATIONS_QUEUE_SLEEP:-3} --rest=$${NOTIFICATIONS_QUEUE_REST:-0} --timeout=$${NOTIFICATIONS_QUEUE_TIMEOUT:-60} --tries=$${NOTIFICATIONS_QUEUE_TRIES:-3} --memory=$${NOTIFICATIONS_QUEUE_MEMORY_MB_EFFECTIVE} --max-time=$${QUEUE_WORKER_MAX_TIME:-3600} --max-jobs=$${QUEUE_WORKER_MAX_JOBS:-500}'"
     volumes:
       - .:/var/www
     depends_on:
@@ -116,6 +118,7 @@ services:
     cpus: "${NOTIFICATIONS_QUEUE_CPUS:-0.25}"
     mem_limit: "512m"
     restart: unless-stopped
+    stop_grace_period: 90s
     networks:
       - laravel_gestao-edu
 
@@ -128,10 +131,11 @@ services:
     environment:
       <<: *production-env
     entrypoint: []
+    init: true
     command: >
       sh -c "mkdir -p storage/app/private/exports storage/logs bootstrap/cache
       && chown -R www-data:www-data storage/app/private/exports storage/logs bootstrap/cache
-      && exec su -s /bin/sh www-data -c 'nice -n $${EXPORTS_QUEUE_NICE:-10} php artisan queue:work $${QUEUE_CONNECTION:-redis} --queue=$${IMPORTS_QUEUE:-imports},$${EXPORTS_QUEUE:-exports},default --sleep=$${EXPORTS_QUEUE_SLEEP:-5} --rest=$${EXPORTS_QUEUE_REST:-1} --timeout=$${EXPORTS_JOB_TIMEOUT:-900} --tries=2 --memory=$${EXPORTS_QUEUE_MEMORY_MB:-384}'"
+      && exec su -s /bin/sh www-data -c 'nice -n $${EXPORTS_QUEUE_NICE:-10} php -d memory_limit=$${EXPORTS_PHP_MEMORY_LIMIT:-512M} artisan queue:work $${QUEUE_CONNECTION:-redis} --queue=$${EXPORTS_QUEUE:-exports} --sleep=$${EXPORTS_QUEUE_SLEEP:-5} --rest=$${EXPORTS_QUEUE_REST:-1} --timeout=$${EXPORTS_JOB_TIMEOUT:-900} --tries=$${EXPORTS_QUEUE_TRIES:-3} --memory=$${EXPORTS_QUEUE_MEMORY_MB:-384} --max-time=$${QUEUE_WORKER_MAX_TIME:-3600} --max-jobs=$${QUEUE_WORKER_MAX_JOBS:-250}'"
     volumes:
       - .:/var/www
     depends_on:
@@ -142,8 +146,69 @@ services:
       redis:
         condition: service_healthy
     cpus: "${EXPORTS_QUEUE_CPUS:-0.50}"
-    mem_limit: "${EXPORTS_QUEUE_MEM_LIMIT:-512m}"
+    mem_limit: "${EXPORTS_QUEUE_MEM_LIMIT:-768m}"
     restart: unless-stopped
+    stop_grace_period: 930s
+    networks:
+      - laravel_gestao-edu
+
+  queue-imports:
+    image: laravel-app-gestao-edu
+    container_name: laravel-queue-imports-gestao-edu
+    working_dir: /var/www
+    env_file:
+      - .env
+    environment:
+      <<: *production-env
+    entrypoint: []
+    init: true
+    command: >
+      sh -c "mkdir -p storage/app/private/imports storage/logs bootstrap/cache
+      && chown -R www-data:www-data storage/app/private/imports storage/logs bootstrap/cache
+      && exec su -s /bin/sh www-data -c 'nice -n $${IMPORTS_QUEUE_NICE:-10} php -d memory_limit=$${IMPORTS_PHP_MEMORY_LIMIT:-512M} artisan queue:work $${QUEUE_CONNECTION:-redis} --queue=$${IMPORTS_QUEUE:-imports} --sleep=$${IMPORTS_QUEUE_SLEEP:-5} --rest=$${IMPORTS_QUEUE_REST:-1} --timeout=$${IMPORTS_JOB_TIMEOUT:-1800} --tries=$${IMPORTS_QUEUE_TRIES:-2} --memory=$${IMPORTS_QUEUE_MEMORY_MB:-384} --max-time=$${QUEUE_WORKER_MAX_TIME:-3600} --max-jobs=$${QUEUE_WORKER_MAX_JOBS:-100}'"
+    volumes:
+      - .:/var/www
+    depends_on:
+      app:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    cpus: "${IMPORTS_QUEUE_CPUS:-0.50}"
+    mem_limit: "${IMPORTS_QUEUE_MEM_LIMIT:-768m}"
+    restart: unless-stopped
+    stop_grace_period: 1830s
+    networks:
+      - laravel_gestao-edu
+
+  queue-default:
+    image: laravel-app-gestao-edu
+    container_name: laravel-queue-default-gestao-edu
+    working_dir: /var/www
+    env_file:
+      - .env
+    environment:
+      <<: *production-env
+    entrypoint: []
+    init: true
+    command: >
+      sh -c "mkdir -p storage/logs bootstrap/cache
+      && chown -R www-data:www-data storage/logs bootstrap/cache
+      && exec su -s /bin/sh www-data -c 'php artisan queue:work $${QUEUE_CONNECTION:-redis} --queue=default --sleep=$${DEFAULT_QUEUE_SLEEP:-3} --rest=$${DEFAULT_QUEUE_REST:-0} --timeout=$${DEFAULT_QUEUE_TIMEOUT:-300} --tries=$${DEFAULT_QUEUE_TRIES:-3} --memory=$${DEFAULT_QUEUE_MEMORY_MB:-384} --max-time=$${QUEUE_WORKER_MAX_TIME:-3600} --max-jobs=$${QUEUE_WORKER_MAX_JOBS:-500}'"
+    volumes:
+      - .:/var/www
+    depends_on:
+      app:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    cpus: "${DEFAULT_QUEUE_CPUS:-0.25}"
+    mem_limit: "${DEFAULT_QUEUE_MEM_LIMIT:-512m}"
+    restart: unless-stopped
+    stop_grace_period: 330s
     networks:
       - laravel_gestao-edu
 

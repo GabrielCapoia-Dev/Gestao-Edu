@@ -8,10 +8,10 @@ use Illuminate\Console\Command;
 class MonitorStalledExportRequests extends Command
 {
     protected $signature = 'exports:monitor-stalled
-        {--queued-minutes= : Minutos maximos permitidos para itens parados em fila}
-        {--running-minutes= : Minutos maximos permitidos para itens sem progresso em processamento}';
+        {--queued-minutes= : Minutos máximos permitidos para itens parados em fila}
+        {--running-minutes= : Minutos máximos permitidos para itens sem progresso em processamento}';
 
-    protected $description = 'Cancela exportacoes e processos travados na fila e registra a falha no banco da fila';
+    protected $description = 'Recupera exportações paradas e cancela processos que não podem ser reencaminhados com segurança';
 
     public function handle(StalledExportRequestMonitorService $service): int
     {
@@ -20,8 +20,10 @@ class MonitorStalledExportRequests extends Command
             runningMinutes: $this->option('running-minutes') !== null ? (int) $this->option('running-minutes') : null,
         );
 
-        $this->info("Solicitacoes verificadas: {$result['checked']}");
-        $this->info("Solicitacoes canceladas: {$result['cancelled']}");
+        $this->info("Solicitações verificadas: {$result['checked']}");
+        $this->info("Exportações reencaminhadas: {$result['requeued']}");
+        $this->info("Exportações finalizadas com falha: {$result['failed']}");
+        $this->info("Solicitações canceladas: {$result['cancelled']}");
 
         return self::SUCCESS;
     }

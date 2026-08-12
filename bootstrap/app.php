@@ -57,7 +57,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withSchedule(function (Schedule $schedule) {
         $schedule
             ->command('exports:monitor-stalled')
-            ->everyFiveMinutes()
+            ->everyMinute()
             ->withoutOverlapping(30);
     })
     ->withExceptions(function (Exceptions $exceptions) {

@@ -18,6 +18,7 @@ return [
     'lock_expiration' => (int) env('EXPORTS_LOCK_EXPIRATION', 1200),
     'stalled_queued_after_minutes' => (int) env('EXPORTS_STALLED_QUEUED_AFTER_MINUTES', 30),
     'stalled_running_after_minutes' => (int) env('EXPORTS_STALLED_RUNNING_AFTER_MINUTES', 45),
+    'stalled_max_recovery_attempts' => (int) env('EXPORTS_STALLED_MAX_RECOVERY_ATTEMPTS', 3),
 
     'handlers' => [
         'avaliacao_documento' => AvaliacaoDocumentoExportHandler::class,

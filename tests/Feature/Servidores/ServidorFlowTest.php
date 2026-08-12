@@ -35,6 +35,20 @@ class ServidorFlowTest extends TestCase
         app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 
+    public function test_normaliza_nome_do_servidor_para_maiusculas_ao_criar_e_editar(): void
+    {
+        $servidor = Servidor::query()->create([
+            'nome' => 'João da Conceição',
+            'status' => Servidor::STATUS_ATIVO,
+        ]);
+
+        $this->assertSame('JOÃO DA CONCEIÇÃO', $servidor->fresh()->nome);
+
+        $servidor->update(['nome' => 'Márcia Gonçalves de Sá']);
+
+        $this->assertSame('MÁRCIA GONÇALVES DE SÁ', $servidor->fresh()->nome);
+    }
+
     public function test_backfill_cria_servidor_para_professor_existente_sem_duplicar(): void
     {
         $escola = $this->criarEscola('Escola Backfill');
@@ -56,7 +70,7 @@ class ServidorFlowTest extends TestCase
         $this->assertNotNull($professor->servidor_id);
         $this->assertDatabaseHas('servidores', [
             'id' => $professor->servidor_id,
-            'nome' => 'Professor Backfill',
+            'nome' => 'PROFESSOR BACKFILL',
             'matricula' => 'PROF-BACKFILL',
         ]);
         $this->assertDatabaseHas('servidor_funcao_administrativa', [
