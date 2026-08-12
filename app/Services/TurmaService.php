@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Filament\Admin\Actions\ExportSelectedRecordsBulkAction;
+use App\Models\Aluno;
 use App\Models\Escola;
 use App\Models\Professor;
 use App\Models\Serie;
@@ -26,6 +27,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -118,6 +120,12 @@ class TurmaService
                     default => 'secondary',
                 })
                 ->sortable(),
+
+            TextColumn::make('alunos_count')
+                ->label('Alunos')
+                ->numeric()
+                ->sortable()
+                ->alignCenter(),
 
             TextColumn::make('created_at')
                 ->label('Criado em')
@@ -216,7 +224,19 @@ class TurmaService
                     'noite' => 'Noite',
                     'integral' => 'Integral',
                 ]),
+
+            Filter::make('com_alunos_pendentes')
+                ->label('Com alunos pendentes')
+                ->query(fn (Builder $query): Builder => $this->filtrarComAlunosPendentes($query)),
         ];
+    }
+
+    public function filtrarComAlunosPendentes(Builder $query): Builder
+    {
+        return $query->whereHas(
+            'alunos',
+            fn (Builder $alunos): Builder => $alunos->where('status', Aluno::STATUS_PENDENTE),
+        );
     }
 
     private function acoesEmMassa(?User $user): array

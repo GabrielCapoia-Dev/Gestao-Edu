@@ -3,6 +3,7 @@
 namespace Tests\Feature\Turmas;
 
 use App\Filament\Admin\Resources\Turmas\Pages\ManageTurmas;
+use App\Models\Aluno;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
 use App\Models\FuncaoAdministrativa;
@@ -511,6 +512,50 @@ class TurmaResourceScopeTest extends TestCase
             ->filterTable('turno', 'tarde')
             ->assertCanSeeTableRecords([$turmaSul])
             ->assertCanNotSeeTableRecords([$turmaNorte]);
+    }
+
+    public function test_listagem_exibe_quantidade_de_alunos_e_filtra_turmas_com_pendentes(): void
+    {
+        Permission::findOrCreate('Listar Turmas');
+
+        $escola = $this->criarEscola('Escola Pendências');
+        $turmaComPendente = $this->criarTurma($escola, 'Turma com Pendente');
+        $turmaSemPendente = $this->criarTurma($escola, 'Turma sem Pendente');
+
+        Aluno::query()->create([
+            'nome' => 'Aluno Matriculado',
+            'cgm' => 'CGM-TURMA-MATRICULADO',
+            'data_nascimento' => '2017-01-01',
+            'id_turma' => $turmaComPendente->id,
+            'status' => Aluno::STATUS_MATRICULADO,
+        ]);
+        Aluno::query()->create([
+            'nome' => 'Aluno Pendente',
+            'cgm' => 'CGM-TURMA-PENDENTE',
+            'data_nascimento' => '2017-02-01',
+            'id_turma' => $turmaComPendente->id,
+            'status' => Aluno::STATUS_PENDENTE,
+        ]);
+        Aluno::query()->create([
+            'nome' => 'Aluno de Outra Turma',
+            'cgm' => 'CGM-OUTRA-TURMA',
+            'data_nascimento' => '2017-03-01',
+            'id_turma' => $turmaSemPendente->id,
+            'status' => Aluno::STATUS_MATRICULADO,
+        ]);
+
+        $service = app(TurmaService::class);
+        $colunaAlunos = collect($service->colunasTabela())
+            ->first(fn ($column): bool => $column->getName() === 'alunos_count');
+        $turmasFiltradas = $service
+            ->filtrarComAlunosPendentes(Turma::query())
+            ->pluck('id')
+            ->all();
+
+        $this->assertNotNull($colunaAlunos);
+        $this->assertSame('Alunos', $colunaAlunos->getLabel());
+        $this->assertContains($turmaComPendente->id, $turmasFiltradas);
+        $this->assertNotContains($turmaSemPendente->id, $turmasFiltradas);
     }
 
     private function criarEscola(string $nome): Escola

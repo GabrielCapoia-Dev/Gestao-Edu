@@ -235,6 +235,7 @@ class AvaliacaoAlunoStatusTest extends TestCase
         $usuario->givePermissionTo('Responder Avaliações');
 
         $professor = Professor::query()->create([
+            'matricula' => 'PROF-STATUS',
             'nome' => 'Professor Status',
             'email' => 'prof-status@teste.local',
             'user_id' => $usuario->id,

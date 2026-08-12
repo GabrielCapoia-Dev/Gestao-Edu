@@ -1013,20 +1013,58 @@ class AvaliacaoTurmaWorkspace extends Component
             return $this->alunosPorTurmaCache = collect();
         }
 
-        $origens = app(TurmaAvaliacaoAlunoScopeService::class)->origensPorTurma($turmas);
-        $alunosPorOrigem = Aluno::query()
-            ->whereIn('id_turma', array_values($origens))
+        $escopos = app(TurmaAvaliacaoAlunoScopeService::class)->escoposPorTurma($turmas);
+        $origensPrincipais = collect($escopos)
             ->where('tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL)
-            ->whereIn('status', [Aluno::STATUS_MATRICULADO, Aluno::STATUS_PENDENTE])
+            ->pluck('turma_origem_id')
+            ->unique()
+            ->values()
+            ->all();
+        $origensContraTurno = collect($escopos)
+            ->where('tipo_vinculo', Aluno::TIPO_VINCULO_CONTRA_TURNO)
+            ->pluck('turma_origem_id')
+            ->unique()
+            ->values()
+            ->all();
+        $alunosPorOrigem = Aluno::query()
+            ->where(function ($query) use ($origensPrincipais, $origensContraTurno): void {
+                if ($origensPrincipais !== []) {
+                    $query->where(function ($query) use ($origensPrincipais): void {
+                        $query->whereIn('id_turma', $origensPrincipais)
+                            ->where('tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL)
+                            ->whereIn('status', [Aluno::STATUS_MATRICULADO, Aluno::STATUS_PENDENTE]);
+                    });
+                }
+
+                if ($origensContraTurno !== []) {
+                    $metodo = $origensPrincipais === [] ? 'where' : 'orWhere';
+                    $query->{$metodo}(function ($query) use ($origensContraTurno): void {
+                        $query->whereIn('id_turma', $origensContraTurno)
+                            ->where('tipo_vinculo', Aluno::TIPO_VINCULO_CONTRA_TURNO)
+                            ->where('status', Aluno::STATUS_MATRICULADO);
+                    });
+                }
+            })
             ->orderBy('nome')
             ->get(['id', 'nome', 'cgm', 'id_turma', 'status', 'pendencia_origem_aluno_id', 'tipo_vinculo'])
-            ->groupBy('id_turma')
+            ->groupBy(fn (Aluno $aluno): string => $this->chaveOrigemAluno(
+                (int) $aluno->id_turma,
+                (string) $aluno->tipo_vinculo,
+            ))
             ->map(fn (Collection $alunos): Collection => $alunos->values());
 
-        return $this->alunosPorTurmaCache = collect($origens)
-            ->mapWithKeys(fn (int $origemId, int $turmaId): array => [
-                $turmaId => $alunosPorOrigem->get($origemId, collect()),
+        return $this->alunosPorTurmaCache = collect($escopos)
+            ->mapWithKeys(fn (array $escopo, int $turmaId): array => [
+                $turmaId => $alunosPorOrigem->get($this->chaveOrigemAluno(
+                    $escopo['turma_origem_id'],
+                    $escopo['tipo_vinculo'],
+                ), collect()),
             ]);
+    }
+
+    private function chaveOrigemAluno(int $turmaId, string $tipoVinculo): string
+    {
+        return $turmaId.'|'.$tipoVinculo;
     }
 
     public function getAlunosDaSerieProperty(): Collection

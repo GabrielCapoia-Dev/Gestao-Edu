@@ -24,8 +24,10 @@ use App\Models\Turma;
 use App\Models\User;
 use App\Services\Avaliacoes\AvaliacaoDashboardFactsService;
 use App\Services\Avaliacoes\AvaliacaoDashboardMetricsService;
+use App\Services\Avaliacoes\TurmaAvaliacaoAlunoScopeService;
 use Filament\Notifications\Notification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
@@ -152,6 +154,83 @@ class DashboardAvaliacoesPageTest extends TestCase
         $this->assertSame($alternativa->id, (int) $documento->payload['pautas'][(string) $pauta->id]['alternativa_id']);
         $this->assertSame($professor->id, (int) $documento->payload['pautas'][(string) $pauta->id]['professor_id']);
         $this->assertSame(1, $documento->total_pautas_esperadas);
+    }
+
+    public function test_reconstrucao_preserva_regulares_integrais_e_inclui_apenas_contra_turno_srm(): void
+    {
+        $tipo = TipoAvaliacao::query()->create(['nome' => 'Parecer completo', 'status' => true]);
+        $periodo = PeriodoAvaliacao::query()->create(['nome' => 'Periodo completo', 'status' => true]);
+        $componente = ComponenteCurricular::query()->create([
+            'codigo' => 'COMP-COMPLETO',
+            'nome' => 'Componente completo',
+        ]);
+        $escola = $this->criarEscola('Escola completa');
+
+        $series = collect([
+            $this->criarSerie('SER-1-REG', '1º Ano'),
+            $this->criarSerie('SER-2-REG', '2º Ano'),
+            $this->criarSerie('SER-1-INT', '1º Ano - Integral'),
+            $this->criarSerie('SER-2-INT', '2º Ano - Integral'),
+            $this->criarSerie('srm_serie', 'Sala de Recursos Multifuncionais'),
+        ]);
+
+        $turmas = $series->mapWithKeys(fn (Serie $serie): array => [
+            (int) $serie->id => $this->criarTurma($escola, $serie, 'A', 'integral'),
+        ]);
+
+        $alunoPrimeiro = $this->criarAluno($turmas->get((int) $series[0]->id), 'Aluno primeiro', 'CGM-COMP-001');
+        $alunoSegundo = $this->criarAluno($turmas->get((int) $series[1]->id), 'Aluno segundo', 'CGM-COMP-002');
+        $contraTurnoComum = $this->criarAluno(
+            $turmas->get((int) $series[0]->id),
+            'Contra-turno comum',
+            'CGM-COMP-003',
+            Aluno::TIPO_VINCULO_CONTRA_TURNO,
+        );
+        $alunoSrm = $this->criarAluno(
+            $turmas->get((int) $series[4]->id),
+            'Aluno SRM',
+            'CGM-COMP-004',
+            Aluno::TIPO_VINCULO_CONTRA_TURNO,
+        );
+        $principalIndevidoSrm = $this->criarAluno(
+            $turmas->get((int) $series[4]->id),
+            'Principal SRM',
+            'CGM-COMP-005',
+        );
+
+        $pautas = $series->map(fn (Serie $serie): Pauta => $this->criarPauta(
+            $tipo,
+            $serie,
+            $componente,
+            'Pauta '.$serie->nome,
+        ));
+
+        $avaliacao = $this->criarAvaliacao('Avaliação completa', $tipo, $periodo);
+        $avaliacao->series()->sync($series->pluck('id'));
+        $avaliacao->componentes()->sync([$componente->id]);
+        $avaliacao->escolas()->sync([$escola->id]);
+        $avaliacao->turmas()->sync($turmas->pluck('id'));
+        $avaliacao->pautas()->sync($pautas->pluck('id'));
+
+        $escopos = app(TurmaAvaliacaoAlunoScopeService::class)->escoposPorTurma($turmas->values());
+
+        $this->assertSame((int) $turmas->get((int) $series[0]->id)->id, $escopos[(int) $turmas->get((int) $series[2]->id)->id]['turma_origem_id']);
+        $this->assertSame((int) $turmas->get((int) $series[1]->id)->id, $escopos[(int) $turmas->get((int) $series[3]->id)->id]['turma_origem_id']);
+        $this->assertSame(Aluno::TIPO_VINCULO_CONTRA_TURNO, $escopos[(int) $turmas->get((int) $series[4]->id)->id]['tipo_vinculo']);
+
+        $servico = app(AvaliacaoDashboardFactsService::class);
+        $servico->rebuild((int) $avaliacao->id);
+        $primeiraContagem = DB::table('avaliacao_dashboard_fatos')->where('avaliacao_id', $avaliacao->id)->count();
+        $servico->rebuild((int) $avaliacao->id);
+
+        $this->assertSame(5, $primeiraContagem);
+        $this->assertSame($primeiraContagem, DB::table('avaliacao_dashboard_fatos')->where('avaliacao_id', $avaliacao->id)->count());
+        $this->assertSame(5, DB::table('avaliacao_dashboard_fatos')->where('avaliacao_id', $avaliacao->id)->distinct()->count('serie_id'));
+        $this->assertDatabaseHas('avaliacao_dashboard_fatos', ['avaliacao_id' => $avaliacao->id, 'aluno_id' => $alunoPrimeiro->id, 'serie_id' => $series[2]->id]);
+        $this->assertDatabaseHas('avaliacao_dashboard_fatos', ['avaliacao_id' => $avaliacao->id, 'aluno_id' => $alunoSegundo->id, 'serie_id' => $series[3]->id]);
+        $this->assertDatabaseHas('avaliacao_dashboard_fatos', ['avaliacao_id' => $avaliacao->id, 'aluno_id' => $alunoSrm->id, 'serie_id' => $series[4]->id]);
+        $this->assertDatabaseMissing('avaliacao_dashboard_fatos', ['avaliacao_id' => $avaliacao->id, 'aluno_id' => $contraTurnoComum->id]);
+        $this->assertDatabaseMissing('avaliacao_dashboard_fatos', ['avaliacao_id' => $avaliacao->id, 'aluno_id' => $principalIndevidoSrm->id]);
     }
 
     public function test_dashboard_carrega_indicadores_de_pendencia_apos_selecionar_avaliacao(): void

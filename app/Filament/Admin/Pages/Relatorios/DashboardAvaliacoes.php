@@ -3135,9 +3135,18 @@ class DashboardAvaliacoes extends Page implements HasForms
         $respondidosQuery = DB::table('avaliacao_aluno_documentos as d')
             ->join('alunos as aln', 'aln.id', '=', 'd.aluno_id')
             ->join('turmas as t', 't.id', '=', 'd.turma_id')
+            ->join('series as serie_vinculo', 'serie_vinculo.id', '=', 't.id_serie')
             ->whereIn('d.avaliacao_id', $avaliacaoIds)
-            ->where('aln.status', '!=', Aluno::STATUS_PENDENTE)
-            ->where('aln.tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL);
+            ->where(function (QueryBuilder $query): void {
+                $query->where(function (QueryBuilder $query): void {
+                    $query->where('aln.tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL)
+                        ->where('aln.status', '!=', Aluno::STATUS_PENDENTE);
+                })->orWhere(function (QueryBuilder $query): void {
+                    $query->where('serie_vinculo.codigo', 'srm_serie')
+                        ->where('aln.tipo_vinculo', Aluno::TIPO_VINCULO_CONTRA_TURNO)
+                        ->where('aln.status', Aluno::STATUS_MATRICULADO);
+                });
+            });
 
         $this->aplicarFiltrosTurmaQuery($respondidosQuery, 't', $filtros);
 

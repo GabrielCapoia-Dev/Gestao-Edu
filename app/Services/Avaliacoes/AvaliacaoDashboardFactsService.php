@@ -59,10 +59,18 @@ class AvaliacaoDashboardFactsService
 
                 $turmas = Turma::query()
                     ->whereHas('avaliacoes', fn ($query) => $query->whereKey($avaliacaoId))
-                    ->with('serie:id,nome')
+                    ->with('serie:id,codigo,nome')
                     ->get(['id', 'nome', 'turno', 'id_serie', 'id_escola']);
-                $origens = app(TurmaAvaliacaoAlunoScopeService::class)->origensPorTurma($turmas);
+                $escopos = app(TurmaAvaliacaoAlunoScopeService::class)->escoposPorTurma($turmas);
+                $origens = collect($escopos)
+                    ->map(fn (array $escopo): int => $escopo['turma_origem_id'])
+                    ->all();
                 $origemAlunosSql = $this->caseOrigemAlunos($origens);
+                $turmasContraTurnoIds = collect($escopos)
+                    ->filter(fn (array $escopo): bool => $escopo['tipo_vinculo'] === Aluno::TIPO_VINCULO_CONTRA_TURNO)
+                    ->keys()
+                    ->map(fn ($id): int => (int) $id)
+                    ->all();
                 $turmasComOrigemIds = collect($origens)
                     ->filter(fn (int $origemId, int $turmaId): bool => $origemId !== $turmaId)
                     ->keys()
@@ -76,8 +84,24 @@ class AvaliacaoDashboardFactsService
                     ->join('avaliacao_pauta as ap', 'ap.avaliacao_id', '=', 'at.avaliacao_id')
                     ->join('pautas as p', 'p.id', '=', 'ap.pauta_id')
                     ->where('at.avaliacao_id', $avaliacaoId)
-                    ->where('aln.status', '!=', Aluno::STATUS_PENDENTE)
-                    ->where('aln.tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL)
+                    ->where(function ($query) use ($turmasContraTurnoIds): void {
+                        if ($turmasContraTurnoIds !== []) {
+                            $query->where(function ($query) use ($turmasContraTurnoIds): void {
+                                $query->whereIn('t.id', $turmasContraTurnoIds)
+                                    ->where('aln.tipo_vinculo', Aluno::TIPO_VINCULO_CONTRA_TURNO)
+                                    ->where('aln.status', Aluno::STATUS_MATRICULADO);
+                            })->orWhere(function ($query) use ($turmasContraTurnoIds): void {
+                                $query->whereNotIn('t.id', $turmasContraTurnoIds)
+                                    ->where('aln.tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL)
+                                    ->where('aln.status', '!=', Aluno::STATUS_PENDENTE);
+                            });
+
+                            return;
+                        }
+
+                        $query->where('aln.tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL)
+                            ->where('aln.status', '!=', Aluno::STATUS_PENDENTE);
+                    })
                     ->where('p.status', true)
                     ->where(function ($query) use ($turmasComOrigemIds): void {
                         $query->whereColumn('p.serie_id', 't.id_serie')

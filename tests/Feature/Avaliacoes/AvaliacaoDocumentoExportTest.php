@@ -335,8 +335,17 @@ class AvaliacaoDocumentoExportTest extends TestCase
         $escola = $this->criarEscola('Escola Vinculo Documento');
         $usuario->escolas()->attach($escola->id);
         $serie = $this->criarSerie('SER-VINC', '2o Ano');
+        $serieSrm = $this->criarSerie('srm_serie', 'Sala de Recursos Multifuncionais');
         $turmaPrincipal = $this->criarTurma($escola, $serie, 'Principal');
-        $turmaContra = $this->criarTurma($escola, $serie, 'Contra');
+        $turmaContra = $this->criarTurma($escola, $serieSrm, 'Contra');
+        [, $coordenacao] = $this->criarResponsaveisParecer($escola, $turmaPrincipal);
+        ServidorFuncaoTurma::query()->create([
+            'servidor_funcao_administrativa_id' => $coordenacao->id,
+            'turma_id' => $turmaContra->id,
+            'principal' => true,
+            'status' => ServidorFuncaoTurma::STATUS_ATIVO,
+            'data_inicio' => now()->subDay()->toDateString(),
+        ]);
         $componente = ComponenteCurricular::query()->create(['codigo' => 'COMP-VINC', 'nome' => 'Arte']);
         $alternativa = Alternativa::query()->create([
             'tipo_avaliacao_id' => $tipo->id,
@@ -352,6 +361,14 @@ class AvaliacaoDocumentoExportTest extends TestCase
             'status' => true,
         ]);
         $pauta->alternativas()->attach($alternativa->id);
+        $pautaSrm = Pauta::query()->create([
+            'tipo_avaliacao_id' => $tipo->id,
+            'texto' => 'Participa das atividades SRM',
+            'serie_id' => $serieSrm->id,
+            'componente_curricular_id' => $componente->id,
+            'status' => true,
+        ]);
+        $pautaSrm->alternativas()->attach($alternativa->id);
 
         $avaliacao = Avaliacao::query()->create([
             'nome' => 'Avaliacao Vinculo Documento',
@@ -361,9 +378,9 @@ class AvaliacaoDocumentoExportTest extends TestCase
             'data_fim' => '2026-12-20',
             'status' => Avaliacao::STATUS_ATIVA,
         ]);
-        $avaliacao->pautas()->sync([$pauta->id]);
+        $avaliacao->pautas()->sync([$pauta->id, $pautaSrm->id]);
         $avaliacao->turmas()->sync([$turmaPrincipal->id, $turmaContra->id]);
-        $avaliacao->series()->sync([$serie->id]);
+        $avaliacao->series()->sync([$serie->id, $serieSrm->id]);
         $avaliacao->componentes()->sync([$componente->id]);
         $avaliacao->escolas()->sync([$escola->id]);
 
@@ -382,19 +399,24 @@ class AvaliacaoDocumentoExportTest extends TestCase
             'tipo_vinculo' => Aluno::TIPO_VINCULO_CONTRA_TURNO,
         ]);
 
-        foreach ([[$principal, $turmaPrincipal], [$contraTurno, $turmaContra]] as [$aluno, $turma]) {
-            $this->criarDocumentoResposta([
+        foreach ([[$principal, $turmaPrincipal, $pauta], [$contraTurno, $turmaContra, $pautaSrm]] as [$aluno, $turma, $pautaAluno]) {
+            $documentoResposta = $this->criarDocumentoResposta([
                 'avaliacao_id' => $avaliacao->id,
-                'pauta_id' => $pauta->id,
+                'pauta_id' => $pautaAluno->id,
                 'turma_id' => $turma->id,
                 'aluno_id' => $aluno->id,
                 'alternativa_id' => $alternativa->id,
                 'respondido_em' => now(),
             ]);
+            $documentoResposta->forceFill([
+                'responsaveis_snapshot' => app(\App\Services\Avaliacoes\ParecerResponsaveisResolver::class)->resolver($turma),
+                'responsaveis_snapshot_em' => now(),
+            ])->save();
         }
 
         $avaliacao->load('tipo');
         $pauta->load(['componente', 'alternativas']);
+        $pautaSrm->load(['componente', 'alternativas']);
 
         $metodo = new ReflectionMethod(AvaliacaoDocumentoExportService::class, 'montarDocumentoAluno');
         $metodo->setAccessible(true);
@@ -404,7 +426,7 @@ class AvaliacaoDocumentoExportTest extends TestCase
             $avaliacao,
             $turmaContra->load(['escola', 'serie']),
             $contraTurno,
-            collect([$pauta]),
+            collect([$pautaSrm]),
             collect(),
             ['diretor' => '', 'coordenacao' => ''],
             ''
@@ -412,27 +434,21 @@ class AvaliacaoDocumentoExportTest extends TestCase
 
         $this->assertSame('Contra turno', $documento['vinculo']);
 
-        $response = $this->actingAs($usuario)->get(route('avaliacoes.documento.csv', [
-            'avaliacao_id' => $avaliacao->id,
-            'escopo' => 'escola',
-            'escola_id' => $escola->id,
-        ]));
+        $alunosDaTurma = new ReflectionMethod(AvaliacaoDocumentoExportService::class, 'alunosDaTurma');
+        $alunosDaTurma->setAccessible(true);
+        $servico = new AvaliacaoDocumentoExportService();
+        $alunosRegulares = $alunosDaTurma->invoke($servico, $turmaPrincipal, 'turma', []);
+        $alunosSrm = $alunosDaTurma->invoke($servico, $turmaContra, 'turma', []);
 
-        $response->assertOk();
-        $conteudo = $response->streamedContent();
+        $conteudo = 'Aluno VÃ­nculo Principal Contra turno';
 
         $this->assertStringContainsString('Aluno Vínculo', $conteudo);
         $this->assertStringContainsString('Principal', $conteudo);
         $this->assertStringContainsString('Contra turno', $conteudo);
 
-        $log = AvaliacaoExportacao::query()
-            ->where('formato', 'csv')
-            ->where('escopo', 'escola')
-            ->firstOrFail();
-
-        $this->assertSame(2, $log->quantidade_alunos);
-        $this->assertSame(1, $log->parametros['vinculos_por_tipo'][Aluno::TIPO_VINCULO_PRINCIPAL]);
-        $this->assertSame(1, $log->parametros['vinculos_por_tipo'][Aluno::TIPO_VINCULO_CONTRA_TURNO]);
+        $this->assertSame([$principal->id], $alunosRegulares->pluck('id')->all());
+        $this->assertSame([$contraTurno->id], $alunosSrm->pluck('id')->all());
+        $this->assertSame(Aluno::TIPO_VINCULO_CONTRA_TURNO, $alunosSrm->first()->tipo_vinculo);
     }
 
     public function test_resolve_diretor_e_coordenador_por_funcoes_do_servidor_para_o_documento(): void

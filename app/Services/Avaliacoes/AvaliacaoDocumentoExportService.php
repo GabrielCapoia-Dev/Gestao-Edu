@@ -432,13 +432,22 @@ class AvaliacaoDocumentoExportService
      */
     private function alunosDaTurma(Turma $turma, string $escopo, array $params): Collection
     {
-        $origemTurmaId = app(TurmaAvaliacaoAlunoScopeService::class)
-            ->origensPorTurma(collect([$turma]))[(int) $turma->id] ?? (int) $turma->id;
+        $escopoTurma = app(TurmaAvaliacaoAlunoScopeService::class)
+            ->escoposPorTurma(collect([$turma]))[(int) $turma->id] ?? [
+                'turma_origem_id' => (int) $turma->id,
+                'tipo_vinculo' => Aluno::TIPO_VINCULO_PRINCIPAL,
+            ];
 
         $query = Aluno::query()
-            ->where('id_turma', $origemTurmaId)
-            ->where('status', '!=', Aluno::STATUS_PENDENTE)
+            ->where('id_turma', $escopoTurma['turma_origem_id'])
+            ->where('tipo_vinculo', $escopoTurma['tipo_vinculo'])
             ->orderBy('nome');
+
+        if ($escopoTurma['tipo_vinculo'] === Aluno::TIPO_VINCULO_CONTRA_TURNO) {
+            $query->where('status', Aluno::STATUS_MATRICULADO);
+        } else {
+            $query->where('status', '!=', Aluno::STATUS_PENDENTE);
+        }
 
         if ($escopo === 'aluno') {
             $query->whereKey((int) ($params['aluno_id'] ?? 0));
