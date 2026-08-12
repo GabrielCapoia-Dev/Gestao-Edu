@@ -10,15 +10,22 @@ use Illuminate\Database\Eloquent\Builder;
 
 class ExportSelectedRecordsBulkAction
 {
-    public static function make(string $type, string $label, string $source): BulkAction
+    public static function make(
+        string $type,
+        string $label,
+        string $source,
+        string $actionLabel = 'Exportar XLSX',
+        string $modalHeading = 'Exportar registros selecionados em XLSX',
+        string $modalDescription = 'A planilha será gerada em segundo plano com os dados dos registros selecionados.',
+    ): BulkAction
     {
         return BulkAction::make("exportar_{$type}_xlsx")
-            ->label('Exportar XLSX')
+            ->label($actionLabel)
             ->icon('heroicon-o-document-arrow-down')
             ->color('info')
             ->requiresConfirmation()
-            ->modalHeading('Exportar registros selecionados em XLSX')
-            ->modalDescription('A planilha será gerada em segundo plano com todos os dados dos registros selecionados.')
+            ->modalHeading($modalHeading)
+            ->modalDescription($modalDescription)
             ->modalSubmitActionLabel('Enviar para a fila')
             ->fetchSelectedRecords(false)
             ->action(function (Builder $recordsQuery) use ($type, $label, $source): void {

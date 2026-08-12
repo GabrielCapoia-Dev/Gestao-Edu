@@ -248,6 +248,15 @@ class TurmaService
                 'turmas.bulk_action',
             ),
 
+            ExportSelectedRecordsBulkAction::make(
+                'turmas_selecionadas_detalhado',
+                'XLSX detalhado de turmas selecionadas',
+                'turmas.bulk_action_detalhado',
+                actionLabel: 'Exportar XLSX detalhado',
+                modalHeading: 'Exportar turmas selecionadas em XLSX detalhado',
+                modalDescription: 'A planilha terá uma linha por componente da turma, incluindo o professor vinculado.',
+            ),
+
             DeleteBulkAction::make()
                 ->before(function ($records, $action) {
                     foreach ($records as $record) {

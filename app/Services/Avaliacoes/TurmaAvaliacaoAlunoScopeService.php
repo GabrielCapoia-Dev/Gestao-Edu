@@ -49,6 +49,7 @@ class TurmaAvaliacaoAlunoScopeService
         $comAlunosDiretos = Aluno::query()
             ->whereIn('id_turma', $turmasPrincipais->keys()->all())
             ->where('tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL)
+            ->where('status', '!=', Aluno::STATUS_PENDENTE)
             ->pluck('id_turma')
             ->map(fn ($id): int => (int) $id)
             ->unique()
@@ -74,7 +75,9 @@ class TurmaAvaliacaoAlunoScopeService
             : Turma::query()
                 ->whereIn('id_escola', $escolasIds)
                 ->whereIn('id_serie', $seriesBaseIds)
-                ->whereHas('alunos', fn ($query) => $query->where('tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL))
+                ->whereHas('alunos', fn ($query) => $query
+                    ->where('tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL)
+                    ->where('status', '!=', Aluno::STATUS_PENDENTE))
                 ->get(['id', 'nome', 'turno', 'id_serie', 'id_escola'])
                 ->groupBy(fn (Turma $turma): string => $this->chaveTurma(
                     (int) $turma->id_escola,

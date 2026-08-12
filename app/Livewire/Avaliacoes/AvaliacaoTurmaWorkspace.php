@@ -1064,7 +1064,7 @@ class AvaliacaoTurmaWorkspace extends Component
 
     private function chaveOrigemAluno(int $turmaId, string $tipoVinculo): string
     {
-        return $turmaId.'|'.$tipoVinculo;
+        return $turmaId . '|' . $tipoVinculo;
     }
 
     public function getAlunosDaSerieProperty(): Collection

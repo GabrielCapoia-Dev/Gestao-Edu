@@ -202,7 +202,7 @@ class DashboardAvaliacoesPageTest extends TestCase
             $tipo,
             $serie,
             $componente,
-            'Pauta '.$serie->nome,
+            'Pauta ' . $serie->nome,
         ));
 
         $avaliacao = $this->criarAvaliacao('Avaliação completa', $tipo, $periodo);

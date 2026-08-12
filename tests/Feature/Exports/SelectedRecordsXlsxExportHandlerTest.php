@@ -3,10 +3,12 @@
 namespace Tests\Feature\Exports;
 
 use App\Models\Aluno;
+use App\Models\ComponenteCurricular;
 use App\Models\Escola;
 use App\Models\ExportRequest;
 use App\Models\FuncaoAdministrativa;
 use App\Models\PessoaMatricula;
+use App\Models\Professor;
 use App\Models\Serie;
 use App\Models\Servidor;
 use App\Models\ServidorFuncaoAdministrativa;
@@ -24,7 +26,7 @@ class SelectedRecordsXlsxExportHandlerTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_gera_planilhas_dos_tres_tipos_com_apenas_os_registros_selecionados(): void
+    public function test_gera_planilhas_com_apenas_os_registros_selecionados_e_colunas_esperadas(): void
     {
         Storage::fake('local');
         config()->set('exports.disk', 'local');
@@ -40,17 +42,45 @@ class SelectedRecordsXlsxExportHandlerTest extends TestCase
         $serie = Serie::query()->create(['codigo' => 'SER-EXP', 'nome' => '1º Ano']);
         $turmaSelecionada = $this->criarTurma($escola, $serie, 'TUR-EXP-1', 'A');
         $turmaNaoSelecionada = $this->criarTurma($escola, $serie, 'TUR-EXP-2', 'B');
+        $turmaContraTurno = $this->criarTurma($escola, $serie, 'TUR-EXP-CT', 'Contraturno');
+        $turmaContraTurno->update(['turno' => 'tarde']);
         $alunoSelecionado = Aluno::query()->create([
             'nome' => 'Aluno Selecionado',
             'cgm' => 'CGM-EXP-1',
             'data_nascimento' => '2018-01-02',
             'id_turma' => $turmaSelecionada->id,
+            'sexo' => 'F',
+        ]);
+        Aluno::query()->create([
+            'nome' => 'Aluno Selecionado',
+            'cgm' => 'CGM-EXP-1',
+            'data_nascimento' => '2018-01-02',
+            'sexo' => 'F',
+            'id_turma' => $turmaContraTurno->id,
+            'tipo_vinculo' => Aluno::TIPO_VINCULO_CONTRA_TURNO,
+            'status' => Aluno::STATUS_MATRICULADO,
+            'aluno_origem_id' => $alunoSelecionado->id,
         ]);
         Aluno::query()->create([
             'nome' => 'Aluno Não Selecionado',
             'cgm' => 'CGM-EXP-2',
             'data_nascimento' => '2018-02-03',
             'id_turma' => $turmaNaoSelecionada->id,
+        ]);
+        $componente = ComponenteCurricular::query()->create([
+            'codigo' => 'COMP-EXP',
+            'nome' => 'Matemática',
+        ]);
+        $professor = Professor::query()->create([
+            'id_escola' => $escola->id,
+            'matricula' => 'PROF-EXP',
+            'turno' => 'manha',
+            'nome' => 'Professor da Turma',
+            'email' => 'professor.turma@edu.umuarama.pr.gov.br',
+        ]);
+        $turmaSelecionada->componentes()->attach($componente->id, [
+            'professor_id' => $professor->id,
+            'tem_professor' => true,
         ]);
         $servidorSelecionado = Servidor::query()->create([
             'id_escola' => $escola->id,
@@ -86,6 +116,7 @@ class SelectedRecordsXlsxExportHandlerTest extends TestCase
 
         $casos = [
             ['turmas_selecionadas', $turmaSelecionada->id, 'Turmas', 'A', 'B'],
+            ['turmas_selecionadas_detalhado', $turmaSelecionada->id, 'Turmas detalhadas', 'Professor da Turma', 'B'],
             ['alunos_selecionados', $alunoSelecionado->id, 'Alunos', 'Aluno Selecionado', 'Aluno Não Selecionado'],
             ['servidores_selecionados', $servidorSelecionado->id, 'Servidores', 'Servidor Selecionado', 'Servidor Não Selecionado'],
         ];
@@ -102,6 +133,43 @@ class SelectedRecordsXlsxExportHandlerTest extends TestCase
             $this->assertSame($sheetName, $sheet->getTitle());
             $this->assertStringContainsString($expected, json_encode($sheet->toArray(), JSON_UNESCAPED_UNICODE));
             $this->assertStringNotContainsString($unexpected, json_encode($sheet->toArray(), JSON_UNESCAPED_UNICODE));
+
+            if ($type === 'turmas_selecionadas') {
+                $this->assertSame(
+                    ['Escola', 'Série', 'Turma', 'Turno', 'Número de alunos'],
+                    $sheet->rangeToArray('A1:E1')[0],
+                );
+                $this->assertSame([
+                    $escola->nome,
+                    $serie->nome,
+                    'A',
+                    'Manhã',
+                    '1',
+                ], $sheet->rangeToArray('A2:E2')[0]);
+                $this->assertNull($sheet->getCell('F1')->getValue());
+            }
+
+            if ($type === 'turmas_selecionadas_detalhado') {
+                $this->assertSame(
+                    ['Escola', 'Série', 'Turma', 'Turno', 'Número de alunos', 'Componente', 'Professor'],
+                    $sheet->rangeToArray('A1:G1')[0],
+                );
+                $this->assertSame('Matemática', $sheet->getCell('F2')->getValue());
+                $this->assertSame('Professor da Turma', $sheet->getCell('G2')->getValue());
+                $this->assertNull($sheet->getCell('H1')->getValue());
+            }
+
+            if ($type === 'alunos_selecionados') {
+                $this->assertSame([
+                    'Escola', 'Série', 'Turma', 'Turno', 'CGM', 'Nome do aluno', 'Status', 'Sexo',
+                    'Data de nascimento', 'Contraturno', 'Escola do contraturno', 'Série do contraturno',
+                    'Turma do contraturno', 'Turno do contraturno',
+                ], $sheet->rangeToArray('A1:N1')[0]);
+                $this->assertSame('Sim', $sheet->getCell('J2')->getValue());
+                $this->assertSame('Contraturno', $sheet->getCell('M2')->getValue());
+                $this->assertSame('Tarde', $sheet->getCell('N2')->getValue());
+                $this->assertNull($sheet->getCell('O1')->getValue());
+            }
 
             if ($type === 'servidores_selecionados') {
                 $this->assertSame(

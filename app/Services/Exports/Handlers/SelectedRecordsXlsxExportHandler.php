@@ -7,6 +7,7 @@ use App\Models\Aluno;
 use App\Models\ExportRequest;
 use App\Models\Servidor;
 use App\Models\Turma;
+use App\Models\TurmaComponenteProfessor;
 use App\Policies\ServidorPolicy;
 use App\Policies\TurmaPolicy;
 use App\Services\AlunoService;
@@ -50,14 +51,15 @@ class SelectedRecordsXlsxExportHandler implements ExportHandler
 
         $exportRequest->updateProgress(10, 100, 'Validando registros selecionados.');
 
-        [$headers, $rows, $fileName, $sheetName] = match ($exportRequest->type) {
+        [$headers, $rows, $fileName, $sheetName, $recordCount] = match ($exportRequest->type) {
             'turmas_selecionadas' => $this->turmas($user, $ids->all()),
+            'turmas_selecionadas_detalhado' => $this->turmasDetalhadas($user, $ids->all()),
             'servidores_selecionados' => $this->servidores($user, $ids->all()),
             'alunos_selecionados' => $this->alunos($user, $ids->all()),
             default => throw new RuntimeException('Tipo de exportação de registros não suportado.'),
         };
 
-        if (count($rows) !== $ids->count()) {
+        if ($recordCount !== $ids->count()) {
             throw new RuntimeException('Um ou mais registros selecionados não estão mais disponíveis no seu escopo de acesso.');
         }
 
@@ -73,7 +75,7 @@ class SelectedRecordsXlsxExportHandler implements ExportHandler
         );
     }
 
-    /** @return array{0:list<string>,1:list<list<mixed>>,2:string,3:string} */
+    /** @return array{0:list<string>,1:list<list<mixed>>,2:string,3:string,4:int} */
     private function turmas($user, array $ids): array
     {
         $policy = app(TurmaPolicy::class);
@@ -85,32 +87,74 @@ class SelectedRecordsXlsxExportHandler implements ExportHandler
         /** @var Collection<int, Turma> $records */
         $records = $policy->applyViewAnyScope($user, Turma::query())
             ->whereKey($ids)
-            ->with(['escola', 'serie', 'componentes', 'professores'])
+            ->with(['escola', 'serie'])
             ->withCount('alunos')
             ->orderBy('id')
             ->get();
 
         return [[
-            'ID', 'Código', 'Nome', 'Turno', 'ID da série', 'Série', 'ID da escola', 'Escola',
-            'Quantidade de alunos', 'Componentes curriculares', 'Professores', 'Criado em', 'Atualizado em',
+            'Escola', 'Série', 'Turma', 'Turno', 'Número de alunos',
         ], $records->map(fn (Turma $record): array => [
-            $record->id,
-            $record->codigo,
+            $record->escola?->nome,
+            $record->serie?->nome,
             $record->nome,
             $this->turnoLabel($record->turno),
-            $record->id_serie,
-            $record->serie?->nome,
-            $record->id_escola,
-            $record->escola?->nome,
             $record->alunos_count,
-            $record->componentes->pluck('nome')->filter()->unique()->sort()->implode('; '),
-            $record->professores->pluck('nome')->filter()->unique()->sort()->implode('; '),
-            $this->dateTime($record->created_at),
-            $this->dateTime($record->updated_at),
-        ])->all(), 'turmas-selecionadas.xlsx', 'Turmas'];
+        ])->all(), 'turmas-selecionadas.xlsx', 'Turmas', $records->count()];
     }
 
-    /** @return array{0:list<string>,1:list<list<mixed>>,2:string,3:string} */
+    /** @return array{0:list<string>,1:list<list<mixed>>,2:string,3:string,4:int} */
+    private function turmasDetalhadas($user, array $ids): array
+    {
+        $policy = app(TurmaPolicy::class);
+
+        if (! $policy->viewAny($user)) {
+            throw new RuntimeException('Você não possui permissão para exportar turmas.');
+        }
+
+        /** @var Collection<int, Turma> $records */
+        $records = $policy->applyViewAnyScope($user, Turma::query())
+            ->whereKey($ids)
+            ->with(['escola', 'serie'])
+            ->withCount('alunos')
+            ->orderBy('id')
+            ->get();
+
+        $vinculos = TurmaComponenteProfessor::query()
+            ->whereIn('turma_id', $records->modelKeys())
+            ->with(['componente', 'professor'])
+            ->orderBy('turma_id')
+            ->orderBy('componente_curricular_id')
+            ->get()
+            ->groupBy('turma_id');
+
+        $rows = $records->flatMap(function (Turma $record) use ($vinculos): array {
+            $base = [
+                $record->escola?->nome,
+                $record->serie?->nome,
+                $record->nome,
+                $this->turnoLabel($record->turno),
+                $record->alunos_count,
+            ];
+            $itens = $vinculos->get($record->id, collect());
+
+            if ($itens->isEmpty()) {
+                return [[...$base, null, null]];
+            }
+
+            return $itens->map(fn (TurmaComponenteProfessor $vinculo): array => [
+                ...$base,
+                $vinculo->componente?->nome,
+                $vinculo->tem_professor ? $vinculo->professor?->nome : null,
+            ])->all();
+        })->values()->all();
+
+        return [[
+            'Escola', 'Série', 'Turma', 'Turno', 'Número de alunos', 'Componente', 'Professor',
+        ], $rows, 'turmas-selecionadas-detalhado.xlsx', 'Turmas detalhadas', $records->count()];
+    }
+
+    /** @return array{0:list<string>,1:list<list<mixed>>,2:string,3:string,4:int} */
     private function servidores($user, array $ids): array
     {
         $policy = app(ServidorPolicy::class);
@@ -158,56 +202,56 @@ class SelectedRecordsXlsxExportHandler implements ExportHandler
                 )
                 ->filter()->unique()->sort()->values()->implode('; '),
             Servidor::statusOptions()[$record->status] ?? $record->status,
-        ])->all(), 'servidores-selecionados.xlsx', 'Servidores'];
+        ])->all(), 'servidores-selecionados.xlsx', 'Servidores', $records->count()];
     }
 
-    /** @return array{0:list<string>,1:list<list<mixed>>,2:string,3:string} */
+    /** @return array{0:list<string>,1:list<list<mixed>>,2:string,3:string,4:int} */
     private function alunos($user, array $ids): array
     {
         /** @var Collection<int, Aluno> $records */
         $records = app(AlunoService::class)->queryVisivel($user)
             ->whereKey($ids)
-            ->with(['turma.escola', 'turma.serie', 'statusAlteradoPor', 'alunoOrigem', 'turmaOrigem', 'pendenciaOrigem'])
+            ->with(['turma.escola', 'turma.serie'])
             ->orderBy('id')
             ->get();
 
+        $principaisIds = $records
+            ->filter(fn (Aluno $record): bool => $record->isPrincipal())
+            ->modelKeys();
+        $contraTurnos = app(AlunoService::class)->queryVisivel($user)
+            ->whereIn('aluno_origem_id', $principaisIds)
+            ->where('tipo_vinculo', Aluno::TIPO_VINCULO_CONTRA_TURNO)
+            ->where('status', Aluno::STATUS_MATRICULADO)
+            ->with(['turma.escola', 'turma.serie'])
+            ->get()
+            ->keyBy('aluno_origem_id');
+
         return [[
-            'ID', 'Nome', 'CGM', 'CGM da matrícula ativa', 'CGM do contraturno ativo',
-            'CGM/unidade da matrícula ativa', 'Data de nascimento', 'Sexo', 'Data da matrícula',
-            'ID da turma', 'Turma', 'Série', 'Escola', 'Tipo de vínculo', 'Permite contraturno',
-            'Status', 'Status alterado em', 'Status alterado por', 'Motivo do status', 'ID do aluno de origem',
-            'Aluno de origem', 'ID da turma de origem', 'Turma de origem', 'Movimentação de origem',
-            'ID da pendência de origem', 'Pendência de origem', 'Criado em', 'Atualizado em',
-        ], $records->map(fn (Aluno $record): array => [
-            $record->id,
-            $record->nome,
-            $record->cgm,
-            $record->cgm_matricula_ativa,
-            $record->cgm_contra_turno_ativo,
-            $record->cgm_unidade_matricula_ativa,
-            $record->data_nascimento?->format('d/m/Y'),
-            match ($record->sexo) { 'F' => 'Feminino', 'M' => 'Masculino', default => $record->sexo },
-            $record->data_matricula?->format('d/m/Y'),
-            $record->id_turma,
-            $record->turma?->nome,
-            $record->turma?->serie?->nome,
-            $record->turma?->escola?->nome,
-            $record->tipoVinculoLabel(),
-            $record->permite_contra_turno ? 'Sim' : 'Não',
-            $record->statusLabel(),
-            $this->dateTime($record->status_alterado_em),
-            $record->statusAlteradoPor?->name,
-            $record->status_motivo,
-            $record->aluno_origem_id,
-            $record->alunoOrigem?->nome,
-            $record->turma_origem_id,
-            $record->turmaOrigem?->nome,
-            $record->movimentacao_origem,
-            $record->pendencia_origem_aluno_id,
-            $record->pendenciaOrigem?->nome,
-            $this->dateTime($record->created_at),
-            $this->dateTime($record->updated_at),
-        ])->all(), 'alunos-selecionados.xlsx', 'Alunos'];
+            'Escola', 'Série', 'Turma', 'Turno', 'CGM', 'Nome do aluno', 'Status', 'Sexo',
+            'Data de nascimento', 'Contraturno', 'Escola do contraturno', 'Série do contraturno',
+            'Turma do contraturno', 'Turno do contraturno',
+        ], $records->map(function (Aluno $record) use ($contraTurnos): array {
+            $contraTurno = $record->isContraTurno()
+                ? $record
+                : $contraTurnos->get($record->id);
+
+            return [
+                $record->turma?->escola?->nome,
+                $record->turma?->serie?->nome,
+                $record->turma?->nome,
+                $this->turnoLabel($record->turma?->turno),
+                $record->cgm,
+                $record->nome,
+                $record->statusLabel(),
+                match ($record->sexo) { 'F' => 'Feminino', 'M' => 'Masculino', default => $record->sexo },
+                $record->data_nascimento?->format('d/m/Y'),
+                $contraTurno ? 'Sim' : 'Não',
+                $contraTurno?->turma?->escola?->nome,
+                $contraTurno?->turma?->serie?->nome,
+                $contraTurno?->turma?->nome,
+                $this->turnoLabel($contraTurno?->turma?->turno),
+            ];
+        })->all(), 'alunos-selecionados.xlsx', 'Alunos', $records->count()];
     }
 
     /** @param list<string> $headers @param list<list<mixed>> $rows */

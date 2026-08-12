@@ -432,11 +432,12 @@ class AvaliacaoDocumentoExportService
      */
     private function alunosDaTurma(Turma $turma, string $escopo, array $params): Collection
     {
-        $escopoTurma = app(TurmaAvaliacaoAlunoScopeService::class)
-            ->escoposPorTurma(collect([$turma]))[(int) $turma->id] ?? [
-                'turma_origem_id' => (int) $turma->id,
-                'tipo_vinculo' => Aluno::TIPO_VINCULO_PRINCIPAL,
-            ];
+        $escopos = app(TurmaAvaliacaoAlunoScopeService::class)
+            ->escoposPorTurma(collect([$turma]));
+        $escopoTurma = $escopos[(int) $turma->id] ?? [
+            'turma_origem_id' => (int) $turma->id,
+            'tipo_vinculo' => Aluno::TIPO_VINCULO_PRINCIPAL,
+        ];
 
         $query = Aluno::query()
             ->where('id_turma', $escopoTurma['turma_origem_id'])
