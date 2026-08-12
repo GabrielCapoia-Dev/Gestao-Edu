@@ -5,8 +5,11 @@ namespace Tests\Feature\Exports;
 use App\Models\Aluno;
 use App\Models\Escola;
 use App\Models\ExportRequest;
+use App\Models\FuncaoAdministrativa;
+use App\Models\PessoaMatricula;
 use App\Models\Serie;
 use App\Models\Servidor;
+use App\Models\ServidorFuncaoAdministrativa;
 use App\Models\Turma;
 use App\Models\User;
 use App\Services\Exports\Handlers\SelectedRecordsXlsxExportHandler;
@@ -50,9 +53,30 @@ class SelectedRecordsXlsxExportHandlerTest extends TestCase
             'id_turma' => $turmaNaoSelecionada->id,
         ]);
         $servidorSelecionado = Servidor::query()->create([
+            'id_escola' => $escola->id,
+            'matricula' => 'MAT-001',
             'nome' => 'Servidor Selecionado',
-            'email' => 'servidor.selecionado@teste.local',
+            'user_id' => $user->id,
             'status' => Servidor::STATUS_ATIVO,
+        ]);
+        PessoaMatricula::query()->create([
+            'servidor_id' => $servidorSelecionado->id,
+            'matricula' => 'MAT-001',
+            'turno' => 'manha',
+        ]);
+        $funcao = FuncaoAdministrativa::query()->create([
+            'codigo' => 'auxiliar-administrativo-exportacao',
+            'nome' => 'Auxiliar Administrativo',
+            'categoria' => FuncaoAdministrativa::CATEGORIA_ADMINISTRATIVO,
+            'ativo' => true,
+            'exige_professor' => false,
+        ]);
+        ServidorFuncaoAdministrativa::query()->create([
+            'servidor_id' => $servidorSelecionado->id,
+            'funcao_administrativa_id' => $funcao->id,
+            'matricula' => 'MAT-001',
+            'id_escola' => $escola->id,
+            'status' => ServidorFuncaoAdministrativa::STATUS_ATIVO,
         ]);
         Servidor::query()->create([
             'nome' => 'Servidor Não Selecionado',
@@ -78,6 +102,23 @@ class SelectedRecordsXlsxExportHandlerTest extends TestCase
             $this->assertSame($sheetName, $sheet->getTitle());
             $this->assertStringContainsString($expected, json_encode($sheet->toArray(), JSON_UNESCAPED_UNICODE));
             $this->assertStringNotContainsString($unexpected, json_encode($sheet->toArray(), JSON_UNESCAPED_UNICODE));
+
+            if ($type === 'servidores_selecionados') {
+                $this->assertSame(
+                    ['Escola', 'Matrícula', 'Nome', 'Turno', 'E-mail', 'Cargo', 'Status'],
+                    $sheet->rangeToArray('A1:G1')[0],
+                );
+                $this->assertSame([
+                    $escola->nome,
+                    'MAT-001',
+                    'Servidor Selecionado',
+                    'Manhã',
+                    $user->email,
+                    'Auxiliar Administrativo',
+                    'Ativo',
+                ], $sheet->rangeToArray('A2:G2')[0]);
+                $this->assertNull($sheet->getCell('H1')->getValue());
+            }
 
             $spreadsheet->disconnectWorksheets();
             unset($sheet, $spreadsheet);

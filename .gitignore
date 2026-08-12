@@ -31,3 +31,4 @@ yarn-error.log
 /load-tests/.env.local
 /load-tests/data/users.local.csv
 /load-tests/results/
+.codex/tmp_srm

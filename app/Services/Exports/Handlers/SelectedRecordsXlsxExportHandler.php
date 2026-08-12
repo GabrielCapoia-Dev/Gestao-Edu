@@ -123,50 +123,42 @@ class SelectedRecordsXlsxExportHandler implements ExportHandler
         $records = $policy->applyViewAnyScope($user, Servidor::query()->withTrashed())
             ->whereKey($ids)
             ->with([
-                'escola', 'setor', 'user.roles', 'matriculas',
-                'vinculosAtivos.funcaoAdministrativa', 'vinculosAtivos.escola', 'vinculosAtivos.setor',
+                'escola', 'user', 'matriculas', 'professores.escola', 'professores.professorMatricula',
+                'vinculosAtivos.funcaoAdministrativa', 'vinculosAtivos.escola',
             ])
             ->orderBy('id')
             ->get();
 
         return [[
-            'ID', 'CPF', 'ID do usuário', 'Usuário', 'E-mail de acesso', 'Perfis', 'ID da escola', 'Escola',
-            'ID do setor', 'Setor', 'Matrícula principal', 'Matrículas', 'Nome', 'E-mail', 'Telefone',
-            'Status', 'Funções ativas', 'Lotações ativas', 'Observações', 'Criado em', 'Atualizado em', 'Arquivado em',
-        ], $records->map(function (Servidor $record): array {
-            $lotacoes = $record->vinculosAtivos->map(static function ($vinculo): string {
-                return collect([
-                    $vinculo->funcaoAdministrativa?->nome,
-                    $vinculo->escola?->nome ?? $vinculo->setor?->nome,
-                    $vinculo->matricula,
-                ])->filter()->implode(' - ');
-            })->filter()->unique()->sort()->implode('; ');
-
-            return [
-                $record->id,
-                Servidor::formatarCpf($record->cpf),
-                $record->user_id,
-                $record->user?->name,
-                $record->user?->email,
-                $record->user?->roles?->pluck('name')->sort()->implode('; '),
-                $record->id_escola,
-                $record->escola?->nome,
-                $record->setor_id,
-                $record->setor?->nome,
-                $record->matricula,
-                $record->matriculas->pluck('matricula')->filter()->unique()->sort()->implode('; '),
-                $record->nome,
-                $record->email,
-                $record->telefone,
-                Servidor::statusOptions()[$record->status] ?? $record->status,
-                $record->vinculosAtivos->pluck('funcaoAdministrativa.nome')->filter()->unique()->sort()->implode('; '),
-                $lotacoes,
-                $record->observacoes,
-                $this->dateTime($record->created_at),
-                $this->dateTime($record->updated_at),
-                $this->dateTime($record->deleted_at),
-            ];
-        })->all(), 'servidores-selecionados.xlsx', 'Servidores'];
+            'Escola', 'Matrícula', 'Nome', 'Turno', 'E-mail', 'Cargo', 'Status',
+        ], $records->map(fn (Servidor $record): array => [
+            collect([$record->escola?->nome])
+                ->merge($record->professores->where('ativo', true)->pluck('escola.nome'))
+                ->merge($record->vinculosAtivos->pluck('escola.nome'))
+                ->filter()->unique()->sort()->values()->implode('; '),
+            collect([$record->matricula])
+                ->merge($record->matriculas->pluck('matricula'))
+                ->merge($record->vinculosAtivos->pluck('matricula'))
+                ->filter()->unique()->sort()->values()->implode('; '),
+            $record->nome,
+            $record->matriculas->pluck('turno')
+                ->merge($record->professores->where('ativo', true)->map(
+                    static fn ($professor): mixed => $professor->professorMatricula?->turno ?? $professor->turno,
+                ))
+                ->filter()
+                ->map(fn (mixed $turno): mixed => $this->turnoLabel((string) $turno))
+                ->unique()->sort()->values()->implode('; '),
+            collect([$record->email, $record->user?->email])
+                ->merge($record->professores->where('ativo', true)->pluck('email'))
+                ->first(static fn (mixed $email): bool => filled($email)),
+            $record->vinculosAtivos->pluck('funcaoAdministrativa.nome')
+                ->when(
+                    $record->professores->where('ativo', true)->isNotEmpty(),
+                    static fn ($cargos) => $cargos->push('Professor'),
+                )
+                ->filter()->unique()->sort()->values()->implode('; '),
+            Servidor::statusOptions()[$record->status] ?? $record->status,
+        ])->all(), 'servidores-selecionados.xlsx', 'Servidores'];
     }
 
     /** @return array{0:list<string>,1:list<list<mixed>>,2:string,3:string} */
