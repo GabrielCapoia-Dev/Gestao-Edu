@@ -834,6 +834,7 @@ class ServidorResource extends Resource
             'escola:id,nome',
             'professores.escola:id,nome',
             'vinculosAtivos.escola:id,nome',
+            'vinculosAtivos.escolasAssessoradas:id,nome',
         ]);
 
         $scope = app(PessoaScopeService::class);
@@ -850,6 +851,7 @@ class ServidorResource extends Resource
         return $escolas
             ->merge(static::professoresVisiveis($record)->pluck('escola.nome'))
             ->merge(static::vinculosVisiveis($record)->pluck('escola.nome'))
+            ->merge(static::vinculosVisiveis($record)->flatMap->escolasAssessoradas->pluck('nome'))
             ->filter()
             ->unique()
             ->sort()
@@ -1528,6 +1530,12 @@ class ServidorResource extends Resource
 
             return [$data, ['assessoria_pedagogica' => [
                 'matricula' => $data['matricula'],
+                'escola_ids' => collect($data['escola_ids_assessoria'] ?? [])
+                    ->filter(fn (mixed $id): bool => filled($id))
+                    ->map(fn (mixed $id): int => (int) $id)
+                    ->unique()
+                    ->values()
+                    ->all(),
             ]]];
         }
 

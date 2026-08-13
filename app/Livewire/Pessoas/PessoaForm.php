@@ -92,6 +92,9 @@ class PessoaForm extends Component
 
     public ?string $matriculaOperacional = null;
 
+    /** @var list<int|string> */
+    public array $escolaIdsAssessoria = [];
+
     /** @var array<string, string|null> */
     public array $lotacoesAtivas = [];
 
@@ -640,6 +643,7 @@ class PessoaForm extends Component
         $this->cargo = ServidorResource::CARGO_PROFESSOR;
         $this->matriculaMotorista = null;
         $this->matriculaOperacional = null;
+        $this->escolaIdsAssessoria = [];
         $key = $this->novaChave('m');
         $this->matriculas = [
             $key => [
@@ -673,6 +677,12 @@ class PessoaForm extends Component
         $this->matriculaOperacional = filled($dados['matricula_operacional'] ?? null)
             ? (string) $dados['matricula_operacional']
             : null;
+        $this->escolaIdsAssessoria = collect($dados['escola_ids_assessoria'] ?? [])
+            ->filter(fn (mixed $id): bool => filled($id))
+            ->map(fn (mixed $id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
 
         $matriculas = is_array($dados['matriculas_professor'] ?? null)
             ? $dados['matriculas_professor']
@@ -931,6 +941,15 @@ class PessoaForm extends Component
             $rules += [
                 'setorObrasId' => ['required', 'integer'],
             ];
+        } elseif ($this->cargo === ServidorResource::CARGO_ASSESSORIA_PEDAGOGICA) {
+            $rules += [
+                'escolaIdsAssessoria' => ['required', 'array', 'min:1'],
+                'escolaIdsAssessoria.*' => [
+                    'integer',
+                    'distinct',
+                    Rule::in(array_keys($this->escolasOptionsSeguras())),
+                ],
+            ];
         }
 
         $this->validate($rules, attributes: [
@@ -941,6 +960,8 @@ class PessoaForm extends Component
             'setorObrasId' => 'setor de Obras',
             'matriculaMotorista' => 'matrícula',
             'matriculaOperacional' => 'matrícula',
+            'escolaIdsAssessoria' => 'escolas assessoradas',
+            'escolaIdsAssessoria.*' => 'escola assessorada',
         ]);
 
         $cargosSemMatriculas = [
@@ -1339,6 +1360,12 @@ class PessoaForm extends Component
             'cargo' => $this->cargo,
             'matricula_motorista' => $this->matriculaMotorista,
             'matricula_operacional' => $this->matriculaOperacional,
+            'escola_ids_assessoria' => collect($this->escolaIdsAssessoria)
+                ->filter(fn (mixed $id): bool => filled($id))
+                ->map(fn (mixed $id): int => (int) $id)
+                ->unique()
+                ->values()
+                ->all(),
             'matriculas_professor' => $this->payloadMatriculas(),
             'id_escola' => $this->idEscolaGestora,
             'setor_manutencao_id' => $this->setorManutencaoId,

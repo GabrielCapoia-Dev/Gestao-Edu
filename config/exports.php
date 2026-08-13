@@ -2,6 +2,7 @@
 
 use App\Services\Exports\Handlers\AvaliacaoDocumentoExportHandler;
 use App\Services\Exports\Handlers\EstoqueRelatorioExportHandler;
+use App\Services\Exports\Handlers\EscolaXlsxExportHandler;
 use App\Services\Exports\Handlers\FeedbackPedidoExportHandler;
 use App\Services\Exports\Handlers\InventarioRelatorioExportHandler;
 use App\Services\Exports\Handlers\PedidoRelatorioGeralExportHandler;
@@ -30,6 +31,7 @@ return [
         'pedido_relatorio_geral' => PedidoRelatorioGeralExportHandler::class,
         'pedido_relatorio_simplificado' => PedidoRelatorioSimplificadoExportHandler::class,
         'feedback_pedido_relatorio' => FeedbackPedidoExportHandler::class,
+        'escolas_xlsx' => EscolaXlsxExportHandler::class,
         'turmas_selecionadas' => SelectedRecordsXlsxExportHandler::class,
         'turmas_selecionadas_detalhado' => SelectedRecordsXlsxExportHandler::class,
         'servidores_selecionados' => SelectedRecordsXlsxExportHandler::class,

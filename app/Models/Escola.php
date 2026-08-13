@@ -58,6 +58,16 @@ class Escola extends Model
             ->withTimestamps();
     }
 
+    public function vinculosAssessoriaPedagogica(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            ServidorFuncaoAdministrativa::class,
+            'assessoria_pedagogica_escola',
+            'escola_id',
+            'servidor_funcao_administrativa_id',
+        )->withTimestamps();
+    }
+
     public function turmas(): HasMany
     {
         return $this->hasMany(Turma::class, 'id_escola');

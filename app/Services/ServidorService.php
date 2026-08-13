@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Escola;
 use App\Models\FuncaoAdministrativa;
 use App\Models\Professor;
 use App\Models\Servidor;
@@ -454,8 +455,9 @@ class ServidorService
     {
         $dados = $vinculos[$tipo] ?? $data[$tipo] ?? $vinculos;
         $matricula = $dados['matricula'] ?? $data['matricula'] ?? null;
+        $escolaIds = $dados['escola_ids'] ?? [];
 
-        return DB::transaction(function () use ($data, $matricula, $tipo): Servidor {
+        return DB::transaction(function () use ($data, $matricula, $tipo, $escolaIds): Servidor {
             $pessoa = Servidor::query()->create([
                 ...collect($data)->only([
                     'nome',
@@ -475,16 +477,20 @@ class ServidorService
                 ? FuncaoAdministrativa::transportePadrao()
                 : FuncaoAdministrativa::assessoriaPedagogicaPadrao();
 
-            $this->vincularFuncao($pessoa, $funcao, [
+            $vinculo = $this->vincularFuncao($pessoa, $funcao, [
                 'origem' => 'pessoas',
                 'matricula' => $pessoa->matricula,
                 'id_escola' => null,
                 'setor_id' => null,
             ]);
 
+            if ($tipo === 'assessoria_pedagogica') {
+                $this->sincronizarEscolasAssessoria($vinculo, $escolaIds);
+            }
+
             app(PessoaAcessoService::class)->provisionarAcessosDoServidor($pessoa->fresh());
 
-            return $pessoa->fresh(['vinculosAtivos.funcaoAdministrativa']);
+            return $pessoa->fresh(['vinculosAtivos.funcaoAdministrativa', 'vinculosAtivos.escolasAssessoradas']);
         });
     }
 
@@ -492,8 +498,9 @@ class ServidorService
     {
         $dados = $vinculos[$tipo] ?? $data[$tipo] ?? $vinculos;
         $matricula = $dados['matricula'] ?? $data['matricula'] ?? null;
+        $escolaIds = $dados['escola_ids'] ?? [];
 
-        return DB::transaction(function () use ($servidor, $data, $matricula, $tipo): Servidor {
+        return DB::transaction(function () use ($servidor, $data, $matricula, $tipo, $escolaIds): Servidor {
             $servidor = Servidor::query()
                 ->with('vinculosAtivos.funcaoAdministrativa')
                 ->lockForUpdate()
@@ -535,10 +542,45 @@ class ServidorService
                 'setor_id' => null,
             ])->save();
 
+            if ($tipo === 'assessoria_pedagogica') {
+                $this->sincronizarEscolasAssessoria($vinculo, $escolaIds);
+            }
+
             app(PessoaAcessoService::class)->provisionarAcessosDoServidor($servidor->fresh());
 
-            return $servidor->fresh(['vinculosAtivos.funcaoAdministrativa']);
+            return $servidor->fresh(['vinculosAtivos.funcaoAdministrativa', 'vinculosAtivos.escolasAssessoradas']);
         });
+    }
+
+    private function sincronizarEscolasAssessoria(
+        ServidorFuncaoAdministrativa $vinculo,
+        array $escolaIds,
+    ): void {
+        $escolaIds = collect($escolaIds)
+            ->filter(fn (mixed $id): bool => filled($id))
+            ->map(fn (mixed $id): int => (int) $id)
+            ->unique()
+            ->values();
+
+        if ($escolaIds->isEmpty()) {
+            throw ValidationException::withMessages([
+                'escolaIdsAssessoria' => 'Selecione ao menos uma escola para a Assessoria Pedagógica.',
+            ]);
+        }
+
+        $escolasValidas = Escola::query()
+            ->ativas()
+            ->whereKey($escolaIds)
+            ->pluck('id')
+            ->map(fn (mixed $id): int => (int) $id);
+
+        if ($escolasValidas->count() !== $escolaIds->count()) {
+            throw ValidationException::withMessages([
+                'escolaIdsAssessoria' => 'Uma ou mais escolas selecionadas são inválidas ou estão inativas.',
+            ]);
+        }
+
+        $vinculo->escolasAssessoradas()->sync($escolasValidas->all());
     }
 
     private function encerrarVinculosOperacionaisIncompativeis(

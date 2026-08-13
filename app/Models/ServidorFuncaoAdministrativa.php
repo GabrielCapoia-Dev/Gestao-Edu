@@ -60,6 +60,16 @@ class ServidorFuncaoAdministrativa extends Pivot
         return $this->belongsTo(Escola::class, 'id_escola');
     }
 
+    public function escolasAssessoradas(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            Escola::class,
+            'assessoria_pedagogica_escola',
+            'servidor_funcao_administrativa_id',
+            'escola_id',
+        )->withTimestamps();
+    }
+
     public function setor(): BelongsTo
     {
         return $this->belongsTo(Setor::class);

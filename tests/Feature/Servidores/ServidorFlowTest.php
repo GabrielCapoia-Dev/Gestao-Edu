@@ -123,6 +123,74 @@ class ServidorFlowTest extends TestCase
         ]);
     }
 
+    public function test_assessoria_pedagogica_pode_assessorar_varias_escolas(): void
+    {
+        $escolaA = $this->criarEscola('Escola Assessoria A');
+        $escolaB = $this->criarEscola('Escola Assessoria B');
+
+        $assessor = app(ServidorService::class)->criarServidorComFuncoes([
+            'cargo' => ServidorResource::CARGO_ASSESSORIA_PEDAGOGICA,
+            'nome' => 'Assessora Pedagógica',
+            'email' => 'assessora.pedagogica@edu.umuarama.pr.gov.br',
+            'matricula' => 'ASS-001',
+            'status' => Servidor::STATUS_ATIVO,
+        ], [
+            'assessoria_pedagogica' => [
+                'matricula' => 'ASS-001',
+                'escola_ids' => [$escolaA->id, $escolaB->id],
+            ],
+        ]);
+
+        $vinculo = $assessor->vinculosAtivos()
+            ->where('funcao_administrativa_id', FuncaoAdministrativa::assessoriaPedagogicaPadrao()->id)
+            ->firstOrFail();
+
+        $this->assertEqualsCanonicalizing(
+            [$escolaA->id, $escolaB->id],
+            $vinculo->escolasAssessoradas()->pluck('escolas.id')->all(),
+        );
+        $this->assertTrue($escolaA->vinculosAssessoriaPedagogica()->whereKey($vinculo->id)->exists());
+        $this->assertTrue($escolaB->vinculosAssessoriaPedagogica()->whereKey($vinculo->id)->exists());
+    }
+
+    public function test_atualizacao_da_assessoria_sincroniza_as_escolas_sem_duplicar_vinculo_funcional(): void
+    {
+        $escolaAnterior = $this->criarEscola('Escola Assessoria Anterior');
+        $escolaAtual = $this->criarEscola('Escola Assessoria Atual');
+        $servico = app(ServidorService::class);
+        $dados = [
+            'cargo' => ServidorResource::CARGO_ASSESSORIA_PEDAGOGICA,
+            'nome' => 'Assessor Pedagógico',
+            'email' => 'assessor.pedagogico@edu.umuarama.pr.gov.br',
+            'matricula' => 'ASS-002',
+            'status' => Servidor::STATUS_ATIVO,
+        ];
+
+        $assessor = $servico->criarServidorComFuncoes($dados, [
+            'assessoria_pedagogica' => [
+                'matricula' => 'ASS-002',
+                'escola_ids' => [$escolaAnterior->id],
+            ],
+        ]);
+        $servico->atualizarServidorComFuncoes($assessor, $dados, [
+            'assessoria_pedagogica' => [
+                'matricula' => 'ASS-002',
+                'escola_ids' => [$escolaAtual->id, $escolaAtual->id],
+            ],
+        ]);
+
+        $vinculos = $assessor->vinculosAtivos()
+            ->where('funcao_administrativa_id', FuncaoAdministrativa::assessoriaPedagogicaPadrao()->id)
+            ->get();
+
+        $this->assertCount(1, $vinculos);
+        $this->assertSame([$escolaAtual->id], $vinculos->first()->escolasAssessoradas()->pluck('escolas.id')->all());
+        $this->assertDatabaseMissing('assessoria_pedagogica_escola', [
+            'servidor_funcao_administrativa_id' => $vinculos->first()->id,
+            'escola_id' => $escolaAnterior->id,
+        ]);
+    }
+
     public function test_formulario_exige_matricula_do_servidor(): void
     {
         Permission::findOrCreate('Listar Servidores');
