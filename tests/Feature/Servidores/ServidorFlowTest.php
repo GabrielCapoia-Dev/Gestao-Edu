@@ -16,8 +16,10 @@ use App\Models\Setor;
 use App\Models\Turma;
 use App\Models\User;
 use App\Services\ServidorService;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Permission;
@@ -151,6 +153,37 @@ class ServidorFlowTest extends TestCase
         );
         $this->assertTrue($escolaA->vinculosAssessoriaPedagogica()->whereKey($vinculo->id)->exists());
         $this->assertTrue($escolaB->vinculosAssessoriaPedagogica()->whereKey($vinculo->id)->exists());
+    }
+
+    public function test_migration_da_assessoria_recupera_tabela_criada_parcialmente(): void
+    {
+        Schema::drop('assessoria_pedagogica_escola');
+        Schema::create('assessoria_pedagogica_escola', function (Blueprint $table): void {
+            $table->id();
+            $table->foreignId('servidor_funcao_administrativa_id');
+            $table->foreignId('escola_id');
+            $table->timestamps();
+        });
+
+        $migration = require database_path(
+            'migrations/2026_08_13_120000_create_assessoria_pedagogica_escola_table.php',
+        );
+        $migration->up();
+
+        $foreignColumns = collect(Schema::getForeignKeys('assessoria_pedagogica_escola'))
+            ->flatMap(fn (array $foreign): array => $foreign['columns'] ?? [])
+            ->all();
+
+        $this->assertContains('servidor_funcao_administrativa_id', $foreignColumns);
+        $this->assertContains('escola_id', $foreignColumns);
+        $this->assertTrue(Schema::hasIndex(
+            'assessoria_pedagogica_escola',
+            'assessoria_pedagogica_escola_unique',
+        ));
+        $this->assertTrue(Schema::hasIndex(
+            'assessoria_pedagogica_escola',
+            'assessoria_pedagogica_escola_reverso',
+        ));
     }
 
     public function test_atualizacao_da_assessoria_sincroniza_as_escolas_sem_duplicar_vinculo_funcional(): void
