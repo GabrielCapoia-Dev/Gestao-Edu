@@ -10,13 +10,16 @@ return new class extends Migration
     {
         Schema::create('assessoria_pedagogica_escola', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('servidor_funcao_administrativa_id')
-                ->constrained('servidor_funcao_administrativa')
-                ->cascadeOnDelete();
+            $table->foreignId('servidor_funcao_administrativa_id');
             $table->foreignId('escola_id')
                 ->constrained('escolas')
                 ->cascadeOnDelete();
             $table->timestamps();
+
+            $table->foreign('servidor_funcao_administrativa_id', 'fk_assessoria_escola_vinculo')
+                ->references('id')
+                ->on('servidor_funcao_administrativa')
+                ->cascadeOnDelete();
 
             $table->unique(
                 ['servidor_funcao_administrativa_id', 'escola_id'],
