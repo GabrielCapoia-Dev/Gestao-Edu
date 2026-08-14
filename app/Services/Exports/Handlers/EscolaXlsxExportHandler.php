@@ -3,9 +3,9 @@
 namespace App\Services\Exports\Handlers;
 
 use App\Contracts\Exports\ExportHandler;
-use App\Models\Escola;
 use App\Models\ExportRequest;
-use App\Policies\EscolaPolicy;
+use App\Models\LocalTrabalho;
+use App\Policies\LocalTrabalhoPolicy;
 use App\Services\Exports\ExportFileResult;
 use App\Services\Exports\ExportFileStorage;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
@@ -32,44 +32,45 @@ class EscolaXlsxExportHandler implements ExportHandler
         }
 
         $user = $exportRequest->user;
-        $policy = app(EscolaPolicy::class);
+        $policy = app(LocalTrabalhoPolicy::class);
 
         if (! $user || ! $policy->viewAny($user)) {
-            throw new RuntimeException('Você não possui permissão para exportar escolas.');
+            throw new RuntimeException('Você não possui permissão para exportar locais de trabalho.');
         }
 
-        $exportRequest->updateProgress(10, 100, 'Consultando escolas disponíveis.');
+        $exportRequest->updateProgress(10, 100, 'Consultando locais de trabalho disponíveis.');
 
-        $escolas = $policy->applyViewAnyScope($user, Escola::query())
+        $locais = $policy->applyViewAnyScope($user, LocalTrabalho::query())
             ->with(['setor', 'lotacoes'])
             ->orderBy('nome')
             ->get();
 
         $headers = [
-            'Código', 'Nome', 'E-mail', 'Telefone', 'Setor', 'Logradouro', 'Número',
+            'Código', 'Nome', 'Tipo', 'E-mail', 'Telefone', 'Setor', 'Logradouro', 'Número',
             'Bairro', 'CEP', 'Cidade', 'UF', 'Complemento', 'Lotações', 'Status',
             'Criado em', 'Atualizado em',
         ];
-        $rows = $escolas->map(static fn (Escola $escola): array => [
-            $escola->codigo,
-            $escola->nome,
-            $escola->email,
-            $escola->telefone,
-            $escola->setor?->nome_completo,
-            $escola->logradouro,
-            $escola->numero,
-            $escola->bairro,
-            $escola->cep,
-            $escola->cidade,
-            $escola->estado,
-            $escola->complemento,
-            $escola->lotacoes
+        $rows = $locais->map(static fn (LocalTrabalho $local): array => [
+            $local->codigo,
+            $local->nome,
+            $local->tipoLabel(),
+            $local->email,
+            $local->telefone,
+            $local->setor?->nome_completo,
+            $local->logradouro,
+            $local->numero,
+            $local->bairro,
+            $local->cep,
+            $local->cidade,
+            $local->estado,
+            $local->complemento,
+            $local->lotacoes
                 ->sortBy('codigo')
                 ->map(static fn ($lotacao): string => "{$lotacao->codigo} - {$lotacao->nome}")
                 ->implode('; '),
-            $escola->ativo ? 'Ativa' : 'Inativa',
-            $escola->created_at?->format('d/m/Y H:i:s'),
-            $escola->updated_at?->format('d/m/Y H:i:s'),
+            $local->ativo ? 'Ativo' : 'Inativo',
+            $local->created_at?->format('d/m/Y H:i:s'),
+            $local->updated_at?->format('d/m/Y H:i:s'),
         ])->all();
 
         $exportRequest->updateProgress(60, 100, 'Montando planilha XLSX.');
@@ -79,7 +80,7 @@ class EscolaXlsxExportHandler implements ExportHandler
         return $this->storage->storeContents(
             $exportRequest,
             $contents,
-            'escolas-' . now()->format('Y-m-d_H-i') . '.xlsx',
+            'locais-de-trabalho-' . now()->format('Y-m-d_H-i') . '.xlsx',
             self::MIME_XLSX,
         );
     }
@@ -89,7 +90,7 @@ class EscolaXlsxExportHandler implements ExportHandler
     {
         $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('Escolas');
+        $sheet->setTitle('Locais de trabalho');
         $sheet->fromArray($headers, null, 'A1');
         $sheet->fromArray($rows, null, 'A2');
 

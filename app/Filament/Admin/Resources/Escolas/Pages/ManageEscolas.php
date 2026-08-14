@@ -3,7 +3,7 @@
 namespace App\Filament\Admin\Resources\Escolas\Pages;
 
 use App\Filament\Admin\Resources\Escolas\EscolaResource;
-use App\Models\Escola;
+use App\Models\LocalTrabalho;
 use App\Models\User;
 use App\Services\Escolas\EscolaLotacaoSpreadsheetService;
 use App\Services\Exports\ExportRequestService;
@@ -27,8 +27,8 @@ class ManageEscolas extends ManageRecords
             'actions' => $this->getCachedHeaderActions(),
 
             'eyebrow' => 'Pedagógico',
-            'title' => 'Escolas',
-            'description' => 'Gerencie as escolas da rede educacional, adicione novas instituições e mantenha um registro atualizado das informações.',
+            'title' => 'Locais de trabalho',
+            'description' => 'Gerencie escolas e outros locais de trabalho, seus dados cadastrais e suas lotações.',
         ]);
     }
 
@@ -39,9 +39,9 @@ class ManageEscolas extends ManageRecords
                 ->label('Importar lotações')
                 ->icon('heroicon-o-document-arrow-up')
                 ->color('primary')
-                ->authorize(fn (): bool => Gate::allows('updateAny', Escola::class))
+                ->authorize(fn (): bool => Gate::allows('updateAny', LocalTrabalho::class))
                 ->modalHeading('Importar lotações em massa')
-                ->modalDescription('A escola pode aparecer em várias linhas, mas cada número de lotação deve aparecer apenas uma vez na planilha inteira.')
+                ->modalDescription('O local de trabalho pode aparecer em várias linhas, mas cada número de lotação deve aparecer apenas uma vez na planilha inteira.')
                 ->modalSubmitActionLabel('Importar lotações')
                 ->schema([
                     FileUpload::make('arquivo')
@@ -59,7 +59,7 @@ class ManageEscolas extends ManageRecords
                         ])
                         ->maxSize(5120)
                         ->required()
-                        ->helperText('Use as colunas A: Escola, B: Número da lotação e C: Nome da lotação. A primeira linha deve conter esses cabeçalhos.'),
+                        ->helperText('Use as colunas A: Local de trabalho, B: Número da lotação e C: Nome da lotação. O cabeçalho legado Escola também é aceito.'),
                 ])
                 ->action(function (array $data): void {
                     /** @var User|null $user */
@@ -112,10 +112,10 @@ class ManageEscolas extends ManageRecords
                 ->label('Exportar XLSX')
                 ->icon('heroicon-o-document-arrow-down')
                 ->color('info')
-                ->authorize(fn (): bool => Gate::allows('viewAny', Escola::class))
+                ->authorize(fn (): bool => Gate::allows('viewAny', LocalTrabalho::class))
                 ->requiresConfirmation()
-                ->modalHeading('Exportar escolas em XLSX')
-                ->modalDescription('A planilha será gerada em segundo plano com todas as escolas disponíveis no seu escopo de acesso.')
+                ->modalHeading('Exportar locais de trabalho em XLSX')
+                ->modalDescription('A planilha será gerada em segundo plano com todos os locais de trabalho disponíveis no seu escopo de acesso.')
                 ->modalSubmitActionLabel('Enviar para a fila')
                 ->action(function (): void {
                     /** @var User|null $user */
@@ -130,7 +130,7 @@ class ManageEscolas extends ManageRecords
                             user: $user,
                             type: 'escolas_xlsx',
                             format: 'xlsx',
-                            label: 'XLSX de escolas',
+                            label: 'XLSX de locais de trabalho',
                             metadata: ['source' => 'escolas.header_action'],
                         );
 
@@ -155,6 +155,7 @@ class ManageEscolas extends ManageRecords
             CreateAction::make()
                 ->mutateDataUsing(function (array $data): array {
                     $data['ativo'] = true;
+                    $data['nao_e_escola'] = (bool) ($data['nao_e_escola'] ?? false);
 
                     return $data;
                 }),

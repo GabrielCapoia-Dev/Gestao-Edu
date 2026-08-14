@@ -3,6 +3,7 @@
 namespace Tests\Feature\Escolas;
 
 use App\Models\Escola;
+use App\Models\LocalTrabalho;
 use App\Models\Setor;
 use App\Models\User;
 use App\Services\Escolas\EscolaLotacaoSpreadsheetService;
@@ -54,6 +55,35 @@ class EscolaLotacaoSpreadsheetServiceTest extends TestCase
         Storage::disk('local')->assertMissing($arquivo);
     }
 
+    public function test_importa_lotacao_de_local_nao_escolar_com_novo_cabecalho(): void
+    {
+        Storage::fake('local');
+        $setor = $this->criarSetor('Administração');
+        $local = LocalTrabalho::query()->create([
+            'setor_id' => $setor->id,
+            'nome' => 'Secretaria de Educação',
+            'email' => 'secretaria@teste.local',
+            'ativo' => true,
+            'nao_e_escola' => true,
+        ]);
+        $arquivo = $this->criarPlanilha([
+            ['Local de trabalho', 'Número da lotação', 'Nome da lotação'],
+            ['Secretaria de Educação', '250', 'Equipe administrativa'],
+        ]);
+
+        $resultado = app(EscolaLotacaoSpreadsheetService::class)->importar(
+            $arquivo,
+            $this->usuarioAdmin(),
+        );
+
+        $this->assertSame(['total_importado' => 1, 'criadas' => 1, 'atualizadas' => 0], $resultado);
+        $this->assertDatabaseHas('lotacoes', [
+            'escola_id' => $local->id,
+            'codigo' => '250',
+            'nome' => 'Equipe administrativa',
+        ]);
+    }
+
     public function test_rejeita_numero_de_lotacao_repetido_e_nao_grava_parcialmente(): void
     {
         Storage::fake('local');
@@ -90,7 +120,7 @@ class EscolaLotacaoSpreadsheetServiceTest extends TestCase
         ]);
 
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('já pertence a outra escola');
+        $this->expectExceptionMessage('já pertence a outro local de trabalho');
 
         app(EscolaLotacaoSpreadsheetService::class)->importar($arquivo, $this->usuarioAdmin());
     }
@@ -109,7 +139,7 @@ class EscolaLotacaoSpreadsheetServiceTest extends TestCase
         ]);
 
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('não foi encontrada ou está fora do seu escopo');
+        $this->expectExceptionMessage('não foi encontrado ou está fora do seu escopo');
 
         app(EscolaLotacaoSpreadsheetService::class)->importar($arquivo, $usuario);
     }

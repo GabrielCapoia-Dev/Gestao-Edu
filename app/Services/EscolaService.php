@@ -3,22 +3,27 @@
 namespace App\Services;
 
 use App\Filament\Admin\Actions\VincularSetorBulkAction;
+use App\Filament\Admin\Resources\Escolas\EscolaResource;
 use App\Models\Escola;
+use App\Models\LocalTrabalho;
 use App\Models\User;
-use Illuminate\Support\Facades\Gate;
+use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Http;
 
 class EscolaService
@@ -29,7 +34,7 @@ class EscolaService
 
     public function podeEditarCodigoEscola(?User $user): bool
     {
-        return $user && Gate::forUser($user)->allows('editCodigo', Escola::class);
+        return $user && Gate::forUser($user)->allows('editCodigo', LocalTrabalho::class);
     }
 
     /** Configura a tabela completa (paginações, colunas, filtros, ações, ordenação). */
@@ -39,6 +44,14 @@ class EscolaService
             ->paginated([5, 10, 25, 50, 100])
             ->defaultPaginationPageOption(5)
             ->columns($this->colunasTabela())
+            ->filters([
+                SelectFilter::make('nao_e_escola')
+                    ->label('Tipo')
+                    ->options([
+                        '0' => 'Escola',
+                        '1' => 'Local não escolar',
+                    ]),
+            ])
             ->recordActions($this->acoesTabela($user))
             ->groupedBulkActions($this->acoesEmMassa($user))
             ->defaultSort('updated_at', 'desc')
@@ -54,6 +67,12 @@ class EscolaService
                 ->wrap()
                 ->sortable()
                 ->searchable(),
+
+            TextColumn::make('nao_e_escola')
+                ->label('Tipo')
+                ->badge()
+                ->formatStateUsing(fn (bool $state): string => $state ? 'Local não escolar' : 'Escola')
+                ->color(fn (bool $state): string => $state ? 'warning' : 'info'),
 
             TextColumn::make('email')
                 ->label('E-mail')
@@ -92,10 +111,19 @@ class EscolaService
     private function acoesTabela(?User $user): array
     {
         return [
+            Action::make('lotacoes')
+                ->label('Lotações')
+                ->icon('heroicon-o-rectangle-stack')
+                ->color('gray')
+                ->url(fn (LocalTrabalho $record): string => EscolaResource::getUrl('lotacoes', [
+                    'record' => $record,
+                ])),
+
             EditAction::make()
-                ->fillForm(function (Escola $record): array {
+                ->fillForm(function (LocalTrabalho $record): array {
                     return [
                         'codigo' => $record->codigo,
+                        'nao_e_escola' => $record->nao_e_escola,
                         'nome' => $record->nome,
                         'email' => $record->email,
                         'telefone' => $record->telefone,
@@ -109,11 +137,11 @@ class EscolaService
                         'complemento' => $record->complemento,
                     ];
                 })
-                ->using(fn (Escola $record, array $data): Escola => $this->atualizarEmLinha($record, $data)),
+                ->using(fn (LocalTrabalho $record, array $data): LocalTrabalho => $this->atualizarEmLinha($record, $data)),
 
             DeleteAction::make()
                 ->successNotification(null)
-                ->using(function (Escola $record) {
+                ->using(function (LocalTrabalho $record) {
 
                     $possuiVinculo =
                         DB::table('users')->where('id_escola', $record->id)->exists() ||
@@ -125,7 +153,7 @@ class EscolaService
                     if ($possuiVinculo) {
                         Notification::make()
                             ->title('Ação bloqueada')
-                            ->body('Esta escola possui vínculos e não pode ser excluída.')
+                            ->body('Este local de trabalho possui vínculos e não pode ser excluído.')
                             ->danger()
                             ->send();
 
@@ -135,7 +163,7 @@ class EscolaService
                     $record->delete();
 
                     Notification::make()
-                        ->title('Escola excluída com sucesso')
+                        ->title('Local de trabalho excluído com sucesso')
                         ->success()
                         ->send();
                 }),
@@ -147,9 +175,9 @@ class EscolaService
         return [
             VincularSetorBulkAction::make(
                 ability: 'update',
-                arguments: Escola::class,
-                recordsLabel: 'escolas selecionadas',
-                updateRecord: function (Escola $record, int $setorId): void {
+                arguments: LocalTrabalho::class,
+                recordsLabel: 'locais de trabalho selecionados',
+                updateRecord: function (LocalTrabalho $record, int $setorId): void {
                     $this->atualizarEmLinha($record, [
                         'nome' => $record->nome,
                         'email' => $record->email,
@@ -168,7 +196,7 @@ class EscolaService
         ];
     }
 
-    public function atualizarEmLinha(Escola $record, array $data): Escola
+    public function atualizarEmLinha(LocalTrabalho $record, array $data): LocalTrabalho
     {
         $camposVerificar = [
             'nome',
@@ -216,6 +244,15 @@ class EscolaService
                     ->columnSpanFull()
                     ->schema([
                         Grid::make(2)->schema([
+
+                            Toggle::make('nao_e_escola')
+                                ->label('Não é uma escola')
+                                ->default(false)
+                                ->disabled(fn (?LocalTrabalho $record): bool => $record !== null)
+                                ->helperText(fn (?LocalTrabalho $record): string => $record
+                                    ? 'A classificação não pode ser alterada após o cadastro.'
+                                    : 'Marque para cadastrar um local de trabalho que não pertence ao contexto pedagógico.')
+                                ->columnSpanFull(),
 
                             TextInput::make('nome')
                                 ->label('Nome')
@@ -346,7 +383,7 @@ class EscolaService
                     ]),
 
                 Section::make('Lotações')
-                    ->description('Cadastre os códigos de lotação vinculados a esta escola.')
+                    ->description('Cadastre os códigos de lotação vinculados a este local de trabalho.')
                     ->columnSpanFull()
                     ->schema([
                         Repeater::make('lotacoes')

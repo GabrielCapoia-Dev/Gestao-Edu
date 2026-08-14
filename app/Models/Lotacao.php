@@ -18,4 +18,9 @@ class Lotacao extends Model
     {
         return $this->belongsTo(Escola::class);
     }
+
+    public function localTrabalho(): BelongsTo
+    {
+        return $this->belongsTo(LocalTrabalho::class, 'escola_id');
+    }
 }

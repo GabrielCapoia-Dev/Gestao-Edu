@@ -2,7 +2,7 @@
 
 namespace App\Services\Escolas;
 
-use App\Models\Escola;
+use App\Models\LocalTrabalho;
 use App\Models\Lotacao;
 use App\Models\User;
 use App\Services\UserSetorAccessService;
@@ -19,6 +19,12 @@ class EscolaLotacaoSpreadsheetService
     private const MAX_ROWS = 10000;
 
     private const EXPECTED_HEADERS = [
+        'local de trabalho',
+        'numero da lotacao',
+        'nome da lotacao',
+    ];
+
+    private const LEGACY_HEADERS = [
         'escola',
         'numero da lotacao',
         'nome da lotacao',
@@ -47,7 +53,7 @@ class EscolaLotacaoSpreadsheetService
                             continue;
                         }
 
-                        $linha['escola']->lotacoes()->create([
+                        $linha['local_trabalho']->lotacoes()->create([
                             'codigo' => $linha['numero_lotacao'],
                             'nome' => $linha['nome_lotacao'],
                         ]);
@@ -102,7 +108,7 @@ class EscolaLotacaoSpreadsheetService
 
     /**
      * @param  list<array{0: mixed, 1: mixed, 2: mixed}>  $rows
-     * @return list<array{escola: Escola, numero_lotacao: string, nome_lotacao: string, lotacao_existente: Lotacao|null}>
+     * @return list<array{local_trabalho: LocalTrabalho, numero_lotacao: string, nome_lotacao: string, lotacao_existente: Lotacao|null}>
      */
     private function validarLinhas(array $rows, User $usuario): array
     {
@@ -112,20 +118,20 @@ class EscolaLotacaoSpreadsheetService
 
         $headers = array_map(fn (mixed $value): string => $this->normalizarTexto($value), $rows[0]);
 
-        if ($headers !== self::EXPECTED_HEADERS) {
+        if ($headers !== self::EXPECTED_HEADERS && $headers !== self::LEGACY_HEADERS) {
             throw new InvalidArgumentException(
-                'Cabeçalho inválido. Use exatamente: Escola, Número da lotação, Nome da lotação.',
+                'Cabeçalho inválido. Use exatamente: Local de trabalho, Número da lotação, Nome da lotação.',
             );
         }
 
         $linhas = collect(array_slice($rows, 1))
             ->map(fn (array $row, int $index): array => [
                 'numero_linha' => $index + 2,
-                'nome_escola' => $this->valor($row[0] ?? null),
+                'nome_local_trabalho' => $this->valor($row[0] ?? null),
                 'numero_lotacao' => $this->valor($row[1] ?? null),
                 'nome_lotacao' => $this->valor($row[2] ?? null),
             ])
-            ->reject(fn (array $linha): bool => blank($linha['nome_escola'])
+            ->reject(fn (array $linha): bool => blank($linha['nome_local_trabalho'])
                 && blank($linha['numero_lotacao'])
                 && blank($linha['nome_lotacao']))
             ->values();
@@ -138,7 +144,7 @@ class EscolaLotacaoSpreadsheetService
             throw new InvalidArgumentException('A planilha pode conter no máximo 10.000 lotações.');
         }
 
-        $escolas = $this->escolasPermitidas($usuario);
+        $locais = $this->locaisPermitidos($usuario);
         $lotacoesExistentes = Lotacao::query()
             ->get(['id', 'escola_id', 'codigo', 'nome'])
             ->keyBy(fn (Lotacao $lotacao): string => $this->normalizarTexto($lotacao->codigo));
@@ -146,18 +152,18 @@ class EscolaLotacaoSpreadsheetService
         $erros = [];
 
         $validadas = $linhas->map(function (array $linha) use (
-            $escolas,
+            $locais,
             $lotacoesExistentes,
             &$numerosEncontrados,
             &$erros,
         ): ?array {
             $numeroLinha = $linha['numero_linha'];
-            $nomeEscola = $linha['nome_escola'];
+            $nomeLocal = $linha['nome_local_trabalho'];
             $numeroLotacao = $linha['numero_lotacao'];
             $nomeLotacao = $linha['nome_lotacao'];
 
-            if ($nomeEscola === null) {
-                $erros[] = "Linha {$numeroLinha}: informe a Escola.";
+            if ($nomeLocal === null) {
+                $erros[] = "Linha {$numeroLinha}: informe o Local de trabalho.";
             }
 
             if ($numeroLotacao === null) {
@@ -168,7 +174,7 @@ class EscolaLotacaoSpreadsheetService
                 $erros[] = "Linha {$numeroLinha}: informe o Nome da lotação.";
             }
 
-            if ($nomeEscola === null || $numeroLotacao === null || $nomeLotacao === null) {
+            if ($nomeLocal === null || $numeroLotacao === null || $nomeLotacao === null) {
                 return null;
             }
 
@@ -189,29 +195,29 @@ class EscolaLotacaoSpreadsheetService
             }
 
             $numerosEncontrados[$chaveNumero] = true;
-            $chaveEscola = $this->normalizarTexto($nomeEscola);
-            /** @var Collection<int, Escola>|null $escolasComNome */
-            $escolasComNome = $escolas->get($chaveEscola);
+            $chaveLocal = $this->normalizarTexto($nomeLocal);
+            /** @var Collection<int, LocalTrabalho>|null $locaisComNome */
+            $locaisComNome = $locais->get($chaveLocal);
 
-            if (! $escolasComNome || $escolasComNome->isEmpty()) {
-                $erros[] = "Linha {$numeroLinha}: a escola {$nomeEscola} não foi encontrada ou está fora do seu escopo.";
-
-                return null;
-            }
-
-            if ($escolasComNome->count() > 1) {
-                $erros[] = "Linha {$numeroLinha}: existem várias escolas ativas com o nome {$nomeEscola}.";
+            if (! $locaisComNome || $locaisComNome->isEmpty()) {
+                $erros[] = "Linha {$numeroLinha}: o local de trabalho {$nomeLocal} não foi encontrado ou está fora do seu escopo.";
 
                 return null;
             }
 
-            /** @var Escola $escola */
-            $escola = $escolasComNome->first();
+            if ($locaisComNome->count() > 1) {
+                $erros[] = "Linha {$numeroLinha}: existem vários locais de trabalho ativos com o nome {$nomeLocal}.";
+
+                return null;
+            }
+
+            /** @var LocalTrabalho $local */
+            $local = $locaisComNome->first();
             /** @var Lotacao|null $existente */
             $existente = $lotacoesExistentes->get($chaveNumero);
 
-            if ($existente && (int) $existente->escola_id !== (int) $escola->id) {
-                $erros[] = "Linha {$numeroLinha}: a lotação {$numeroLotacao} já pertence a outra escola.";
+            if ($existente && (int) $existente->escola_id !== (int) $local->id) {
+                $erros[] = "Linha {$numeroLinha}: a lotação {$numeroLotacao} já pertence a outro local de trabalho.";
 
                 return null;
             }
@@ -221,7 +227,7 @@ class EscolaLotacaoSpreadsheetService
             }
 
             return [
-                'escola' => $escola,
+                'local_trabalho' => $local,
                 'numero_lotacao' => $numeroLotacao,
                 'nome_lotacao' => $nomeLotacao,
                 'lotacao_existente' => $existente,
@@ -242,13 +248,13 @@ class EscolaLotacaoSpreadsheetService
         return $validadas->all();
     }
 
-    /** @return Collection<string, Collection<int, Escola>> */
-    private function escolasPermitidas(User $usuario): Collection
+    /** @return Collection<string, Collection<int, LocalTrabalho>> */
+    private function locaisPermitidos(User $usuario): Collection
     {
         return app(UserSetorAccessService::class)
-            ->applySetorScope(Escola::query()->ativas(), $usuario)
+            ->applySetorScope(LocalTrabalho::query()->ativas(), $usuario)
             ->get()
-            ->groupBy(fn (Escola $escola): string => $this->normalizarTexto($escola->nome));
+            ->groupBy(fn (LocalTrabalho $local): string => $this->normalizarTexto($local->nome));
     }
 
     private function valor(mixed $value): ?string

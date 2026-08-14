@@ -6,6 +6,7 @@ use App\Filament\Admin\Resources\Escolas\Pages\ManageEscolas;
 use App\Jobs\ProcessExportRequestJob;
 use App\Models\Escola;
 use App\Models\ExportRequest;
+use App\Models\LocalTrabalho;
 use App\Models\Professor;
 use App\Models\Setor;
 use App\Models\Servidor;
@@ -83,6 +84,15 @@ class EscolaXlsxExportTest extends TestCase
 
         $user = User::factory()->create(['setor_id' => $setorPermitido->id]);
         $user->givePermissionTo('Listar Escolas');
+        $localPermitido = LocalTrabalho::query()->create([
+            'codigo' => 'LOC-001',
+            'setor_id' => $setorPermitido->id,
+            'nome' => 'Secretaria de Educação',
+            'email' => 'secretaria@teste.local',
+            'ativo' => true,
+            'nao_e_escola' => true,
+        ]);
+
         $request = ExportRequest::query()->create([
             'user_id' => $user->id,
             'type' => 'escolas_xlsx',
@@ -103,17 +113,20 @@ class EscolaXlsxExportTest extends TestCase
         $spreadsheet = IOFactory::load(Storage::disk('local')->path($result->path));
         $sheet = $spreadsheet->getActiveSheet();
 
-        $this->assertSame('Escolas', $sheet->getTitle());
+        $this->assertSame('Locais de trabalho', $sheet->getTitle());
         $this->assertSame([
-            'Código', 'Nome', 'E-mail', 'Telefone', 'Setor', 'Logradouro', 'Número',
+            'Código', 'Nome', 'Tipo', 'E-mail', 'Telefone', 'Setor', 'Logradouro', 'Número',
             'Bairro', 'CEP', 'Cidade', 'UF', 'Complemento', 'Lotações', 'Status',
             'Criado em', 'Atualizado em',
-        ], $sheet->rangeToArray('A1:P1')[0]);
+        ], $sheet->rangeToArray('A1:Q1')[0]);
         $this->assertSame('ESC-001', $sheet->getCell('A2')->getValue());
         $this->assertSame('Escola Permitida', $sheet->getCell('B2')->getValue());
-        $this->assertSame('LOT-001 - Docentes', $sheet->getCell('M2')->getValue());
-        $this->assertSame('Ativa', $sheet->getCell('N2')->getValue());
-        $this->assertNull($sheet->getCell('A3')->getValue());
+        $this->assertSame('Escola', $sheet->getCell('C2')->getValue());
+        $this->assertSame('LOT-001 - Docentes', $sheet->getCell('N2')->getValue());
+        $this->assertSame('Ativo', $sheet->getCell('O2')->getValue());
+        $this->assertSame($localPermitido->codigo, $sheet->getCell('A3')->getValue());
+        $this->assertSame('Local não escolar', $sheet->getCell('C3')->getValue());
+        $this->assertNull($sheet->getCell('A4')->getValue());
 
         $spreadsheet->disconnectWorksheets();
     }
