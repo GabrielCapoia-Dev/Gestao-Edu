@@ -4,6 +4,8 @@ namespace App\Providers\Filament;
 
 use App\Filament\Admin\Pages\Auth\EditProfile as CustomEditProfile;
 use App\Filament\Admin\Resources\Alunos\Pages\ListAlunos;
+use App\Filament\Admin\Resources\Escolas\Pages\ManageEscolas;
+use App\Filament\Admin\Resources\Lotacoes\Pages\ManageLotacoes;
 use App\Filament\Admin\Resources\Pedidos\Pages\ListPedidos;
 use App\Http\Controllers\Auth\AdminLoginController;
 use App\Http\Middleware\ApplyProfilePreviewUser;
@@ -264,6 +266,11 @@ class AdminPanelProvider extends PanelProvider
                 PanelsRenderHook::HEAD_END,
                 fn (): View => view('filament.pages.partials.alunos-responsive-table-styles'),
                 ListAlunos::class
+            )
+            ->renderHook(
+                PanelsRenderHook::HEAD_END,
+                fn (): View => view('filament.pages.partials.locais-responsive-table-styles'),
+                scopes: [ManageEscolas::class, ManageLotacoes::class],
             )
             ->plugins([
                 AuthDesignerPlugin::make()

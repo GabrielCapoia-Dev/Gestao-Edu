@@ -4,7 +4,9 @@ namespace Tests\Feature\Escolas;
 
 use App\Filament\Admin\Resources\Escolas\EscolaResource;
 use App\Filament\Admin\Resources\Escolas\Pages\ManageEscolas;
-use App\Filament\Admin\Resources\Escolas\Pages\ManageLotacoes;
+use App\Filament\Admin\Resources\Escolas\Pages\ManageLotacoes as ManageLotacoesDoLocal;
+use App\Filament\Admin\Resources\Lotacoes\LotacaoResource;
+use App\Filament\Admin\Resources\Lotacoes\Pages\ManageLotacoes;
 use App\Models\Escola;
 use App\Models\LocalTrabalho;
 use App\Models\Lotacao;
@@ -55,7 +57,6 @@ class LocalTrabalhoTest extends TestCase
             'ativo' => true,
             'nao_e_escola' => true,
         ]);
-
         $this->assertEqualsCanonicalizing(
             [$escola->id, $local->id],
             LocalTrabalho::query()->pluck('id')->all(),
@@ -109,6 +110,10 @@ class LocalTrabalhoTest extends TestCase
             'ativo' => true,
             'nao_e_escola' => true,
         ]);
+        $local->lotacoes()->createMany([
+            ['codigo' => 'LOT-CONT-001', 'nome' => 'Primeira lotação'],
+            ['codigo' => 'LOT-CONT-002', 'nome' => 'Segunda lotação'],
+        ]);
         $localBloqueado = LocalTrabalho::query()->create([
             'setor_id' => $setorBloqueado->id,
             'nome' => 'Local Bloqueado',
@@ -129,7 +134,8 @@ class LocalTrabalhoTest extends TestCase
 
         Livewire::actingAs($usuario)
             ->test(ManageEscolas::class)
-            ->assertCanSeeTableRecords([$escola, $local]);
+            ->assertCanSeeTableRecords([$escola, $local])
+            ->assertTableColumnStateSet('lotacoes_count', 2, $local->loadCount('lotacoes'));
 
         Livewire::actingAs($usuario)
             ->test(ManageEscolas::class)
@@ -170,7 +176,7 @@ class LocalTrabalhoTest extends TestCase
         $this->tornarUsuarioOperacional($usuario, $escola);
 
         $pagina = Livewire::actingAs($usuario)
-            ->test(ManageLotacoes::class, ['record' => $local->id])
+            ->test(ManageLotacoesDoLocal::class, ['record' => $local->id])
             ->assertCanSeeTableRecords([$lotacao])
             ->callTableAction('create', null, [
                 'codigo' => 'LOT-901',
@@ -195,6 +201,86 @@ class LocalTrabalhoTest extends TestCase
 
         $pagina->callTableAction('delete', $nova->fresh());
         $this->assertDatabaseMissing('lotacoes', ['id' => $nova->id]);
+    }
+
+    public function test_tela_global_de_lotacoes_lista_filtra_e_gerencia_somente_o_escopo_visivel(): void
+    {
+        Permission::findOrCreate('Listar Escolas');
+        Permission::findOrCreate('Editar Escolas');
+
+        $setorPermitido = Setor::query()->create(['nome' => 'Setor permitido', 'ativo' => true]);
+        $setorBloqueado = Setor::query()->create(['nome' => 'Setor bloqueado', 'ativo' => true]);
+        $escolaPermitida = Escola::query()->create([
+            'setor_id' => $setorPermitido->id,
+            'nome' => 'Escola Permitida',
+            'email' => 'permitida@teste.local',
+            'ativo' => true,
+        ]);
+        $localPermitido = LocalTrabalho::query()->create([
+            'setor_id' => $setorPermitido->id,
+            'nome' => 'Secretaria Permitida',
+            'email' => 'secretaria@teste.local',
+            'ativo' => true,
+            'nao_e_escola' => true,
+        ]);
+        $escolaBloqueada = Escola::query()->create([
+            'setor_id' => $setorBloqueado->id,
+            'nome' => 'Escola Bloqueada',
+            'email' => 'bloqueada@teste.local',
+            'ativo' => true,
+        ]);
+        $lotacaoEscola = $escolaPermitida->lotacoes()->create([
+            'codigo' => 'LOT-GLOBAL-001',
+            'nome' => 'Docentes',
+        ]);
+        $lotacaoLocal = $localPermitido->lotacoes()->create([
+            'codigo' => 'LOT-GLOBAL-002',
+            'nome' => 'Administrativo',
+        ]);
+        $lotacaoBloqueada = $escolaBloqueada->lotacoes()->create([
+            'codigo' => 'LOT-GLOBAL-003',
+            'nome' => 'Não visível',
+        ]);
+
+        $usuario = User::factory()->create(['setor_id' => $setorPermitido->id]);
+        $usuario->givePermissionTo(['Listar Escolas', 'Editar Escolas']);
+        $this->tornarUsuarioOperacional($usuario, $escolaPermitida);
+
+        $this->actingAs($usuario)
+            ->get(LotacaoResource::getUrl())
+            ->assertOk();
+
+        $pagina = Livewire::actingAs($usuario)
+            ->test(ManageLotacoes::class)
+            ->assertCanSeeTableRecords([$lotacaoEscola, $lotacaoLocal])
+            ->assertCanNotSeeTableRecords([$lotacaoBloqueada])
+            ->filterTable('escola_id', $localPermitido->id)
+            ->assertCanSeeTableRecords([$lotacaoLocal])
+            ->assertCanNotSeeTableRecords([$lotacaoEscola]);
+
+        $pagina
+            ->callAction('create', data: [
+                'escola_id' => $localPermitido->id,
+                'codigo' => 'LOT-GLOBAL-004',
+                'nome' => 'Atendimento',
+            ])
+            ->assertHasNoActionErrors();
+
+        $nova = Lotacao::query()->where('codigo', 'LOT-GLOBAL-004')->sole();
+        $this->assertSame($localPermitido->id, $nova->escola_id);
+
+        $pagina
+            ->callTableAction('edit', $nova, [
+                'escola_id' => $localPermitido->id,
+                'codigo' => 'LOT-GLOBAL-004',
+                'nome' => 'Atendimento ao público',
+            ])
+            ->assertHasNoTableActionErrors();
+
+        $this->assertDatabaseHas('lotacoes', [
+            'id' => $nova->id,
+            'nome' => 'Atendimento ao público',
+        ]);
     }
 
     private function tornarUsuarioOperacional(User $usuario, Escola $escola): void

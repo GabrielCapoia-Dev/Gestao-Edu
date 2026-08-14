@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Filament\Admin\Actions\VincularSetorBulkAction;
-use App\Filament\Admin\Resources\Escolas\EscolaResource;
+use App\Filament\Admin\Resources\Lotacoes\LotacaoResource;
 use App\Models\Escola;
 use App\Models\LocalTrabalho;
 use App\Models\User;
@@ -19,9 +19,12 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
+use Filament\Tables\Columns\Layout\Grid as TableGrid;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Http;
@@ -41,6 +44,9 @@ class EscolaService
     public function configurarTabela(Table $table, ?User $user): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query
+                ->with(['setor:id,nome,parent_id,path'])
+                ->withCount('lotacoes'))
             ->paginated([5, 10, 25, 50, 100])
             ->defaultPaginationPageOption(5)
             ->columns($this->colunasTabela())
@@ -52,7 +58,9 @@ class EscolaService
                         '1' => 'Local não escolar',
                     ]),
             ])
-            ->recordActions($this->acoesTabela($user))
+            ->recordAction(null)
+            ->recordUrl(null)
+            ->recordActions($this->acoesTabela($user), RecordActionsPosition::AfterContent)
             ->groupedBulkActions($this->acoesEmMassa($user))
             ->defaultSort('updated_at', 'desc')
             ->striped();
@@ -61,50 +69,100 @@ class EscolaService
     private function colunasTabela(): array
     {
         return [
-
             TextColumn::make('nome')
                 ->label('Nome')
+                ->description(fn (LocalTrabalho $record): string => filled($record->codigo)
+                    ? "Código: {$record->codigo}"
+                    : 'Código não informado')
                 ->wrap()
                 ->sortable()
-                ->searchable(),
+                ->searchable(['nome', 'codigo'])
+                ->weight('bold')
+                ->extraAttributes(['class' => 'local-card-name'], merge: true),
 
-            TextColumn::make('nao_e_escola')
-                ->label('Tipo')
-                ->badge()
-                ->formatStateUsing(fn (bool $state): string => $state ? 'Local não escolar' : 'Escola')
-                ->color(fn (bool $state): string => $state ? 'warning' : 'info'),
+            TableGrid::make([
+                'default' => 1,
+                'sm' => 2,
+                'lg' => 3,
+                'xl' => 4,
+            ])
+                ->schema([
+                    TextColumn::make('nao_e_escola')
+                        ->label('Tipo')
+                        ->description('Tipo', position: 'above')
+                        ->badge()
+                        ->formatStateUsing(fn (bool $state): string => $state ? 'Local não escolar' : 'Escola')
+                        ->color(fn (bool $state): string => $state ? 'warning' : 'info')
+                        ->extraAttributes(['class' => 'local-card-field'], merge: true),
 
-            TextColumn::make('email')
-                ->label('E-mail')
-                ->toggleable(),
+                    TextColumn::make('lotacoes_count')
+                        ->label('Lotações')
+                        ->description('Lotações', position: 'above')
+                        ->badge()
+                        ->icon('heroicon-o-rectangle-stack')
+                        ->formatStateUsing(fn (int|string|null $state): string => match ((int) $state) {
+                            0 => 'Nenhuma lotação',
+                            1 => '1 lotação',
+                            default => ((int) $state).' lotações',
+                        })
+                        ->color(fn (int|string|null $state): string => (int) $state > 0 ? 'success' : 'gray')
+                        ->sortable(['lotacoes_count'])
+                        ->extraAttributes(['class' => 'local-card-field local-card-field--lotacoes'], merge: true),
 
-            TextColumn::make('telefone')
-                ->label('Telefone')
-                ->toggleable(),
+                    TextColumn::make('setor.nome_completo')
+                        ->label('Setor')
+                        ->description('Setor', position: 'above')
+                        ->icon('heroicon-o-map-pin')
+                        ->placeholder('—')
+                        ->wrap()
+                        ->toggleable()
+                        ->extraAttributes(['class' => 'local-card-field'], merge: true),
 
-            TextColumn::make('setor.nome_completo')
-                ->label('Setor')
-                ->toggleable()
-                ->placeholder('-'),
+                    TextColumn::make('email')
+                        ->label('E-mail')
+                        ->description('E-mail', position: 'above')
+                        ->icon('heroicon-o-envelope')
+                        ->placeholder('—')
+                        ->wrap()
+                        ->toggleable()
+                        ->extraAttributes(['class' => 'local-card-field local-card-field--contact'], merge: true),
 
-            TextColumn::make('cidade')
-                ->label('Cidade')
-                ->toggleable(),
+                    TextColumn::make('telefone')
+                        ->label('Telefone')
+                        ->description('Telefone', position: 'above')
+                        ->icon('heroicon-o-phone')
+                        ->placeholder('—')
+                        ->toggleable()
+                        ->extraAttributes(['class' => 'local-card-field local-card-field--contact'], merge: true),
 
-            TextColumn::make('estado')
-                ->label('UF')
-                ->toggleable(),
+                    TextColumn::make('localizacao_resumo')
+                        ->label('Localização')
+                        ->description('Localização', position: 'above')
+                        ->icon('heroicon-o-map')
+                        ->state(fn (LocalTrabalho $record): string => collect([
+                            $record->bairro,
+                            collect([$record->cidade, $record->estado])->filter()->implode('/'),
+                        ])->filter()->implode(' · ') ?: '—')
+                        ->wrap()
+                        ->toggleable()
+                        ->extraAttributes(['class' => 'local-card-field'], merge: true),
 
-            TextColumn::make('updated_at')
-                ->label('Atualizado')
-                ->since()
-                ->sortable(),
+                    TextColumn::make('updated_at')
+                        ->label('Atualizado em')
+                        ->description('Atualizado em', position: 'above')
+                        ->dateTime('d/m/Y H:i')
+                        ->sortable()
+                        ->extraAttributes(['class' => 'local-card-field'], merge: true),
 
-            TextColumn::make('created_at')
-                ->label('Criado')
-                ->since()
-                ->sortable()
-                ->toggleable(isToggledHiddenByDefault: true),
+                    TextColumn::make('created_at')
+                        ->label('Criado em')
+                        ->description('Criado em', position: 'above')
+                        ->dateTime('d/m/Y H:i')
+                        ->sortable()
+                        ->toggleable(isToggledHiddenByDefault: true)
+                        ->extraAttributes(['class' => 'local-card-field'], merge: true),
+                ])
+                ->extraAttributes(['class' => 'local-card-main-grid']),
         ];
     }
 
@@ -115,8 +173,10 @@ class EscolaService
                 ->label('Lotações')
                 ->icon('heroicon-o-rectangle-stack')
                 ->color('gray')
-                ->url(fn (LocalTrabalho $record): string => EscolaResource::getUrl('lotacoes', [
-                    'record' => $record,
+                ->url(fn (LocalTrabalho $record): string => LotacaoResource::getUrl('index', [
+                    'tableFilters' => [
+                        'escola_id' => ['value' => $record->getKey()],
+                    ],
                 ])),
 
             EditAction::make()

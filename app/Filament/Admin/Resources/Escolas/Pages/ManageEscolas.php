@@ -3,7 +3,9 @@
 namespace App\Filament\Admin\Resources\Escolas\Pages;
 
 use App\Filament\Admin\Resources\Escolas\EscolaResource;
+use App\Filament\Admin\Resources\Lotacoes\LotacaoResource;
 use App\Models\LocalTrabalho;
+use App\Models\Lotacao;
 use App\Models\User;
 use App\Services\Escolas\EscolaLotacaoSpreadsheetService;
 use App\Services\Exports\ExportRequestService;
@@ -35,6 +37,13 @@ class ManageEscolas extends ManageRecords
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('listar_lotacoes')
+                ->label('Lotações')
+                ->icon('heroicon-o-rectangle-stack')
+                ->color('gray')
+                ->authorize(fn (): bool => Gate::allows('viewAny', Lotacao::class))
+                ->url(LotacaoResource::getUrl()),
+
             Action::make('importar_lotacoes')
                 ->label('Importar lotações')
                 ->icon('heroicon-o-document-arrow-up')

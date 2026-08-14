@@ -10,6 +10,7 @@ class Lotacao extends Model
     protected $table = 'lotacoes';
 
     protected $fillable = [
+        'escola_id',
         'codigo',
         'nome',
     ];
