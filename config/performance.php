@@ -50,6 +50,8 @@ return [
         'online_users_closed' => (int) env('PERF_POLL_ONLINE_USERS_CLOSED', 120),
         'exports_table' => (int) env('PERF_POLL_EXPORTS_TABLE', 15),
         'exports_auto_download' => (int) env('PERF_POLL_EXPORTS_AUTO_DOWNLOAD', 10),
+        'exports_topbar_open' => (int) env('PERF_POLL_EXPORTS_TOPBAR_OPEN', 2),
+        'exports_topbar_closed' => (int) env('PERF_POLL_EXPORTS_TOPBAR_CLOSED', 15),
     ],
 
     /*

@@ -13,6 +13,7 @@ class ExportRequestService
 {
     public function __construct(
         private readonly ExportManager $manager,
+        private readonly ExportSessionService $sessions,
     ) {}
 
     /**
@@ -33,11 +34,17 @@ class ExportRequestService
 
         $filters = $this->normalizePayload($filters);
         $metadata = $this->normalizePayload($metadata);
-        $fingerprint = $this->fingerprint($user, $type, $format, $filters);
+        $ownership = $this->sessions->ownershipPayload();
+        $fingerprint = $this->fingerprint($user, $type, $format, $filters, $ownership['session_hash']);
 
-        return DB::transaction(function () use ($user, $type, $format, $filters, $metadata, $label, $fingerprint): ExportRequest {
+        return DB::transaction(function () use ($user, $type, $format, $filters, $metadata, $label, $fingerprint, $ownership): ExportRequest {
             $active = ExportRequest::query()
                 ->where('user_id', $user->id)
+                ->when(
+                    $ownership['session_hash'],
+                    fn ($query, string $sessionHash) => $query->where('session_hash', $sessionHash),
+                    fn ($query) => $query->whereNull('session_hash'),
+                )
                 ->where('fingerprint', $fingerprint)
                 ->whereIn('status', [ExportRequest::STATUS_QUEUED, ExportRequest::STATUS_RUNNING])
                 ->latest()
@@ -50,6 +57,11 @@ class ExportRequestService
 
             $activeCount = ExportRequest::query()
                 ->where('user_id', $user->id)
+                ->when(
+                    $ownership['session_hash'],
+                    fn ($query, string $sessionHash) => $query->where('session_hash', $sessionHash),
+                    fn ($query) => $query->whereNull('session_hash'),
+                )
                 ->whereIn('status', [ExportRequest::STATUS_QUEUED, ExportRequest::STATUS_RUNNING])
                 ->lockForUpdate()
                 ->count();
@@ -65,6 +77,7 @@ class ExportRequestService
                 'user_id_legado' => $user->id,
                 'user_nome_snapshot' => $user->name,
                 'user_email_snapshot' => $user->email,
+                ...$ownership,
                 'type' => $type,
                 'format' => $format,
                 'label' => $label,
@@ -75,7 +88,6 @@ class ExportRequestService
                 'status_message' => 'Aguardando processamento.',
                 'progress_current' => 0,
                 'progress_total' => 100,
-                'expires_at' => now()->addDays((int) config('exports.expiration_days', 7)),
             ]);
 
             ProcessExportRequestJob::dispatch($exportRequest->getKey())->afterCommit();
@@ -105,10 +117,11 @@ class ExportRequestService
     /**
      * @param array<string, mixed> $filters
      */
-    private function fingerprint(User $user, string $type, string $format, array $filters): string
+    private function fingerprint(User $user, string $type, string $format, array $filters, ?string $sessionHash): string
     {
         return hash('sha256', implode('|', [
             (string) $user->id,
+            (string) $sessionHash,
             $type,
             $format,
             json_encode($filters, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),

@@ -10,6 +10,7 @@ use App\Models\ExportRequest;
 use App\Services\AlunoMovimentacaoService;
 use App\Services\Alunos\AlunoImportacaoSpreadsheetService;
 use App\Services\AlunoTransferenciaPendenteService;
+use App\Services\Exports\ExportSessionService;
 use Filament\Actions;
 use Filament\Forms\Components\FileUpload;
 use Filament\Notifications\Notification;
@@ -120,7 +121,7 @@ class ListAlunos extends ListRecords
 
                     Notification::make()
                         ->title('Importação enviada para processamento')
-                        ->body('Acompanhe o andamento em Minhas Exportacoes. Você pode continuar usando o sistema.')
+                        ->body('Acompanhe o andamento pelo ícone de downloads no topo. Você pode continuar usando o sistema.')
                         ->success()
                         ->send();
                 }),
@@ -201,7 +202,7 @@ HTML;
 
     private function criarProcessoImportacao(string $arquivo): ExportRequest
     {
-        return ExportRequest::query()->create([
+        return ExportRequest::query()->create(app(ExportSessionService::class)->attachOwnership([
             'user_id' => Auth::id(),
             'type' => 'alunos_importacao_planilha',
             'format' => 'processo',
@@ -217,7 +218,6 @@ HTML;
             'status_message' => 'Aguardando processamento.',
             'progress_current' => 0,
             'progress_total' => 100,
-            'expires_at' => now()->addDays((int) config('exports.expiration_days', 7)),
-        ]);
+        ]));
     }
 }

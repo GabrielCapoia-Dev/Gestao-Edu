@@ -12,6 +12,7 @@ use App\Models\ExportRequest;
 use App\Models\Serie;
 use App\Models\Turma;
 use App\Models\User;
+use App\Services\Exports\ExportSessionService;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkAction;
@@ -856,7 +857,7 @@ class AlunoService
 
                     Notification::make()
                         ->title('Exclusao enviada para processamento')
-                        ->body(count($ids).' aluno(s) foram enviados para exclusao em segundo plano. Acompanhe em Minhas Exportacoes.')
+                        ->body(count($ids).' aluno(s) foram enviados para exclusão em segundo plano. Acompanhe pelo ícone de downloads no topo.')
                         ->success()
                         ->send();
                 })
@@ -873,7 +874,7 @@ class AlunoService
 
     private function criarProcessoExclusaoEmMassa(array $ids): ExportRequest
     {
-        return ExportRequest::query()->create([
+        return ExportRequest::query()->create(app(ExportSessionService::class)->attachOwnership([
             'user_id' => Auth::id(),
             'type' => 'alunos_exclusao_massa',
             'format' => 'processo',
@@ -885,8 +886,7 @@ class AlunoService
             'status_message' => 'Aguardando processamento.',
             'progress_current' => 0,
             'progress_total' => max(1, count($ids)),
-            'expires_at' => now()->addDays((int) config('exports.expiration_days', 7)),
-        ]);
+        ]));
     }
 
     private function formularioAlunoLiberadoAposCgm(Get $get, ?User $user = null): bool

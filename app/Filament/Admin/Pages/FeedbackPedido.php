@@ -288,7 +288,7 @@ class FeedbackPedido extends Page implements HasTable
                 ->icon('heroicon-o-arrow-down-tray')
                 ->visible(fn (): bool => Gate::allows('exportReports'))
                 ->modalHeading('Gerar relatório de feedback')
-                ->modalDescription('Informe obrigatoriamente o período do pedido. O PDF será enviado para Minhas Exportacoes.')
+                ->modalDescription('Informe obrigatoriamente o período do pedido. O PDF será disponibilizado no ícone de downloads no topo.')
                 ->form($this->exportForm())
                 ->action(function (array $data): void {
                     $this->queueExport($data);
@@ -403,7 +403,7 @@ class FeedbackPedido extends Page implements HasTable
 
             Notification::make()
                 ->title($exportRequest->wasRecentlyCreated ? 'Exportação enviada para a fila' : 'Exportação já está em andamento')
-                ->body('Acompanhe o progresso em Minhas Exportacoes.')
+                ->body('Acompanhe o progresso pelo ícone de downloads no topo.')
                 ->success()
                 ->send();
 

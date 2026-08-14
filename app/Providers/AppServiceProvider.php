@@ -90,6 +90,7 @@ use App\Policies\TipoManutencaoPolicy;
 use App\Policies\TurmaPolicy;
 use App\Policies\UserPolicy;
 use App\Policies\VeiculoTransportePolicy;
+use App\Services\Exports\ExportSessionService;
 use App\Services\NotificationCenterService;
 use App\Services\UserPresenceService;
 use Filament\Auth\Http\Responses\Contracts\LoginResponse as LoginResponseContract;
@@ -99,6 +100,7 @@ use Filament\Support\Facades\FilamentAsset;
 use Filament\Support\Facades\FilamentView;
 use Filament\View\PanelsRenderHook;
 use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Logout;
 use Illuminate\Notifications\Events\NotificationSent;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -185,6 +187,17 @@ class AppServiceProvider extends ServiceProvider
 
                 app(UserPresenceService::class)->touch($event->user, markLogin: true);
             }
+        });
+
+        Event::listen(Logout::class, function (Logout $event): void {
+            if (! app()->bound('request')) {
+                return;
+            }
+
+            app(ExportSessionService::class)->endCurrentSession(
+                request(),
+                $event->user instanceof User ? $event->user : null,
+            );
         });
 
         Event::listen(NotificationSent::class, function (NotificationSent $event): void {

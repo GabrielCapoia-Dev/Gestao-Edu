@@ -14,6 +14,8 @@ return [
     'disk' => env('EXPORTS_DISK', 'local'),
     'queue' => env('EXPORTS_QUEUE', 'exports'),
     'expiration_days' => (int) env('EXPORTS_EXPIRATION_DAYS', 7),
+    'unbound_lifetime_minutes' => (int) env('EXPORTS_UNBOUND_LIFETIME_MINUTES', 15),
+    'expired_record_retention_hours' => (int) env('EXPORTS_EXPIRED_RECORD_RETENTION_HOURS', 24),
     'max_active_per_user' => (int) env('EXPORTS_MAX_ACTIVE_PER_USER', 3),
     'job_timeout' => (int) env('EXPORTS_JOB_TIMEOUT', 900),
     'xlsx_memory_limit' => env('EXPORTS_XLSX_MEMORY_LIMIT', '512M'),

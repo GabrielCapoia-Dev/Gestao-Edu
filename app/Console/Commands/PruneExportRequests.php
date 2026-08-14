@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\ExportRequest;
+use App\Services\Exports\ExportSessionService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
 
@@ -12,13 +13,15 @@ class PruneExportRequests extends Command
 
     protected $description = 'Remove arquivos de exportacao expirados e marca registros antigos como expirados';
 
-    public function handle(): int
+    public function handle(ExportSessionService $sessions): int
     {
+        $sessionResult = $sessions->expireInactiveSessions();
         $days = (int) ($this->option('days') ?: config('exports.expiration_days', 7));
         $cutoff = now()->subDays(max(1, $days));
-        $removed = 0;
+        $removed = $sessionResult['files_deleted'];
 
         ExportRequest::query()
+            ->whereNull('session_hash')
             ->where(function ($query) use ($cutoff): void {
                 $query
                     ->where('expires_at', '<=', now())
@@ -47,7 +50,16 @@ class PruneExportRequests extends Command
                 }
             });
 
+        $recordCutoff = now()->subHours(max(1, (int) config('exports.expired_record_retention_hours', 24)));
+        $recordsRemoved = ExportRequest::query()
+            ->where('status', ExportRequest::STATUS_EXPIRED)
+            ->whereNotNull('session_ended_at')
+            ->where('updated_at', '<=', $recordCutoff)
+            ->delete();
+
         $this->info("Arquivos removidos: {$removed}");
+        $this->info("Sessoes expiradas: {$sessionResult['expired']}");
+        $this->info("Registros expirados removidos: {$recordsRemoved}");
 
         return Command::SUCCESS;
     }

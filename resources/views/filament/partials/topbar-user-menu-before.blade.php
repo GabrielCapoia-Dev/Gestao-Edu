@@ -12,6 +12,8 @@
     <livewire:online-users-topbar />
 @endif
 
+<livewire:export-queue-topbar />
+
 @if ($showNotifications)
     @include('livewire.topbar-notifications-hook')
 @endif

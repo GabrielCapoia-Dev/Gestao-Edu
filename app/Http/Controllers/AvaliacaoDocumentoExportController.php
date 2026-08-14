@@ -98,7 +98,7 @@ class AvaliacaoDocumentoExportController extends Controller
 
             Notification::make()
                 ->title($exportRequest->wasRecentlyCreated ? 'Exportação enviada para a fila' : 'Exportação já está em andamento')
-                ->body('Acompanhe o progresso em Minhas Exportacoes.')
+                ->body('Acompanhe o progresso pelo ícone de downloads no topo.')
                 ->success()
                 ->send();
 

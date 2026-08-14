@@ -3,15 +3,21 @@
 namespace Tests\Feature\Exports;
 
 use App\Contracts\Exports\ExportHandler;
+use App\Http\Controllers\Exports\ExportRequestController;
 use App\Jobs\ProcessExportRequestJob;
 use App\Models\ExportRequest;
-use App\Models\Role;
+use App\Models\FuncaoAdministrativa;
+use App\Models\Pessoa;
+use App\Models\ServidorFuncaoAdministrativa;
 use App\Models\User;
 use App\Services\Exports\ExportFileResult;
 use App\Services\Exports\ExportManager;
 use App\Services\Exports\ExportRequestService;
+use App\Services\Exports\ExportSessionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -27,7 +33,6 @@ class ExportRequestServiceTest extends TestCase
             'email_approved' => true,
             'email_verified_at' => now(),
         ]);
-
         $service = app(ExportRequestService::class);
 
         $first = $service->queue(
@@ -80,20 +85,9 @@ class ExportRequestServiceTest extends TestCase
         $service->queue($user, 'pedido_relatorio_geral', 'pdf', ['data_inicio' => '2026-02-01']);
     }
 
-    public function test_tela_de_minhas_exportacoes_ativa_polling_para_download_automatico(): void
+    public function test_tela_legada_de_exportacoes_nao_aparece_mais_na_navegacao(): void
     {
-        $user = User::factory()->create([
-            'email_approved' => true,
-            'email_verified_at' => now(),
-        ]);
-        $user->assignRole(Role::findOrCreate('Admin', 'web'));
-
-        $exportRequest = $this->finishedExportRequest($user);
-
-        $this->actingAs($user)
-            ->get(route('filament.admin.pages.minhas-exportacoes').'?download='.$exportRequest->getKey())
-            ->assertOk()
-            ->assertSee('pollAutoDownload', false);
+        $this->assertFalse(\App\Filament\Admin\Pages\MinhasExportacoes::shouldRegisterNavigation());
     }
 
     public function test_rota_de_download_entrega_arquivo_pronto(): void
@@ -104,12 +98,18 @@ class ExportRequestServiceTest extends TestCase
             'email_approved' => true,
             'email_verified_at' => now(),
         ]);
+        $this->makeOperational($user);
 
-        $exportRequest = $this->finishedExportRequest($user);
-        Storage::disk('local')->put($exportRequest->file_path, 'conteudo do relatorio');
+        Route::middleware('web')->get('/_test/baixar-exportacao-da-sessao', function () use ($user) {
+            $exportRequest = $this->finishedExportRequest($user);
+            Storage::disk('local')->put($exportRequest->file_path, 'conteudo do relatorio');
+            Gate::authorize('download', $exportRequest);
+
+            return app(ExportRequestController::class)->download($exportRequest);
+        });
 
         $this->actingAs($user)
-            ->get(route('exports.download', $exportRequest))
+            ->get('/_test/baixar-exportacao-da-sessao')
             ->assertOk()
             ->assertHeader('content-disposition');
     }
@@ -122,6 +122,7 @@ class ExportRequestServiceTest extends TestCase
         ]);
 
         $exportRequest = ExportRequest::query()->create([
+            ...$this->activeSessionPayload(),
             'user_id' => $user->id,
             'type' => 'alunos_importacao_planilha',
             'format' => 'processo',
@@ -152,6 +153,7 @@ class ExportRequestServiceTest extends TestCase
         ]);
 
         $exportRequest = ExportRequest::query()->create([
+            ...$this->activeSessionPayload(),
             'user_id' => $user->id,
             'type' => 'pedido_relatorio_geral',
             'format' => 'pdf',
@@ -187,6 +189,7 @@ class ExportRequestServiceTest extends TestCase
         ]);
 
         $exportRequest = ExportRequest::query()->create([
+            ...$this->activeSessionPayload(),
             'user_id' => $user->id,
             'type' => 'teste_falha_temporaria',
             'format' => 'pdf',
@@ -222,6 +225,7 @@ class ExportRequestServiceTest extends TestCase
     private function finishedExportRequest(User $user): ExportRequest
     {
         $exportRequest = ExportRequest::query()->create([
+            ...$this->currentSessionPayload(),
             'user_id' => $user->id,
             'type' => 'pedido_relatorio_geral',
             'format' => 'pdf',
@@ -245,6 +249,45 @@ class ExportRequestServiceTest extends TestCase
         ]);
 
         return $exportRequest->refresh();
+    }
+
+    private function activeSessionPayload(): array
+    {
+        return [
+            'session_hash' => hash('sha256', 'sessao-de-teste'),
+            'session_expires_at' => now()->addHour(),
+            'expires_at' => now()->addHour(),
+        ];
+    }
+
+    private function currentSessionPayload(): array
+    {
+        return app(ExportSessionService::class)->ownershipPayload(request());
+    }
+
+    private function makeOperational(User $user): void
+    {
+        $pessoa = Pessoa::query()->create([
+            'user_id' => $user->id,
+            'nome' => $user->name,
+            'email' => $user->email,
+            'status' => Pessoa::STATUS_ATIVO,
+        ]);
+        $funcao = FuncaoAdministrativa::query()->create([
+            'nome' => 'Cargo de teste',
+            'codigo' => 'cargo_exportacao_teste',
+            'categoria' => FuncaoAdministrativa::CATEGORIA_ADMINISTRATIVO,
+            'ativo' => true,
+            'exige_professor' => false,
+            'concede_acesso_sistema' => true,
+        ]);
+
+        ServidorFuncaoAdministrativa::query()->create([
+            'servidor_id' => $pessoa->id,
+            'funcao_administrativa_id' => $funcao->id,
+            'status' => ServidorFuncaoAdministrativa::STATUS_ATIVO,
+            'origem' => 'teste',
+        ]);
     }
 }
 

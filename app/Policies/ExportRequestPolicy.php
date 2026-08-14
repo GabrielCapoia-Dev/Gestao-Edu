@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Models\ExportRequest;
 use App\Models\User;
+use App\Services\Exports\ExportSessionService;
 
 class ExportRequestPolicy
 {
@@ -18,7 +19,8 @@ class ExportRequestPolicy
 
     public function view(User $user, ExportRequest $exportRequest): bool
     {
-        return $this->owns($user, $exportRequest) || $user->hasRole('Admin');
+        return $this->owns($user, $exportRequest)
+            && app(ExportSessionService::class)->belongsToCurrentSession($exportRequest);
     }
 
     public function download(User $user, ExportRequest $exportRequest): bool

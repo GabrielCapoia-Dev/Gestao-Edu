@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\ExportRequest;
 use App\Notifications\SistemaNotification;
 use App\Services\Exports\ExportManager;
+use App\Services\Exports\ExportSessionService;
 use App\Support\UserActorSnapshot;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -52,13 +53,21 @@ class ProcessExportRequestJob implements ShouldQueue
         ];
     }
 
-    public function handle(ExportManager $manager): void
+    public function handle(ExportManager $manager, ?ExportSessionService $sessions = null): void
     {
+        $sessions ??= app(ExportSessionService::class);
+
         $exportRequest = ExportRequest::query()
             ->with('user')
             ->find($this->exportRequestId);
 
         if (! $exportRequest || ! $exportRequest->isActive()) {
+            return;
+        }
+
+        if (! $sessions->isActive($exportRequest)) {
+            $sessions->expireForEndedSession($exportRequest);
+
             return;
         }
 
@@ -77,10 +86,26 @@ class ProcessExportRequestJob implements ShouldQueue
 
             $result = $manager->handlerFor($exportRequest->type)->handle($exportRequest->refresh());
 
-            $exportRequest->refresh()->markFinished($result->toDatabasePayload());
+            $exportRequest->refresh();
+
+            if (! $sessions->isActive($exportRequest)) {
+                $sessions->discardGeneratedFile($exportRequest, $result);
+
+                return;
+            }
+
+            $exportRequest->markFinished($result->toDatabasePayload());
             $this->notifySuccess($exportRequest->refresh());
         } catch (Throwable $exception) {
-            $exportRequest->refresh()->markQueuedForRetry(
+            $exportRequest->refresh();
+
+            if (! $sessions->isActive($exportRequest)) {
+                $sessions->expireForEndedSession($exportRequest);
+
+                return;
+            }
+
+            $exportRequest->markQueuedForRetry(
                 'Falha temporária. Uma nova tentativa será executada automaticamente.',
                 $exception->getMessage(),
             );
@@ -103,6 +128,14 @@ class ProcessExportRequestJob implements ShouldQueue
             ->find($this->exportRequestId);
 
         if (! $exportRequest || ! $exportRequest->isActive()) {
+            return;
+        }
+
+        $sessions = app(ExportSessionService::class);
+
+        if (! $sessions->isActive($exportRequest)) {
+            $sessions->expireForEndedSession($exportRequest);
+
             return;
         }
 
@@ -153,8 +186,8 @@ class ProcessExportRequestJob implements ShouldQueue
         $user->notify(new SistemaNotification(
             titulo: 'Falha na exportação',
             mensagem: ($exportRequest->label ?: 'O arquivo solicitado').' não pode ser gerado.',
-            url: route('filament.admin.pages.minhas-exportacoes'),
-            label: 'Ver exportacoes',
+            url: url('/admin'),
+            label: 'Abrir painel',
             prioridade: 'alta',
             escopo: 'exports',
             metadata: ['export_request_id' => $exportRequest->getKey()],

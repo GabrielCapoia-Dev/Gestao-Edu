@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Services\Exports\ExportFileResult;
+use App\Services\Exports\ExportSessionService;
 use App\Support\UserActorSnapshot;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -34,6 +36,9 @@ class ExportRequest extends Model
         'user_id_legado',
         'user_nome_snapshot',
         'user_email_snapshot',
+        'session_hash',
+        'session_expires_at',
+        'session_ended_at',
         'type',
         'format',
         'label',
@@ -72,6 +77,8 @@ class ExportRequest extends Model
             'started_at' => 'datetime',
             'finished_at' => 'datetime',
             'expires_at' => 'datetime',
+            'session_expires_at' => 'datetime',
+            'session_ended_at' => 'datetime',
             'cancel_requested_at' => 'datetime',
         ];
     }
@@ -184,7 +191,7 @@ class ExportRequest extends Model
      */
     public function markFinished(array $file): void
     {
-        $this->forceFill([
+        $payload = [
             'status' => self::STATUS_FINISHED,
             'status_message' => 'Arquivo pronto para download.',
             'progress_current' => 100,
@@ -198,11 +205,44 @@ class ExportRequest extends Model
             'error_message' => null,
             'finished_at' => now(),
             'expires_at' => $this->expires_at ?? now()->addDays((int) config('exports.expiration_days', 7)),
-        ])->save();
+        ];
+
+        $updated = static::query()
+            ->whereKey($this->getKey())
+            ->whereNull('session_ended_at')
+            ->update($payload);
+
+        if ($updated === 1) {
+            $this->refresh();
+            static::forgetActiveExportsCache($this);
+
+            return;
+        }
+
+        app(ExportSessionService::class)->discardGeneratedFile(
+            $this->refresh(),
+            new ExportFileResult(
+                disk: $file['disk'],
+                path: $file['path'],
+                fileName: $file['file_name'],
+                mime: $file['mime'],
+                sizeBytes: $file['size_bytes'],
+                checksum: $file['checksum'],
+            ),
+        );
     }
 
     public function markProcessFinished(?string $message = null): void
     {
+        if ($this->session_ended_at) {
+            app(ExportSessionService::class)->markExpired(
+                $this,
+                'Sessão encerrada. O processamento foi concluído e removido da central.',
+            );
+
+            return;
+        }
+
         $this->forceFill([
             'status' => self::STATUS_FINISHED,
             'status_message' => $message ?? 'Processamento concluido.',
@@ -216,6 +256,15 @@ class ExportRequest extends Model
 
     public function markFailed(string $message): void
     {
+        if ($this->session_ended_at) {
+            app(ExportSessionService::class)->markExpired(
+                $this,
+                'Sessão encerrada. O processamento foi removido da central.',
+            );
+
+            return;
+        }
+
         $this->forceFill([
             'status' => self::STATUS_FAILED,
             'status_message' => $this->format === 'processo' ? 'Falha no processamento.' : 'Falha ao gerar arquivo.',
@@ -235,6 +284,15 @@ class ExportRequest extends Model
 
     public function markCancelled(?string $message = null, ?string $errorMessage = null): void
     {
+        if ($this->session_ended_at) {
+            app(ExportSessionService::class)->markExpired(
+                $this,
+                'Sessão encerrada. O processamento foi removido da central.',
+            );
+
+            return;
+        }
+
         $payload = [
             'status' => self::STATUS_CANCELLED,
             'cancel_requested_at' => now(),

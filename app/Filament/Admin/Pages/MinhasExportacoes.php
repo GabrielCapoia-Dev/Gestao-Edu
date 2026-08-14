@@ -4,6 +4,7 @@ namespace App\Filament\Admin\Pages;
 
 use App\Models\ExportRequest;
 use App\Models\User;
+use App\Services\Exports\ExportSessionService;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -18,7 +19,6 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Number;
-use Illuminate\Support\Facades\Cache;
 use UnitEnum;
 
 class MinhasExportacoes extends Page implements HasTable
@@ -32,6 +32,8 @@ class MinhasExportacoes extends Page implements HasTable
     protected static ?string $navigationLabel = 'Minhas Exportacoes';
 
     protected static ?string $slug = 'minhas-exportacoes';
+
+    protected static bool $shouldRegisterNavigation = false;
 
     protected static ?int $navigationSort = 90;
 
@@ -209,17 +211,9 @@ class MinhasExportacoes extends Page implements HasTable
 
     public function hasActiveExports(): bool
     {
-        /** @var User|null $user */
-        $user = Auth::user();
-        $isAdmin = $user?->hasRole('Admin') ?? false;
-        $cacheKey = $isAdmin ? 'exports:active:any' : 'user:'.((int) $user?->id).':active_exports';
-
-        return Cache::remember($cacheKey, now()->addSeconds((int) config('performance.cache_ttl.active_exports', 10)), function () use ($isAdmin, $user): bool {
-            return ExportRequest::query()
-                ->when(! $isAdmin, fn (Builder $query): Builder => $query->where('user_id', (int) $user?->id))
-                ->whereIn('status', [ExportRequest::STATUS_QUEUED, ExportRequest::STATUS_RUNNING])
-                ->exists();
-        });
+        return $this->query()
+            ->whereIn('status', [ExportRequest::STATUS_QUEUED, ExportRequest::STATUS_RUNNING])
+            ->exists();
     }
 
     private function query(): Builder
@@ -227,13 +221,16 @@ class MinhasExportacoes extends Page implements HasTable
         /** @var User|null $user */
         $user = Auth::user();
 
-        $query = ExportRequest::query();
+        $sessionHash = app(ExportSessionService::class)->currentSessionHash();
 
-        if (! $user?->hasRole('Admin')) {
-            $query->where('user_id', (int) $user?->id);
+        if (! $user || ! $sessionHash) {
+            return ExportRequest::query()->whereRaw('1 = 0');
         }
 
-        return $query;
+        return ExportRequest::query()
+            ->where('user_id', $user->getKey())
+            ->where('session_hash', $sessionHash)
+            ->whereNull('session_ended_at');
     }
 
     private function statusLabel(string $status): string

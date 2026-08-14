@@ -3,6 +3,7 @@
 use App\Http\Middleware\EnforceAbsoluteSessionLifetime;
 use App\Http\Middleware\NormalizeSessionCookieDomain;
 use App\Http\Middleware\PerformanceInstrumentation;
+use App\Http\Middleware\RefreshExportSession;
 use App\Http\Middleware\ValidaUser;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
@@ -24,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prependToGroup('web', NormalizeSessionCookieDomain::class);
         $middleware->appendToGroup('web', PerformanceInstrumentation::class);
         $middleware->appendToGroup('web', EnforceAbsoluteSessionLifetime::class);
+        $middleware->appendToGroup('web', RefreshExportSession::class);
     })
     ->withSchedule(function (Schedule $schedule) {
         $schedule
@@ -51,7 +53,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withSchedule(function (Schedule $schedule) {
         $schedule
             ->command('exports:prune')
-            ->dailyAt('02:30')
+            ->everyMinute()
             ->withoutOverlapping(120);
     })
     ->withSchedule(function (Schedule $schedule) {
