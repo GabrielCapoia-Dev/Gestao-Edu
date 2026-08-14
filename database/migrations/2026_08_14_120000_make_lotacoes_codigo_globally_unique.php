@@ -11,6 +11,8 @@ return new class extends Migration
 
     private const OLD_UNIQUE = 'lotacoes_escola_id_codigo_unique';
 
+    private const SCHOOL_INDEX = 'lotacoes_escola_id_index';
+
     private const GLOBAL_UNIQUE = 'lotacoes_codigo_unique';
 
     public function up(): void
@@ -25,6 +27,12 @@ return new class extends Migration
             throw new RuntimeException(
                 "Não foi possível tornar as lotações únicas: o número {$duplicado} está cadastrado mais de uma vez.",
             );
+        }
+
+        if (! Schema::hasIndex(self::TABLE, self::SCHOOL_INDEX)) {
+            Schema::table(self::TABLE, function (Blueprint $table): void {
+                $table->index('escola_id', self::SCHOOL_INDEX);
+            });
         }
 
         if (Schema::hasIndex(self::TABLE, self::OLD_UNIQUE, 'unique')) {
