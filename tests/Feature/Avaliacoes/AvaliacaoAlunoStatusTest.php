@@ -176,6 +176,61 @@ class AvaliacaoAlunoStatusTest extends TestCase
         ]);
     }
 
+    public function test_contra_turno_aparece_na_avaliacao_da_sala_de_recursos_multifuncionais(): void
+    {
+        Permission::findOrCreate('Responder Avaliações');
+
+        [$usuario, $escola, , $turmaPrincipal, $avaliacao, $pauta, , , $componente] = $this->criarCenarioProfessor();
+
+        $serieSrm = Serie::query()->create([
+            'codigo' => 'srm_serie',
+            'nome' => 'Sala de Recursos Multifuncionais',
+        ]);
+        $turmaSrm = Turma::query()->create([
+            'codigo' => 'TUR-SRM-AVAL',
+            'nome' => 'B',
+            'turno' => 'tarde',
+            'id_serie' => $serieSrm->id,
+            'id_escola' => $escola->id,
+        ]);
+        $turmaSrm->componentes()->attach($componente->id, [
+            'professor_id' => Professor::query()->where('user_id', $usuario->id)->value('id'),
+            'tem_professor' => true,
+        ]);
+
+        $pauta->update(['serie_id' => $serieSrm->id]);
+        $avaliacao->turmas()->sync([$turmaSrm->id]);
+        $avaliacao->series()->sync([$serieSrm->id]);
+
+        $alunoPrincipal = Aluno::query()->create([
+            'nome' => 'Aluno Principal SRM',
+            'cgm' => 'CGM-AVAL-SRM',
+            'data_nascimento' => '2015-01-01',
+            'id_turma' => $turmaPrincipal->id,
+        ]);
+        $alunoContraTurno = Aluno::query()->create([
+            'nome' => 'Aluno Contra Turno SRM',
+            'cgm' => $alunoPrincipal->cgm,
+            'data_nascimento' => $alunoPrincipal->data_nascimento,
+            'id_turma' => $turmaSrm->id,
+            'tipo_vinculo' => Aluno::TIPO_VINCULO_CONTRA_TURNO,
+            'status' => Aluno::STATUS_MATRICULADO,
+            'aluno_origem_id' => $alunoPrincipal->id,
+            'turma_origem_id' => $turmaPrincipal->id,
+            'movimentacao_origem' => AlunoMovimentacaoService::MOVIMENTACAO_CONTRA_TURNO,
+        ]);
+
+        Livewire::actingAs($usuario)
+            ->test(AvaliacaoTurmaWorkspace::class, $this->workspaceProfessorParams())
+            ->set('avaliacao', $avaliacao->id)
+            ->set('serieEscola', $escola->id.':'.$serieSrm->id)
+            ->call('alternarTurma', $turmaSrm->id)
+            ->call('alternarComponente', $turmaSrm->id, $componente->id)
+            ->call('alternarPauta', $turmaSrm->id, $pauta->id)
+            ->assertSee($alunoContraTurno->nome)
+            ->assertDontSee($alunoPrincipal->nome);
+    }
+
     private function criarCenarioProfessor(): array
     {
         $tipo = TipoAvaliacao::query()->create(['nome' => 'Tipo Status', 'status' => true]);
