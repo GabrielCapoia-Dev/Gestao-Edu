@@ -299,7 +299,10 @@ class ServidorResource extends Resource
                     ->placeholder('Todos os cargos')
                     ->options([
                         self::CARGO_PROFESSOR => 'Professor',
-                        self::CARGO_EQUIPE_GESTORA => 'Equipe Gestora',
+                        ServidorEquipeGestoraForm::CARGO_DIRETOR => 'Diretor',
+                        ServidorEquipeGestoraForm::CARGO_COORDENADOR => 'Coordenador',
+                        ServidorEquipeGestoraForm::CARGO_SECRETARIO => 'Secretário',
+                        self::CARGO_ASSESSORIA_PEDAGOGICA => 'Assessoria Pedagógica',
                         self::CARGO_MANUTENCAO => 'Manutenção',
                         self::CARGO_OBRAS => 'Obras',
                         'sem_cargo' => 'Sem cargo ativo',
@@ -1037,10 +1040,28 @@ class ServidorResource extends Resource
                         return;
                     }
 
-                    if ($cargo === self::CARGO_EQUIPE_GESTORA) {
+                    if ($cargo === ServidorEquipeGestoraForm::CARGO_DIRETOR) {
                         $pessoasDoCargo->whereHas(
                             'vinculosAtivos.funcaoAdministrativa',
-                            fn (Builder $funcoes): Builder => static::aplicarFiltroFuncaoGestora($funcoes),
+                            fn (Builder $funcoes): Builder => $funcoes->direcao(),
+                        );
+
+                        return;
+                    }
+
+                    if ($cargo === ServidorEquipeGestoraForm::CARGO_COORDENADOR) {
+                        $pessoasDoCargo->whereHas(
+                            'vinculosAtivos.funcaoAdministrativa',
+                            fn (Builder $funcoes): Builder => $funcoes->coordenacao(),
+                        );
+
+                        return;
+                    }
+
+                    if ($cargo === ServidorEquipeGestoraForm::CARGO_SECRETARIO) {
+                        $pessoasDoCargo->whereHas(
+                            'vinculosAtivos.funcaoAdministrativa',
+                            fn (Builder $funcoes): Builder => $funcoes->secretaria(),
                         );
 
                         return;

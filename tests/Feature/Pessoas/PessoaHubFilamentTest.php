@@ -3,6 +3,7 @@
 namespace Tests\Feature\Pessoas;
 
 use App\Filament\Admin\Resources\Servidores\Pages\ManageServidores;
+use App\Filament\Admin\Resources\Servidores\Schemas\ServidorEquipeGestoraForm;
 use App\Filament\Admin\Resources\Servidores\ServidorResource;
 use App\Livewire\Pessoas\PessoaForm;
 use App\Models\ComponenteCurricular;
@@ -260,6 +261,18 @@ class PessoaHubFilamentTest extends TestCase
         ], $filtroQuantidade->getOptions());
         $this->assertSame('Todas as quantidades', $filtroQuantidade->getPlaceholder());
 
+        $filtroCargo = $componente->instance()->getTable()->getFilter('cargo');
+        $this->assertSame([
+            ServidorResource::CARGO_PROFESSOR => 'Professor',
+            ServidorEquipeGestoraForm::CARGO_DIRETOR => 'Diretor',
+            ServidorEquipeGestoraForm::CARGO_COORDENADOR => 'Coordenador',
+            ServidorEquipeGestoraForm::CARGO_SECRETARIO => 'Secretário',
+            ServidorResource::CARGO_ASSESSORIA_PEDAGOGICA => 'Assessoria Pedagógica',
+            ServidorResource::CARGO_MANUTENCAO => 'Manutenção',
+            ServidorResource::CARGO_OBRAS => 'Obras',
+            'sem_cargo' => 'Sem cargo ativo',
+        ], $filtroCargo->getOptions());
+
         Livewire::actingAs($usuario)
             ->test(ManageServidores::class)
             ->filterTable('quantidade_matriculas', 'duas')
@@ -280,7 +293,7 @@ class PessoaHubFilamentTest extends TestCase
 
         Livewire::actingAs($usuario)
             ->test(ManageServidores::class)
-            ->filterTable('cargo', [ServidorResource::CARGO_EQUIPE_GESTORA])
+            ->filterTable('cargo', [ServidorEquipeGestoraForm::CARGO_DIRETOR])
             ->assertCanSeeTableRecords([$gestora])
             ->assertCanNotSeeTableRecords([$professor, $manutencao, $semCargo]);
 
@@ -296,6 +309,42 @@ class PessoaHubFilamentTest extends TestCase
             ->searchTable('FILTRO-MAN')
             ->assertCanSeeTableRecords([$manutencao])
             ->assertCanNotSeeTableRecords([$professor, $gestora, $semCargo]);
+    }
+
+    public function test_consulta_do_filtro_de_cargo_separa_funcoes_da_equipe_gestora_e_assessoria(): void
+    {
+        $setor = $this->criarSetor('Setor dos cargos separados');
+        $escola = $this->criarEscola('Escola dos cargos separados', $setor);
+
+        $servidoresPorCargo = [
+            ServidorEquipeGestoraForm::CARGO_DIRETOR => [$this->criarServidor('Diretor do filtro', $escola, $setor), FuncaoAdministrativa::direcaoPadrao()],
+            ServidorEquipeGestoraForm::CARGO_COORDENADOR => [$this->criarServidor('Coordenador do filtro', $escola, $setor), FuncaoAdministrativa::coordenacaoPadrao()],
+            ServidorEquipeGestoraForm::CARGO_SECRETARIO => [$this->criarServidor('Secretário do filtro', $escola, $setor), FuncaoAdministrativa::secretariaPadrao()],
+            ServidorResource::CARGO_ASSESSORIA_PEDAGOGICA => [$this->criarServidor('Assessoria do filtro', $escola, $setor), FuncaoAdministrativa::assessoriaPedagogicaPadrao()],
+        ];
+
+        foreach ($servidoresPorCargo as [$servidor, $funcao]) {
+            ServidorFuncaoAdministrativa::query()->create([
+                'servidor_id' => $servidor->id,
+                'funcao_administrativa_id' => $funcao->id,
+                'id_escola' => $funcao->ehAssessoriaPedagogica() ? null : $escola->id,
+                'setor_id' => $funcao->ehAssessoriaPedagogica() ? null : $setor->id,
+                'status' => ServidorFuncaoAdministrativa::STATUS_ATIVO,
+                'origem' => 'teste',
+                'data_inicio' => now()->toDateString(),
+            ]);
+        }
+
+        $metodoFiltro = new \ReflectionMethod(ServidorResource::class, 'aplicarFiltroCargos');
+
+        foreach ($servidoresPorCargo as $cargo => [$servidor]) {
+            $resultado = $metodoFiltro
+                ->invoke(null, Servidor::query(), [$cargo])
+                ->pluck('id')
+                ->all();
+
+            $this->assertSame([$servidor->id], $resultado, "O filtro {$cargo} deve retornar somente o cargo selecionado.");
+        }
     }
 
     public function test_busca_e_contagem_de_matriculas_respeitam_escopo_escolar_e_permissao_de_usuario(): void
