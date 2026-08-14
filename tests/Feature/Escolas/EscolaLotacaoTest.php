@@ -8,6 +8,7 @@ use App\Models\Lotacao;
 use App\Models\Professor;
 use App\Models\Servidor;
 use App\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
@@ -18,7 +19,7 @@ class EscolaLotacaoTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_escola_possui_varias_lotacoes_com_codigo_unico_no_proprio_grupo(): void
+    public function test_codigo_da_lotacao_e_unico_em_toda_a_rede(): void
     {
         $escolaA = $this->criarEscola('Escola A');
         $escolaB = $this->criarEscola('Escola B');
@@ -27,14 +28,15 @@ class EscolaLotacaoTest extends TestCase
             ['codigo' => 'LOT-001', 'nome' => 'Docentes'],
             ['codigo' => 'LOT-002', 'nome' => 'Administrativo'],
         ]);
+        $this->assertCount(2, $escolaA->lotacoes);
+        $this->assertSame($escolaA->id, Lotacao::query()->where('codigo', 'LOT-002')->sole()->escola->id);
+
+        $this->expectException(QueryException::class);
+
         $escolaB->lotacoes()->create([
             'codigo' => 'LOT-001',
             'nome' => 'Equipe escolar',
         ]);
-
-        $this->assertCount(2, $escolaA->lotacoes);
-        $this->assertSame($escolaA->id, Lotacao::query()->where('codigo', 'LOT-002')->sole()->escola->id);
-        $this->assertDatabaseCount('lotacoes', 3);
     }
 
     public function test_edicao_da_escola_salva_lotacoes_no_mesmo_formulario(): void
