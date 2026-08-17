@@ -126,7 +126,7 @@
             </div>
 
             <div class="export-queue-footer">
-                Os arquivos são removidos automaticamente quando esta sessão termina.
+                Acompanhe sua fila se processos.
             </div>
         </div>
     @endif
