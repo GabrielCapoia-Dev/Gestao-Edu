@@ -566,6 +566,16 @@ class AlunoService
                         'motivo' => null,
                     ])
                     ->modalHeading(fn (Aluno $record): string => 'Contra turno de '.$record->nome)
+                    ->modalDescription(function (Aluno $record): string {
+                        $record->loadMissing('turma.escola', 'turma.serie');
+
+                        return collect([
+                            filled($record->cgm) ? 'CGM: '.$record->cgm : null,
+                            filled($record->turma?->escola?->nome) ? 'Escola: '.$record->turma->escola->nome : null,
+                            filled($record->turma?->serie?->nome) ? 'Série: '.$record->turma->serie->nome : null,
+                            filled($record->turma?->nome) ? 'Turma atual: '.$record->turma->nome : null,
+                        ])->filter()->join(' | ');
+                    })
                     ->modalSubmitActionLabel('Salvar')
                     ->schema(fn (Aluno $record): array => [
                         Select::make('turma_contra_turno_id')
