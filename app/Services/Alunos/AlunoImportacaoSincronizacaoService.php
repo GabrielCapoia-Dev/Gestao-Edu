@@ -54,6 +54,8 @@ class AlunoImportacaoSincronizacaoService
                 (string) $aluno->cgm,
             ));
 
+        $novasMatriculas = [];
+
         foreach ($linhas as $linha) {
             /** @var Turma|null $turmaDestino */
             $turmaDestino = $linha['turma'] ?? null;
@@ -92,7 +94,12 @@ class AlunoImportacaoSincronizacaoService
                 continue;
             }
 
-            $novo = $this->movimentacaoService->criarMatricula([
+            /*
+             * Somente os vínculos que realmente ainda não existem na unidade são
+             * enviados ao fluxo em lote. Isso mantém a sincronização rápida mesmo
+             * para planilhas com milhares de alunos.
+             */
+            $novasMatriculas[] = [
                 'nome' => $linha['nome'],
                 'cgm' => $cgm,
                 'data_nascimento' => $linha['data_nascimento'],
@@ -100,15 +107,17 @@ class AlunoImportacaoSincronizacaoService
                 'data_matricula' => $linha['data_matricula'],
                 'id_turma' => (int) $turmaDestino->id,
                 'status_motivo' => 'Matrícula criada por sincronização da planilha de alunos.',
-            ], $usuario);
+            ];
+        }
 
-            $novo->loadMissing('turma');
-            $porUnidade->put($chave, $novo);
-            $resultado['total_importado']++;
+        if ($novasMatriculas !== []) {
+            $lote = $this->movimentacaoService->criarMatriculaEmLote(
+                $novasMatriculas,
+                $usuario,
+            );
 
-            if ($novo->estaPendente()) {
-                $resultado['total_pendente']++;
-            }
+            $resultado['total_importado'] += (int) ($lote['total_importado'] ?? 0);
+            $resultado['total_pendente'] += (int) ($lote['total_pendente'] ?? 0);
         }
 
         return $resultado;
