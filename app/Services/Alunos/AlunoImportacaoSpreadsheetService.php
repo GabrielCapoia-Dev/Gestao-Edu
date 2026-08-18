@@ -177,6 +177,7 @@ class AlunoImportacaoSpreadsheetService
                                     'numero_linha' => (int) $linha['numero_linha'],
                                     'cgm' => $linha['cgm'],
                                     'id_turma' => $turmaId,
+                                    'id_escola' => (int) $turma->id_escola,
                                 ];
 
                                 continue;
@@ -194,7 +195,7 @@ class AlunoImportacaoSpreadsheetService
                         }
 
                         if ($tipoVinculo === Aluno::TIPO_VINCULO_CONTRA_TURNO) {
-                            $totalContraTurno = $this->importarContraTurno($dadosContraTurno, $turmas, $usuario);
+                            $totalContraTurno = $this->importarContraTurno($dadosContraTurno, $usuario);
 
                             return [
                                 'total_importado' => $totalContraTurno,
@@ -244,16 +245,15 @@ class AlunoImportacaoSpreadsheetService
         }
     }
 
-    private function importarContraTurno(array $linhas, Collection $turmas, ?User $usuario): int
+    private function importarContraTurno(array $linhas, ?User $usuario): int
     {
         $importados = 0;
 
         foreach ($linhas as $linha) {
             $cgm = Aluno::normalizarCgm((string) ($linha['cgm'] ?? ''));
             $turmaId = (int) ($linha['id_turma'] ?? 0);
-            $turma = $turmas->get($turmaId);
             $numeroLinha = (int) ($linha['numero_linha'] ?? 0);
-            $escolaId = (int) ($turma?->id_escola ?? 0);
+            $escolaId = (int) ($linha['id_escola'] ?? 0);
 
             $principal = $this->principalAtivoNaEscola($cgm, $escolaId);
 
