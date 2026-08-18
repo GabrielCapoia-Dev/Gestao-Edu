@@ -28,6 +28,7 @@ use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use RuntimeException;
 use Symfony\Component\HttpFoundation\Response;
 
 class AlunoImportacaoSpreadsheetService
@@ -45,7 +46,8 @@ class AlunoImportacaoSpreadsheetService
         'nome' => ['nome do aluno', 'aluno', 'nome'],
         'data_nascimento' => ['data de nasc', 'data de nascimento', 'nascimento'],
         'sexo' => ['sexo'],
-        'data_matricula' => ['data matrícula', 'data de matrícula'],
+        'data_matricula' => ['data matricula', 'data de matricula', 'data matrícula', 'data de matrícula'],
+        'tipo_vinculo' => ['tipo de vinculo', 'tipo vinculo', 'vinculo', 'tipo_vinculo'],
     ];
 
     private const REQUIRED_HEADERS = [
@@ -79,6 +81,7 @@ class AlunoImportacaoSpreadsheetService
         $sheet->setCellValue('G1', 'Data de Nascimento');
         $sheet->setCellValue('H1', 'Sexo');
         $sheet->setCellValue('I1', 'Data da matrícula');
+        $sheet->setCellValue('J1', 'Tipo de vínculo');
 
         $sheet->fromArray([
             'CMEI - Cecilia Meireles',
@@ -90,12 +93,13 @@ class AlunoImportacaoSpreadsheetService
             '07/02/2022',
             'F',
             '15/02/2026',
+            'Principal',
         ], null, 'A2');
 
-        $this->estilizarCabecalho($sheet, 'A1:I1');
+        $this->estilizarCabecalho($sheet, 'A1:J1');
         $sheet->freezePane('A2');
 
-        foreach (range(1, 9) as $indice) {
+        foreach (range(1, 10) as $indice) {
             $sheet->getColumnDimension(Coordinate::stringFromColumnIndex($indice))->setAutoSize(true);
         }
 
@@ -127,67 +131,108 @@ class AlunoImportacaoSpreadsheetService
             ];
 
             $processado = 0;
+            $linhasPorTipo = [
+                Aluno::TIPO_VINCULO_PRINCIPAL => array_values(array_filter(
+                    $linhas,
+                    fn (array $linha): bool => $linha['tipo_vinculo'] === Aluno::TIPO_VINCULO_PRINCIPAL
+                )),
+                Aluno::TIPO_VINCULO_CONTRA_TURNO => array_values(array_filter(
+                    $linhas,
+                    fn (array $linha): bool => $linha['tipo_vinculo'] === Aluno::TIPO_VINCULO_CONTRA_TURNO
+                )),
+            ];
 
-            foreach (array_chunk($linhas, self::CHUNK_SIZE) as $chunk) {
-                $chunkResultado = DB::transaction(function () use ($chunk, $usuario): array {
-                    $series = $this->seriesPorNome();
-                    $turmas = $this->turmasPorChave();
-                    $seriesCriadas = 0;
-                    $turmasCriadas = 0;
-                    $turmasPermitidas = [];
-                    $dadosMatriculas = [];
+            /*
+             * O principal sempre é importado antes do contra turno. Assim, um mesmo
+             * arquivo pode conter as duas linhas do aluno independentemente da ordem
+             * em que elas aparecem na planilha.
+             */
+            foreach ($linhasPorTipo as $tipoVinculo => $linhasTipo) {
+                foreach (array_chunk($linhasTipo, self::CHUNK_SIZE) as $chunk) {
+                    $chunkResultado = DB::transaction(function () use ($chunk, $usuario, $tipoVinculo): array {
+                        $series = $this->seriesPorNome();
+                        $turmas = $this->turmasPorChave();
+                        $seriesCriadas = 0;
+                        $turmasCriadas = 0;
+                        $turmasPermitidas = [];
+                        $dadosMatriculas = [];
+                        $dadosContraTurno = [];
 
-                    foreach ($chunk as $linha) {
-                        [$serie, $serieCriada] = $this->resolverSerie($linha['seriacao'], $series);
-                        [$turma, $turmaCriada] = $this->resolverTurma($linha, $serie, $turmas);
+                        foreach ($chunk as $linha) {
+                            [$serie, $serieCriada] = $this->resolverSerie($linha['seriacao'], $series);
+                            [$turma, $turmaCriada] = $this->resolverTurma($linha, $serie, $turmas);
 
-                        $seriesCriadas += $serieCriada ? 1 : 0;
-                        $turmasCriadas += $turmaCriada ? 1 : 0;
+                            $seriesCriadas += $serieCriada ? 1 : 0;
+                            $turmasCriadas += $turmaCriada ? 1 : 0;
 
-                        $turmaId = (int) $turma->id;
+                            $turmaId = (int) $turma->id;
 
-                        if (! isset($turmasPermitidas[$turmaId])) {
-                            $this->alunoService->validarTurmaPermitida($turmaId, $usuario);
-                            $turmasPermitidas[$turmaId] = true;
+                            if (! isset($turmasPermitidas[$turmaId])) {
+                                $this->alunoService->validarTurmaPermitida($turmaId, $usuario);
+                                $turmasPermitidas[$turmaId] = true;
+                            }
+
+                            if ($tipoVinculo === Aluno::TIPO_VINCULO_CONTRA_TURNO) {
+                                $dadosContraTurno[] = [
+                                    'numero_linha' => (int) $linha['numero_linha'],
+                                    'cgm' => $linha['cgm'],
+                                    'id_turma' => $turmaId,
+                                ];
+
+                                continue;
+                            }
+
+                            $dadosMatriculas[] = [
+                                'nome' => $linha['nome'],
+                                'cgm' => $linha['cgm'],
+                                'data_nascimento' => $linha['data_nascimento'],
+                                'sexo' => $linha['sexo'],
+                                'data_matricula' => $linha['data_matricula'],
+                                'id_turma' => $turmaId,
+                                'status_motivo' => 'Matrícula criada por importação de planilha.',
+                            ];
                         }
 
-                        $dadosMatriculas[] = [
-                            'nome' => $linha['nome'],
-                            'cgm' => $linha['cgm'],
-                            'data_nascimento' => $linha['data_nascimento'],
-                            'sexo' => $linha['sexo'],
-                            'data_matricula' => $linha['data_matricula'],
-                            'id_turma' => $turmaId,
-                            'status_motivo' => 'Matrícula criada por importação de planilha.',
+                        if ($tipoVinculo === Aluno::TIPO_VINCULO_CONTRA_TURNO) {
+                            $totalContraTurno = $this->importarContraTurno($dadosContraTurno, $turmas, $usuario);
+
+                            return [
+                                'total_importado' => $totalContraTurno,
+                                'total_pendente' => 0,
+                                'series_criadas' => $seriesCriadas,
+                                'turmas_criadas' => $turmasCriadas,
+                            ];
+                        }
+
+                        $loteResultado = $dadosMatriculas === []
+                            ? ['total_importado' => 0, 'total_pendente' => 0]
+                            : $this->movimentacaoService->criarMatriculaEmLote($dadosMatriculas, $usuario);
+
+                        return [
+                            'total_importado' => $loteResultado['total_importado'],
+                            'total_pendente' => $loteResultado['total_pendente'],
+                            'series_criadas' => $seriesCriadas,
+                            'turmas_criadas' => $turmasCriadas,
                         ];
+                    });
+
+                    $resultado['total_importado'] += $chunkResultado['total_importado'];
+                    $resultado['total_pendente'] += $chunkResultado['total_pendente'];
+                    $resultado['series_criadas'] += $chunkResultado['series_criadas'];
+                    $resultado['turmas_criadas'] += $chunkResultado['turmas_criadas'];
+
+                    $processado += count($chunk);
+
+                    if ($processRequestId) {
+                        ExportRequest::query()
+                            ->whereKey($processRequestId)
+                            ->update([
+                                'progress_current' => $processado,
+                                'progress_total' => $totalLinhas,
+                                'status_message' => "Processando alunos... {$processado} de {$totalLinhas}.",
+                                'updated_at' => now(),
+                            ]);
                     }
-
-                    $loteResultado = $this->movimentacaoService->criarMatriculaEmLote($dadosMatriculas, $usuario);
-
-                    return [
-                        'total_importado' => $loteResultado['total_importado'],
-                        'total_pendente' => $loteResultado['total_pendente'],
-                        'series_criadas' => $seriesCriadas,
-                        'turmas_criadas' => $turmasCriadas,
-                    ];
-                });
-
-                $resultado['total_importado'] += $chunkResultado['total_importado'];
-                $resultado['total_pendente'] += $chunkResultado['total_pendente'];
-                $resultado['series_criadas'] += $chunkResultado['series_criadas'];
-                $resultado['turmas_criadas'] += $chunkResultado['turmas_criadas'];
-
-                $processado += count($chunk);
-
-                if ($processRequestId) {
-                    ExportRequest::query()
-                        ->whereKey($processRequestId)
-                        ->update([
-                            'progress_current' => $processado,
-                            'progress_total' => $totalLinhas,
-                            'status_message' => "Processando alunos... {$processado} de {$totalLinhas}.",
-                            'updated_at' => now(),
-                        ]);
                 }
             }
 
@@ -197,6 +242,75 @@ class AlunoImportacaoSpreadsheetService
         } finally {
             Storage::disk($disk)->delete($caminhoArquivo);
         }
+    }
+
+    private function importarContraTurno(array $linhas, Collection $turmas, ?User $usuario): int
+    {
+        $importados = 0;
+
+        foreach ($linhas as $linha) {
+            $cgm = Aluno::normalizarCgm((string) ($linha['cgm'] ?? ''));
+            $turmaId = (int) ($linha['id_turma'] ?? 0);
+            $turma = $turmas->get($turmaId);
+            $numeroLinha = (int) ($linha['numero_linha'] ?? 0);
+            $escolaId = (int) ($turma?->id_escola ?? 0);
+
+            $principal = $this->principalAtivoNaEscola($cgm, $escolaId);
+
+            if (! $principal) {
+                $principalPendente = $this->principalPendenteNaEscola($cgm, $escolaId);
+
+                if ($principalPendente) {
+                    throw new InvalidArgumentException(
+                        "Linha {$numeroLinha}: o vínculo Principal deste aluno ainda está Pendente nesta escola, aguardando a transferência da escola de origem. Conclua a transferência antes de ativar o Contra Turno."
+                    );
+                }
+
+                throw new InvalidArgumentException(
+                    "Linha {$numeroLinha}: o aluno informado como Contra Turno precisa possuir uma matrícula Principal ativa na mesma escola."
+                );
+            }
+
+            try {
+                $this->movimentacaoService->vincularContraTurno(
+                    $principal,
+                    $turmaId,
+                    $usuario,
+                    'Vínculo de contra turno criado por importação de planilha.'
+                );
+            } catch (RuntimeException $exception) {
+                throw new InvalidArgumentException(
+                    "Linha {$numeroLinha}: {$exception->getMessage()}",
+                    previous: $exception
+                );
+            }
+
+            $importados++;
+        }
+
+        return $importados;
+    }
+
+    private function principalAtivoNaEscola(string $cgm, int $escolaId): ?Aluno
+    {
+        return Aluno::query()
+            ->with('turma')
+            ->where('cgm_matricula_ativa', Aluno::normalizarCgm($cgm))
+            ->where('tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL)
+            ->where('status', Aluno::STATUS_MATRICULADO)
+            ->whereHas('turma', fn ($query) => $query->where('id_escola', $escolaId))
+            ->first();
+    }
+
+    private function principalPendenteNaEscola(string $cgm, int $escolaId): ?Aluno
+    {
+        return Aluno::query()
+            ->with('turma')
+            ->where('cgm', Aluno::normalizarCgm($cgm))
+            ->where('tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL)
+            ->where('status', Aluno::STATUS_PENDENTE)
+            ->whereHas('turma', fn ($query) => $query->where('id_escola', $escolaId))
+            ->first();
     }
 
     private function carregarLinhas(string $caminhoCompleto): array
@@ -246,6 +360,7 @@ class AlunoImportacaoSpreadsheetService
                 'data_nascimento' => $this->normalizarData($row[$headers['data_nascimento']] ?? null),
                 'sexo' => $this->normalizarSexo($row[$headers['sexo']] ?? null),
                 'data_matricula' => $this->normalizarData(isset($headers['data_matricula']) ? ($row[$headers['data_matricula']] ?? null) : null),
+                'tipo_vinculo' => $this->normalizarTipoVinculo(isset($headers['tipo_vinculo']) ? ($row[$headers['tipo_vinculo']] ?? null) : null),
             ])
             ->reject(fn (array $linha): bool => collect([
                 $linha['escola'],
@@ -291,30 +406,41 @@ class AlunoImportacaoSpreadsheetService
                 $erros[] = "Linha {$numeroLinha}: informe Sexo como M ou F.";
             }
 
+            if (! in_array($linha['tipo_vinculo'], [
+                Aluno::TIPO_VINCULO_PRINCIPAL,
+                Aluno::TIPO_VINCULO_CONTRA_TURNO,
+            ], true)) {
+                $erros[] = "Linha {$numeroLinha}: informe Tipo de vínculo como Principal ou Contra Turno.";
+            }
+
             $chaveEscola = $this->normalizarTexto($linha['escola']);
 
             if (filled($linha['escola']) && ! $escolas->has($chaveEscola)) {
                 $erros[] = "Linha {$numeroLinha}: a escola {$linha['escola']} não foi encontrada no cadastro.";
             }
-
         });
 
         if ($erros !== []) {
             throw new InvalidArgumentException(implode(PHP_EOL, $erros));
         }
 
-        $cgms = [];
+        $chaves = [];
         $duplicadosIgnorados = 0;
 
         $linhasValidas = $linhas
-            ->reject(function (array $linha) use (&$cgms, &$duplicadosIgnorados): bool {
-                if (isset($cgms[$linha['cgm']])) {
+            ->reject(function (array $linha) use (&$chaves, &$duplicadosIgnorados): bool {
+                $chave = implode('|', [
+                    $linha['cgm'],
+                    $linha['tipo_vinculo'],
+                ]);
+
+                if (isset($chaves[$chave])) {
                     $duplicadosIgnorados++;
 
                     return true;
                 }
 
-                $cgms[$linha['cgm']] = true;
+                $chaves[$chave] = true;
 
                 return false;
             })
@@ -356,7 +482,7 @@ class AlunoImportacaoSpreadsheetService
         }
 
         throw new InvalidArgumentException(
-            'Cabeçalho inválido. Use as colunas: Escola, Seriação, Turma, Turno, CGM, Nome do aluno, Data de Nascimento e Sexo. Data da matrícula é opcional.'
+            'Cabeçalho inválido. Use as colunas: Escola, Seriação, Turma, Turno, CGM, Nome do aluno, Data de Nascimento e Sexo. Data da matrícula e Tipo de vínculo são opcionais; sem Tipo de vínculo o aluno será considerado Principal.'
         );
     }
 
@@ -471,6 +597,21 @@ class AlunoImportacaoSpreadsheetService
         return match ($sexo) {
             'm', 'masculino' => 'M',
             'f', 'feminino' => 'F',
+            default => null,
+        };
+    }
+
+    private function normalizarTipoVinculo(mixed $valor): ?string
+    {
+        $tipo = $this->normalizarTexto($valor);
+
+        if ($tipo === '') {
+            return Aluno::TIPO_VINCULO_PRINCIPAL;
+        }
+
+        return match ($tipo) {
+            'principal', 'p' => Aluno::TIPO_VINCULO_PRINCIPAL,
+            'contra turno', 'contraturno', 'contra-turno', 'contra_turno', 'ct' => Aluno::TIPO_VINCULO_CONTRA_TURNO,
             default => null,
         };
     }
