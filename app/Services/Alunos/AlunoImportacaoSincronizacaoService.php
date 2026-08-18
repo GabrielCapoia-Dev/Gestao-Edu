@@ -346,10 +346,6 @@ class AlunoImportacaoSincronizacaoService
             throw new RuntimeException('A turma de Contra Turno precisa pertencer à mesma escola da matrícula Principal.');
         }
 
-        if ((int) $principal->id_turma === (int) $turmaDestino->id) {
-            throw new RuntimeException('A turma de Contra Turno deve ser diferente da turma Principal.');
-        }
-
         $contraTurno->forceFill([
             'status' => Aluno::STATUS_REMANEJADO,
             'status_alterado_em' => now(),
