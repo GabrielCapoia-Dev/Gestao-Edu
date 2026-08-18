@@ -268,11 +268,13 @@ class AlunoImportacaoSincronizacaoService
             throw new RuntimeException('A turma de Contra Turno precisa pertencer à mesma escola da matrícula Principal.');
         }
 
+        /*
+         * Não alteramos status_motivo/status_alterado_em do Principal aqui. Se ele
+         * estiver Pendente, esses campos pertencem ao fluxo de transferência e
+         * precisam continuar registrando a causa real da pendência.
+         */
         $principal->forceFill([
             'permite_contra_turno' => true,
-            'status_alterado_em' => now(),
-            'status_alterado_por' => $usuario?->id,
-            'status_motivo' => 'Contra turno sincronizado pela planilha de alunos.',
         ])->save();
 
         return Aluno::query()->create([
