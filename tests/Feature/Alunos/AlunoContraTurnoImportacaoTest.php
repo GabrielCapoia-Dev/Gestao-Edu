@@ -150,7 +150,7 @@ class AlunoContraTurnoImportacaoTest extends TestCase
         );
     }
 
-    public function test_contra_turno_da_planilha_e_criado_mesmo_quando_principal_da_nova_escola_esta_pendente(): void
+    public function test_contra_turno_da_nova_escola_reflete_status_pendente_do_principal(): void
     {
         Storage::fake('local');
 
@@ -169,7 +169,7 @@ class AlunoContraTurnoImportacaoTest extends TestCase
         $resultado = app(AlunoImportacaoSpreadsheetService::class)->importar($caminho, null, 'local');
 
         $this->assertSame(2, $resultado['total_importado']);
-        $this->assertSame(1, $resultado['total_pendente']);
+        $this->assertSame(2, $resultado['total_pendente']);
 
         $pendente = Aluno::query()
             ->with('turma')
@@ -182,7 +182,7 @@ class AlunoContraTurnoImportacaoTest extends TestCase
             ->with('turma')
             ->where('cgm', '9003')
             ->where('tipo_vinculo', Aluno::TIPO_VINCULO_CONTRA_TURNO)
-            ->where('status', Aluno::STATUS_MATRICULADO)
+            ->where('status', Aluno::STATUS_PENDENTE)
             ->firstOrFail();
 
         $this->assertSame($alunoOrigem->id, $pendente->pendencia_origem_aluno_id);
@@ -190,7 +190,35 @@ class AlunoContraTurnoImportacaoTest extends TestCase
         $this->assertSame($escolaDestino->id, $contraTurno->turma->id_escola);
         $this->assertSame($pendente->id, $contraTurno->aluno_origem_id);
         $this->assertSame($pendente->id_turma, $contraTurno->turma_origem_id);
+        $this->assertNull($contraTurno->cgm_contra_turno_ativo);
         $this->assertTrue((bool) $pendente->fresh()->permite_contra_turno);
+    }
+
+    public function test_contra_turno_manual_de_principal_pendente_tambem_nasce_pendente(): void
+    {
+        $escola = $this->criarEscola('Escola Principal Pendente');
+        $serie = $this->criarSerie('4 Ano');
+        $turmaPrincipal = $this->criarTurma($escola, $serie, 'B', 'integral');
+        $turmaContra = $this->criarTurma($escola, $serie, 'SRM', 'tarde');
+
+        $principal = Aluno::query()->create([
+            'nome' => 'Aluno Pendente',
+            'cgm' => 'CGM-PENDENTE-CT',
+            'data_nascimento' => '2017-03-10',
+            'sexo' => 'M',
+            'id_turma' => $turmaPrincipal->id,
+            'tipo_vinculo' => Aluno::TIPO_VINCULO_PRINCIPAL,
+            'status' => Aluno::STATUS_PENDENTE,
+        ]);
+
+        $contraTurno = app(AlunoMovimentacaoService::class)->vincularContraTurno(
+            $principal,
+            $turmaContra->id
+        );
+
+        $this->assertSame(Aluno::STATUS_PENDENTE, $contraTurno->status);
+        $this->assertSame($principal->id, $contraTurno->aluno_origem_id);
+        $this->assertNull($contraTurno->cgm_contra_turno_ativo);
     }
 
     private function criarEscola(string $nome): Escola
