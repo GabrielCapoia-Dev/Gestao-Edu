@@ -104,10 +104,10 @@ class Aluno extends Model
         });
 
         /*
-         * Principal e Contra Turno representam o mesmo aluno dentro da unidade.
-         * Os dados pessoais compartilhados devem permanecer idênticos, independentemente
-         * de qual dos dois vínculos foi editado. Turma, tipo de vínculo e status são
-         * tratados pelos fluxos próprios de movimentação e não são copiados aqui.
+         * Principal e Contra Turno representam a mesma pessoa dentro da unidade.
+         * Nome, nascimento e sexo são compartilhados. Data de matrícula NÃO é
+         * compartilhada: ela pertence ao vínculo específico e pode ser diferente
+         * entre Principal e Contra Turno.
          */
         static::saved(function (Aluno $aluno): void {
             if (! in_array($aluno->status, [self::STATUS_MATRICULADO, self::STATUS_PENDENTE], true)) {
@@ -118,7 +118,6 @@ class Aluno extends Model
                 'nome',
                 'data_nascimento',
                 'sexo',
-                'data_matricula',
             ])) {
                 return;
             }
@@ -149,7 +148,6 @@ class Aluno extends Model
                         'nome' => $aluno->nome,
                         'data_nascimento' => $aluno->data_nascimento,
                         'sexo' => $aluno->sexo,
-                        'data_matricula' => $aluno->data_matricula,
                     ]);
 
                     if ($vinculo->isDirty()) {
