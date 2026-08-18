@@ -10,7 +10,6 @@ use App\Services\AlunoMovimentacaoService;
 use App\Services\Alunos\AlunoImportacaoSpreadsheetService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
-use InvalidArgumentException;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use RuntimeException;
@@ -151,7 +150,7 @@ class AlunoContraTurnoImportacaoTest extends TestCase
         );
     }
 
-    public function test_contra_turno_importado_na_nova_escola_aguarda_principal_sair_da_pendencia(): void
+    public function test_contra_turno_da_planilha_e_criado_mesmo_quando_principal_da_nova_escola_esta_pendente(): void
     {
         Storage::fake('local');
 
@@ -159,7 +158,7 @@ class AlunoContraTurnoImportacaoTest extends TestCase
         $escolaDestino = $this->criarEscola('Escola Nova');
         $serieOrigem = $this->criarSerie('1 Ano Origem');
         $turmaOrigem = $this->criarTurma($escolaOrigem, $serieOrigem, 'A', 'manha');
-        $this->criarAlunoPrincipal($turmaOrigem, '9003');
+        $alunoOrigem = $this->criarAlunoPrincipal($turmaOrigem, '9003');
 
         $caminho = $this->criarPlanilhaNoStorage('local', [
             ['Escola', 'Seriacao', 'Turma', 'Turno', 'CGM', 'Nome do Aluno', 'Data de Nascimento', 'Sexo', 'Tipo de vinculo'],
@@ -167,24 +166,31 @@ class AlunoContraTurnoImportacaoTest extends TestCase
             [$escolaDestino->nome, 'Sala de Recursos', 'SRM', 'Tarde', '9003', 'Aluno Em Transferencia', '01/02/2019', 'M', 'Contra Turno'],
         ]);
 
-        try {
-            app(AlunoImportacaoSpreadsheetService::class)->importar($caminho, null, 'local');
-            $this->fail('O contra turno não deveria ser ativado enquanto a matrícula principal está pendente.');
-        } catch (InvalidArgumentException $exception) {
-            $this->assertStringContainsString('ainda está Pendente nesta escola', $exception->getMessage());
-        }
+        $resultado = app(AlunoImportacaoSpreadsheetService::class)->importar($caminho, null, 'local');
 
-        $this->assertDatabaseHas('alunos', [
-            'cgm' => '9003',
-            'tipo_vinculo' => Aluno::TIPO_VINCULO_PRINCIPAL,
-            'status' => Aluno::STATUS_PENDENTE,
-        ]);
+        $this->assertSame(2, $resultado['total_importado']);
+        $this->assertSame(1, $resultado['total_pendente']);
 
-        $this->assertDatabaseMissing('alunos', [
-            'cgm' => '9003',
-            'tipo_vinculo' => Aluno::TIPO_VINCULO_CONTRA_TURNO,
-            'status' => Aluno::STATUS_MATRICULADO,
-        ]);
+        $pendente = Aluno::query()
+            ->with('turma')
+            ->where('cgm', '9003')
+            ->where('tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL)
+            ->where('status', Aluno::STATUS_PENDENTE)
+            ->firstOrFail();
+
+        $contraTurno = Aluno::query()
+            ->with('turma')
+            ->where('cgm', '9003')
+            ->where('tipo_vinculo', Aluno::TIPO_VINCULO_CONTRA_TURNO)
+            ->where('status', Aluno::STATUS_MATRICULADO)
+            ->firstOrFail();
+
+        $this->assertSame($alunoOrigem->id, $pendente->pendencia_origem_aluno_id);
+        $this->assertSame($escolaDestino->id, $pendente->turma->id_escola);
+        $this->assertSame($escolaDestino->id, $contraTurno->turma->id_escola);
+        $this->assertSame($pendente->id, $contraTurno->aluno_origem_id);
+        $this->assertSame($pendente->id_turma, $contraTurno->turma_origem_id);
+        $this->assertTrue((bool) $pendente->fresh()->permite_contra_turno);
     }
 
     private function criarEscola(string $nome): Escola
