@@ -72,13 +72,6 @@ class AlunoImportacaoSincronizacaoService
             $existente = $porUnidade->get($chave);
 
             if ($existente) {
-                /*
-                 * Não usamos apenas id_turma para decidir remanejamento.
-                 * Bases antigas podem possuir duas turmas/séries com IDs diferentes,
-                 * porém semanticamente idênticas (mesma escola, série, turma e turno).
-                 * Nessa situação a planilha deve considerar o aluno na mesma turma,
-                 * e nunca gerar um histórico falso de remanejamento.
-                 */
                 if (! $this->mesmaTurmaLogica($existente->turma, $turmaDestino)) {
                     $novo = $this->remanejarPrincipalPorImportacao(
                         $existente,
@@ -102,11 +95,6 @@ class AlunoImportacaoSincronizacaoService
                 continue;
             }
 
-            /*
-             * Somente os vínculos que realmente ainda não existem na unidade são
-             * enviados ao fluxo em lote. Isso mantém a sincronização rápida mesmo
-             * para planilhas com milhares de alunos.
-             */
             $novasMatriculas[] = [
                 'nome' => $linha['nome'],
                 'cgm' => $cgm,
@@ -132,13 +120,9 @@ class AlunoImportacaoSincronizacaoService
     }
 
     /**
-     * Sincroniza vínculos de contra turno já existentes e cria os ainda inexistentes.
-     * O vínculo de Contra Turno pode utilizar inclusive a mesma turma do Principal,
-     * desde que ambos pertençam à mesma escola.
-     *
-     * Na importação por planilha, um Principal Pendente é um vínculo válido. O
-     * status Pendente representa apenas a transferência ainda não concluída e não
-     * deve interromper a sincronização dos demais dados enviados pela planilha.
+     * Sincroniza vínculos de Contra Turno já existentes e cria os inexistentes.
+     * O status do Contra Turno sempre reflete o Principal da mesma escola:
+     * Matriculado -> Matriculado; Pendente -> Pendente.
      *
      * @param  array<int, array<string, mixed>>  $linhas
      * @return array{total_importado:int,total_atualizado:int,total_remanejado:int,total_sem_alteracao:int,total_pendente:int}
@@ -176,13 +160,25 @@ class AlunoImportacaoSincronizacaoService
                 (string) $aluno->cgm,
             ));
 
-        $contraTurnosAtivos = Aluno::query()
+        /*
+         * Contra Turno Pendente também é vínculo existente. A chave inclui escola,
+         * pois durante uma transferência pode coexistir um Contra Turno Matriculado
+         * na origem e outro Pendente no destino.
+         */
+        $contraTurnosPorUnidade = Aluno::query()
             ->with('turma.serie')
             ->whereIn('cgm', $cgms)
             ->where('tipo_vinculo', Aluno::TIPO_VINCULO_CONTRA_TURNO)
-            ->where('status', Aluno::STATUS_MATRICULADO)
+            ->whereIn('status', [
+                Aluno::STATUS_MATRICULADO,
+                Aluno::STATUS_PENDENTE,
+            ])
             ->get()
-            ->keyBy(fn (Aluno $aluno): string => Aluno::normalizarCgm((string) $aluno->cgm));
+            ->filter(fn (Aluno $aluno): bool => $aluno->turma !== null)
+            ->keyBy(fn (Aluno $aluno): string => $this->chaveUnidade(
+                (int) $aluno->turma->id_escola,
+                (string) $aluno->cgm,
+            ));
 
         foreach ($linhas as $linha) {
             /** @var Turma|null $turmaDestino */
@@ -206,7 +202,7 @@ class AlunoImportacaoSincronizacaoService
             }
 
             /** @var Aluno|null $contraTurno */
-            $contraTurno = $contraTurnosAtivos->get($cgm);
+            $contraTurno = $contraTurnosPorUnidade->get($chave);
 
             if ($contraTurno) {
                 if (! $this->mesmaTurmaLogica($contraTurno->turma, $turmaDestino)) {
@@ -218,15 +214,32 @@ class AlunoImportacaoSincronizacaoService
                         $usuario,
                     );
 
-                    $contraTurnosAtivos->put($cgm, $novo);
+                    $contraTurnosPorUnidade->put($chave, $novo);
                     $resultado['total_remanejado']++;
+
+                    if ($novo->estaPendente()) {
+                        $resultado['total_pendente']++;
+                    }
 
                     continue;
                 }
 
+                /* Garante que um vínculo legado divergente herde o estado do Principal. */
+                if ((string) $contraTurno->status !== (string) $principal->status) {
+                    $contraTurno->forceFill([
+                        'status' => $principal->status,
+                        'status_alterado_em' => now(),
+                        'status_alterado_por' => $usuario?->id,
+                        'status_motivo' => 'Status corrigido pela sincronização para refletir o vínculo Principal.',
+                        'aluno_origem_id' => (int) $principal->id,
+                        'turma_origem_id' => (int) $principal->id_turma,
+                    ])->save();
+                    $resultado['total_atualizado']++;
+                }
+
                 if ($this->atualizarDadosImportados($contraTurno, $linha)) {
                     $resultado['total_atualizado']++;
-                } else {
+                } elseif ((string) $contraTurno->status === (string) $principal->status) {
                     $resultado['total_sem_alteracao']++;
                 }
 
@@ -240,19 +253,20 @@ class AlunoImportacaoSincronizacaoService
                 $usuario,
             );
 
-            $contraTurnosAtivos->put($cgm, $novo->fresh(['turma.serie']));
+            $contraTurnosPorUnidade->put($chave, $novo->fresh(['turma.serie']));
             $resultado['total_importado']++;
+
+            if ($novo->estaPendente()) {
+                $resultado['total_pendente']++;
+            }
         }
 
         return $resultado;
     }
 
     /**
-     * Cria o vínculo secundário diretamente no fluxo de sincronização da planilha.
-     *
-     * O fluxo manual de vinculação pode manter regras próprias de interface. Para
-     * a planilha, porém, o Principal Pendente não é impedimento: ele já representa
-     * a matrícula cadastrada na escola de destino aguardando a transferência.
+     * Cria o vínculo secundário diretamente no fluxo da planilha. Principal
+     * Pendente não bloqueia o cadastro; o Contra Turno nasce Pendente também.
      *
      * @param  array<string, mixed>  $linha
      */
@@ -277,27 +291,31 @@ class AlunoImportacaoSincronizacaoService
         }
 
         /*
-         * Não alteramos status_motivo/status_alterado_em do Principal aqui. Se ele
-         * estiver Pendente, esses campos pertencem ao fluxo de transferência e
-         * precisam continuar registrando a causa real da pendência.
+         * Se a linha de Contra Turno trouxer dados pessoais atualizados, ela também
+         * pode corrigir o Principal. Em seguida o novo vínculo nasce como reflexo.
          */
+        $this->atualizarDadosImportados($principal, $linha);
+        $principal->refresh();
+
         $principal->forceFill([
             'permite_contra_turno' => true,
         ])->save();
 
         return Aluno::query()->create([
-            'nome' => $linha['nome'] ?? $principal->nome,
+            'nome' => $principal->nome,
             'cgm' => $principal->cgm,
-            'data_nascimento' => $linha['data_nascimento'] ?? $principal->data_nascimento?->toDateString(),
-            'sexo' => $linha['sexo'] ?? $principal->sexo,
-            'data_matricula' => $linha['data_matricula'] ?? $principal->data_matricula?->toDateString(),
+            'data_nascimento' => $principal->data_nascimento,
+            'sexo' => $principal->sexo,
+            'data_matricula' => $principal->data_matricula,
             'id_turma' => (int) $turmaDestino->id,
             'tipo_vinculo' => Aluno::TIPO_VINCULO_CONTRA_TURNO,
             'permite_contra_turno' => false,
-            'status' => Aluno::STATUS_MATRICULADO,
+            'status' => $principal->status,
             'status_alterado_em' => now(),
             'status_alterado_por' => $usuario?->id,
-            'status_motivo' => 'Vínculo de contra turno criado por sincronização da planilha de alunos.',
+            'status_motivo' => $principal->estaPendente()
+                ? 'Vínculo de contra turno criado como Pendente, refletindo a matrícula Principal.'
+                : 'Vínculo de contra turno criado por sincronização da planilha de alunos.',
             'aluno_origem_id' => (int) $principal->id,
             'turma_origem_id' => (int) $principal->id_turma,
             'movimentacao_origem' => AlunoMovimentacaoService::MOVIMENTACAO_CONTRA_TURNO,
@@ -365,19 +383,11 @@ class AlunoImportacaoSincronizacaoService
             $usuario,
         );
 
-        /*
-         * Um vínculo de contra turno ativo aponta para o Principal atual.
-         * Se o Principal foi recriado pelo remanejamento, atualizamos essa referência.
-         */
-        Aluno::query()
-            ->where('cgm_contra_turno_ativo', $novo->cgm)
-            ->where('tipo_vinculo', Aluno::TIPO_VINCULO_CONTRA_TURNO)
-            ->where('status', Aluno::STATUS_MATRICULADO)
-            ->update([
-                'aluno_origem_id' => (int) $novo->id,
-                'turma_origem_id' => (int) $novo->id_turma,
-                'updated_at' => now(),
-            ]);
+        $this->movimentacaoService->alinharContraTurnoAoPrincipal(
+            $novo,
+            $usuario,
+            'Vínculo atualizado após remanejamento do Principal pela planilha.'
+        );
 
         return $novo->fresh(['turma.serie']);
     }
@@ -395,13 +405,20 @@ class AlunoImportacaoSincronizacaoService
         $contraTurno->refresh()->loadMissing('turma');
         $principal->refresh()->loadMissing('turma');
 
-        if (! $contraTurno->isContraTurno() || ! $contraTurno->estaMatriculado()) {
-            throw new RuntimeException('Somente vínculos ativos de Contra Turno podem ser remanejados pela importação.');
+        if (
+            ! $contraTurno->isContraTurno()
+            || (! $contraTurno->estaMatriculado() && ! $contraTurno->estaPendente())
+        ) {
+            throw new RuntimeException('Somente vínculos de Contra Turno matriculados ou pendentes podem ser remanejados pela importação.');
         }
 
         if (! $principal->turma || (int) $principal->turma->id_escola !== (int) $turmaDestino->id_escola) {
             throw new RuntimeException('A turma de Contra Turno precisa pertencer à mesma escola da matrícula Principal.');
         }
+
+        /* A linha do Contra Turno também pode atualizar os dados do Principal. */
+        $this->atualizarDadosImportados($principal, $linha);
+        $principal->refresh();
 
         $contraTurno->forceFill([
             'status' => Aluno::STATUS_REMANEJADO,
@@ -414,24 +431,21 @@ class AlunoImportacaoSincronizacaoService
             'permite_contra_turno' => true,
         ])->save();
 
-        /*
-         * Mantém o mesmo contrato de vincularContraTurno(): o vínculo secundário
-         * ativo aponta para o Principal atual. O registro anterior permanece como
-         * REMANEJADO e o histórico avaliativo registra a movimentação entre os IDs.
-         */
         $novo = Aluno::query()->create([
-            'nome' => $linha['nome'] ?? $contraTurno->nome,
-            'cgm' => $contraTurno->cgm,
-            'data_nascimento' => $linha['data_nascimento'] ?? $contraTurno->data_nascimento?->toDateString(),
-            'sexo' => $linha['sexo'] ?? $contraTurno->sexo,
-            'data_matricula' => $linha['data_matricula'] ?? $contraTurno->data_matricula?->toDateString(),
+            'nome' => $principal->nome,
+            'cgm' => $principal->cgm,
+            'data_nascimento' => $principal->data_nascimento,
+            'sexo' => $principal->sexo,
+            'data_matricula' => $principal->data_matricula,
             'id_turma' => (int) $turmaDestino->id,
             'tipo_vinculo' => Aluno::TIPO_VINCULO_CONTRA_TURNO,
             'permite_contra_turno' => false,
-            'status' => Aluno::STATUS_MATRICULADO,
+            'status' => $principal->status,
             'status_alterado_em' => now(),
             'status_alterado_por' => $usuario?->id,
-            'status_motivo' => 'Vínculo de contra turno atualizado por remanejamento da sincronização da planilha.',
+            'status_motivo' => $principal->estaPendente()
+                ? 'Vínculo de contra turno remanejado e mantido Pendente junto ao Principal.'
+                : 'Vínculo de contra turno atualizado por remanejamento da sincronização da planilha.',
             'aluno_origem_id' => (int) $principal->id,
             'turma_origem_id' => (int) $principal->id_turma,
             'movimentacao_origem' => AlunoMovimentacaoService::MOVIMENTACAO_CONTRA_TURNO,
@@ -448,8 +462,8 @@ class AlunoImportacaoSincronizacaoService
     }
 
     /**
-     * Atualiza apenas os dados realmente diferentes. Data da matrícula vazia na
-     * planilha não apaga uma data já cadastrada, pois a coluna continua opcional.
+     * Atualiza somente dados pessoais realmente diferentes e reflete a alteração no
+     * outro vínculo da mesma escola. Turma e tipo de vínculo permanecem independentes.
      *
      * @param  array<string, mixed>  $linha
      */
@@ -472,15 +486,14 @@ class AlunoImportacaoSincronizacaoService
         }
 
         $aluno->save();
+        $this->movimentacaoService->sincronizarDadosCompartilhados($aluno);
 
         return true;
     }
 
     /**
-     * Duas turmas são consideradas iguais para a sincronização quando representam
-     * a mesma unidade, série, turma e turno, mesmo que tenham IDs diferentes.
-     * Isso protege bases que possuam cadastros duplicados herdados de importações
-     * antigas e impede remanejamentos falsos para a própria turma.
+     * Duas turmas são iguais para a sincronização quando representam a mesma
+     * escola, série, turma e turno, mesmo que seus IDs internos sejam diferentes.
      */
     private function mesmaTurmaLogica(?Turma $atual, Turma $destino): bool
     {
