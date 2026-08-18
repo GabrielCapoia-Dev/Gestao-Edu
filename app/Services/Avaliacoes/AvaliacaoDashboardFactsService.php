@@ -2,14 +2,28 @@
 
 namespace App\Services\Avaliacoes;
 
-use App\Jobs\RebuildAvaliacaoDashboardFactsJob;
 use App\Models\Aluno;
 use App\Models\Turma;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class AvaliacaoDashboardFactsService
 {
-    public function requestRebuild(int $avaliacaoId): void
+    private const STATUS_PENDING = 'pendente';
+
+    private const STATUS_PROCESSING = 'processando';
+
+    private const STATUS_READY = 'consolidado';
+
+    private const STATUS_FAILED = 'erro';
+
+    /**
+     * Marca a projeção analítica como desatualizada sem executar consolidação.
+     *
+     * Este método é intencionalmente barato para poder ser chamado no caminho
+     * de gravação das respostas dos professores.
+     */
+    public function markDirty(int $avaliacaoId): void
     {
         if ($avaliacaoId <= 0) {
             return;
@@ -18,15 +32,61 @@ class AvaliacaoDashboardFactsService
         DB::table('avaliacao_dashboard_consolidacoes')->upsert([
             [
                 'avaliacao_id' => $avaliacaoId,
-                'status' => 'pendente',
+                'status' => self::STATUS_PENDING,
                 'solicitada_em' => now(),
                 'erro' => null,
                 'updated_at' => now(),
                 'created_at' => now(),
             ],
         ], ['avaliacao_id'], ['status', 'solicitada_em', 'erro', 'updated_at']);
+    }
 
-        RebuildAvaliacaoDashboardFactsJob::dispatch($avaliacaoId)->afterCommit();
+    /**
+     * Solicitação explícita de atualização (ex.: botão "Atualizar").
+     *
+     * Diferentemente do autosave, a chamada explícita atualiza os fatos na
+     * própria requisição para que a tela possa ler a fotografia nova logo em seguida.
+     */
+    public function requestRebuild(int $avaliacaoId): void
+    {
+        if ($avaliacaoId <= 0) {
+            return;
+        }
+
+        $this->markDirty($avaliacaoId);
+        $this->refreshIfDirty($avaliacaoId);
+    }
+
+    /**
+     * Atualiza a projeção somente quando ela está pendente, ausente ou falhou.
+     * Retorna true quando uma consolidação foi executada nesta chamada.
+     */
+    public function refreshIfDirty(int $avaliacaoId): bool
+    {
+        if ($avaliacaoId <= 0) {
+            return false;
+        }
+
+        $lock = Cache::lock('avaliacao-dashboard-facts-refresh:'.$avaliacaoId, 180);
+
+        if (! $lock->get()) {
+            return false;
+        }
+
+        try {
+            $consolidacao = $this->status($avaliacaoId);
+            $status = (string) ($consolidacao?->status ?? '');
+
+            if ($status === self::STATUS_READY) {
+                return false;
+            }
+
+            $this->rebuild($avaliacaoId);
+
+            return true;
+        } finally {
+            $lock->release();
+        }
     }
 
     public function status(int $avaliacaoId): ?object
@@ -41,7 +101,7 @@ class AvaliacaoDashboardFactsService
         DB::table('avaliacao_dashboard_consolidacoes')->upsert([
             [
                 'avaliacao_id' => $avaliacaoId,
-                'status' => 'processando',
+                'status' => self::STATUS_PROCESSING,
                 'iniciada_em' => now(),
                 'erro' => null,
                 'created_at' => now(),
@@ -51,7 +111,12 @@ class AvaliacaoDashboardFactsService
 
         DB::table('avaliacao_dashboard_consolidacoes')
             ->where('avaliacao_id', $avaliacaoId)
-            ->update(['status' => 'processando', 'iniciada_em' => now(), 'erro' => null, 'updated_at' => now()]);
+            ->update([
+                'status' => self::STATUS_PROCESSING,
+                'iniciada_em' => now(),
+                'erro' => null,
+                'updated_at' => now(),
+            ]);
 
         try {
             DB::transaction(function () use ($avaliacaoId): void {
@@ -123,9 +188,30 @@ class AvaliacaoDashboardFactsService
                 $this->aplicarRespostas($avaliacaoId);
             });
 
-            DB::table('avaliacao_dashboard_consolidacoes')
+            $consolidadaEm = now();
+
+            // Só marca como consolidado se nenhuma gravação tiver marcado a
+            // avaliação como pendente enquanto o rebuild estava em andamento.
+            $finalizada = DB::table('avaliacao_dashboard_consolidacoes')
                 ->where('avaliacao_id', $avaliacaoId)
-                ->update(['status' => 'consolidado', 'consolidada_em' => now(), 'updated_at' => now()]);
+                ->where('status', self::STATUS_PROCESSING)
+                ->update([
+                    'status' => self::STATUS_READY,
+                    'consolidada_em' => $consolidadaEm,
+                    'erro' => null,
+                    'updated_at' => $consolidadaEm,
+                ]);
+
+            if ($finalizada === 0) {
+                DB::table('avaliacao_dashboard_consolidacoes')
+                    ->where('avaliacao_id', $avaliacaoId)
+                    ->where('status', self::STATUS_PENDING)
+                    ->update([
+                        'consolidada_em' => $consolidadaEm,
+                        'erro' => null,
+                        'updated_at' => $consolidadaEm,
+                    ]);
+            }
 
             app(AvaliacaoDashboardMetricsService::class)->forgetForAvaliacao($avaliacaoId);
         } catch (\Throwable $exception) {
@@ -149,9 +235,28 @@ class AvaliacaoDashboardFactsService
 
     public function markFailed(int $avaliacaoId, ?string $erro): void
     {
-        DB::table('avaliacao_dashboard_consolidacoes')
+        $agora = now();
+
+        $marcadaComoErro = DB::table('avaliacao_dashboard_consolidacoes')
             ->where('avaliacao_id', $avaliacaoId)
-            ->update(['status' => 'erro', 'erro' => $erro, 'updated_at' => now()]);
+            ->where('status', self::STATUS_PROCESSING)
+            ->update([
+                'status' => self::STATUS_FAILED,
+                'erro' => $erro,
+                'updated_at' => $agora,
+            ]);
+
+        if ($marcadaComoErro === 0) {
+            // Se houve uma resposta durante o processamento, preserva o
+            // estado pendente para permitir nova tentativa no próximo acesso.
+            DB::table('avaliacao_dashboard_consolidacoes')
+                ->where('avaliacao_id', $avaliacaoId)
+                ->where('status', self::STATUS_PENDING)
+                ->update([
+                    'erro' => $erro,
+                    'updated_at' => $agora,
+                ]);
+        }
     }
 
     private function aplicarRespostas(int $avaliacaoId): void
