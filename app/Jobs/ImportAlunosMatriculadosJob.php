@@ -46,15 +46,24 @@ class ImportAlunosMatriculadosJob implements ShouldQueue
         }
 
         try {
-            $processo?->markRunning('Importando alunos da planilha.');
+            $processo?->markRunning('Sincronizando alunos da planilha.');
 
             $resultado = $service->importar($this->caminhoArquivo, $usuario, $this->disk, $this->processRequestId);
-            $mensagem = "{$resultado['total_importado']} aluno(s) importado(s). Séries criadas: {$resultado['series_criadas']}. Turmas criadas: {$resultado['turmas_criadas']}. Pendentes: {$resultado['total_pendente']}. CGMs duplicados ignorados: {$resultado['duplicados_ignorados']}.";
+            $mensagem = implode(' ', [
+                "Novos: {$resultado['total_importado']}.",
+                "Atualizados: {$resultado['total_atualizado']}.",
+                "Remanejados: {$resultado['total_remanejado']}.",
+                "Sem alterações: {$resultado['total_sem_alteracao']}.",
+                "Pendentes aguardando transferência: {$resultado['total_pendente']}.",
+                "Séries criadas: {$resultado['series_criadas']}.",
+                "Turmas criadas: {$resultado['turmas_criadas']}.",
+                "Linhas duplicadas ignoradas: {$resultado['duplicados_ignorados']}.",
+            ]);
 
             $processo?->refresh()->markProcessFinished($mensagem);
 
             $usuario?->notify(new SistemaNotification(
-                titulo: 'Importação de alunos concluída',
+                titulo: 'Sincronização de alunos concluída',
                 mensagem: $mensagem,
                 url: route('filament.admin.resources.alunos.index'),
                 label: 'Ver alunos',
@@ -65,7 +74,7 @@ class ImportAlunosMatriculadosJob implements ShouldQueue
             $processo?->refresh()->markFailed($exception->getMessage());
 
             $usuario?->notify(new SistemaNotification(
-                titulo: 'Falha na importação de alunos',
+                titulo: 'Falha na sincronização de alunos',
                 mensagem: $exception->getMessage(),
                 url: route('filament.admin.resources.alunos.index'),
                 label: 'Ver alunos',
@@ -74,17 +83,17 @@ class ImportAlunosMatriculadosJob implements ShouldQueue
                 metadata: ['tipo' => 'importacao_alunos'],
             ));
         } catch (Throwable $exception) {
-            $processo?->refresh()->markFailed('A importação não pode ser concluída. Tente novamente ou acione o suporte.');
+            $processo?->refresh()->markFailed('A sincronização não pode ser concluída. Tente novamente ou acione o suporte.');
 
-            Log::error('Falha inesperada na importação de alunos.', [
+            Log::error('Falha inesperada na sincronização de alunos.', [
                 'caminho_arquivo' => $this->caminhoArquivo,
                 'usuario_id' => $this->usuarioId,
                 'exception' => $exception,
             ]);
 
             $usuario?->notify(new SistemaNotification(
-                titulo: 'Falha na importação de alunos',
-                mensagem: 'A importação não pode ser concluída. Tente novamente ou acione o suporte.',
+                titulo: 'Falha na sincronização de alunos',
+                mensagem: 'A sincronização não pode ser concluída. Tente novamente ou acione o suporte.',
                 url: route('filament.admin.resources.alunos.index'),
                 label: 'Ver alunos',
                 prioridade: 'alta',
