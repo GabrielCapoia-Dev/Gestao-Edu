@@ -380,7 +380,7 @@ class AlunoMovimentacaoFluxoTest extends TestCase
         ]);
     }
 
-    public function test_contra_turno_bloqueia_turma_invalida_por_escola_serie_e_turno(): void
+    public function test_contra_turno_permite_mesmo_turno_e_outra_serie_na_mesma_escola_e_bloqueia_outra_escola(): void
     {
         $escola = $this->criarEscola('Escola Contra Turno Regra');
         $outraEscola = $this->criarEscola('Escola Externa Contra Turno');
@@ -401,50 +401,47 @@ class AlunoMovimentacaoFluxoTest extends TestCase
 
         $service = app(AlunoMovimentacaoService::class);
 
-        foreach ([
-            [$turmaMesmoTurno->id, 'turno diferente'],
-            [$turmaOutraSerie->id, 'mesma serie'],
-            [$turmaOutraEscola->id, 'mesma escola'],
-        ] as [$turmaId, $mensagem]) {
-            try {
-                $service->vincularContraTurno($aluno, $turmaId);
-                $this->fail('A validacao do contra turno deveria falhar.');
-            } catch (\RuntimeException $exception) {
-                $this->assertStringContainsString($mensagem, $exception->getMessage());
-            }
-        }
+        $mesmoTurno = $service->vincularContraTurno($aluno, $turmaMesmoTurno->id);
+        $this->assertSame($turmaMesmoTurno->id, $mesmoTurno->id_turma);
+        $service->encerrarContraTurno($mesmoTurno);
+
+        $outraSerieVinculo = $service->vincularContraTurno($aluno->fresh(), $turmaOutraSerie->id);
+        $this->assertSame($turmaOutraSerie->id, $outraSerieVinculo->id_turma);
+        $service->encerrarContraTurno($outraSerieVinculo);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('mesma escola');
+
+        $service->vincularContraTurno($aluno->fresh(), $turmaOutraEscola->id);
     }
 
-    public function test_movimentacoes_do_vinculo_principal_falham_com_contra_turno_ativo(): void
+    public function test_remanejamento_do_principal_com_contra_turno_ativo_atualiza_referencia_sem_bloquear(): void
     {
-        $escola = $this->criarEscola('Escola Movimento Bloqueado');
+        $escola = $this->criarEscola('Escola Movimento Reflexo');
         $serie = Serie::query()->create(['codigo' => 'SER-MOV-CT', 'nome' => '6o Ano']);
         $turmaPrincipal = $this->criarTurma($escola, 'Principal', $serie, 'manha');
         $turmaContraTurno = $this->criarTurma($escola, 'Contra', $serie, 'tarde');
         $turmaRemanejamento = $this->criarTurma($escola, 'Remanejamento', $serie, 'noite');
 
         $aluno = Aluno::query()->create([
-            'nome' => 'Aluno Movimento Bloqueado',
+            'nome' => 'Aluno Movimento Reflexo',
             'cgm' => 'CGM-CT-MOV',
             'data_nascimento' => '2015-01-01',
             'id_turma' => $turmaPrincipal->id,
         ]);
 
         $service = app(AlunoMovimentacaoService::class);
-        $service->vincularContraTurno($aluno, $turmaContraTurno->id);
+        $contraTurno = $service->vincularContraTurno($aluno, $turmaContraTurno->id);
+        $novoPrincipal = $service->remanejar($aluno, $turmaRemanejamento->id);
 
-        foreach ([
-            fn () => $service->remanejar($aluno, $turmaRemanejamento->id),
-            fn () => $service->transferir($aluno, User::factory()->create()),
-            fn () => $service->marcarStatusFinal($aluno, Aluno::STATUS_APROVADO),
-        ] as $acao) {
-            try {
-                $acao();
-                $this->fail('A movimentacao principal deveria ser bloqueada enquanto houver contra turno ativo.');
-            } catch (\RuntimeException $exception) {
-                $this->assertStringContainsString('contra turno', $exception->getMessage());
-            }
-        }
+        $contraTurno->refresh();
+
+        $this->assertSame(Aluno::STATUS_REMANEJADO, $aluno->fresh()->status);
+        $this->assertSame(Aluno::STATUS_MATRICULADO, $novoPrincipal->status);
+        $this->assertSame(Aluno::STATUS_MATRICULADO, $contraTurno->status);
+        $this->assertSame($turmaContraTurno->id, $contraTurno->id_turma);
+        $this->assertSame($novoPrincipal->id, $contraTurno->aluno_origem_id);
+        $this->assertSame($novoPrincipal->id_turma, $contraTurno->turma_origem_id);
     }
 
     public function test_encerrar_contra_turno_preserva_historico_e_bloqueia_dados_avaliativos(): void
