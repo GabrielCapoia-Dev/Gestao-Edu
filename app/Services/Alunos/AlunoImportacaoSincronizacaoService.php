@@ -7,7 +7,6 @@ use App\Models\AvaliacaoAlunoDocumentoHistorico;
 use App\Models\Turma;
 use App\Models\User;
 use App\Services\AlunoMovimentacaoService;
-use Illuminate\Support\Collection;
 use RuntimeException;
 
 class AlunoImportacaoSincronizacaoService
@@ -300,6 +299,10 @@ class AlunoImportacaoSincronizacaoService
             $usuario,
         );
 
+        /*
+         * Um vínculo de contra turno ativo aponta para o Principal atual.
+         * Se o Principal foi recriado pelo remanejamento, atualizamos essa referência.
+         */
         Aluno::query()
             ->where('cgm_contra_turno_ativo', $novo->cgm)
             ->where('tipo_vinculo', Aluno::TIPO_VINCULO_CONTRA_TURNO)
@@ -338,8 +341,6 @@ class AlunoImportacaoSincronizacaoService
             throw new RuntimeException('A turma de Contra Turno deve ser diferente da turma Principal.');
         }
 
-        $turmaOrigemId = (int) $contraTurno->id_turma;
-
         $contraTurno->forceFill([
             'status' => Aluno::STATUS_REMANEJADO,
             'status_alterado_em' => now(),
@@ -351,6 +352,11 @@ class AlunoImportacaoSincronizacaoService
             'permite_contra_turno' => true,
         ])->save();
 
+        /*
+         * Mantém o mesmo contrato de vincularContraTurno(): o vínculo secundário
+         * ativo aponta para o Principal atual. O registro anterior permanece como
+         * REMANEJADO e o histórico avaliativo registra a movimentação entre os IDs.
+         */
         $novo = Aluno::query()->create([
             'nome' => $linha['nome'] ?? $contraTurno->nome,
             'cgm' => $contraTurno->cgm,
@@ -364,9 +370,9 @@ class AlunoImportacaoSincronizacaoService
             'status_alterado_em' => now(),
             'status_alterado_por' => $usuario?->id,
             'status_motivo' => 'Vínculo de contra turno atualizado por remanejamento da sincronização da planilha.',
-            'aluno_origem_id' => (int) $contraTurno->id,
-            'turma_origem_id' => $turmaOrigemId,
-            'movimentacao_origem' => AlunoMovimentacaoService::MOVIMENTACAO_REMANEJAMENTO,
+            'aluno_origem_id' => (int) $principal->id,
+            'turma_origem_id' => (int) $principal->id_turma,
+            'movimentacao_origem' => AlunoMovimentacaoService::MOVIMENTACAO_CONTRA_TURNO,
         ]);
 
         $this->movimentacaoService->moverDocumentosAvaliativos(
