@@ -693,7 +693,8 @@ class AlunoMovimentacaoService
 
                 $this->validarTurmaContraTurno(
                     $aluno,
-                    $turmaDestino
+                    $turmaDestino,
+                    $usuario
                 );
 
                 $existente = $this->contraTurnoAtivoDoPrincipal(
@@ -1202,7 +1203,8 @@ class AlunoMovimentacaoService
 
     private function validarTurmaContraTurno(
         Aluno $aluno,
-        Turma $turmaDestino
+        Turma $turmaDestino,
+        ?User $usuario = null
     ): void {
         $turmaOrigem = $aluno->turma;
 
@@ -1211,6 +1213,9 @@ class AlunoMovimentacaoService
                 'Turma principal do aluno nao encontrada.'
             );
         }
+
+        $this->assertUsuarioPodeAcessarTurma($usuario, $turmaOrigem);
+        $this->assertUsuarioPodeAcessarTurma($usuario, $turmaDestino);
 
         if (
             (int) $turmaOrigem->id
@@ -1227,24 +1232,6 @@ class AlunoMovimentacaoService
         ) {
             throw new RuntimeException(
                 'Contra turno so pode ocorrer dentro da mesma escola.'
-            );
-        }
-
-        if (
-            (int) $turmaOrigem->id_serie
-            !== (int) $turmaDestino->id_serie
-        ) {
-            throw new RuntimeException(
-                'Contra turno so pode ocorrer entre turmas da mesma serie.'
-            );
-        }
-
-        if (
-            (string) $turmaOrigem->turno
-            === (string) $turmaDestino->turno
-        ) {
-            throw new RuntimeException(
-                'Contra turno exige uma turma de turno diferente da matricula principal.'
             );
         }
     }
