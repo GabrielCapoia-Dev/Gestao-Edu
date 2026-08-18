@@ -102,6 +102,61 @@ class Aluno extends Model
                 $aluno->status_alterado_em = now();
             }
         });
+
+        /*
+         * Principal e Contra Turno representam o mesmo aluno dentro da unidade.
+         * Os dados pessoais compartilhados devem permanecer idênticos, independentemente
+         * de qual dos dois vínculos foi editado. Turma, tipo de vínculo e status são
+         * tratados pelos fluxos próprios de movimentação e não são copiados aqui.
+         */
+        static::saved(function (Aluno $aluno): void {
+            if (! in_array($aluno->status, [self::STATUS_MATRICULADO, self::STATUS_PENDENTE], true)) {
+                return;
+            }
+
+            if (! $aluno->wasChanged([
+                'nome',
+                'data_nascimento',
+                'sexo',
+                'data_matricula',
+            ])) {
+                return;
+            }
+
+            $aluno->loadMissing('turma');
+
+            if (! $aluno->turma) {
+                return;
+            }
+
+            self::query()
+                ->with('turma')
+                ->whereKeyNot((int) $aluno->id)
+                ->where('cgm', self::normalizarCgm($aluno->cgm))
+                ->whereIn('tipo_vinculo', [
+                    self::TIPO_VINCULO_PRINCIPAL,
+                    self::TIPO_VINCULO_CONTRA_TURNO,
+                ])
+                ->whereIn('status', [
+                    self::STATUS_MATRICULADO,
+                    self::STATUS_PENDENTE,
+                ])
+                ->whereHas('turma', fn ($query) => $query
+                    ->where('id_escola', (int) $aluno->turma->id_escola))
+                ->get()
+                ->each(function (Aluno $vinculo) use ($aluno): void {
+                    $vinculo->forceFill([
+                        'nome' => $aluno->nome,
+                        'data_nascimento' => $aluno->data_nascimento,
+                        'sexo' => $aluno->sexo,
+                        'data_matricula' => $aluno->data_matricula,
+                    ]);
+
+                    if ($vinculo->isDirty()) {
+                        $vinculo->saveQuietly();
+                    }
+                });
+        });
     }
 
     public static function statusOptions(): array
@@ -227,5 +282,4 @@ class Aluno extends Model
     {
         return $this->hasMany(AvaliacaoAlunoDocumento::class, 'aluno_id');
     }
-
 }
