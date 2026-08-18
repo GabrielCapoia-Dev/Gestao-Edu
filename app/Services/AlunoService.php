@@ -178,7 +178,7 @@ class AlunoService
                         ->visible(fn (Get $get, ?string $operation = null): bool => $operation !== 'create'
                             && ($get('tipo_vinculo') ?? Aluno::TIPO_VINCULO_PRINCIPAL) === Aluno::TIPO_VINCULO_PRINCIPAL
                             && (bool) ($get('permite_contra_turno') ?? false))
-                        ->helperText('Opcional. Pode ser qualquer turma da mesma escola, inclusive a própria turma Principal.')
+                        ->helperText('Opcional. Pode ser qualquer outra turma da mesma escola, inclusive de outra serie ou do mesmo turno.')
                         ->columnSpanFull(),
 
                     Select::make('status')
@@ -921,7 +921,7 @@ class AlunoService
         }
 
         return $this->cadastroAlunoRestritoPorCgm($user)
-            || ! $this->formularioAlunoLiberadoAposCgm($get, $operation, $user);
+            || ! $this->formularioAlunoLiberadoAposCgm($get, $user);
     }
 
     private function atributosCampoBloqueadoAposCgm(Get $get, ?string $operation, ?User $user, bool $dadosOficiais = false): array
@@ -1133,6 +1133,7 @@ class AlunoService
         $query = Turma::query()
             ->with(['serie:id,nome', 'escola:id,nome'])
             ->where('id_escola', (int) $aluno->turma->id_escola)
+            ->whereKeyNot((int) $aluno->id_turma)
             ->orderBy('id_serie')
             ->orderBy('nome');
 
@@ -1165,6 +1166,7 @@ class AlunoService
         $query = Turma::query()
             ->with(['serie:id,nome', 'escola:id,nome'])
             ->where('id_escola', (int) $turmaAtual->id_escola)
+            ->whereKeyNot((int) $turmaAtual->id)
             ->orderBy('id_serie')
             ->orderBy('nome');
 
