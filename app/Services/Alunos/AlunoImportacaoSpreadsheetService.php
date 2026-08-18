@@ -429,7 +429,19 @@ class AlunoImportacaoSpreadsheetService
     {
         /** @var Escola $escola */
         $escola = $linha['escola'];
-        $chave = $this->chaveTurma((int) $escola->id, (int) $serie->id, $linha['turma'], $linha['turno']);
+
+        /*
+         * A identidade da turma na planilha é semântica: escola + nome da série +
+         * turma + turno. Não usamos id_serie na chave porque bases antigas podem
+         * possuir séries duplicadas com o mesmo nome e IDs diferentes.
+         */
+        $chave = $this->chaveTurma(
+            (int) $escola->id,
+            (string) $serie->nome,
+            $linha['turma'],
+            $linha['turno']
+        );
+
         $turma = $turmas->get($chave);
 
         if ($turma) {
@@ -443,6 +455,7 @@ class AlunoImportacaoSpreadsheetService
             'id_escola' => (int) $escola->id,
         ]);
 
+        $turma->setRelation('serie', $serie);
         $turmas->put($chave, $turma);
 
         return [$turma, true];
@@ -466,20 +479,22 @@ class AlunoImportacaoSpreadsheetService
     private function turmasPorChave(): Collection
     {
         return Turma::query()
+            ->with('serie:id,nome')
             ->get()
+            ->filter(fn (Turma $turma): bool => $turma->serie !== null)
             ->keyBy(fn (Turma $turma): string => $this->chaveTurma(
                 (int) $turma->id_escola,
-                (int) $turma->id_serie,
+                (string) $turma->serie->nome,
                 (string) $turma->nome,
                 (string) $turma->turno
             ));
     }
 
-    private function chaveTurma(int $escolaId, int $serieId, string $turma, string $turno): string
+    private function chaveTurma(int $escolaId, string $serie, string $turma, string $turno): string
     {
         return implode('|', [
             $escolaId,
-            $serieId,
+            $this->normalizarTexto($serie),
             $this->normalizarTexto($turma),
             $this->normalizarTexto($turno),
         ]);
