@@ -1226,7 +1226,7 @@ class AlunoMovimentacaoService
             !== (int) $turmaDestino->id_escola
         ) {
             throw new RuntimeException(
-                'Contra turno so pode ocorrer dentro da mesma escola.'
+                'Contra turno só pode ocorrer dentro da mesma escola.'
             );
         }
     }
