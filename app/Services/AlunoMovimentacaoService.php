@@ -61,8 +61,8 @@ class AlunoMovimentacaoService
                 'sexo' => $origemPendente?->sexo
                     ?? $data['sexo']
                     ?? null,
-                'data_matricula' => $origemPendente?->data_matricula
-                    ?? $data['data_matricula']
+                'data_matricula' => $data['data_matricula']
+                    ?? $origemPendente?->data_matricula
                     ?? null,
                 'tipo_vinculo' => Aluno::TIPO_VINCULO_PRINCIPAL,
                 'permite_contra_turno' => false,
@@ -223,8 +223,8 @@ class AlunoMovimentacaoService
                 'sexo' => $origemPendente?->sexo
                     ?? $linha['sexo']
                     ?? null,
-                'data_matricula' => $origemPendente?->data_matricula
-                    ?? $linha['data_matricula']
+                'data_matricula' => $linha['data_matricula']
+                    ?? $origemPendente?->data_matricula
                     ?? null,
                 'tipo_vinculo' => Aluno::TIPO_VINCULO_PRINCIPAL,
                 'permite_contra_turno' => false,
@@ -841,7 +841,7 @@ class AlunoMovimentacaoService
 
     /**
      * Sincroniza os dados pessoais compartilhados entre Principal e Contra Turno
-     * da mesma escola. Turma e tipo de vinculo nao sao espelhados.
+     * da mesma escola. Data de matrícula pertence ao vínculo e não é espelhada.
      */
     public function sincronizarDadosCompartilhados(
         Aluno $origem,
@@ -867,7 +867,6 @@ class AlunoMovimentacaoService
             'cgm' => $origem->cgm,
             'data_nascimento' => $origem->data_nascimento,
             'sexo' => $origem->sexo,
-            'data_matricula' => $origem->data_matricula,
         ];
 
         Aluno::query()
@@ -896,8 +895,7 @@ class AlunoMovimentacaoService
 
     /**
      * O status do Contra Turno acompanha o Principal dentro da mesma escola.
-     * Alem do status, atualiza a referencia para o Principal atual e os dados
-     * pessoais compartilhados.
+     * Data de matrícula permanece específica de cada vínculo.
      */
     public function alinharContraTurnoAoPrincipal(
         Aluno $principal,
@@ -940,7 +938,6 @@ class AlunoMovimentacaoService
                     'cgm' => $principal->cgm,
                     'data_nascimento' => $principal->data_nascimento,
                     'sexo' => $principal->sexo,
-                    'data_matricula' => $principal->data_matricula,
                     'aluno_origem_id' => (int) $principal->id,
                     'turma_origem_id' => (int) $principal->id_turma,
                 ];
