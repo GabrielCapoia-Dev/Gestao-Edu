@@ -297,10 +297,10 @@ class AlunoImportacaoSincronizacaoService
         }
 
         /*
-         * Se a linha de Contra Turno trouxer dados pessoais atualizados, ela também
-         * pode corrigir o Principal. Em seguida o novo vínculo nasce como reflexo.
+         * Nome, nascimento e sexo podem corrigir o Principal. Data de matrícula
+         * pertence ao vínculo Contra Turno e não deve sobrescrever a matrícula Principal.
          */
-        $this->atualizarDadosImportados($principal, $linha);
+        $this->atualizarDadosImportados($principal, $linha, incluirDataMatricula: false);
         $principal->refresh();
 
         $principal->forceFill([
@@ -312,7 +312,7 @@ class AlunoImportacaoSincronizacaoService
             'cgm' => $principal->cgm,
             'data_nascimento' => $principal->data_nascimento,
             'sexo' => $principal->sexo,
-            'data_matricula' => $principal->data_matricula,
+            'data_matricula' => $linha['data_matricula'] ?? $principal->data_matricula?->toDateString(),
             'id_turma' => (int) $turmaDestino->id,
             'tipo_vinculo' => Aluno::TIPO_VINCULO_CONTRA_TURNO,
             'permite_contra_turno' => false,
@@ -422,8 +422,8 @@ class AlunoImportacaoSincronizacaoService
             throw new RuntimeException('A turma de Contra Turno precisa pertencer à mesma escola da matrícula Principal.');
         }
 
-        /* A linha do Contra Turno também pode atualizar os dados do Principal. */
-        $this->atualizarDadosImportados($principal, $linha);
+        /* Dados pessoais podem refletir no Principal; data de matrícula permanece do Contra Turno. */
+        $this->atualizarDadosImportados($principal, $linha, incluirDataMatricula: false);
         $principal->refresh();
 
         $contraTurno->forceFill([
@@ -442,7 +442,7 @@ class AlunoImportacaoSincronizacaoService
             'cgm' => $principal->cgm,
             'data_nascimento' => $principal->data_nascimento,
             'sexo' => $principal->sexo,
-            'data_matricula' => $principal->data_matricula,
+            'data_matricula' => $linha['data_matricula'] ?? $contraTurno->data_matricula?->toDateString() ?? $principal->data_matricula?->toDateString(),
             'id_turma' => (int) $turmaDestino->id,
             'tipo_vinculo' => Aluno::TIPO_VINCULO_CONTRA_TURNO,
             'permite_contra_turno' => false,
@@ -468,20 +468,24 @@ class AlunoImportacaoSincronizacaoService
     }
 
     /**
-     * Atualiza somente dados pessoais realmente diferentes e reflete a alteração no
-     * outro vínculo da mesma escola. Turma e tipo de vínculo permanecem independentes.
+     * Atualiza dados da linha no vínculo informado. Nome, nascimento e sexo são
+     * compartilhados entre Principal/Contra Turno pela regra do modelo. A data de
+     * matrícula é específica do vínculo e só é alterada no registro alvo.
      *
      * @param  array<string, mixed>  $linha
      */
-    private function atualizarDadosImportados(Aluno $aluno, array $linha): bool
-    {
+    private function atualizarDadosImportados(
+        Aluno $aluno,
+        array $linha,
+        bool $incluirDataMatricula = true,
+    ): bool {
         $dados = [
             'nome' => $linha['nome'] ?? $aluno->nome,
             'data_nascimento' => $linha['data_nascimento'] ?? $aluno->data_nascimento?->toDateString(),
             'sexo' => $linha['sexo'] ?? $aluno->sexo,
         ];
 
-        if (filled($linha['data_matricula'] ?? null)) {
+        if ($incluirDataMatricula && filled($linha['data_matricula'] ?? null)) {
             $dados['data_matricula'] = $linha['data_matricula'];
         }
 
@@ -492,7 +496,6 @@ class AlunoImportacaoSincronizacaoService
         }
 
         $aluno->save();
-        $this->movimentacaoService->sincronizarDadosCompartilhados($aluno);
 
         return true;
     }
