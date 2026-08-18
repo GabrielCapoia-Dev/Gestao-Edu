@@ -125,6 +125,8 @@ class AlunoImportacaoSincronizacaoService
 
     /**
      * Sincroniza vínculos de contra turno já existentes e cria os ainda inexistentes.
+     * O vínculo de Contra Turno pode utilizar inclusive a mesma turma do Principal,
+     * desde que ambos pertençam à mesma escola.
      *
      * @param  array<int, array<string, mixed>>  $linhas
      * @return array{total_importado:int,total_atualizado:int,total_remanejado:int,total_sem_alteracao:int,total_pendente:int}
