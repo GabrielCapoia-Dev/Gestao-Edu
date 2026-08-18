@@ -43,7 +43,7 @@ class AlunoVinculoReflexoTransferenciaTest extends TestCase
             'cgm' => $principalOrigem->cgm,
             'data_nascimento' => $principalOrigem->data_nascimento,
             'sexo' => $principalOrigem->sexo,
-            'data_matricula' => $principalOrigem->data_matricula,
+            'data_matricula' => '2026-06-08',
             'id_turma' => $turmaPrincipalDestino->id,
             'tipo_vinculo' => Aluno::TIPO_VINCULO_PRINCIPAL,
             'status' => Aluno::STATUS_PENDENTE,
@@ -55,7 +55,7 @@ class AlunoVinculoReflexoTransferenciaTest extends TestCase
             'cgm' => $principalDestino->cgm,
             'data_nascimento' => $principalDestino->data_nascimento,
             'sexo' => $principalDestino->sexo,
-            'data_matricula' => $principalDestino->data_matricula,
+            'data_matricula' => '2026-08-06',
             'id_turma' => $turmaContraDestino->id,
             'tipo_vinculo' => Aluno::TIPO_VINCULO_CONTRA_TURNO,
             'status' => Aluno::STATUS_PENDENTE,
@@ -78,9 +78,11 @@ class AlunoVinculoReflexoTransferenciaTest extends TestCase
         $this->assertSame($principalDestino->id, $contraDestino->aluno_origem_id);
         $this->assertSame($principalDestino->cgm, $contraDestino->cgm_contra_turno_ativo);
         $this->assertNull($contraOrigem->fresh()->cgm_contra_turno_ativo);
+        $this->assertSame('2026-06-08', $principalDestino->data_matricula?->toDateString());
+        $this->assertSame('2026-08-06', $contraDestino->data_matricula?->toDateString());
     }
 
-    public function test_dados_atualizados_pelo_contra_turno_refletem_no_principal_da_mesma_escola(): void
+    public function test_dados_pessoais_atualizados_pelo_contra_turno_refletem_no_principal_sem_sobrescrever_data_de_matricula(): void
     {
         $escola = $this->criarEscola('Escola Reflexo');
         $serie = $this->criarSerie('5 Ano');
@@ -115,7 +117,8 @@ class AlunoVinculoReflexoTransferenciaTest extends TestCase
         $this->assertSame('Nome Atualizado Pela Planilha', $principal->fresh()->nome);
         $this->assertSame('F', $principal->fresh()->sexo);
         $this->assertSame('2017-05-10', $principal->fresh()->data_nascimento?->toDateString());
-        $this->assertSame('2026-02-20', $principal->fresh()->data_matricula?->toDateString());
+        $this->assertSame('2026-02-10', $principal->fresh()->data_matricula?->toDateString());
+        $this->assertSame('2026-02-20', $contra->fresh()->data_matricula?->toDateString());
     }
 
     public function test_terceira_escola_e_bloqueada_quando_ja_existe_origem_matriculada_e_destino_pendente(): void
