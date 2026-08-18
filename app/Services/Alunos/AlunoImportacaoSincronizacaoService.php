@@ -224,6 +224,8 @@ class AlunoImportacaoSincronizacaoService
                     continue;
                 }
 
+                $houveAtualizacao = false;
+
                 /* Garante que um vínculo legado divergente herde o estado do Principal. */
                 if ((string) $contraTurno->status !== (string) $principal->status) {
                     $contraTurno->forceFill([
@@ -234,12 +236,16 @@ class AlunoImportacaoSincronizacaoService
                         'aluno_origem_id' => (int) $principal->id,
                         'turma_origem_id' => (int) $principal->id_turma,
                     ])->save();
-                    $resultado['total_atualizado']++;
+                    $houveAtualizacao = true;
                 }
 
                 if ($this->atualizarDadosImportados($contraTurno, $linha)) {
+                    $houveAtualizacao = true;
+                }
+
+                if ($houveAtualizacao) {
                     $resultado['total_atualizado']++;
-                } elseif ((string) $contraTurno->status === (string) $principal->status) {
+                } else {
                     $resultado['total_sem_alteracao']++;
                 }
 
