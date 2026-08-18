@@ -178,7 +178,7 @@ class AlunoService
                         ->visible(fn (Get $get, ?string $operation = null): bool => $operation !== 'create'
                             && ($get('tipo_vinculo') ?? Aluno::TIPO_VINCULO_PRINCIPAL) === Aluno::TIPO_VINCULO_PRINCIPAL
                             && (bool) ($get('permite_contra_turno') ?? false))
-                        ->helperText('Opcional. Se informado, cria o vinculo secundario em turno diferente.')
+                        ->helperText('Opcional. Pode ser qualquer turma da mesma escola, inclusive a própria turma Principal.')
                         ->columnSpanFull(),
 
                     Select::make('status')
@@ -566,6 +566,16 @@ class AlunoService
                         'motivo' => null,
                     ])
                     ->modalHeading(fn (Aluno $record): string => 'Contra turno de '.$record->nome)
+                    ->modalDescription(function (Aluno $record): string {
+                        $record->loadMissing('turma.escola', 'turma.serie');
+
+                        return collect([
+                            filled($record->cgm) ? 'CGM: '.$record->cgm : null,
+                            filled($record->turma?->escola?->nome) ? 'Escola: '.$record->turma->escola->nome : null,
+                            filled($record->turma?->serie?->nome) ? 'Série: '.$record->turma->serie->nome : null,
+                            filled($record->turma?->nome) ? 'Turma atual: '.$record->turma->nome : null,
+                        ])->filter()->join(' | ');
+                    })
                     ->modalSubmitActionLabel('Salvar')
                     ->schema(fn (Aluno $record): array => [
                         Select::make('turma_contra_turno_id')
@@ -745,7 +755,7 @@ class AlunoService
     {
         return ! $this->professorEstaBloqueado($user)
             && $record->isPrincipal()
-            && $record->estaMatriculado()
+            && ($record->estaMatriculado() || $record->estaPendente())
             && ($user && Gate::forUser($user)->allows('contraTurno', $record));
     }
 
@@ -753,7 +763,7 @@ class AlunoService
     {
         return ! $this->professorEstaBloqueado($user)
             && $record->isContraTurno()
-            && $record->estaMatriculado()
+            && ($record->estaMatriculado() || $record->estaPendente())
             && ($user && Gate::forUser($user)->allows('encerrarContraTurno', $record));
     }
 
@@ -810,7 +820,11 @@ class AlunoService
 
                     foreach ($records as $record) {
                         try {
-                            if (! $record instanceof Aluno || ! $record->isPrincipal() || ! $record->estaMatriculado()) {
+                            if (
+                                ! $record instanceof Aluno
+                                || ! $record->isPrincipal()
+                                || (! $record->estaMatriculado() && ! $record->estaPendente())
+                            ) {
                                 throw new \RuntimeException('Registro invalido para contra turno.');
                             }
 
@@ -1123,9 +1137,7 @@ class AlunoService
         $query = Turma::query()
             ->with(['serie:id,nome', 'escola:id,nome'])
             ->where('id_escola', (int) $aluno->turma->id_escola)
-            ->where('id_serie', (int) $aluno->turma->id_serie)
-            ->where('turno', '!=', (string) $aluno->turma->turno)
-            ->whereKeyNot((int) $aluno->id_turma)
+            ->orderBy('id_serie')
             ->orderBy('nome');
 
         $this->aplicarFiltroTurmasFormularioAluno($query, $user);
@@ -1157,9 +1169,7 @@ class AlunoService
         $query = Turma::query()
             ->with(['serie:id,nome', 'escola:id,nome'])
             ->where('id_escola', (int) $turmaAtual->id_escola)
-            ->where('id_serie', (int) $turmaAtual->id_serie)
-            ->where('turno', '!=', (string) $turmaAtual->turno)
-            ->whereKeyNot((int) $turmaAtual->id)
+            ->orderBy('id_serie')
             ->orderBy('nome');
 
         $this->aplicarFiltroTurmasFormularioAluno($query, $user);
@@ -1330,10 +1340,22 @@ class AlunoService
 
     private function contraTurnoAtivo(Aluno $aluno): ?Aluno
     {
+        $aluno->loadMissing('turma');
+
+        if (! $aluno->turma) {
+            return null;
+        }
+
         return Aluno::query()
-            ->where('cgm_contra_turno_ativo', $aluno->cgm)
+            ->with('turma')
+            ->where('cgm', Aluno::normalizarCgm($aluno->cgm))
             ->where('tipo_vinculo', Aluno::TIPO_VINCULO_CONTRA_TURNO)
-            ->where('status', Aluno::STATUS_MATRICULADO)
+            ->whereIn('status', [
+                Aluno::STATUS_MATRICULADO,
+                Aluno::STATUS_PENDENTE,
+            ])
+            ->whereHas('turma', fn (Builder $query): Builder => $query
+                ->where('id_escola', (int) $aluno->turma->id_escola))
             ->first();
     }
 

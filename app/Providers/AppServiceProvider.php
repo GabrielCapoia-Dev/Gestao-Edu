@@ -45,10 +45,10 @@ use App\Models\Turma;
 use App\Models\TurmaComponenteProfessor;
 use App\Models\User;
 use App\Models\VeiculoTransporte;
+use App\Observers\AvaliacaoDashboardSourceObserver;
 use App\Observers\PedidoObserver;
 use App\Observers\ProfessorObserver;
 use App\Observers\TurmaComponenteProfessorObserver;
-use App\Observers\AvaliacaoDashboardSourceObserver;
 use App\Policies\AlternativaPolicy;
 use App\Policies\AlunoPolicy;
 use App\Policies\AvaliacaoPolicy;
@@ -67,8 +67,8 @@ use App\Policies\EventoCalendarioTransporteAlocacaoPolicy;
 use App\Policies\ExportRequestPolicy;
 use App\Policies\FeedbackPedidoPolicy;
 use App\Policies\FuncaoAdministrativaPolicy;
-use App\Policies\InventarioPedidoPolicy;
 use App\Policies\ImportacaoEventoCalendarioPolicy;
+use App\Policies\InventarioPedidoPolicy;
 use App\Policies\InventarioPolicy;
 use App\Policies\ItemPolicy;
 use App\Policies\LocalTrabalhoPolicy;
@@ -84,8 +84,8 @@ use App\Policies\ReservaVeiculoPolicy;
 use App\Policies\RolePolicy;
 use App\Policies\SeriePolicy;
 use App\Policies\SetorPolicy;
-use App\Policies\ServidorPolicy;
 use App\Policies\ServidorFuncaoAdministrativaPolicy;
+use App\Policies\ServidorPolicy;
 use App\Policies\TipoManutencaoPolicy;
 use App\Policies\TurmaPolicy;
 use App\Policies\UserPolicy;
@@ -93,6 +93,7 @@ use App\Policies\VeiculoTransportePolicy;
 use App\Services\Exports\ExportSessionService;
 use App\Services\NotificationCenterService;
 use App\Services\UserPresenceService;
+use Filament\Actions\ViewAction;
 use Filament\Auth\Http\Responses\Contracts\LoginResponse as LoginResponseContract;
 use Filament\Support\Assets\Css;
 use Filament\Support\Assets\Js;
@@ -166,6 +167,61 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(FeedbackPedido::class, FeedbackPedidoPolicy::class);
         Gate::policy(NotificacaoEnvio::class, NotificationPolicy::class);
         Gate::policy(VeiculoTransporte::class, VeiculoTransportePolicy::class);
+
+        // ── Ficha completa do aluno no ViewAction ─────────────────────────────
+        ViewAction::configureUsing(function (ViewAction $action): void {
+            if ($action->getName() !== 'visualizar') {
+                return;
+            }
+
+            $action->modalContent(function ($record) {
+                if (! $record instanceof Aluno) {
+                    return null;
+                }
+
+                $record->loadMissing([
+                    'turma.escola',
+                    'turma.serie',
+                    'statusAlteradoPor',
+                    'alunoOrigem.turma.escola',
+                    'alunoOrigem.turma.serie',
+                    'pendenciaOrigem.turma.escola',
+                    'pendenciaOrigem.turma.serie',
+                    'turmaOrigem.escola',
+                    'turmaOrigem.serie',
+                ]);
+
+                $vinculos = Aluno::query()
+                    ->with(['turma.escola', 'turma.serie'])
+                    ->where('cgm', Aluno::normalizarCgm($record->cgm))
+                    ->orderByRaw(
+                        'case status when ? then 0 when ? then 1 when ? then 2 when ? then 3 else 4 end',
+                        [
+                            Aluno::STATUS_MATRICULADO,
+                            Aluno::STATUS_PENDENTE,
+                            Aluno::STATUS_REMANEJADO,
+                            Aluno::STATUS_TRANSFERIDO,
+                        ]
+                    )
+                    ->orderByRaw(
+                        'case when tipo_vinculo = ? then 0 else 1 end',
+                        [Aluno::TIPO_VINCULO_PRINCIPAL]
+                    )
+                    ->latest('status_alterado_em')
+                    ->latest('id')
+                    ->get();
+
+                $user = auth()->user();
+                $podeListarEscolas = $user instanceof User
+                    && Gate::forUser($user)->allows('viewAny', Escola::class);
+
+                return view('components.alunos.ficha-aluno-modal', [
+                    'aluno' => $record,
+                    'vinculos' => $vinculos,
+                    'podeListarEscolas' => $podeListarEscolas,
+                ]);
+            });
+        });
 
         // ── Observers ──────────────────────────────────────────────────────────
         Pedido::observe(PedidoObserver::class);

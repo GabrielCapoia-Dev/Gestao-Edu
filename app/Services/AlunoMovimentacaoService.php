@@ -61,8 +61,8 @@ class AlunoMovimentacaoService
                 'sexo' => $origemPendente?->sexo
                     ?? $data['sexo']
                     ?? null,
-                'data_matricula' => $origemPendente?->data_matricula
-                    ?? $data['data_matricula']
+                'data_matricula' => $data['data_matricula']
+                    ?? $origemPendente?->data_matricula
                     ?? null,
                 'tipo_vinculo' => Aluno::TIPO_VINCULO_PRINCIPAL,
                 'permite_contra_turno' => false,
@@ -190,6 +190,11 @@ class AlunoMovimentacaoService
                 );
             }
 
+            /*
+             * Um CGM pode ter no maximo uma escola de destino aguardando
+             * transferencia. Se ja existe Principal Pendente, uma terceira escola
+             * nao pode criar outra pendencia.
+             */
             if (isset($pendentesIndex[$cgm])) {
                 throw new MatriculaAlunoBloqueadaException(
                     $pendentesIndex[$cgm],
@@ -218,8 +223,8 @@ class AlunoMovimentacaoService
                 'sexo' => $origemPendente?->sexo
                     ?? $linha['sexo']
                     ?? null,
-                'data_matricula' => $origemPendente?->data_matricula
-                    ?? $linha['data_matricula']
+                'data_matricula' => $linha['data_matricula']
+                    ?? $origemPendente?->data_matricula
                     ?? null,
                 'tipo_vinculo' => Aluno::TIPO_VINCULO_PRINCIPAL,
                 'permite_contra_turno' => false,
@@ -439,10 +444,6 @@ class AlunoMovimentacaoService
                     );
                 }
 
-                $this->bloquearMovimentacaoSePossuiContraTurnoAtivo(
-                    $aluno
-                );
-
                 if (
                     (int) $aluno->id_turma
                     === (int) $turmaDestino->id
@@ -510,6 +511,16 @@ class AlunoMovimentacaoService
                     $usuario
                 );
 
+                /*
+                 * O Contra Turno permanece na sua propria turma, mas passa a
+                 * apontar para o novo registro Principal e herda os dados/estado.
+                 */
+                $this->alinharContraTurnoAoPrincipal(
+                    $novoAluno,
+                    $usuario,
+                    'Vinculo atualizado apos remanejamento do Principal.'
+                );
+
                 return $novoAluno;
             }
         );
@@ -546,10 +557,6 @@ class AlunoMovimentacaoService
                     );
                 }
 
-                $this->bloquearMovimentacaoSePossuiContraTurnoAtivo(
-                    $aluno
-                );
-
                 $aluno->forceFill([
                     'status' => Aluno::STATUS_TRANSFERIDO,
                     'status_alterado_em' => now(),
@@ -557,6 +564,16 @@ class AlunoMovimentacaoService
                     'status_motivo' => $motivo
                         ?: 'Parecer de transferencia gerado.',
                 ])->save();
+
+                /*
+                 * Primeiro encerra o estado ativo do par na escola de origem.
+                 * Depois resolverPendenciasDeTransferencia ativa o par no destino.
+                 */
+                $this->alinharContraTurnoAoPrincipal(
+                    $aluno,
+                    $usuario,
+                    $motivo ?: 'Transferencia refletida no vinculo de contra turno.'
+                );
 
                 $this->resolverPendenciasDeTransferencia(
                     $aluno,
@@ -595,25 +612,31 @@ class AlunoMovimentacaoService
             );
         }
 
-        $this->bloquearMovimentacaoSePossuiContraTurnoAtivo(
-            $aluno
-        );
+        return DB::transaction(function () use ($aluno, $status, $usuario, $motivo): Aluno {
+            $aluno->refresh()->loadMissing('turma');
 
-        $aluno->forceFill([
-            'status' => $status,
-            'status_alterado_em' => now(),
-            'status_alterado_por' => $usuario?->id,
-            'status_motivo' => $motivo,
-        ])->save();
+            $aluno->forceFill([
+                'status' => $status,
+                'status_alterado_em' => now(),
+                'status_alterado_por' => $usuario?->id,
+                'status_motivo' => $motivo,
+            ])->save();
 
-        if ($status === Aluno::STATUS_TRANSFERIDO) {
-            $this->resolverPendenciasDeTransferencia(
+            $this->alinharContraTurnoAoPrincipal(
                 $aluno,
-                $usuario
+                $usuario,
+                $motivo ?: 'Status do vinculo Principal refletido no Contra Turno.'
             );
-        }
 
-        return $aluno;
+            if ($status === Aluno::STATUS_TRANSFERIDO) {
+                $this->resolverPendenciasDeTransferencia(
+                    $aluno,
+                    $usuario
+                );
+            }
+
+            return $aluno;
+        });
     }
 
     public function marcarContraTurno(
@@ -634,18 +657,18 @@ class AlunoMovimentacaoService
                     'Somente o vinculo principal pode ser marcado como contra turno.'
                 );
 
-                if (! $aluno->estaMatriculado()) {
+                if (! $aluno->estaMatriculado() && ! $aluno->estaPendente()) {
                     throw new RuntimeException(
-                        'Somente alunos matriculados podem ser marcados como contra turno.'
+                        'Somente alunos matriculados ou pendentes podem receber contra turno.'
                     );
                 }
 
+                /*
+                 * Nao alteramos os campos de status do Principal aqui. Em especial,
+                 * um Principal Pendente precisa preservar o motivo da transferencia.
+                 */
                 $aluno->forceFill([
                     'permite_contra_turno' => true,
-                    'status_alterado_em' => now(),
-                    'status_alterado_por' => $usuario?->id,
-                    'status_motivo' => $motivo
-                        ?: 'Aluno marcado como apto para contra turno.',
                 ])->save();
 
                 return $aluno;
@@ -678,9 +701,9 @@ class AlunoMovimentacaoService
                     'Somente o vinculo principal pode receber turma de contra turno.'
                 );
 
-                if (! $aluno->estaMatriculado()) {
+                if (! $aluno->estaMatriculado() && ! $aluno->estaPendente()) {
                     throw new RuntimeException(
-                        'Somente alunos matriculados podem receber turma de contra turno.'
+                        'Somente alunos matriculados ou pendentes podem receber turma de contra turno.'
                     );
                 }
 
@@ -693,10 +716,11 @@ class AlunoMovimentacaoService
 
                 $this->validarTurmaContraTurno(
                     $aluno,
-                    $turmaDestino
+                    $turmaDestino,
+                    $usuario
                 );
 
-                $existente = $this->contraTurnoAtivoDoPrincipal(
+                $existente = $this->contraTurnoNaUnidadeDoPrincipal(
                     $aluno
                 );
 
@@ -706,20 +730,18 @@ class AlunoMovimentacaoService
                     !== (int) $turmaDestino->id
                 ) {
                     throw new RuntimeException(
-                        'O aluno ja possui um vinculo ativo de contra turno.'
+                        'O aluno ja possui um vinculo de contra turno matriculado ou pendente nesta escola.'
                     );
                 }
 
                 $aluno->forceFill([
                     'permite_contra_turno' => true,
-                    'status_alterado_em' => now(),
-                    'status_alterado_por' => $usuario?->id,
-                    'status_motivo' => $motivo
-                        ?: 'Aluno marcado como apto para contra turno.',
                 ])->save();
 
                 if ($existente) {
-                    return $existente;
+                    $this->sincronizarDadosCompartilhados($aluno);
+
+                    return $existente->fresh();
                 }
 
                 return Aluno::query()->create([
@@ -731,11 +753,13 @@ class AlunoMovimentacaoService
                     'id_turma' => (int) $turmaDestino->id,
                     'tipo_vinculo' => Aluno::TIPO_VINCULO_CONTRA_TURNO,
                     'permite_contra_turno' => false,
-                    'status' => Aluno::STATUS_MATRICULADO,
+                    'status' => $aluno->status,
                     'status_alterado_em' => now(),
                     'status_alterado_por' => $usuario?->id,
                     'status_motivo' => $motivo
-                        ?: 'Vinculo de contra turno criado.',
+                        ?: ($aluno->estaPendente()
+                            ? 'Vinculo de contra turno criado como pendente, refletindo a matricula Principal.'
+                            : 'Vinculo de contra turno criado.'),
                     'aluno_origem_id' => (int) $aluno->id,
                     'turma_origem_id' => (int) $aluno->id_turma,
                     'movimentacao_origem' => self::MOVIMENTACAO_CONTRA_TURNO,
@@ -755,7 +779,7 @@ class AlunoMovimentacaoService
                 $usuario,
                 $motivo
             ): Aluno {
-                $aluno->refresh();
+                $aluno->refresh()->loadMissing('turma');
 
                 if (! $aluno->isContraTurno()) {
                     throw new RuntimeException(
@@ -763,9 +787,9 @@ class AlunoMovimentacaoService
                     );
                 }
 
-                if (! $aluno->estaMatriculado()) {
+                if (! $aluno->estaMatriculado() && ! $aluno->estaPendente()) {
                     throw new RuntimeException(
-                        'Somente vinculos de contra turno ativos podem ser encerrados.'
+                        'Somente vinculos de contra turno matriculados ou pendentes podem ser encerrados.'
                     );
                 }
 
@@ -777,17 +801,11 @@ class AlunoMovimentacaoService
                         ?: 'Vinculo de contra turno encerrado.',
                 ])->save();
 
-                $principal = $this->principalAtivoPorCgm(
-                    $aluno->cgm
-                );
+                $principal = $this->principalNaUnidadeDoContraTurno($aluno);
 
                 if ($principal) {
                     $principal->forceFill([
                         'permite_contra_turno' => false,
-                        'status_alterado_em' => now(),
-                        'status_alterado_por' => $usuario?->id,
-                        'status_motivo' => $motivo
-                            ?: 'Contra turno desmarcado.',
                     ])->save();
                 }
 
@@ -819,6 +837,124 @@ class AlunoMovimentacaoService
             $motivo
                 ?: 'Aluno retornado para a turma anterior.'
         );
+    }
+
+    /**
+     * Sincroniza os dados pessoais compartilhados entre Principal e Contra Turno
+     * da mesma escola. Data de matrícula pertence ao vínculo e não é espelhada.
+     */
+    public function sincronizarDadosCompartilhados(
+        Aluno $origem,
+        ?string $cgmAnterior = null
+    ): void {
+        $origem->loadMissing('turma');
+
+        if (! $origem->turma) {
+            return;
+        }
+
+        $cgms = collect([
+            Aluno::normalizarCgm($origem->cgm),
+            Aluno::normalizarCgm($cgmAnterior),
+        ])->filter()->unique()->values()->all();
+
+        if ($cgms === []) {
+            return;
+        }
+
+        $dados = [
+            'nome' => $origem->nome,
+            'cgm' => $origem->cgm,
+            'data_nascimento' => $origem->data_nascimento,
+            'sexo' => $origem->sexo,
+        ];
+
+        Aluno::query()
+            ->with('turma')
+            ->whereKeyNot((int) $origem->id)
+            ->whereIn('cgm', $cgms)
+            ->whereIn('tipo_vinculo', [
+                Aluno::TIPO_VINCULO_PRINCIPAL,
+                Aluno::TIPO_VINCULO_CONTRA_TURNO,
+            ])
+            ->whereIn('status', [
+                Aluno::STATUS_MATRICULADO,
+                Aluno::STATUS_PENDENTE,
+            ])
+            ->whereHas('turma', fn (Builder $query): Builder => $query
+                ->where('id_escola', (int) $origem->turma->id_escola))
+            ->get()
+            ->each(function (Aluno $destino) use ($dados): void {
+                $destino->forceFill($dados);
+
+                if ($destino->isDirty()) {
+                    $destino->save();
+                }
+            });
+    }
+
+    /**
+     * O status do Contra Turno acompanha o Principal dentro da mesma escola.
+     * Data de matrícula permanece específica de cada vínculo.
+     */
+    public function alinharContraTurnoAoPrincipal(
+        Aluno $principal,
+        ?User $usuario = null,
+        ?string $motivo = null
+    ): void {
+        $principal->loadMissing('turma');
+
+        if (! $principal->isPrincipal() || ! $principal->turma) {
+            return;
+        }
+
+        $statusEspelhavel = in_array($principal->status, [
+            Aluno::STATUS_MATRICULADO,
+            Aluno::STATUS_PENDENTE,
+            Aluno::STATUS_TRANSFERIDO,
+            Aluno::STATUS_APROVADO,
+            Aluno::STATUS_RETIDO,
+        ], true);
+
+        Aluno::query()
+            ->with('turma')
+            ->where('cgm', Aluno::normalizarCgm($principal->cgm))
+            ->where('tipo_vinculo', Aluno::TIPO_VINCULO_CONTRA_TURNO)
+            ->whereIn('status', [
+                Aluno::STATUS_MATRICULADO,
+                Aluno::STATUS_PENDENTE,
+            ])
+            ->whereHas('turma', fn (Builder $query): Builder => $query
+                ->where('id_escola', (int) $principal->turma->id_escola))
+            ->get()
+            ->each(function (Aluno $contraTurno) use (
+                $principal,
+                $usuario,
+                $motivo,
+                $statusEspelhavel
+            ): void {
+                $dados = [
+                    'nome' => $principal->nome,
+                    'cgm' => $principal->cgm,
+                    'data_nascimento' => $principal->data_nascimento,
+                    'sexo' => $principal->sexo,
+                    'aluno_origem_id' => (int) $principal->id,
+                    'turma_origem_id' => (int) $principal->id_turma,
+                ];
+
+                if ($statusEspelhavel) {
+                    $dados = [
+                        ...$dados,
+                        'status' => $principal->status,
+                        'status_alterado_em' => now(),
+                        'status_alterado_por' => $usuario?->id,
+                        'status_motivo' => $motivo
+                            ?: 'Status refletido automaticamente a partir do vinculo Principal.',
+                    ];
+                }
+
+                $contraTurno->forceFill($dados)->save();
+            });
     }
 
     public function moverDocumentosAvaliativos(
@@ -966,6 +1102,7 @@ class AlunoMovimentacaoService
         ?User $usuario
     ): void {
         $pendentes = Aluno::query()
+            ->with('turma')
             ->where(
                 'pendencia_origem_aluno_id',
                 (int) $origem->id
@@ -1011,9 +1148,15 @@ class AlunoMovimentacaoService
             'pendencia_origem_aluno_id' => null,
         ])->save();
 
+        $this->alinharContraTurnoAoPrincipal(
+            $destinoPrincipal,
+            $usuario,
+            'Pendencia de transferencia resolvida; Contra Turno ativado junto ao Principal.'
+        );
+
         /*
-         * Demais pendentes da mesma origem nao recebem
-         * o documento. Existe apenas um dono da ficha.
+         * O dominio impede uma segunda escola pendente para o mesmo CGM. Este
+         * tratamento permanece apenas para compatibilidade com dados legados.
          */
         $pendentes
             ->skip(1)
@@ -1036,6 +1179,12 @@ class AlunoMovimentacaoService
                         'movimentacao_origem' => self::MOVIMENTACAO_TRANSFERENCIA,
                         'pendencia_origem_aluno_id' => null,
                     ])->save();
+
+                    $this->alinharContraTurnoAoPrincipal(
+                        $pendente,
+                        $usuario,
+                        'Pendencia de transferencia resolvida.'
+                    );
                 }
             );
     }
@@ -1135,17 +1284,7 @@ class AlunoMovimentacaoService
     }
 
     /**
-     * Valida se o usuário possui acesso à turma informada.
-     *
-     * Esta validação é utilizada por:
-     * - criação individual de matrícula;
-     * - importação de alunos em lote;
-     * - remanejamento;
-     * - transferência;
-     * - validações de CGM.
-     *
-     * Usuário nulo representa uma execução interna/sistêmica
-     * e não sofre restrição de acesso.
+     * Valida se o usuario possui acesso a turma informada.
      */
     private function assertUsuarioPodeAcessarTurma(
         ?User $usuario,
@@ -1153,21 +1292,14 @@ class AlunoMovimentacaoService
     ): void {
         if (! $turma) {
             throw new RuntimeException(
-                'A turma informada não foi encontrada.'
+                'A turma informada nao foi encontrada.'
             );
         }
 
-        /*
-         * Execuções internas podem não possuir usuário.
-         */
         if (! $usuario) {
             return;
         }
 
-        /*
-         * Utiliza a regra central já existente no UserService,
-         * evitando duplicação de regras de acesso.
-         */
         if (
             ! app(UserService::class)
                 ->podeAcessarTurma(
@@ -1176,7 +1308,7 @@ class AlunoMovimentacaoService
                 )
         ) {
             throw new AuthorizationException(
-                'Você não possui permissão para acessar a turma informada.'
+                'Voce nao possui permissao para acessar a turma informada.'
             );
         }
     }
@@ -1190,19 +1322,14 @@ class AlunoMovimentacaoService
         }
     }
 
-    private function bloquearMovimentacaoSePossuiContraTurnoAtivo(
-        Aluno $aluno
-    ): void {
-        if ($this->contraTurnoAtivoDoPrincipal($aluno)) {
-            throw new RuntimeException(
-                'Resolva o vinculo ativo de contra turno antes de movimentar a matricula principal.'
-            );
-        }
-    }
-
+    /**
+     * O vinculo de Contra Turno pode utilizar qualquer turma da mesma escola,
+     * inclusive a propria turma da matricula Principal.
+     */
     private function validarTurmaContraTurno(
         Aluno $aluno,
-        Turma $turmaDestino
+        Turma $turmaDestino,
+        ?User $usuario = null
     ): void {
         $turmaOrigem = $aluno->turma;
 
@@ -1212,14 +1339,8 @@ class AlunoMovimentacaoService
             );
         }
 
-        if (
-            (int) $turmaOrigem->id
-            === (int) $turmaDestino->id
-        ) {
-            throw new RuntimeException(
-                'Selecione uma turma diferente para o contra turno.'
-            );
-        }
+        $this->assertUsuarioPodeAcessarTurma($usuario, $turmaOrigem);
+        $this->assertUsuarioPodeAcessarTurma($usuario, $turmaDestino);
 
         if (
             (int) $turmaOrigem->id_escola
@@ -1229,57 +1350,49 @@ class AlunoMovimentacaoService
                 'Contra turno so pode ocorrer dentro da mesma escola.'
             );
         }
-
-        if (
-            (int) $turmaOrigem->id_serie
-            !== (int) $turmaDestino->id_serie
-        ) {
-            throw new RuntimeException(
-                'Contra turno so pode ocorrer entre turmas da mesma serie.'
-            );
-        }
-
-        if (
-            (string) $turmaOrigem->turno
-            === (string) $turmaDestino->turno
-        ) {
-            throw new RuntimeException(
-                'Contra turno exige uma turma de turno diferente da matricula principal.'
-            );
-        }
     }
 
-    private function contraTurnoAtivoDoPrincipal(
+    private function contraTurnoNaUnidadeDoPrincipal(
         Aluno $aluno
     ): ?Aluno {
+        $aluno->loadMissing('turma');
+
+        if (! $aluno->turma) {
+            return null;
+        }
+
         return Aluno::query()
-            ->where(
-                'cgm_contra_turno_ativo',
-                Aluno::normalizarCgm($aluno->cgm)
-            )
-            ->where(
-                'tipo_vinculo',
-                Aluno::TIPO_VINCULO_CONTRA_TURNO
-            )
-            ->where(
-                'status',
-                Aluno::STATUS_MATRICULADO
-            )
+            ->with('turma')
+            ->where('cgm', Aluno::normalizarCgm($aluno->cgm))
+            ->where('tipo_vinculo', Aluno::TIPO_VINCULO_CONTRA_TURNO)
+            ->whereIn('status', [
+                Aluno::STATUS_MATRICULADO,
+                Aluno::STATUS_PENDENTE,
+            ])
+            ->whereHas('turma', fn (Builder $query): Builder => $query
+                ->where('id_escola', (int) $aluno->turma->id_escola))
             ->first();
     }
 
-    private function principalAtivoPorCgm(
-        string $cgm
+    private function principalNaUnidadeDoContraTurno(
+        Aluno $aluno
     ): ?Aluno {
+        $aluno->loadMissing('turma');
+
+        if (! $aluno->turma) {
+            return null;
+        }
+
         return Aluno::query()
-            ->where(
-                'cgm_matricula_ativa',
-                Aluno::normalizarCgm($cgm)
-            )
-            ->where(
-                'tipo_vinculo',
-                Aluno::TIPO_VINCULO_PRINCIPAL
-            )
+            ->with('turma')
+            ->where('cgm', Aluno::normalizarCgm($aluno->cgm))
+            ->where('tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL)
+            ->whereIn('status', [
+                Aluno::STATUS_MATRICULADO,
+                Aluno::STATUS_PENDENTE,
+            ])
+            ->whereHas('turma', fn (Builder $query): Builder => $query
+                ->where('id_escola', (int) $aluno->turma->id_escola))
             ->first();
     }
 

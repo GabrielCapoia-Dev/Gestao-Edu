@@ -87,7 +87,7 @@ class ListAlunos extends ListRecords
                 ->action(fn () => $this->spreadsheetService()->exportarModelo()),
 
             Actions\Action::make('importarMatriculados')
-                ->label('Importar Matriculados')
+                ->label('Sincronizar Matriculados')
                 ->icon('heroicon-o-arrow-up-tray')
                 ->color('primary')
                 ->visible(fn (): bool => ! app(AlunoTransferenciaPendenteService::class)->professorEstaBloqueado(Auth::user())
@@ -106,7 +106,7 @@ class ListAlunos extends ListRecords
                         ])
                         ->maxSize(10240)
                         ->required()
-                        ->helperText('Use a aba Matriculados com Escola, Seriação, Turma, Turno, CGM, Nome do aluno, Data de Nascimento e Sexo. Data da matrícula é opcional.'),
+                        ->helperText('A planilha funciona como sincronização em massa: cria alunos novos, atualiza dados e remaneja vínculos existentes quando a turma mudar. Use a aba Matriculados com Escola, Seriação, Turma, Turno, CGM, Nome do aluno, Data de Nascimento, Sexo e, opcionalmente, Tipo de vínculo e Data da matrícula.'),
                 ])
                 ->action(function (array $data): void {
                     $arquivo = $this->normalizarArquivoImportacao($data['arquivo'] ?? null);
@@ -120,7 +120,7 @@ class ListAlunos extends ListRecords
                     )->afterCommit();
 
                     Notification::make()
-                        ->title('Importação enviada para processamento')
+                        ->title('Sincronização enviada para processamento')
                         ->body('Acompanhe o andamento pelo ícone de downloads no topo. Você pode continuar usando o sistema.')
                         ->success()
                         ->send();
@@ -206,7 +206,7 @@ HTML;
             'user_id' => Auth::id(),
             'type' => 'alunos_importacao_planilha',
             'format' => 'processo',
-            'label' => 'Importação de alunos por planilha',
+            'label' => 'Sincronização de alunos por planilha',
             'filters' => ['arquivo' => basename($arquivo)],
             'metadata' => [
                 'process_kind' => 'importacao_alunos',
