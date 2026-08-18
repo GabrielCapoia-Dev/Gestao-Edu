@@ -20,8 +20,13 @@
         min-width: 0;
     }
 
+    /*
+     * O menu do ActionGroup pode ultrapassar a última linha da tabela.
+     * overflow-x:hidden faz o outro eixo se comportar como área de recorte/scroll
+     * em navegadores modernos, fazendo o dropdown disputar camada com o rodapé.
+     */
     .fi-resource-alunos.fi-resource-list-records-page .fi-ta-content-ctn {
-        overflow-x: hidden !important;
+        overflow: visible !important;
     }
 
     .fi-resource-alunos.fi-resource-list-records-page .fi-ta-content {
@@ -50,14 +55,34 @@
     }
 
     .fi-resource-alunos.fi-resource-list-records-page .fi-ta-record {
+        position: relative;
+        z-index: 0;
         border: 1px solid var(--aluno-card-border);
         border-radius: 0.5rem;
         background: var(--aluno-card-surface);
         box-shadow: var(--aluno-card-shadow);
     }
 
-    .fi-resource-alunos.fi-resource-list-records-page .fi-ta-record:hover {
+    /*
+     * Enquanto o usuário interage com o botão/menu de Ações, a linha precisa ficar
+     * acima das linhas seguintes e do rodapé/paginação da tabela.
+     */
+    .fi-resource-alunos.fi-resource-list-records-page .fi-ta-record:hover,
+    .fi-resource-alunos.fi-resource-list-records-page .fi-ta-record:focus-within {
+        z-index: 60;
         border-color: color-mix(in oklab, var(--primary-300) 58%, var(--gray-200));
+    }
+
+    .fi-resource-alunos.fi-resource-list-records-page .fi-ta-record-content-ctn > .fi-ta-actions {
+        position: relative;
+        z-index: 70;
+        padding-top: 0.35rem;
+        border-top: 1px solid var(--aluno-card-border);
+    }
+
+    .fi-resource-alunos.fi-resource-list-records-page .fi-ta-record-content-ctn > .fi-ta-actions .fi-dropdown,
+    .fi-resource-alunos.fi-resource-list-records-page .fi-ta-record-content-ctn > .fi-ta-actions .fi-dropdown-panel {
+        z-index: 80 !important;
     }
 
     .fi-resource-alunos.fi-resource-list-records-page .fi-ta-record-content {
@@ -65,11 +90,6 @@
         gap: 0.5rem;
         width: 100%;
         padding: 0.65rem;
-    }
-
-    .fi-resource-alunos.fi-resource-list-records-page .fi-ta-record-content-ctn > .fi-ta-actions {
-        padding-top: 0.35rem;
-        border-top: 1px solid var(--aluno-card-border);
     }
 
     .fi-resource-alunos.fi-resource-list-records-page .aluno-card-main-grid {
