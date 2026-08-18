@@ -17,7 +17,7 @@ use RuntimeException;
 class AvaliacaoAlunoDocumentoService
 {
     public function __construct(
-        private readonly AvaliacaoDashboardMetricsService $dashboardMetricsService,
+        private readonly AvaliacaoDashboardFactsService $dashboardFactsService,
     ) {}
 
     public function obter(int $avaliacaoId, int $alunoId): ?AvaliacaoAlunoDocumento
@@ -69,8 +69,7 @@ class AvaliacaoAlunoDocumentoService
             'version' => 1,
         ]);
 
-        $this->dashboardMetricsService->forgetForAvaliacao($avaliacaoId);
-        app(AvaliacaoDashboardFactsService::class)->requestRebuild($avaliacaoId);
+        $this->markDashboardFactsDirty($avaliacaoId);
 
         return $documento;
     }
@@ -294,8 +293,7 @@ class AvaliacaoAlunoDocumentoService
                 ])->save();
 
                 $this->recalcularMetricas($documento->fresh());
-                $this->dashboardMetricsService->forgetForAvaliacao((int) $documento->avaliacao_id);
-                $this->requestDashboardFacts((int) $documento->avaliacao_id);
+                $this->markDashboardFactsDirty((int) $documento->avaliacao_id);
                 $movidos++;
             }
 
@@ -303,9 +301,9 @@ class AvaliacaoAlunoDocumentoService
         });
     }
 
-    private function requestDashboardFacts(int $avaliacaoId): void
+    private function markDashboardFactsDirty(int $avaliacaoId): void
     {
-        app(AvaliacaoDashboardFactsService::class)->requestRebuild($avaliacaoId);
+        $this->dashboardFactsService->markDirty($avaliacaoId);
     }
 
     /**
@@ -542,8 +540,7 @@ class AvaliacaoAlunoDocumentoService
         ])->save();
 
         $documento = $this->recalcularMetricas($documento->fresh());
-        $this->dashboardMetricsService->forgetForAvaliacao((int) $documento->avaliacao_id);
-        app(AvaliacaoDashboardFactsService::class)->requestRebuild((int) $documento->avaliacao_id);
+        $this->markDashboardFactsDirty((int) $documento->avaliacao_id);
 
         return $documento;
     }
@@ -632,6 +629,7 @@ class AvaliacaoAlunoDocumentoService
         if ($dirty) {
             $documento->save();
             $this->recalcularMetricas($documento->fresh());
+            $this->markDashboardFactsDirty((int) $documento->avaliacao_id);
         }
 
         return $documento->fresh() ?? $documento;
