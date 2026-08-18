@@ -43,6 +43,24 @@ class AlunoContraTurnoImportacaoTest extends TestCase
         $this->assertTrue((bool) $principal->fresh()->permite_contra_turno);
     }
 
+    public function test_contra_turno_pode_ser_vinculado_na_mesma_turma_do_principal(): void
+    {
+        $escola = $this->criarEscola('Escola Mesma Turma CT');
+        $serie = $this->criarSerie('5 Ano');
+        $turma = $this->criarTurma($escola, $serie, 'A', 'integral');
+        $principal = $this->criarAlunoPrincipal($turma, 'CGM-CT-MESMA-TURMA');
+
+        $contraTurno = app(AlunoMovimentacaoService::class)->vincularContraTurno(
+            $principal,
+            $turma->id
+        );
+
+        $this->assertTrue($contraTurno->isContraTurno());
+        $this->assertSame($principal->id_turma, $contraTurno->id_turma);
+        $this->assertSame($principal->id, $contraTurno->aluno_origem_id);
+        $this->assertSame(Aluno::STATUS_MATRICULADO, $contraTurno->status);
+    }
+
     public function test_contra_turno_continua_bloqueado_em_outra_escola(): void
     {
         $escolaOrigem = $this->criarEscola('Escola Origem CT');
@@ -62,7 +80,7 @@ class AlunoContraTurnoImportacaoTest extends TestCase
         );
     }
 
-    public function test_importacao_aceita_principal_e_contra_turno_do_mesmo_cgm(): void
+    public function test_importacao_aceita_principal_e_contra_turno_do_mesmo_cgm_na_mesma_turma(): void
     {
         Storage::fake('local');
 
@@ -70,8 +88,8 @@ class AlunoContraTurnoImportacaoTest extends TestCase
 
         $caminho = $this->criarPlanilhaNoStorage('local', [
             ['Escola', 'Seriacao', 'Turma', 'Turno', 'CGM', 'Nome do Aluno', 'Data de Nascimento', 'Sexo', 'Data Matricula', 'Tipo de vinculo'],
-            [$escola->nome, '2 Ano', 'A', 'Manha', '9001', 'Aluno Dois Vinculos', '01/02/2018', 'M', '05/02/2026', 'Principal'],
-            [$escola->nome, '5 Ano', 'B', 'Manha', '9001', 'Aluno Dois Vinculos', '01/02/2018', 'M', '05/02/2026', 'Contra Turno'],
+            [$escola->nome, '5 Ano', 'A', 'Integral', '9001', 'Aluno Dois Vinculos', '01/02/2018', 'M', '05/02/2026', 'Contra Turno'],
+            [$escola->nome, '5 Ano', 'A', 'Integral', '9001', 'Aluno Dois Vinculos', '01/02/2018', 'M', '05/02/2026', 'Principal'],
         ]);
 
         $resultado = app(AlunoImportacaoSpreadsheetService::class)->importar($caminho, null, 'local');
@@ -94,7 +112,7 @@ class AlunoContraTurnoImportacaoTest extends TestCase
         $this->assertSame(Aluno::STATUS_MATRICULADO, $principal->status);
         $this->assertSame(Aluno::STATUS_MATRICULADO, $contraTurno->status);
         $this->assertSame($principal->id, $contraTurno->aluno_origem_id);
-        $this->assertNotSame($principal->id_turma, $contraTurno->id_turma);
+        $this->assertSame($principal->id_turma, $contraTurno->id_turma);
         $this->assertTrue((bool) $principal->fresh()->permite_contra_turno);
     }
 
