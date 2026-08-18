@@ -170,6 +170,15 @@ class DashboardAvaliacoes extends Page implements HasForms
         $this->dashboardCarregado = false;
         $this->normalizarFiltros();
         $this->normalizarFiltrosAcompanhamento();
+
+        if ($this->avaliacaoSelecionada()) {
+            try {
+                app(AvaliacaoDashboardFactsService::class)->refreshIfDirty((int) $this->filtros['avaliacao_id']);
+            } catch (Throwable $exception) {
+                report($exception);
+            }
+        }
+
         $this->atualizarStatusConsolidacao();
 
         if (! $this->avaliacaoSelecionada()) {
@@ -511,28 +520,30 @@ class DashboardAvaliacoes extends Page implements HasForms
             return;
         }
 
-        $avaliacaoId = (int) ($this->filtros['avaliacao_id'] ?? 0);
-        app(AvaliacaoDashboardFactsService::class)->requestRebuild($avaliacaoId);
-        $this->atualizarStatusConsolidacao();
-
-        if (! $silencioso) {
-            Notification::make()
-                ->title('Consolidação solicitada.')
-                ->body('Os indicadores serão atualizados após o processamento da fila.')
-                ->success()
-                ->send();
-        }
-
-        return;
-
         $snapshotAnterior = $this->capturarSnapshotAcompanhamento($this->acompanhamentoTurmas);
         $cardsAnteriores = $this->cards;
-
         $avaliacaoId = (int) ($this->filtros['avaliacao_id'] ?? 0);
-        app(AvaliacaoDashboardMetricsService::class)->forgetForAvaliacao($avaliacaoId);
+
+        try {
+            app(AvaliacaoDashboardFactsService::class)->refreshIfDirty($avaliacaoId);
+        } catch (Throwable $exception) {
+            report($exception);
+            $this->atualizarStatusConsolidacao();
+
+            if (! $silencioso) {
+                Notification::make()
+                    ->title('Não foi possível atualizar os indicadores.')
+                    ->body($exception->getMessage())
+                    ->danger()
+                    ->send();
+            }
+
+            return;
+        }
 
         $this->parecerTurmaElegibilidade = [];
         $this->atualizarMetricasLeves();
+        $this->atualizarStatusConsolidacao();
 
         $this->acompanhamentoLinhasAlteradas = $this->diffSnapshotAcompanhamento(
             $snapshotAnterior,
@@ -564,8 +575,6 @@ class DashboardAvaliacoes extends Page implements HasForms
     public function marcarWorkspaceAcompanhamentoComoAlterado(): void
     {
         $this->workspaceAcompanhamentoTemAlteracoes = true;
-        // Atualiza listagem/KPIs em silêncio, sem fechar o workspace nem notificar a cada save.
-        $this->atualizarDadosRecentes(silencioso: true);
     }
 
     protected function getForms(): array
