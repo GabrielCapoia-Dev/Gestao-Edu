@@ -96,9 +96,11 @@ class AlunoFichaModalTest extends TestCase
 
         $this->assertStringContainsString('ESCOLA - Dr. Ângelo Moreira da Fonseca', $html);
         $this->assertStringContainsString('ESCOLA - Evangélica', $html);
+        $this->assertStringContainsString('Não informada neste vínculo', $html);
         $this->assertStringContainsString('08/06/2026', $html);
         $this->assertStringContainsString('REGISTRO ABERTO', $html);
         $this->assertStringContainsString('matrícula Principal pendente', $html);
+        $this->assertNull($origem->fresh()->data_matricula);
         $this->assertSame('2026-06-08', $destino->fresh()->data_matricula?->toDateString());
     }
 }
