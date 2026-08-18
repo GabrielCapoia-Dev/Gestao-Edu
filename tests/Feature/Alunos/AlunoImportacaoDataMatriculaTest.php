@@ -17,7 +17,7 @@ class AlunoImportacaoDataMatriculaTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_importacao_reconhece_data_da_matricula_e_atualiza_aluno_existente(): void
+    public function test_importacao_reconhece_data_da_matricula_e_atualiza_aluno_pendente(): void
     {
         Storage::fake('local');
 
@@ -45,7 +45,7 @@ class AlunoImportacaoDataMatriculaTest extends TestCase
             'data_matricula' => null,
             'id_turma' => $turma->id,
             'tipo_vinculo' => Aluno::TIPO_VINCULO_PRINCIPAL,
-            'status' => Aluno::STATUS_MATRICULADO,
+            'status' => Aluno::STATUS_PENDENTE,
         ]);
 
         $spreadsheet = new Spreadsheet;
@@ -71,7 +71,10 @@ class AlunoImportacaoDataMatriculaTest extends TestCase
             'local',
         );
 
+        $aluno->refresh();
+
         $this->assertSame(1, $resultado['total_atualizado']);
-        $this->assertSame('2026-06-08', $aluno->fresh()->data_matricula?->toDateString());
+        $this->assertSame(Aluno::STATUS_PENDENTE, $aluno->status);
+        $this->assertSame('2026-06-08', $aluno->data_matricula?->toDateString());
     }
 }
