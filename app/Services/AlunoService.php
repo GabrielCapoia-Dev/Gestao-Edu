@@ -911,7 +911,7 @@ class AlunoService
         }
 
         return $this->cadastroAlunoRestritoPorCgm($user)
-            || ! $this->formularioAlunoLiberadoAposCgm($get, $operation, $user);
+            || ! $this->formularioAlunoLiberadoAposCgm($get, $user);
     }
 
     private function atributosCampoBloqueadoAposCgm(Get $get, ?string $operation, ?User $user, bool $dadosOficiais = false): array
