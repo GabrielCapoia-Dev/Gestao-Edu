@@ -30,6 +30,8 @@
 @endphp
 
 <style>
+    .fi-modal-window:has(.ficha-aluno) { width: min(96vw, 90rem) !important; max-width: min(96vw, 90rem) !important; }
+    .fi-modal-window:has(.ficha-aluno) .fi-modal-content > .fi-sc { display: none !important; }
     .ficha-aluno { display: grid; gap: 1rem; color: #172033; }
     .ficha-hero { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: 1.15rem 1.25rem; border: 1px solid #d9e2ef; border-radius: 16px; background: linear-gradient(135deg, #f8fbff 0%, #eef5ff 100%); }
     .ficha-hero__name { margin: 0; font-size: 1.08rem; font-weight: 800; color: #13213a; }
