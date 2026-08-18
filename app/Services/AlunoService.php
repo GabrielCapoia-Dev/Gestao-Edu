@@ -755,7 +755,7 @@ class AlunoService
     {
         return ! $this->professorEstaBloqueado($user)
             && $record->isPrincipal()
-            && $record->estaMatriculado()
+            && ($record->estaMatriculado() || $record->estaPendente())
             && ($user && Gate::forUser($user)->allows('contraTurno', $record));
     }
 
@@ -763,7 +763,7 @@ class AlunoService
     {
         return ! $this->professorEstaBloqueado($user)
             && $record->isContraTurno()
-            && $record->estaMatriculado()
+            && ($record->estaMatriculado() || $record->estaPendente())
             && ($user && Gate::forUser($user)->allows('encerrarContraTurno', $record));
     }
 
@@ -820,7 +820,11 @@ class AlunoService
 
                     foreach ($records as $record) {
                         try {
-                            if (! $record instanceof Aluno || ! $record->isPrincipal() || ! $record->estaMatriculado()) {
+                            if (
+                                ! $record instanceof Aluno
+                                || ! $record->isPrincipal()
+                                || (! $record->estaMatriculado() && ! $record->estaPendente())
+                            ) {
                                 throw new \RuntimeException('Registro invalido para contra turno.');
                             }
 
@@ -1336,10 +1340,22 @@ class AlunoService
 
     private function contraTurnoAtivo(Aluno $aluno): ?Aluno
     {
+        $aluno->loadMissing('turma');
+
+        if (! $aluno->turma) {
+            return null;
+        }
+
         return Aluno::query()
-            ->where('cgm_contra_turno_ativo', $aluno->cgm)
+            ->with('turma')
+            ->where('cgm', Aluno::normalizarCgm($aluno->cgm))
             ->where('tipo_vinculo', Aluno::TIPO_VINCULO_CONTRA_TURNO)
-            ->where('status', Aluno::STATUS_MATRICULADO)
+            ->whereIn('status', [
+                Aluno::STATUS_MATRICULADO,
+                Aluno::STATUS_PENDENTE,
+            ])
+            ->whereHas('turma', fn (Builder $query): Builder => $query
+                ->where('id_escola', (int) $aluno->turma->id_escola))
             ->first();
     }
 
