@@ -1201,6 +1201,10 @@ class AlunoMovimentacaoService
         }
     }
 
+    /**
+     * O vínculo de Contra Turno pode utilizar qualquer turma da mesma escola,
+     * inclusive a própria turma da matrícula Principal.
+     */
     private function validarTurmaContraTurno(
         Aluno $aluno,
         Turma $turmaDestino,
