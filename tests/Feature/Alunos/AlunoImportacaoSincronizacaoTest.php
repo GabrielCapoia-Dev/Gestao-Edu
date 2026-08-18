@@ -128,6 +128,7 @@ class AlunoImportacaoSincronizacaoTest extends TestCase
         $contraTurno->refresh();
         $this->assertSame(Aluno::STATUS_MATRICULADO, $contraTurno->status);
         $this->assertSame($novoPrincipal->id, $contraTurno->aluno_origem_id);
+        $this->assertSame($novoPrincipal->id_turma, $contraTurno->turma_origem_id);
     }
 
     public function test_contra_turno_existente_muda_de_turma_por_remanejamento(): void
@@ -169,9 +170,9 @@ class AlunoImportacaoSincronizacaoTest extends TestCase
         $this->assertSame($turmaCtDestino->id, $novoContraTurno->id_turma);
         $this->assertSame('Aluno Contra Turno Atualizado', $novoContraTurno->nome);
         $this->assertSame('F', $novoContraTurno->sexo);
-        $this->assertSame($contraTurnoAntigo->id, $novoContraTurno->aluno_origem_id);
-        $this->assertSame($turmaCtOrigem->id, $novoContraTurno->turma_origem_id);
-        $this->assertSame(AlunoMovimentacaoService::MOVIMENTACAO_REMANEJAMENTO, $novoContraTurno->movimentacao_origem);
+        $this->assertSame($principal->id, $novoContraTurno->aluno_origem_id);
+        $this->assertSame($turmaPrincipal->id, $novoContraTurno->turma_origem_id);
+        $this->assertSame(AlunoMovimentacaoService::MOVIMENTACAO_CONTRA_TURNO, $novoContraTurno->movimentacao_origem);
     }
 
     public function test_principal_em_outra_escola_continua_sendo_criado_como_pendente(): void
