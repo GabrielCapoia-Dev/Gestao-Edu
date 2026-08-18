@@ -45,7 +45,7 @@ class AlunoImportacaoSpreadsheetService
         'nome' => ['nome do aluno', 'aluno', 'nome'],
         'data_nascimento' => ['data de nasc', 'data de nascimento', 'nascimento'],
         'sexo' => ['sexo'],
-        'data_matricula' => ['data matricula', 'data de matricula', 'data matrícula', 'data de matrícula'],
+        'data_matricula' => ['data matricula', 'data da matricula', 'data de matricula', 'data matrícula', 'data da matrícula', 'data de matrícula'],
         'tipo_vinculo' => ['tipo de vinculo', 'tipo vinculo', 'vinculo', 'tipo_vinculo'],
     ];
 
