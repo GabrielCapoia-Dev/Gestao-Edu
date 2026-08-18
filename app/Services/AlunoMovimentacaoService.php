@@ -1218,15 +1218,6 @@ class AlunoMovimentacaoService
         $this->assertUsuarioPodeAcessarTurma($usuario, $turmaDestino);
 
         if (
-            (int) $turmaOrigem->id
-            === (int) $turmaDestino->id
-        ) {
-            throw new RuntimeException(
-                'Selecione uma turma diferente para o contra turno.'
-            );
-        }
-
-        if (
             (int) $turmaOrigem->id_escola
             !== (int) $turmaDestino->id_escola
         ) {
