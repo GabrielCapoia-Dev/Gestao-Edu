@@ -9,7 +9,6 @@ use App\Models\ExportRequest;
 use App\Models\Serie;
 use App\Models\Turma;
 use App\Models\User;
-use App\Services\AlunoMovimentacaoService;
 use App\Services\AlunoService;
 use Carbon\Carbon;
 use DateTimeInterface;
@@ -62,8 +61,8 @@ class AlunoImportacaoSpreadsheetService
     ];
 
     public function __construct(
-        private readonly AlunoMovimentacaoService $movimentacaoService,
-        private readonly AlunoService $alunoService
+        private readonly AlunoImportacaoSincronizacaoService $sincronizacaoService,
+        private readonly AlunoService $alunoService,
     ) {}
 
     public function exportarModelo(): Response
@@ -124,6 +123,9 @@ class AlunoImportacaoSpreadsheetService
 
             $resultado = [
                 'total_importado' => 0,
+                'total_atualizado' => 0,
+                'total_remanejado' => 0,
+                'total_sem_alteracao' => 0,
                 'total_pendente' => 0,
                 'series_criadas' => 0,
                 'turmas_criadas' => 0,
@@ -143,9 +145,9 @@ class AlunoImportacaoSpreadsheetService
             ];
 
             /*
-             * O principal sempre é importado antes do contra turno. Assim, um mesmo
-             * arquivo pode conter as duas linhas do aluno independentemente da ordem
-             * em que elas aparecem na planilha.
+             * Principais são sincronizados antes dos vínculos de contra turno.
+             * Assim, a mesma planilha pode criar/atualizar a matrícula principal e
+             * depois criar ou remanejar o contra turno do mesmo CGM.
              */
             foreach ($linhasPorTipo as $tipoVinculo => $linhasTipo) {
                 foreach (array_chunk($linhasTipo, self::CHUNK_SIZE) as $chunk) {
@@ -155,8 +157,7 @@ class AlunoImportacaoSpreadsheetService
                         $seriesCriadas = 0;
                         $turmasCriadas = 0;
                         $turmasPermitidas = [];
-                        $dadosMatriculas = [];
-                        $dadosContraTurno = [];
+                        $dadosSincronizacao = [];
 
                         foreach ($chunk as $linha) {
                             [$serie, $serieCriada] = $this->resolverSerie($linha['seriacao'], $series);
@@ -172,55 +173,46 @@ class AlunoImportacaoSpreadsheetService
                                 $turmasPermitidas[$turmaId] = true;
                             }
 
-                            if ($tipoVinculo === Aluno::TIPO_VINCULO_CONTRA_TURNO) {
-                                $dadosContraTurno[] = [
-                                    'numero_linha' => (int) $linha['numero_linha'],
-                                    'cgm' => $linha['cgm'],
-                                    'id_turma' => $turmaId,
-                                    'id_escola' => (int) $turma->id_escola,
-                                ];
-
-                                continue;
-                            }
-
-                            $dadosMatriculas[] = [
+                            $dadosSincronizacao[] = [
+                                'numero_linha' => (int) $linha['numero_linha'],
                                 'nome' => $linha['nome'],
                                 'cgm' => $linha['cgm'],
                                 'data_nascimento' => $linha['data_nascimento'],
                                 'sexo' => $linha['sexo'],
                                 'data_matricula' => $linha['data_matricula'],
-                                'id_turma' => $turmaId,
-                                'status_motivo' => 'Matrícula criada por importação de planilha.',
+                                'turma' => $turma,
                             ];
                         }
 
-                        if ($tipoVinculo === Aluno::TIPO_VINCULO_CONTRA_TURNO) {
-                            $totalContraTurno = $this->importarContraTurno($dadosContraTurno, $usuario);
-
-                            return [
-                                'total_importado' => $totalContraTurno,
-                                'total_pendente' => 0,
-                                'series_criadas' => $seriesCriadas,
-                                'turmas_criadas' => $turmasCriadas,
-                            ];
+                        try {
+                            $sincronizacao = $tipoVinculo === Aluno::TIPO_VINCULO_CONTRA_TURNO
+                                ? $this->sincronizacaoService->sincronizarContraTurnos($dadosSincronizacao, $usuario)
+                                : $this->sincronizacaoService->sincronizarPrincipais($dadosSincronizacao, $usuario);
+                        } catch (RuntimeException $exception) {
+                            throw new InvalidArgumentException(
+                                $exception->getMessage(),
+                                previous: $exception,
+                            );
                         }
-
-                        $loteResultado = $dadosMatriculas === []
-                            ? ['total_importado' => 0, 'total_pendente' => 0]
-                            : $this->movimentacaoService->criarMatriculaEmLote($dadosMatriculas, $usuario);
 
                         return [
-                            'total_importado' => $loteResultado['total_importado'],
-                            'total_pendente' => $loteResultado['total_pendente'],
+                            ...$sincronizacao,
                             'series_criadas' => $seriesCriadas,
                             'turmas_criadas' => $turmasCriadas,
                         ];
                     });
 
-                    $resultado['total_importado'] += $chunkResultado['total_importado'];
-                    $resultado['total_pendente'] += $chunkResultado['total_pendente'];
-                    $resultado['series_criadas'] += $chunkResultado['series_criadas'];
-                    $resultado['turmas_criadas'] += $chunkResultado['turmas_criadas'];
+                    foreach ([
+                        'total_importado',
+                        'total_atualizado',
+                        'total_remanejado',
+                        'total_sem_alteracao',
+                        'total_pendente',
+                        'series_criadas',
+                        'turmas_criadas',
+                    ] as $campoResultado) {
+                        $resultado[$campoResultado] += (int) ($chunkResultado[$campoResultado] ?? 0);
+                    }
 
                     $processado += count($chunk);
 
@@ -230,7 +222,7 @@ class AlunoImportacaoSpreadsheetService
                             ->update([
                                 'progress_current' => $processado,
                                 'progress_total' => $totalLinhas,
-                                'status_message' => "Processando alunos... {$processado} de {$totalLinhas}.",
+                                'status_message' => "Sincronizando alunos... {$processado} de {$totalLinhas}.",
                                 'updated_at' => now(),
                             ]);
                     }
@@ -243,74 +235,6 @@ class AlunoImportacaoSpreadsheetService
         } finally {
             Storage::disk($disk)->delete($caminhoArquivo);
         }
-    }
-
-    private function importarContraTurno(array $linhas, ?User $usuario): int
-    {
-        $importados = 0;
-
-        foreach ($linhas as $linha) {
-            $cgm = Aluno::normalizarCgm((string) ($linha['cgm'] ?? ''));
-            $turmaId = (int) ($linha['id_turma'] ?? 0);
-            $numeroLinha = (int) ($linha['numero_linha'] ?? 0);
-            $escolaId = (int) ($linha['id_escola'] ?? 0);
-
-            $principal = $this->principalAtivoNaEscola($cgm, $escolaId);
-
-            if (! $principal) {
-                $principalPendente = $this->principalPendenteNaEscola($cgm, $escolaId);
-
-                if ($principalPendente) {
-                    throw new InvalidArgumentException(
-                        "Linha {$numeroLinha}: o vínculo Principal deste aluno ainda está Pendente nesta escola, aguardando a transferência da escola de origem. Conclua a transferência antes de ativar o Contra Turno."
-                    );
-                }
-
-                throw new InvalidArgumentException(
-                    "Linha {$numeroLinha}: o aluno informado como Contra Turno precisa possuir uma matrícula Principal ativa na mesma escola."
-                );
-            }
-
-            try {
-                $this->movimentacaoService->vincularContraTurno(
-                    $principal,
-                    $turmaId,
-                    $usuario,
-                    'Vínculo de contra turno criado por importação de planilha.'
-                );
-            } catch (RuntimeException $exception) {
-                throw new InvalidArgumentException(
-                    "Linha {$numeroLinha}: {$exception->getMessage()}",
-                    previous: $exception
-                );
-            }
-
-            $importados++;
-        }
-
-        return $importados;
-    }
-
-    private function principalAtivoNaEscola(string $cgm, int $escolaId): ?Aluno
-    {
-        return Aluno::query()
-            ->with('turma')
-            ->where('cgm_matricula_ativa', Aluno::normalizarCgm($cgm))
-            ->where('tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL)
-            ->where('status', Aluno::STATUS_MATRICULADO)
-            ->whereHas('turma', fn ($query) => $query->where('id_escola', $escolaId))
-            ->first();
-    }
-
-    private function principalPendenteNaEscola(string $cgm, int $escolaId): ?Aluno
-    {
-        return Aluno::query()
-            ->with('turma')
-            ->where('cgm', Aluno::normalizarCgm($cgm))
-            ->where('tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL)
-            ->where('status', Aluno::STATUS_PENDENTE)
-            ->whereHas('turma', fn ($query) => $query->where('id_escola', $escolaId))
-            ->first();
     }
 
     private function carregarLinhas(string $caminhoCompleto): array
