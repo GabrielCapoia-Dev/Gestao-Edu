@@ -7,6 +7,7 @@ use App\Models\AvaliacaoAlunoDocumentoHistorico;
 use App\Models\Turma;
 use App\Models\User;
 use App\Services\AlunoMovimentacaoService;
+use Illuminate\Support\Str;
 use RuntimeException;
 
 class AlunoImportacaoSincronizacaoService
@@ -38,7 +39,7 @@ class AlunoImportacaoSincronizacaoService
             ->all();
 
         $existentes = Aluno::query()
-            ->with('turma')
+            ->with('turma.serie')
             ->whereIn('cgm', $cgms)
             ->where('tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL)
             ->whereIn('status', [
@@ -71,7 +72,14 @@ class AlunoImportacaoSincronizacaoService
             $existente = $porUnidade->get($chave);
 
             if ($existente) {
-                if ((int) $existente->id_turma !== (int) $turmaDestino->id) {
+                /*
+                 * Não usamos apenas id_turma para decidir remanejamento.
+                 * Bases antigas podem possuir duas turmas/séries com IDs diferentes,
+                 * porém semanticamente idênticas (mesma escola, série, turma e turno).
+                 * Nessa situação a planilha deve considerar o aluno na mesma turma,
+                 * e nunca gerar um histórico falso de remanejamento.
+                 */
+                if (! $this->mesmaTurmaLogica($existente->turma, $turmaDestino)) {
                     $novo = $this->remanejarPrincipalPorImportacao(
                         $existente,
                         $turmaDestino,
@@ -152,7 +160,7 @@ class AlunoImportacaoSincronizacaoService
             ->all();
 
         $principais = Aluno::query()
-            ->with('turma')
+            ->with('turma.serie')
             ->whereIn('cgm', $cgms)
             ->where('tipo_vinculo', Aluno::TIPO_VINCULO_PRINCIPAL)
             ->whereIn('status', [
@@ -169,7 +177,7 @@ class AlunoImportacaoSincronizacaoService
             ));
 
         $contraTurnosAtivos = Aluno::query()
-            ->with('turma')
+            ->with('turma.serie')
             ->whereIn('cgm', $cgms)
             ->where('tipo_vinculo', Aluno::TIPO_VINCULO_CONTRA_TURNO)
             ->where('status', Aluno::STATUS_MATRICULADO)
@@ -201,7 +209,7 @@ class AlunoImportacaoSincronizacaoService
             $contraTurno = $contraTurnosAtivos->get($cgm);
 
             if ($contraTurno) {
-                if ((int) $contraTurno->id_turma !== (int) $turmaDestino->id) {
+                if (! $this->mesmaTurmaLogica($contraTurno->turma, $turmaDestino)) {
                     $novo = $this->remanejarContraTurnoPorImportacao(
                         $contraTurno,
                         $principal,
@@ -232,7 +240,7 @@ class AlunoImportacaoSincronizacaoService
                 $usuario,
             );
 
-            $contraTurnosAtivos->put($cgm, $novo->fresh(['turma']));
+            $contraTurnosAtivos->put($cgm, $novo->fresh(['turma.serie']));
             $resultado['total_importado']++;
         }
 
@@ -371,7 +379,7 @@ class AlunoImportacaoSincronizacaoService
                 'updated_at' => now(),
             ]);
 
-        return $novo->fresh(['turma']);
+        return $novo->fresh(['turma.serie']);
     }
 
     /**
@@ -436,7 +444,7 @@ class AlunoImportacaoSincronizacaoService
             $usuario,
         );
 
-        return $novo->fresh(['turma']);
+        return $novo->fresh(['turma.serie']);
     }
 
     /**
@@ -466,6 +474,41 @@ class AlunoImportacaoSincronizacaoService
         $aluno->save();
 
         return true;
+    }
+
+    /**
+     * Duas turmas são consideradas iguais para a sincronização quando representam
+     * a mesma unidade, série, turma e turno, mesmo que tenham IDs diferentes.
+     * Isso protege bases que possuam cadastros duplicados herdados de importações
+     * antigas e impede remanejamentos falsos para a própria turma.
+     */
+    private function mesmaTurmaLogica(?Turma $atual, Turma $destino): bool
+    {
+        if (! $atual) {
+            return false;
+        }
+
+        if ((int) $atual->id === (int) $destino->id) {
+            return true;
+        }
+
+        $atual->loadMissing('serie');
+        $destino->loadMissing('serie');
+
+        return (int) $atual->id_escola === (int) $destino->id_escola
+            && $this->normalizarTexto($atual->serie?->nome) === $this->normalizarTexto($destino->serie?->nome)
+            && $this->normalizarTexto($atual->nome) === $this->normalizarTexto($destino->nome)
+            && $this->normalizarTexto($atual->turno) === $this->normalizarTexto($destino->turno);
+    }
+
+    private function normalizarTexto(mixed $valor): string
+    {
+        return Str::of((string) $valor)
+            ->ascii()
+            ->lower()
+            ->replaceMatches('/\s+/', ' ')
+            ->trim()
+            ->value();
     }
 
     private function chaveUnidade(int $escolaId, string $cgm): string
