@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Alunos;
 
+use App\Exceptions\MatriculaAlunoBloqueadaException;
 use App\Models\Aluno;
 use App\Models\Escola;
 use App\Models\Serie;
@@ -115,6 +116,45 @@ class AlunoVinculoReflexoTransferenciaTest extends TestCase
         $this->assertSame('F', $principal->fresh()->sexo);
         $this->assertSame('2017-05-10', $principal->fresh()->data_nascimento?->toDateString());
         $this->assertSame('2026-02-20', $principal->fresh()->data_matricula?->toDateString());
+    }
+
+    public function test_terceira_escola_e_bloqueada_quando_ja_existe_origem_matriculada_e_destino_pendente(): void
+    {
+        $escolaOrigem = $this->criarEscola('Escola A');
+        $escolaPendente = $this->criarEscola('Escola B');
+        $escolaTerceira = $this->criarEscola('Escola C');
+        $serie = $this->criarSerie('3 Ano');
+
+        $turmaOrigem = $this->criarTurma($escolaOrigem, $serie, 'A', 'manha');
+        $turmaPendente = $this->criarTurma($escolaPendente, $serie, 'B', 'tarde');
+        $turmaTerceira = $this->criarTurma($escolaTerceira, $serie, 'C', 'integral');
+
+        $principalOrigem = $this->criarPrincipal(
+            $turmaOrigem,
+            'CGM-TERCEIRA-ESCOLA',
+            Aluno::STATUS_MATRICULADO,
+        );
+
+        $principalPendente = app(AlunoMovimentacaoService::class)->criarMatricula([
+            'nome' => $principalOrigem->nome,
+            'cgm' => $principalOrigem->cgm,
+            'data_nascimento' => $principalOrigem->data_nascimento?->toDateString(),
+            'sexo' => $principalOrigem->sexo,
+            'id_turma' => $turmaPendente->id,
+        ]);
+
+        $this->assertSame(Aluno::STATUS_PENDENTE, $principalPendente->status);
+
+        $this->expectException(MatriculaAlunoBloqueadaException::class);
+        $this->expectExceptionMessage('matricula pendente');
+
+        app(AlunoMovimentacaoService::class)->criarMatricula([
+            'nome' => $principalOrigem->nome,
+            'cgm' => $principalOrigem->cgm,
+            'data_nascimento' => $principalOrigem->data_nascimento?->toDateString(),
+            'sexo' => $principalOrigem->sexo,
+            'id_turma' => $turmaTerceira->id,
+        ]);
     }
 
     private function criarEscola(string $nome): Escola
