@@ -7,6 +7,7 @@ use App\Models\ComponenteCurricular;
 use App\Models\Pauta;
 use App\Models\Serie;
 use App\Models\TipoAvaliacao;
+use App\Services\Avaliacoes\PautaXlsxExportService;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
@@ -233,6 +234,13 @@ class GestaoPautas extends Page implements HasForms, HasTable
                     ->action(fn(Pauta $record) => $this->excluirPauta($record->getKey())),
             ])
             ->groupedBulkActions([
+                BulkAction::make('exportarXlsx')
+                    ->label('Exportar XLSX')
+                    ->icon(Heroicon::ArrowDownTray)
+                    ->color('success')
+                    ->action(fn($records) => app(PautaXlsxExportService::class)->download($records))
+                    ->deselectRecordsAfterCompletion(),
+
                 BulkAction::make('aplicarCampos')
                     ->label('Aplicar campos')
                     ->icon(Heroicon::AdjustmentsHorizontal)
