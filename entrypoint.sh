@@ -23,6 +23,7 @@ wait_for_runtime_ready() {
 run_queue_worker() {
     local role="${1:-default}"
     local queue_name="default"
+    local queue_connection="redis"
     local sleep_seconds="3"
     local rest_seconds="0"
     local timeout_seconds="300"
@@ -50,7 +51,8 @@ run_queue_worker() {
     case "$role" in
         exports)
             queue_name="exports"
-            sleep_seconds="${EXPORTS_QUEUE_SLEEP:-5}"
+            queue_connection="exports_database"
+            sleep_seconds="${EXPORTS_QUEUE_SLEEP:-3}"
             rest_seconds="${EXPORTS_QUEUE_REST:-1}"
             timeout_seconds="${EXPORTS_JOB_TIMEOUT:-900}"
             tries="${EXPORTS_QUEUE_TRIES:-3}"
@@ -96,15 +98,40 @@ run_queue_worker() {
             ;;
     esac
 
-    local worker_command="php -d memory_limit=${php_memory_limit} artisan queue:work redis --queue=${queue_name} --sleep=${sleep_seconds} --rest=${rest_seconds} --timeout=${timeout_seconds} --tries=${tries} --memory=${memory_mb} --max-time=${max_time} --max-jobs=${max_jobs}"
+    local worker_command="php -d memory_limit=${php_memory_limit} artisan queue:work ${queue_connection} --queue=${queue_name} --sleep=${sleep_seconds} --rest=${rest_seconds} --timeout=${timeout_seconds} --tries=${tries} --memory=${memory_mb} --max-time=${max_time} --max-jobs=${max_jobs}"
 
     if [ -n "$nice_level" ]; then
         worker_command="nice -n ${nice_level} ${worker_command}"
     fi
 
-    echo "[queue] Iniciando worker role=${role} queue=${queue_name} timeout=${timeout_seconds}s memory=${memory_mb}MB"
+    echo "[queue] Iniciando worker role=${role} connection=${queue_connection} queue=${queue_name} timeout=${timeout_seconds}s memory=${memory_mb}MB"
 
     exec su -s /bin/sh www-data -c "$worker_command"
+}
+
+start_exports_fallback_worker() {
+    mkdir -p storage/logs bootstrap/cache
+    touch storage/logs/queue-exports-fallback.log
+    chown www-data:www-data storage/logs/queue-exports-fallback.log
+
+    (
+        set +e
+
+        while true; do
+            echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] [exports-fallback] iniciando worker"
+
+            su -s /bin/sh www-data -c "nice -n ${EXPORTS_FALLBACK_NICE:-15} php -d memory_limit=${EXPORTS_FALLBACK_PHP_MEMORY_LIMIT:-384M} artisan queue:work exports_database --queue=exports --sleep=3 --rest=1 --timeout=${EXPORTS_JOB_TIMEOUT:-900} --tries=${EXPORTS_QUEUE_TRIES:-3} --memory=${EXPORTS_FALLBACK_MEMORY_MB:-320} --max-time=${EXPORTS_FALLBACK_MAX_TIME:-900} --max-jobs=${EXPORTS_FALLBACK_MAX_JOBS:-50}"
+            exit_code=$?
+
+            echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] [exports-fallback] worker finalizado codigo=${exit_code}; reiniciando em 2s"
+            sleep 2
+        done
+    ) >> storage/logs/queue-exports-fallback.log 2>&1 &
+
+    echo $! > bootstrap/cache/exports-fallback.pid
+    chown www-data:www-data bootstrap/cache/exports-fallback.pid
+
+    echo "[exports-fallback] Worker de contingencia iniciado pid=$(cat bootstrap/cache/exports-fallback.pid)"
 }
 
 if [ "${1:-}" = "queue-worker" ]; then
@@ -122,8 +149,6 @@ chmod -R 775 \
     /var/www/bootstrap/cache
 
 # ── Dependências PHP ────────────────────────────────────────────────────────
-# Run on every boot so dependency changes from a deploy are applied even when
-# vendor/ is persisted through the bind mount.
 if [ "$APP_ENV" = "production" ]; then
     composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
 else
@@ -160,6 +185,10 @@ php artisan filament:cache-components
 php artisan livewire:publish --assets
 php artisan filament:assets
 
+# Recupera automaticamente exportacoes de arquivo deixadas em queued por
+# deployments anteriores ou por indisponibilidade do worker/Redis.
+php artisan exports:recover-queued --limit=1000 || true
+
 date -u +"%Y-%m-%dT%H:%M:%SZ" > "$READY_FILE"
 chown www-data:www-data "$READY_FILE"
 chmod 664 "$READY_FILE"
@@ -177,6 +206,11 @@ if command -v gzip >/dev/null 2>&1; then
         \) -exec gzip -kf {} \;
     done
 fi
+
+# O app mantem um worker de contingencia para exportacoes. Dessa forma, se o
+# container dedicado de exports estiver indisponivel, PDFs/XLSX continuam sendo
+# processados enquanto o proprio sistema estiver online.
+start_exports_fallback_worker
 
 # ── Inicia php-fpm em background e nginx em foreground ─────────────────────
 php-fpm -D
