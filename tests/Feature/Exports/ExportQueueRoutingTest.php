@@ -16,7 +16,7 @@ class ExportQueueRoutingTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_exportacoes_usam_fila_persistente_e_importacoes_continuam_no_redis(): void
+    public function test_exportacoes_e_importacoes_usam_filas_redis_separadas(): void
     {
         $exportJob = new ProcessExportRequestJob('export-request-de-teste');
         $importJob = new ImportAlunosMatriculadosJob(
@@ -24,14 +24,15 @@ class ExportQueueRoutingTest extends TestCase
             usuarioId: null,
         );
 
-        $this->assertSame('exports_database', $exportJob->connection);
+        $this->assertSame('exports_redis', $exportJob->connection);
         $this->assertSame('exports', $exportJob->queue);
         $this->assertSame('imports', $importJob->queue);
-        $this->assertSame('database', config('queue.connections.exports_database.driver'));
-        $this->assertSame('exports', config('queue.connections.exports_database.queue'));
+        $this->assertSame('redis', config('queue.connections.exports_redis.driver'));
+        $this->assertSame('default', config('queue.connections.exports_redis.connection'));
+        $this->assertSame('exports', config('queue.connections.exports_redis.queue'));
         $this->assertGreaterThan(
             (int) config('exports.job_timeout', 900),
-            (int) config('queue.connections.exports_database.retry_after'),
+            (int) config('queue.connections.exports_redis.retry_after'),
         );
     }
 
@@ -55,7 +56,7 @@ class ExportQueueRoutingTest extends TestCase
         $this->assertTrue((bool) data_get($exportRequest->metadata, 'auto_download'));
 
         Queue::assertPushed(ProcessExportRequestJob::class, function (ProcessExportRequestJob $job): bool {
-            return $job->connection === 'exports_database'
+            return $job->connection === 'exports_redis'
                 && $job->queue === 'exports';
         });
     }
@@ -90,7 +91,7 @@ class ExportQueueRoutingTest extends TestCase
 
         Queue::assertPushed(ProcessExportRequestJob::class, function (ProcessExportRequestJob $job) use ($exportRequest): bool {
             return $job->exportRequestId === (string) $exportRequest->getKey()
-                && $job->connection === 'exports_database'
+                && $job->connection === 'exports_redis'
                 && $job->queue === 'exports';
         });
 
