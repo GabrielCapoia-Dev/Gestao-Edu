@@ -36,7 +36,7 @@ class ProcessExportRequestJob implements ShouldQueue
         public readonly string $exportRequestId,
     ) {
         $this->timeout = (int) config('exports.job_timeout', 900);
-        $this->onConnection('exports_database');
+        $this->onConnection('exports_redis');
         $this->onQueue('exports');
     }
 
