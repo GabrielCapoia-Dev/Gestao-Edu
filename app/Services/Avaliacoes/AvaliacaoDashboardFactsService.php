@@ -2,6 +2,7 @@
 
 namespace App\Services\Avaliacoes;
 
+use App\Jobs\RebuildAvaliacaoDashboardFactsJob;
 use App\Models\Aluno;
 use App\Models\Turma;
 use Illuminate\Support\Facades\Cache;
@@ -42,10 +43,10 @@ class AvaliacaoDashboardFactsService
     }
 
     /**
-     * Solicitação explícita de atualização (ex.: botão "Atualizar").
+     * Solicitação explícita de reconstrução completa.
      *
-     * Diferentemente do autosave, a chamada explícita atualiza os fatos na
-     * própria requisição para que a tela possa ler a fotografia nova logo em seguida.
+     * A operação pesada nunca é executada dentro da requisição HTTP. O estado
+     * é marcado como pendente e um único job é encaminhado para a fila.
      */
     public function requestRebuild(int $avaliacaoId): void
     {
@@ -54,12 +55,13 @@ class AvaliacaoDashboardFactsService
         }
 
         $this->markDirty($avaliacaoId);
-        $this->refreshIfDirty($avaliacaoId);
+        $this->queueRebuildIfNeeded($avaliacaoId);
     }
 
     /**
-     * Atualiza a projeção somente quando ela está pendente, ausente ou falhou.
-     * Retorna true quando uma consolidação foi executada nesta chamada.
+     * Garante que uma projeção pendente seja processada sem bloquear o Livewire.
+     *
+     * Retorna true somente quando esta chamada efetivamente enfileirou o rebuild.
      */
     public function refreshIfDirty(int $avaliacaoId): bool
     {
@@ -67,26 +69,14 @@ class AvaliacaoDashboardFactsService
             return false;
         }
 
-        $lock = Cache::lock('avaliacao-dashboard-facts-refresh:'.$avaliacaoId, 180);
+        $consolidacao = $this->status($avaliacaoId);
+        $status = (string) ($consolidacao?->status ?? '');
 
-        if (! $lock->get()) {
+        if (in_array($status, [self::STATUS_READY, self::STATUS_PROCESSING], true)) {
             return false;
         }
 
-        try {
-            $consolidacao = $this->status($avaliacaoId);
-            $status = (string) ($consolidacao?->status ?? '');
-
-            if ($status === self::STATUS_READY) {
-                return false;
-            }
-
-            $this->rebuild($avaliacaoId);
-
-            return true;
-        } finally {
-            $lock->release();
-        }
+        return $this->queueRebuildIfNeeded($avaliacaoId);
     }
 
     public function status(int $avaliacaoId): ?object
@@ -256,6 +246,50 @@ class AvaliacaoDashboardFactsService
                     'erro' => $erro,
                     'updated_at' => $agora,
                 ]);
+        }
+    }
+
+    /**
+     * Despacha o rebuild pesado para a fila sem permitir que a requisição
+     * Livewire execute a consolidação completa de forma síncrona.
+     */
+    private function queueRebuildIfNeeded(int $avaliacaoId): bool
+    {
+        $lock = Cache::lock('avaliacao-dashboard-facts-dispatch:'.$avaliacaoId, 30);
+
+        if (! $lock->get()) {
+            return false;
+        }
+
+        try {
+            $consolidacao = $this->status($avaliacaoId);
+            $status = (string) ($consolidacao?->status ?? '');
+
+            if (in_array($status, [self::STATUS_READY, self::STATUS_PROCESSING], true)) {
+                return false;
+            }
+
+            $agora = now();
+
+            DB::table('avaliacao_dashboard_consolidacoes')->upsert([
+                [
+                    'avaliacao_id' => $avaliacaoId,
+                    'status' => self::STATUS_PROCESSING,
+                    'iniciada_em' => $agora,
+                    'erro' => null,
+                    'created_at' => $agora,
+                    'updated_at' => $agora,
+                ],
+            ], ['avaliacao_id'], ['status', 'iniciada_em', 'erro', 'updated_at']);
+
+            RebuildAvaliacaoDashboardFactsJob::dispatch($avaliacaoId)->afterCommit();
+
+            return true;
+        } catch (\Throwable $exception) {
+            $this->markFailed($avaliacaoId, $exception->getMessage());
+            throw $exception;
+        } finally {
+            $lock->release();
         }
     }
 
