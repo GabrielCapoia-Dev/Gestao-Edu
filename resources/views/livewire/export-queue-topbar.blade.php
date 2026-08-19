@@ -4,7 +4,29 @@
         : (int) config('performance.livewire_polling.exports_topbar_closed', 15);
 @endphp
 
-<div class="export-queue-wrapper" wire:poll.visible.{{ $pollSeconds }}s="$refresh">
+<div
+    class="export-queue-wrapper"
+    wire:poll.visible.{{ $pollSeconds }}s="pollQueue"
+    x-data
+    x-on:export-auto-download.window="
+        const payload = $event.detail || {};
+
+        if (payload.url) {
+            const key = 'gestao-edu:auto-download:' + (payload.exportRequestId || payload.url);
+
+            if (! sessionStorage.getItem(key)) {
+                sessionStorage.setItem(key, '1');
+
+                const frame = document.createElement('iframe');
+                frame.style.display = 'none';
+                frame.src = payload.url;
+                document.body.appendChild(frame);
+
+                window.setTimeout(() => frame.remove(), 60000);
+            }
+        }
+    "
+>
     <button
         type="button"
         class="export-queue-trigger {{ $activeCount > 0 ? 'is-active' : '' }} {{ $readyCount > 0 ? 'has-ready' : '' }}"
@@ -126,7 +148,7 @@
             </div>
 
             <div class="export-queue-footer">
-                Acompanhe sua fila se processos.
+                Acompanhe sua fila de processos.
             </div>
         </div>
     @endif
