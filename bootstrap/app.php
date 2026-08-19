@@ -62,6 +62,12 @@ return Application::configure(basePath: dirname(__DIR__))
             ->everyMinute()
             ->withoutOverlapping(30);
     })
+    ->withSchedule(function (Schedule $schedule) {
+        $schedule
+            ->command('exports:recover-queued --limit=1000')
+            ->everyMinute()
+            ->withoutOverlapping(5);
+    })
     ->withExceptions(function (Exceptions $exceptions) {
         //
     })->create();
