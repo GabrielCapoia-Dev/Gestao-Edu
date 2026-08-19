@@ -51,7 +51,7 @@ run_queue_worker() {
     case "$role" in
         exports)
             queue_name="exports"
-            queue_connection="exports_database"
+            queue_connection="exports_redis"
             sleep_seconds="${EXPORTS_QUEUE_SLEEP:-3}"
             rest_seconds="${EXPORTS_QUEUE_REST:-1}"
             timeout_seconds="${EXPORTS_JOB_TIMEOUT:-900}"
@@ -63,6 +63,7 @@ run_queue_worker() {
             ;;
         imports)
             queue_name="imports"
+            queue_connection="redis"
             sleep_seconds="${IMPORTS_QUEUE_SLEEP:-5}"
             rest_seconds="${IMPORTS_QUEUE_REST:-1}"
             timeout_seconds="${IMPORTS_JOB_TIMEOUT:-1800}"
@@ -74,6 +75,7 @@ run_queue_worker() {
             ;;
         notifications)
             queue_name="notifications"
+            queue_connection="redis"
             sleep_seconds="${NOTIFICATIONS_QUEUE_SLEEP:-3}"
             rest_seconds="${NOTIFICATIONS_QUEUE_REST:-0}"
             timeout_seconds="${NOTIFICATIONS_QUEUE_TIMEOUT:-60}"
@@ -84,6 +86,7 @@ run_queue_worker() {
             ;;
         default)
             queue_name="default"
+            queue_connection="redis"
             sleep_seconds="${DEFAULT_QUEUE_SLEEP:-3}"
             rest_seconds="${DEFAULT_QUEUE_REST:-0}"
             timeout_seconds="${DEFAULT_QUEUE_TIMEOUT:-300}"
@@ -107,31 +110,6 @@ run_queue_worker() {
     echo "[queue] Iniciando worker role=${role} connection=${queue_connection} queue=${queue_name} timeout=${timeout_seconds}s memory=${memory_mb}MB"
 
     exec su -s /bin/sh www-data -c "$worker_command"
-}
-
-start_exports_fallback_worker() {
-    mkdir -p storage/logs bootstrap/cache
-    touch storage/logs/queue-exports-fallback.log
-    chown www-data:www-data storage/logs/queue-exports-fallback.log
-
-    (
-        set +e
-
-        while true; do
-            echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] [exports-fallback] iniciando worker"
-
-            su -s /bin/sh www-data -c "nice -n ${EXPORTS_FALLBACK_NICE:-15} php -d memory_limit=${EXPORTS_FALLBACK_PHP_MEMORY_LIMIT:-384M} artisan queue:work exports_database --queue=exports --sleep=3 --rest=1 --timeout=${EXPORTS_JOB_TIMEOUT:-900} --tries=${EXPORTS_QUEUE_TRIES:-3} --memory=${EXPORTS_FALLBACK_MEMORY_MB:-320} --max-time=${EXPORTS_FALLBACK_MAX_TIME:-900} --max-jobs=${EXPORTS_FALLBACK_MAX_JOBS:-50}"
-            exit_code=$?
-
-            echo "[$(date -u +'%Y-%m-%dT%H:%M:%SZ')] [exports-fallback] worker finalizado codigo=${exit_code}; reiniciando em 2s"
-            sleep 2
-        done
-    ) >> storage/logs/queue-exports-fallback.log 2>&1 &
-
-    echo $! > bootstrap/cache/exports-fallback.pid
-    chown www-data:www-data bootstrap/cache/exports-fallback.pid
-
-    echo "[exports-fallback] Worker de contingencia iniciado pid=$(cat bootstrap/cache/exports-fallback.pid)"
 }
 
 if [ "${1:-}" = "queue-worker" ]; then
@@ -185,8 +163,9 @@ php artisan filament:cache-components
 php artisan livewire:publish --assets
 php artisan filament:assets
 
-# Recupera automaticamente exportacoes de arquivo deixadas em queued por
-# deployments anteriores ou por indisponibilidade do worker/Redis.
+# Reenvia para o Redis exportacoes de arquivo que possam ter ficado apenas no
+# registro persistente durante um deploy/restart anterior. O comando possui
+# controle de intervalo para nao gerar reenfileiramento excessivo.
 php artisan exports:recover-queued --limit=1000 || true
 
 date -u +"%Y-%m-%dT%H:%M:%SZ" > "$READY_FILE"
@@ -206,11 +185,6 @@ if command -v gzip >/dev/null 2>&1; then
         \) -exec gzip -kf {} \;
     done
 fi
-
-# O app mantem um worker de contingencia para exportacoes. Dessa forma, se o
-# container dedicado de exports estiver indisponivel, PDFs/XLSX continuam sendo
-# processados enquanto o proprio sistema estiver online.
-start_exports_fallback_worker
 
 # ── Inicia php-fpm em background e nginx em foreground ─────────────────────
 php-fpm -D
