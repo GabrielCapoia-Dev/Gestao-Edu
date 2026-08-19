@@ -12,7 +12,7 @@ use App\Services\Exports\Handlers\SelectedRecordsXlsxExportHandler;
 
 return [
     'disk' => env('EXPORTS_DISK', 'local'),
-    'queue' => env('EXPORTS_QUEUE', 'exports'),
+    'queue' => 'exports',
     'expiration_days' => (int) env('EXPORTS_EXPIRATION_DAYS', 7),
     'unbound_lifetime_minutes' => (int) env('EXPORTS_UNBOUND_LIFETIME_MINUTES', 15),
     'expired_record_retention_hours' => (int) env('EXPORTS_EXPIRED_RECORD_RETENTION_HOURS', 24),
