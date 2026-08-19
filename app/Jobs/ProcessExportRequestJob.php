@@ -11,8 +11,8 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -36,54 +36,21 @@ class ProcessExportRequestJob implements ShouldQueue
         public readonly string $exportRequestId,
     ) {
         $this->timeout = (int) config('exports.job_timeout', 900);
+        $this->onConnection('exports_database');
         $this->onQueue('exports');
-    }
-
-    public function middleware(): array
-    {
-        $exportRequest = ExportRequest::query()->find($this->exportRequestId);
-
-        if (! $exportRequest) {
-            return [];
-        }
-
-        return [
-            (new WithoutOverlapping('export:'.$exportRequest->fingerprint))
-                ->expireAfter((int) config('exports.lock_expiration', 1200)),
-        ];
     }
 
     public function handle(ExportManager $manager, ?ExportSessionService $sessions = null): void
     {
         $sessions ??= app(ExportSessionService::class);
 
-        $exportRequest = ExportRequest::query()
-            ->with('user')
-            ->find($this->exportRequestId);
+        $exportRequest = $this->claim($sessions);
 
-        if (! $exportRequest || ! $exportRequest->isActive()) {
-            return;
-        }
-
-        if (! $sessions->isActive($exportRequest)) {
-            $sessions->expireForEndedSession($exportRequest);
-
-            return;
-        }
-
-        if ($exportRequest->cancel_requested_at) {
-            $exportRequest->forceFill([
-                'status' => ExportRequest::STATUS_CANCELLED,
-                'status_message' => 'Exportação cancelada antes do processamento.',
-                'finished_at' => now(),
-            ])->save();
-
+        if (! $exportRequest) {
             return;
         }
 
         try {
-            $exportRequest->markRunning('Processando exportação.');
-
             $result = $manager->handlerFor($exportRequest->type)->handle($exportRequest->refresh());
 
             $exportRequest->refresh();
@@ -119,6 +86,41 @@ class ProcessExportRequestJob implements ShouldQueue
 
             throw $exception;
         }
+    }
+
+    private function claim(ExportSessionService $sessions): ?ExportRequest
+    {
+        return DB::transaction(function () use ($sessions): ?ExportRequest {
+            $exportRequest = ExportRequest::query()
+                ->with('user')
+                ->whereKey($this->exportRequestId)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $exportRequest || $exportRequest->status !== ExportRequest::STATUS_QUEUED) {
+                return null;
+            }
+
+            if (! $sessions->isActive($exportRequest)) {
+                $sessions->expireForEndedSession($exportRequest);
+
+                return null;
+            }
+
+            if ($exportRequest->cancel_requested_at) {
+                $exportRequest->forceFill([
+                    'status' => ExportRequest::STATUS_CANCELLED,
+                    'status_message' => 'Exportação cancelada antes do processamento.',
+                    'finished_at' => now(),
+                ])->save();
+
+                return null;
+            }
+
+            $exportRequest->markRunning('Processando exportação.');
+
+            return $exportRequest->refresh();
+        }, 3);
     }
 
     public function failed(?Throwable $exception): void
