@@ -36,7 +36,7 @@ class ProcessExportRequestJob implements ShouldQueue
         public readonly string $exportRequestId,
     ) {
         $this->timeout = (int) config('exports.job_timeout', 900);
-        $this->onQueue((string) config('exports.queue', 'exports'));
+        $this->onQueue('exports');
     }
 
     public function middleware(): array
