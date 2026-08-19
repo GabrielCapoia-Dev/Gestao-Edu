@@ -36,6 +36,7 @@ services:
     image: laravel-app-gestao-edu
     container_name: laravel-app-gestao-edu
     restart: unless-stopped
+    init: true
     working_dir: /var/www
     env_file:
       - .env
