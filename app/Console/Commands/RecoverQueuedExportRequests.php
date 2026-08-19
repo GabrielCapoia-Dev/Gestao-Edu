@@ -12,11 +12,19 @@ class RecoverQueuedExportRequests extends Command
 {
     protected $signature = 'exports:recover-queued {--limit=500 : Quantidade maxima de exportacoes a reenfileirar}';
 
-    protected $description = 'Reencaminha para a fila persistente as exportacoes de arquivo que ficaram paradas';
+    protected $description = 'Reencaminha para a fila Redis de exports as exportacoes de arquivo que ficaram paradas';
 
     public function handle(): int
     {
         $limit = max(1, min(5000, (int) $this->option('limit')));
+
+        // Remove apenas resíduos da tentativa temporária de usar MySQL como
+        // transporte da fila de exportações. O ExportRequest continua intacto
+        // e será reenviado ao Redis logo abaixo.
+        $legacyDatabaseJobs = DB::table((string) config('queue.connections.database.table', 'jobs'))
+            ->where('queue', 'exports')
+            ->where('payload', 'like', '%ProcessExportRequestJob%')
+            ->delete();
 
         $ids = ExportRequest::query()
             ->where('status', ExportRequest::STATUS_QUEUED)
@@ -70,7 +78,8 @@ class RecoverQueuedExportRequests extends Command
             $dispatched++;
         }
 
-        $this->info("Exportações reenfileiradas: {$dispatched}");
+        $this->info("Jobs legados removidos do MySQL: {$legacyDatabaseJobs}");
+        $this->info("Exportações reenfileiradas no Redis: {$dispatched}");
 
         return self::SUCCESS;
     }
