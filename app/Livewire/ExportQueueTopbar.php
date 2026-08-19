@@ -28,6 +28,11 @@ class ExportQueueTopbar extends Component
         $this->open = false;
     }
 
+    public function pollQueue(): void
+    {
+        $this->dispatchPendingAutoDownloads();
+    }
+
     public function cancel(string $exportRequestId): void
     {
         $exportRequest = $this->sessionQuery()->whereKey($exportRequestId)->firstOrFail();
@@ -84,6 +89,38 @@ class ExportQueueTopbar extends Component
     public function formatSize(?int $size): string
     {
         return $size ? Number::fileSize($size) : '';
+    }
+
+    private function dispatchPendingAutoDownloads(): void
+    {
+        $items = $this->sessionQuery()
+            ->where('status', ExportRequest::STATUS_FINISHED)
+            ->whereNotNull('file_path')
+            ->latest('finished_at')
+            ->limit(5)
+            ->get();
+
+        foreach ($items as $item) {
+            $metadata = is_array($item->metadata) ? $item->metadata : [];
+
+            if (! (bool) ($metadata['auto_download'] ?? false)) {
+                continue;
+            }
+
+            if (filled($metadata['auto_download_dispatched_at'] ?? null)) {
+                continue;
+            }
+
+            $metadata['auto_download_dispatched_at'] = now()->toIso8601String();
+
+            $item->forceFill(['metadata' => $metadata])->save();
+
+            $this->dispatch(
+                'export-auto-download',
+                url: route('exports.download', $item),
+                exportRequestId: (string) $item->getKey(),
+            );
+        }
     }
 
     private function sessionQuery(): Builder
