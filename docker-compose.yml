@@ -15,7 +15,6 @@ x-production-env: &production-env
   REDIS_CACHE_DB: 1
   REDIS_QUEUE_CONNECTION: default
   REDIS_QUEUE_RETRY_AFTER: 2100
-  IMPORTS_QUEUE: imports
   PERMISSION_CACHE_STORE: redis
   PERF_HEARTBEAT_INTERVAL: 45
   PERF_PRESENCE_TOUCH_MIN_INTERVAL: 35
@@ -46,7 +45,7 @@ services:
       - "${DOCKER_HTTP_PORT}:80"
       - "${DOCKER_HTTPS_PORT}:443"
     volumes:
-      - .:/var/www                          # código sincronizado do host
+      - .:/var/www
       - ./docker/nginx/conf.d/default.conf:/etc/nginx/conf.d/default.conf:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
@@ -55,8 +54,6 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      # start_period alto: primeiro boot (composer + migrate + seed) pode passar de 5 min.
-      # Falhas durante o start_period não contam para retries.
       test: [ "CMD-SHELL", "test -s /var/www/bootstrap/cache/runtime-ready && test -s /var/www/bootstrap/cache/routes-v7.php && test -s /var/www/bootstrap/cache/config.php" ]
       interval: 5s
       timeout: 5s
@@ -98,14 +95,7 @@ services:
       <<: *production-env
     entrypoint: []
     init: true
-    command: >
-      sh -c "mkdir -p storage/logs bootstrap/cache
-      && chown -R www-data:www-data storage/logs bootstrap/cache
-      && notification_memory=$${NOTIFICATIONS_QUEUE_MEMORY_MB:-384}
-      && case \"$$notification_memory\" in ''|*[!0-9]*) notification_memory=384 ;; esac
-      && if [ \"$$notification_memory\" -lt 384 ]; then notification_memory=384; fi
-      && export NOTIFICATIONS_QUEUE_MEMORY_MB_EFFECTIVE=\"$$notification_memory\"
-      && exec su -s /bin/sh www-data -c 'php artisan queue:work $${QUEUE_CONNECTION:-redis} --queue=$${NOTIFICATIONS_QUEUE:-notifications} --sleep=$${NOTIFICATIONS_QUEUE_SLEEP:-3} --rest=$${NOTIFICATIONS_QUEUE_REST:-0} --timeout=$${NOTIFICATIONS_QUEUE_TIMEOUT:-60} --tries=$${NOTIFICATIONS_QUEUE_TRIES:-3} --memory=$${NOTIFICATIONS_QUEUE_MEMORY_MB_EFFECTIVE} --max-time=$${QUEUE_WORKER_MAX_TIME:-3600} --max-jobs=$${QUEUE_WORKER_MAX_JOBS:-500}'"
+    command: ["bash", "/var/www/entrypoint.sh", "queue-worker", "notifications"]
     volumes:
       - .:/var/www
     depends_on:
@@ -132,10 +122,7 @@ services:
       <<: *production-env
     entrypoint: []
     init: true
-    command: >
-      sh -c "mkdir -p storage/app/private/exports storage/logs bootstrap/cache
-      && chown -R www-data:www-data storage/app/private/exports storage/logs bootstrap/cache
-      && exec su -s /bin/sh www-data -c 'nice -n $${EXPORTS_QUEUE_NICE:-10} php -d memory_limit=$${EXPORTS_PHP_MEMORY_LIMIT:-512M} artisan queue:work $${QUEUE_CONNECTION:-redis} --queue=$${EXPORTS_QUEUE:-exports} --sleep=$${EXPORTS_QUEUE_SLEEP:-5} --rest=$${EXPORTS_QUEUE_REST:-1} --timeout=$${EXPORTS_JOB_TIMEOUT:-900} --tries=$${EXPORTS_QUEUE_TRIES:-3} --memory=$${EXPORTS_QUEUE_MEMORY_MB:-384} --max-time=$${QUEUE_WORKER_MAX_TIME:-3600} --max-jobs=$${QUEUE_WORKER_MAX_JOBS:-250}'"
+    command: ["bash", "/var/www/entrypoint.sh", "queue-worker", "exports"]
     volumes:
       - .:/var/www
     depends_on:
@@ -162,10 +149,7 @@ services:
       <<: *production-env
     entrypoint: []
     init: true
-    command: >
-      sh -c "mkdir -p storage/app/private/imports storage/logs bootstrap/cache
-      && chown -R www-data:www-data storage/app/private/imports storage/logs bootstrap/cache
-      && exec su -s /bin/sh www-data -c 'nice -n $${IMPORTS_QUEUE_NICE:-10} php -d memory_limit=$${IMPORTS_PHP_MEMORY_LIMIT:-512M} artisan queue:work $${QUEUE_CONNECTION:-redis} --queue=$${IMPORTS_QUEUE:-imports} --sleep=$${IMPORTS_QUEUE_SLEEP:-5} --rest=$${IMPORTS_QUEUE_REST:-1} --timeout=$${IMPORTS_JOB_TIMEOUT:-1800} --tries=$${IMPORTS_QUEUE_TRIES:-2} --memory=$${IMPORTS_QUEUE_MEMORY_MB:-384} --max-time=$${QUEUE_WORKER_MAX_TIME:-3600} --max-jobs=$${QUEUE_WORKER_MAX_JOBS:-100}'"
+    command: ["bash", "/var/www/entrypoint.sh", "queue-worker", "imports"]
     volumes:
       - .:/var/www
     depends_on:
@@ -192,10 +176,7 @@ services:
       <<: *production-env
     entrypoint: []
     init: true
-    command: >
-      sh -c "mkdir -p storage/logs bootstrap/cache
-      && chown -R www-data:www-data storage/logs bootstrap/cache
-      && exec su -s /bin/sh www-data -c 'php artisan queue:work $${QUEUE_CONNECTION:-redis} --queue=default --sleep=$${DEFAULT_QUEUE_SLEEP:-3} --rest=$${DEFAULT_QUEUE_REST:-0} --timeout=$${DEFAULT_QUEUE_TIMEOUT:-300} --tries=$${DEFAULT_QUEUE_TRIES:-3} --memory=$${DEFAULT_QUEUE_MEMORY_MB:-384} --max-time=$${QUEUE_WORKER_MAX_TIME:-3600} --max-jobs=$${QUEUE_WORKER_MAX_JOBS:-500}'"
+    command: ["bash", "/var/www/entrypoint.sh", "queue-worker", "default"]
     volumes:
       - .:/var/www
     depends_on:
