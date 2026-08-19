@@ -40,17 +40,16 @@ return [
         ],
 
         /*
-         * Exportacoes usam uma conexao de fila propria e persistente no MySQL.
-         * Isso evita que PDFs/XLSX fiquem presos por indisponibilidade, perda de
-         * mensagens ou divergencia de configuracao no Redis. O retry_after deve
-         * permanecer acima do timeout maximo dos jobs de exportacao.
+         * Exportacoes usam uma conexao Redis dedicada e deterministica.
+         * O nome da fila e a conexao Redis logica nao dependem do .env de
+         * producao, evitando divergencia entre quem despacha e quem consome.
          */
-        'exports_database' => [
-            'driver' => 'database',
-            'connection' => env('DB_QUEUE_CONNECTION'),
-            'table' => env('DB_QUEUE_TABLE', 'jobs'),
+        'exports_redis' => [
+            'driver' => 'redis',
+            'connection' => 'default',
             'queue' => 'exports',
-            'retry_after' => 1200,
+            'retry_after' => 2100,
+            'block_for' => 5,
             'after_commit' => false,
         ],
 
