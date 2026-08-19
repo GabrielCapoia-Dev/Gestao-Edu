@@ -32,6 +32,10 @@ class ExportRequestService
             throw new RuntimeException("Exportação [{$type}] ainda não possui processador assincrono.");
         }
 
+        if ($format !== 'processo' && ! array_key_exists('auto_download', $metadata)) {
+            $metadata['auto_download'] = true;
+        }
+
         $filters = $this->normalizePayload($filters);
         $metadata = $this->normalizePayload($metadata);
         $ownership = $this->sessions->ownershipPayload();
