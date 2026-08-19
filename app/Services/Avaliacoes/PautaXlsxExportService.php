@@ -3,7 +3,6 @@
 namespace App\Services\Avaliacoes;
 
 use App\Models\Pauta;
-use Illuminate\Support\Collection;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
@@ -13,10 +12,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PautaXlsxExportService
 {
-    /**
-     * @param  Collection<int, Pauta>|iterable<Pauta>  $records
-     */
-    public function download(Collection|iterable $records): StreamedResponse
+    /** @param iterable<Pauta> $records */
+    public function download(iterable $records): StreamedResponse
     {
         $ids = collect($records)
             ->map(fn (Pauta $pauta): int => (int) $pauta->getKey())
@@ -34,7 +31,7 @@ class PautaXlsxExportService
             ->withCount('avaliacoes')
             ->whereIn('id', $ids->all())
             ->get()
-            ->sortBy(fn (Pauta $pauta): int => $ids->search((int) $pauta->getKey()))
+            ->sortBy(fn (Pauta $pauta): int => (int) $ids->search((int) $pauta->getKey()))
             ->values();
 
         $nomeArquivo = 'pautas-selecionadas-'.now()->format('Y-m-d_H-i-s').'.xlsx';
@@ -44,7 +41,7 @@ class PautaXlsxExportService
             $sheet = $spreadsheet->getActiveSheet();
             $sheet->setTitle('Pautas');
 
-            $cabecalhos = [
+            $sheet->fromArray([
                 'ID',
                 'Pauta',
                 'Tipo',
@@ -54,9 +51,7 @@ class PautaXlsxExportService
                 'Qtd. Avaliações',
                 'Status',
                 'Atualizada em',
-            ];
-
-            $sheet->fromArray($cabecalhos, null, 'A1');
+            ], null, 'A1');
 
             $linha = 2;
 
@@ -83,9 +78,7 @@ class PautaXlsxExportService
             $sheet->getRowDimension(1)->setRowHeight(24);
 
             $sheet->getStyle('A1:I1')->applyFromArray([
-                'font' => [
-                    'bold' => true,
-                ],
+                'font' => ['bold' => true],
                 'fill' => [
                     'fillType' => Fill::FILL_SOLID,
                     'startColor' => ['rgb' => 'D9EAF7'],
@@ -95,9 +88,7 @@ class PautaXlsxExportService
                     'vertical' => Alignment::VERTICAL_CENTER,
                 ],
                 'borders' => [
-                    'bottom' => [
-                        'borderStyle' => Border::BORDER_THIN,
-                    ],
+                    'bottom' => ['borderStyle' => Border::BORDER_THIN],
                 ],
             ]);
 
@@ -107,7 +98,7 @@ class PautaXlsxExportService
                     ->setWrapText(true);
             }
 
-            $larguras = [
+            foreach ([
                 'A' => 10,
                 'B' => 70,
                 'C' => 24,
@@ -117,9 +108,7 @@ class PautaXlsxExportService
                 'G' => 16,
                 'H' => 14,
                 'I' => 20,
-            ];
-
-            foreach ($larguras as $coluna => $largura) {
+            ] as $coluna => $largura) {
                 $sheet->getColumnDimension($coluna)->setWidth($largura);
             }
 
