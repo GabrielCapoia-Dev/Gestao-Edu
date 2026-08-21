@@ -63,8 +63,7 @@ class NotificarPedidosAtrasados extends Command
     {
         $diasAtrasado = (int) $pedido->data_prevista->copy()->startOfDay()->diffInDays($hoje);
 
-        return in_array($diasAtrasado, [1, 7, 15, 30], true)
-            || ($diasAtrasado > 30 && $diasAtrasado % 30 === 0);
+        return $diasAtrasado > 0 && $diasAtrasado % 2 === 0;
     }
 
     /** @param Collection<int, Pedido> $pedidos */
