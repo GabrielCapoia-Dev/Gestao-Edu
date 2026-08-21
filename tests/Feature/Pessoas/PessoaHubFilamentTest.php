@@ -597,6 +597,8 @@ class PessoaHubFilamentTest extends TestCase
             ->call('escolaGestoraAlterada', $escolaGestora->id)
             ->set('cargosGestores', ['diretor'])
             ->set('portaria', '678/2026')
+            ->set('cargaHoraria', 20)
+            ->set('jornada', true)
             ->call('salvar')
             ->assertHasNoErrors()
             ->assertDispatched('pessoa-form-salvo')
@@ -649,6 +651,8 @@ class PessoaHubFilamentTest extends TestCase
             // Simula um update atrasado do Livewire reintroduzindo o estado anterior.
             ->set('matriculas', $estadoAntesDaRemocao)
             ->assertCount('matriculas', 3)
+            ->set('cargaHoraria', 20)
+            ->set('jornada', true)
             ->call('salvar')
             ->assertHasNoErrors()
             ->assertDispatched('pessoa-form-salvo');

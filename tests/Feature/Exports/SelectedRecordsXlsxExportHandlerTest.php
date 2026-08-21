@@ -7,6 +7,7 @@ use App\Models\ComponenteCurricular;
 use App\Models\Escola;
 use App\Models\ExportRequest;
 use App\Models\FuncaoAdministrativa;
+use App\Models\Lotacao;
 use App\Models\PessoaMatricula;
 use App\Models\Professor;
 use App\Models\Serie;
@@ -82,12 +83,20 @@ class SelectedRecordsXlsxExportHandlerTest extends TestCase
             'professor_id' => $professor->id,
             'tem_professor' => true,
         ]);
+        $lotacao = Lotacao::query()->create([
+            'escola_id' => $escola->id,
+            'codigo' => 'LOT-EXP',
+            'nome' => 'Secretaria',
+        ]);
         $servidorSelecionado = Servidor::query()->create([
             'id_escola' => $escola->id,
             'matricula' => 'MAT-001',
             'nome' => 'Servidor Selecionado',
             'user_id' => $user->id,
             'status' => Servidor::STATUS_ATIVO,
+            'carga_horaria' => 20,
+            'jornada' => false,
+            'lotacao_id' => $lotacao->id,
         ]);
         PessoaMatricula::query()->create([
             'servidor_id' => $servidorSelecionado->id,
@@ -173,19 +182,26 @@ class SelectedRecordsXlsxExportHandlerTest extends TestCase
 
             if ($type === 'servidores_selecionados') {
                 $this->assertSame(
-                    ['Escola', 'Matrícula', 'Nome', 'Turno', 'E-mail', 'Cargo', 'Status'],
-                    $sheet->rangeToArray('A1:G1')[0],
+                    [
+                        'Escola', 'Matrícula', 'Nome', 'Turno', 'Carga horária', 'Jornada',
+                        'Lotação', 'Escola da lotação', 'E-mail', 'Cargo', 'Status',
+                    ],
+                    $sheet->rangeToArray('A1:K1')[0],
                 );
                 $this->assertSame([
                     $escola->nome,
                     'MAT-001',
                     'Servidor Selecionado',
                     'Manhã',
+                    '20 horas semanais',
+                    'Não',
+                    'LOT-EXP - Secretaria',
+                    $escola->nome,
                     $user->email,
                     'Auxiliar Administrativo',
                     'Ativo',
-                ], $sheet->rangeToArray('A2:G2')[0]);
-                $this->assertNull($sheet->getCell('H1')->getValue());
+                ], $sheet->rangeToArray('A2:K2')[0]);
+                $this->assertNull($sheet->getCell('L1')->getValue());
             }
 
             $spreadsheet->disconnectWorksheets();

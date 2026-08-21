@@ -155,7 +155,7 @@ class PessoaVinculoService
 
     private function dadosPessoa(array $data): array
     {
-        return [
+        $dados = [
             'cpf' => $data['cpf'] ?? null,
             'user_id' => $data['user_id'] ?? null,
             'nome' => $data['nome'] ?? null,
@@ -167,6 +167,14 @@ class PessoaVinculoService
             'setor_id' => $data['setor_id'] ?? null,
             'matricula' => $data['matricula'] ?? null,
         ];
+
+        foreach (['carga_horaria', 'jornada', 'lotacao_id'] as $campo) {
+            if (array_key_exists($campo, $data)) {
+                $dados[$campo] = $data[$campo];
+            }
+        }
+
+        return $dados;
     }
 
     private function validarCargoObrigatorio(array $vinculos): void

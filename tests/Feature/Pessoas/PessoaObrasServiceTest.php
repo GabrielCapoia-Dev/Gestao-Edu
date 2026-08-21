@@ -311,6 +311,7 @@ class PessoaObrasServiceTest extends TestCase
             ->set('email', 'obras.formulario@edu.umuarama.pr.gov.br')
             ->set('cargo', ServidorResource::CARGO_OBRAS)
             ->set('setorObrasId', $setor->id)
+            ->set('cargaHoraria', 40)
             ->set('matriculas', [
                 'm-obras' => [
                     'id' => null,

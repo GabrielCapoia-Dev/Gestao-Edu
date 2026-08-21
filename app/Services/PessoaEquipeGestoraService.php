@@ -238,6 +238,11 @@ class PessoaEquipeGestoraService
         }
 
         $normalizado = $this->normalizarEValidar($dados);
+        PessoaMatricula::assertCompativelComCargaHoraria(
+            $pessoa->carga_horaria,
+            $pessoa->jornada,
+            $normalizado['matriculas']->all(),
+        );
         $matriculas = $this->sincronizarMatriculas($pessoa, $normalizado['matriculas']);
         $escola = Escola::query()->lockForUpdate()->findOrFail($normalizado['escola']->id);
         $possuiOutroVinculoEmEscolaDiferente = ServidorFuncaoAdministrativa::query()
@@ -701,6 +706,9 @@ class PessoaEquipeGestoraService
                 'telefone',
                 'status',
                 'observacoes',
+                'carga_horaria',
+                'jornada',
+                'lotacao_id',
             ])
             ->all();
 
@@ -715,7 +723,18 @@ class PessoaEquipeGestoraService
     private function dadosPessoaAtual(Servidor $pessoa): array
     {
         return collect($pessoa->getAttributes())
-            ->only(['cpf', 'user_id', 'nome', 'email', 'telefone', 'status', 'observacoes'])
+            ->only([
+                'cpf',
+                'user_id',
+                'nome',
+                'email',
+                'telefone',
+                'status',
+                'observacoes',
+                'carga_horaria',
+                'jornada',
+                'lotacao_id',
+            ])
             ->all();
     }
 }

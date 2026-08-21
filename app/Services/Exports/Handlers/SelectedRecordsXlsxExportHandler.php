@@ -167,14 +167,16 @@ class SelectedRecordsXlsxExportHandler implements ExportHandler
         $records = $policy->applyViewAnyScope($user, Servidor::query()->withTrashed())
             ->whereKey($ids)
             ->with([
-                'escola', 'user', 'matriculas', 'professores.escola', 'professores.professorMatricula',
+                'escola', 'user', 'matriculas', 'lotacao.escola',
+                'professores.escola', 'professores.professorMatricula',
                 'vinculosAtivos.funcaoAdministrativa', 'vinculosAtivos.escola',
             ])
             ->orderBy('id')
             ->get();
 
         return [[
-            'Escola', 'Matrícula', 'Nome', 'Turno', 'E-mail', 'Cargo', 'Status',
+            'Escola', 'Matrícula', 'Nome', 'Turno', 'Carga horária', 'Jornada',
+            'Lotação', 'Escola da lotação', 'E-mail', 'Cargo', 'Status',
         ], $records->map(fn (Servidor $record): array => [
             collect([$record->escola?->nome])
                 ->merge($record->professores->where('ativo', true)->pluck('escola.nome'))
@@ -192,6 +194,10 @@ class SelectedRecordsXlsxExportHandler implements ExportHandler
                 ->filter()
                 ->map(fn (mixed $turno): mixed => $this->turnoLabel((string) $turno))
                 ->unique()->sort()->values()->implode('; '),
+            $record->cargaHorariaLabel(),
+            $record->jornadaLabel(),
+            $record->lotacaoLabel(),
+            $record->lotacao?->escola?->nome ?? 'Não informada',
             collect([$record->email, $record->user?->email])
                 ->merge($record->professores->where('ativo', true)->pluck('email'))
                 ->first(static fn (mixed $email): bool => filled($email)),
