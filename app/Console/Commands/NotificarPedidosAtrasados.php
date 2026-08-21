@@ -5,74 +5,77 @@ namespace App\Console\Commands;
 use App\Models\Pedido;
 use App\Models\User;
 use App\Notifications\SistemaNotification;
-use App\Services\PedidoService;
-use App\Support\UserActorSnapshot;
+use App\Services\PedidoNotificationRecipientService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
 class NotificarPedidosAtrasados extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
     protected $signature = 'app:notificar-pedidos-atrasados';
+    protected $description = 'Notifica, de forma resumida e periódica, pedidos atrasados';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    protected $description = 'Command description';
-
-    /**
-     * Execute the console command.
-     */
-    public function handle()
+    public function handle(): int
     {
         $hoje = now()->startOfDay();
+        $recipientService = app(PedidoNotificationRecipientService::class);
+        $alertas = [];
 
-        $pedidosAtrasados = Pedido::whereNull('data_entrega')
+        $pedidosAtrasados = Pedido::query()
+            ->whereNull('data_entrega')
             ->whereNotNull('data_prevista')
             ->whereDate('data_prevista', '<', $hoje)
-            ->get();
-
-        if ($pedidosAtrasados->isEmpty()) {
-            return;
-        }
-
-        $usuarios = User::permission('Visualizar Notificação: Pedidos Atrasados')->get();
-        $pedidoService = app(PedidoService::class);
+            ->get()
+            ->filter(fn (Pedido $pedido): bool => $this->deveNotificarAtraso($pedido, $hoje));
 
         foreach ($pedidosAtrasados as $pedido) {
+            foreach ($recipientService->destinatarios($pedido) as $user) {
+                $alertas[$user->id]['user'] = $user;
+                $alertas[$user->id]['pedidos'][] = $pedido;
+            }
+        }
 
-            // 🔑 Chave única por pedido por dia
-            $cacheKey = 'pedido_atraso_notificado_' . $pedido->id . '_' . now()->format('Y-m-d');
+        foreach ($alertas as $alerta) {
+            /** @var User $user */
+            $user = $alerta['user'];
+            $cacheKey = "pedidos_atrasados_resumo_{$user->id}_".$hoje->format('Y-m-d');
 
             if (Cache::has($cacheKey)) {
-                continue; // já notificou hoje
+                continue;
             }
 
-            foreach ($usuarios as $user) {
-                if (
-                    ! UserActorSnapshot::canReceiveNotification($user)
-                    || ! $pedidoService->registroVisivelNoPerfil($pedido, $user)
-                ) {
-                    continue;
-                }
+            $pedidos = collect($alerta['pedidos']);
+            $user->notify(
+                new SistemaNotification(
+                    titulo: 'Resumo de Pedidos Atrasados',
+                    mensagem: $this->mensagemResumo($pedidos),
+                    url: route('filament.admin.resources.pedidos.index'),
+                )
+            );
 
-                $user->notify(
-                    new SistemaNotification(
-                        titulo: 'Pedido Atrasado',
-                        mensagem: "Pedido {$pedido->numero_protocolo} está vencido desde {$pedido->data_prevista->format('d/m/Y')}.",
-                        url: route('filament.admin.resources.pedidos.edit', $pedido)
-                    )
-                );
-            }
-
-            // ⏳ Expira no final do dia
             Cache::put($cacheKey, true, now()->endOfDay());
         }
+
+        return self::SUCCESS;
+    }
+
+    private function deveNotificarAtraso(Pedido $pedido, \Carbon\Carbon $hoje): bool
+    {
+        $diasAtrasado = (int) $pedido->data_prevista->copy()->startOfDay()->diffInDays($hoje);
+
+        return $diasAtrasado > 0 && $diasAtrasado % 2 === 0;
+    }
+
+    /** @param Collection<int, Pedido> $pedidos */
+    private function mensagemResumo(Collection $pedidos): string
+    {
+        $quantidade = $pedidos->count();
+        $protocolos = $pedidos
+            ->pluck('numero_protocolo')
+            ->take(5)
+            ->implode(', ');
+        $complemento = $quantidade > 5 ? ' e mais '.($quantidade - 5) : '';
+
+        return "{$quantidade} pedido(s) atrasado(s) da sua escola precisam de atenção: {$protocolos}{$complemento}.";
     }
 }

@@ -4,12 +4,14 @@ namespace App\Policies;
 
 use App\Models\User;
 use App\Services\NotificationCenterService;
+use App\Services\PedidoNotificationRecipientService;
 
 class NotificationPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->hasPermissionTo('Visualizar Notificações');
+        return $user->hasPermissionTo('Visualizar Notificações')
+            || app(PedidoNotificationRecipientService::class)->podeAcessarCentral($user);
     }
 
     public function create(User $user): bool
