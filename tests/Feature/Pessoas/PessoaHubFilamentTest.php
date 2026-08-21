@@ -23,7 +23,7 @@ use App\Models\User;
 use App\Services\ServidorService;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
-use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\View;
 use Filament\Tables\Columns\Layout\Grid;
 use Filament\Tables\Enums\RecordActionsPosition;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -115,7 +115,7 @@ class PessoaHubFilamentTest extends TestCase
         }
     }
 
-    public function test_dropdown_de_select_em_modal_fica_acima_da_sobreposicao(): void
+    public function test_dropdown_de_acoes_fica_acima_da_busca_e_dos_cabecalhos(): void
     {
         $styles = file_get_contents(
             resource_path('views/filament/pages/partials/pessoas-responsive-table-styles.blade.php'),
@@ -126,6 +126,8 @@ class PessoaHubFilamentTest extends TestCase
             'body:has(.pe-pessoas-page) .fi-dropdown-panel:not(.fi-select-dropdown-portal)',
             $styles,
         );
+        $this->assertStringContainsString('z-index: 2200 !important;', $styles);
+        $this->assertStringNotContainsString('z-index: 80 !important;', $styles);
         $this->assertStringNotContainsString(
             'body:has(.pe-pessoas-page) .fi-dropdown-panel {',
             $styles,
@@ -422,7 +424,16 @@ class PessoaHubFilamentTest extends TestCase
             ->assertCanNotSeeTableRecords([$pessoa]);
 
         $this->actingAs($restrito);
-        $this->assertSame('Escola escopo A', ServidorResource::escolasLabel($pessoa->fresh()));
+        $pessoa = $pessoa->fresh();
+        $detalhes = ServidorResource::detalhesVisualizacaoPersonalizada($pessoa);
+
+        $this->assertSame('Escola escopo A', ServidorResource::escolasLabel($pessoa));
+        $this->assertSame(['Escola escopo A'], $detalhes['escolas']);
+        $this->assertSame(
+            ['MATRICULA-VISIVEL'],
+            collect($detalhes['matriculas'])->pluck('numero')->all(),
+        );
+        $this->assertNull($detalhes['acesso']);
     }
 
     public function test_header_novo_servidor(): void
@@ -777,20 +788,51 @@ class PessoaHubFilamentTest extends TestCase
             ->assertTableActionDoesNotExist('gerenciarAcesso');
     }
 
-    public function test_visualizacao_usa_a_mesma_estrutura_de_abas_do_formulario(): void
+    public function test_visualizacao_usa_ficha_personalizada_com_resumo_funcional(): void
     {
+        $usuario = $this->usuarioHubAdmin(['Listar Pessoas']);
+        $this->actingAs($usuario);
         $setor = $this->criarSetor('Pedagógico');
         $escola = $this->criarEscola('Escola Visualização', $setor);
         $servidor = $this->criarServidor('Pessoa Visualização', $escola, $setor);
 
+        Servidor::query()->whereKey($servidor->id)->update([
+            'carga_horaria' => 20,
+            'jornada' => false,
+        ]);
+        PessoaMatricula::query()->create([
+            'servidor_id' => $servidor->id,
+            'matricula' => 'VIEW-FICHA-001',
+            'turno' => 'manha',
+        ]);
+        Professor::query()->create([
+            'servidor_id' => $servidor->id,
+            'id_escola' => $escola->id,
+            'matricula' => 'VIEW-FICHA-001',
+            'turno' => 'manha',
+            'nome' => $servidor->nome,
+            'email' => $servidor->email,
+            'ativo' => true,
+        ]);
+
+        $servidor = $servidor->fresh();
         $schema = ServidorResource::infolistDetalhesCompletos($servidor);
+        $detalhes = ServidorResource::detalhesVisualizacaoPersonalizada($servidor);
 
         $this->assertCount(1, $schema);
-        $this->assertInstanceOf(Tabs::class, $schema[0]);
-        $this->assertSame('Ficha da pessoa', $schema[0]->getLabel());
-        $this->assertSame(['Dados pessoais'], collect($schema[0]->getDefaultChildComponents())
-            ->map(fn ($tab): string => (string) $tab->getLabel())
-            ->all());
+        $this->assertInstanceOf(View::class, $schema[0]);
+        $this->assertSame(
+            'filament.admin.resources.servidores.partials.pessoa-detalhes',
+            $schema[0]->getView(),
+        );
+        $this->assertSame('Pessoa Visualização', $detalhes['nome']);
+        $this->assertSame('Professor', $detalhes['cargo']);
+        $this->assertSame('20 horas semanais', $detalhes['carga_horaria']);
+        $this->assertSame([[
+            'numero' => 'VIEW-FICHA-001',
+            'turno' => 'Manhã',
+        ]], $detalhes['matriculas']);
+        $this->assertSame(['Escola Visualização'], $detalhes['escolas']);
     }
 
     public function test_visualizacao_exibe_somente_as_turmas_vinculadas_ao_coordenador(): void
@@ -825,15 +867,16 @@ class PessoaHubFilamentTest extends TestCase
         ]);
 
         $grupos = ServidorResource::gruposTurmasCoordenacao($servidor->fresh());
-        $schema = ServidorResource::infolistDetalhesCompletos($servidor->fresh());
+        $detalhes = ServidorResource::detalhesVisualizacaoPersonalizada($servidor->fresh());
 
         $this->assertSame(['2º Ano - Turma A'], $grupos[0]['turmas']);
-        $this->assertSame(['Dados pessoais', 'Turmas'], collect($schema[0]->getDefaultChildComponents())
-            ->map(fn ($tab): string => (string) $tab->getLabel())
-            ->all());
+        $this->assertSame('coordenacao', $detalhes['pedagogico']['tipo']);
+        $this->assertSame('Turmas coordenadas', $detalhes['pedagogico']['label']);
+        $this->assertSame(1, $detalhes['pedagogico']['total_turmas']);
+        $this->assertSame(['2º Ano - Turma A'], $detalhes['pedagogico']['grupos'][0]['turmas']);
     }
 
-    public function test_visualizacao_de_diretor_e_secretario_nao_exibe_aba_de_turmas(): void
+    public function test_visualizacao_de_diretor_e_secretario_nao_exibe_area_de_turmas(): void
     {
         $usuario = $this->usuarioHubAdmin(['Listar Pessoas']);
         $this->actingAs($usuario);
@@ -851,10 +894,9 @@ class PessoaHubFilamentTest extends TestCase
                 'portaria' => '456/2026',
             ]);
 
-            $schema = ServidorResource::infolistDetalhesCompletos($servidor->fresh());
-            $this->assertSame(['Dados pessoais'], collect($schema[0]->getDefaultChildComponents())
-                ->map(fn ($tab): string => (string) $tab->getLabel())
-                ->all());
+            $detalhes = ServidorResource::detalhesVisualizacaoPersonalizada($servidor->fresh());
+
+            $this->assertNull($detalhes['pedagogico']);
         }
     }
 
@@ -905,6 +947,11 @@ class PessoaHubFilamentTest extends TestCase
             ->test(ManageServidores::class)
             ->mountTableAction('view', $servidor)
             ->assertHasNoErrors()
+            ->assertSee('Ficha funcional')
+            ->assertSee('Visão geral')
+            ->assertSee('Vínculos e lotações')
+            ->assertSee('Turmas e componentes')
+            ->assertSee('Escola Visualizacao')
             ->assertDontSee('Escolas / lotações')
             ->assertDontSee('Vínculos funcionais');
     }

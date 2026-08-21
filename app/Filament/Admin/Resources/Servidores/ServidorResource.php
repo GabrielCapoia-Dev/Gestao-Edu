@@ -33,13 +33,9 @@ use Filament\Actions\RestoreBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
-use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Component;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Tabs;
-use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\View;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\Layout\Grid;
@@ -471,8 +467,8 @@ class ServidorResource extends Resource
                         ->label('Visualizar')
                         ->modalWidth('6xl')
                         ->modalIcon(null)
-                        ->modalHeading(fn (Servidor $record): string => "Pessoa — {$record->nome}")
-                        ->modalDescription('Ficha completa de identidade, cargo, matrículas, lotações e acesso ao sistema.')
+                        ->modalHeading('Ficha da pessoa')
+                        ->modalDescription('Visão consolidada de dados pessoais, vínculos, lotações e acesso ao sistema.')
                         ->extraModalWindowAttributes([
                             'class' => 'pessoa-modal-window pessoa-view-modal-window',
                         ])
@@ -1209,6 +1205,22 @@ class ServidorResource extends Resource
      */
     public static function infolistDetalhesCompletos(Servidor $record): array
     {
+        return [
+            View::make('filament.admin.resources.servidores.partials.pessoa-detalhes')
+                ->viewData([
+                    'detalhes' => static::detalhesVisualizacaoPersonalizada($record),
+                ])
+                ->columnSpanFull(),
+        ];
+    }
+
+    /**
+     * Prepara a ficha personalizada sem ampliar o escopo escolar ou de acesso do usuário autenticado.
+     *
+     * @return array<string, mixed>
+     */
+    public static function detalhesVisualizacaoPersonalizada(Servidor $record): array
+    {
         $record->loadMissing([
             'user.roles',
             'user.escola',
@@ -1217,141 +1229,217 @@ class ServidorResource extends Resource
             'lotacao.escola',
             'vinculosAtivos.funcaoAdministrativa',
             'vinculosAtivos.escola',
+            'vinculosAtivos.escolasAssessoradas',
             'vinculosAtivos.setor',
             'vinculosAtivos.vinculosTurmaAtivos.turma.serie',
         ]);
 
-        $dadosPessoais = [
-            Section::make('Identidade')
-                ->icon('heroicon-o-user')
-                ->schema([
-                    TextEntry::make('nome')->label('Nome')->columnSpan(2),
-                    TextEntry::make('cpf')
-                        ->label('CPF')
-                        ->formatStateUsing(fn (?string $state): string => Pessoa::formatarCpf($state) ?: 'Não informado'),
-                    TextEntry::make('email')->label('E-mail')->placeholder('Não informado')->copyable(),
-                    TextEntry::make('telefone')->label('Telefone')->placeholder('Não informado'),
-                    TextEntry::make('status')
-                        ->label('Status')
-                        ->badge()
-                        ->formatStateUsing(fn (?string $state): string => Servidor::statusOptions()[$state] ?? '—')
-                        ->color(fn (?string $state): string => match ($state) {
-                            Servidor::STATUS_ATIVO => 'success',
-                            Servidor::STATUS_INATIVO => 'gray',
-                            default => 'warning',
-                        }),
-                    TextEntry::make('observacoes')
-                        ->label('Observações')
-                        ->placeholder('—')
-                        ->columnSpanFull(),
-                ])
-                ->columns(2),
+        $professores = static::professoresVisiveis($record);
+        $vinculos = static::vinculosVisiveis($record);
+        $scope = app(PessoaScopeService::class);
+        $usuario = Auth::user();
 
-            Section::make('Dados funcionais')
-                ->icon('heroicon-o-briefcase')
-                ->schema([
-                    TextEntry::make('cargo_view')
-                        ->label('Cargo')
-                        ->badge()
-                        ->getStateUsing(fn (): string => static::cargoLabel($record))
-                        ->color(fn (string $state): string => $state !== '—' ? 'info' : 'gray'),
-                    TextEntry::make('carga_horaria_view')
-                        ->label('Carga horária')
-                        ->getStateUsing(fn (): string => $record->cargaHorariaLabel()),
-                    TextEntry::make('jornada_view')
-                        ->label('Jornada')
-                        ->badge()
-                        ->getStateUsing(fn (): string => $record->jornadaLabel())
-                        ->color(fn (): string => match ($record->jornada) {
-                            true => 'success',
-                            false => 'gray',
-                            default => 'warning',
-                        }),
-                    TextEntry::make('lotacao_view')
-                        ->label('Lotação')
-                        ->getStateUsing(fn (): string => $record->lotacaoLabel())
-                        ->visible(fn (): bool => static::lotacaoPodeSerVista($record)),
-                    TextEntry::make('lotacao_escola_view')
-                        ->label('Escola da lotação')
-                        ->getStateUsing(fn (): string => $record->lotacao?->escola?->nome ?? 'Não informada')
-                        ->visible(fn (): bool => static::lotacaoPodeSerVista($record)),
-                    TextEntry::make('matriculas_view')
-                        ->label('Matrículas')
-                        ->badge()
-                        ->getStateUsing(fn (): array => collect([$record->matricula])
-                            ->merge($record->matriculas->pluck('matricula'))
-                            ->filter()
-                            ->unique()
-                            ->values()
-                            ->all())
-                        ->placeholder('Nenhuma matrícula informada'),
-                    TextEntry::make('turnos_view')
-                        ->label('Turnos')
-                        ->badge()
-                        ->getStateUsing(fn (): array => $record->matriculas
-                            ->pluck('turno')
-                            ->filter()
-                            ->map(fn (mixed $turno): string => PessoaMatricula::turnosOptions()[(string) $turno] ?? (string) $turno)
-                            ->unique()
-                            ->values()
-                            ->all())
-                        ->placeholder('Nenhum turno informado'),
-                    TextEntry::make('escolas_view')
-                        ->label('Escolas vinculadas')
-                        ->getStateUsing(fn (): string => static::escolasLabel($record) ?: 'Nenhuma escola vinculada')
-                        ->columnSpanFull(),
-                    TextEntry::make('setor_operacional_view')
-                        ->label('Setor')
-                        ->getStateUsing(fn (): string => static::setorOperacionalLabel($record))
-                        ->visible(fn (): bool => static::ehObras($record) || static::ehManutencao($record)),
-                    TextEntry::make('perfis_view')
-                        ->label('Perfis')
-                        ->badge()
-                        ->getStateUsing(fn (): array => $record->user?->roles
-                            ?->pluck('name')->sort()->values()->all() ?? [])
-                        ->placeholder('Nenhum perfil vinculado')
-                        ->visible(fn (): bool => static::ehObras($record) && Gate::allows('viewAny', User::class)),
-                    TextEntry::make('portaria_view')
-                        ->label('Portaria')
-                        ->getStateUsing(fn (): string => static::portariasGestoras($record) ?: 'Não informada')
-                        ->visible(fn (): bool => static::possuiFuncaoGestora($record, 'direcao_escolar')
-                            || static::possuiFuncaoGestora($record, 'coordenacao_pedagogica')),
-                    TextEntry::make('updated_at')
-                        ->label('Atualizado em')
-                        ->dateTime('d/m/Y H:i'),
-                ])
-                ->columns(2),
-        ];
+        $escolas = collect();
 
-        $tabs = [Tab::make('Dados pessoais')->schema($dadosPessoais)];
+        if (filled($record->id_escola) && $scope->canAccessEscola($usuario, (int) $record->id_escola)) {
+            $escolas->push($record->escola?->nome
+                ?? Escola::query()->whereKey($record->id_escola)->value('nome'));
+        }
 
-        if (static::professoresVisiveis($record)->isNotEmpty()) {
-            $tabs[] = Tab::make('Turmas e componentes')->schema([
-                Section::make('Turmas e componentes')
-                    ->icon('heroicon-o-academic-cap')
-                    ->description('Lotações organizadas por escola e turno.')
-                    ->schema([
-                        View::make('filament.admin.resources.servidores.partials.turmas-componentes-groups')
-                            ->viewData(['grupos' => static::gruposTurmasComponentes($record)])
-                            ->columnSpanFull(),
-                    ]),
+        $escolas = $escolas
+            ->merge($professores->pluck('escola.nome'))
+            ->merge($vinculos->pluck('escola.nome'))
+            ->merge($vinculos->flatMap->escolasAssessoradas->pluck('nome'))
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values();
+
+        $acessoGlobal = $scope->hasGlobalAccess($usuario);
+        $numerosVinculosVisiveis = $professores
+            ->pluck('matricula')
+            ->merge($vinculos->pluck('matricula'))
+            ->filter()
+            ->map(fn (mixed $matricula): string => (string) $matricula)
+            ->unique()
+            ->values();
+
+        $matriculasPersistidas = $acessoGlobal
+            ? $record->matriculas
+            : $record->matriculas->filter(
+                fn (PessoaMatricula $matricula): bool => $numerosVinculosVisiveis
+                    ->contains((string) $matricula->matricula),
+            );
+
+        $matriculas = $matriculasPersistidas
+            ->map(fn (PessoaMatricula $matricula): array => [
+                'numero' => (string) $matricula->matricula,
+                'turno' => $matricula->turnoLabel(),
             ]);
-        } elseif (static::possuiFuncaoGestora($record, 'coordenacao_pedagogica')) {
-            $tabs[] = Tab::make('Turmas')->schema([
-                Section::make('Turmas coordenadas')
-                    ->icon('heroicon-o-user-group')
-                    ->schema([
-                        View::make('filament.admin.resources.servidores.partials.turmas-coordenacao-groups')
-                            ->viewData(['grupos' => static::gruposTurmasCoordenacao($record)])
-                            ->columnSpanFull(),
-                    ]),
+
+        foreach ($professores as $professor) {
+            if (filled($professor->matricula)) {
+                $matriculas->push([
+                    'numero' => (string) $professor->matricula,
+                    'turno' => $professor->turnoLabel(),
+                ]);
+            }
+        }
+
+        foreach ($vinculos as $vinculo) {
+            if (blank($vinculo->matricula)) {
+                continue;
+            }
+
+            $matriculaPersistida = $record->matriculas->firstWhere('matricula', $vinculo->matricula);
+            $matriculas->push([
+                'numero' => (string) $vinculo->matricula,
+                'turno' => $matriculaPersistida?->turnoLabel() ?? 'Não informado',
             ]);
         }
 
+        $matriculaLegadaVisivel = $acessoGlobal
+            || $numerosVinculosVisiveis->contains((string) $record->matricula)
+            || (filled($record->id_escola) && $scope->canAccessEscola($usuario, (int) $record->id_escola));
+
+        if (filled($record->matricula) && $matriculaLegadaVisivel) {
+            $professorLegado = $professores->firstWhere('matricula', $record->matricula);
+
+            $matriculas->prepend([
+                'numero' => (string) $record->matricula,
+                'turno' => $professorLegado?->turnoLabel() ?? 'Não informado',
+            ]);
+        }
+
+        $matriculas = $matriculas
+            ->filter(fn (array $matricula): bool => filled($matricula['numero']))
+            ->unique('numero')
+            ->values();
+
+        $partesNome = collect(preg_split('/\\s+/', trim((string) $record->nome)) ?: [])
+            ->filter()
+            ->values();
+        $iniciais = mb_strtoupper(
+            mb_substr((string) $partesNome->first(), 0, 1)
+            .mb_substr((string) ($partesNome->count() > 1 ? $partesNome->last() : ''), 0, 1),
+        ) ?: 'P';
+
+        $status = $record->trashed()
+            ? ['label' => 'Arquivada', 'tone' => 'danger']
+            : [
+                'label' => Servidor::statusOptions()[$record->status] ?? 'Não informado',
+                'tone' => match ($record->status) {
+                    Servidor::STATUS_ATIVO => 'success',
+                    Servidor::STATUS_INATIVO => 'gray',
+                    default => 'warning',
+                },
+            ];
+
+        $jornada = [
+            'label' => $record->jornadaLabel(),
+            'tone' => match ($record->jornada) {
+                true => 'success',
+                false => 'gray',
+                default => 'warning',
+            },
+        ];
+
+        $lotacaoVisivel = static::lotacaoPodeSerVista($record);
+        $setorVisivel = static::ehObras($record) || static::ehManutencao($record);
+        $portariaVisivel = static::possuiFuncaoGestora($record, 'direcao_escolar')
+            || static::possuiFuncaoGestora($record, 'coordenacao_pedagogica');
+
+        $pedagogico = null;
+
+        if ($professores->isNotEmpty()) {
+            $grupos = static::gruposTurmasComponentes($record);
+            $pedagogico = [
+                'tipo' => 'professor',
+                'label' => 'Turmas e componentes',
+                'descricao' => 'Vínculos pedagógicos organizados por escola, turno e matrícula.',
+                'grupos' => $grupos,
+                'total_turmas' => collect($grupos)->sum(fn (array $grupo): int => count($grupo['turmas'] ?? [])),
+            ];
+        } elseif (static::possuiFuncaoGestora($record, 'coordenacao_pedagogica')) {
+            $grupos = static::gruposTurmasCoordenacao($record);
+            $pedagogico = [
+                'tipo' => 'coordenacao',
+                'label' => 'Turmas coordenadas',
+                'descricao' => 'Turmas vinculadas à atuação desta pessoa na coordenação pedagógica.',
+                'grupos' => $grupos,
+                'total_turmas' => collect($grupos)->sum(fn (array $grupo): int => count($grupo['turmas'] ?? [])),
+            ];
+        }
+
+        $acesso = null;
+
+        if (Gate::allows('viewAny', User::class)) {
+            $conta = $record->user;
+
+            if (! $conta) {
+                $acesso = [
+                    'possui_conta' => false,
+                    'status' => 'Sem conta vinculada',
+                    'tone' => 'gray',
+                ];
+            } else {
+                $acessoPermitido = ! $conta->trashed()
+                    && (bool) $conta->ativo
+                    && (bool) $conta->email_approved
+                    && $conta->canAuthenticate();
+
+                [$statusAcesso, $toneAcesso] = match (true) {
+                    $conta->trashed() => ['Conta arquivada', 'danger'],
+                    ! $conta->ativo => ['Conta inativa', 'gray'],
+                    ! $conta->email_approved => ['Aguardando aprovação', 'warning'],
+                    $acessoPermitido => ['Acesso liberado', 'success'],
+                    default => ['Acesso indisponível', 'warning'],
+                };
+
+                $acesso = [
+                    'possui_conta' => true,
+                    'status' => $statusAcesso,
+                    'tone' => $toneAcesso,
+                    'nome' => $conta->name ?: 'Não informado',
+                    'email' => $conta->email ?: 'Não informado',
+                    'email_aprovado' => $conta->email_approved ? 'Sim' : 'Não',
+                    'email_verificado' => $conta->email_verified_at ? 'Sim' : 'Não',
+                    'troca_senha' => $conta->must_change_password ? 'Pendente' : 'Não exigida',
+                    'escola' => $conta->escola?->nome ?: 'Não informada',
+                    'perfis' => $conta->roles->pluck('name')->filter()->sort()->values()->all(),
+                    'ultimo_login' => $conta->last_login_at?->format('d/m/Y H:i') ?? 'Nunca acessou',
+                    'ultima_atividade' => $conta->last_seen_at?->format('d/m/Y H:i') ?? 'Não registrada',
+                ];
+            }
+        }
+
         return [
-            Tabs::make('Ficha da pessoa')
-                ->columnSpanFull()
-                ->tabs($tabs),
+            'iniciais' => $iniciais,
+            'nome' => (string) $record->nome,
+            'cpf' => Pessoa::formatarCpf($record->cpf) ?: 'Não informado',
+            'email' => $record->email ?: 'Não informado',
+            'telefone' => $record->telefone ?: 'Não informado',
+            'observacoes' => $record->observacoes ?: 'Nenhuma observação cadastrada.',
+            'status' => $status,
+            'cargo' => static::cargoLabel($record),
+            'carga_horaria' => $record->cargaHorariaLabel(),
+            'jornada' => $jornada,
+            'lotacao_visivel' => $lotacaoVisivel,
+            'lotacao' => $lotacaoVisivel ? $record->lotacaoLabel() : null,
+            'lotacao_escola' => $lotacaoVisivel
+                ? ($record->lotacao?->escola?->nome ?? 'Não informada')
+                : null,
+            'setor' => $setorVisivel ? static::setorOperacionalLabel($record) : null,
+            'portaria' => $portariaVisivel
+                ? (static::portariasGestoras($record) ?: 'Não informada')
+                : null,
+            'matriculas' => $matriculas->all(),
+            'escolas' => $escolas->all(),
+            'vinculos_ativos' => $professores->count() + $vinculos->count(),
+            'criado_em' => $record->created_at?->format('d/m/Y H:i') ?? 'Não informado',
+            'atualizado_em' => $record->updated_at?->format('d/m/Y H:i') ?? 'Não informado',
+            'acesso' => $acesso,
+            'pedagogico' => $pedagogico,
         ];
     }
 

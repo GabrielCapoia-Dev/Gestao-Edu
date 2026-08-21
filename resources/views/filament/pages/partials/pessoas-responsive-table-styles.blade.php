@@ -153,8 +153,12 @@
         hyphens: none;
     }
 
+    /*
+     * O menu de ações é teleportado para o body. A camada alta evita que ele fique
+     * atrás da busca, cabeçalhos sticky ou qualquer outro elemento da tabela.
+     */
     body:has(.pe-pessoas-page) .fi-dropdown-panel:not(.fi-select-dropdown-portal) {
-        z-index: 80 !important;
+        z-index: 2200 !important;
     }
 
     .pe-pessoas-page .pessoa-card-field--email .fi-ta-text-item,
