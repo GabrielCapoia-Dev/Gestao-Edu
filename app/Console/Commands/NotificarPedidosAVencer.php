@@ -17,8 +17,8 @@ class NotificarPedidosAVencer extends Command
 
     public function handle(): int
     {
-        // Três marcos são suficientes para acompanhamento sem excesso de alertas.
-        $intervalos = [7, 3, 1];
+        // Um único aviso no dia anterior evita alertas repetidos antes do vencimento.
+        $intervalos = [1];
         $hoje = now()->startOfDay();
         $recipientService = app(PedidoNotificationRecipientService::class);
         $alertas = [];
