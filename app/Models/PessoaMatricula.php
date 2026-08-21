@@ -163,6 +163,72 @@ class PessoaMatricula extends Model
         return array_intersect_key($todos, array_flip(array_values(array_unique($permitidos))));
     }
 
+    /**
+     * @param  array<int|string, array<string, mixed>>  $matriculas
+     * @throws ValidationException
+     */
+    public static function assertCompativelComCargaHoraria(
+        int|string|null $cargaHoraria,
+        bool|int|string|null $jornada,
+        array $matriculas,
+        string $campo = 'matriculas',
+    ): void {
+        if (! filled($cargaHoraria)) {
+            return;
+        }
+
+        $cargaHoraria = (int) $cargaHoraria;
+        $jornada = filter_var($jornada, FILTER_VALIDATE_BOOLEAN);
+        $matriculas = array_values(array_filter($matriculas, 'is_array'));
+        $turnos = collect($matriculas)
+            ->pluck('turno')
+            ->filter(fn (mixed $turno): bool => filled($turno))
+            ->map(fn (mixed $turno): string => (string) $turno)
+            ->values()
+            ->all();
+
+        self::assertConjuntoTurnosValido($turnos);
+
+        if ($cargaHoraria === Pessoa::CARGA_HORARIA_40) {
+            if (count($matriculas) !== 1 || $turnos !== ['integral']) {
+                throw ValidationException::withMessages([
+                    $campo => 'Servidor de 40 horas deve possuir uma única matrícula no turno integral.',
+                ]);
+            }
+
+            return;
+        }
+
+        if ($cargaHoraria !== Pessoa::CARGA_HORARIA_20) {
+            return;
+        }
+
+        if (! $jornada) {
+            if (count($matriculas) !== 1 || count($turnos) !== 1 || ! in_array($turnos[0], ['manha', 'tarde'], true)) {
+                throw ValidationException::withMessages([
+                    $campo => 'Servidor de 20 horas sem jornada deve possuir uma única matrícula de manhã ou à tarde.',
+                ]);
+            }
+
+            return;
+        }
+
+        $numeros = collect($matriculas)
+            ->pluck('matricula')
+            ->map(fn (mixed $numero): string => mb_strtolower(trim((string) $numero)))
+            ->filter()
+            ->values();
+
+        if (count($matriculas) !== 2
+            || collect($turnos)->sort()->values()->all() !== ['manha', 'tarde']
+            || $numeros->count() !== 2
+            || $numeros->unique()->count() !== 2) {
+            throw ValidationException::withMessages([
+                $campo => 'A jornada exige duas matrículas diferentes, uma de manhã e outra à tarde.',
+            ]);
+        }
+    }
+
     /** @param array<int|string, array<string, mixed>> $matriculas */
     public static function podeAdicionarMatricula(array $matriculas): bool
     {

@@ -162,6 +162,12 @@ class PessoaManutencaoService
     /** @param array<string, mixed> $normalizado */
     private function sincronizarInterno(Servidor $pessoa, array $normalizado): Servidor
     {
+        PessoaMatricula::assertCompativelComCargaHoraria(
+            $pessoa->carga_horaria,
+            $pessoa->jornada,
+            $normalizado['matriculas']->all(),
+        );
+        Pessoa::assertLotacaoVinculada($pessoa->lotacao_id, []);
         $matriculas = $this->sincronizarMatriculas($pessoa, $normalizado['matriculas']);
         $setor = Setor::query()->lockForUpdate()->findOrFail($normalizado['setor']->id);
         $funcao = $this->funcaoPadrao();
@@ -417,7 +423,18 @@ class PessoaManutencaoService
     private function dadosPessoa(array $dados, bool $statusPadraoAtivo = false): array
     {
         $normalizados = collect($dados)
-            ->only(['cpf', 'user_id', 'nome', 'email', 'telefone', 'status', 'observacoes'])
+            ->only([
+                'cpf',
+                'user_id',
+                'nome',
+                'email',
+                'telefone',
+                'status',
+                'observacoes',
+                'carga_horaria',
+                'jornada',
+                'lotacao_id',
+            ])
             ->all();
 
         if ($statusPadraoAtivo && ! array_key_exists('status', $normalizados)) {

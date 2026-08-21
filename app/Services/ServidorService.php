@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Escola;
 use App\Models\FuncaoAdministrativa;
+use App\Models\Pessoa;
 use App\Models\Professor;
 use App\Models\Servidor;
 use App\Models\ServidorFuncaoAdministrativa;
@@ -65,6 +66,8 @@ class ServidorService
 
     public function criarServidorComFuncoes(array $data, array $vinculos = []): Servidor
     {
+        $this->validarDadosFuncionais($data, $vinculos);
+
         if ($this->fluxoMotorista($data, $vinculos)) {
             return $this->criarPessoaMotorista($data, $vinculos);
         }
@@ -115,6 +118,8 @@ class ServidorService
 
     public function atualizarServidorComFuncoes(Servidor $servidor, array $data, array $vinculos = []): Servidor
     {
+        $this->validarDadosFuncionais($data, $vinculos);
+
         if ($this->fluxoMotorista($data, $vinculos)) {
             return $this->atualizarPessoaMotorista($servidor, $data, $vinculos);
         }
@@ -1186,7 +1191,7 @@ class ServidorService
 
     private function dadosServidor(array $data): array
     {
-        return [
+        $dados = [
             'cpf' => $data['cpf'] ?? null,
             'user_id' => $data['user_id'] ?? null,
             'id_escola' => $data['id_escola'] ?? null,
@@ -1198,6 +1203,117 @@ class ServidorService
             'status' => $data['status'] ?? Servidor::STATUS_ATIVO,
             'observacoes' => $data['observacoes'] ?? null,
         ];
+
+        foreach (['carga_horaria', 'jornada', 'lotacao_id'] as $campo) {
+            if (array_key_exists($campo, $data)) {
+                $dados[$campo] = $data[$campo];
+            }
+        }
+
+        return $dados;
+    }
+
+    /**
+     * Validação central dos campos funcionais para todos os fluxos orquestrados.
+     *
+     * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>  $vinculos
+     */
+    private function validarDadosFuncionais(array $data, array $vinculos): void
+    {
+        $cargaHoraria = filled($data['carga_horaria'] ?? null) ? (int) $data['carga_horaria'] : null;
+        $jornada = array_key_exists('jornada', $data) ? (bool) $data['jornada'] : null;
+
+        Pessoa::assertDadosFuncionaisValidos($cargaHoraria, $jornada);
+
+        $cargo = (string) ($data['cargo'] ?? '');
+        $cargosSemMatriculas = ['motorista', 'transporte', 'assessoria_pedagogica'];
+        $matriculas = $this->matriculasDosDadosFuncionais($data, $vinculos);
+
+        if (in_array($cargo, $cargosSemMatriculas, true) && $jornada === true) {
+            throw ValidationException::withMessages([
+                'jornada' => 'O cargo selecionado não utiliza matrículas por turno e não permite jornada adicional.',
+            ]);
+        }
+
+        Pessoa::assertLotacaoVinculada(
+            $data['lotacao_id'] ?? null,
+            $this->escolaIdsDosDadosFuncionais($data, $vinculos, $matriculas, $cargo),
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>  $vinculos
+     * @return list<array<string, mixed>>
+     */
+    private function matriculasDosDadosFuncionais(array $data, array $vinculos): array
+    {
+        $candidatos = $data['matriculas_professor']
+            ?? $data['registros_professor']
+            ?? $vinculos['matriculas_professor']
+            ?? $vinculos['registros_professor']
+            ?? data_get($vinculos, 'equipe_gestora.matriculas')
+            ?? data_get($vinculos, 'manutencao.matriculas')
+            ?? data_get($vinculos, 'obras.matriculas')
+            ?? [];
+
+        if ($candidatos === [] && array_is_list($vinculos)) {
+            $candidatos = $vinculos;
+        }
+
+        return collect(is_array($candidatos) ? $candidatos : [])
+            ->filter(fn (mixed $item): bool => is_array($item)
+                && (array_key_exists('matricula', $item) || array_key_exists('turno', $item)))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>  $vinculos
+     * @param  list<array<string, mixed>>  $matriculas
+     * @return list<int>
+     */
+    private function escolaIdsDosDadosFuncionais(
+        array $data,
+        array $vinculos,
+        array $matriculas,
+        string $cargo,
+    ): array {
+        $idsMatriculas = collect($matriculas)->flatMap(function (array $matricula): array {
+            $ids = collect($matricula['escolas'] ?? $matricula['lotacoes'] ?? [])
+                ->filter(fn (mixed $escola): bool => is_array($escola))
+                ->pluck('id_escola')
+                ->all();
+
+            if (filled($matricula['id_escola'] ?? null)) {
+                $ids[] = $matricula['id_escola'];
+            }
+
+            return $ids;
+        });
+
+        $ids = match ($cargo) {
+            'professor' => $idsMatriculas,
+            'equipe_gestora' => collect([
+                $data['id_escola'] ?? null,
+                data_get($vinculos, 'equipe_gestora.id_escola'),
+            ]),
+            'assessoria_pedagogica' => collect($data['escola_ids_assessoria'] ?? [])
+                ->merge(data_get($vinculos, 'assessoria_pedagogica.escola_ids', [])),
+            'manutencao', 'obras', 'motorista', 'transporte' => collect(),
+            default => collect([$data['id_escola'] ?? null])
+                ->merge($data['escola_ids_assessoria'] ?? [])
+                ->merge($idsMatriculas),
+        };
+
+        return $ids
+            ->filter(fn (mixed $id): bool => filled($id))
+            ->map(fn (mixed $id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
     }
 
     private function criarOuAtualizarServidorDoProfessor(Professor $professor): Servidor

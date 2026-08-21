@@ -1214,6 +1214,7 @@ class ServidorResource extends Resource
             'user.escola',
             'professores.escola',
             'matriculas',
+            'lotacao.escola',
             'vinculosAtivos.funcaoAdministrativa',
             'vinculosAtivos.escola',
             'vinculosAtivos.setor',
@@ -1246,7 +1247,7 @@ class ServidorResource extends Resource
                 ])
                 ->columns(2),
 
-            Section::make('Cargo')
+            Section::make('Dados funcionais')
                 ->icon('heroicon-o-briefcase')
                 ->schema([
                     TextEntry::make('cargo_view')
@@ -1254,10 +1255,55 @@ class ServidorResource extends Resource
                         ->badge()
                         ->getStateUsing(fn (): string => static::cargoLabel($record))
                         ->color(fn (string $state): string => $state !== '—' ? 'info' : 'gray'),
+                    TextEntry::make('carga_horaria_view')
+                        ->label('Carga horária')
+                        ->getStateUsing(fn (): string => $record->cargaHorariaLabel()),
+                    TextEntry::make('jornada_view')
+                        ->label('Jornada')
+                        ->badge()
+                        ->getStateUsing(fn (): string => $record->jornadaLabel())
+                        ->color(fn (): string => match ($record->jornada) {
+                            true => 'success',
+                            false => 'gray',
+                            default => 'warning',
+                        }),
+                    TextEntry::make('lotacao_view')
+                        ->label('Lotação')
+                        ->getStateUsing(fn (): string => $record->lotacaoLabel())
+                        ->visible(fn (): bool => static::lotacaoPodeSerVista($record)),
+                    TextEntry::make('lotacao_escola_view')
+                        ->label('Escola da lotação')
+                        ->getStateUsing(fn (): string => $record->lotacao?->escola?->nome ?? 'Não informada')
+                        ->visible(fn (): bool => static::lotacaoPodeSerVista($record)),
+                    TextEntry::make('matriculas_view')
+                        ->label('Matrículas')
+                        ->badge()
+                        ->getStateUsing(fn (): array => collect([$record->matricula])
+                            ->merge($record->matriculas->pluck('matricula'))
+                            ->filter()
+                            ->unique()
+                            ->values()
+                            ->all())
+                        ->placeholder('Nenhuma matrícula informada'),
+                    TextEntry::make('turnos_view')
+                        ->label('Turnos')
+                        ->badge()
+                        ->getStateUsing(fn (): array => $record->matriculas
+                            ->pluck('turno')
+                            ->filter()
+                            ->map(fn (mixed $turno): string => PessoaMatricula::turnosOptions()[(string) $turno] ?? (string) $turno)
+                            ->unique()
+                            ->values()
+                            ->all())
+                        ->placeholder('Nenhum turno informado'),
+                    TextEntry::make('escolas_view')
+                        ->label('Escolas vinculadas')
+                        ->getStateUsing(fn (): string => static::escolasLabel($record) ?: 'Nenhuma escola vinculada')
+                        ->columnSpanFull(),
                     TextEntry::make('setor_operacional_view')
                         ->label('Setor')
                         ->getStateUsing(fn (): string => static::setorOperacionalLabel($record))
-                        ->visible(fn (): bool => static::ehObras($record)),
+                        ->visible(fn (): bool => static::ehObras($record) || static::ehManutencao($record)),
                     TextEntry::make('perfis_view')
                         ->label('Perfis')
                         ->badge()
@@ -1272,8 +1318,7 @@ class ServidorResource extends Resource
                             || static::possuiFuncaoGestora($record, 'coordenacao_pedagogica')),
                     TextEntry::make('updated_at')
                         ->label('Atualizado em')
-                        ->dateTime('d/m/Y H:i')
-                        ->visible(fn (): bool => ! static::ehObras($record)),
+                        ->dateTime('d/m/Y H:i'),
                 ])
                 ->columns(2),
         ];
@@ -1450,6 +1495,18 @@ class ServidorResource extends Resource
             ->filter()
             ->unique()
             ->implode(' / ');
+    }
+
+    private static function lotacaoPodeSerVista(Servidor $record): bool
+    {
+        if (blank($record->lotacao_id)) {
+            return true;
+        }
+
+        return app(PessoaScopeService::class)->canAccessEscola(
+            Auth::user(),
+            filled($record->lotacao?->escola_id) ? (int) $record->lotacao->escola_id : null,
+        );
     }
 
     private static function setorOperacionalLabel(Servidor $record): string

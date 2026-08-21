@@ -8,23 +8,11 @@
                 <h3 id="pessoa-form-matriculas-title">
                     {{ in_array($cargo, ['manutencao', 'obras'], true) ? 'Matrículas' : 'Matrículas e lotações' }}
                 </h3>
-                <p>Cada aba representa uma matrícula atual. Exclusões só são persistidas ao salvar.</p>
+                <p>
+                    A carga horária define o turno. Quando a jornada é habilitada, a segunda matrícula é criada automaticamente no turno oposto.
+                </p>
             </div>
         </div>
-
-        @if ($modoCriacao || $gerenciaEstrutura)
-            <button
-                type="button"
-                class="pe-person-form__button pe-person-form__button--secondary"
-                wire:click="adicionarMatricula"
-                wire:loading.attr="disabled"
-                wire:target="adicionarMatricula,removerMatricula,salvar"
-                @disabled(count($matriculas) >= 2)
-            >
-                <x-heroicon-o-plus aria-hidden="true" />
-                Matrícula
-            </button>
-        @endif
     </header>
 
     @if ($matriculas === [])
@@ -51,7 +39,7 @@
                     >
                         {{ $matriculaLabels[$matriculaKey] }}
                     </button>
-                    @if ($modoCriacao || $gerenciaEstrutura)
+                    @if (($modoCriacao || $gerenciaEstrutura) && ! $jornada)
                         <button
                             type="button"
                             class="pe-person-form__icon-button"
@@ -107,7 +95,7 @@
                                 wire:change="turnoAlterado(@js($matriculaKey), $event.target.value)"
                                 wire:loading.attr="disabled"
                                 wire:target="turnoAlterado,salvar"
-                                @disabled(! $modoCriacao && ! $gerenciaEstrutura)
+                                @disabled((! $modoCriacao && ! $gerenciaEstrutura) || ($jornada && $matriculaKey !== array_key_first($matriculas)))
                                 @error("matriculas.$matriculaKey.turno") aria-invalid="true" aria-describedby="pessoa-form-turno-{{ $matriculaKey }}-error" @enderror
                             >
                                 <option value="">Selecione</option>

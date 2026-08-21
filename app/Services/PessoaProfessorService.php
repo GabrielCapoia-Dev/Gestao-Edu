@@ -61,12 +61,30 @@ class PessoaProfessorService
     private function sincronizarRegistrosInterno(Pessoa|Servidor $pessoa, array $registros): void
     {
         $matriculas = $this->normalizarMatriculas($registros);
-        $this->validarInvariantesMatriculas($matriculas);
 
         /** @var Servidor $pessoa */
         $pessoa = Servidor::query()
             ->lockForUpdate()
             ->findOrFail($pessoa->id);
+
+        $this->validarInvariantesMatriculas($matriculas);
+        ProfessorMatricula::assertCompativelComCargaHoraria(
+            $pessoa->carga_horaria,
+            $pessoa->jornada,
+            $matriculas->all(),
+            'matriculas_professor',
+        );
+        Pessoa::assertLotacaoVinculada(
+            $pessoa->lotacao_id,
+            $matriculas
+                ->flatMap(fn (array $matricula): array => $matricula['escolas'] ?? [])
+                ->pluck('id_escola')
+                ->filter()
+                ->map(fn (mixed $id): int => (int) $id)
+                ->unique()
+                ->values()
+                ->all(),
+        );
 
         ProfessorMatricula::query()
             ->where('servidor_id', $pessoa->id)
@@ -767,7 +785,7 @@ class PessoaProfessorService
 
     private function dadosPessoa(array $data): array
     {
-        return [
+        $dados = [
             'cpf' => Pessoa::normalizarCpf($data['cpf'] ?? null),
             'nome' => $data['nome'] ?? null,
             'email' => filled($data['email'] ?? null) ? Professor::normalizarEmail((string) $data['email']) : null,
@@ -775,5 +793,17 @@ class PessoaProfessorService
             'status' => $data['status'] ?? Pessoa::STATUS_ATIVO,
             'observacoes' => $data['observacoes'] ?? null,
         ];
+
+        if (array_key_exists('carga_horaria', $data)) {
+            $dados['carga_horaria'] = filled($data['carga_horaria']) ? (int) $data['carga_horaria'] : null;
+        }
+        if (array_key_exists('jornada', $data)) {
+            $dados['jornada'] = $data['jornada'] === null ? null : (bool) $data['jornada'];
+        }
+        if (array_key_exists('lotacao_id', $data)) {
+            $dados['lotacao_id'] = filled($data['lotacao_id']) ? (int) $data['lotacao_id'] : null;
+        }
+
+        return $dados;
     }
 }

@@ -28,6 +28,15 @@ class Pessoa extends Model
     public const STATUS_INATIVO = 'inativo';
     public const CARGO_PENDENTE_CODIGO = 'cargo_pendente';
 
+    public const CARGA_HORARIA_20 = 20;
+
+    public const CARGA_HORARIA_40 = 40;
+
+    public const CARGAS_HORARIAS = [
+        self::CARGA_HORARIA_20 => '20 horas semanais',
+        self::CARGA_HORARIA_40 => '40 horas semanais',
+    ];
+
     protected $table = 'servidores';
 
     protected $fillable = [
@@ -41,6 +50,9 @@ class Pessoa extends Model
         'telefone',
         'status',
         'observacoes',
+        'carga_horaria',
+        'jornada',
+        'lotacao_id',
     ];
 
     protected function casts(): array
@@ -49,6 +61,9 @@ class Pessoa extends Model
             'user_id' => 'integer',
             'id_escola' => 'integer',
             'setor_id' => 'integer',
+            'carga_horaria' => 'integer',
+            'jornada' => 'boolean',
+            'lotacao_id' => 'integer',
             'email_duplicado' => 'boolean',
         ];
     }
@@ -56,6 +71,7 @@ class Pessoa extends Model
     protected static function booted(): void
     {
         static::saving(function (Pessoa $pessoa): void {
+            static::assertDadosFuncionaisValidos($pessoa->carga_horaria, $pessoa->jornada);
             app(PessoaEmailService::class)->assertDisponivel($pessoa);
 
             if ($pessoa->exists && $pessoa->isDirty('status') && $pessoa->status === self::STATUS_ATIVO) {
@@ -119,6 +135,84 @@ class Pessoa extends Model
             self::STATUS_ATIVO => 'Ativo',
             self::STATUS_INATIVO => 'Inativo',
         ];
+    }
+
+    /** @return array<int, string> */
+    public static function cargaHorariaOptions(): array
+    {
+        return self::CARGAS_HORARIAS;
+    }
+
+    public function cargaHorariaLabel(): string
+    {
+        return self::CARGAS_HORARIAS[$this->carga_horaria] ?? 'Não informada';
+    }
+
+    public function jornadaLabel(): string
+    {
+        return match ($this->jornada) {
+            true => 'Sim',
+            false => 'Não',
+            default => 'Não informada',
+        };
+    }
+
+    public function lotacaoLabel(): string
+    {
+        if (! $this->lotacao) {
+            return 'Não informada';
+        }
+
+        return collect([$this->lotacao->codigo, $this->lotacao->nome])
+            ->filter(fn (mixed $valor): bool => filled($valor))
+            ->implode(' - ') ?: 'Não informada';
+    }
+
+    public static function assertDadosFuncionaisValidos(
+        int|string|null $cargaHoraria,
+        bool|int|string|null $jornada,
+    ): void {
+        $cargaHoraria = filled($cargaHoraria) ? (int) $cargaHoraria : null;
+        $jornada = $jornada === null ? null : filter_var($jornada, FILTER_VALIDATE_BOOLEAN);
+
+        if ($cargaHoraria !== null && ! array_key_exists($cargaHoraria, self::CARGAS_HORARIAS)) {
+            throw ValidationException::withMessages([
+                'carga_horaria' => 'A carga horária deve ser de 20 ou 40 horas semanais.',
+            ]);
+        }
+
+        if ($jornada === true && $cargaHoraria !== self::CARGA_HORARIA_20) {
+            throw ValidationException::withMessages([
+                'jornada' => 'Jornada adicional só é permitida para servidores de 20 horas semanais.',
+            ]);
+        }
+    }
+
+    /** @param list<int|string> $escolaIds */
+    public static function assertLotacaoVinculada(
+        int|string|null $lotacaoId,
+        array $escolaIds,
+        string $campo = 'lotacao_id',
+    ): void {
+        if (! filled($lotacaoId)) {
+            return;
+        }
+
+        $escolaIds = collect($escolaIds)
+            ->filter(fn (mixed $id): bool => filled($id))
+            ->map(fn (mixed $id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($escolaIds === [] || ! Lotacao::query()
+            ->whereKey((int) $lotacaoId)
+            ->whereIn('escola_id', $escolaIds)
+            ->exists()) {
+            throw ValidationException::withMessages([
+                $campo => 'A lotação deve pertencer a uma das escolas vinculadas à pessoa.',
+            ]);
+        }
     }
 
     public static function normalizarCpf(?string $cpf): ?string
@@ -204,6 +298,11 @@ class Pessoa extends Model
     public function setor(): BelongsTo
     {
         return $this->belongsTo(Setor::class);
+    }
+
+    public function lotacao(): BelongsTo
+    {
+        return $this->belongsTo(Lotacao::class);
     }
 
     public function professores(): HasMany

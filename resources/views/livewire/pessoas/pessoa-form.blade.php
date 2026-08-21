@@ -77,6 +77,8 @@
                 x-show="aba === 'vinculos'"
                 x-cloak
             >
+                @include('livewire.pessoas.partials.dados-funcionais')
+
                 @if ($cargo === 'motorista')
                     @include('livewire.pessoas.partials.motorista')
                 @elseif ($cargo !== 'assessoria_pedagogica')
