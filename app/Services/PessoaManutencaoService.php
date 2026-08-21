@@ -167,6 +167,7 @@ class PessoaManutencaoService
             $pessoa->jornada,
             $normalizado['matriculas']->all(),
         );
+        Pessoa::assertLotacaoVinculada($pessoa->lotacao_id, []);
         $matriculas = $this->sincronizarMatriculas($pessoa, $normalizado['matriculas']);
         $setor = Setor::query()->lockForUpdate()->findOrFail($normalizado['setor']->id);
         $funcao = $this->funcaoPadrao();

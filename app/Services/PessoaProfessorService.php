@@ -74,6 +74,17 @@ class PessoaProfessorService
             $matriculas->all(),
             'matriculas_professor',
         );
+        Pessoa::assertLotacaoVinculada(
+            $pessoa->lotacao_id,
+            $matriculas
+                ->flatMap(fn (array $matricula): array => $matricula['escolas'] ?? [])
+                ->pluck('id_escola')
+                ->filter()
+                ->map(fn (mixed $id): int => (int) $id)
+                ->unique()
+                ->values()
+                ->all(),
+        );
 
         ProfessorMatricula::query()
             ->where('servidor_id', $pessoa->id)

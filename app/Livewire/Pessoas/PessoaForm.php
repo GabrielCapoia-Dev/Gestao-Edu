@@ -1816,6 +1816,7 @@ class PessoaForm extends Component
     {
         $ids = match ($this->cargo) {
             ServidorResource::CARGO_PROFESSOR => collect($this->matriculas)
+                ->filter(fn (mixed $matricula): bool => is_array($matricula))
                 ->flatMap(fn (array $matricula): array => $matricula['escolas'] ?? [])
                 ->filter(fn (mixed $escola): bool => is_array($escola))
                 ->pluck('id_escola'),
@@ -1832,7 +1833,7 @@ class PessoaForm extends Component
             ->all();
     }
 
-    /** @return array<string, array<int, string>> */
+    /** @return list<array{label: string, options: array<int, string>}> */
     private function lotacoesOptionsPorEscola(): array
     {
         $escolaIds = $this->escolaIdsVinculadas();
@@ -1846,14 +1847,25 @@ class PessoaForm extends Component
             ->orderBy('escola_id')
             ->orderBy('nome')
             ->get()
-            ->groupBy(fn (Lotacao $lotacao): string => $lotacao->escola?->nome ?? 'Escola indisponível')
-            ->map(fn ($lotacoes): array => $lotacoes
-                ->mapWithKeys(fn (Lotacao $lotacao): array => [
-                    (int) $lotacao->id => collect([$lotacao->codigo, $lotacao->nome])
-                        ->filter(fn (mixed $valor): bool => filled($valor))
-                        ->implode(' - '),
-                ])
-                ->all())
+            ->groupBy(fn (Lotacao $lotacao): int => (int) $lotacao->escola_id)
+            ->map(function ($lotacoes, int|string $escolaId): array {
+                /** @var Lotacao|null $primeira */
+                $primeira = $lotacoes->first();
+                $nomeEscola = $primeira?->escola?->nome ?? 'Escola #'.(int) $escolaId;
+                $codigoEscola = $primeira?->escola?->codigo;
+
+                return [
+                    'label' => filled($codigoEscola) ? "{$nomeEscola} · {$codigoEscola}" : $nomeEscola,
+                    'options' => $lotacoes
+                        ->mapWithKeys(fn (Lotacao $lotacao): array => [
+                            (int) $lotacao->id => collect([$lotacao->codigo, $lotacao->nome])
+                                ->filter(fn (mixed $valor): bool => filled($valor))
+                                ->implode(' - '),
+                        ])
+                        ->all(),
+                ];
+            })
+            ->values()
             ->all();
     }
 

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\FuncaoAdministrativa;
+use App\Models\Pessoa;
 use App\Models\Servidor;
 use App\Models\ServidorFuncaoAdministrativa;
 use App\Models\Setor;
@@ -47,6 +48,23 @@ class PessoaVinculoService
                 'vinculos_funcionais' => 'Toda pessoa precisa possuir ao menos um cargo.',
             ]);
         }
+
+        if ($servidor->jornada === true) {
+            throw ValidationException::withMessages([
+                'jornada' => 'Jornada adicional exige um cargo com matrículas organizadas por turno.',
+            ]);
+        }
+
+        Pessoa::assertLotacaoVinculada(
+            $servidor->lotacao_id,
+            $normalizados
+                ->pluck('id_escola')
+                ->filter()
+                ->map(fn (mixed $id): int => (int) $id)
+                ->unique()
+                ->values()
+                ->all(),
+        );
 
         foreach ($normalizados as $vinculo) {
             $this->validarVinculo($vinculo);

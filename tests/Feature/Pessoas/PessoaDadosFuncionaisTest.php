@@ -157,6 +157,9 @@ class PessoaDadosFuncionaisTest extends TestCase
         $secundaria = (string) $chaves[1];
         $componente
             ->assertSet("matriculas.{$secundaria}.turno", 'tarde')
+            ->call('turnoAlterado', $principal, 'tarde')
+            ->assertSet("matriculas.{$principal}.turno", 'tarde')
+            ->assertSet("matriculas.{$secundaria}.turno", 'manha')
             ->call('jornadaAlterada', false)
             ->assertCount('matriculas', 1)
             ->call('cargaHorariaAlterada', 40)
@@ -169,6 +172,7 @@ class PessoaDadosFuncionaisTest extends TestCase
         $componente
             ->call('escolaAlterada', $principal, $lotacaoKey, $escola->id)
             ->assertSee('LOT-JOR - Sala de Recursos')
+            ->assertDontSee('LOT-FORA - Lotação fora do vínculo')
             ->call('lotacaoAlterada', $lotacaoSemVinculo->id)
             ->assertHasErrors(['lotacaoId'])
             ->call('lotacaoAlterada', $lotacao->id)

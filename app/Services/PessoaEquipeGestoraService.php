@@ -243,6 +243,10 @@ class PessoaEquipeGestoraService
             $pessoa->jornada,
             $normalizado['matriculas']->all(),
         );
+        Pessoa::assertLotacaoVinculada(
+            $pessoa->lotacao_id,
+            [(int) $normalizado['escola']->id],
+        );
         $matriculas = $this->sincronizarMatriculas($pessoa, $normalizado['matriculas']);
         $escola = Escola::query()->lockForUpdate()->findOrFail($normalizado['escola']->id);
         $possuiOutroVinculoEmEscolaDiferente = ServidorFuncaoAdministrativa::query()

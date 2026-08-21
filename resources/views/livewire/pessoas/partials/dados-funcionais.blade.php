@@ -68,9 +68,9 @@
                 @error('lotacaoId') aria-invalid="true" aria-describedby="pessoa-form-lotacao-error" @enderror
             >
                 <option value="">Sem lotação definida</option>
-                @foreach ($lotacoesOptionsPorEscola as $escola => $lotacoes)
-                    <optgroup label="{{ $escola }}">
-                        @foreach ($lotacoes as $value => $label)
+                @foreach ($lotacoesOptionsPorEscola as $grupo)
+                    <optgroup label="{{ $grupo['label'] }}">
+                        @foreach ($grupo['options'] as $value => $label)
                             <option value="{{ $value }}" @selected((int) $lotacaoId === (int) $value)>{{ $label }}</option>
                         @endforeach
                     </optgroup>

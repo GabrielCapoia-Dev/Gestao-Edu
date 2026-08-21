@@ -1238,7 +1238,7 @@ class ServidorService
 
         Pessoa::assertLotacaoVinculada(
             $data['lotacao_id'] ?? null,
-            $this->escolaIdsDosDadosFuncionais($data, $vinculos, $matriculas),
+            $this->escolaIdsDosDadosFuncionais($data, $vinculos, $matriculas, $cargo),
         );
     }
 
@@ -1275,26 +1275,40 @@ class ServidorService
      * @param  list<array<string, mixed>>  $matriculas
      * @return list<int>
      */
-    private function escolaIdsDosDadosFuncionais(array $data, array $vinculos, array $matriculas): array
-    {
-        return collect([
-            $data['id_escola'] ?? null,
-            data_get($vinculos, 'equipe_gestora.id_escola'),
-        ])
-            ->merge($data['escola_ids_assessoria'] ?? [])
-            ->merge(data_get($vinculos, 'assessoria_pedagogica.escola_ids', []))
-            ->merge(collect($matriculas)->flatMap(function (array $matricula): array {
-                $ids = collect($matricula['escolas'] ?? $matricula['lotacoes'] ?? [])
-                    ->filter(fn (mixed $escola): bool => is_array($escola))
-                    ->pluck('id_escola')
-                    ->all();
+    private function escolaIdsDosDadosFuncionais(
+        array $data,
+        array $vinculos,
+        array $matriculas,
+        string $cargo,
+    ): array {
+        $idsMatriculas = collect($matriculas)->flatMap(function (array $matricula): array {
+            $ids = collect($matricula['escolas'] ?? $matricula['lotacoes'] ?? [])
+                ->filter(fn (mixed $escola): bool => is_array($escola))
+                ->pluck('id_escola')
+                ->all();
 
-                if (filled($matricula['id_escola'] ?? null)) {
-                    $ids[] = $matricula['id_escola'];
-                }
+            if (filled($matricula['id_escola'] ?? null)) {
+                $ids[] = $matricula['id_escola'];
+            }
 
-                return $ids;
-            }))
+            return $ids;
+        });
+
+        $ids = match ($cargo) {
+            'professor' => $idsMatriculas,
+            'equipe_gestora' => collect([
+                $data['id_escola'] ?? null,
+                data_get($vinculos, 'equipe_gestora.id_escola'),
+            ]),
+            'assessoria_pedagogica' => collect($data['escola_ids_assessoria'] ?? [])
+                ->merge(data_get($vinculos, 'assessoria_pedagogica.escola_ids', [])),
+            'manutencao', 'obras', 'motorista', 'transporte' => collect(),
+            default => collect([$data['id_escola'] ?? null])
+                ->merge($data['escola_ids_assessoria'] ?? [])
+                ->merge($idsMatriculas),
+        };
+
+        return $ids
             ->filter(fn (mixed $id): bool => filled($id))
             ->map(fn (mixed $id): int => (int) $id)
             ->unique()
