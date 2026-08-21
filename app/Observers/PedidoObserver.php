@@ -5,11 +5,9 @@ namespace App\Observers;
 use App\Models\Enums\NivelEmergenciaPedido;
 use App\Models\Pedido;
 use App\Models\TipoStatus;
-use App\Models\User;
 use App\Notifications\SistemaNotification;
+use App\Services\PedidoNotificationRecipientService;
 use App\Support\UserActorSnapshot;
-use Illuminate\Support\Collection;
-use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 class PedidoObserver
 {
@@ -20,13 +18,13 @@ class PedidoObserver
 
     public function updated(Pedido $pedido): void
     {
+        $destinatarios = app(PedidoNotificationRecipientService::class);
+
         if (
             $pedido->wasChanged('nivel_prioridade') &&
             $pedido->nivel_prioridade === NivelEmergenciaPedido::EMERGENCIAL
         ) {
-            $usuarios = $this->usuariosComPermissao('Visualizar Notificação: Pedidos Emergenciais', $pedido);
-
-            foreach ($usuarios as $user) {
+            foreach ($destinatarios->destinatarios($pedido) as $user) {
                 $user->notify(
                     new SistemaNotification(
                         titulo: 'Pedido Emergencial',
@@ -46,7 +44,10 @@ class PedidoObserver
         $solicitante = $pedido->solicitante;
 
         if ($statusReaberto && (int) $pedido->tipo_status_id === (int) $statusReaberto->id) {
-            if (UserActorSnapshot::canReceiveNotification($solicitante)) {
+            if (
+                $solicitante
+                && $destinatarios->podeReceber($solicitante, $pedido)
+            ) {
                 $solicitante->notify(
                     new SistemaNotification(
                         titulo: 'Pedido Reaberto',
@@ -56,7 +57,7 @@ class PedidoObserver
                 );
             }
 
-            foreach ($this->usuariosComPermissao('Visualizar Notificação: Pedido Reaberto', $pedido) as $user) {
+            foreach ($destinatarios->destinatarios($pedido) as $user) {
                 if ($solicitante && (int) $user->id === (int) $solicitante->id) {
                     continue;
                 }
@@ -73,12 +74,16 @@ class PedidoObserver
             return;
         }
 
-        if (UserActorSnapshot::canReceiveNotification($solicitante) && $statusAtual) {
+        if (
+            $solicitante
+            && $statusAtual
+            && $destinatarios->podeReceber($solicitante, $pedido)
+        ) {
             $solicitante->notify(
                 new SistemaNotification(
                     titulo: 'Atualização no Pedido',
                     mensagem: "O status do seu pedido {$pedido->numero_protocolo} foi atualizado para \"{$statusAtual->nome}\".",
-                    url: route('filament.admin.resources.pedidos.index', $pedido),
+                    url: route('filament.admin.resources.pedidos.index'),
                 )
             );
         }
@@ -97,23 +102,6 @@ class PedidoObserver
     public function forceDeleted(Pedido $pedido): void
     {
         //
-    }
-
-    private function usuariosComPermissao(string $permission, Pedido $pedido): Collection
-    {
-        foreach ($this->aliasesTexto($permission) as $alias) {
-            try {
-                return User::permission($alias)
-                    ->get()
-                    ->filter(fn (User $user): bool => UserActorSnapshot::canReceiveNotification($user)
-                        && app(\App\Services\PedidoService::class)->registroVisivelNoPerfil($pedido, $user))
-                    ->values();
-            } catch (PermissionDoesNotExist) {
-                continue;
-            }
-        }
-
-        return collect();
     }
 
     private function statusPorNome(string $nome): ?TipoStatus
