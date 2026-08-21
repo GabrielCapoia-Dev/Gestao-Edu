@@ -127,6 +127,12 @@ class PessoaDadosFuncionaisTest extends TestCase
             'codigo' => 'LOT-JOR',
             'nome' => 'Sala de Recursos',
         ]);
+        $outraEscola = $this->criarEscola('Escola sem Vínculo');
+        $lotacaoSemVinculo = Lotacao::query()->create([
+            'escola_id' => $outraEscola->id,
+            'codigo' => 'LOT-FORA',
+            'nome' => 'Lotação fora do vínculo',
+        ]);
 
         $componente = Livewire::actingAs($usuario)
             ->test(PessoaForm::class, ['pessoaId' => null]);
@@ -163,6 +169,8 @@ class PessoaDadosFuncionaisTest extends TestCase
         $componente
             ->call('escolaAlterada', $principal, $lotacaoKey, $escola->id)
             ->assertSee('LOT-JOR - Sala de Recursos')
+            ->call('lotacaoAlterada', $lotacaoSemVinculo->id)
+            ->assertHasErrors(['lotacaoId'])
             ->call('lotacaoAlterada', $lotacao->id)
             ->assertSet('lotacaoId', $lotacao->id);
     }

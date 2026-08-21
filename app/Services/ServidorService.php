@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\Escola;
 use App\Models\FuncaoAdministrativa;
 use App\Models\Pessoa;
-use App\Models\PessoaMatricula;
 use App\Models\Professor;
 use App\Models\Servidor;
 use App\Models\ServidorFuncaoAdministrativa;
@@ -1231,18 +1230,10 @@ class ServidorService
         $cargosSemMatriculas = ['motorista', 'transporte', 'assessoria_pedagogica'];
         $matriculas = $this->matriculasDosDadosFuncionais($data, $vinculos);
 
-        if (in_array($cargo, $cargosSemMatriculas, true)) {
-            if ($jornada === true) {
-                throw ValidationException::withMessages([
-                    'jornada' => 'O cargo selecionado não utiliza matrículas por turno e não permite jornada adicional.',
-                ]);
-            }
-        } elseif ($matriculas !== []) {
-            PessoaMatricula::assertCompativelComCargaHoraria(
-                $cargaHoraria,
-                $jornada,
-                $matriculas,
-            );
+        if (in_array($cargo, $cargosSemMatriculas, true) && $jornada === true) {
+            throw ValidationException::withMessages([
+                'jornada' => 'O cargo selecionado não utiliza matrículas por turno e não permite jornada adicional.',
+            ]);
         }
 
         Pessoa::assertLotacaoVinculada(

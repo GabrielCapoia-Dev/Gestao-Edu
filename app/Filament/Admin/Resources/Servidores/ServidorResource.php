@@ -1269,10 +1269,12 @@ class ServidorResource extends Resource
                         }),
                     TextEntry::make('lotacao_view')
                         ->label('Lotação')
-                        ->getStateUsing(fn (): string => $record->lotacaoLabel()),
+                        ->getStateUsing(fn (): string => $record->lotacaoLabel())
+                        ->visible(fn (): bool => static::lotacaoPodeSerVista($record)),
                     TextEntry::make('lotacao_escola_view')
                         ->label('Escola da lotação')
-                        ->getStateUsing(fn (): string => $record->lotacao?->escola?->nome ?? 'Não informada'),
+                        ->getStateUsing(fn (): string => $record->lotacao?->escola?->nome ?? 'Não informada')
+                        ->visible(fn (): bool => static::lotacaoPodeSerVista($record)),
                     TextEntry::make('matriculas_view')
                         ->label('Matrículas')
                         ->badge()
@@ -1493,6 +1495,18 @@ class ServidorResource extends Resource
             ->filter()
             ->unique()
             ->implode(' / ');
+    }
+
+    private static function lotacaoPodeSerVista(Servidor $record): bool
+    {
+        if (blank($record->lotacao_id)) {
+            return true;
+        }
+
+        return app(PessoaScopeService::class)->canAccessEscola(
+            Auth::user(),
+            filled($record->lotacao?->escola_id) ? (int) $record->lotacao->escola_id : null,
+        );
     }
 
     private static function setorOperacionalLabel(Servidor $record): string
