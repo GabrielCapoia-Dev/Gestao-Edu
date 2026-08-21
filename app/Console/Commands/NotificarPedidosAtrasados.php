@@ -61,7 +61,7 @@ class NotificarPedidosAtrasados extends Command
 
     private function deveNotificarAtraso(Pedido $pedido, \Carbon\Carbon $hoje): bool
     {
-        $diasAtrasado = $pedido->data_prevista->copy()->startOfDay()->diffInDays($hoje);
+        $diasAtrasado = (int) $pedido->data_prevista->copy()->startOfDay()->diffInDays($hoje);
 
         return in_array($diasAtrasado, [1, 7, 15, 30], true)
             || ($diasAtrasado > 30 && $diasAtrasado % 30 === 0);
