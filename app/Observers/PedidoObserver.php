@@ -7,7 +7,6 @@ use App\Models\Pedido;
 use App\Models\TipoStatus;
 use App\Notifications\SistemaNotification;
 use App\Services\PedidoNotificationRecipientService;
-use App\Support\UserActorSnapshot;
 
 class PedidoObserver
 {
