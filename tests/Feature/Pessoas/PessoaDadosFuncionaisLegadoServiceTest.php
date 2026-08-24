@@ -35,7 +35,7 @@ class PessoaDadosFuncionaisLegadoServiceTest extends TestCase
         $aplicacao = $service->executar(aplicar: true);
         $this->assertSame(3, $aplicacao['normalizadas']);
         $this->assertSame(20, $pamela->fresh()->carga_horaria);
-        $this->assertTrue($pamela->fresh()->jornada);
+        $this->assertFalse($pamela->fresh()->jornada);
         $this->assertSame(40, $integral->fresh()->carga_horaria);
         $this->assertFalse($integral->fresh()->jornada);
         $this->assertSame(20, $manha->fresh()->carga_horaria);

@@ -68,12 +68,7 @@ class PessoaProfessorService
             ->findOrFail($pessoa->id);
 
         $this->validarInvariantesMatriculas($matriculas);
-        ProfessorMatricula::assertCompativelComCargaHoraria(
-            $pessoa->carga_horaria,
-            $pessoa->jornada,
-            $matriculas->all(),
-            'matriculas_professor',
-        );
+        ProfessorMatricula::assertConjuntoFuncionalValido($matriculas->all(), 'matriculas_professor');
         Pessoa::assertLotacaoVinculada(
             $pessoa->lotacao_id,
             $matriculas
@@ -86,7 +81,7 @@ class PessoaProfessorService
                 ->all(),
         );
 
-        ProfessorMatricula::query()
+        ProfessorMatricula::withTrashed()
             ->where('servidor_id', $pessoa->id)
             ->lockForUpdate()
             ->get();
@@ -333,6 +328,8 @@ class PessoaProfessorService
                         'id' => filled($item['id'] ?? null) ? (int) $item['id'] : null,
                         'matricula' => (string) $item['matricula'],
                         'turno' => (string) $item['turno'],
+                        'carga_horaria' => (string) $item['turno'] === 'integral' ? 40 : 20,
+                        'jornada' => (bool) ($item['jornada'] ?? false),
                         'escolas' => $escolas,
                     ];
                 })
@@ -351,6 +348,8 @@ class PessoaProfessorService
                     'id' => null,
                     'matricula' => $matricula,
                     'turno' => $turno,
+                    'carga_horaria' => $turno === 'integral' ? 40 : 20,
+                    'jornada' => (bool) $grupo->contains(fn (array $item): bool => (bool) ($item['jornada'] ?? false)),
                     'escolas' => $grupo->map(fn (array $r): array => [
                         'id' => $r['id'] ?? null,
                         'id_escola' => $r['id_escola'],
@@ -419,7 +418,7 @@ class PessoaProfessorService
             ->values()
             ->all();
 
-        ProfessorMatricula::assertConjuntoTurnosValido($turnos);
+        ProfessorMatricula::assertConjuntoFuncionalValido($matriculas->all(), 'matriculas_professor');
 
         foreach ($matriculas as $matricula) {
             if (blank($matricula['matricula'] ?? null) || blank($matricula['turno'] ?? null)) {
@@ -462,6 +461,8 @@ class PessoaProfessorService
             ->map(fn (ProfessorMatricula $matricula): array => [
                 'matricula' => (string) $matricula->matricula,
                 'turno' => (string) $matricula->turno,
+                'carga_horaria' => (int) $matricula->carga_horaria,
+                'jornada' => (bool) $matricula->jornada,
             ]);
 
         if ($conjuntoFinal->isEmpty()) {
@@ -470,7 +471,7 @@ class PessoaProfessorService
             ]);
         }
 
-        ProfessorMatricula::assertConjuntoTurnosValido($conjuntoFinal->pluck('turno')->all());
+        ProfessorMatricula::assertConjuntoFuncionalValido($conjuntoFinal->all(), 'matriculas_professor');
 
         $duplicadas = $conjuntoFinal
             ->pluck('matricula')
@@ -485,7 +486,7 @@ class PessoaProfessorService
 
     private function upsertMatricula(Pessoa|Servidor $pessoa, array $data): ProfessorMatricula
     {
-        $query = ProfessorMatricula::query()->where('servidor_id', $pessoa->id);
+        $query = ProfessorMatricula::withTrashed()->where('servidor_id', $pessoa->id);
 
         $matricula = null;
         if (filled($data['id'] ?? null)) {
@@ -500,9 +501,14 @@ class PessoaProfessorService
             'servidor_id' => $pessoa->id,
             'matricula' => $data['matricula'],
             'turno' => $data['turno'],
+            'carga_horaria' => $data['turno'] === 'integral' ? 40 : 20,
+            'jornada' => (bool) ($data['jornada'] ?? false),
         ];
 
         if ($matricula) {
+            if ($matricula->trashed()) {
+                $matricula->restore();
+            }
             $matricula->update($payload);
 
             return $matricula->fresh();
@@ -627,7 +633,7 @@ class PessoaProfessorService
                     'updated_at' => now(),
                 ]);
 
-            $matricula->delete();
+            $matricula->jornada ? $matricula->delete() : $matricula->forceDelete();
         }
     }
 
@@ -667,7 +673,7 @@ class PessoaProfessorService
             ->values();
 
         if ($matriculaIds->isNotEmpty()) {
-            $idsValidos = ProfessorMatricula::query()
+            $idsValidos = ProfessorMatricula::withTrashed()
                 ->where('servidor_id', $pessoa->id)
                 ->whereKey($matriculaIds->all())
                 ->pluck('id')

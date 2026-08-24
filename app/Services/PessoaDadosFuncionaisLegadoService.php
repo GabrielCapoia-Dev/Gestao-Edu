@@ -119,7 +119,9 @@ class PessoaDadosFuncionaisLegadoService
             && $turnos === ['manha', 'tarde']
             && $numeros->count() === 2
             && $numeros->unique()->count() === 2) {
-            return ['carga_horaria' => Pessoa::CARGA_HORARIA_20, 'jornada' => true];
+            // Duas matrículas podem representar dois concursos independentes.
+            // Jornada só pode ser definida explicitamente na própria matrícula.
+            return ['carga_horaria' => Pessoa::CARGA_HORARIA_20, 'jornada' => false];
         }
 
         return null;

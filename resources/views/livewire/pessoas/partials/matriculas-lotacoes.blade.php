@@ -8,12 +8,34 @@
                 <h3 id="pessoa-form-matriculas-title">
                     {{ in_array($cargo, ['manutencao', 'obras'], true) ? 'Matrículas' : 'Matrículas e lotações' }}
                 </h3>
-                <p>
-                    A carga horária define o turno. Quando a jornada é habilitada, a segunda matrícula é criada automaticamente no turno oposto.
-                </p>
+                <p>Cada matrícula de manhã ou tarde possui 20 horas; matrícula integral possui 40 horas e é exclusiva.</p>
             </div>
         </div>
+        @if (($modoCriacao || $gerenciaEstrutura) && $matriculas !== [])
+            <div class="pe-person-form__section-actions">
+                <button type="button" class="pe-person-form__button pe-person-form__button--secondary" wire:click="adicionarMatricula" wire:loading.attr="disabled" wire:target="adicionarMatricula,salvar">
+                    <x-heroicon-o-plus aria-hidden="true" /> Matrícula comum
+                </button>
+                <button type="button" class="pe-person-form__button pe-person-form__button--secondary" wire:click="adicionarJornada" wire:loading.attr="disabled" wire:target="adicionarJornada,salvar">
+                    <x-heroicon-o-plus aria-hidden="true" /> Jornada
+                </button>
+            </div>
+        @endif
     </header>
+
+    @if ($jornadasArquivadas !== [])
+        <div class="pe-person-form__empty pe-person-form__empty--small">
+            <strong>Jornadas arquivadas</strong>
+            @foreach ($jornadasArquivadas as $arquivada)
+                <span>{{ $arquivada['matricula'] }} · {{ $turnosOptions[$arquivada['turno']] ?? $arquivada['turno'] }}</span>
+                @if ($modoCriacao || $gerenciaEstrutura)
+                    <button type="button" class="pe-person-form__button pe-person-form__button--secondary" wire:click="reativarJornada({{ (int) $arquivada['id'] }})" wire:confirm="Reativar esta matrícula de jornada ao salvar?">
+                        Reativar jornada
+                    </button>
+                @endif
+            @endforeach
+        </div>
+    @endif
 
     @if ($matriculas === [])
         <div class="pe-person-form__empty" role="status">
@@ -39,7 +61,7 @@
                     >
                         {{ $matriculaLabels[$matriculaKey] }}
                     </button>
-                    @if (($modoCriacao || $gerenciaEstrutura) && ! $jornada)
+                    @if ($modoCriacao || $gerenciaEstrutura)
                         <button
                             type="button"
                             class="pe-person-form__icon-button"
@@ -95,7 +117,7 @@
                                 wire:change="turnoAlterado(@js($matriculaKey), $event.target.value)"
                                 wire:loading.attr="disabled"
                                 wire:target="turnoAlterado,salvar"
-                                @disabled((! $modoCriacao && ! $gerenciaEstrutura) || ($jornada && $matriculaKey !== array_key_first($matriculas)))
+                                @disabled((! $modoCriacao && ! $gerenciaEstrutura) || (bool) ($matricula['jornada'] ?? false))
                                 @error("matriculas.$matriculaKey.turno") aria-invalid="true" aria-describedby="pessoa-form-turno-{{ $matriculaKey }}-error" @enderror
                             >
                                 <option value="">Selecione</option>
@@ -105,6 +127,24 @@
                             </select>
                             @error("matriculas.$matriculaKey.turno")
                                 <small id="pessoa-form-turno-{{ $matriculaKey }}-error" class="is-error">{{ $message }}</small>
+                            @enderror
+                            <small>
+                                {{ ($matricula['turno'] ?? '') === 'integral' ? '40 horas semanais' : '20 horas semanais' }}
+                                · {{ (bool) ($matricula['jornada'] ?? false) ? 'Matrícula de jornada' : 'Matrícula comum' }}
+                            </small>
+                            @if ($modoCriacao || $gerenciaEstrutura)
+                                <span class="pe-person-form__checks">
+                                    <input
+                                        type="checkbox"
+                                        wire:change="jornadaDaMatriculaAlterada(@js($matriculaKey), $event.target.checked)"
+                                        @checked((bool) ($matricula['jornada'] ?? false))
+                                        @disabled(count($matriculas) !== 2 || ($matricula['turno'] ?? '') === 'integral')
+                                    >
+                                    Esta matrícula é de jornada
+                                </span>
+                            @endif
+                            @error("matriculas.$matriculaKey.jornada")
+                                <small class="is-error">{{ $message }}</small>
                             @enderror
                         </label>
                     </div>

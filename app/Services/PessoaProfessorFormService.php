@@ -9,6 +9,7 @@ use App\Models\Professor;
 use App\Models\Servidor;
 use App\Models\TurmaComponenteProfessor;
 use App\Models\User;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
 
 class PessoaProfessorFormService
@@ -64,6 +65,7 @@ class PessoaProfessorFormService
             'lotacao_id' => $pessoa->lotacao_id,
             'cargo' => ServidorResource::CARGO_PROFESSOR,
             'matriculas_professor' => $matriculasProfessor,
+            'jornadas_arquivadas' => $this->jornadasArquivadas($pessoa),
             'registros_professor' => $registrosFlat,
         ];
 
@@ -237,6 +239,7 @@ class PessoaProfessorFormService
                     ))?->setor_id
                 : null,
             'matriculas_professor' => $matriculasProfessor,
+            'jornadas_arquivadas' => $this->jornadasArquivadas($pessoa),
             'matricula_motorista' => $ehMotoristaNoEscopo
                 ? ($pessoa->vinculosAtivos
                     ->first(fn ($vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->ehMotorista())
@@ -265,8 +268,8 @@ class PessoaProfessorFormService
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, Professor>  $professores
-     * @param  \Illuminate\Support\Collection<int|string, \Illuminate\Support\Collection<int, TurmaComponenteProfessor>>  $vinculosPorProfessor
+     * @param  Collection<int, Professor>  $professores
+     * @param  Collection<int|string, Collection<int, TurmaComponenteProfessor>>  $vinculosPorProfessor
      * @return list<array<string, mixed>>
      */
     private function montarMatriculasHierarquicas(Pessoa|Servidor $pessoa, $professores, $vinculosPorProfessor): array
@@ -283,6 +286,8 @@ class PessoaProfessorFormService
                         'id' => $matricula->id,
                         'matricula' => $matricula->matricula,
                         'turno' => $matricula->turno,
+                        'carga_horaria' => $matricula->carga_horaria,
+                        'jornada' => (bool) $matricula->jornada,
                         'escolas' => $lotacoes->map(fn (Professor $professor): array => [
                             'id' => $professor->id,
                             'id_escola' => $professor->id_escola,
@@ -303,13 +308,15 @@ class PessoaProfessorFormService
         return $professores
             ->groupBy(fn (Professor $p): string => (string) $p->matricula)
             ->map(function ($grupo, string $matricula) use ($vinculosPorProfessor): array {
-                /** @var \Illuminate\Support\Collection<int, Professor> $grupo */
+                /** @var Collection<int, Professor> $grupo */
                 $primeiro = $grupo->first();
 
                 return [
                     'id' => null,
                     'matricula' => $matricula,
                     'turno' => $primeiro?->turnoEfetivo() ?? $primeiro?->turno,
+                    'carga_horaria' => ($primeiro?->turnoEfetivo() ?? $primeiro?->turno) === 'integral' ? 40 : 20,
+                    'jornada' => false,
                     'escolas' => $grupo->map(fn (Professor $professor): array => [
                         'id' => $professor->id,
                         'id_escola' => $professor->id_escola,
@@ -324,6 +331,27 @@ class PessoaProfessorFormService
                 ];
             })
             ->values()
+            ->all();
+    }
+
+    /** @return list<array{id:int,matricula:string,turno:string,carga_horaria:int}> */
+    private function jornadasArquivadas(Pessoa|Servidor $pessoa): array
+    {
+        if (! Schema::hasColumn('professor_matriculas', 'deleted_at')) {
+            return [];
+        }
+
+        return $pessoa->matriculas()
+            ->onlyTrashed()
+            ->where('jornada', true)
+            ->orderByDesc('deleted_at')
+            ->get()
+            ->map(fn (PessoaMatricula $matricula): array => [
+                'id' => (int) $matricula->id,
+                'matricula' => (string) $matricula->matricula,
+                'turno' => (string) $matricula->turno,
+                'carga_horaria' => (int) $matricula->carga_horaria,
+            ])
             ->all();
     }
 }

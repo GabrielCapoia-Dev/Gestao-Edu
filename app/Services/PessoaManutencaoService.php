@@ -9,8 +9,8 @@ use App\Models\Professor;
 use App\Models\Servidor;
 use App\Models\ServidorFuncaoAdministrativa;
 use App\Models\Setor;
-use Illuminate\Support\Collection;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -162,11 +162,7 @@ class PessoaManutencaoService
     /** @param array<string, mixed> $normalizado */
     private function sincronizarInterno(Servidor $pessoa, array $normalizado): Servidor
     {
-        PessoaMatricula::assertCompativelComCargaHoraria(
-            $pessoa->carga_horaria,
-            $pessoa->jornada,
-            $normalizado['matriculas']->all(),
-        );
+        PessoaMatricula::assertConjuntoFuncionalValido($normalizado['matriculas']->all());
         Pessoa::assertLotacaoVinculada($pessoa->lotacao_id, []);
         $matriculas = $this->sincronizarMatriculas($pessoa, $normalizado['matriculas']);
         $setor = Setor::query()->lockForUpdate()->findOrFail($normalizado['setor']->id);

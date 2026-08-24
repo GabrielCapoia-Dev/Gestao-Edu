@@ -87,6 +87,9 @@ class PessoaForm extends Component
 
     public bool $jornada = false;
 
+    /** @var list<array{id:int,matricula:string,turno:string,carga_horaria:int}> */
+    public array $jornadasArquivadas = [];
+
     public ?int $lotacaoId = null;
 
     public string $cargo = ServidorResource::CARGO_PROFESSOR;
@@ -147,15 +150,13 @@ class PessoaForm extends Component
         $turnosOptions = PessoaMatricula::turnosOptions();
         $turnosOptionsPorMatricula = [];
         $lotacoesOptionsPorEscola = $this->lotacoesOptionsPorEscola();
-        $matriculaPrincipal = array_key_first($this->matriculas);
-
         foreach ($this->matriculas as $matriculaKey => $matricula) {
             if (! is_array($matricula)) {
                 continue;
             }
 
             $matriculaLabels[$matriculaKey] = $this->matriculaLabel($matricula, $turnosOptions);
-            if ($this->jornada && $matriculaKey !== $matriculaPrincipal) {
+            if ((bool) ($matricula['jornada'] ?? false)) {
                 $matriculaLabels[$matriculaKey] = 'Jornada · '.$matriculaLabels[$matriculaKey];
             }
             $turnosOptionsPorMatricula[$matriculaKey] = $this->turnosDisponiveisParaMatricula(
@@ -232,13 +233,84 @@ class PessoaForm extends Component
         $this->autorizarEstruturaProfessor();
         $this->resetErrorBag('matriculas');
 
-        if ($this->cargaHoraria !== Pessoa::CARGA_HORARIA_20 || ! $this->jornada) {
-            $this->addError('matriculas', 'A segunda matrícula é criada automaticamente ao habilitar a jornada de 20 horas.');
+        if (! PessoaMatricula::podeAdicionarMatricula($this->matriculas)) {
+            $this->addError('matriculas', 'Não é possível adicionar outra matrícula a este conjunto.');
 
             return;
         }
 
-        $this->garantirMatriculaJornada();
+        $this->adicionarNovaMatricula(false);
+    }
+
+    public function adicionarJornada(): void
+    {
+        $this->autorizarEstruturaProfessor();
+        $this->resetErrorBag('matriculas');
+
+        if (count($this->matriculas) !== 1
+            || in_array((string) (collect($this->matriculas)->first()['turno'] ?? ''), ['', 'integral'], true)) {
+            throw ValidationException::withMessages([
+                'matriculas' => 'A jornada exige exatamente uma matrícula comum de 20 horas, de manhã ou à tarde.',
+            ]);
+        }
+
+        $this->adicionarNovaMatricula(true);
+    }
+
+    public function reativarJornada(int $matriculaId): void
+    {
+        $this->autorizarEstruturaProfessor();
+        $arquivada = collect($this->jornadasArquivadas)->firstWhere('id', $matriculaId);
+
+        if (! is_array($arquivada) || count($this->matriculas) !== 1) {
+            throw ValidationException::withMessages([
+                'matriculas' => 'A jornada arquivada não pode ser reativada neste conjunto de matrículas.',
+            ]);
+        }
+
+        $principal = collect($this->matriculas)->first();
+        $turnoOposto = $this->turnoOposto((string) ($principal['turno'] ?? ''));
+        if ($turnoOposto === null) {
+            throw ValidationException::withMessages([
+                'matriculas' => 'Defina manhã ou tarde na matrícula comum antes de reativar a jornada.',
+            ]);
+        }
+
+        $key = 'm'.$matriculaId;
+        $this->matriculas[$key] = [
+            'id' => $matriculaId,
+            'matricula' => (string) $arquivada['matricula'],
+            'turno' => $turnoOposto,
+            'carga_horaria' => Pessoa::CARGA_HORARIA_20,
+            'jornada' => true,
+            'escolas' => [],
+        ];
+        $this->jornadasArquivadas = collect($this->jornadasArquivadas)
+            ->reject(fn (array $item): bool => (int) $item['id'] === $matriculaId)
+            ->values()->all();
+        $this->matriculaAtiva = $key;
+        $this->lotacoesAtivas[$key] = null;
+    }
+
+    public function jornadaDaMatriculaAlterada(string $matriculaKey, mixed $jornada): void
+    {
+        $this->autorizarEstruturaProfessor();
+        if (! isset($this->matriculas[$matriculaKey])) {
+            return;
+        }
+
+        $habilitada = filter_var($jornada, FILTER_VALIDATE_BOOLEAN);
+        if ($habilitada && (count($this->matriculas) !== 2
+            || collect($this->matriculas)->contains(fn (array $item): bool => ($item['turno'] ?? null) === 'integral'))) {
+            throw ValidationException::withMessages([
+                "matriculas.{$matriculaKey}.jornada" => 'A jornada exige duas matrículas de 20 horas, uma de manhã e outra à tarde.',
+            ]);
+        }
+
+        foreach (array_keys($this->matriculas) as $key) {
+            $this->matriculas[$key]['jornada'] = $habilitada && $key === $matriculaKey;
+        }
+        $this->sincronizarTurnoJornada();
     }
 
     public function cargaHorariaAlterada(mixed $cargaHoraria): void
@@ -295,30 +367,14 @@ class PessoaForm extends Component
     public function jornadaAlterada(mixed $jornada): void
     {
         $this->autorizarEstruturaProfessor();
-        $habilitada = filter_var($jornada, FILTER_VALIDATE_BOOLEAN);
-
-        if ($habilitada && (! $this->cargoPossuiMatriculas()
-            || $this->cargaHoraria !== Pessoa::CARGA_HORARIA_20)) {
-            $this->jornada = false;
-
-            throw ValidationException::withMessages([
-                'jornada' => 'A jornada só pode ser habilitada para servidor de 20 horas com matrícula por turno.',
-            ]);
-        }
-
-        $this->jornada = $habilitada;
-        $this->resetErrorBag(['jornada', 'matriculas']);
-
-        if ($habilitada) {
-            $this->garantirMatriculaJornada();
-
-            return;
-        }
-
-        $chaves = array_keys($this->matriculas);
-        array_shift($chaves);
-        foreach ($chaves as $chave) {
-            $this->removerMatricula($chave);
+        if (filter_var($jornada, FILTER_VALIDATE_BOOLEAN)) {
+            $this->adicionarJornada();
+        } else {
+            foreach ($this->matriculas as $key => $matricula) {
+                if ((bool) ($matricula['jornada'] ?? false)) {
+                    $this->removerMatricula((string) $key);
+                }
+            }
         }
     }
 
@@ -369,7 +425,6 @@ class PessoaForm extends Component
         }
 
         unset($this->matriculas[$matriculaKey], $this->lotacoesAtivas[$matriculaKey]);
-        $this->jornada = false;
         $this->completarTurnoLegadoAposRemocao();
         $this->matriculaAtiva = array_key_first($this->matriculas);
         $this->limparLotacaoInvalida();
@@ -489,32 +544,22 @@ class PessoaForm extends Component
         }
 
         $turno = (string) $turno;
-        $principal = array_key_first($this->matriculas);
-        if ($this->jornada && $matriculaKey !== $principal) {
-            $turnoPrincipal = (string) ($this->matriculas[$principal]['turno'] ?? '');
-            $oposto = $this->turnoOposto($turnoPrincipal);
-            if ($oposto !== null) {
-                $this->atualizarTurnoMatricula($matriculaKey, $oposto);
-            }
-
-            return;
-        }
-
         $permitidos = $this->turnosDisponiveisParaMatricula(
             $matriculaKey,
             $this->matriculas[$matriculaKey],
         );
         if ($turno !== '' && ! array_key_exists($turno, $permitidos)) {
             throw ValidationException::withMessages([
-                "matriculas.{$matriculaKey}.turno" => 'O turno é incompatível com a carga horária e as demais matrículas.',
+                "matriculas.{$matriculaKey}.turno" => 'O turno é incompatível com as demais matrículas.',
             ]);
         }
 
         $this->atualizarTurnoMatricula($matriculaKey, $turno);
-
-        if ($this->jornada && $matriculaKey === $principal) {
-            $this->sincronizarTurnoJornada();
+        $this->matriculas[$matriculaKey]['carga_horaria'] = $turno === 'integral' ? 40 : 20;
+        if ($turno === 'integral') {
+            $this->matriculas[$matriculaKey]['jornada'] = false;
         }
+        $this->sincronizarTurnoJornada();
     }
 
     public function turmaAlterada(
@@ -770,6 +815,7 @@ class PessoaForm extends Component
         $this->observacoes = null;
         $this->cargaHoraria = null;
         $this->jornada = false;
+        $this->jornadasArquivadas = [];
         $this->lotacaoId = null;
         $this->cargo = ServidorResource::CARGO_PROFESSOR;
         $this->matriculaMotorista = null;
@@ -781,6 +827,8 @@ class PessoaForm extends Component
                 'id' => null,
                 'matricula' => '',
                 'turno' => '',
+                'carga_horaria' => Pessoa::CARGA_HORARIA_20,
+                'jornada' => false,
                 'escolas' => [],
             ],
         ];
@@ -803,6 +851,7 @@ class PessoaForm extends Component
         $this->observacoes = $this->gerenciaEstrutura ? ($dados['observacoes'] ?? $pessoa->observacoes) : null;
         $this->cargaHoraria = filled($dados['carga_horaria'] ?? null) ? (int) $dados['carga_horaria'] : null;
         $this->jornada = (bool) ($dados['jornada'] ?? false);
+        $this->jornadasArquivadas = array_values($dados['jornadas_arquivadas'] ?? []);
         $this->lotacaoId = filled($dados['lotacao_id'] ?? null) ? (int) $dados['lotacao_id'] : null;
         $this->cargo = (string) ($dados['cargo'] ?? ServidorResource::CARGO_PROFESSOR);
         $this->matriculaMotorista = filled($dados['matricula_motorista'] ?? null)
@@ -960,12 +1009,6 @@ class PessoaForm extends Component
         $this->cargo = $cargo;
         if ($this->cargoPossuiMatriculas()) {
             $this->garantirMatriculaInicial();
-            if ($this->cargaHoraria === Pessoa::CARGA_HORARIA_40) {
-                $principal = (string) array_key_first($this->matriculas);
-                $this->atualizarTurnoMatricula($principal, 'integral');
-            } elseif ($this->jornada) {
-                $this->garantirMatriculaJornada();
-            }
         } else {
             $this->jornada = false;
         }
@@ -1060,8 +1103,6 @@ class PessoaForm extends Component
     private function validarEstrutura(): void
     {
         $rules = [
-            'cargaHoraria' => ['required', 'integer', Rule::in(array_keys(Pessoa::cargaHorariaOptions()))],
-            'jornada' => ['boolean'],
             'lotacaoId' => ['nullable', 'integer'],
             'cargo' => ['required', Rule::in([
                 ServidorResource::CARGO_PROFESSOR,
@@ -1087,6 +1128,8 @@ class PessoaForm extends Component
                 'matriculas.*.id' => ['nullable', 'integer'],
                 'matriculas.*.matricula' => ['required', 'string', 'max:255'],
                 'matriculas.*.turno' => ['required', Rule::in(array_keys(PessoaMatricula::turnosOptions()))],
+                'matriculas.*.carga_horaria' => ['required', 'integer', Rule::in(array_keys(Pessoa::cargaHorariaOptions()))],
+                'matriculas.*.jornada' => ['boolean'],
                 'matriculas.*.escolas' => ['array'],
             ];
         }
@@ -1143,11 +1186,8 @@ class PessoaForm extends Component
             'matriculaOperacional' => 'matrícula',
             'escolaIdsAssessoria' => 'escolas assessoradas',
             'escolaIdsAssessoria.*' => 'escola assessorada',
-            'cargaHoraria' => 'carga horária',
             'lotacaoId' => 'lotação',
         ]);
-
-        Pessoa::assertDadosFuncionaisValidos($this->cargaHoraria, $this->jornada);
 
         $cargosSemMatriculas = [
             ServidorResource::CARGO_MOTORISTA,
@@ -1159,17 +1199,9 @@ class PessoaForm extends Component
             PessoaMatricula::assertConjuntoTurnosValido(
                 collect($this->matriculas)->pluck('turno')->map(fn (mixed $turno): string => (string) $turno)->all(),
             );
-            PessoaMatricula::assertCompativelComCargaHoraria(
-                $this->cargaHoraria,
-                $this->jornada,
-                $this->matriculas,
-            );
+            PessoaMatricula::assertConjuntoFuncionalValido($this->matriculas);
             $this->validarMatriculasDuplicadas();
             $this->validarIdsDasMatriculas();
-        } elseif ($this->jornada) {
-            throw ValidationException::withMessages([
-                'jornada' => 'O cargo selecionado não utiliza matrículas por turno e não permite jornada adicional.',
-            ]);
         }
 
         Pessoa::assertLotacaoVinculada(
@@ -1556,8 +1588,10 @@ class PessoaForm extends Component
             'telefone' => $this->telefone,
             'status' => $this->status,
             'observacoes' => $this->observacoes,
-            'carga_horaria' => $this->cargaHoraria,
-            'jornada' => $this->jornada,
+            // Campos da Pessoa mantidos apenas para compatibilidade com fluxos
+            // legados. A fonte de verdade está em cada matrícula.
+            'carga_horaria' => $this->cargaHorariaCompativel(),
+            'jornada' => collect($this->matriculas)->contains(fn (mixed $item): bool => is_array($item) && (bool) ($item['jornada'] ?? false)),
             'lotacao_id' => $this->lotacaoId,
             'cargo' => $this->cargo,
             'matricula_motorista' => $this->matriculaMotorista,
@@ -1588,6 +1622,8 @@ class PessoaForm extends Component
                     'id' => filled($matricula['id'] ?? null) ? (int) $matricula['id'] : null,
                     'matricula' => trim((string) ($matricula['matricula'] ?? '')),
                     'turno' => (string) ($matricula['turno'] ?? ''),
+                    'carga_horaria' => (string) ($matricula['turno'] ?? '') === 'integral' ? 40 : 20,
+                    'jornada' => (bool) ($matricula['jornada'] ?? false),
                     'escolas' => collect($matricula['escolas'] ?? [])
                         ->filter(fn (mixed $lotacao): bool => is_array($lotacao))
                         ->map(fn (array $lotacao): array => [
@@ -1660,6 +1696,8 @@ class PessoaForm extends Component
                 'id' => filled($matricula['id'] ?? null) ? (int) $matricula['id'] : null,
                 'matricula' => (string) ($matricula['matricula'] ?? ''),
                 'turno' => $turno,
+                'carga_horaria' => $turno === 'integral' ? 40 : 20,
+                'jornada' => (bool) ($matricula['jornada'] ?? false),
                 'escolas' => $lotacoes,
             ];
         }
@@ -1748,6 +1786,8 @@ class PessoaForm extends Component
             'id' => null,
             'matricula' => '',
             'turno' => '',
+            'carga_horaria' => Pessoa::CARGA_HORARIA_20,
+            'jornada' => false,
             'escolas' => [],
         ];
         $this->matriculaAtiva = $key;
@@ -1756,40 +1796,49 @@ class PessoaForm extends Component
 
     private function garantirMatriculaJornada(): void
     {
-        $this->garantirMatriculaInicial();
-
-        if (count($this->matriculas) > PessoaMatricula::MAX_POR_PESSOA) {
-            throw ValidationException::withMessages([
-                'matriculas' => 'Ajuste as matrículas legadas antes de habilitar a jornada.',
-            ]);
+        if (! collect($this->matriculas)->contains(fn (mixed $item): bool => is_array($item) && (bool) ($item['jornada'] ?? false))) {
+            $this->adicionarNovaMatricula(true);
         }
-
-        if (count($this->matriculas) === 1) {
-            $key = $this->novaChave('m');
-            $this->matriculas[$key] = [
-                'id' => null,
-                'matricula' => '',
-                'turno' => '',
-                'escolas' => [],
-            ];
-            $this->lotacoesAtivas[$key] = null;
-            $this->matriculaAtiva = $key;
-        }
-
-        $this->sincronizarTurnoJornada();
     }
 
     private function sincronizarTurnoJornada(): void
     {
-        if (! $this->jornada || count($this->matriculas) !== PessoaMatricula::MAX_POR_PESSOA) {
+        if (count($this->matriculas) !== PessoaMatricula::MAX_POR_PESSOA) {
             return;
         }
 
-        $chaves = array_keys($this->matriculas);
-        $principal = $chaves[0];
-        $secundaria = $chaves[1];
-        $oposto = $this->turnoOposto((string) ($this->matriculas[$principal]['turno'] ?? ''));
-        $this->atualizarTurnoMatricula($secundaria, $oposto ?? '');
+        $jornadaKey = collect($this->matriculas)
+            ->search(fn (mixed $item): bool => is_array($item) && (bool) ($item['jornada'] ?? false));
+        if ($jornadaKey === false) {
+            return;
+        }
+
+        $comumKey = collect(array_keys($this->matriculas))->first(fn (string $key): bool => (string) $key !== (string) $jornadaKey);
+        $oposto = $this->turnoOposto((string) ($this->matriculas[$comumKey]['turno'] ?? ''));
+        $this->atualizarTurnoMatricula((string) $jornadaKey, $oposto ?? '');
+        $this->matriculas[$jornadaKey]['carga_horaria'] = Pessoa::CARGA_HORARIA_20;
+    }
+
+    private function adicionarNovaMatricula(bool $jornada): void
+    {
+        $this->garantirMatriculaInicial();
+        if (! PessoaMatricula::podeAdicionarMatricula($this->matriculas)) {
+            throw ValidationException::withMessages(['matriculas' => 'Não é possível adicionar outra matrícula a este conjunto.']);
+        }
+
+        $turnoAtual = (string) (collect($this->matriculas)->first()['turno'] ?? '');
+        $turno = $this->turnoOposto($turnoAtual) ?? '';
+        $key = $this->novaChave('m');
+        $this->matriculas[$key] = [
+            'id' => null,
+            'matricula' => '',
+            'turno' => $turno,
+            'carga_horaria' => Pessoa::CARGA_HORARIA_20,
+            'jornada' => $jornada,
+            'escolas' => [],
+        ];
+        $this->lotacoesAtivas[$key] = null;
+        $this->matriculaAtiva = $key;
     }
 
     private function turnoOposto(string $turno): ?string
@@ -1804,27 +1853,19 @@ class PessoaForm extends Component
     /** @param array<string, mixed> $matricula */
     private function turnosDisponiveisParaMatricula(string $matriculaKey, array $matricula): array
     {
-        if ($this->jornada
-            && $this->cargaHoraria === Pessoa::CARGA_HORARIA_20
-            && $matriculaKey === array_key_first($this->matriculas)) {
-            return array_intersect_key(
-                PessoaMatricula::turnosOptions(),
-                array_flip(['manha', 'tarde']),
-            );
-        }
-
-        $opcoes = PessoaMatricula::turnosDisponiveisParaItem(
+        return PessoaMatricula::turnosDisponiveisParaItem(
             PessoaMatricula::turnosDosIrmaos($this->matriculas, $matriculaKey),
             filled($matricula['turno'] ?? null) ? (string) $matricula['turno'] : null,
         );
+    }
 
-        $permitidosCarga = match ($this->cargaHoraria) {
-            Pessoa::CARGA_HORARIA_20 => ['manha', 'tarde'],
-            Pessoa::CARGA_HORARIA_40 => ['integral'],
-            default => array_keys(PessoaMatricula::turnosOptions()),
-        };
+    private function cargaHorariaCompativel(): ?int
+    {
+        $primeira = collect($this->matriculas)->first(fn (mixed $item): bool => is_array($item));
 
-        return array_intersect_key($opcoes, array_flip($permitidosCarga));
+        return is_array($primeira)
+            ? ((string) ($primeira['turno'] ?? '') === 'integral' ? 40 : 20)
+            : null;
     }
 
     private function atualizarTurnoMatricula(string $matriculaKey, string $turno): void
@@ -1920,7 +1961,9 @@ class PessoaForm extends Component
     private function capturarIdsPermitidos(): void
     {
         $this->matriculaIdsPermitidos = collect($this->matriculas)
-            ->pluck('id')->filter()->map(fn (mixed $id): int => (int) $id)->unique()->values()->all();
+            ->pluck('id')
+            ->merge(collect($this->jornadasArquivadas)->pluck('id'))
+            ->filter()->map(fn (mixed $id): int => (int) $id)->unique()->values()->all();
         $this->lotacaoIdsPermitidos = collect($this->matriculas)
             ->flatMap(fn (array $matricula): array => $matricula['escolas'] ?? [])
             ->pluck('id')->filter()->map(fn (mixed $id): int => (int) $id)->unique()->values()->all();

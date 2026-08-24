@@ -71,7 +71,7 @@ class PessoaExclusaoDefinitivaService
             $resumo = [
                 'professores_anonimizados' => $professores->count(),
                 'vinculos_funcionais_preservados' => $vinculos->count(),
-                'matriculas_excluidas' => ProfessorMatricula::query()->where('servidor_id', $pessoa->id)->count(),
+                'matriculas_excluidas' => ProfessorMatricula::withTrashed()->where('servidor_id', $pessoa->id)->count(),
                 'vinculos_pedagogicos_desocupados' => $this->contarVinculosPedagogicos($professorIds),
                 'snapshots_anonimizados' => 0,
                 'usuario_anonimizado' => $user ? 1 : 0,
@@ -102,7 +102,10 @@ class PessoaExclusaoDefinitivaService
                 DB::table('professores')->where('id', $professor->id)->update($payload);
             }
 
-            ProfessorMatricula::query()->where('servidor_id', $pessoa->id)->delete();
+            ProfessorMatricula::withTrashed()
+                ->where('servidor_id', $pessoa->id)
+                ->get()
+                ->each->forceDelete();
 
             DB::table('servidor_funcao_administrativa')
                 ->where('servidor_id', $pessoa->id)

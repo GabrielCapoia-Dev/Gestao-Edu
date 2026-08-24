@@ -180,8 +180,7 @@ class PessoaEquipeGestoraService
         Pessoa|Servidor $pessoa,
         ?string $dataFim = null,
         bool $reconciliarAcesso = true,
-    ): void
-    {
+    ): void {
         $vinculos = ServidorFuncaoAdministrativa::query()
             ->where('servidor_id', $pessoa->id)
             ->where('status', ServidorFuncaoAdministrativa::STATUS_ATIVO)
@@ -238,11 +237,7 @@ class PessoaEquipeGestoraService
         }
 
         $normalizado = $this->normalizarEValidar($dados);
-        PessoaMatricula::assertCompativelComCargaHoraria(
-            $pessoa->carga_horaria,
-            $pessoa->jornada,
-            $normalizado['matriculas']->all(),
-        );
+        PessoaMatricula::assertConjuntoFuncionalValido($normalizado['matriculas']->all());
         Pessoa::assertLotacaoVinculada(
             $pessoa->lotacao_id,
             [(int) $normalizado['escola']->id],
@@ -276,8 +271,7 @@ class PessoaEquipeGestoraService
                 ?? now()->toDateString();
         }
         if ($ativos->contains(
-            fn (ServidorFuncaoAdministrativa $vinculo): bool =>
-                (bool) $vinculo->funcaoAdministrativa?->temFlagsGestorasConflitantes()
+            fn (ServidorFuncaoAdministrativa $vinculo): bool => (bool) $vinculo->funcaoAdministrativa?->temFlagsGestorasConflitantes()
         )) {
             throw ValidationException::withMessages([
                 'cargos' => 'A Pessoa possui um vínculo gestor legado com flags conflitantes. Saneie esse vínculo antes de editar a Equipe Gestora.',
@@ -309,8 +303,7 @@ class PessoaEquipeGestoraService
                 [FuncaoAdministrativa::TIPO_DIRECAO, FuncaoAdministrativa::TIPO_COORDENACAO],
                 true,
             ))
-            ->contains(fn (ServidorFuncaoAdministrativa $vinculo): bool =>
-                (string) $vinculo->portaria !== (string) $normalizado['portaria']
+            ->contains(fn (ServidorFuncaoAdministrativa $vinculo): bool => (string) $vinculo->portaria !== (string) $normalizado['portaria']
             );
 
         if ($portariaMudou) {
@@ -347,12 +340,10 @@ class PessoaEquipeGestoraService
         foreach ($tiposDesejados->keys() as $tipo) {
             $funcao = $funcoes[$tipo];
             $vinculosDoTipo = $this->vinculosGestoresAtivos($pessoa)
-                ->filter(fn (ServidorFuncaoAdministrativa $vinculo): bool =>
-                    $vinculo->funcaoAdministrativa?->tipoEquipeGestora() === $tipo
+                ->filter(fn (ServidorFuncaoAdministrativa $vinculo): bool => $vinculo->funcaoAdministrativa?->tipoEquipeGestora() === $tipo
                 );
             $vinculo = $vinculosDoTipo->first(
-                fn (ServidorFuncaoAdministrativa $candidato): bool =>
-                    (int) $candidato->funcao_administrativa_id === (int) $funcao->id
+                fn (ServidorFuncaoAdministrativa $candidato): bool => (int) $candidato->funcao_administrativa_id === (int) $funcao->id
                     && (int) $candidato->id_escola === (int) $escola->id
             );
 

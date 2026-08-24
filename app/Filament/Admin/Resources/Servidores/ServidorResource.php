@@ -1342,11 +1342,7 @@ class ServidorResource extends Resource
 
         $jornada = [
             'label' => $record->jornadaLabel(),
-            'tone' => match ($record->jornada) {
-                true => 'success',
-                false => 'gray',
-                default => 'warning',
-            },
+            'tone' => $record->jornadaLabel() === 'Sim' ? 'success' : 'gray',
         ];
 
         $lotacaoVisivel = static::lotacaoPodeSerVista($record);

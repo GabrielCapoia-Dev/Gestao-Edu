@@ -10,8 +10,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -25,7 +26,9 @@ class Pessoa extends Model
     use SoftDeletes;
 
     public const STATUS_ATIVO = 'ativo';
+
     public const STATUS_INATIVO = 'inativo';
+
     public const CARGO_PENDENTE_CODIGO = 'cargo_pendente';
 
     public const CARGA_HORARIA_20 = 20;
@@ -145,11 +148,29 @@ class Pessoa extends Model
 
     public function cargaHorariaLabel(): string
     {
+        if (Schema::hasColumn('professor_matriculas', 'carga_horaria')) {
+            $matriculas = $this->relationLoaded('matriculas') ? $this->matriculas : $this->matriculas()->get();
+            if ($matriculas->isNotEmpty()) {
+                return $matriculas
+                    ->map(fn (PessoaMatricula $matricula): string => "{$matricula->matricula}: {$matricula->cargaHorariaLabel()}")
+                    ->implode('; ');
+            }
+        }
+
         return self::CARGAS_HORARIAS[$this->carga_horaria] ?? 'Não informada';
     }
 
     public function jornadaLabel(): string
     {
+        if (Schema::hasColumn('professor_matriculas', 'jornada')) {
+            $matriculas = $this->relationLoaded('matriculas') ? $this->matriculas : $this->matriculas()->get();
+            if ($matriculas->isNotEmpty()) {
+                return $matriculas->contains(fn (PessoaMatricula $matricula): bool => (bool) $matricula->jornada)
+                    ? 'Sim'
+                    : 'Não';
+            }
+        }
+
         return match ($this->jornada) {
             true => 'Sim',
             false => 'Não',

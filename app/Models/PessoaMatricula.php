@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -16,6 +17,8 @@ use Illuminate\Validation\ValidationException;
  */
 class PessoaMatricula extends Model
 {
+    use SoftDeletes;
+
     public const MAX_POR_PESSOA = 2;
 
     public const TURNOS = [
@@ -30,6 +33,8 @@ class PessoaMatricula extends Model
         'servidor_id',
         'matricula',
         'turno',
+        'carga_horaria',
+        'jornada',
     ];
 
     protected function casts(): array
@@ -38,7 +43,24 @@ class PessoaMatricula extends Model
             'servidor_id' => 'integer',
             'matricula' => 'string',
             'turno' => 'string',
+            'carga_horaria' => 'integer',
+            'jornada' => 'boolean',
+            'deleted_at' => 'datetime',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::saving(function (PessoaMatricula $matricula): void {
+            self::assertTurnoValido((string) $matricula->turno);
+            $matricula->carga_horaria = $matricula->turno === 'integral'
+                ? Pessoa::CARGA_HORARIA_40
+                : Pessoa::CARGA_HORARIA_20;
+
+            if ($matricula->turno === 'integral') {
+                $matricula->jornada = false;
+            }
+        });
     }
 
     public function pessoa(): BelongsTo
@@ -71,6 +93,66 @@ class PessoaMatricula extends Model
     public function turnoLabel(): string
     {
         return self::TURNOS[$this->turno] ?? 'Não informado';
+    }
+
+    public function cargaHorariaLabel(): string
+    {
+        return Pessoa::CARGAS_HORARIAS[$this->carga_horaria] ?? 'Não informada';
+    }
+
+    public function jornadaLabel(): string
+    {
+        return $this->jornada ? 'Jornada' : 'Matrícula comum';
+    }
+
+    /**
+     * @param  array<int|string, array<string, mixed>>  $matriculas
+     */
+    public static function assertConjuntoFuncionalValido(array $matriculas, string $campo = 'matriculas'): void
+    {
+        $matriculas = array_values(array_filter($matriculas, 'is_array'));
+        $turnos = collect($matriculas)->pluck('turno')->filter()->map(fn (mixed $turno): string => (string) $turno)->all();
+        self::assertConjuntoTurnosValido($turnos);
+
+        if (count($matriculas) < 1) {
+            throw ValidationException::withMessages([$campo => 'A pessoa deve possuir ao menos uma matrícula.']);
+        }
+
+        $jornadas = collect($matriculas)->filter(
+            fn (array $matricula): bool => filter_var($matricula['jornada'] ?? false, FILTER_VALIDATE_BOOLEAN),
+        );
+
+        foreach ($matriculas as $matricula) {
+            $turno = (string) ($matricula['turno'] ?? '');
+            $carga = filled($matricula['carga_horaria'] ?? null)
+                ? (int) $matricula['carga_horaria']
+                : ($turno === 'integral' ? Pessoa::CARGA_HORARIA_40 : Pessoa::CARGA_HORARIA_20);
+
+            if (($turno === 'integral' && $carga !== Pessoa::CARGA_HORARIA_40)
+                || (in_array($turno, ['manha', 'tarde'], true) && $carga !== Pessoa::CARGA_HORARIA_20)) {
+                throw ValidationException::withMessages([
+                    $campo => 'A carga horária deve ser 20 horas para manhã ou tarde e 40 horas para turno integral.',
+                ]);
+            }
+        }
+
+        if ($jornadas->isEmpty()) {
+            return;
+        }
+
+        if ($jornadas->count() !== 1 || count($matriculas) !== 2 || in_array('integral', $turnos, true)) {
+            throw ValidationException::withMessages([
+                $campo => 'A jornada exige uma matrícula comum de 20 horas e uma matrícula de jornada no turno oposto.',
+            ]);
+        }
+
+        $numeros = collect($matriculas)->pluck('matricula')->map(fn (mixed $numero): string => mb_strtolower(trim((string) $numero)));
+        if ($numeros->filter()->count() !== 2 || $numeros->unique()->count() !== 2
+            || collect($turnos)->sort()->values()->all() !== ['manha', 'tarde']) {
+            throw ValidationException::withMessages([
+                $campo => 'A jornada exige duas matrículas diferentes, uma de manhã e outra à tarde.',
+            ]);
+        }
     }
 
     public static function assertTurnoValido(string $turno): void
@@ -165,6 +247,7 @@ class PessoaMatricula extends Model
 
     /**
      * @param  array<int|string, array<string, mixed>>  $matriculas
+     *
      * @throws ValidationException
      */
     public static function assertCompativelComCargaHoraria(
@@ -246,6 +329,7 @@ class PessoaMatricula extends Model
 
     /**
      * @param  list<string>  $turnos
+     *
      * @throws ValidationException
      */
     public static function assertConjuntoTurnosValido(array $turnos): void

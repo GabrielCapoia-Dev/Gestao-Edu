@@ -12,7 +12,7 @@ class NormalizarDadosFuncionaisPessoasCommand extends Command
                             {--apply : Aplica apenas inferências inequívocas}
                             {--email= : Restringe a normalização a um e-mail}';
 
-    protected $description = 'Preenche carga horária e jornada legadas a partir das matrículas, sem sobrescrever dados informados';
+    protected $description = 'Normaliza dados funcionais legados sem inferir jornada a partir de duas matrículas';
 
     public function handle(PessoaDadosFuncionaisLegadoService $service): int
     {
