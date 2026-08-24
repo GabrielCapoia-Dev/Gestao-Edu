@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Pessoas;
 
+use App\Filament\Admin\Resources\Servidores\Pages\ManageServidores;
 use App\Models\ComponenteCurricular;
 use App\Models\Escola;
 use App\Models\FuncaoAdministrativa;
@@ -23,6 +24,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class PessoaExclusaoDefinitivaTest extends TestCase
@@ -76,6 +78,14 @@ class PessoaExclusaoDefinitivaTest extends TestCase
         $arquivada = Servidor::withTrashed()->findOrFail($pessoa->id);
 
         $this->assertTrue(Gate::forUser($this->operador)->allows('forceDelete', $arquivada));
+        Livewire::actingAs($this->operador)
+            ->test(ManageServidores::class)
+            ->filterTable('trashed', false)
+            ->assertCanSeeTableRecords([$arquivada])
+            ->assertTableActionVisible('excluir_definitivamente', $arquivada)
+            ->assertTableActionHasLabel('excluir_definitivamente', 'Excluir definitivamente', $arquivada)
+            ->assertTableActionHasColor('excluir_definitivamente', 'danger', $arquivada);
+
         app(PessoaExclusaoDefinitivaService::class)->excluir($arquivada, $this->operador);
 
         $this->assertNull(Servidor::withTrashed()->find($pessoa->id));

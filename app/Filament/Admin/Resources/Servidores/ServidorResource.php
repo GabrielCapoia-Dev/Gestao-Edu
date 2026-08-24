@@ -464,6 +464,8 @@ class ServidorResource extends Resource
             ->recordAction(null)
             ->recordUrl(null)
             ->recordActions([
+                static::excluirDefinitivamenteAction(),
+
                 ActionGroup::make([
                     ViewAction::make()
                         ->label('Visualizar')
@@ -600,40 +602,6 @@ class ServidorResource extends Resource
                         ->using(fn (Servidor $record): Servidor => app(ServidorService::class)->restaurarPessoa($record))
                         ->successNotificationTitle('Pessoa restaurada como inativa'),
 
-                    Action::make('excluir_definitivamente')
-                        ->label('Excluir definitivamente')
-                        ->icon('heroicon-o-trash')
-                        ->color('danger')
-                        ->requiresConfirmation()
-                        ->modalHeading('Excluir pessoa definitivamente')
-                        ->modalDescription('Esta ação não pode ser desfeita. Os dados pessoais serão removidos, os históricos serão anonimizados e CPF, e-mail e matrícula poderão ser usados em um novo cadastro.')
-                        ->modalSubmitActionLabel('Excluir definitivamente')
-                        ->schema([
-                            TextInput::make('confirmacao')
-                                ->label('Confirmação')
-                                ->helperText('Digite EXCLUIR para confirmar a exclusão definitiva.')
-                                ->required()
-                                ->rules(['in:EXCLUIR'])
-                                ->validationMessages([
-                                    'in' => 'Digite EXCLUIR para confirmar a exclusão definitiva.',
-                                ]),
-                        ])
-                        ->visible(fn (Servidor $record): bool => $record->trashed()
-                            && Gate::allows('forceDelete', $record))
-                        ->action(function (Servidor $record): void {
-                            $operador = Auth::user();
-                            if (! $operador instanceof User) {
-                                throw new AuthorizationException('Usuário não autenticado.');
-                            }
-
-                            app(PessoaExclusaoDefinitivaService::class)->excluir($record, $operador);
-
-                            Notification::make()
-                                ->title('Pessoa excluída definitivamente')
-                                ->body('Os dados pessoais foram removidos e os históricos foram anonimizados.')
-                                ->success()
-                                ->send();
-                        }),
                 ])
                     ->label('Ações')
                     ->icon('heroicon-m-ellipsis-vertical')
@@ -1823,6 +1791,45 @@ class ServidorResource extends Resource
     public static function componentesOptionsPublic(int|string|null $turmaId): array
     {
         return static::componentesOptions($turmaId);
+    }
+
+    private static function excluirDefinitivamenteAction(): Action
+    {
+        return Action::make('excluir_definitivamente')
+            ->label('Excluir definitivamente')
+            ->icon('heroicon-o-trash')
+            ->color('danger')
+            ->button()
+            ->requiresConfirmation()
+            ->modalHeading('Excluir pessoa definitivamente')
+            ->modalDescription('Esta ação não usa exclusão em cascata. Os dados pessoais serão removidos, mas os históricos funcionais e pedagógicos serão preservados de forma anonimizada. CPF, e-mail e matrícula poderão ser usados em um novo cadastro.')
+            ->modalSubmitActionLabel('Excluir definitivamente')
+            ->schema([
+                TextInput::make('confirmacao')
+                    ->label('Confirmação')
+                    ->helperText('Digite EXCLUIR para confirmar a exclusão definitiva.')
+                    ->required()
+                    ->rules(['in:EXCLUIR'])
+                    ->validationMessages([
+                        'in' => 'Digite EXCLUIR para confirmar a exclusão definitiva.',
+                    ]),
+            ])
+            ->visible(fn (Servidor $record): bool => $record->trashed()
+                && Gate::allows('forceDelete', $record))
+            ->action(function (Servidor $record): void {
+                $operador = Auth::user();
+                if (! $operador instanceof User) {
+                    throw new AuthorizationException('Usuário não autenticado.');
+                }
+
+                app(PessoaExclusaoDefinitivaService::class)->excluir($record, $operador);
+
+                Notification::make()
+                    ->title('Pessoa excluída definitivamente')
+                    ->body('Os dados pessoais foram removidos e os históricos foram preservados de forma anonimizada.')
+                    ->success()
+                    ->send();
+            });
     }
 
     private static function turmasOptions(int|string|null $escolaId, int|string|null $turnoMatricula = null): array
