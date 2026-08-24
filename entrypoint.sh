@@ -83,6 +83,12 @@ run_queue_worker() {
             memory_mb="${NOTIFICATIONS_QUEUE_MEMORY_MB:-384}"
             max_jobs="${NOTIFICATIONS_QUEUE_MAX_JOBS:-500}"
             php_memory_limit="256M"
+
+            # O bootstrap atual do Laravel ultrapassa 128 MB no Hub. Abaixo
+            # deste piso o worker encerra imediatamente com código 12.
+            if [ "$memory_mb" -lt 256 ]; then
+                memory_mb=256
+            fi
             ;;
         default)
             queue_name="default"
